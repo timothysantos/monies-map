@@ -1,0 +1,29 @@
+{
+  "name": "monies-map",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n API,UI \"npm:dev:api\" \"npm:dev:ui\"",
+    "dev:api": "wrangler dev --port 8787",
+    "dev:ui": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && wrangler deploy",
+    "db:migrate": "wrangler d1 execute monies-map --local --file=schema.sql",
+    "db:migrate:remote": "wrangler d1 execute monies-map --remote --file=schema.sql"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260402.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.2.1",
+    "typescript": "^5.8.3",
+    "vite": "^5.4.19",
+    "wrangler": "^4.11.1"
+  },
+  "dependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "recharts": "^3.8.1"
+  }
+}

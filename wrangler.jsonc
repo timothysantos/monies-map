@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "monies-map",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-04-03",
+  "assets": {
+    "directory": "./dist"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "monies-map",
+      "database_id": "replace-me-with-cloudflare-d1-id"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}
