@@ -46,13 +46,10 @@ function buildContextView(id: string, label: string, selectedScope: PersonScope)
 
 function buildSummaryPage(personId: string, visibleEntries: EntryDto[]) {
   const months = buildSummaryMonthsForView(personId);
-  const plannedTotalMinor = sumMinor(months, "plannedExpenseMinor");
-  const actualTotalMinor = sumMinor(months, "actualExpenseMinor");
-  const targetSavingsMinor = sumMinor(months, "targetSavingsMinor");
-  const realizedSavingsMinor = months.reduce(
-    (sum, month) => sum + month.targetSavingsMinor + month.actualVarianceMinor,
-    0
-  );
+  const plannedTotalMinor = sumMinor(months, "estimatedExpensesMinor");
+  const actualTotalMinor = sumMinor(months, "realExpensesMinor");
+  const targetSavingsMinor = sumMinor(months, "savingsGoalMinor");
+  const realizedSavingsMinor = sumMinor(months, "realizedSavingsMinor");
   const metricCards: MetricCardDto[] = [
     {
       label: "Planned spend",
@@ -165,11 +162,12 @@ function buildSummaryMonthsForView(personId: string) {
   return summaryMonths.map((month) => ({
     ...month,
     incomeMinor: Math.round(month.incomeMinor * ratio),
-    plannedExpenseMinor: Math.round(month.plannedExpenseMinor * ratio),
-    actualExpenseMinor: Math.round(month.actualExpenseMinor * ratio),
-    targetSavingsMinor: Math.round(month.targetSavingsMinor * ratio),
-    plannedVarianceMinor: Math.round(month.plannedVarianceMinor * ratio),
-    actualVarianceMinor: Math.round(month.actualVarianceMinor * ratio),
+    estimatedExpensesMinor: Math.round(month.estimatedExpensesMinor * ratio),
+    realExpensesMinor: Math.round(month.realExpensesMinor * ratio),
+    savingsGoalMinor: Math.round(month.savingsGoalMinor * ratio),
+    realizedSavingsMinor: Math.round(month.realizedSavingsMinor * ratio),
+    estimatedDiffMinor: Math.round(month.estimatedDiffMinor * ratio),
+    realDiffMinor: Math.round(month.realDiffMinor * ratio),
     note: `${personId === "person-tim" ? "Tim" : "Joyce"} weighted view`
   }));
 }
@@ -263,7 +261,7 @@ function buildDonutChart(entries: EntryDto[]): DonutChartDatumDto[] {
 
 function sumMinor(months: SummaryMonthDto[], key: keyof Pick<
   SummaryMonthDto,
-  "plannedExpenseMinor" | "actualExpenseMinor" | "targetSavingsMinor"
+  "estimatedExpensesMinor" | "realExpensesMinor" | "savingsGoalMinor" | "realizedSavingsMinor"
 >) {
   return months.reduce((sum, month) => sum + month[key], 0);
 }

@@ -248,22 +248,22 @@ function SummaryPanel({ view }) {
                         <strong>{formatMonthLabel(month.month)}</strong>
                         <p>{messages.summary.incomeLabel(money(month.incomeMinor))}</p>
                       </div>
-                      <span className={month.actualVarianceMinor >= 0 ? "positive" : "negative"}>
-                        {money(month.actualVarianceMinor)}
+                      <span className={month.realDiffMinor >= 0 ? "positive" : "negative"}>
+                        {money(month.realDiffMinor)}
                       </span>
                     </div>
                   </summary>
                   <div className="plan-row-content">
                     <BarLine
                       label={messages.month.table.planned}
-                      valueMinor={month.plannedExpenseMinor}
-                      maxMinor={Math.max(month.actualExpenseMinor, month.plannedExpenseMinor)}
+                      valueMinor={month.estimatedExpensesMinor}
+                      maxMinor={Math.max(month.realExpensesMinor, month.estimatedExpensesMinor)}
                       tone="planned"
                     />
                     <BarLine
                       label={messages.month.table.actual}
-                      valueMinor={month.actualExpenseMinor}
-                      maxMinor={Math.max(month.actualExpenseMinor, month.plannedExpenseMinor)}
+                      valueMinor={month.realExpensesMinor}
+                      maxMinor={Math.max(month.realExpensesMinor, month.estimatedExpensesMinor)}
                       tone="actual"
                     />
                     <div className="table-wrap plan-detail-table-wrap">
@@ -280,23 +280,23 @@ function SummaryPanel({ view }) {
                         <tbody>
                           <tr>
                             <td>{messages.summary.table.expectedExpenses}</td>
-                            <td>{money(month.plannedExpenseMinor)}</td>
-                            <td>{money(month.actualExpenseMinor)}</td>
-                            <td className={month.plannedVarianceMinor >= 0 ? "positive" : "negative"}>
-                              {money(month.actualVarianceMinor)}
+                            <td>{money(month.estimatedExpensesMinor)}</td>
+                            <td>{money(month.realExpensesMinor)}</td>
+                            <td className={month.realDiffMinor >= 0 ? "positive" : "negative"}>
+                              {money(month.realDiffMinor)}
                             </td>
                             <td>{month.note}</td>
                           </tr>
                           <tr>
                             <td>{messages.summary.table.expectedSavings}</td>
-                            <td>{money(month.targetSavingsMinor)}</td>
-                            <td className={month.targetSavingsMinor + month.actualVarianceMinor >= 0 ? "positive" : "negative"}>
-                              {money(month.targetSavingsMinor + month.actualVarianceMinor)}
+                            <td>{money(month.savingsGoalMinor)}</td>
+                            <td className={month.realizedSavingsMinor >= 0 ? "positive" : "negative"}>
+                              {money(month.realizedSavingsMinor)}
                             </td>
-                            <td className={month.actualVarianceMinor >= 0 ? "positive" : "negative"}>
-                              {money(month.actualVarianceMinor)}
+                            <td className={month.realDiffMinor >= 0 ? "positive" : "negative"}>
+                              {money(month.realDiffMinor)}
                             </td>
-                            <td>{month.actualVarianceMinor >= 0 ? "Landed above target." : "Savings landed below target."}</td>
+                            <td>{month.realizedSavingsMinor >= month.savingsGoalMinor ? "Landed above target." : "Savings landed below target."}</td>
                           </tr>
                         </tbody>
                       </table>

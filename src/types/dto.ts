@@ -50,11 +50,12 @@ export interface DonutChartDatumDto {
 export interface SummaryMonthDto {
   month: string;
   incomeMinor: number;
-  plannedExpenseMinor: number;
-  actualExpenseMinor: number;
-  targetSavingsMinor: number;
-  plannedVarianceMinor: number;
-  actualVarianceMinor: number;
+  estimatedExpensesMinor: number;
+  realExpensesMinor: number;
+  savingsGoalMinor: number;
+  realizedSavingsMinor: number;
+  estimatedDiffMinor: number;
+  realDiffMinor: number;
   note: string;
 }
 
