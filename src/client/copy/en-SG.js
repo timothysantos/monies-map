@@ -1,0 +1,92 @@
+export const messages = {
+  common: {
+    loading: "Loading...",
+    emptyValue: "—",
+    viewingDot: (label) => `Viewing • ${label}`,
+    contextWithView: (left, right) => `${left} • ${right}`,
+    triplet: (first, second, third) => `${first} • ${second} • ${third}`,
+    moneyAndPercent: (moneyValue, percentage) => `${moneyValue} • ${percentage}%`
+  },
+  views: {
+    household: "Household"
+  },
+  tabs: {
+    summary: "Summary",
+    month: "Month",
+    entries: "Entries",
+    imports: "Imports",
+    faq: "FAQ",
+    ariaLabel: "Dashboard sections"
+  },
+  period: {
+    month: "Month",
+    year: "Year",
+    currentYear: "2025",
+    previousAriaLabel: "Previous period",
+    nextAriaLabel: "Next period"
+  },
+  summary: {
+    spendingMix: "Spending Mix",
+    intentVsOutcome: "Intent vs Outcome",
+    intentVsOutcomeDetail: "Monthly comparison with expandable detail.",
+    incomeLabel: (value) => `${value} income`,
+    savingsTarget: "Savings target",
+    planGap: "Plan gap",
+    realGap: "Real gap",
+    realizedSavings: "Realized savings",
+    totalSpend: "Total spend"
+  },
+  month: {
+    notesTitle: "Monthly Notes",
+    notesDetail: "Why the month looked like this.",
+    accountsTitle: "Accounts",
+    accountsDetail: "Tracked finance accounts.",
+    table: {
+      category: "Category",
+      day: "Day",
+      item: "Item",
+      planned: "Planned",
+      actual: "Actual",
+      variance: "Variance",
+      account: "Account",
+      note: "Note"
+    }
+  },
+  entries: {
+    viewing: (label) => `Viewing entries for ${label}`,
+    scope: "Scope",
+    shared: "Shared",
+    offsetsCategory: " • offsets category",
+    split: "Split",
+    counterpart: "Counterpart"
+  },
+  imports: {
+    viewing: (label) => `Viewing imports for ${label}`,
+    transactionCount: (count) => `${count} transactions`
+  },
+  faq: {
+    viewing: (label) => `Viewing FAQ for ${label}`,
+    items: [
+      {
+        question: "What is Monie's Map trying to answer?",
+        answer:
+          "Not only what got spent. The app is trying to answer what was intended, what happened, whether the difference was justified, whether savings were hurt, and which assumption was wrong."
+      },
+      {
+        question: "What does over-granular mean here?",
+        answer:
+          "Over-granular means budgeting too many unstable or one-off purchases as separate planned rows. Based on the June to October sheets, your current split already looks reasonable: planned items on top and broader budget buckets below."
+      },
+      {
+        question: "Why is the month view split into planned items and budget buckets?",
+        answer:
+          "Planned items are intentional commitments like savings, loan, tax, subscriptions, or specific one-offs. Budget buckets are flexible categories like food, groceries, shopping, and transport."
+      },
+      {
+        question: "Should this FAQ be updated later?",
+        answer:
+          "Yes. The FAQ is a living product document and should be updated whenever setup, workflow, philosophy, or user-facing behavior changes."
+      }
+    ]
+  }
+};

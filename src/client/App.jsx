@@ -1,5 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
+import {
+  NavLink,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useSearchParams
+} from "react-router-dom";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
+import { messages } from "./copy/en-SG";
 
 const moneyFormatter = new Intl.NumberFormat("en-SG", {
   style: "currency",
@@ -28,41 +37,18 @@ const fallbackThemes = [
   { color: "#96a95a", glyph: "•" }
 ];
 
-const faqItems = [
-  {
-    question: "What is Monie's Map trying to answer?",
-    answer:
-      "Not only what got spent. The app is trying to answer what was intended, what happened, whether the difference was justified, whether savings were hurt, and which assumption was wrong."
-  },
-  {
-    question: "What does over-granular mean here?",
-    answer:
-      "Over-granular means budgeting too many unstable or one-off purchases as separate planned rows. Based on the June to October sheets, your current split already looks reasonable: planned items on top and broader budget buckets below."
-  },
-  {
-    question: "Why is the month view split into planned items and budget buckets?",
-    answer:
-      "Planned items are intentional commitments like savings, loan, tax, subscriptions, or specific one-offs. Budget buckets are flexible categories like food, groceries, shopping, and transport."
-  },
-  {
-    question: "Should this FAQ be updated later?",
-    answer:
-      "Yes. The FAQ is a living product document and should be updated whenever setup, workflow, philosophy, or user-facing behavior changes."
-  }
-];
-
-const tabs = [
-  { id: "summary", label: "Summary" },
-  { id: "month", label: "Month" },
-  { id: "entries", label: "Entries" },
-  { id: "imports", label: "Imports" },
-  { id: "faq", label: "FAQ" }
+const routeTabs = [
+  { id: "summary", path: "/summary", label: messages.tabs.summary },
+  { id: "month", path: "/month", label: messages.tabs.month },
+  { id: "entries", path: "/entries", label: messages.tabs.entries },
+  { id: "imports", path: "/imports", label: messages.tabs.imports },
+  { id: "faq", path: "/faq", label: messages.tabs.faq }
 ];
 
 export function App() {
   const [bootstrap, setBootstrap] = useState(null);
-  const [selectedViewId, setSelectedViewId] = useState("household");
-  const [activeTab, setActiveTab] = useState("summary");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
 
   useEffect(() => {
     let active = true;
@@ -75,7 +61,6 @@ export function App() {
       }
 
       setBootstrap(data);
-      setSelectedViewId(data.selectedViewId);
     }
 
     void load();
@@ -85,18 +70,54 @@ export function App() {
     };
   }, []);
 
+  const selectedViewId = searchParams.get("view") ?? "household";
+  const selectedTabId = routeTabs.find((tab) => tab.path === location.pathname)?.id ?? "summary";
+
   const view = useMemo(
     () => bootstrap?.views.find((item) => item.id === selectedViewId) ?? null,
     [bootstrap, selectedViewId]
   );
 
-  const periodMode = activeTab === "month" || activeTab === "entries" ? "Month" : "Year";
-  const periodLabel = activeTab === "month" || activeTab === "entries"
-    ? formatMonthLabel(view?.monthPage?.month ?? "2025-10")
-    : "2025";
+  useEffect(() => {
+    if (!bootstrap) {
+      return;
+    }
+
+    const matchesKnownView = bootstrap.views.some((item) => item.id === selectedViewId);
+    if (matchesKnownView) {
+      return;
+    }
+
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("view", bootstrap.selectedViewId);
+      return next;
+    }, { replace: true });
+  }, [bootstrap, selectedViewId, setSearchParams]);
 
   if (!bootstrap || !view) {
-    return <main className="shell"><section className="panel"><p>Loading...</p></section></main>;
+    return (
+      <main className="shell">
+        <section className="panel">
+          <p>{messages.common.loading}</p>
+        </section>
+      </main>
+    );
+  }
+
+  const periodMode = selectedTabId === "month" || selectedTabId === "entries"
+    ? messages.period.month
+    : messages.period.year;
+  const periodLabel = selectedTabId === "month" || selectedTabId === "entries"
+    ? formatMonthLabel(view.monthPage.month)
+    : messages.period.currentYear;
+
+  function handleViewChange(nextViewId) {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("view", nextViewId);
+      return next;
+    });
   }
 
   return (
@@ -107,16 +128,16 @@ export function App() {
             <button
               className={`pill ${selectedViewId === "household" ? "is-active" : ""}`}
               type="button"
-              onClick={() => setSelectedViewId("household")}
+              onClick={() => handleViewChange("household")}
             >
-              Household
+              {messages.views.household}
             </button>
             {bootstrap.household.people.map((person) => (
               <button
                 key={person.id}
                 className={`pill ${selectedViewId === person.id ? "is-active" : ""}`}
                 type="button"
-                onClick={() => setSelectedViewId(person.id)}
+                onClick={() => handleViewChange(person.id)}
               >
                 {person.name}
               </button>
@@ -125,33 +146,39 @@ export function App() {
         </div>
 
         <div className="period-inline">
-          <nav className="tab-strip" aria-label="Dashboard sections">
-            {tabs.map((tab) => (
-              <button
+          <nav className="tab-strip" aria-label={messages.tabs.ariaLabel}>
+            {routeTabs.map((tab) => (
+              <NavLink
                 key={tab.id}
-                className={`tab ${activeTab === tab.id ? "is-active" : ""}`}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
+                className={({ isActive }) => `tab ${isActive ? "is-active" : ""}`}
+                to={{ pathname: tab.path, search: searchParams.toString() ? `?${searchParams.toString()}` : "" }}
               >
                 {tab.label}
-              </button>
+              </NavLink>
             ))}
           </nav>
-          <button className="period-button" type="button" aria-label="Previous period">‹</button>
+          <button className="period-button" type="button" aria-label={messages.period.previousAriaLabel}>‹</button>
           <div className="period-display">
             <span className="period-mode">{periodMode}</span>
             <strong>{periodLabel}</strong>
           </div>
-          <button className="period-button" type="button" aria-label="Next period">›</button>
+          <button className="period-button" type="button" aria-label={messages.period.nextAriaLabel}>›</button>
         </div>
       </section>
 
       <section className="grid">
-        {activeTab === "summary" && <SummaryPanel view={view} />}
-        {activeTab === "month" && <MonthPanel view={view} accounts={bootstrap.accounts} />}
-        {activeTab === "entries" && <EntriesPanel view={view} />}
-        {activeTab === "imports" && <ImportsPanel importsPage={bootstrap.importsPage} viewLabel={view.label} />}
-        {activeTab === "faq" && <FaqPanel viewLabel={view.label} />}
+        <Routes>
+          <Route path="/" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
+          <Route path="/summary" element={<SummaryPanel view={view} />} />
+          <Route path="/month" element={<MonthPanel view={view} accounts={bootstrap.accounts} />} />
+          <Route path="/entries" element={<EntriesPanel view={view} />} />
+          <Route
+            path="/imports"
+            element={<ImportsPanel importsPage={bootstrap.importsPage} viewLabel={view.label} />}
+          />
+          <Route path="/faq" element={<FaqPanel viewLabel={view.label} />} />
+          <Route path="*" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
+        </Routes>
       </section>
     </main>
   );
@@ -162,8 +189,8 @@ function SummaryPanel({ view }) {
     <article className="panel panel-accent">
       <div className="panel-head summary-head">
         <div>
-          <h2>Summary</h2>
-          <span className="panel-context">Viewing • {view.label}</span>
+          <h2>{messages.tabs.summary}</h2>
+          <span className="panel-context">{messages.common.viewingDot(view.label)}</span>
         </div>
         <div className="metric-row metric-row-summary summary-head-metrics">
           {view.summaryPage.metricCards.map((card) => (
@@ -175,14 +202,17 @@ function SummaryPanel({ view }) {
       <div className="summary-top-grid">
         <section className="chart-card">
           <div className="chart-head">
-            <h3>Spending Mix</h3>
+            <h3>{messages.summary.spendingMix}</h3>
           </div>
           <div className="summary-mix">
             <SpendingMixChart data={view.summaryPage.categoryShareChart} />
             <div className="share-list">
               {view.summaryPage.categoryShareChart.map((item, index) => {
                 const theme = getCategoryTheme(item.label, index);
-                const total = view.summaryPage.categoryShareChart.reduce((sum, current) => sum + current.valueMinor, 0) || 1;
+                const total = view.summaryPage.categoryShareChart.reduce(
+                  (sum, current) => sum + current.valueMinor,
+                  0
+                ) || 1;
                 const percentage = ((item.valueMinor / total) * 100).toFixed(1);
                 return (
                   <div key={item.key} className="share-row">
@@ -192,7 +222,7 @@ function SummaryPanel({ view }) {
                       </span>
                       <div>
                         <strong>{item.label}</strong>
-                        <p>{money(item.valueMinor)} • {percentage}%</p>
+                        <p>{messages.common.moneyAndPercent(money(item.valueMinor), percentage)}</p>
                       </div>
                     </div>
                   </div>
@@ -204,8 +234,8 @@ function SummaryPanel({ view }) {
 
         <section className="chart-card">
           <div className="chart-head">
-            <h3>Intent vs Outcome</h3>
-            <p>Monthly comparison with expandable detail.</p>
+            <h3>{messages.summary.intentVsOutcome}</h3>
+            <p>{messages.summary.intentVsOutcomeDetail}</p>
           </div>
           <div className="chart-bars">
             {[...view.summaryPage.months]
@@ -216,7 +246,7 @@ function SummaryPanel({ view }) {
                     <div className="plan-row-head">
                       <div>
                         <strong>{formatMonthLabel(month.month)}</strong>
-                        <p>{money(month.incomeMinor)} income</p>
+                        <p>{messages.summary.incomeLabel(money(month.incomeMinor))}</p>
                       </div>
                       <span className={month.actualVarianceMinor >= 0 ? "positive" : "negative"}>
                         {money(month.actualVarianceMinor)}
@@ -224,13 +254,35 @@ function SummaryPanel({ view }) {
                     </div>
                   </summary>
                   <div className="plan-row-content">
-                    <BarLine label="Planned" valueMinor={month.plannedExpenseMinor} maxMinor={month.actualExpenseMinor > month.plannedExpenseMinor ? month.actualExpenseMinor : month.plannedExpenseMinor} tone="planned" />
-                    <BarLine label="Actual" valueMinor={month.actualExpenseMinor} maxMinor={month.actualExpenseMinor > month.plannedExpenseMinor ? month.actualExpenseMinor : month.plannedExpenseMinor} tone="actual" />
+                    <BarLine
+                      label={messages.month.table.planned}
+                      valueMinor={month.plannedExpenseMinor}
+                      maxMinor={Math.max(month.actualExpenseMinor, month.plannedExpenseMinor)}
+                      tone="planned"
+                    />
+                    <BarLine
+                      label={messages.month.table.actual}
+                      valueMinor={month.actualExpenseMinor}
+                      maxMinor={Math.max(month.actualExpenseMinor, month.plannedExpenseMinor)}
+                      tone="actual"
+                    />
                     <div className="plan-row-grid">
-                      <MiniStat label="Savings target" value={money(month.targetSavingsMinor)} />
-                      <MiniStat label="Plan gap" value={money(month.plannedVarianceMinor)} tone={month.plannedVarianceMinor >= 0 ? "positive" : "negative"} />
-                      <MiniStat label="Real gap" value={money(month.actualVarianceMinor)} tone={month.actualVarianceMinor >= 0 ? "positive" : "negative"} />
-                      <MiniStat label="Realized savings" value={money(month.targetSavingsMinor + month.actualVarianceMinor)} tone={month.targetSavingsMinor + month.actualVarianceMinor >= 0 ? "positive" : "negative"} />
+                      <MiniStat label={messages.summary.savingsTarget} value={money(month.targetSavingsMinor)} />
+                      <MiniStat
+                        label={messages.summary.planGap}
+                        value={money(month.plannedVarianceMinor)}
+                        tone={month.plannedVarianceMinor >= 0 ? "positive" : "negative"}
+                      />
+                      <MiniStat
+                        label={messages.summary.realGap}
+                        value={money(month.actualVarianceMinor)}
+                        tone={month.actualVarianceMinor >= 0 ? "positive" : "negative"}
+                      />
+                      <MiniStat
+                        label={messages.summary.realizedSavings}
+                        value={money(month.targetSavingsMinor + month.actualVarianceMinor)}
+                        tone={month.targetSavingsMinor + month.actualVarianceMinor >= 0 ? "positive" : "negative"}
+                      />
                     </div>
                     <p className="plan-row-note">{month.note}</p>
                   </div>
@@ -275,7 +327,7 @@ function SpendingMixChart({ data }) {
           </PieChart>
         </ResponsiveContainer>
         <div className="donut-center recharts-donut-center">
-          <span>Total spend</span>
+          <span>{messages.summary.totalSpend}</span>
           <strong>{money(total)}</strong>
         </div>
       </div>
@@ -319,12 +371,16 @@ function MonthPanel({ view, accounts }) {
     <article className="panel">
       <div className="panel-head">
         <div>
-          <h2>Month</h2>
-          <span id="month-label">{formatMonthLabel(view.monthPage.month)} • {view.label}</span>
+          <h2>{messages.tabs.month}</h2>
+          <span id="month-label">{messages.common.contextWithView(formatMonthLabel(view.monthPage.month), view.label)}</span>
         </div>
         <div className="scope-toggle">
           {view.monthPage.scopes.map((scope) => (
-            <button key={scope.key} className={`scope-button ${scope.key === view.monthPage.selectedScope ? "is-active" : ""}`} type="button">
+            <button
+              key={scope.key}
+              className={`scope-button ${scope.key === view.monthPage.selectedScope ? "is-active" : ""}`}
+              type="button"
+            >
               {scope.label}
             </button>
           ))}
@@ -346,14 +402,14 @@ function MonthPanel({ view, accounts }) {
               <table>
                 <thead>
                   <tr>
-                    <th>Category</th>
-                    {section.key === "planned_items" ? <th>Day</th> : null}
-                    <th>Item</th>
-                    <th>Planned</th>
-                    <th>Actual</th>
-                    <th>Variance</th>
-                    {section.key === "planned_items" ? <th>Account</th> : null}
-                    <th>Note</th>
+                    <th>{messages.month.table.category}</th>
+                    {section.key === "planned_items" ? <th>{messages.month.table.day}</th> : null}
+                    <th>{messages.month.table.item}</th>
+                    <th>{messages.month.table.planned}</th>
+                    <th>{messages.month.table.actual}</th>
+                    <th>{messages.month.table.variance}</th>
+                    {section.key === "planned_items" ? <th>{messages.month.table.account}</th> : null}
+                    <th>{messages.month.table.note}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -362,13 +418,13 @@ function MonthPanel({ view, accounts }) {
                     return (
                       <tr key={row.id}>
                         <td>{row.categoryName}</td>
-                        {section.key === "planned_items" ? <td>{row.dayLabel ? `${row.dayLabel} ${row.dayOfWeek ?? ""}`.trim() : "—"}</td> : null}
+                        {section.key === "planned_items" ? <td>{row.dayLabel ? `${row.dayLabel} ${row.dayOfWeek ?? ""}`.trim() : messages.common.emptyValue}</td> : null}
                         <td>{row.label}</td>
                         <td>{money(row.plannedMinor)}</td>
                         <td>{money(row.actualMinor)}</td>
                         <td className={variance >= 0 ? "positive" : "negative"}>{money(variance)}</td>
-                        {section.key === "planned_items" ? <td>{row.accountName ?? "—"}</td> : null}
-                        <td>{row.note ?? "—"}</td>
+                        {section.key === "planned_items" ? <td>{row.accountName ?? messages.common.emptyValue}</td> : null}
+                        <td>{row.note ?? messages.common.emptyValue}</td>
                       </tr>
                     );
                   })}
@@ -382,8 +438,8 @@ function MonthPanel({ view, accounts }) {
       <div className="panel-subgrid">
         <section>
           <div className="panel-subhead">
-            <h3>Monthly Notes</h3>
-            <p>Why the month looked like this.</p>
+            <h3>{messages.month.notesTitle}</h3>
+            <p>{messages.month.notesDetail}</p>
           </div>
           <div className="note-stack">
             {view.monthPage.notes.map((note, index) => (
@@ -394,15 +450,15 @@ function MonthPanel({ view, accounts }) {
 
         <section>
           <div className="panel-subhead">
-            <h3>Accounts</h3>
-            <p>Tracked finance accounts.</p>
+            <h3>{messages.month.accountsTitle}</h3>
+            <p>{messages.month.accountsDetail}</p>
           </div>
           <div className="stack">
             {accounts.map((account) => (
               <div key={account.id} className="account">
                 <div>
                   <strong>{account.name}</strong>
-                  <p>{account.institution} • {account.kind}</p>
+                  <p>{messages.common.contextWithView(account.institution, account.kind)}</p>
                 </div>
                 <span>{account.ownerLabel}</span>
               </div>
@@ -419,8 +475,8 @@ function EntriesPanel({ view }) {
     <article className="panel">
       <div className="panel-head">
         <div>
-          <h2>Entries</h2>
-          <span className="panel-context">Viewing entries for {view.label}</span>
+          <h2>{messages.tabs.entries}</h2>
+          <span className="panel-context">{messages.entries.viewing(view.label)}</span>
         </div>
       </div>
       <div className="entry-list">
@@ -433,24 +489,30 @@ function EntriesPanel({ view }) {
                   <span className="pill subtle">{entry.ownershipType}</span>
                 </div>
                 <h3>{entry.description}</h3>
-                <p>{entry.date} • {entry.accountName} • {entry.categoryName}</p>
+                <p>{messages.common.triplet(entry.date, entry.accountName, entry.categoryName)}</p>
               </div>
               <strong className={entry.entryType === "income" ? "positive" : ""}>{money(entry.amountMinor)}</strong>
             </div>
             <div className="entry-meta">
               <div>
-                <span>Scope</span>
-                <p>{entry.ownerName ?? "Shared"}{entry.offsetsCategory ? " • offsets category" : ""}</p>
+                <span>{messages.entries.scope}</span>
+                <p>
+                  {entry.ownerName ?? messages.entries.shared}
+                  {entry.offsetsCategory ? messages.entries.offsetsCategory : ""}
+                </p>
               </div>
               <div>
-                <span>Split</span>
+                <span>{messages.entries.split}</span>
                 <p>{entry.splits.map((split) => `${split.personName} ${split.ratioBasisPoints / 100}%`).join(" • ")}</p>
               </div>
               {entry.linkedTransfer ? (
                 <div className="entry-link">
-                  <span>Counterpart</span>
+                  <span>{messages.entries.counterpart}</span>
                   <a href={`#${entry.linkedTransfer.transactionId}`}>
-                    {entry.linkedTransfer.accountName} • {money(entry.linkedTransfer.amountMinor)}
+                    {messages.common.contextWithView(
+                      entry.linkedTransfer.accountName,
+                      money(entry.linkedTransfer.amountMinor)
+                    )}
                   </a>
                 </div>
               ) : null}
@@ -468,8 +530,8 @@ function ImportsPanel({ importsPage, viewLabel }) {
     <article className="panel">
       <div className="panel-head">
         <div>
-          <h2>Imports</h2>
-          <span className="panel-context">Viewing imports for {viewLabel}</span>
+          <h2>{messages.tabs.imports}</h2>
+          <span className="panel-context">{messages.imports.viewing(viewLabel)}</span>
         </div>
       </div>
       <p className="lede compact">{importsPage.rollbackPolicy}</p>
@@ -478,7 +540,13 @@ function ImportsPanel({ importsPage, viewLabel }) {
           <div key={item.id} className="import-card">
             <div>
               <strong>{item.sourceLabel}</strong>
-              <p>{item.sourceType.toUpperCase()} • {formatDate(item.importedAt)} • {item.transactionCount} transactions</p>
+              <p>
+                {messages.common.triplet(
+                  item.sourceType.toUpperCase(),
+                  formatDate(item.importedAt),
+                  messages.imports.transactionCount(item.transactionCount)
+                )}
+              </p>
             </div>
             <div className="import-meta">
               <span className={`pill ${item.status === "rolled_back" ? "warning" : "is-active"}`}>{item.status}</span>
@@ -496,12 +564,12 @@ function FaqPanel({ viewLabel }) {
     <article className="panel">
       <div className="panel-head">
         <div>
-          <h2>FAQ</h2>
-          <span className="panel-context">Viewing FAQ for {viewLabel}</span>
+          <h2>{messages.tabs.faq}</h2>
+          <span className="panel-context">{messages.faq.viewing(viewLabel)}</span>
         </div>
       </div>
       <div className="faq-list">
-        {faqItems.map((item) => (
+        {messages.faq.items.map((item) => (
           <article key={item.question} className="faq-item">
             <h3>{item.question}</h3>
             <p>{item.answer}</p>

@@ -187,6 +187,8 @@ rows directly into the UI.
 Frontend direction:
 
 - React + Vite for the app shell and UI state
+- React Router should own page-level navigation so dashboard sections have stable URLs
+- UI labels and helper copy should be sourced from locale modules instead of being hardcoded across components
 - Worker API remains the source of bootstrap and import endpoints
 - charting should prefer a maintained library over hand-built geometry once the
   visual requirements become real product behavior
