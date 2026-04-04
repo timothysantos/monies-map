@@ -30,11 +30,17 @@ export const messages = {
     intentVsOutcome: "Intent vs Outcome",
     intentVsOutcomeDetail: "Monthly comparison with expandable detail.",
     incomeLabel: (value) => `${value} income`,
-    savingsTarget: "Savings target",
-    planGap: "Plan gap",
-    realGap: "Real gap",
-    realizedSavings: "Realized savings",
-    totalSpend: "Total spend"
+    totalSpend: "Total spend",
+    table: {
+      metric: "Metric",
+      estimate: "Planned",
+      actual: "Actual",
+      variance: "Variance",
+      note: "Context",
+      expectedExpenses: "Expected spend",
+      expectedSavings: "Savings goal",
+      actualSavings: "Realized savings"
+    }
   },
   month: {
     notesTitle: "Monthly Notes",

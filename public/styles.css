@@ -538,30 +538,21 @@ h3 {
   background: #1f7a63;
 }
 
-.plan-row-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+.plan-detail-table-wrap {
+  margin-top: 2px;
 }
 
-.plan-mini-stat {
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.58);
+.plan-detail-table {
+  min-width: 100%;
 }
 
-.plan-mini-stat span {
-  display: block;
-  margin-bottom: 4px;
-  color: var(--muted);
-  font-size: 0.82rem;
+.plan-detail-table th,
+.plan-detail-table td {
+  padding: 10px 10px;
 }
 
-.plan-row-note {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.6;
+.plan-detail-table td:last-child {
+  min-width: 220px;
 }
 
 .summary-row-bar {
@@ -1020,10 +1011,6 @@ th {
 
   .summary-head {
     flex-direction: column;
-  }
-
-  .plan-row-grid {
-    grid-template-columns: 1fr;
   }
 
   .summary-mix,

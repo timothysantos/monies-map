@@ -266,25 +266,41 @@ function SummaryPanel({ view }) {
                       maxMinor={Math.max(month.actualExpenseMinor, month.plannedExpenseMinor)}
                       tone="actual"
                     />
-                    <div className="plan-row-grid">
-                      <MiniStat label={messages.summary.savingsTarget} value={money(month.targetSavingsMinor)} />
-                      <MiniStat
-                        label={messages.summary.planGap}
-                        value={money(month.plannedVarianceMinor)}
-                        tone={month.plannedVarianceMinor >= 0 ? "positive" : "negative"}
-                      />
-                      <MiniStat
-                        label={messages.summary.realGap}
-                        value={money(month.actualVarianceMinor)}
-                        tone={month.actualVarianceMinor >= 0 ? "positive" : "negative"}
-                      />
-                      <MiniStat
-                        label={messages.summary.realizedSavings}
-                        value={money(month.targetSavingsMinor + month.actualVarianceMinor)}
-                        tone={month.targetSavingsMinor + month.actualVarianceMinor >= 0 ? "positive" : "negative"}
-                      />
+                    <div className="table-wrap plan-detail-table-wrap">
+                      <table className="plan-detail-table">
+                        <thead>
+                          <tr>
+                            <th>{messages.summary.table.metric}</th>
+                            <th>{messages.summary.table.estimate}</th>
+                            <th>{messages.summary.table.actual}</th>
+                            <th>{messages.summary.table.variance}</th>
+                            <th>{messages.summary.table.note}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>{messages.summary.table.expectedExpenses}</td>
+                            <td>{money(month.plannedExpenseMinor)}</td>
+                            <td>{money(month.actualExpenseMinor)}</td>
+                            <td className={month.plannedVarianceMinor >= 0 ? "positive" : "negative"}>
+                              {money(month.actualVarianceMinor)}
+                            </td>
+                            <td>{month.note}</td>
+                          </tr>
+                          <tr>
+                            <td>{messages.summary.table.expectedSavings}</td>
+                            <td>{money(month.targetSavingsMinor)}</td>
+                            <td className={month.targetSavingsMinor + month.actualVarianceMinor >= 0 ? "positive" : "negative"}>
+                              {money(month.targetSavingsMinor + month.actualVarianceMinor)}
+                            </td>
+                            <td className={month.actualVarianceMinor >= 0 ? "positive" : "negative"}>
+                              {money(month.actualVarianceMinor)}
+                            </td>
+                            <td>{month.actualVarianceMinor >= 0 ? "Landed above target." : "Savings landed below target."}</td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
-                    <p className="plan-row-note">{month.note}</p>
                   </div>
                 </details>
               ))}
@@ -600,15 +616,6 @@ function BarLine({ label, valueMinor, maxMinor, tone }) {
         <span className={`plan-bar-fill ${tone}`} style={{ width: `${percent}%` }} />
       </div>
       <strong>{money(valueMinor)}</strong>
-    </div>
-  );
-}
-
-function MiniStat({ label, value, tone }) {
-  return (
-    <div className="plan-mini-stat">
-      <span>{label}</span>
-      <strong className={tone ?? ""}>{value}</strong>
     </div>
   );
 }
