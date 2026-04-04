@@ -123,6 +123,124 @@ export const summaryMonths: SummaryMonthDto[] = [
   }
 ];
 
+export const summaryMonthsByView: Record<string, SummaryMonthDto[]> = {
+  household: summaryMonths,
+  "person-tim": [
+    {
+      month: "2025-06",
+      incomeMinor: 597373,
+      estimatedExpensesMinor: 425000,
+      realExpensesMinor: 503500,
+      savingsGoalMinor: 90000,
+      realizedSavingsMinor: 93873,
+      estimatedDiffMinor: 172373,
+      realDiffMinor: 93873,
+      note: "Tim carried the iPad, travel, and more of the wedding-related spend."
+    },
+    {
+      month: "2025-07",
+      incomeMinor: 597373,
+      estimatedExpensesMinor: 366500,
+      realExpensesMinor: 402800,
+      savingsGoalMinor: 120000,
+      realizedSavingsMinor: 194573,
+      estimatedDiffMinor: 230873,
+      realDiffMinor: 194573,
+      note: "Tim side stayed under control even with lessons and workshop-related spillover."
+    },
+    {
+      month: "2025-08",
+      incomeMinor: 597373,
+      estimatedExpensesMinor: 398000,
+      realExpensesMinor: 384200,
+      savingsGoalMinor: 120000,
+      realizedSavingsMinor: 213173,
+      estimatedDiffMinor: 199373,
+      realDiffMinor: 213173,
+      note: "Bali and JLPT sat more heavily on Tim's side, but reimbursements softened the month."
+    },
+    {
+      month: "2025-09",
+      incomeMinor: 597373,
+      estimatedExpensesMinor: 332000,
+      realExpensesMinor: 345500,
+      savingsGoalMinor: 120000,
+      realizedSavingsMinor: 251873,
+      estimatedDiffMinor: 265373,
+      realDiffMinor: 251873,
+      note: "Tennis and lessons were the main Tim-side drivers in September."
+    },
+    {
+      month: "2025-10",
+      incomeMinor: 597373,
+      estimatedExpensesMinor: 338740,
+      realExpensesMinor: 342830,
+      savingsGoalMinor: 120000,
+      realizedSavingsMinor: 254543,
+      estimatedDiffMinor: 258633,
+      realDiffMinor: 254543,
+      note: "No tennis month helped; Tim's side still absorbed tax, food share, and church commitments."
+    }
+  ],
+  "person-joyce": [
+    {
+      month: "2025-06",
+      incomeMinor: 0,
+      estimatedExpensesMinor: 234935,
+      realExpensesMinor: 247965,
+      savingsGoalMinor: 30000,
+      realizedSavingsMinor: -247965,
+      estimatedDiffMinor: -234935,
+      realDiffMinor: -247965,
+      note: "Joyce side was lighter on income in the demo but still carried family and shared obligations."
+    },
+    {
+      month: "2025-07",
+      incomeMinor: 0,
+      estimatedExpensesMinor: 195788,
+      realExpensesMinor: 184426,
+      savingsGoalMinor: 60000,
+      realizedSavingsMinor: -184426,
+      estimatedDiffMinor: -195788,
+      realDiffMinor: -184426,
+      note: "Joyce's birthday month still landed below the household plan share in the demo."
+    },
+    {
+      month: "2025-08",
+      incomeMinor: 0,
+      estimatedExpensesMinor: 190919,
+      realExpensesMinor: 190082,
+      savingsGoalMinor: 60000,
+      realizedSavingsMinor: -190082,
+      estimatedDiffMinor: -190919,
+      realDiffMinor: -190082,
+      note: "Joyce side stayed close to estimate in August."
+    },
+    {
+      month: "2025-09",
+      incomeMinor: 0,
+      estimatedExpensesMinor: 183488,
+      realExpensesMinor: 184407,
+      savingsGoalMinor: 60000,
+      realizedSavingsMinor: -184407,
+      estimatedDiffMinor: -183488,
+      realDiffMinor: -184407,
+      note: "Shopping contributed more heavily on Joyce's side in September."
+    },
+    {
+      month: "2025-10",
+      incomeMinor: 0,
+      estimatedExpensesMinor: 240948,
+      realExpensesMinor: 216835,
+      savingsGoalMinor: 60000,
+      realizedSavingsMinor: -216835,
+      estimatedDiffMinor: -240948,
+      realDiffMinor: -216835,
+      note: "Joyce side carried shopping and parent's insurance but landed under estimate in October."
+    }
+  ]
+};
+
 export const monthPlanRows: MonthPlanRowDto[] = [
   {
     id: "plan-oct-savings",

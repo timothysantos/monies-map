@@ -1,4 +1,12 @@
-import { accounts, household, importBatches, monthEntries, monthPlanRows, summaryMonths } from "./demo-data";
+import {
+  accounts,
+  household,
+  importBatches,
+  monthEntries,
+  monthPlanRows,
+  summaryMonths,
+  summaryMonthsByView
+} from "./demo-data";
 import type {
   AppBootstrapDto,
   ContextViewDto,
@@ -154,22 +162,7 @@ function buildMonthPage(selectedPersonId: string, selectedScope: PersonScope): M
 }
 
 function buildSummaryMonthsForView(personId: string) {
-  if (personId === "household") {
-    return summaryMonths;
-  }
-
-  const ratio = personId === "person-tim" ? 0.58 : 0.42;
-  return summaryMonths.map((month) => ({
-    ...month,
-    incomeMinor: Math.round(month.incomeMinor * ratio),
-    estimatedExpensesMinor: Math.round(month.estimatedExpensesMinor * ratio),
-    realExpensesMinor: Math.round(month.realExpensesMinor * ratio),
-    savingsGoalMinor: Math.round(month.savingsGoalMinor * ratio),
-    realizedSavingsMinor: Math.round(month.realizedSavingsMinor * ratio),
-    estimatedDiffMinor: Math.round(month.estimatedDiffMinor * ratio),
-    realDiffMinor: Math.round(month.realDiffMinor * ratio),
-    note: `${personId === "person-tim" ? "Tim" : "Joyce"} weighted view`
-  }));
+  return summaryMonthsByView[personId] ?? summaryMonths;
 }
 
 function buildPlanRowsForView(personId: string, scope: PersonScope): MonthPlanRowDto[] {
