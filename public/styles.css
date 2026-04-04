@@ -273,6 +273,11 @@ h3 {
   gap: 8px;
 }
 
+.scope-toggle-row {
+  gap: 0;
+  box-shadow: none;
+}
+
 .pill-row {
   gap: 0;
   padding: 4px;
@@ -397,6 +402,58 @@ h3 {
   margin-bottom: 16px;
 }
 
+.month-plan-stack {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.month-plan-section {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.56);
+}
+
+.month-plan-summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.month-plan-summary::-webkit-details-marker {
+  display: none;
+}
+
+.month-plan-summary .panel-subhead {
+  margin-bottom: 0;
+}
+
+.month-table-wrap {
+  margin-top: 14px;
+}
+
+.month-summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.subtle-action,
+.subtle-remove {
+  border: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.subtle-remove {
+  color: var(--negative);
+}
+
 .chart-card {
   padding: 18px;
   border-radius: 24px;
@@ -498,6 +555,47 @@ h3 {
 .plan-row-content {
   display: grid;
   gap: 12px;
+}
+
+.month-plan-section table tbody tr {
+  cursor: pointer;
+}
+
+.month-plan-section table tbody tr.is-editing {
+  background: rgba(31, 122, 99, 0.05);
+}
+
+.table-edit-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink);
+  font: inherit;
+}
+
+.table-edit-input-compact {
+  max-width: 56px;
+}
+
+.table-edit-input-money {
+  max-width: 120px;
+}
+
+.table-edit-textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+
+.table-edit-split {
+  display: flex;
+  gap: 8px;
+}
+
+.table-note-actions {
+  display: grid;
+  gap: 8px;
 }
 
 .plan-bar-stack {

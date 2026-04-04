@@ -506,6 +506,141 @@ function CategoryGlyph({ iconKey }) {
 }
 
 function MonthPanel({ view, accounts }) {
+  const [planSections, setPlanSections] = useState(view.monthPage.planSections);
+  const [editingRowId, setEditingRowId] = useState(null);
+  const [incomeRows, setIncomeRows] = useState([]);
+
+  useEffect(() => {
+    setPlanSections(view.monthPage.planSections);
+    setEditingRowId(null);
+    const monthSummary = view.summaryPage.months.find((month) => month.month === view.monthPage.month);
+    setIncomeRows([
+      {
+        id: "month-income-salary",
+        categoryName: "Income",
+        label: "Salary",
+        plannedMinor: monthSummary?.incomeMinor ?? 0,
+        actualMinor: monthSummary?.incomeMinor ?? 0,
+        note: messages.month.incomeRowNote
+      }
+    ]);
+  }, [view]);
+
+  const currentMonthSummary = useMemo(
+    () => view.summaryPage.months.find((month) => month.month === view.monthPage.month) ?? null,
+    [view]
+  );
+
+  const flatPlanRows = useMemo(
+    () => planSections.flatMap((section) => section.rows),
+    [planSections]
+  );
+  const plannedSpendMinor = useMemo(
+    () => flatPlanRows.reduce((sum, row) => sum + row.plannedMinor, 0),
+    [flatPlanRows]
+  );
+  const actualSpendMinor = useMemo(
+    () => flatPlanRows.reduce((sum, row) => sum + row.actualMinor, 0),
+    [flatPlanRows]
+  );
+  const savingsTargetMinor = useMemo(
+    () => flatPlanRows
+      .filter((row) => row.label === "Savings")
+      .reduce((sum, row) => sum + row.plannedMinor, 0),
+    [flatPlanRows]
+  );
+  const plannedIncomeMinor = useMemo(
+    () => incomeRows.reduce((sum, row) => sum + row.plannedMinor, 0),
+    [incomeRows]
+  );
+  const remainingBudgetMinor = plannedIncomeMinor - plannedSpendMinor;
+  const varianceMinor = plannedSpendMinor - actualSpendMinor;
+  const monthMetricCards = [
+    {
+      label: "Planned income",
+      amountMinor: plannedIncomeMinor
+    },
+    {
+      label: "Planned spend",
+      amountMinor: plannedSpendMinor
+    },
+    {
+      label: "Remaining budget",
+      amountMinor: remainingBudgetMinor,
+      tone: remainingBudgetMinor >= 0 ? "positive" : "negative",
+      detail: remainingBudgetMinor >= 0 ? "To allocate" : "Overplanned"
+    },
+    {
+      label: "Actual spend",
+      amountMinor: actualSpendMinor,
+      tone: actualSpendMinor > plannedSpendMinor ? "negative" : "positive"
+    },
+    {
+      label: "Savings target",
+      amountMinor: savingsTargetMinor
+    },
+    {
+      label: "Variance",
+      amountMinor: varianceMinor,
+      tone: varianceMinor >= 0 ? "positive" : "negative",
+      detail: varianceMinor >= 0 ? "Under plan" : "Over plan"
+    }
+  ];
+
+  function handleRowChange(sectionKey, rowId, patch) {
+    setPlanSections((current) => current.map((section) => {
+      if (section.key !== sectionKey) {
+        return section;
+      }
+
+      return {
+        ...section,
+        rows: section.rows.map((row) => {
+          if (row.id !== rowId) {
+            return row;
+          }
+
+          return {
+            ...row,
+            ...patch
+          };
+        })
+      };
+    }));
+  }
+
+  function handleIncomeRowChange(rowId, patch) {
+    setIncomeRows((current) => current.map((row) => (
+      row.id === rowId
+        ? {
+            ...row,
+            ...patch
+          }
+        : row
+    )));
+  }
+
+  function handleAddIncomeRow() {
+    const nextId = `month-income-${crypto.randomUUID()}`;
+    setIncomeRows((current) => [
+      ...current,
+      {
+        id: nextId,
+        categoryName: "Income",
+        label: "Other income",
+        plannedMinor: 0,
+        actualMinor: 0,
+        note: messages.month.extraIncomeNote
+      }
+    ]);
+    setEditingRowId(nextId);
+  }
+
+  function handleRemoveIncomeRow(rowId) {
+    setIncomeRows((current) => current.filter((row) => row.id !== rowId));
+    setEditingRowId((current) => (current === rowId ? null : current));
+  }
+
   return (
     <article className="panel">
       <div className="panel-head">
@@ -513,11 +648,11 @@ function MonthPanel({ view, accounts }) {
           <h2>{messages.tabs.month}</h2>
           <span id="month-label">{messages.common.contextWithView(formatMonthLabel(view.monthPage.month), view.label)}</span>
         </div>
-        <div className="scope-toggle">
+        <div className="scope-toggle pill-row scope-toggle-row">
           {view.monthPage.scopes.map((scope) => (
             <button
               key={scope.key}
-              className={`scope-button ${scope.key === view.monthPage.selectedScope ? "is-active" : ""}`}
+              className={`pill scope-button ${scope.key === view.monthPage.selectedScope ? "is-active" : ""}`}
               type="button"
             >
               {scope.label}
@@ -527,17 +662,112 @@ function MonthPanel({ view, accounts }) {
       </div>
 
       <div className="metric-row">
-        {view.monthPage.metricCards.map((card) => <MetricCard key={card.label} card={card} />)}
+        {monthMetricCards.map((card) => <MetricCard key={card.label} card={card} />)}
       </div>
 
-      <div className="panel-subgrid month-plan-grid">
-        {view.monthPage.planSections.map((section) => (
-          <section key={section.key}>
+      <div className="month-plan-stack">
+        <details className="month-plan-section" open>
+          <summary className="month-plan-summary">
             <div className="panel-subhead">
-              <h3>{section.label}</h3>
-              <p>{section.description}</p>
+              <div>
+                <h3>{messages.month.incomeSectionTitle}</h3>
+                <p>{messages.month.incomeSectionDetail}</p>
+              </div>
+              <div className="month-summary-actions">
+                <button type="button" className="subtle-action" onClick={(event) => { event.preventDefault(); handleAddIncomeRow(); }}>
+                  {messages.month.addIncomeSource}
+                </button>
+                <p>{messages.month.editHint}</p>
+              </div>
             </div>
-            <div className="table-wrap">
+          </summary>
+          <div className="table-wrap month-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>{messages.month.table.category}</th>
+                  <th>{messages.month.table.item}</th>
+                  <th>{messages.month.table.planned}</th>
+                  <th>{messages.month.table.actual}</th>
+                  <th>{messages.month.table.variance}</th>
+                  <th>{messages.month.table.note}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {incomeRows.map((row) => {
+                  const isEditing = editingRowId === row.id;
+                  const variance = row.plannedMinor - row.actualMinor;
+
+                  return (
+                    <tr key={row.id} className={isEditing ? "is-editing" : ""} onClick={() => setEditingRowId(row.id)}>
+                      <td>{row.categoryName}</td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            className="table-edit-input"
+                            value={row.label}
+                            onChange={(event) => handleIncomeRowChange(row.id, { label: event.target.value })}
+                            onClick={(event) => event.stopPropagation()}
+                          />
+                        ) : row.label}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            className="table-edit-input table-edit-input-money"
+                            value={formatMinorInput(row.plannedMinor)}
+                            onChange={(event) => handleIncomeRowChange(row.id, { plannedMinor: parseMoneyInput(event.target.value, row.plannedMinor) })}
+                            onClick={(event) => event.stopPropagation()}
+                          />
+                        ) : money(row.plannedMinor)}
+                      </td>
+                      <td>{money(row.actualMinor)}</td>
+                      <td className={variance <= 0 ? "positive" : "negative"}>{money(variance)}</td>
+                      <td>
+                        <div className="table-note-actions">
+                          {isEditing ? (
+                            <textarea
+                              className="table-edit-input table-edit-textarea"
+                              value={row.note ?? ""}
+                              onChange={(event) => handleIncomeRowChange(row.id, { note: event.target.value })}
+                              onClick={(event) => event.stopPropagation()}
+                              rows={2}
+                            />
+                          ) : row.note}
+                          {incomeRows.length > 1 ? (
+                            <button
+                              type="button"
+                              className="subtle-remove"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleRemoveIncomeRow(row.id);
+                              }}
+                            >
+                              Remove
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        {planSections.map((section, index) => (
+          <details key={section.key} className="month-plan-section" open={index === 0}>
+            <summary className="month-plan-summary">
+              <div className="panel-subhead">
+                <div>
+                  <h3>{section.label}</h3>
+                  <p>{section.description}</p>
+                </div>
+                <p>{messages.month.editHint}</p>
+              </div>
+            </summary>
+            <div className="table-wrap month-table-wrap">
               <table>
                 <thead>
                   <tr>
@@ -554,23 +784,95 @@ function MonthPanel({ view, accounts }) {
                 <tbody>
                   {section.rows.map((row) => {
                     const variance = row.plannedMinor - row.actualMinor;
+                    const isEditing = editingRowId === row.id;
                     return (
-                      <tr key={row.id}>
-                        <td>{row.categoryName}</td>
-                        {section.key === "planned_items" ? <td>{row.dayLabel ? `${row.dayLabel} ${row.dayOfWeek ?? ""}`.trim() : messages.common.emptyValue}</td> : null}
-                        <td>{row.label}</td>
-                        <td>{money(row.plannedMinor)}</td>
+                      <tr
+                        key={row.id}
+                        className={isEditing ? "is-editing" : ""}
+                        onClick={() => setEditingRowId(row.id)}
+                      >
+                        <td>
+                          {isEditing ? (
+                            <input
+                              className="table-edit-input"
+                              value={row.categoryName}
+                              onChange={(event) => handleRowChange(section.key, row.id, { categoryName: event.target.value })}
+                              onClick={(event) => event.stopPropagation()}
+                            />
+                          ) : row.categoryName}
+                        </td>
+                        {section.key === "planned_items" ? (
+                          <td>
+                            {isEditing ? (
+                              <div className="table-edit-split">
+                                <input
+                                  className="table-edit-input table-edit-input-compact"
+                                  value={row.dayLabel ?? ""}
+                                  onChange={(event) => handleRowChange(section.key, row.id, { dayLabel: event.target.value })}
+                                  onClick={(event) => event.stopPropagation()}
+                                />
+                                <input
+                                  className="table-edit-input"
+                                  value={row.dayOfWeek ?? ""}
+                                  onChange={(event) => handleRowChange(section.key, row.id, { dayOfWeek: event.target.value })}
+                                  onClick={(event) => event.stopPropagation()}
+                                />
+                              </div>
+                            ) : row.dayLabel ? `${row.dayLabel} ${row.dayOfWeek ?? ""}`.trim() : messages.common.emptyValue}
+                          </td>
+                        ) : null}
+                        <td>
+                          {isEditing ? (
+                            <input
+                              className="table-edit-input"
+                              value={row.label}
+                              onChange={(event) => handleRowChange(section.key, row.id, { label: event.target.value })}
+                              onClick={(event) => event.stopPropagation()}
+                            />
+                          ) : row.label}
+                        </td>
+                        <td>
+                          {isEditing ? (
+                            <input
+                              className="table-edit-input table-edit-input-money"
+                              value={formatMinorInput(row.plannedMinor)}
+                              onChange={(event) => handleRowChange(section.key, row.id, { plannedMinor: parseMoneyInput(event.target.value, row.plannedMinor) })}
+                              onClick={(event) => event.stopPropagation()}
+                            />
+                          ) : money(row.plannedMinor)}
+                        </td>
                         <td>{money(row.actualMinor)}</td>
                         <td className={variance >= 0 ? "positive" : "negative"}>{money(variance)}</td>
-                        {section.key === "planned_items" ? <td>{row.accountName ?? messages.common.emptyValue}</td> : null}
-                        <td>{row.note ?? messages.common.emptyValue}</td>
+                        {section.key === "planned_items" ? (
+                          <td>
+                            {isEditing ? (
+                              <input
+                                className="table-edit-input"
+                                value={row.accountName ?? ""}
+                                onChange={(event) => handleRowChange(section.key, row.id, { accountName: event.target.value })}
+                                onClick={(event) => event.stopPropagation()}
+                              />
+                            ) : row.accountName ?? messages.common.emptyValue}
+                          </td>
+                        ) : null}
+                        <td>
+                          {isEditing ? (
+                            <textarea
+                              className="table-edit-input table-edit-textarea"
+                              value={row.note ?? ""}
+                              onChange={(event) => handleRowChange(section.key, row.id, { note: event.target.value })}
+                              onClick={(event) => event.stopPropagation()}
+                              rows={2}
+                            />
+                          ) : row.note ?? messages.common.emptyValue}
+                        </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
             </div>
-          </section>
+          </details>
         ))}
       </div>
 
@@ -801,4 +1103,17 @@ function formatMonthLabel(value) {
     month: "short",
     year: "numeric"
   }).format(new Date(Number(year), Number(month) - 1, 1));
+}
+
+function formatMinorInput(valueMinor) {
+  return (valueMinor / 100).toFixed(2);
+}
+
+function parseMoneyInput(value, fallback) {
+  const normalized = Number(value.replace(/[^0-9.-]/g, ""));
+  if (Number.isNaN(normalized)) {
+    return fallback;
+  }
+
+  return Math.round(normalized * 100);
 }

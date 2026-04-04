@@ -43,10 +43,16 @@ export const messages = {
     }
   },
   month: {
+    incomeSectionTitle: "Income",
+    incomeSectionDetail: "Planned income sources that fund the month before expenses are allocated.",
+    addIncomeSource: "+ Add income source",
+    incomeRowNote: "Main planned income source for the month.",
+    extraIncomeNote: "Additional planned income source.",
     notesTitle: "Monthly Notes",
     notesDetail: "Why the month looked like this.",
     accountsTitle: "Accounts",
     accountsDetail: "Tracked finance accounts.",
+    editHint: "Click a row to edit the plan. Actual stays read-only because it should come from entries.",
     table: {
       category: "Category",
       day: "Day",
