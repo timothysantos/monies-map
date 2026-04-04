@@ -1,4 +1,19 @@
 import React, { useEffect, useMemo, useState } from "react";
+import * as Popover from "@radix-ui/react-popover";
+import {
+  BusFront,
+  Clapperboard,
+  Dumbbell,
+  Gift,
+  HeartPulse,
+  Lightbulb,
+  Plane,
+  Receipt,
+  ShoppingBag,
+  ShoppingCart,
+  UtensilsCrossed,
+  UsersRound
+} from "lucide-react";
 import {
   NavLink,
   Navigate,
@@ -15,27 +30,24 @@ const moneyFormatter = new Intl.NumberFormat("en-SG", {
   currency: "SGD"
 });
 
-const categoryThemes = {
-  "Food & Drinks": { color: "#1f7a63", glyph: "🍽" },
-  Shopping: { color: "#d4b35d", glyph: "🛍" },
-  "Family & Personal": { color: "#4f8fd6", glyph: "👪" },
-  Tax: { color: "#cc63d8", glyph: "🧾" },
-  Groceries: { color: "#f08b43", glyph: "🛒" },
-  Travel: { color: "#4f8fd6", glyph: "✈" },
-  "Sport & Hobbies": { color: "#96a95a", glyph: "🎾" },
-  Bills: { color: "#6a7a73", glyph: "💡" },
-  Entertainment: { color: "#d56bdd", glyph: "🎬" },
-  "Public Transport": { color: "#56a4c9", glyph: "🚌" }
-};
-
-const fallbackThemes = [
-  { color: "#1f7a63", glyph: "•" },
-  { color: "#d4b35d", glyph: "•" },
-  { color: "#4f8fd6", glyph: "•" },
-  { color: "#cc63d8", glyph: "•" },
-  { color: "#f08b43", glyph: "•" },
-  { color: "#96a95a", glyph: "•" }
+const ICON_OPTIONS = [
+  { key: "utensils", label: "Food", Icon: UtensilsCrossed },
+  { key: "shopping-bag", label: "Shopping", Icon: ShoppingBag },
+  { key: "users", label: "Family", Icon: UsersRound },
+  { key: "receipt", label: "Receipt", Icon: Receipt },
+  { key: "shopping-cart", label: "Groceries", Icon: ShoppingCart },
+  { key: "plane", label: "Travel", Icon: Plane },
+  { key: "dumbbell", label: "Hobbies", Icon: Dumbbell },
+  { key: "lightbulb", label: "Bills", Icon: Lightbulb },
+  { key: "clapperboard", label: "Entertainment", Icon: Clapperboard },
+  { key: "bus", label: "Transport", Icon: BusFront },
+  { key: "heart-pulse", label: "Healthcare", Icon: HeartPulse },
+  { key: "gift", label: "Gift", Icon: Gift }
 ];
+
+const ICON_REGISTRY = Object.fromEntries(ICON_OPTIONS.map((item) => [item.key, item.Icon]));
+const COLOR_OPTIONS = ["#1F7A63", "#D4B35D", "#4F8FD6", "#CC63D8", "#F08B43", "#96A95A", "#D86B73", "#56A4C9", "#6A7A73", "#C98A5A"];
+const FALLBACK_THEME = { colorHex: "#6A7A73", iconKey: "receipt" };
 
 const routeTabs = [
   { id: "summary", path: "/summary", label: messages.tabs.summary },
@@ -47,6 +59,7 @@ const routeTabs = [
 
 export function App() {
   const [bootstrap, setBootstrap] = useState(null);
+  const [categoryOverrides, setCategoryOverrides] = useState({});
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
 
@@ -76,6 +89,10 @@ export function App() {
   const view = useMemo(
     () => bootstrap?.views.find((item) => item.id === selectedViewId) ?? null,
     [bootstrap, selectedViewId]
+  );
+  const categories = useMemo(
+    () => bootstrap?.categories.map((category) => ({ ...category, ...(categoryOverrides[category.id] ?? {}) })) ?? [],
+    [bootstrap, categoryOverrides]
   );
 
   useEffect(() => {
@@ -118,6 +135,21 @@ export function App() {
       next.set("view", nextViewId);
       return next;
     });
+  }
+
+  function handleCategoryAppearanceChange(categoryId, nextAppearance) {
+    const normalizedAppearance = { ...nextAppearance };
+    if (typeof nextAppearance.name === "string") {
+      normalizedAppearance.slug = slugify(nextAppearance.name);
+    }
+
+    setCategoryOverrides((current) => ({
+      ...current,
+      [categoryId]: {
+        ...(current[categoryId] ?? {}),
+        ...normalizedAppearance
+      }
+    }));
   }
 
   return (
@@ -169,7 +201,16 @@ export function App() {
       <section className="grid">
         <Routes>
           <Route path="/" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
-          <Route path="/summary" element={<SummaryPanel view={view} />} />
+          <Route
+            path="/summary"
+            element={(
+              <SummaryPanel
+                view={view}
+                categories={categories}
+                onCategoryAppearanceChange={handleCategoryAppearanceChange}
+              />
+            )}
+          />
           <Route path="/month" element={<MonthPanel view={view} accounts={bootstrap.accounts} />} />
           <Route path="/entries" element={<EntriesPanel view={view} />} />
           <Route
@@ -184,7 +225,9 @@ export function App() {
   );
 }
 
-function SummaryPanel({ view }) {
+function SummaryPanel({ view, categories, onCategoryAppearanceChange }) {
+  const totalSpendMinor = view.summaryPage.categoryShareChart.reduce((sum, item) => sum + item.valueMinor, 0);
+
   return (
     <article className="panel panel-accent">
       <div className="panel-head summary-head">
@@ -205,23 +248,20 @@ function SummaryPanel({ view }) {
             <h3>{messages.summary.spendingMix}</h3>
           </div>
           <div className="summary-mix">
-            <SpendingMixChart data={view.summaryPage.categoryShareChart} />
+            <SpendingMixChart data={view.summaryPage.categoryShareChart} categories={categories} />
             <div className="share-list">
-              {view.summaryPage.categoryShareChart.map((item, index) => {
-                const theme = getCategoryTheme(item.label, index);
-                const total = view.summaryPage.categoryShareChart.reduce(
-                  (sum, current) => sum + current.valueMinor,
-                  0
-                ) || 1;
-                const percentage = ((item.valueMinor / total) * 100).toFixed(1);
+              {view.summaryPage.categoryShareChart.map((item) => {
+                const category = getCategory(categories, item);
+                const percentage = (((item.valueMinor / Math.max(totalSpendMinor, 1))) * 100).toFixed(1);
                 return (
                   <div key={item.key} className="share-row">
                     <div className="category-key">
-                      <span className="category-icon" style={{ "--category-color": theme.color }}>
-                        <span>{theme.glyph}</span>
-                      </span>
+                      <CategoryAppearancePopover
+                        category={category}
+                        onChange={onCategoryAppearanceChange}
+                      />
                       <div>
-                        <strong>{item.label}</strong>
+                        <strong>{category?.name ?? item.label}</strong>
                         <p>{messages.common.moneyAndPercent(money(item.valueMinor), percentage)}</p>
                       </div>
                     </div>
@@ -311,11 +351,11 @@ function SummaryPanel({ view }) {
   );
 }
 
-function SpendingMixChart({ data }) {
+function SpendingMixChart({ data, categories }) {
   const total = data.reduce((sum, item) => sum + item.valueMinor, 0);
   const chartData = data.map((item, index) => ({
     ...item,
-    ...getCategoryTheme(item.label, index)
+    ...getCategoryTheme(categories, item, index)
   }));
 
   return (
@@ -367,19 +407,102 @@ function renderPieCallout(props, total) {
   const isRight = Math.cos(radians) >= 0;
   const tx = bx + (isRight ? 34 : -34);
   const percentage = ((payload.valueMinor / total) * 100).toFixed(1);
+  const Icon = getIconComponent(payload.iconKey);
 
   return (
     <g>
       <path d={`M${sx},${sy} L${mx},${my} L${bx},${by}`} stroke={payload.color} strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.82" />
-      <circle cx={bx} cy={by} r="18" fill={payload.color} />
-      <text x={bx} y={by + 1} textAnchor="middle" dominantBaseline="middle" fontSize="15">
-        {payload.glyph}
-      </text>
+      <foreignObject x={bx - 22} y={by - 22} width="44" height="44">
+        <div className="donut-callout-badge" style={{ "--category-color": payload.color }}>
+          <Icon size={18} strokeWidth={2.2} />
+        </div>
+      </foreignObject>
       <text x={tx} y={by + 1} textAnchor={isRight ? "start" : "end"} dominantBaseline="middle" fill={payload.color} fontSize="15" fontWeight="700">
         {percentage}%
       </text>
     </g>
   );
+}
+
+function CategoryAppearancePopover({ category, onChange }) {
+  if (!category) {
+    return <span className="category-icon category-icon-static" />;
+  }
+
+  return (
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          className="category-icon category-icon-button"
+          style={{ "--category-color": category.colorHex }}
+          aria-label={`Edit ${category.name} icon and color`}
+        >
+          <CategoryGlyph iconKey={category.iconKey} />
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content className="category-popover" sideOffset={10} align="start">
+          <div className="category-popover-head">
+            <strong>{category.name}</strong>
+            <span>Icon and color</span>
+          </div>
+
+          <div className="category-popover-section">
+            <label className="category-popover-label" htmlFor={`category-name-${category.id}`}>Name</label>
+            <input
+              id={`category-name-${category.id}`}
+              className="category-name-input"
+              type="text"
+              value={category.name}
+              onChange={(event) => onChange(category.id, { name: event.target.value })}
+            />
+          </div>
+
+          <div className="category-popover-section">
+            <span className="category-popover-label">Icon</span>
+            <div className="icon-grid">
+              {ICON_OPTIONS.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  className={`icon-choice ${category.iconKey === option.key ? "is-active" : ""}`}
+                  onClick={() => onChange(category.id, { iconKey: option.key })}
+                  aria-label={option.label}
+                  title={option.label}
+                >
+                  <option.Icon size={16} strokeWidth={2.2} />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="category-popover-section">
+            <span className="category-popover-label">Color</span>
+            <div className="color-grid">
+              {COLOR_OPTIONS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  className={`color-choice ${category.colorHex === color ? "is-active" : ""}`}
+                  style={{ "--swatch-color": color }}
+                  onClick={() => onChange(category.id, { colorHex: color })}
+                  aria-label={color}
+                  title={color}
+                />
+              ))}
+            </div>
+          </div>
+          <Popover.Arrow className="category-popover-arrow" />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
+function CategoryGlyph({ iconKey }) {
+  const Icon = getIconComponent(iconKey);
+  return <Icon size={18} strokeWidth={2.2} />;
 }
 
 function MonthPanel({ view, accounts }) {
@@ -620,8 +743,45 @@ function BarLine({ label, valueMinor, maxMinor, tone }) {
   );
 }
 
-function getCategoryTheme(label, index) {
-  return categoryThemes[label] ?? fallbackThemes[index % fallbackThemes.length];
+function getCategory(categories, item) {
+  if (item.categoryId) {
+    const byId = categories.find((category) => category.id === item.categoryId);
+    if (byId) {
+      return byId;
+    }
+  }
+
+  return categories.find((category) => category.name === item.label) ?? null;
+}
+
+function getCategoryTheme(categories, item, index) {
+  const category = getCategory(categories, item);
+  if (category) {
+    return {
+      color: category.colorHex,
+      iconKey: category.iconKey,
+      categoryId: category.id
+    };
+  }
+
+  const fallback = COLOR_OPTIONS[index % COLOR_OPTIONS.length];
+  return {
+    color: fallback,
+    iconKey: FALLBACK_THEME.iconKey,
+    categoryId: `fallback-${index}`
+  };
+}
+
+function getIconComponent(iconKey) {
+  return ICON_REGISTRY[iconKey] ?? Receipt;
+}
+
+function slugify(value) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 function money(valueMinor) {

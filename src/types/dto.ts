@@ -25,6 +25,16 @@ export interface AccountDto {
   isJoint: boolean;
 }
 
+export interface CategoryDto {
+  id: string;
+  name: string;
+  slug: string;
+  iconKey: string;
+  colorHex: string;
+  sortOrder: number;
+  isSystem: boolean;
+}
+
 export interface MetricCardDto {
   label: string;
   amountMinor?: number;
@@ -43,6 +53,7 @@ export interface BarChartDatumDto {
 
 export interface DonutChartDatumDto {
   key: string;
+  categoryId?: string;
   label: string;
   valueMinor: number;
 }
@@ -157,6 +168,7 @@ export interface ContextViewDto {
 export interface AppBootstrapDto {
   household: HouseholdDto;
   accounts: AccountDto[];
+  categories: CategoryDto[];
   views: ContextViewDto[];
   selectedViewId: string;
   importsPage: ImportsPageDto;

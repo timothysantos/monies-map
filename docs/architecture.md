@@ -75,6 +75,8 @@ That distinction matters because the system needs to answer questions like:
 - `transfers` are first-class linked entries, not fake income or expense rows
 - `notes` exist at summary and monthly levels, with room for entry-level notes
   later
+- `categories` own their presentation metadata, including icon and color, so
+  charts and category cards render from the same source of truth
 
 ## Planning semantics
 
@@ -192,6 +194,8 @@ Frontend direction:
 - Worker API remains the source of bootstrap and import endpoints
 - charting should prefer a maintained library over hand-built geometry once the
   visual requirements become real product behavior
+- interaction primitives such as popovers should prefer maintained web-native
+  packages rather than bespoke UI widgets
 
 ## Why Cloudflare
 

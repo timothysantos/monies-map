@@ -1,5 +1,6 @@
 import {
   accounts,
+  categories,
   household,
   importBatches,
   monthEntries,
@@ -31,6 +32,7 @@ export function buildBootstrapDto(): AppBootstrapDto {
   return {
     household,
     accounts,
+    categories,
     views,
     selectedViewId: "household",
     importsPage: {
@@ -243,11 +245,15 @@ function buildDonutChart(entries: EntryDto[]): DonutChartDatumDto[] {
   }
 
   return [...totals.entries()]
-    .map(([label, valueMinor]) => ({
+    .map(([label, valueMinor]) => {
+      const category = categories.find((item) => item.name === label);
+      return {
       key: label,
+      categoryId: category?.id,
       label,
       valueMinor
-    }))
+      };
+    })
     .sort((left, right) => right.valueMinor - left.valueMinor)
     .slice(0, 5);
 }

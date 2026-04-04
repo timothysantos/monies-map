@@ -27,6 +27,7 @@ The core questions behind the app are:
 - FAQ view
 - demo data shaped like the intended product and planning model
 - React + Vite frontend talking to the existing Worker API
+- category colors and icons as first-class metadata for charts and category cards
 
 ## What is the planning model?
 
@@ -77,6 +78,13 @@ data.
 
 That matters even more for life changes and irregular periods, such as pregnancy,
 birth, travel, medical expenses, family events, or seasonal commitments.
+
+## Are category colors and icons just frontend decoration?
+
+No. They should live in the data model so the donut chart, category cards, and
+future reports all use the same category presentation. The UI can expose this
+through an inline edit surface on the category icon instead of hiding it behind
+an old-style settings page.
 
 ## Can I run it locally before Cloudflare?
 

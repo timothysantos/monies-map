@@ -1,5 +1,6 @@
 import type {
   AccountDto,
+  CategoryDto,
   EntryDto,
   HouseholdDto,
   ImportBatchDto,
@@ -63,6 +64,21 @@ export const accounts: AccountDto[] = [
     currency: "SGD",
     isJoint: true
   }
+];
+
+export const categories: CategoryDto[] = [
+  { id: "cat-food-drinks", name: "Food & Drinks", slug: "food-drinks", iconKey: "utensils", colorHex: "#1F7A63", sortOrder: 10, isSystem: true },
+  { id: "cat-shopping", name: "Shopping", slug: "shopping", iconKey: "shopping-bag", colorHex: "#D4B35D", sortOrder: 20, isSystem: true },
+  { id: "cat-family-personal", name: "Family & Personal", slug: "family-personal", iconKey: "users", colorHex: "#4F8FD6", sortOrder: 30, isSystem: true },
+  { id: "cat-tax", name: "Tax", slug: "tax", iconKey: "receipt", colorHex: "#CC63D8", sortOrder: 40, isSystem: true },
+  { id: "cat-groceries", name: "Groceries", slug: "groceries", iconKey: "shopping-cart", colorHex: "#F08B43", sortOrder: 50, isSystem: true },
+  { id: "cat-travel", name: "Travel", slug: "travel", iconKey: "plane", colorHex: "#567CC9", sortOrder: 60, isSystem: true },
+  { id: "cat-sport-hobbies", name: "Sport & Hobbies", slug: "sport-hobbies", iconKey: "dumbbell", colorHex: "#96A95A", sortOrder: 70, isSystem: true },
+  { id: "cat-bills", name: "Bills", slug: "bills", iconKey: "lightbulb", colorHex: "#6A7A73", sortOrder: 80, isSystem: true },
+  { id: "cat-entertainment", name: "Entertainment", slug: "entertainment", iconKey: "clapperboard", colorHex: "#D56BDD", sortOrder: 90, isSystem: true },
+  { id: "cat-public-transport", name: "Public Transport", slug: "public-transport", iconKey: "bus", colorHex: "#56A4C9", sortOrder: 100, isSystem: true },
+  { id: "cat-healthcare", name: "Healthcare", slug: "healthcare", iconKey: "heart-pulse", colorHex: "#D86B73", sortOrder: 110, isSystem: true },
+  { id: "cat-gifts", name: "Gifts", slug: "gifts", iconKey: "gift", colorHex: "#C98A5A", sortOrder: 120, isSystem: true }
 ];
 
 export const summaryMonths: SummaryMonthDto[] = [
