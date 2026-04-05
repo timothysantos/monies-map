@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import {
   BusFront,
+  Check,
   Clapperboard,
   Dumbbell,
   Gift,
@@ -9,10 +11,12 @@ import {
   Lightbulb,
   Plane,
   Receipt,
+  SquarePen,
   ShoppingBag,
   ShoppingCart,
   UtensilsCrossed,
-  UsersRound
+  UsersRound,
+  X
 } from "lucide-react";
 import {
   NavLink,
@@ -508,11 +512,25 @@ function CategoryGlyph({ iconKey }) {
 function MonthPanel({ view, accounts }) {
   const [planSections, setPlanSections] = useState(view.monthPage.planSections);
   const [editingRowId, setEditingRowId] = useState(null);
+  const [editingSnapshot, setEditingSnapshot] = useState(null);
   const [incomeRows, setIncomeRows] = useState([]);
+  const [noteDialog, setNoteDialog] = useState(null);
+  const [tableSorts, setTableSorts] = useState({
+    income: null,
+    planned_items: null,
+    budget_buckets: null
+  });
 
   useEffect(() => {
     setPlanSections(view.monthPage.planSections);
     setEditingRowId(null);
+    setEditingSnapshot(null);
+    setNoteDialog(null);
+    setTableSorts({
+      income: null,
+      planned_items: null,
+      budget_buckets: null
+    });
     const monthSummary = view.summaryPage.months.find((month) => month.month === view.monthPage.month);
     setIncomeRows([
       {
@@ -609,6 +627,101 @@ function MonthPanel({ view, accounts }) {
     }));
   }
 
+  function beginIncomeEdit(row) {
+    if (editingRowId === row.id) {
+      return;
+    }
+
+    setEditingRowId(row.id);
+    setEditingSnapshot({ kind: "income", rowId: row.id, original: { ...row } });
+  }
+
+  function beginPlanEdit(sectionKey, row) {
+    if (editingRowId === row.id) {
+      return;
+    }
+
+    setEditingRowId(row.id);
+    setEditingSnapshot({ kind: "plan", sectionKey, rowId: row.id, original: { ...row } });
+  }
+
+  function finishEdit() {
+    setEditingRowId(null);
+    setEditingSnapshot(null);
+  }
+
+  function cancelEdit() {
+    if (!editingSnapshot) {
+      setEditingRowId(null);
+      return;
+    }
+
+    if (editingSnapshot.kind === "income") {
+      setIncomeRows((current) => current.map((row) => (
+        row.id === editingSnapshot.rowId ? editingSnapshot.original : row
+      )));
+    } else {
+      setPlanSections((current) => current.map((section) => (
+        section.key === editingSnapshot.sectionKey
+          ? {
+              ...section,
+              rows: section.rows.map((row) => (
+                row.id === editingSnapshot.rowId ? editingSnapshot.original : row
+              ))
+            }
+          : section
+      )));
+    }
+
+    setEditingRowId(null);
+    setEditingSnapshot(null);
+  }
+
+  function handleAddPlanRow(sectionKey) {
+    const nextId = `month-plan-${crypto.randomUUID()}`;
+    const nextRow = {
+      id: nextId,
+      section: sectionKey,
+      categoryName: sectionKey === "planned_items" ? "Planned" : "Budget",
+      label: sectionKey === "planned_items" ? "New item" : "New bucket",
+      dayLabel: sectionKey === "planned_items" ? `${view.monthPage.month}-01` : undefined,
+      dayOfWeek: undefined,
+      plannedMinor: 0,
+      actualMinor: 0,
+      accountName: sectionKey === "planned_items" ? "" : undefined,
+      note: sectionKey === "planned_items" ? messages.month.newPlannedItemNote : messages.month.newBudgetBucketNote,
+      ownershipType: "direct",
+      ownerName: view.label,
+      splits: []
+    };
+
+    setPlanSections((current) => current.map((section) => (
+      section.key === sectionKey
+        ? {
+            ...section,
+            rows: [nextRow, ...section.rows]
+          }
+        : section
+    )));
+    setTableSorts((current) => ({
+      ...current,
+      [sectionKey]: null
+    }));
+    setEditingRowId(nextId);
+  }
+
+  function handleRemovePlanRow(sectionKey, rowId) {
+    setPlanSections((current) => current.map((section) => (
+      section.key === sectionKey
+        ? {
+            ...section,
+            rows: section.rows.filter((row) => row.id !== rowId)
+          }
+        : section
+    )));
+    setEditingRowId((current) => (current === rowId ? null : current));
+  }
+
   function handleIncomeRowChange(rowId, patch) {
     setIncomeRows((current) => current.map((row) => (
       row.id === rowId
@@ -620,10 +733,32 @@ function MonthPanel({ view, accounts }) {
     )));
   }
 
+  function openNoteDialog(kind, rowId, sectionKey, note) {
+    setNoteDialog({
+      kind,
+      rowId,
+      sectionKey,
+      draft: note ?? ""
+    });
+  }
+
+  function commitNoteDialog() {
+    if (!noteDialog) {
+      return;
+    }
+
+    if (noteDialog.kind === "income") {
+      handleIncomeRowChange(noteDialog.rowId, { note: noteDialog.draft });
+    } else {
+      handleRowChange(noteDialog.sectionKey, noteDialog.rowId, { note: noteDialog.draft });
+    }
+
+    setNoteDialog(null);
+  }
+
   function handleAddIncomeRow() {
     const nextId = `month-income-${crypto.randomUUID()}`;
     setIncomeRows((current) => [
-      ...current,
       {
         id: nextId,
         categoryName: "Income",
@@ -631,8 +766,13 @@ function MonthPanel({ view, accounts }) {
         plannedMinor: 0,
         actualMinor: 0,
         note: messages.month.extraIncomeNote
-      }
+      },
+      ...current
     ]);
+    setTableSorts((current) => ({
+      ...current,
+      income: null
+    }));
     setEditingRowId(nextId);
   }
 
@@ -640,6 +780,32 @@ function MonthPanel({ view, accounts }) {
     setIncomeRows((current) => current.filter((row) => row.id !== rowId));
     setEditingRowId((current) => (current === rowId ? null : current));
   }
+
+  function handleSortChange(tableKey, key) {
+    setTableSorts((current) => {
+      const existing = current[tableKey];
+      if (!existing || existing.key !== key) {
+        return {
+          ...current,
+          [tableKey]: { key, direction: "asc" }
+        };
+      }
+
+      return {
+        ...current,
+        [tableKey]: {
+          key,
+          direction: existing.direction === "asc" ? "desc" : "asc"
+        }
+      };
+    });
+  }
+
+  const sortedIncomeRows = useMemo(
+    () => sortRows(incomeRows, tableSorts.income),
+    [incomeRows, tableSorts.income]
+  );
+  const monthKey = view.monthPage.month;
 
   return (
     <article className="panel">
@@ -685,21 +851,21 @@ function MonthPanel({ view, accounts }) {
             <table>
               <thead>
                 <tr>
-                  <th>{messages.month.table.category}</th>
-                  <th>{messages.month.table.item}</th>
-                  <th>{messages.month.table.planned}</th>
-                  <th>{messages.month.table.actual}</th>
-                  <th>{messages.month.table.variance}</th>
-                  <th>{messages.month.table.note}</th>
+                  <SortableHeader label={messages.month.table.category} sort={tableSorts.income} columnKey="categoryName" onSort={handleSortChange} tableKey="income" />
+                  <SortableHeader label={messages.month.table.item} sort={tableSorts.income} columnKey="label" onSort={handleSortChange} tableKey="income" />
+                  <SortableHeader label={messages.month.table.planned} sort={tableSorts.income} columnKey="plannedMinor" onSort={handleSortChange} tableKey="income" />
+                  <SortableHeader label={messages.month.table.actual} sort={tableSorts.income} columnKey="actualMinor" onSort={handleSortChange} tableKey="income" />
+                  <SortableHeader label={messages.month.table.variance} sort={tableSorts.income} columnKey="variance" onSort={handleSortChange} tableKey="income" />
+                  <SortableHeader label={messages.month.table.note} sort={tableSorts.income} columnKey="note" onSort={handleSortChange} tableKey="income" />
                 </tr>
               </thead>
               <tbody>
-                {incomeRows.map((row) => {
+                {sortedIncomeRows.map((row) => {
                   const isEditing = editingRowId === row.id;
                   const variance = row.plannedMinor - row.actualMinor;
 
                   return (
-                    <tr key={row.id} className={isEditing ? "is-editing" : ""} onClick={() => setEditingRowId(row.id)}>
+                    <tr key={row.id} className={isEditing ? "is-editing" : ""} onClick={() => beginIncomeEdit(row)}>
                       <td>{row.categoryName}</td>
                       <td>
                         {isEditing ? (
@@ -725,25 +891,54 @@ function MonthPanel({ view, accounts }) {
                       <td className={variance <= 0 ? "positive" : "negative"}>{money(variance)}</td>
                       <td>
                         <div className="table-note-actions">
+                          <button
+                            type="button"
+                            className="note-trigger"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openNoteDialog("income", row.id, null, row.note);
+                            }}
+                          >
+                            <span>{row.note || messages.common.emptyValue}</span>
+                            <SquarePen size={14} />
+                          </button>
                           {isEditing ? (
-                            <textarea
-                              className="table-edit-input table-edit-textarea"
-                              value={row.note ?? ""}
-                              onChange={(event) => handleIncomeRowChange(row.id, { note: event.target.value })}
-                              onClick={(event) => event.stopPropagation()}
-                              rows={2}
-                            />
-                          ) : row.note}
+                            <>
+                              <button
+                                type="button"
+                                className="icon-action"
+                                aria-label="Done editing"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  finishEdit();
+                                }}
+                              >
+                                <Check size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                className="icon-action subtle-cancel"
+                                aria-label="Cancel editing"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  cancelEdit();
+                                }}
+                              >
+                                <X size={16} />
+                              </button>
+                            </>
+                          ) : null}
                           {incomeRows.length > 1 ? (
                             <button
                               type="button"
                               className="subtle-remove"
+                              aria-label="Remove income row"
                               onClick={(event) => {
                                 event.stopPropagation();
                                 handleRemoveIncomeRow(row.id);
                               }}
                             >
-                              Remove
+                              ×
                             </button>
                           ) : null}
                         </div>
@@ -764,32 +959,44 @@ function MonthPanel({ view, accounts }) {
                   <h3>{section.label}</h3>
                   <p>{section.description}</p>
                 </div>
-                <p>{messages.month.editHint}</p>
+                <div className="month-summary-actions">
+                  <button
+                    type="button"
+                    className="subtle-action"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      handleAddPlanRow(section.key);
+                    }}
+                  >
+                    {section.key === "planned_items" ? messages.month.addPlannedItem : messages.month.addBudgetBucket}
+                  </button>
+                  <p>{messages.month.editHint}</p>
+                </div>
               </div>
             </summary>
             <div className="table-wrap month-table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>{messages.month.table.category}</th>
-                    {section.key === "planned_items" ? <th>{messages.month.table.day}</th> : null}
-                    <th>{messages.month.table.item}</th>
-                    <th>{messages.month.table.planned}</th>
-                    <th>{messages.month.table.actual}</th>
-                    <th>{messages.month.table.variance}</th>
-                    {section.key === "planned_items" ? <th>{messages.month.table.account}</th> : null}
-                    <th>{messages.month.table.note}</th>
+                    <SortableHeader label={messages.month.table.category} sort={tableSorts[section.key]} columnKey="categoryName" onSort={handleSortChange} tableKey={section.key} />
+                    {section.key === "planned_items" ? <SortableHeader label={messages.month.table.day} sort={tableSorts[section.key]} columnKey="day" onSort={handleSortChange} tableKey={section.key} /> : null}
+                    <SortableHeader label={messages.month.table.item} sort={tableSorts[section.key]} columnKey="label" onSort={handleSortChange} tableKey={section.key} />
+                    <SortableHeader label={messages.month.table.planned} sort={tableSorts[section.key]} columnKey="plannedMinor" onSort={handleSortChange} tableKey={section.key} />
+                    <SortableHeader label={messages.month.table.actual} sort={tableSorts[section.key]} columnKey="actualMinor" onSort={handleSortChange} tableKey={section.key} />
+                    <SortableHeader label={messages.month.table.variance} sort={tableSorts[section.key]} columnKey="variance" onSort={handleSortChange} tableKey={section.key} />
+                    {section.key === "planned_items" ? <SortableHeader label={messages.month.table.account} sort={tableSorts[section.key]} columnKey="accountName" onSort={handleSortChange} tableKey={section.key} /> : null}
+                    <SortableHeader label={messages.month.table.note} sort={tableSorts[section.key]} columnKey="note" onSort={handleSortChange} tableKey={section.key} />
                   </tr>
                 </thead>
                 <tbody>
-                  {section.rows.map((row) => {
+                  {sortRows(section.rows, tableSorts[section.key], monthKey).map((row) => {
                     const variance = row.plannedMinor - row.actualMinor;
                     const isEditing = editingRowId === row.id;
                     return (
                       <tr
                         key={row.id}
                         className={isEditing ? "is-editing" : ""}
-                        onClick={() => setEditingRowId(row.id)}
+                        onClick={() => beginPlanEdit(section.key, row)}
                       >
                         <td>
                           {isEditing ? (
@@ -804,21 +1011,14 @@ function MonthPanel({ view, accounts }) {
                         {section.key === "planned_items" ? (
                           <td>
                             {isEditing ? (
-                              <div className="table-edit-split">
-                                <input
-                                  className="table-edit-input table-edit-input-compact"
-                                  value={row.dayLabel ?? ""}
-                                  onChange={(event) => handleRowChange(section.key, row.id, { dayLabel: event.target.value })}
-                                  onClick={(event) => event.stopPropagation()}
-                                />
-                                <input
-                                  className="table-edit-input"
-                                  value={row.dayOfWeek ?? ""}
-                                  onChange={(event) => handleRowChange(section.key, row.id, { dayOfWeek: event.target.value })}
-                                  onClick={(event) => event.stopPropagation()}
-                                />
-                              </div>
-                            ) : row.dayLabel ? `${row.dayLabel} ${row.dayOfWeek ?? ""}`.trim() : messages.common.emptyValue}
+                              <input
+                                className="table-edit-input"
+                                type="date"
+                                value={getRowDateValue(row, view.monthPage.month)}
+                                onChange={(event) => handleRowChange(section.key, row.id, { dayLabel: event.target.value, dayOfWeek: undefined })}
+                                onClick={(event) => event.stopPropagation()}
+                              />
+                            ) : formatRowDateLabel(row, view.monthPage.month)}
                           </td>
                         ) : null}
                         <td>
@@ -855,16 +1055,57 @@ function MonthPanel({ view, accounts }) {
                             ) : row.accountName ?? messages.common.emptyValue}
                           </td>
                         ) : null}
-                        <td>
-                          {isEditing ? (
-                            <textarea
-                              className="table-edit-input table-edit-textarea"
-                              value={row.note ?? ""}
-                              onChange={(event) => handleRowChange(section.key, row.id, { note: event.target.value })}
-                              onClick={(event) => event.stopPropagation()}
-                              rows={2}
-                            />
-                          ) : row.note ?? messages.common.emptyValue}
+                      <td>
+                        <div className="table-note-actions">
+                            <button
+                              type="button"
+                              className="note-trigger"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openNoteDialog("plan", row.id, section.key, row.note);
+                              }}
+                            >
+                              <span>{row.note ?? messages.common.emptyValue}</span>
+                              <SquarePen size={14} />
+                            </button>
+                            {isEditing ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="icon-action"
+                                  aria-label="Done editing"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    finishEdit();
+                                  }}
+                                >
+                                  <Check size={16} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="icon-action subtle-cancel"
+                                  aria-label="Cancel editing"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    cancelEdit();
+                                  }}
+                                >
+                                  <X size={16} />
+                                </button>
+                              </>
+                            ) : null}
+                            <button
+                              type="button"
+                              className="subtle-remove"
+                              aria-label="Remove planning row"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleRemovePlanRow(section.key, row.id);
+                              }}
+                            >
+                              ×
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -907,6 +1148,42 @@ function MonthPanel({ view, accounts }) {
           </div>
         </section>
       </div>
+
+      <Dialog.Root open={Boolean(noteDialog)} onOpenChange={(open) => { if (!open) setNoteDialog(null); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="note-dialog-overlay" />
+          <Dialog.Content className="note-dialog-content">
+            <div className="note-dialog-head">
+              <div>
+                <Dialog.Title>Edit note</Dialog.Title>
+                <Dialog.Description>Write the planning context without squeezing it into the table.</Dialog.Description>
+              </div>
+              <button
+                type="button"
+                className="icon-action subtle-cancel"
+                aria-label="Close note editor"
+                onClick={() => setNoteDialog(null)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <textarea
+              className="note-dialog-textarea"
+              value={noteDialog?.draft ?? ""}
+              onChange={(event) => setNoteDialog((current) => current ? { ...current, draft: event.target.value } : current)}
+              rows={10}
+            />
+            <div className="note-dialog-actions">
+              <button type="button" className="subtle-cancel" onClick={() => setNoteDialog(null)}>
+                {messages.month.cancelEdit}
+              </button>
+              <button type="button" className="dialog-primary" onClick={commitNoteDialog}>
+                {messages.month.doneEdit}
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </article>
   );
 }
@@ -1032,6 +1309,23 @@ function MetricCard({ card }) {
   );
 }
 
+function SortableHeader({ label, sort, columnKey, onSort, tableKey }) {
+  const isActive = sort?.key === columnKey;
+  const marker = !isActive ? "" : sort.direction === "asc" ? " ↑" : " ↓";
+
+  return (
+    <th>
+      <button
+        type="button"
+        className={`table-sort-button ${isActive ? "is-active" : ""}`}
+        onClick={() => onSort(tableKey, columnKey)}
+      >
+        {label}{marker}
+      </button>
+    </th>
+  );
+}
+
 function BarLine({ label, valueMinor, maxMinor, tone }) {
   const percent = Math.max((valueMinor / Math.max(maxMinor, 1)) * 100, 6);
   return (
@@ -1086,6 +1380,39 @@ function slugify(value) {
     .replace(/^-+|-+$/g, "");
 }
 
+function sortRows(rows, sort, monthKey = "2025-10") {
+  if (!sort) {
+    return rows;
+  }
+
+  const direction = sort.direction === "asc" ? 1 : -1;
+  return [...rows].sort((left, right) => {
+    const leftValue = getSortValue(left, sort.key, monthKey);
+    const rightValue = getSortValue(right, sort.key, monthKey);
+
+    if (typeof leftValue === "number" && typeof rightValue === "number") {
+      return (leftValue - rightValue) * direction;
+    }
+
+    return String(leftValue).localeCompare(String(rightValue)) * direction;
+  });
+}
+
+function getSortValue(row, key, monthKey) {
+  switch (key) {
+    case "variance":
+      return row.plannedMinor - row.actualMinor;
+    case "day":
+      return getRowDateValue(row, monthKey);
+    case "accountName":
+      return row.accountName ?? "";
+    case "note":
+      return row.note ?? "";
+    default:
+      return row[key] ?? "";
+  }
+}
+
 function money(valueMinor) {
   return moneyFormatter.format(valueMinor / 100);
 }
@@ -1116,4 +1443,33 @@ function parseMoneyInput(value, fallback) {
   }
 
   return Math.round(normalized * 100);
+}
+
+function getRowDateValue(row, fallbackMonth) {
+  if (!row.dayLabel) {
+    return "";
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(row.dayLabel)) {
+    return row.dayLabel;
+  }
+
+  if (/^\d+$/.test(row.dayLabel)) {
+    return `${fallbackMonth}-${String(Number(row.dayLabel)).padStart(2, "0")}`;
+  }
+
+  return "";
+}
+
+function formatRowDateLabel(row, fallbackMonth) {
+  const value = getRowDateValue(row, fallbackMonth);
+  if (!value) {
+    return messages.common.emptyValue;
+  }
+
+  const [year, month, day] = value.split("-");
+  return new Intl.DateTimeFormat("en-SG", {
+    month: "short",
+    day: "numeric"
+  }).format(new Date(Number(year), Number(month) - 1, Number(day)));
 }
