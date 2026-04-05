@@ -1,4 +1,5 @@
 import { buildBootstrapDto } from "./domain/bootstrap";
+import { enterEmptyState, reseedDemoSettings } from "./domain/demo-settings";
 import { parseCsv } from "./lib/csv";
 import { json } from "./server/json";
 
@@ -15,7 +16,23 @@ export default {
     }
 
     if (url.pathname === "/api/bootstrap") {
-      return json(buildBootstrapDto());
+      return json(
+        await buildBootstrapDto(
+          env.DB,
+          url.searchParams.get("month") ?? "2025-10",
+          (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared"
+        )
+      );
+    }
+
+    if (url.pathname === "/api/demo/reseed" && request.method === "POST") {
+      const demo = await reseedDemoSettings(env.DB);
+      return json({ ok: true, demo });
+    }
+
+    if (url.pathname === "/api/demo/empty" && request.method === "POST") {
+      const demo = await enterEmptyState(env.DB);
+      return json({ ok: true, demo });
     }
 
     if (url.pathname === "/api/import/csv" && request.method === "POST") {

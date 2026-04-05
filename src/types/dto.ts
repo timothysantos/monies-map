@@ -3,6 +3,12 @@ export type EntryType = "expense" | "income" | "transfer";
 export type TransferDirection = "in" | "out";
 export type PlanSectionKey = "planned_items" | "budget_buckets";
 
+export interface DemoSettingsDto {
+  salaryPerPersonMinor: number;
+  lastSeededAt: string;
+  emptyState?: boolean;
+}
+
 export interface HouseholdDto {
   id: string;
   name: string;
@@ -124,6 +130,15 @@ export interface MonthPlanSectionDto {
   rows: MonthPlanRowDto[];
 }
 
+export interface MonthIncomeRowDto {
+  id: string;
+  categoryName: string;
+  label: string;
+  plannedMinor: number;
+  actualMinor: number;
+  note?: string;
+}
+
 export interface ImportBatchDto {
   id: string;
   sourceLabel: string;
@@ -147,6 +162,7 @@ export interface MonthPageDto {
   selectedScope: PersonScope;
   scopes: { key: PersonScope; label: string }[];
   metricCards: MetricCardDto[];
+  incomeRows: MonthIncomeRowDto[];
   planSections: MonthPlanSectionDto[];
   categoryShareChart: DonutChartDatumDto[];
   notes: string[];
@@ -165,6 +181,10 @@ export interface ContextViewDto {
   monthPage: MonthPageDto;
 }
 
+export interface SettingsPageDto {
+  demo: DemoSettingsDto;
+}
+
 export interface AppBootstrapDto {
   household: HouseholdDto;
   accounts: AccountDto[];
@@ -172,4 +192,5 @@ export interface AppBootstrapDto {
   views: ContextViewDto[];
   selectedViewId: string;
   importsPage: ImportsPageDto;
+  settingsPage: SettingsPageDto;
 }

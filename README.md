@@ -43,11 +43,12 @@ Right now it includes:
 - a Worker entrypoint and React + Vite frontend shell
 - a first-pass schema for imports, transactions, splits, notes, and transfers
 - typed DTOs and bootstrap data shaped like the real app
-- a UI shell for `Summary`, `Month`, `Entries`, and `Imports`
+- a D1-backed demo settings layer for reseeding believable prototype data
+- a UI shell for `Summary`, `Month`, `Entries`, `Imports`, and `Settings`
 
 It does not yet include:
 
-- real D1-backed repositories
+- full D1-backed repositories for app edits
 - a finished CSV import review flow
 - persistent editing
 - Google login
@@ -174,7 +175,7 @@ npm run deploy
 
 ## What to build next
 
-1. Add D1-backed repositories and seed/bootstrap loaders.
+1. Expand the new D1-backed demo settings into real repositories for categories, month plan rows, and entry edits.
 2. Add CSV import mapping profiles per institution.
 3. Persist imports into D1 instead of previewing only.
 4. Add category rules and merchant normalization.

@@ -15,6 +15,7 @@ export const messages = {
     month: "Month",
     entries: "Entries",
     imports: "Imports",
+    settings: "Settings",
     faq: "FAQ",
     ariaLabel: "Dashboard sections"
   },
@@ -99,6 +100,24 @@ export const messages = {
   imports: {
     viewing: (label) => `Viewing imports for ${label}`,
     transactionCount: (count) => `${count} transactions`
+  },
+  settings: {
+    viewing: (label) => `Viewing settings for ${label}`,
+    demoTitle: "Demo state",
+    demoDetail: "The current prototype is seeded from a believable household scenario so changes can be reset quickly.",
+    salaryPerPerson: "Salary per person",
+    salaryHousehold: "Household salary",
+    seededAt: "Last seeded",
+    state: "Current mode",
+    seededMode: "Seeded demo",
+    emptyMode: "Empty state",
+    reseed: "Reseed default demo",
+    refresh: "Reload app data",
+    refreshHint: "Reseed restores the default demo. Reload pulls the latest bootstrap from the local API.",
+    emptyState: "Enter empty state",
+    emptyStateDetail: "This clears the local demo so you can inspect blank-state behavior.",
+    emptyStatePlaceholder: "Type 'empty state'",
+    emptyStateConfirm: "Confirm empty state"
   },
   faq: {
     viewing: (label) => `Viewing FAQ for ${label}`,

@@ -208,6 +208,19 @@ CREATE TABLE IF NOT EXISTS monthly_plan_rows (
   FOREIGN KEY (account_id) REFERENCES accounts(id)
 );
 
+CREATE TABLE IF NOT EXISTS monthly_plan_row_splits (
+  id TEXT PRIMARY KEY,
+  monthly_plan_row_id TEXT NOT NULL,
+  person_id TEXT NOT NULL,
+  ratio_basis_points INTEGER NOT NULL CHECK (
+    ratio_basis_points BETWEEN 0 AND 10000
+  ),
+  amount_minor INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (monthly_plan_row_id) REFERENCES monthly_plan_rows(id) ON DELETE CASCADE,
+  FOREIGN KEY (person_id) REFERENCES people(id)
+);
+
 CREATE TABLE IF NOT EXISTS monthly_snapshots (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL,
@@ -215,13 +228,21 @@ CREATE TABLE IF NOT EXISTS monthly_snapshots (
   month INTEGER NOT NULL CHECK (month BETWEEN 1 AND 12),
   person_scope TEXT NOT NULL,
   total_income_minor INTEGER NOT NULL DEFAULT 0,
+  estimated_expense_minor INTEGER NOT NULL DEFAULT 0,
   total_expense_minor INTEGER NOT NULL DEFAULT 0,
+  savings_goal_minor INTEGER NOT NULL DEFAULT 0,
   total_net_minor INTEGER NOT NULL DEFAULT 0,
   total_shared_minor INTEGER NOT NULL DEFAULT 0,
   note TEXT,
   generated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (household_id, year, month, person_scope),
   FOREIGN KEY (household_id) REFERENCES households(id)
+);
+
+CREATE TABLE IF NOT EXISTS demo_settings (
+  key TEXT PRIMARY KEY,
+  value_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_imports_household_imported_at

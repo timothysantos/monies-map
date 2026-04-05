@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import {
@@ -60,6 +60,7 @@ const routeTabs = [
   { id: "month", path: "/month", label: messages.tabs.month },
   { id: "entries", path: "/entries", label: messages.tabs.entries },
   { id: "imports", path: "/imports", label: messages.tabs.imports },
+  { id: "settings", path: "/settings", label: messages.tabs.settings },
   { id: "faq", path: "/faq", label: messages.tabs.faq }
 ];
 
@@ -68,26 +69,30 @@ export function App() {
   const [categoryOverrides, setCategoryOverrides] = useState({});
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
+  const selectedMonth = searchParams.get("month") ?? "2025-10";
+  const selectedScope = searchParams.get("scope") ?? "direct_plus_shared";
+
+  const loadBootstrap = useCallback(async (signal) => {
+    const response = await fetch(`/api/bootstrap?month=${selectedMonth}&scope=${selectedScope}`, { signal });
+    const data = await response.json();
+    setBootstrap(data);
+  }, [selectedMonth, selectedScope]);
 
   useEffect(() => {
-    let active = true;
+    const controller = new AbortController();
 
-    async function load() {
-      const response = await fetch("/api/bootstrap");
-      const data = await response.json();
-      if (!active) {
+    void loadBootstrap(controller.signal).catch((error) => {
+      if (error instanceof DOMException && error.name === "AbortError") {
         return;
       }
 
-      setBootstrap(data);
-    }
-
-    void load();
+      throw error;
+    });
 
     return () => {
-      active = false;
+      controller.abort();
     };
-  }, []);
+  }, [loadBootstrap]);
 
   const selectedViewId = searchParams.get("view") ?? "household";
   const selectedTabId = routeTabs.find((tab) => tab.path === location.pathname)?.id ?? "summary";
@@ -99,6 +104,10 @@ export function App() {
   const categories = useMemo(
     () => bootstrap?.categories.map((category) => ({ ...category, ...(categoryOverrides[category.id] ?? {}) })) ?? [],
     [bootstrap, categoryOverrides]
+  );
+  const availableMonths = useMemo(
+    () => bootstrap?.views[0]?.summaryPage.months.map((month) => month.month).sort() ?? [],
+    [bootstrap]
   );
 
   useEffect(() => {
@@ -117,6 +126,22 @@ export function App() {
       return next;
     }, { replace: true });
   }, [bootstrap, selectedViewId, setSearchParams]);
+
+  useEffect(() => {
+    if (!bootstrap || !availableMonths.length || selectedTabId !== "month" && selectedTabId !== "entries") {
+      return;
+    }
+
+    if (availableMonths.includes(selectedMonth)) {
+      return;
+    }
+
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("month", availableMonths[availableMonths.length - 1]);
+      return next;
+    }, { replace: true });
+  }, [availableMonths, bootstrap, selectedMonth, selectedTabId, setSearchParams]);
 
   if (!bootstrap || !view) {
     return (
@@ -139,6 +164,28 @@ export function App() {
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       next.set("view", nextViewId);
+      return next;
+    });
+  }
+
+  function handleMonthChange(direction) {
+    if (selectedTabId !== "month" && selectedTabId !== "entries") {
+      return;
+    }
+
+    const currentIndex = availableMonths.indexOf(selectedMonth);
+    if (currentIndex === -1) {
+      return;
+    }
+
+    const nextIndex = currentIndex + direction;
+    if (nextIndex < 0 || nextIndex >= availableMonths.length) {
+      return;
+    }
+
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("month", availableMonths[nextIndex]);
       return next;
     });
   }
@@ -195,12 +242,12 @@ export function App() {
               </NavLink>
             ))}
           </nav>
-          <button className="period-button" type="button" aria-label={messages.period.previousAriaLabel}>‹</button>
+          <button className="period-button" type="button" aria-label={messages.period.previousAriaLabel} onClick={() => handleMonthChange(-1)}>‹</button>
           <div className="period-display">
             <span className="period-mode">{periodMode}</span>
             <strong>{periodLabel}</strong>
           </div>
-          <button className="period-button" type="button" aria-label={messages.period.nextAriaLabel}>›</button>
+          <button className="period-button" type="button" aria-label={messages.period.nextAriaLabel} onClick={() => handleMonthChange(1)}>›</button>
         </div>
       </section>
 
@@ -231,6 +278,16 @@ export function App() {
           <Route
             path="/imports"
             element={<ImportsPanel importsPage={bootstrap.importsPage} viewLabel={view.label} />}
+          />
+          <Route
+            path="/settings"
+            element={(
+              <SettingsPanel
+                settingsPage={bootstrap.settingsPage}
+                viewLabel={view.label}
+                onRefresh={() => loadBootstrap()}
+              />
+            )}
           />
           <Route path="/faq" element={<FaqPanel viewLabel={view.label} />} />
           <Route path="*" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
@@ -542,17 +599,7 @@ function MonthPanel({ view, accounts }) {
       planned_items: null,
       budget_buckets: null
     });
-    const monthSummary = view.summaryPage.months.find((month) => month.month === view.monthPage.month);
-    setIncomeRows([
-      {
-        id: "month-income-salary",
-        categoryName: "Income",
-        label: "Salary",
-        plannedMinor: monthSummary?.incomeMinor ?? 0,
-        actualMinor: monthSummary?.incomeMinor ?? 0,
-        note: messages.month.incomeRowNote
-      }
-    ]);
+    setIncomeRows(view.monthPage.incomeRows);
   }, [view]);
 
   const currentMonthSummary = useMemo(
@@ -817,6 +864,7 @@ function MonthPanel({ view, accounts }) {
     [incomeRows, tableSorts.income]
   );
   const monthKey = view.monthPage.month;
+  const [searchParams, setSearchParams] = useSearchParams();
 
   return (
     <article className="panel">
@@ -831,6 +879,13 @@ function MonthPanel({ view, accounts }) {
               key={scope.key}
               className={`pill scope-button ${scope.key === view.monthPage.selectedScope ? "is-active" : ""}`}
               type="button"
+              onClick={() => {
+                setSearchParams((current) => {
+                  const next = new URLSearchParams(current);
+                  next.set("scope", scope.key);
+                  return next;
+                });
+              }}
             >
               {scope.label}
             </button>
@@ -838,7 +893,7 @@ function MonthPanel({ view, accounts }) {
         </div>
       </div>
 
-      <div className="metric-row">
+      <div className="metric-row metric-row-month">
         {monthMetricCards.map((card) => <MetricCard key={card.label} card={card} />)}
       </div>
 
@@ -1579,6 +1634,124 @@ function ImportsPanel({ importsPage, viewLabel }) {
           </div>
         ))}
       </div>
+    </article>
+  );
+}
+
+function SettingsPanel({ settingsPage, viewLabel, onRefresh }) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [emptyStateText, setEmptyStateText] = useState("");
+
+  async function handleReseed() {
+    setIsSubmitting(true);
+    try {
+      await fetch("/api/demo/reseed", { method: "POST" });
+      await onRefresh();
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleRefresh() {
+    setIsSubmitting(true);
+    try {
+      await onRefresh();
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleEmptyState() {
+    setIsSubmitting(true);
+    try {
+      await fetch("/api/demo/empty", { method: "POST" });
+      await onRefresh();
+      setEmptyStateText("");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <article className="panel">
+      <div className="panel-head">
+        <div>
+          <h2>{messages.tabs.settings}</h2>
+          <span className="panel-context">{messages.settings.viewing(viewLabel)}</span>
+        </div>
+      </div>
+
+      <section className="settings-grid">
+        <div className="metric">
+          <span>{messages.settings.salaryPerPerson}</span>
+          <strong>{money(settingsPage.demo.salaryPerPersonMinor)}</strong>
+        </div>
+        <div className="metric">
+          <span>{messages.settings.salaryHousehold}</span>
+          <strong>{money(settingsPage.demo.salaryPerPersonMinor * 2)}</strong>
+        </div>
+        <div className="metric">
+          <span>{messages.settings.seededAt}</span>
+          <strong>{formatDate(settingsPage.demo.lastSeededAt)}</strong>
+        </div>
+        <div className="metric">
+          <span>{messages.settings.state}</span>
+          <strong>{settingsPage.demo.emptyState ? messages.settings.emptyMode : messages.settings.seededMode}</strong>
+        </div>
+      </section>
+
+      <section className="chart-card settings-card">
+        <div className="chart-head">
+          <h3>{messages.settings.demoTitle}</h3>
+          <p>{messages.settings.demoDetail}</p>
+        </div>
+        <div className="settings-actions">
+          <button type="button" className="subtle-action" onClick={handleReseed} disabled={isSubmitting}>
+            {messages.settings.reseed}
+          </button>
+          <button type="button" className="subtle-action" onClick={handleRefresh} disabled={isSubmitting}>
+            {messages.settings.refresh}
+          </button>
+          <Dialog.Root>
+            <Dialog.Trigger asChild>
+              <button type="button" className="subtle-action subtle-danger" disabled={isSubmitting}>
+                {messages.settings.emptyState}
+              </button>
+            </Dialog.Trigger>
+            <Dialog.Portal>
+              <Dialog.Overlay className="note-dialog-overlay" />
+              <Dialog.Content className="note-dialog-content">
+                <div className="note-dialog-head">
+                  <Dialog.Title>{messages.settings.emptyState}</Dialog.Title>
+                  <Dialog.Description>{messages.settings.emptyStateDetail}</Dialog.Description>
+                </div>
+                <input
+                  className="table-edit-input"
+                  placeholder={messages.settings.emptyStatePlaceholder}
+                  value={emptyStateText}
+                  onChange={(event) => setEmptyStateText(event.target.value)}
+                />
+                <div className="note-dialog-actions">
+                  <Dialog.Close asChild>
+                    <button type="button" className="subtle-action">Cancel</button>
+                  </Dialog.Close>
+                  <Dialog.Close asChild>
+                    <button
+                      type="button"
+                      className="subtle-action subtle-danger"
+                      disabled={emptyStateText.trim().toLowerCase() !== "empty state" || isSubmitting}
+                      onClick={handleEmptyState}
+                    >
+                      {messages.settings.emptyStateConfirm}
+                    </button>
+                  </Dialog.Close>
+                </div>
+              </Dialog.Content>
+            </Dialog.Portal>
+          </Dialog.Root>
+        </div>
+        <p className="lede compact">{messages.settings.refreshHint}</p>
+      </section>
     </article>
   );
 }

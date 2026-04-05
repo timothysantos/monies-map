@@ -26,6 +26,7 @@ The core questions behind the app are:
 - imports view
 - FAQ view
 - demo data shaped like the intended product and planning model
+- a settings view for reseeding and refreshing the current demo bootstrap
 - React + Vite frontend talking to the existing Worker API
 - category colors and icons as first-class metadata for charts and category cards
 
@@ -68,11 +69,21 @@ into the app.
 
 ## What is still in progress?
 
-- real D1-backed persistence
+- full D1-backed persistence for edits
 - CSV import review and commit flow
 - editing and saving changes
 - Google login
 - in-app AI analysis
+
+## What does the demo assume right now?
+
+The current demo uses a believable household scenario with:
+
+- Tim salary: SGD 3,000
+- Joyce salary: SGD 3,000
+- household salary: SGD 6,000
+
+Those assumptions can be reseeded from the in-app settings view.
 
 ## Why does household monthly view behave differently from person view?
 

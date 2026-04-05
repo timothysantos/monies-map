@@ -4,9 +4,46 @@ import type {
   EntryDto,
   HouseholdDto,
   ImportBatchDto,
+  MonthIncomeRowDto,
   MonthPlanRowDto,
   SummaryMonthDto
 } from "../types/dto";
+
+export interface DemoSettings {
+  salaryPerPersonMinor: number;
+  lastSeededAt: string;
+  emptyState?: boolean;
+}
+
+interface SummaryMonthSeed {
+  month: string;
+  estimatedExpensesMinor: number;
+  realExpensesMinor: number;
+  savingsGoalMinor: number;
+  householdNote: string;
+  timEstimatedExpensesMinor: number;
+  timRealExpensesMinor: number;
+  timSavingsGoalMinor: number;
+  timNote: string;
+  joyceEstimatedExpensesMinor: number;
+  joyceRealExpensesMinor: number;
+  joyceSavingsGoalMinor: number;
+  joyceNote: string;
+}
+
+type MonthDetailSeed = {
+  month: string;
+  planned: number;
+  actual: number;
+};
+
+const DEFAULT_DEMO_LAST_SEEDED_AT = "2026-04-05T10:00:00+08:00";
+
+export const defaultDemoSettings: DemoSettings = {
+  salaryPerPersonMinor: 300000,
+  lastSeededAt: DEFAULT_DEMO_LAST_SEEDED_AT,
+  emptyState: false
+};
 
 export const household: HouseholdDto = {
   id: "household-1",
@@ -67,198 +104,495 @@ export const accounts: AccountDto[] = [
 ];
 
 export const categories: CategoryDto[] = [
+  { id: "cat-income", name: "Income", slug: "income", iconKey: "receipt", colorHex: "#1F7A63", sortOrder: 1, isSystem: true },
   { id: "cat-transfer", name: "Transfer", slug: "transfer", iconKey: "arrow-right-left", colorHex: "#B15E2F", sortOrder: 5, isSystem: true },
+  { id: "cat-savings", name: "Savings", slug: "savings", iconKey: "receipt", colorHex: "#6A7A73", sortOrder: 6, isSystem: true },
+  { id: "cat-investments", name: "Investments", slug: "investments", iconKey: "receipt", colorHex: "#6A7A73", sortOrder: 7, isSystem: true },
+  { id: "cat-subscriptions-mo", name: "Subscriptions MO", slug: "subscriptions-mo", iconKey: "receipt", colorHex: "#6A7A73", sortOrder: 8, isSystem: true },
+  { id: "cat-subscriptions-yr", name: "Subscriptions YR", slug: "subscriptions-yr", iconKey: "receipt", colorHex: "#6A7A73", sortOrder: 9, isSystem: true },
   { id: "cat-food-drinks", name: "Food & Drinks", slug: "food-drinks", iconKey: "utensils", colorHex: "#1F7A63", sortOrder: 10, isSystem: true },
   { id: "cat-shopping", name: "Shopping", slug: "shopping", iconKey: "shopping-bag", colorHex: "#D4B35D", sortOrder: 20, isSystem: true },
   { id: "cat-family-personal", name: "Family & Personal", slug: "family-personal", iconKey: "users", colorHex: "#4F8FD6", sortOrder: 30, isSystem: true },
+  { id: "cat-church", name: "Church", slug: "church", iconKey: "receipt", colorHex: "#6A7A73", sortOrder: 35, isSystem: true },
   { id: "cat-tax", name: "Tax", slug: "tax", iconKey: "receipt", colorHex: "#CC63D8", sortOrder: 40, isSystem: true },
   { id: "cat-groceries", name: "Groceries", slug: "groceries", iconKey: "shopping-cart", colorHex: "#F08B43", sortOrder: 50, isSystem: true },
   { id: "cat-travel", name: "Travel", slug: "travel", iconKey: "plane", colorHex: "#567CC9", sortOrder: 60, isSystem: true },
+  { id: "cat-loans", name: "Loans", slug: "loans", iconKey: "receipt", colorHex: "#6A7A73", sortOrder: 65, isSystem: true },
   { id: "cat-sport-hobbies", name: "Sport & Hobbies", slug: "sport-hobbies", iconKey: "dumbbell", colorHex: "#96A95A", sortOrder: 70, isSystem: true },
   { id: "cat-bills", name: "Bills", slug: "bills", iconKey: "lightbulb", colorHex: "#6A7A73", sortOrder: 80, isSystem: true },
+  { id: "cat-beauty", name: "Beauty", slug: "beauty", iconKey: "receipt", colorHex: "#D56BDD", sortOrder: 85, isSystem: true },
   { id: "cat-entertainment", name: "Entertainment", slug: "entertainment", iconKey: "clapperboard", colorHex: "#D56BDD", sortOrder: 90, isSystem: true },
   { id: "cat-public-transport", name: "Public Transport", slug: "public-transport", iconKey: "bus", colorHex: "#56A4C9", sortOrder: 100, isSystem: true },
   { id: "cat-healthcare", name: "Healthcare", slug: "healthcare", iconKey: "heart-pulse", colorHex: "#D86B73", sortOrder: 110, isSystem: true },
-  { id: "cat-gifts", name: "Gifts", slug: "gifts", iconKey: "gift", colorHex: "#C98A5A", sortOrder: 120, isSystem: true }
+  { id: "cat-gifts", name: "Gifts", slug: "gifts", iconKey: "gift", colorHex: "#C98A5A", sortOrder: 120, isSystem: true },
+  { id: "cat-taxi", name: "Taxi", slug: "taxi", iconKey: "bus", colorHex: "#56A4C9", sortOrder: 121, isSystem: true }
 ];
 
-export const summaryMonths: SummaryMonthDto[] = [
+const summaryMonthSeeds: SummaryMonthSeed[] = [
   {
     month: "2025-06",
-    incomeMinor: 597373,
     estimatedExpensesMinor: 659935,
     realExpensesMinor: 751465,
     savingsGoalMinor: 120000,
-    realizedSavingsMinor: -34092,
-    estimatedDiffMinor: -62562,
-    realDiffMinor: -154092,
-    note: "Japan ticket and Miki's wedding pushed June above plan before the usual baby-related spending starts."
+    householdNote: "Japan tickets, wedding gifts, and a couple of baby-prep buys pushed June above plan before things settled.",
+    timEstimatedExpensesMinor: 410000,
+    timRealExpensesMinor: 455500,
+    timSavingsGoalMinor: 70000,
+    timNote: "A few annual and family-related costs landed in the same month, which pushed Tim above the original plan.",
+    joyceEstimatedExpensesMinor: 249935,
+    joyceRealExpensesMinor: 295965,
+    joyceSavingsGoalMinor: 50000,
+    joyceNote: "Joyce stayed close to plan overall, with a bit more family-related spend than expected."
   },
   {
     month: "2025-07",
-    incomeMinor: 597373,
     estimatedExpensesMinor: 562288,
     realExpensesMinor: 587226,
-    savingsGoalMinor: 180000,
-    realizedSavingsMinor: 190147,
-    estimatedDiffMinor: 35085,
-    realDiffMinor: 10147,
-    note: "Joyce's birthday and the heavy paint workshop were planned spikes, then Urban Company overshot."
+    savingsGoalMinor: 120000,
+    householdNote: "July was close to plan overall. Most recurring costs landed normally and the month stayed stable.",
+    timEstimatedExpensesMinor: 355000,
+    timRealExpensesMinor: 370000,
+    timSavingsGoalMinor: 70000,
+    timNote: "Tim stayed close to plan, with regular subscriptions and hobbies staying manageable.",
+    joyceEstimatedExpensesMinor: 207288,
+    joyceRealExpensesMinor: 217226,
+    joyceSavingsGoalMinor: 50000,
+    joyceNote: "Joyce side was mostly steady, with a few small one-off family expenses."
   },
   {
     month: "2025-08",
-    incomeMinor: 597373,
     estimatedExpensesMinor: 588919,
     realExpensesMinor: 574282,
-    savingsGoalMinor: 180000,
-    realizedSavingsMinor: 203091,
-    estimatedDiffMinor: 8454,
-    realDiffMinor: 23091,
-    note: "Bali and JLPT were intentional; reimbursements reduced food pressure and helped the month land below plan."
+    savingsGoalMinor: 120000,
+    householdNote: "August included travel and admin costs, but other spending stayed controlled enough to keep the month under plan.",
+    timEstimatedExpensesMinor: 382000,
+    timRealExpensesMinor: 365000,
+    timSavingsGoalMinor: 70000,
+    timNote: "Tim had a few larger planned items this month, but the rest of spending stayed measured.",
+    joyceEstimatedExpensesMinor: 206919,
+    joyceRealExpensesMinor: 209282,
+    joyceSavingsGoalMinor: 50000,
+    joyceNote: "Joyce stayed close to estimate, with no category materially breaking the plan."
   },
   {
     month: "2025-09",
-    incomeMinor: 597373,
     estimatedExpensesMinor: 515488,
     realExpensesMinor: 529907,
-    savingsGoalMinor: 180000,
-    realizedSavingsMinor: 247466,
-    estimatedDiffMinor: 81885,
-    realDiffMinor: 67466,
-    note: "Tennis and lessons were manageable, but shopping ran hotter than planned."
+    savingsGoalMinor: 120000,
+    householdNote: "September stayed manageable overall, with only mild drift in discretionary categories.",
+    timEstimatedExpensesMinor: 320000,
+    timRealExpensesMinor: 333000,
+    timSavingsGoalMinor: 70000,
+    timNote: "Tim side remained fairly controlled with routine obligations and hobby spending in range.",
+    joyceEstimatedExpensesMinor: 195488,
+    joyceRealExpensesMinor: 196907,
+    joyceSavingsGoalMinor: 50000,
+    joyceNote: "Joyce tracked close to plan, with slightly more discretionary spend than expected."
   },
   {
     month: "2025-10",
-    incomeMinor: 597373,
     estimatedExpensesMinor: 579688,
     realExpensesMinor: 559665,
-    savingsGoalMinor: 180000,
-    realizedSavingsMinor: 217708,
-    estimatedDiffMinor: 17685,
-    realDiffMinor: 37708,
-    note: "No tennis month helped, but food and shopping still carried the month."
+    savingsGoalMinor: 120000,
+    householdNote: "October came in slightly under plan because routine costs landed as expected and discretionary spend stayed reasonable.",
+    timEstimatedExpensesMinor: 356000,
+    timRealExpensesMinor: 342830,
+    timSavingsGoalMinor: 70000,
+    timNote: "Tim covered the usual direct commitments and still stayed under estimate.",
+    joyceEstimatedExpensesMinor: 223688,
+    joyceRealExpensesMinor: 216835,
+    joyceSavingsGoalMinor: 50000,
+    joyceNote: "Joyce carried a few larger direct commitments, but the month still finished under estimate."
   }
 ];
 
-export const summaryMonthsByView: Record<string, SummaryMonthDto[]> = {
-  household: summaryMonths,
-  "person-tim": [
-    {
-      month: "2025-06",
-      incomeMinor: 597373,
-      estimatedExpensesMinor: 425000,
-      realExpensesMinor: 503500,
-      savingsGoalMinor: 90000,
-      realizedSavingsMinor: 93873,
-      estimatedDiffMinor: 172373,
-      realDiffMinor: 93873,
-      note: "Tim carried the iPad, travel, and more of the wedding-related spend."
-    },
-    {
-      month: "2025-07",
-      incomeMinor: 597373,
-      estimatedExpensesMinor: 366500,
-      realExpensesMinor: 402800,
-      savingsGoalMinor: 120000,
-      realizedSavingsMinor: 194573,
-      estimatedDiffMinor: 230873,
-      realDiffMinor: 194573,
-      note: "Tim side stayed under control even with lessons and workshop-related spillover."
-    },
-    {
-      month: "2025-08",
-      incomeMinor: 597373,
-      estimatedExpensesMinor: 398000,
-      realExpensesMinor: 384200,
-      savingsGoalMinor: 120000,
-      realizedSavingsMinor: 213173,
-      estimatedDiffMinor: 199373,
-      realDiffMinor: 213173,
-      note: "Bali and JLPT sat more heavily on Tim's side, but reimbursements softened the month."
-    },
-    {
-      month: "2025-09",
-      incomeMinor: 597373,
-      estimatedExpensesMinor: 332000,
-      realExpensesMinor: 345500,
-      savingsGoalMinor: 120000,
-      realizedSavingsMinor: 251873,
-      estimatedDiffMinor: 265373,
-      realDiffMinor: 251873,
-      note: "Tennis and lessons were the main Tim-side drivers in September."
-    },
-    {
-      month: "2025-10",
-      incomeMinor: 597373,
-      estimatedExpensesMinor: 338740,
-      realExpensesMinor: 342830,
-      savingsGoalMinor: 120000,
-      realizedSavingsMinor: 254543,
-      estimatedDiffMinor: 258633,
-      realDiffMinor: 254543,
-      note: "No tennis month helped; Tim's side still absorbed tax, food share, and church commitments."
-    }
-  ],
-  "person-joyce": [
-    {
-      month: "2025-06",
-      incomeMinor: 0,
-      estimatedExpensesMinor: 234935,
-      realExpensesMinor: 247965,
-      savingsGoalMinor: 30000,
-      realizedSavingsMinor: -247965,
-      estimatedDiffMinor: -234935,
-      realDiffMinor: -247965,
-      note: "Joyce side was lighter on income in the demo but still carried family and shared obligations."
-    },
-    {
-      month: "2025-07",
-      incomeMinor: 0,
-      estimatedExpensesMinor: 195788,
-      realExpensesMinor: 184426,
-      savingsGoalMinor: 60000,
-      realizedSavingsMinor: -184426,
-      estimatedDiffMinor: -195788,
-      realDiffMinor: -184426,
-      note: "Joyce's birthday month still landed below the household plan share in the demo."
-    },
-    {
-      month: "2025-08",
-      incomeMinor: 0,
-      estimatedExpensesMinor: 190919,
-      realExpensesMinor: 190082,
-      savingsGoalMinor: 60000,
-      realizedSavingsMinor: -190082,
-      estimatedDiffMinor: -190919,
-      realDiffMinor: -190082,
-      note: "Joyce side stayed close to estimate in August."
-    },
-    {
-      month: "2025-09",
-      incomeMinor: 0,
-      estimatedExpensesMinor: 183488,
-      realExpensesMinor: 184407,
-      savingsGoalMinor: 60000,
-      realizedSavingsMinor: -184407,
-      estimatedDiffMinor: -183488,
-      realDiffMinor: -184407,
-      note: "Shopping contributed more heavily on Joyce's side in September."
-    },
-    {
-      month: "2025-10",
-      incomeMinor: 0,
-      estimatedExpensesMinor: 240948,
-      realExpensesMinor: 216835,
-      savingsGoalMinor: 60000,
-      realizedSavingsMinor: -216835,
-      estimatedDiffMinor: -240948,
-      realDiffMinor: -216835,
-      note: "Joyce side carried shopping and parent's insurance but landed under estimate in October."
-    }
-  ]
-};
+export const demoMonths = summaryMonthSeeds.map((seed) => seed.month);
 
-export const monthPlanRows: MonthPlanRowDto[] = [
+function buildSummaryMonth(
+  seed: SummaryMonthSeed,
+  incomeMinor: number,
+  estimatedExpensesMinor: number,
+  realExpensesMinor: number,
+  savingsGoalMinor: number,
+  note: string
+): SummaryMonthDto {
+  return {
+    month: seed.month,
+    incomeMinor,
+    estimatedExpensesMinor,
+    realExpensesMinor,
+    savingsGoalMinor,
+    realizedSavingsMinor: incomeMinor - realExpensesMinor,
+    estimatedDiffMinor: incomeMinor - estimatedExpensesMinor,
+    realDiffMinor: incomeMinor - realExpensesMinor,
+    note
+  };
+}
+
+export function buildSummaryMonthsByView(salaryPerPersonMinor: number): Record<string, SummaryMonthDto[]> {
+  const householdIncomeMinor = salaryPerPersonMinor * 2;
+
+  return {
+    household: summaryMonthSeeds.map((seed) =>
+      buildSummaryMonth(
+        seed,
+        householdIncomeMinor,
+        seed.estimatedExpensesMinor,
+        seed.realExpensesMinor,
+        seed.savingsGoalMinor,
+        seed.householdNote
+      )
+    ),
+    "person-tim": summaryMonthSeeds.map((seed) =>
+      buildSummaryMonth(
+        seed,
+        salaryPerPersonMinor,
+        seed.timEstimatedExpensesMinor,
+        seed.timRealExpensesMinor,
+        seed.timSavingsGoalMinor,
+        seed.timNote
+      )
+    ),
+    "person-joyce": summaryMonthSeeds.map((seed) =>
+      buildSummaryMonth(
+        seed,
+        salaryPerPersonMinor,
+        seed.joyceEstimatedExpensesMinor,
+        seed.joyceRealExpensesMinor,
+        seed.joyceSavingsGoalMinor,
+        seed.joyceNote
+      )
+    )
+  };
+}
+
+export function buildMonthIncomeRows(viewId: string, salaryPerPersonMinor: number): MonthIncomeRowDto[] {
+  if (viewId === "household") {
+    return [
+      {
+        id: "month-income-tim-salary",
+        categoryName: "Income",
+        label: "Tim salary",
+        plannedMinor: salaryPerPersonMinor,
+        actualMinor: salaryPerPersonMinor,
+        note: "Primary monthly income."
+      },
+      {
+        id: "month-income-joyce-salary",
+        categoryName: "Income",
+        label: "Joyce salary",
+        plannedMinor: salaryPerPersonMinor,
+        actualMinor: salaryPerPersonMinor,
+        note: "Primary monthly income."
+      }
+    ];
+  }
+
+  return [
+    {
+      id: `month-income-${viewId}-salary`,
+      categoryName: "Income",
+      label: "Salary",
+      plannedMinor: salaryPerPersonMinor,
+      actualMinor: salaryPerPersonMinor,
+      note: "Primary planned monthly income."
+    }
+  ];
+}
+
+function allocateByWeights(total: number, weights: number[]) {
+  const sum = weights.reduce((acc, weight) => acc + weight, 0);
+  let remaining = total;
+  return weights.map((weight, index) => {
+    if (index === weights.length - 1) {
+      return remaining;
+    }
+
+    const value = Math.round(total * (weight / sum));
+    remaining -= value;
+    return value;
+  });
+}
+
+function buildGenericMonthArtifacts(seed: MonthDetailSeed) {
+  const [year, month] = seed.month.split("-");
+  const monthPrefix = `${year}-${month}`;
+  const sharedFoodSplit = { tim: 5500, joyce: 4500 };
+
+  const fixedPlanned = {
+    savingsTim: 70000,
+    savingsJoyce: 50000,
+    houseLoan: 45000,
+    family: 22000,
+    tax: 28470,
+    subscriptions: 7200
+  };
+  const fixedActual = {
+    savingsTim: 70000,
+    savingsJoyce: 50000,
+    houseLoan: 45000,
+    family: 23000,
+    tax: 28470,
+    subscriptions: 6900
+  };
+
+  const plannedFlexible = Math.max(
+    0,
+    seed.planned -
+      fixedPlanned.savingsTim -
+      fixedPlanned.savingsJoyce -
+      fixedPlanned.houseLoan -
+      fixedPlanned.family -
+      fixedPlanned.tax -
+      fixedPlanned.subscriptions
+  );
+  const actualFlexible = Math.max(
+    0,
+    seed.actual -
+      fixedActual.savingsTim -
+      fixedActual.savingsJoyce -
+      fixedActual.houseLoan -
+      fixedActual.family -
+      fixedActual.tax -
+      fixedActual.subscriptions
+  );
+
+  const [foodPlanned, groceriesPlanned, shoppingPlanned, hobbiesPlanned, transportPlanned] = allocateByWeights(plannedFlexible, [45, 15, 18, 12, 10]);
+  const [foodActual, groceriesActual, shoppingActual, hobbiesActual, transportActual] = allocateByWeights(actualFlexible, [47, 14, 20, 10, 9]);
+
+  const planRows: MonthPlanRowDto[] = [
+    {
+      id: `plan-${monthPrefix}-tim-savings`,
+      section: "planned_items",
+      categoryName: "Savings",
+      label: "Savings",
+      dayLabel: "1",
+      dayOfWeek: undefined,
+      plannedMinor: fixedPlanned.savingsTim,
+      actualMinor: fixedActual.savingsTim,
+      note: "Regular monthly savings allocation.",
+      ownershipType: "direct",
+      ownerName: "Tim",
+      splits: [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor: fixedActual.savingsTim }]
+    },
+    {
+      id: `plan-${monthPrefix}-joyce-savings`,
+      section: "planned_items",
+      categoryName: "Savings",
+      label: "Savings",
+      dayLabel: "1",
+      dayOfWeek: undefined,
+      plannedMinor: fixedPlanned.savingsJoyce,
+      actualMinor: fixedActual.savingsJoyce,
+      note: "Regular monthly savings allocation.",
+      ownershipType: "direct",
+      ownerName: "Joyce",
+      splits: [{ personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 10000, amountMinor: fixedActual.savingsJoyce }]
+    },
+    {
+      id: `plan-${monthPrefix}-family`,
+      section: "planned_items",
+      categoryName: "Family & Personal",
+      label: "Family support",
+      dayLabel: "2",
+      dayOfWeek: undefined,
+      plannedMinor: fixedPlanned.family,
+      actualMinor: fixedActual.family,
+      note: "Shared family allocation.",
+      ownershipType: "shared",
+      splits: [
+        { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: Math.floor(fixedActual.family / 2) },
+        { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 5000, amountMinor: Math.ceil(fixedActual.family / 2) }
+      ]
+    },
+    {
+      id: `plan-${monthPrefix}-house-loan`,
+      section: "planned_items",
+      categoryName: "Loans",
+      label: "House loan",
+      dayLabel: "2",
+      dayOfWeek: undefined,
+      plannedMinor: fixedPlanned.houseLoan,
+      actualMinor: fixedActual.houseLoan,
+      note: "Recurring shared housing payment.",
+      ownershipType: "shared",
+      splits: [
+        { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 22500 },
+        { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 5000, amountMinor: 22500 }
+      ]
+    },
+    {
+      id: `plan-${monthPrefix}-tax`,
+      section: "planned_items",
+      categoryName: "Tax",
+      label: "Tax",
+      dayLabel: "6",
+      dayOfWeek: undefined,
+      plannedMinor: fixedPlanned.tax,
+      actualMinor: fixedActual.tax,
+      note: "Recurring tax allocation.",
+      ownershipType: "direct",
+      ownerName: "Tim",
+      splits: [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor: fixedActual.tax }]
+    },
+    {
+      id: `plan-${monthPrefix}-subscriptions`,
+      section: "planned_items",
+      categoryName: "Subscriptions MO",
+      label: "Shared subscriptions",
+      dayLabel: "15",
+      dayOfWeek: undefined,
+      plannedMinor: fixedPlanned.subscriptions,
+      actualMinor: fixedActual.subscriptions,
+      note: "Grouped recurring household subscriptions.",
+      ownershipType: "shared",
+      splits: [
+        { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: Math.floor(fixedActual.subscriptions / 2) },
+        { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 5000, amountMinor: Math.ceil(fixedActual.subscriptions / 2) }
+      ]
+    },
+    {
+      id: `plan-${monthPrefix}-food`,
+      section: "budget_buckets",
+      categoryName: "Food & Drinks",
+      label: "Food",
+      plannedMinor: foodPlanned,
+      actualMinor: foodActual,
+      note: "Main shared dining budget for the month.",
+      ownershipType: "shared",
+      splits: [
+        { personId: "person-tim", personName: "Tim", ratioBasisPoints: sharedFoodSplit.tim, amountMinor: Math.round(foodActual * (sharedFoodSplit.tim / 10000)) },
+        { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: sharedFoodSplit.joyce, amountMinor: foodActual - Math.round(foodActual * (sharedFoodSplit.tim / 10000)) }
+      ]
+    },
+    {
+      id: `plan-${monthPrefix}-groceries`,
+      section: "budget_buckets",
+      categoryName: "Groceries",
+      label: "Groceries",
+      plannedMinor: groceriesPlanned,
+      actualMinor: groceriesActual,
+      note: "Shared grocery budget.",
+      ownershipType: "shared",
+      splits: [
+        { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: Math.floor(groceriesActual / 2) },
+        { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 5000, amountMinor: Math.ceil(groceriesActual / 2) }
+      ]
+    },
+    {
+      id: `plan-${monthPrefix}-transport`,
+      section: "budget_buckets",
+      categoryName: "Public Transport",
+      label: "Transport",
+      plannedMinor: transportPlanned,
+      actualMinor: transportActual,
+      note: "Flexible commuting budget.",
+      ownershipType: "shared",
+      splits: [
+        { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: Math.floor(transportActual / 2) },
+        { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 5000, amountMinor: Math.ceil(transportActual / 2) }
+      ]
+    },
+    {
+      id: `plan-${monthPrefix}-shopping`,
+      section: "budget_buckets",
+      categoryName: "Shopping",
+      label: "Shopping",
+      plannedMinor: shoppingPlanned,
+      actualMinor: shoppingActual,
+      note: "Personal shopping budget.",
+      ownershipType: "direct",
+      ownerName: "Joyce",
+      splits: [{ personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 10000, amountMinor: shoppingActual }]
+    },
+    {
+      id: `plan-${monthPrefix}-hobbies`,
+      section: "budget_buckets",
+      categoryName: "Sport & Hobbies",
+      label: "Sports & Hobbies",
+      plannedMinor: hobbiesPlanned,
+      actualMinor: hobbiesActual,
+      note: "Personal sports and hobby budget.",
+      ownershipType: "direct",
+      ownerName: "Tim",
+      splits: [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor: hobbiesActual }]
+    }
+  ];
+
+  const entries: EntryDto[] = [
+    {
+      id: `txn-${monthPrefix}-food`,
+      date: `${monthPrefix}-03`,
+      description: "Dining total",
+      accountName: "UOB One",
+      categoryName: "Food & Drinks",
+      entryType: "expense",
+      ownershipType: "shared",
+      amountMinor: foodActual,
+      offsetsCategory: false,
+      note: "Booked against the monthly dining budget.",
+      splits: planRows.find((row) => row.id === `plan-${monthPrefix}-food`)!.splits
+    },
+    {
+      id: `txn-${monthPrefix}-groceries`,
+      date: `${monthPrefix}-06`,
+      description: "Grocery total",
+      accountName: "Citi Rewards",
+      categoryName: "Groceries",
+      entryType: "expense",
+      ownershipType: "shared",
+      amountMinor: groceriesActual,
+      offsetsCategory: false,
+      note: "Booked against the monthly grocery budget.",
+      splits: planRows.find((row) => row.id === `plan-${monthPrefix}-groceries`)!.splits
+    },
+    {
+      id: `txn-${monthPrefix}-shopping`,
+      date: `${monthPrefix}-12`,
+      description: "Shopping total",
+      accountName: "UOB Lady's",
+      categoryName: "Shopping",
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Joyce",
+      amountMinor: shoppingActual,
+      offsetsCategory: false,
+      note: "Larger personal purchase in this sample month.",
+      splits: [{ personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 10000, amountMinor: shoppingActual }]
+    },
+    {
+      id: `txn-${monthPrefix}-tax`,
+      date: `${monthPrefix}-14`,
+      description: "Tax payment",
+      accountName: "UOB Savings",
+      categoryName: "Tax",
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim",
+      amountMinor: fixedActual.tax,
+      offsetsCategory: false,
+      splits: [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor: fixedActual.tax }]
+    },
+    {
+      id: `txn-${monthPrefix}-hobbies`,
+      date: `${monthPrefix}-19`,
+      description: "Hobby spend",
+      accountName: "UOB One",
+      categoryName: "Sport & Hobbies",
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim",
+      amountMinor: hobbiesActual,
+      offsetsCategory: false,
+      note: "Booked against the monthly hobby budget.",
+      splits: [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor: hobbiesActual }]
+    }
+  ];
+
+  return { planRows, entries };
+}
+
+const octoberMonthPlanRows: MonthPlanRowDto[] = [
   {
     id: "plan-oct-savings",
     section: "planned_items",
@@ -268,7 +602,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     dayOfWeek: "Wed",
     plannedMinor: 180000,
     actualMinor: 180000,
-    note: "SAVE ~30% : build up 3mos emergency fund",
+    note: "Regular monthly savings allocation.",
     ownershipType: "direct",
     ownerName: "Tim",
     splits: [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor: 180000 }]
@@ -282,7 +616,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     dayOfWeek: "Wed",
     plannedMinor: 0,
     actualMinor: 0,
-    note: "INVEST ~10% : moved 10% to savings for now",
+    note: "Investment contribution is paused in this sample month.",
     ownershipType: "direct",
     ownerName: "Tim",
     splits: [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor: 0 }]
@@ -296,7 +630,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     dayOfWeek: "Wed",
     plannedMinor: 26000,
     actualMinor: 23407,
-    note: "$250 for Family is roughly around 10,500PHP",
+    note: "Shared family support allocation.",
     ownershipType: "shared",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 11704 },
@@ -339,7 +673,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     plannedMinor: 2033,
     actualMinor: 2033,
     accountName: "Citi Rewards",
-    note: "Total 40.65",
+    note: "Shared home internet allocation.",
     ownershipType: "shared",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 1017 },
@@ -356,7 +690,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     plannedMinor: 2297,
     actualMinor: 0,
     accountName: "Citi Rewards",
-    note: "Total 45.94",
+    note: "Shared streaming subscription.",
     ownershipType: "shared",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 0 },
@@ -372,7 +706,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     dayOfWeek: "Thu",
     plannedMinor: 74700,
     actualMinor: 74700,
-    note: "will consider GP as my offering starting July",
+    note: "Recurring giving allocation.",
     ownershipType: "shared",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 6000, amountMinor: 44820 },
@@ -418,7 +752,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     plannedMinor: 7500,
     actualMinor: 3939,
     accountName: "Citi Rewards",
-    note: "Actual Total: 78.77 (Estimated Total 150)",
+    note: "Utilities tracked below the original estimate this month.",
     ownershipType: "shared",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 1970 },
@@ -449,7 +783,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     plannedMinor: 1399,
     actualMinor: 0,
     accountName: "Citi Rewards",
-    note: "Total 27.98",
+    note: "Shared media subscription.",
     ownershipType: "shared",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 0 },
@@ -482,7 +816,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     plannedMinor: 2500,
     actualMinor: 3302,
     accountName: "UOB One",
-    note: "Actual Total: 66.03 (Estimated Total 50)",
+    note: "Electricity landed slightly above the estimate this month.",
     ownershipType: "shared",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 1651 },
@@ -515,7 +849,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     plannedMinor: 201,
     actualMinor: 201,
     accountName: "Citi Rewards",
-    note: "Total 4.01",
+    note: "Shared cloud storage subscription.",
     ownershipType: "shared",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 101 },
@@ -546,7 +880,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     plannedMinor: 0,
     actualMinor: 0,
     accountName: "Citi Rewards",
-    note: "Total 49.90",
+    note: "Annual subscription placeholder.",
     ownershipType: "shared",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 0 },
@@ -560,7 +894,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     label: "UrbanCompany",
     plannedMinor: 7200,
     actualMinor: 0,
-    note: "Total 144",
+    note: "Flexible home services placeholder.",
     ownershipType: "shared",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 0 },
@@ -574,7 +908,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     label: "HDB",
     plannedMinor: 3500,
     actualMinor: 0,
-    note: "Total 70",
+    note: "Shared housing charge placeholder.",
     ownershipType: "shared",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 0 },
@@ -621,7 +955,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     label: "Public Transport",
     plannedMinor: 6000,
     actualMinor: 0,
-    note: "Budget",
+    note: "Flexible commuting budget.",
     ownershipType: "shared",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 0 },
@@ -635,7 +969,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     label: "Food",
     plannedMinor: 65000,
     actualMinor: 71319,
-    note: "Budget: Daily Food budget average 650/30 = ~21, 391.08 solo | 322.11 shared",
+    note: "Main shared dining budget for the month.",
     ownershipType: "shared",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5500, amountMinor: 39225 },
@@ -649,7 +983,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     label: "Groceries",
     plannedMinor: 14000,
     actualMinor: 24251,
-    note: "Budget",
+    note: "Shared grocery budget.",
     ownershipType: "shared",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 12126 },
@@ -663,7 +997,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     label: "Taxi",
     plannedMinor: 8000,
     actualMinor: 0,
-    note: "Budget",
+    note: "Flexible ride budget.",
     ownershipType: "shared",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 0 },
@@ -677,7 +1011,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     label: "Gifts",
     plannedMinor: 5000,
     actualMinor: 0,
-    note: "Budget",
+    note: "General gifts budget.",
     ownershipType: "shared",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 0 },
@@ -691,7 +1025,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     label: "Entertainment",
     plannedMinor: 7000,
     actualMinor: 0,
-    note: "Budget",
+    note: "General entertainment budget.",
     ownershipType: "shared",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 0 },
@@ -705,7 +1039,7 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     label: "Sports & Hobbies",
     plannedMinor: 10450,
     actualMinor: 0,
-    note: "Budget - Active SG 9.50 bookings x 11",
+    note: "Personal sports and hobby budget.",
     ownershipType: "direct",
     ownerName: "Tim",
     splits: [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor: 0 }]
@@ -717,14 +1051,14 @@ export const monthPlanRows: MonthPlanRowDto[] = [
     label: "Shopping",
     plannedMinor: 10000,
     actualMinor: 57496,
-    note: "Budget",
+    note: "Personal shopping budget.",
     ownershipType: "direct",
     ownerName: "Joyce",
     splits: [{ personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 10000, amountMinor: 57496 }]
   }
 ];
 
-export const monthEntries: EntryDto[] = [
+const octoberMonthEntries: EntryDto[] = [
   {
     id: "txn-oct-food-1",
     date: "2025-10-03",
@@ -735,7 +1069,7 @@ export const monthEntries: EntryDto[] = [
     ownershipType: "shared",
     amountMinor: 71319,
     offsetsCategory: false,
-    note: "Mapped from the October budget bucket actual.",
+    note: "Booked against the monthly dining budget.",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5500, amountMinor: 39225 },
       { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 4500, amountMinor: 32094 }
@@ -751,7 +1085,7 @@ export const monthEntries: EntryDto[] = [
     ownershipType: "shared",
     amountMinor: 24251,
     offsetsCategory: false,
-    note: "Mapped from the October budget bucket actual.",
+    note: "Booked against the monthly grocery budget.",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 12126 },
       { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 5000, amountMinor: 12125 }
@@ -768,7 +1102,7 @@ export const monthEntries: EntryDto[] = [
     ownerName: "Joyce",
     amountMinor: 57496,
     offsetsCategory: false,
-    note: "Joyce-heavy month driver.",
+    note: "Larger personal purchase in this sample month.",
     splits: [{ personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 10000, amountMinor: 57496 }]
   },
   {
@@ -867,6 +1201,24 @@ export const monthEntries: EntryDto[] = [
   }
 ];
 
+const genericSeededArtifacts = summaryMonthSeeds
+  .filter((seed) => seed.month !== "2025-10")
+  .map((seed) => buildGenericMonthArtifacts({
+    month: seed.month,
+    planned: seed.estimatedExpensesMinor,
+    actual: seed.realExpensesMinor
+  }));
+
+export const monthPlanRows: MonthPlanRowDto[] = [
+  ...genericSeededArtifacts.flatMap((artifact) => artifact.planRows),
+  ...octoberMonthPlanRows
+];
+
+export const monthEntries: EntryDto[] = [
+  ...genericSeededArtifacts.flatMap((artifact) => artifact.entries),
+  ...octoberMonthEntries
+];
+
 export const importBatches: ImportBatchDto[] = [
   {
     id: "import-2025-10-citi",
@@ -875,7 +1227,7 @@ export const importBatches: ImportBatchDto[] = [
     importedAt: "2026-04-03T10:15:00Z",
     status: "completed",
     transactionCount: 42,
-    note: "Some household subscriptions are still represented as grouped plan rows."
+    note: "Demo import batch with grouped recurring charges."
   },
   {
     id: "import-2025-10-uob",

@@ -65,6 +65,14 @@ That distinction matters because the system needs to answer questions like:
 - future in-app AI can support or challenge the user’s explanation for unusual
   months instead of only summarizing totals
 
+### 5. Demo state
+
+- the current prototype now stores its demo settings in D1
+- this starts with salary-per-person and reseed timestamp
+- the settings screen can reseed the believable default demo and refresh the bootstrap
+- this is the first persistence step before full repositories for category edits,
+  month planning edits, and entries edits
+
 ## Domain model principles
 
 - `imports` are first-class and must support targeted rollback of a bad batch
