@@ -216,7 +216,16 @@ export function App() {
             )}
           />
           <Route path="/month" element={<MonthPanel view={view} accounts={bootstrap.accounts} />} />
-          <Route path="/entries" element={<EntriesPanel view={view} />} />
+          <Route
+            path="/entries"
+            element={(
+              <EntriesPanel
+                view={view}
+                categories={categories}
+                onCategoryAppearanceChange={handleCategoryAppearanceChange}
+              />
+            )}
+          />
           <Route
             path="/imports"
             element={<ImportsPanel importsPage={bootstrap.importsPage} viewLabel={view.label} />}
@@ -1188,7 +1197,127 @@ function MonthPanel({ view, accounts }) {
   );
 }
 
-function EntriesPanel({ view }) {
+function EntriesPanel({ view, categories, onCategoryAppearanceChange }) {
+  const [entries, setEntries] = useState(view.monthPage.entries);
+  const [selectedScope, setSelectedScope] = useState(view.monthPage.selectedScope);
+  const [entryFilters, setEntryFilters] = useState({
+    wallet: "",
+    category: "",
+    person: "",
+    type: ""
+  });
+  const [editingEntryId, setEditingEntryId] = useState(null);
+  const [entrySnapshot, setEntrySnapshot] = useState(null);
+
+  useEffect(() => {
+    setEntries(view.monthPage.entries);
+    setSelectedScope(view.monthPage.selectedScope);
+    setEditingEntryId(null);
+    setEntrySnapshot(null);
+    setEntryFilters({
+      wallet: "",
+      category: "",
+      person: "",
+      type: ""
+    });
+  }, [view]);
+
+  const wallets = useMemo(() => uniqueValues(entries.map((entry) => entry.accountName)), [entries]);
+  const categoryOptions = useMemo(() => uniqueValues(entries.map((entry) => entry.categoryName)), [entries]);
+  const people = useMemo(
+    () => uniqueValues(entries.flatMap((entry) => entry.ownershipType === "shared" ? ["Shared"] : [entry.ownerName ?? ""])),
+    [entries]
+  );
+
+  const filteredEntries = useMemo(
+    () => entries.filter((entry) => {
+      if (!entryMatchesScope(entry, view.id, selectedScope)) {
+        return false;
+      }
+      if (entryFilters.wallet && entry.accountName !== entryFilters.wallet) {
+        return false;
+      }
+      if (entryFilters.category && entry.categoryName !== entryFilters.category) {
+        return false;
+      }
+      if (entryFilters.type && entry.entryType !== entryFilters.type) {
+        return false;
+      }
+      if (entryFilters.person) {
+        if (entryFilters.person === "Shared") {
+          return entry.ownershipType === "shared";
+        }
+        return entry.ownerName === entryFilters.person || entry.splits.some((split) => split.personName === entryFilters.person);
+      }
+      return true;
+    }),
+    [entries, entryFilters, selectedScope, view.id]
+  );
+
+  const groupedEntries = useMemo(() => groupEntriesByDate(filteredEntries), [filteredEntries]);
+
+  function beginEntryEdit(entry) {
+    if (editingEntryId === entry.id) {
+      return;
+    }
+
+    setEditingEntryId(entry.id);
+    setEntrySnapshot({ ...entry, splits: entry.splits.map((split) => ({ ...split })) });
+  }
+
+  function finishEntryEdit() {
+    setEditingEntryId(null);
+    setEntrySnapshot(null);
+  }
+
+  function cancelEntryEdit() {
+    if (!entrySnapshot) {
+      setEditingEntryId(null);
+      return;
+    }
+
+    setEntries((current) => current.map((entry) => (
+      entry.id === entrySnapshot.id ? entrySnapshot : entry
+    )));
+    setEditingEntryId(null);
+    setEntrySnapshot(null);
+  }
+
+  function updateEntry(entryId, patch) {
+    setEntries((current) => current.map((entry) => (
+      entry.id === entryId ? { ...entry, ...patch } : entry
+    )));
+  }
+
+  function updateEntrySplit(entryId, percentage) {
+    setEntries((current) => current.map((entry) => {
+      if (entry.id !== entryId || entry.ownershipType !== "shared" || entry.splits.length < 2) {
+        return entry;
+      }
+
+      const basisPoints = Math.max(0, Math.min(10000, Math.round(percentage * 100)));
+      const complement = 10000 - basisPoints;
+      const firstAmount = Math.round((entry.amountMinor * basisPoints) / 10000);
+      const secondAmount = entry.amountMinor - firstAmount;
+
+      return {
+        ...entry,
+        splits: [
+          {
+            ...entry.splits[0],
+            ratioBasisPoints: basisPoints,
+            amountMinor: firstAmount
+          },
+          {
+            ...entry.splits[1],
+            ratioBasisPoints: complement,
+            amountMinor: secondAmount
+          }
+        ]
+      };
+    }));
+  }
+
   return (
     <article className="panel">
       <div className="panel-head">
@@ -1196,50 +1325,225 @@ function EntriesPanel({ view }) {
           <h2>{messages.tabs.entries}</h2>
           <span className="panel-context">{messages.entries.viewing(view.label)}</span>
         </div>
+        <div className="scope-toggle pill-row scope-toggle-row">
+          {view.monthPage.scopes.map((scope) => (
+            <button
+              key={scope.key}
+              className={`pill scope-button ${scope.key === selectedScope ? "is-active" : ""}`}
+              type="button"
+              onClick={() => setSelectedScope(scope.key)}
+            >
+              {scope.label}
+            </button>
+          ))}
+        </div>
       </div>
-      <div className="entry-list">
-        {view.monthPage.entries.map((entry) => (
-          <article key={entry.id} className="entry-card" id={entry.id}>
-            <div className="entry-main">
-              <div>
-                <div className="entry-topline">
-                  <span className="pill subtle">{entry.entryType}{entry.transferDirection ? `:${entry.transferDirection}` : ""}</span>
-                  <span className="pill subtle">{entry.ownershipType}</span>
-                </div>
-                <h3>{entry.description}</h3>
-                <p>{messages.common.triplet(entry.date, entry.accountName, entry.categoryName)}</p>
-              </div>
-              <strong className={entry.entryType === "income" ? "positive" : ""}>{money(entry.amountMinor)}</strong>
+
+      <section className="entries-filter-bar">
+        <FilterSelect
+          label={messages.entries.wallet}
+          value={entryFilters.wallet}
+          options={wallets}
+          emptyLabel={messages.entries.allWallets}
+          onChange={(value) => setEntryFilters((current) => ({ ...current, wallet: value }))}
+        />
+        <FilterSelect
+          label={messages.entries.category}
+          value={entryFilters.category}
+          options={categoryOptions}
+          emptyLabel={messages.entries.allCategories}
+          onChange={(value) => setEntryFilters((current) => ({ ...current, category: value }))}
+        />
+        <FilterSelect
+          label={messages.entries.person}
+          value={entryFilters.person}
+          options={people}
+          emptyLabel={messages.entries.allPeople}
+          onChange={(value) => setEntryFilters((current) => ({ ...current, person: value }))}
+        />
+        <FilterSelect
+          label={messages.entries.type}
+          value={entryFilters.type}
+          options={["expense", "income", "transfer"]}
+          emptyLabel={messages.entries.allTypes}
+          onChange={(value) => setEntryFilters((current) => ({ ...current, type: value }))}
+        />
+      </section>
+
+      <div className="entries-date-groups">
+        {groupedEntries.map((group) => (
+          <section key={group.date} className="entries-date-group">
+            <div className="entries-date-head">
+              <strong>{formatDateOnly(group.date)}</strong>
+              <span className={getAmountToneClass(group.netMinor)}>{messages.entries.dateNet}: {money(group.netMinor)}</span>
             </div>
-            <div className="entry-meta">
-              <div>
-                <span>{messages.entries.scope}</span>
-                <p>
-                  {entry.ownerName ?? messages.entries.shared}
-                  {entry.offsetsCategory ? messages.entries.offsetsCategory : ""}
-                </p>
-              </div>
-              <div>
-                <span>{messages.entries.split}</span>
-                <p>{entry.splits.map((split) => `${split.personName} ${split.ratioBasisPoints / 100}%`).join(" • ")}</p>
-              </div>
-              {entry.linkedTransfer ? (
-                <div className="entry-link">
-                  <span>{messages.entries.counterpart}</span>
-                  <a href={`#${entry.linkedTransfer.transactionId}`}>
-                    {messages.common.contextWithView(
-                      entry.linkedTransfer.accountName,
-                      money(entry.linkedTransfer.amountMinor)
-                    )}
-                  </a>
-                </div>
-              ) : null}
+
+            <div className="entries-rows">
+              {group.entries.map((entry) => {
+                const isEditing = editingEntryId === entry.id;
+                const ownerLabel = entry.ownershipType === "shared" ? "Shared" : entry.ownerName ?? messages.common.emptyValue;
+                const splitPercent = entry.ownershipType === "shared" && entry.splits[0]
+                  ? entry.splits[0].ratioBasisPoints / 100
+                  : null;
+                const category = getCategory(categories, entry);
+                const transferLabel = entry.entryType === "transfer"
+                  ? entry.transferDirection === "in" ? "Transfer in" : "Transfer out"
+                  : null;
+                const transferDetail = entry.linkedTransfer
+                  ? `${entry.transferDirection === "out" ? "To" : "From"} ${entry.linkedTransfer.accountName}`
+                  : entry.accountName;
+
+                return (
+                  <div key={entry.id} className={`entry-row ${isEditing ? "is-editing" : ""}`} id={entry.id}>
+                    <button type="button" className="entry-row-main" onClick={() => beginEntryEdit(entry)}>
+                      <div className="entry-row-category">
+                        <CategoryAppearancePopover
+                          category={category}
+                          onChange={onCategoryAppearanceChange}
+                        />
+                        <strong>{category?.name ?? entry.categoryName}</strong>
+                      </div>
+                      <div className="entry-row-description">
+                        <strong>{entry.description}</strong>
+                        <p>{entry.note || messages.common.emptyValue}</p>
+                      </div>
+                      <div className="entry-row-transfer">
+                        <strong>{transferDetail}</strong>
+                        <p>{entry.accountName}</p>
+                      </div>
+                      <div className="entry-row-right">
+                        <div className="entry-pills">
+                          {transferLabel ? <span className="entry-chip entry-chip-transfer">{transferLabel}</span> : null}
+                          <span className={`entry-chip ${entry.ownershipType === "shared" ? "entry-chip-shared" : "entry-chip-owner"}`}>{ownerLabel}</span>
+                          {entry.ownershipType === "shared" && splitPercent != null ? (
+                            <span className="entry-chip entry-chip-split">{splitPercent}%</span>
+                          ) : null}
+                        </div>
+                        <strong className={getAmountToneClass(getSignedAmountMinor(entry))}>{money(getSignedAmountMinor(entry))}</strong>
+                      </div>
+                    </button>
+
+                    {isEditing ? (
+                      <div className="entry-inline-editor">
+                        <div className="entry-edit-grid">
+                          <label>
+                            <span>{messages.entries.editDate}</span>
+                            <input
+                              className="table-edit-input"
+                              type="date"
+                              value={entry.date}
+                              onChange={(event) => updateEntry(entry.id, { date: event.target.value })}
+                            />
+                          </label>
+                          <label>
+                            <span>{messages.entries.editCategory}</span>
+                            <select
+                              className="table-edit-input"
+                              value={entry.categoryName}
+                              onChange={(event) => updateEntry(entry.id, { categoryName: event.target.value })}
+                            >
+                              {categoryOptions.map((option) => (
+                                <option key={option} value={option}>{option}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <label>
+                            <span>{messages.entries.editWallet}</span>
+                            <select
+                              className="table-edit-input"
+                              value={entry.accountName}
+                              onChange={(event) => updateEntry(entry.id, { accountName: event.target.value })}
+                            >
+                              {wallets.map((option) => (
+                                <option key={option} value={option}>{option}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <label>
+                            <span>{messages.entries.editOwner}</span>
+                            <select
+                              className="table-edit-input"
+                              value={entry.ownershipType === "shared" ? "Shared" : (entry.ownerName ?? "")}
+                              onChange={(event) => {
+                                const nextValue = event.target.value;
+                                if (nextValue === "Shared") {
+                                  updateEntry(entry.id, { ownershipType: "shared", ownerName: undefined });
+                                } else {
+                                  updateEntry(entry.id, { ownershipType: "direct", ownerName: nextValue });
+                                }
+                              }}
+                            >
+                              {people.map((person) => (
+                                <option key={person} value={person}>{person}</option>
+                              ))}
+                            </select>
+                          </label>
+                          {entry.ownershipType === "shared" && splitPercent != null ? (
+                            <label>
+                              <span>{messages.entries.editSplit}</span>
+                              <input
+                                className="table-edit-input table-edit-input-money"
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={splitPercent}
+                                onChange={(event) => updateEntrySplit(entry.id, Number(event.target.value))}
+                              />
+                            </label>
+                          ) : null}
+                        </div>
+                        <div className="entry-writing-grid">
+                          <label>
+                            <span>{messages.entries.editDescription}</span>
+                            <textarea
+                              className="table-edit-input table-edit-textarea"
+                              value={entry.description}
+                              onChange={(event) => updateEntry(entry.id, { description: event.target.value })}
+                              rows={3}
+                            />
+                          </label>
+                          <label>
+                            <span>{messages.entries.editNote}</span>
+                            <textarea
+                              className="table-edit-input table-edit-textarea"
+                              value={entry.note ?? ""}
+                              onChange={(event) => updateEntry(entry.id, { note: event.target.value })}
+                              rows={3}
+                            />
+                          </label>
+                        </div>
+                        <div className="entry-inline-actions">
+                          <button type="button" className="icon-action" aria-label="Done editing entry" onClick={finishEntryEdit}>
+                            <Check size={16} />
+                          </button>
+                          <button type="button" className="icon-action subtle-cancel" aria-label="Cancel editing entry" onClick={cancelEntryEdit}>
+                            <X size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
-            {entry.note ? <p className="entry-note">{entry.note}</p> : null}
-          </article>
+          </section>
         ))}
       </div>
     </article>
+  );
+}
+
+function FilterSelect({ label, value, options, emptyLabel, onChange }) {
+  return (
+    <label className="entries-filter">
+      <span className="entries-filter-label">{label}</span>
+      <select className="table-edit-input" value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="">{emptyLabel}</option>
+        {options.map((option) => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -1347,6 +1651,13 @@ function getCategory(categories, item) {
     }
   }
 
+  if (item.categoryName) {
+    const byName = categories.find((category) => category.name === item.categoryName);
+    if (byName) {
+      return byName;
+    }
+  }
+
   return categories.find((category) => category.name === item.label) ?? null;
 }
 
@@ -1411,6 +1722,70 @@ function getSortValue(row, key, monthKey) {
     default:
       return row[key] ?? "";
   }
+}
+
+function uniqueValues(values) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function entryMatchesScope(entry, viewId, scope) {
+  if (viewId === "household") {
+    return scope === "shared" ? entry.ownershipType === "shared" : true;
+  }
+
+  const personId = viewId;
+  if (scope === "shared") {
+    return entry.ownershipType === "shared" && entry.splits.some((split) => split.personId === personId);
+  }
+
+  if (scope === "direct") {
+    return entry.ownershipType === "direct" && entry.splits.some((split) => split.personId === personId);
+  }
+
+  return entry.splits.some((split) => split.personId === personId);
+}
+
+function groupEntriesByDate(entries) {
+  const grouped = new Map();
+
+  for (const entry of entries) {
+    const current = grouped.get(entry.date) ?? { date: entry.date, entries: [], netMinor: 0 };
+    current.entries.push(entry);
+    current.netMinor += getSignedAmountMinor(entry);
+    grouped.set(entry.date, current);
+  }
+
+  return [...grouped.values()].sort((left, right) => right.date.localeCompare(left.date));
+}
+
+function getSignedAmountMinor(entry) {
+  if (entry.entryType === "income" || (entry.entryType === "transfer" && entry.transferDirection === "in")) {
+    return entry.amountMinor;
+  }
+
+  if (entry.entryType === "transfer" && entry.transferDirection === "out") {
+    return -entry.amountMinor;
+  }
+
+  return -entry.amountMinor;
+}
+
+function getAmountToneClass(amountMinor) {
+  if (amountMinor > 0) {
+    return "positive";
+  }
+  if (amountMinor < 0) {
+    return "negative";
+  }
+  return "";
+}
+
+function formatDateOnly(value) {
+  return new Intl.DateTimeFormat("en-SG", {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  }).format(new Date(value));
 }
 
 function money(valueMinor) {
