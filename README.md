@@ -108,7 +108,13 @@ npm run dev
 
 Then open:
 
-- [http://127.0.0.1:5173](http://127.0.0.1:5173)
+- [http://localhost:5173](http://localhost:5173)
+
+Do not open `http://localhost:8787` for normal frontend work. That is the Worker
+API/dev server, not the Vite UI server, so React hot reload will not work there.
+
+If `127.0.0.1:5173` is refused on your machine, use `localhost:5173`. Vite may be
+bound to `localhost` only in local development.
 
 What these commands do:
 
@@ -118,6 +124,7 @@ What these commands do:
   - applies [`schema.sql`](/Users/tim/22m/ai-projects/monies_map/schema.sql) to the local D1 database
 - `npm run dev`
   - runs Vite on `5173` and the Worker API on `8787`
+  - Vite on `5173` is the URL that auto-refreshes when you edit frontend files
 
 ## Suggested workflow
 
