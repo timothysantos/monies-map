@@ -112,11 +112,16 @@ function buildMonthPage(selectedPersonId: string, selectedScope: PersonScope): M
     month: "2025-10",
     selectedPersonId,
     selectedScope,
-    scopes: [
-      { key: "direct", label: "Direct ownership" },
-      { key: "shared", label: "Shared" },
-      { key: "direct_plus_shared", label: "Direct + Shared" }
-    ],
+    scopes: selectedPersonId === "household"
+      ? [
+          { key: "direct_plus_shared", label: "Combined" },
+          { key: "shared", label: "Shared" }
+        ]
+      : [
+          { key: "direct", label: "Direct ownership" },
+          { key: "shared", label: "Shared" },
+          { key: "direct_plus_shared", label: "Direct + Shared" }
+        ],
     metricCards: [
       {
         label: "Planned spend",
@@ -155,7 +160,7 @@ function buildMonthPage(selectedPersonId: string, selectedScope: PersonScope): M
     categoryShareChart: buildDonutChart(visibleEntries),
     notes: [
       selectedPersonId === "household"
-        ? "The monthly view is planning-first: planned items on top, budget buckets below, and transaction analytics as a supporting layer."
+        ? "The household monthly view combines person-owned plan rows with shared plan rows into one unioned household plan."
         : `${selectedPersonId === "person-tim" ? "Tim" : "Joyce"} sees only direct rows plus weighted shared rows in this demo.`,
       "Over-granular planning would mean budgeting too many unstable one-off merchants individually instead of leaving them inside a broader bucket."
     ],
@@ -168,9 +173,15 @@ function buildSummaryMonthsForView(personId: string) {
 }
 
 function buildPlanRowsForView(personId: string, scope: PersonScope): MonthPlanRowDto[] {
-  return monthPlanRows
+  const visibleRows = monthPlanRows
     .filter((row) => rowMatchesView(row.ownershipType, row.splits, personId, scope))
     .map((row) => adjustPlanRowForView(row, personId));
+
+  if (personId === "household" && scope === "direct_plus_shared") {
+    return combineHouseholdPlanRows(visibleRows);
+  }
+
+  return visibleRows;
 }
 
 function filterEntriesForView(entries: EntryDto[], personId: string, scope: PersonScope): EntryDto[] {
@@ -231,6 +242,46 @@ function adjustPlanRowForView(row: MonthPlanRowDto, personId: string): MonthPlan
     actualMinor: matchingSplit.amountMinor,
     note: `${row.note ?? "Shared row"} • weighted to ${matchingSplit.personName}'s share`
   };
+}
+
+function combineHouseholdPlanRows(rows: MonthPlanRowDto[]): MonthPlanRowDto[] {
+  const grouped = new Map<string, MonthPlanRowDto>();
+
+  for (const row of rows) {
+    const key = [
+      row.section,
+      row.categoryName,
+      row.label,
+      row.dayLabel ?? "",
+      row.accountName ?? ""
+    ].join("::");
+
+    const existing = grouped.get(key);
+    if (!existing) {
+      grouped.set(key, {
+        ...row,
+        ownershipType: row.ownershipType === "shared" ? "shared" : "direct",
+        ownerName: undefined
+      });
+      continue;
+    }
+
+    grouped.set(key, {
+      ...existing,
+      plannedMinor: existing.plannedMinor + row.plannedMinor,
+      actualMinor: existing.actualMinor + row.actualMinor,
+      ownershipType: existing.ownershipType === "shared" || row.ownershipType === "shared" ? "shared" : "direct",
+      note: mergeNotes(existing.note, row.note),
+      splits: [...existing.splits, ...row.splits]
+    });
+  }
+
+  return [...grouped.values()];
+}
+
+function mergeNotes(left?: string, right?: string) {
+  const unique = new Set([left, right].filter(Boolean));
+  return unique.size ? [...unique].join(" | ") : undefined;
 }
 
 function buildDonutChart(entries: EntryDto[]): DonutChartDatumDto[] {

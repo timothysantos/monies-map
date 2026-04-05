@@ -51,10 +51,11 @@ That distinction matters because the system needs to answer questions like:
 
 - summary view shows month-by-month planned versus actual, savings targets,
   notes, and drill-downs
-- monthly view shows planned items, budget buckets, notes, and linked entries
+- monthly view shows income rows, planned items, budget buckets, notes, and linked entries
 - entries view shows the raw rows for the selected month with filters and edit
   capability
-- person toggle supports `Direct ownership`, `Shared`, and `Direct + Shared`
+- person views support `Direct ownership`, `Shared`, and `Direct + Shared`
+- household monthly view supports `Combined` and `Shared`
 - account filter shows source account and institution
 
 ### 4. Analysis
@@ -82,8 +83,14 @@ That distinction matters because the system needs to answer questions like:
 
 Each month should support two distinct planning layers:
 
+- income
 - planned items
 - budget buckets
+
+Monthly planning rows are person-owned first. Tim and Joyce can each have their
+own monthly plan rows, and the household view should be a derived combined view
+over those per-person plans instead of a separate manually maintained household
+plan.
 
 Planned items are suitable for rows such as:
 
@@ -144,13 +151,26 @@ analytics.
 
 ### Month page
 
+- income section
 - planned items section
 - budget buckets section
 - planned versus actual comparison by row
 - category breakdown as a secondary analytic view
-- per-person and shared perspectives
+- person and household perspectives
 - monthly notes
 - links from summary rows or charts to matching entries
+
+Household month scopes:
+
+- `Combined`: union of person-owned and shared planning rows, merged by the
+  appropriate row identity for reporting
+- `Shared`: shared planning rows only
+
+Person month scopes:
+
+- `Direct ownership`: direct rows only for that person
+- `Shared`: shared rows allocated to that person by split ratio
+- `Direct + Shared`: direct rows plus that person's weighted share of shared rows
 
 ### Entries page
 

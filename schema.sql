@@ -181,6 +181,33 @@ CREATE TABLE IF NOT EXISTS monthly_budgets (
   FOREIGN KEY (category_id) REFERENCES categories(id)
 );
 
+CREATE TABLE IF NOT EXISTS monthly_plan_rows (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  year INTEGER NOT NULL,
+  month INTEGER NOT NULL CHECK (month BETWEEN 1 AND 12),
+  person_id TEXT,
+  ownership_type TEXT NOT NULL DEFAULT 'direct' CHECK (
+    ownership_type IN ('direct', 'shared')
+  ),
+  section_key TEXT NOT NULL CHECK (
+    section_key IN ('income', 'planned_items', 'budget_buckets')
+  ),
+  category_id TEXT,
+  label TEXT NOT NULL,
+  plan_date TEXT,
+  account_id TEXT,
+  planned_amount_minor INTEGER NOT NULL DEFAULT 0,
+  actual_amount_minor INTEGER NOT NULL DEFAULT 0,
+  notes TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id),
+  FOREIGN KEY (person_id) REFERENCES people(id),
+  FOREIGN KEY (category_id) REFERENCES categories(id),
+  FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
 CREATE TABLE IF NOT EXISTS monthly_snapshots (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL,

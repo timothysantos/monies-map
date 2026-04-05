@@ -43,6 +43,10 @@ loan, insurance, and other known items.
 Budget buckets are flexible categories, such as food, groceries, transport, and
 shopping. These are not supposed to predict every single merchant in advance.
 
+Monthly planning is person-based first. Tim and Joyce can have different month
+plans, and the household month view should be derived by combining those plans,
+not by maintaining a separate duplicate household plan.
+
 The point is not only to log transactions. The point is to compare plan versus
 actual and understand why the month moved.
 
@@ -69,6 +73,15 @@ into the app.
 - editing and saving changes
 - Google login
 - in-app AI analysis
+
+## Why does household monthly view behave differently from person view?
+
+At the household level, `Direct ownership` is not very meaningful as a primary
+planning lens. The household monthly view should focus on:
+
+- `Combined`: both people's direct plans plus shared plans, merged into one
+  household view
+- `Shared`: shared-only planning rows
 
 ## Why do notes matter so much?
 
