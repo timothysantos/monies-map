@@ -67,6 +67,7 @@ export const accounts: AccountDto[] = [
 ];
 
 export const categories: CategoryDto[] = [
+  { id: "cat-transfer", name: "Transfer", slug: "transfer", iconKey: "arrow-right-left", colorHex: "#B15E2F", sortOrder: 5, isSystem: true },
   { id: "cat-food-drinks", name: "Food & Drinks", slug: "food-drinks", iconKey: "utensils", colorHex: "#1F7A63", sortOrder: 10, isSystem: true },
   { id: "cat-shopping", name: "Shopping", slug: "shopping", iconKey: "shopping-bag", colorHex: "#D4B35D", sortOrder: 20, isSystem: true },
   { id: "cat-family-personal", name: "Family & Personal", slug: "family-personal", iconKey: "users", colorHex: "#4F8FD6", sortOrder: 30, isSystem: true },

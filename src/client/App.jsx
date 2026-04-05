@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import {
+  ArrowRightLeft,
   BusFront,
   Check,
   Clapperboard,
@@ -35,6 +36,7 @@ const moneyFormatter = new Intl.NumberFormat("en-SG", {
 });
 
 const ICON_OPTIONS = [
+  { key: "arrow-right-left", label: "Transfer", Icon: ArrowRightLeft },
   { key: "utensils", label: "Food", Icon: UtensilsCrossed },
   { key: "shopping-bag", label: "Shopping", Icon: ShoppingBag },
   { key: "users", label: "Family", Icon: UsersRound },
@@ -1375,7 +1377,7 @@ function EntriesPanel({ view, categories, onCategoryAppearanceChange }) {
           <section key={group.date} className="entries-date-group">
             <div className="entries-date-head">
               <strong>{formatDateOnly(group.date)}</strong>
-              <span className={getAmountToneClass(group.netMinor)}>{messages.entries.dateNet}: {money(group.netMinor)}</span>
+              <span>{messages.entries.dateNet}: {money(group.netMinor)}</span>
             </div>
 
             <div className="entries-rows">
