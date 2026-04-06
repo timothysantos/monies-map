@@ -1,5 +1,6 @@
 import { buildBootstrapDto } from "./domain/bootstrap";
 import { enterEmptyState, reseedDemoSettings } from "./domain/demo-settings";
+import { deleteMonthPlan, duplicateMonthPlan, resetMonthPlan } from "./domain/app-repository";
 import { parseCsv } from "./lib/csv";
 import { json } from "./server/json";
 
@@ -33,6 +34,33 @@ export default {
     if (url.pathname === "/api/demo/empty" && request.method === "POST") {
       const demo = await enterEmptyState(env.DB);
       return json({ ok: true, demo });
+    }
+
+    if (url.pathname === "/api/months/duplicate" && request.method === "POST") {
+      const sourceMonth = url.searchParams.get("source");
+      if (!sourceMonth) {
+        return json({ ok: false, error: "Missing source month" }, 400);
+      }
+
+      return json({ ok: true, ...(await duplicateMonthPlan(env.DB, sourceMonth)) });
+    }
+
+    if (url.pathname === "/api/months/reset" && request.method === "POST") {
+      const month = url.searchParams.get("month");
+      if (!month) {
+        return json({ ok: false, error: "Missing month" }, 400);
+      }
+
+      return json({ ok: true, ...(await resetMonthPlan(env.DB, month)) });
+    }
+
+    if (url.pathname === "/api/months/delete" && request.method === "POST") {
+      const month = url.searchParams.get("month");
+      if (!month) {
+        return json({ ok: false, error: "Missing month" }, 400);
+      }
+
+      return json({ ok: true, ...(await deleteMonthPlan(env.DB, month)) });
     }
 
     if (url.pathname === "/api/import/csv" && request.method === "POST") {

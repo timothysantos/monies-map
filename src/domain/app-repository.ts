@@ -32,7 +32,7 @@ const PERSON_IDS: Record<string, string> = {
 
 const SHARED_ACCOUNT_INSTITUTION = "DBS";
 
-export async function ensureDemoSeeded(db: D1Database, settings: DemoSettings) {
+export async function ensureSeedData(db: D1Database, settings: DemoSettings) {
   await ensureDemoSchema(db);
   const existing = await db
     .prepare("SELECT COUNT(*) as count FROM households WHERE id = ?")
@@ -445,7 +445,7 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
   }
 }
 
-export async function loadSeededSummaryMonths(db: D1Database, personScope: string): Promise<SummaryMonthDto[]> {
+export async function loadSummaryMonths(db: D1Database, personScope: string): Promise<SummaryMonthDto[]> {
   const result = await db
     .prepare(`
       SELECT year, month, total_income_minor, total_expense_minor, note
@@ -480,7 +480,7 @@ export async function loadSeededSummaryMonths(db: D1Database, personScope: strin
     .sort((left, right) => left.month.localeCompare(right.month));
 }
 
-export async function loadSeededMonthIncomeRows(
+export async function loadMonthIncomeRows(
   db: D1Database,
   selectedPersonId: string,
   month = "2025-10"
@@ -556,7 +556,268 @@ export async function loadSeededMonthIncomeRows(
   }));
 }
 
-export async function loadSeededHousehold(db: D1Database): Promise<HouseholdDto> {
+export async function duplicateMonthPlan(db: D1Database, sourceMonth: string) {
+  const targetMonth = nextMonthKey(sourceMonth);
+  const [sourceYear, sourceMonthNumber] = sourceMonth.split("-").map(Number);
+  const [targetYear, targetMonthNumber] = targetMonth.split("-").map(Number);
+
+  const existingTarget = await db
+    .prepare(`
+      SELECT COUNT(*) as count
+      FROM monthly_plan_rows
+      WHERE household_id = ? AND year = ? AND month = ?
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, targetYear, targetMonthNumber)
+    .first<{ count: number }>();
+
+  if ((existingTarget?.count ?? 0) > 0) {
+    return { targetMonth, created: false };
+  }
+
+  const rows = await db
+    .prepare(`
+      SELECT
+        id, person_id, ownership_type, section_key, category_id, label,
+        plan_date, account_id, planned_amount_minor, notes
+      FROM monthly_plan_rows
+      WHERE household_id = ? AND year = ? AND month = ?
+      ORDER BY created_at
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, sourceYear, sourceMonthNumber)
+    .all<{
+      id: string;
+      person_id: string | null;
+      ownership_type: "direct" | "shared";
+      section_key: "income" | "planned_items" | "budget_buckets";
+      category_id: string | null;
+      label: string;
+      plan_date: string | null;
+      account_id: string | null;
+      planned_amount_minor: number;
+      notes: string | null;
+    }>();
+
+  const rowIds = rows.results.map((row) => row.id);
+  const splitMap = new Map<string, { person_id: string; ratio_basis_points: number }[]>();
+  if (rowIds.length) {
+    const placeholders = rowIds.map(() => "?").join(", ");
+    const splits = await db
+      .prepare(`
+        SELECT monthly_plan_row_id, person_id, ratio_basis_points
+        FROM monthly_plan_row_splits
+        WHERE monthly_plan_row_id IN (${placeholders})
+        ORDER BY created_at
+      `)
+      .bind(...rowIds)
+      .all<{
+        monthly_plan_row_id: string;
+        person_id: string;
+        ratio_basis_points: number;
+      }>();
+
+    for (const split of splits.results) {
+      const current = splitMap.get(split.monthly_plan_row_id) ?? [];
+      current.push(split);
+      splitMap.set(split.monthly_plan_row_id, current);
+    }
+  }
+
+  const idMap = new Map<string, string>();
+
+  for (const row of rows.results) {
+    const nextId = `${row.id}-dup-${targetMonth}`;
+    idMap.set(row.id, nextId);
+    await db
+      .prepare(`
+        INSERT INTO monthly_plan_rows (
+          id, household_id, year, month, person_id, ownership_type,
+          section_key, category_id, label, plan_date, account_id,
+          planned_amount_minor, actual_amount_minor, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .bind(
+        nextId,
+        DEMO_HOUSEHOLD_ID,
+        targetYear,
+        targetMonthNumber,
+        row.person_id,
+        row.ownership_type,
+        row.section_key,
+        row.category_id,
+        row.label,
+        shiftPlanDate(row.plan_date, targetYear, targetMonthNumber),
+        row.account_id,
+        row.planned_amount_minor,
+        0,
+        row.notes
+      )
+      .run();
+
+    for (const split of splitMap.get(row.id) ?? []) {
+      await db
+        .prepare(`
+          INSERT INTO monthly_plan_row_splits (
+            id, monthly_plan_row_id, person_id, ratio_basis_points, amount_minor
+          ) VALUES (?, ?, ?, ?, ?)
+        `)
+        .bind(
+          `${nextId}-${split.person_id}`,
+          nextId,
+          split.person_id,
+          split.ratio_basis_points,
+          0
+        )
+        .run();
+    }
+  }
+
+  const personScopes = ["household", "person-tim", "person-joyce"];
+  for (const personScope of personScopes) {
+    const incomeRows = await loadMonthIncomeRows(db, personScope, targetMonth);
+    const planRows = await loadMonthPlanRows(db, targetMonth);
+    const visibleRows = buildSnapshotRowsForScope(planRows, personScope);
+    const plannedExpenseMinor = visibleRows.reduce((sum, row) => sum + row.plannedMinor, 0);
+    const incomeMinor = incomeRows.reduce((sum, row) => sum + row.plannedMinor, 0);
+    const savingsGoalMinor = visibleRows.filter((row) => row.label === "Savings").reduce((sum, row) => sum + row.plannedMinor, 0);
+
+    await db
+      .prepare(`
+        INSERT INTO monthly_snapshots (
+          id, household_id, year, month, person_scope,
+          total_income_minor, estimated_expense_minor, total_expense_minor,
+          savings_goal_minor, total_net_minor, total_shared_minor, note
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .bind(
+        `snapshot-${personScope}-${targetMonth}`,
+        DEMO_HOUSEHOLD_ID,
+        targetYear,
+        targetMonthNumber,
+        personScope,
+        incomeMinor,
+        plannedExpenseMinor,
+        0,
+        savingsGoalMinor,
+        incomeMinor - plannedExpenseMinor,
+        0,
+        `Created from ${sourceMonth} planning template.`
+      )
+      .run();
+  }
+
+  return { targetMonth, created: true };
+}
+
+export async function resetMonthPlan(db: D1Database, month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  await clearMonthData(db, month, year, monthNumber);
+
+  const personScopes = ["household", "person-tim", "person-joyce"];
+  for (const personScope of personScopes) {
+    await db
+      .prepare(`
+        INSERT INTO monthly_snapshots (
+          id, household_id, year, month, person_scope,
+          total_income_minor, estimated_expense_minor, total_expense_minor,
+          savings_goal_minor, total_net_minor, total_shared_minor, note
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          total_income_minor = excluded.total_income_minor,
+          estimated_expense_minor = excluded.estimated_expense_minor,
+          total_expense_minor = excluded.total_expense_minor,
+          savings_goal_minor = excluded.savings_goal_minor,
+          total_net_minor = excluded.total_net_minor,
+          total_shared_minor = excluded.total_shared_minor,
+          note = excluded.note
+      `)
+      .bind(
+        `snapshot-${personScope}-${month}`,
+        DEMO_HOUSEHOLD_ID,
+        year,
+        monthNumber,
+        personScope,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        "Month reset to empty."
+      )
+      .run();
+  }
+
+  return { month, reset: true };
+}
+
+export async function deleteMonthPlan(db: D1Database, month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  await clearMonthData(db, month, year, monthNumber);
+
+  await db
+    .prepare(`
+      DELETE FROM monthly_snapshots
+      WHERE household_id = ?
+        AND year = ?
+        AND month = ?
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, year, monthNumber)
+    .run();
+
+  return { month, deleted: true };
+}
+
+async function clearMonthData(db: D1Database, month: string, year: number, monthNumber: number) {
+  await db
+    .prepare(`
+      DELETE FROM transaction_splits
+      WHERE transaction_id IN (
+        SELECT id
+        FROM transactions
+        WHERE household_id = ?
+          AND transaction_date >= ?
+          AND transaction_date < ?
+      )
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, `${month}-01`, nextMonthKey(month) + "-01")
+    .run();
+
+  await db
+    .prepare(`
+      DELETE FROM transactions
+      WHERE household_id = ?
+        AND transaction_date >= ?
+        AND transaction_date < ?
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, `${month}-01`, nextMonthKey(month) + "-01")
+    .run();
+
+  await db
+    .prepare(`
+      DELETE FROM monthly_plan_row_splits
+      WHERE monthly_plan_row_id IN (
+        SELECT id
+        FROM monthly_plan_rows
+        WHERE household_id = ?
+          AND year = ?
+          AND month = ?
+      )
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, year, monthNumber)
+    .run();
+
+  await db
+    .prepare(`
+      DELETE FROM monthly_plan_rows
+      WHERE household_id = ?
+        AND year = ?
+        AND month = ?
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, year, monthNumber)
+    .run();
+}
+
+export async function loadHousehold(db: D1Database): Promise<HouseholdDto> {
   const household = await db
     .prepare("SELECT id, name, base_currency FROM households WHERE id = ?")
     .bind(DEMO_HOUSEHOLD_ID)
@@ -575,7 +836,7 @@ export async function loadSeededHousehold(db: D1Database): Promise<HouseholdDto>
   };
 }
 
-export async function loadSeededAccounts(db: D1Database): Promise<AccountDto[]> {
+export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
   const result = await db
     .prepare(`
       SELECT
@@ -614,7 +875,7 @@ export async function loadSeededAccounts(db: D1Database): Promise<AccountDto[]> 
   }));
 }
 
-export async function loadSeededCategories(db: D1Database): Promise<CategoryDto[]> {
+export async function loadCategories(db: D1Database): Promise<CategoryDto[]> {
   const result = await db
     .prepare(`
       SELECT id, name, slug, icon_key, color_hex, sort_order, is_system
@@ -644,7 +905,7 @@ export async function loadSeededCategories(db: D1Database): Promise<CategoryDto[
   }));
 }
 
-export async function loadSeededImportBatches(db: D1Database): Promise<ImportBatchDto[]> {
+export async function loadImportBatches(db: D1Database): Promise<ImportBatchDto[]> {
   const result = await db
     .prepare(`
       SELECT id, source_label, source_type, imported_at, status, note
@@ -673,7 +934,7 @@ export async function loadSeededImportBatches(db: D1Database): Promise<ImportBat
   }));
 }
 
-export async function loadSeededMonthPlanRows(db: D1Database, month = "2025-10"): Promise<MonthPlanRowDto[]> {
+export async function loadMonthPlanRows(db: D1Database, month = "2025-10"): Promise<MonthPlanRowDto[]> {
   const [year, monthNumber] = month.split("-").map(Number);
   const rows = await db
     .prepare(`
@@ -755,7 +1016,7 @@ export async function loadSeededMonthPlanRows(db: D1Database, month = "2025-10")
     }));
 }
 
-export async function loadSeededEntries(db: D1Database, month = "2025-10"): Promise<EntryDto[]> {
+export async function loadEntries(db: D1Database, month = "2025-10"): Promise<EntryDto[]> {
   const [year, monthNumber] = month.split("-").map(Number);
   const monthStart = `${year}-${String(monthNumber).padStart(2, "0")}-01`;
   const nextMonthDate = new Date(Date.UTC(year, monthNumber, 1));
@@ -885,6 +1146,42 @@ function buildPlanDate(month: string, dayLabel?: string) {
 function inferMonthKeyFromPlanRow(id: string) {
   const match = id.match(/plan-(\d{4}-\d{2})-/);
   return match?.[1] ?? "2025-10";
+}
+
+function nextMonthKey(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const date = new Date(Date.UTC(year, monthNumber, 1));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function shiftPlanDate(planDate: string | null, year: number, month: number) {
+  if (!planDate) {
+    return null;
+  }
+
+  const day = new Date(`${planDate}T00:00:00Z`).getUTCDate();
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function buildSnapshotRowsForScope(rows: MonthPlanRowDto[], personScope: string) {
+  if (personScope === "household") {
+    return rows;
+  }
+
+  return rows
+    .filter((row) => row.splits.some((split) => split.personId === personScope))
+    .map((row) => {
+      if (row.ownershipType === "direct") {
+        return row;
+      }
+
+      const split = row.splits.find((item) => item.personId === personScope);
+      const ratio = (split?.ratioBasisPoints ?? 0) / 10000;
+      return {
+        ...row,
+        plannedMinor: Math.round(row.plannedMinor * ratio)
+      };
+    });
 }
 
 function weekdayLabel(date: string) {

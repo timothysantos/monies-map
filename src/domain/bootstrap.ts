@@ -1,16 +1,16 @@
 import { defaultDemoSettings, household as defaultHousehold } from "./demo-data";
 import { loadDemoSettings } from "./demo-settings";
 import {
-  ensureDemoSeeded,
-  loadSeededAccounts,
-  loadSeededCategories,
-  loadSeededEntries,
-  loadSeededHousehold,
-  loadSeededImportBatches,
-  loadSeededMonthIncomeRows,
-  loadSeededMonthPlanRows,
-  loadSeededSummaryMonths
-} from "./demo-repository";
+  ensureSeedData,
+  loadAccounts,
+  loadCategories,
+  loadEntries,
+  loadHousehold,
+  loadImportBatches,
+  loadMonthIncomeRows,
+  loadMonthPlanRows,
+  loadSummaryMonths
+} from "./app-repository";
 import type {
   AppBootstrapDto,
   CategoryDto,
@@ -54,22 +54,22 @@ export async function buildBootstrapDto(
       }
     };
   }
-  await ensureDemoSeeded(db, demo);
+  await ensureSeedData(db, demo);
   const [household, accounts, categories, importBatches, monthEntries, monthPlanRows] = await Promise.all([
-    loadSeededHousehold(db),
-    loadSeededAccounts(db),
-    loadSeededCategories(db),
-    loadSeededImportBatches(db),
-    loadSeededEntries(db, selectedMonth),
-    loadSeededMonthPlanRows(db, selectedMonth)
+    loadHousehold(db),
+    loadAccounts(db),
+    loadCategories(db),
+    loadImportBatches(db),
+    loadEntries(db, selectedMonth),
+    loadMonthPlanRows(db, selectedMonth)
   ]);
   const [householdSummaryMonths, timSummaryMonths, joyceSummaryMonths, householdIncomeRows, timIncomeRows, joyceIncomeRows] = await Promise.all([
-    loadSeededSummaryMonths(db, "household"),
-    loadSeededSummaryMonths(db, "person-tim"),
-    loadSeededSummaryMonths(db, "person-joyce"),
-    loadSeededMonthIncomeRows(db, "household", selectedMonth),
-    loadSeededMonthIncomeRows(db, "person-tim", selectedMonth),
-    loadSeededMonthIncomeRows(db, "person-joyce", selectedMonth)
+    loadSummaryMonths(db, "household"),
+    loadSummaryMonths(db, "person-tim"),
+    loadSummaryMonths(db, "person-joyce"),
+    loadMonthIncomeRows(db, "household", selectedMonth),
+    loadMonthIncomeRows(db, "person-tim", selectedMonth),
+    loadMonthIncomeRows(db, "person-joyce", selectedMonth)
   ]);
   const summaryMonthsByView = {
     household: householdSummaryMonths,
