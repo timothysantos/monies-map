@@ -70,6 +70,8 @@ That distinction matters because the system needs to answer questions like:
 - the current prototype now stores its demo settings in D1
 - this starts with salary-per-person and reseed timestamp
 - the settings screen can reseed the believable default demo and refresh the bootstrap
+- even the empty-state mode keeps the default category catalog available so a
+  fresh import still starts from the intended baseline taxonomy
 - this is the first persistence step before full repositories for category edits,
   month planning edits, and entries edits
 

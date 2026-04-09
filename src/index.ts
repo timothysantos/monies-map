@@ -4,7 +4,10 @@ import {
   archiveAccountRecord,
   buildImportPreview,
   commitImportBatch,
+  createEntryRecord,
+  createCategoryRecord,
   createAccountRecord,
+  deleteCategoryRecord,
   deleteMonthPlan,
   deleteMonthPlanRow,
   duplicateMonthPlan,
@@ -185,6 +188,7 @@ export default {
         description?: string;
         accountName?: string;
         categoryName?: string;
+        amountMinor?: number;
         entryType?: "expense" | "income" | "transfer";
         transferDirection?: "in" | "out";
         ownershipType?: "direct" | "shared";
@@ -205,6 +209,7 @@ export default {
           description: body.description,
           accountName: body.accountName,
           categoryName: body.categoryName,
+          amountMinor: body.amountMinor,
           entryType: body.entryType,
           transferDirection: body.transferDirection,
           ownershipType: body.ownershipType,
@@ -213,6 +218,55 @@ export default {
           splitBasisPoints: body.splitBasisPoints
         }))
       });
+    }
+
+    if (url.pathname === "/api/entries/create" && request.method === "POST") {
+      const body = await request.json<{
+        date?: string;
+        description?: string;
+        accountName?: string;
+        categoryName?: string;
+        amountMinor?: number;
+        entryType?: "expense" | "income" | "transfer";
+        transferDirection?: "in" | "out";
+        ownershipType?: "direct" | "shared";
+        ownerName?: string;
+        note?: string;
+        splitBasisPoints?: number;
+      }>();
+
+      if (
+        !body.date
+        || !body.description
+        || !body.accountName
+        || !body.categoryName
+        || typeof body.amountMinor !== "number"
+        || !body.entryType
+        || !body.ownershipType
+      ) {
+        return json({ ok: false, error: "Missing entry create fields" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await createEntryRecord(env.DB, {
+            date: body.date,
+            description: body.description,
+            accountName: body.accountName,
+            categoryName: body.categoryName,
+            amountMinor: body.amountMinor,
+            entryType: body.entryType,
+            transferDirection: body.transferDirection,
+            ownershipType: body.ownershipType,
+            ownerName: body.ownerName,
+            note: body.note,
+            splitBasisPoints: body.splitBasisPoints
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to create entry" }, 400);
+      }
     }
 
     if (url.pathname === "/api/transfers/link" && request.method === "POST") {
@@ -270,16 +324,66 @@ export default {
         return json({ ok: false, error: "Missing category id" }, 400);
       }
 
-      return json({
-        ok: true,
-        ...(await updateCategoryRecord(env.DB, {
-          categoryId: body.categoryId,
-          name: body.name,
-          slug: body.slug,
-          iconKey: body.iconKey,
-          colorHex: body.colorHex
-        }))
-      });
+      try {
+        return json({
+          ok: true,
+          ...(await updateCategoryRecord(env.DB, {
+            categoryId: body.categoryId,
+            name: body.name,
+            slug: body.slug,
+            iconKey: body.iconKey,
+            colorHex: body.colorHex
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update category" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/categories/create" && request.method === "POST") {
+      const body = await request.json<{
+        name?: string;
+        slug?: string;
+        iconKey?: string;
+        colorHex?: string;
+      }>();
+
+      if (!body.name?.trim()) {
+        return json({ ok: false, error: "Missing category name" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await createCategoryRecord(env.DB, {
+            name: body.name,
+            slug: body.slug,
+            iconKey: body.iconKey,
+            colorHex: body.colorHex
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to create category" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/categories/delete" && request.method === "POST") {
+      const body = await request.json<{ categoryId?: string }>();
+
+      if (!body.categoryId) {
+        return json({ ok: false, error: "Missing category id" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await deleteCategoryRecord(env.DB, {
+            categoryId: body.categoryId
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to delete category" }, 400);
+      }
     }
 
     if (url.pathname === "/api/month-plan/save" && request.method === "POST") {

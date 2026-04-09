@@ -184,6 +184,44 @@ export async function reseedDemoData(db: D1Database, settings: DemoSettings) {
   await seedDemoData(db, settings);
 }
 
+export async function seedEmptyStateReferenceData(db: D1Database) {
+  await ensureDemoSchema(db);
+
+  await db
+    .prepare("INSERT INTO households (id, name, base_currency) VALUES (?, ?, ?)")
+    .bind(demoHousehold.id, demoHousehold.name, demoHousehold.baseCurrency)
+    .run();
+
+  for (const person of demoHousehold.people) {
+    await db
+      .prepare("INSERT INTO people (id, household_id, display_name, role) VALUES (?, ?, ?, ?)")
+      .bind(person.id, demoHousehold.id, person.name, person.id === "person-tim" ? "owner" : "partner")
+      .run();
+  }
+
+  for (const category of demoCategories) {
+    await db
+      .prepare(`
+        INSERT INTO categories (
+          id, household_id, name, slug, reporting_group,
+          icon_key, color_hex, sort_order, is_system
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .bind(
+        category.id,
+        demoHousehold.id,
+        category.name,
+        category.slug,
+        category.slug,
+        category.iconKey,
+        category.colorHex,
+        category.sortOrder,
+        category.isSystem ? 1 : 0
+      )
+      .run();
+  }
+}
+
 export async function clearDemoData(db: D1Database) {
   await db.prepare("PRAGMA defer_foreign_keys = ON").run();
   const deletions = [
@@ -843,6 +881,7 @@ export async function updateEntryRecord(
     description: string;
     accountName: string;
     categoryName: string;
+    amountMinor?: number;
     entryType?: "expense" | "income" | "transfer";
     transferDirection?: "in" | "out";
     ownershipType: "direct" | "shared";
@@ -892,6 +931,9 @@ export async function updateEntryRecord(
     throw new Error(`Unknown entry: ${input.entryId}`);
   }
 
+  const resolvedAmountMinor = typeof input.amountMinor === "number" && input.amountMinor > 0
+    ? input.amountMinor
+    : Number(transaction.amount_minor);
   const resolvedEntryType = input.entryType ?? transaction.entry_type;
   const resolvedTransferDirection = resolvedEntryType === "transfer"
     ? (input.transferDirection ?? transaction.transfer_direction ?? "out")
@@ -904,6 +946,7 @@ export async function updateEntryRecord(
         transaction_date = ?,
         description = ?,
         account_id = ?,
+        amount_minor = ?,
         entry_type = ?,
         transfer_direction = ?,
         transfer_group_id = ?,
@@ -918,6 +961,7 @@ export async function updateEntryRecord(
       input.date,
       input.description,
       account.id,
+      resolvedAmountMinor,
       resolvedEntryType,
       resolvedTransferDirection,
       resolvedEntryType === "transfer" ? transaction.transfer_group_id : null,
@@ -955,7 +999,7 @@ export async function updateEntryRecord(
         input.entryId,
         ownerPersonId,
         10000,
-        transaction.amount_minor
+        resolvedAmountMinor
       )
       .run();
   }
@@ -973,8 +1017,8 @@ export async function updateEntryRecord(
 
     const firstBasisPoints = Math.max(0, Math.min(10000, input.splitBasisPoints ?? 5000));
     const secondBasisPoints = 10000 - firstBasisPoints;
-    const firstAmount = Math.round((transaction.amount_minor * firstBasisPoints) / 10000);
-    const secondAmount = transaction.amount_minor - firstAmount;
+    const firstAmount = Math.round((resolvedAmountMinor * firstBasisPoints) / 10000);
+    const secondAmount = resolvedAmountMinor - firstAmount;
 
     await db
       .prepare(`
@@ -1012,6 +1056,78 @@ export async function updateEntryRecord(
   });
 
   return { entryId: input.entryId, updated: true };
+}
+
+export async function createEntryRecord(
+  db: D1Database,
+  input: {
+    date: string;
+    description: string;
+    accountName: string;
+    categoryName: string;
+    amountMinor: number;
+    entryType: "expense" | "income" | "transfer";
+    transferDirection?: "in" | "out";
+    ownershipType: "direct" | "shared";
+    ownerName?: string;
+    note?: string;
+    splitBasisPoints?: number;
+  }
+) {
+  if (typeof input.amountMinor !== "number" || input.amountMinor <= 0) {
+    throw new Error("Amount must be greater than zero");
+  }
+
+  const accountId = await resolveAccountId(db, input.accountName);
+  const categoryName = input.entryType === "transfer" ? "Transfer" : input.categoryName;
+  const categoryId = await resolveCategoryId(db, categoryName);
+  const ownerPersonId = input.ownershipType === "direct"
+    ? await resolvePersonId(db, input.ownerName)
+    : null;
+  const entryId = `txn-${crypto.randomUUID()}`;
+
+  await db
+    .prepare(`
+      INSERT INTO transactions (
+        id, household_id, account_id, transaction_date,
+        description, amount_minor, currency, entry_type, transfer_direction,
+        category_id, ownership_type, owner_person_id, offsets_category, note
+      ) VALUES (?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, ?, 0, ?)
+    `)
+    .bind(
+      entryId,
+      DEMO_HOUSEHOLD_ID,
+      accountId,
+      input.date,
+      input.description,
+      input.amountMinor,
+      input.entryType,
+      input.entryType === "transfer" ? (input.transferDirection ?? "out") : null,
+      categoryId,
+      input.ownershipType,
+      ownerPersonId,
+      input.note ?? null
+    )
+    .run();
+
+  await syncTransactionSplits(db, {
+    transactionId: entryId,
+    ownershipType: input.ownershipType,
+    amountMinor: input.amountMinor,
+    ownerName: input.ownershipType === "direct" ? input.ownerName : undefined,
+    splitBasisPoints: input.ownershipType === "shared" ? input.splitBasisPoints : undefined
+  });
+
+  await recalculateMonthlySnapshots(db, input.date.slice(0, 7));
+
+  await recordAuditEvent(db, {
+    entityType: "transaction",
+    entityId: entryId,
+    action: "entry_created",
+    detail: `Created ${input.entryType} entry ${input.description} on ${input.date} in ${input.accountName}.`
+  });
+
+  return { entryId, created: true };
 }
 
 export async function linkTransferPair(
@@ -1296,6 +1412,118 @@ export async function updateCategoryRecord(
     .run();
 
   return { categoryId: input.categoryId, updated: true };
+}
+
+export async function createCategoryRecord(
+  db: D1Database,
+  input: {
+    name: string;
+    slug?: string;
+    iconKey?: string;
+    colorHex?: string;
+  }
+) {
+  const name = input.name.trim();
+  const slug = input.slug?.trim() || slugify(name);
+  const iconKey = input.iconKey ?? "receipt";
+  const colorHex = input.colorHex ?? "#6A7A73";
+
+  const existing = await db
+    .prepare(`
+      SELECT id
+      FROM categories
+      WHERE household_id = ? AND (slug = ? OR lower(name) = lower(?))
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, slug, name)
+    .first<{ id: string }>();
+
+  if (existing) {
+    throw new Error(`Category already exists: ${name}`);
+  }
+
+  const sortOrderResult = await db
+    .prepare("SELECT COALESCE(MAX(sort_order), 0) AS max_sort_order FROM categories WHERE household_id = ?")
+    .bind(DEMO_HOUSEHOLD_ID)
+    .first<{ max_sort_order: number }>();
+
+  const categoryId = `cat-${slug}-${crypto.randomUUID().slice(0, 8)}`;
+  await db
+    .prepare(`
+      INSERT INTO categories (
+        id, household_id, name, slug, reporting_group,
+        icon_key, color_hex, sort_order, is_system
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+    `)
+    .bind(
+      categoryId,
+      DEMO_HOUSEHOLD_ID,
+      name,
+      slug,
+      slug,
+      iconKey,
+      colorHex,
+      (sortOrderResult?.max_sort_order ?? 0) + 10
+    )
+    .run();
+
+  await recordAuditEvent(db, {
+    entityType: "category",
+    entityId: categoryId,
+    action: "category_created",
+    detail: `Created category ${name}.`
+  });
+
+  return { categoryId, created: true };
+}
+
+export async function deleteCategoryRecord(
+  db: D1Database,
+  input: {
+    categoryId: string;
+  }
+) {
+  const existing = await db
+    .prepare(`
+      SELECT id, name
+      FROM categories
+      WHERE household_id = ? AND id = ?
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, input.categoryId)
+    .first<{ id: string; name: string }>();
+
+  if (!existing) {
+    throw new Error(`Unknown category: ${input.categoryId}`);
+  }
+
+  const references = await Promise.all([
+    db.prepare("SELECT id FROM transactions WHERE household_id = ? AND category_id = ? LIMIT 1")
+      .bind(DEMO_HOUSEHOLD_ID, input.categoryId)
+      .first<{ id: string }>(),
+    db.prepare("SELECT id FROM monthly_plan_rows WHERE household_id = ? AND category_id = ? LIMIT 1")
+      .bind(DEMO_HOUSEHOLD_ID, input.categoryId)
+      .first<{ id: string }>(),
+    db.prepare("SELECT id FROM monthly_budgets WHERE household_id = ? AND category_id = ? LIMIT 1")
+      .bind(DEMO_HOUSEHOLD_ID, input.categoryId)
+      .first<{ id: string }>()
+  ]);
+
+  if (references.some(Boolean)) {
+    throw new Error(`Category is in use and cannot be deleted: ${existing.name}`);
+  }
+
+  await db
+    .prepare("DELETE FROM categories WHERE household_id = ? AND id = ?")
+    .bind(DEMO_HOUSEHOLD_ID, input.categoryId)
+    .run();
+
+  await recordAuditEvent(db, {
+    entityType: "category",
+    entityId: existing.id,
+    action: "category_deleted",
+    detail: `Deleted category ${existing.name}.`
+  });
+
+  return { categoryId: existing.id, deleted: true };
 }
 
 export async function updateMonthlySnapshotNote(
@@ -3190,8 +3418,8 @@ function normalizeImportRow(rawRow: Record<string, string>) {
   const note = firstDefined(entries, ["note", "notes", "remarks"]);
 
   const signedAmount = parseMoneyToMinor(firstDefined(entries, ["amount", "transaction amount", "amt", "value"]));
-  const debitAmount = parseMoneyToMinor(firstDefined(entries, ["debit", "withdrawal", "outflow"]));
-  const creditAmount = parseMoneyToMinor(firstDefined(entries, ["credit", "deposit", "inflow"]));
+  const debitAmount = parseMoneyToMinor(firstDefined(entries, ["expense", "debit", "withdrawal", "outflow"]));
+  const creditAmount = parseMoneyToMinor(firstDefined(entries, ["income", "credit", "deposit", "inflow"]));
   const transferFlag = firstDefined(entries, ["type", "transaction type"])?.toLowerCase() === "transfer";
 
   let amountMinor = 0;
@@ -3211,7 +3439,13 @@ function normalizeImportRow(rawRow: Record<string, string>) {
 
   if (transferFlag) {
     entryType = "transfer";
-    transferDirection = typeof signedAmount === "number" && signedAmount >= 0 ? "in" : "out";
+    if (typeof creditAmount === "number" && creditAmount > 0) {
+      transferDirection = "in";
+    } else if (typeof debitAmount === "number" && debitAmount > 0) {
+      transferDirection = "out";
+    } else {
+      transferDirection = typeof signedAmount === "number" && signedAmount >= 0 ? "in" : "out";
+    }
   }
 
   const errors: string[] = [];

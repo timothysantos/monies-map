@@ -23,6 +23,7 @@ The core questions behind the app are:
 - summary dashboard
 - monthly planning dashboard
 - entries view
+- manual single-entry creation from the entries view
 - imports view
 - FAQ view
 - demo data shaped like the intended product and planning model
@@ -84,6 +85,44 @@ The current demo uses a believable household scenario with:
 - household salary: SGD 6,000
 
 Those assumptions can be reseeded from the in-app settings view.
+The default category catalog also persists through reseed, local wipes, and the
+current empty-state path, so imports still start from the same baseline set of
+categories, icons, and colors.
+
+## What are the default app categories?
+
+The current default category catalog is:
+
+- `Income` — icon `receipt` — color `#1F7A63`
+- `Transfer` — icon `arrow-right-left` — color `#C97B47`
+- `Savings` — icon `receipt` — color `#7C8791`
+- `Investments` — icon `banknote` — color `#8FAE4B`
+- `Salary` — icon `badge-dollar-sign` — color `#22B573`
+- `Extra Income` — icon `banknote-arrow-up` — color `#D5A24B`
+- `Other - Income` — icon `wallet-cards` — color `#B8875D`
+- `Subscriptions MO` — icon `washing-machine` — color `#E96A7A`
+- `Subscriptions YR` — icon `washing-machine` — color `#F08FA0`
+- `Food & Drinks` — icon `utensils` — color `#F7A21B`
+- `Shopping` — icon `shopping-bag` — color `#D4B35D`
+- `Family & Personal` — icon `users` — color `#4F8FD6`
+- `Home` — icon `house` — color `#F85A53`
+- `Church` — icon `church` — color `#F062A6`
+- `Tax` — icon `banknote` — color `#CC63D8`
+- `Groceries` — icon `shopping-cart` — color `#F08B43`
+- `Travel` — icon `plane` — color `#567CC9`
+- `Loans` — icon `wallet-cards` — color `#A06C5B`
+- `Sports & Hobbies` — icon `dumbbell` — color `#66D2CF`
+- `Bills` — icon `lightbulb` — color `#62C7B2`
+- `Education` — icon `graduation-cap` — color `#7D86F2`
+- `Insurance` — icon `shield` — color `#5EA89B`
+- `Fees` — icon `receipt` — color `#8B78E6`
+- `Beauty` — icon `receipt` — color `#D56BDD`
+- `Entertainment` — icon `clapperboard` — color `#FFA51A`
+- `Healthcare` — icon `heart-pulse` — color `#D86B73`
+- `Gifts` — icon `gift` — color `#C98A5A`
+- `Other` — icon `wallet-cards` — color `#717379`
+- `Public Transport` — icon `bus` — color `#56A4C9`
+- `Taxi` — icon `car-front` — color `#BDD93C`
 
 ## Why does household monthly view behave differently from person view?
 
@@ -173,5 +212,13 @@ a larger review surface in Settings that links back into Entries for cleanup.
 
 ## Does it already support real CSV import?
 
-Not yet. The import preview path exists, but the real review-and-commit import
-flow still needs to be built.
+Yes, locally. The app supports CSV review, row-level cleanup, and commit into
+the local ledger.
+
+The current import review supports either:
+
+- one signed `amount` column
+- separate `expense` and `income` columns
+
+You can also override the inferred entry type, amount, account, category,
+owner, split, and note in the preview table before commit.

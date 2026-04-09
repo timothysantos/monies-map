@@ -1,5 +1,5 @@
 import { defaultDemoSettings, type DemoSettings } from "./demo-data";
-import { clearDemoData, reseedDemoData } from "./app-repository";
+import { clearDemoData, reseedDemoData, seedEmptyStateReferenceData } from "./app-repository";
 
 const DEMO_SETTINGS_KEY = "current";
 
@@ -70,5 +70,6 @@ export async function enterEmptyState(db: D1Database): Promise<DemoSettings> {
   };
   await saveDemoSettings(db, nextSettings);
   await clearDemoData(db);
+  await seedEmptyStateReferenceData(db);
   return nextSettings;
 }

@@ -1,4 +1,4 @@
-import { defaultDemoSettings, household as defaultHousehold } from "./demo-data";
+import { categories as defaultCategories, defaultDemoSettings, household as defaultHousehold } from "./demo-data";
 import { loadDemoSettings } from "./demo-settings";
 import {
   ensureSeedData,
@@ -42,15 +42,15 @@ export async function buildBootstrapDto(
   const demo = await loadDemoSettings(db).catch(() => defaultDemoSettings);
   if (demo.emptyState) {
     const emptyViews: ContextViewDto[] = [
-      buildContextView("household", "Household", selectedScope, { household: [], "person-tim": [], "person-joyce": [] }, { household: [], "person-tim": [], "person-joyce": [] }, [], [], [], [], selectedMonth, []),
-      buildContextView("person-tim", "Tim", selectedScope, { household: [], "person-tim": [], "person-joyce": [] }, { household: [], "person-tim": [], "person-joyce": [] }, [], [], [], [], selectedMonth, []),
-      buildContextView("person-joyce", "Joyce", selectedScope, { household: [], "person-tim": [], "person-joyce": [] }, { household: [], "person-tim": [], "person-joyce": [] }, [], [], [], [], selectedMonth, [])
+      buildContextView("household", "Household", selectedScope, { household: [], "person-tim": [], "person-joyce": [] }, { household: [], "person-tim": [], "person-joyce": [] }, [], [], [], [], [], selectedMonth, []),
+      buildContextView("person-tim", "Tim", selectedScope, { household: [], "person-tim": [], "person-joyce": [] }, { household: [], "person-tim": [], "person-joyce": [] }, [], [], [], [], [], selectedMonth, []),
+      buildContextView("person-joyce", "Joyce", selectedScope, { household: [], "person-tim": [], "person-joyce": [] }, { household: [], "person-tim": [], "person-joyce": [] }, [], [], [], [], [], selectedMonth, [])
     ];
 
     return {
       household: defaultHousehold,
       accounts: [],
-      categories: [],
+      categories: defaultCategories,
       views: emptyViews,
       selectedViewId: "household",
       importsPage: {

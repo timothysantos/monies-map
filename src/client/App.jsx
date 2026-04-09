@@ -3,21 +3,32 @@ import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import {
   ArrowRightLeft,
+  BadgeDollarSign,
+  Banknote,
+  BanknoteArrowUp,
   BusFront,
+  CarFront,
   Check,
+  ChevronDown,
   ChevronRight,
+  Church,
   Clapperboard,
   Dumbbell,
   Gift,
+  GraduationCap,
   HeartPulse,
+  House,
   Lightbulb,
   Plane,
   Receipt,
   SquarePen,
   ShoppingBag,
   ShoppingCart,
+  Shield,
   UtensilsCrossed,
   UsersRound,
+  WalletCards,
+  WashingMachine,
   X
 } from "lucide-react";
 import {
@@ -32,6 +43,8 @@ import {
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { messages } from "./copy/en-SG";
 import { inspectCsv } from "../lib/csv";
+import { categories as defaultCategories } from "../domain/demo-data";
+import faqMarkdown from "../../docs/faq.md?raw";
 
 const moneyFormatter = new Intl.NumberFormat("en-SG", {
   style: "currency",
@@ -45,22 +58,63 @@ const MONTH_PICKER_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "A
 
 const ICON_OPTIONS = [
   { key: "arrow-right-left", label: "Transfer", Icon: ArrowRightLeft },
+  { key: "badge-dollar-sign", label: "Salary", Icon: BadgeDollarSign },
+  { key: "banknote-arrow-up", label: "Extra income", Icon: BanknoteArrowUp },
+  { key: "banknote", label: "Bills", Icon: Banknote },
+  { key: "wallet-cards", label: "Other", Icon: WalletCards },
   { key: "utensils", label: "Food", Icon: UtensilsCrossed },
   { key: "shopping-bag", label: "Shopping", Icon: ShoppingBag },
   { key: "users", label: "Family", Icon: UsersRound },
   { key: "receipt", label: "Receipt", Icon: Receipt },
   { key: "shopping-cart", label: "Groceries", Icon: ShoppingCart },
+  { key: "house", label: "Home", Icon: House },
+  { key: "church", label: "Church", Icon: Church },
   { key: "plane", label: "Travel", Icon: Plane },
   { key: "dumbbell", label: "Hobbies", Icon: Dumbbell },
   { key: "lightbulb", label: "Bills", Icon: Lightbulb },
   { key: "clapperboard", label: "Entertainment", Icon: Clapperboard },
+  { key: "graduation-cap", label: "Education", Icon: GraduationCap },
+  { key: "shield", label: "Insurance", Icon: Shield },
   { key: "bus", label: "Transport", Icon: BusFront },
+  { key: "car-front", label: "Taxi", Icon: CarFront },
+  { key: "washing-machine", label: "Subscriptions", Icon: WashingMachine },
   { key: "heart-pulse", label: "Healthcare", Icon: HeartPulse },
   { key: "gift", label: "Gift", Icon: Gift }
 ];
 
 const ICON_REGISTRY = Object.fromEntries(ICON_OPTIONS.map((item) => [item.key, item.Icon]));
-const COLOR_OPTIONS = ["#1F7A63", "#D4B35D", "#4F8FD6", "#CC63D8", "#F08B43", "#96A95A", "#D86B73", "#56A4C9", "#6A7A73", "#C98A5A"];
+const COLOR_OPTIONS = [
+  "#1F7A63",
+  "#C97B47",
+  "#7C8791",
+  "#8FAE4B",
+  "#22B573",
+  "#D5A24B",
+  "#B8875D",
+  "#E96A7A",
+  "#F08FA0",
+  "#F7A21B",
+  "#D4B35D",
+  "#4F8FD6",
+  "#F85A53",
+  "#F062A6",
+  "#CC63D8",
+  "#F08B43",
+  "#567CC9",
+  "#A06C5B",
+  "#66D2CF",
+  "#62C7B2",
+  "#7D86F2",
+  "#5EA89B",
+  "#8B78E6",
+  "#D56BDD",
+  "#FFA51A",
+  "#D86B73",
+  "#C98A5A",
+  "#717379",
+  "#56A4C9",
+  "#BDD93C"
+];
 const FALLBACK_THEME = { colorHex: "#6A7A73", iconKey: "receipt" };
 const ACCOUNT_KIND_OPTIONS = [
   { value: "bank", label: "Bank" },
@@ -75,6 +129,8 @@ const IMPORT_FIELD_OPTIONS = [
   { value: "date", label: "Date" },
   { value: "description", label: "Description" },
   { value: "amount", label: "Amount" },
+  { value: "expense", label: "Expense amount" },
+  { value: "income", label: "Income amount" },
   { value: "account", label: "Account" },
   { value: "category", label: "Category" },
   { value: "note", label: "Note" },
@@ -199,24 +255,10 @@ export function App() {
       }
     };
 
-    const handleFocus = () => {
-      void loadBootstrap().catch(handleBootstrapFailure);
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        void loadBootstrap().catch(handleBootstrapFailure);
-      }
-    };
-
     window.addEventListener("storage", handleStorage);
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       window.removeEventListener("storage", handleStorage);
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (channel) {
         channel.close();
         syncChannelRef.current = null;
@@ -645,6 +687,7 @@ export function App() {
             element={(
               <EntriesPanel
                 view={view}
+                accounts={bootstrap.accounts}
                 categories={categories}
                 people={bootstrap.household.people}
                 onCategoryAppearanceChange={handleCategoryAppearanceChange}
@@ -672,6 +715,7 @@ export function App() {
               <SettingsPanel
                 settingsPage={bootstrap.settingsPage}
                 accounts={bootstrap.accounts}
+                categories={categories}
                 people={bootstrap.household.people}
                 viewId={view.id}
                 viewLabel={view.label}
@@ -679,7 +723,7 @@ export function App() {
               />
             )}
           />
-          <Route path="/faq" element={<FaqPanel viewLabel={view.label} />} />
+          <Route path="/faq" element={<FaqPanel viewLabel={view.label} categories={categories} />} />
           <Route path="*" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
         </Routes>
       </section>
@@ -1006,7 +1050,15 @@ function SummaryPanel({ view, selectedMonth, categories, onCategoryAppearanceCha
   );
 }
 
-function SpendingMixChart({ data, categories }) {
+function SpendingMixChart({
+  data,
+  categories,
+  totalLabel = messages.summary.totalSpend,
+  compact = false,
+  height = 360,
+  innerRadius = 70,
+  outerRadius = 120
+}) {
   const total = data.reduce((sum, item) => sum + item.valueMinor, 0);
   const chartData = data.map((item, index) => ({
     ...item,
@@ -1014,9 +1066,9 @@ function SpendingMixChart({ data, categories }) {
   }));
 
   return (
-    <div className="spending-mix-chart-shell">
-      <div className="spending-mix-chart">
-        <ResponsiveContainer width="100%" height={360}>
+    <div className={`spending-mix-chart-shell ${compact ? "is-compact" : ""}`}>
+      <div className={`spending-mix-chart ${compact ? "is-compact" : ""}`}>
+        <ResponsiveContainer width="100%" height={height}>
           <PieChart>
             <Pie
               data={chartData}
@@ -1024,8 +1076,8 @@ function SpendingMixChart({ data, categories }) {
               nameKey="label"
               cx="50%"
               cy="50%"
-              innerRadius={70}
-              outerRadius={120}
+              innerRadius={innerRadius}
+              outerRadius={outerRadius}
               paddingAngle={0}
               isAnimationActive={false}
               labelLine={false}
@@ -1037,8 +1089,8 @@ function SpendingMixChart({ data, categories }) {
             </Pie>
           </PieChart>
         </ResponsiveContainer>
-        <div className="donut-center recharts-donut-center">
-          <span>{messages.summary.totalSpend}</span>
+        <div className={`donut-center recharts-donut-center ${compact ? "is-compact" : ""}`}>
+          <span>{totalLabel}</span>
           <strong>{money(total)}</strong>
         </div>
       </div>
@@ -2415,11 +2467,15 @@ function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceCh
   );
 }
 
-function EntriesPanel({ view, categories, people, onCategoryAppearanceChange, onRefresh }) {
+function EntriesPanel({ view, accounts, categories, people, onCategoryAppearanceChange, onRefresh }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [entries, setEntries] = useState(view.monthPage.entries);
   const [editingEntryId, setEditingEntryId] = useState(null);
   const [entrySnapshot, setEntrySnapshot] = useState(null);
+  const [showEntryComposer, setShowEntryComposer] = useState(false);
+  const [showExpenseBreakdown, setShowExpenseBreakdown] = useState(false);
+  const [entryDraft, setEntryDraft] = useState(() => buildEntryDraft(view, accounts, categories, people));
+  const [entrySubmitError, setEntrySubmitError] = useState("");
   const [linkingTransferEntryId, setLinkingTransferEntryId] = useState(null);
   const [settlingTransferEntryId, setSettlingTransferEntryId] = useState(null);
   const [transferSettlementDrafts, setTransferSettlementDrafts] = useState({});
@@ -2441,14 +2497,33 @@ function EntriesPanel({ view, categories, people, onCategoryAppearanceChange, on
     setEntries(view.monthPage.entries);
     setEditingEntryId(null);
     setEntrySnapshot(null);
+    setShowEntryComposer(false);
+    setShowExpenseBreakdown(false);
+    setEntryDraft(buildEntryDraft(view, accounts, categories, people));
+    setEntrySubmitError("");
     setLinkingTransferEntryId(null);
     setSettlingTransferEntryId(null);
     setTransferSettlementDrafts({});
     setTransferDialogEntryId(null);
-  }, [view]);
+  }, [view, accounts, categories, people]);
 
   const wallets = useMemo(() => uniqueValues(entries.map((entry) => entry.accountName)), [entries]);
-  const categoryOptions = useMemo(() => uniqueValues(entries.map((entry) => entry.categoryName)), [entries]);
+  const entryCategoryOptions = useMemo(() => uniqueValues(entries.map((entry) => entry.categoryName)), [entries]);
+  const categoryOptions = useMemo(
+    () => categories
+      .slice()
+      .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name))
+      .map((category) => category.name),
+    [categories]
+  );
+  const accountOptions = useMemo(
+    () => accounts
+      .filter((account) => account.isActive !== false)
+      .slice()
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((account) => account.name),
+    [accounts]
+  );
   const peopleFilterOptions = useMemo(
     () => uniqueValues(entries.flatMap((entry) => entry.ownershipType === "shared" ? ["Shared"] : [entry.ownerName ?? ""])),
     [entries]
@@ -2494,6 +2569,28 @@ function EntriesPanel({ view, categories, people, onCategoryAppearanceChange, on
     return totals;
   }, { incomeMinor: 0, spendMinor: 0 }), [filteredEntries]);
   const entryNetMinor = entryTotals.incomeMinor - entryTotals.spendMinor;
+  const expenseBreakdown = useMemo(() => {
+    const grouped = new Map();
+    for (const entry of filteredEntries) {
+      if (entry.entryType !== "expense") {
+        continue;
+      }
+      const key = entry.categoryName;
+      const current = grouped.get(key) ?? {
+        key,
+        label: key,
+        categoryName: key,
+        valueMinor: 0,
+        entryCount: 0
+      };
+      current.valueMinor += entry.amountMinor;
+      current.entryCount += 1;
+      grouped.set(key, current);
+    }
+
+    return Array.from(grouped.values())
+      .sort((left, right) => right.valueMinor - left.valueMinor);
+  }, [filteredEntries]);
 
   function updateEntryFilter(key, value) {
     setSearchParams((current) => {
@@ -2519,11 +2616,69 @@ function EntriesPanel({ view, categories, people, onCategoryAppearanceChange, on
     });
   }
 
+  function openEntryComposer() {
+    if (showEntryComposer) {
+      closeEntryComposer();
+      return;
+    }
+
+    setEditingEntryId(null);
+    setEntrySnapshot(null);
+    setEntrySubmitError("");
+    setEntryDraft(buildEntryDraft(view, accounts, categories, people));
+    setShowEntryComposer(true);
+  }
+
+  function closeEntryComposer() {
+    setShowEntryComposer(false);
+    setEntryDraft(buildEntryDraft(view, accounts, categories, people));
+    setEntrySubmitError("");
+  }
+
+  function updateEntryDraft(patch) {
+    setEntryDraft((current) => normalizeEntryShape({ ...current, ...patch }, people));
+  }
+
+  async function saveEntryDraft() {
+    setEntrySubmitError("");
+    const primarySplit = entryDraft.ownershipType === "shared" ? entryDraft.splits[0] : undefined;
+    const response = await fetch("/api/entries/create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        date: entryDraft.date,
+        description: entryDraft.description,
+        accountName: entryDraft.accountName,
+        categoryName: entryDraft.categoryName,
+        amountMinor: entryDraft.amountMinor,
+        entryType: entryDraft.entryType,
+        transferDirection: entryDraft.transferDirection,
+        ownershipType: entryDraft.ownershipType,
+        ownerName: entryDraft.ownerName,
+        note: entryDraft.note ?? "",
+        splitBasisPoints: primarySplit?.ratioBasisPoints
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      setEntrySubmitError(data.error ?? "Failed to create entry.");
+      return;
+    }
+
+    closeEntryComposer();
+    await onRefresh();
+  }
+
   function beginEntryEdit(entry) {
     if (editingEntryId === entry.id) {
       return;
     }
 
+    setShowEntryComposer(false);
+    setEntrySubmitError("");
     setEditingEntryId(entry.id);
     setEntrySnapshot({ ...entry, splits: entry.splits.map((split) => ({ ...split })) });
   }
@@ -2549,6 +2704,7 @@ function EntriesPanel({ view, categories, people, onCategoryAppearanceChange, on
         description: currentEntry.description,
         accountName: currentEntry.accountName,
         categoryName: currentEntry.categoryName,
+        amountMinor: currentEntry.amountMinor,
         entryType: currentEntry.entryType,
         transferDirection: currentEntry.transferDirection,
         ownershipType: currentEntry.ownershipType,
@@ -2677,54 +2833,7 @@ function EntriesPanel({ view, categories, people, onCategoryAppearanceChange, on
         return entry;
       }
 
-      const nextEntry = { ...entry, ...patch };
-
-      if (typeof patch.categoryName === "string" && patch.categoryName === "Transfer") {
-        nextEntry.entryType = "transfer";
-        nextEntry.transferDirection = nextEntry.transferDirection ?? "out";
-      }
-
-      if (patch.ownershipType === "direct" && patch.ownerName) {
-        const owner = people.find((person) => person.name === patch.ownerName);
-        nextEntry.splits = [{
-          personId: owner?.id ?? patch.ownerName.toLowerCase(),
-          personName: patch.ownerName,
-          ratioBasisPoints: 10000,
-          amountMinor: nextEntry.amountMinor
-        }];
-      }
-
-      if (patch.ownershipType === "shared") {
-        const fallbackPeople = people.slice(0, 2);
-        const sharedPeople = entry.splits.length >= 2
-          ? entry.splits.slice(0, 2).map((split) => ({
-              personId: split.personId,
-              personName: split.personName
-            }))
-          : fallbackPeople.map((person) => ({
-              personId: person.id,
-              personName: person.name
-            }));
-
-        const firstAmount = Math.round(nextEntry.amountMinor / 2);
-        const secondAmount = nextEntry.amountMinor - firstAmount;
-
-        nextEntry.ownerName = undefined;
-        nextEntry.splits = [
-          {
-            ...sharedPeople[0],
-            ratioBasisPoints: 5000,
-            amountMinor: firstAmount
-          },
-          {
-            ...sharedPeople[1],
-            ratioBasisPoints: 5000,
-            amountMinor: secondAmount
-          }
-        ];
-      }
-
-      return nextEntry;
+      return normalizeEntryShape({ ...entry, ...patch }, people, entry);
     }));
   }
 
@@ -2734,24 +2843,9 @@ function EntriesPanel({ view, categories, people, onCategoryAppearanceChange, on
         return entry;
       }
 
+      const nextSplits = applySharedSplit(entry, people, percentage, view.id);
       const primaryIndex = getVisibleSplitIndex(entry, view.id);
-      const secondaryIndex = primaryIndex === 0 ? 1 : 0;
-      const basisPoints = Math.max(0, Math.min(10000, Math.round(percentage * 100)));
-      const complement = 10000 - basisPoints;
       const totalAmountMinor = entry.totalAmountMinor ?? entry.amountMinor;
-      const primaryAmount = Math.round((totalAmountMinor * basisPoints) / 10000);
-      const secondaryAmount = totalAmountMinor - primaryAmount;
-      const nextSplits = entry.splits.map((split) => ({ ...split }));
-      nextSplits[primaryIndex] = {
-        ...nextSplits[primaryIndex],
-        ratioBasisPoints: basisPoints,
-        amountMinor: primaryAmount
-      };
-      nextSplits[secondaryIndex] = {
-        ...nextSplits[secondaryIndex],
-        ratioBasisPoints: complement,
-        amountMinor: secondaryAmount
-      };
 
       return {
         ...entry,
@@ -2790,12 +2884,73 @@ function EntriesPanel({ view, categories, people, onCategoryAppearanceChange, on
         </div>
       </div>
 
+      <section className="entries-totals-strip" aria-label={messages.entries.totalsLabel}>
+        <button
+          type="button"
+          className={`entries-breakdown-toggle ${showExpenseBreakdown ? "is-open" : ""}`}
+          onClick={() => setShowExpenseBreakdown((current) => !current)}
+          aria-expanded={showExpenseBreakdown}
+          aria-label={showExpenseBreakdown ? "Hide expense breakdown" : "Show expense breakdown"}
+        >
+          {showExpenseBreakdown ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+        </button>
+        <span className="entries-totals-item">
+          <span className="entries-totals-label">{messages.entries.totalSpend}</span>
+          <strong className={getAmountToneClass(-entryTotals.spendMinor)}>{money(entryTotals.spendMinor)}</strong>
+        </span>
+        <span className="entries-totals-item">
+          <span className="entries-totals-label">{messages.entries.totalIncome}</span>
+          <strong className={getAmountToneClass(entryTotals.incomeMinor)}>{money(entryTotals.incomeMinor)}</strong>
+        </span>
+        <span className="entries-totals-item">
+          <span className="entries-totals-label">{messages.entries.totalDifference}</span>
+          <strong className={getAmountToneClass(entryNetMinor)}>{money(entryNetMinor)}</strong>
+        </span>
+        <div className="entries-totals-spacer" />
+        <button type="button" className="subtle-action is-primary" onClick={openEntryComposer}>
+          {messages.entries.addEntry}
+        </button>
+      </section>
+
+      {showExpenseBreakdown ? (
+        <section className="entries-breakdown-panel">
+          <div className="entries-breakdown-chart">
+            {expenseBreakdown.length ? (
+              <SpendingMixChart
+                data={expenseBreakdown}
+                categories={categories}
+                totalLabel={messages.entries.totalSpend}
+                compact
+                height={300}
+                innerRadius={58}
+                outerRadius={96}
+              />
+            ) : (
+              <p className="lede compact">{messages.imports.previewEmpty}</p>
+            )}
+          </div>
+          <div className="entries-breakdown-list category-list">
+            {expenseBreakdown.map((item, index) => {
+              const theme = getCategoryTheme(categories, item, index);
+              return (
+                <div key={item.key} className="category-row">
+                  <div className="category-key">
+                    <span className="category-icon category-icon-static" style={{ "--category-color": theme.color }}>
+                      <CategoryGlyph iconKey={theme.iconKey} />
+                    </span>
+                    <div>
+                      <strong>{item.label}</strong>
+                      <p>{messages.common.triplet(money(item.valueMinor), `${item.entryCount} ${item.entryCount === 1 ? "entry" : "entries"}`, `${((item.valueMinor / Math.max(entryTotals.spendMinor, 1)) * 100).toFixed(1)}%`)}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
       <section className="entries-filter-bar">
-        <div className="entries-filter-reset">
-          <button type="button" className="subtle-action" onClick={resetEntryFilters}>
-            {messages.entries.resetFilters}
-          </button>
-        </div>
         <FilterSelect
           label={messages.entries.wallet}
           value={entryFilters.wallet}
@@ -2806,7 +2961,7 @@ function EntriesPanel({ view, categories, people, onCategoryAppearanceChange, on
         <FilterSelect
           label={messages.entries.category}
           value={entryFilters.category}
-          options={categoryOptions}
+          options={entryCategoryOptions}
           emptyLabel={messages.entries.allCategories}
           onChange={(value) => updateEntryFilter("category", value)}
         />
@@ -2824,22 +2979,165 @@ function EntriesPanel({ view, categories, people, onCategoryAppearanceChange, on
           emptyLabel={messages.entries.allTypes}
           onChange={(value) => updateEntryFilter("type", value)}
         />
+        <div className="entries-filter-reset">
+          <button type="button" className="subtle-action" onClick={resetEntryFilters}>
+            {messages.entries.resetFilters}
+          </button>
+        </div>
       </section>
 
-      <section className="entries-totals-strip" aria-label={messages.entries.totalsLabel}>
-        <span className="entries-totals-item">
-          <span className="entries-totals-label">{messages.entries.totalSpend}</span>
-          <strong className={getAmountToneClass(-entryTotals.spendMinor)}>{money(entryTotals.spendMinor)}</strong>
-        </span>
-        <span className="entries-totals-item">
-          <span className="entries-totals-label">{messages.entries.totalIncome}</span>
-          <strong className={getAmountToneClass(entryTotals.incomeMinor)}>{money(entryTotals.incomeMinor)}</strong>
-        </span>
-        <span className="entries-totals-item">
-          <span className="entries-totals-label">{messages.entries.totalDifference}</span>
-          <strong className={getAmountToneClass(entryNetMinor)}>{money(entryNetMinor)}</strong>
-        </span>
-      </section>
+      {showEntryComposer ? (
+        <section className="entry-row is-editing entry-composer">
+          <div className="entry-inline-editor">
+            <div className="entry-edit-grid">
+              <label>
+                <span>{messages.entries.editDate}</span>
+                <input
+                  className="table-edit-input"
+                  type="date"
+                  value={entryDraft.date}
+                  onChange={(event) => updateEntryDraft({ date: event.target.value })}
+                />
+              </label>
+              <label>
+                <span>{messages.entries.editType}</span>
+                <select
+                  className="table-edit-input"
+                  value={entryDraft.entryType}
+                  onChange={(event) => updateEntryDraft({ entryType: event.target.value })}
+                >
+                  <option value="expense">Expense</option>
+                  <option value="income">Income</option>
+                  <option value="transfer">Transfer</option>
+                </select>
+              </label>
+              <label>
+                <span>{messages.entries.editAmount}</span>
+                <input
+                  className="table-edit-input table-edit-input-money"
+                  type="number"
+                  step="0.01"
+                  inputMode="decimal"
+                  value={formatEditableMinorInput(entryDraft.amountMinor)}
+                  onChange={(event) => updateEntryDraft({ amountMinor: Math.max(0, parseMoneyInput(event.target.value, entryDraft.amountMinor)) })}
+                />
+              </label>
+              <label>
+                <span>{messages.entries.editCategory}</span>
+                <div className="entry-category-field">
+                  <span
+                    className="category-icon category-icon-static"
+                    style={{ "--category-color": getCategoryTheme(categories, { categoryName: entryDraft.categoryName }, 0).color }}
+                  >
+                    <CategoryGlyph iconKey={getCategoryTheme(categories, { categoryName: entryDraft.categoryName }, 0).iconKey} />
+                  </span>
+                  <select
+                    className="table-edit-input"
+                    value={entryDraft.categoryName}
+                    onChange={(event) => updateEntryDraft({ categoryName: event.target.value })}
+                  >
+                    {categoryOptions.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </div>
+              </label>
+              <label>
+                <span>{messages.entries.editWallet}</span>
+                <select
+                  className="table-edit-input"
+                  value={entryDraft.accountName}
+                  onChange={(event) => updateEntryDraft({ accountName: event.target.value })}
+                >
+                  {accountOptions.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>{messages.entries.editOwner}</span>
+                <select
+                  className="table-edit-input"
+                  value={entryDraft.ownershipType === "shared" ? "Shared" : (entryDraft.ownerName ?? "")}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    if (nextValue === "Shared") {
+                      updateEntryDraft({ ownershipType: "shared", ownerName: undefined });
+                    } else {
+                      updateEntryDraft({ ownershipType: "direct", ownerName: nextValue });
+                    }
+                  }}
+                >
+                  {ownerOptions.map((person) => (
+                    <option key={person} value={person}>{person}</option>
+                  ))}
+                </select>
+              </label>
+              {entryDraft.entryType === "transfer" ? (
+                <label>
+                  <span>{messages.entries.editTransferDirection}</span>
+                  <select
+                    className="table-edit-input"
+                    value={entryDraft.transferDirection ?? "out"}
+                    onChange={(event) => updateEntryDraft({ transferDirection: event.target.value })}
+                  >
+                    <option value="out">Transfer out</option>
+                    <option value="in">Transfer in</option>
+                  </select>
+                </label>
+              ) : null}
+              {entryDraft.ownershipType === "shared" ? (
+                <label>
+                  <span>{messages.entries.editSplit}</span>
+                  <input
+                    className="table-edit-input table-edit-input-money"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={getVisibleSplitPercent(entryDraft, view.id) ?? 50}
+                    onChange={(event) => {
+                      const percentage = Number(event.target.value);
+                      updateEntryDraft({
+                        splits: applySharedSplit(entryDraft, people, percentage),
+                        viewerSplitRatioBasisPoints: view.id === "household" ? undefined : Math.round(percentage * 100)
+                      });
+                    }}
+                  />
+                </label>
+              ) : null}
+            </div>
+            <div className="entry-writing-grid">
+              <label>
+                <span>{messages.entries.editDescription}</span>
+                <textarea
+                  className="table-edit-input table-edit-textarea"
+                  value={entryDraft.description}
+                  onChange={(event) => updateEntryDraft({ description: event.target.value })}
+                  rows={3}
+                />
+              </label>
+              <label>
+                <span>{messages.entries.editNote}</span>
+                <textarea
+                  className="table-edit-input table-edit-textarea"
+                  value={entryDraft.note ?? ""}
+                  onChange={(event) => updateEntryDraft({ note: event.target.value })}
+                  rows={3}
+                />
+              </label>
+            </div>
+            {entrySubmitError ? <p className="entry-submit-error">{entrySubmitError}</p> : null}
+            <div className="entry-inline-actions">
+              <button type="button" className="icon-action" aria-label="Create entry" onClick={() => void saveEntryDraft()}>
+                <Check size={16} />
+              </button>
+              <button type="button" className="icon-action subtle-cancel" aria-label="Cancel new entry" onClick={closeEntryComposer}>
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <div className="entries-date-groups">
         {groupedEntries.map((group) => (
@@ -2912,23 +3210,62 @@ function EntriesPanel({ view, categories, people, onCategoryAppearanceChange, on
                             />
                           </label>
                           <label>
+                            <span>{messages.entries.editType}</span>
+                            <select
+                              className="table-edit-input"
+                              value={entry.entryType}
+                              onChange={(event) => updateEntry(entry.id, { entryType: event.target.value })}
+                            >
+                              <option value="expense">Expense</option>
+                              <option value="income">Income</option>
+                              <option value="transfer">Transfer</option>
+                            </select>
+                          </label>
+                          <label>
+                            <span>{messages.entries.editAmount}</span>
+                            <input
+                              className="table-edit-input table-edit-input-money"
+                              type="number"
+                              step="0.01"
+                              inputMode="decimal"
+                              value={formatEditableMinorInput(entry.amountMinor)}
+                              onChange={(event) => updateEntry(entry.id, { amountMinor: Math.max(0, parseMoneyInput(event.target.value, entry.amountMinor)) })}
+                            />
+                          </label>
+                          <label>
                             <span>{messages.entries.editCategory}</span>
                             {entry.entryType === "transfer" ? (
-                              <input
-                                className="table-edit-input"
-                                value="Transfer"
-                                readOnly
-                              />
+                              <div className="entry-category-field">
+                                <span
+                                  className="category-icon category-icon-static"
+                                  style={{ "--category-color": getCategoryTheme(categories, { categoryName: "Transfer" }, 0).color }}
+                                >
+                                  <CategoryGlyph iconKey={getCategoryTheme(categories, { categoryName: "Transfer" }, 0).iconKey} />
+                                </span>
+                                <input
+                                  className="table-edit-input"
+                                  value="Transfer"
+                                  readOnly
+                                />
+                              </div>
                             ) : (
-                              <select
-                                className="table-edit-input"
-                                value={entry.categoryName}
-                                onChange={(event) => updateEntry(entry.id, { categoryName: event.target.value })}
-                              >
-                                {categoryOptions.map((option) => (
-                                  <option key={option} value={option}>{option}</option>
-                                ))}
-                              </select>
+                              <div className="entry-category-field">
+                                <span
+                                  className="category-icon category-icon-static"
+                                  style={{ "--category-color": getCategoryTheme(categories, { categoryName: entry.categoryName }, 0).color }}
+                                >
+                                  <CategoryGlyph iconKey={getCategoryTheme(categories, { categoryName: entry.categoryName }, 0).iconKey} />
+                                </span>
+                                <select
+                                  className="table-edit-input"
+                                  value={entry.categoryName}
+                                  onChange={(event) => updateEntry(entry.id, { categoryName: event.target.value })}
+                                >
+                                  {categoryOptions.map((option) => (
+                                    <option key={option} value={option}>{option}</option>
+                                  ))}
+                                </select>
+                              </div>
                             )}
                           </label>
                           <label>
@@ -2938,7 +3275,7 @@ function EntriesPanel({ view, categories, people, onCategoryAppearanceChange, on
                               value={entry.accountName}
                               onChange={(event) => updateEntry(entry.id, { accountName: event.target.value })}
                             >
-                              {wallets.map((option) => (
+                              {accountOptions.map((option) => (
                                 <option key={option} value={option}>{option}</option>
                               ))}
                             </select>
@@ -2962,6 +3299,19 @@ function EntriesPanel({ view, categories, people, onCategoryAppearanceChange, on
                               ))}
                             </select>
                           </label>
+                          {entry.entryType === "transfer" ? (
+                            <label>
+                              <span>{messages.entries.editTransferDirection}</span>
+                              <select
+                                className="table-edit-input"
+                                value={entry.transferDirection ?? "out"}
+                                onChange={(event) => updateEntry(entry.id, { transferDirection: event.target.value })}
+                              >
+                                <option value="out">Transfer out</option>
+                                <option value="in">Transfer in</option>
+                              </select>
+                            </label>
+                          ) : null}
                           {entry.entryType === "transfer" ? (
                             <div className="entry-edit-transfer-helper">
                               <span>Transfer match</span>
@@ -3281,8 +3631,11 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
     [columnMappings, csvInspection.rows]
   );
 
-  const requiredFields = ["date", "description", "amount"];
-  const missingRequiredFields = requiredFields.filter((field) => !mappedFields[field]);
+  const missingRequiredFields = [
+    !mappedFields.date ? "date" : null,
+    !mappedFields.description ? "description" : null,
+    !mappedFields.amount && !mappedFields.expense && !mappedFields.income ? "amount/expense/income" : null
+  ].filter(Boolean);
   const readyForMapping = csvInspection.headers.length > 0;
   const readyForPreview = mappedRows.length > 0 && missingRequiredFields.length === 0 && duplicateMappings.length === 0;
   const currentStage = preview ? 3 : readyForMapping ? 2 : 1;
@@ -3819,10 +4172,11 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
   );
 }
 
-function SettingsPanel({ settingsPage, accounts, people, viewId, viewLabel, onRefresh }) {
+function SettingsPanel({ settingsPage, accounts, categories, people, viewId, viewLabel, onRefresh }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emptyStateText, setEmptyStateText] = useState("");
   const [accountDialog, setAccountDialog] = useState(null);
+  const [categoryDialog, setCategoryDialog] = useState(null);
   const [reconciliationDialog, setReconciliationDialog] = useState(null);
   const [transferReviewOpen, setTransferReviewOpen] = useState(false);
   const navigate = useNavigate();
@@ -3830,6 +4184,10 @@ function SettingsPanel({ settingsPage, accounts, people, viewId, viewLabel, onRe
   const visibleAccounts = useMemo(
     () => accounts.slice().sort((left, right) => Number(right.isActive) - Number(left.isActive) || left.name.localeCompare(right.name)),
     [accounts]
+  );
+  const visibleCategories = useMemo(
+    () => categories.slice().sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name)),
+    [categories]
   );
 
   async function handleReseed() {
@@ -3901,6 +4259,28 @@ function SettingsPanel({ settingsPage, accounts, people, viewId, viewLabel, onRe
     });
   }
 
+  function openCreateCategoryDialog() {
+    setCategoryDialog({
+      mode: "create",
+      categoryId: "",
+      name: "",
+      slug: "",
+      iconKey: FALLBACK_THEME.iconKey,
+      colorHex: FALLBACK_THEME.colorHex
+    });
+  }
+
+  function openEditCategoryDialog(category) {
+    setCategoryDialog({
+      mode: "edit",
+      categoryId: category.id,
+      name: category.name,
+      slug: category.slug,
+      iconKey: category.iconKey,
+      colorHex: category.colorHex
+    });
+  }
+
   async function handleSaveAccount() {
     if (!accountDialog) {
       return;
@@ -3963,6 +4343,58 @@ function SettingsPanel({ settingsPage, accounts, people, viewId, viewLabel, onRe
       });
       setReconciliationDialog(null);
       await onRefresh();
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleSaveCategory() {
+    if (!categoryDialog?.name?.trim()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const endpoint = categoryDialog.mode === "create" ? "/api/categories/create" : "/api/categories/update";
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          categoryId: categoryDialog.categoryId || undefined,
+          name: categoryDialog.name,
+          slug: categoryDialog.slug,
+          iconKey: categoryDialog.iconKey,
+          colorHex: categoryDialog.colorHex
+        })
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to save category");
+      }
+      setCategoryDialog(null);
+      await onRefresh();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Failed to save category");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleDeleteCategory(category) {
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/categories/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categoryId: category.id })
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to delete category");
+      }
+      await onRefresh();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Failed to delete category");
     } finally {
       setIsSubmitting(false);
     }
@@ -4104,6 +4536,47 @@ function SettingsPanel({ settingsPage, accounts, people, viewId, viewLabel, onRe
                     onConfirm={() => handleArchiveAccount(account.id)}
                   />
                 ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="chart-card settings-card">
+        <div className="chart-head">
+          <h3>{messages.settings.categoriesTitle}</h3>
+          <p>{messages.settings.categoriesDetail}</p>
+        </div>
+        <div className="settings-actions">
+          <button type="button" className="subtle-action" onClick={openCreateCategoryDialog}>
+            {messages.settings.addCategory}
+          </button>
+        </div>
+        <div className="settings-account-list">
+          {visibleCategories.map((category) => (
+            <div key={category.id} className="settings-account-row">
+              <div className="settings-account-main">
+                <strong>{category.name}</strong>
+                <p>{messages.common.triplet(category.slug, category.iconKey, category.colorHex)}</p>
+              </div>
+              <div className="settings-account-actions">
+                <span
+                  className="category-icon category-icon-static"
+                  style={{ "--category-color": category.colorHex }}
+                >
+                  <CategoryGlyph iconKey={category.iconKey} />
+                </span>
+                <button type="button" className="icon-action" aria-label={messages.settings.editCategory} onClick={() => openEditCategoryDialog(category)}>
+                  <SquarePen size={16} />
+                </button>
+                <DeleteRowButton
+                  label={category.name}
+                  triggerLabel={messages.settings.deleteCategory}
+                  confirmLabel={messages.settings.deleteCategory}
+                  destructive={false}
+                  prompt={messages.settings.deleteCategoryDetail(category.name)}
+                  onConfirm={() => handleDeleteCategory(category)}
+                />
               </div>
             </div>
           ))}
@@ -4269,6 +4742,88 @@ function SettingsPanel({ settingsPage, accounts, people, viewId, viewLabel, onRe
         </Dialog.Portal>
       </Dialog.Root>
 
+      <Dialog.Root open={Boolean(categoryDialog)} onOpenChange={(open) => { if (!open) setCategoryDialog(null); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="note-dialog-overlay" />
+          <Dialog.Content className="note-dialog-content settings-account-dialog">
+            <div className="note-dialog-head">
+              <div>
+                <Dialog.Title>{categoryDialog?.mode === "create" ? messages.settings.createCategory : messages.settings.editCategory}</Dialog.Title>
+                <Dialog.Description>{categoryDialog?.mode === "create" ? messages.settings.createCategoryDetail : messages.settings.editCategoryDetail}</Dialog.Description>
+              </div>
+              <button
+                type="button"
+                className="icon-action subtle-cancel"
+                aria-label="Close category dialog"
+                onClick={() => setCategoryDialog(null)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="settings-account-form">
+              <label className="table-edit-field">
+                <span>{messages.settings.categoryName}</span>
+                <input
+                  className="table-edit-input"
+                  value={categoryDialog?.name ?? ""}
+                  onChange={(event) => setCategoryDialog((current) => current ? { ...current, name: event.target.value } : current)}
+                />
+              </label>
+              <label className="table-edit-field">
+                <span>{messages.settings.categorySlug}</span>
+                <input
+                  className="table-edit-input"
+                  value={categoryDialog?.slug ?? ""}
+                  onChange={(event) => setCategoryDialog((current) => current ? { ...current, slug: event.target.value } : current)}
+                />
+              </label>
+              <label className="table-edit-field">
+                <span>{messages.settings.categoryIcon}</span>
+                <div className="icon-grid">
+                  {ICON_OPTIONS.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      className={`icon-choice ${categoryDialog?.iconKey === option.key ? "is-active" : ""}`}
+                      onClick={() => setCategoryDialog((current) => current ? { ...current, iconKey: option.key } : current)}
+                    >
+                      <option.Icon size={18} />
+                    </button>
+                  ))}
+                </div>
+              </label>
+              <label className="table-edit-field">
+                <span>{messages.settings.categoryColor}</span>
+                <div className="color-grid">
+                  {COLOR_OPTIONS.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      className={`color-choice ${categoryDialog?.colorHex === color ? "is-active" : ""}`}
+                      style={{ "--category-color": color }}
+                      onClick={() => setCategoryDialog((current) => current ? { ...current, colorHex: color } : current)}
+                    />
+                  ))}
+                </div>
+              </label>
+            </div>
+            <div className="note-dialog-actions">
+              <button type="button" className="subtle-cancel" onClick={() => setCategoryDialog(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="dialog-primary"
+                disabled={!categoryDialog?.name?.trim() || isSubmitting}
+                onClick={() => void handleSaveCategory()}
+              >
+                {categoryDialog?.mode === "create" ? messages.settings.createCategory : messages.settings.saveCategory}
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
       <Dialog.Root open={Boolean(reconciliationDialog)} onOpenChange={(open) => { if (!open) setReconciliationDialog(null); }}>
         <Dialog.Portal>
           <Dialog.Overlay className="note-dialog-overlay" />
@@ -4398,6 +4953,12 @@ function SettingsPanel({ settingsPage, accounts, people, viewId, viewLabel, onRe
 }
 
 function FaqPanel({ viewLabel }) {
+  const sections = useMemo(() => parseFaqMarkdown(faqMarkdown), []);
+  const faqCategories = useMemo(
+    () => defaultCategories.slice().sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name)),
+    []
+  );
+
   return (
     <article className="panel">
       <div className="panel-head">
@@ -4407,10 +4968,39 @@ function FaqPanel({ viewLabel }) {
         </div>
       </div>
       <div className="faq-list">
-        {messages.faq.items.map((item) => (
-          <article key={item.question} className="faq-item">
-            <h3>{item.question}</h3>
-            <p>{item.answer}</p>
+        {sections.map((section) => (
+          <article key={section.title} className="faq-item">
+            <h3>{section.title}</h3>
+            {section.title === "What are the default app categories?" ? (
+              <div className="faq-category-grid">
+                {faqCategories.map((category) => (
+                  <div key={category.id} className="faq-category-row">
+                    <span
+                      className="category-icon category-icon-static faq-category-icon"
+                      style={{ "--category-color": category.colorHex }}
+                    >
+                      <CategoryGlyph iconKey={category.iconKey} />
+                    </span>
+                    <div className="faq-category-copy">
+                      <strong>{category.name}</strong>
+                      <p>{messages.common.triplet(category.iconKey, category.colorHex, category.slug)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              section.blocks.map((block, index) => (
+                block.type === "list" ? (
+                  <ul key={`${section.title}-${index}`}>
+                    {block.items.map((item) => (
+                      <li key={item}>{renderInlineMarkdown(item)}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p key={`${section.title}-${index}`}>{renderInlineMarkdown(block.text)}</p>
+                )
+              ))
+            )}
           </article>
         ))}
       </div>
@@ -4564,6 +5154,123 @@ function uniqueValues(values) {
   return [...new Set(values.filter(Boolean))];
 }
 
+function buildEntryDraft(view, accounts, categories, people) {
+  const defaultOwnerName = view.id === "person-tim"
+    ? "Tim"
+    : view.id === "person-joyce"
+      ? "Joyce"
+      : people[0]?.name ?? "";
+  const ownershipType = view.monthPage.selectedScope === "shared" ? "shared" : "direct";
+  const defaultAccountName = accounts.find((account) => account.isActive !== false)?.name ?? accounts[0]?.name ?? "";
+  const preferredCategoryName = categories.find((category) => category.name === "Other")?.name ?? categories[0]?.name ?? "";
+  const draft = {
+    id: "entry-draft",
+    date: view.monthPage.month ? `${view.monthPage.month}-01` : new Date().toISOString().slice(0, 10),
+    description: "",
+    accountName: defaultAccountName,
+    categoryName: preferredCategoryName,
+    entryType: "expense",
+    transferDirection: undefined,
+    ownershipType,
+    ownerName: ownershipType === "direct" ? defaultOwnerName : undefined,
+    amountMinor: 0,
+    totalAmountMinor: 0,
+    viewerSplitRatioBasisPoints: view.id === "household" ? undefined : ownershipType === "shared" ? 5000 : 10000,
+    offsetsCategory: false,
+    note: "",
+    linkedTransfer: undefined,
+    splits: []
+  };
+
+  return normalizeEntryShape(draft, people);
+}
+
+function normalizeEntryShape(entry, people, previousEntry = entry) {
+  const nextEntry = {
+    ...entry,
+    amountMinor: Math.max(0, Number(entry.amountMinor ?? 0)),
+    totalAmountMinor: entry.totalAmountMinor ?? entry.amountMinor ?? 0
+  };
+
+  if (typeof nextEntry.categoryName === "string" && nextEntry.categoryName === "Transfer") {
+    nextEntry.entryType = "transfer";
+    nextEntry.transferDirection = nextEntry.transferDirection ?? "out";
+  }
+
+  if (nextEntry.entryType === "transfer") {
+    nextEntry.categoryName = "Transfer";
+    nextEntry.transferDirection = nextEntry.transferDirection ?? "out";
+  } else {
+    nextEntry.transferDirection = undefined;
+    if (nextEntry.categoryName === "Transfer") {
+      nextEntry.categoryName = "Other";
+    }
+  }
+
+  if (nextEntry.ownershipType === "direct") {
+    const ownerName = nextEntry.ownerName ?? previousEntry.ownerName ?? people[0]?.name ?? "";
+    const owner = people.find((person) => person.name === ownerName);
+    nextEntry.ownerName = ownerName;
+    nextEntry.totalAmountMinor = nextEntry.amountMinor;
+    nextEntry.viewerSplitRatioBasisPoints = 10000;
+    nextEntry.splits = ownerName
+      ? [{
+          personId: owner?.id ?? ownerName.toLowerCase(),
+          personName: ownerName,
+          ratioBasisPoints: 10000,
+          amountMinor: nextEntry.amountMinor
+        }]
+      : [];
+    return nextEntry;
+  }
+
+  const ratioPercent = getVisibleSplitPercent(previousEntry, "household")
+    ?? Math.round((previousEntry.splits?.[0]?.ratioBasisPoints ?? 5000) / 100);
+  const sharedSplits = applySharedSplit({
+    ...nextEntry,
+    totalAmountMinor: nextEntry.amountMinor,
+    splits: previousEntry.splits
+  }, people, ratioPercent, "household");
+  nextEntry.ownerName = undefined;
+  nextEntry.totalAmountMinor = nextEntry.amountMinor;
+  nextEntry.viewerSplitRatioBasisPoints = undefined;
+  nextEntry.splits = sharedSplits;
+  return nextEntry;
+}
+
+function applySharedSplit(entry, people, percentage, viewId = "household") {
+  const fallbackPeople = people.slice(0, 2);
+  const sharedPeople = entry.splits.length >= 2
+    ? entry.splits.slice(0, 2).map((split) => ({
+        personId: split.personId,
+        personName: split.personName
+      }))
+    : fallbackPeople.map((person) => ({
+        personId: person.id,
+        personName: person.name
+      }));
+  const primaryIndex = getVisibleSplitIndex(entry, viewId);
+  const secondaryIndex = primaryIndex === 0 ? 1 : 0;
+  const totalAmountMinor = entry.totalAmountMinor ?? entry.amountMinor;
+  const basisPoints = Math.max(0, Math.min(10000, Math.round(Number(percentage || 0) * 100)));
+  const complement = 10000 - basisPoints;
+  const primaryAmount = Math.round((totalAmountMinor * basisPoints) / 10000);
+  const secondaryAmount = totalAmountMinor - primaryAmount;
+  const ordered = [
+    {
+      ...sharedPeople[0],
+      ratioBasisPoints: primaryIndex === 0 ? basisPoints : complement,
+      amountMinor: primaryIndex === 0 ? primaryAmount : secondaryAmount
+    },
+    {
+      ...sharedPeople[1],
+      ratioBasisPoints: secondaryIndex === 1 ? complement : basisPoints,
+      amountMinor: secondaryIndex === 1 ? secondaryAmount : primaryAmount
+    }
+  ];
+  return ordered;
+}
+
 function inferImportMapping(header) {
   const normalized = header.toLowerCase().trim();
 
@@ -4596,11 +5303,11 @@ function inferImportMapping(header) {
   }
 
   if (["debit", "withdrawal", "outflow"].includes(normalized)) {
-    return "amount";
+    return "expense";
   }
 
   if (["credit", "deposit", "inflow"].includes(normalized)) {
-    return "amount";
+    return "income";
   }
 
   if (["account", "wallet", "account name", "source account"].includes(normalized)) {
@@ -4637,8 +5344,8 @@ function buildMappedImportRows(rows, columnMappings) {
           continue;
         }
 
-        if (target === "amount") {
-          mappedRow.amount = rawValue;
+        if (target === "amount" || target === "expense" || target === "income") {
+          mappedRow[target] = rawValue;
           continue;
         }
 
@@ -4859,6 +5566,11 @@ function formatMinorInput(valueMinor) {
   return (valueMinor / 100).toFixed(2);
 }
 
+function formatEditableMinorInput(valueMinor) {
+  const numeric = Number(valueMinor ?? 0) / 100;
+  return Number.isInteger(numeric) ? String(numeric) : String(numeric);
+}
+
 function parseMoneyInput(value, fallback) {
   const normalized = Number(value.replace(/[^0-9.-]/g, ""));
   if (Number.isNaN(normalized)) {
@@ -4909,6 +5621,90 @@ function formatRowDateLabel(row, fallbackMonth) {
     month: "short",
     day: "numeric"
   }).format(new Date(Number(year), Number(month) - 1, Number(day)));
+}
+
+function parseFaqMarkdown(markdown) {
+  const lines = markdown.split("\n");
+  const sections = [];
+  let currentSection = null;
+  let paragraphLines = [];
+  let listItems = [];
+
+  function flushParagraph() {
+    if (!currentSection || !paragraphLines.length) {
+      return;
+    }
+    currentSection.blocks.push({ type: "paragraph", text: paragraphLines.join(" ").trim() });
+    paragraphLines = [];
+  }
+
+  function flushList() {
+    if (!currentSection || !listItems.length) {
+      return;
+    }
+    currentSection.blocks.push({ type: "list", items: [...listItems] });
+    listItems = [];
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line === "# FAQ") {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
+    if (line.startsWith("## ")) {
+      flushParagraph();
+      flushList();
+      currentSection = { title: line.slice(3).trim(), blocks: [] };
+      sections.push(currentSection);
+      continue;
+    }
+
+    if (line.startsWith("- ")) {
+      flushParagraph();
+      listItems.push(line.slice(2).trim());
+      continue;
+    }
+
+    flushList();
+    paragraphLines.push(line);
+  }
+
+  flushParagraph();
+  flushList();
+  return sections;
+}
+
+function renderInlineMarkdown(text) {
+  const segments = [];
+  const pattern = /`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)/g;
+  let lastIndex = 0;
+  let match = pattern.exec(text);
+
+  while (match) {
+    if (match.index > lastIndex) {
+      segments.push(text.slice(lastIndex, match.index));
+    }
+    if (match[1]) {
+      segments.push(<code key={`${match.index}-code`}>{match[1]}</code>);
+    } else {
+      segments.push(
+        <a key={`${match.index}-link`} href={match[3]}>
+          {match[2]}
+        </a>
+      );
+    }
+    lastIndex = pattern.lastIndex;
+    match = pattern.exec(text);
+  }
+
+  if (lastIndex < text.length) {
+    segments.push(text.slice(lastIndex));
+  }
+
+  return segments;
 }
 
 function buildBootstrapErrorMessage(status, detail) {
