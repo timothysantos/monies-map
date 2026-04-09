@@ -19,6 +19,27 @@ export function parseCsv(input: string): Record<string, string>[] {
   });
 }
 
+export function inspectCsv(input: string) {
+  const lines = input
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (!lines.length) {
+    return { headers: [], rows: [] as Record<string, string>[] };
+  }
+
+  const headers = splitCsvLine(lines[0]);
+  if (lines.length < 2) {
+    return { headers, rows: [] as Record<string, string>[] };
+  }
+
+  return {
+    headers,
+    rows: parseCsv(input)
+  };
+}
+
 function splitCsvLine(line: string): string[] {
   const output: string[] = [];
   let current = "";

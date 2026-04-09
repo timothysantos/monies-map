@@ -84,6 +84,24 @@ That distinction matters because the system needs to answer questions like:
 - `transfers` are first-class linked entries, not fake income or expense rows
 - `notes` exist at summary and monthly levels, with room for entry-level notes
   later
+- account balances are derived from imported ledger activity plus an explicit
+  opening balance per account
+- CSV-only balances need a reconciliation anchor, so opening balances are part
+  of the account model rather than hidden UI math
+- `account_balance_checkpoints` store statement-ending balances by account and
+  month so the latest checkpoint can be compared against the computed ledger
+- account health exposes reconciliation status, latest import freshness, and
+  unresolved transfer counts so trust warnings stay close to balances
+- import previews and recent import batches expose duplicate and overlapping
+  date-range signals so CSV trust is visible before and after commit
+- duplicate heuristics now distinguish exact ledger matches from near matches
+  using amount, account, date proximity, and description token overlap
+- `audit_events` keep a lightweight history of balance-affecting actions such as
+  imports, opening-balance edits, checkpoints, entry edits, and transfer relinks
+- account dialogs expose checkpoint history so reconciliation can be reviewed as
+  a timeline rather than only as the latest status
+- unresolved transfers have a dedicated review surface in Settings that links
+  back into Entries for settlement work
 - `categories` own their presentation metadata, including icon and color, so
   charts and category cards render from the same source of truth
 
@@ -184,6 +202,10 @@ Person month scopes:
 
 - all entries for the selected month
 - filters by person, account, category, and import batch
+- in person views, shared entries should show that person's allocated subtotal,
+  not the full household amount
+- when a shared row is shown in a person view, the full shared total should stay
+  visible as supporting context
 - edit flow for categorization, attribution, and transfer links
 
 ## Chart guidance

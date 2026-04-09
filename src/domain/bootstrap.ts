@@ -5,13 +5,17 @@ import {
   loadAccounts,
   loadCategories,
   loadEntries,
+  loadEntriesForMonths,
   loadHousehold,
   loadImportBatches,
+  loadAuditEvents,
   loadMonthIncomeRows,
   loadMonthPlanRows,
+  loadUnresolvedTransfers,
   loadSummaryMonths
 } from "./app-repository";
 import type {
+  AccountDto,
   AppBootstrapDto,
   CategoryDto,
   ContextViewDto,
@@ -23,20 +27,24 @@ import type {
   MonthIncomeRowDto,
   MonthPlanRowDto,
   PersonScope,
+  SummaryAccountPillDto,
+  SummaryDonutMonthDto,
   SummaryMonthDto
 } from "../types/dto";
 
 export async function buildBootstrapDto(
   db: D1Database,
   selectedMonth = "2025-10",
-  selectedScope: PersonScope = "direct_plus_shared"
+  selectedScope: PersonScope = "direct_plus_shared",
+  summaryStartMonth?: string,
+  summaryEndMonth?: string
 ): Promise<AppBootstrapDto> {
   const demo = await loadDemoSettings(db).catch(() => defaultDemoSettings);
   if (demo.emptyState) {
     const emptyViews: ContextViewDto[] = [
-      buildContextView("household", "Household", selectedScope, { household: [], "person-tim": [], "person-joyce": [] }, { household: [], "person-tim": [], "person-joyce": [] }, [], [], [], selectedMonth),
-      buildContextView("person-tim", "Tim", selectedScope, { household: [], "person-tim": [], "person-joyce": [] }, { household: [], "person-tim": [], "person-joyce": [] }, [], [], [], selectedMonth),
-      buildContextView("person-joyce", "Joyce", selectedScope, { household: [], "person-tim": [], "person-joyce": [] }, { household: [], "person-tim": [], "person-joyce": [] }, [], [], [], selectedMonth)
+      buildContextView("household", "Household", selectedScope, { household: [], "person-tim": [], "person-joyce": [] }, { household: [], "person-tim": [], "person-joyce": [] }, [], [], [], [], selectedMonth, []),
+      buildContextView("person-tim", "Tim", selectedScope, { household: [], "person-tim": [], "person-joyce": [] }, { household: [], "person-tim": [], "person-joyce": [] }, [], [], [], [], selectedMonth, []),
+      buildContextView("person-joyce", "Joyce", selectedScope, { household: [], "person-tim": [], "person-joyce": [] }, { household: [], "person-tim": [], "person-joyce": [] }, [], [], [], [], selectedMonth, [])
     ];
 
     return {
@@ -50,18 +58,22 @@ export async function buildBootstrapDto(
         rollbackPolicy: "No imports yet."
       },
       settingsPage: {
-        demo
+        demo,
+        unresolvedTransfers: [],
+        recentAuditEvents: []
       }
     };
   }
   await ensureSeedData(db, demo);
-  const [household, accounts, categories, importBatches, monthEntries, monthPlanRows] = await Promise.all([
+  const [household, accounts, categories, importBatches, monthEntries, monthPlanRows, unresolvedTransfers, recentAuditEvents] = await Promise.all([
     loadHousehold(db),
     loadAccounts(db),
     loadCategories(db),
     loadImportBatches(db),
     loadEntries(db, selectedMonth),
-    loadMonthPlanRows(db, selectedMonth)
+    loadMonthPlanRows(db, selectedMonth),
+    loadUnresolvedTransfers(db),
+    loadAuditEvents(db)
   ]);
   const [householdSummaryMonths, timSummaryMonths, joyceSummaryMonths, householdIncomeRows, timIncomeRows, joyceIncomeRows] = await Promise.all([
     loadSummaryMonths(db, "household"),
@@ -81,10 +93,16 @@ export async function buildBootstrapDto(
     "person-tim": timIncomeRows,
     "person-joyce": joyceIncomeRows
   };
+  const summaryRangeMonths = buildSummaryRange(
+    householdSummaryMonths.map((month) => month.month),
+    summaryStartMonth,
+    summaryEndMonth ?? selectedMonth
+  );
+  const summaryEntries = await loadEntriesForMonths(db, summaryRangeMonths);
   const views: ContextViewDto[] = [
-    buildContextView("household", "Household", selectedScope, summaryMonthsByView, incomeRowsByView, monthEntries, monthPlanRows, categories, selectedMonth),
-    buildContextView("person-tim", "Tim", selectedScope, summaryMonthsByView, incomeRowsByView, monthEntries, monthPlanRows, categories, selectedMonth),
-    buildContextView("person-joyce", "Joyce", selectedScope, summaryMonthsByView, incomeRowsByView, monthEntries, monthPlanRows, categories, selectedMonth)
+    buildContextView("household", "Household", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, categories, accounts, selectedMonth, summaryRangeMonths),
+    buildContextView("person-tim", "Tim", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, categories, accounts, selectedMonth, summaryRangeMonths),
+    buildContextView("person-joyce", "Joyce", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, categories, accounts, selectedMonth, summaryRangeMonths)
   ];
 
   return {
@@ -99,7 +117,9 @@ export async function buildBootstrapDto(
         "Every transaction is tied to an import batch so the last import can be removed without touching older data."
     },
     settingsPage: {
-      demo
+      demo,
+      unresolvedTransfers,
+      recentAuditEvents
     }
   };
 }
@@ -110,18 +130,34 @@ function buildContextView(
   selectedScope: PersonScope,
   summaryMonthsByView: Record<string, SummaryMonthDto[]>,
   incomeRowsByView: Record<string, MonthIncomeRowDto[]>,
+  summaryEntries: EntryDto[],
   monthEntries: EntryDto[],
   monthPlanRows: MonthPlanRowDto[],
   categories: CategoryDto[],
-  selectedMonth: string
+  accounts: AccountDto[],
+  selectedMonth: string,
+  summaryRangeMonths: string[]
 ): ContextViewDto {
-  const visibleEntries = filterEntriesForView(monthEntries, id, selectedScope);
+  const adjustedMonthEntries = adjustEntriesForView(monthEntries, id);
+  const adjustedSummaryEntries = adjustEntriesForView(summaryEntries, id);
+  const visibleEntries = filterEntriesForView(adjustedMonthEntries, id, selectedScope);
+  const visibleSummaryEntries = filterEntriesForView(adjustedSummaryEntries, id, selectedScope);
+  const currentSummaryMonth = (summaryMonthsByView[id] ?? []).find((month) => month.month === selectedMonth) ?? null;
 
   return {
     id,
     label,
-    summaryPage: buildSummaryPage(id, visibleEntries, summaryMonthsByView, categories),
-    monthPage: buildMonthPage(id, selectedScope, incomeRowsByView[id] ?? [], monthEntries, monthPlanRows, categories, selectedMonth)
+    summaryPage: buildSummaryPage(id, visibleSummaryEntries, summaryMonthsByView, categories, accountsForSummary(id, accounts), selectedMonth, summaryRangeMonths),
+    monthPage: buildMonthPage(
+      id,
+      selectedScope,
+      incomeRowsByView[id] ?? [],
+      adjustedMonthEntries,
+      monthPlanRows,
+      categories,
+      selectedMonth,
+      currentSummaryMonth
+    )
   };
 }
 
@@ -129,9 +165,17 @@ function buildSummaryPage(
   personId: string,
   visibleEntries: EntryDto[],
   summaryMonthsByView: Record<string, SummaryMonthDto[]>,
-  categories: CategoryDto[]
+  categories: CategoryDto[],
+  accountPills: SummaryAccountPillDto[],
+  selectedMonth: string,
+  summaryRangeMonths: string[]
 ) {
-  const months = buildSummaryMonthsForView(personId, summaryMonthsByView);
+  const availableMonths = buildSummaryMonthsForView(personId, summaryMonthsByView).map((month) => month.month);
+  const rangeMonths = summaryRangeMonths.length
+    ? summaryRangeMonths.filter((month) => availableMonths.includes(month))
+    : buildSummaryRange(availableMonths, undefined, selectedMonth);
+  const months = buildSummaryMonthsForView(personId, summaryMonthsByView)
+    .filter((month) => rangeMonths.includes(month.month));
   const plannedTotalMinor = sumMinor(months, "estimatedExpensesMinor");
   const actualTotalMinor = sumMinor(months, "realExpensesMinor");
   const targetSavingsMinor = sumMinor(months, "savingsGoalMinor");
@@ -159,8 +203,14 @@ function buildSummaryPage(
 
   return {
     metricCards,
+    availableMonths,
+    rangeStartMonth: rangeMonths[0] ?? selectedMonth,
+    rangeEndMonth: rangeMonths[rangeMonths.length - 1] ?? selectedMonth,
+    rangeMonths,
     months,
     categoryShareChart: buildDonutChart(visibleEntries, categories),
+    categoryShareByMonth: buildSummaryDonutMonths(visibleEntries, categories, rangeMonths),
+    accountPills,
     notes:
       personId === "household"
         ? [
@@ -174,6 +224,26 @@ function buildSummaryPage(
   };
 }
 
+function accountsForSummary(personId: string, accounts: AccountDto[]): SummaryAccountPillDto[] {
+  return accounts
+    .filter((account) => account.isActive)
+    .filter((account) => (
+      personId === "household"
+        ? true
+        : account.isJoint || account.ownerPersonId === personId
+    ))
+    .map((account) => ({
+      accountId: account.id,
+      accountName: account.name,
+      ownerLabel: account.ownerLabel,
+      balanceMinor: account.balanceMinor ?? 0,
+      unresolvedTransferCount: account.unresolvedTransferCount ?? 0,
+      latestCheckpointMonth: account.latestCheckpointMonth,
+      latestCheckpointDeltaMinor: account.latestCheckpointDeltaMinor,
+      reconciliationStatus: account.reconciliationStatus
+    }));
+}
+
 function buildMonthPage(
   selectedPersonId: string,
   selectedScope: PersonScope,
@@ -181,13 +251,21 @@ function buildMonthPage(
   monthEntries: EntryDto[],
   monthPlanRows: MonthPlanRowDto[],
   categories: CategoryDto[],
-  selectedMonth: string
+  selectedMonth: string,
+  currentSummaryMonth: SummaryMonthDto | null
 ): MonthPageDto {
-  const visibleEntries = filterEntriesForView(monthEntries, selectedPersonId, selectedScope);
-  const visiblePlanRows = buildPlanRowsForView(monthPlanRows, selectedPersonId, selectedScope);
-  const visibleIncomeRows = selectedScope === "shared" ? [] : incomeRows;
+  const effectiveScope = selectedPersonId === "household" ? "direct_plus_shared" : selectedScope;
+  const visibleEntries = filterEntriesForView(monthEntries, selectedPersonId, effectiveScope);
+  const visiblePlanRows = derivePlanRowActuals(
+    buildPlanRowsForView(monthPlanRows, selectedPersonId, effectiveScope),
+    visibleEntries
+  );
+  const visibleIncomeRows = effectiveScope === "shared"
+    ? []
+    : deriveIncomeRowActuals(incomeRows, visibleEntries, selectedPersonId);
   const plannedExpenseMinor = visiblePlanRows.reduce((sum, row) => sum + row.plannedMinor, 0);
-  const actualExpenseMinor = visiblePlanRows.reduce((sum, row) => sum + row.actualMinor, 0);
+  const actualExpenseMinor = currentSummaryMonth?.realExpensesMinor
+    ?? visibleEntries.reduce((sum, entry) => entry.entryType === "expense" ? sum + entry.amountMinor : sum, 0);
   const varianceMinor = plannedExpenseMinor - actualExpenseMinor;
   const targetSavingsMinor = visiblePlanRows
     .filter((row) => row.label === "Savings")
@@ -196,12 +274,9 @@ function buildMonthPage(
   return {
     month: selectedMonth,
     selectedPersonId,
-    selectedScope,
+    selectedScope: effectiveScope,
     scopes: selectedPersonId === "household"
-      ? [
-          { key: "direct_plus_shared", label: "Combined" },
-          { key: "shared", label: "Shared" }
-        ]
+      ? [{ key: "direct_plus_shared", label: "Combined" }]
       : [
           { key: "direct", label: "Direct ownership" },
           { key: "shared", label: "Shared" },
@@ -228,6 +303,7 @@ function buildMonthPage(
         amountMinor: targetSavingsMinor
       }
     ],
+    monthNote: currentSummaryMonth?.note ?? "",
     incomeRows: visibleIncomeRows,
     planSections: [
       {
@@ -244,18 +320,122 @@ function buildMonthPage(
       }
     ],
     categoryShareChart: buildDonutChart(visibleEntries, categories),
-    notes: [
-      selectedPersonId === "household"
-        ? "This household month view combines each person's direct plan with shared allocations into one combined plan."
-        : `${selectedPersonId === "person-tim" ? "Tim" : "Joyce"} sees direct rows plus the weighted share of any shared allocations in this month.`,
-      "Planned items stay specific for recurring commitments, while budget buckets stay broad for flexible categories."
-    ],
-    entries: visibleEntries
+    entries: monthEntries
   };
+}
+
+function deriveIncomeRowActuals(
+  rows: MonthIncomeRowDto[],
+  entries: EntryDto[],
+  personId: string
+) {
+  return rows.map((row) => {
+    const rowCategory = normalizeCategoryLabel(row.categoryName);
+    const actualMinor = entries.reduce((sum, entry) => {
+      if (entry.entryType !== "income") {
+        return sum;
+      }
+
+      if (personId !== "household" && row.ownerName && entry.ownerName && row.ownerName !== entry.ownerName) {
+        return sum;
+      }
+
+      const entryCategory = normalizeCategoryLabel(entry.categoryName);
+      if (rowCategory && rowCategory !== "income" && entryCategory !== rowCategory) {
+        return sum;
+      }
+
+      return sum + entry.amountMinor;
+    }, 0);
+
+    return {
+      ...row,
+      actualMinor
+    };
+  });
+}
+
+function derivePlanRowActuals(rows: MonthPlanRowDto[], entries: EntryDto[]) {
+  const plannedActualsByCategory = rows.reduce((map, row) => {
+    if (row.section !== "planned_items") {
+      return map;
+    }
+
+    const key = normalizeCategoryLabel(row.categoryName);
+    if (!key) {
+      return map;
+    }
+
+    map.set(key, (map.get(key) ?? 0) + row.actualMinor);
+    return map;
+  }, new Map<string, number>());
+
+  return rows.map((row) => {
+    if (row.section !== "budget_buckets") {
+      return row;
+    }
+
+    const rowCategory = normalizeCategoryLabel(row.categoryName);
+    const categoryActualMinor = entries.reduce((sum, entry) => {
+      if (entry.entryType !== "expense") {
+        return sum;
+      }
+
+      return normalizeCategoryLabel(entry.categoryName) === rowCategory
+        ? sum + entry.amountMinor
+        : sum;
+    }, 0);
+    const actualMinor = Math.max(0, categoryActualMinor - (plannedActualsByCategory.get(rowCategory) ?? 0));
+
+    return {
+      ...row,
+      actualMinor
+    };
+  });
+}
+
+function normalizeCategoryLabel(value?: string) {
+  return (value ?? "").trim().toLowerCase();
 }
 
 function buildSummaryMonthsForView(personId: string, summaryMonthsByView: Record<string, SummaryMonthDto[]>) {
   return summaryMonthsByView[personId] ?? summaryMonthsByView.household;
+}
+
+function buildSummaryRange(
+  availableMonths: string[],
+  summaryStartMonth?: string,
+  summaryEndMonth?: string,
+  count = 13
+) {
+  const sortedMonths = [...availableMonths].sort();
+  if (!sortedMonths.length) {
+    return [];
+  }
+
+  const resolvedEndMonth = summaryEndMonth && sortedMonths.includes(summaryEndMonth)
+    ? summaryEndMonth
+    : sortedMonths[sortedMonths.length - 1];
+  const anchorIndex = sortedMonths.indexOf(resolvedEndMonth);
+  const requestedStartIndex = summaryStartMonth && sortedMonths.includes(summaryStartMonth)
+    ? sortedMonths.indexOf(summaryStartMonth)
+    : Math.max(0, anchorIndex - (count - 1));
+  const startIndex = Math.min(requestedStartIndex, anchorIndex);
+  return sortedMonths.slice(startIndex, anchorIndex + 1);
+}
+
+function buildSummaryDonutMonths(
+  entries: EntryDto[],
+  categories: CategoryDto[],
+  months: string[]
+): SummaryDonutMonthDto[] {
+  return months.map((month) => ({
+    month,
+    data: buildDonutChart(
+      entries.filter((entry) => entry.date.slice(0, 7) === month),
+      categories
+    )
+  }));
 }
 
 function buildPlanRowsForView(rows: MonthPlanRowDto[], personId: string, scope: PersonScope): MonthPlanRowDto[] {
@@ -286,6 +466,28 @@ function filterEntriesForView(entries: EntryDto[], personId: string, scope: Pers
   return entries.filter((entry) => rowMatchesView(entry.ownershipType, entry.splits, personId, scope));
 }
 
+function adjustEntriesForView(entries: EntryDto[], personId: string): EntryDto[] {
+  return entries.map((entry) => adjustEntryForView(entry, personId));
+}
+
+function adjustEntryForView(entry: EntryDto, personId: string): EntryDto {
+  if (personId === "household" || entry.ownershipType !== "shared") {
+    return entry;
+  }
+
+  const matchingSplit = entry.splits.find((split) => split.personId === personId);
+  if (!matchingSplit) {
+    return entry;
+  }
+
+  return {
+    ...entry,
+    amountMinor: matchingSplit.amountMinor,
+    totalAmountMinor: entry.amountMinor,
+    viewerSplitRatioBasisPoints: matchingSplit.ratioBasisPoints
+  };
+}
+
 function rowMatchesView(
   ownershipType: "direct" | "shared",
   splits: EntrySplitDto[],
@@ -313,12 +515,20 @@ function rowMatchesView(
 
 function adjustPlanRowForView(row: MonthPlanRowDto, personId: string): MonthPlanRowDto {
   if (personId === "household" || row.ownershipType === "direct") {
-    return row;
+    return {
+      ...row,
+      isDerived: row.isDerived ?? false,
+      sourceRowIds: row.sourceRowIds ?? [row.id]
+    };
   }
 
   const matchingSplit = row.splits.find((split) => split.personId === personId);
   if (!matchingSplit) {
-    return row;
+    return {
+      ...row,
+      isDerived: row.isDerived ?? false,
+      sourceRowIds: row.sourceRowIds ?? [row.id]
+    };
   }
 
   const ratio = matchingSplit.ratioBasisPoints / 10000;
@@ -326,7 +536,9 @@ function adjustPlanRowForView(row: MonthPlanRowDto, personId: string): MonthPlan
     ...row,
     plannedMinor: Math.round(row.plannedMinor * ratio),
     actualMinor: matchingSplit.amountMinor,
-    note: `${row.note ?? "Shared row"} • weighted to ${matchingSplit.personName}'s share`
+    note: `${row.note ?? "Shared row"} • weighted to ${matchingSplit.personName}'s share`,
+    isDerived: true,
+    sourceRowIds: row.sourceRowIds ?? [row.id]
   };
 }
 
@@ -347,18 +559,23 @@ function combineHouseholdPlanRows(rows: MonthPlanRowDto[]): MonthPlanRowDto[] {
       grouped.set(key, {
         ...row,
         ownershipType: row.ownershipType === "shared" ? "shared" : "direct",
-        ownerName: undefined
+        ownerName: undefined,
+        isDerived: false,
+        sourceRowIds: row.sourceRowIds ?? [row.id]
       });
       continue;
     }
 
     grouped.set(key, {
       ...existing,
+      id: `combined:${key}`,
       plannedMinor: existing.plannedMinor + row.plannedMinor,
       actualMinor: existing.actualMinor + row.actualMinor,
       ownershipType: existing.ownershipType === "shared" || row.ownershipType === "shared" ? "shared" : "direct",
       note: mergeNotes(existing.note, row.note),
-      splits: [...existing.splits, ...row.splits]
+      splits: [...existing.splits, ...row.splits],
+      isDerived: true,
+      sourceRowIds: [...(existing.sourceRowIds ?? [existing.id]), ...(row.sourceRowIds ?? [row.id])]
     });
   }
 
@@ -372,6 +589,7 @@ function mergeNotes(left?: string, right?: string) {
 
 function buildDonutChart(entries: EntryDto[], categories: CategoryDto[]): DonutChartDatumDto[] {
   const totals = new Map<string, number>();
+  const counts = new Map<string, number>();
 
   for (const entry of entries) {
     if (entry.entryType !== "expense") {
@@ -379,6 +597,7 @@ function buildDonutChart(entries: EntryDto[], categories: CategoryDto[]): DonutC
     }
 
     totals.set(entry.categoryName, (totals.get(entry.categoryName) ?? 0) + entry.amountMinor);
+    counts.set(entry.categoryName, (counts.get(entry.categoryName) ?? 0) + 1);
   }
 
   return [...totals.entries()]
@@ -388,7 +607,8 @@ function buildDonutChart(entries: EntryDto[], categories: CategoryDto[]): DonutC
       key: label,
       categoryId: category?.id,
       label,
-      valueMinor
+      valueMinor,
+      entryCount: counts.get(label) ?? 0
       };
     })
     .sort((left, right) => right.valueMinor - left.valueMinor)

@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     account_kind IN ('bank', 'credit_card', 'loan', 'cash', 'investment')
   ),
   currency TEXT NOT NULL DEFAULT 'SGD',
+  opening_balance_minor INTEGER NOT NULL DEFAULT 0,
   last4 TEXT,
   is_joint INTEGER NOT NULL DEFAULT 0,
   is_active INTEGER NOT NULL DEFAULT 1,
@@ -43,6 +44,20 @@ CREATE TABLE IF NOT EXISTS accounts (
   FOREIGN KEY (household_id) REFERENCES households(id),
   FOREIGN KEY (institution_id) REFERENCES institutions(id),
   FOREIGN KEY (owner_person_id) REFERENCES people(id)
+);
+
+CREATE TABLE IF NOT EXISTS account_balance_checkpoints (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  account_id TEXT NOT NULL,
+  checkpoint_month TEXT NOT NULL,
+  statement_balance_minor INTEGER NOT NULL,
+  note TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id),
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+  UNIQUE (account_id, checkpoint_month)
 );
 
 CREATE TABLE IF NOT EXISTS categories (

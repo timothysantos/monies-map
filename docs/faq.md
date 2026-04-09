@@ -94,6 +94,11 @@ planning lens. The household monthly view should focus on:
   household view
 - `Shared`: shared-only planning rows
 
+In person views, shared rows are supposed to be weighted to that person's split.
+If a shared dining row is split 55/45, Tim should see the 55% subtotal and
+Joyce should see the 45% subtotal. The full shared transaction can still be
+shown alongside it for context.
+
 ## Why do notes matter so much?
 
 The app should not treat notes as decoration. Notes explain why a month is
@@ -119,6 +124,52 @@ The current setup runs as two local processes during development:
 
 - Vite for the frontend
 - Wrangler for the Worker API
+
+If the app sits on `Loading...` and the browser console shows `/api/bootstrap`
+returning `500` plus a JSON parse error, the usual local cause is that Vite is
+still running while the Worker API failed to start. This repo expects Node 22
+for local scripts, so run `nvm use` from the repo root and restart
+`npm run dev`.
+
+## Can it know the real balance of each wallet?
+
+It can compute a running wallet balance from the ledger, but only from what has
+been imported locally.
+
+Each account now has an opening balance. The displayed wallet total is:
+
+- opening balance
+- plus imported income
+- plus transfer-ins
+- minus expenses and transfer-outs
+
+That makes balances internally consistent from a known starting point, but it
+is still not the same as live bank sync. If imports are incomplete, the app can
+still differ from the bank.
+
+The app now supports statement checkpoints too. You can save a month-end bank
+balance for an account, and the latest checkpoint is compared against the
+computed ledger. Account health then shows whether the ledger matches, is off,
+or still needs a checkpoint. It also surfaces the latest import time and any
+unresolved transfers that could make a balance look wrong.
+
+The import workflow now also flags possible duplicate rows already in the
+ledger and warns when the preview overlaps the date range of previous completed
+imports for the same accounts. This is not full reconciliation, but it is meant
+to catch the most common CSV trust mistakes before commit.
+
+Those duplicate warnings are now a bit smarter than a raw exact hash check. The
+app shows both exact matches and near matches based on amount, account, date
+proximity, and description similarity so you can spot likely overlaps before
+committing a CSV.
+
+Settings also shows a lightweight recent activity log for balance-affecting
+actions like imports, opening-balance edits, checkpoints, entry edits, and
+transfer link changes.
+
+Each account’s reconciliation dialog also keeps checkpoint history, so you can
+review more than the latest month-end proof, and unresolved transfers now have
+a larger review surface in Settings that links back into Entries for cleanup.
 
 ## Does it already support real CSV import?
 

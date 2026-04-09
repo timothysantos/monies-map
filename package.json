@@ -4,10 +4,20 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node ./scripts/ensure-node-major.mjs 22",
+    "predev:api": "node ./scripts/ensure-node-major.mjs 22",
+    "predev:ui": "node ./scripts/ensure-node-major.mjs 22",
+    "prebuild": "node ./scripts/ensure-node-major.mjs 22",
+    "prepreview": "node ./scripts/ensure-node-major.mjs 22",
+    "predeploy": "node ./scripts/ensure-node-major.mjs 22",
+    "predb:migrate": "node ./scripts/ensure-node-major.mjs 22",
+    "predb:migrate:remote": "node ./scripts/ensure-node-major.mjs 22",
+    "pretest:e2e": "node ./scripts/ensure-node-major.mjs 22",
     "dev": "concurrently -k -n API,UI \"npm:dev:api\" \"npm:dev:ui\"",
     "dev:api": "wrangler dev --port 8787",
     "dev:ui": "vite",
     "build": "vite build",
+    "test:e2e": "playwright test",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
     "db:migrate": "wrangler d1 execute monies-map --local --file=schema.sql",
@@ -15,11 +25,12 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260402.0",
+    "@playwright/test": "^1.59.1",
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.2.1",
     "typescript": "^5.8.3",
     "vite": "^5.4.19",
-    "wrangler": "^4.11.1"
+    "wrangler": "4.11.1"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

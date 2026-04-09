@@ -107,6 +107,10 @@ npm run db:migrate
 npm run dev
 ```
 
+If you start the repo on the wrong Node major, the local scripts now fail
+immediately with a clear message instead of leaving Vite up while the Worker
+API exits in the background.
+
 Then open:
 
 - [http://localhost:5173](http://localhost:5173)
