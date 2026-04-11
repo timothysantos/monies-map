@@ -36,6 +36,9 @@ That distinction matters because the system needs to answer questions like:
 - review step allows whole-file or per-row account attribution
 - transactions are normalized to a single ledger shape
 - every imported row is attached to an import batch for audit and rollback
+- CSV commits pre-resolve accounts, categories, and people before writing, then
+  write D1 statements in chunks so larger production imports do not leave
+  completed-looking partial batches
 - duplicates are detected by date, amount, description, and statement id
 
 ### 2. Review
@@ -111,12 +114,15 @@ That distinction matters because the system needs to answer questions like:
   unresolved transfer counts so trust warnings stay close to balances
 - import previews and recent import batches expose duplicate and overlapping
   date-range signals so CSV trust is visible before and after commit
+- large import previews call out that production commits are chunked and that a
+  rejected Cloudflare request should be retried as smaller batches
 - duplicate heuristics now distinguish exact ledger matches from near matches
   using amount, account, date proximity, and description token overlap
 - `audit_events` keep a lightweight history of balance-affecting actions such as
   imports, opening-balance edits, checkpoints, entry edits, and transfer relinks
-- account dialogs expose checkpoint history so reconciliation can be reviewed as
-  a timeline rather than only as the latest status
+- account dialogs expose editable/deletable checkpoint history so
+  reconciliation can be reviewed as a timeline rather than only as the latest
+  status
 - unresolved transfers have a dedicated review surface in Settings that links
   back into Entries for settlement work
 - `categories` own their presentation metadata, including icon and color, so
@@ -238,6 +244,8 @@ Person month scopes:
 ### Entries page
 
 - all entries for the selected month
+- totals distinguish category spend from cash outflow: `Spend` excludes
+  transfers, while `Outflow` includes expenses plus transfer-outs
 - filters by person, account, category, and import batch
 - in person views, shared entries should show that person's allocated subtotal,
   not the full household amount

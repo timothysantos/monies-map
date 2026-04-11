@@ -2972,10 +2972,15 @@ function EntriesPanel({ view, accounts, categories, people, onCategoryAppearance
       totals.incomeMinor += entry.amountMinor;
     } else if (entry.entryType === "expense") {
       totals.spendMinor += entry.amountMinor;
+    } else if (entry.entryType === "transfer" && entry.transferDirection === "out") {
+      totals.transferOutMinor += entry.amountMinor;
+    } else if (entry.entryType === "transfer" && entry.transferDirection === "in") {
+      totals.transferInMinor += entry.amountMinor;
     }
 
     return totals;
-  }, { incomeMinor: 0, spendMinor: 0 }), [filteredEntries]);
+  }, { incomeMinor: 0, spendMinor: 0, transferInMinor: 0, transferOutMinor: 0 }), [filteredEntries]);
+  const entryOutflowMinor = entryTotals.spendMinor + entryTotals.transferOutMinor;
   const entryNetMinor = entryTotals.incomeMinor - entryTotals.spendMinor;
   const expenseBreakdown = useMemo(() => {
     const grouped = new Map();
@@ -3342,6 +3347,10 @@ function EntriesPanel({ view, accounts, categories, people, onCategoryAppearance
         <span className="entries-totals-item">
           <span className="entries-totals-label">{messages.entries.totalDifference}</span>
           <strong className={getAmountToneClass(entryNetMinor)}>{money(entryNetMinor)}</strong>
+        </span>
+        <span className="entries-totals-item">
+          <span className="entries-totals-label">{messages.entries.totalOutflow}</span>
+          <strong className={getAmountToneClass(-entryOutflowMinor)}>{money(entryOutflowMinor)}</strong>
         </span>
         <div className="entries-totals-spacer" />
         <button type="button" className="subtle-action is-primary entries-add-inline" onClick={openEntryComposer}>
@@ -5017,7 +5026,7 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
 
     setIsSubmitting(true);
     try {
-      await fetch("/api/imports/commit", {
+      const response = await fetch("/api/imports/commit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -5031,6 +5040,11 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
           }))
         })
       });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setPreviewError(data.error ?? messages.imports.commitFailed);
+        return;
+      }
       setPreview(null);
       setPreviewRows([]);
       setPreviewError("");
@@ -5271,6 +5285,9 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
             </div>
           </div>
           {preview ? <p className="import-stage-note">{messages.imports.previewReady}</p> : null}
+          {previewRows.length > 100 ? (
+            <p className="import-stage-note">{messages.imports.largeImportNotice(previewRows.length)}</p>
+          ) : null}
 
           {preview?.unknownAccounts?.length ? (
             <div className="import-warning">
@@ -5734,6 +5751,40 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handleDeleteCheckpoint(item) {
+    if (!reconciliationDialog?.accountId) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await fetch("/api/accounts/checkpoints/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountId: reconciliationDialog.accountId,
+          checkpointMonth: item.month
+        })
+      });
+      setReconciliationDialog((current) => current ? {
+        ...current,
+        history: current.history.filter((historyItem) => historyItem.month !== item.month)
+      } : current);
+      await onRefresh();
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  function handleEditCheckpoint(item) {
+    setReconciliationDialog((current) => current ? {
+      ...current,
+      checkpointMonth: item.month,
+      statementBalance: formatMinorInput(item.statementBalanceMinor),
+      note: item.note ?? ""
+    } : current);
   }
 
   async function handleSaveCategory() {
@@ -6467,7 +6518,7 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
       <Dialog.Root open={Boolean(reconciliationDialog)} onOpenChange={(open) => { if (!open) setReconciliationDialog(null); }}>
         <Dialog.Portal>
           <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content settings-account-dialog">
+          <Dialog.Content className="note-dialog-content settings-account-dialog settings-reconciliation-dialog">
             <div className="note-dialog-head">
               <div>
                 <Dialog.Title>{messages.settings.reconcileAccountTitle}</Dialog.Title>
@@ -6515,28 +6566,43 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
                 <small className="field-help">{messages.settings.checkpointHelp}</small>
               </label>
             </div>
-            {reconciliationDialog?.history?.length ? (
-              <section className="settings-account-history">
-                <div className="panel-subhead">
-                  <h3>{messages.settings.checkpointHistoryTitle}</h3>
-                  <p>{messages.settings.checkpointHistoryDetail}</p>
-                </div>
-                <div className="settings-account-list">
-                  {reconciliationDialog.history.map((item) => (
-                    <div key={item.month} className="settings-account-row">
-                      <div className="settings-account-main">
-                        <strong>{formatMonthLabel(item.month)}</strong>
-                        <p>{`Statement ${money(item.statementBalanceMinor)} • Ledger ${money(item.computedBalanceMinor)}`}</p>
-                        <p className={`settings-account-health ${item.deltaMinor === 0 ? "is-matched" : "is-mismatch"}`}>
-                          {item.deltaMinor === 0 ? "Matched" : `Delta ${money(Math.abs(item.deltaMinor))}`}
-                        </p>
-                        {item.note ? <p className="settings-account-meta">{item.note}</p> : null}
+            <div className="settings-reconciliation-scroll">
+              {reconciliationDialog?.history?.length ? (
+                <section className="settings-account-history">
+                  <div className="panel-subhead">
+                    <h3>{messages.settings.checkpointHistoryTitle}</h3>
+                    <p>{messages.settings.checkpointHistoryDetail}</p>
+                  </div>
+                  <div className="settings-account-list">
+                    {reconciliationDialog.history.map((item) => (
+                      <div key={item.month} className="settings-account-row settings-checkpoint-row">
+                        <div className="settings-account-main">
+                          <strong>{formatMonthLabel(item.month)}</strong>
+                          <p>{`Statement ${money(item.statementBalanceMinor)} • Ledger ${money(item.computedBalanceMinor)}`}</p>
+                          <p className={`settings-account-health ${item.deltaMinor === 0 ? "is-matched" : "is-mismatch"}`}>
+                            {item.deltaMinor === 0 ? "Matched" : `Delta ${money(Math.abs(item.deltaMinor))}`}
+                          </p>
+                          {item.note ? <p className="settings-account-meta">{item.note}</p> : null}
+                        </div>
+                        <div className="settings-account-actions">
+                          <button type="button" className="icon-action" aria-label={messages.settings.checkpointEdit} onClick={() => handleEditCheckpoint(item)}>
+                            <SquarePen size={16} />
+                          </button>
+                          <DeleteRowButton
+                            label={formatMonthLabel(item.month)}
+                            triggerLabel={messages.settings.checkpointDelete}
+                            confirmLabel={messages.settings.checkpointDelete}
+                            destructive={false}
+                            prompt={messages.settings.checkpointDeleteDetail(formatMonthLabel(item.month))}
+                            onConfirm={() => handleDeleteCheckpoint(item)}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            ) : null}
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+            </div>
             <div className="note-dialog-actions">
               <button type="button" className="subtle-cancel" onClick={() => setReconciliationDialog(null)}>
                 Cancel

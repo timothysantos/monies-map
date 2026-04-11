@@ -11,6 +11,7 @@ import {
   createEntryRecord,
   createCategoryRecord,
   createAccountRecord,
+  deleteAccountCheckpointRecord,
   deleteCategoryRecord,
   deleteMonthPlan,
   deleteMonthPlanRow,
@@ -175,6 +176,25 @@ export default {
           checkpointMonth: body.checkpointMonth,
           statementBalanceMinor: body.statementBalanceMinor,
           note: body.note
+        }))
+      });
+    }
+
+    if (url.pathname === "/api/accounts/checkpoints/delete" && request.method === "POST") {
+      const body = await request.json<{
+        accountId?: string;
+        checkpointMonth?: string;
+      }>();
+
+      if (!body.accountId || !body.checkpointMonth) {
+        return json({ ok: false, error: "Missing checkpoint fields" }, 400);
+      }
+
+      return json({
+        ok: true,
+        ...(await deleteAccountCheckpointRecord(env.DB, {
+          accountId: body.accountId,
+          checkpointMonth: body.checkpointMonth
         }))
       });
     }
