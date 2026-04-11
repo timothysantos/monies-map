@@ -22,6 +22,11 @@ import type {
   LinkedTransferDto,
   MonthIncomeRowDto,
   MonthPlanRowDto,
+  SplitActivityDto,
+  SplitExpenseDto,
+  SplitGroupPillDto,
+  SplitMatchCandidateDto,
+  SplitSettlementDto,
   SummaryMonthDto
 } from "../types/dto";
 
@@ -33,6 +38,10 @@ const PERSON_IDS: Record<string, string> = {
 };
 
 const SHARED_ACCOUNT_INSTITUTION = "DBS";
+const EMPTY_STATE_PEOPLE = [
+  { id: "person-tim", name: "Primary" },
+  { id: "person-joyce", name: "Partner" }
+];
 
 export async function ensureSeedData(db: D1Database, settings: DemoSettings) {
   await ensureDemoSchema(db);
@@ -84,6 +93,38 @@ export async function ensureDemoSchema(db: D1Database) {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (monthly_plan_row_id) REFERENCES monthly_plan_rows(id) ON DELETE CASCADE,
       FOREIGN KEY (person_id) REFERENCES people(id)
+    )
+  `).run();
+
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS monthly_plan_entry_links (
+      id TEXT PRIMARY KEY,
+      monthly_plan_row_id TEXT NOT NULL,
+      transaction_id TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (monthly_plan_row_id) REFERENCES monthly_plan_rows(id) ON DELETE CASCADE,
+      FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,
+      UNIQUE (monthly_plan_row_id, transaction_id)
+    )
+  `).run();
+
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS monthly_plan_match_hints (
+      id TEXT PRIMARY KEY,
+      household_id TEXT NOT NULL,
+      person_id TEXT,
+      category_id TEXT,
+      account_id TEXT,
+      label_normalized TEXT NOT NULL,
+      description_pattern TEXT NOT NULL,
+      amount_minor INTEGER,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (household_id) REFERENCES households(id),
+      FOREIGN KEY (person_id) REFERENCES people(id),
+      FOREIGN KEY (category_id) REFERENCES categories(id),
+      FOREIGN KEY (account_id) REFERENCES accounts(id),
+      UNIQUE (household_id, person_id, category_id, account_id, label_normalized, description_pattern)
     )
   `).run();
 
@@ -163,6 +204,102 @@ export async function ensureDemoSchema(db: D1Database) {
     `)
     .run();
 
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS split_groups (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL,
+        group_name TEXT NOT NULL,
+        icon_key TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (household_id) REFERENCES households(id)
+      )
+    `)
+    .run();
+
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS split_batches (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL,
+        split_group_id TEXT,
+        batch_name TEXT NOT NULL,
+        opened_on TEXT NOT NULL,
+        closed_on TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (household_id) REFERENCES households(id),
+        FOREIGN KEY (split_group_id) REFERENCES split_groups(id)
+      )
+    `)
+    .run();
+
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS split_expenses (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL,
+        split_group_id TEXT,
+        split_batch_id TEXT,
+        payer_person_id TEXT NOT NULL,
+        expense_date TEXT NOT NULL,
+        description TEXT NOT NULL,
+        category_id TEXT,
+        total_amount_minor INTEGER NOT NULL,
+        note TEXT,
+        linked_transaction_id TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (household_id) REFERENCES households(id),
+        FOREIGN KEY (split_group_id) REFERENCES split_groups(id),
+        FOREIGN KEY (split_batch_id) REFERENCES split_batches(id),
+        FOREIGN KEY (payer_person_id) REFERENCES people(id),
+        FOREIGN KEY (category_id) REFERENCES categories(id),
+        FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id)
+      )
+    `)
+    .run();
+
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS split_expense_shares (
+        id TEXT PRIMARY KEY,
+        split_expense_id TEXT NOT NULL,
+        person_id TEXT NOT NULL,
+        ratio_basis_points INTEGER NOT NULL CHECK (
+          ratio_basis_points BETWEEN 0 AND 10000
+        ),
+        amount_minor INTEGER NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (split_expense_id) REFERENCES split_expenses(id) ON DELETE CASCADE,
+        FOREIGN KEY (person_id) REFERENCES people(id)
+      )
+    `)
+    .run();
+
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS split_settlements (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL,
+        split_group_id TEXT,
+        split_batch_id TEXT,
+        from_person_id TEXT NOT NULL,
+        to_person_id TEXT NOT NULL,
+        settlement_date TEXT NOT NULL,
+        amount_minor INTEGER NOT NULL,
+        note TEXT,
+        linked_transaction_id TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (household_id) REFERENCES households(id),
+        FOREIGN KEY (split_group_id) REFERENCES split_groups(id),
+        FOREIGN KEY (split_batch_id) REFERENCES split_batches(id),
+        FOREIGN KEY (from_person_id) REFERENCES people(id),
+        FOREIGN KEY (to_person_id) REFERENCES people(id),
+        FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id)
+      )
+    `)
+    .run();
+
   const snapshotColumns = await db
     .prepare("PRAGMA table_info(monthly_snapshots)")
     .all<{ name: string }>();
@@ -176,6 +313,18 @@ export async function ensureDemoSchema(db: D1Database) {
   if (!hasSavingsGoal && snapshotColumns.results.length > 0) {
     await db.prepare("ALTER TABLE monthly_snapshots ADD COLUMN savings_goal_minor INTEGER NOT NULL DEFAULT 0").run();
   }
+
+  const splitExpenseColumns = await db.prepare("PRAGMA table_info(split_expenses)").all<{ name: string }>();
+  if (splitExpenseColumns.results.length > 0 && !splitExpenseColumns.results.some((column) => column.name === "split_batch_id")) {
+    await db.prepare("ALTER TABLE split_expenses ADD COLUMN split_batch_id TEXT").run();
+  }
+
+  const splitSettlementColumns = await db.prepare("PRAGMA table_info(split_settlements)").all<{ name: string }>();
+  if (splitSettlementColumns.results.length > 0 && !splitSettlementColumns.results.some((column) => column.name === "split_batch_id")) {
+    await db.prepare("ALTER TABLE split_settlements ADD COLUMN split_batch_id TEXT").run();
+  }
+
+  await backfillSplitBatches(db);
 }
 
 export async function reseedDemoData(db: D1Database, settings: DemoSettings) {
@@ -192,7 +341,7 @@ export async function seedEmptyStateReferenceData(db: D1Database) {
     .bind(demoHousehold.id, demoHousehold.name, demoHousehold.baseCurrency)
     .run();
 
-  for (const person of demoHousehold.people) {
+  for (const person of EMPTY_STATE_PEOPLE) {
     await db
       .prepare("INSERT INTO people (id, household_id, display_name, role) VALUES (?, ?, ?, ?)")
       .bind(person.id, demoHousehold.id, person.name, person.id === "person-tim" ? "owner" : "partner")
@@ -225,7 +374,14 @@ export async function seedEmptyStateReferenceData(db: D1Database) {
 export async function clearDemoData(db: D1Database) {
   await db.prepare("PRAGMA defer_foreign_keys = ON").run();
   const deletions = [
+    "DELETE FROM split_expense_shares",
+    "DELETE FROM split_expenses",
+    "DELETE FROM split_settlements",
+    "DELETE FROM split_batches",
+    "DELETE FROM split_groups",
     "DELETE FROM transaction_splits",
+    "DELETE FROM monthly_plan_entry_links",
+    "DELETE FROM monthly_plan_match_hints",
     "DELETE FROM transactions",
     "DELETE FROM monthly_plan_row_splits",
     "DELETE FROM monthly_plan_rows",
@@ -529,12 +685,324 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
           split.ratioBasisPoints,
           split.amountMinor
         )
+      .run();
+    }
+  }
+
+  await seedDemoSplitData(db);
+
+  for (const month of demoMonths) {
+    await recalculateMonthlySnapshots(db, month);
+  }
+}
+
+async function seedDemoSplitData(db: D1Database) {
+  const batchSeeds = [
+    {
+      id: "split-batch-okaeri-closed",
+      groupId: "split-group-okaeri",
+      name: "Okaeri settled batch",
+      openedOn: "2025-10-03",
+      closedOn: "2025-10-22"
+    },
+    {
+      id: "split-batch-baby-river-open",
+      groupId: "split-group-baby-river",
+      name: "Baby River current batch",
+      openedOn: "2025-10-12",
+      closedOn: null
+    },
+    {
+      id: "split-batch-none-open",
+      groupId: null,
+      name: "Non-group current batch",
+      openedOn: "2025-10-06",
+      closedOn: null
+    }
+  ];
+
+  for (const batch of batchSeeds) {
+    await db
+      .prepare(`
+        INSERT INTO split_batches (
+          id, household_id, split_group_id, batch_name, opened_on, closed_on
+        ) VALUES (?, ?, ?, ?, ?, ?)
+      `)
+      .bind(batch.id, DEMO_HOUSEHOLD_ID, batch.groupId, batch.name, batch.openedOn, batch.closedOn)
+      .run();
+  }
+
+  const groupSeeds = [
+    { id: "split-group-baby-river", name: "Baby River", iconKey: "heart-pulse", sortOrder: 1 },
+    { id: "split-group-okaeri", name: "Okaeri", iconKey: "house", sortOrder: 2 }
+  ];
+
+  for (const group of groupSeeds) {
+    await db
+      .prepare(`
+        INSERT INTO split_groups (
+          id, household_id, group_name, icon_key, sort_order
+        ) VALUES (?, ?, ?, ?, ?)
+      `)
+      .bind(group.id, DEMO_HOUSEHOLD_ID, group.name, group.iconKey, group.sortOrder)
+      .run();
+  }
+
+  const expenseSeeds = [
+    {
+      id: "split-expense-okaeri-dining",
+      groupId: "split-group-okaeri",
+      batchId: "split-batch-okaeri-closed",
+      payerPersonId: "person-tim",
+      date: "2025-10-03",
+      description: "October dining",
+      categoryName: "Food & Drinks",
+      totalAmountMinor: 71319,
+      note: "Manual split record before CSV was imported."
+    },
+    {
+      id: "split-expense-baby-river-family",
+      groupId: "split-group-baby-river",
+      batchId: "split-batch-baby-river-open",
+      payerPersonId: "person-joyce",
+      date: "2025-10-12",
+      description: "Family support",
+      categoryName: "Family & Personal",
+      totalAmountMinor: 23407,
+      note: "Family spending tracked outside the bank import flow."
+    },
+    {
+      id: "split-expense-nongroup-groceries",
+      groupId: null,
+      batchId: "split-batch-none-open",
+      payerPersonId: "person-joyce",
+      date: "2025-10-06",
+      description: "October groceries",
+      categoryName: "Groceries",
+      totalAmountMinor: 24251,
+      note: "Shared expense tracked without a named group."
+    }
+  ];
+
+  for (const expense of expenseSeeds) {
+    await db
+      .prepare(`
+        INSERT INTO split_expenses (
+          id, household_id, split_group_id, split_batch_id, payer_person_id, expense_date,
+          description, category_id, total_amount_minor, note
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .bind(
+        expense.id,
+        DEMO_HOUSEHOLD_ID,
+        expense.groupId,
+        expense.batchId,
+        expense.payerPersonId,
+        expense.date,
+        expense.description,
+        findCategoryId(expense.categoryName),
+        expense.totalAmountMinor,
+        expense.note
+      )
+      .run();
+
+    const primaryShare = Math.floor(expense.totalAmountMinor / 2);
+    const secondaryShare = expense.totalAmountMinor - primaryShare;
+    const shareRows = [
+      { personId: "person-tim", amountMinor: primaryShare },
+      { personId: "person-joyce", amountMinor: secondaryShare }
+    ];
+
+    for (const share of shareRows) {
+      await db
+        .prepare(`
+          INSERT INTO split_expense_shares (
+            id, split_expense_id, person_id, ratio_basis_points, amount_minor
+          ) VALUES (?, ?, ?, ?, ?)
+        `)
+        .bind(
+          `${expense.id}-${share.personId}`,
+          expense.id,
+          share.personId,
+          share.personId === "person-tim" ? 5000 : 5000,
+          share.amountMinor
+        )
         .run();
     }
   }
 
-  for (const month of demoMonths) {
-    await recalculateMonthlySnapshots(db, month);
+  await db
+    .prepare(`
+      INSERT INTO split_settlements (
+        id, household_id, split_group_id, split_batch_id, from_person_id, to_person_id,
+        settlement_date, amount_minor, note
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+    .bind(
+      "split-settlement-okaeri",
+      DEMO_HOUSEHOLD_ID,
+      "split-group-okaeri",
+      "split-batch-okaeri-closed",
+      "person-joyce",
+      "person-tim",
+      "2025-10-22",
+      93150,
+      "Manual settle-up recorded before bank transfer was linked."
+    )
+    .run();
+}
+
+function splitBatchName(groupName?: string | null, closed = false) {
+  const base = groupName ?? "Non-group expenses";
+  return closed ? `${base} settled batch` : `${base} current batch`;
+}
+
+async function getSplitGroupName(db: D1Database, groupId?: string | null) {
+  if (!groupId) {
+    return "Non-group expenses";
+  }
+
+  const row = await db
+    .prepare("SELECT group_name FROM split_groups WHERE household_id = ? AND id = ?")
+    .bind(DEMO_HOUSEHOLD_ID, groupId)
+    .first<{ group_name: string }>();
+  return row?.group_name ?? "Non-group expenses";
+}
+
+async function createSplitBatch(
+  db: D1Database,
+  input: { groupId?: string | null; openedOn: string; closedOn?: string | null }
+) {
+  const id = `split-batch-${slugify(input.groupId ?? "none")}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  const groupName = await getSplitGroupName(db, input.groupId);
+  await db
+    .prepare(`
+      INSERT INTO split_batches (
+        id, household_id, split_group_id, batch_name, opened_on, closed_on
+      ) VALUES (?, ?, ?, ?, ?, ?)
+    `)
+    .bind(
+      id,
+      DEMO_HOUSEHOLD_ID,
+      input.groupId ?? null,
+      splitBatchName(groupName, Boolean(input.closedOn)),
+      input.openedOn,
+      input.closedOn ?? null
+    )
+    .run();
+  return id;
+}
+
+async function getOrCreateActiveSplitBatch(
+  db: D1Database,
+  input: { groupId?: string | null; date: string }
+) {
+  const active = await db
+    .prepare(`
+      SELECT id
+      FROM split_batches
+      WHERE household_id = ?
+        AND (split_group_id IS ? OR split_group_id = ?)
+        AND closed_on IS NULL
+      ORDER BY opened_on DESC, created_at DESC
+      LIMIT 1
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, input.groupId ?? null, input.groupId ?? null)
+    .first<{ id: string }>();
+
+  if (active?.id) {
+    return active.id;
+  }
+
+  return createSplitBatch(db, { groupId: input.groupId, openedOn: input.date, closedOn: null });
+}
+
+async function closeSplitBatch(
+  db: D1Database,
+  input: { batchId: string; closedOn: string }
+) {
+  const currentBatch = await db
+    .prepare(`
+      SELECT split_group_id
+      FROM split_batches
+      WHERE id = ? AND household_id = ?
+    `)
+    .bind(input.batchId, DEMO_HOUSEHOLD_ID)
+    .first<{ split_group_id: string | null }>();
+  const groupName = await getSplitGroupName(db, currentBatch?.split_group_id ?? null);
+  await db
+    .prepare(`
+      UPDATE split_batches
+      SET closed_on = COALESCE(closed_on, ?),
+          batch_name = CASE
+            WHEN closed_on IS NULL THEN ?
+            ELSE batch_name
+          END
+      WHERE id = ? AND household_id = ?
+    `)
+    .bind(input.closedOn, splitBatchName(groupName, true), input.batchId, DEMO_HOUSEHOLD_ID)
+    .run();
+}
+
+async function backfillSplitBatches(db: D1Database) {
+  const unassignedExpenseCount = await db
+    .prepare("SELECT COUNT(*) AS count FROM split_expenses WHERE household_id = ? AND split_batch_id IS NULL")
+    .bind(DEMO_HOUSEHOLD_ID)
+    .first<{ count: number }>();
+  const unassignedSettlementCount = await db
+    .prepare("SELECT COUNT(*) AS count FROM split_settlements WHERE household_id = ? AND split_batch_id IS NULL")
+    .bind(DEMO_HOUSEHOLD_ID)
+    .first<{ count: number }>();
+
+  if ((unassignedExpenseCount?.count ?? 0) === 0 && (unassignedSettlementCount?.count ?? 0) === 0) {
+    return;
+  }
+
+  const rows = await db
+    .prepare(`
+      SELECT split_group_id, expense_date AS activity_date, 'expense' AS kind
+      FROM split_expenses
+      WHERE household_id = ? AND split_batch_id IS NULL
+      UNION ALL
+      SELECT split_group_id, settlement_date AS activity_date, 'settlement' AS kind
+      FROM split_settlements
+      WHERE household_id = ? AND split_batch_id IS NULL
+      ORDER BY activity_date ASC
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, DEMO_HOUSEHOLD_ID)
+    .all<{ split_group_id: string | null; activity_date: string; kind: "expense" | "settlement" }>();
+
+  const grouped = new Map<string, { groupId: string | null; dates: string[]; latestSettlementDate?: string; latestExpenseDate?: string }>();
+  for (const row of rows.results) {
+    const key = row.split_group_id ?? "split-group-none";
+    const current = grouped.get(key) ?? { groupId: row.split_group_id ?? null, dates: [] };
+    current.dates.push(row.activity_date);
+    if (row.kind === "settlement" && (!current.latestSettlementDate || row.activity_date > current.latestSettlementDate)) {
+      current.latestSettlementDate = row.activity_date;
+    }
+    if (row.kind === "expense" && (!current.latestExpenseDate || row.activity_date > current.latestExpenseDate)) {
+      current.latestExpenseDate = row.activity_date;
+    }
+    grouped.set(key, current);
+  }
+
+  for (const current of grouped.values()) {
+    const shouldClose = Boolean(current.latestSettlementDate)
+      && (!current.latestExpenseDate || current.latestExpenseDate <= current.latestSettlementDate);
+    const batchId = await createSplitBatch(db, {
+      groupId: current.groupId,
+      openedOn: current.dates[0],
+      closedOn: shouldClose ? current.latestSettlementDate ?? current.dates[current.dates.length - 1] : null
+    });
+
+    await db
+      .prepare("UPDATE split_expenses SET split_batch_id = ? WHERE household_id = ? AND split_batch_id IS NULL AND split_group_id IS ?")
+      .bind(batchId, DEMO_HOUSEHOLD_ID, current.groupId)
+      .run();
+    await db
+      .prepare("UPDATE split_settlements SET split_batch_id = ? WHERE household_id = ? AND split_batch_id IS NULL AND split_group_id IS ?")
+      .bind(batchId, DEMO_HOUSEHOLD_ID, current.groupId)
+      .run();
   }
 }
 
@@ -571,6 +1039,36 @@ export async function loadSummaryMonths(db: D1Database, personScope: string): Pr
       note: row.note ?? "Month tracked close to plan overall."
     }))
     .sort((left, right) => left.month.localeCompare(right.month));
+}
+
+export async function loadTrackedMonths(db: D1Database): Promise<string[]> {
+  const result = await db
+    .prepare(`
+      SELECT DISTINCT month_key
+      FROM (
+        SELECT substr(transaction_date, 1, 7) AS month_key
+        FROM transactions
+        WHERE household_id = ?
+
+        UNION
+
+        SELECT printf('%04d-%02d', year, month) AS month_key
+        FROM monthly_snapshots
+        WHERE household_id = ?
+
+        UNION
+
+        SELECT printf('%04d-%02d', year, month) AS month_key
+        FROM monthly_plan_rows
+        WHERE household_id = ?
+      )
+      WHERE month_key IS NOT NULL AND month_key != ''
+      ORDER BY month_key
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, DEMO_HOUSEHOLD_ID, DEMO_HOUSEHOLD_ID)
+    .all<{ month_key: string }>();
+
+  return result.results.map((row) => row.month_key);
 }
 
 export async function loadMonthIncomeRows(
@@ -1685,6 +2183,128 @@ export async function saveMonthPlanRow(
   return { rowId: input.rowId, updated: true, created: !existing };
 }
 
+export async function saveMonthPlanEntryLinks(
+  db: D1Database,
+  input: {
+    rowId: string;
+    month: string;
+    transactionIds: string[];
+  }
+) {
+  const row = await db
+    .prepare(`
+      SELECT
+        monthly_plan_rows.section_key,
+        monthly_plan_rows.person_id,
+        monthly_plan_rows.category_id,
+        monthly_plan_rows.account_id,
+        monthly_plan_rows.label
+      FROM monthly_plan_rows
+      WHERE household_id = ? AND id = ?
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, input.rowId)
+    .first<{
+      section_key: "income" | "planned_items" | "budget_buckets";
+      person_id: string | null;
+      category_id: string | null;
+      account_id: string | null;
+      label: string;
+    }>();
+
+  if (!row || row.section_key !== "planned_items") {
+    throw new Error("Only planned items can be linked to entries.");
+  }
+
+  const uniqueTransactionIds = [...new Set(input.transactionIds.filter(Boolean))];
+
+  if (uniqueTransactionIds.length) {
+    const placeholders = uniqueTransactionIds.map(() => "?").join(", ");
+    const validTransactions = await db
+      .prepare(`
+        SELECT id
+        FROM transactions
+        WHERE household_id = ?
+          AND entry_type = 'expense'
+          AND id IN (${placeholders})
+      `)
+      .bind(DEMO_HOUSEHOLD_ID, ...uniqueTransactionIds)
+      .all<{ id: string }>();
+    const validIds = new Set(validTransactions.results.map((transaction) => transaction.id));
+    const invalid = uniqueTransactionIds.find((transactionId) => !validIds.has(transactionId));
+    if (invalid) {
+      throw new Error("One or more selected entries cannot be linked.");
+    }
+  }
+
+  const linkedTransactions = uniqueTransactionIds.length
+    ? await db
+        .prepare(`
+          SELECT
+            transactions.id,
+            transactions.description,
+            transactions.amount_minor,
+            transactions.account_id,
+            transactions.category_id
+          FROM transactions
+          WHERE transactions.household_id = ?
+            AND transactions.id IN (${uniqueTransactionIds.map(() => "?").join(", ")})
+        `)
+        .bind(DEMO_HOUSEHOLD_ID, ...uniqueTransactionIds)
+        .all<{
+          id: string;
+          description: string;
+          amount_minor: number;
+          account_id: string | null;
+          category_id: string | null;
+        }>()
+    : { results: [] as Array<{ id: string; description: string; amount_minor: number; account_id: string | null; category_id: string | null }> };
+
+  await db.prepare("DELETE FROM monthly_plan_entry_links WHERE monthly_plan_row_id = ?").bind(input.rowId).run();
+
+  for (const transactionId of uniqueTransactionIds) {
+    await db
+      .prepare(`
+        INSERT INTO monthly_plan_entry_links (
+          id, monthly_plan_row_id, transaction_id
+        ) VALUES (?, ?, ?)
+      `)
+      .bind(`mple-${input.rowId}-${transactionId}`, input.rowId, transactionId)
+      .run();
+  }
+
+  const labelNormalized = normalizePlanMatchHint(row.label);
+  for (const transaction of linkedTransactions.results) {
+    const descriptionPattern = normalizePlanMatchHint(transaction.description);
+    if (!descriptionPattern) {
+      continue;
+    }
+
+    await db
+      .prepare(`
+        INSERT INTO monthly_plan_match_hints (
+          id, household_id, person_id, category_id, account_id,
+          label_normalized, description_pattern, amount_minor
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id)
+        DO UPDATE SET amount_minor = excluded.amount_minor, updated_at = CURRENT_TIMESTAMP
+      `)
+      .bind(
+        `mpmh-${slugify([row.person_id ?? "household", row.category_id ?? "any-category", transaction.account_id ?? "any-account", labelNormalized, descriptionPattern].join("-"))}`,
+        DEMO_HOUSEHOLD_ID,
+        row.person_id,
+        transaction.category_id ?? row.category_id,
+        transaction.account_id ?? row.account_id,
+        labelNormalized,
+        descriptionPattern,
+        transaction.amount_minor
+      )
+      .run();
+  }
+
+  await recalculateMonthlySnapshots(db, input.month);
+  return { rowId: input.rowId, linkedEntryCount: uniqueTransactionIds.length };
+}
+
 export async function deleteMonthPlanRow(
   db: D1Database,
   input: {
@@ -1692,6 +2312,11 @@ export async function deleteMonthPlanRow(
     month: string;
   }
 ) {
+  await db
+    .prepare("DELETE FROM monthly_plan_entry_links WHERE monthly_plan_row_id = ?")
+    .bind(input.rowId)
+    .run();
+
   await db
     .prepare("DELETE FROM monthly_plan_row_splits WHERE monthly_plan_row_id = ?")
     .bind(input.rowId)
@@ -1707,6 +2332,20 @@ export async function deleteMonthPlanRow(
 }
 
 async function clearMonthData(db: D1Database, month: string, year: number, monthNumber: number) {
+  await db
+    .prepare(`
+      DELETE FROM monthly_plan_entry_links
+      WHERE transaction_id IN (
+        SELECT id
+        FROM transactions
+        WHERE household_id = ?
+          AND transaction_date >= ?
+          AND transaction_date < ?
+      )
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, `${month}-01`, nextMonthKey(month) + "-01")
+    .run();
+
   await db
     .prepare(`
       DELETE FROM transaction_splits
@@ -1729,6 +2368,20 @@ async function clearMonthData(db: D1Database, month: string, year: number, month
         AND transaction_date < ?
     `)
     .bind(DEMO_HOUSEHOLD_ID, `${month}-01`, nextMonthKey(month) + "-01")
+    .run();
+
+  await db
+    .prepare(`
+      DELETE FROM monthly_plan_entry_links
+      WHERE monthly_plan_row_id IN (
+        SELECT id
+        FROM monthly_plan_rows
+        WHERE household_id = ?
+          AND year = ?
+          AND month = ?
+      )
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, year, monthNumber)
     .run();
 
   await db
@@ -2172,6 +2825,46 @@ export async function updateAccountRecord(
   });
 
   return { accountId: input.accountId, updated: true };
+}
+
+export async function updatePersonRecord(
+  db: D1Database,
+  input: {
+    personId: string;
+    name: string;
+  }
+) {
+  const trimmedName = input.name.trim();
+  if (!trimmedName) {
+    throw new Error("Person name is required.");
+  }
+
+  const existing = await db
+    .prepare("SELECT id, display_name FROM people WHERE household_id = ? AND id = ?")
+    .bind(DEMO_HOUSEHOLD_ID, input.personId)
+    .first<{ id: string; display_name: string }>();
+
+  if (!existing) {
+    throw new Error(`Unknown person: ${input.personId}`);
+  }
+
+  await db
+    .prepare(`
+      UPDATE people
+      SET display_name = ?
+      WHERE household_id = ? AND id = ?
+    `)
+    .bind(trimmedName, DEMO_HOUSEHOLD_ID, input.personId)
+    .run();
+
+  await recordAuditEvent(db, {
+    entityType: "person",
+    entityId: input.personId,
+    action: "person_updated",
+    detail: `Updated person ${existing.display_name} -> ${trimmedName}.`
+  });
+
+  return { personId: input.personId, updated: true };
 }
 
 export async function archiveAccountRecord(
@@ -2882,30 +3575,105 @@ export async function loadMonthPlanRows(db: D1Database, month = "2025-10"): Prom
     }>();
 
   const splitMap = groupSplits(splits.results, "monthly_plan_row_id");
+  const linkedEntries = await db
+    .prepare(`
+      SELECT
+        monthly_plan_entry_links.monthly_plan_row_id,
+        monthly_plan_entry_links.transaction_id
+      FROM monthly_plan_entry_links
+      INNER JOIN monthly_plan_rows ON monthly_plan_rows.id = monthly_plan_entry_links.monthly_plan_row_id
+      WHERE monthly_plan_rows.household_id = ? AND monthly_plan_rows.year = ? AND monthly_plan_rows.month = ?
+      ORDER BY monthly_plan_entry_links.created_at
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, year, monthNumber)
+    .all<{
+      monthly_plan_row_id: string;
+      transaction_id: string;
+    }>();
+  const linkedEntryMap = linkedEntries.results.reduce((map, row) => {
+    const current = map.get(row.monthly_plan_row_id) ?? [];
+    current.push(row.transaction_id);
+    map.set(row.monthly_plan_row_id, current);
+    return map;
+  }, new Map<string, string[]>());
+
+  const matchHints = await db
+    .prepare(`
+      SELECT
+        monthly_plan_match_hints.id,
+        monthly_plan_match_hints.person_id,
+        monthly_plan_match_hints.category_id,
+        monthly_plan_match_hints.account_id,
+        monthly_plan_match_hints.label_normalized,
+        monthly_plan_match_hints.description_pattern,
+        monthly_plan_match_hints.amount_minor,
+        accounts.account_name,
+        categories.name AS category_name
+      FROM monthly_plan_match_hints
+      LEFT JOIN accounts ON accounts.id = monthly_plan_match_hints.account_id
+      LEFT JOIN categories ON categories.id = monthly_plan_match_hints.category_id
+      WHERE monthly_plan_match_hints.household_id = ?
+      ORDER BY monthly_plan_match_hints.updated_at DESC
+    `)
+    .bind(DEMO_HOUSEHOLD_ID)
+    .all<{
+      id: string;
+      person_id: string | null;
+      category_id: string | null;
+      account_id: string | null;
+      label_normalized: string;
+      description_pattern: string;
+      amount_minor: number | null;
+      account_name: string | null;
+      category_name: string | null;
+    }>();
 
   return rows.results
     .filter((row) => row.section_key !== "income")
-    .map((row) => ({
-      id: row.id,
-      section: row.section_key === "budget_buckets" ? "budget_buckets" : "planned_items",
-      categoryId: row.category_id ?? undefined,
-      categoryName: row.category_name ?? "Other",
-      label: row.label,
-      planDate: row.plan_date ?? undefined,
-      dayLabel: row.plan_date ? String(new Date(row.plan_date).getUTCDate()) : undefined,
-      dayOfWeek: row.plan_date ? weekdayLabel(row.plan_date) : undefined,
-      plannedMinor: row.planned_amount_minor,
-      actualMinor: row.actual_amount_minor,
-      accountId: row.account_id ?? undefined,
-      accountName: row.account_name ?? undefined,
-      note: row.notes ?? undefined,
-      ownershipType: row.ownership_type,
-      personId: row.person_id ?? undefined,
-      ownerName: row.owner_name ?? undefined,
-      isDerived: false,
-      sourceRowIds: [row.id],
-      splits: splitMap.get(row.id) ?? []
-    }));
+    .map((row) => {
+      const linkedEntryIds = linkedEntryMap.get(row.id) ?? [];
+      const labelNormalized = normalizePlanMatchHint(row.label);
+      const planMatchHints = row.section_key === "planned_items"
+        ? matchHints.results
+            .filter((hint) => (
+              hint.label_normalized === labelNormalized &&
+              (!hint.person_id || !row.person_id || hint.person_id === row.person_id) &&
+              (!hint.category_id || !row.category_id || hint.category_id === row.category_id) &&
+              (!row.account_id || !hint.account_id || hint.account_id === row.account_id)
+            ))
+            .map((hint) => ({
+              id: hint.id,
+              descriptionPattern: hint.description_pattern,
+              amountMinor: hint.amount_minor ?? undefined,
+              accountName: hint.account_name ?? undefined,
+              categoryName: hint.category_name ?? undefined
+            }))
+        : [];
+      return {
+        id: row.id,
+        section: row.section_key === "budget_buckets" ? "budget_buckets" : "planned_items",
+        categoryId: row.category_id ?? undefined,
+        categoryName: row.category_name ?? "Other",
+        label: row.label,
+        planDate: row.plan_date ?? undefined,
+        dayLabel: row.plan_date ? String(new Date(row.plan_date).getUTCDate()) : undefined,
+        dayOfWeek: row.plan_date ? weekdayLabel(row.plan_date) : undefined,
+        plannedMinor: row.planned_amount_minor,
+        actualMinor: row.actual_amount_minor,
+        accountId: row.account_id ?? undefined,
+        accountName: row.account_name ?? undefined,
+        note: row.notes ?? undefined,
+        ownershipType: row.ownership_type,
+        personId: row.person_id ?? undefined,
+        ownerName: row.owner_name ?? undefined,
+        linkedEntryIds,
+        linkedEntryCount: linkedEntryIds.length,
+        planMatchHints,
+        isDerived: false,
+        sourceRowIds: [row.id],
+        splits: splitMap.get(row.id) ?? []
+      };
+    });
 }
 
 export async function loadEntries(db: D1Database, month = "2025-10"): Promise<EntryDto[]> {
@@ -3037,6 +3805,703 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       splits: splitMap.get(row.id) ?? []
     };
   });
+}
+
+export async function loadSplitExpenses(db: D1Database, month = "2025-10"): Promise<SplitExpenseDto[]> {
+  const expenses = await db
+    .prepare(`
+      SELECT
+        split_expenses.id,
+        split_expenses.split_group_id,
+        split_expenses.split_batch_id,
+        split_expenses.expense_date,
+        split_expenses.description,
+        split_expenses.total_amount_minor,
+        split_expenses.note,
+        split_expenses.linked_transaction_id,
+        split_groups.group_name,
+        split_batches.batch_name,
+        split_batches.closed_on,
+        payer.id AS payer_person_id,
+        payer.display_name AS payer_person_name,
+        categories.name AS category_name,
+        transactions.description AS linked_transaction_description
+      FROM split_expenses
+      LEFT JOIN split_groups ON split_groups.id = split_expenses.split_group_id
+      LEFT JOIN split_batches ON split_batches.id = split_expenses.split_batch_id
+      INNER JOIN people AS payer ON payer.id = split_expenses.payer_person_id
+      LEFT JOIN categories ON categories.id = split_expenses.category_id
+      LEFT JOIN transactions ON transactions.id = split_expenses.linked_transaction_id
+      WHERE split_expenses.household_id = ?
+      ORDER BY split_expenses.expense_date DESC, split_expenses.created_at DESC
+    `)
+    .bind(DEMO_HOUSEHOLD_ID)
+    .all<{
+      id: string;
+      split_group_id: string | null;
+      split_batch_id: string | null;
+      expense_date: string;
+      description: string;
+      total_amount_minor: number;
+      note: string | null;
+      linked_transaction_id: string | null;
+      group_name: string | null;
+      batch_name: string | null;
+      closed_on: string | null;
+      payer_person_id: string;
+      payer_person_name: string;
+      category_name: string | null;
+      linked_transaction_description: string | null;
+    }>();
+
+  const shares = await db
+    .prepare(`
+      SELECT
+        split_expense_shares.split_expense_id,
+        split_expense_shares.person_id,
+        split_expense_shares.ratio_basis_points,
+        split_expense_shares.amount_minor,
+        people.display_name
+      FROM split_expense_shares
+      INNER JOIN split_expenses ON split_expenses.id = split_expense_shares.split_expense_id
+      INNER JOIN people ON people.id = split_expense_shares.person_id
+      WHERE split_expenses.household_id = ?
+      ORDER BY split_expense_shares.created_at
+    `)
+    .bind(DEMO_HOUSEHOLD_ID)
+    .all<{
+      split_expense_id: string;
+      person_id: string;
+      ratio_basis_points: number;
+      amount_minor: number;
+      display_name: string;
+    }>();
+
+  const shareMap = groupSplits(
+    shares.results.map((row) => ({
+      entry_id: row.split_expense_id,
+      person_id: row.person_id,
+      ratio_basis_points: row.ratio_basis_points,
+      amount_minor: row.amount_minor,
+      display_name: row.display_name
+    })),
+    "entry_id"
+  );
+
+  return expenses.results.map((row) => ({
+    id: row.id,
+    groupId: row.split_group_id ?? undefined,
+    groupName: row.group_name ?? "Non-group expenses",
+    batchId: row.split_batch_id ?? undefined,
+    batchLabel: row.batch_name ?? undefined,
+    batchClosedAt: row.closed_on ?? undefined,
+    date: row.expense_date,
+    description: row.description,
+    categoryName: row.category_name ?? "Other",
+    payerPersonId: row.payer_person_id,
+    payerPersonName: row.payer_person_name,
+    totalAmountMinor: row.total_amount_minor,
+    note: row.note ?? undefined,
+    linkedTransactionId: row.linked_transaction_id ?? undefined,
+    linkedTransactionDescription: row.linked_transaction_description ?? undefined,
+    shares: shareMap.get(row.id) ?? []
+  }));
+}
+
+export async function loadSplitSettlements(db: D1Database, month = "2025-10"): Promise<SplitSettlementDto[]> {
+  const settlements = await db
+    .prepare(`
+      SELECT
+        split_settlements.id,
+        split_settlements.split_group_id,
+        split_settlements.split_batch_id,
+        split_settlements.settlement_date,
+        split_settlements.amount_minor,
+        split_settlements.note,
+        split_settlements.linked_transaction_id,
+        split_groups.group_name,
+        split_batches.batch_name,
+        split_batches.closed_on,
+        from_person.id AS from_person_id,
+        from_person.display_name AS from_person_name,
+        to_person.id AS to_person_id,
+        to_person.display_name AS to_person_name,
+        transactions.description AS linked_transaction_description
+      FROM split_settlements
+      LEFT JOIN split_groups ON split_groups.id = split_settlements.split_group_id
+      LEFT JOIN split_batches ON split_batches.id = split_settlements.split_batch_id
+      INNER JOIN people AS from_person ON from_person.id = split_settlements.from_person_id
+      INNER JOIN people AS to_person ON to_person.id = split_settlements.to_person_id
+      LEFT JOIN transactions ON transactions.id = split_settlements.linked_transaction_id
+      WHERE split_settlements.household_id = ?
+      ORDER BY split_settlements.settlement_date DESC, split_settlements.created_at DESC
+    `)
+    .bind(DEMO_HOUSEHOLD_ID)
+    .all<{
+      id: string;
+      split_group_id: string | null;
+      split_batch_id: string | null;
+      settlement_date: string;
+      amount_minor: number;
+      note: string | null;
+      linked_transaction_id: string | null;
+      group_name: string | null;
+      batch_name: string | null;
+      closed_on: string | null;
+      from_person_id: string;
+      from_person_name: string;
+      to_person_id: string;
+      to_person_name: string;
+      linked_transaction_description: string | null;
+    }>();
+
+  return settlements.results.map((row) => ({
+    id: row.id,
+    groupId: row.split_group_id ?? undefined,
+    groupName: row.group_name ?? "Non-group expenses",
+    batchId: row.split_batch_id ?? undefined,
+    batchLabel: row.batch_name ?? undefined,
+    batchClosedAt: row.closed_on ?? undefined,
+    date: row.settlement_date,
+    fromPersonId: row.from_person_id,
+    fromPersonName: row.from_person_name,
+    toPersonId: row.to_person_id,
+    toPersonName: row.to_person_name,
+    amountMinor: row.amount_minor,
+    note: row.note ?? undefined,
+    linkedTransactionId: row.linked_transaction_id ?? undefined,
+    linkedTransactionDescription: row.linked_transaction_description ?? undefined
+  }));
+}
+
+export async function loadSplitMatchCandidates(db: D1Database, month = "2025-10"): Promise<SplitMatchCandidateDto[]> {
+  const [expenses, settlements] = await Promise.all([
+    loadSplitExpenses(db, month),
+    loadSplitSettlements(db, month)
+  ]);
+  const transactionRows = await db
+    .prepare(`
+      SELECT
+        transactions.id,
+        transactions.transaction_date,
+        transactions.description,
+        transactions.amount_minor,
+        transactions.entry_type,
+        transactions.import_id
+      FROM transactions
+      WHERE transactions.household_id = ?
+        AND transactions.import_id IS NOT NULL
+      ORDER BY transactions.transaction_date DESC, transactions.created_at DESC
+    `)
+    .bind(DEMO_HOUSEHOLD_ID)
+    .all<{
+      id: string;
+      transaction_date: string;
+      description: string;
+      amount_minor: number;
+      entry_type: "expense" | "income" | "transfer";
+      import_id: string;
+    }>();
+
+  const matches: SplitMatchCandidateDto[] = [];
+
+  for (const expense of expenses.filter((item) => !item.linkedTransactionId)) {
+    const candidate = transactionRows.results
+      .filter((row) => row.entry_type === "expense")
+      .map((row) => ({
+        row,
+        dateDelta: diffDays(expense.date, row.transaction_date),
+        amountDelta: Math.abs(expense.totalAmountMinor - row.amount_minor),
+        overlap: countSharedTokens(expense.description, row.description)
+      }))
+      .filter((item) => item.dateDelta <= 5 && item.amountDelta <= 150 && item.overlap > 0)
+      .sort((left, right) => (
+        left.amountDelta - right.amountDelta
+        || left.dateDelta - right.dateDelta
+        || right.overlap - left.overlap
+      ))[0];
+
+    if (!candidate) {
+      continue;
+    }
+
+    matches.push({
+      id: `expense-match-${expense.id}-${candidate.row.id}`,
+      kind: "expense",
+      groupId: expense.groupId ?? "split-group-none",
+      groupName: expense.groupName,
+      splitRecordId: expense.id,
+      transactionId: candidate.row.id,
+      transactionDate: candidate.row.transaction_date,
+      transactionDescription: candidate.row.description,
+      amountMinor: candidate.row.amount_minor,
+      confidenceLabel: candidate.amountDelta === 0 && candidate.dateDelta <= 1 ? "High" : "Medium",
+      reviewLabel: "Imported transaction could match this split expense"
+    });
+  }
+
+  for (const settlement of settlements.filter((item) => !item.linkedTransactionId)) {
+    const candidate = transactionRows.results
+      .filter((row) => row.entry_type === "transfer")
+      .map((row) => ({
+        row,
+        dateDelta: diffDays(settlement.date, row.transaction_date),
+        amountDelta: Math.abs(settlement.amountMinor - row.amount_minor)
+      }))
+      .filter((item) => item.dateDelta <= 7 && item.amountDelta <= 150)
+      .sort((left, right) => left.amountDelta - right.amountDelta || left.dateDelta - right.dateDelta)[0];
+
+    if (!candidate) {
+      continue;
+    }
+
+    matches.push({
+      id: `settlement-match-${settlement.id}-${candidate.row.id}`,
+      kind: "settlement",
+      groupId: settlement.groupId ?? "split-group-none",
+      groupName: settlement.groupName,
+      splitRecordId: settlement.id,
+      transactionId: candidate.row.id,
+      transactionDate: candidate.row.transaction_date,
+      transactionDescription: candidate.row.description,
+      amountMinor: candidate.row.amount_minor,
+      confidenceLabel: candidate.amountDelta === 0 && candidate.dateDelta <= 1 ? "High" : "Medium",
+      reviewLabel: "Imported transfer could match this settle-up"
+    });
+  }
+
+  return matches;
+}
+
+export async function createSplitGroupRecord(
+  db: D1Database,
+  input: { name: string }
+) {
+  const id = `split-group-${slugify(input.name)}-${Date.now()}`;
+  await db
+    .prepare(`
+      INSERT INTO split_groups (
+        id, household_id, group_name, sort_order
+      ) VALUES (?, ?, ?, ?)
+    `)
+    .bind(id, DEMO_HOUSEHOLD_ID, input.name.trim(), Date.now())
+    .run();
+
+  return { groupId: id };
+}
+
+export async function createSplitExpenseRecord(
+  db: D1Database,
+  input: {
+    groupId?: string | null;
+    date: string;
+    description: string;
+    categoryName: string;
+    payerPersonName: string;
+    amountMinor: number;
+    note?: string;
+    splitBasisPoints?: number;
+  }
+) {
+  const payerPersonId = PERSON_IDS[input.payerPersonName];
+  if (!payerPersonId) {
+    throw new Error("Unknown split expense payer.");
+  }
+
+  const id = `split-expense-${Date.now()}`;
+  const batchId = await getOrCreateActiveSplitBatch(db, {
+    groupId: input.groupId || null,
+    date: input.date
+  });
+  const categoryId = findCategoryId(input.categoryName);
+  const firstBasisPoints = Math.max(0, Math.min(10000, input.splitBasisPoints ?? 5000));
+  const secondBasisPoints = 10000 - firstBasisPoints;
+  const firstAmount = Math.round(input.amountMinor * (firstBasisPoints / 10000));
+  const secondAmount = input.amountMinor - firstAmount;
+  const shares = [
+    { personId: "person-tim", ratioBasisPoints: firstBasisPoints, amountMinor: firstAmount },
+    { personId: "person-joyce", ratioBasisPoints: secondBasisPoints, amountMinor: secondAmount }
+  ];
+
+  await db
+    .prepare(`
+      INSERT INTO split_expenses (
+        id, household_id, split_group_id, split_batch_id, payer_person_id, expense_date,
+        description, category_id, total_amount_minor, note
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+    .bind(
+      id,
+      DEMO_HOUSEHOLD_ID,
+      input.groupId || null,
+      batchId,
+      payerPersonId,
+      input.date,
+      input.description.trim(),
+      categoryId,
+      input.amountMinor,
+      input.note ?? null
+    )
+    .run();
+
+  for (const share of shares) {
+    await db
+      .prepare(`
+        INSERT INTO split_expense_shares (
+          id, split_expense_id, person_id, ratio_basis_points, amount_minor
+        ) VALUES (?, ?, ?, ?, ?)
+      `)
+      .bind(`${id}-${share.personId}`, id, share.personId, share.ratioBasisPoints, share.amountMinor)
+      .run();
+  }
+
+  return { splitExpenseId: id };
+}
+
+export async function createSplitSettlementRecord(
+  db: D1Database,
+  input: {
+    groupId?: string | null;
+    date: string;
+    fromPersonName: string;
+    toPersonName: string;
+    amountMinor: number;
+    note?: string;
+  }
+) {
+  const fromPersonId = PERSON_IDS[input.fromPersonName];
+  const toPersonId = PERSON_IDS[input.toPersonName];
+  if (!fromPersonId || !toPersonId || fromPersonId === toPersonId) {
+    throw new Error("Settlement requires two different people.");
+  }
+
+  const id = `split-settlement-${Date.now()}`;
+  const batchId = await getOrCreateActiveSplitBatch(db, {
+    groupId: input.groupId || null,
+    date: input.date
+  });
+  await db
+    .prepare(`
+      INSERT INTO split_settlements (
+        id, household_id, split_group_id, split_batch_id, from_person_id, to_person_id,
+        settlement_date, amount_minor, note
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+    .bind(
+      id,
+      DEMO_HOUSEHOLD_ID,
+      input.groupId || null,
+      batchId,
+      fromPersonId,
+      toPersonId,
+      input.date,
+      input.amountMinor,
+      input.note ?? null
+    )
+    .run();
+  await closeSplitBatch(db, { batchId, closedOn: input.date });
+
+  return { settlementId: id };
+}
+
+export async function updateSplitExpenseRecord(
+  db: D1Database,
+  input: {
+    splitExpenseId: string;
+    groupId?: string | null;
+    date: string;
+    description: string;
+    categoryName: string;
+    payerPersonName: string;
+    amountMinor: number;
+    note?: string;
+    splitBasisPoints?: number;
+  }
+) {
+  const payerPersonId = PERSON_IDS[input.payerPersonName];
+  if (!payerPersonId) {
+    throw new Error("Unknown split expense payer.");
+  }
+
+  const existing = await db
+    .prepare(`
+      SELECT split_group_id, split_batch_id
+      FROM split_expenses
+      WHERE id = ? AND household_id = ?
+    `)
+    .bind(input.splitExpenseId, DEMO_HOUSEHOLD_ID)
+    .first<{ split_group_id: string | null; split_batch_id: string | null }>();
+  if (!existing) {
+    throw new Error("Split expense not found.");
+  }
+
+  const nextGroupId = input.groupId || null;
+  const batchId = existing.split_group_id === nextGroupId
+    ? existing.split_batch_id
+    : await getOrCreateActiveSplitBatch(db, { groupId: nextGroupId, date: input.date });
+
+  await db
+    .prepare(`
+      UPDATE split_expenses
+      SET split_group_id = ?, split_batch_id = ?, payer_person_id = ?, expense_date = ?, description = ?,
+          category_id = ?, total_amount_minor = ?, note = ?
+      WHERE id = ? AND household_id = ?
+    `)
+    .bind(
+      input.groupId || null,
+      batchId ?? null,
+      payerPersonId,
+      input.date,
+      input.description.trim(),
+      findCategoryId(input.categoryName),
+      input.amountMinor,
+      input.note ?? null,
+      input.splitExpenseId,
+      DEMO_HOUSEHOLD_ID
+    )
+    .run();
+
+  const firstBasisPoints = Math.max(0, Math.min(10000, input.splitBasisPoints ?? 5000));
+  const secondBasisPoints = 10000 - firstBasisPoints;
+  const firstAmount = Math.round(input.amountMinor * (firstBasisPoints / 10000));
+  const secondAmount = input.amountMinor - firstAmount;
+
+  await db.prepare("DELETE FROM split_expense_shares WHERE split_expense_id = ?").bind(input.splitExpenseId).run();
+  await db
+    .prepare(`
+      INSERT INTO split_expense_shares (
+        id, split_expense_id, person_id, ratio_basis_points, amount_minor
+      ) VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)
+    `)
+    .bind(
+      `${input.splitExpenseId}-person-tim`,
+      input.splitExpenseId,
+      "person-tim",
+      firstBasisPoints,
+      firstAmount,
+      `${input.splitExpenseId}-person-joyce`,
+      input.splitExpenseId,
+      "person-joyce",
+      secondBasisPoints,
+      secondAmount
+    )
+    .run();
+
+  return { splitExpenseId: input.splitExpenseId };
+}
+
+export async function updateSplitSettlementRecord(
+  db: D1Database,
+  input: {
+    settlementId: string;
+    groupId?: string | null;
+    date: string;
+    fromPersonName: string;
+    toPersonName: string;
+    amountMinor: number;
+    note?: string;
+  }
+) {
+  const fromPersonId = PERSON_IDS[input.fromPersonName];
+  const toPersonId = PERSON_IDS[input.toPersonName];
+  if (!fromPersonId || !toPersonId || fromPersonId === toPersonId) {
+    throw new Error("Settlement requires two different people.");
+  }
+
+  const existing = await db
+    .prepare(`
+      SELECT split_group_id, split_batch_id
+      FROM split_settlements
+      WHERE id = ? AND household_id = ?
+    `)
+    .bind(input.settlementId, DEMO_HOUSEHOLD_ID)
+    .first<{ split_group_id: string | null; split_batch_id: string | null }>();
+  if (!existing) {
+    throw new Error("Split settlement not found.");
+  }
+
+  const nextGroupId = input.groupId || null;
+  const batchId = existing.split_group_id === nextGroupId
+    ? existing.split_batch_id
+    : await getOrCreateActiveSplitBatch(db, { groupId: nextGroupId, date: input.date });
+
+  await db
+    .prepare(`
+      UPDATE split_settlements
+      SET split_group_id = ?, split_batch_id = ?, from_person_id = ?, to_person_id = ?,
+          settlement_date = ?, amount_minor = ?, note = ?
+      WHERE id = ? AND household_id = ?
+    `)
+    .bind(
+      input.groupId || null,
+      batchId ?? null,
+      fromPersonId,
+      toPersonId,
+      input.date,
+      input.amountMinor,
+      input.note ?? null,
+      input.settlementId,
+      DEMO_HOUSEHOLD_ID
+    )
+    .run();
+  if (batchId) {
+    await closeSplitBatch(db, { batchId, closedOn: input.date });
+  }
+
+  return { settlementId: input.settlementId };
+}
+
+export async function linkSplitExpenseMatch(
+  db: D1Database,
+  input: { splitExpenseId: string; transactionId: string }
+) {
+  await db
+    .prepare("UPDATE split_expenses SET linked_transaction_id = ? WHERE id = ? AND household_id = ?")
+    .bind(input.transactionId, input.splitExpenseId, DEMO_HOUSEHOLD_ID)
+    .run();
+
+  return { ok: true };
+}
+
+export async function linkSplitSettlementMatch(
+  db: D1Database,
+  input: { settlementId: string; transactionId: string }
+) {
+  await db
+    .prepare("UPDATE split_settlements SET linked_transaction_id = ? WHERE id = ? AND household_id = ?")
+    .bind(input.transactionId, input.settlementId, DEMO_HOUSEHOLD_ID)
+    .run();
+
+  return { ok: true };
+}
+
+export async function createSplitExpenseFromEntryRecord(
+  db: D1Database,
+  input: { entryId: string; splitGroupId?: string | null }
+) {
+  const entry = await db
+    .prepare(`
+      SELECT
+        transactions.id,
+        transactions.transaction_date,
+        transactions.description,
+        transactions.amount_minor,
+        transactions.ownership_type,
+        transactions.owner_person_id,
+        transactions.note,
+        transactions.category_id,
+        transactions.entry_type,
+        accounts.owner_person_id AS account_owner_person_id
+      FROM transactions
+      INNER JOIN accounts ON accounts.id = transactions.account_id
+      WHERE transactions.household_id = ?
+        AND transactions.id = ?
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, input.entryId)
+    .first<{
+      id: string;
+      transaction_date: string;
+      description: string;
+      amount_minor: number;
+      ownership_type: "direct" | "shared";
+      owner_person_id: string | null;
+      note: string | null;
+      category_id: string | null;
+      entry_type: "expense" | "income" | "transfer";
+      account_owner_person_id: string | null;
+    }>();
+
+  if (!entry) {
+    throw new Error("Entry not found.");
+  }
+
+  if (entry.entry_type !== "expense") {
+    throw new Error("Only expense entries can be added to splits.");
+  }
+
+  const existingSplit = await db
+    .prepare("SELECT id FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ?")
+    .bind(DEMO_HOUSEHOLD_ID, input.entryId)
+    .first<{ id: string }>();
+
+  if (existingSplit) {
+    throw new Error("This entry is already linked to a split expense.");
+  }
+
+  const payerPersonId = entry.owner_person_id ?? entry.account_owner_person_id;
+  if (!payerPersonId) {
+    throw new Error("This entry does not have a clear payer. Assign an owner first.");
+  }
+
+  if (entry.ownership_type !== "shared") {
+    await db
+      .prepare(`
+        UPDATE transactions
+        SET ownership_type = 'shared',
+            owner_person_id = NULL,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE household_id = ?
+          AND id = ?
+      `)
+      .bind(DEMO_HOUSEHOLD_ID, input.entryId)
+      .run();
+
+    await syncTransactionSplits(db, {
+      transactionId: input.entryId,
+      ownershipType: "shared",
+      amountMinor: entry.amount_minor,
+      splitBasisPoints: 5000
+    });
+  }
+
+  const id = `split-expense-${Date.now()}`;
+  await db
+    .prepare(`
+      INSERT INTO split_expenses (
+        id, household_id, split_group_id, payer_person_id, expense_date,
+        description, category_id, total_amount_minor, note, linked_transaction_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+    .bind(
+      id,
+      DEMO_HOUSEHOLD_ID,
+      input.splitGroupId || null,
+      payerPersonId,
+      entry.transaction_date,
+      entry.description,
+      entry.category_id,
+      entry.amount_minor,
+      entry.note,
+      entry.id
+    )
+    .run();
+
+  const transactionSplits = await db
+    .prepare(`
+      SELECT person_id, ratio_basis_points, amount_minor
+      FROM transaction_splits
+      WHERE transaction_id = ?
+      ORDER BY created_at
+    `)
+    .bind(input.entryId)
+    .all<{
+      person_id: string;
+      ratio_basis_points: number;
+      amount_minor: number;
+    }>();
+
+  for (const split of transactionSplits.results) {
+    await db
+      .prepare(`
+        INSERT INTO split_expense_shares (
+          id, split_expense_id, person_id, ratio_basis_points, amount_minor
+        ) VALUES (?, ?, ?, ?, ?)
+      `)
+      .bind(`${id}-${split.person_id}`, id, split.person_id, split.ratio_basis_points, split.amount_minor)
+      .run();
+  }
+
+  return { splitExpenseId: id };
 }
 
 function getMonthBounds(month: string) {
@@ -3537,6 +5002,22 @@ function daysBetween(left: string, right: string) {
   return Math.round((rightDate.getTime() - leftDate.getTime()) / 86400000);
 }
 
+function diffDays(left: string, right: string) {
+  return Math.abs(daysBetween(left, right));
+}
+
+function countSharedTokens(left: string, right: string) {
+  const leftTokens = new Set(normalizeDescriptionForMatch(left).split(" ").filter(Boolean));
+  const rightTokens = new Set(normalizeDescriptionForMatch(right).split(" ").filter(Boolean));
+  let overlap = 0;
+  for (const token of leftTokens) {
+    if (rightTokens.has(token)) {
+      overlap += 1;
+    }
+  }
+  return overlap;
+}
+
 function compareDescriptionSimilarity(left: string, right: string) {
   const leftTokens = new Set(normalizeDescriptionForMatch(left).split(" ").filter(Boolean));
   const rightTokens = new Set(normalizeDescriptionForMatch(right).split(" ").filter(Boolean));
@@ -3556,6 +5037,10 @@ function compareDescriptionSimilarity(left: string, right: string) {
 
 function normalizeDescriptionForMatch(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function normalizePlanMatchHint(value: string) {
+  return normalizeDescriptionForMatch(value);
 }
 
 function slugify(value: string) {

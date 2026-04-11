@@ -149,6 +149,100 @@ export interface EntryDto {
   splits: EntrySplitDto[];
 }
 
+export interface SplitGroupPillDto {
+  id: string;
+  name: string;
+  iconKey?: string;
+  balanceMinor: number;
+  summaryText: string;
+  entryCount: number;
+  pendingMatchCount: number;
+  isDefault?: boolean;
+}
+
+export interface SplitActivityDto {
+  id: string;
+  kind: "expense" | "settlement";
+  groupId: string;
+  groupName: string;
+  batchId?: string;
+  batchLabel?: string;
+  batchClosedAt?: string;
+  isArchived: boolean;
+  date: string;
+  description: string;
+  categoryName?: string;
+  paidByPersonName?: string;
+  fromPersonName?: string;
+  toPersonName?: string;
+  totalAmountMinor: number;
+  viewerAmountMinor?: number;
+  viewerDirectionLabel: string;
+  note?: string;
+  linkedTransactionId?: string;
+  linkedTransactionDescription?: string;
+  matched: boolean;
+}
+
+export interface SplitMatchCandidateDto {
+  id: string;
+  kind: "expense" | "settlement";
+  groupId: string;
+  groupName: string;
+  splitRecordId: string;
+  transactionId: string;
+  transactionDate: string;
+  transactionDescription: string;
+  amountMinor: number;
+  confidenceLabel: "High" | "Medium";
+  reviewLabel: string;
+}
+
+export interface SplitExpenseDto {
+  id: string;
+  groupId?: string;
+  groupName: string;
+  batchId?: string;
+  batchLabel?: string;
+  batchClosedAt?: string;
+  date: string;
+  description: string;
+  categoryName: string;
+  payerPersonId: string;
+  payerPersonName: string;
+  totalAmountMinor: number;
+  note?: string;
+  linkedTransactionId?: string;
+  linkedTransactionDescription?: string;
+  shares: EntrySplitDto[];
+}
+
+export interface SplitSettlementDto {
+  id: string;
+  groupId?: string;
+  groupName: string;
+  batchId?: string;
+  batchLabel?: string;
+  batchClosedAt?: string;
+  date: string;
+  fromPersonId: string;
+  fromPersonName: string;
+  toPersonId: string;
+  toPersonName: string;
+  amountMinor: number;
+  note?: string;
+  linkedTransactionId?: string;
+  linkedTransactionDescription?: string;
+}
+
+export interface SplitsPageDto {
+  month: string;
+  groups: SplitGroupPillDto[];
+  activity: SplitActivityDto[];
+  matches: SplitMatchCandidateDto[];
+  donutChart: DonutChartDatumDto[];
+}
+
 export interface MonthPlanRowDto {
   id: string;
   section: PlanSectionKey;
@@ -166,9 +260,20 @@ export interface MonthPlanRowDto {
   ownershipType: "direct" | "shared";
   personId?: string;
   ownerName?: string;
+  linkedEntryIds?: string[];
+  linkedEntryCount?: number;
+  planMatchHints?: MonthPlanMatchHintDto[];
   isDerived?: boolean;
   sourceRowIds?: string[];
   splits: EntrySplitDto[];
+}
+
+export interface MonthPlanMatchHintDto {
+  id: string;
+  descriptionPattern: string;
+  amountMinor?: number;
+  accountName?: string;
+  categoryName?: string;
 }
 
 export interface MonthPlanSectionDto {
@@ -302,6 +407,7 @@ export interface ContextViewDto {
   label: string;
   summaryPage: SummaryPageDto;
   monthPage: MonthPageDto;
+  splitsPage: SplitsPageDto;
 }
 
 export interface SettingsPageDto {

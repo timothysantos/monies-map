@@ -167,6 +167,82 @@ CREATE TABLE IF NOT EXISTS transaction_splits (
   FOREIGN KEY (person_id) REFERENCES people(id)
 );
 
+CREATE TABLE IF NOT EXISTS split_groups (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  group_name TEXT NOT NULL,
+  icon_key TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id)
+);
+
+CREATE TABLE IF NOT EXISTS split_batches (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  split_group_id TEXT,
+  batch_name TEXT NOT NULL,
+  opened_on TEXT NOT NULL,
+  closed_on TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id),
+  FOREIGN KEY (split_group_id) REFERENCES split_groups(id)
+);
+
+CREATE TABLE IF NOT EXISTS split_expenses (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  split_group_id TEXT,
+  split_batch_id TEXT,
+  payer_person_id TEXT NOT NULL,
+  expense_date TEXT NOT NULL,
+  description TEXT NOT NULL,
+  category_id TEXT,
+  total_amount_minor INTEGER NOT NULL,
+  note TEXT,
+  linked_transaction_id TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id),
+  FOREIGN KEY (split_group_id) REFERENCES split_groups(id),
+  FOREIGN KEY (split_batch_id) REFERENCES split_batches(id),
+  FOREIGN KEY (payer_person_id) REFERENCES people(id),
+  FOREIGN KEY (category_id) REFERENCES categories(id),
+  FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id)
+);
+
+CREATE TABLE IF NOT EXISTS split_expense_shares (
+  id TEXT PRIMARY KEY,
+  split_expense_id TEXT NOT NULL,
+  person_id TEXT NOT NULL,
+  ratio_basis_points INTEGER NOT NULL CHECK (
+    ratio_basis_points BETWEEN 0 AND 10000
+  ),
+  amount_minor INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (split_expense_id) REFERENCES split_expenses(id) ON DELETE CASCADE,
+  FOREIGN KEY (person_id) REFERENCES people(id)
+);
+
+CREATE TABLE IF NOT EXISTS split_settlements (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  split_group_id TEXT,
+  split_batch_id TEXT,
+  from_person_id TEXT NOT NULL,
+  to_person_id TEXT NOT NULL,
+  settlement_date TEXT NOT NULL,
+  amount_minor INTEGER NOT NULL,
+  note TEXT,
+  linked_transaction_id TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id),
+  FOREIGN KEY (split_group_id) REFERENCES split_groups(id),
+  FOREIGN KEY (split_batch_id) REFERENCES split_batches(id),
+  FOREIGN KEY (from_person_id) REFERENCES people(id),
+  FOREIGN KEY (to_person_id) REFERENCES people(id),
+  FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id)
+);
+
 CREATE TABLE IF NOT EXISTS monthly_notes (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL,
@@ -234,6 +310,34 @@ CREATE TABLE IF NOT EXISTS monthly_plan_row_splits (
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (monthly_plan_row_id) REFERENCES monthly_plan_rows(id) ON DELETE CASCADE,
   FOREIGN KEY (person_id) REFERENCES people(id)
+);
+
+CREATE TABLE IF NOT EXISTS monthly_plan_entry_links (
+  id TEXT PRIMARY KEY,
+  monthly_plan_row_id TEXT NOT NULL,
+  transaction_id TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (monthly_plan_row_id) REFERENCES monthly_plan_rows(id) ON DELETE CASCADE,
+  FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,
+  UNIQUE (monthly_plan_row_id, transaction_id)
+);
+
+CREATE TABLE IF NOT EXISTS monthly_plan_match_hints (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  person_id TEXT,
+  category_id TEXT,
+  account_id TEXT,
+  label_normalized TEXT NOT NULL,
+  description_pattern TEXT NOT NULL,
+  amount_minor INTEGER,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id),
+  FOREIGN KEY (person_id) REFERENCES people(id),
+  FOREIGN KEY (category_id) REFERENCES categories(id),
+  FOREIGN KEY (account_id) REFERENCES accounts(id),
+  UNIQUE (household_id, person_id, category_id, account_id, label_normalized, description_pattern)
 );
 
 CREATE TABLE IF NOT EXISTS monthly_snapshots (

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import {
@@ -25,6 +26,8 @@ import {
   ShoppingBag,
   ShoppingCart,
   Shield,
+  Ellipsis,
+  Plus,
   UtensilsCrossed,
   UsersRound,
   WalletCards,
@@ -43,6 +46,7 @@ import {
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { messages } from "./copy/en-SG";
 import { inspectCsv } from "../lib/csv";
+import { getCurrentMonthKey } from "../lib/month";
 import { categories as defaultCategories } from "../domain/demo-data";
 import faqMarkdown from "../../docs/faq.md?raw";
 
@@ -55,6 +59,8 @@ const SUMMARY_FOCUS_OVERALL = "overall";
 const BOOTSTRAP_SYNC_CHANNEL = "monies-map-bootstrap-sync";
 const BOOTSTRAP_SYNC_STORAGE_KEY = "monies-map-bootstrap-sync";
 const MONTH_PICKER_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const DEFAULT_MONTH_KEY = getCurrentMonthKey();
+const MONTH_SECTION_STATE_CACHE = new Map();
 
 const ICON_OPTIONS = [
   { key: "arrow-right-left", label: "Transfer", Icon: ArrowRightLeft },
@@ -141,10 +147,13 @@ const routeTabs = [
   { id: "summary", path: "/summary", label: messages.tabs.summary },
   { id: "month", path: "/month", label: messages.tabs.month },
   { id: "entries", path: "/entries", label: messages.tabs.entries },
+  { id: "splits", path: "/splits", label: messages.tabs.splits },
   { id: "imports", path: "/imports", label: messages.tabs.imports },
   { id: "settings", path: "/settings", label: messages.tabs.settings },
   { id: "faq", path: "/faq", label: messages.tabs.faq }
 ];
+const primaryRouteTabs = routeTabs.slice(0, 4);
+const secondaryRouteTabs = routeTabs.slice(4);
 
 export function App() {
   const [bootstrap, setBootstrap] = useState(null);
@@ -155,7 +164,7 @@ export function App() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const syncChannelRef = useRef(null);
-  const selectedMonth = searchParams.get("month") ?? "2025-10";
+  const selectedMonth = searchParams.get("month") ?? DEFAULT_MONTH_KEY;
   const selectedScope = searchParams.get("scope") ?? "direct_plus_shared";
   const selectedSummaryStart = searchParams.get("summary_start") ?? undefined;
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
@@ -171,7 +180,10 @@ export function App() {
     if (selectedSummaryEnd) {
       params.set("summary_end", selectedSummaryEnd);
     }
-    const response = await fetch(`/api/bootstrap?${params.toString()}`, { signal });
+    const response = await fetch(`/api/bootstrap?${params.toString()}`, {
+      signal,
+      cache: "no-store"
+    });
     const responseText = await response.text();
     let data = null;
 
@@ -273,6 +285,11 @@ export function App() {
     () => bootstrap?.views.find((item) => item.id === selectedViewId) ?? null,
     [bootstrap, selectedViewId]
   );
+  const selectedEntriesScope = searchParams.get("entries_scope") ?? view?.monthPage.selectedScope ?? "direct_plus_shared";
+  const householdMonthEntries = useMemo(
+    () => bootstrap?.views.find((item) => item.id === "household")?.monthPage.entries ?? [],
+    [bootstrap]
+  );
   const categories = useMemo(
     () => bootstrap?.categories.map((category) => ({ ...category, ...(categoryOverrides[category.id] ?? {}) })) ?? [],
     [bootstrap, categoryOverrides]
@@ -281,7 +298,8 @@ export function App() {
     () => bootstrap?.views[0]?.summaryPage.availableMonths.slice().sort() ?? [],
     [bootstrap]
   );
-  const isDetailMonthTab = selectedTabId === "month" || selectedTabId === "entries";
+  const isDetailMonthTab = selectedTabId === "month" || selectedTabId === "entries" || selectedTabId === "splits";
+  const isSplitsTab = selectedTabId === "splits";
   const summaryAvailableYears = useMemo(
     () => !isDetailMonthTab && view
       ? [...new Set(view.summaryPage.availableMonths.map((month) => Number(month.slice(0, 4))))].sort((left, right) => left - right)
@@ -319,7 +337,7 @@ export function App() {
   }, [bootstrap, selectedViewId, setSearchParams]);
 
   useEffect(() => {
-    if (!bootstrap || !availableMonths.length || selectedTabId !== "month" && selectedTabId !== "entries") {
+    if (!bootstrap || !availableMonths.length) {
       return;
     }
 
@@ -332,7 +350,32 @@ export function App() {
       next.set("month", availableMonths[availableMonths.length - 1]);
       return next;
     }, { replace: true });
-  }, [availableMonths, bootstrap, selectedMonth, selectedTabId, setSearchParams]);
+  }, [availableMonths, bootstrap, selectedMonth, setSearchParams]);
+
+  useEffect(() => {
+    if (isDetailMonthTab || !view?.summaryPage.availableMonths.length) {
+      return;
+    }
+
+    const summaryMonths = view.summaryPage.availableMonths;
+    const startIsValid = selectedSummaryStart && summaryMonths.includes(selectedSummaryStart);
+    const endIsValid = selectedSummaryEnd && summaryMonths.includes(selectedSummaryEnd);
+    if (startIsValid && endIsValid && selectedSummaryStart <= selectedSummaryEnd) {
+      return;
+    }
+
+    const latestMonth = summaryMonths[summaryMonths.length - 1];
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("summary_start", latestMonth);
+      next.set("summary_end", latestMonth);
+      const focus = next.get("summary_focus");
+      if (focus && focus !== SUMMARY_FOCUS_OVERALL && focus !== latestMonth) {
+        next.delete("summary_focus");
+      }
+      return next;
+    }, { replace: true });
+  }, [isDetailMonthTab, selectedSummaryEnd, selectedSummaryStart, setSearchParams, view]);
 
   useEffect(() => {
     if (isDetailMonthTab || !view) {
@@ -380,6 +423,24 @@ export function App() {
   const periodLabel = isDetailMonthTab
     ? formatMonthLabel(view.monthPage.month)
     : `${formatMonthLabel(view.summaryPage.rangeStartMonth)} - ${formatMonthLabel(view.summaryPage.rangeEndMonth)}`;
+  const stickyScopeConfig = selectedTabId === "month"
+    ? {
+        selectedKey: view.monthPage.selectedScope,
+        paramKey: "scope",
+        label: "Month view scope"
+      }
+    : selectedTabId === "entries"
+      ? {
+          selectedKey: selectedEntriesScope,
+          paramKey: "entries_scope",
+          label: "Entries view scope"
+        }
+      : null;
+  const mobileScopeLabels = {
+    direct: "Direct",
+    shared: "Shared",
+    direct_plus_shared: "Direct+Shared"
+  };
 
   function handleViewChange(nextViewId) {
     setSearchParams((current) => {
@@ -537,7 +598,7 @@ export function App() {
 
         <div className="period-inline">
           <nav className="tab-strip" aria-label={messages.tabs.ariaLabel}>
-            {routeTabs.map((tab) => (
+            {primaryRouteTabs.map((tab) => (
               <NavLink
                 key={tab.id}
                 className={({ isActive }) => `tab ${isActive ? "is-active" : ""}`}
@@ -546,113 +607,170 @@ export function App() {
                 {tab.label}
               </NavLink>
             ))}
+            {secondaryRouteTabs.map((tab) => (
+              <NavLink
+                key={tab.id}
+                className={({ isActive }) => `tab tab-secondary ${isActive ? "is-active" : ""}`}
+                to={{ pathname: tab.path, search: searchParams.toString() ? `?${searchParams.toString()}` : "" }}
+              >
+                {tab.label}
+              </NavLink>
+            ))}
+            <Popover.Root>
+              <Popover.Trigger asChild>
+                <button type="button" className={`tab tab-overflow-trigger ${secondaryRouteTabs.some((tab) => tab.id === selectedTabId) ? "is-active" : ""}`} aria-label="More pages">
+                  <Ellipsis size={18} />
+                </button>
+              </Popover.Trigger>
+              <Popover.Portal>
+                <Popover.Content className="tab-overflow-popover" sideOffset={10} align="end">
+                  <div className="tab-overflow-list">
+                    {secondaryRouteTabs.map((tab) => (
+                      <NavLink
+                        key={tab.id}
+                        className={({ isActive }) => `tab-overflow-link ${isActive ? "is-active" : ""}`}
+                        to={{ pathname: tab.path, search: searchParams.toString() ? `?${searchParams.toString()}` : "" }}
+                      >
+                        {tab.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                  <Popover.Arrow className="category-popover-arrow" />
+                </Popover.Content>
+              </Popover.Portal>
+            </Popover.Root>
           </nav>
-          <button className="period-button" type="button" aria-label={messages.period.previousAriaLabel} onClick={() => handleMonthChange(-1)}>‹</button>
-          <div className="period-display">
-            <span className="period-mode">{periodMode}</span>
-            {isDetailMonthTab ? (
-              <strong>{periodLabel}</strong>
-            ) : (
-              <strong className="period-range-value">
-                <Popover.Root>
-                  <Popover.Trigger asChild>
-                    <button type="button" className="period-range-segment">
-                      {formatMonthLabel(view.summaryPage.rangeStartMonth)}
-                    </button>
-                  </Popover.Trigger>
-                  <Popover.Portal>
-                    <Popover.Content className="period-picker-popover" sideOffset={10} align="center">
-                      <div className="period-picker-head">
-                        <strong>Start month</strong>
-                        <span>Choose the first month in the summary range.</span>
-                      </div>
-                      <div className="period-picker-years" role="tablist" aria-label="Available start years">
-                        {summaryAvailableYears.map((year) => (
-                          <button
-                            key={year}
-                            type="button"
-                            className={`period-picker-year ${rangePickerStartYear === year ? "is-active" : ""}`}
-                            onClick={() => setRangePickerStartYear(year)}
-                          >
-                            {year}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="period-picker-months">
-                        {summaryAvailableMonthsForPickerYear.map((month) => {
-                          const monthIndex = Number(month.slice(5, 7)) - 1;
-                          const isSelected = month === view.summaryPage.rangeStartMonth;
-                          const isDisabled = month > view.summaryPage.rangeEndMonth;
-                          return (
+          <div className={`period-nav-cluster ${isSplitsTab ? "is-passive" : ""}`}>
+            <button className="period-button" type="button" aria-label={messages.period.previousAriaLabel} onClick={() => handleMonthChange(-1)} disabled={isSplitsTab}>‹</button>
+            <div className="period-display">
+              <span className="period-mode">{periodMode}</span>
+              {isDetailMonthTab ? (
+                <strong>{periodLabel}</strong>
+              ) : (
+                <strong className="period-range-value">
+                  <Popover.Root>
+                    <Popover.Trigger asChild>
+                      <button type="button" className="period-range-segment">
+                        {formatMonthLabel(view.summaryPage.rangeStartMonth)}
+                      </button>
+                    </Popover.Trigger>
+                    <Popover.Portal>
+                      <Popover.Content className="period-picker-popover" sideOffset={10} align="center">
+                        <div className="period-picker-head">
+                          <strong>Start month</strong>
+                          <span>Choose the first month in the summary range.</span>
+                        </div>
+                        <div className="period-picker-years" role="tablist" aria-label="Available start years">
+                          {summaryAvailableYears.map((year) => (
                             <button
-                              key={month}
+                              key={year}
                               type="button"
-                              className={`period-picker-month ${isSelected ? "is-active" : ""}`}
-                              disabled={isDisabled}
-                              onClick={() => handleSummaryStartMonthSelect(month)}
+                              className={`period-picker-year ${rangePickerStartYear === year ? "is-active" : ""}`}
+                              onClick={() => setRangePickerStartYear(year)}
                             >
-                              {MONTH_PICKER_LABELS[monthIndex]}
+                              {year}
                             </button>
-                          );
-                        })}
-                      </div>
-                      <Popover.Arrow className="category-popover-arrow" />
-                    </Popover.Content>
-                  </Popover.Portal>
-                </Popover.Root>
-                <span className="period-range-separator"> - </span>
-                <Popover.Root>
-                  <Popover.Trigger asChild>
-                    <button type="button" className="period-range-segment">
-                      {formatMonthLabel(view.summaryPage.rangeEndMonth)}
-                    </button>
-                  </Popover.Trigger>
-                  <Popover.Portal>
-                    <Popover.Content className="period-picker-popover" sideOffset={10} align="center">
-                      <div className="period-picker-head">
-                        <strong>End month</strong>
-                        <span>Choose the last month in the summary range.</span>
-                      </div>
-                      <div className="period-picker-years" role="tablist" aria-label="Available end years">
-                        {summaryAvailableYears.map((year) => (
-                          <button
-                            key={year}
-                            type="button"
-                            className={`period-picker-year ${rangePickerEndYear === year ? "is-active" : ""}`}
-                            onClick={() => setRangePickerEndYear(year)}
-                          >
-                            {year}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="period-picker-months">
-                        {summaryAvailableMonthsForEndPickerYear.map((month) => {
-                          const monthIndex = Number(month.slice(5, 7)) - 1;
-                          const isSelected = month === view.summaryPage.rangeEndMonth;
-                          const isDisabled = month < view.summaryPage.rangeStartMonth;
-                          return (
+                          ))}
+                        </div>
+                        <div className="period-picker-months">
+                          {summaryAvailableMonthsForPickerYear.map((month) => {
+                            const monthIndex = Number(month.slice(5, 7)) - 1;
+                            const isSelected = month === view.summaryPage.rangeStartMonth;
+                            const isDisabled = month > view.summaryPage.rangeEndMonth;
+                            return (
+                              <button
+                                key={month}
+                                type="button"
+                                className={`period-picker-month ${isSelected ? "is-active" : ""}`}
+                                disabled={isDisabled}
+                                onClick={() => handleSummaryStartMonthSelect(month)}
+                              >
+                                {MONTH_PICKER_LABELS[monthIndex]}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <Popover.Arrow className="category-popover-arrow" />
+                      </Popover.Content>
+                    </Popover.Portal>
+                  </Popover.Root>
+                  <span className="period-range-separator"> - </span>
+                  <Popover.Root>
+                    <Popover.Trigger asChild>
+                      <button type="button" className="period-range-segment">
+                        {formatMonthLabel(view.summaryPage.rangeEndMonth)}
+                      </button>
+                    </Popover.Trigger>
+                    <Popover.Portal>
+                      <Popover.Content className="period-picker-popover" sideOffset={10} align="center">
+                        <div className="period-picker-head">
+                          <strong>End month</strong>
+                          <span>Choose the last month in the summary range.</span>
+                        </div>
+                        <div className="period-picker-years" role="tablist" aria-label="Available end years">
+                          {summaryAvailableYears.map((year) => (
                             <button
-                              key={month}
+                              key={year}
                               type="button"
-                              className={`period-picker-month ${isSelected ? "is-active" : ""}`}
-                              disabled={isDisabled}
-                              onClick={() => handleSummaryEndMonthSelect(month)}
+                              className={`period-picker-year ${rangePickerEndYear === year ? "is-active" : ""}`}
+                              onClick={() => setRangePickerEndYear(year)}
                             >
-                              {MONTH_PICKER_LABELS[monthIndex]}
+                              {year}
                             </button>
-                          );
-                        })}
-                      </div>
-                      <Popover.Arrow className="category-popover-arrow" />
-                    </Popover.Content>
-                  </Popover.Portal>
-                </Popover.Root>
-              </strong>
-            )}
+                          ))}
+                        </div>
+                        <div className="period-picker-months">
+                          {summaryAvailableMonthsForEndPickerYear.map((month) => {
+                            const monthIndex = Number(month.slice(5, 7)) - 1;
+                            const isSelected = month === view.summaryPage.rangeEndMonth;
+                            const isDisabled = month < view.summaryPage.rangeStartMonth;
+                            return (
+                              <button
+                                key={month}
+                                type="button"
+                                className={`period-picker-month ${isSelected ? "is-active" : ""}`}
+                                disabled={isDisabled}
+                                onClick={() => handleSummaryEndMonthSelect(month)}
+                              >
+                                {MONTH_PICKER_LABELS[monthIndex]}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <Popover.Arrow className="category-popover-arrow" />
+                      </Popover.Content>
+                    </Popover.Portal>
+                  </Popover.Root>
+                </strong>
+              )}
+            </div>
+            <button className="period-button" type="button" aria-label={messages.period.nextAriaLabel} onClick={() => handleMonthChange(1)} disabled={isSplitsTab}>›</button>
           </div>
-          <button className="period-button" type="button" aria-label={messages.period.nextAriaLabel} onClick={() => handleMonthChange(1)}>›</button>
         </div>
       </section>
+
+      {stickyScopeConfig && view.monthPage.scopes.length > 1 ? (
+        <section className="mobile-scope-sticky-wrap" aria-label={stickyScopeConfig.label}>
+          <div className="scope-toggle pill-row scope-toggle-row mobile-scope-sticky">
+            {view.monthPage.scopes.map((scope) => (
+              <button
+                key={scope.key}
+                className={`pill scope-button ${scope.key === stickyScopeConfig.selectedKey ? "is-active" : ""}`}
+                type="button"
+                onClick={() => {
+                  setSearchParams((current) => {
+                    const next = new URLSearchParams(current);
+                    next.set(stickyScopeConfig.paramKey, scope.key);
+                    return next;
+                  });
+                }}
+              >
+                {mobileScopeLabels[scope.key] ?? scope.label}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="grid">
         <Routes>
@@ -677,6 +795,7 @@ export function App() {
                 accounts={bootstrap.accounts}
                 people={bootstrap.household.people}
                 categories={categories}
+                householdMonthEntries={householdMonthEntries}
                 onCategoryAppearanceChange={handleCategoryAppearanceChange}
                 onRefresh={() => refreshBootstrap({ broadcast: true })}
               />
@@ -691,6 +810,17 @@ export function App() {
                 categories={categories}
                 people={bootstrap.household.people}
                 onCategoryAppearanceChange={handleCategoryAppearanceChange}
+                onRefresh={() => refreshBootstrap({ broadcast: true })}
+              />
+            )}
+          />
+          <Route
+            path="/splits"
+            element={(
+              <SplitsPanel
+                view={view}
+                categories={categories}
+                people={bootstrap.household.people}
                 onRefresh={() => refreshBootstrap({ broadcast: true })}
               />
             )}
@@ -727,6 +857,34 @@ export function App() {
           <Route path="*" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
         </Routes>
       </section>
+
+      {selectedTabId === "entries" && typeof document !== "undefined"
+        ? createPortal(
+            <button type="button" className="entries-fab" onClick={() => {
+              const trigger = document.querySelector("[data-entries-fab-trigger='true']");
+              if (trigger instanceof HTMLButtonElement) {
+                trigger.click();
+              }
+            }} aria-label={messages.entries.addEntry} title={messages.entries.addEntry}>
+              <Plus size={24} />
+            </button>,
+            document.body
+          )
+        : null}
+
+      {selectedTabId === "splits" && typeof document !== "undefined"
+        ? createPortal(
+            <button type="button" className="entries-fab splits-fab" onClick={() => {
+              const trigger = document.querySelector("[data-splits-fab-trigger='true']");
+              if (trigger instanceof HTMLButtonElement) {
+                trigger.click();
+              }
+            }} aria-label={messages.splits.addExpense} title={messages.splits.addExpense}>
+              <Receipt size={24} />
+            </button>,
+            document.body
+          )
+        : null}
     </main>
   );
 }
@@ -876,7 +1034,7 @@ function SummaryPanel({ view, selectedMonth, categories, onCategoryAppearanceCha
                         onClick={() => handleOpenEntriesForCategory(category?.name ?? item.label)}
                       >
                         <strong>{category?.name ?? item.label}</strong>
-                        <p>{messages.common.moneyAndPercent(money(item.valueMinor), percentage)}</p>
+                        <p>{money(item.valueMinor)}</p>
                         <span className="share-row-meta">
                           {item.entryCount === 1 ? "1 transaction" : `${item.entryCount ?? 0} transactions`}
                         </span>
@@ -905,19 +1063,24 @@ function SummaryPanel({ view, selectedMonth, categories, onCategoryAppearanceCha
                 <details key={month.month} className="plan-row-card" open={index === 0}>
                   <summary className="plan-row-summary">
                     <div className="plan-row-head">
-                      <div>
-                        <button
-                          type="button"
-                          className="summary-month-link"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            handleOpenMonth(month.month);
-                          }}
-                        >
-                          {formatMonthLabel(month.month)}
-                        </button>
-                        <p>{messages.summary.incomeLabel(money(month.incomeMinor))}</p>
+                      <div className="plan-row-title">
+                        <span className="plan-row-disclosure" aria-hidden="true">
+                          <ChevronRight size={18} />
+                        </span>
+                        <div>
+                          <button
+                            type="button"
+                            className="summary-month-link"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              handleOpenMonth(month.month);
+                            }}
+                          >
+                            {formatMonthLabel(month.month)}
+                          </button>
+                          <p>{messages.summary.incomeLabel(money(month.incomeMinor))}</p>
+                        </div>
                       </div>
                       <span className={spendVarianceMinor >= 0 ? "positive" : "negative"}>
                         {money(spendVarianceMinor)}
@@ -1060,6 +1223,10 @@ function SpendingMixChart({
   outerRadius = 120
 }) {
   const total = data.reduce((sum, item) => sum + item.valueMinor, 0);
+  const isNarrowViewport = typeof window !== "undefined" && window.innerWidth <= 760;
+  const resolvedHeight = isNarrowViewport ? Math.min(height, compact ? 250 : 280) : height;
+  const resolvedInnerRadius = isNarrowViewport ? Math.min(innerRadius, compact ? 54 : 62) : innerRadius;
+  const resolvedOuterRadius = isNarrowViewport ? Math.min(outerRadius, compact ? 84 : 98) : outerRadius;
   const chartData = data.map((item, index) => ({
     ...item,
     ...getCategoryTheme(categories, item, index)
@@ -1068,7 +1235,7 @@ function SpendingMixChart({
   return (
     <div className={`spending-mix-chart-shell ${compact ? "is-compact" : ""}`}>
       <div className={`spending-mix-chart ${compact ? "is-compact" : ""}`}>
-        <ResponsiveContainer width="100%" height={height}>
+        <ResponsiveContainer width="100%" height={resolvedHeight}>
           <PieChart>
             <Pie
               data={chartData}
@@ -1076,12 +1243,12 @@ function SpendingMixChart({
               nameKey="label"
               cx="50%"
               cy="50%"
-              innerRadius={innerRadius}
-              outerRadius={outerRadius}
+              innerRadius={resolvedInnerRadius}
+              outerRadius={resolvedOuterRadius}
               paddingAngle={0}
               isAnimationActive={false}
               labelLine={false}
-              label={(props) => renderPieCallout(props, total)}
+              label={(props) => renderPieCallout(props, total, { compact: isNarrowViewport })}
             >
               {chartData.map((entry) => (
                 <Cell key={entry.key} fill={entry.color} />
@@ -1098,33 +1265,45 @@ function SpendingMixChart({
   );
 }
 
-function renderPieCallout(props, total) {
+function renderPieCallout(props, total, options = {}) {
   const { cx, cy, midAngle, outerRadius, percent, payload } = props;
+  const { compact = false } = options;
   if (!percent) {
     return null;
   }
 
+  if (compact && percent < 0.03) {
+    return null;
+  }
+
   const radians = (Math.PI / 180) * -midAngle;
-  const sx = cx + Math.cos(radians) * (outerRadius + 6);
-  const sy = cy + Math.sin(radians) * (outerRadius + 6);
-  const mx = cx + Math.cos(radians) * (outerRadius + 22);
-  const my = cy + Math.sin(radians) * (outerRadius + 22);
-  const bx = cx + Math.cos(radians) * (outerRadius + 46);
-  const by = cy + Math.sin(radians) * (outerRadius + 46);
+  const stemOffset = compact ? 4 : 6;
+  const midOffset = compact ? 10 : 22;
+  const badgeOffset = compact ? 20 : 46;
+  const textOffset = compact ? 18 : 34;
+  const badgeSize = compact ? 28 : 44;
+  const iconSize = compact ? 12 : 18;
+  const fontSize = compact ? 10 : 15;
+  const sx = cx + Math.cos(radians) * (outerRadius + stemOffset);
+  const sy = cy + Math.sin(radians) * (outerRadius + stemOffset);
+  const mx = cx + Math.cos(radians) * (outerRadius + midOffset);
+  const my = cy + Math.sin(radians) * (outerRadius + midOffset);
+  const bx = cx + Math.cos(radians) * (outerRadius + badgeOffset);
+  const by = cy + Math.sin(radians) * (outerRadius + badgeOffset);
   const isRight = Math.cos(radians) >= 0;
-  const tx = bx + (isRight ? 34 : -34);
+  const tx = bx + (isRight ? textOffset : -textOffset);
   const percentage = ((payload.valueMinor / total) * 100).toFixed(1);
   const Icon = getIconComponent(payload.iconKey);
 
   return (
     <g>
       <path d={`M${sx},${sy} L${mx},${my} L${bx},${by}`} stroke={payload.color} strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.82" />
-      <foreignObject x={bx - 22} y={by - 22} width="44" height="44">
-        <div className="donut-callout-badge" style={{ "--category-color": payload.color }}>
-          <Icon size={18} strokeWidth={2.2} />
+      <foreignObject x={bx - (badgeSize / 2)} y={by - (badgeSize / 2)} width={badgeSize} height={badgeSize}>
+        <div className="donut-callout-badge" style={{ "--category-color": payload.color, "--callout-size": `${badgeSize}px` }}>
+          <Icon size={iconSize} strokeWidth={2.2} />
         </div>
       </foreignObject>
-      <text x={tx} y={by + 1} textAnchor={isRight ? "start" : "end"} dominantBaseline="middle" fill={payload.color} fontSize="15" fontWeight="700">
+      <text x={tx} y={by + 1} textAnchor={isRight ? "start" : "end"} dominantBaseline="middle" fill={payload.color} fontSize={fontSize} fontWeight="700">
         {percentage}%
       </text>
     </g>
@@ -1212,7 +1391,7 @@ function CategoryGlyph({ iconKey }) {
   return <Icon size={18} strokeWidth={2.2} />;
 }
 
-function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceChange, onRefresh }) {
+function MonthPanel({ view, accounts, people, categories, householdMonthEntries, onCategoryAppearanceChange, onRefresh }) {
   const navigate = useNavigate();
   const defaultSectionOpen = useCallback(() => ({
     income: false,
@@ -1220,14 +1399,14 @@ function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceCh
     budget_buckets: true
   }), []);
   const monthUiKey = `${view.id}:${view.monthPage.month}:${view.monthPage.selectedScope}`;
-  const [sectionStateByKey, setSectionStateByKey] = useState({});
   const [planSections, setPlanSections] = useState(view.monthPage.planSections);
   const [editingRowId, setEditingRowId] = useState(null);
   const [editingSnapshot, setEditingSnapshot] = useState(null);
   const [editingDrafts, setEditingDrafts] = useState({});
   const [incomeRows, setIncomeRows] = useState([]);
-  const [sectionOpen, setSectionOpen] = useState(() => defaultSectionOpen());
+  const [sectionOpen, setSectionOpen] = useState(() => MONTH_SECTION_STATE_CACHE.get(monthUiKey) ?? defaultSectionOpen());
   const [noteDialog, setNoteDialog] = useState(null);
+  const [planLinkDialog, setPlanLinkDialog] = useState(null);
   const [resetMonthText, setResetMonthText] = useState("");
   const [deleteMonthText, setDeleteMonthText] = useState("");
   const [monthNoteDialog, setMonthNoteDialog] = useState(null);
@@ -1245,6 +1424,7 @@ function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceCh
     setEditingSnapshot(null);
     setEditingDrafts({});
     setNoteDialog(null);
+    setPlanLinkDialog(null);
     setMonthNoteDialog(null);
     setTableSorts({
       income: null,
@@ -1252,8 +1432,11 @@ function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceCh
       budget_buckets: null
     });
     setIncomeRows(view.monthPage.incomeRows);
-    setSectionOpen(sectionStateByKey[monthUiKey] ?? defaultSectionOpen());
-  }, [view, monthUiKey, sectionStateByKey, defaultSectionOpen]);
+  }, [view, defaultSectionOpen]);
+
+  useEffect(() => {
+    setSectionOpen(MONTH_SECTION_STATE_CACHE.get(monthUiKey) ?? defaultSectionOpen());
+  }, [monthUiKey, defaultSectionOpen]);
 
   const currentMonthSummary = useMemo(
     () => view.summaryPage.months.find((month) => month.month === view.monthPage.month) ?? null,
@@ -1520,10 +1703,7 @@ function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceCh
         ...current,
         [sectionKey]: true
       };
-      setSectionStateByKey((existing) => ({
-        ...existing,
-        [monthUiKey]: next
-      }));
+      MONTH_SECTION_STATE_CACHE.set(monthUiKey, next);
       return next;
     });
     setEditingRowId(nextId);
@@ -1678,10 +1858,7 @@ function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceCh
         ...current,
         income: true
       };
-      setSectionStateByKey((existing) => ({
-        ...existing,
-        [monthUiKey]: next
-      }));
+      MONTH_SECTION_STATE_CACHE.set(monthUiKey, next);
       return next;
     });
     setEditingRowId(nextId);
@@ -1749,6 +1926,135 @@ function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceCh
     };
   }
 
+  function getPlanRowById(rowId) {
+    return planSections.flatMap((section) => section.rows).find((row) => row.id === rowId);
+  }
+
+  function getPlanLinkCandidates(row) {
+    if (!row) {
+      return [];
+    }
+
+    const linkedIds = new Set(row.linkedEntryIds ?? []);
+    const rowCategory = normalizeMatchText(row.categoryName);
+    const rowAccount = normalizeMatchText(row.accountName);
+    const rowLabel = normalizeMatchText(row.label);
+    const rowDate = getRowDateValue(row, view.monthPage.month);
+    const rowAmount = Number(row.plannedMinor ?? 0);
+    const hints = row.planMatchHints ?? [];
+    const uniqueEntries = new Map();
+
+    for (const entry of [...(householdMonthEntries ?? []), ...view.monthPage.entries]) {
+      if (entry.entryType === "expense") {
+        uniqueEntries.set(entry.id, entry);
+      }
+    }
+
+    return [...uniqueEntries.values()]
+      .map((entry) => {
+        const entryCategory = normalizeMatchText(entry.categoryName);
+        const entryAccount = normalizeMatchText(entry.accountName);
+        const entryDescription = normalizeMatchText(entry.description);
+        const reasons = [];
+        let score = 0;
+
+        if (linkedIds.has(entry.id)) {
+          score += 1000;
+          reasons.push("linked");
+        }
+
+        if (rowCategory && entryCategory === rowCategory) {
+          score += 45;
+          reasons.push("same category");
+        }
+
+        if (rowAccount && entryAccount === rowAccount) {
+          score += 25;
+          reasons.push("same account");
+        }
+
+        if (rowAmount > 0 && entry.amountMinor > 0) {
+          const amountGap = Math.abs(rowAmount - entry.amountMinor);
+          if (amountGap === 0) {
+            score += 40;
+            reasons.push("same amount");
+          } else if (amountGap <= Math.max(100, Math.round(rowAmount * 0.08))) {
+            score += 24;
+            reasons.push("near amount");
+          }
+        }
+
+        if (rowLabel && textOverlapScore(rowLabel, entryDescription) >= 0.5) {
+          score += 35;
+          reasons.push("description looks similar");
+        }
+
+        for (const hint of hints) {
+          const hintPattern = normalizeMatchText(hint.descriptionPattern);
+          if (hintPattern && entryDescription.includes(hintPattern)) {
+            score += 120;
+            reasons.push("remembered description");
+          }
+          if (typeof hint.amountMinor === "number" && hint.amountMinor === entry.amountMinor) {
+            score += 24;
+            reasons.push("remembered amount");
+          }
+          if (hint.accountName && normalizeMatchText(hint.accountName) === entryAccount) {
+            score += 14;
+          }
+        }
+
+        if (rowDate) {
+          const dateGap = Math.abs(daysBetween(entry.date, rowDate));
+          if (dateGap <= 3) {
+            score += 18;
+            reasons.push("near planned date");
+          } else if (dateGap <= 10) {
+            score += 8;
+          }
+        }
+
+        return {
+          ...entry,
+          matchScore: score,
+          matchReasons: [...new Set(reasons.filter((reason) => reason !== "linked"))]
+        };
+      })
+      .filter((entry) => linkedIds.has(entry.id) || entry.matchScore > 0 || !hints.length)
+      .sort((left, right) => right.matchScore - left.matchScore || right.date.localeCompare(left.date) || left.description.localeCompare(right.description))
+      .slice(0, 80);
+  }
+
+  async function openPlanLinkDialog(row) {
+    if (editingSnapshot?.rowId === row.id) {
+      await finishEdit();
+    }
+
+    setPlanLinkDialog({
+      rowId: row.id,
+      draftEntryIds: row.linkedEntryIds ?? []
+    });
+  }
+
+  async function savePlanLinkDialog() {
+    if (!planLinkDialog) {
+      return;
+    }
+
+    await fetch("/api/month-plan/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rowId: planLinkDialog.rowId,
+        month: view.monthPage.month,
+        transactionIds: planLinkDialog.draftEntryIds
+      })
+    });
+
+    setPlanLinkDialog(null);
+    await onRefresh();
+  }
+
   const monthKey = view.monthPage.month;
   function toggleSection(sectionKey) {
     setSectionOpen((current) => {
@@ -1756,10 +2062,7 @@ function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceCh
         ...current,
         [sectionKey]: !current[sectionKey]
       };
-      setSectionStateByKey((existing) => ({
-        ...existing,
-        [monthUiKey]: next
-      }));
+      MONTH_SECTION_STATE_CACHE.set(monthUiKey, next);
       return next;
     });
   }
@@ -1821,7 +2124,7 @@ function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceCh
         </div>
         <div className="month-header-controls">
           {view.monthPage.scopes.length > 1 ? (
-            <div className="scope-toggle pill-row scope-toggle-row">
+            <div className="scope-toggle pill-row scope-toggle-row desktop-scope-toggle">
               {view.monthPage.scopes.map((scope) => (
                 <button
                   key={scope.key}
@@ -1958,36 +2261,39 @@ function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceCh
           {isCombinedHouseholdView ? messages.month.readOnlyCombinedHint : messages.month.editHint}
         </p>
         <section className={`month-plan-section month-plan-section-income ${isCombinedHouseholdView ? "is-readonly" : ""}`}>
-          <button
-            type="button"
-            className="month-plan-summary"
-            aria-expanded={sectionOpen.income}
-            onClick={() => toggleSection("income")}
-          >
-            <div className="panel-subhead">
-              <div className="month-section-head month-section-head-inline month-section-head-with-toggle">
-                <span className={`month-section-toggle ${sectionOpen.income ? "is-open" : ""}`} aria-hidden="true">
-                  <ChevronRight size={16} />
-                </span>
-                <h3>{messages.month.incomeSectionTitle}</h3>
-                <p className="month-section-detail-inline">{messages.month.incomeSectionDetail}</p>
-              </div>
-                <div className="month-summary-actions">
-                  {!isCombinedHouseholdView ? (
-                    <button
-                      type="button"
-                      className="subtle-action"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleAddIncomeRow();
-                      }}
-                    >
-                      {messages.month.addIncomeSource}
-                    </button>
-                  ) : null}
+          <div className="month-plan-summary">
+            <div className="panel-subhead month-plan-header-bar">
+              <button
+                type="button"
+                className="month-plan-summary-toggle"
+                aria-expanded={sectionOpen.income}
+                onClick={() => toggleSection("income")}
+              >
+                <div className="month-section-head month-section-head-inline month-section-head-with-toggle">
+                  <span className={`month-section-toggle ${sectionOpen.income ? "is-open" : ""}`} aria-hidden="true">
+                    <ChevronRight size={16} />
+                  </span>
+                  <h3>{messages.month.incomeSectionTitle}</h3>
+                  <p className="month-section-detail-inline">{messages.month.incomeSectionDetail}</p>
                 </div>
+              </button>
+              <div className="month-summary-actions">
+                {!isCombinedHouseholdView ? (
+                  <button
+                    type="button"
+                    className="subtle-action"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      handleAddIncomeRow();
+                    }}
+                  >
+                    {messages.month.addIncomeSource}
+                  </button>
+                ) : null}
+              </div>
             </div>
-          </button>
+          </div>
           {sectionOpen.income ? (
           <div className="table-wrap month-table-wrap">
             <table>
@@ -2144,26 +2450,29 @@ function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceCh
             key={section.key}
             className={`month-plan-section ${section.key === "planned_items" ? "month-plan-section-planned" : "month-plan-section-budgets"} ${isCombinedHouseholdView ? "is-readonly" : ""}`}
           >
-            <button
-              type="button"
-              className="month-plan-summary"
-              aria-expanded={sectionOpen[section.key]}
-              onClick={() => toggleSection(section.key)}
-            >
-              <div className="panel-subhead">
-                <div className="month-section-head month-section-head-with-toggle">
-                  <span className={`month-section-toggle ${sectionOpen[section.key] ? "is-open" : ""}`} aria-hidden="true">
-                    <ChevronRight size={16} />
-                  </span>
-                  <h3>{section.label}</h3>
-                  <p>{section.description}</p>
-                </div>
+            <div className="month-plan-summary">
+              <div className="panel-subhead month-plan-header-bar">
+                <button
+                  type="button"
+                  className="month-plan-summary-toggle"
+                  aria-expanded={sectionOpen[section.key]}
+                  onClick={() => toggleSection(section.key)}
+                >
+                  <div className="month-section-head month-section-head-with-toggle">
+                    <span className={`month-section-toggle ${sectionOpen[section.key] ? "is-open" : ""}`} aria-hidden="true">
+                      <ChevronRight size={16} />
+                    </span>
+                    <h3>{section.label}</h3>
+                    <p>{section.description}</p>
+                  </div>
+                </button>
                 <div className="month-summary-actions">
                   {!isCombinedHouseholdView ? (
                     <button
                       type="button"
                       className="subtle-action"
                       onClick={(event) => {
+                        event.preventDefault();
                         event.stopPropagation();
                         handleAddPlanRow(section.key);
                       }}
@@ -2173,7 +2482,7 @@ function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceCh
                   ) : null}
                 </div>
               </div>
-            </button>
+            </div>
             {sectionOpen[section.key] ? (
             <div className="table-wrap month-table-wrap">
               <table>
@@ -2256,7 +2565,24 @@ function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceCh
                           />
                         ) : money(row.plannedMinor)}
                         </td>
-                        <td>{money(row.actualMinor)}</td>
+                        <td>
+                          {section.key === "planned_items" ? (
+                            <button
+                              type="button"
+                              className="planned-link-trigger"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (canEditRow) {
+                                  void openPlanLinkDialog(row);
+                                }
+                              }}
+                              disabled={!canEditRow}
+                            >
+                              <strong>{money(row.actualMinor)}</strong>
+                              <span>{row.linkedEntryCount ? `${row.linkedEntryCount} linked` : "Link entries"}</span>
+                            </button>
+                          ) : money(row.actualMinor)}
+                        </td>
                         <td className={variance >= 0 ? "positive" : "negative"}>{money(variance)}</td>
                         {section.key === "planned_items" ? (
                           <td>
@@ -2428,6 +2754,84 @@ function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceCh
         </Dialog.Portal>
       </Dialog.Root>
 
+      <Dialog.Root open={Boolean(planLinkDialog)} onOpenChange={(open) => { if (!open) setPlanLinkDialog(null); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="note-dialog-overlay" />
+          <Dialog.Content className="note-dialog-content planned-link-dialog">
+            {(() => {
+              const row = planLinkDialog ? getPlanRowById(planLinkDialog.rowId) : null;
+              const candidates = getPlanLinkCandidates(row);
+              const selectedIds = new Set(planLinkDialog?.draftEntryIds ?? []);
+              return (
+                <>
+                  <div className="note-dialog-head">
+                    <div>
+                      <Dialog.Title>Match planned item</Dialog.Title>
+                      <Dialog.Description>
+                        Link exact ledger entries to {row?.label ?? "this planned item"}. Budget buckets still use category totals.
+                      </Dialog.Description>
+                    </div>
+                    <button
+                      type="button"
+                      className="icon-action subtle-cancel"
+                      aria-label="Close planned item matching"
+                      onClick={() => setPlanLinkDialog(null)}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                  {candidates.length ? (
+                    <div className="planned-link-list">
+                      {candidates.map((entry) => (
+                        <label key={entry.id} className="planned-link-row">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(entry.id)}
+                            onChange={(event) => {
+                              setPlanLinkDialog((current) => {
+                                if (!current) {
+                                  return current;
+                                }
+                                const nextIds = new Set(current.draftEntryIds);
+                                if (event.target.checked) {
+                                  nextIds.add(entry.id);
+                                } else {
+                                  nextIds.delete(entry.id);
+                                }
+                                return {
+                                  ...current,
+                                  draftEntryIds: [...nextIds]
+                                };
+                              });
+                            }}
+                          />
+                          <span className="planned-link-row-main">
+                            <strong>{entry.description}</strong>
+                            <small>{formatDateOnly(entry.date)} • {entry.accountName} • {entry.categoryName}</small>
+                            {entry.matchReasons?.length ? <em>{entry.matchReasons.slice(0, 3).join(" · ")}</em> : null}
+                          </span>
+                          <span>{money(entry.amountMinor)}</span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="empty-copy">No expense entries are available in the selected month.</p>
+                  )}
+                  <div className="note-dialog-actions">
+                    <button type="button" className="subtle-cancel" onClick={() => setPlanLinkDialog(null)}>
+                      {messages.month.cancelEdit}
+                    </button>
+                    <button type="button" className="dialog-primary" onClick={() => void savePlanLinkDialog()}>
+                      Save matches
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
       <Dialog.Root open={Boolean(monthNoteDialog)} onOpenChange={(open) => { if (!open) setMonthNoteDialog(null); }}>
         <Dialog.Portal>
           <Dialog.Overlay className="note-dialog-overlay" />
@@ -2474,18 +2878,16 @@ function EntriesPanel({ view, accounts, categories, people, onCategoryAppearance
   const [entrySnapshot, setEntrySnapshot] = useState(null);
   const [showEntryComposer, setShowEntryComposer] = useState(false);
   const [showExpenseBreakdown, setShowExpenseBreakdown] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [entryDraft, setEntryDraft] = useState(() => buildEntryDraft(view, accounts, categories, people));
   const [entrySubmitError, setEntrySubmitError] = useState("");
   const [linkingTransferEntryId, setLinkingTransferEntryId] = useState(null);
   const [settlingTransferEntryId, setSettlingTransferEntryId] = useState(null);
   const [transferSettlementDrafts, setTransferSettlementDrafts] = useState({});
   const [transferDialogEntryId, setTransferDialogEntryId] = useState(null);
+  const [addingToSplitsEntryId, setAddingToSplitsEntryId] = useState(null);
   const selectedScope = searchParams.get("entries_scope") ?? view.monthPage.selectedScope;
-  const defaultEntryPerson = view.id === "person-tim"
-    ? "Tim"
-    : view.id === "person-joyce"
-      ? "Joyce"
-      : "";
+  const defaultEntryPerson = view.id !== "household" ? view.label : "";
   const entryFilters = {
     wallet: searchParams.get("entry_wallet") ?? "",
     category: searchParams.get("entry_category") ?? "",
@@ -2499,12 +2901,14 @@ function EntriesPanel({ view, accounts, categories, people, onCategoryAppearance
     setEntrySnapshot(null);
     setShowEntryComposer(false);
     setShowExpenseBreakdown(false);
+    setShowMobileFilters(false);
     setEntryDraft(buildEntryDraft(view, accounts, categories, people));
     setEntrySubmitError("");
     setLinkingTransferEntryId(null);
     setSettlingTransferEntryId(null);
     setTransferSettlementDrafts({});
     setTransferDialogEntryId(null);
+    setAddingToSplitsEntryId(null);
   }, [view, accounts, categories, people]);
 
   const wallets = useMemo(() => uniqueValues(entries.map((entry) => entry.accountName)), [entries]);
@@ -2527,6 +2931,10 @@ function EntriesPanel({ view, accounts, categories, people, onCategoryAppearance
   const peopleFilterOptions = useMemo(
     () => uniqueValues(entries.flatMap((entry) => entry.ownershipType === "shared" ? ["Shared"] : [entry.ownerName ?? ""])),
     [entries]
+  );
+  const activeEntryFilterCount = useMemo(
+    () => ["wallet", "category", "person", "type"].reduce((count, key) => count + (entryFilters[key] ? 1 : 0), 0),
+    [entryFilters]
   );
   const ownerOptions = useMemo(
     () => [...people.map((person) => person.name), "Shared"],
@@ -2827,6 +3235,35 @@ function EntriesPanel({ view, accounts, categories, people, onCategoryAppearance
     }
   }
 
+  async function addEntryToSplits(entry) {
+    setEntrySubmitError("");
+    setAddingToSplitsEntryId(entry.id);
+
+    try {
+      const response = await fetch("/api/splits/expenses/from-entry", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          entryId: entry.id,
+          splitGroupId: null
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setEntrySubmitError(data.error ?? "Failed to add entry to splits.");
+        return;
+      }
+
+      setEditingEntryId(null);
+      setEntrySnapshot(null);
+      await onRefresh();
+    } finally {
+      setAddingToSplitsEntryId(null);
+    }
+  }
+
   function updateEntry(entryId, patch) {
     setEntries((current) => current.map((entry) => {
       if (entry.id !== entryId) {
@@ -2864,7 +3301,7 @@ function EntriesPanel({ view, accounts, categories, people, onCategoryAppearance
           <h2>{messages.tabs.entries}</h2>
           <span className="panel-context">{messages.entries.viewing(view.label)}</span>
         </div>
-        <div className="scope-toggle pill-row scope-toggle-row">
+        <div className="scope-toggle pill-row scope-toggle-row desktop-scope-toggle">
           {view.monthPage.scopes.map((scope) => (
               <button
                 key={scope.key}
@@ -2907,10 +3344,19 @@ function EntriesPanel({ view, accounts, categories, people, onCategoryAppearance
           <strong className={getAmountToneClass(entryNetMinor)}>{money(entryNetMinor)}</strong>
         </span>
         <div className="entries-totals-spacer" />
-        <button type="button" className="subtle-action is-primary" onClick={openEntryComposer}>
+        <button type="button" className="subtle-action is-primary entries-add-inline" onClick={openEntryComposer}>
           {messages.entries.addEntry}
         </button>
       </section>
+
+      <button
+        type="button"
+        data-entries-fab-trigger="true"
+        className="entries-fab-trigger"
+        onClick={openEntryComposer}
+        aria-hidden="true"
+        tabIndex={-1}
+      />
 
       {showExpenseBreakdown ? (
         <section className="entries-breakdown-panel">
@@ -2950,40 +3396,46 @@ function EntriesPanel({ view, accounts, categories, people, onCategoryAppearance
         </section>
       ) : null}
 
-      <section className="entries-filter-bar">
-        <FilterSelect
-          label={messages.entries.wallet}
-          value={entryFilters.wallet}
-          options={wallets}
-          emptyLabel={messages.entries.allWallets}
-          onChange={(value) => updateEntryFilter("wallet", value)}
-        />
-        <FilterSelect
-          label={messages.entries.category}
-          value={entryFilters.category}
-          options={entryCategoryOptions}
-          emptyLabel={messages.entries.allCategories}
-          onChange={(value) => updateEntryFilter("category", value)}
-        />
-        <FilterSelect
-          label={messages.entries.person}
-          value={entryFilters.person}
-          options={peopleFilterOptions}
-          emptyLabel={messages.entries.allPeople}
-          onChange={(value) => updateEntryFilter("person", value)}
-        />
-        <FilterSelect
-          label={messages.entries.type}
-          value={entryFilters.type}
-          options={["expense", "income", "transfer"]}
-          emptyLabel={messages.entries.allTypes}
-          onChange={(value) => updateEntryFilter("type", value)}
-        />
-        <div className="entries-filter-reset">
-          <button type="button" className="subtle-action" onClick={resetEntryFilters}>
-            {messages.entries.resetFilters}
-          </button>
-        </div>
+      <section className={`entries-filter-stack ${showMobileFilters ? "is-open" : ""}`}>
+        <button type="button" className="entries-filter-toggle" onClick={() => setShowMobileFilters((current) => !current)}>
+          <span>{activeEntryFilterCount ? `Filters · ${activeEntryFilterCount}` : "Filters"}</span>
+          <span>{showMobileFilters ? "Hide" : "Show"}</span>
+        </button>
+        <section className="entries-filter-bar">
+          <FilterSelect
+            label={messages.entries.wallet}
+            value={entryFilters.wallet}
+            options={wallets}
+            emptyLabel={messages.entries.allWallets}
+            onChange={(value) => updateEntryFilter("wallet", value)}
+          />
+          <FilterSelect
+            label={messages.entries.category}
+            value={entryFilters.category}
+            options={entryCategoryOptions}
+            emptyLabel={messages.entries.allCategories}
+            onChange={(value) => updateEntryFilter("category", value)}
+          />
+          <FilterSelect
+            label={messages.entries.person}
+            value={entryFilters.person}
+            options={peopleFilterOptions}
+            emptyLabel={messages.entries.allPeople}
+            onChange={(value) => updateEntryFilter("person", value)}
+          />
+          <FilterSelect
+            label={messages.entries.type}
+            value={entryFilters.type}
+            options={["expense", "income", "transfer"]}
+            emptyLabel={messages.entries.allTypes}
+            onChange={(value) => updateEntryFilter("type", value)}
+          />
+          <div className="entries-filter-reset">
+            <button type="button" className="subtle-action" onClick={resetEntryFilters}>
+              {messages.entries.resetFilters}
+            </button>
+          </div>
+        </section>
       </section>
 
       {showEntryComposer ? (
@@ -3185,6 +3637,10 @@ function EntriesPanel({ view, accounts, categories, people, onCategoryAppearance
                         <p>{entry.accountName}</p>
                       </div>
                       <div className="entry-row-right">
+                        <div className="entry-row-amount">
+                          <strong className={getAmountToneClass(signedAmountMinor)}>{money(signedAmountMinor)}</strong>
+                          {hasWeightedTotal ? <p>({money(signedTotalAmountMinor)} total)</p> : null}
+                        </div>
                         <div className="entry-pills">
                           {transferLabel ? <span className="entry-chip entry-chip-transfer">{transferLabel}</span> : null}
                           <span className={`entry-chip ${entry.ownershipType === "shared" ? "entry-chip-shared" : "entry-chip-owner"}`}>{ownerLabel}</span>
@@ -3192,8 +3648,6 @@ function EntriesPanel({ view, accounts, categories, people, onCategoryAppearance
                             <span className="entry-chip entry-chip-split">{splitPercent}%</span>
                           ) : null}
                         </div>
-                        <strong className={getAmountToneClass(signedAmountMinor)}>{money(signedAmountMinor)}</strong>
-                        {hasWeightedTotal ? <p>({money(signedTotalAmountMinor)} total)</p> : null}
                       </div>
                     </button>
 
@@ -3477,6 +3931,16 @@ function EntriesPanel({ view, accounts, categories, people, onCategoryAppearance
                           </label>
                         </div>
                         <div className="entry-inline-actions">
+                          {entry.entryType === "expense" ? (
+                            <button
+                              type="button"
+                              className="subtle-action"
+                              disabled={addingToSplitsEntryId === entry.id}
+                              onClick={() => void addEntryToSplits(entry)}
+                            >
+                              {messages.entries.addToSplits}
+                            </button>
+                          ) : null}
                           <button type="button" className="icon-action" aria-label="Done editing entry" onClick={finishEntryEdit}>
                             <Check size={16} />
                           </button>
@@ -3552,6 +4016,823 @@ function DeleteRowButton({ label, onConfirm, triggerLabel, confirmLabel = "Confi
   );
 }
 
+function SplitsPanel({ view, categories, people, onRefresh }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showBreakdown, setShowBreakdown] = useState(false);
+  const [archiveDialog, setArchiveDialog] = useState(null);
+  const [groupDialog, setGroupDialog] = useState(null);
+  const [expenseDialog, setExpenseDialog] = useState(null);
+  const [settlementDialog, setSettlementDialog] = useState(null);
+  const [linkedEntryDialog, setLinkedEntryDialog] = useState(null);
+  const [formError, setFormError] = useState("");
+  const [dismissedMatchIds, setDismissedMatchIds] = useState([]);
+  const groups = view.splitsPage.groups;
+  const groupOptions = useMemo(
+    () => [{ id: "split-group-none", name: messages.splits.nonGroup }, ...groups.filter((group) => group.id !== "split-group-none")],
+    [groups]
+  );
+  const defaultGroupId = groups.find((group) => group.isDefault)?.id ?? "split-group-none";
+  const selectedGroupId = searchParams.get("split_group") ?? defaultGroupId;
+  const selectedMode = searchParams.get("split_mode") ?? "entries";
+  const activeGroup = groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null;
+  const visibleActivity = view.splitsPage.activity.filter((item) => item.groupId === (activeGroup?.id ?? "split-group-none"));
+  const currentActivity = useMemo(
+    () => visibleActivity.filter((item) => !item.isArchived),
+    [visibleActivity]
+  );
+  const archivedActivity = useMemo(
+    () => visibleActivity.filter((item) => item.isArchived),
+    [visibleActivity]
+  );
+  const groupedCurrentActivity = useMemo(() => groupSplitActivityByDate(currentActivity), [currentActivity]);
+  const archivedBatches = useMemo(() => groupSplitActivityByBatch(archivedActivity), [archivedActivity]);
+  const selectedArchivedBatch = archiveDialog?.batchId
+    ? archivedBatches.find((batch) => batch.batchId === archiveDialog.batchId) ?? null
+    : null;
+  const visibleMatches = view.splitsPage.matches.filter((item) => (
+    item.groupId === (activeGroup?.id ?? "split-group-none") && !dismissedMatchIds.includes(item.id)
+  ));
+  const pendingMatchCount = view.splitsPage.matches.filter((item) => !dismissedMatchIds.includes(item.id)).length;
+  const expenseMatchCount = view.splitsPage.matches.filter((item) => item.kind === "expense" && !dismissedMatchIds.includes(item.id)).length;
+  const settlementMatchCount = view.splitsPage.matches.filter((item) => item.kind === "settlement" && !dismissedMatchIds.includes(item.id)).length;
+  const groupBalanceMinor = activeGroup?.balanceMinor ?? 0;
+  const groupSummaryLabel = groupBalanceMinor === 0
+    ? messages.splits.settledUp
+    : groupBalanceMinor > 0
+      ? messages.splits.youAreOwed
+      : messages.splits.youOwe;
+  const totalExpenseMinor = currentActivity
+    .filter((item) => item.kind === "expense")
+    .reduce((sum, item) => sum + item.totalAmountMinor, 0);
+  const linkedEntriesById = useMemo(
+    () => new Map(view.monthPage.entries.map((entry) => [entry.id, entry])),
+    [view.monthPage.entries]
+  );
+  const donutRows = useMemo(
+    () => view.splitsPage.donutChart.map((item, index) => ({
+      ...item,
+      theme: getCategoryTheme(categories, { categoryName: item.label }, index)
+    })),
+    [categories, view.splitsPage.donutChart]
+  );
+  const categoryOptions = categories
+    .slice()
+    .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name))
+    .map((category) => category.name);
+
+  useEffect(() => {
+    setDismissedMatchIds([]);
+    setShowBreakdown(false);
+    setFormError("");
+    setLinkedEntryDialog(null);
+    setArchiveDialog(null);
+  }, [view.id, view.splitsPage.month]);
+
+  function updateSplitView(patch) {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (patch.groupId) {
+        next.set("split_group", patch.groupId);
+      }
+      if (patch.mode) {
+        next.set("split_mode", patch.mode);
+      }
+      return next;
+    });
+  }
+
+  function renderActivityGroups(groupsToRender, archived = false) {
+    return groupsToRender.map((group) => (
+      <section key={`${archived ? "archived" : "current"}-${group.date}`} className={`split-date-group ${archived ? "is-archived" : ""}`}>
+        <header className="split-date-header">
+          <strong>{formatDateOnly(group.date)}</strong>
+          <span>{group.items.length} {messages.splits.entries}</span>
+        </header>
+        <div className="split-date-items">
+          {group.items.map((item, index) => {
+            const theme = getCategoryTheme(categories, { categoryName: item.categoryName ?? "Other" }, index);
+            return (
+              <article key={item.id} className="split-activity-card">
+                <div className="split-activity-leading">
+                  <span className="category-icon category-icon-static" style={{ "--category-color": theme.color }}>
+                    <CategoryGlyph iconKey={theme.iconKey} />
+                  </span>
+                </div>
+                <div className="split-activity-copy">
+                  <strong>{item.description}</strong>
+                  <p>{item.kind === "expense" ? `${item.paidByPersonName} paid ${money(item.totalAmountMinor)}` : `${item.fromPersonName} paid ${item.toPersonName}`}</p>
+                  {item.note ? <span className="share-row-meta">{item.note}</span> : null}
+                  <div className="split-card-actions">
+                    <button type="button" className="subtle-action" onClick={() => (item.kind === "expense" ? openExpenseEditor(item) : openSettlementEditor(item))}>
+                      {messages.splits.editSplit}
+                    </button>
+                    {item.linkedTransactionId ? (
+                      <button type="button" className="subtle-action" onClick={() => openLinkedEntryEditor(item)}>
+                        {messages.splits.editLinkedEntry}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="split-activity-trailing">
+                  <strong className={item.viewerDirectionLabel.includes("borrowed") || item.viewerDirectionLabel.includes("owe") ? "tone-negative" : "tone-positive"}>
+                    {item.viewerDirectionLabel}
+                  </strong>
+                  <span>{money(item.viewerAmountMinor ?? item.totalAmountMinor)}</span>
+                  <span className="share-row-meta">{item.matched ? messages.splits.linked : messages.splits.manual}</span>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+    ));
+  }
+
+  function openArchiveList() {
+    setArchiveDialog({ batchId: null });
+  }
+
+  function openArchivedBatch(batchId) {
+    setArchiveDialog({ batchId });
+  }
+
+  async function saveGroup() {
+    if (!groupDialog?.name?.trim()) {
+      setFormError("Group name is required.");
+      return;
+    }
+
+    setFormError("");
+    const response = await fetch("/api/splits/groups/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: groupDialog.name })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setFormError(data.error ?? "Failed to create split group.");
+      return;
+    }
+
+    setGroupDialog(null);
+    await onRefresh();
+    updateSplitView({ groupId: data.groupId, mode: "entries" });
+  }
+
+  async function saveExpense() {
+    if (!expenseDialog?.description?.trim() || !expenseDialog.date || !expenseDialog.payerPersonName || !expenseDialog.categoryName) {
+      setFormError("Expense description, date, payer, and category are required.");
+      return;
+    }
+
+    setFormError("");
+    const isEditing = Boolean(expenseDialog?.id);
+    const response = await fetch(isEditing ? "/api/splits/expenses/update" : "/api/splits/expenses/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        splitExpenseId: expenseDialog.id,
+        groupId: expenseDialog.groupId === "split-group-none" ? null : expenseDialog.groupId,
+        date: expenseDialog.date,
+        description: expenseDialog.description,
+        categoryName: expenseDialog.categoryName,
+        payerPersonName: expenseDialog.payerPersonName,
+        amountMinor: Number(expenseDialog.amountMinor ?? 0),
+        note: expenseDialog.note,
+        splitBasisPoints: Number(expenseDialog.splitBasisPoints ?? 5000)
+      })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setFormError(data.error ?? "Failed to create split expense.");
+      return;
+    }
+
+    setExpenseDialog(null);
+    await onRefresh();
+  }
+
+  async function saveSettlement() {
+    if (!settlementDialog?.date || !settlementDialog.fromPersonName || !settlementDialog.toPersonName) {
+      setFormError("Settlement date and both people are required.");
+      return;
+    }
+
+    setFormError("");
+    const isEditing = Boolean(settlementDialog?.id);
+    const response = await fetch(isEditing ? "/api/splits/settlements/update" : "/api/splits/settlements/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        settlementId: settlementDialog.id,
+        groupId: settlementDialog.groupId === "split-group-none" ? null : settlementDialog.groupId,
+        date: settlementDialog.date,
+        fromPersonName: settlementDialog.fromPersonName,
+        toPersonName: settlementDialog.toPersonName,
+        amountMinor: Number(settlementDialog.amountMinor ?? 0),
+        note: settlementDialog.note
+      })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setFormError(data.error ?? "Failed to create settlement.");
+      return;
+    }
+
+    setSettlementDialog(null);
+    await onRefresh();
+  }
+
+  async function confirmMatch(match) {
+    const endpoint = match.kind === "expense" ? "/api/splits/matches/link-expense" : "/api/splits/matches/link-settlement";
+    const body = match.kind === "expense"
+      ? { splitExpenseId: match.splitRecordId, transactionId: match.transactionId }
+      : { settlementId: match.splitRecordId, transactionId: match.transactionId };
+    await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    await onRefresh();
+  }
+
+  function openExpenseEditor(item) {
+    const splitPercent = item.totalAmountMinor
+      ? Math.round(((item.viewerAmountMinor ?? item.totalAmountMinor / 2) / item.totalAmountMinor) * 100)
+      : 50;
+    setFormError("");
+    setExpenseDialog({
+      id: item.id,
+      groupId: item.groupId,
+      date: item.date,
+      description: item.description,
+      categoryName: item.categoryName ?? (categoryOptions[0] ?? "Other"),
+      payerPersonName: item.paidByPersonName ?? people[0]?.name ?? "",
+      amountMinor: item.totalAmountMinor,
+      note: item.note ?? "",
+      splitBasisPoints: splitPercent * 100
+    });
+  }
+
+  function openSettlementEditor(item) {
+    setFormError("");
+    setSettlementDialog({
+      id: item.id,
+      groupId: item.groupId,
+      date: item.date,
+      fromPersonName: item.fromPersonName ?? people[1]?.name ?? "",
+      toPersonName: item.toPersonName ?? people[0]?.name ?? "",
+      amountMinor: item.totalAmountMinor,
+      note: item.note ?? ""
+    });
+  }
+
+  function openLinkedEntryEditor(item) {
+    const entry = item.linkedTransactionId ? linkedEntriesById.get(item.linkedTransactionId) : null;
+    if (!entry) {
+      return;
+    }
+
+    setFormError("");
+    setLinkedEntryDialog({
+      entryId: entry.id,
+      date: entry.date,
+      description: entry.description,
+      accountName: entry.accountName,
+      categoryName: entry.categoryName,
+      amountMinor: entry.totalAmountMinor ?? entry.amountMinor,
+      entryType: entry.entryType,
+      transferDirection: entry.transferDirection,
+      ownershipType: entry.ownershipType,
+      ownerName: entry.ownerName ?? "",
+      note: entry.note ?? "",
+      splitBasisPoints: entry.viewerSplitRatioBasisPoints ?? entry.splits[0]?.ratioBasisPoints ?? 5000
+    });
+  }
+
+  async function saveLinkedEntry() {
+    if (!linkedEntryDialog?.entryId || !linkedEntryDialog.date || !linkedEntryDialog.description || !linkedEntryDialog.accountName || !linkedEntryDialog.categoryName) {
+      setFormError("Linked entry is missing required fields.");
+      return;
+    }
+
+    setFormError("");
+    const response = await fetch("/api/entries/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(linkedEntryDialog)
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setFormError(data.error ?? "Failed to update linked entry.");
+      return;
+    }
+
+    setLinkedEntryDialog(null);
+    await onRefresh();
+  }
+
+  function openNewExpenseDialog() {
+    setFormError("");
+    setExpenseDialog({
+      groupId: activeGroup?.id ?? "split-group-none",
+      date: new Date().toISOString().slice(0, 10),
+      description: "",
+      categoryName: categoryOptions[0] ?? "Other",
+      payerPersonName: (view.id !== "household"
+        ? people.find((person) => person.id === view.id)?.name
+        : people[0]?.name) ?? "",
+      amountMinor: 0,
+      note: "",
+      splitBasisPoints: 5000
+    });
+  }
+
+  return (
+    <article className="panel panel-accent panel-splits">
+      <div className="panel-head">
+        <div>
+          <h2>{messages.tabs.splits}</h2>
+          <p className="panel-context">{messages.splits.viewing(view.label)}</p>
+        </div>
+        {selectedMode !== "matches" ? (
+          <button
+            type="button"
+            className="subtle-action split-settle-header"
+            onClick={() => {
+              setFormError("");
+              setSettlementDialog({
+                groupId: activeGroup?.id ?? "split-group-none",
+                date: new Date().toISOString().slice(0, 10),
+                fromPersonName: people[1]?.name ?? "",
+                toPersonName: people[0]?.name ?? "",
+                amountMinor: Math.abs(groupBalanceMinor),
+                note: ""
+              });
+            }}
+            disabled={!activeGroup || groupBalanceMinor === 0}
+          >
+            {messages.splits.settleUp}
+          </button>
+        ) : null}
+      </div>
+
+      <section className="splits-groups-row">
+        <div className="splits-group-pills">
+          {groups.map((group) => {
+            const Icon = getIconComponent(group.iconKey);
+            return (
+              <button
+                key={group.id}
+                type="button"
+                className={`split-group-pill ${group.id === activeGroup?.id && selectedMode !== "matches" ? "is-active" : ""}`}
+                onClick={() => updateSplitView({ groupId: group.id, mode: "entries" })}
+              >
+                <span className="split-group-pill-icon"><Icon size={18} strokeWidth={2.1} /></span>
+                <span className="split-group-pill-content">
+                  <strong>{group.name}</strong>
+                  <span>{group.summaryText}</span>
+                  <span>{group.entryCount} {messages.splits.entries}</span>
+                </span>
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            className={`split-group-pill split-matches-pill ${selectedMode === "matches" ? "is-active" : ""}`}
+            onClick={() => updateSplitView({ groupId: activeGroup?.id ?? defaultGroupId, mode: "matches" })}
+          >
+            <span className="split-group-pill-content">
+              <strong>{messages.splits.matches}</strong>
+              <span>{pendingMatchCount ? messages.splits.toReview(pendingMatchCount) : messages.splits.allClear}</span>
+              <span>{expenseMatchCount} expense, {settlementMatchCount} settle-up</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            className="split-group-pill split-group-pill-create"
+            onClick={() => {
+              setFormError("");
+              setGroupDialog({ name: "" });
+            }}
+            aria-label={messages.splits.createGroup}
+          >
+            <strong>{messages.splits.addGroup}</strong>
+          </button>
+        </div>
+      </section>
+
+      <section className="entries-summary-strip splits-summary-strip">
+        <button
+          type="button"
+          className={`summary-chevron ${showBreakdown ? "is-open" : ""}`}
+          aria-label="Toggle split donut"
+          onClick={() => setShowBreakdown((current) => !current)}
+        >
+          <ChevronRight size={18} />
+        </button>
+        <div className="entries-summary-metrics">
+          <span>{messages.entries.totalSpend} <strong>{money(totalExpenseMinor)}</strong></span>
+          <span>{groupSummaryLabel} <strong className={groupBalanceMinor >= 0 ? "tone-positive" : "tone-negative"}>{money(Math.abs(groupBalanceMinor))}</strong></span>
+        </div>
+        <div className="splits-summary-actions">
+          <button
+            type="button"
+            className="subtle-action"
+            onClick={openNewExpenseDialog}
+          >
+            {messages.splits.addExpense}
+          </button>
+        </div>
+      </section>
+
+      {showBreakdown ? (
+        <section className="split-donut-panel">
+          {donutRows.length ? (
+            <div className="entries-breakdown-panel split-breakdown-panel">
+              <div className="entries-breakdown-chart">
+                <SpendingMixChart
+                  data={view.splitsPage.donutChart}
+                  categories={categories}
+                  totalLabel={messages.entries.totalSpend}
+                  compact
+                  height={300}
+                  innerRadius={58}
+                  outerRadius={96}
+                />
+              </div>
+              <div className="entries-breakdown-list category-list">
+                {donutRows.map((item) => (
+                  <div key={item.key} className="category-row">
+                    <div className="category-key">
+                      <span className="category-icon category-icon-static" style={{ "--category-color": item.theme.color }}>
+                        <CategoryGlyph iconKey={item.theme.iconKey} />
+                      </span>
+                      <div>
+                        <strong>{item.label}</strong>
+                        <p>{messages.common.triplet(money(item.valueMinor), `${item.entryCount} ${item.entryCount === 1 ? "entry" : "entries"}`, `${((item.valueMinor / Math.max(totalExpenseMinor, 1)) * 100).toFixed(1)}%`)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="lede compact">{messages.splits.noEntries}</p>
+          )}
+        </section>
+      ) : null}
+
+      {selectedMode === "matches" ? (
+        <section className="split-list-section">
+          <div className="panel-subhead">
+            <div>
+              <h2>{messages.splits.matches}</h2>
+              <p className="lede compact">{pendingMatchCount ? messages.splits.toReview(pendingMatchCount) : messages.splits.noMatches}</p>
+            </div>
+          </div>
+          <div className="split-match-list">
+            {visibleMatches.length ? visibleMatches.map((match) => (
+              <div key={match.id} className="split-match-card">
+                <div>
+                  <strong>{match.reviewLabel}</strong>
+                  <p>{messages.common.triplet(formatDate(match.transactionDate), money(match.amountMinor), match.confidenceLabel)}</p>
+                  <p>{match.transactionDescription}</p>
+                </div>
+                <div className="split-match-actions">
+                  <button type="button" className="subtle-action" onClick={() => setDismissedMatchIds((current) => [...current, match.id])}>
+                    {messages.splits.keepSeparate}
+                  </button>
+                  <button type="button" className="dialog-primary" onClick={() => void confirmMatch(match)}>
+                    {messages.splits.match}
+                  </button>
+                </div>
+              </div>
+            )) : (
+              <p className="lede compact">{messages.splits.noMatches}</p>
+            )}
+          </div>
+        </section>
+      ) : (
+        <section className="split-list-section">
+          <button
+            type="button"
+            data-splits-fab-trigger="true"
+            className="entries-fab-trigger"
+            onClick={openNewExpenseDialog}
+            aria-hidden="true"
+            tabIndex={-1}
+          />
+          <div className="split-activity-list">
+            {groupedCurrentActivity.length ? renderActivityGroups(groupedCurrentActivity) : null}
+            {!groupedCurrentActivity.length && !archivedBatches.length ? <p className="lede compact">{messages.splits.noEntries}</p> : null}
+            <button
+              type="button"
+              className={`split-archive-trigger ${archivedBatches.length ? "" : "is-empty"}`}
+              onClick={archivedBatches.length ? openArchiveList : undefined}
+              disabled={!archivedBatches.length}
+            >
+              <span>Archived batches</span>
+              <small>
+                {archivedBatches.length
+                  ? `${archivedBatches.length} settled ${archivedBatches.length === 1 ? "batch" : "batches"}`
+                  : "No settled batches yet"}
+              </small>
+            </button>
+          </div>
+        </section>
+      )}
+
+      <Dialog.Root open={Boolean(archiveDialog)} onOpenChange={(open) => { if (!open) setArchiveDialog(null); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="note-dialog-overlay" />
+          <Dialog.Content className="note-dialog-content split-dialog-content split-archive-dialog">
+            <div className="note-dialog-head split-dialog-head">
+              <Dialog.Title>{selectedArchivedBatch ? selectedArchivedBatch.label : "Archived batches"}</Dialog.Title>
+              <Dialog.Description>
+                {selectedArchivedBatch
+                  ? (selectedArchivedBatch.closedAt ? `Settled ${formatDateOnly(selectedArchivedBatch.closedAt)}` : "Settled batch")
+                  : "Closed settle-up batches stay here as muted history."}
+              </Dialog.Description>
+            </div>
+            {selectedArchivedBatch ? (
+              <div className="split-archive-dialog-body">
+                <button type="button" className="subtle-action split-archive-back" onClick={() => setArchiveDialog({ batchId: null })}>
+                  Back to archived batches
+                </button>
+                <div className="split-archive-batch-detail">
+                  {renderActivityGroups(selectedArchivedBatch.groups, true)}
+                </div>
+              </div>
+            ) : (
+              <div className="split-archive-dialog-body split-archive-list-dialog">
+                {archivedBatches.map((batch) => {
+                  const summary = getArchivedBatchSummary(batch, view.id);
+                  return (
+                    <button key={batch.batchId} type="button" className="split-archive-row" onClick={() => openArchivedBatch(batch.batchId)}>
+                      <span className="split-archive-row-date">{formatArchiveDate(batch.closedAt)}</span>
+                      <span className="split-archive-row-icon category-icon category-icon-static" style={{ "--category-color": "#c58b62" }}>
+                        <ArrowRightLeft size={16} />
+                      </span>
+                      <span className="split-archive-row-copy">
+                        <strong>{summary.title}</strong>
+                        <small>{summary.subtitle}</small>
+                      </span>
+                      <span className="split-archive-row-meta">{batch.items.length} {batch.items.length === 1 ? "entry" : "entries"}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <div className="dialog-actions">
+              <button type="button" className="subtle-cancel" onClick={() => setArchiveDialog(null)}>Close</button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root open={Boolean(groupDialog)} onOpenChange={(open) => { if (!open) setGroupDialog(null); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="note-dialog-overlay" />
+          <Dialog.Content className="note-dialog-content split-dialog-content">
+            <div className="note-dialog-head split-dialog-head">
+              <Dialog.Title>{messages.splits.createGroup}</Dialog.Title>
+              <Dialog.Description>Add a named split group for shared expenses.</Dialog.Description>
+            </div>
+            <label className="split-dialog-field">
+              <span>{messages.splits.groupName}</span>
+              <input className="table-edit-input" value={groupDialog?.name ?? ""} onChange={(event) => setGroupDialog((current) => current ? { ...current, name: event.target.value } : current)} />
+            </label>
+            {formError ? <p className="form-error">{formError}</p> : null}
+            <div className="dialog-actions">
+              <button type="button" className="subtle-cancel" onClick={() => setGroupDialog(null)}>Cancel</button>
+              <button type="button" className="dialog-primary" onClick={() => void saveGroup()}>{messages.splits.saveGroup}</button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root open={Boolean(expenseDialog)} onOpenChange={(open) => { if (!open) setExpenseDialog(null); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="note-dialog-overlay" />
+          <Dialog.Content className="note-dialog-content split-dialog-content">
+            <div className="note-dialog-head split-dialog-head">
+              <Dialog.Title>{expenseDialog?.id ? messages.splits.editSplit : messages.splits.createExpense}</Dialog.Title>
+              <Dialog.Description>Create or edit a split expense without touching the bank import workflow.</Dialog.Description>
+            </div>
+            <div className="split-dialog-section">
+              <div className="entry-core-grid split-dialog-grid">
+                <label className="split-dialog-field">
+                <span>Group</span>
+                <select className="table-edit-input" value={expenseDialog?.groupId ?? "split-group-none"} onChange={(event) => setExpenseDialog((current) => current ? { ...current, groupId: event.target.value } : current)}>
+                  {groupOptions.map((option) => (
+                    <option key={option.id} value={option.id}>{option.name}</option>
+                  ))}
+                </select>
+                </label>
+                <label className="split-dialog-field">
+                <span>{messages.splits.expenseDate}</span>
+                <input className="table-edit-input" type="date" value={expenseDialog?.date ?? ""} onChange={(event) => setExpenseDialog((current) => current ? { ...current, date: event.target.value } : current)} />
+                </label>
+                <label className="split-dialog-field">
+                <span>{messages.splits.expensePaidBy}</span>
+                <select className="table-edit-input" value={expenseDialog?.payerPersonName ?? ""} onChange={(event) => setExpenseDialog((current) => current ? { ...current, payerPersonName: event.target.value } : current)}>
+                  {people.map((person) => (
+                    <option key={person.id} value={person.name}>{person.name}</option>
+                  ))}
+                </select>
+                </label>
+                <label className="split-dialog-field">
+                <span>{messages.splits.expenseCategory}</span>
+                <select className="table-edit-input" value={expenseDialog?.categoryName ?? ""} onChange={(event) => setExpenseDialog((current) => current ? { ...current, categoryName: event.target.value } : current)}>
+                  {categoryOptions.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+                </label>
+              </div>
+            </div>
+            <div className="split-dialog-section split-dialog-section-compact">
+              <div className="split-dialog-inline">
+                <label className="split-dialog-field">
+                <span>{messages.splits.expenseAmount}</span>
+                <input className="table-edit-input table-edit-input-money" type="number" min="0" step="0.01" value={minorToDecimalString(expenseDialog?.amountMinor ?? 0)} onChange={(event) => setExpenseDialog((current) => current ? { ...current, amountMinor: decimalStringToMinor(event.target.value) } : current)} />
+                </label>
+                <label className="split-dialog-field">
+                <span>{messages.splits.expenseSplit}</span>
+                <input className="table-edit-input table-edit-input-money" type="number" min="0" max="100" value={Number(expenseDialog?.splitBasisPoints ?? 5000) / 100} onChange={(event) => setExpenseDialog((current) => current ? { ...current, splitBasisPoints: Math.round(Number(event.target.value || 0) * 100) } : current)} />
+                </label>
+              </div>
+            </div>
+            <div className="split-dialog-section">
+              <div className="entry-writing-grid split-dialog-writing-grid">
+                <label className="split-dialog-field">
+                <span>{messages.splits.expenseDescription}</span>
+                <textarea className="table-edit-input table-edit-textarea" rows={3} value={expenseDialog?.description ?? ""} onChange={(event) => setExpenseDialog((current) => current ? { ...current, description: event.target.value } : current)} />
+                </label>
+                <label className="split-dialog-field">
+                <span>{messages.splits.expenseNote}</span>
+                <textarea className="table-edit-input table-edit-textarea" rows={3} value={expenseDialog?.note ?? ""} onChange={(event) => setExpenseDialog((current) => current ? { ...current, note: event.target.value } : current)} />
+                </label>
+              </div>
+            </div>
+            {formError ? <p className="form-error">{formError}</p> : null}
+            <div className="dialog-actions">
+              <button type="button" className="subtle-cancel" onClick={() => setExpenseDialog(null)}>Cancel</button>
+              <button type="button" className="dialog-primary" onClick={() => void saveExpense()}>{messages.splits.saveExpense}</button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root open={Boolean(settlementDialog)} onOpenChange={(open) => { if (!open) setSettlementDialog(null); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="note-dialog-overlay" />
+          <Dialog.Content className="note-dialog-content split-dialog-content">
+            <div className="note-dialog-head split-dialog-head">
+              <Dialog.Title>{settlementDialog?.id ? messages.splits.editSplit : messages.splits.createSettlement}</Dialog.Title>
+              <Dialog.Description>Record or edit a settle-up and match the bank transfer later from the Matches view.</Dialog.Description>
+            </div>
+            <div className="split-dialog-section">
+              <div className="entry-core-grid split-dialog-grid">
+                <label className="split-dialog-field">
+                <span>Group</span>
+                <select className="table-edit-input" value={settlementDialog?.groupId ?? "split-group-none"} onChange={(event) => setSettlementDialog((current) => current ? { ...current, groupId: event.target.value } : current)}>
+                  {groupOptions.map((option) => (
+                    <option key={option.id} value={option.id}>{option.name}</option>
+                  ))}
+                </select>
+                </label>
+                <label className="split-dialog-field">
+                <span>{messages.splits.settlementDate}</span>
+                <input className="table-edit-input" type="date" value={settlementDialog?.date ?? ""} onChange={(event) => setSettlementDialog((current) => current ? { ...current, date: event.target.value } : current)} />
+                </label>
+                <label className="split-dialog-field">
+                <span>{messages.splits.settlementFrom}</span>
+                <select className="table-edit-input" value={settlementDialog?.fromPersonName ?? ""} onChange={(event) => setSettlementDialog((current) => current ? { ...current, fromPersonName: event.target.value } : current)}>
+                  {people.map((person) => (
+                    <option key={person.id} value={person.name}>{person.name}</option>
+                  ))}
+                </select>
+                </label>
+                <label className="split-dialog-field">
+                <span>{messages.splits.settlementTo}</span>
+                <select className="table-edit-input" value={settlementDialog?.toPersonName ?? ""} onChange={(event) => setSettlementDialog((current) => current ? { ...current, toPersonName: event.target.value } : current)}>
+                  {people.map((person) => (
+                    <option key={person.id} value={person.name}>{person.name}</option>
+                  ))}
+                </select>
+                </label>
+              </div>
+            </div>
+            <div className="split-dialog-section split-dialog-section-compact">
+              <div className="split-dialog-inline">
+                <label className="split-dialog-field">
+                <span>{messages.splits.settlementAmount}</span>
+                <input className="table-edit-input table-edit-input-money" type="number" min="0" step="0.01" value={minorToDecimalString(settlementDialog?.amountMinor ?? 0)} onChange={(event) => setSettlementDialog((current) => current ? { ...current, amountMinor: decimalStringToMinor(event.target.value) } : current)} />
+                </label>
+              </div>
+            </div>
+            <div className="split-dialog-section">
+              <label className="split-dialog-field">
+                <span>{messages.splits.expenseNote}</span>
+                <textarea className="table-edit-input table-edit-textarea" rows={4} value={settlementDialog?.note ?? ""} onChange={(event) => setSettlementDialog((current) => current ? { ...current, note: event.target.value } : current)} />
+              </label>
+            </div>
+            {formError ? <p className="form-error">{formError}</p> : null}
+            <div className="dialog-actions">
+              <button type="button" className="subtle-cancel" onClick={() => setSettlementDialog(null)}>Cancel</button>
+              <button type="button" className="dialog-primary" onClick={() => void saveSettlement()}>{messages.splits.saveSettlement}</button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root open={Boolean(linkedEntryDialog)} onOpenChange={(open) => { if (!open) setLinkedEntryDialog(null); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="note-dialog-overlay" />
+          <Dialog.Content className="note-dialog-content split-dialog-content">
+            <div className="note-dialog-head split-dialog-head">
+              <Dialog.Title>{messages.splits.editLinkedEntry}</Dialog.Title>
+              <Dialog.Description>Edit the same ledger entry that also appears on the Entries page. Changes here update that row there too.</Dialog.Description>
+            </div>
+            <div className="linked-entry-notice">
+              <strong>Linked to Entries</strong>
+              <p>This form edits the underlying ledger row. When you save here, the matching entry in `Entries` updates too.</p>
+            </div>
+            <div className="split-dialog-section">
+              <div className="entry-core-grid split-dialog-grid">
+                <label className="split-dialog-field">
+                <span>{messages.entries.editDate}</span>
+                <input className="table-edit-input" type="date" value={linkedEntryDialog?.date ?? ""} onChange={(event) => setLinkedEntryDialog((current) => current ? { ...current, date: event.target.value } : current)} />
+                </label>
+                <label className="split-dialog-field">
+                <span>{messages.entries.editWallet}</span>
+                <input className="table-edit-input" value={linkedEntryDialog?.accountName ?? ""} onChange={(event) => setLinkedEntryDialog((current) => current ? { ...current, accountName: event.target.value } : current)} />
+                </label>
+                <label className="split-dialog-field">
+                <span>{messages.entries.editCategory}</span>
+                <select className="table-edit-input" value={linkedEntryDialog?.categoryName ?? ""} onChange={(event) => setLinkedEntryDialog((current) => current ? { ...current, categoryName: event.target.value } : current)}>
+                  {categoryOptions.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+                </label>
+              </div>
+            </div>
+            <div className="split-dialog-section split-dialog-section-compact">
+              <div className="split-dialog-inline">
+                <label className="split-dialog-field">
+                <span>{messages.entries.editAmount}</span>
+                <input className="table-edit-input table-edit-input-money" type="number" min="0" step="0.01" value={minorToDecimalString(linkedEntryDialog?.amountMinor ?? 0)} onChange={(event) => setLinkedEntryDialog((current) => current ? { ...current, amountMinor: decimalStringToMinor(event.target.value) } : current)} />
+                </label>
+                <label className="split-dialog-field">
+                <span>{messages.entries.editOwner}</span>
+                <select className="table-edit-input" value={linkedEntryDialog?.ownershipType === "shared" ? "Shared" : (linkedEntryDialog?.ownerName ?? "")} onChange={(event) => {
+                  const nextValue = event.target.value;
+                  setLinkedEntryDialog((current) => current ? {
+                    ...current,
+                    ownershipType: nextValue === "Shared" ? "shared" : "direct",
+                    ownerName: nextValue === "Shared" ? undefined : nextValue
+                  } : current);
+                }}>
+                  {[...people.map((person) => person.name), "Shared"].map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+                </label>
+                {linkedEntryDialog?.ownershipType === "shared" ? (
+                  <label className="split-dialog-field">
+                  <span>{messages.entries.editSplit}</span>
+                  <input className="table-edit-input table-edit-input-money" type="number" min="0" max="100" value={Number(linkedEntryDialog?.splitBasisPoints ?? 5000) / 100} onChange={(event) => setLinkedEntryDialog((current) => current ? { ...current, splitBasisPoints: Math.round(Number(event.target.value || 0) * 100) } : current)} />
+                  </label>
+                ) : null}
+              </div>
+            </div>
+            <div className="split-dialog-section">
+              <div className="entry-writing-grid split-dialog-writing-grid">
+                <label className="split-dialog-field">
+                <span>{messages.entries.editDescription}</span>
+                <textarea className="table-edit-input table-edit-textarea" rows={3} value={linkedEntryDialog?.description ?? ""} onChange={(event) => setLinkedEntryDialog((current) => current ? { ...current, description: event.target.value } : current)} />
+                </label>
+                <label className="split-dialog-field">
+                <span>{messages.entries.editNote}</span>
+                <textarea className="table-edit-input table-edit-textarea" rows={3} value={linkedEntryDialog?.note ?? ""} onChange={(event) => setLinkedEntryDialog((current) => current ? { ...current, note: event.target.value } : current)} />
+                </label>
+              </div>
+            </div>
+            {formError ? <p className="form-error">{formError}</p> : null}
+            <div className="dialog-actions">
+              <button type="button" className="subtle-cancel" onClick={() => setLinkedEntryDialog(null)}>Cancel</button>
+              <button type="button" className="dialog-primary" onClick={() => void saveLinkedEntry()}>Save linked entry</button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+    </article>
+  );
+}
+
 function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, people, onRefresh }) {
   const [sourceLabel, setSourceLabel] = useState("Imported CSV");
   const [importNote, setImportNote] = useState("");
@@ -3566,6 +4847,11 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
   const [previewRows, setPreviewRows] = useState([]);
   const [previewError, setPreviewError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [recentImportsOpen, setRecentImportsOpen] = useState(false);
+  const mappingSectionRef = useRef(null);
+  const previewSectionRef = useRef(null);
+  const hasAutoScrolledMappingRef = useRef(false);
+  const hasAutoScrolledPreviewRef = useRef(false);
 
   const csvInspection = useMemo(() => inspectCsv(csvText), [csvText]);
   const headerSignature = csvInspection.headers.join("|");
@@ -3641,6 +4927,41 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
   const currentStage = preview ? 3 : readyForMapping ? 2 : 1;
   const hasBlockingCategoryPolicy = unknownCategoryMode === "block" && Boolean(preview?.unknownCategories?.length);
   const hasUnmappedAccounts = previewRows.some((row) => !row.accountName);
+  const recentImportGroups = useMemo(() => {
+    const grouped = new Map();
+    for (const item of importsPage.recentImports) {
+      const dateKey = item.importedAt.slice(0, 10);
+      if (!grouped.has(dateKey)) {
+        grouped.set(dateKey, []);
+      }
+      grouped.get(dateKey).push(item);
+    }
+    return Array.from(grouped.entries()).map(([date, items]) => ({ date, items }));
+  }, [importsPage.recentImports]);
+
+  useEffect(() => {
+    if (!readyForMapping) {
+      hasAutoScrolledMappingRef.current = false;
+      return;
+    }
+    if (hasAutoScrolledMappingRef.current) {
+      return;
+    }
+    hasAutoScrolledMappingRef.current = true;
+    mappingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [readyForMapping]);
+
+  useEffect(() => {
+    if (!preview) {
+      hasAutoScrolledPreviewRef.current = false;
+      return;
+    }
+    if (hasAutoScrolledPreviewRef.current) {
+      return;
+    }
+    hasAutoScrolledPreviewRef.current = true;
+    previewSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [preview]);
 
   async function handleUploadCsv(event) {
     const [file] = event.target.files ?? [];
@@ -3755,40 +5076,17 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
             <h3>{messages.imports.composerTitle}</h3>
             <p className="lede compact">{messages.imports.composerDetail}</p>
           </div>
-          <div className="import-actions">
-            <button
-              type="button"
-              className="subtle-action"
-              onClick={() => {
-                setPreview(null);
-                setPreviewRows([]);
-                setPreviewError("");
-              }}
-            >
-              {messages.imports.clearPreview}
-            </button>
-          </div>
         </div>
 
-        <ol className="import-steps" aria-label={messages.imports.stepsLabel}>
-          {messages.imports.steps.map((step, index) => {
-            const stepNumber = index + 1;
-            const stateClass =
-              currentStage > stepNumber ? "is-complete" : currentStage === stepNumber ? "is-current" : "";
-
-            return (
-              <li key={step} className={`import-step ${stateClass}`}>
-                <span className="import-step-dot" />
-                <span>{step}</span>
-              </li>
-            );
-          })}
-        </ol>
-
-        <div className="import-stage-card">
-          <div className="section-head">
-            <h3>{messages.imports.selectFileTitle}</h3>
-            <span className="panel-context">{messages.imports.selectFileDetail}</span>
+        <div className={`import-stage-card ${currentStage === 1 ? "is-current" : currentStage > 1 ? "is-complete" : ""}`}>
+          <div className="import-stage-head">
+            <div className="section-head">
+              <h3>{messages.imports.selectFileTitle}</h3>
+              <span className="panel-context">{messages.imports.selectFileDetail}</span>
+            </div>
+            <span className={`import-stage-label ${currentStage === 1 ? "is-current" : currentStage > 1 ? "is-complete" : ""}`}>
+              {messages.imports.steps[0]}
+            </span>
           </div>
 
           <div className="import-form-grid">
@@ -3863,6 +5161,10 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
                 {messages.imports.uploadFile}
                 <input type="file" accept=".csv,text/csv" hidden onChange={handleUploadCsv} />
               </label>
+              <div className="import-step-hint">
+                <strong>{messages.imports.selectFileNextUpload}</strong>
+                <p>{messages.imports.selectFileNextPaste}</p>
+              </div>
               <p className="lede compact">{messages.imports.defaultsHint}</p>
               <p className="lede compact">{messages.imports.trustHint}</p>
               <p className="lede compact">{importsPage.rollbackPolicy}</p>
@@ -3871,10 +5173,15 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
         </div>
 
         {readyForMapping ? (
-          <div className="import-stage-card">
-            <div className="section-head">
-              <h3>{messages.imports.mappingTitle}</h3>
-              <span className="panel-context">{messages.imports.mappingDetail(csvInspection.rows.length)}</span>
+          <div ref={mappingSectionRef} className={`import-stage-card ${currentStage === 2 ? "is-current" : currentStage > 2 ? "is-complete" : ""}`}>
+            <div className="import-stage-head">
+              <div className="section-head">
+                <h3>{messages.imports.mappingTitle}</h3>
+                <span className="panel-context">{messages.imports.mappingDetail(csvInspection.rows.length)}</span>
+              </div>
+              <span className={`import-stage-label ${currentStage === 2 ? "is-current" : currentStage > 2 ? "is-complete" : ""}`}>
+                {messages.imports.steps[1]}
+              </span>
             </div>
 
             <div className="import-mapping-topline">
@@ -3931,17 +5238,39 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
                 {messages.imports.preview}
               </button>
             </div>
+            {readyForPreview ? <p className="import-stage-note">{messages.imports.mappingNext}</p> : null}
             {previewError ? <div className="import-warning"><strong>{previewError}</strong></div> : null}
           </div>
         ) : null}
 
-        <div className="import-stage-card">
-          <div className="section-head">
-            <h3>{messages.imports.previewRows}</h3>
-            <span className="panel-context">
-              {preview ? messages.imports.transactionCount(preview.importedRows) : messages.imports.previewEmpty}
-            </span>
+        <div ref={previewSectionRef} className={`import-stage-card ${currentStage === 3 ? "is-current" : ""}`}>
+          <div className="import-stage-head">
+            <div className="section-head">
+              <h3>{messages.imports.previewRows}</h3>
+              <span className="panel-context">
+                {preview ? messages.imports.transactionCount(preview.importedRows) : messages.imports.previewEmpty}
+              </span>
+            </div>
+            <div className="import-stage-head-actions">
+              <span className={`import-stage-label ${currentStage === 3 ? "is-current" : ""}`}>
+                {messages.imports.steps[2]}
+              </span>
+              {preview ? (
+                <button
+                  type="button"
+                  className="subtle-action"
+                  onClick={() => {
+                    setPreview(null);
+                    setPreviewRows([]);
+                    setPreviewError("");
+                  }}
+                >
+                  {messages.imports.clearPreview}
+                </button>
+              ) : null}
+            </div>
           </div>
+          {preview ? <p className="import-stage-note">{messages.imports.previewReady}</p> : null}
 
           {preview?.unknownAccounts?.length ? (
             <div className="import-warning">
@@ -4122,51 +5451,68 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
       </section>
 
       <section className="panel-subsection">
-        <div className="section-head">
-          <h3>{messages.imports.recentTitle}</h3>
-          <span className="panel-context">{messages.imports.recentDetail}</span>
-        </div>
-        <div className="stack">
-          {importsPage.recentImports.map((item) => (
-            <div key={item.id} className="import-card">
-              <div>
-                <strong>{item.sourceLabel}</strong>
-                <p>
-                  {messages.common.triplet(
-                    item.sourceType.toUpperCase(),
-                    formatDate(item.importedAt),
-                    messages.imports.transactionCount(item.transactionCount)
-                  )}
-                </p>
-                <div className="pill-row dense">
-                  {item.startDate && item.endDate ? (
-                    <span className="pill">{messages.imports.importCoverage(formatDateOnly(item.startDate), formatDateOnly(item.endDate))}</span>
-                  ) : null}
-                  {item.overlapImportCount ? (
-                    <span className="pill warning">{messages.imports.importOverlap(item.overlapImportCount)}</span>
-                  ) : null}
-                  {item.accountNames.map((name) => (
-                    <span key={`${item.id}-${name}`} className="pill">{name}</span>
+        <button
+          type="button"
+          className="settings-section-toggle import-history-toggle"
+          onClick={() => setRecentImportsOpen((current) => !current)}
+          aria-expanded={recentImportsOpen}
+        >
+          <div className="settings-section-toggle-copy">
+            <div className="section-head">
+              <h3>{messages.imports.recentTitle}</h3>
+              <span className="panel-context">{messages.imports.recentDetail}</span>
+            </div>
+          </div>
+          <span className={`settings-section-toggle-icon ${recentImportsOpen ? "is-open" : ""}`}>
+            <ChevronRight size={18} />
+          </span>
+        </button>
+        {recentImportsOpen ? (
+          <div className="import-history-groups">
+            {recentImportGroups.map((group) => (
+              <section key={group.date} className="import-history-group">
+                <div className="import-history-date">{formatDateOnly(group.date)}</div>
+                <div className="import-history-list">
+                  {group.items.map((item) => (
+                    <div key={item.id} className="import-card import-card-compact">
+                      <div className="import-history-main">
+                        <strong>{item.sourceLabel}</strong>
+                        <span className="import-history-inline">
+                          {messages.common.triplet(
+                            item.sourceType.toUpperCase(),
+                            formatDate(item.importedAt),
+                            messages.imports.transactionCount(item.transactionCount)
+                          )}
+                        </span>
+                        {item.startDate && item.endDate ? (
+                          <span className="import-history-inline">{messages.imports.importCoverage(formatDateOnly(item.startDate), formatDateOnly(item.endDate))}</span>
+                        ) : null}
+                        {item.accountNames.length ? <span className="import-history-inline">{item.accountNames.join(", ")}</span> : null}
+                        {item.note ? <span className="import-history-inline">{item.note}</span> : null}
+                      </div>
+                      <div className="import-meta import-meta-compact">
+                        <span className={`import-status ${item.status === "rolled_back" ? "is-warning" : "is-complete"}`}>{item.status}</span>
+                        {item.overlapImportCount ? (
+                          <span className="pill warning">{messages.imports.importOverlap(item.overlapImportCount)}</span>
+                        ) : null}
+                        {item.status === "completed" ? (
+                          <DeleteRowButton
+                            label={item.sourceLabel}
+                            destructive={false}
+                            triggerLabel={messages.imports.rollback}
+                            confirmLabel={messages.imports.rollbackConfirm}
+                            prompt={<>{messages.imports.rollbackDetail(item.sourceLabel)}</>}
+                            onConfirm={() => void handleRollback(item.id)}
+                          />
+                        ) : null}
+                      </div>
+                    </div>
                   ))}
                 </div>
-              </div>
-              <div className="import-meta">
-                <span className={`pill ${item.status === "rolled_back" ? "warning" : "is-active"}`}>{item.status}</span>
-                {item.note ? <p>{item.note}</p> : null}
-                {item.status === "completed" ? (
-                  <DeleteRowButton
-                    label={item.sourceLabel}
-                    destructive={false}
-                    triggerLabel={messages.imports.rollback}
-                    confirmLabel={messages.imports.rollbackConfirm}
-                    prompt={<>{messages.imports.rollbackDetail(item.sourceLabel)}</>}
-                    onConfirm={() => void handleRollback(item.id)}
-                  />
-                ) : null}
-              </div>
-            </div>
-          ))}
-        </div>
+              </section>
+            ))}
+          </div>
+        ) : null}
       </section>
     </article>
   );
@@ -4175,20 +5521,46 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
 function SettingsPanel({ settingsPage, accounts, categories, people, viewId, viewLabel, onRefresh }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emptyStateText, setEmptyStateText] = useState("");
+  const [demoStateOpen, setDemoStateOpen] = useState(false);
+  const [settingsSectionsOpen, setSettingsSectionsOpen] = useState({
+    people: false,
+    accounts: false,
+    categories: false,
+    trust: false,
+    transfers: false,
+    activity: false
+  });
+  const [personDialog, setPersonDialog] = useState(null);
   const [accountDialog, setAccountDialog] = useState(null);
+  const [accountDialogError, setAccountDialogError] = useState("");
   const [categoryDialog, setCategoryDialog] = useState(null);
   const [reconciliationDialog, setReconciliationDialog] = useState(null);
-  const [transferReviewOpen, setTransferReviewOpen] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const visibleAccounts = useMemo(
-    () => accounts.slice().sort((left, right) => Number(right.isActive) - Number(left.isActive) || left.name.localeCompare(right.name)),
-    [accounts]
-  );
+  const visibleAccounts = useMemo(() => {
+    const scopedAccounts = viewId === "household"
+      ? accounts
+      : accounts.filter((account) => account.isJoint || account.ownerPersonId === viewId);
+
+    return scopedAccounts
+      .slice()
+      .sort((left, right) => Number(right.isActive) - Number(left.isActive) || left.name.localeCompare(right.name));
+  }, [accounts, viewId]);
   const visibleCategories = useMemo(
-    () => categories.slice().sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name)),
+    () => categories.slice().sort((left, right) => left.name.localeCompare(right.name)),
     [categories]
   );
+  const recentActivityGroups = useMemo(() => {
+    const grouped = new Map();
+    for (const event of settingsPage.recentAuditEvents) {
+      const key = event.createdAt.slice(0, 10);
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key).push(event);
+    }
+    return Array.from(grouped.entries()).map(([date, events]) => ({ date, events }));
+  }, [settingsPage.recentAuditEvents]);
 
   async function handleReseed() {
     setIsSubmitting(true);
@@ -4221,6 +5593,7 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
   }
 
   function openCreateAccountDialog() {
+    setAccountDialogError("");
     setAccountDialog({
       mode: "create",
       accountId: "",
@@ -4235,6 +5608,7 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
   }
 
   function openEditAccountDialog(account) {
+    setAccountDialogError("");
     setAccountDialog({
       mode: "edit",
       accountId: account.id,
@@ -4281,15 +5655,23 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
     });
   }
 
+  function openEditPersonDialog(person) {
+    setPersonDialog({
+      personId: person.id,
+      name: person.name
+    });
+  }
+
   async function handleSaveAccount() {
     if (!accountDialog) {
       return;
     }
 
     setIsSubmitting(true);
+    setAccountDialogError("");
     try {
       const endpoint = accountDialog.mode === "create" ? "/api/accounts/create" : "/api/accounts/update";
-      await fetch(endpoint, {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4303,6 +5685,12 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
           isJoint: accountDialog.isJoint
         })
       });
+
+      if (!response.ok) {
+        setAccountDialogError(await buildRequestErrorMessage(response, "Account save failed."));
+        return;
+      }
+
       setAccountDialog(null);
       await onRefresh();
     } finally {
@@ -4380,6 +5768,34 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
     }
   }
 
+  async function handleSavePerson() {
+    if (!personDialog?.personId || !personDialog.name?.trim()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/people/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personId: personDialog.personId,
+          name: personDialog.name
+        })
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to update person");
+      }
+      setPersonDialog(null);
+      await onRefresh();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Failed to update person");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function handleDeleteCategory(category) {
     setIsSubmitting(true);
     try {
@@ -4403,14 +5819,21 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
   function openTransferReview(entryId) {
     const params = new URLSearchParams(searchParams);
     params.set("view", viewId);
-    params.set("month", searchParams.get("month") ?? "2025-10");
+    params.set("month", searchParams.get("month") ?? DEFAULT_MONTH_KEY);
     params.set("entry_type", "transfer");
     params.set("editing_entry", entryId);
     navigate({ pathname: "/entries", search: params.toString() });
   }
 
+  function toggleSettingsSection(sectionKey) {
+    setSettingsSectionsOpen((current) => ({
+      ...current,
+      [sectionKey]: !current[sectionKey]
+    }));
+  }
+
   return (
-    <article className="panel">
+    <article className="panel settings-page">
       <div className="panel-head">
         <div>
           <h2>{messages.tabs.settings}</h2>
@@ -4418,229 +5841,435 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
         </div>
       </div>
 
-      <section className="settings-grid">
-        <div className="metric">
-          <span>{messages.settings.salaryPerPerson}</span>
-          <strong>{money(settingsPage.demo.salaryPerPersonMinor)}</strong>
-        </div>
-        <div className="metric">
-          <span>{messages.settings.salaryHousehold}</span>
-          <strong>{money(settingsPage.demo.salaryPerPersonMinor * 2)}</strong>
-        </div>
-        <div className="metric">
-          <span>{messages.settings.seededAt}</span>
-          <strong>{formatDate(settingsPage.demo.lastSeededAt)}</strong>
-        </div>
-        <div className="metric">
-          <span>{messages.settings.state}</span>
-          <strong>{settingsPage.demo.emptyState ? messages.settings.emptyMode : messages.settings.seededMode}</strong>
-        </div>
+      <section className="chart-card settings-card">
+        <button
+          type="button"
+          className="settings-section-toggle"
+          onClick={() => toggleSettingsSection("people")}
+          aria-expanded={settingsSectionsOpen.people}
+        >
+          <div className="settings-section-toggle-copy">
+            <div className="chart-head">
+              <h3>{messages.settings.peopleTitle}</h3>
+              <p>{messages.settings.peopleDetail}</p>
+            </div>
+          </div>
+          <span className={`settings-section-toggle-icon ${settingsSectionsOpen.people ? "is-open" : ""}`}>
+            <ChevronRight size={18} />
+          </span>
+        </button>
+        {settingsSectionsOpen.people ? (
+          <div className="settings-people-grid">
+            {people.map((person) => (
+              <div key={person.id} className="settings-account-row settings-person-card">
+                <div className="settings-account-main">
+                  <strong>{person.name}</strong>
+                  <p>{messages.settings.personUsageHint}</p>
+                </div>
+                <div className="settings-account-actions">
+                  <button type="button" className="icon-action" aria-label={messages.settings.editPerson} onClick={() => openEditPersonDialog(person)}>
+                    <SquarePen size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section className="chart-card settings-card">
-        <div className="chart-head">
-          <h3>{messages.settings.demoTitle}</h3>
-          <p>{messages.settings.demoDetail}</p>
-        </div>
-        <div className="settings-actions">
-          <button type="button" className="subtle-action" onClick={handleReseed} disabled={isSubmitting}>
-            {messages.settings.reseed}
-          </button>
-          <button type="button" className="subtle-action" onClick={handleRefresh} disabled={isSubmitting}>
-            {messages.settings.refresh}
-          </button>
-          <Dialog.Root>
-            <Dialog.Trigger asChild>
-              <button type="button" className="subtle-action subtle-danger" disabled={isSubmitting}>
-                {messages.settings.emptyState}
+        <button
+          type="button"
+          className="settings-section-toggle"
+          onClick={() => toggleSettingsSection("accounts")}
+          aria-expanded={settingsSectionsOpen.accounts}
+        >
+          <div className="settings-section-toggle-copy">
+            <div className="chart-head">
+              <h3>{messages.settings.accountsTitle}</h3>
+              <p>{messages.settings.accountsDetail}</p>
+            </div>
+          </div>
+          <span className={`settings-section-toggle-icon ${settingsSectionsOpen.accounts ? "is-open" : ""}`}>
+            <ChevronRight size={18} />
+          </span>
+        </button>
+        {settingsSectionsOpen.accounts ? (
+          <>
+            <div className="settings-actions">
+              <button type="button" className="subtle-action" onClick={openCreateAccountDialog}>
+                {messages.settings.addAccount}
               </button>
-            </Dialog.Trigger>
-            <Dialog.Portal>
-              <Dialog.Overlay className="note-dialog-overlay" />
-              <Dialog.Content className="note-dialog-content">
-                <div className="note-dialog-head">
-                  <Dialog.Title>{messages.settings.emptyState}</Dialog.Title>
-                  <Dialog.Description>{messages.settings.emptyStateDetail}</Dialog.Description>
+            </div>
+            <p className="lede compact">{messages.settings.accountBalanceHint}</p>
+            <div className="settings-accounts-grid">
+              {visibleAccounts.map((account) => (
+                <div key={account.id} className={`settings-account-row settings-account-card ${!account.isActive ? "is-archived" : ""}`}>
+                  <div className="settings-account-main">
+                    <strong>{account.name}</strong>
+                    <p>{messages.common.triplet(account.institution, account.kind, account.ownerLabel)}</p>
+                    <p>{`Balance ${money(account.balanceMinor ?? 0)} • Opening ${money(account.openingBalanceMinor ?? 0)}`}</p>
+                    <p className={`settings-account-health ${account.reconciliationStatus ? `is-${account.reconciliationStatus}` : ""}`}>
+                      {describeAccountHealth(account)}
+                    </p>
+                    <p className="settings-account-meta">
+                      {account.latestImportAt
+                        ? messages.settings.accountHealthLastImport(formatDate(account.latestImportAt))
+                        : messages.settings.accountHealthNoImports}
+                      {account.unresolvedTransferCount ? ` • ${messages.settings.accountHealthUnresolvedTransfers(account.unresolvedTransferCount)}` : ""}
+                    </p>
+                  </div>
+                  <div className="settings-account-actions">
+                    {!account.isActive ? <span className="account-badge">{messages.settings.archived}</span> : null}
+                    <button type="button" className="subtle-action" onClick={() => openReconciliationDialog(account)}>
+                      {messages.settings.reconcileAccount}
+                    </button>
+                    <button type="button" className="icon-action" aria-label={messages.settings.editAccount} onClick={() => openEditAccountDialog(account)}>
+                      <SquarePen size={16} />
+                    </button>
+                    {account.isActive ? (
+                      <DeleteRowButton
+                        label={account.name}
+                        triggerLabel={messages.settings.archiveAccount}
+                        confirmLabel={messages.settings.archiveAccount}
+                        destructive={false}
+                        prompt={messages.settings.archiveAccountDetail(account.name)}
+                        onConfirm={() => handleArchiveAccount(account.id)}
+                      />
+                    ) : null}
+                  </div>
                 </div>
+              ))}
+            </div>
+          </>
+        ) : null}
+      </section>
+
+      <section className="chart-card settings-card">
+        <button
+          type="button"
+          className="settings-section-toggle"
+          onClick={() => toggleSettingsSection("categories")}
+          aria-expanded={settingsSectionsOpen.categories}
+        >
+          <div className="settings-section-toggle-copy">
+            <div className="chart-head">
+              <h3>{messages.settings.categoriesTitle}</h3>
+              <p>{messages.settings.categoriesDetail}</p>
+            </div>
+          </div>
+          <span className={`settings-section-toggle-icon ${settingsSectionsOpen.categories ? "is-open" : ""}`}>
+            <ChevronRight size={18} />
+          </span>
+        </button>
+        {settingsSectionsOpen.categories ? (
+          <>
+            <div className="settings-actions">
+              <button type="button" className="subtle-action" onClick={openCreateCategoryDialog}>
+                {messages.settings.addCategory}
+              </button>
+            </div>
+            <div className="settings-categories-grid">
+              {visibleCategories.map((category) => (
+                <div key={category.id} className="settings-account-row settings-category-card">
+                  <span
+                    className="category-icon category-icon-static settings-category-icon"
+                    style={{ "--category-color": category.colorHex }}
+                  >
+                    <CategoryGlyph iconKey={category.iconKey} />
+                  </span>
+                  <div className="settings-account-main">
+                    <strong>{category.name}</strong>
+                    <p>{messages.common.triplet(category.slug, category.iconKey, category.colorHex)}</p>
+                  </div>
+                  <div className="settings-account-actions">
+                    <button type="button" className="icon-action" aria-label={messages.settings.editCategory} onClick={() => openEditCategoryDialog(category)}>
+                      <SquarePen size={16} />
+                    </button>
+                    <DeleteRowButton
+                      label={category.name}
+                      triggerLabel={messages.settings.deleteCategory}
+                      confirmLabel={messages.settings.deleteCategory}
+                      destructive={false}
+                      prompt={messages.settings.deleteCategoryDetail(category.name)}
+                      onConfirm={() => handleDeleteCategory(category)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : null}
+      </section>
+
+      <section className="chart-card settings-card">
+        <button
+          type="button"
+          className="settings-section-toggle"
+          onClick={() => toggleSettingsSection("trust")}
+          aria-expanded={settingsSectionsOpen.trust}
+        >
+          <div className="settings-section-toggle-copy">
+            <div className="chart-head">
+              <h3>{messages.settings.trustRulesTitle}</h3>
+              <p>{messages.settings.trustRulesDetail}</p>
+            </div>
+          </div>
+          <span className={`settings-section-toggle-icon ${settingsSectionsOpen.trust ? "is-open" : ""}`}>
+            <ChevronRight size={18} />
+          </span>
+        </button>
+        {settingsSectionsOpen.trust ? (
+          <div className="settings-trust-grid">
+            <div className="settings-demo-meta-item">
+              <span>{messages.settings.trustOpeningTitle}</span>
+              <strong>{messages.settings.trustOpeningDetail}</strong>
+              <p>{messages.settings.trustOpeningAction}</p>
+            </div>
+            <div className="settings-demo-meta-item">
+              <span>{messages.settings.trustCheckpointTitle}</span>
+              <strong>{messages.settings.trustCheckpointDetail}</strong>
+              <p>{messages.settings.trustCheckpointAction}</p>
+            </div>
+            <div className="settings-demo-meta-item">
+              <span>{messages.settings.trustTransfersTitle}</span>
+              <strong>{messages.settings.trustTransfersDetail}</strong>
+              <p>{messages.settings.trustTransfersAction}</p>
+            </div>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="chart-card settings-card">
+        <button
+          type="button"
+          className="settings-section-toggle"
+          onClick={() => toggleSettingsSection("transfers")}
+          aria-expanded={settingsSectionsOpen.transfers}
+        >
+          <div className="settings-section-toggle-copy">
+            <div className="chart-head">
+              <h3>{messages.settings.unresolvedTransfersTitle}</h3>
+              <p>{messages.settings.unresolvedTransfersDetail}</p>
+            </div>
+          </div>
+          <span className={`settings-section-toggle-icon ${settingsSectionsOpen.transfers ? "is-open" : ""}`}>
+            <ChevronRight size={18} />
+          </span>
+        </button>
+        {settingsSectionsOpen.transfers ? (
+          <>
+            <div className="settings-transfer-list">
+              {settingsPage.unresolvedTransfers.length ? settingsPage.unresolvedTransfers.map((item) => (
+                <div key={item.entryId} className="settings-account-row settings-transfer-row">
+                  <div className="settings-account-main settings-transfer-main">
+                    <strong>{item.description}</strong>
+                    <p>{messages.common.triplet(formatDateOnly(item.date), item.accountName, item.transferDirection === "in" ? "Transfer in" : "Transfer out")}</p>
+                  </div>
+                  <strong className="settings-transfer-amount">{money(item.transferDirection === "out" ? -item.amountMinor : item.amountMinor)}</strong>
+                  <div className="settings-account-actions">
+                    <button type="button" className="subtle-action" onClick={() => openTransferReview(item.entryId)}>
+                      {messages.settings.openTransferReview}
+                    </button>
+                  </div>
+                </div>
+              )) : (
+                <p className="lede compact">{messages.common.emptyValue}</p>
+              )}
+            </div>
+          </>
+        ) : null}
+      </section>
+
+      <section className="chart-card settings-card">
+        <button
+          type="button"
+          className="settings-section-toggle"
+          onClick={() => toggleSettingsSection("activity")}
+          aria-expanded={settingsSectionsOpen.activity}
+        >
+          <div className="settings-section-toggle-copy">
+            <div className="chart-head">
+              <h3>{messages.settings.recentActivityTitle}</h3>
+              <p>{messages.settings.recentActivityDetail}</p>
+            </div>
+          </div>
+          <span className={`settings-section-toggle-icon ${settingsSectionsOpen.activity ? "is-open" : ""}`}>
+            <ChevronRight size={18} />
+          </span>
+        </button>
+        {settingsSectionsOpen.activity ? (
+          <div className="settings-activity-groups">
+            {recentActivityGroups.length ? recentActivityGroups.map((group) => (
+              <section key={group.date} className="settings-activity-group">
+                <div className="settings-activity-date">{formatDateOnly(group.date)}</div>
+                <div className="settings-activity-list">
+                  {group.events.map((event) => (
+                    <div key={event.id} className="settings-account-row settings-activity-row">
+                      <div className="settings-account-main">
+                        <strong>{formatAuditAction(event.action)}</strong>
+                        <p>{event.detail}</p>
+                      </div>
+                      <p className="settings-account-meta">{formatDate(event.createdAt)}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )) : (
+              <p className="lede compact">{messages.common.emptyValue}</p>
+            )}
+          </div>
+        ) : null}
+      </section>
+
+      <section className="chart-card settings-card">
+        <button
+          type="button"
+          className="settings-section-toggle"
+          onClick={() => setDemoStateOpen((current) => !current)}
+          aria-expanded={demoStateOpen}
+        >
+          <div className="settings-section-toggle-copy">
+            <div className="chart-head">
+              <h3>{messages.settings.demoTitle}</h3>
+              <p>{messages.settings.demoDetail}</p>
+            </div>
+            <div className="settings-demo-meta">
+              <div className="settings-demo-meta-item">
+                <span>{messages.settings.salaryPerPerson}</span>
+                <strong>{money(settingsPage.demo.salaryPerPersonMinor)}</strong>
+              </div>
+              <div className="settings-demo-meta-item">
+                <span>{messages.settings.state}</span>
+                <strong>{settingsPage.demo.emptyState ? messages.settings.emptyMode : messages.settings.seededMode}</strong>
+              </div>
+              <div className="settings-demo-meta-item">
+                <span>{messages.settings.seededAt}</span>
+                <strong>{formatDate(settingsPage.demo.lastSeededAt)}</strong>
+              </div>
+            </div>
+          </div>
+          <span className={`settings-section-toggle-icon ${demoStateOpen ? "is-open" : ""}`}>
+            <ChevronRight size={18} />
+          </span>
+        </button>
+        {demoStateOpen ? (
+          <>
+            <div className="settings-actions">
+              <button type="button" className="subtle-action" onClick={handleReseed} disabled={isSubmitting}>
+                {messages.settings.reseed}
+              </button>
+              <button type="button" className="subtle-action" onClick={handleRefresh} disabled={isSubmitting}>
+                {messages.settings.refresh}
+              </button>
+              <Dialog.Root>
+                <Dialog.Trigger asChild>
+                  <button type="button" className="subtle-action subtle-danger" disabled={isSubmitting}>
+                    {messages.settings.emptyState}
+                  </button>
+                </Dialog.Trigger>
+                <Dialog.Portal>
+                  <Dialog.Overlay className="note-dialog-overlay" />
+                  <Dialog.Content className="note-dialog-content">
+                    <div className="note-dialog-head">
+                      <div>
+                        <Dialog.Title>{messages.settings.emptyState}</Dialog.Title>
+                        <Dialog.Description>{messages.settings.emptyStateDetail}</Dialog.Description>
+                      </div>
+                      <Dialog.Close asChild>
+                        <button
+                          type="button"
+                          className="icon-action subtle-cancel"
+                          aria-label="Close empty-state dialog"
+                        >
+                          <X size={16} />
+                        </button>
+                      </Dialog.Close>
+                    </div>
+                    <input
+                      className="table-edit-input"
+                      placeholder={messages.settings.emptyStatePlaceholder}
+                      value={emptyStateText}
+                      onChange={(event) => setEmptyStateText(event.target.value)}
+                    />
+                    <div className="note-dialog-actions">
+                      <Dialog.Close asChild>
+                        <button type="button" className="subtle-action">Cancel</button>
+                      </Dialog.Close>
+                      <Dialog.Close asChild>
+                        <button
+                          type="button"
+                          className="subtle-action subtle-danger"
+                          disabled={emptyStateText.trim().toLowerCase() !== "empty state" || isSubmitting}
+                          onClick={handleEmptyState}
+                        >
+                          {messages.settings.emptyStateConfirm}
+                        </button>
+                      </Dialog.Close>
+                    </div>
+                  </Dialog.Content>
+                </Dialog.Portal>
+              </Dialog.Root>
+            </div>
+            <p className="lede compact">{messages.settings.refreshHint}</p>
+          </>
+        ) : null}
+      </section>
+
+      <Dialog.Root open={Boolean(personDialog)} onOpenChange={(open) => { if (!open) setPersonDialog(null); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="note-dialog-overlay" />
+          <Dialog.Content className="note-dialog-content settings-account-dialog">
+            <div className="note-dialog-head">
+              <div>
+                <Dialog.Title>{messages.settings.editPerson}</Dialog.Title>
+                <Dialog.Description>{messages.settings.editPersonDetail}</Dialog.Description>
+              </div>
+              <button
+                type="button"
+                className="icon-action subtle-cancel"
+                aria-label="Close person dialog"
+                onClick={() => setPersonDialog(null)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="settings-account-form settings-person-form">
+              <label className="table-edit-field">
+                <span>{messages.settings.personDisplayName}</span>
                 <input
                   className="table-edit-input"
-                  placeholder={messages.settings.emptyStatePlaceholder}
-                  value={emptyStateText}
-                  onChange={(event) => setEmptyStateText(event.target.value)}
+                  value={personDialog?.name ?? ""}
+                  onChange={(event) => setPersonDialog((current) => current ? { ...current, name: event.target.value } : current)}
                 />
-                <div className="note-dialog-actions">
-                  <Dialog.Close asChild>
-                    <button type="button" className="subtle-action">Cancel</button>
-                  </Dialog.Close>
-                  <Dialog.Close asChild>
-                    <button
-                      type="button"
-                      className="subtle-action subtle-danger"
-                      disabled={emptyStateText.trim().toLowerCase() !== "empty state" || isSubmitting}
-                      onClick={handleEmptyState}
-                    >
-                      {messages.settings.emptyStateConfirm}
-                    </button>
-                  </Dialog.Close>
-                </div>
-              </Dialog.Content>
-            </Dialog.Portal>
-          </Dialog.Root>
-        </div>
-        <p className="lede compact">{messages.settings.refreshHint}</p>
-      </section>
-
-      <section className="chart-card settings-card">
-        <div className="chart-head">
-          <h3>{messages.settings.accountsTitle}</h3>
-          <p>{messages.settings.accountsDetail}</p>
-        </div>
-        <div className="settings-actions">
-          <button type="button" className="subtle-action" onClick={openCreateAccountDialog}>
-            {messages.settings.addAccount}
-          </button>
-        </div>
-        <p className="lede compact">{messages.settings.accountBalanceHint}</p>
-        <div className="settings-account-list">
-          {visibleAccounts.map((account) => (
-            <div key={account.id} className={`settings-account-row ${!account.isActive ? "is-archived" : ""}`}>
-              <div className="settings-account-main">
-                <strong>{account.name}</strong>
-                <p>{messages.common.triplet(account.institution, account.kind, account.ownerLabel)}</p>
-                <p>{`Balance ${money(account.balanceMinor ?? 0)} • Opening ${money(account.openingBalanceMinor ?? 0)}`}</p>
-                <p className={`settings-account-health ${account.reconciliationStatus ? `is-${account.reconciliationStatus}` : ""}`}>
-                  {describeAccountHealth(account)}
-                </p>
-                <p className="settings-account-meta">
-                  {account.latestImportAt
-                    ? messages.settings.accountHealthLastImport(formatDate(account.latestImportAt))
-                    : messages.settings.accountHealthNoImports}
-                  {account.unresolvedTransferCount ? ` • ${messages.settings.accountHealthUnresolvedTransfers(account.unresolvedTransferCount)}` : ""}
-                </p>
-              </div>
-              <div className="settings-account-actions">
-                {!account.isActive ? <span className="account-badge">{messages.settings.archived}</span> : null}
-                <button type="button" className="subtle-action" onClick={() => openReconciliationDialog(account)}>
-                  {messages.settings.reconcileAccount}
-                </button>
-                <button type="button" className="icon-action" aria-label={messages.settings.editAccount} onClick={() => openEditAccountDialog(account)}>
-                  <SquarePen size={16} />
-                </button>
-                {account.isActive ? (
-                  <DeleteRowButton
-                    label={account.name}
-                    triggerLabel={messages.settings.archiveAccount}
-                    confirmLabel={messages.settings.archiveAccount}
-                    destructive={false}
-                    prompt={messages.settings.archiveAccountDetail(account.name)}
-                    onConfirm={() => handleArchiveAccount(account.id)}
-                  />
-                ) : null}
-              </div>
+              </label>
             </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="chart-card settings-card">
-        <div className="chart-head">
-          <h3>{messages.settings.categoriesTitle}</h3>
-          <p>{messages.settings.categoriesDetail}</p>
-        </div>
-        <div className="settings-actions">
-          <button type="button" className="subtle-action" onClick={openCreateCategoryDialog}>
-            {messages.settings.addCategory}
-          </button>
-        </div>
-        <div className="settings-account-list">
-          {visibleCategories.map((category) => (
-            <div key={category.id} className="settings-account-row">
-              <div className="settings-account-main">
-                <strong>{category.name}</strong>
-                <p>{messages.common.triplet(category.slug, category.iconKey, category.colorHex)}</p>
-              </div>
-              <div className="settings-account-actions">
-                <span
-                  className="category-icon category-icon-static"
-                  style={{ "--category-color": category.colorHex }}
-                >
-                  <CategoryGlyph iconKey={category.iconKey} />
-                </span>
-                <button type="button" className="icon-action" aria-label={messages.settings.editCategory} onClick={() => openEditCategoryDialog(category)}>
-                  <SquarePen size={16} />
-                </button>
-                <DeleteRowButton
-                  label={category.name}
-                  triggerLabel={messages.settings.deleteCategory}
-                  confirmLabel={messages.settings.deleteCategory}
-                  destructive={false}
-                  prompt={messages.settings.deleteCategoryDetail(category.name)}
-                  onConfirm={() => handleDeleteCategory(category)}
-                />
-              </div>
+            <div className="note-dialog-actions">
+              <button type="button" className="subtle-cancel" onClick={() => setPersonDialog(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="dialog-primary"
+                disabled={!personDialog?.name?.trim() || isSubmitting}
+                onClick={() => void handleSavePerson()}
+              >
+                {messages.settings.savePerson}
+              </button>
             </div>
-          ))}
-        </div>
-      </section>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
-      <section className="chart-card settings-card">
-        <div className="chart-head">
-          <h3>{messages.settings.trustRulesTitle}</h3>
-          <p>{messages.settings.trustRulesDetail}</p>
-        </div>
-      </section>
-
-      <section className="chart-card settings-card">
-        <div className="chart-head">
-          <h3>{messages.settings.unresolvedTransfersTitle}</h3>
-          <p>{messages.settings.unresolvedTransfersDetail}</p>
-        </div>
-        <div className="settings-actions">
-          <button type="button" className="subtle-action" onClick={() => setTransferReviewOpen(true)}>
-            {messages.settings.reviewAllTransfers}
-          </button>
-        </div>
-        <div className="settings-account-list">
-          {settingsPage.unresolvedTransfers.length ? settingsPage.unresolvedTransfers.map((item) => (
-            <div key={item.entryId} className="settings-account-row">
-              <div className="settings-account-main">
-                <strong>{item.description}</strong>
-                <p>{messages.common.triplet(formatDateOnly(item.date), item.accountName, item.transferDirection === "in" ? "Transfer in" : "Transfer out")}</p>
-                <p>{money(item.transferDirection === "out" ? -item.amountMinor : item.amountMinor)}</p>
-              </div>
-              <div className="settings-account-actions">
-                <button type="button" className="subtle-action" onClick={() => openTransferReview(item.entryId)}>
-                  {messages.settings.openTransferReview}
-                </button>
-              </div>
-            </div>
-          )) : (
-            <p className="lede compact">{messages.common.emptyValue}</p>
-          )}
-        </div>
-      </section>
-
-      <section className="chart-card settings-card">
-        <div className="chart-head">
-          <h3>{messages.settings.recentActivityTitle}</h3>
-          <p>{messages.settings.recentActivityDetail}</p>
-        </div>
-        <div className="settings-account-list">
-          {settingsPage.recentAuditEvents.length ? settingsPage.recentAuditEvents.map((event) => (
-            <div key={event.id} className="settings-account-row">
-              <div className="settings-account-main">
-                <strong>{formatAuditAction(event.action)}</strong>
-                <p>{event.detail}</p>
-                <p className="settings-account-meta">{formatDate(event.createdAt)}</p>
-              </div>
-            </div>
-          )) : (
-            <p className="lede compact">{messages.common.emptyValue}</p>
-          )}
-        </div>
-      </section>
-
-      <Dialog.Root open={Boolean(accountDialog)} onOpenChange={(open) => { if (!open) setAccountDialog(null); }}>
+      <Dialog.Root
+        open={Boolean(accountDialog)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAccountDialog(null);
+            setAccountDialogError("");
+          }
+        }}
+      >
         <Dialog.Portal>
           <Dialog.Overlay className="note-dialog-overlay" />
           <Dialog.Content className="note-dialog-content settings-account-dialog">
@@ -4653,11 +6282,15 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
                 type="button"
                 className="icon-action subtle-cancel"
                 aria-label="Close account dialog"
-                onClick={() => setAccountDialog(null)}
+                onClick={() => {
+                  setAccountDialog(null);
+                  setAccountDialogError("");
+                }}
               >
                 <X size={16} />
               </button>
             </div>
+            {accountDialogError ? <p className="form-error">{accountDialogError}</p> : null}
             <div className="settings-account-form">
               <label className="table-edit-field">
                 <span>{messages.settings.accountName}</span>
@@ -4726,7 +6359,14 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
               </label>
             </div>
             <div className="note-dialog-actions">
-              <button type="button" className="subtle-cancel" onClick={() => setAccountDialog(null)}>
+              <button
+                type="button"
+                className="subtle-cancel"
+                onClick={() => {
+                  setAccountDialog(null);
+                  setAccountDialogError("");
+                }}
+              >
                 Cancel
               </button>
               <button
@@ -4745,7 +6385,7 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
       <Dialog.Root open={Boolean(categoryDialog)} onOpenChange={(open) => { if (!open) setCategoryDialog(null); }}>
         <Dialog.Portal>
           <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content settings-account-dialog">
+          <Dialog.Content className="note-dialog-content settings-account-dialog settings-category-dialog">
             <div className="note-dialog-head">
               <div>
                 <Dialog.Title>{categoryDialog?.mode === "create" ? messages.settings.createCategory : messages.settings.editCategory}</Dialog.Title>
@@ -4800,7 +6440,7 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
                       key={color}
                       type="button"
                       className={`color-choice ${categoryDialog?.colorHex === color ? "is-active" : ""}`}
-                      style={{ "--category-color": color }}
+                      style={{ "--swatch-color": color }}
                       onClick={() => setCategoryDialog((current) => current ? { ...current, colorHex: color } : current)}
                     />
                   ))}
@@ -4914,40 +6554,6 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
         </Dialog.Portal>
       </Dialog.Root>
 
-      <Dialog.Root open={transferReviewOpen} onOpenChange={setTransferReviewOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content transfer-match-dialog">
-            <div className="note-dialog-head">
-              <div>
-                <Dialog.Title>{messages.settings.transferReviewTitle}</Dialog.Title>
-                <Dialog.Description>{messages.settings.transferReviewDetail}</Dialog.Description>
-              </div>
-              <button type="button" className="icon-action subtle-cancel" aria-label="Close transfer review" onClick={() => setTransferReviewOpen(false)}>
-                <X size={16} />
-              </button>
-            </div>
-            <div className="settings-account-list">
-              {settingsPage.unresolvedTransfers.length ? settingsPage.unresolvedTransfers.map((item) => (
-                <div key={item.entryId} className="settings-account-row">
-                  <div className="settings-account-main">
-                    <strong>{item.description}</strong>
-                    <p>{messages.common.triplet(formatDateOnly(item.date), item.accountName, item.transferDirection === "in" ? "Transfer in" : "Transfer out")}</p>
-                    <p>{money(item.transferDirection === "out" ? -item.amountMinor : item.amountMinor)}</p>
-                  </div>
-                  <div className="settings-account-actions">
-                    <button type="button" className="subtle-action" onClick={() => openTransferReview(item.entryId)}>
-                      {messages.settings.openTransferReview}
-                    </button>
-                  </div>
-                </div>
-              )) : (
-                <p className="lede compact">{messages.common.emptyValue}</p>
-              )}
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
     </article>
   );
 }
@@ -5155,11 +6761,9 @@ function uniqueValues(values) {
 }
 
 function buildEntryDraft(view, accounts, categories, people) {
-  const defaultOwnerName = view.id === "person-tim"
-    ? "Tim"
-    : view.id === "person-joyce"
-      ? "Joyce"
-      : people[0]?.name ?? "";
+  const defaultOwnerName = view.id !== "household"
+    ? people.find((person) => person.id === view.id)?.name ?? people[0]?.name ?? ""
+    : people[0]?.name ?? "";
   const ownershipType = view.monthPage.selectedScope === "shared" ? "shared" : "direct";
   const defaultAccountName = accounts.find((account) => account.isActive !== false)?.name ?? accounts[0]?.name ?? "";
   const preferredCategoryName = categories.find((category) => category.name === "Other")?.name ?? categories[0]?.name ?? "";
@@ -5302,11 +6906,27 @@ function inferImportMapping(header) {
     return "amount";
   }
 
-  if (["debit", "withdrawal", "outflow"].includes(normalized)) {
+  if ([
+    "expense",
+    "expenses",
+    "expense amount",
+    "debit",
+    "debit amount",
+    "withdrawal",
+    "outflow"
+  ].includes(normalized)) {
     return "expense";
   }
 
-  if (["credit", "deposit", "inflow"].includes(normalized)) {
+  if ([
+    "income",
+    "incomes",
+    "income amount",
+    "credit",
+    "credit amount",
+    "deposit",
+    "inflow"
+  ].includes(normalized)) {
     return "income";
   }
 
@@ -5417,6 +7037,83 @@ function groupEntriesByDate(entries) {
   return [...grouped.values()].sort((left, right) => right.date.localeCompare(left.date));
 }
 
+function groupSplitActivityByDate(items) {
+  const grouped = new Map();
+
+  for (const item of items) {
+    const current = grouped.get(item.date) ?? { date: item.date, items: [] };
+    current.items.push(item);
+    grouped.set(item.date, current);
+  }
+
+  return [...grouped.values()].sort((left, right) => right.date.localeCompare(left.date));
+}
+
+function groupSplitActivityByBatch(items) {
+  const grouped = new Map();
+
+  for (const item of items) {
+    const batchId = item.batchId ?? `split-batch-fallback-${item.groupId}`;
+    const current = grouped.get(batchId) ?? {
+      batchId,
+      label: item.batchLabel ?? `${item.groupName} settled batch`,
+      closedAt: item.batchClosedAt ?? item.date,
+      items: []
+    };
+    current.items.push(item);
+    if (item.batchClosedAt && item.batchClosedAt > current.closedAt) {
+      current.closedAt = item.batchClosedAt;
+    }
+    grouped.set(batchId, current);
+  }
+
+  return [...grouped.values()]
+    .map((batch) => ({
+      ...batch,
+      groups: groupSplitActivityByDate(batch.items)
+    }))
+    .sort((left, right) => right.closedAt.localeCompare(left.closedAt));
+}
+
+function formatArchiveDate(date) {
+  const value = new Date(`${date}T00:00:00`);
+  return new Intl.DateTimeFormat("en-SG", { month: "short", day: "2-digit" }).format(value);
+}
+
+function getArchivedBatchSummary(batch, viewId) {
+  const settlement = batch.items
+    .filter((item) => item.kind === "settlement")
+    .slice()
+    .sort((left, right) => right.date.localeCompare(left.date))[0];
+
+  if (!settlement) {
+    return {
+      title: batch.label,
+      subtitle: `${batch.items.length} archived ${batch.items.length === 1 ? "entry" : "entries"}`
+    };
+  }
+
+  const title = `${settlement.fromPersonName} fully settled up with ${settlement.toPersonName}`;
+  const amount = money(settlement.totalAmountMinor);
+  if (viewId === "person-tim") {
+    return {
+      title,
+      subtitle: settlement.toPersonId === viewId ? `${settlement.fromPersonName} paid you ${amount}` : `You paid ${settlement.toPersonName} ${amount}`
+    };
+  }
+  if (viewId === "person-joyce") {
+    return {
+      title,
+      subtitle: settlement.toPersonId === viewId ? `${settlement.fromPersonName} paid you ${amount}` : `You paid ${settlement.toPersonName} ${amount}`
+    };
+  }
+
+  return {
+    title,
+    subtitle: `${settlement.fromPersonName} paid ${settlement.toPersonName} ${amount}`
+  };
+}
+
 function getSignedAmountMinor(entry) {
   if (entry.entryType === "income" || (entry.entryType === "transfer" && entry.transferDirection === "in")) {
     return entry.amountMinor;
@@ -5503,6 +7200,27 @@ function daysBetween(left, right) {
   return Math.round((rightDate.getTime() - leftDate.getTime()) / 86400000);
 }
 
+function normalizeMatchText(value) {
+  return String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function textOverlapScore(left, right) {
+  const leftTokens = new Set(normalizeMatchText(left).split(" ").filter((token) => token.length > 2));
+  const rightTokens = new Set(normalizeMatchText(right).split(" ").filter((token) => token.length > 2));
+  if (!leftTokens.size || !rightTokens.size) {
+    return 0;
+  }
+
+  let overlap = 0;
+  for (const token of leftTokens) {
+    if (rightTokens.has(token)) {
+      overlap += 1;
+    }
+  }
+
+  return overlap / Math.max(leftTokens.size, rightTokens.size);
+}
+
 function getAmountToneClass(amountMinor) {
   if (amountMinor > 0) {
     return "positive";
@@ -5545,6 +7263,18 @@ function formatAuditAction(action) {
 
 function money(valueMinor) {
   return moneyFormatter.format(valueMinor / 100);
+}
+
+function minorToDecimalString(valueMinor) {
+  return (Number(valueMinor ?? 0) / 100).toFixed(2);
+}
+
+function decimalStringToMinor(value) {
+  const normalized = Number(value);
+  if (!Number.isFinite(normalized)) {
+    return 0;
+  }
+  return Math.round(normalized * 100);
 }
 
 function formatDate(value) {
@@ -5714,6 +7444,25 @@ function buildBootstrapErrorMessage(status, detail) {
   }
 
   return `Bootstrap request failed with status ${status}. ${normalizedDetail.slice(0, 240)}`;
+}
+
+async function buildRequestErrorMessage(response, fallbackMessage) {
+  const responseText = await response.text();
+  let detail = responseText;
+
+  if (responseText) {
+    try {
+      const payload = JSON.parse(responseText);
+      detail = payload?.error ?? payload?.message ?? responseText;
+    } catch {}
+  }
+
+  const normalizedDetail = String(detail ?? "").replace(/\s+/g, " ").trim();
+  if (!normalizedDetail) {
+    return `${fallbackMessage} Status ${response.status}.`;
+  }
+
+  return `${fallbackMessage} ${normalizedDetail.slice(0, 240)}`;
 }
 
 function describeBootstrapError(error) {

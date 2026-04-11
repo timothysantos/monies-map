@@ -4,6 +4,10 @@ import {
   archiveAccountRecord,
   buildImportPreview,
   commitImportBatch,
+  createSplitExpenseRecord,
+  createSplitExpenseFromEntryRecord,
+  createSplitGroupRecord,
+  createSplitSettlementRecord,
   createEntryRecord,
   createCategoryRecord,
   createAccountRecord,
@@ -14,11 +18,17 @@ import {
   rollbackImportBatch,
   resetMonthPlan,
   saveAccountCheckpointRecord,
+  saveMonthPlanEntryLinks,
   saveMonthPlanRow,
+  linkSplitExpenseMatch,
+  linkSplitSettlementMatch,
   linkTransferPair,
   settleTransferPair,
+  updateSplitExpenseRecord,
+  updateSplitSettlementRecord,
   updateAccountRecord,
   updateCategoryRecord,
+  updatePersonRecord,
   updateMonthlySnapshotNote,
   updateEntryRecord
 } from "./domain/app-repository";
@@ -128,6 +138,21 @@ export default {
       return json({
         ok: true,
         ...(await archiveAccountRecord(env.DB, { accountId: body.accountId }))
+      });
+    }
+
+    if (url.pathname === "/api/people/update" && request.method === "POST") {
+      const body = await request.json<{ personId?: string; name?: string }>();
+      if (!body.personId || !body.name?.trim()) {
+        return json({ ok: false, error: "Missing person fields" }, 400);
+      }
+
+      return json({
+        ok: true,
+        ...(await updatePersonRecord(env.DB, {
+          personId: body.personId,
+          name: body.name
+        }))
       });
     }
 
@@ -311,6 +336,211 @@ export default {
       });
     }
 
+    if (url.pathname === "/api/splits/groups/create" && request.method === "POST") {
+      const body = await request.json<{ name?: string }>();
+      if (!body.name?.trim()) {
+        return json({ ok: false, error: "Missing split group name" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await createSplitGroupRecord(env.DB, { name: body.name }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to create split group" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/splits/expenses/create" && request.method === "POST") {
+      const body = await request.json<{
+        groupId?: string | null;
+        date?: string;
+        description?: string;
+        categoryName?: string;
+        payerPersonName?: string;
+        amountMinor?: number;
+        note?: string;
+        splitBasisPoints?: number;
+      }>();
+
+      if (!body.date || !body.description || !body.categoryName || !body.payerPersonName || typeof body.amountMinor !== "number") {
+        return json({ ok: false, error: "Missing split expense fields" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await createSplitExpenseRecord(env.DB, {
+            groupId: body.groupId,
+            date: body.date,
+            description: body.description,
+            categoryName: body.categoryName,
+            payerPersonName: body.payerPersonName,
+            amountMinor: body.amountMinor,
+            note: body.note,
+            splitBasisPoints: body.splitBasisPoints
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to create split expense" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/splits/expenses/from-entry" && request.method === "POST") {
+      const body = await request.json<{
+        entryId?: string;
+        splitGroupId?: string | null;
+      }>();
+
+      if (!body.entryId) {
+        return json({ ok: false, error: "Missing entry id" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await createSplitExpenseFromEntryRecord(env.DB, {
+            entryId: body.entryId,
+            splitGroupId: body.splitGroupId
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to add entry to splits" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/splits/settlements/create" && request.method === "POST") {
+      const body = await request.json<{
+        groupId?: string | null;
+        date?: string;
+        fromPersonName?: string;
+        toPersonName?: string;
+        amountMinor?: number;
+        note?: string;
+      }>();
+
+      if (!body.date || !body.fromPersonName || !body.toPersonName || typeof body.amountMinor !== "number") {
+        return json({ ok: false, error: "Missing split settlement fields" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await createSplitSettlementRecord(env.DB, {
+            groupId: body.groupId,
+            date: body.date,
+            fromPersonName: body.fromPersonName,
+            toPersonName: body.toPersonName,
+            amountMinor: body.amountMinor,
+            note: body.note
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to create settlement" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/splits/expenses/update" && request.method === "POST") {
+      const body = await request.json<{
+        splitExpenseId?: string;
+        groupId?: string | null;
+        date?: string;
+        description?: string;
+        categoryName?: string;
+        payerPersonName?: string;
+        amountMinor?: number;
+        note?: string;
+        splitBasisPoints?: number;
+      }>();
+
+      if (!body.splitExpenseId || !body.date || !body.description || !body.categoryName || !body.payerPersonName || typeof body.amountMinor !== "number") {
+        return json({ ok: false, error: "Missing split expense fields" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await updateSplitExpenseRecord(env.DB, {
+            splitExpenseId: body.splitExpenseId,
+            groupId: body.groupId,
+            date: body.date,
+            description: body.description,
+            categoryName: body.categoryName,
+            payerPersonName: body.payerPersonName,
+            amountMinor: body.amountMinor,
+            note: body.note,
+            splitBasisPoints: body.splitBasisPoints
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update split expense" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/splits/settlements/update" && request.method === "POST") {
+      const body = await request.json<{
+        settlementId?: string;
+        groupId?: string | null;
+        date?: string;
+        fromPersonName?: string;
+        toPersonName?: string;
+        amountMinor?: number;
+        note?: string;
+      }>();
+
+      if (!body.settlementId || !body.date || !body.fromPersonName || !body.toPersonName || typeof body.amountMinor !== "number") {
+        return json({ ok: false, error: "Missing split settlement fields" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await updateSplitSettlementRecord(env.DB, {
+            settlementId: body.settlementId,
+            groupId: body.groupId,
+            date: body.date,
+            fromPersonName: body.fromPersonName,
+            toPersonName: body.toPersonName,
+            amountMinor: body.amountMinor,
+            note: body.note
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update split settlement" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/splits/matches/link-expense" && request.method === "POST") {
+      const body = await request.json<{ splitExpenseId?: string; transactionId?: string }>();
+      if (!body.splitExpenseId || !body.transactionId) {
+        return json({ ok: false, error: "Missing split expense match fields" }, 400);
+      }
+
+      return json({
+        ok: true,
+        ...(await linkSplitExpenseMatch(env.DB, {
+          splitExpenseId: body.splitExpenseId,
+          transactionId: body.transactionId
+        }))
+      });
+    }
+
+    if (url.pathname === "/api/splits/matches/link-settlement" && request.method === "POST") {
+      const body = await request.json<{ settlementId?: string; transactionId?: string }>();
+      if (!body.settlementId || !body.transactionId) {
+        return json({ ok: false, error: "Missing split settlement match fields" }, 400);
+      }
+
+      return json({
+        ok: true,
+        ...(await linkSplitSettlementMatch(env.DB, {
+          settlementId: body.settlementId,
+          transactionId: body.transactionId
+        }))
+      });
+    }
+
     if (url.pathname === "/api/categories/update" && request.method === "POST") {
       const body = await request.json<{
         categoryId?: string;
@@ -439,6 +669,31 @@ export default {
           month: body.month
         }))
       });
+    }
+
+    if (url.pathname === "/api/month-plan/links" && request.method === "POST") {
+      const body = await request.json<{
+        rowId?: string;
+        month?: string;
+        transactionIds?: string[];
+      }>();
+
+      if (!body.rowId || !body.month || !Array.isArray(body.transactionIds)) {
+        return json({ ok: false, error: "Missing month plan link fields" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await saveMonthPlanEntryLinks(env.DB, {
+            rowId: body.rowId,
+            month: body.month,
+            transactionIds: body.transactionIds
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update planned item links" }, 400);
+      }
     }
 
     if (url.pathname === "/api/month-note/update" && request.method === "POST") {

@@ -11,7 +11,7 @@ export function parseCsv(input: string): Record<string, string>[] {
   const headers = splitCsvLine(lines[0]);
 
   return lines.slice(1).map((line) => {
-    const values = splitCsvLine(line);
+    const values = alignCsvValues(headers, splitCsvLine(line));
     return headers.reduce<Record<string, string>>((record, header, index) => {
       record[header] = values[index] ?? "";
       return record;
@@ -70,4 +70,31 @@ function splitCsvLine(line: string): string[] {
 
   output.push(current);
   return output;
+}
+
+function alignCsvValues(headers: string[], values: string[]): string[] {
+  if (values.length <= headers.length) {
+    return values;
+  }
+
+  const normalizedHeaders = headers.map((header) => header.trim().toLowerCase());
+  const descriptionIndex = normalizedHeaders.findIndex((header) => (
+    header === "description"
+    || header === "details"
+    || header === "narrative"
+    || header === "merchant"
+    || header === "memo"
+  ));
+
+  if (descriptionIndex === -1) {
+    return values.slice(0, headers.length);
+  }
+
+  const repaired = [...values];
+  while (repaired.length > headers.length && descriptionIndex + 1 < repaired.length) {
+    repaired[descriptionIndex] = `${repaired[descriptionIndex]},${repaired[descriptionIndex + 1]}`;
+    repaired.splice(descriptionIndex + 1, 1);
+  }
+
+  return repaired.slice(0, headers.length);
 }

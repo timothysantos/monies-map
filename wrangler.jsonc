@@ -10,7 +10,7 @@
     {
       "binding": "DB",
       "database_name": "monies-map",
-      "database_id": "replace-me-with-cloudflare-d1-id"
+      "database_id": "d1aa440c-d239-48ac-b0a6-d39f34e26e0e"
     }
   ],
   "observability": {
