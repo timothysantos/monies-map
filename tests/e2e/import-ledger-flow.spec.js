@@ -90,6 +90,23 @@ test.describe("import flow", () => {
     await expect(page.getByRole("button", { name: "Commit import" })).toBeEnabled();
   });
 
+  test("expense and income headers auto-map without manual mapping", async ({ page }) => {
+    await page.goto("/imports?view=person-tim&month=2025-10");
+
+    await page.getByLabel("CSV content").fill(
+      [
+        "date,description,expense,income,account,category,note,type",
+        "2026-01-02,Funds Transfer JOYCE,450.00,,UOB One,Other,,expense",
+        "2026-01-03,One Bonus Interest,,20.36,UOB One,Income,,income"
+      ].join("\n")
+    );
+
+    await expect(page.getByText("Missing required fields: amount/expense/income")).toHaveCount(0);
+    await expect(page.locator("article").filter({ hasText: /^expenseSample rows/ }).getByRole("combobox")).toHaveValue("expense");
+    await expect(page.locator("article").filter({ hasText: /^incomeSample rows/ }).getByRole("combobox")).toHaveValue("income");
+    await expect(page.getByRole("button", { name: "Preview import" })).toBeEnabled();
+  });
+
   test("imported row can be edited and rolls through entries, month, and summary", async ({ page }) => {
     const before = await loadBootstrap(page);
     const beforeView = findView(before, "person-tim");

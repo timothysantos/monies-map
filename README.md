@@ -147,9 +147,28 @@ Yes, you can and should give feedback now before setting up Cloudflare.
 Yes, the app can be developed locally first with demo data and then with real
 CSV import flows before deployment.
 
-## Deploy later
+## Cloudflare deploy
 
-When you are ready to use real Cloudflare resources:
+The app is deployed to Cloudflare Workers with Cloudflare D1:
+
+- production Worker: [https://monies-map.timsantos-accts.workers.dev](https://monies-map.timsantos-accts.workers.dev)
+- D1 database name: `monies-map`
+- D1 database id: `d1aa440c-d239-48ac-b0a6-d39f34e26e0e`
+
+The current production auth plan is Cloudflare Access in front of the Worker.
+Use one-time PIN email auth first because it does not require setting up a
+Google identity provider. Restrict access to:
+
+- `mr.timothysantos@gmail.com`
+- `hellojoyceli@gmail.com`
+
+Once Google is configured as a Cloudflare Zero Trust identity provider, the
+same Access application can be switched to Google login with the same email
+allowlist.
+
+### First-time setup
+
+If this app is recreated in a new Cloudflare account:
 
 1. Log in:
 
@@ -176,6 +195,14 @@ npm run db:migrate:remote
 ```bash
 npm run deploy
 ```
+
+6. In Cloudflare Dashboard, enable Access for the Worker:
+
+```text
+Workers & Pages -> monies-map -> Settings -> Domains & Routes -> workers.dev -> Access
+```
+
+Create an Access policy that allows only the two household emails above.
 
 ## What to build next
 

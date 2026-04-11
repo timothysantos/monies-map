@@ -23,11 +23,14 @@ The core questions behind the app are:
 - summary dashboard
 - monthly planning dashboard
 - entries view
+- splits view with group pills, manual split expenses, settle-up records, and a
+  matches review mode
 - manual single-entry creation from the entries view
 - imports view
 - FAQ view
 - demo data shaped like the intended product and planning model
-- a settings view for reseeding and refreshing the current demo bootstrap
+- a settings view for reseeding and refreshing the current demo bootstrap, plus
+  editing household member display names
 - React + Vite frontend talking to the existing Worker API
 - category colors and icons as first-class metadata for charts and category cards
 
@@ -45,12 +48,28 @@ loan, insurance, and other known items.
 Budget buckets are flexible categories, such as food, groceries, transport, and
 shopping. These are not supposed to predict every single merchant in advance.
 
+Planned items and budget buckets match actuals differently. Planned items are
+matched explicitly to one or more ledger entries, because several planned items
+can share a category such as `Bills`. Budget buckets remain category-driven and
+roll up the remaining actual expense entries for that category.
+
+After a planned item is matched, the app remembers lightweight matching hints
+from the linked ledger entries so future months can suggest likely matches. It
+does not auto-link them yet; the user still confirms the matches.
+
 Monthly planning is person-based first. Tim and Joyce can have different month
 plans, and the household month view should be derived by combining those plans,
 not by maintaining a separate duplicate household plan.
 
 The point is not only to log transactions. The point is to compare plan versus
 actual and understand why the month moved.
+
+## Can I rename the household members?
+
+Yes. The Settings page now lets you edit the two household member display names.
+Those names flow through person views, entry ownership filters, and split
+labels. In empty-state mode the app seeds neutral defaults instead of generic
+placeholder labels.
 
 ## What does over-granular mean here?
 
@@ -76,18 +95,69 @@ into the app.
 - Google login
 - in-app AI analysis
 
+## Where is the production app deployed?
+
+The current Cloudflare Worker deployment is:
+
+[https://monies-map.timsantos-accts.workers.dev](https://monies-map.timsantos-accts.workers.dev)
+
+It uses the Cloudflare D1 database `monies-map`.
+
+Before using real household data, protect the Worker with Cloudflare Access.
+The fastest setup is one-time PIN email auth, restricted to:
+
+- `mr.timothysantos@gmail.com`
+- `hellojoyceli@gmail.com`
+
+Google login can be added later by configuring Google as a Cloudflare Zero Trust
+identity provider and keeping the same email allowlist.
+
 ## What does the demo assume right now?
 
-The current demo uses a believable household scenario with:
+The current demo uses a believable household scenario that can be reseeded from
+the in-app settings view. The default category catalog also persists through
+reseed, local wipes, and the current empty-state path, so imports still start
+from the same baseline set of categories, icons, and colors.
 
-- Tim salary: SGD 3,000
-- Joyce salary: SGD 3,000
-- household salary: SGD 6,000
+## What is the Splits view for?
 
-Those assumptions can be reseeded from the in-app settings view.
-The default category catalog also persists through reseed, local wipes, and the
-current empty-state path, so imports still start from the same baseline set of
-categories, icons, and colors.
+`Splits` is the shared-expense workspace.
+
+It is intentionally separate from `Entries`:
+
+- `Entries` is the bank and card ledger
+- `Splits` is where manual shared expenses, named groups, settle-up records,
+  and shared-expense matching live
+
+That separation keeps the CSV import flow focused on ledger review instead of
+mixing bank cleanup with Splitwise-style matching decisions.
+
+The current `Splits` surface includes:
+
+- `Non-group expenses` plus named group pills
+- context-aware owed or owing copy on each pill
+- entry counts on the pills
+- a `Matches` pill that replaces the activity list with review candidates
+- manual `Add expense` flow
+- manual `Settle up` recording flow
+- `Add to splits` from the entries editor for promoting a ledger expense into
+  the shared-expense layer
+
+Imported shared rows or transfer rows can then be matched later from `Matches`
+instead of from the import screen itself.
+
+`Splits` is driven by open unsettled batches, not by the month picker:
+
+- each group has one current open batch
+- recording `Settle up` closes that batch
+- closed batches remain visible below as muted history
+- a later expense can start a new current batch for the same group, even if the
+  date is backdated
+
+When you use `Add to splits` from the entries editor, the app treats the entry
+owner or owning account as the payer. If the ledger row is still direct, it is
+converted to shared first with a default `50/50` transaction split, then the
+linked split expense is created under `Non-group expenses`.
 
 ## What are the default app categories?
 

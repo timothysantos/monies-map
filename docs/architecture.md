@@ -54,6 +54,9 @@ That distinction matters because the system needs to answer questions like:
 - monthly view shows income rows, planned items, budget buckets, notes, and linked entries
 - entries view shows the raw rows for the selected month with filters and edit
   capability
+- splits view shows named shared-expense groups, non-group shared expenses,
+  settle-up records, and a dedicated matches queue without polluting CSV import
+  review
 - person views support `Direct ownership`, `Shared`, and `Direct + Shared`
 - household monthly view supports `Combined` and `Shared`
 - account filter shows source account and institution
@@ -68,8 +71,13 @@ That distinction matters because the system needs to answer questions like:
 ### 5. Demo state
 
 - the current prototype now stores its demo settings in D1
-- this starts with salary-per-person and reseed timestamp
+- the settings screen groups demo metadata such as salary-per-person, current
+  mode, and reseed timestamp under a collapsible demo-state section
 - the settings screen can reseed the believable default demo and refresh the bootstrap
+- household member names are editable in Settings and propagate through person
+  views, split labels, and ownership UI
+- empty-state mode seeds neutral default member names so blank-state behavior
+  does not fall back to placeholder labels
 - even the empty-state mode keeps the default category catalog available so a
   fresh import still starts from the intended baseline taxonomy
 - this is the first persistence step before full repositories for category edits,
@@ -82,8 +90,15 @@ That distinction matters because the system needs to answer questions like:
 - `monthly plans` are first-class and sit above transaction analytics
 - `planned items` represent intentional or recurring commitments
 - `budget buckets` represent flexible spending envelopes
+- planned-item actuals are resolved through explicit links to ledger entries,
+  while budget-bucket actuals stay category-driven
 - `transaction_splits` allocate shared expenses between people
+- `split_groups`, `split_expenses`, and `split_settlements` model the
+  Splitwise-style layer separately from imported ledger rows
 - `transfers` are first-class linked entries, not fake income or expense rows
+- split records can optionally link back to imported transactions later through
+  `matches`, so CSV import stays focused on ledger cleanup while shared-expense
+  review happens in the splits surface
 - `notes` exist at summary and monthly levels, with room for entry-level notes
   later
 - account balances are derived from imported ledger activity plus an explicit
@@ -143,6 +158,25 @@ Budget buckets are suitable for rows such as:
 This distinction is important because the app should reveal variance without
 forcing fake precision.
 
+Planned-item matching is explicit. A planned row such as `Internet`, `Insurance`,
+or `Electricity` can link to one or more imported ledger entries, and its actual
+amount is derived from those selected entries. Category alone is not used for
+planned-item matching because multiple planned rows can share a broad category
+such as `Bills`.
+
+When a user saves planned-item links, the app records lightweight match hints
+from the linked ledger descriptions, amounts, categories, and accounts. Future
+matching dialogs rank household entries using those hints plus category, account,
+amount, description, and date proximity. The app still requires explicit user
+confirmation; high-confidence automatic linking is intentionally deferred until
+the rules have enough review history.
+
+Budget buckets remain category-driven. A bucket such as `Food & Drinks` or
+`Transport` rolls up actual expense entries in that category, after subtracting
+actuals already assigned to planned items in the same category. This keeps
+commitments precise without requiring every flexible purchase to become a
+planned row.
+
 Over-granular planning means too many unstable or ad hoc lines are promoted into
 month-specific planned rows. The result is high maintenance and low signal.
 
@@ -183,6 +217,7 @@ analytics.
 - planned items section
 - budget buckets section
 - planned versus actual comparison by row
+- explicit entry matching for planned items
 - category breakdown as a secondary analytic view
 - person and household perspectives
 - monthly notes
@@ -209,6 +244,31 @@ Person month scopes:
 - when a shared row is shown in a person view, the full shared total should stay
   visible as supporting context
 - edit flow for categorization, attribution, and transfer links
+
+### Splits page
+
+- top-level `Splits` tab separate from `Entries`
+- group pills start with `Non-group expenses`, followed by named split groups
+- each group pill shows context-aware owed/owing copy plus the current open
+  entry count
+- a `Matches` pill sits on the right and swaps the list into a split-match
+  review surface
+- splits are not month-filtered; the month picker is passive desktop chrome and
+  hidden on mobile because the page is driven by unsettled activity instead
+- each group has one active open batch of unsettled entries
+- recording a settle-up closes the current batch for that group
+- later split expenses, even if backdated, open a new current batch unless an
+  older closed batch is explicitly edited
+- summary strip shows the current batch's owed/owing state, spend, donut toggle,
+  and add-expense action
+- split activity combines manual split expenses and settle-up records in one
+  current chronological list, followed by muted settled-history batches
+- matching links imported ledger transactions back to manual split expenses or
+  settle-up records after the import is already committed
+- entries editor can promote a ledger expense into the splits layer; if the
+  source ledger row is still direct, the app converts it to shared with a
+  default 50/50 transaction split first and then creates the linked split
+  expense record
 
 ## Chart guidance
 
@@ -258,6 +318,18 @@ Cloudflare is a practical choice here:
 - fast enough for a reporting-heavy application
 - D1 is sufficient for this data volume
 - R2 is available later if raw statements need to be retained
+
+The production app now runs as one Cloudflare Worker with static assets served
+from `dist` and a D1 binding named `DB`. The current Worker URL is
+`https://monies-map.timsantos-accts.workers.dev`, backed by the APAC D1 database
+`monies-map` (`d1aa440c-d239-48ac-b0a6-d39f34e26e0e`).
+
+Authentication should be enforced at the Cloudflare Access layer before the app
+is used with real household data. The pragmatic first pass is Access one-time
+PIN email auth with an allowlist for the two household emails. Google login can
+replace the OTP provider later after Google is configured as a Zero Trust
+identity provider; the application code does not need to own password or
+session handling for this private deployment.
 
 ## Suggested roadmap
 

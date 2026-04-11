@@ -1,6 +1,8 @@
 import { categories as defaultCategories, defaultDemoSettings, household as defaultHousehold } from "./demo-data";
 import { loadDemoSettings } from "./demo-settings";
+import { getCurrentMonthKey } from "../lib/month";
 import {
+  ensureDemoSchema,
   ensureSeedData,
   loadAccounts,
   loadCategories,
@@ -8,9 +10,13 @@ import {
   loadEntriesForMonths,
   loadHousehold,
   loadImportBatches,
+  loadSplitExpenses,
+  loadSplitMatchCandidates,
+  loadSplitSettlements,
   loadAuditEvents,
   loadMonthIncomeRows,
   loadMonthPlanRows,
+  loadTrackedMonths,
   loadUnresolvedTransfers,
   loadSummaryMonths
 } from "./app-repository";
@@ -26,6 +32,11 @@ import type {
   MonthPageDto,
   MonthIncomeRowDto,
   MonthPlanRowDto,
+  SplitActivityDto,
+  SplitExpenseDto,
+  SplitGroupPillDto,
+  SplitMatchCandidateDto,
+  SplitSettlementDto,
   PersonScope,
   SummaryAccountPillDto,
   SummaryDonutMonthDto,
@@ -34,54 +45,42 @@ import type {
 
 export async function buildBootstrapDto(
   db: D1Database,
-  selectedMonth = "2025-10",
+  selectedMonth = getCurrentMonthKey(),
   selectedScope: PersonScope = "direct_plus_shared",
   summaryStartMonth?: string,
   summaryEndMonth?: string
 ): Promise<AppBootstrapDto> {
   const demo = await loadDemoSettings(db).catch(() => defaultDemoSettings);
-  if (demo.emptyState) {
-    const emptyViews: ContextViewDto[] = [
-      buildContextView("household", "Household", selectedScope, { household: [], "person-tim": [], "person-joyce": [] }, { household: [], "person-tim": [], "person-joyce": [] }, [], [], [], [], [], selectedMonth, []),
-      buildContextView("person-tim", "Tim", selectedScope, { household: [], "person-tim": [], "person-joyce": [] }, { household: [], "person-tim": [], "person-joyce": [] }, [], [], [], [], [], selectedMonth, []),
-      buildContextView("person-joyce", "Joyce", selectedScope, { household: [], "person-tim": [], "person-joyce": [] }, { household: [], "person-tim": [], "person-joyce": [] }, [], [], [], [], [], selectedMonth, [])
-    ];
-
-    return {
-      household: defaultHousehold,
-      accounts: [],
-      categories: defaultCategories,
-      views: emptyViews,
-      selectedViewId: "household",
-      importsPage: {
-        recentImports: [],
-        rollbackPolicy: "No imports yet."
-      },
-      settingsPage: {
-        demo,
-        unresolvedTransfers: [],
-        recentAuditEvents: []
-      }
-    };
+  await ensureDemoSchema(db);
+  if (!demo.emptyState) {
+    await ensureSeedData(db, demo);
   }
-  await ensureSeedData(db, demo);
-  const [household, accounts, categories, importBatches, monthEntries, monthPlanRows, unresolvedTransfers, recentAuditEvents] = await Promise.all([
+  const [household, accounts, categories, importBatches, trackedMonths, unresolvedTransfers, recentAuditEvents] = await Promise.all([
     loadHousehold(db),
     loadAccounts(db),
     loadCategories(db),
     loadImportBatches(db),
-    loadEntries(db, selectedMonth),
-    loadMonthPlanRows(db, selectedMonth),
+    loadTrackedMonths(db),
     loadUnresolvedTransfers(db),
     loadAuditEvents(db)
+  ]);
+  const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
+    ? selectedMonth
+    : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
+  const [monthEntries, monthPlanRows, splitExpenses, splitSettlements, splitMatches] = await Promise.all([
+    loadEntries(db, effectiveSelectedMonth),
+    loadMonthPlanRows(db, effectiveSelectedMonth),
+    loadSplitExpenses(db, effectiveSelectedMonth),
+    loadSplitSettlements(db, effectiveSelectedMonth),
+    loadSplitMatchCandidates(db, effectiveSelectedMonth)
   ]);
   const [householdSummaryMonths, timSummaryMonths, joyceSummaryMonths, householdIncomeRows, timIncomeRows, joyceIncomeRows] = await Promise.all([
     loadSummaryMonths(db, "household"),
     loadSummaryMonths(db, "person-tim"),
     loadSummaryMonths(db, "person-joyce"),
-    loadMonthIncomeRows(db, "household", selectedMonth),
-    loadMonthIncomeRows(db, "person-tim", selectedMonth),
-    loadMonthIncomeRows(db, "person-joyce", selectedMonth)
+    loadMonthIncomeRows(db, "household", effectiveSelectedMonth),
+    loadMonthIncomeRows(db, "person-tim", effectiveSelectedMonth),
+    loadMonthIncomeRows(db, "person-joyce", effectiveSelectedMonth)
   ]);
   const summaryMonthsByView = {
     household: householdSummaryMonths,
@@ -94,15 +93,16 @@ export async function buildBootstrapDto(
     "person-joyce": joyceIncomeRows
   };
   const summaryRangeMonths = buildSummaryRange(
-    householdSummaryMonths.map((month) => month.month),
+    trackedMonths,
     summaryStartMonth,
-    summaryEndMonth ?? selectedMonth
+    summaryEndMonth ?? effectiveSelectedMonth
   );
   const summaryEntries = await loadEntriesForMonths(db, summaryRangeMonths);
+  const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
   const views: ContextViewDto[] = [
-    buildContextView("household", "Household", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, categories, accounts, selectedMonth, summaryRangeMonths),
-    buildContextView("person-tim", "Tim", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, categories, accounts, selectedMonth, summaryRangeMonths),
-    buildContextView("person-joyce", "Joyce", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, categories, accounts, selectedMonth, summaryRangeMonths)
+    buildContextView("household", "Household", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, splitExpenses, splitSettlements, splitMatches, categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
+    buildContextView("person-tim", personNameById["person-tim"] ?? defaultHousehold.people[0]?.name ?? "Primary", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, splitExpenses, splitSettlements, splitMatches, categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
+    buildContextView("person-joyce", personNameById["person-joyce"] ?? defaultHousehold.people[1]?.name ?? "Partner", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, splitExpenses, splitSettlements, splitMatches, categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById)
   ];
 
   return {
@@ -133,10 +133,15 @@ function buildContextView(
   summaryEntries: EntryDto[],
   monthEntries: EntryDto[],
   monthPlanRows: MonthPlanRowDto[],
+  splitExpenses: SplitExpenseDto[],
+  splitSettlements: SplitSettlementDto[],
+  splitMatches: SplitMatchCandidateDto[],
   categories: CategoryDto[],
   accounts: AccountDto[],
   selectedMonth: string,
-  summaryRangeMonths: string[]
+  summaryRangeMonths: string[],
+  trackedMonths: string[],
+  personNameById: Record<string, string>
 ): ContextViewDto {
   const adjustedMonthEntries = adjustEntriesForView(monthEntries, id);
   const adjustedSummaryEntries = adjustEntriesForView(summaryEntries, id);
@@ -147,7 +152,7 @@ function buildContextView(
   return {
     id,
     label,
-    summaryPage: buildSummaryPage(id, visibleSummaryEntries, summaryMonthsByView, categories, accountsForSummary(id, accounts), selectedMonth, summaryRangeMonths),
+    summaryPage: buildSummaryPage(id, visibleSummaryEntries, summaryMonthsByView, categories, accountsForSummary(id, accounts), selectedMonth, summaryRangeMonths, trackedMonths, personNameById),
     monthPage: buildMonthPage(
       id,
       selectedScope,
@@ -157,7 +162,8 @@ function buildContextView(
       categories,
       selectedMonth,
       currentSummaryMonth
-    )
+    ),
+    splitsPage: buildSplitsPage(id, splitExpenses, splitSettlements, splitMatches, categories, selectedMonth, personNameById)
   };
 }
 
@@ -168,14 +174,17 @@ function buildSummaryPage(
   categories: CategoryDto[],
   accountPills: SummaryAccountPillDto[],
   selectedMonth: string,
-  summaryRangeMonths: string[]
+  summaryRangeMonths: string[],
+  trackedMonths: string[],
+  personNameById: Record<string, string>
 ) {
-  const availableMonths = buildSummaryMonthsForView(personId, summaryMonthsByView).map((month) => month.month);
+  const snapshotMonths = buildSummaryMonthsForView(personId, summaryMonthsByView);
+  const summaryMonthByKey = new Map(snapshotMonths.map((month) => [month.month, month]));
+  const availableMonths = Array.from(new Set([...trackedMonths, ...snapshotMonths.map((month) => month.month)])).sort();
   const rangeMonths = summaryRangeMonths.length
     ? summaryRangeMonths.filter((month) => availableMonths.includes(month))
     : buildSummaryRange(availableMonths, undefined, selectedMonth);
-  const months = buildSummaryMonthsForView(personId, summaryMonthsByView)
-    .filter((month) => rangeMonths.includes(month.month));
+  const months = rangeMonths.map((month) => summaryMonthByKey.get(month) ?? buildDerivedSummaryMonth(month, visibleEntries));
   const plannedTotalMinor = sumMinor(months, "estimatedExpensesMinor");
   const actualTotalMinor = sumMinor(months, "realExpensesMinor");
   const targetSavingsMinor = sumMinor(months, "savingsGoalMinor");
@@ -218,9 +227,167 @@ function buildSummaryPage(
             "Planned rows are meant for recurring or intentional commitments. Budget buckets are the flexible layer for categories that should stay broad."
           ]
         : [
-            `This view is filtered to ${personId === "person-tim" ? "Tim" : "Joyce"}. Shared rows are weighted to this person's split share.`,
+            `This view is filtered to ${personNameById[personId] ?? personId}. Shared rows are weighted to this person's split share.`,
             "The planning model stays the same: intention first, transactions second."
           ]
+  };
+}
+
+function buildDerivedSummaryMonth(month: string, visibleEntries: EntryDto[]): SummaryMonthDto {
+  const monthEntries = visibleEntries.filter((entry) => entry.date.slice(0, 7) === month);
+  const incomeMinor = monthEntries
+    .filter((entry) => entry.entryType === "income")
+    .reduce((sum, entry) => sum + entry.amountMinor, 0);
+  const realExpensesMinor = monthEntries
+    .filter((entry) => entry.entryType === "expense")
+    .reduce((sum, entry) => sum + entry.amountMinor, 0);
+
+  return {
+    month,
+    incomeMinor,
+    estimatedExpensesMinor: 0,
+    realExpensesMinor,
+    savingsGoalMinor: 0,
+    realizedSavingsMinor: incomeMinor - realExpensesMinor,
+    estimatedDiffMinor: incomeMinor,
+    realDiffMinor: incomeMinor - realExpensesMinor,
+    note: "Month derived from tracked activity."
+  };
+}
+
+function buildSplitsPage(
+  viewId: string,
+  splitExpenses: SplitExpenseDto[],
+  splitSettlements: SplitSettlementDto[],
+  splitMatches: SplitMatchCandidateDto[],
+  categories: CategoryDto[],
+  selectedMonth: string,
+  personNameById: Record<string, string>
+) {
+  const visibleExpenses = splitExpenses.filter((expense) => splitExpenseMatchesView(expense, viewId));
+  const visibleSettlements = splitSettlements.filter((settlement) => splitSettlementMatchesView(settlement, viewId));
+  const openExpenses = visibleExpenses.filter((expense) => !expense.batchClosedAt);
+  const openSettlements = visibleSettlements.filter((settlement) => !settlement.batchClosedAt);
+  const groupMap = new Map<string, { id: string; name: string; iconKey?: string; balanceMinor: number; entryCount: number; pendingMatchCount: number }>();
+
+  groupMap.set("split-group-none", {
+    id: "split-group-none",
+    name: "Non-group expenses",
+    iconKey: "receipt",
+    balanceMinor: 0,
+    entryCount: 0,
+    pendingMatchCount: 0
+  });
+
+  for (const expense of visibleExpenses) {
+    const groupId = expense.groupId ?? "split-group-none";
+    const current = groupMap.get(groupId) ?? {
+      id: groupId,
+      name: expense.groupName,
+      iconKey: iconKeyForCategory(expense.categoryName, categories),
+      balanceMinor: 0,
+      entryCount: 0,
+      pendingMatchCount: 0
+    };
+    groupMap.set(groupId, current);
+  }
+
+  for (const settlement of visibleSettlements) {
+    const groupId = settlement.groupId ?? "split-group-none";
+    const current = groupMap.get(groupId) ?? {
+      id: groupId,
+      name: settlement.groupName,
+      iconKey: "arrow-right-left",
+      balanceMinor: 0,
+      entryCount: 0,
+      pendingMatchCount: 0
+    };
+    groupMap.set(groupId, current);
+  }
+
+  for (const expense of openExpenses) {
+    const groupId = expense.groupId ?? "split-group-none";
+    const current = groupMap.get(groupId);
+    if (!current) {
+      continue;
+    }
+    current.balanceMinor += splitExpenseBalanceForView(expense, viewId);
+    current.entryCount += 1;
+  }
+
+  for (const settlement of openSettlements) {
+    const groupId = settlement.groupId ?? "split-group-none";
+    const current = groupMap.get(groupId);
+    if (!current) {
+      continue;
+    }
+    current.balanceMinor -= splitSettlementBalanceForView(settlement, viewId);
+    current.entryCount += 1;
+  }
+
+  for (const match of splitMatches.filter((item) => splitMatchMatchesView(item, visibleExpenses, visibleSettlements, viewId))) {
+    const current = groupMap.get(match.groupId) ?? {
+      id: match.groupId,
+      name: match.groupName,
+      iconKey: "receipt",
+      balanceMinor: 0,
+      entryCount: 0,
+      pendingMatchCount: 0
+    };
+    current.pendingMatchCount += 1;
+    groupMap.set(match.groupId, current);
+  }
+
+  const groups: SplitGroupPillDto[] = [...groupMap.values()]
+    .sort((left, right) => {
+      if (left.id === "split-group-none") {
+        return -1;
+      }
+      if (right.id === "split-group-none") {
+        return 1;
+      }
+      return Math.abs(right.balanceMinor) - Math.abs(left.balanceMinor) || left.name.localeCompare(right.name);
+    })
+    .map((group) => ({
+      id: group.id,
+      name: group.name,
+      iconKey: group.iconKey,
+      balanceMinor: group.balanceMinor,
+      summaryText: formatSplitBalanceSummary(group.balanceMinor, viewId, personNameById),
+      entryCount: group.entryCount,
+      pendingMatchCount: group.pendingMatchCount,
+      isDefault: false
+    }));
+
+  const defaultGroupId = groups.find((group) => group.id !== "split-group-none" && group.entryCount > 0)?.id
+    ?? groups.find((group) => group.id !== "split-group-none" && group.pendingMatchCount > 0)?.id
+    ?? groups.find((group) => group.id !== "split-group-none")?.id
+    ?? groups.find((group) => group.id === "split-group-none" && (group.entryCount > 0 || group.pendingMatchCount > 0))?.id
+    ?? "split-group-none";
+
+  const activity: SplitActivityDto[] = buildSplitActivity(viewId, visibleExpenses, visibleSettlements, personNameById);
+  const donutChart = buildDonutChart(
+    openExpenses.map((expense) => ({
+      id: expense.id,
+      date: expense.date,
+      description: expense.description,
+      accountName: expense.groupName,
+      categoryName: expense.categoryName,
+      entryType: "expense",
+      ownershipType: "shared",
+      amountMinor: viewerExpenseAmountForChart(expense, viewId),
+      offsetsCategory: false,
+      splits: expense.shares
+    })),
+    categories
+  );
+
+  return {
+    month: selectedMonth,
+    groups: groups.map((group) => ({ ...group, isDefault: group.id === defaultGroupId })),
+    activity,
+    matches: splitMatches.filter((item) => splitMatchMatchesView(item, visibleExpenses, visibleSettlements, viewId)),
+    donutChart
   };
 }
 
@@ -356,7 +523,28 @@ function deriveIncomeRowActuals(
 }
 
 function derivePlanRowActuals(rows: MonthPlanRowDto[], entries: EntryDto[]) {
-  const plannedActualsByCategory = rows.reduce((map, row) => {
+  const entriesById = new Map(entries.map((entry) => [entry.id, entry]));
+  const rowsWithLinkedActuals = rows.map((row) => {
+    if (row.section !== "planned_items" || !row.linkedEntryIds?.length) {
+      return row;
+    }
+
+    const actualMinor = row.linkedEntryIds.reduce((sum, entryId) => {
+      const entry = entriesById.get(entryId);
+      if (!entry || entry.entryType !== "expense") {
+        return sum;
+      }
+      return sum + entry.amountMinor;
+    }, 0);
+
+    return {
+      ...row,
+      actualMinor,
+      linkedEntryCount: row.linkedEntryIds.length
+    };
+  });
+
+  const plannedActualsByCategory = rowsWithLinkedActuals.reduce((map, row) => {
     if (row.section !== "planned_items") {
       return map;
     }
@@ -370,7 +558,7 @@ function derivePlanRowActuals(rows: MonthPlanRowDto[], entries: EntryDto[]) {
     return map;
   }, new Map<string, number>());
 
-  return rows.map((row) => {
+  return rowsWithLinkedActuals.map((row) => {
     if (row.section !== "budget_buckets") {
       return row;
     }
@@ -518,7 +706,10 @@ function adjustPlanRowForView(row: MonthPlanRowDto, personId: string): MonthPlan
     return {
       ...row,
       isDerived: row.isDerived ?? false,
-      sourceRowIds: row.sourceRowIds ?? [row.id]
+      sourceRowIds: row.sourceRowIds ?? [row.id],
+      linkedEntryIds: row.linkedEntryIds ?? [],
+      linkedEntryCount: row.linkedEntryCount ?? row.linkedEntryIds?.length ?? 0,
+      planMatchHints: row.planMatchHints ?? []
     };
   }
 
@@ -527,7 +718,10 @@ function adjustPlanRowForView(row: MonthPlanRowDto, personId: string): MonthPlan
     return {
       ...row,
       isDerived: row.isDerived ?? false,
-      sourceRowIds: row.sourceRowIds ?? [row.id]
+      sourceRowIds: row.sourceRowIds ?? [row.id],
+      linkedEntryIds: row.linkedEntryIds ?? [],
+      linkedEntryCount: row.linkedEntryCount ?? row.linkedEntryIds?.length ?? 0,
+      planMatchHints: row.planMatchHints ?? []
     };
   }
 
@@ -538,7 +732,10 @@ function adjustPlanRowForView(row: MonthPlanRowDto, personId: string): MonthPlan
     actualMinor: matchingSplit.amountMinor,
     note: `${row.note ?? "Shared row"} • weighted to ${matchingSplit.personName}'s share`,
     isDerived: true,
-    sourceRowIds: row.sourceRowIds ?? [row.id]
+    sourceRowIds: row.sourceRowIds ?? [row.id],
+    linkedEntryIds: row.linkedEntryIds ?? [],
+    linkedEntryCount: row.linkedEntryCount ?? row.linkedEntryIds?.length ?? 0,
+    planMatchHints: row.planMatchHints ?? []
   };
 }
 
@@ -561,7 +758,8 @@ function combineHouseholdPlanRows(rows: MonthPlanRowDto[]): MonthPlanRowDto[] {
         ownershipType: row.ownershipType === "shared" ? "shared" : "direct",
         ownerName: undefined,
         isDerived: false,
-        sourceRowIds: row.sourceRowIds ?? [row.id]
+        sourceRowIds: row.sourceRowIds ?? [row.id],
+        planMatchHints: row.planMatchHints ?? []
       });
       continue;
     }
@@ -575,7 +773,10 @@ function combineHouseholdPlanRows(rows: MonthPlanRowDto[]): MonthPlanRowDto[] {
       note: mergeNotes(existing.note, row.note),
       splits: [...existing.splits, ...row.splits],
       isDerived: true,
-      sourceRowIds: [...(existing.sourceRowIds ?? [existing.id]), ...(row.sourceRowIds ?? [row.id])]
+      sourceRowIds: [...(existing.sourceRowIds ?? [existing.id]), ...(row.sourceRowIds ?? [row.id])],
+      linkedEntryIds: [...(existing.linkedEntryIds ?? []), ...(row.linkedEntryIds ?? [])],
+      linkedEntryCount: (existing.linkedEntryCount ?? existing.linkedEntryIds?.length ?? 0) + (row.linkedEntryCount ?? row.linkedEntryIds?.length ?? 0),
+      planMatchHints: [...(existing.planMatchHints ?? []), ...(row.planMatchHints ?? [])]
     });
   }
 
@@ -585,6 +786,185 @@ function combineHouseholdPlanRows(rows: MonthPlanRowDto[]): MonthPlanRowDto[] {
 function mergeNotes(left?: string, right?: string) {
   const unique = new Set([left, right].filter(Boolean));
   return unique.size ? [...unique].join(" | ") : undefined;
+}
+
+function splitExpenseMatchesView(expense: SplitExpenseDto, viewId: string) {
+  if (viewId === "household") {
+    return true;
+  }
+
+  return expense.shares.some((share) => share.personId === viewId);
+}
+
+function splitSettlementMatchesView(settlement: SplitSettlementDto, viewId: string) {
+  if (viewId === "household") {
+    return true;
+  }
+
+  return settlement.fromPersonId === viewId || settlement.toPersonId === viewId;
+}
+
+function splitMatchMatchesView(
+  match: SplitMatchCandidateDto,
+  expenses: SplitExpenseDto[],
+  settlements: SplitSettlementDto[],
+  viewId: string
+) {
+  if (viewId === "household") {
+    return true;
+  }
+
+  if (match.kind === "expense") {
+    const expense = expenses.find((item) => item.id === match.splitRecordId);
+    return expense ? splitExpenseMatchesView(expense, viewId) : false;
+  }
+
+  const settlement = settlements.find((item) => item.id === match.splitRecordId);
+  return settlement ? splitSettlementMatchesView(settlement, viewId) : false;
+}
+
+function splitExpenseBalanceForView(expense: SplitExpenseDto, viewId: string) {
+  const timShare = expense.shares.find((share) => share.personId === "person-tim")?.amountMinor ?? 0;
+  const joyceShare = expense.shares.find((share) => share.personId === "person-joyce")?.amountMinor ?? 0;
+  const balanceFromTimPerspective = expense.payerPersonId === "person-tim" ? joyceShare : -timShare;
+  if (viewId === "person-joyce") {
+    return -balanceFromTimPerspective;
+  }
+  return balanceFromTimPerspective;
+}
+
+function splitSettlementBalanceForView(settlement: SplitSettlementDto, viewId: string) {
+  const balanceFromTimPerspective = settlement.fromPersonId === "person-joyce"
+    ? settlement.amountMinor
+    : -settlement.amountMinor;
+  if (viewId === "person-joyce") {
+    return -balanceFromTimPerspective;
+  }
+  return balanceFromTimPerspective;
+}
+
+function formatSplitBalanceSummary(balanceMinor: number, viewId: string, personNameById: Record<string, string>) {
+  if (balanceMinor === 0) {
+    return "Settled up";
+  }
+
+  const abs = formatCompactMoney(balanceMinor);
+  const primaryName = personNameById["person-tim"] ?? "Primary";
+  const secondaryName = personNameById["person-joyce"] ?? "Partner";
+  if (viewId === "person-tim") {
+    return balanceMinor > 0 ? `${secondaryName} owes you ${abs}` : `You owe ${secondaryName} ${abs}`;
+  }
+
+  if (viewId === "person-joyce") {
+    return balanceMinor > 0 ? `${primaryName} owes you ${abs}` : `You owe ${primaryName} ${abs}`;
+  }
+
+  return balanceMinor > 0 ? `${secondaryName} owes ${primaryName} ${abs}` : `${primaryName} owes ${secondaryName} ${abs}`;
+}
+
+function buildSplitActivity(
+  viewId: string,
+  expenses: SplitExpenseDto[],
+  settlements: SplitSettlementDto[],
+  personNameById: Record<string, string>
+): SplitActivityDto[] {
+  const activity: SplitActivityDto[] = [];
+
+  for (const expense of expenses) {
+    const viewerShare = viewerExpenseAmountForChart(expense, viewId);
+    activity.push({
+      id: expense.id,
+      kind: "expense",
+      groupId: expense.groupId ?? "split-group-none",
+      groupName: expense.groupName,
+      batchId: expense.batchId,
+      batchLabel: expense.batchLabel,
+      batchClosedAt: expense.batchClosedAt,
+      isArchived: Boolean(expense.batchClosedAt),
+      date: expense.date,
+      description: expense.description,
+      categoryName: expense.categoryName,
+      paidByPersonName: expense.payerPersonName,
+      totalAmountMinor: expense.totalAmountMinor,
+      viewerAmountMinor: viewerShare,
+      viewerDirectionLabel: formatExpenseDirectionLabel(expense, viewId, personNameById),
+      note: expense.note,
+      linkedTransactionId: expense.linkedTransactionId,
+      linkedTransactionDescription: expense.linkedTransactionDescription,
+      matched: Boolean(expense.linkedTransactionId)
+    });
+  }
+
+  for (const settlement of settlements) {
+    activity.push({
+      id: settlement.id,
+      kind: "settlement",
+      groupId: settlement.groupId ?? "split-group-none",
+      groupName: settlement.groupName,
+      batchId: settlement.batchId,
+      batchLabel: settlement.batchLabel,
+      batchClosedAt: settlement.batchClosedAt,
+      isArchived: Boolean(settlement.batchClosedAt),
+      date: settlement.date,
+      description: "Settle up",
+      fromPersonName: settlement.fromPersonName,
+      toPersonName: settlement.toPersonName,
+      totalAmountMinor: settlement.amountMinor,
+      viewerDirectionLabel: formatSettlementDirectionLabel(settlement, viewId),
+      note: settlement.note,
+      linkedTransactionId: settlement.linkedTransactionId,
+      linkedTransactionDescription: settlement.linkedTransactionDescription,
+      matched: Boolean(settlement.linkedTransactionId)
+    });
+  }
+
+  return activity.sort((left, right) => right.date.localeCompare(left.date) || right.id.localeCompare(left.id));
+}
+
+function viewerExpenseAmountForChart(expense: SplitExpenseDto, viewId: string) {
+  if (viewId === "household") {
+    return expense.totalAmountMinor;
+  }
+
+  return expense.shares.find((share) => share.personId === viewId)?.amountMinor ?? 0;
+}
+
+function formatExpenseDirectionLabel(expense: SplitExpenseDto, viewId: string, personNameById: Record<string, string>) {
+  if (viewId === "household") {
+    const balance = splitExpenseBalanceForView(expense, "household");
+    const primaryName = personNameById["person-tim"] ?? "Primary";
+    const secondaryName = personNameById["person-joyce"] ?? "Partner";
+    return balance === 0 ? "shared evenly" : balance > 0 ? `${primaryName} covered more` : `${secondaryName} covered more`;
+  }
+
+  if (expense.payerPersonId === viewId) {
+    return "you lent";
+  }
+
+  return "you borrowed";
+}
+
+function formatSettlementDirectionLabel(settlement: SplitSettlementDto, viewId: string) {
+  if (viewId === "household") {
+    return `${settlement.fromPersonName} paid ${settlement.toPersonName}`;
+  }
+
+  if (settlement.fromPersonId === viewId) {
+    return "you paid";
+  }
+
+  return "you received";
+}
+
+function iconKeyForCategory(categoryName: string, categories: CategoryDto[]) {
+  return categories.find((category) => category.name === categoryName)?.iconKey ?? "receipt";
+}
+
+function formatCompactMoney(valueMinor: number) {
+  return new Intl.NumberFormat("en-SG", {
+    style: "currency",
+    currency: "SGD"
+  }).format(Math.abs(valueMinor) / 100);
 }
 
 function buildDonutChart(entries: EntryDto[], categories: CategoryDto[]): DonutChartDatumDto[] {
