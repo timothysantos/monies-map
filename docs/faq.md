@@ -262,6 +262,11 @@ computed ledger. Account health then shows whether the ledger matches, is off,
 or still needs a checkpoint. It also surfaces the latest import time and any
 unresolved transfers that could make a balance look wrong.
 
+Transfers are included in wallet balance and checkpoint calculations. Transfer
+ins increase the computed account balance, and transfer outs decrease it. The
+Entries page keeps `Spend` as category expense only, then shows `Outflow` to
+include expenses plus transfer-outs.
+
 The import workflow now also flags possible duplicate rows already in the
 ledger and warns when the preview overlaps the date range of previous completed
 imports for the same accounts. This is not full reconciliation, but it is meant
@@ -277,13 +282,14 @@ actions like imports, opening-balance edits, checkpoints, entry edits, and
 transfer link changes.
 
 Each account’s reconciliation dialog also keeps checkpoint history, so you can
-review more than the latest month-end proof, and unresolved transfers now have
-a larger review surface in Settings that links back into Entries for cleanup.
+review, edit, or delete more than the latest month-end proof. Unresolved
+transfers now have a larger review surface in Settings that links back into
+Entries for cleanup.
 
 ## Does it already support real CSV import?
 
-Yes, locally. The app supports CSV review, row-level cleanup, and commit into
-the local ledger.
+Yes. The app supports CSV review, row-level cleanup, and commit into the
+ledger.
 
 The current import review supports either:
 
@@ -292,3 +298,8 @@ The current import review supports either:
 
 You can also override the inferred entry type, amount, account, category,
 owner, split, and note in the preview table before commit.
+
+Large CSV commits are written in protected chunks in production. There is not a
+deliberate 125-row product limit, but the UI warns when a preview is large
+because a rejected Cloudflare request should be retried as smaller batches
+rather than leaving a partial ledger import.

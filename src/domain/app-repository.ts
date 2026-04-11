@@ -42,6 +42,7 @@ const EMPTY_STATE_PEOPLE = [
   { id: "person-tim", name: "Primary" },
   { id: "person-joyce", name: "Partner" }
 ];
+const IMPORT_COMMIT_STATEMENT_CHUNK_SIZE = 90;
 
 export async function ensureSeedData(db: D1Database, settings: DemoSettings) {
   await ensureDemoSchema(db);
@@ -2477,6 +2478,7 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
       FROM transactions
       LEFT JOIN imports ON imports.id = transactions.import_id
       WHERE transactions.household_id = ?
+        AND (transactions.import_id IS NULL OR imports.status = 'completed')
     `)
     .bind(DEMO_HOUSEHOLD_ID)
     .all<{
@@ -2986,6 +2988,44 @@ export async function saveAccountCheckpointRecord(
   return { accountId: input.accountId, checkpointMonth: input.checkpointMonth, saved: true };
 }
 
+export async function deleteAccountCheckpointRecord(
+  db: D1Database,
+  input: {
+    accountId: string;
+    checkpointMonth: string;
+  }
+) {
+  const existingCheckpoint = await db
+    .prepare(`
+      SELECT statement_balance_minor
+      FROM account_balance_checkpoints
+      WHERE household_id = ? AND account_id = ? AND checkpoint_month = ?
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, input.accountId, input.checkpointMonth)
+    .first<{ statement_balance_minor: number }>();
+
+  if (!existingCheckpoint) {
+    throw new Error(`Unknown checkpoint: ${input.accountId} ${input.checkpointMonth}`);
+  }
+
+  await db
+    .prepare(`
+      DELETE FROM account_balance_checkpoints
+      WHERE household_id = ? AND account_id = ? AND checkpoint_month = ?
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, input.accountId, input.checkpointMonth)
+    .run();
+
+  await recordAuditEvent(db, {
+    entityType: "account",
+    entityId: input.accountId,
+    action: "checkpoint_deleted",
+    detail: `Deleted ${input.checkpointMonth} statement checkpoint at ${formatMoneyMinor(existingCheckpoint.statement_balance_minor)}.`
+  });
+
+  return { accountId: input.accountId, checkpointMonth: input.checkpointMonth, deleted: true };
+}
+
 export async function loadUnresolvedTransfers(db: D1Database) {
   const result = await db
     .prepare(`
@@ -2998,6 +3038,7 @@ export async function loadUnresolvedTransfers(db: D1Database) {
         accounts.account_name
       FROM transactions
       INNER JOIN accounts ON accounts.id = transactions.account_id
+      LEFT JOIN imports ON imports.id = transactions.import_id
       LEFT JOIN (
         SELECT transfer_group_id, COUNT(*) AS pair_count
         FROM transactions
@@ -3006,6 +3047,7 @@ export async function loadUnresolvedTransfers(db: D1Database) {
       ) AS grouped ON grouped.transfer_group_id = transactions.transfer_group_id
       WHERE transactions.household_id = ?
         AND transactions.entry_type = 'transfer'
+        AND (transactions.import_id IS NULL OR imports.status = 'completed')
         AND (
           transactions.transfer_group_id IS NULL
           OR COALESCE(grouped.pair_count, 0) < 2
@@ -3095,7 +3137,7 @@ export async function loadImportBatches(db: D1Database): Promise<ImportBatchDto[
         imports.imported_at,
         imports.status,
         imports.note,
-        COUNT(DISTINCT import_rows.id) AS transaction_count,
+        COUNT(DISTINCT transactions.id) AS transaction_count,
         MIN(transactions.transaction_date) AS start_date,
         MAX(transactions.transaction_date) AS end_date
       FROM imports
@@ -3370,81 +3412,155 @@ export async function commitImportBatch(
     .prepare(`
       INSERT INTO imports (
         id, household_id, source_type, source_label, parser_key, imported_at, status, note
-      ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'completed', ?)
+      ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'draft', ?)
     `)
     .bind(importId, DEMO_HOUSEHOLD_ID, "csv", input.sourceLabel, "generic_csv", input.note ?? null)
     .run();
 
-  for (const row of input.rows) {
-    const rowId = `import-row-${crypto.randomUUID()}`;
-    const transactionId = `txn-${crypto.randomUUID()}`;
-    const accountId = row.accountName ? await resolveAccountId(db, row.accountName) : null;
+  try {
+    const [accountRows, categoryRows, personRows] = await Promise.all([
+      db
+        .prepare("SELECT id, account_name FROM accounts WHERE household_id = ?")
+        .bind(DEMO_HOUSEHOLD_ID)
+        .all<{ id: string; account_name: string }>(),
+      db
+        .prepare("SELECT id, name FROM categories WHERE household_id = ?")
+        .bind(DEMO_HOUSEHOLD_ID)
+        .all<{ id: string; name: string }>(),
+      db
+        .prepare("SELECT id, display_name FROM people WHERE household_id = ? ORDER BY created_at")
+        .bind(DEMO_HOUSEHOLD_ID)
+        .all<{ id: string; display_name: string }>()
+    ]);
+    const accountIdsByName = new Map(accountRows.results.map((account) => [account.account_name, account.id]));
+    const categoryIdsByName = new Map(categoryRows.results.map((category) => [category.name, category.id]));
+    const personIdsByName = new Map(personRows.results.map((person) => [person.display_name, person.id]));
+    const [firstPerson, secondPerson] = personRows.results;
+    const statements: D1PreparedStatement[] = [];
 
-    if (!accountId) {
-      throw new Error(`Unknown account: ${row.accountName ?? "Unassigned"}`);
+    for (const row of input.rows) {
+      const rowId = `import-row-${crypto.randomUUID()}`;
+      const transactionId = `txn-${crypto.randomUUID()}`;
+      const accountId = row.accountName ? accountIdsByName.get(row.accountName) : null;
+
+      if (!accountId) {
+        throw new Error(`Unknown account: ${row.accountName ?? "Unassigned"}`);
+      }
+
+      const categoryName = row.entryType === "transfer" ? "Transfer" : row.categoryName;
+      const categoryId = categoryName ? categoryIdsByName.get(categoryName) : null;
+      if (!categoryId) {
+        throw new Error(`Unknown category: ${categoryName ?? "Unassigned"}`);
+      }
+
+      const directOwnerId = row.ownershipType === "direct" ? personIdsByName.get(row.ownerName ?? "") : null;
+      if (row.ownershipType === "direct" && !directOwnerId) {
+        throw new Error(`Unknown owner: ${row.ownerName ?? "Unassigned"}`);
+      }
+
+      statements.push(
+        db
+          .prepare(`
+            INSERT INTO import_rows (
+              id, import_id, row_index, assigned_account_id, raw_row_json, normalized_hash, status
+            ) VALUES (?, ?, ?, ?, ?, ?, 'imported')
+          `)
+          .bind(
+            rowId,
+            importId,
+            row.rowIndex,
+            accountId,
+            JSON.stringify(row.rawRow),
+            buildImportRowHash(row)
+          ),
+        db
+          .prepare(`
+            INSERT INTO transactions (
+              id, household_id, import_id, import_row_id, account_id, transaction_date,
+              description, amount_minor, currency, entry_type, transfer_direction,
+              category_id, ownership_type, owner_person_id, offsets_category, note
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, ?, 0, ?)
+          `)
+          .bind(
+            transactionId,
+            DEMO_HOUSEHOLD_ID,
+            importId,
+            rowId,
+            accountId,
+            row.date,
+            row.description,
+            row.amountMinor,
+            row.entryType,
+            row.transferDirection ?? null,
+            categoryId,
+            row.ownershipType,
+            directOwnerId ?? null,
+            row.note ?? null
+          )
+      );
+
+      if (row.ownershipType === "direct") {
+        statements.push(
+          db
+            .prepare(`
+              INSERT INTO transaction_splits (
+                id, transaction_id, person_id, ratio_basis_points, amount_minor
+              ) VALUES (?, ?, ?, ?, ?)
+            `)
+            .bind(`${transactionId}-split-direct`, transactionId, directOwnerId, 10000, row.amountMinor)
+        );
+      } else {
+        if (!firstPerson || !secondPerson) {
+          throw new Error("Shared entries require two people");
+        }
+        const firstBasisPoints = Math.max(0, Math.min(10000, row.splitBasisPoints ?? 5000));
+        const secondBasisPoints = 10000 - firstBasisPoints;
+        const firstAmount = Math.round((row.amountMinor * firstBasisPoints) / 10000);
+        const secondAmount = row.amountMinor - firstAmount;
+        statements.push(
+          db
+            .prepare(`
+              INSERT INTO transaction_splits (
+                id, transaction_id, person_id, ratio_basis_points, amount_minor
+              ) VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)
+            `)
+            .bind(
+              `${transactionId}-split-1`,
+              transactionId,
+              firstPerson.id,
+              firstBasisPoints,
+              firstAmount,
+              `${transactionId}-split-2`,
+              transactionId,
+              secondPerson.id,
+              secondBasisPoints,
+              secondAmount
+            )
+        );
+      }
+
+      monthsToRecalculate.add(row.date.slice(0, 7));
     }
 
-    const categoryName = row.entryType === "transfer" ? "Transfer" : row.categoryName;
-    const categoryId = await resolveCategoryId(db, categoryName);
-    const directOwnerId = row.ownershipType === "direct"
-      ? await resolvePersonId(db, row.ownerName)
-      : null;
+    for (let index = 0; index < statements.length; index += IMPORT_COMMIT_STATEMENT_CHUNK_SIZE) {
+      await db.batch(statements.slice(index, index + IMPORT_COMMIT_STATEMENT_CHUNK_SIZE));
+    }
+
+    for (const month of monthsToRecalculate) {
+      await recalculateMonthlySnapshots(db, month);
+    }
 
     await db
-      .prepare(`
-        INSERT INTO import_rows (
-          id, import_id, row_index, assigned_account_id, raw_row_json, normalized_hash, status
-        ) VALUES (?, ?, ?, ?, ?, ?, 'imported')
-      `)
-      .bind(
-        rowId,
-        importId,
-        row.rowIndex,
-        accountId,
-        JSON.stringify(row.rawRow),
-        buildImportRowHash(row),
-      )
+      .prepare("UPDATE imports SET status = 'completed' WHERE household_id = ? AND id = ?")
+      .bind(DEMO_HOUSEHOLD_ID, importId)
       .run();
-
+  } catch (error) {
+    await cleanupImportBatchRows(db, importId);
     await db
-      .prepare(`
-        INSERT INTO transactions (
-          id, household_id, import_id, import_row_id, account_id, transaction_date,
-          description, amount_minor, currency, entry_type, transfer_direction,
-          category_id, ownership_type, owner_person_id, offsets_category, note
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, ?, 0, ?)
-      `)
-      .bind(
-        transactionId,
-        DEMO_HOUSEHOLD_ID,
-        importId,
-        rowId,
-        accountId,
-        row.date,
-        row.description,
-        row.amountMinor,
-        row.entryType,
-        row.transferDirection ?? null,
-        categoryId,
-        row.ownershipType,
-        directOwnerId,
-        row.note ?? null
-      )
+      .prepare("UPDATE imports SET status = 'rolled_back' WHERE household_id = ? AND id = ?")
+      .bind(DEMO_HOUSEHOLD_ID, importId)
       .run();
-
-    await syncTransactionSplits(db, {
-      transactionId,
-      ownershipType: row.ownershipType,
-      amountMinor: row.amountMinor,
-      ownerName: row.ownerName,
-      splitBasisPoints: row.splitBasisPoints
-    });
-
-    monthsToRecalculate.add(row.date.slice(0, 7));
-  }
-
-  for (const month of monthsToRecalculate) {
-    await recalculateMonthlySnapshots(db, month);
+    throw error;
   }
 
   await recordAuditEvent(db, {
@@ -3454,7 +3570,7 @@ export async function commitImportBatch(
     detail: `Committed import ${input.sourceLabel} with ${input.rows.length} row${input.rows.length === 1 ? "" : "s"}.`
   });
 
-  return { importId, created: true };
+  return { importId, created: true, importedRows: input.rows.length };
 }
 
 export async function rollbackImportBatch(
@@ -3472,20 +3588,7 @@ export async function rollbackImportBatch(
     .bind(DEMO_HOUSEHOLD_ID, input.importId)
     .all<{ transaction_date: string }>();
 
-  await db
-    .prepare(`
-      DELETE FROM transaction_splits
-      WHERE transaction_id IN (
-        SELECT id FROM transactions WHERE household_id = ? AND import_id = ?
-      )
-    `)
-    .bind(DEMO_HOUSEHOLD_ID, input.importId)
-    .run();
-
-  await db
-    .prepare("DELETE FROM transactions WHERE household_id = ? AND import_id = ?")
-    .bind(DEMO_HOUSEHOLD_ID, input.importId)
-    .run();
+  await cleanupImportBatchRows(db, input.importId);
 
   await db
     .prepare("UPDATE imports SET status = 'rolled_back' WHERE household_id = ? AND id = ?")
@@ -3505,6 +3608,33 @@ export async function rollbackImportBatch(
   });
 
   return { importId: input.importId, rolledBack: true };
+}
+
+async function cleanupImportBatchRows(db: D1Database, importId: string) {
+  await db
+    .prepare(`
+      DELETE FROM transaction_splits
+      WHERE transaction_id IN (
+        SELECT id FROM transactions WHERE household_id = ? AND import_id = ?
+      )
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, importId)
+    .run();
+
+  await db
+    .prepare("DELETE FROM transactions WHERE household_id = ? AND import_id = ?")
+    .bind(DEMO_HOUSEHOLD_ID, importId)
+    .run();
+
+  await db
+    .prepare(`
+      DELETE FROM import_rows
+      WHERE import_id IN (
+        SELECT id FROM imports WHERE household_id = ? AND id = ?
+      )
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, importId)
+    .run();
 }
 
 export async function loadMonthPlanRows(db: D1Database, month = "2025-10"): Promise<MonthPlanRowDto[]> {
@@ -3713,9 +3843,11 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       INNER JOIN accounts ON accounts.id = transactions.account_id
       LEFT JOIN people ON people.id = transactions.owner_person_id
       LEFT JOIN categories ON categories.id = transactions.category_id
+      LEFT JOIN imports ON imports.id = transactions.import_id
       WHERE transactions.household_id = ?
         AND transactions.transaction_date >= ?
         AND transactions.transaction_date < ?
+        AND (transactions.import_id IS NULL OR imports.status = 'completed')
       ORDER BY transactions.transaction_date, transactions.created_at
     `)
     .bind(DEMO_HOUSEHOLD_ID, monthStart, nextMonth)
@@ -3989,8 +4121,10 @@ export async function loadSplitMatchCandidates(db: D1Database, month = "2025-10"
         transactions.entry_type,
         transactions.import_id
       FROM transactions
+      INNER JOIN imports ON imports.id = transactions.import_id
       WHERE transactions.household_id = ?
         AND transactions.import_id IS NOT NULL
+        AND imports.status = 'completed'
       ORDER BY transactions.transaction_date DESC, transactions.created_at DESC
     `)
     .bind(DEMO_HOUSEHOLD_ID)
