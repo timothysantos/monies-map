@@ -6026,7 +6026,7 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
         </div>
       </section>
 
-      <section className="panel-subsection">
+      <section className={`panel-subsection import-history-section ${recentImportsOpen ? "is-open" : ""}`}>
         <button
           type="button"
           className="settings-section-toggle import-history-toggle"
@@ -6204,6 +6204,7 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
   const [accountDialogError, setAccountDialogError] = useState("");
   const [categoryDialog, setCategoryDialog] = useState(null);
   const [reconciliationDialog, setReconciliationDialog] = useState(null);
+  const [checkpointHistoryYear, setCheckpointHistoryYear] = useState("");
   const [statementComparePanel, setStatementComparePanel] = useState(null);
   const [statementCompareResult, setStatementCompareResult] = useState(null);
   const [statementCompareStatus, setStatementCompareStatus] = useState(null);
@@ -6216,7 +6217,11 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
 
     return scopedAccounts
       .slice()
-      .sort((left, right) => Number(right.isActive) - Number(left.isActive) || left.name.localeCompare(right.name));
+      .sort((left, right) => (
+        Number(right.isActive) - Number(left.isActive)
+        || left.institution.localeCompare(right.institution)
+        || left.name.localeCompare(right.name)
+      ));
   }, [accounts, viewId]);
   const visibleCategories = useMemo(
     () => categories.slice().sort((left, right) => left.name.localeCompare(right.name)),
@@ -6233,6 +6238,24 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
     }
     return Array.from(grouped.entries()).map(([date, events]) => ({ date, events }));
   }, [settingsPage.recentAuditEvents]);
+  const checkpointHistoryYears = useMemo(() => (
+    Array.from(new Set((reconciliationDialog?.history ?? []).map((item) => item.month.slice(0, 4)).filter(Boolean)))
+      .sort((left, right) => right.localeCompare(left))
+  ), [reconciliationDialog?.history]);
+  const visibleCheckpointHistory = useMemo(() => (
+    (reconciliationDialog?.history ?? []).filter((item) => !checkpointHistoryYear || item.month.startsWith(`${checkpointHistoryYear}-`))
+  ), [checkpointHistoryYear, reconciliationDialog?.history]);
+
+  useEffect(() => {
+    if (!reconciliationDialog) {
+      setCheckpointHistoryYear("");
+      return;
+    }
+
+    if (checkpointHistoryYears.length && !checkpointHistoryYears.includes(checkpointHistoryYear)) {
+      setCheckpointHistoryYear(checkpointHistoryYears[0]);
+    }
+  }, [checkpointHistoryYear, checkpointHistoryYears, reconciliationDialog]);
 
   async function handleReseed() {
     setIsSubmitting(true);
@@ -7407,12 +7430,12 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
                 <X size={16} />
               </button>
             </div>
-            <div className="settings-account-form">
-              <label className="table-edit-field">
+            <div className="settings-account-form settings-reconciliation-form">
+              <label className="table-edit-field settings-reconciliation-field-half">
                 <span>{messages.settings.accountName}</span>
                 <input className="table-edit-input" value={reconciliationDialog?.accountName ?? ""} readOnly />
               </label>
-              <label className="table-edit-field">
+              <label className="table-edit-field settings-reconciliation-field-half">
                 <span>{messages.settings.checkpointMonth}</span>
                 <input
                   type="month"
@@ -7421,7 +7444,7 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
                   onChange={(event) => setReconciliationDialog((current) => current ? { ...current, checkpointMonth: event.target.value } : current)}
                 />
               </label>
-              <label className="table-edit-field">
+              <label className="table-edit-field settings-reconciliation-field-half">
                 <span>{messages.settings.checkpointStartDate}</span>
                 <input
                   type="date"
@@ -7430,7 +7453,7 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
                   onChange={(event) => setReconciliationDialog((current) => current ? { ...current, statementStartDate: event.target.value } : current)}
                 />
               </label>
-              <label className="table-edit-field">
+              <label className="table-edit-field settings-reconciliation-field-half">
                 <span>{messages.settings.checkpointEndDate}</span>
                 <input
                   type="date"
@@ -7440,7 +7463,7 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
                 />
                 <small className="field-help">{messages.settings.checkpointHelp}</small>
               </label>
-              <label className="table-edit-field">
+              <label className="table-edit-field settings-reconciliation-balance-field">
                 <span>{messages.settings.checkpointBalance}</span>
                 <input
                   className="table-edit-input table-edit-input-money"
@@ -7448,7 +7471,7 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
                   onChange={(event) => setReconciliationDialog((current) => current ? { ...current, statementBalance: event.target.value } : current)}
                 />
               </label>
-              <label className="table-edit-field">
+              <label className="table-edit-field settings-reconciliation-note-field">
                 <span>{messages.settings.checkpointNote}</span>
                 <textarea
                   className="table-edit-input"
@@ -7465,8 +7488,22 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
                     <h3>{messages.settings.checkpointHistoryTitle}</h3>
                     <p>{messages.settings.checkpointHistoryDetail}</p>
                   </div>
+                  {checkpointHistoryYears.length > 1 ? (
+                    <div className="settings-checkpoint-year-filter">
+                      {checkpointHistoryYears.map((year) => (
+                        <button
+                          key={year}
+                          type="button"
+                          className={`summary-focus-button ${checkpointHistoryYear === year ? "is-active" : ""}`}
+                          onClick={() => setCheckpointHistoryYear(year)}
+                        >
+                          {year}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                   <div className="settings-account-list">
-                    {reconciliationDialog.history.map((item) => (
+                    {visibleCheckpointHistory.map((item) => (
                       <div key={item.month} className="settings-account-row settings-checkpoint-row">
                         <div className="settings-account-main">
                           <strong>{formatMonthLabel(item.month)}</strong>
