@@ -4162,6 +4162,31 @@ h3 {
   margin-top: 10px;
 }
 
+.import-history-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.import-history-pagination-bottom {
+  margin-top: 4px;
+}
+
+.import-history-pagination-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.import-history-pagination-actions .subtle-action:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .import-history-group {
   display: grid;
   gap: 6px;

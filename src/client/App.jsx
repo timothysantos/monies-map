@@ -62,6 +62,7 @@ const BOOTSTRAP_SYNC_CHANNEL = "monies-map-bootstrap-sync";
 const BOOTSTRAP_SYNC_STORAGE_KEY = "monies-map-bootstrap-sync";
 const MONTH_PICKER_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DEFAULT_MONTH_KEY = getCurrentMonthKey();
+const RECENT_IMPORTS_PAGE_SIZE = 25;
 const MONTH_SECTION_STATE_CACHE = new Map();
 
 const ICON_OPTIONS = [
@@ -4961,6 +4962,7 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
   const [isDragActive, setIsDragActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recentImportsOpen, setRecentImportsOpen] = useState(false);
+  const [recentImportPage, setRecentImportPage] = useState(1);
   const [dismissedOverlapIds, setDismissedOverlapIds] = useState([]);
   const fileInputRef = useRef(null);
   const mappingSectionRef = useRef(null);
@@ -5106,9 +5108,18 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
     || previewError
     || sourceLabel !== "Imported CSV"
   );
+  const recentImportPageCount = Math.max(1, Math.ceil(importsPage.recentImports.length / RECENT_IMPORTS_PAGE_SIZE));
+  const paginatedRecentImports = useMemo(() => {
+    const startIndex = (recentImportPage - 1) * RECENT_IMPORTS_PAGE_SIZE;
+    return importsPage.recentImports.slice(startIndex, startIndex + RECENT_IMPORTS_PAGE_SIZE);
+  }, [importsPage.recentImports, recentImportPage]);
+  const recentImportStart = importsPage.recentImports.length
+    ? ((recentImportPage - 1) * RECENT_IMPORTS_PAGE_SIZE) + 1
+    : 0;
+  const recentImportEnd = Math.min(recentImportPage * RECENT_IMPORTS_PAGE_SIZE, importsPage.recentImports.length);
   const recentImportGroups = useMemo(() => {
     const grouped = new Map();
-    for (const item of importsPage.recentImports) {
+    for (const item of paginatedRecentImports) {
       const dateKey = item.importedAt.slice(0, 10);
       if (!grouped.has(dateKey)) {
         grouped.set(dateKey, []);
@@ -5116,7 +5127,11 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
       grouped.get(dateKey).push(item);
     }
     return Array.from(grouped.entries()).map(([date, items]) => ({ date, items }));
-  }, [importsPage.recentImports]);
+  }, [paginatedRecentImports]);
+
+  useEffect(() => {
+    setRecentImportPage((current) => Math.min(Math.max(current, 1), recentImportPageCount));
+  }, [recentImportPageCount]);
 
   useEffect(() => {
     if (!readyForMapping) {
@@ -6030,6 +6045,30 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
         </button>
         {recentImportsOpen ? (
           <div className="import-history-groups">
+            {importsPage.recentImports.length > RECENT_IMPORTS_PAGE_SIZE ? (
+              <div className="import-history-pagination">
+                <span>{messages.imports.recentPageSummary(recentImportStart, recentImportEnd, importsPage.recentImports.length)}</span>
+                <div className="import-history-pagination-actions">
+                  <button
+                    type="button"
+                    className="subtle-action"
+                    disabled={recentImportPage <= 1}
+                    onClick={() => setRecentImportPage((current) => Math.max(1, current - 1))}
+                  >
+                    {messages.imports.previousPage}
+                  </button>
+                  <span>{messages.imports.recentPageCount(recentImportPage, recentImportPageCount)}</span>
+                  <button
+                    type="button"
+                    className="subtle-action"
+                    disabled={recentImportPage >= recentImportPageCount}
+                    onClick={() => setRecentImportPage((current) => Math.min(recentImportPageCount, current + 1))}
+                  >
+                    {messages.imports.nextPage}
+                  </button>
+                </div>
+              </div>
+            ) : null}
             {recentImportGroups.map((group) => (
               <section key={group.date} className="import-history-group">
                 <div className="import-history-date">{formatDateOnly(group.date)}</div>
@@ -6072,6 +6111,30 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
                 </div>
               </section>
             ))}
+            {importsPage.recentImports.length > RECENT_IMPORTS_PAGE_SIZE ? (
+              <div className="import-history-pagination import-history-pagination-bottom">
+                <span>{messages.imports.recentPageSummary(recentImportStart, recentImportEnd, importsPage.recentImports.length)}</span>
+                <div className="import-history-pagination-actions">
+                  <button
+                    type="button"
+                    className="subtle-action"
+                    disabled={recentImportPage <= 1}
+                    onClick={() => setRecentImportPage((current) => Math.max(1, current - 1))}
+                  >
+                    {messages.imports.previousPage}
+                  </button>
+                  <span>{messages.imports.recentPageCount(recentImportPage, recentImportPageCount)}</span>
+                  <button
+                    type="button"
+                    className="subtle-action"
+                    disabled={recentImportPage >= recentImportPageCount}
+                    onClick={() => setRecentImportPage((current) => Math.min(recentImportPageCount, current + 1))}
+                  >
+                    {messages.imports.nextPage}
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </section>
