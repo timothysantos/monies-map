@@ -155,6 +155,35 @@ The app is deployed to Cloudflare Workers with Cloudflare D1:
 - D1 database name: `monies-map`
 - D1 database id: `d1aa440c-d239-48ac-b0a6-d39f34e26e0e`
 
+### Routine deploy
+
+Deploy the current working tree only when the local changes are ready to go to
+production. The repo requires Node 22 for local scripts:
+
+```bash
+source ~/.nvm/nvm.sh
+nvm use 22
+npm run deploy
+```
+
+`npm run deploy` builds the app and then runs `wrangler deploy`. Wrangler uses
+[`wrangler.jsonc`](/Users/tim/22m/ai-projects/monies_map/wrangler.jsonc) to
+publish the Worker, serve the built static assets from `dist`, and bind the
+production D1 database as `DB`.
+
+If the change depends on a schema update, apply the remote D1 migration before
+deploying the code:
+
+```bash
+source ~/.nvm/nvm.sh
+nvm use 22
+npm run db:migrate:remote
+npm run deploy
+```
+
+Before deploying real household data, make sure Cloudflare Access is enabled for
+the Worker and restricted to the household email allowlist below.
+
 The current production auth plan is Cloudflare Access in front of the Worker.
 Use one-time PIN email auth first because it does not require setting up a
 Google identity provider. Restrict access to:
@@ -190,7 +219,7 @@ npx wrangler d1 create monies-map
 npm run db:migrate:remote
 ```
 
-5. Deploy:
+5. Deploy using the routine deploy command above:
 
 ```bash
 npm run deploy
