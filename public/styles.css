@@ -1613,6 +1613,8 @@ h3 {
   top: 50%;
   left: 50%;
   width: min(720px, calc(100vw - 40px));
+  max-height: min(86vh, calc(100dvh - 48px));
+  overflow-y: auto;
   transform: translate(-50%, -50%);
   padding: 20px;
   border: 1px solid var(--line);
@@ -2336,7 +2338,7 @@ h3 {
 .settings-reconciliation-dialog {
   display: flex;
   flex-direction: column;
-  max-height: min(82vh, 760px);
+  max-height: min(92vh, calc(100dvh - 48px), 920px);
   overflow: hidden;
 }
 
@@ -2346,12 +2348,36 @@ h3 {
   flex: 0 0 auto;
 }
 
+.settings-reconciliation-dialog .settings-reconciliation-form {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.settings-reconciliation-dialog .settings-reconciliation-field-half {
+  grid-column: span 2;
+}
+
+.settings-reconciliation-dialog .settings-reconciliation-balance-field {
+  grid-column: span 2;
+  align-self: start;
+}
+
+.settings-reconciliation-dialog .settings-reconciliation-note-field {
+  grid-column: span 2;
+}
+
 .settings-reconciliation-scroll {
   flex: 1 1 auto;
   min-height: 0;
   margin: 14px -4px 0 0;
   overflow-y: auto;
   padding: 0 4px 2px 0;
+}
+
+.settings-checkpoint-year-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
 }
 
 .settings-checkpoint-row {
@@ -4152,6 +4178,19 @@ h3 {
   text-align: right;
 }
 
+.import-history-section {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.import-history-section.is-open {
+  box-shadow: 0 16px 28px rgba(25, 64, 53, 0.08);
+}
+
 .import-history-toggle .section-head {
   margin-bottom: 0;
 }
@@ -4159,7 +4198,6 @@ h3 {
 .import-history-groups {
   display: grid;
   gap: 10px;
-  margin-top: 10px;
 }
 
 .import-history-pagination {
@@ -4602,9 +4640,20 @@ th {
     backdrop-filter: blur(10px);
   }
 
+  .note-dialog-content {
+    top: calc(16px + env(safe-area-inset-top, 0px));
+    bottom: auto;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: calc(100dvh - 136px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    transform: none;
+    padding: 18px;
+  }
+
   .settings-category-dialog {
     width: min(640px, calc(100vw - 24px));
-    max-height: min(82vh, 900px);
     padding: 18px;
   }
 
@@ -4639,18 +4688,50 @@ th {
   }
 
   .settings-reconciliation-dialog {
+    display: flex;
+    bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+    flex-direction: column;
     width: min(720px, calc(100vw - 24px));
-    max-height: min(86vh, 760px);
+    max-height: none;
+    overflow-y: auto;
     padding: 16px;
   }
 
   .settings-reconciliation-dialog .settings-account-form {
+    order: 1;
     grid-template-columns: 1fr;
     gap: 10px;
   }
 
+  .settings-reconciliation-dialog .note-dialog-actions {
+    order: 2;
+    margin-bottom: 12px;
+  }
+
+  .settings-reconciliation-field-half,
+  .settings-reconciliation-balance-field,
+  .settings-reconciliation-note-field {
+    grid-column: 1;
+  }
+
   .settings-reconciliation-scroll {
+    order: 3;
+    flex: 0 0 auto;
+    min-height: auto;
     margin-top: 10px;
+    overflow: visible;
+    padding: 0;
+  }
+
+  .settings-checkpoint-year-filter {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .settings-checkpoint-year-filter::-webkit-scrollbar {
+    display: none;
   }
 
   .settings-checkpoint-row {
