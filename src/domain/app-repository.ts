@@ -27,6 +27,9 @@ import type {
   SplitGroupPillDto,
   SplitMatchCandidateDto,
   SplitSettlementDto,
+  StatementCheckpointDraftDto,
+  StatementCompareDto,
+  StatementCompareRowDto,
   SummaryMonthDto
 } from "../types/dto";
 
@@ -1568,6 +1571,72 @@ export async function updateEntryRecord(
     entityId: input.entryId,
     action: "entry_updated",
     detail: `Updated entry ${input.description} on ${input.date} in ${input.accountName}.`
+  });
+
+  return { entryId: input.entryId, updated: true };
+}
+
+export async function updateEntryClassificationRecord(
+  db: D1Database,
+  input: {
+    entryId: string;
+    entryType: "expense" | "income" | "transfer";
+    transferDirection?: "in" | "out";
+    categoryName: string;
+  }
+) {
+  const transaction = await db
+    .prepare("SELECT transfer_group_id, entry_type, description, transaction_date FROM transactions WHERE id = ? AND household_id = ?")
+    .bind(input.entryId, DEMO_HOUSEHOLD_ID)
+    .first<{ transfer_group_id: string | null; entry_type: "expense" | "income" | "transfer"; description: string; transaction_date: string }>();
+
+  if (!transaction) {
+    throw new Error(`Unknown entry: ${input.entryId}`);
+  }
+
+  const category = await db
+    .prepare("SELECT id FROM categories WHERE household_id = ? AND name = ?")
+    .bind(DEMO_HOUSEHOLD_ID, input.categoryName)
+    .first<{ id: string }>();
+
+  if (!category) {
+    throw new Error(`Unknown category: ${input.categoryName}`);
+  }
+
+  const nextTransferDirection = input.entryType === "transfer" ? (input.transferDirection ?? "out") : null;
+  const nextTransferGroupId = input.entryType === "transfer" ? transaction.transfer_group_id : null;
+
+  await db
+    .prepare(`
+      UPDATE transactions
+      SET
+        entry_type = ?,
+        transfer_direction = ?,
+        transfer_group_id = ?,
+        category_id = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND household_id = ?
+    `)
+    .bind(input.entryType, nextTransferDirection, nextTransferGroupId, category.id, input.entryId, DEMO_HOUSEHOLD_ID)
+    .run();
+
+  if (input.entryType !== "transfer" && transaction.transfer_group_id) {
+    await db
+      .prepare("UPDATE transactions SET transfer_group_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE household_id = ? AND transfer_group_id = ?")
+      .bind(DEMO_HOUSEHOLD_ID, transaction.transfer_group_id)
+      .run();
+    await db
+      .prepare("DELETE FROM transfer_groups WHERE household_id = ? AND id = ?")
+      .bind(DEMO_HOUSEHOLD_ID, transaction.transfer_group_id)
+      .run();
+  }
+
+  await recalculateMonthlySnapshots(db, transaction.transaction_date.slice(0, 7));
+  await recordAuditEvent(db, {
+    entityType: "transaction",
+    entityId: input.entryId,
+    action: "entry_classification_updated",
+    detail: `Updated entry classification for ${transaction.description} on ${transaction.transaction_date}.`
   });
 
   return { entryId: input.entryId, updated: true };
@@ -3176,7 +3245,7 @@ export async function buildAccountCheckpointLedgerCsv(
     throw new Error(`Unknown checkpoint: ${input.accountId} ${input.checkpointMonth}`);
   }
 
-  const statementStartDate = checkpoint.statement_start_date;
+  const statementStartDate = checkpoint.statement_start_date ?? getMonthBounds(checkpoint.checkpoint_month)[0];
   const statementEndDate = checkpoint.statement_end_date ?? getMonthEndDate(checkpoint.checkpoint_month);
   const statementBalanceMinor = normalizeStatementBalanceMinor(
     Number(checkpoint.statement_balance_minor ?? 0),
@@ -3340,6 +3409,227 @@ export async function buildAccountCheckpointLedgerCsv(
     filename: `${filenameAccount}-${checkpoint.checkpoint_month}-checkpoint-ledger.csv`,
     csv: csvRows.map((row) => row.map(escapeCsvCell).join(",")).join("\n")
   };
+}
+
+export async function compareAccountCheckpointStatementRows(
+  db: D1Database,
+  input: {
+    accountId: string;
+    checkpointMonth: string;
+    rows: Record<string, string>[];
+    uploadedStatementStartDate?: string;
+    uploadedStatementEndDate?: string;
+  }
+): Promise<StatementCompareDto> {
+  const checkpoint = await db
+    .prepare(`
+      SELECT
+        checkpoints.checkpoint_month,
+        checkpoints.statement_start_date,
+        checkpoints.statement_end_date,
+        accounts.account_name
+      FROM account_balance_checkpoints AS checkpoints
+      INNER JOIN accounts ON accounts.id = checkpoints.account_id
+      WHERE checkpoints.household_id = ?
+        AND checkpoints.account_id = ?
+        AND checkpoints.checkpoint_month = ?
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, input.accountId, input.checkpointMonth)
+    .first<{
+      checkpoint_month: string;
+      statement_start_date: string | null;
+      statement_end_date: string | null;
+      account_name: string;
+    }>();
+
+  if (!checkpoint) {
+    throw new Error(`Unknown checkpoint: ${input.accountId} ${input.checkpointMonth}`);
+  }
+
+  const uploadedStatementStartDate = normalizeStatementDate(input.uploadedStatementStartDate);
+  const uploadedStatementEndDate = normalizeStatementDate(input.uploadedStatementEndDate);
+  const statementStartDate = checkpoint.statement_start_date
+    ?? uploadedStatementStartDate
+    ?? getMonthBounds(checkpoint.checkpoint_month)[0];
+  const statementEndDate = checkpoint.statement_end_date
+    ?? uploadedStatementEndDate
+    ?? getMonthEndDate(checkpoint.checkpoint_month);
+  const statementRows = input.rows
+    .map((rawRow, index) => {
+      const normalized = normalizeImportRow(rawRow);
+      if (normalized.errors.length || !normalized.date || !normalized.amountMinor) {
+        return null;
+      }
+
+      if (normalized.date < statementStartDate || normalized.date > statementEndDate) {
+        return null;
+      }
+
+      const signedAmountMinor = getSignedLedgerAmountMinor({
+        entry_type: normalized.entryType,
+        transfer_direction: normalized.transferDirection ?? null,
+        amount_minor: normalized.amountMinor
+      });
+
+      return {
+        id: `statement-${index + 1}`,
+        date: normalized.date,
+        description: normalized.description,
+        amountMinor: normalized.amountMinor,
+        signedAmountMinor,
+        entryType: normalized.entryType,
+        transferDirection: normalized.transferDirection,
+        categoryName: normalized.categoryName,
+        note: normalized.note
+      };
+    })
+    .filter((row): row is StatementCompareRowDto => Boolean(row));
+
+  const ledgerResult = await db
+    .prepare(`
+      SELECT
+        transactions.id,
+        transactions.transaction_date,
+        transactions.description,
+        transactions.amount_minor,
+        transactions.entry_type,
+        transactions.transfer_direction,
+        transactions.note,
+        categories.name AS category_name
+      FROM transactions
+      LEFT JOIN categories ON categories.id = transactions.category_id
+      LEFT JOIN imports ON imports.id = transactions.import_id
+      WHERE transactions.household_id = ?
+        AND transactions.account_id = ?
+        AND transactions.transaction_date <= ?
+        AND transactions.transaction_date >= ?
+        AND (transactions.import_id IS NULL OR imports.status = 'completed')
+      ORDER BY transactions.transaction_date, transactions.created_at
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, input.accountId, statementEndDate, statementStartDate)
+    .all<{
+      id: string;
+      transaction_date: string;
+      description: string;
+      amount_minor: number;
+      entry_type: "expense" | "income" | "transfer";
+      transfer_direction: "in" | "out" | null;
+      note: string | null;
+      category_name: string | null;
+    }>();
+
+  const ledgerRows = ledgerResult.results.map((row): StatementCompareRowDto => {
+    const amountMinor = Number(row.amount_minor);
+    return {
+      id: row.id,
+      date: row.transaction_date,
+      description: row.description,
+      amountMinor,
+      signedAmountMinor: getSignedLedgerAmountMinor(row),
+      entryType: row.entry_type,
+      transferDirection: row.transfer_direction ?? undefined,
+      categoryName: row.category_name ?? undefined,
+      note: row.note ?? undefined
+    };
+  });
+
+  const matchedLedgerIds = new Set<string>();
+  const matchedStatementIds = new Set<string>();
+
+  for (const statementRow of statementRows) {
+    const match = ledgerRows.find((ledgerRow) => (
+      !matchedLedgerIds.has(ledgerRow.id)
+      && ledgerRow.signedAmountMinor === statementRow.signedAmountMinor
+      && ledgerRow.date === statementRow.date
+      && compareDescriptionSimilarity(ledgerRow.description, statementRow.description) >= 0.45
+    ));
+
+    if (match) {
+      matchedLedgerIds.add(match.id);
+      matchedStatementIds.add(statementRow.id);
+    }
+  }
+
+  for (const statementRow of statementRows) {
+    if (matchedStatementIds.has(statementRow.id)) {
+      continue;
+    }
+
+    const match = ledgerRows.find((ledgerRow) => (
+      !matchedLedgerIds.has(ledgerRow.id)
+      && ledgerRow.signedAmountMinor === statementRow.signedAmountMinor
+      && Math.abs(daysBetween(ledgerRow.date, statementRow.date)) <= 3
+      && compareDescriptionSimilarity(ledgerRow.description, statementRow.description) >= 0.65
+    ));
+
+    if (match) {
+      matchedLedgerIds.add(match.id);
+      matchedStatementIds.add(statementRow.id);
+    }
+  }
+
+  const unmatchedStatementRows = statementRows.filter((row) => !matchedStatementIds.has(row.id));
+  const unmatchedLedgerRows = ledgerRows.filter((row) => !matchedLedgerIds.has(row.id));
+  const possibleMatches = unmatchedStatementRows
+    .flatMap((statementRow) => unmatchedLedgerRows
+      .filter((ledgerRow) => Math.abs(ledgerRow.signedAmountMinor) === Math.abs(statementRow.signedAmountMinor))
+      .map((ledgerRow) => ({
+        statementRow,
+        ledgerRow,
+        dateDeltaDays: Math.abs(daysBetween(ledgerRow.date, statementRow.date)),
+        descriptionScore: compareDescriptionSimilarity(ledgerRow.description, statementRow.description),
+        amountDirectionMismatch: ledgerRow.signedAmountMinor !== statementRow.signedAmountMinor
+      }))
+    )
+    .filter((candidate) => candidate.dateDeltaDays <= 7 || candidate.descriptionScore >= 0.5)
+    .sort((left, right) => (
+      left.dateDeltaDays - right.dateDeltaDays
+      || right.descriptionScore - left.descriptionScore
+      || left.statementRow.date.localeCompare(right.statementRow.date)
+    ))
+    .slice(0, 12);
+  const duplicateStatementGroups = findStatementCompareDuplicateGroups(statementRows);
+  const duplicateLedgerGroups = findStatementCompareDuplicateGroups(ledgerRows);
+
+  return {
+    accountName: checkpoint.account_name,
+    checkpointMonth: checkpoint.checkpoint_month,
+    statementStartDate,
+    statementEndDate,
+    uploadedStatementStartDate: uploadedStatementStartDate ?? undefined,
+    uploadedStatementEndDate: uploadedStatementEndDate ?? undefined,
+    statementRowCount: statementRows.length,
+    ledgerRowCount: ledgerRows.length,
+    matchedRowCount: matchedStatementIds.size,
+    unmatchedStatementRows,
+    unmatchedLedgerRows,
+    possibleMatches,
+    duplicateStatementGroups,
+    duplicateLedgerGroups
+  };
+}
+
+function findStatementCompareDuplicateGroups(rows: StatementCompareRowDto[]) {
+  const groups = new Map<string, StatementCompareRowDto[]>();
+  for (const row of rows) {
+    const key = [
+      row.date,
+      row.signedAmountMinor,
+      normalizeDescriptionForMatch(row.description)
+    ].join("|");
+    const group = groups.get(key) ?? [];
+    group.push(row);
+    groups.set(key, group);
+  }
+
+  return Array.from(groups.values())
+    .filter((group) => group.length > 1)
+    .map((rows) => ({ rows }))
+    .sort((left, right) => (
+      right.rows.length - left.rows.length
+      || (left.rows[0]?.date ?? "").localeCompare(right.rows[0]?.date ?? "")
+    ))
+    .slice(0, 12);
 }
 
 export async function loadUnresolvedTransfers(db: D1Database) {
@@ -3556,6 +3846,7 @@ export async function buildImportPreview(
     ownershipType: "direct" | "shared";
     ownerName?: string;
     splitBasisPoints?: number;
+    statementCheckpoints?: StatementCheckpointDraftDto[];
   }
 ): Promise<ImportPreviewDto> {
   const accounts = await loadAccounts(db);
@@ -3575,10 +3866,12 @@ export async function buildImportPreview(
     .prepare(`
       SELECT
         imports.id AS import_id,
+        transactions.account_id,
         transactions.transaction_date,
         transactions.description,
         transactions.amount_minor,
         transactions.entry_type,
+        transactions.transfer_direction,
         accounts.account_name
       FROM transactions
       INNER JOIN imports ON imports.id = transactions.import_id
@@ -3589,10 +3882,12 @@ export async function buildImportPreview(
     .bind(DEMO_HOUSEHOLD_ID)
     .all<{
       import_id: string;
+      account_id: string;
       transaction_date: string;
       description: string;
       amount_minor: number;
       entry_type: "expense" | "income" | "transfer";
+      transfer_direction: "in" | "out" | null;
       account_name: string;
     }>();
   const accountNames = new Set(accounts.map((account) => account.name));
@@ -3689,6 +3984,14 @@ export async function buildImportPreview(
     throw new Error(`Import validation failed. ${validationErrors.join(" | ")}`);
   }
 
+  const overlapImports = await findOverlappingImports(db, previewRows);
+  const statementReconciliations = buildImportPreviewStatementReconciliations({
+    accounts,
+    existingRows: existingTransactions.results,
+    previewRows,
+    statementCheckpoints: input.statementCheckpoints ?? []
+  });
+
   return {
     sourceLabel: input.sourceLabel,
     parserKey: "generic_csv",
@@ -3697,48 +4000,166 @@ export async function buildImportPreview(
     unknownAccounts: Array.from(unknownAccounts).sort(),
     unknownCategories: Array.from(unknownCategories).sort(),
     duplicateCandidateCount,
-    overlappingImportCount: await countOverlappingImports(db, previewRows),
+    overlappingImportCount: overlapImports.length,
+    overlapImports,
     startDate: previewRows.length ? previewRows.map((row) => row.date).sort()[0] : undefined,
     endDate: previewRows.length ? previewRows.map((row) => row.date).sort().at(-1) : undefined,
     accountNames: Array.from(new Set(previewRows.map((row) => row.accountName).filter(Boolean))).sort(),
-    duplicateCandidates
+    duplicateCandidates,
+    statementReconciliations
   };
 }
 
-async function countOverlappingImports(db: D1Database, rows: ImportPreviewRowDto[]) {
+function buildImportPreviewStatementReconciliations(input: {
+  accounts: AccountDto[];
+  existingRows: {
+    account_id: string;
+    transaction_date: string;
+    entry_type: "expense" | "income" | "transfer";
+    transfer_direction: "in" | "out" | null;
+    amount_minor: number;
+  }[];
+  previewRows: ImportPreviewRowDto[];
+  statementCheckpoints: StatementCheckpointDraftDto[];
+}) {
+  if (!input.statementCheckpoints.length) {
+    return [];
+  }
+
+  const accountsByName = new Map(input.accounts.map((account) => [account.name, account]));
+  const previewLedgerRows = input.previewRows
+    .filter((row) => row.accountId)
+    .map((row) => ({
+      account_id: row.accountId!,
+      transaction_date: row.date,
+      entry_type: row.entryType,
+      transfer_direction: row.transferDirection ?? null,
+      amount_minor: row.amountMinor
+    }));
+  const ledgerRows = [...input.existingRows, ...previewLedgerRows];
+
+  return input.statementCheckpoints.map((checkpoint) => {
+    const account = accountsByName.get(checkpoint.accountName);
+    const statementStartDate = normalizeStatementDate(checkpoint.statementStartDate) ?? undefined;
+    const statementEndDate = normalizeStatementDate(checkpoint.statementEndDate) ?? getMonthEndDate(checkpoint.checkpointMonth);
+    const statementBalanceMinor = account
+      ? normalizeStatementBalanceMinor(Math.round(Number(checkpoint.statementBalanceMinor ?? 0)), account.kind)
+      : Math.round(Number(checkpoint.statementBalanceMinor ?? 0));
+
+    if (!account) {
+      return {
+        accountName: checkpoint.accountName,
+        checkpointMonth: checkpoint.checkpointMonth,
+        statementStartDate,
+        statementEndDate,
+        statementBalanceMinor,
+        status: "unknown_account" as const
+      };
+    }
+
+    const projectedLedgerBalanceMinor = computeCheckpointLedgerBalanceMinor({
+      openingBalanceMinor: normalizeAccountOpeningBalanceMinor(Number(account.openingBalanceMinor ?? 0), account.kind),
+      checkpoint: {
+        account_id: account.id,
+        checkpoint_month: checkpoint.checkpointMonth,
+        statement_start_date: statementStartDate ?? null,
+        statement_end_date: statementEndDate
+      },
+      rows: ledgerRows
+    });
+    const deltaMinor = projectedLedgerBalanceMinor - statementBalanceMinor;
+
+    return {
+      accountName: account.name,
+      accountKind: account.kind,
+      checkpointMonth: checkpoint.checkpointMonth,
+      statementStartDate,
+      statementEndDate,
+      statementBalanceMinor,
+      projectedLedgerBalanceMinor,
+      deltaMinor,
+      status: deltaMinor === 0 ? "matched" as const : "mismatch" as const
+    };
+  });
+}
+
+async function findOverlappingImports(db: D1Database, rows: ImportPreviewRowDto[]) {
   if (!rows.length) {
-    return 0;
+    return [];
   }
 
   const dates = rows.map((row) => row.date).sort();
   const accountNames = Array.from(new Set(rows.map((row) => row.accountName).filter(Boolean)));
   if (!accountNames.length) {
-    return 0;
+    return [];
   }
 
   const placeholders = accountNames.map(() => "?").join(", ");
   const overlapRows = await db
     .prepare(`
-      SELECT COUNT(DISTINCT imports.id) AS overlap_count
+      WITH overlapping_imports AS (
+        SELECT
+          imports.id,
+          accounts.account_name,
+          transactions.id AS transaction_id,
+          transactions.transaction_date
+        FROM imports
+        INNER JOIN transactions ON transactions.import_id = imports.id
+        INNER JOIN accounts ON accounts.id = transactions.account_id
+        WHERE imports.household_id = ?
+          AND imports.status = 'completed'
+          AND accounts.account_name IN (${placeholders})
+          AND transactions.transaction_date BETWEEN ? AND ?
+      )
+      SELECT
+        imports.id,
+        imports.source_label,
+        imports.source_type,
+        imports.imported_at,
+        imports.status,
+        COUNT(DISTINCT overlapping_imports.transaction_id) AS transaction_count,
+        MIN(overlapping_imports.transaction_date) AS start_date,
+        MAX(overlapping_imports.transaction_date) AS end_date,
+        GROUP_CONCAT(DISTINCT overlapping_imports.account_name) AS account_names
       FROM imports
-      INNER JOIN transactions ON transactions.import_id = imports.id
-      INNER JOIN accounts ON accounts.id = transactions.account_id
-      WHERE imports.household_id = ?
-        AND imports.status = 'completed'
-        AND accounts.account_name IN (${placeholders})
-        AND transactions.transaction_date BETWEEN ? AND ?
+      INNER JOIN overlapping_imports ON overlapping_imports.id = imports.id
+      GROUP BY imports.id, imports.source_label, imports.source_type, imports.imported_at, imports.status
+      ORDER BY imports.imported_at DESC
     `)
     .bind(DEMO_HOUSEHOLD_ID, ...accountNames, dates[0], dates[dates.length - 1])
-    .first<{ overlap_count: number | null }>();
+    .all<{
+      id: string;
+      source_label: string;
+      source_type: "csv" | "pdf" | "manual";
+      imported_at: string;
+      status: "draft" | "completed" | "rolled_back";
+      transaction_count: number;
+      start_date: string | null;
+      end_date: string | null;
+      account_names: string | null;
+    }>();
 
-  return Number(overlapRows?.overlap_count ?? 0);
+  return overlapRows.results.map((row) => ({
+    id: row.id,
+    sourceLabel: row.source_label,
+    sourceType: row.source_type,
+    importedAt: row.imported_at,
+    status: row.status,
+    transactionCount: Number(row.transaction_count ?? 0),
+    startDate: row.start_date ?? undefined,
+    endDate: row.end_date ?? undefined,
+    accountNames: row.account_names?.split(",").sort() ?? []
+  }));
 }
 
 export async function commitImportBatch(
   db: D1Database,
   input: {
     sourceLabel: string;
+    sourceType?: "csv" | "pdf" | "manual";
+    parserKey?: string;
     rows: ImportPreviewRowDto[];
+    statementCheckpoints?: StatementCheckpointDraftDto[];
     note?: string;
   }
 ) {
@@ -3751,7 +4172,7 @@ export async function commitImportBatch(
         id, household_id, source_type, source_label, parser_key, imported_at, status, note
       ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'draft', ?)
     `)
-    .bind(importId, DEMO_HOUSEHOLD_ID, "csv", input.sourceLabel, "generic_csv", input.note ?? null)
+    .bind(importId, DEMO_HOUSEHOLD_ID, input.sourceType ?? "csv", input.sourceLabel, input.parserKey ?? "generic_csv", input.note ?? null)
     .run();
 
   try {
@@ -3877,6 +4298,41 @@ export async function commitImportBatch(
       }
 
       monthsToRecalculate.add(row.date.slice(0, 7));
+    }
+
+    for (const checkpoint of input.statementCheckpoints ?? []) {
+      const accountId = accountIdsByName.get(checkpoint.accountName);
+      if (!accountId) {
+        throw new Error(`Unknown checkpoint account: ${checkpoint.accountName}`);
+      }
+      if (!checkpoint.checkpointMonth || !Number.isFinite(checkpoint.statementBalanceMinor)) {
+        throw new Error(`Invalid statement checkpoint for ${checkpoint.accountName}`);
+      }
+
+      statements.push(
+        db
+          .prepare(`
+            INSERT INTO account_balance_checkpoints (
+              id, household_id, account_id, checkpoint_month, statement_start_date, statement_end_date, statement_balance_minor, note
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(account_id, checkpoint_month) DO UPDATE SET
+              statement_start_date = excluded.statement_start_date,
+              statement_end_date = excluded.statement_end_date,
+              statement_balance_minor = excluded.statement_balance_minor,
+              note = excluded.note,
+              updated_at = CURRENT_TIMESTAMP
+          `)
+          .bind(
+            `checkpoint-${crypto.randomUUID()}`,
+            DEMO_HOUSEHOLD_ID,
+            accountId,
+            checkpoint.checkpointMonth,
+            normalizeStatementDate(checkpoint.statementStartDate),
+            normalizeStatementDate(checkpoint.statementEndDate),
+            Math.round(checkpoint.statementBalanceMinor),
+            checkpoint.note ?? null
+          )
+      );
     }
 
     for (let index = 0; index < statements.length; index += IMPORT_COMMIT_STATEMENT_CHUNK_SIZE) {

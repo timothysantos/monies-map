@@ -47,6 +47,8 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { messages } from "./copy/en-SG";
 import { inspectCsv } from "../lib/csv";
 import { getCurrentMonthKey } from "../lib/month";
+import { parseStatementText, statementRowsToCsv } from "../lib/statement-import";
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 import { categories as defaultCategories } from "../domain/demo-data";
 import faqMarkdown from "../../docs/faq.md?raw";
 
@@ -3172,6 +3174,7 @@ function EntriesPanel({ view, accounts, categories, people, onCategoryAppearance
 
   function beginEntryEdit(entry) {
     if (editingEntryId === entry.id) {
+      cancelEntryEdit();
       return;
     }
 
@@ -3480,7 +3483,7 @@ function EntriesPanel({ view, accounts, categories, people, onCategoryAppearance
                     </span>
                     <div>
                       <strong>{item.label}</strong>
-                      <p>{messages.common.triplet(money(item.valueMinor), `${item.entryCount} ${item.entryCount === 1 ? "entry" : "entries"}`, `${((item.valueMinor / Math.max(entryTotals.spendMinor, 1)) * 100).toFixed(1)}%`)}</p>
+                      <p>{money(item.valueMinor)} • {item.entryCount} {item.entryCount === 1 ? "entry" : "entries"}</p>
                     </div>
                   </div>
                 </div>
@@ -4940,8 +4943,15 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
   const [preview, setPreview] = useState(null);
   const [previewRows, setPreviewRows] = useState([]);
   const [previewError, setPreviewError] = useState("");
+  const [statementCheckpoints, setStatementCheckpoints] = useState([]);
+  const [statementImportMeta, setStatementImportMeta] = useState({ sourceType: "csv", parserKey: "generic_csv" });
+  const [uploadStatus, setUploadStatus] = useState(null);
+  const [isParsingStatement, setIsParsingStatement] = useState(false);
+  const [isDragActive, setIsDragActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recentImportsOpen, setRecentImportsOpen] = useState(false);
+  const [dismissedOverlapIds, setDismissedOverlapIds] = useState([]);
+  const fileInputRef = useRef(null);
   const mappingSectionRef = useRef(null);
   const previewSectionRef = useRef(null);
   const hasAutoScrolledMappingRef = useRef(false);
@@ -5020,7 +5030,46 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
   const readyForPreview = mappedRows.length > 0 && missingRequiredFields.length === 0 && duplicateMappings.length === 0;
   const currentStage = preview ? 3 : readyForMapping ? 2 : 1;
   const hasBlockingCategoryPolicy = unknownCategoryMode === "block" && Boolean(preview?.unknownCategories?.length);
-  const hasUnmappedAccounts = previewRows.some((row) => !row.accountName);
+  const knownAccountNames = useMemo(() => new Set(accounts.map((account) => account.name)), [accounts]);
+  const detectedPreviewAccountNames = useMemo(
+    () => Array.from(new Set(previewRows.map((row) => row.accountName).filter(Boolean))).sort(),
+    [previewRows]
+  );
+  const unknownPreviewAccountNames = useMemo(
+    () => detectedPreviewAccountNames.filter((accountName) => !knownAccountNames.has(accountName)),
+    [detectedPreviewAccountNames, knownAccountNames]
+  );
+  const showStatementAccountMapping = preview && detectedPreviewAccountNames.length > 0 && (
+    statementImportMeta.sourceType === "pdf" || unknownPreviewAccountNames.length > 0
+  );
+  const hasUnmappedAccounts = previewRows.some((row) => !row.accountName || !knownAccountNames.has(row.accountName));
+  const duplicateCheckpointAccounts = useMemo(() => {
+    const counts = new Map();
+    for (const checkpoint of statementCheckpoints) {
+      if (!checkpoint.accountName) {
+        continue;
+      }
+      counts.set(checkpoint.accountName, (counts.get(checkpoint.accountName) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).filter(([, count]) => count > 1).map(([accountName]) => accountName);
+  }, [statementCheckpoints]);
+  const hasDuplicateCheckpointAccounts = duplicateCheckpointAccounts.length > 0;
+  const visibleOverlapImports = useMemo(
+    () => (preview?.overlapImports ?? []).filter((item) => !dismissedOverlapIds.includes(item.id)),
+    [dismissedOverlapIds, preview?.overlapImports]
+  );
+  const statementReconciliations = preview?.statementReconciliations ?? [];
+  const hasStatementReconciliationMismatch = statementReconciliations.some((item) => item.status !== "matched");
+  const hasImportDraft = Boolean(
+    preview
+    || previewRows.length
+    || csvText
+    || importNote
+    || statementCheckpoints.length
+    || uploadStatus
+    || previewError
+    || sourceLabel !== "Imported CSV"
+  );
   const recentImportGroups = useMemo(() => {
     const grouped = new Map();
     for (const item of importsPage.recentImports) {
@@ -5057,15 +5106,133 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
     previewSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [preview]);
 
-  async function handleUploadCsv(event) {
+  function handleCsvTextChange(nextText) {
+    setCsvText(nextText);
+    setStatementCheckpoints([]);
+    setStatementImportMeta({ sourceType: "csv", parserKey: "generic_csv" });
+    setUploadStatus(null);
+  }
+
+  function resetImportForm() {
+    setSourceLabel("Imported CSV");
+    setImportNote("");
+    setCsvText("");
+    setDefaultAccountName(accounts[0]?.name ?? "");
+    setOwnershipType("direct");
+    setOwnerName(people[0]?.name ?? "");
+    setSplitPercent("50");
+    setUnknownCategoryMode("other");
+    setColumnMappings({});
+    setPreview(null);
+    setPreviewRows([]);
+    setPreviewError("");
+    setStatementCheckpoints([]);
+    setStatementImportMeta({ sourceType: "csv", parserKey: "generic_csv" });
+    setUploadStatus(null);
+    setIsParsingStatement(false);
+    setIsDragActive(false);
+    setDismissedOverlapIds([]);
+    hasAutoScrolledMappingRef.current = false;
+    hasAutoScrolledPreviewRef.current = false;
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleUploadImportFile(event) {
     const [file] = event.target.files ?? [];
     if (!file) {
       return;
     }
 
-    const nextText = await file.text();
-    setCsvText(nextText);
+    await processImportFile(file);
     event.target.value = "";
+  }
+
+  async function processImportFile(file) {
+    setPreviewError("");
+    setUploadStatus({ tone: "active", message: messages.imports.uploadReading(file.name) });
+    setPreview(null);
+    setPreviewRows([]);
+    setIsParsingStatement(true);
+    try {
+      if (/\.pdf$/i.test(file.name) || file.type === "application/pdf") {
+        setDismissedOverlapIds([]);
+        setUploadStatus({ tone: "active", message: messages.imports.uploadExtracting(file.name) });
+        const text = await extractPdfText(file);
+        setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
+        const parsed = parseStatementText(text, file.name);
+
+        setSourceLabel(parsed.sourceLabel);
+        setStatementCheckpoints(parsed.checkpoints);
+        setStatementImportMeta({ sourceType: "pdf", parserKey: parsed.parserKey });
+        setCsvText(statementRowsToCsv(parsed.rows));
+        if (parsed.checkpoints[0]?.accountName) {
+          setDefaultAccountName(parsed.checkpoints[0].accountName);
+        }
+
+        setUploadStatus({ tone: "active", message: messages.imports.uploadPreviewing(parsed.rows.length) });
+        await previewImportRows({
+          rows: parsed.rows,
+          nextSourceLabel: parsed.sourceLabel,
+          nextDefaultAccountName: parsed.checkpoints[0]?.accountName ?? defaultAccountName,
+          nextStatementCheckpoints: parsed.checkpoints
+        });
+        setUploadStatus({ tone: "success", message: messages.imports.uploadReady(parsed.rows.length) });
+        return;
+      }
+
+      const nextText = await file.text();
+      setDismissedOverlapIds([]);
+      setCsvText(nextText);
+      setStatementCheckpoints([]);
+      setStatementImportMeta({ sourceType: "csv", parserKey: "generic_csv" });
+      setUploadStatus({ tone: "success", message: messages.imports.uploadCsvReady(file.name) });
+    } catch (error) {
+      setPreview(null);
+      setPreviewRows([]);
+      const message = error instanceof Error ? error.message : "Statement import failed.";
+      setPreviewError(message);
+      setUploadStatus({ tone: "error", message });
+    } finally {
+      setIsParsingStatement(false);
+    }
+  }
+
+  async function previewImportRows({
+    rows,
+    nextSourceLabel = sourceLabel,
+    nextDefaultAccountName = defaultAccountName,
+    nextStatementCheckpoints = statementCheckpoints
+  }) {
+    setPreviewError("");
+    const response = await fetch("/api/imports/preview", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        sourceLabel: nextSourceLabel,
+        rows,
+        defaultAccountName: nextDefaultAccountName,
+        ownershipType,
+        ownerName,
+        splitBasisPoints: Math.round(Number(splitPercent || "50") * 100),
+        statementCheckpoints: nextStatementCheckpoints.map((checkpoint) => ({
+          ...checkpoint,
+          statementBalanceMinor: Number(checkpoint.statementBalanceMinor ?? 0)
+        }))
+      })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setPreview(null);
+      setPreviewRows([]);
+      throw new Error(data.error ?? "Import preview failed.");
+    }
+    setDismissedOverlapIds((current) => current.filter((id) => data.preview?.overlapImports?.some((item) => item.id === id)));
+    setPreview(data.preview);
+    setPreviewRows(data.preview?.previewRows ?? []);
   }
 
   async function handlePreview() {
@@ -5074,34 +5241,35 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
     }
 
     setIsSubmitting(true);
-    setPreviewError("");
     try {
-      const response = await fetch("/api/imports/preview", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          sourceLabel,
-          rows: mappedRows,
-          defaultAccountName,
-          ownershipType,
-          ownerName,
-          splitBasisPoints: Math.round(Number(splitPercent || "50") * 100)
-        })
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setPreview(null);
-        setPreviewRows([]);
-        setPreviewError(data.error ?? "Import preview failed.");
-        return;
-      }
-      setPreview(data.preview);
-      setPreviewRows(data.preview?.previewRows ?? []);
+      await previewImportRows({ rows: mappedRows });
+    } catch (error) {
+      setPreviewError(error instanceof Error ? error.message : "Import preview failed.");
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  function handleDropImportFile(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragActive(false);
+    const [file] = event.dataTransfer.files ?? [];
+    if (file) {
+      void processImportFile(file);
+    }
+  }
+
+  function handleDragOverImportFile(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragActive(true);
+  }
+
+  function handleDragLeaveImportFile(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragActive(false);
   }
 
   async function handleCommit() {
@@ -5118,7 +5286,13 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
         },
         body: JSON.stringify({
           sourceLabel: preview?.sourceLabel ?? sourceLabel,
+          sourceType: statementImportMeta.sourceType,
+          parserKey: statementImportMeta.parserKey,
           note: importNote,
+          statementCheckpoints: statementCheckpoints.map((checkpoint) => ({
+            ...checkpoint,
+            statementBalanceMinor: Number(checkpoint.statementBalanceMinor ?? 0)
+          })),
           rows: previewRows.map((row) => ({
             ...row,
             splitBasisPoints: Number(row.splitBasisPoints ?? 10000)
@@ -5130,11 +5304,7 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
         setPreviewError(data.error ?? messages.imports.commitFailed);
         return;
       }
-      setPreview(null);
-      setPreviewRows([]);
-      setPreviewError("");
-      setCsvText("");
-      setImportNote("");
+      resetImportForm();
       await onRefresh();
     } finally {
       setIsSubmitting(false);
@@ -5161,6 +5331,59 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
     setPreviewRows((current) => current.map((row) => (row.rowId === rowId ? { ...row, ...patch } : row)));
   }
 
+  function updateStatementCheckpoint(index, patch) {
+    setStatementCheckpoints((current) => current.map((checkpoint, checkpointIndex) => (
+      checkpointIndex === index ? { ...checkpoint, ...patch } : checkpoint
+    )));
+  }
+
+  function remapPreviewAccount(fromAccountName, toAccountName) {
+    if (!toAccountName) {
+      return;
+    }
+
+    const nextRows = previewRows.map((row) => (
+      row.accountName === fromAccountName ? { ...row, accountName: toAccountName } : row
+    ));
+    const nextCheckpoints = statementCheckpoints.map((checkpoint) => (
+      checkpoint.accountName === fromAccountName ? { ...checkpoint, accountName: toAccountName } : checkpoint
+    ));
+    setPreviewRows(nextRows);
+    setStatementCheckpoints(nextCheckpoints);
+    setUploadStatus({ tone: "active", message: messages.imports.accountMappingRefreshing });
+    setIsSubmitting(true);
+    void previewImportRows({
+      rows: nextRows.map(buildRawImportRowFromPreviewRow),
+      nextStatementCheckpoints: nextCheckpoints
+    })
+      .then(() => {
+        setUploadStatus({ tone: "success", message: messages.imports.accountMappingRefreshed });
+      })
+      .catch((error) => {
+        setPreviewError(error instanceof Error ? error.message : "Import preview failed.");
+        setUploadStatus({ tone: "error", message: error instanceof Error ? error.message : "Import preview failed." });
+      })
+      .finally(() => setIsSubmitting(false));
+  }
+
+  function handleRefreshStatementReconciliation() {
+    if (!previewRows.length) {
+      return;
+    }
+
+    setUploadStatus({ tone: "active", message: messages.imports.statementReconciliationRefreshing });
+    setIsSubmitting(true);
+    void previewImportRows({ rows: previewRows.map(buildRawImportRowFromPreviewRow) })
+      .then(() => {
+        setUploadStatus({ tone: "success", message: messages.imports.statementReconciliationRefreshed });
+      })
+      .catch((error) => {
+        setPreviewError(error instanceof Error ? error.message : "Import preview failed.");
+        setUploadStatus({ tone: "error", message: error instanceof Error ? error.message : "Import preview failed." });
+      })
+      .finally(() => setIsSubmitting(false));
+  }
+
   return (
     <article className="panel">
       <div className="panel-head">
@@ -5175,6 +5398,11 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
             <h3>{messages.imports.composerTitle}</h3>
             <p className="lede compact">{messages.imports.composerDetail}</p>
           </div>
+          {hasImportDraft ? (
+            <button type="button" className="subtle-action" onClick={resetImportForm} disabled={isSubmitting}>
+              {messages.imports.startOver}
+            </button>
+          ) : null}
         </div>
 
         <div className={`import-stage-card ${currentStage === 1 ? "is-current" : currentStage > 1 ? "is-complete" : ""}`}>
@@ -5251,15 +5479,37 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
               <textarea
                 className="table-edit-textarea import-textarea"
                 value={csvText}
-                onChange={(event) => setCsvText(event.target.value)}
+                onChange={(event) => handleCsvTextChange(event.target.value)}
                 placeholder={messages.imports.csvPlaceholder}
               />
             </label>
             <div className="import-sidecar">
-              <label className="subtle-action upload-action">
-                {messages.imports.uploadFile}
-                <input type="file" accept=".csv,text/csv" hidden onChange={handleUploadCsv} />
-              </label>
+              <input ref={fileInputRef} type="file" accept=".csv,text/csv,.pdf,application/pdf" hidden onChange={handleUploadImportFile} />
+              <div
+                className={`import-dropzone ${isDragActive ? "is-active" : ""} ${isParsingStatement ? "is-busy" : ""}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => fileInputRef.current?.click()}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    fileInputRef.current?.click();
+                  }
+                }}
+                onDragEnter={handleDragOverImportFile}
+                onDragOver={handleDragOverImportFile}
+                onDragLeave={handleDragLeaveImportFile}
+                onDrop={handleDropImportFile}
+              >
+                <strong>{messages.imports.dropzoneTitle}</strong>
+                <span>{messages.imports.dropzoneDetail}</span>
+              </div>
+              {uploadStatus ? (
+                <div className={`import-upload-status is-${uploadStatus.tone}`} role={uploadStatus.tone === "error" ? "alert" : "status"}>
+                  <strong>{uploadStatus.tone === "error" ? messages.imports.uploadStatusError : uploadStatus.tone === "success" ? messages.imports.uploadStatusReady : messages.imports.uploadStatusWorking}</strong>
+                  <span>{uploadStatus.message}</span>
+                </div>
+              ) : null}
               <div className="import-step-hint">
                 <strong>{messages.imports.selectFileNextUpload}</strong>
                 <p>{messages.imports.selectFileNextPaste}</p>
@@ -5333,7 +5583,7 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
             </div>
 
             <div className="import-actions">
-              <button type="button" className="subtle-action is-primary" disabled={isSubmitting || !readyForPreview} onClick={handlePreview}>
+              <button type="button" className="subtle-action is-primary" disabled={isSubmitting || isParsingStatement || !readyForPreview} onClick={handlePreview}>
                 {messages.imports.preview}
               </button>
             </div>
@@ -5358,13 +5608,9 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
                 <button
                   type="button"
                   className="subtle-action"
-                  onClick={() => {
-                    setPreview(null);
-                    setPreviewRows([]);
-                    setPreviewError("");
-                  }}
+                  onClick={resetImportForm}
                 >
-                  {messages.imports.clearPreview}
+                  {messages.imports.startOver}
                 </button>
               ) : null}
             </div>
@@ -5374,19 +5620,32 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
             <p className="import-stage-note">{messages.imports.largeImportNotice(previewRows.length)}</p>
           ) : null}
 
-          {preview?.unknownAccounts?.length ? (
-            <div className="import-warning">
-              <strong>{messages.imports.unknownAccounts}</strong>
-              <div className="pill-row dense">
-                {preview.unknownAccounts.map((accountName) => (
-                  <span key={accountName} className="pill warning">{accountName}</span>
+          {showStatementAccountMapping ? (
+            <div className="import-warning import-warning-action">
+              <strong>{unknownPreviewAccountNames.length ? messages.imports.unknownAccounts : messages.imports.accountMappingTitle}</strong>
+              <p className="lede compact">{messages.imports.accountMappingDetail}</p>
+              <div className="statement-account-map-grid">
+                {detectedPreviewAccountNames.map((accountName) => (
+                  <label key={accountName} className="entries-filter statement-account-map-row">
+                    <span className="entries-filter-label">{messages.imports.detectedAccount(accountName)}</span>
+                    <select
+                      className="table-edit-input"
+                      value={knownAccountNames.has(accountName) ? accountName : ""}
+                      onChange={(event) => remapPreviewAccount(accountName, event.target.value)}
+                    >
+                      <option value="">{messages.imports.chooseAccount}</option>
+                      {accounts.map((account) => (
+                        <option key={account.id} value={account.name}>{account.name}</option>
+                      ))}
+                    </select>
+                  </label>
                 ))}
               </div>
             </div>
           ) : null}
 
           {preview?.unknownCategories?.length ? (
-            <div className="import-warning">
+            <div className="import-warning import-warning-attention">
               <strong>{messages.imports.unknownCategories}</strong>
               <div className="pill-row dense">
                 {preview.unknownCategories.map((categoryName) => (
@@ -5407,14 +5666,136 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
               {preview.duplicateCandidateCount ? (
                 <span className="pill warning">{messages.imports.duplicateCandidates(preview.duplicateCandidateCount)}</span>
               ) : null}
-              {preview.overlappingImportCount ? (
-                <span className="pill warning">{messages.imports.overlappingImports(preview.overlappingImportCount)}</span>
+              {visibleOverlapImports.length ? (
+                <span className="pill warning">{messages.imports.overlappingImports(visibleOverlapImports.length)}</span>
               ) : null}
             </div>
           ) : null}
 
+          {visibleOverlapImports.length ? (
+            <div className="import-warning import-warning-overlap">
+              <strong>{messages.imports.previewOverlapTitle}</strong>
+              <p className="lede compact">{messages.imports.previewOverlapDetail}</p>
+              <div className="stack">
+                {visibleOverlapImports.map((item) => (
+                  <div key={item.id} className="import-card import-card-compact">
+                    <div className="import-history-main">
+                      <strong>{item.sourceLabel}</strong>
+                      <span className="import-history-inline">
+                        {messages.common.triplet(
+                          item.importedAt ? formatDate(item.importedAt) : messages.common.emptyValue,
+                          messages.imports.transactionCount(item.transactionCount),
+                          item.sourceType ? item.sourceType.toUpperCase() : messages.common.emptyValue
+                        )}
+                      </span>
+                      {item.startDate && item.endDate ? (
+                        <span className="import-history-inline">{messages.imports.importCoverage(formatDateOnly(item.startDate), formatDateOnly(item.endDate))}</span>
+                      ) : null}
+                      {item.accountNames.length ? <span className="import-history-inline">{item.accountNames.join(", ")}</span> : null}
+                    </div>
+                    <div className="import-meta import-meta-compact">
+                      <button type="button" className="subtle-action" onClick={() => setDismissedOverlapIds((current) => [...new Set([...current, item.id])])}>
+                        {messages.imports.dismissOverlap}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {statementReconciliations.length ? (
+            <div className={`import-warning ${hasStatementReconciliationMismatch ? "import-warning-attention" : "import-warning-reconciled"}`}>
+              <div className="import-warning-head">
+                <div>
+                  <strong>{messages.imports.statementReconciliationTitle}</strong>
+                  <p className="lede compact">
+                    {hasStatementReconciliationMismatch
+                      ? messages.imports.statementReconciliationMismatchDetail
+                      : messages.imports.statementReconciliationMatchedDetail}
+                  </p>
+                </div>
+                <button type="button" className="subtle-action" onClick={handleRefreshStatementReconciliation} disabled={isSubmitting}>
+                  {messages.imports.statementReconciliationRefresh}
+                </button>
+              </div>
+              <div className="stack">
+                {statementReconciliations.map((item) => (
+                  <div key={`${item.accountName}-${item.checkpointMonth}`} className="import-card import-card-compact statement-reconciliation-row">
+                    <div className="import-history-main">
+                      <strong>{messages.imports.statementReconciliationAccount(item.accountName, formatMonthLabel(item.checkpointMonth))}</strong>
+                      {item.statementStartDate && item.statementEndDate ? (
+                        <span className="import-history-inline">{messages.imports.importCoverage(formatDateOnly(item.statementStartDate), formatDateOnly(item.statementEndDate))}</span>
+                      ) : null}
+                      <span className="import-history-inline">{formatStatementReconciliationLine(item)}</span>
+                    </div>
+                    <div className="import-meta import-meta-compact">
+                      <span className={`pill ${item.status === "matched" ? "success" : "warning"}`}>
+                        {messages.imports.statementReconciliationStatus[item.status]}
+                      </span>
+                      {item.deltaMinor != null && item.deltaMinor !== 0 ? (
+                        <p>{messages.imports.statementReconciliationDelta(money(Math.abs(item.deltaMinor)))}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {preview && statementCheckpoints.length ? (
+            <div className="import-warning import-warning-review">
+              <strong>{messages.imports.statementCheckpointsTitle(statementCheckpoints.length)}</strong>
+              <p className="lede compact">{messages.imports.statementCheckpointsDetail(statementCheckpoints.length)}</p>
+              {hasDuplicateCheckpointAccounts ? (
+                <p className="form-error">{messages.imports.duplicateCheckpointAccounts(duplicateCheckpointAccounts.join(", "))}</p>
+              ) : null}
+              <div className="statement-checkpoint-grid">
+                {statementCheckpoints.map((checkpoint, index) => (
+                  <div key={`${checkpoint.accountName}-${index}`} className="statement-checkpoint-row">
+                    <label className="entries-filter">
+                      <span className="entries-filter-label">{messages.imports.statementCheckpointAccount}</span>
+                      <select
+                        className="table-edit-input"
+                        value={checkpoint.accountName}
+                        onChange={(event) => updateStatementCheckpoint(index, { accountName: event.target.value })}
+                      >
+                        {checkpoint.accountName && !knownAccountNames.has(checkpoint.accountName) ? (
+                          <option value={checkpoint.accountName}>{checkpoint.accountName}</option>
+                        ) : null}
+                        {accounts.map((account) => (
+                          <option key={account.id} value={account.name}>{account.name}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="entries-filter">
+                      <span className="entries-filter-label">{messages.imports.statementCheckpointMonth}</span>
+                      <input className="table-edit-input" type="month" value={checkpoint.checkpointMonth} onChange={(event) => updateStatementCheckpoint(index, { checkpointMonth: event.target.value })} />
+                    </label>
+                    <label className="entries-filter">
+                      <span className="entries-filter-label">{messages.imports.statementCheckpointStart}</span>
+                      <input className="table-edit-input" type="date" value={checkpoint.statementStartDate ?? ""} onChange={(event) => updateStatementCheckpoint(index, { statementStartDate: event.target.value })} />
+                    </label>
+                    <label className="entries-filter">
+                      <span className="entries-filter-label">{messages.imports.statementCheckpointEnd}</span>
+                      <input className="table-edit-input" type="date" value={checkpoint.statementEndDate ?? ""} onChange={(event) => updateStatementCheckpoint(index, { statementEndDate: event.target.value })} />
+                    </label>
+                    <label className="entries-filter">
+                      <span className="entries-filter-label">{messages.imports.statementCheckpointBalance}</span>
+                      <input className="table-edit-input" value={formatMinorInput(checkpoint.statementBalanceMinor)} onChange={(event) => updateStatementCheckpoint(index, { statementBalanceMinor: parseMoneyInput(event.target.value, checkpoint.statementBalanceMinor) })} />
+                    </label>
+                    <label className="entries-filter">
+                      <span className="entries-filter-label">{messages.imports.statementCheckpointNote}</span>
+                      <input className="table-edit-input" value={checkpoint.note ?? ""} onChange={(event) => updateStatementCheckpoint(index, { note: event.target.value })} />
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {preview?.duplicateCandidates?.length ? (
-            <div className="import-warning">
+            <div className="import-warning import-warning-attention">
               <strong>{messages.imports.duplicateMatchesTitle}</strong>
               <p className="lede compact">{messages.imports.duplicateMatchesDetail}</p>
               <div className="stack">
@@ -5442,7 +5823,7 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
                 <button
                   type="button"
                   className="subtle-action is-primary"
-                  disabled={isSubmitting || !previewRows.length || hasUnmappedAccounts || hasBlockingCategoryPolicy}
+                  disabled={isSubmitting || isParsingStatement || !previewRows.length || hasUnmappedAccounts || hasBlockingCategoryPolicy || hasDuplicateCheckpointAccounts}
                   onClick={handleCommit}
                 >
                   {messages.imports.commit}
@@ -5491,6 +5872,9 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
                         <td>
                           <select className="table-edit-input" value={row.accountName ?? ""} onChange={(event) => updatePreviewRow(row.rowId, { accountName: event.target.value || undefined })}>
                             <option value="">{messages.entries.allWallets}</option>
+                            {row.accountName && !knownAccountNames.has(row.accountName) ? (
+                              <option value={row.accountName}>{row.accountName}</option>
+                            ) : null}
                             {accounts.map((account) => (
                               <option key={account.id} value={account.name}>{account.name}</option>
                             ))}
@@ -5682,6 +6066,9 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
   const [accountDialogError, setAccountDialogError] = useState("");
   const [categoryDialog, setCategoryDialog] = useState(null);
   const [reconciliationDialog, setReconciliationDialog] = useState(null);
+  const [statementComparePanel, setStatementComparePanel] = useState(null);
+  const [statementCompareResult, setStatementCompareResult] = useState(null);
+  const [statementCompareStatus, setStatementCompareStatus] = useState(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const visibleAccounts = useMemo(() => {
@@ -5784,6 +6171,39 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
       note: account.latestCheckpointNote ?? "",
       history: account.checkpointHistory ?? []
     });
+  }
+
+  function openStatementComparePanel(account, checkpoint) {
+    if (!checkpoint?.month) {
+      return;
+    }
+
+    setSettingsSectionsOpen((current) => ({ ...current, accounts: true }));
+    setStatementComparePanel({
+      accountId: account.id,
+      accountName: account.name,
+      checkpointMonth: checkpoint.month,
+      statementStartDate: checkpoint.statementStartDate,
+      statementEndDate: checkpoint.statementEndDate,
+      deltaMinor: checkpoint.deltaMinor
+    });
+    setStatementCompareResult(null);
+    setStatementCompareStatus(null);
+    setReconciliationDialog(null);
+  }
+
+  function openStatementComparePanelFromDialog(item) {
+    if (!reconciliationDialog?.accountId) {
+      return;
+    }
+
+    openStatementComparePanel(
+      {
+        id: reconciliationDialog.accountId,
+        name: reconciliationDialog.accountName
+      },
+      item
+    );
   }
 
   function openCreateCategoryDialog() {
@@ -5942,6 +6362,57 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
       window.setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Checkpoint export failed.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleCompareStatementUpload(target, event) {
+    const [file] = event.target.files ?? [];
+    event.target.value = "";
+    if (!file || !target?.accountId || !target?.checkpointMonth) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setStatementCompareResult(null);
+    setStatementCompareStatus({ tone: "active", message: messages.settings.statementCompareReading(file.name) });
+    try {
+      let rows = [];
+      let uploadedStatementStartDate;
+      let uploadedStatementEndDate;
+      if (/\.pdf$/i.test(file.name) || file.type === "application/pdf") {
+        const parsed = parseStatementText(await extractPdfText(file), file.name);
+        const selectedStatement = selectParsedStatementForCompare(parsed, target);
+        rows = selectedStatement.rows;
+        uploadedStatementStartDate = selectedStatement.checkpoint?.statementStartDate;
+        uploadedStatementEndDate = selectedStatement.checkpoint?.statementEndDate;
+      } else {
+        rows = inspectCsv(await file.text()).rows;
+      }
+
+      setStatementCompareStatus({ tone: "active", message: messages.settings.statementCompareChecking(rows.length) });
+      const response = await fetch("/api/accounts/checkpoints/compare-statement", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountId: target.accountId,
+          checkpointMonth: target.checkpointMonth,
+          uploadedStatementStartDate,
+          uploadedStatementEndDate,
+          rows
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error ?? "Statement compare failed.");
+      }
+
+      setStatementCompareResult(data.comparison);
+      setStatementCompareStatus({ tone: "success", message: messages.settings.statementCompareReady(data.comparison) });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Statement compare failed.";
+      setStatementCompareStatus({ tone: "error", message });
     } finally {
       setIsSubmitting(false);
     }
@@ -6125,44 +6596,132 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
             </div>
             <p className="lede compact">{messages.settings.accountBalanceHint}</p>
             <div className="settings-accounts-grid">
-              {visibleAccounts.map((account) => (
-                <div key={account.id} className={`settings-account-row settings-account-card ${!account.isActive ? "is-archived" : ""}`}>
-                  <div className="settings-account-main">
-                    <strong>{account.name}</strong>
-                    <p>{messages.common.triplet(account.institution, account.kind, account.ownerLabel)}</p>
-                    <p>{`Balance ${money(account.balanceMinor ?? 0)} • Opening ${money(account.openingBalanceMinor ?? 0)}`}</p>
-                    <p className={`settings-account-health ${account.reconciliationStatus ? `is-${account.reconciliationStatus}` : ""}`}>
-                      {describeAccountHealth(account)}
-                    </p>
-                    <p className="settings-account-meta">
-                      {account.latestImportAt
-                        ? messages.settings.accountHealthLastImport(formatDate(account.latestImportAt))
-                        : messages.settings.accountHealthNoImports}
-                      {account.unresolvedTransferCount ? ` • ${messages.settings.accountHealthUnresolvedTransfers(account.unresolvedTransferCount)}` : ""}
-                    </p>
+              {visibleAccounts.map((account) => {
+                const latestCheckpoint = account.latestCheckpointMonth
+                  ? account.checkpointHistory?.find((item) => item.month === account.latestCheckpointMonth)
+                  : null;
+                return (
+                  <div key={account.id} className={`settings-account-row settings-account-card ${!account.isActive ? "is-archived" : ""}`}>
+                    <div className="settings-account-main">
+                      <strong>{account.name}</strong>
+                      <p>{messages.common.triplet(account.institution, account.kind, account.ownerLabel)}</p>
+                      <p>{`Balance ${money(account.balanceMinor ?? 0)} • Opening ${money(account.openingBalanceMinor ?? 0)}`}</p>
+                      <p className={`settings-account-health ${account.reconciliationStatus ? `is-${account.reconciliationStatus}` : ""}`}>
+                        {describeAccountHealth(account)}
+                      </p>
+                      <p className="settings-account-meta">
+                        {account.latestImportAt
+                          ? messages.settings.accountHealthLastImport(formatDate(account.latestImportAt))
+                          : messages.settings.accountHealthNoImports}
+                        {account.unresolvedTransferCount ? ` • ${messages.settings.accountHealthUnresolvedTransfers(account.unresolvedTransferCount)}` : ""}
+                      </p>
+                    </div>
+                    <div className="settings-account-actions">
+                      {!account.isActive ? <span className="account-badge">{messages.settings.archived}</span> : null}
+                      <button type="button" className="subtle-action" onClick={() => openReconciliationDialog(account)}>
+                        {messages.settings.reconcileAccount}
+                      </button>
+                      {latestCheckpoint && account.latestCheckpointDeltaMinor != null && account.latestCheckpointDeltaMinor !== 0 ? (
+                        <button type="button" className="settings-text-link" onClick={() => openStatementComparePanel(account, latestCheckpoint)}>
+                          {messages.settings.statementCompareOpen}
+                        </button>
+                      ) : null}
+                      <button type="button" className="icon-action" aria-label={messages.settings.editAccount} onClick={() => openEditAccountDialog(account)}>
+                        <SquarePen size={16} />
+                      </button>
+                      {account.isActive ? (
+                        <DeleteRowButton
+                          label={account.name}
+                          triggerLabel={messages.settings.archiveAccount}
+                          confirmLabel={messages.settings.archiveAccount}
+                          destructive={false}
+                          prompt={messages.settings.archiveAccountDetail(account.name)}
+                          onConfirm={() => handleArchiveAccount(account.id)}
+                        />
+                      ) : null}
+                    </div>
                   </div>
-                  <div className="settings-account-actions">
-                    {!account.isActive ? <span className="account-badge">{messages.settings.archived}</span> : null}
-                    <button type="button" className="subtle-action" onClick={() => openReconciliationDialog(account)}>
-                      {messages.settings.reconcileAccount}
-                    </button>
-                    <button type="button" className="icon-action" aria-label={messages.settings.editAccount} onClick={() => openEditAccountDialog(account)}>
-                      <SquarePen size={16} />
-                    </button>
-                    {account.isActive ? (
-                      <DeleteRowButton
-                        label={account.name}
-                        triggerLabel={messages.settings.archiveAccount}
-                        confirmLabel={messages.settings.archiveAccount}
-                        destructive={false}
-                        prompt={messages.settings.archiveAccountDetail(account.name)}
-                        onConfirm={() => handleArchiveAccount(account.id)}
-                      />
-                    ) : null}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
+            {statementComparePanel ? (
+              <div className="settings-statement-compare-inline">
+                <div className="settings-statement-compare-head">
+                  <div>
+                    <strong>{messages.settings.statementComparePanelTitle(statementComparePanel.accountName, formatMonthLabel(statementComparePanel.checkpointMonth))}</strong>
+                            <p>{messages.settings.statementComparePanelDetail}</p>
+                            {statementComparePanel.deltaMinor != null ? (
+                              <p className="settings-account-health is-mismatch">{messages.settings.statementCompareDelta(money(Math.abs(statementComparePanel.deltaMinor)))}</p>
+                            ) : null}
+                            {statementComparePanel.statementStartDate && statementComparePanel.statementEndDate ? (
+                              <p>{messages.settings.statementCompareCheckpointPeriod(formatDateOnly(statementComparePanel.statementStartDate), formatDateOnly(statementComparePanel.statementEndDate))}</p>
+                            ) : null}
+                  </div>
+                  <button type="button" className="subtle-cancel" onClick={() => setStatementComparePanel(null)}>
+                    Cancel
+                  </button>
+                </div>
+                <input
+                  id="statement-compare-account-upload"
+                  type="file"
+                  accept=".csv,text/csv,.pdf,application/pdf"
+                  hidden
+                  onChange={(event) => void handleCompareStatementUpload(statementComparePanel, event)}
+                />
+                <button
+                  type="button"
+                  className="subtle-action is-primary"
+                  disabled={isSubmitting}
+                  onClick={() => document.getElementById("statement-compare-account-upload")?.click()}
+                >
+                  {messages.settings.statementCompareUpload}
+                </button>
+                {statementCompareStatus ? (
+                  <section className={`settings-statement-compare is-${statementCompareStatus.tone}`}>
+                    <strong>{messages.settings.statementCompareTitle}</strong>
+                    <p>{statementCompareStatus.message}</p>
+                  </section>
+                ) : null}
+                {statementCompareResult ? (
+                  <StatementCompareResultView
+                    result={statementCompareResult}
+                    deltaMinor={statementComparePanel.deltaMinor}
+                    accounts={accounts}
+                    categories={categories}
+                    people={people}
+                    onRowsMatched={(statementRow, ledgerRow) => {
+                      setStatementCompareResult((current) => current ? {
+                        ...current,
+                        matchedRowCount: current.matchedRowCount + 1,
+                        unmatchedStatementRows: current.unmatchedStatementRows.filter((row) => row.id !== statementRow.id),
+                        unmatchedLedgerRows: current.unmatchedLedgerRows.filter((row) => row.id !== ledgerRow.id),
+                        possibleMatches: current.possibleMatches.filter((candidate) => (
+                          candidate.statementRow.id !== statementRow.id
+                          && candidate.ledgerRow.id !== ledgerRow.id
+                        ))
+                      } : current);
+                      setStatementComparePanel((current) => current ? {
+                        ...current,
+                        deltaMinor: typeof current.deltaMinor === "number"
+                          ? current.deltaMinor + statementRow.signedAmountMinor - ledgerRow.signedAmountMinor
+                          : current.deltaMinor
+                      } : current);
+                      setStatementCompareStatus({ tone: "success", message: messages.settings.statementCompareDirectionFixed });
+                      void onRefresh();
+                    }}
+                    onEntryAdded={(rowId) => {
+                      setStatementCompareResult((current) => current ? {
+                        ...current,
+                        ledgerRowCount: current.ledgerRowCount + 1,
+                        unmatchedStatementRows: current.unmatchedStatementRows.filter((row) => row.id !== rowId)
+                      } : current);
+                      setStatementCompareStatus({ tone: "success", message: messages.settings.statementCompareEntryAdded });
+                      void onRefresh();
+                    }}
+                  />
+                ) : null}
+              </div>
+            ) : null}
           </>
         ) : null}
       </section>
@@ -6686,7 +7245,13 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
         </Dialog.Portal>
       </Dialog.Root>
 
-      <Dialog.Root open={Boolean(reconciliationDialog)} onOpenChange={(open) => { if (!open) setReconciliationDialog(null); }}>
+      <Dialog.Root open={Boolean(reconciliationDialog)} onOpenChange={(open) => {
+        if (!open) {
+          setReconciliationDialog(null);
+          setStatementCompareResult(null);
+          setStatementCompareStatus(null);
+        }
+      }}>
         <Dialog.Portal>
           <Dialog.Overlay className="note-dialog-overlay" />
           <Dialog.Content className="note-dialog-content settings-account-dialog settings-reconciliation-dialog">
@@ -6783,6 +7348,16 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
                                 {messages.settings.checkpointExport}
                               </button>
                             ) : null}
+                            {item.deltaMinor !== 0 && reconciliationDialog?.accountId ? (
+                              <button
+                                type="button"
+                                className="settings-checkpoint-export"
+                                disabled={isSubmitting}
+                                onClick={() => openStatementComparePanelFromDialog(item)}
+                              >
+                                {messages.settings.statementCompareOpen}
+                              </button>
+                            ) : null}
                           </div>
                           {item.note ? <p className="settings-account-meta">{item.note}</p> : null}
                         </div>
@@ -6823,6 +7398,396 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
       </Dialog.Root>
 
     </article>
+  );
+}
+
+function StatementCompareResultView({ result, deltaMinor, accounts, categories, people, onEntryAdded, onRowsMatched }) {
+  const directionMismatches = result.possibleMatches.filter((candidate) => candidate.amountDirectionMismatch);
+  const duplicateStatementGroups = result.duplicateStatementGroups ?? [];
+  const duplicateLedgerGroups = result.duplicateLedgerGroups ?? [];
+  return (
+    <section className="settings-statement-compare">
+      <strong>{messages.settings.statementCompareSummary(result)}</strong>
+      {deltaMinor != null ? (
+        <p className="settings-account-health is-mismatch">{messages.settings.statementCompareDelta(money(Math.abs(deltaMinor)))}</p>
+      ) : null}
+      <div className="settings-statement-compare-periods">
+        <p>{messages.settings.statementCompareCheckpointPeriod(
+          result.statementStartDate ? formatDateOnly(result.statementStartDate) : messages.common.emptyValue,
+          formatDateOnly(result.statementEndDate)
+        )}</p>
+        <p>{messages.settings.statementCompareUploadedPeriod(
+          result.uploadedStatementStartDate ? formatDateOnly(result.uploadedStatementStartDate) : messages.common.emptyValue,
+          result.uploadedStatementEndDate ? formatDateOnly(result.uploadedStatementEndDate) : messages.common.emptyValue
+        )}</p>
+      </div>
+      {result.possibleMatches.length ? (
+        <div className="settings-statement-compare-block">
+          <h3>{messages.settings.statementComparePossibleTitle}</h3>
+          {result.possibleMatches.slice(0, 5).map((candidate) => (
+            <p key={`${candidate.statementRow.id}-${candidate.ledgerRow.id}`}>
+              {messages.settings.statementComparePossibleRow(candidate)}
+            </p>
+          ))}
+        </div>
+      ) : null}
+      {directionMismatches.length ? (
+        <div className="settings-statement-compare-block is-warning">
+          <h3>{messages.settings.statementCompareDirectionTitle}</h3>
+          <p className="settings-statement-compare-explainer">{messages.settings.statementCompareDirectionDetail}</p>
+          {directionMismatches.slice(0, 5).map((candidate) => (
+            <StatementCompareDirectionMismatch
+              key={`${candidate.statementRow.id}-${candidate.ledgerRow.id}`}
+              candidate={candidate}
+              categories={categories}
+              onRowsMatched={onRowsMatched}
+            />
+          ))}
+        </div>
+      ) : null}
+      <div className="settings-statement-compare-block">
+        <h3>{messages.settings.statementCompareDuplicateTitle}</h3>
+        {duplicateStatementGroups.length || duplicateLedgerGroups.length ? (
+          <>
+            <p>{messages.settings.statementCompareDuplicateSummary(duplicateStatementGroups.length, duplicateLedgerGroups.length)}</p>
+            <StatementCompareDuplicateGroups title={messages.settings.statementCompareDuplicateStatement} groups={duplicateStatementGroups} />
+            <StatementCompareDuplicateGroups title={messages.settings.statementCompareDuplicateLedger} groups={duplicateLedgerGroups} />
+          </>
+        ) : (
+          <p>{messages.settings.statementCompareDuplicateNone}</p>
+        )}
+      </div>
+      <div className="settings-statement-compare-grid">
+        <div>
+          <h3>{messages.settings.statementCompareMissingTitle}</h3>
+          {result.unmatchedStatementRows.length ? result.unmatchedStatementRows.slice(0, 12).map((row) => (
+            <StatementCompareMissingRow
+              key={row.id}
+              row={row}
+              result={result}
+              accounts={accounts}
+              categories={categories}
+              people={people}
+              onEntryAdded={onEntryAdded}
+            />
+          )) : <p>{messages.settings.statementCompareNone}</p>}
+        </div>
+        <div>
+          <h3>{messages.settings.statementCompareExtraTitle}</h3>
+          {result.unmatchedLedgerRows.length ? result.unmatchedLedgerRows.slice(0, 12).map((row) => (
+            <StatementCompareDisplayRow key={row.id} row={row} />
+          )) : <p>{messages.settings.statementCompareNone}</p>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StatementCompareDuplicateGroups({ title, groups }) {
+  if (!groups.length) {
+    return null;
+  }
+
+  return (
+    <div className="settings-statement-duplicate-groups">
+      <strong>{title}</strong>
+      {groups.slice(0, 5).map((group, index) => (
+        <div className="settings-statement-duplicate-group" key={`${title}-${index}`}>
+          {group.rows.map((row) => <StatementCompareDisplayRow key={row.id} row={row} />)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StatementCompareDirectionMismatch({ candidate, categories, onRowsMatched }) {
+  const defaultCategoryName = candidate.statementRow.entryType === "transfer"
+    ? "Transfer"
+    : candidate.statementRow.categoryName && categories.some((category) => category.name === candidate.statementRow.categoryName)
+      ? candidate.statementRow.categoryName
+      : categories.find((category) => category.name === "Other - Income")?.name
+        ?? categories.find((category) => category.name === "Other")?.name
+        ?? categories[0]?.name
+        ?? "";
+  const [draft, setDraft] = useState(() => ({
+    entryType: candidate.statementRow.entryType,
+    transferDirection: candidate.statementRow.transferDirection ?? (candidate.statementRow.entryType === "transfer" ? candidate.statementRow.signedAmountMinor > 0 ? "in" : "out" : undefined),
+    categoryName: defaultCategoryName
+  }));
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [open, setOpen] = useState(false);
+
+  function updateDraft(patch) {
+    setDraft((current) => {
+      const next = { ...current, ...patch };
+      if (next.entryType === "transfer") {
+        next.categoryName = "Transfer";
+        next.transferDirection = next.transferDirection ?? "out";
+      } else {
+        next.transferDirection = undefined;
+        if (next.categoryName === "Transfer") {
+          next.categoryName = defaultCategoryName === "Transfer"
+            ? categories.find((category) => category.name === "Other")?.name ?? categories[0]?.name ?? ""
+            : defaultCategoryName;
+        }
+      }
+      return next;
+    });
+  }
+
+  async function saveDraft() {
+    setError("");
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/entries/update-classification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entryId: candidate.ledgerRow.id,
+          entryType: draft.entryType,
+          transferDirection: draft.transferDirection,
+          categoryName: draft.categoryName
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to update ledger row.");
+      }
+      setOpen(false);
+      onRowsMatched?.(candidate.statementRow, candidate.ledgerRow);
+    } catch (errorValue) {
+      setError(errorValue instanceof Error ? errorValue.message : "Failed to update ledger row.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <div className="settings-statement-direction-row">
+      <StatementCompareDisplayRow row={candidate.statementRow} label={messages.settings.statementCompareMissingTitle} />
+      <div>
+        <StatementCompareDisplayRow row={candidate.ledgerRow} label={messages.settings.statementCompareExtraTitle} />
+        <Popover.Root open={open} onOpenChange={setOpen}>
+          <Popover.Trigger asChild>
+            <button type="button" className="settings-text-link">{messages.settings.statementCompareFixDirection}</button>
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content className="settings-statement-entry-popover" sideOffset={8} align="end">
+              <strong>{messages.settings.statementCompareFixDirectionTitle}</strong>
+              <div className="settings-statement-entry-form">
+                <label className="table-edit-field">
+                  <span>{messages.imports.table.type}</span>
+                  <select className="table-edit-input" value={draft.entryType} onChange={(event) => updateDraft({ entryType: event.target.value })}>
+                    <option value="expense">Expense</option>
+                    <option value="income">Income</option>
+                    <option value="transfer">Transfer</option>
+                  </select>
+                </label>
+                {draft.entryType === "transfer" ? (
+                  <label className="table-edit-field">
+                    <span>Direction</span>
+                    <select className="table-edit-input" value={draft.transferDirection ?? "out"} onChange={(event) => updateDraft({ transferDirection: event.target.value })}>
+                      <option value="out">Out</option>
+                      <option value="in">In</option>
+                    </select>
+                  </label>
+                ) : (
+                  <label className="table-edit-field">
+                    <span>{messages.imports.table.category}</span>
+                    <select className="table-edit-input" value={draft.categoryName} onChange={(event) => updateDraft({ categoryName: event.target.value })}>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.name}>{category.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+              {error ? <p className="form-error">{error}</p> : null}
+              <div className="dialog-actions">
+                <button type="button" className="subtle-cancel" onClick={() => setOpen(false)}>Cancel</button>
+                <button type="button" className="dialog-primary" disabled={isSaving || !draft.entryType || !draft.categoryName} onClick={() => void saveDraft()}>
+                  {messages.settings.statementCompareFixDirectionSave}
+                </button>
+              </div>
+              <Popover.Arrow className="category-popover-arrow" />
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
+      </div>
+    </div>
+  );
+}
+
+function StatementCompareDisplayRow({ row, label }) {
+  return (
+    <div className="settings-statement-row">
+      {label ? <span className="settings-statement-row-label">{label}</span> : null}
+      <span>{formatDateOnly(row.date)}</span>
+      <strong className={getAmountToneClass(row.signedAmountMinor)}>{money(row.signedAmountMinor)}</strong>
+      <p>{row.description}</p>
+    </div>
+  );
+}
+
+function StatementCompareMissingRow({ row, result, accounts, categories, people, onEntryAdded }) {
+  const account = accounts.find((item) => item.name === result.accountName);
+  const preferredOwnerName = people.find((person) => person.name === account?.ownerLabel)?.name ?? people[0]?.name ?? "";
+  const defaultCategoryName = row.entryType === "transfer"
+    ? "Transfer"
+    : row.categoryName && categories.some((category) => category.name === row.categoryName)
+      ? row.categoryName
+      : categories.find((category) => category.name === "Other")?.name ?? categories[0]?.name ?? "";
+  const [draft, setDraft] = useState(() => ({
+    date: row.date,
+    description: row.description,
+    accountName: result.accountName,
+    categoryName: defaultCategoryName,
+    amountMinor: row.amountMinor,
+    entryType: row.entryType,
+    transferDirection: row.transferDirection ?? (row.entryType === "transfer" ? row.signedAmountMinor > 0 ? "in" : "out" : undefined),
+    ownershipType: "direct",
+    ownerName: preferredOwnerName,
+    note: row.note ?? ""
+  }));
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [open, setOpen] = useState(false);
+
+  function updateDraft(patch) {
+    setDraft((current) => {
+      const next = { ...current, ...patch };
+      if (next.entryType === "transfer") {
+        next.categoryName = "Transfer";
+        next.transferDirection = next.transferDirection ?? "out";
+      } else if (next.categoryName === "Transfer") {
+        next.categoryName = defaultCategoryName === "Transfer" ? "Other" : defaultCategoryName;
+        next.transferDirection = undefined;
+      } else {
+        next.transferDirection = undefined;
+      }
+      if (next.ownershipType !== "direct") {
+        next.ownerName = undefined;
+      } else {
+        next.ownerName = next.ownerName || preferredOwnerName;
+      }
+      return next;
+    });
+  }
+
+  async function saveDraft() {
+    setError("");
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/entries/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draft)
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to add ledger entry.");
+      }
+      setOpen(false);
+      onEntryAdded?.(row.id);
+    } catch (errorValue) {
+      setError(errorValue instanceof Error ? errorValue.message : "Failed to add ledger entry.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <div className="settings-statement-row settings-statement-row-action">
+      <span>{formatDateOnly(row.date)}</span>
+      <strong className={getAmountToneClass(row.signedAmountMinor)}>{money(row.signedAmountMinor)}</strong>
+      <p>{row.description}</p>
+      <Popover.Root open={open} onOpenChange={setOpen}>
+        <Popover.Trigger asChild>
+          <button type="button" className="settings-text-link">{messages.settings.statementCompareAddEntry}</button>
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content className="settings-statement-entry-popover" sideOffset={8} align="end">
+            <strong>{messages.settings.statementCompareAddEntryTitle}</strong>
+            <div className="settings-statement-entry-form">
+              <label className="table-edit-field">
+                <span>{messages.imports.table.date}</span>
+                <input className="table-edit-input" type="date" value={draft.date} onChange={(event) => updateDraft({ date: event.target.value })} />
+              </label>
+              <label className="table-edit-field">
+                <span>{messages.imports.table.account}</span>
+                <select className="table-edit-input" value={draft.accountName} onChange={(event) => updateDraft({ accountName: event.target.value })}>
+                  {accounts.map((accountOption) => (
+                    <option key={accountOption.id} value={accountOption.name}>{accountOption.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="table-edit-field">
+                <span>{messages.imports.table.description}</span>
+                <input className="table-edit-input" value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} />
+              </label>
+              <label className="table-edit-field">
+                <span>{messages.imports.table.amount}</span>
+                <input className="table-edit-input" value={formatMinorInput(draft.amountMinor)} onChange={(event) => updateDraft({ amountMinor: parseMoneyInput(event.target.value, draft.amountMinor) })} />
+              </label>
+              <label className="table-edit-field">
+                <span>{messages.imports.table.type}</span>
+                <select className="table-edit-input" value={draft.entryType} onChange={(event) => updateDraft({ entryType: event.target.value })}>
+                  <option value="expense">Expense</option>
+                  <option value="income">Income</option>
+                  <option value="transfer">Transfer</option>
+                </select>
+              </label>
+              {draft.entryType === "transfer" ? (
+                <label className="table-edit-field">
+                  <span>Direction</span>
+                  <select className="table-edit-input" value={draft.transferDirection ?? "out"} onChange={(event) => updateDraft({ transferDirection: event.target.value })}>
+                    <option value="out">Out</option>
+                    <option value="in">In</option>
+                  </select>
+                </label>
+              ) : (
+                <label className="table-edit-field">
+                  <span>{messages.imports.table.category}</span>
+                  <select className="table-edit-input" value={draft.categoryName} onChange={(event) => updateDraft({ categoryName: event.target.value })}>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.name}>{category.name}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <label className="table-edit-field">
+                <span>{messages.imports.table.owner}</span>
+                <select className="table-edit-input" value={draft.ownershipType === "shared" ? "shared" : draft.ownerName} onChange={(event) => {
+                  if (event.target.value === "shared") {
+                    updateDraft({ ownershipType: "shared", ownerName: undefined });
+                  } else {
+                    updateDraft({ ownershipType: "direct", ownerName: event.target.value });
+                  }
+                }}>
+                  {people.map((person) => (
+                    <option key={person.id} value={person.name}>{person.name}</option>
+                  ))}
+                  <option value="shared">{messages.entries.shared}</option>
+                </select>
+              </label>
+              <label className="table-edit-field">
+                <span>{messages.imports.table.note}</span>
+                <input className="table-edit-input" value={draft.note} onChange={(event) => updateDraft({ note: event.target.value })} />
+              </label>
+            </div>
+            {error ? <p className="form-error">{error}</p> : null}
+            <div className="dialog-actions">
+              <button type="button" className="subtle-cancel" onClick={() => setOpen(false)}>Cancel</button>
+              <button type="button" className="dialog-primary" disabled={isSaving || !draft.date || !draft.description || !draft.accountName || !draft.categoryName || !draft.amountMinor} onClick={() => void saveDraft()}>
+                {messages.settings.statementCompareAddEntrySave}
+              </button>
+            </div>
+            <Popover.Arrow className="category-popover-arrow" />
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+    </div>
   );
 }
 
@@ -7245,6 +8210,83 @@ function buildMappedImportRows(rows, columnMappings) {
     .filter((row) => Object.keys(row).length > 0);
 }
 
+function buildRawImportRowFromPreviewRow(row) {
+  const isMoneyIn = row.entryType === "income" || (row.entryType === "transfer" && row.transferDirection === "in");
+  return {
+    date: row.date,
+    description: row.description,
+    expense: isMoneyIn ? "" : formatMinorInput(row.amountMinor),
+    income: isMoneyIn ? formatMinorInput(row.amountMinor) : "",
+    account: row.accountName ?? "",
+    category: row.categoryName ?? "",
+    note: row.note ?? "",
+    type: row.entryType
+  };
+}
+
+async function extractPdfText(file) {
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+  const data = new Uint8Array(await file.arrayBuffer());
+  const document = await pdfjs.getDocument({ data }).promise;
+  const pages = [];
+  const layoutPages = [];
+  const spacedLayoutPages = [];
+
+  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+    const page = await document.getPage(pageNumber);
+    const content = await page.getTextContent();
+    pages.push(content.items.map((item) => item.str ?? "").join("\n"));
+    layoutPages.push(extractPdfLayoutLines(content.items).join("\n"));
+    spacedLayoutPages.push(extractPdfLayoutLines(content.items, " ").join("\n"));
+  }
+
+  return `${pages.join("\n")}\n__PDF_LAYOUT_TEXT__\n${layoutPages.join("\n")}\n__PDF_SPACED_LAYOUT_TEXT__\n${spacedLayoutPages.join("\n")}`;
+}
+
+function extractPdfLayoutLines(items, chunkSeparator = "") {
+  const lines = [];
+  for (const item of items) {
+    const text = item.str ?? "";
+    if (!text.trim()) {
+      continue;
+    }
+
+    const x = item.transform?.[4] ?? 0;
+    const y = item.transform?.[5] ?? 0;
+    let line = lines.find((candidate) => Math.abs(candidate.y - y) < 2.5);
+    if (!line) {
+      line = { y, chunks: [] };
+      lines.push(line);
+    }
+    line.chunks.push({ x, text });
+  }
+
+  return lines
+    .sort((left, right) => right.y - left.y)
+    .map((line) => line.chunks
+      .sort((left, right) => left.x - right.x)
+      .map((chunk) => chunk.text)
+      .join(chunkSeparator)
+      .replace(/\s+/g, " ")
+      .trim())
+    .filter(Boolean);
+}
+
+function selectParsedStatementForCompare(parsed, target) {
+  const checkpoint = parsed.checkpoints.find((item) => item.accountName === target.accountName) ?? parsed.checkpoints[0];
+  const accountNames = new Set(parsed.rows.map((row) => row.account).filter(Boolean));
+  if (accountNames.size > 1 && target.accountName && !accountNames.has(target.accountName)) {
+    throw new Error(`This statement does not contain rows for ${target.accountName}.`);
+  }
+
+  const rows = accountNames.size > 1
+    ? parsed.rows.filter((row) => row.account === target.accountName)
+    : parsed.rows;
+
+  return { checkpoint, rows };
+}
+
 function entryMatchesScope(entry, viewId, scope) {
   if (viewId === "household") {
     return scope === "shared" ? entry.ownershipType === "shared" : true;
@@ -7614,6 +8656,22 @@ function formatCheckpointHistoryBalanceLine(item, accountKind) {
   }
 
   return `Statement ${money(item.statementBalanceMinor)} • Ledger ${money(item.computedBalanceMinor)}`;
+}
+
+function formatStatementReconciliationLine(item) {
+  if (item.projectedLedgerBalanceMinor == null) {
+    return `Statement ${money(item.statementBalanceMinor)}`;
+  }
+
+  if (item.accountKind === "credit_card") {
+    return `Statement owed ${money(Math.abs(item.statementBalanceMinor))} • Ledger owed ${money(Math.abs(item.projectedLedgerBalanceMinor))}`;
+  }
+
+  return `Statement ${money(item.statementBalanceMinor)} • Ledger ${money(item.projectedLedgerBalanceMinor)}`;
+}
+
+function formatStatementCompareRow(row) {
+  return `${formatDateOnly(row.date)} • ${money(row.signedAmountMinor)} • ${row.description}`;
 }
 
 function formatEditableMinorInput(valueMinor) {

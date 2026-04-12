@@ -355,10 +355,74 @@ export interface ImportPreviewDto {
   unknownCategories: string[];
   duplicateCandidateCount: number;
   overlappingImportCount: number;
+  overlapImports: ImportOverlapDto[];
   startDate?: string;
   endDate?: string;
   accountNames: string[];
   duplicateCandidates: DuplicateCandidateDto[];
+  statementReconciliations: ImportPreviewStatementReconciliationDto[];
+}
+
+export interface StatementCheckpointDraftDto {
+  accountName: string;
+  checkpointMonth: string;
+  statementStartDate?: string;
+  statementEndDate?: string;
+  statementBalanceMinor: number;
+  note?: string;
+}
+
+export interface ImportPreviewStatementReconciliationDto {
+  accountName: string;
+  accountKind?: string;
+  checkpointMonth: string;
+  statementStartDate?: string;
+  statementEndDate?: string;
+  statementBalanceMinor: number;
+  projectedLedgerBalanceMinor?: number;
+  deltaMinor?: number;
+  status: "matched" | "mismatch" | "unknown_account";
+}
+
+export interface StatementCompareRowDto {
+  id: string;
+  date: string;
+  description: string;
+  amountMinor: number;
+  signedAmountMinor: number;
+  entryType: EntryType;
+  transferDirection?: TransferDirection;
+  categoryName?: string;
+  note?: string;
+}
+
+export interface StatementCompareCandidateDto {
+  statementRow: StatementCompareRowDto;
+  ledgerRow: StatementCompareRowDto;
+  dateDeltaDays: number;
+  descriptionScore: number;
+  amountDirectionMismatch?: boolean;
+}
+
+export interface StatementCompareDuplicateGroupDto {
+  rows: StatementCompareRowDto[];
+}
+
+export interface StatementCompareDto {
+  accountName: string;
+  checkpointMonth: string;
+  statementStartDate?: string;
+  statementEndDate: string;
+  uploadedStatementStartDate?: string;
+  uploadedStatementEndDate?: string;
+  statementRowCount: number;
+  ledgerRowCount: number;
+  matchedRowCount: number;
+  unmatchedStatementRows: StatementCompareRowDto[];
+  unmatchedLedgerRows: StatementCompareRowDto[];
+  possibleMatches: StatementCompareCandidateDto[];
+  duplicateStatementGroups: StatementCompareDuplicateGroupDto[];
+  duplicateLedgerGroups: StatementCompareDuplicateGroupDto[];
 }
 
 export interface DuplicateCandidateDto {

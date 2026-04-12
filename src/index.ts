@@ -4,6 +4,7 @@ import {
   archiveAccountRecord,
   buildAccountCheckpointLedgerCsv,
   buildImportPreview,
+  compareAccountCheckpointStatementRows,
   commitImportBatch,
   createSplitExpenseRecord,
   createSplitExpenseFromEntryRecord,
@@ -32,6 +33,7 @@ import {
   updateCategoryRecord,
   updatePersonRecord,
   updateMonthlySnapshotNote,
+  updateEntryClassificationRecord,
   updateEntryRecord
 } from "./domain/app-repository";
 import { parseCsv } from "./lib/csv";
@@ -224,6 +226,35 @@ export default {
       });
     }
 
+    if (url.pathname === "/api/accounts/checkpoints/compare-statement" && request.method === "POST") {
+      const body = await request.json<{
+        accountId?: string;
+        checkpointMonth?: string;
+        rows?: Record<string, string>[];
+        uploadedStatementStartDate?: string;
+        uploadedStatementEndDate?: string;
+      }>();
+
+      if (!body.accountId || !body.checkpointMonth || !body.rows?.length) {
+        return json({ ok: false, error: "Missing statement compare fields" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          comparison: await compareAccountCheckpointStatementRows(env.DB, {
+            accountId: body.accountId,
+            checkpointMonth: body.checkpointMonth,
+            rows: body.rows,
+            uploadedStatementStartDate: body.uploadedStatementStartDate,
+            uploadedStatementEndDate: body.uploadedStatementEndDate
+          })
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Statement compare failed" }, 400);
+      }
+    }
+
     if (url.pathname === "/api/months/duplicate" && request.method === "POST") {
       const sourceMonth = url.searchParams.get("source");
       if (!sourceMonth) {
@@ -286,6 +317,29 @@ export default {
           ownerName: body.ownerName,
           note: body.note,
           splitBasisPoints: body.splitBasisPoints
+        }))
+      });
+    }
+
+    if (url.pathname === "/api/entries/update-classification" && request.method === "POST") {
+      const body = await request.json<{
+        entryId?: string;
+        entryType?: "expense" | "income" | "transfer";
+        transferDirection?: "in" | "out";
+        categoryName?: string;
+      }>();
+
+      if (!body.entryId || !body.entryType || !body.categoryName) {
+        return json({ ok: false, error: "Missing entry classification fields" }, 400);
+      }
+
+      return json({
+        ok: true,
+        ...(await updateEntryClassificationRecord(env.DB, {
+          entryId: body.entryId,
+          entryType: body.entryType,
+          transferDirection: body.transferDirection,
+          categoryName: body.categoryName
         }))
       });
     }
@@ -767,6 +821,14 @@ export default {
         ownershipType?: "direct" | "shared";
         ownerName?: string;
         splitBasisPoints?: number;
+        statementCheckpoints?: {
+          accountName: string;
+          checkpointMonth: string;
+          statementStartDate?: string;
+          statementEndDate?: string;
+          statementBalanceMinor: number;
+          note?: string;
+        }[];
       }>();
 
       const rows = body.rows ?? parseCsv(body.csv ?? "");
@@ -779,7 +841,8 @@ export default {
             defaultAccountName: body.defaultAccountName,
             ownershipType: body.ownershipType ?? "direct",
             ownerName: body.ownerName,
-            splitBasisPoints: body.splitBasisPoints
+            splitBasisPoints: body.splitBasisPoints,
+            statementCheckpoints: body.statementCheckpoints ?? []
           })
         });
       } catch (error) {
@@ -791,7 +854,17 @@ export default {
     if (url.pathname === "/api/imports/commit" && request.method === "POST") {
       const body = await request.json<{
         sourceLabel?: string;
+        sourceType?: "csv" | "pdf" | "manual";
+        parserKey?: string;
         note?: string;
+        statementCheckpoints?: {
+          accountName: string;
+          checkpointMonth: string;
+          statementStartDate?: string;
+          statementEndDate?: string;
+          statementBalanceMinor: number;
+          note?: string;
+        }[];
         rows?: {
           rowId: string;
           rowIndex: number;
@@ -818,7 +891,10 @@ export default {
         ok: true,
         ...(await commitImportBatch(env.DB, {
           sourceLabel: body.sourceLabel,
+          sourceType: body.sourceType ?? "csv",
+          parserKey: body.parserKey ?? "generic_csv",
           note: body.note,
+          statementCheckpoints: body.statementCheckpoints ?? [],
           rows: body.rows
         }))
       });

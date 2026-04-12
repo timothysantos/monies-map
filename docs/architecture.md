@@ -31,9 +31,23 @@ That distinction matters because the system needs to answer questions like:
 
 ### 1. Import
 
-- user uploads a CSV export from a bank, card, or mixed-account source
+- user uploads a CSV export from a bank, card, or mixed-account source, or a
+  supported PDF statement
 - system uses an institution-specific mapping profile when available
+- PDF statement import is deterministic: the browser extracts text, statement
+  parsers normalize rows into the same import shape as CSV, and unsupported
+  layouts fail before preview instead of using generative inference
+- PDF statement parsers are institution-specific. UOB card and savings
+  statements use their printed transaction blocks and balances; Citibank
+  Rewards and Citibank Miles card statements use browser-extracted layout text
+  because their transaction rows are compact, preserve negative credit balances,
+  and reconcile against card-section grand totals before preview; OCBC 365 card
+  statements and OCBC 360 account statements use spaced layout text and running
+  balances where available to determine row direction before preview.
 - review step allows whole-file or per-row account attribution
+- supported PDF statements can also produce editable statement checkpoints; the
+  preview projects the post-import ledger balance against those checkpoints
+  before commit, then saves them during commit for account reconciliation
 - transactions are normalized to a single ledger shape
 - every imported row is attached to an import batch for audit and rollback
 - CSV commits pre-resolve accounts, categories, and people before writing, then
@@ -119,6 +133,20 @@ That distinction matters because the system needs to answer questions like:
   unresolved transfer counts so trust warnings stay close to balances
 - import previews and recent import batches expose duplicate and same-account
   overlapping date-range signals so CSV trust is visible before and after commit
+- PDF statement previews also compare detected statement balances with the
+  projected account ledger through each statement end date before commit
+- mismatched checkpoints can compare an uploaded statement against the already
+  committed ledger for that checkpoint period without treating the statement as
+  a new import; if the saved checkpoint has no explicit period, the comparison
+  uses the uploaded statement period before falling back to the calendar month
+- statement comparison near matches include same-amount rows with opposite
+  direction so manual income-versus-expense mistakes explain checkpoint deltas
+  without looking like wholly missing transactions
+- direction mismatches can be fixed in place by updating only the committed
+  ledger row classification, preserving the statement comparison session
+- statement comparison also reports duplicate-looking groups within the uploaded
+  statement and committed ledger using same date, signed amount, and normalized
+  description
 - large import previews call out that production commits are chunked and that a
   rejected Cloudflare request should be retried as smaller batches
 - duplicate heuristics now distinguish exact ledger matches from near matches

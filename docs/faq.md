@@ -287,8 +287,9 @@ The import workflow now also flags possible duplicate rows already in the
 ledger and warns when the preview overlaps the date range of previous completed
 imports for the same accounts. Recent imports also show which completed batches
 overlap, so a first import for a different card is not flagged just because the
-dates cross. This is not full reconciliation, but it is meant to catch the most
-common CSV trust mistakes before commit.
+dates cross. For supported PDFs, the preview also runs the statement balance
+check before commit; duplicate and overlap warnings are separate guardrails for
+catching common CSV and statement-import mistakes.
 
 Those duplicate warnings are now a bit smarter than a raw exact hash check. The
 app shows both exact matches and near matches based on amount, account, date
@@ -304,12 +305,74 @@ review, edit, or delete more than the latest month-end proof. Unresolved
 transfers now have a larger review surface in Settings that links back into
 Entries for cleanup.
 
-## Does it already support real CSV import?
+For an already-imported statement period with a mismatch, use Settings ->
+Accounts and choose Compare statement on the mismatched account. The same link
+is also available from the checkpoint history inside Reconcile; choosing it
+closes the dialog and opens a full-width comparison section below the account
+cards. Upload the bank statement there instead of importing it again. The
+section shows the checkpoint period before upload, then fills the uploaded
+statement period from the PDF after upload so you can confirm the right file and
+date range are being compared. It also shows the mismatched amount from the
+checkpoint delta. PDF comparison uses the same deterministic statement parser as
+the Imports page, including account-section scoping for multi-card statements.
+When a checkpoint has no explicit start date, the comparison uses the uploaded
+PDF statement period when available, then falls back to the first day of the
+checkpoint month so earlier ledger rows do not appear as statement differences.
+The comparison treats the statement as evidence only: it matches statement rows
+against the committed ledger rows for that checkpoint period, then lists rows
+that are in the statement but not the ledger, rows that are in the ledger but
+not the statement, and possible near matches. This is a better word than
+“error” for the UI because the difference could be a missing row, duplicate
+manual row, wrong account, posting-date shift, or period-boundary issue.
+Near matches include same-amount rows with opposite income/expense direction,
+because those explain a checkpoint delta without meaning the transaction is
+actually absent from the ledger. The comparison also includes a duplicate check
+for same-date, same-amount, same-description rows on both the uploaded statement
+and the committed ledger, so a mismatch can be separated into missing rows,
+extra rows, direction mistakes, and duplicate-looking rows.
+Direction mistakes can be fixed inline from the comparison panel; the action
+updates only the existing ledger row's type, direction, and category, then
+updates the comparison result without requiring the statement PDF to be uploaded
+again.
+Rows that are present in the statement but missing from the ledger can be added
+from that comparison section; the add-entry popover is prefilled from the
+statement row and the compared account.
+
+## Does it already support real CSV or PDF import?
 
 Yes. The app supports CSV review, row-level cleanup, and commit into the
-ledger.
+ledger. It also supports deterministic PDF statement import for UOB credit-card
+statements, UOB One savings statements, and Citibank Rewards or Citibank Miles
+credit-card statements. OCBC 365 credit-card statements and OCBC 360 account
+statements are also supported when the PDF includes embedded text.
 
-The current import review supports either:
+The import workflow is:
+
+1. Open Imports and paste CSV text, upload a CSV, or drag a supported PDF
+   statement into the upload area.
+2. For CSV, review the column mapping. The current import review supports either
+   one signed `amount` column or separate `expense` and `income` columns.
+3. For supported PDFs, the browser extracts statement text locally and converts
+   it to the same reviewable rows as CSV. The app shows upload status while it
+   is reading, extracting, parsing, and preparing the preview.
+4. Review statement account mapping. This matters when a statement label is
+   ambiguous, such as UOB One bank account versus UOB One Card. The mapping
+   applies to both the preview rows and any statement checkpoints generated from
+   the PDF.
+5. Review duplicate and overlap warnings. Overlap is scoped by account and
+   transaction coverage dates, not by the date the import batch was created.
+   Marking an overlap as reviewed only hides the warning; it does not remove
+   duplicate rows from the preview.
+6. For supported PDFs, review the statement balance check. It compares the
+   projected ledger balance after committing the preview rows against the
+   detected statement balance through the statement end date. If the account
+   mapping or checkpoint fields are edited, use Refresh check before commit.
+7. Review or edit row-level values, then commit. Successful commits reset the
+   composer so stale CSV/PDF content, upload status, checkpoint drafts, and
+   preview rows do not remain on screen. Use Start over anytime to clear the
+   current import draft without refreshing the page.
+
+For CSV imports, the raw data can include:
 
 - one signed `amount` column
 - separate `expense` and `income` columns
@@ -317,7 +380,48 @@ The current import review supports either:
 You can also override the inferred entry type, amount, account, category,
 owner, split, and note in the preview table before commit.
 
-Large CSV commits are written in protected chunks in production. There is not a
+For supported PDFs, the browser extracts statement text and converts it to the
+same reviewable rows as CSV. UOB credit-card PDFs are parsed from each card's
+transaction-detail section, use post date as the ledger date, keep transaction
+date in the row note, and must reconcile each card section against its previous
+and total balance. UOB One savings PDFs use the statement period, running
+balances, and ending balance to validate withdrawal/deposit direction.
+Citibank Rewards and Citibank Miles PDFs use layout-aware statement text because
+their transaction rows are printed as compact card-section lines. Parenthesized
+amounts are treated as credits or payments, leading negative statement balances
+are preserved as credit balances, and every card section must reconcile against
+its previous balance and grand total before preview.
+OCBC 365 card PDFs use the printed statement date, last-month balance, subtotal,
+and total amount due. OCBC 360 account PDFs use the printed monthly period,
+balance brought forward, running row balances, and balance carried forward; row
+direction is derived from the running balance movement.
+
+Supported PDF statements can also prefill statement checkpoints in the import
+preview. Those checkpoint fields remain editable before commit, and the preview
+checks whether committing the current rows would make the projected ledger match
+the detected statement balance through the statement end date. Commit then saves
+the checkpoints alongside the imported rows so account reconciliation updates
+with the statement import.
+
+## Are uploaded PDF statements stored?
+
+No. Supported PDF statements are read by the browser so the app can extract text
+and parse statement rows locally. The original PDF file is not uploaded as a
+file to the backend and is not saved in app storage.
+
+For import preview and statement comparison, the backend receives only the
+parsed transaction rows, account mapping, and statement checkpoint fields needed
+to run duplicate, overlap, comparison, and reconciliation checks. If the import
+is committed, the app saves the resulting ledger transactions, import batch
+metadata, and statement checkpoints. If the statement is only used in the
+Settings comparison tool, it is treated as evidence for that comparison and is
+not committed as a new import.
+
+Refreshing the page or choosing Start over clears the in-browser draft state,
+including the parsed rows produced from the PDF. The browser's selected local
+file reference is not retained by the app after that draft is cleared.
+
+Large import commits are written in protected chunks in production. There is not a
 deliberate 125-row product limit, but the UI warns when a preview is large
 because a rejected Cloudflare request should be retried as smaller batches
 rather than leaving a partial ledger import.
