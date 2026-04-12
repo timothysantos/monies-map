@@ -3890,6 +3890,7 @@ export async function buildImportPreview(
       transfer_direction: "in" | "out" | null;
       account_name: string;
     }>();
+  const accountsByName = new Map(accounts.map((account) => [account.name, account]));
   const accountNames = new Set(accounts.map((account) => account.name));
   const categoryNames = new Set(categories.map((category) => category.name));
   const existingHashSet = new Set(existingHashes.results.map((row) => row.normalized_hash));
@@ -3922,6 +3923,11 @@ export async function buildImportPreview(
       inferredCategoryName = "Other";
     }
 
+    const inferredAccount = inferredAccountName ? accountsByName.get(inferredAccountName) : undefined;
+    const inferredOwnerName = input.ownershipType === "direct"
+      ? getDirectOwnerNameForAccount(inferredAccount, input.ownerName)
+      : undefined;
+
     const previewRow = {
       rowId: `preview-${index + 1}`,
       rowIndex: index + 1,
@@ -3930,11 +3936,11 @@ export async function buildImportPreview(
       amountMinor: normalized.amountMinor!,
       entryType: normalized.entryType,
       transferDirection: normalized.transferDirection,
-      accountId: accounts.find((account) => account.name === inferredAccountName)?.id,
+      accountId: inferredAccount?.id,
       accountName: inferredAccountName,
       categoryName: inferredCategoryName,
       ownershipType: input.ownershipType,
-      ownerName: input.ownershipType === "direct" ? input.ownerName : undefined,
+      ownerName: inferredOwnerName,
       splitBasisPoints: input.ownershipType === "shared" ? Math.max(0, Math.min(10000, input.splitBasisPoints ?? 5000)) : 10000,
       note: normalized.note,
       rawRow
@@ -4008,6 +4014,14 @@ export async function buildImportPreview(
     duplicateCandidates,
     statementReconciliations
   };
+}
+
+function getDirectOwnerNameForAccount(account?: AccountDto, fallbackOwnerName?: string) {
+  if (account && !account.isJoint && account.ownerLabel && account.ownerLabel !== "Shared") {
+    return account.ownerLabel;
+  }
+
+  return fallbackOwnerName;
 }
 
 function buildImportPreviewStatementReconciliations(input: {

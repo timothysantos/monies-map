@@ -124,7 +124,8 @@ export const messages = {
     counterpart: "Counterpart",
     doneEdit: "Done",
     cancelEdit: "Cancel",
-    addToSplits: "Add to splits"
+    addToSplits: "Add to splits",
+    noSpendBreakdown: "No spend rows in this view."
   },
   splits: {
     viewing: (label) => `Viewing splits for ${label}`,
@@ -206,7 +207,7 @@ export const messages = {
     ownership: "Default ownership",
     owner: "Default owner",
     split: "Shared split %",
-    defaultsHint: "These top fields are batch defaults only. You can still adjust account, ownership, type, amount, category, and note per row before commit.",
+    defaultsHint: "These top fields are fallbacks. Direct rows use the mapped account owner when one exists, and you can still adjust account, ownership, type, amount, category, and note per row before commit.",
     trustHint: "Statement imports are only trustworthy when date coverage is complete and overlapping exports are reviewed.",
     mappingTitle: "Data mapping",
     mappingDetail: (count) => `Map the detected headers and review ${count} sample row${count === 1 ? "" : "s"}.`,
@@ -219,7 +220,7 @@ export const messages = {
     sampleRows: "Sample rows",
     mappingNext: "When the mappings look right, click Preview import.",
     preview: "Preview import",
-    commit: "Commit import",
+    commit: "Commit import to ledger",
     commitFailed: "Import commit failed. No partial transactions were kept.",
     clearPreview: "Clear preview",
     startOver: "Start over",

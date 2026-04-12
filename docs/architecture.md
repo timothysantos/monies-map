@@ -45,6 +45,9 @@ That distinction matters because the system needs to answer questions like:
   statements and OCBC 360 account statements use spaced layout text and running
   balances where available to determine row direction before preview.
 - review step allows whole-file or per-row account attribution
+- direct import-row ownership follows the mapped account owner when the account
+  is personally owned; the composer-level default owner is a fallback for rows
+  without a personally owned account mapping
 - supported PDF statements can also produce editable statement checkpoints; the
   preview projects the post-import ledger balance against those checkpoints
   before commit, then saves them during commit for account reconciliation

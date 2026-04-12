@@ -3469,7 +3469,7 @@ function EntriesPanel({ view, accounts, categories, people, onCategoryAppearance
                 outerRadius={96}
               />
             ) : (
-              <p className="lede compact">{messages.imports.previewEmpty}</p>
+              <p className="lede compact">{messages.entries.noSpendBreakdown}</p>
             )}
           </div>
           <div className="entries-breakdown-list category-list">
@@ -4930,6 +4930,17 @@ function SplitsPanel({ view, categories, people, onRefresh }) {
   );
 }
 
+function getImportDirectOwnerForAccount(accounts, people, accountName, fallbackOwnerName) {
+  const account = accounts.find((item) => item.name === accountName);
+  if (account && !account.isJoint && account.ownerLabel && account.ownerLabel !== "Shared") {
+    return people.some((person) => person.name === account.ownerLabel)
+      ? account.ownerLabel
+      : fallbackOwnerName;
+  }
+
+  return fallbackOwnerName;
+}
+
 function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, people, onRefresh }) {
   const [sourceLabel, setSourceLabel] = useState("Imported CSV");
   const [importNote, setImportNote] = useState("");
@@ -4959,6 +4970,10 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
 
   const csvInspection = useMemo(() => inspectCsv(csvText), [csvText]);
   const headerSignature = csvInspection.headers.join("|");
+  const defaultAccountDirectOwnerName = useMemo(
+    () => getImportDirectOwnerForAccount(accounts, people, defaultAccountName, undefined),
+    [accounts, defaultAccountName, people]
+  );
 
   useEffect(() => {
     if (!defaultAccountName && accounts[0]?.name) {
@@ -4973,6 +4988,14 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
   }, [ownerName, people]);
 
   useEffect(() => {
+    if (ownershipType !== "direct" || !defaultAccountDirectOwnerName || ownerName === defaultAccountDirectOwnerName) {
+      return;
+    }
+
+    setOwnerName(defaultAccountDirectOwnerName);
+  }, [defaultAccountDirectOwnerName, ownerName, ownershipType]);
+
+  useEffect(() => {
     if (!people.length) {
       return;
     }
@@ -4984,11 +5007,18 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
       return;
     }
 
+    if (defaultAccountDirectOwnerName) {
+      if (ownerName !== defaultAccountDirectOwnerName) {
+        setOwnerName(defaultAccountDirectOwnerName);
+      }
+      return;
+    }
+
     const matchedPerson = people.find((person) => person.id === viewId);
     if (matchedPerson && ownerName !== matchedPerson.name) {
       setOwnerName(matchedPerson.name);
     }
-  }, [ownerName, people, viewId]);
+  }, [defaultAccountDirectOwnerName, ownerName, people, viewId]);
 
   useEffect(() => {
     setColumnMappings((current) => {
@@ -5060,6 +5090,12 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
   );
   const statementReconciliations = preview?.statementReconciliations ?? [];
   const hasStatementReconciliationMismatch = statementReconciliations.some((item) => item.status !== "matched");
+  const isCommitDisabled = isSubmitting
+    || isParsingStatement
+    || !previewRows.length
+    || hasUnmappedAccounts
+    || hasBlockingCategoryPolicy
+    || hasDuplicateCheckpointAccounts;
   const hasImportDraft = Boolean(
     preview
     || previewRows.length
@@ -5111,6 +5147,14 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
     setStatementCheckpoints([]);
     setStatementImportMeta({ sourceType: "csv", parserKey: "generic_csv" });
     setUploadStatus(null);
+  }
+
+  function handleDefaultAccountChange(nextAccountName) {
+    setDefaultAccountName(nextAccountName);
+    const nextOwnerName = getImportDirectOwnerForAccount(accounts, people, nextAccountName, undefined);
+    if (ownershipType === "direct" && nextOwnerName) {
+      setOwnerName(nextOwnerName);
+    }
   }
 
   function resetImportForm() {
@@ -5331,6 +5375,15 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
     setPreviewRows((current) => current.map((row) => (row.rowId === rowId ? { ...row, ...patch } : row)));
   }
 
+  function getPreviewAccountOwnerPatch(accountName, row) {
+    if (row.ownershipType !== "direct") {
+      return {};
+    }
+
+    const nextOwnerName = getImportDirectOwnerForAccount(accounts, people, accountName, row.ownerName ?? ownerName);
+    return nextOwnerName ? { ownerName: nextOwnerName } : {};
+  }
+
   function updateStatementCheckpoint(index, patch) {
     setStatementCheckpoints((current) => current.map((checkpoint, checkpointIndex) => (
       checkpointIndex === index ? { ...checkpoint, ...patch } : checkpoint
@@ -5343,7 +5396,9 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
     }
 
     const nextRows = previewRows.map((row) => (
-      row.accountName === fromAccountName ? { ...row, accountName: toAccountName } : row
+      row.accountName === fromAccountName
+        ? { ...row, accountName: toAccountName, ...getPreviewAccountOwnerPatch(toAccountName, row) }
+        : row
     ));
     const nextCheckpoints = statementCheckpoints.map((checkpoint) => (
       checkpoint.accountName === fromAccountName ? { ...checkpoint, accountName: toAccountName } : checkpoint
@@ -5428,7 +5483,7 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
             </label>
             <label className="entries-filter">
               <span className="entries-filter-label">{messages.imports.defaultAccount}</span>
-              <select className="table-edit-input" value={defaultAccountName} onChange={(event) => setDefaultAccountName(event.target.value)}>
+              <select className="table-edit-input" value={defaultAccountName} onChange={(event) => handleDefaultAccountChange(event.target.value)}>
                 <option value="">{messages.entries.allWallets}</option>
                 {accounts.map((account) => (
                   <option key={account.id} value={account.name}>{account.name}</option>
@@ -5822,8 +5877,8 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
               <div className="import-actions import-actions-end">
                 <button
                   type="button"
-                  className="subtle-action is-primary"
-                  disabled={isSubmitting || isParsingStatement || !previewRows.length || hasUnmappedAccounts || hasBlockingCategoryPolicy || hasDuplicateCheckpointAccounts}
+                  className="import-commit-button"
+                  disabled={isCommitDisabled}
                   onClick={handleCommit}
                 >
                   {messages.imports.commit}
@@ -5870,7 +5925,17 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
                           </select>
                         </td>
                         <td>
-                          <select className="table-edit-input" value={row.accountName ?? ""} onChange={(event) => updatePreviewRow(row.rowId, { accountName: event.target.value || undefined })}>
+                          <select
+                            className="table-edit-input"
+                            value={row.accountName ?? ""}
+                            onChange={(event) => {
+                              const nextAccountName = event.target.value || undefined;
+                              updatePreviewRow(row.rowId, {
+                                accountName: nextAccountName,
+                                ...getPreviewAccountOwnerPatch(nextAccountName, row)
+                              });
+                            }}
+                          >
                             <option value="">{messages.entries.allWallets}</option>
                             {row.accountName && !knownAccountNames.has(row.accountName) ? (
                               <option value={row.accountName}>{row.accountName}</option>
@@ -5928,6 +5993,16 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
                     ))}
                   </tbody>
                 </table>
+              </div>
+              <div className="import-actions import-actions-end import-actions-bottom">
+                <button
+                  type="button"
+                  className="import-commit-button"
+                  disabled={isCommitDisabled}
+                  onClick={handleCommit}
+                >
+                  {messages.imports.commit}
+                </button>
               </div>
             </>
           ) : (
