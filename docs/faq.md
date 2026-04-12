@@ -358,7 +358,9 @@ The import workflow is:
 4. Review statement account mapping. This matters when a statement label is
    ambiguous, such as UOB One bank account versus UOB One Card. The mapping
    applies to both the preview rows and any statement checkpoints generated from
-   the PDF.
+   the PDF. Direct rows use the mapped account's owner when the account belongs
+   to one person; the Default owner field is only the fallback for rows without a
+   personally owned mapped account.
 5. Review duplicate and overlap warnings. Overlap is scoped by account and
    transaction coverage dates, not by the date the import batch was created.
    Marking an overlap as reviewed only hides the warning; it does not remove
