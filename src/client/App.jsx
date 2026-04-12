@@ -161,6 +161,7 @@ export function App() {
   const [categoryOverrides, setCategoryOverrides] = useState({});
   const [rangePickerStartYear, setRangePickerStartYear] = useState(null);
   const [rangePickerEndYear, setRangePickerEndYear] = useState(null);
+  const [monthPickerYear, setMonthPickerYear] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const syncChannelRef = useRef(null);
@@ -300,6 +301,18 @@ export function App() {
   );
   const isDetailMonthTab = selectedTabId === "month" || selectedTabId === "entries" || selectedTabId === "splits";
   const isSplitsTab = selectedTabId === "splits";
+  const detailAvailableYears = useMemo(
+    () => isDetailMonthTab
+      ? [...new Set(availableMonths.map((month) => Number(month.slice(0, 4))))].sort((left, right) => left - right)
+      : [],
+    [availableMonths, isDetailMonthTab]
+  );
+  const detailAvailableMonthsForPickerYear = useMemo(
+    () => isDetailMonthTab && monthPickerYear != null
+      ? availableMonths.filter((month) => Number(month.slice(0, 4)) === monthPickerYear)
+      : [],
+    [availableMonths, isDetailMonthTab, monthPickerYear]
+  );
   const summaryAvailableYears = useMemo(
     () => !isDetailMonthTab && view
       ? [...new Set(view.summaryPage.availableMonths.map((month) => Number(month.slice(0, 4))))].sort((left, right) => left - right)
@@ -364,13 +377,15 @@ export function App() {
       return;
     }
 
-    const latestMonth = summaryMonths[summaryMonths.length - 1];
+    const resolvedEndMonth = endIsValid ? selectedSummaryEnd : summaryMonths[summaryMonths.length - 1];
+    const endIndex = summaryMonths.indexOf(resolvedEndMonth);
+    const startMonth = summaryMonths[Math.max(0, endIndex - 11)];
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
-      next.set("summary_start", latestMonth);
-      next.set("summary_end", latestMonth);
+      next.set("summary_start", startMonth);
+      next.set("summary_end", resolvedEndMonth);
       const focus = next.get("summary_focus");
-      if (focus && focus !== SUMMARY_FOCUS_OVERALL && focus !== latestMonth) {
+      if (focus && focus !== SUMMARY_FOCUS_OVERALL && !summaryMonths.includes(focus)) {
         next.delete("summary_focus");
       }
       return next;
@@ -397,6 +412,20 @@ export function App() {
       return nextEndYear;
     });
   }, [isDetailMonthTab, summaryAvailableYears, view]);
+
+  useEffect(() => {
+    if (!isDetailMonthTab || !detailAvailableYears.length) {
+      return;
+    }
+
+    const selectedYear = Number(selectedMonth.slice(0, 4));
+    setMonthPickerYear((current) => {
+      if (current != null && detailAvailableYears.includes(current)) {
+        return current;
+      }
+      return detailAvailableYears.includes(selectedYear) ? selectedYear : detailAvailableYears.at(-1);
+    });
+  }, [detailAvailableYears, isDetailMonthTab, selectedMonth]);
 
   if (bootstrapError) {
     return (
@@ -492,6 +521,18 @@ export function App() {
       if (focus && focus !== SUMMARY_FOCUS_OVERALL && !rangeMonths.includes(focus)) {
         next.delete("summary_focus");
       }
+      return next;
+    });
+  }
+
+  function handleDetailMonthSelect(month) {
+    if (!isDetailMonthTab || !availableMonths.includes(month)) {
+      return;
+    }
+
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("month", month);
       return next;
     });
   }
@@ -645,7 +686,53 @@ export function App() {
             <div className="period-display">
               <span className="period-mode">{periodMode}</span>
               {isDetailMonthTab ? (
-                <strong>{periodLabel}</strong>
+                <strong className="period-range-value">
+                  <Popover.Root>
+                    <Popover.Trigger asChild>
+                      <button type="button" className="period-range-segment" disabled={isSplitsTab}>
+                        {periodLabel}
+                      </button>
+                    </Popover.Trigger>
+                    <Popover.Portal>
+                      <Popover.Content className="period-picker-popover" sideOffset={10} align="center">
+                        <div className="period-picker-head">
+                          <strong>Month</strong>
+                          <span>Choose a single month for this view.</span>
+                        </div>
+                        <div className="period-picker-years" role="tablist" aria-label="Available years">
+                          {detailAvailableYears.map((year) => (
+                            <button
+                              key={year}
+                              type="button"
+                              className={`period-picker-year ${monthPickerYear === year ? "is-active" : ""}`}
+                              onClick={() => setMonthPickerYear(year)}
+                            >
+                              {year}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="period-picker-months">
+                          {detailAvailableMonthsForPickerYear.map((month) => {
+                            const monthIndex = Number(month.slice(5, 7)) - 1;
+                            const isSelected = month === selectedMonth;
+                            return (
+                              <Popover.Close key={month} asChild>
+                                <button
+                                  type="button"
+                                  className={`period-picker-month ${isSelected ? "is-active" : ""}`}
+                                  onClick={() => handleDetailMonthSelect(month)}
+                                >
+                                  {MONTH_PICKER_LABELS[monthIndex]}
+                                </button>
+                              </Popover.Close>
+                            );
+                          })}
+                        </div>
+                        <Popover.Arrow className="category-popover-arrow" />
+                      </Popover.Content>
+                    </Popover.Portal>
+                  </Popover.Root>
+                </strong>
               ) : (
                 <strong className="period-range-value">
                   <Popover.Root>
@@ -1165,7 +1252,7 @@ function SummaryPanel({ view, selectedMonth, categories, onCategoryAppearanceCha
                 className={`summary-account-pill ${account.reconciliationStatus ? `is-${account.reconciliationStatus}` : ""}`}
                 onClick={() => handleOpenEntriesForAccount(account.accountName)}
               >
-                <span className="summary-account-pill-name">{account.accountName}</span>
+                <span className="summary-account-pill-name">{formatAccountDisplayName(account)}</span>
                 <span className="summary-account-pill-amount">{money(account.balanceMinor)}</span>
                 <span className="summary-account-pill-meta">{describeAccountHealth(account)}</span>
               </button>
@@ -2699,19 +2786,17 @@ function MonthPanel({ view, accounts, people, categories, householdMonthEntries,
             <h3>{messages.month.accountsTitle}</h3>
             <p>{messages.month.accountsDetail}</p>
           </div>
-          <div className="stack">
+          <div className="summary-account-pills">
             {visibleAccounts.map((account) => (
               <button
                 key={account.id}
                 type="button"
-                className="account account-button"
+                className={`summary-account-pill ${account.reconciliationStatus ? `is-${account.reconciliationStatus}` : ""}`}
                 onClick={() => handleOpenEntriesForAccount(account)}
               >
-                <div>
-                  <strong>{account.name}</strong>
-                  <p>{messages.common.contextWithView(account.institution, account.kind)}</p>
-                </div>
-                <span>{account.ownerLabel}</span>
+                <span className="summary-account-pill-name">{formatAccountDisplayName(account)}</span>
+                <span className="summary-account-pill-amount">{money(account.balanceMinor ?? 0)}</span>
+                <span className="summary-account-pill-meta">{describeAccountHealth(account)}</span>
               </button>
             ))}
           </div>
@@ -5510,7 +5595,7 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
                       <div className="import-meta import-meta-compact">
                         <span className={`import-status ${item.status === "rolled_back" ? "is-warning" : "is-complete"}`}>{item.status}</span>
                         {item.overlapImportCount ? (
-                          <span className="pill warning">{messages.imports.importOverlap(item.overlapImportCount)}</span>
+                          <ImportOverlapPopover item={item} />
                         ) : null}
                         {item.status === "completed" ? (
                           <DeleteRowButton
@@ -5532,6 +5617,51 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
         ) : null}
       </section>
     </article>
+  );
+}
+
+function ImportOverlapPopover({ item }) {
+  const overlaps = item.overlapImports ?? [];
+
+  return (
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <button type="button" className="pill warning pill-button">
+          {messages.imports.importOverlap(item.overlapImportCount ?? overlaps.length)}
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content className="import-overlap-popover" sideOffset={8} align="end">
+          <div className="category-popover-head">
+            <strong>{messages.imports.overlapPopoverTitle}</strong>
+            <span>{messages.imports.overlapPopoverDetail}</span>
+          </div>
+          {overlaps.length ? (
+            <div className="import-overlap-list">
+              {overlaps.map((overlap) => (
+                <div key={overlap.id} className="import-overlap-row">
+                  <strong>{overlap.sourceLabel}</strong>
+                  <p>
+                    {messages.common.triplet(
+                      overlap.sourceType.toUpperCase(),
+                      formatDate(overlap.importedAt),
+                      messages.imports.transactionCount(overlap.transactionCount)
+                    )}
+                  </p>
+                  {overlap.startDate && overlap.endDate ? (
+                    <p>{messages.imports.importCoverage(formatDateOnly(overlap.startDate), formatDateOnly(overlap.endDate))}</p>
+                  ) : null}
+                  {overlap.accountNames.length ? <p>{overlap.accountNames.join(", ")}</p> : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="lede compact">{messages.imports.overlapPopoverEmpty}</p>
+          )}
+          <Popover.Arrow className="category-popover-arrow" />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }
 
@@ -5643,8 +5773,14 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
     setReconciliationDialog({
       accountId: account.id,
       accountName: account.name,
+      accountKind: account.kind,
       checkpointMonth: account.latestCheckpointMonth ?? "",
-      statementBalance: formatMinorInput(account.latestCheckpointBalanceMinor ?? account.balanceMinor ?? 0),
+      statementStartDate: account.latestCheckpointStartDate ?? "",
+      statementEndDate: account.latestCheckpointEndDate ?? "",
+      statementBalance: formatCheckpointStatementInputMinor(
+        account.latestCheckpointBalanceMinor ?? account.balanceMinor ?? 0,
+        account.kind
+      ),
       note: account.latestCheckpointNote ?? "",
       history: account.checkpointHistory ?? []
     });
@@ -5742,6 +5878,8 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
         body: JSON.stringify({
           accountId: reconciliationDialog.accountId,
           checkpointMonth: reconciliationDialog.checkpointMonth,
+          statementStartDate: reconciliationDialog.statementStartDate || null,
+          statementEndDate: reconciliationDialog.statementEndDate || null,
           statementBalanceMinor: parseDraftMoneyInput(reconciliationDialog.statementBalance ?? "0"),
           note: reconciliationDialog.note
         })
@@ -5778,11 +5916,44 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
     }
   }
 
+  async function handleDownloadCheckpointExport(item) {
+    if (!reconciliationDialog?.accountId) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(buildCheckpointExportHref(reconciliationDialog.accountId, item.month), {
+        credentials: "same-origin"
+      });
+
+      if (!response.ok) {
+        throw new Error(await buildRequestErrorMessage(response, "Checkpoint export failed."));
+      }
+
+      const blobUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = getContentDispositionFilename(response.headers.get("Content-Disposition"))
+        ?? `checkpoint-${reconciliationDialog.accountId}-${item.month}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Checkpoint export failed.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   function handleEditCheckpoint(item) {
     setReconciliationDialog((current) => current ? {
       ...current,
       checkpointMonth: item.month,
-      statementBalance: formatMinorInput(item.statementBalanceMinor),
+      statementStartDate: item.statementStartDate ?? "",
+      statementEndDate: item.statementEndDate ?? "",
+      statementBalance: formatCheckpointStatementInputMinor(item.statementBalanceMinor, current.accountKind),
       note: item.note ?? ""
     } : current);
   }
@@ -6548,6 +6719,25 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
                 />
               </label>
               <label className="table-edit-field">
+                <span>{messages.settings.checkpointStartDate}</span>
+                <input
+                  type="date"
+                  className="table-edit-input"
+                  value={reconciliationDialog?.statementStartDate ?? ""}
+                  onChange={(event) => setReconciliationDialog((current) => current ? { ...current, statementStartDate: event.target.value } : current)}
+                />
+              </label>
+              <label className="table-edit-field">
+                <span>{messages.settings.checkpointEndDate}</span>
+                <input
+                  type="date"
+                  className="table-edit-input"
+                  value={reconciliationDialog?.statementEndDate ?? ""}
+                  onChange={(event) => setReconciliationDialog((current) => current ? { ...current, statementEndDate: event.target.value } : current)}
+                />
+                <small className="field-help">{messages.settings.checkpointHelp}</small>
+              </label>
+              <label className="table-edit-field">
                 <span>{messages.settings.checkpointBalance}</span>
                 <input
                   className="table-edit-input table-edit-input-money"
@@ -6563,7 +6753,6 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
                   value={reconciliationDialog?.note ?? ""}
                   onChange={(event) => setReconciliationDialog((current) => current ? { ...current, note: event.target.value } : current)}
                 />
-                <small className="field-help">{messages.settings.checkpointHelp}</small>
               </label>
             </div>
             <div className="settings-reconciliation-scroll">
@@ -6578,10 +6767,23 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
                       <div key={item.month} className="settings-account-row settings-checkpoint-row">
                         <div className="settings-account-main">
                           <strong>{formatMonthLabel(item.month)}</strong>
-                          <p>{`Statement ${money(item.statementBalanceMinor)} • Ledger ${money(item.computedBalanceMinor)}`}</p>
-                          <p className={`settings-account-health ${item.deltaMinor === 0 ? "is-matched" : "is-mismatch"}`}>
-                            {item.deltaMinor === 0 ? "Matched" : `Delta ${money(Math.abs(item.deltaMinor))}`}
-                          </p>
+                          <p>{formatCheckpointCoverage(item)}</p>
+                          <p>{formatCheckpointHistoryBalanceLine(item, reconciliationDialog?.accountKind)}</p>
+                          <div className="settings-checkpoint-delta-line">
+                            <p className={`settings-account-health ${item.deltaMinor === 0 ? "is-matched" : "is-mismatch"}`}>
+                              {item.deltaMinor === 0 ? "Matched" : `Delta ${money(Math.abs(item.deltaMinor))}`}
+                            </p>
+                            {item.deltaMinor !== 0 && reconciliationDialog?.accountId ? (
+                              <button
+                                type="button"
+                                className="settings-checkpoint-export"
+                                disabled={isSubmitting}
+                                onClick={() => void handleDownloadCheckpointExport(item)}
+                              >
+                                {messages.settings.checkpointExport}
+                              </button>
+                            ) : null}
+                          </div>
                           {item.note ? <p className="settings-account-meta">{item.note}</p> : null}
                         </div>
                         <div className="settings-account-actions">
@@ -7305,6 +7507,40 @@ function formatDateOnly(value) {
   }).format(new Date(value));
 }
 
+function formatCheckpointCoverage(item) {
+  if (item.statementStartDate && item.statementEndDate) {
+    return `${formatDateOnly(item.statementStartDate)} - ${formatDateOnly(item.statementEndDate)}`;
+  }
+
+  if (item.statementEndDate) {
+    return `Through ${formatDateOnly(item.statementEndDate)}`;
+  }
+
+  return `${formatMonthLabel(item.month)} calendar month`;
+}
+
+function buildCheckpointExportHref(accountId, checkpointMonth) {
+  const params = new URLSearchParams({
+    accountId,
+    checkpointMonth
+  });
+  return `/api/accounts/checkpoints/export?${params.toString()}`;
+}
+
+function getContentDispositionFilename(value) {
+  if (!value) {
+    return null;
+  }
+
+  const filenameStar = value.match(/filename\*=UTF-8''([^;]+)/i);
+  if (filenameStar?.[1]) {
+    return decodeURIComponent(filenameStar[1].replaceAll('"', ""));
+  }
+
+  const filename = value.match(/filename="?([^";]+)"?/i);
+  return filename?.[1] ?? null;
+}
+
 function describeAccountHealth(account) {
   if (account.reconciliationStatus === "matched" && account.latestCheckpointMonth) {
     return messages.settings.accountHealthMatched(formatMonthLabel(account.latestCheckpointMonth));
@@ -7318,6 +7554,11 @@ function describeAccountHealth(account) {
   }
 
   return messages.settings.accountHealthNeedsCheckpoint;
+}
+
+function formatAccountDisplayName(account) {
+  const accountName = account.accountName ?? account.name ?? messages.common.emptyValue;
+  return account.ownerLabel ? `${accountName} • ${account.ownerLabel}` : accountName;
 }
 
 function formatAuditAction(action) {
@@ -7360,6 +7601,19 @@ function formatMonthLabel(value) {
 
 function formatMinorInput(valueMinor) {
   return (valueMinor / 100).toFixed(2);
+}
+
+function formatCheckpointStatementInputMinor(valueMinor, accountKind) {
+  const displayMinor = accountKind === "credit_card" ? Math.abs(valueMinor) : valueMinor;
+  return formatMinorInput(displayMinor);
+}
+
+function formatCheckpointHistoryBalanceLine(item, accountKind) {
+  if (accountKind === "credit_card") {
+    return `Statement owed ${money(Math.abs(item.statementBalanceMinor))} • Ledger owed ${money(Math.abs(item.computedBalanceMinor))}`;
+  }
+
+  return `Statement ${money(item.statementBalanceMinor)} • Ledger ${money(item.computedBalanceMinor)}`;
 }
 
 function formatEditableMinorInput(valueMinor) {

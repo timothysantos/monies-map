@@ -502,6 +502,11 @@ h3 {
   color: var(--negative);
 }
 
+.pill-button {
+  cursor: pointer;
+  font: inherit;
+}
+
 .pill-row .pill + .pill {
   border-left: 1px solid rgba(18, 56, 47, 0.08);
 }
@@ -2300,6 +2305,32 @@ h3 {
   align-items: flex-start;
 }
 
+.settings-checkpoint-delta-line {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.settings-checkpoint-delta-line .settings-account-health {
+  margin: 6px 0 0;
+}
+
+.settings-checkpoint-export {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font: inherit;
+}
+
+.settings-checkpoint-export:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
 .settings-category-dialog {
   max-height: min(80vh, 860px);
   overflow: auto;
@@ -3823,6 +3854,37 @@ h3 {
   gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.import-overlap-popover {
+  width: min(360px, calc(100vw - 32px));
+  max-height: min(420px, calc(100vh - 96px));
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 34px rgba(27, 24, 21, 0.14);
+  z-index: 90;
+}
+
+.import-overlap-list {
+  display: grid;
+  gap: 8px;
+}
+
+.import-overlap-row {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 248, 242, 0.72);
+}
+
+.import-overlap-row p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.25;
 }
 
 .import-status {

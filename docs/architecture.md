@@ -109,11 +109,16 @@ That distinction matters because the system needs to answer questions like:
 - CSV-only balances need a reconciliation anchor, so opening balances are part
   of the account model rather than hidden UI math
 - `account_balance_checkpoints` store statement-ending balances by account and
-  month so the latest checkpoint can be compared against the computed ledger
+  statement month, with optional statement start/end dates for credit-card
+  cycles; blank dates fall back to the selected calendar month-end, while filled
+  start dates split the comparison into a pre-cycle baseline and in-cycle ledger
+  movement
+- credit-card checkpoints normalize bank-facing positive “amount owed” values
+  into the app’s liability-negative ledger convention before comparison
 - account health exposes reconciliation status, latest import freshness, and
   unresolved transfer counts so trust warnings stay close to balances
-- import previews and recent import batches expose duplicate and overlapping
-  date-range signals so CSV trust is visible before and after commit
+- import previews and recent import batches expose duplicate and same-account
+  overlapping date-range signals so CSV trust is visible before and after commit
 - large import previews call out that production commits are chunked and that a
   rejected Cloudflare request should be retried as smaller batches
 - duplicate heuristics now distinguish exact ledger matches from near matches
@@ -211,11 +216,15 @@ analytics.
 
 ### Summary page
 
+- defaults to the latest 12 available months
 - month-by-month planned versus actual table
 - income, planned expense, actual expense, savings target, and variance
 - summary notes
 - readable high-level charting as support, not as the main truth
 - drill-down into a selected month
+- actual income and expense values are derived from completed ledger entries
+  when that month has entries, so stale monthly snapshots do not hide imported
+  activity
 
 ### Month page
 
@@ -331,6 +340,9 @@ The production app now runs as one Cloudflare Worker with static assets served
 from `dist` and a D1 binding named `DB`. The current Worker URL is
 `https://monies-map.timsantos-accts.workers.dev`, backed by the APAC D1 database
 `monies-map` (`d1aa440c-d239-48ac-b0a6-d39f34e26e0e`).
+Worker assets use single-page-application not-found handling so direct refreshes
+of React routes such as `/entries` and `/settings` return the app shell instead
+of a Worker 404.
 
 Authentication should be enforced at the Cloudflare Access layer before the app
 is used with real household data. The pragmatic first pass is Access one-time

@@ -179,6 +179,8 @@ export async function ensureDemoSchema(db: D1Database) {
         household_id TEXT NOT NULL,
         account_id TEXT NOT NULL,
         checkpoint_month TEXT NOT NULL,
+        statement_start_date TEXT,
+        statement_end_date TEXT,
         statement_balance_minor INTEGER NOT NULL,
         note TEXT,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -189,6 +191,20 @@ export async function ensureDemoSchema(db: D1Database) {
       )
     `)
     .run();
+
+  const checkpointColumns = await db
+    .prepare("PRAGMA table_info(account_balance_checkpoints)")
+    .all<{ name: string }>();
+
+  const hasStatementStartDate = checkpointColumns.results.some((column) => column.name === "statement_start_date");
+  if (!hasStatementStartDate && checkpointColumns.results.length > 0) {
+    await db.prepare("ALTER TABLE account_balance_checkpoints ADD COLUMN statement_start_date TEXT").run();
+  }
+
+  const hasStatementEndDate = checkpointColumns.results.some((column) => column.name === "statement_end_date");
+  if (!hasStatementEndDate && checkpointColumns.results.length > 0) {
+    await db.prepare("ALTER TABLE account_balance_checkpoints ADD COLUMN statement_end_date TEXT").run();
+  }
 
   await db
     .prepare(`
@@ -2496,6 +2512,8 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
       SELECT
         checkpoints.account_id,
         checkpoints.checkpoint_month,
+        checkpoints.statement_start_date,
+        checkpoints.statement_end_date,
         checkpoints.statement_balance_minor,
         checkpoints.note
       FROM account_balance_checkpoints AS checkpoints
@@ -2513,6 +2531,8 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
     .all<{
       account_id: string;
       checkpoint_month: string;
+      statement_start_date: string | null;
+      statement_end_date: string | null;
       statement_balance_minor: number;
       note: string | null;
     }>();
@@ -2522,6 +2542,8 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
       SELECT
         account_id,
         checkpoint_month,
+        statement_start_date,
+        statement_end_date,
         statement_balance_minor,
         note
       FROM account_balance_checkpoints
@@ -2532,6 +2554,8 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
     .all<{
       account_id: string;
       checkpoint_month: string;
+      statement_start_date: string | null;
+      statement_end_date: string | null;
       statement_balance_minor: number;
       note: string | null;
     }>();
@@ -2555,6 +2579,15 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
   const unresolvedTransferCountByAccountId = new Map<string, number>();
   const checkpointLedgerNetByAccountId = new Map<string, number>();
   const checkpointHistoryByAccountId = new Map<string, AccountDto["checkpointHistory"]>();
+  const openingBalanceByAccountId = new Map(
+    result.results.map((account) => [
+      account.id,
+      normalizeAccountOpeningBalanceMinor(Number(account.opening_balance_minor ?? 0), account.account_kind)
+    ])
+  );
+  const accountKindByAccountId = new Map(
+    result.results.map((account) => [account.id, account.account_kind])
+  );
 
   for (const row of transactionRows.results) {
     const signedAmount = row.entry_type === "income" || (row.entry_type === "transfer" && row.transfer_direction === "in")
@@ -2583,43 +2616,34 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
   }
 
   for (const checkpoint of latestCheckpointRows.results) {
-    let net = 0;
-    for (const row of transactionRows.results) {
-      if (row.account_id !== checkpoint.account_id || row.transaction_date.slice(0, 7) > checkpoint.checkpoint_month) {
-        continue;
-      }
-
-      net += row.entry_type === "income" || (row.entry_type === "transfer" && row.transfer_direction === "in")
-        ? Number(row.amount_minor)
-        : -Number(row.amount_minor);
-    }
-    checkpointLedgerNetByAccountId.set(checkpoint.account_id, net);
+    checkpointLedgerNetByAccountId.set(
+      checkpoint.account_id,
+      computeCheckpointLedgerBalanceMinor({
+        openingBalanceMinor: openingBalanceByAccountId.get(checkpoint.account_id) ?? 0,
+        checkpoint,
+        rows: transactionRows.results
+      })
+    );
   }
 
   for (const checkpoint of checkpointHistoryRows.results) {
-    let net = 0;
-    for (const row of transactionRows.results) {
-      if (row.account_id !== checkpoint.account_id || row.transaction_date.slice(0, 7) > checkpoint.checkpoint_month) {
-        continue;
-      }
-
-      net += row.entry_type === "income" || (row.entry_type === "transfer" && row.transfer_direction === "in")
-        ? Number(row.amount_minor)
-        : -Number(row.amount_minor);
-    }
-
-    const computedBalanceMinor = net;
-    const statementBalanceMinor = Number(checkpoint.statement_balance_minor ?? 0);
+    const computedBalanceMinor = computeCheckpointLedgerBalanceMinor({
+      openingBalanceMinor: openingBalanceByAccountId.get(checkpoint.account_id) ?? 0,
+      checkpoint,
+      rows: transactionRows.results
+    });
+    const statementBalanceMinor = normalizeStatementBalanceMinor(
+      Number(checkpoint.statement_balance_minor ?? 0),
+      accountKindByAccountId.get(checkpoint.account_id)
+    );
     const currentHistory = checkpointHistoryByAccountId.get(checkpoint.account_id) ?? [];
     currentHistory.push({
       month: checkpoint.checkpoint_month,
+      statementStartDate: checkpoint.statement_start_date ?? undefined,
+      statementEndDate: checkpoint.statement_end_date ?? undefined,
       statementBalanceMinor,
-      computedBalanceMinor: Number(
-        result.results.find((account) => account.id === checkpoint.account_id)?.opening_balance_minor ?? 0
-      ) + computedBalanceMinor,
-      deltaMinor: Number(
-        result.results.find((account) => account.id === checkpoint.account_id)?.opening_balance_minor ?? 0
-      ) + computedBalanceMinor - statementBalanceMinor,
+      computedBalanceMinor,
+      deltaMinor: computedBalanceMinor - statementBalanceMinor,
       note: checkpoint.note ?? undefined
     });
     checkpointHistoryByAccountId.set(checkpoint.account_id, currentHistory);
@@ -2628,12 +2652,13 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
   return result.results.map((row) => ({
     ...buildAccountHealth({
       accountId: row.id,
-      openingBalanceMinor: Number(row.opening_balance_minor ?? 0),
+      openingBalanceMinor: normalizeAccountOpeningBalanceMinor(Number(row.opening_balance_minor ?? 0), row.account_kind),
       latestTransactionDate: latestTransactionDateByAccountId.get(row.id),
       latestImportAt: latestImportAtByAccountId.get(row.id),
       unresolvedTransferCount: unresolvedTransferCountByAccountId.get(row.id) ?? 0,
-      currentLedgerBalanceMinor: Number(row.opening_balance_minor ?? 0) + (balanceByAccountId.get(row.id) ?? 0),
+      currentLedgerBalanceMinor: normalizeAccountOpeningBalanceMinor(Number(row.opening_balance_minor ?? 0), row.account_kind) + (balanceByAccountId.get(row.id) ?? 0),
       checkpoint: checkpointByAccountId.get(row.id),
+      accountKind: row.account_kind,
       checkpointLedgerNetMinor: checkpointLedgerNetByAccountId.get(row.id),
       checkpointHistory: checkpointHistoryByAccountId.get(row.id) ?? []
     }),
@@ -2651,6 +2676,64 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
   }));
 }
 
+function normalizeAccountOpeningBalanceMinor(value: number, accountKind?: string | null) {
+  if (accountKind === "credit_card" && value > 0) {
+    return -value;
+  }
+
+  return value;
+}
+
+function normalizeStatementBalanceMinor(value: number, accountKind?: string | null) {
+  if (accountKind === "credit_card" && value > 0) {
+    return -value;
+  }
+
+  return value;
+}
+
+function computeCheckpointLedgerBalanceMinor(input: {
+  openingBalanceMinor: number;
+  checkpoint: {
+    account_id: string;
+    checkpoint_month: string;
+    statement_start_date: string | null;
+    statement_end_date: string | null;
+  };
+  rows: {
+    account_id: string;
+    transaction_date: string;
+    entry_type: "expense" | "income" | "transfer";
+    transfer_direction: "in" | "out" | null;
+    amount_minor: number;
+  }[];
+}) {
+  const statementEndDate = input.checkpoint.statement_end_date ?? getMonthEndDate(input.checkpoint.checkpoint_month);
+  let balanceMinor = input.openingBalanceMinor;
+
+  for (const row of input.rows) {
+    if (row.account_id !== input.checkpoint.account_id || row.transaction_date > statementEndDate) {
+      continue;
+    }
+
+    // Statement-start rows are still part of the balance baseline, but the export
+    // presents them separately from the statement-cycle movement.
+    balanceMinor += getSignedLedgerAmountMinor(row);
+  }
+
+  return balanceMinor;
+}
+
+function getSignedLedgerAmountMinor(row: {
+  entry_type: "expense" | "income" | "transfer";
+  transfer_direction: "in" | "out" | null;
+  amount_minor: number;
+}) {
+  return row.entry_type === "income" || (row.entry_type === "transfer" && row.transfer_direction === "in")
+    ? Number(row.amount_minor)
+    : -Number(row.amount_minor);
+}
+
 function buildAccountHealth(input: {
   accountId: string;
   openingBalanceMinor: number;
@@ -2661,17 +2744,23 @@ function buildAccountHealth(input: {
   checkpoint?: {
     account_id: string;
     checkpoint_month: string;
+    statement_start_date: string | null;
+    statement_end_date: string | null;
     statement_balance_minor: number;
     note: string | null;
   };
+  accountKind?: string;
   checkpointLedgerNetMinor?: number;
   checkpointHistory?: AccountDto["checkpointHistory"];
 }) {
   const checkpointComputedBalanceMinor = input.checkpoint
-    ? input.openingBalanceMinor + (input.checkpointLedgerNetMinor ?? 0)
+    ? input.checkpointLedgerNetMinor ?? input.openingBalanceMinor
     : undefined;
   const checkpointDeltaMinor = input.checkpoint && checkpointComputedBalanceMinor != null
-    ? checkpointComputedBalanceMinor - Number(input.checkpoint.statement_balance_minor ?? 0)
+    ? checkpointComputedBalanceMinor - normalizeStatementBalanceMinor(
+      Number(input.checkpoint.statement_balance_minor ?? 0),
+      input.accountKind
+    )
     : undefined;
 
   let reconciliationStatus: AccountDto["reconciliationStatus"];
@@ -2687,7 +2776,12 @@ function buildAccountHealth(input: {
     latestImportAt: input.latestImportAt,
     unresolvedTransferCount: input.unresolvedTransferCount,
     latestCheckpointMonth: input.checkpoint?.checkpoint_month,
-    latestCheckpointBalanceMinor: input.checkpoint ? Number(input.checkpoint.statement_balance_minor ?? 0) : undefined,
+    latestCheckpointStartDate: input.checkpoint?.statement_start_date ?? undefined,
+    latestCheckpointEndDate: input.checkpoint?.statement_end_date ?? undefined,
+    latestCheckpointBalanceMinor: input.checkpoint ? normalizeStatementBalanceMinor(
+      Number(input.checkpoint.statement_balance_minor ?? 0),
+      input.accountKind
+    ) : undefined,
     latestCheckpointComputedBalanceMinor: checkpointComputedBalanceMinor,
     latestCheckpointDeltaMinor: checkpointDeltaMinor,
     latestCheckpointNote: input.checkpoint?.note ?? undefined,
@@ -2929,18 +3023,20 @@ export async function saveAccountCheckpointRecord(
   input: {
     accountId: string;
     checkpointMonth: string;
+    statementStartDate?: string | null;
+    statementEndDate?: string | null;
     statementBalanceMinor: number;
     note?: string;
   }
 ) {
   const account = await db
     .prepare(`
-      SELECT id
+      SELECT id, account_kind
       FROM accounts
       WHERE household_id = ? AND id = ?
     `)
     .bind(DEMO_HOUSEHOLD_ID, input.accountId)
-    .first<{ id: string }>();
+    .first<{ id: string; account_kind: string }>();
 
   const existingCheckpoint = await db
     .prepare(`
@@ -2956,12 +3052,20 @@ export async function saveAccountCheckpointRecord(
   }
 
   const checkpointId = `checkpoint-${input.accountId}-${input.checkpointMonth}`;
+  const statementStartDate = normalizeStatementDate(input.statementStartDate);
+  const statementEndDate = normalizeStatementDate(input.statementEndDate);
+  const statementBalanceMinor = normalizeStatementBalanceMinor(
+    Math.round(input.statementBalanceMinor),
+    account.account_kind
+  );
   await db
     .prepare(`
       INSERT INTO account_balance_checkpoints (
-        id, household_id, account_id, checkpoint_month, statement_balance_minor, note
-      ) VALUES (?, ?, ?, ?, ?, ?)
+        id, household_id, account_id, checkpoint_month, statement_start_date, statement_end_date, statement_balance_minor, note
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(account_id, checkpoint_month) DO UPDATE SET
+        statement_start_date = excluded.statement_start_date,
+        statement_end_date = excluded.statement_end_date,
         statement_balance_minor = excluded.statement_balance_minor,
         note = excluded.note,
         updated_at = CURRENT_TIMESTAMP
@@ -2971,7 +3075,9 @@ export async function saveAccountCheckpointRecord(
       DEMO_HOUSEHOLD_ID,
       input.accountId,
       input.checkpointMonth,
-      Math.round(input.statementBalanceMinor),
+      statementStartDate,
+      statementEndDate,
+      statementBalanceMinor,
       input.note?.trim() || null
     )
     .run();
@@ -2981,8 +3087,8 @@ export async function saveAccountCheckpointRecord(
     entityId: input.accountId,
     action: "checkpoint_saved",
     detail: existingCheckpoint
-      ? `Updated ${input.checkpointMonth} statement checkpoint ${formatMoneyMinor(existingCheckpoint.statement_balance_minor)} -> ${formatMoneyMinor(input.statementBalanceMinor)}.`
-      : `Saved ${input.checkpointMonth} statement checkpoint at ${formatMoneyMinor(input.statementBalanceMinor)}.`
+      ? `Updated ${input.checkpointMonth} statement checkpoint ${formatMoneyMinor(existingCheckpoint.statement_balance_minor)} -> ${formatMoneyMinor(statementBalanceMinor)}.`
+      : `Saved ${input.checkpointMonth} statement checkpoint at ${formatMoneyMinor(statementBalanceMinor)}.`
   });
 
   return { accountId: input.accountId, checkpointMonth: input.checkpointMonth, saved: true };
@@ -3024,6 +3130,216 @@ export async function deleteAccountCheckpointRecord(
   });
 
   return { accountId: input.accountId, checkpointMonth: input.checkpointMonth, deleted: true };
+}
+
+export async function buildAccountCheckpointLedgerCsv(
+  db: D1Database,
+  input: {
+    accountId: string;
+    checkpointMonth: string;
+  }
+) {
+  const checkpoint = await db
+    .prepare(`
+      SELECT
+        checkpoints.checkpoint_month,
+        checkpoints.statement_start_date,
+        checkpoints.statement_end_date,
+        checkpoints.statement_balance_minor,
+        accounts.account_name,
+        accounts.account_kind,
+        accounts.opening_balance_minor,
+        institutions.name AS institution_name,
+        people.display_name AS owner_name
+      FROM account_balance_checkpoints AS checkpoints
+      INNER JOIN accounts ON accounts.id = checkpoints.account_id
+      INNER JOIN institutions ON institutions.id = accounts.institution_id
+      LEFT JOIN people ON people.id = accounts.owner_person_id
+      WHERE checkpoints.household_id = ?
+        AND checkpoints.account_id = ?
+        AND checkpoints.checkpoint_month = ?
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, input.accountId, input.checkpointMonth)
+    .first<{
+      checkpoint_month: string;
+      statement_start_date: string | null;
+      statement_end_date: string | null;
+      statement_balance_minor: number;
+      account_name: string;
+      account_kind: string;
+      opening_balance_minor: number;
+      institution_name: string;
+      owner_name: string | null;
+    }>();
+
+  if (!checkpoint) {
+    throw new Error(`Unknown checkpoint: ${input.accountId} ${input.checkpointMonth}`);
+  }
+
+  const statementStartDate = checkpoint.statement_start_date;
+  const statementEndDate = checkpoint.statement_end_date ?? getMonthEndDate(checkpoint.checkpoint_month);
+  const statementBalanceMinor = normalizeStatementBalanceMinor(
+    Number(checkpoint.statement_balance_minor ?? 0),
+    checkpoint.account_kind
+  );
+  const baselineRows = statementStartDate
+    ? await db
+      .prepare(`
+        SELECT
+          transactions.amount_minor,
+          transactions.entry_type,
+          transactions.transfer_direction
+        FROM transactions
+        LEFT JOIN imports ON imports.id = transactions.import_id
+        WHERE transactions.household_id = ?
+          AND transactions.account_id = ?
+          AND transactions.transaction_date < ?
+          AND (transactions.import_id IS NULL OR imports.status = 'completed')
+      `)
+      .bind(DEMO_HOUSEHOLD_ID, input.accountId, statementStartDate)
+      .all<{
+        amount_minor: number;
+        entry_type: "expense" | "income" | "transfer";
+        transfer_direction: "in" | "out" | null;
+      }>()
+    : { results: [] };
+  const baselineBalanceMinor = normalizeAccountOpeningBalanceMinor(
+    Number(checkpoint.opening_balance_minor ?? 0),
+    checkpoint.account_kind
+  ) + baselineRows.results.reduce(
+    (total, row) => total + getSignedLedgerAmountMinor(row),
+    0
+  );
+  const rows = await db
+    .prepare(`
+      SELECT
+        transactions.id,
+        transactions.transaction_date,
+        transactions.description,
+        transactions.amount_minor,
+        transactions.currency,
+        transactions.entry_type,
+        transactions.transfer_direction,
+        transactions.ownership_type,
+        transactions.note,
+        categories.name AS category_name,
+        owner.display_name AS owner_name,
+        imports.id AS import_id,
+        imports.source_label,
+        imports.imported_at
+      FROM transactions
+      LEFT JOIN categories ON categories.id = transactions.category_id
+      LEFT JOIN people AS owner ON owner.id = transactions.owner_person_id
+      LEFT JOIN imports ON imports.id = transactions.import_id
+      WHERE transactions.household_id = ?
+        AND transactions.account_id = ?
+        AND transactions.transaction_date <= ?
+        AND (? IS NULL OR transactions.transaction_date >= ?)
+        AND (transactions.import_id IS NULL OR imports.status = 'completed')
+      ORDER BY transactions.transaction_date, transactions.created_at
+    `)
+    .bind(DEMO_HOUSEHOLD_ID, input.accountId, statementEndDate, statementStartDate, statementStartDate)
+    .all<{
+      id: string;
+      transaction_date: string;
+      description: string;
+      amount_minor: number;
+      currency: string;
+      entry_type: "expense" | "income" | "transfer";
+      transfer_direction: "in" | "out" | null;
+      ownership_type: "direct" | "shared";
+      note: string | null;
+      category_name: string | null;
+      owner_name: string | null;
+      import_id: string | null;
+      source_label: string | null;
+      imported_at: string | null;
+    }>();
+
+  const csvRows = [
+    [
+      "checkpoint_month",
+      "statement_start_date",
+      "statement_end_date",
+      "statement_balance",
+      "account",
+      "institution",
+      "account_owner",
+      "date",
+      "type",
+      "transfer_direction",
+      "description",
+      "category",
+      "ownership",
+      "entry_owner",
+      "amount",
+      "signed_amount",
+      "currency",
+      "note",
+      "import",
+      "imported_at",
+      "transaction_id"
+    ],
+    [
+      checkpoint.checkpoint_month,
+      checkpoint.statement_start_date ?? "",
+      statementEndDate,
+      formatMoneyCsvMinor(statementBalanceMinor),
+      checkpoint.account_name,
+      checkpoint.institution_name,
+      checkpoint.owner_name ?? "",
+      "",
+      statementStartDate ? "statement_start_balance" : "opening_balance",
+      "",
+      statementStartDate ? "Ledger balance before statement start" : "Opening balance",
+      "",
+      "",
+      "",
+      formatMoneyCsvMinor(baselineBalanceMinor),
+      formatMoneyCsvMinor(baselineBalanceMinor),
+      "SGD",
+      statementStartDate
+        ? "Baseline includes opening balance and completed ledger rows before statement_start_date"
+        : "Included before ledger rows",
+      "",
+      "",
+      ""
+    ],
+    ...rows.results.map((row) => {
+      const signedAmount = row.entry_type === "income" || (row.entry_type === "transfer" && row.transfer_direction === "in")
+        ? Number(row.amount_minor)
+        : -Number(row.amount_minor);
+      return [
+        checkpoint.checkpoint_month,
+        checkpoint.statement_start_date ?? "",
+        statementEndDate,
+        formatMoneyCsvMinor(statementBalanceMinor),
+        checkpoint.account_name,
+        checkpoint.institution_name,
+        checkpoint.owner_name ?? "",
+        row.transaction_date,
+        row.entry_type,
+        row.transfer_direction ?? "",
+        row.description,
+        row.category_name ?? "",
+        row.ownership_type,
+        row.owner_name ?? "",
+        formatMoneyCsvMinor(row.amount_minor),
+        formatMoneyCsvMinor(signedAmount),
+        row.currency,
+        row.note ?? "",
+        row.source_label ?? row.import_id ?? "",
+        row.imported_at ?? "",
+        row.id
+      ];
+    })
+  ];
+
+  const filenameAccount = checkpoint.account_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "account";
+  return {
+    filename: `${filenameAccount}-${checkpoint.checkpoint_month}-checkpoint-ledger.csv`,
+    csv: csvRows.map((row) => row.map(escapeCsvCell).join(",")).join("\n")
+  };
 }
 
 export async function loadUnresolvedTransfers(db: D1Database) {
@@ -3162,37 +3478,57 @@ export async function loadImportBatches(db: D1Database): Promise<ImportBatchDto[
 
   const accountRows = await db
     .prepare(`
-      SELECT DISTINCT imports.id AS import_id, accounts.account_name
+      SELECT DISTINCT imports.id AS import_id, accounts.id AS account_id, accounts.account_name
       FROM imports
       LEFT JOIN transactions ON transactions.import_id = imports.id
       LEFT JOIN accounts ON accounts.id = transactions.account_id
       WHERE imports.household_id = ?
     `)
     .bind(DEMO_HOUSEHOLD_ID)
-    .all<{ import_id: string; account_name: string | null }>();
+    .all<{ import_id: string; account_id: string | null; account_name: string | null }>();
 
+  const accountIdsByImportId = new Map<string, Set<string>>();
   const accountNamesByImportId = new Map<string, Set<string>>();
   for (const row of accountRows.results) {
-    if (!row.account_name) {
-      continue;
+    if (row.account_id) {
+      const currentIds = accountIdsByImportId.get(row.import_id) ?? new Set<string>();
+      currentIds.add(row.account_id);
+      accountIdsByImportId.set(row.import_id, currentIds);
     }
-    const current = accountNamesByImportId.get(row.import_id) ?? new Set<string>();
-    current.add(row.account_name);
-    accountNamesByImportId.set(row.import_id, current);
+
+    if (row.account_name) {
+      const currentNames = accountNamesByImportId.get(row.import_id) ?? new Set<string>();
+      currentNames.add(row.account_name);
+      accountNamesByImportId.set(row.import_id, currentNames);
+    }
   }
 
   return result.results.map((row) => {
-    const overlapImportCount = result.results.filter((candidate) => (
-      candidate.id !== row.id
-      && row.start_date
-      && row.end_date
-      && candidate.start_date
-      && candidate.end_date
-      && candidate.status !== "rolled_back"
-      && row.status !== "rolled_back"
-      && row.start_date <= candidate.end_date
-      && row.end_date >= candidate.start_date
-    )).length;
+    const rowAccountIds = accountIdsByImportId.get(row.id) ?? new Set<string>();
+    const overlapImports = result.results
+      .filter((candidate) => (
+        candidate.id !== row.id
+        && row.status === "completed"
+        && candidate.status === "completed"
+        && row.start_date
+        && row.end_date
+        && candidate.start_date
+        && candidate.end_date
+        && row.start_date <= candidate.end_date
+        && row.end_date >= candidate.start_date
+        && hasSetIntersection(rowAccountIds, accountIdsByImportId.get(candidate.id) ?? new Set<string>())
+      ))
+      .map((candidate) => ({
+        id: candidate.id,
+        sourceLabel: candidate.source_label,
+        sourceType: candidate.source_type,
+        importedAt: candidate.imported_at,
+        status: candidate.status,
+        transactionCount: Number(candidate.transaction_count ?? 0),
+        startDate: candidate.start_date ?? undefined,
+        endDate: candidate.end_date ?? undefined,
+        accountNames: Array.from(accountNamesByImportId.get(candidate.id) ?? []).sort()
+      }));
 
     return {
       id: row.id,
@@ -3204,7 +3540,8 @@ export async function loadImportBatches(db: D1Database): Promise<ImportBatchDto[
       startDate: row.start_date ?? undefined,
       endDate: row.end_date ?? undefined,
       accountNames: Array.from(accountNamesByImportId.get(row.id) ?? []).sort(),
-      overlapImportCount,
+      overlapImportCount: overlapImports.length,
+      overlapImports,
       note: row.note ?? undefined
     };
   });
@@ -3546,14 +3883,14 @@ export async function commitImportBatch(
       await db.batch(statements.slice(index, index + IMPORT_COMMIT_STATEMENT_CHUNK_SIZE));
     }
 
-    for (const month of monthsToRecalculate) {
-      await recalculateMonthlySnapshots(db, month);
-    }
-
     await db
       .prepare("UPDATE imports SET status = 'completed' WHERE household_id = ? AND id = ?")
       .bind(DEMO_HOUSEHOLD_ID, importId)
       .run();
+
+    for (const month of monthsToRecalculate) {
+      await recalculateMonthlySnapshots(db, month);
+    }
   } catch (error) {
     await cleanupImportBatchRows(db, importId);
     await db
@@ -4644,6 +4981,45 @@ function getMonthBounds(month: string) {
   const nextMonthDate = new Date(Date.UTC(year, monthNumber, 1));
   const nextMonth = `${nextMonthDate.getUTCFullYear()}-${String(nextMonthDate.getUTCMonth() + 1).padStart(2, "0")}-01`;
   return [monthStart, nextMonth] as const;
+}
+
+function getMonthEndDate(month: string) {
+  const [, nextMonth] = getMonthBounds(month);
+  const date = new Date(`${nextMonth}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - 1);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
+function normalizeStatementDate(value?: string | null) {
+  const trimmed = value?.trim();
+  return trimmed && /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : null;
+}
+
+function formatMoneyCsvMinor(valueMinor: number) {
+  return (Number(valueMinor) / 100).toFixed(2);
+}
+
+function escapeCsvCell(value: string | number | null | undefined) {
+  const text = String(value ?? "");
+  if (!/[",\n\r]/.test(text)) {
+    return text;
+  }
+
+  return `"${text.replace(/"/g, "\"\"")}"`;
+}
+
+function hasSetIntersection(left: Set<string>, right: Set<string>) {
+  if (!left.size || !right.size) {
+    return false;
+  }
+
+  for (const value of left) {
+    if (right.has(value)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function buildPlanDate(month: string, dayLabel?: string) {

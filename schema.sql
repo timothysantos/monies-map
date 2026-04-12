@@ -51,6 +51,8 @@ CREATE TABLE IF NOT EXISTS account_balance_checkpoints (
   household_id TEXT NOT NULL,
   account_id TEXT NOT NULL,
   checkpoint_month TEXT NOT NULL,
+  statement_start_date TEXT,
+  statement_end_date TEXT,
   statement_balance_minor INTEGER NOT NULL,
   note TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,

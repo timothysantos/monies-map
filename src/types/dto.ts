@@ -38,6 +38,8 @@ export interface AccountDto {
   latestImportAt?: string;
   unresolvedTransferCount?: number;
   latestCheckpointMonth?: string;
+  latestCheckpointStartDate?: string;
+  latestCheckpointEndDate?: string;
   latestCheckpointBalanceMinor?: number;
   latestCheckpointComputedBalanceMinor?: number;
   latestCheckpointDeltaMinor?: number;
@@ -48,6 +50,8 @@ export interface AccountDto {
 
 export interface AccountCheckpointDto {
   month: string;
+  statementStartDate?: string;
+  statementEndDate?: string;
   statementBalanceMinor: number;
   computedBalanceMinor: number;
   deltaMinor: number;
@@ -308,7 +312,20 @@ export interface ImportBatchDto {
   endDate?: string;
   accountNames: string[];
   overlapImportCount?: number;
+  overlapImports?: ImportOverlapDto[];
   note?: string;
+}
+
+export interface ImportOverlapDto {
+  id: string;
+  sourceLabel: string;
+  sourceType: "csv" | "pdf" | "manual";
+  importedAt: string;
+  status: "draft" | "completed" | "rolled_back";
+  transactionCount: number;
+  startDate?: string;
+  endDate?: string;
+  accountNames: string[];
 }
 
 export interface ImportPreviewRowDto {
