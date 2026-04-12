@@ -2,6 +2,7 @@ import { buildBootstrapDto } from "./domain/bootstrap";
 import { enterEmptyState, reseedDemoSettings } from "./domain/demo-settings";
 import {
   archiveAccountRecord,
+  buildAccountCheckpointLedgerCsv,
   buildImportPreview,
   commitImportBatch,
   createSplitExpenseRecord,
@@ -161,6 +162,8 @@ export default {
       const body = await request.json<{
         accountId?: string;
         checkpointMonth?: string;
+        statementStartDate?: string | null;
+        statementEndDate?: string | null;
         statementBalanceMinor?: number;
         note?: string;
       }>();
@@ -174,6 +177,8 @@ export default {
         ...(await saveAccountCheckpointRecord(env.DB, {
           accountId: body.accountId,
           checkpointMonth: body.checkpointMonth,
+          statementStartDate: body.statementStartDate,
+          statementEndDate: body.statementEndDate,
           statementBalanceMinor: body.statementBalanceMinor,
           note: body.note
         }))
@@ -196,6 +201,26 @@ export default {
           accountId: body.accountId,
           checkpointMonth: body.checkpointMonth
         }))
+      });
+    }
+
+    if (url.pathname === "/api/accounts/checkpoints/export" && request.method === "GET") {
+      const accountId = url.searchParams.get("accountId");
+      const checkpointMonth = url.searchParams.get("checkpointMonth");
+      if (!accountId || !checkpointMonth) {
+        return json({ ok: false, error: "Missing checkpoint fields" }, 400);
+      }
+
+      const exportResult = await buildAccountCheckpointLedgerCsv(env.DB, {
+        accountId,
+        checkpointMonth
+      });
+
+      return new Response(exportResult.csv, {
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": `attachment; filename="${exportResult.filename}"`
+        }
       });
     }
 

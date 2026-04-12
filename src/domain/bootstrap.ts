@@ -147,7 +147,10 @@ function buildContextView(
   const adjustedSummaryEntries = adjustEntriesForView(summaryEntries, id);
   const visibleEntries = filterEntriesForView(adjustedMonthEntries, id, selectedScope);
   const visibleSummaryEntries = filterEntriesForView(adjustedSummaryEntries, id, selectedScope);
-  const currentSummaryMonth = (summaryMonthsByView[id] ?? []).find((month) => month.month === selectedMonth) ?? null;
+  const currentSnapshotMonth = (summaryMonthsByView[id] ?? []).find((month) => month.month === selectedMonth) ?? null;
+  const currentSummaryMonth = currentSnapshotMonth
+    ? applyActualsFromEntries(currentSnapshotMonth, visibleEntries, selectedMonth)
+    : buildDerivedSummaryMonth(selectedMonth, visibleEntries);
 
   return {
     id,
@@ -184,7 +187,12 @@ function buildSummaryPage(
   const rangeMonths = summaryRangeMonths.length
     ? summaryRangeMonths.filter((month) => availableMonths.includes(month))
     : buildSummaryRange(availableMonths, undefined, selectedMonth);
-  const months = rangeMonths.map((month) => summaryMonthByKey.get(month) ?? buildDerivedSummaryMonth(month, visibleEntries));
+  const months = rangeMonths.map((month) => {
+    const snapshot = summaryMonthByKey.get(month);
+    return snapshot
+      ? applyActualsFromEntries(snapshot, visibleEntries, month)
+      : buildDerivedSummaryMonth(month, visibleEntries);
+  });
   const plannedTotalMinor = sumMinor(months, "estimatedExpensesMinor");
   const actualTotalMinor = sumMinor(months, "realExpensesMinor");
   const targetSavingsMinor = sumMinor(months, "savingsGoalMinor");
@@ -252,6 +260,26 @@ function buildDerivedSummaryMonth(month: string, visibleEntries: EntryDto[]): Su
     estimatedDiffMinor: incomeMinor,
     realDiffMinor: incomeMinor - realExpensesMinor,
     note: "Month derived from tracked activity."
+  };
+}
+
+function applyActualsFromEntries(
+  snapshot: SummaryMonthDto,
+  visibleEntries: EntryDto[],
+  month: string
+): SummaryMonthDto {
+  const derived = buildDerivedSummaryMonth(month, visibleEntries);
+  const hasLedgerActivity = visibleEntries.some((entry) => entry.date.slice(0, 7) === month);
+  if (!hasLedgerActivity) {
+    return snapshot;
+  }
+
+  return {
+    ...snapshot,
+    incomeMinor: derived.incomeMinor,
+    realExpensesMinor: derived.realExpensesMinor,
+    realizedSavingsMinor: derived.incomeMinor - derived.realExpensesMinor,
+    realDiffMinor: derived.incomeMinor - derived.realExpensesMinor
   };
 }
 
@@ -594,7 +622,7 @@ function buildSummaryRange(
   availableMonths: string[],
   summaryStartMonth?: string,
   summaryEndMonth?: string,
-  count = 13
+  count = 12
 ) {
   const sortedMonths = [...availableMonths].sort();
   if (!sortedMonths.length) {

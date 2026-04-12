@@ -64,6 +64,10 @@ not by maintaining a separate duplicate household plan.
 The point is not only to log transactions. The point is to compare plan versus
 actual and understand why the month moved.
 
+The Summary page defaults to the latest 12 available months. If a month has
+ledger entries, its actual income and expense values are derived from completed
+entries rather than waiting on a stale monthly snapshot row.
+
 ## Can I rename the household members?
 
 Yes. The Settings page now lets you edit the two household member display names.
@@ -102,6 +106,8 @@ The current Cloudflare Worker deployment is:
 [https://monies-map.timsantos-accts.workers.dev](https://monies-map.timsantos-accts.workers.dev)
 
 It uses the Cloudflare D1 database `monies-map`.
+The Worker is configured as a single-page app, so refreshing nested routes such
+as `/entries` should reload the React app instead of returning a Cloudflare 404.
 
 Before using real household data, protect the Worker with Cloudflare Access.
 The fastest setup is one-time PIN email auth, restricted to:
@@ -256,11 +262,21 @@ That makes balances internally consistent from a known starting point, but it
 is still not the same as live bank sync. If imports are incomplete, the app can
 still differ from the bank.
 
-The app now supports statement checkpoints too. You can save a month-end bank
-balance for an account, and the latest checkpoint is compared against the
-computed ledger. Account health then shows whether the ledger matches, is off,
-or still needs a checkpoint. It also surfaces the latest import time and any
-unresolved transfers that could make a balance look wrong.
+The app now supports statement checkpoints too. You can save a statement
+closing balance for an account, and the latest checkpoint is compared against
+the computed ledger. Statement start/end dates are optional: if they are blank,
+the app treats the checkpoint as a normal calendar month-end; if they are
+filled, the statement end date becomes the comparison cut-off for credit-card
+cycles that include prior-month rows. When a start date is filled, the app
+computes a baseline balance before that start date, then treats only start-to-end
+transactions as the statement cycle movement. Account health then shows whether
+the ledger matches, is off, or still needs a checkpoint. It also surfaces the
+latest import time and any unresolved transfers that could make a balance look
+wrong. If a checkpoint has a non-zero delta, you can download a CSV with the
+baseline row and the completed ledger rows inside that statement cycle.
+For credit cards, enter the statement as the bank-facing positive amount owed;
+the app normalizes it to the internal liability-negative ledger convention for
+comparison.
 
 Transfers are included in wallet balance and checkpoint calculations. Transfer
 ins increase the computed account balance, and transfer outs decrease it. The
@@ -269,8 +285,10 @@ include expenses plus transfer-outs.
 
 The import workflow now also flags possible duplicate rows already in the
 ledger and warns when the preview overlaps the date range of previous completed
-imports for the same accounts. This is not full reconciliation, but it is meant
-to catch the most common CSV trust mistakes before commit.
+imports for the same accounts. Recent imports also show which completed batches
+overlap, so a first import for a different card is not flagged just because the
+dates cross. This is not full reconciliation, but it is meant to catch the most
+common CSV trust mistakes before commit.
 
 Those duplicate warnings are now a bit smarter than a raw exact hash check. The
 app shows both exact matches and near matches based on amount, account, date
