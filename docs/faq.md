@@ -118,6 +118,13 @@ The fastest setup is one-time PIN email auth, restricted to:
 Google login can be added later by configuring Google as a Cloudflare Zero Trust
 identity provider and keeping the same email allowlist.
 
+## How do I deploy to production?
+
+Use the Cloudflare deploy steps in
+[`README.md`](/Users/tim/22m/ai-projects/monies_map/README.md#cloudflare-deploy).
+The routine path is to use Node 22, then run `npm run deploy`. If the app change
+depends on a schema update, run `npm run db:migrate:remote` before deploy.
+
 ## What does the demo assume right now?
 
 The current demo uses a believable household scenario that can be reseeded from
