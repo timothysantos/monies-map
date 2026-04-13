@@ -351,17 +351,23 @@ Yes. The app supports CSV review, row-level cleanup, and commit into the
 ledger. It also supports deterministic PDF statement import for UOB credit-card
 statements, UOB One savings statements, and Citibank Rewards or Citibank Miles
 credit-card statements. OCBC 365 credit-card statements and OCBC 360 account
-statements are also supported when the PDF includes embedded text.
+statements are also supported when the PDF includes embedded text. UOB One
+current-transaction `.xls` exports are supported as working ledger imports; they
+create reviewable rows but do not create statement checkpoints.
 
 The import workflow is:
 
-1. Open Imports and paste CSV text, upload a CSV, or drag a supported PDF
-   statement into the upload area.
+1. Open Imports and paste CSV text, upload a CSV, drag a supported PDF
+   statement, or drag a supported UOB current-transaction `.xls` export into the
+   upload area.
 2. For CSV, review the column mapping. The current import review supports either
    one signed `amount` column or separate `expense` and `income` columns.
 3. For supported PDFs, the browser extracts statement text locally and converts
-   it to the same reviewable rows as CSV. The app shows upload status while it
-   is reading, extracting, parsing, and preparing the preview.
+   it to the same reviewable rows as CSV. For supported UOB `.xls` current
+   transaction exports, the browser reads the workbook locally and converts the
+   posted activity into the same reviewable rows, without a checkpoint. The app
+   shows upload status while it is reading, extracting, parsing, and preparing
+   the preview.
 4. Review statement account mapping. This matters when a statement label is
    ambiguous, such as UOB One bank account versus UOB One Card. The mapping
    applies to both the preview rows and any statement checkpoints generated from
@@ -380,6 +386,17 @@ The import workflow is:
    composer so stale CSV/PDF content, upload status, checkpoint drafts, and
    preview rows do not remain on screen. Use Start over anytime to clear the
    current import draft without refreshing the page.
+
+For mid-month tracking, use the current-transaction export as a working ledger
+update. For example, download the UOB One `.xls` activity for the current month,
+import it, review categories and transfers, and commit those rows so the Month
+and Entries pages stay useful before the statement closes. Later, when the bank
+statement is ready, use the statement PDF as reconciliation evidence first:
+compare it against the committed ledger or import it only after reviewing
+duplicate and overlap warnings. The app should preserve the rows you already
+categorized, linked, split, or matched; the statement import/compare step is for
+finding missing rows, wrong directions, duplicates, or period mistakes, then
+saving the final statement checkpoint once the balance matches.
 
 For CSV imports, the raw data can include:
 

@@ -31,12 +31,15 @@ That distinction matters because the system needs to answer questions like:
 
 ### 1. Import
 
-- user uploads a CSV export from a bank, card, or mixed-account source, or a
-  supported PDF statement
+- user uploads a CSV export from a bank, card, or mixed-account source, a
+  supported PDF statement, or a supported current-transaction workbook export
 - system uses an institution-specific mapping profile when available
 - PDF statement import is deterministic: the browser extracts text, statement
   parsers normalize rows into the same import shape as CSV, and unsupported
   layouts fail before preview instead of using generative inference
+- current-transaction workbook imports are deterministic working-ledger imports:
+  for example, UOB One `.xls` history exports are parsed locally into reviewable
+  rows but do not create statement checkpoints
 - PDF statement parsers are institution-specific. UOB card and savings
   statements use their printed transaction blocks and balances; Citibank
   Rewards and Citibank Miles card statements use browser-extracted layout text

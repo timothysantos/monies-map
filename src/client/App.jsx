@@ -47,7 +47,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { messages } from "./copy/en-SG";
 import { inspectCsv } from "../lib/csv";
 import { getCurrentMonthKey } from "../lib/month";
-import { parseStatementText, statementRowsToCsv } from "../lib/statement-import";
+import { parseCurrentTransactionSpreadsheet, parseStatementText, statementRowsToCsv } from "../lib/statement-import";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 import { categories as defaultCategories } from "../domain/demo-data";
 import faqMarkdown from "../../docs/faq.md?raw";
@@ -5241,6 +5241,30 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
         return;
       }
 
+      if (/\.xls$/i.test(file.name) || file.type === "application/vnd.ms-excel") {
+        setDismissedOverlapIds([]);
+        setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
+        const parsed = parseCurrentTransactionSpreadsheet(await file.arrayBuffer(), file.name);
+
+        setSourceLabel(parsed.sourceLabel);
+        setStatementCheckpoints([]);
+        setStatementImportMeta({ sourceType: "csv", parserKey: parsed.parserKey });
+        setCsvText(statementRowsToCsv(parsed.rows));
+        if (parsed.rows[0]?.account) {
+          setDefaultAccountName(parsed.rows[0].account);
+        }
+
+        setUploadStatus({ tone: "active", message: messages.imports.uploadPreviewing(parsed.rows.length) });
+        await previewImportRows({
+          rows: parsed.rows,
+          nextSourceLabel: parsed.sourceLabel,
+          nextDefaultAccountName: parsed.rows[0]?.account ?? defaultAccountName,
+          nextStatementCheckpoints: []
+        });
+        setUploadStatus({ tone: "success", message: messages.imports.uploadReady(parsed.rows.length) });
+        return;
+      }
+
       const nextText = await file.text();
       setDismissedOverlapIds([]);
       setCsvText(nextText);
@@ -5554,7 +5578,7 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
               />
             </label>
             <div className="import-sidecar">
-              <input ref={fileInputRef} type="file" accept=".csv,text/csv,.pdf,application/pdf" hidden onChange={handleUploadImportFile} />
+              <input ref={fileInputRef} type="file" accept=".csv,text/csv,.pdf,application/pdf,.xls,application/vnd.ms-excel" hidden onChange={handleUploadImportFile} />
               <div
                 className={`import-dropzone ${isDragActive ? "is-active" : ""} ${isParsingStatement ? "is-busy" : ""}`}
                 role="button"

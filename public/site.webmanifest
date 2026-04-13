@@ -1,0 +1,19 @@
+{
+  "name": "Monie's Map",
+  "short_name": "Monies Map",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#B45F35",
+  "background_color": "#F7F4ED",
+  "display": "standalone"
+}
