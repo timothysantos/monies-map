@@ -4808,6 +4808,21 @@ th {
     max-width: 100%;
   }
 
+  .import-form-grid,
+  .import-csv-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .import-csv-field,
+  .import-sidecar,
+  .import-dropzone,
+  .import-upload-status,
+  .import-step-hint {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
   .desktop-scope-toggle.scope-toggle-row {
     display: none;
   }
