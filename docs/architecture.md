@@ -37,6 +37,8 @@ That distinction matters because the system needs to answer questions like:
 - PDF statement import is deterministic: the browser extracts text, statement
   parsers normalize rows into the same import shape as CSV, and unsupported
   layouts fail before preview instead of using generative inference
+- statement import code is split by source family under `src/lib/statement-import/`:
+  UOB, Citibank, OCBC, current-transaction XLS, and shared normalization helpers
 - current-transaction workbook imports are deterministic working-ledger imports:
   for example, UOB One `.xls` history exports are parsed locally into reviewable
   rows but do not create statement checkpoints
