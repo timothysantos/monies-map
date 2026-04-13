@@ -127,7 +127,3 @@ export function formatStatementReconciliationLine(item) {
 
   return `Statement ${money(item.statementBalanceMinor)} • Ledger ${money(item.projectedLedgerBalanceMinor)}`;
 }
-
-export function formatStatementCompareRow(row) {
-  return `${formatDateOnly(row.date)} • ${money(row.signedAmountMinor)} • ${row.description}`;
-}
