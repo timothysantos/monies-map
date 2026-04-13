@@ -24,6 +24,11 @@ import {
 } from "react-router-dom";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import {
+  describeAccountHealth,
+  formatAccountDisplayName,
+  formatAuditAction
+} from "./account-display";
+import {
   getCategory,
   getCategoryPatch,
   getCategorySelectValue,
@@ -58,6 +63,11 @@ import {
   inferImportMapping,
   selectParsedStatementForCompare
 } from "./import-helpers";
+import {
+  buildBootstrapErrorMessage,
+  buildRequestErrorMessage,
+  describeBootstrapError
+} from "./request-errors";
 import { SettingsAccountDialog, SettingsCategoryDialog, SettingsPersonDialog, SettingsReconciliationDialog } from "./settings-dialogs";
 import {
   BarLine,
@@ -68,6 +78,17 @@ import {
   MetricCard,
   SortableHeader
 } from "./ui-components";
+import {
+  formatArchiveDate,
+  getArchivedBatchSummary,
+  groupSplitActivityByBatch,
+  groupSplitActivityByDate
+} from "./split-helpers";
+import {
+  formatRowDateLabel,
+  getRowDateValue,
+  sortRows
+} from "./table-helpers";
 import {
   buildCheckpointExportHref,
   decimalStringToMinor,
@@ -7706,206 +7727,4 @@ function StatementCompareMissingRow({ row, result, accounts, categories, people,
       </Popover.Root>
     </div>
   );
-}
-
-function sortRows(rows, sort, monthKey = "2025-10") {
-  if (!sort) {
-    return rows;
-  }
-
-  const direction = sort.direction === "asc" ? 1 : -1;
-  return [...rows].sort((left, right) => {
-    const leftValue = getSortValue(left, sort.key, monthKey);
-    const rightValue = getSortValue(right, sort.key, monthKey);
-
-    if (typeof leftValue === "number" && typeof rightValue === "number") {
-      return (leftValue - rightValue) * direction;
-    }
-
-    return String(leftValue).localeCompare(String(rightValue)) * direction;
-  });
-}
-
-function getSortValue(row, key, monthKey) {
-  switch (key) {
-    case "variance":
-      return row.plannedMinor - row.actualMinor;
-    case "day":
-      return getRowDateValue(row, monthKey);
-    case "accountName":
-      return row.accountName ?? "";
-    case "note":
-      return row.note ?? "";
-    default:
-      return row[key] ?? "";
-  }
-}
-
-function groupSplitActivityByDate(items) {
-  const grouped = new Map();
-
-  for (const item of items) {
-    const current = grouped.get(item.date) ?? { date: item.date, items: [] };
-    current.items.push(item);
-    grouped.set(item.date, current);
-  }
-
-  return [...grouped.values()].sort((left, right) => right.date.localeCompare(left.date));
-}
-
-function groupSplitActivityByBatch(items) {
-  const grouped = new Map();
-
-  for (const item of items) {
-    const batchId = item.batchId ?? `split-batch-fallback-${item.groupId}`;
-    const current = grouped.get(batchId) ?? {
-      batchId,
-      label: item.batchLabel ?? `${item.groupName} settled batch`,
-      closedAt: item.batchClosedAt ?? item.date,
-      items: []
-    };
-    current.items.push(item);
-    if (item.batchClosedAt && item.batchClosedAt > current.closedAt) {
-      current.closedAt = item.batchClosedAt;
-    }
-    grouped.set(batchId, current);
-  }
-
-  return [...grouped.values()]
-    .map((batch) => ({
-      ...batch,
-      groups: groupSplitActivityByDate(batch.items)
-    }))
-    .sort((left, right) => right.closedAt.localeCompare(left.closedAt));
-}
-
-function formatArchiveDate(date) {
-  const value = new Date(`${date}T00:00:00`);
-  return new Intl.DateTimeFormat("en-SG", { month: "short", day: "2-digit" }).format(value);
-}
-
-function getArchivedBatchSummary(batch, viewId) {
-  const settlement = batch.items
-    .filter((item) => item.kind === "settlement")
-    .slice()
-    .sort((left, right) => right.date.localeCompare(left.date))[0];
-
-  if (!settlement) {
-    return {
-      title: batch.label,
-      subtitle: `${batch.items.length} archived ${batch.items.length === 1 ? "entry" : "entries"}`
-    };
-  }
-
-  const title = `${settlement.fromPersonName} fully settled up with ${settlement.toPersonName}`;
-  const amount = money(settlement.totalAmountMinor);
-  if (viewId === "person-tim") {
-    return {
-      title,
-      subtitle: settlement.toPersonId === viewId ? `${settlement.fromPersonName} paid you ${amount}` : `You paid ${settlement.toPersonName} ${amount}`
-    };
-  }
-  if (viewId === "person-joyce") {
-    return {
-      title,
-      subtitle: settlement.toPersonId === viewId ? `${settlement.fromPersonName} paid you ${amount}` : `You paid ${settlement.toPersonName} ${amount}`
-    };
-  }
-
-  return {
-    title,
-    subtitle: `${settlement.fromPersonName} paid ${settlement.toPersonName} ${amount}`
-  };
-}
-
-function describeAccountHealth(account) {
-  if (account.reconciliationStatus === "matched" && account.latestCheckpointMonth) {
-    return messages.settings.accountHealthMatched(formatMonthLabel(account.latestCheckpointMonth));
-  }
-
-  if (account.reconciliationStatus === "mismatch" && account.latestCheckpointMonth) {
-    return messages.settings.accountHealthMismatch(
-      formatMonthLabel(account.latestCheckpointMonth),
-      money(Math.abs(account.latestCheckpointDeltaMinor ?? 0))
-    );
-  }
-
-  return messages.settings.accountHealthNeedsCheckpoint;
-}
-
-function formatAccountDisplayName(account) {
-  const accountName = account.accountName ?? account.name ?? messages.common.emptyValue;
-  return account.ownerLabel ? `${accountName} • ${account.ownerLabel}` : accountName;
-}
-
-function formatAuditAction(action) {
-  return action
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function getRowDateValue(row, fallbackMonth) {
-  if (!row.dayLabel) {
-    return "";
-  }
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(row.dayLabel)) {
-    return row.dayLabel;
-  }
-
-  if (/^\d+$/.test(row.dayLabel)) {
-    return `${fallbackMonth}-${String(Number(row.dayLabel)).padStart(2, "0")}`;
-  }
-
-  return "";
-}
-
-function formatRowDateLabel(row, fallbackMonth) {
-  const value = getRowDateValue(row, fallbackMonth);
-  if (!value) {
-    return messages.common.emptyValue;
-  }
-
-  const [year, month, day] = value.split("-");
-  return new Intl.DateTimeFormat("en-SG", {
-    month: "short",
-    day: "numeric"
-  }).format(new Date(Number(year), Number(month) - 1, Number(day)));
-}
-
-function buildBootstrapErrorMessage(status, detail) {
-  const normalizedDetail = String(detail ?? "").replace(/\s+/g, " ").trim();
-  if (!normalizedDetail) {
-    return `Bootstrap request failed with status ${status}.`;
-  }
-
-  return `Bootstrap request failed with status ${status}. ${normalizedDetail.slice(0, 240)}`;
-}
-
-async function buildRequestErrorMessage(response, fallbackMessage) {
-  const responseText = await response.text();
-  let detail = responseText;
-
-  if (responseText) {
-    try {
-      const payload = JSON.parse(responseText);
-      detail = payload?.error ?? payload?.message ?? responseText;
-    } catch {}
-  }
-
-  const normalizedDetail = String(detail ?? "").replace(/\s+/g, " ").trim();
-  if (!normalizedDetail) {
-    return `${fallbackMessage} Status ${response.status}.`;
-  }
-
-  return `${fallbackMessage} ${normalizedDetail.slice(0, 240)}`;
-}
-
-function describeBootstrapError(error) {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return "The dashboard could not load bootstrap data.";
 }
