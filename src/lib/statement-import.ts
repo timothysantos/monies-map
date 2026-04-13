@@ -1381,7 +1381,9 @@ function cellString(value: string | number | undefined) {
 }
 
 function isTransferDescription(description: string) {
-  return /PAYMT THRU E-BANK|Bill Payment|mBK-|Funds Transfer|MONEYSEND|PAYMENT BY INTERNET|PAYMENT VIA|FAST PAYMENT|INB|OTHR Transfer/i.test(description);
+  const normalized = description.replace(/\s+/g, "");
+  return /PAYMT THRU E-BANK|Bill Payment|mBK-|Funds Transfer|MONEYSEND|PAYMENT BY INTERNET|PAYMENT VIA|FAST PAYMENT|INB|OTHR Transfer/i.test(description)
+    || /PAYMENTVIA|FASTPAYMENT|PAYMTTHRUE-BANK|PAYMENTBYINTERNET/i.test(normalized);
 }
 
 function inferCategory(description: string, isIncome: boolean) {
