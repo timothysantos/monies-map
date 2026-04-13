@@ -4,34 +4,13 @@ import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import {
   ArrowRightLeft,
-  BadgeDollarSign,
-  Banknote,
-  BanknoteArrowUp,
-  BusFront,
-  CarFront,
   Check,
   ChevronDown,
   ChevronRight,
-  Church,
-  Clapperboard,
-  Dumbbell,
-  Gift,
-  GraduationCap,
-  HeartPulse,
-  House,
-  Lightbulb,
-  Plane,
   Receipt,
   SquarePen,
-  ShoppingBag,
-  ShoppingCart,
-  Shield,
   Ellipsis,
   Plus,
-  UtensilsCrossed,
-  UsersRound,
-  WalletCards,
-  WashingMachine,
   X
 } from "lucide-react";
 import {
@@ -45,6 +24,8 @@ import {
 } from "react-router-dom";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { messages } from "./copy/en-SG";
+import { SettingsAccountDialog, SettingsCategoryDialog, SettingsPersonDialog, SettingsReconciliationDialog } from "./settings-dialogs";
+import { COLOR_OPTIONS, FALLBACK_THEME, ICON_OPTIONS, ICON_REGISTRY } from "./ui-options";
 import { inspectCsv } from "../lib/csv";
 import { getCurrentMonthKey } from "../lib/month";
 import { parseCurrentTransactionSpreadsheet, parseStatementText, statementRowsToCsv } from "../lib/statement-import";
@@ -64,74 +45,6 @@ const MONTH_PICKER_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "A
 const DEFAULT_MONTH_KEY = getCurrentMonthKey();
 const RECENT_IMPORTS_PAGE_SIZE = 25;
 const MONTH_SECTION_STATE_CACHE = new Map();
-
-const ICON_OPTIONS = [
-  { key: "arrow-right-left", label: "Transfer", Icon: ArrowRightLeft },
-  { key: "badge-dollar-sign", label: "Salary", Icon: BadgeDollarSign },
-  { key: "banknote-arrow-up", label: "Extra income", Icon: BanknoteArrowUp },
-  { key: "banknote", label: "Bills", Icon: Banknote },
-  { key: "wallet-cards", label: "Other", Icon: WalletCards },
-  { key: "utensils", label: "Food", Icon: UtensilsCrossed },
-  { key: "shopping-bag", label: "Shopping", Icon: ShoppingBag },
-  { key: "users", label: "Family", Icon: UsersRound },
-  { key: "receipt", label: "Receipt", Icon: Receipt },
-  { key: "shopping-cart", label: "Groceries", Icon: ShoppingCart },
-  { key: "house", label: "Home", Icon: House },
-  { key: "church", label: "Church", Icon: Church },
-  { key: "plane", label: "Travel", Icon: Plane },
-  { key: "dumbbell", label: "Hobbies", Icon: Dumbbell },
-  { key: "lightbulb", label: "Bills", Icon: Lightbulb },
-  { key: "clapperboard", label: "Entertainment", Icon: Clapperboard },
-  { key: "graduation-cap", label: "Education", Icon: GraduationCap },
-  { key: "shield", label: "Insurance", Icon: Shield },
-  { key: "bus", label: "Transport", Icon: BusFront },
-  { key: "car-front", label: "Taxi", Icon: CarFront },
-  { key: "washing-machine", label: "Subscriptions", Icon: WashingMachine },
-  { key: "heart-pulse", label: "Healthcare", Icon: HeartPulse },
-  { key: "gift", label: "Gift", Icon: Gift }
-];
-
-const ICON_REGISTRY = Object.fromEntries(ICON_OPTIONS.map((item) => [item.key, item.Icon]));
-const COLOR_OPTIONS = [
-  "#1F7A63",
-  "#C97B47",
-  "#7C8791",
-  "#8FAE4B",
-  "#22B573",
-  "#D5A24B",
-  "#B8875D",
-  "#E96A7A",
-  "#F08FA0",
-  "#F7A21B",
-  "#D4B35D",
-  "#4F8FD6",
-  "#F85A53",
-  "#F062A6",
-  "#CC63D8",
-  "#F08B43",
-  "#567CC9",
-  "#A06C5B",
-  "#66D2CF",
-  "#62C7B2",
-  "#7D86F2",
-  "#5EA89B",
-  "#8B78E6",
-  "#D56BDD",
-  "#FFA51A",
-  "#D86B73",
-  "#C98A5A",
-  "#717379",
-  "#56A4C9",
-  "#BDD93C"
-];
-const FALLBACK_THEME = { colorHex: "#6A7A73", iconKey: "receipt" };
-const ACCOUNT_KIND_OPTIONS = [
-  { value: "bank", label: "Bank" },
-  { value: "credit_card", label: "Credit card" },
-  { value: "loan", label: "Loan" },
-  { value: "cash", label: "Cash" },
-  { value: "investment", label: "Investment" }
-];
 
 const IMPORT_FIELD_OPTIONS = [
   { value: "ignore", label: "Don't import" },
@@ -4943,6 +4856,8 @@ function getImportDirectOwnerForAccount(accounts, people, accountName, fallbackO
 }
 
 function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, people, onRefresh }) {
+  // Keep import flow state centralized while the UI is being split up: CSV paste,
+  // PDF/XLS parsing, preview, checkpoints, and commit all share this payload.
   const [sourceLabel, setSourceLabel] = useState("Imported CSV");
   const [importNote, setImportNote] = useState("");
   const [csvText, setCsvText] = useState("");
@@ -5499,191 +5414,54 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
           ) : null}
         </div>
 
-        <div className={`import-stage-card ${currentStage === 1 ? "is-current" : currentStage > 1 ? "is-complete" : ""}`}>
-          <div className="import-stage-head">
-            <div className="section-head">
-              <h3>{messages.imports.selectFileTitle}</h3>
-              <span className="panel-context">{messages.imports.selectFileDetail}</span>
-            </div>
-            <span className={`import-stage-label ${currentStage === 1 ? "is-current" : currentStage > 1 ? "is-complete" : ""}`}>
-              {messages.imports.steps[0]}
-            </span>
-          </div>
-
-          <div className="import-form-grid">
-            <label className="entries-filter">
-              <span className="entries-filter-label">{messages.imports.sourceLabel}</span>
-              <input
-                className="table-edit-input"
-                value={sourceLabel}
-                onChange={(event) => setSourceLabel(event.target.value)}
-                placeholder={messages.imports.sourceLabelPlaceholder}
-              />
-            </label>
-            <label className="entries-filter">
-              <span className="entries-filter-label">{messages.imports.defaultAccount}</span>
-              <select className="table-edit-input" value={defaultAccountName} onChange={(event) => handleDefaultAccountChange(event.target.value)}>
-                <option value="">{messages.entries.allWallets}</option>
-                {accounts.map((account) => (
-                  <option key={account.id} value={account.name}>{account.name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="entries-filter">
-              <span className="entries-filter-label">{messages.imports.ownership}</span>
-              <select className="table-edit-input" value={ownershipType} onChange={(event) => setOwnershipType(event.target.value)}>
-                <option value="direct">Direct</option>
-                <option value="shared">{messages.entries.shared}</option>
-              </select>
-            </label>
-            <label className="entries-filter">
-              <span className="entries-filter-label">{messages.imports.owner}</span>
-              <select className="table-edit-input" value={ownerName} disabled={ownershipType !== "direct"} onChange={(event) => setOwnerName(event.target.value)}>
-                {people.map((person) => (
-                  <option key={person.id} value={person.name}>{person.name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="entries-filter">
-              <span className="entries-filter-label">{messages.imports.split}</span>
-              <input
-                className="table-edit-input"
-                type="number"
-                min="0"
-                max="100"
-                value={splitPercent}
-                disabled={ownershipType !== "shared"}
-                onChange={(event) => setSplitPercent(event.target.value)}
-              />
-            </label>
-            <label className="entries-filter import-note-field">
-              <span className="entries-filter-label">{messages.imports.importNote}</span>
-              <input
-                className="table-edit-input"
-                value={importNote}
-                onChange={(event) => setImportNote(event.target.value)}
-                placeholder={messages.imports.importNotePlaceholder}
-              />
-            </label>
-          </div>
-
-          <div className="import-csv-grid">
-            <label className="entries-filter import-csv-field">
-              <span className="entries-filter-label">{messages.imports.csvInput}</span>
-              <textarea
-                className="table-edit-textarea import-textarea"
-                value={csvText}
-                onChange={(event) => handleCsvTextChange(event.target.value)}
-                placeholder={messages.imports.csvPlaceholder}
-              />
-            </label>
-            <div className="import-sidecar">
-              <input ref={fileInputRef} type="file" accept=".csv,text/csv,.pdf,application/pdf,.xls,application/vnd.ms-excel" hidden onChange={handleUploadImportFile} />
-              <div
-                className={`import-dropzone ${isDragActive ? "is-active" : ""} ${isParsingStatement ? "is-busy" : ""}`}
-                role="button"
-                tabIndex={0}
-                onClick={() => fileInputRef.current?.click()}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    fileInputRef.current?.click();
-                  }
-                }}
-                onDragEnter={handleDragOverImportFile}
-                onDragOver={handleDragOverImportFile}
-                onDragLeave={handleDragLeaveImportFile}
-                onDrop={handleDropImportFile}
-              >
-                <strong>{messages.imports.dropzoneTitle}</strong>
-                <span>{messages.imports.dropzoneDetail}</span>
-              </div>
-              {uploadStatus ? (
-                <div className={`import-upload-status is-${uploadStatus.tone}`} role={uploadStatus.tone === "error" ? "alert" : "status"}>
-                  <strong>{uploadStatus.tone === "error" ? messages.imports.uploadStatusError : uploadStatus.tone === "success" ? messages.imports.uploadStatusReady : messages.imports.uploadStatusWorking}</strong>
-                  <span>{uploadStatus.message}</span>
-                </div>
-              ) : null}
-              <div className="import-step-hint">
-                <strong>{messages.imports.selectFileNextUpload}</strong>
-                <p>{messages.imports.selectFileNextPaste}</p>
-              </div>
-              <p className="lede compact">{messages.imports.defaultsHint}</p>
-              <p className="lede compact">{messages.imports.trustHint}</p>
-              <p className="lede compact">{importsPage.rollbackPolicy}</p>
-            </div>
-          </div>
-        </div>
+        <ImportSelectFileStage
+          currentStage={currentStage}
+          sourceLabel={sourceLabel}
+          onSourceLabelChange={setSourceLabel}
+          defaultAccountName={defaultAccountName}
+          onDefaultAccountChange={handleDefaultAccountChange}
+          accounts={accounts}
+          ownershipType={ownershipType}
+          onOwnershipTypeChange={setOwnershipType}
+          ownerName={ownerName}
+          onOwnerNameChange={setOwnerName}
+          people={people}
+          splitPercent={splitPercent}
+          onSplitPercentChange={setSplitPercent}
+          importNote={importNote}
+          onImportNoteChange={setImportNote}
+          csvText={csvText}
+          onCsvTextChange={handleCsvTextChange}
+          fileInputRef={fileInputRef}
+          onUploadImportFile={handleUploadImportFile}
+          isDragActive={isDragActive}
+          isParsingStatement={isParsingStatement}
+          onDragOverImportFile={handleDragOverImportFile}
+          onDragLeaveImportFile={handleDragLeaveImportFile}
+          onDropImportFile={handleDropImportFile}
+          uploadStatus={uploadStatus}
+          rollbackPolicy={importsPage.rollbackPolicy}
+        />
 
         {readyForMapping ? (
-          <div ref={mappingSectionRef} className={`import-stage-card ${currentStage === 2 ? "is-current" : currentStage > 2 ? "is-complete" : ""}`}>
-            <div className="import-stage-head">
-              <div className="section-head">
-                <h3>{messages.imports.mappingTitle}</h3>
-                <span className="panel-context">{messages.imports.mappingDetail(csvInspection.rows.length)}</span>
-              </div>
-              <span className={`import-stage-label ${currentStage === 2 ? "is-current" : currentStage > 2 ? "is-complete" : ""}`}>
-                {messages.imports.steps[1]}
-              </span>
-            </div>
-
-            <div className="import-mapping-topline">
-              <label className="entries-filter">
-                <span className="entries-filter-label">{messages.imports.nonExistingCategories}</span>
-                <select className="table-edit-input" value={unknownCategoryMode} onChange={(event) => setUnknownCategoryMode(event.target.value)}>
-                  <option value="other">{messages.imports.categoryFallbackOther}</option>
-                  <option value="block">{messages.imports.categoryFallbackBlock}</option>
-                </select>
-              </label>
-              <div className="import-mapping-state">
-                {missingRequiredFields.length ? (
-                  <span className="pill warning">{messages.imports.missingRequired(missingRequiredFields.join(", "))}</span>
-                ) : null}
-                {duplicateMappings.length ? (
-                  <span className="pill warning">{messages.imports.duplicateMappings(duplicateMappings.join(", "))}</span>
-                ) : null}
-                {!missingRequiredFields.length && !duplicateMappings.length ? (
-                  <span className="pill is-active">{messages.imports.mappingReady}</span>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="import-mapping-grid">
-              {csvInspection.headers.map((header) => (
-                <article key={header} className="import-column-card">
-                  <div className="import-column-head">
-                    <strong>{header}</strong>
-                    <span>{messages.imports.sampleRows}</span>
-                  </div>
-                  <select
-                    className="table-edit-input"
-                    value={columnMappings[header] ?? "ignore"}
-                    onChange={(event) => {
-                      const nextValue = event.target.value;
-                      setColumnMappings((current) => ({ ...current, [header]: nextValue }));
-                    }}
-                  >
-                    {IMPORT_FIELD_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                  <div className="import-column-samples">
-                    {csvInspection.rows.slice(0, 3).map((row, index) => (
-                      <code key={`${header}-${index}`}>{row[header] || messages.common.emptyValue}</code>
-                    ))}
-                  </div>
-                </article>
-              ))}
-            </div>
-
-            <div className="import-actions">
-              <button type="button" className="subtle-action is-primary" disabled={isSubmitting || isParsingStatement || !readyForPreview} onClick={handlePreview}>
-                {messages.imports.preview}
-              </button>
-            </div>
-            {readyForPreview ? <p className="import-stage-note">{messages.imports.mappingNext}</p> : null}
-            {previewError ? <div className="import-warning"><strong>{previewError}</strong></div> : null}
-          </div>
+          <ImportMappingStage
+            mappingSectionRef={mappingSectionRef}
+            currentStage={currentStage}
+            csvInspection={csvInspection}
+            unknownCategoryMode={unknownCategoryMode}
+            onUnknownCategoryModeChange={setUnknownCategoryMode}
+            missingRequiredFields={missingRequiredFields}
+            duplicateMappings={duplicateMappings}
+            columnMappings={columnMappings}
+            onColumnMappingChange={(header, nextValue) => {
+              setColumnMappings((current) => ({ ...current, [header]: nextValue }));
+            }}
+            isSubmitting={isSubmitting}
+            isParsingStatement={isParsingStatement}
+            readyForPreview={readyForPreview}
+            onPreview={handlePreview}
+            previewError={previewError}
+          />
         ) : null}
 
         <div ref={previewSectionRef} className={`import-stage-card ${currentStage === 3 ? "is-current" : ""}`}>
@@ -5912,257 +5690,566 @@ function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, pe
           ) : null}
 
           {previewRows.length ? (
-            <>
-              <div className="import-actions import-actions-end">
-                <button
-                  type="button"
-                  className="import-commit-button"
-                  disabled={isCommitDisabled}
-                  onClick={handleCommit}
-                >
-                  {messages.imports.commit}
-                </button>
-              </div>
-              <div className="table-wrap import-table-wrap">
-                <table className="summary-table import-preview-table">
-                  <thead>
-                    <tr>
-                      <th>{messages.imports.table.row}</th>
-                      <th>{messages.imports.table.date}</th>
-                      <th>{messages.imports.table.description}</th>
-                      <th>{messages.imports.table.amount}</th>
-                      <th>{messages.imports.table.type}</th>
-                      <th>{messages.imports.table.account}</th>
-                      <th>{messages.imports.table.category}</th>
-                      <th>{messages.imports.table.owner}</th>
-                      <th>{messages.imports.table.split}</th>
-                      <th>{messages.imports.table.note}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {previewRows.map((row) => (
-                      <tr key={row.rowId}>
-                        <td>{row.rowIndex}</td>
-                        <td>
-                          <input className="table-edit-input" type="date" value={row.date} onChange={(event) => updatePreviewRow(row.rowId, { date: event.target.value })} />
-                        </td>
-                        <td>
-                          <input className="table-edit-input" value={row.description} onChange={(event) => updatePreviewRow(row.rowId, { description: event.target.value })} />
-                        </td>
-                        <td className={getAmountToneClass(row.entryType === "expense" || row.transferDirection === "out" ? -row.amountMinor : row.amountMinor)}>
-                          <input
-                            className="table-edit-input import-amount-input"
-                            value={formatMinorInput(row.amountMinor)}
-                            onChange={(event) => updatePreviewRow(row.rowId, { amountMinor: parseMoneyInput(event.target.value, row.amountMinor) })}
-                          />
-                        </td>
-                        <td>
-                          <select className="table-edit-input" value={row.entryType} onChange={(event) => updatePreviewRow(row.rowId, { entryType: event.target.value })}>
-                            <option value="expense">Expense</option>
-                            <option value="income">Income</option>
-                            <option value="transfer">Transfer</option>
-                          </select>
-                        </td>
-                        <td>
-                          <select
-                            className="table-edit-input"
-                            value={row.accountName ?? ""}
-                            onChange={(event) => {
-                              const nextAccountName = event.target.value || undefined;
-                              updatePreviewRow(row.rowId, {
-                                accountName: nextAccountName,
-                                ...getPreviewAccountOwnerPatch(nextAccountName, row)
-                              });
-                            }}
-                          >
-                            <option value="">{messages.entries.allWallets}</option>
-                            {row.accountName && !knownAccountNames.has(row.accountName) ? (
-                              <option value={row.accountName}>{row.accountName}</option>
-                            ) : null}
-                            {accounts.map((account) => (
-                              <option key={account.id} value={account.name}>{account.name}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td>
-                          <select className="table-edit-input" value={row.categoryName ?? ""} onChange={(event) => updatePreviewRow(row.rowId, { categoryName: event.target.value || undefined })}>
-                            <option value="">{messages.entries.allCategories}</option>
-                            {categories.map((category) => (
-                              <option key={category.id} value={category.name}>{category.name}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td>
-                          <select
-                            className="table-edit-input"
-                            value={row.ownershipType === "shared" ? "Shared" : (row.ownerName ?? "")}
-                            onChange={(event) => {
-                              const nextOwner = event.target.value;
-                              if (nextOwner === "Shared") {
-                                updatePreviewRow(row.rowId, { ownershipType: "shared", ownerName: undefined, splitBasisPoints: 5000 });
-                                return;
-                              }
-                              updatePreviewRow(row.rowId, { ownershipType: "direct", ownerName: nextOwner, splitBasisPoints: 10000 });
-                            }}
-                          >
-                            {people.map((person) => (
-                              <option key={person.id} value={person.name}>{person.name}</option>
-                            ))}
-                            <option value="Shared">{messages.entries.shared}</option>
-                          </select>
-                        </td>
-                        <td>
-                          {row.ownershipType === "shared" ? (
-                            <input
-                              className="table-edit-input import-split-input"
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={Math.round((row.splitBasisPoints ?? 5000) / 100)}
-                              onChange={(event) => updatePreviewRow(row.rowId, { splitBasisPoints: Math.round(Number(event.target.value || "50") * 100) })}
-                            />
-                          ) : (
-                            messages.common.emptyValue
-                          )}
-                        </td>
-                        <td>
-                          <input className="table-edit-input" value={row.note ?? ""} onChange={(event) => updatePreviewRow(row.rowId, { note: event.target.value })} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="import-actions import-actions-end import-actions-bottom">
-                <button
-                  type="button"
-                  className="import-commit-button"
-                  disabled={isCommitDisabled}
-                  onClick={handleCommit}
-                >
-                  {messages.imports.commit}
-                </button>
-              </div>
-            </>
+            <ImportPreviewRowsTable
+              previewRows={previewRows}
+              accounts={accounts}
+              categories={categories}
+              people={people}
+              knownAccountNames={knownAccountNames}
+              isCommitDisabled={isCommitDisabled}
+              onCommit={handleCommit}
+              onUpdatePreviewRow={updatePreviewRow}
+              getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
+            />
           ) : (
             <p className="lede compact">{messages.imports.previewEmpty}</p>
           )}
         </div>
       </section>
 
-      <section className={`panel-subsection import-history-section ${recentImportsOpen ? "is-open" : ""}`}>
+      <ImportRecentHistorySection
+        recentImports={importsPage.recentImports}
+        recentImportGroups={recentImportGroups}
+        recentImportsOpen={recentImportsOpen}
+        recentImportPage={recentImportPage}
+        recentImportPageCount={recentImportPageCount}
+        recentImportStart={recentImportStart}
+        recentImportEnd={recentImportEnd}
+        onToggleOpen={() => setRecentImportsOpen((current) => !current)}
+        onPreviousPage={() => setRecentImportPage((current) => Math.max(1, current - 1))}
+        onNextPage={() => setRecentImportPage((current) => Math.min(recentImportPageCount, current + 1))}
+        onRollback={handleRollback}
+      />
+    </article>
+  );
+}
+
+// Stage 2 maps arbitrary CSV headers into the fixed import DTO the preview API expects.
+function ImportMappingStage({
+  mappingSectionRef,
+  currentStage,
+  csvInspection,
+  unknownCategoryMode,
+  onUnknownCategoryModeChange,
+  missingRequiredFields,
+  duplicateMappings,
+  columnMappings,
+  onColumnMappingChange,
+  isSubmitting,
+  isParsingStatement,
+  readyForPreview,
+  onPreview,
+  previewError
+}) {
+  const stageClassName = currentStage === 2 ? "is-current" : currentStage > 2 ? "is-complete" : "";
+
+  return (
+    <div ref={mappingSectionRef} className={`import-stage-card ${stageClassName}`}>
+      <div className="import-stage-head">
+        <div className="section-head">
+          <h3>{messages.imports.mappingTitle}</h3>
+          <span className="panel-context">{messages.imports.mappingDetail(csvInspection.rows.length)}</span>
+        </div>
+        <span className={`import-stage-label ${stageClassName}`}>
+          {messages.imports.steps[1]}
+        </span>
+      </div>
+
+      <div className="import-mapping-topline">
+        <label className="entries-filter">
+          <span className="entries-filter-label">{messages.imports.nonExistingCategories}</span>
+          <select className="table-edit-input" value={unknownCategoryMode} onChange={(event) => onUnknownCategoryModeChange(event.target.value)}>
+            <option value="other">{messages.imports.categoryFallbackOther}</option>
+            <option value="block">{messages.imports.categoryFallbackBlock}</option>
+          </select>
+        </label>
+        <div className="import-mapping-state">
+          {missingRequiredFields.length ? (
+            <span className="pill warning">{messages.imports.missingRequired(missingRequiredFields.join(", "))}</span>
+          ) : null}
+          {duplicateMappings.length ? (
+            <span className="pill warning">{messages.imports.duplicateMappings(duplicateMappings.join(", "))}</span>
+          ) : null}
+          {!missingRequiredFields.length && !duplicateMappings.length ? (
+            <span className="pill is-active">{messages.imports.mappingReady}</span>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="import-mapping-grid">
+        {csvInspection.headers.map((header) => (
+          <article key={header} className="import-column-card">
+            <div className="import-column-head">
+              <strong>{header}</strong>
+              <span>{messages.imports.sampleRows}</span>
+            </div>
+            <select
+              className="table-edit-input"
+              value={columnMappings[header] ?? "ignore"}
+              onChange={(event) => onColumnMappingChange(header, event.target.value)}
+            >
+              {IMPORT_FIELD_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <div className="import-column-samples">
+              {csvInspection.rows.slice(0, 3).map((row, index) => (
+                <code key={`${header}-${index}`}>{row[header] || messages.common.emptyValue}</code>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="import-actions">
+        <button type="button" className="subtle-action is-primary" disabled={isSubmitting || isParsingStatement || !readyForPreview} onClick={onPreview}>
+          {messages.imports.preview}
+        </button>
+      </div>
+      {readyForPreview ? <p className="import-stage-note">{messages.imports.mappingNext}</p> : null}
+      {previewError ? <div className="import-warning"><strong>{previewError}</strong></div> : null}
+    </div>
+  );
+}
+
+// Preview rows are still edited through ImportsPanel so account ownership fixes
+// and commit payloads stay consistent with the preview API response.
+function ImportPreviewRowsTable({
+  previewRows,
+  accounts,
+  categories,
+  people,
+  knownAccountNames,
+  isCommitDisabled,
+  onCommit,
+  onUpdatePreviewRow,
+  getPreviewAccountOwnerPatch
+}) {
+  return (
+    <>
+      <ImportCommitButton disabled={isCommitDisabled} onCommit={onCommit} />
+      <div className="table-wrap import-table-wrap">
+        <table className="summary-table import-preview-table">
+          <thead>
+            <tr>
+              <th>{messages.imports.table.row}</th>
+              <th>{messages.imports.table.date}</th>
+              <th>{messages.imports.table.description}</th>
+              <th>{messages.imports.table.amount}</th>
+              <th>{messages.imports.table.type}</th>
+              <th>{messages.imports.table.account}</th>
+              <th>{messages.imports.table.category}</th>
+              <th>{messages.imports.table.owner}</th>
+              <th>{messages.imports.table.split}</th>
+              <th>{messages.imports.table.note}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {previewRows.map((row) => (
+              <tr key={row.rowId}>
+                <td>{row.rowIndex}</td>
+                <td>
+                  <input className="table-edit-input" type="date" value={row.date} onChange={(event) => onUpdatePreviewRow(row.rowId, { date: event.target.value })} />
+                </td>
+                <td>
+                  <input className="table-edit-input" value={row.description} onChange={(event) => onUpdatePreviewRow(row.rowId, { description: event.target.value })} />
+                </td>
+                <td className={getAmountToneClass(row.entryType === "expense" || row.transferDirection === "out" ? -row.amountMinor : row.amountMinor)}>
+                  <input
+                    className="table-edit-input import-amount-input"
+                    value={formatMinorInput(row.amountMinor)}
+                    onChange={(event) => onUpdatePreviewRow(row.rowId, { amountMinor: parseMoneyInput(event.target.value, row.amountMinor) })}
+                  />
+                </td>
+                <td>
+                  <select className="table-edit-input" value={row.entryType} onChange={(event) => onUpdatePreviewRow(row.rowId, { entryType: event.target.value })}>
+                    <option value="expense">Expense</option>
+                    <option value="income">Income</option>
+                    <option value="transfer">Transfer</option>
+                  </select>
+                </td>
+                <td>
+                  <select
+                    className="table-edit-input"
+                    value={row.accountName ?? ""}
+                    onChange={(event) => {
+                      const nextAccountName = event.target.value || undefined;
+                      onUpdatePreviewRow(row.rowId, {
+                        accountName: nextAccountName,
+                        ...getPreviewAccountOwnerPatch(nextAccountName, row)
+                      });
+                    }}
+                  >
+                    <option value="">{messages.entries.allWallets}</option>
+                    {row.accountName && !knownAccountNames.has(row.accountName) ? (
+                      <option value={row.accountName}>{row.accountName}</option>
+                    ) : null}
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.name}>{account.name}</option>
+                    ))}
+                  </select>
+                </td>
+                <td>
+                  <select className="table-edit-input" value={row.categoryName ?? ""} onChange={(event) => onUpdatePreviewRow(row.rowId, { categoryName: event.target.value || undefined })}>
+                    <option value="">{messages.entries.allCategories}</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.name}>{category.name}</option>
+                    ))}
+                  </select>
+                </td>
+                <td>
+                  <select
+                    className="table-edit-input"
+                    value={row.ownershipType === "shared" ? "Shared" : (row.ownerName ?? "")}
+                    onChange={(event) => {
+                      const nextOwner = event.target.value;
+                      if (nextOwner === "Shared") {
+                        onUpdatePreviewRow(row.rowId, { ownershipType: "shared", ownerName: undefined, splitBasisPoints: 5000 });
+                        return;
+                      }
+                      onUpdatePreviewRow(row.rowId, { ownershipType: "direct", ownerName: nextOwner, splitBasisPoints: 10000 });
+                    }}
+                  >
+                    {people.map((person) => (
+                      <option key={person.id} value={person.name}>{person.name}</option>
+                    ))}
+                    <option value="Shared">{messages.entries.shared}</option>
+                  </select>
+                </td>
+                <td>
+                  {row.ownershipType === "shared" ? (
+                    <input
+                      className="table-edit-input import-split-input"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={Math.round((row.splitBasisPoints ?? 5000) / 100)}
+                      onChange={(event) => onUpdatePreviewRow(row.rowId, { splitBasisPoints: Math.round(Number(event.target.value || "50") * 100) })}
+                    />
+                  ) : (
+                    messages.common.emptyValue
+                  )}
+                </td>
+                <td>
+                  <input className="table-edit-input" value={row.note ?? ""} onChange={(event) => onUpdatePreviewRow(row.rowId, { note: event.target.value })} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <ImportCommitButton disabled={isCommitDisabled} onCommit={onCommit} isBottom />
+    </>
+  );
+}
+
+function ImportCommitButton({ disabled, onCommit, isBottom = false }) {
+  return (
+    <div className={`import-actions import-actions-end ${isBottom ? "import-actions-bottom" : ""}`}>
+      <button
+        type="button"
+        className="import-commit-button"
+        disabled={disabled}
+        onClick={onCommit}
+      >
+        {messages.imports.commit}
+      </button>
+    </div>
+  );
+}
+
+// Stage 1 stays presentational: it collects source defaults and hands files or
+// pasted CSV back to ImportsPanel so every source uses the same preview flow.
+function ImportSelectFileStage({
+  currentStage,
+  sourceLabel,
+  onSourceLabelChange,
+  defaultAccountName,
+  onDefaultAccountChange,
+  accounts,
+  ownershipType,
+  onOwnershipTypeChange,
+  ownerName,
+  onOwnerNameChange,
+  people,
+  splitPercent,
+  onSplitPercentChange,
+  importNote,
+  onImportNoteChange,
+  csvText,
+  onCsvTextChange,
+  fileInputRef,
+  onUploadImportFile,
+  isDragActive,
+  isParsingStatement,
+  onDragOverImportFile,
+  onDragLeaveImportFile,
+  onDropImportFile,
+  uploadStatus,
+  rollbackPolicy
+}) {
+  const stageClassName = currentStage === 1 ? "is-current" : currentStage > 1 ? "is-complete" : "";
+
+  return (
+    <div className={`import-stage-card ${stageClassName}`}>
+      <div className="import-stage-head">
+        <div className="section-head">
+          <h3>{messages.imports.selectFileTitle}</h3>
+          <span className="panel-context">{messages.imports.selectFileDetail}</span>
+        </div>
+        <span className={`import-stage-label ${stageClassName}`}>
+          {messages.imports.steps[0]}
+        </span>
+      </div>
+
+      <div className="import-form-grid">
+        <label className="entries-filter">
+          <span className="entries-filter-label">{messages.imports.sourceLabel}</span>
+          <input
+            className="table-edit-input"
+            value={sourceLabel}
+            onChange={(event) => onSourceLabelChange(event.target.value)}
+            placeholder={messages.imports.sourceLabelPlaceholder}
+          />
+        </label>
+        <label className="entries-filter">
+          <span className="entries-filter-label">{messages.imports.defaultAccount}</span>
+          <select className="table-edit-input" value={defaultAccountName} onChange={(event) => onDefaultAccountChange(event.target.value)}>
+            <option value="">{messages.entries.allWallets}</option>
+            {accounts.map((account) => (
+              <option key={account.id} value={account.name}>{account.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="entries-filter">
+          <span className="entries-filter-label">{messages.imports.ownership}</span>
+          <select className="table-edit-input" value={ownershipType} onChange={(event) => onOwnershipTypeChange(event.target.value)}>
+            <option value="direct">Direct</option>
+            <option value="shared">{messages.entries.shared}</option>
+          </select>
+        </label>
+        <label className="entries-filter">
+          <span className="entries-filter-label">{messages.imports.owner}</span>
+          <select className="table-edit-input" value={ownerName} disabled={ownershipType !== "direct"} onChange={(event) => onOwnerNameChange(event.target.value)}>
+            {people.map((person) => (
+              <option key={person.id} value={person.name}>{person.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="entries-filter">
+          <span className="entries-filter-label">{messages.imports.split}</span>
+          <input
+            className="table-edit-input"
+            type="number"
+            min="0"
+            max="100"
+            value={splitPercent}
+            disabled={ownershipType !== "shared"}
+            onChange={(event) => onSplitPercentChange(event.target.value)}
+          />
+        </label>
+        <label className="entries-filter import-note-field">
+          <span className="entries-filter-label">{messages.imports.importNote}</span>
+          <input
+            className="table-edit-input"
+            value={importNote}
+            onChange={(event) => onImportNoteChange(event.target.value)}
+            placeholder={messages.imports.importNotePlaceholder}
+          />
+        </label>
+      </div>
+
+      <div className="import-csv-grid">
+        <label className="entries-filter import-csv-field">
+          <span className="entries-filter-label">{messages.imports.csvInput}</span>
+          <textarea
+            className="table-edit-textarea import-textarea"
+            value={csvText}
+            onChange={(event) => onCsvTextChange(event.target.value)}
+            placeholder={messages.imports.csvPlaceholder}
+          />
+        </label>
+        <div className="import-sidecar">
+          <input ref={fileInputRef} type="file" accept=".csv,text/csv,.pdf,application/pdf,.xls,application/vnd.ms-excel" hidden onChange={onUploadImportFile} />
+          <div
+            className={`import-dropzone ${isDragActive ? "is-active" : ""} ${isParsingStatement ? "is-busy" : ""}`}
+            role="button"
+            tabIndex={0}
+            onClick={() => fileInputRef.current?.click()}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                fileInputRef.current?.click();
+              }
+            }}
+            onDragEnter={onDragOverImportFile}
+            onDragOver={onDragOverImportFile}
+            onDragLeave={onDragLeaveImportFile}
+            onDrop={onDropImportFile}
+          >
+            <strong>{messages.imports.dropzoneTitle}</strong>
+            <span>{messages.imports.dropzoneDetail}</span>
+          </div>
+          {uploadStatus ? (
+            <div className={`import-upload-status is-${uploadStatus.tone}`} role={uploadStatus.tone === "error" ? "alert" : "status"}>
+              <strong>{uploadStatus.tone === "error" ? messages.imports.uploadStatusError : uploadStatus.tone === "success" ? messages.imports.uploadStatusReady : messages.imports.uploadStatusWorking}</strong>
+              <span>{uploadStatus.message}</span>
+            </div>
+          ) : null}
+          <div className="import-step-hint">
+            <strong>{messages.imports.selectFileNextUpload}</strong>
+            <p>{messages.imports.selectFileNextPaste}</p>
+          </div>
+          <p className="lede compact">{messages.imports.defaultsHint}</p>
+          <p className="lede compact">{messages.imports.trustHint}</p>
+          <p className="lede compact">{rollbackPolicy}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Recent history is intentionally read-only except rollback; pagination only
+// changes which completed batches are visible in this section.
+function ImportRecentHistorySection({
+  recentImports,
+  recentImportGroups,
+  recentImportsOpen,
+  recentImportPage,
+  recentImportPageCount,
+  recentImportStart,
+  recentImportEnd,
+  onToggleOpen,
+  onPreviousPage,
+  onNextPage,
+  onRollback
+}) {
+  const shouldPaginate = recentImports.length > RECENT_IMPORTS_PAGE_SIZE;
+
+  return (
+    <section className={`panel-subsection import-history-section ${recentImportsOpen ? "is-open" : ""}`}>
+      <button
+        type="button"
+        className="settings-section-toggle import-history-toggle"
+        onClick={onToggleOpen}
+        aria-expanded={recentImportsOpen}
+      >
+        <div className="settings-section-toggle-copy">
+          <div className="section-head">
+            <h3>{messages.imports.recentTitle}</h3>
+            <span className="panel-context">{messages.imports.recentDetail}</span>
+          </div>
+        </div>
+        <span className={`settings-section-toggle-icon ${recentImportsOpen ? "is-open" : ""}`}>
+          <ChevronRight size={18} />
+        </span>
+      </button>
+      {recentImportsOpen ? (
+        <div className="import-history-groups">
+          {shouldPaginate ? (
+            <ImportRecentPagination
+              recentImportPage={recentImportPage}
+              recentImportPageCount={recentImportPageCount}
+              recentImportStart={recentImportStart}
+              recentImportEnd={recentImportEnd}
+              recentImportTotal={recentImports.length}
+              onPreviousPage={onPreviousPage}
+              onNextPage={onNextPage}
+            />
+          ) : null}
+          {recentImportGroups.map((group) => (
+            <section key={group.date} className="import-history-group">
+              <div className="import-history-date">{formatDateOnly(group.date)}</div>
+              <div className="import-history-list">
+                {group.items.map((item) => (
+                  <div key={item.id} className="import-card import-card-compact">
+                    <div className="import-history-main">
+                      <strong>{item.sourceLabel}</strong>
+                      <span className="import-history-inline">
+                        {messages.common.triplet(
+                          item.sourceType.toUpperCase(),
+                          formatDate(item.importedAt),
+                          messages.imports.transactionCount(item.transactionCount)
+                        )}
+                      </span>
+                      {item.startDate && item.endDate ? (
+                        <span className="import-history-inline">{messages.imports.importCoverage(formatDateOnly(item.startDate), formatDateOnly(item.endDate))}</span>
+                      ) : null}
+                      {item.accountNames.length ? <span className="import-history-inline">{item.accountNames.join(", ")}</span> : null}
+                      {item.note ? <span className="import-history-inline">{item.note}</span> : null}
+                    </div>
+                    <div className="import-meta import-meta-compact">
+                      <span className={`import-status ${item.status === "rolled_back" ? "is-warning" : "is-complete"}`}>{item.status}</span>
+                      {item.overlapImportCount ? (
+                        <ImportOverlapPopover item={item} />
+                      ) : null}
+                      {item.status === "completed" ? (
+                        <DeleteRowButton
+                          label={item.sourceLabel}
+                          destructive={false}
+                          triggerLabel={messages.imports.rollback}
+                          confirmLabel={messages.imports.rollbackConfirm}
+                          prompt={<>{messages.imports.rollbackDetail(item.sourceLabel)}</>}
+                          onConfirm={() => void onRollback(item.id)}
+                        />
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))}
+          {shouldPaginate ? (
+            <ImportRecentPagination
+              className="import-history-pagination-bottom"
+              recentImportPage={recentImportPage}
+              recentImportPageCount={recentImportPageCount}
+              recentImportStart={recentImportStart}
+              recentImportEnd={recentImportEnd}
+              recentImportTotal={recentImports.length}
+              onPreviousPage={onPreviousPage}
+              onNextPage={onNextPage}
+            />
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function ImportRecentPagination({
+  className = "",
+  recentImportPage,
+  recentImportPageCount,
+  recentImportStart,
+  recentImportEnd,
+  recentImportTotal,
+  onPreviousPage,
+  onNextPage
+}) {
+  return (
+    <div className={`import-history-pagination ${className}`}>
+      <span>{messages.imports.recentPageSummary(recentImportStart, recentImportEnd, recentImportTotal)}</span>
+      <div className="import-history-pagination-actions">
         <button
           type="button"
-          className="settings-section-toggle import-history-toggle"
-          onClick={() => setRecentImportsOpen((current) => !current)}
-          aria-expanded={recentImportsOpen}
+          className="subtle-action"
+          disabled={recentImportPage <= 1}
+          onClick={onPreviousPage}
         >
-          <div className="settings-section-toggle-copy">
-            <div className="section-head">
-              <h3>{messages.imports.recentTitle}</h3>
-              <span className="panel-context">{messages.imports.recentDetail}</span>
-            </div>
-          </div>
-          <span className={`settings-section-toggle-icon ${recentImportsOpen ? "is-open" : ""}`}>
-            <ChevronRight size={18} />
-          </span>
+          {messages.imports.previousPage}
         </button>
-        {recentImportsOpen ? (
-          <div className="import-history-groups">
-            {importsPage.recentImports.length > RECENT_IMPORTS_PAGE_SIZE ? (
-              <div className="import-history-pagination">
-                <span>{messages.imports.recentPageSummary(recentImportStart, recentImportEnd, importsPage.recentImports.length)}</span>
-                <div className="import-history-pagination-actions">
-                  <button
-                    type="button"
-                    className="subtle-action"
-                    disabled={recentImportPage <= 1}
-                    onClick={() => setRecentImportPage((current) => Math.max(1, current - 1))}
-                  >
-                    {messages.imports.previousPage}
-                  </button>
-                  <span>{messages.imports.recentPageCount(recentImportPage, recentImportPageCount)}</span>
-                  <button
-                    type="button"
-                    className="subtle-action"
-                    disabled={recentImportPage >= recentImportPageCount}
-                    onClick={() => setRecentImportPage((current) => Math.min(recentImportPageCount, current + 1))}
-                  >
-                    {messages.imports.nextPage}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-            {recentImportGroups.map((group) => (
-              <section key={group.date} className="import-history-group">
-                <div className="import-history-date">{formatDateOnly(group.date)}</div>
-                <div className="import-history-list">
-                  {group.items.map((item) => (
-                    <div key={item.id} className="import-card import-card-compact">
-                      <div className="import-history-main">
-                        <strong>{item.sourceLabel}</strong>
-                        <span className="import-history-inline">
-                          {messages.common.triplet(
-                            item.sourceType.toUpperCase(),
-                            formatDate(item.importedAt),
-                            messages.imports.transactionCount(item.transactionCount)
-                          )}
-                        </span>
-                        {item.startDate && item.endDate ? (
-                          <span className="import-history-inline">{messages.imports.importCoverage(formatDateOnly(item.startDate), formatDateOnly(item.endDate))}</span>
-                        ) : null}
-                        {item.accountNames.length ? <span className="import-history-inline">{item.accountNames.join(", ")}</span> : null}
-                        {item.note ? <span className="import-history-inline">{item.note}</span> : null}
-                      </div>
-                      <div className="import-meta import-meta-compact">
-                        <span className={`import-status ${item.status === "rolled_back" ? "is-warning" : "is-complete"}`}>{item.status}</span>
-                        {item.overlapImportCount ? (
-                          <ImportOverlapPopover item={item} />
-                        ) : null}
-                        {item.status === "completed" ? (
-                          <DeleteRowButton
-                            label={item.sourceLabel}
-                            destructive={false}
-                            triggerLabel={messages.imports.rollback}
-                            confirmLabel={messages.imports.rollbackConfirm}
-                            prompt={<>{messages.imports.rollbackDetail(item.sourceLabel)}</>}
-                            onConfirm={() => void handleRollback(item.id)}
-                          />
-                        ) : null}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            ))}
-            {importsPage.recentImports.length > RECENT_IMPORTS_PAGE_SIZE ? (
-              <div className="import-history-pagination import-history-pagination-bottom">
-                <span>{messages.imports.recentPageSummary(recentImportStart, recentImportEnd, importsPage.recentImports.length)}</span>
-                <div className="import-history-pagination-actions">
-                  <button
-                    type="button"
-                    className="subtle-action"
-                    disabled={recentImportPage <= 1}
-                    onClick={() => setRecentImportPage((current) => Math.max(1, current - 1))}
-                  >
-                    {messages.imports.previousPage}
-                  </button>
-                  <span>{messages.imports.recentPageCount(recentImportPage, recentImportPageCount)}</span>
-                  <button
-                    type="button"
-                    className="subtle-action"
-                    disabled={recentImportPage >= recentImportPageCount}
-                    onClick={() => setRecentImportPage((current) => Math.min(recentImportPageCount, current + 1))}
-                  >
-                    {messages.imports.nextPage}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </section>
-    </article>
+        <span>{messages.imports.recentPageCount(recentImportPage, recentImportPageCount)}</span>
+        <button
+          type="button"
+          className="subtle-action"
+          disabled={recentImportPage >= recentImportPageCount}
+          onClick={onNextPage}
+        >
+          {messages.imports.nextPage}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -7182,419 +7269,67 @@ function SettingsPanel({ settingsPage, accounts, categories, people, viewId, vie
         ) : null}
       </section>
 
-      <Dialog.Root open={Boolean(personDialog)} onOpenChange={(open) => { if (!open) setPersonDialog(null); }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content settings-account-dialog">
-            <div className="note-dialog-head">
-              <div>
-                <Dialog.Title>{messages.settings.editPerson}</Dialog.Title>
-                <Dialog.Description>{messages.settings.editPersonDetail}</Dialog.Description>
-              </div>
-              <button
-                type="button"
-                className="icon-action subtle-cancel"
-                aria-label="Close person dialog"
-                onClick={() => setPersonDialog(null)}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="settings-account-form settings-person-form">
-              <label className="table-edit-field">
-                <span>{messages.settings.personDisplayName}</span>
-                <input
-                  className="table-edit-input"
-                  value={personDialog?.name ?? ""}
-                  onChange={(event) => setPersonDialog((current) => current ? { ...current, name: event.target.value } : current)}
-                />
-              </label>
-            </div>
-            <div className="note-dialog-actions">
-              <button type="button" className="subtle-cancel" onClick={() => setPersonDialog(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="dialog-primary"
-                disabled={!personDialog?.name?.trim() || isSubmitting}
-                onClick={() => void handleSavePerson()}
-              >
-                {messages.settings.savePerson}
-              </button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      <SettingsPersonDialog
+        dialog={personDialog}
+        isSubmitting={isSubmitting}
+        onChange={setPersonDialog}
+        onClose={() => setPersonDialog(null)}
+        onSave={handleSavePerson}
+      />
 
-      <Dialog.Root
-        open={Boolean(accountDialog)}
-        onOpenChange={(open) => {
-          if (!open) {
-            setAccountDialog(null);
-            setAccountDialogError("");
-          }
+      <SettingsAccountDialog
+        dialog={accountDialog}
+        error={accountDialogError}
+        people={people}
+        isSubmitting={isSubmitting}
+        onChange={setAccountDialog}
+        onClose={() => {
+          setAccountDialog(null);
+          setAccountDialogError("");
         }}
-      >
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content settings-account-dialog">
-            <div className="note-dialog-head">
-              <div>
-                <Dialog.Title>{accountDialog?.mode === "create" ? messages.settings.createAccount : messages.settings.editAccount}</Dialog.Title>
-                <Dialog.Description>{accountDialog?.mode === "create" ? messages.settings.createAccountDetail : messages.settings.editAccountDetail}</Dialog.Description>
-              </div>
-              <button
-                type="button"
-                className="icon-action subtle-cancel"
-                aria-label="Close account dialog"
-                onClick={() => {
-                  setAccountDialog(null);
-                  setAccountDialogError("");
-                }}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            {accountDialogError ? <p className="form-error">{accountDialogError}</p> : null}
-            <div className="settings-account-form">
-              <label className="table-edit-field">
-                <span>{messages.settings.accountName}</span>
-                <input
-                  className="table-edit-input"
-                  value={accountDialog?.name ?? ""}
-                  onChange={(event) => setAccountDialog((current) => current ? { ...current, name: event.target.value } : current)}
-                />
-              </label>
-              <label className="table-edit-field">
-                <span>{messages.settings.accountInstitution}</span>
-                <input
-                  className="table-edit-input"
-                  value={accountDialog?.institution ?? ""}
-                  onChange={(event) => setAccountDialog((current) => current ? { ...current, institution: event.target.value } : current)}
-                />
-              </label>
-              <label className="table-edit-field">
-                <span>{messages.settings.accountType}</span>
-                <select
-                  className="table-edit-input"
-                  value={accountDialog?.kind ?? "bank"}
-                  onChange={(event) => setAccountDialog((current) => current ? { ...current, kind: event.target.value } : current)}
-                >
-                  {ACCOUNT_KIND_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="table-edit-field">
-                <span>{messages.settings.accountCurrency}</span>
-                <input
-                  className="table-edit-input"
-                  value={accountDialog?.currency ?? "SGD"}
-                  onChange={(event) => setAccountDialog((current) => current ? { ...current, currency: event.target.value.toUpperCase() } : current)}
-                />
-              </label>
-              <label className="table-edit-field">
-                <span>{messages.settings.accountOpeningBalance}</span>
-                <input
-                  className="table-edit-input table-edit-input-money"
-                  value={accountDialog?.openingBalance ?? "0.00"}
-                  onChange={(event) => setAccountDialog((current) => current ? { ...current, openingBalance: event.target.value } : current)}
-                />
-                <small className="field-help">{messages.settings.accountOpeningBalanceHelp}</small>
-              </label>
-              <label className="table-edit-field">
-                <span>{messages.settings.accountOwner}</span>
-                <select
-                  className="table-edit-input"
-                  value={accountDialog?.isJoint ? "shared" : (accountDialog?.ownerPersonId || "")}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setAccountDialog((current) => current ? {
-                      ...current,
-                      isJoint: value === "shared",
-                      ownerPersonId: value === "shared" ? "" : value
-                    } : current);
-                  }}
-                >
-                  <option value="shared">Shared</option>
-                  {people.map((person) => (
-                    <option key={person.id} value={person.id}>{person.name}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <div className="note-dialog-actions">
-              <button
-                type="button"
-                className="subtle-cancel"
-                onClick={() => {
-                  setAccountDialog(null);
-                  setAccountDialogError("");
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="dialog-primary"
-                disabled={!accountDialog?.name?.trim() || !accountDialog?.institution?.trim() || isSubmitting}
-                onClick={() => void handleSaveAccount()}
-              >
-                {accountDialog?.mode === "create" ? messages.settings.createAccount : messages.settings.saveAccount}
-              </button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+        onSave={handleSaveAccount}
+      />
 
-      <Dialog.Root open={Boolean(categoryDialog)} onOpenChange={(open) => { if (!open) setCategoryDialog(null); }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content settings-account-dialog settings-category-dialog">
-            <div className="note-dialog-head">
-              <div>
-                <Dialog.Title>{categoryDialog?.mode === "create" ? messages.settings.createCategory : messages.settings.editCategory}</Dialog.Title>
-                <Dialog.Description>{categoryDialog?.mode === "create" ? messages.settings.createCategoryDetail : messages.settings.editCategoryDetail}</Dialog.Description>
-              </div>
-              <button
-                type="button"
-                className="icon-action subtle-cancel"
-                aria-label="Close category dialog"
-                onClick={() => setCategoryDialog(null)}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="settings-account-form">
-              <label className="table-edit-field">
-                <span>{messages.settings.categoryName}</span>
-                <input
-                  className="table-edit-input"
-                  value={categoryDialog?.name ?? ""}
-                  onChange={(event) => setCategoryDialog((current) => current ? { ...current, name: event.target.value } : current)}
-                />
-              </label>
-              <label className="table-edit-field">
-                <span>{messages.settings.categorySlug}</span>
-                <input
-                  className="table-edit-input"
-                  value={categoryDialog?.slug ?? ""}
-                  onChange={(event) => setCategoryDialog((current) => current ? { ...current, slug: event.target.value } : current)}
-                />
-              </label>
-              <label className="table-edit-field">
-                <span>{messages.settings.categoryIcon}</span>
-                <div className="icon-grid">
-                  {ICON_OPTIONS.map((option) => (
-                    <button
-                      key={option.key}
-                      type="button"
-                      className={`icon-choice ${categoryDialog?.iconKey === option.key ? "is-active" : ""}`}
-                      onClick={() => setCategoryDialog((current) => current ? { ...current, iconKey: option.key } : current)}
-                    >
-                      <option.Icon size={18} />
-                    </button>
-                  ))}
-                </div>
-              </label>
-              <label className="table-edit-field">
-                <span>{messages.settings.categoryColor}</span>
-                <div className="color-grid">
-                  {COLOR_OPTIONS.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      className={`color-choice ${categoryDialog?.colorHex === color ? "is-active" : ""}`}
-                      style={{ "--swatch-color": color }}
-                      onClick={() => setCategoryDialog((current) => current ? { ...current, colorHex: color } : current)}
-                    />
-                  ))}
-                </div>
-              </label>
-            </div>
-            <div className="note-dialog-actions">
-              <button type="button" className="subtle-cancel" onClick={() => setCategoryDialog(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="dialog-primary"
-                disabled={!categoryDialog?.name?.trim() || isSubmitting}
-                onClick={() => void handleSaveCategory()}
-              >
-                {categoryDialog?.mode === "create" ? messages.settings.createCategory : messages.settings.saveCategory}
-              </button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      <SettingsCategoryDialog
+        dialog={categoryDialog}
+        isSubmitting={isSubmitting}
+        onChange={setCategoryDialog}
+        onClose={() => setCategoryDialog(null)}
+        onSave={handleSaveCategory}
+      />
 
-      <Dialog.Root open={Boolean(reconciliationDialog)} onOpenChange={(open) => {
-        if (!open) {
+      <SettingsReconciliationDialog
+        dialog={reconciliationDialog}
+        isSubmitting={isSubmitting}
+        checkpointHistoryYears={checkpointHistoryYears}
+        checkpointHistoryYear={checkpointHistoryYear}
+        visibleCheckpointHistory={visibleCheckpointHistory}
+        onChange={setReconciliationDialog}
+        onHistoryYearChange={setCheckpointHistoryYear}
+        onClose={() => {
           setReconciliationDialog(null);
           setStatementCompareResult(null);
           setStatementCompareStatus(null);
-        }
-      }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content settings-account-dialog settings-reconciliation-dialog">
-            <div className="note-dialog-head">
-              <div>
-                <Dialog.Title>{messages.settings.reconcileAccountTitle}</Dialog.Title>
-                <Dialog.Description>{messages.settings.reconcileAccountDetail}</Dialog.Description>
-              </div>
-              <button
-                type="button"
-                className="icon-action subtle-cancel"
-                aria-label="Close reconciliation dialog"
-                onClick={() => setReconciliationDialog(null)}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="settings-account-form settings-reconciliation-form">
-              <label className="table-edit-field settings-reconciliation-field-half">
-                <span>{messages.settings.accountName}</span>
-                <input className="table-edit-input" value={reconciliationDialog?.accountName ?? ""} readOnly />
-              </label>
-              <label className="table-edit-field settings-reconciliation-field-half">
-                <span>{messages.settings.checkpointMonth}</span>
-                <input
-                  type="month"
-                  className="table-edit-input"
-                  value={reconciliationDialog?.checkpointMonth ?? ""}
-                  onChange={(event) => setReconciliationDialog((current) => current ? { ...current, checkpointMonth: event.target.value } : current)}
-                />
-              </label>
-              <label className="table-edit-field settings-reconciliation-field-half">
-                <span>{messages.settings.checkpointStartDate}</span>
-                <input
-                  type="date"
-                  className="table-edit-input"
-                  value={reconciliationDialog?.statementStartDate ?? ""}
-                  onChange={(event) => setReconciliationDialog((current) => current ? { ...current, statementStartDate: event.target.value } : current)}
-                />
-              </label>
-              <label className="table-edit-field settings-reconciliation-field-half">
-                <span>{messages.settings.checkpointEndDate}</span>
-                <input
-                  type="date"
-                  className="table-edit-input"
-                  value={reconciliationDialog?.statementEndDate ?? ""}
-                  onChange={(event) => setReconciliationDialog((current) => current ? { ...current, statementEndDate: event.target.value } : current)}
-                />
-                <small className="field-help">{messages.settings.checkpointHelp}</small>
-              </label>
-              <label className="table-edit-field settings-reconciliation-balance-field">
-                <span>{messages.settings.checkpointBalance}</span>
-                <input
-                  className="table-edit-input table-edit-input-money"
-                  value={reconciliationDialog?.statementBalance ?? "0.00"}
-                  onChange={(event) => setReconciliationDialog((current) => current ? { ...current, statementBalance: event.target.value } : current)}
-                />
-              </label>
-              <label className="table-edit-field settings-reconciliation-note-field">
-                <span>{messages.settings.checkpointNote}</span>
-                <textarea
-                  className="table-edit-input"
-                  rows={4}
-                  value={reconciliationDialog?.note ?? ""}
-                  onChange={(event) => setReconciliationDialog((current) => current ? { ...current, note: event.target.value } : current)}
-                />
-              </label>
-            </div>
-            <div className="settings-reconciliation-scroll">
-              {reconciliationDialog?.history?.length ? (
-                <section className="settings-account-history">
-                  <div className="panel-subhead">
-                    <h3>{messages.settings.checkpointHistoryTitle}</h3>
-                    <p>{messages.settings.checkpointHistoryDetail}</p>
-                  </div>
-                  {checkpointHistoryYears.length > 1 ? (
-                    <div className="settings-checkpoint-year-filter">
-                      {checkpointHistoryYears.map((year) => (
-                        <button
-                          key={year}
-                          type="button"
-                          className={`summary-focus-button ${checkpointHistoryYear === year ? "is-active" : ""}`}
-                          onClick={() => setCheckpointHistoryYear(year)}
-                        >
-                          {year}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                  <div className="settings-account-list">
-                    {visibleCheckpointHistory.map((item) => (
-                      <div key={item.month} className="settings-account-row settings-checkpoint-row">
-                        <div className="settings-account-main">
-                          <strong>{formatMonthLabel(item.month)}</strong>
-                          <p>{formatCheckpointCoverage(item)}</p>
-                          <p>{formatCheckpointHistoryBalanceLine(item, reconciliationDialog?.accountKind)}</p>
-                          <div className="settings-checkpoint-delta-line">
-                            <p className={`settings-account-health ${item.deltaMinor === 0 ? "is-matched" : "is-mismatch"}`}>
-                              {item.deltaMinor === 0 ? "Matched" : `Delta ${money(Math.abs(item.deltaMinor))}`}
-                            </p>
-                            {item.deltaMinor !== 0 && reconciliationDialog?.accountId ? (
-                              <button
-                                type="button"
-                                className="settings-checkpoint-export"
-                                disabled={isSubmitting}
-                                onClick={() => void handleDownloadCheckpointExport(item)}
-                              >
-                                {messages.settings.checkpointExport}
-                              </button>
-                            ) : null}
-                            {item.deltaMinor !== 0 && reconciliationDialog?.accountId ? (
-                              <button
-                                type="button"
-                                className="settings-checkpoint-export"
-                                disabled={isSubmitting}
-                                onClick={() => openStatementComparePanelFromDialog(item)}
-                              >
-                                {messages.settings.statementCompareOpen}
-                              </button>
-                            ) : null}
-                          </div>
-                          {item.note ? <p className="settings-account-meta">{item.note}</p> : null}
-                        </div>
-                        <div className="settings-account-actions">
-                          <button type="button" className="icon-action" aria-label={messages.settings.checkpointEdit} onClick={() => handleEditCheckpoint(item)}>
-                            <SquarePen size={16} />
-                          </button>
-                          <DeleteRowButton
-                            label={formatMonthLabel(item.month)}
-                            triggerLabel={messages.settings.checkpointDelete}
-                            confirmLabel={messages.settings.checkpointDelete}
-                            destructive={false}
-                            prompt={messages.settings.checkpointDeleteDetail(formatMonthLabel(item.month))}
-                            onConfirm={() => handleDeleteCheckpoint(item)}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-            </div>
-            <div className="note-dialog-actions">
-              <button type="button" className="subtle-cancel" onClick={() => setReconciliationDialog(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="dialog-primary"
-                disabled={!reconciliationDialog?.checkpointMonth?.trim() || isSubmitting}
-                onClick={() => void handleSaveReconciliation()}
-              >
-                {messages.settings.checkpointSave}
-              </button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+        }}
+        onSave={handleSaveReconciliation}
+        onEditCheckpoint={handleEditCheckpoint}
+        onDownloadCheckpoint={handleDownloadCheckpointExport}
+        onCompareCheckpoint={openStatementComparePanelFromDialog}
+        renderCheckpointDeleteAction={(item) => (
+          <DeleteRowButton
+            label={formatMonthLabel(item.month)}
+            triggerLabel={messages.settings.checkpointDelete}
+            confirmLabel={messages.settings.checkpointDelete}
+            destructive={false}
+            prompt={messages.settings.checkpointDeleteDetail(formatMonthLabel(item.month))}
+            onConfirm={() => handleDeleteCheckpoint(item)}
+          />
+        )}
+        formatCheckpointMonth={(item) => formatMonthLabel(item.month)}
+        formatCheckpointCoverage={formatCheckpointCoverage}
+        formatCheckpointBalanceLine={(item) => formatCheckpointHistoryBalanceLine(item, reconciliationDialog?.accountKind)}
+        formatCheckpointDelta={(item) => (item.deltaMinor === 0 ? "Matched" : `Delta ${money(Math.abs(item.deltaMinor))}`)}
+      />
 
     </article>
   );
