@@ -23,20 +23,67 @@ import {
   useSearchParams
 } from "react-router-dom";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
+import {
+  getCategory,
+  getCategoryPatch,
+  getCategorySelectValue,
+  getCategoryTheme,
+  slugify
+} from "./category-utils";
 import { messages } from "./copy/en-SG";
+import {
+  applySharedSplit,
+  buildEntryDraft,
+  daysBetween,
+  entryMatchesScope,
+  getAmountToneClass,
+  getSignedAmountMinor,
+  getSignedTotalAmountMinor,
+  getTransferMatchCandidates,
+  getTransferWallets,
+  getVisibleSplitIndex,
+  getVisibleSplitPercent,
+  groupEntriesByDate,
+  normalizeEntryShape,
+  normalizeMatchText,
+  textOverlapScore,
+  uniqueValues
+} from "./entry-helpers";
+import { FaqPanel } from "./faq-panel";
 import { SettingsAccountDialog, SettingsCategoryDialog, SettingsPersonDialog, SettingsReconciliationDialog } from "./settings-dialogs";
-import { COLOR_OPTIONS, FALLBACK_THEME, ICON_OPTIONS, ICON_REGISTRY } from "./ui-options";
+import {
+  BarLine,
+  CategoryGlyph,
+  DeleteRowButton,
+  FilterSelect,
+  getIconComponent,
+  MetricCard,
+  SortableHeader
+} from "./ui-components";
+import {
+  buildCheckpointExportHref,
+  decimalStringToMinor,
+  formatCheckpointCoverage,
+  formatCheckpointHistoryBalanceLine,
+  formatCheckpointStatementInputMinor,
+  formatDate,
+  formatDateOnly,
+  formatEditableMinorInput,
+  formatMinorInput,
+  formatMonthLabel,
+  formatStatementCompareRow,
+  formatStatementReconciliationLine,
+  getContentDispositionFilename,
+  minorToDecimalString,
+  money,
+  parseDraftMoneyInput,
+  parseMoneyInput
+} from "./formatters";
+import { COLOR_OPTIONS, ICON_OPTIONS } from "./ui-options";
 import { inspectCsv } from "../lib/csv";
 import { getCurrentMonthKey } from "../lib/month";
 import { parseCurrentTransactionSpreadsheet, parseStatementText, statementRowsToCsv } from "../lib/statement-import";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
-import { categories as defaultCategories } from "../domain/demo-data";
-import faqMarkdown from "../../docs/faq.md?raw";
-
-const moneyFormatter = new Intl.NumberFormat("en-SG", {
-  style: "currency",
-  currency: "SGD"
-});
 
 const SUMMARY_FOCUS_OVERALL = "overall";
 const BOOTSTRAP_SYNC_CHANNEL = "monies-map-bootstrap-sync";
@@ -1387,11 +1434,6 @@ function CategoryAppearancePopover({ category, onChange }) {
       </Popover.Portal>
     </Popover.Root>
   );
-}
-
-function CategoryGlyph({ iconKey }) {
-  const Icon = getIconComponent(iconKey);
-  return <Icon size={18} strokeWidth={2.2} />;
 }
 
 function MonthPanel({ view, accounts, people, categories, householdMonthEntries, onCategoryAppearanceChange, onRefresh }) {
@@ -3969,61 +4011,6 @@ function EntriesPanel({ view, accounts, categories, people, onCategoryAppearance
         ))}
       </div>
     </article>
-  );
-}
-
-function FilterSelect({ label, value, options, emptyLabel, onChange }) {
-  return (
-    <label className="entries-filter">
-      <span className="entries-filter-label">{label}</span>
-      <select className="table-edit-input" value={value} onChange={(event) => onChange(event.target.value)}>
-        <option value="">{emptyLabel}</option>
-        {options.map((option) => (
-          <option key={option} value={option}>{option}</option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-function DeleteRowButton({ label, onConfirm, triggerLabel, confirmLabel = "Confirm", destructive = true, prompt }) {
-  return (
-    <Popover.Root>
-      <Popover.Trigger asChild>
-        <button
-          type="button"
-          className={destructive ? "subtle-remove" : "icon-action"}
-          aria-label={triggerLabel ?? `Delete ${label}`}
-          onClick={(event) => event.stopPropagation()}
-        >
-          {destructive ? "×" : <X size={16} />}
-        </button>
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
-          className="delete-popover"
-          sideOffset={8}
-          align="end"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <p>
-            {prompt ?? <>You are deleting <strong>{label}</strong>. Confirm?</>}
-          </p>
-          <div className="delete-popover-actions">
-            <Popover.Close asChild>
-              <button type="button" className="subtle-action">
-                Cancel
-              </button>
-            </Popover.Close>
-            <Popover.Close asChild>
-              <button type="button" className={`subtle-action ${destructive ? "subtle-danger" : ""}`} onClick={onConfirm}>
-                {confirmLabel}
-              </button>
-            </Popover.Close>
-          </div>
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
   );
 }
 
@@ -7725,171 +7712,6 @@ function StatementCompareMissingRow({ row, result, accounts, categories, people,
   );
 }
 
-function FaqPanel({ viewLabel }) {
-  const sections = useMemo(() => parseFaqMarkdown(faqMarkdown), []);
-  const faqCategories = useMemo(
-    () => defaultCategories.slice().sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name)),
-    []
-  );
-
-  return (
-    <article className="panel">
-      <div className="panel-head">
-        <div>
-          <h2>{messages.tabs.faq}</h2>
-          <span className="panel-context">{messages.faq.viewing(viewLabel)}</span>
-        </div>
-      </div>
-      <div className="faq-list">
-        {sections.map((section) => (
-          <article key={section.title} className="faq-item">
-            <h3>{section.title}</h3>
-            {section.title === "What are the default app categories?" ? (
-              <div className="faq-category-grid">
-                {faqCategories.map((category) => (
-                  <div key={category.id} className="faq-category-row">
-                    <span
-                      className="category-icon category-icon-static faq-category-icon"
-                      style={{ "--category-color": category.colorHex }}
-                    >
-                      <CategoryGlyph iconKey={category.iconKey} />
-                    </span>
-                    <div className="faq-category-copy">
-                      <strong>{category.name}</strong>
-                      <p>{messages.common.triplet(category.iconKey, category.colorHex, category.slug)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              section.blocks.map((block, index) => (
-                block.type === "list" ? (
-                  <ul key={`${section.title}-${index}`}>
-                    {block.items.map((item) => (
-                      <li key={item}>{renderInlineMarkdown(item)}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p key={`${section.title}-${index}`}>{renderInlineMarkdown(block.text)}</p>
-                )
-              ))
-            )}
-          </article>
-        ))}
-      </div>
-    </article>
-  );
-}
-
-function MetricCard({ card }) {
-  const value = card.amountMinor == null ? card.value : money(card.amountMinor);
-  return (
-    <div className={`metric ${card.tone ? `metric-${card.tone}` : ""}`}>
-      <span>{card.label}</span>
-      <strong>{value}</strong>
-      {card.detail ? <p>{card.detail}</p> : null}
-    </div>
-  );
-}
-
-function SortableHeader({ label, sort, columnKey, onSort, tableKey }) {
-  const isActive = sort?.key === columnKey;
-  const marker = !isActive ? "" : sort.direction === "asc" ? " ↑" : " ↓";
-
-  return (
-    <th>
-      <button
-        type="button"
-        className={`table-sort-button ${isActive ? "is-active" : ""}`}
-        onClick={() => onSort(tableKey, columnKey)}
-      >
-        {label}{marker}
-      </button>
-    </th>
-  );
-}
-
-function BarLine({ label, valueMinor, maxMinor, tone }) {
-  const percent = Math.max((valueMinor / Math.max(maxMinor, 1)) * 100, 6);
-  return (
-    <div className="plan-bar-line">
-      <span>{label}</span>
-      <div className="plan-bar-track">
-        <span className={`plan-bar-fill ${tone}`} style={{ width: `${percent}%` }} />
-      </div>
-      <strong>{money(valueMinor)}</strong>
-    </div>
-  );
-}
-
-function getCategory(categories, item) {
-  if (item.categoryId) {
-    const byId = categories.find((category) => category.id === item.categoryId);
-    if (byId) {
-      return byId;
-    }
-  }
-
-  if (item.categoryName) {
-    const byName = categories.find((category) => category.name === item.categoryName);
-    if (byName) {
-      return byName;
-    }
-  }
-
-  return categories.find((category) => category.name === item.label) ?? null;
-}
-
-function getCategorySelectValue(categories, item) {
-  const category = getCategory(categories, item);
-  return category?.id ?? item.categoryId ?? item.categoryName ?? "";
-}
-
-function getCategoryPatch(categories, value) {
-  const category = categories.find((entry) => entry.id === value || entry.name === value);
-  if (!category) {
-    return {
-      categoryId: null,
-      categoryName: value
-    };
-  }
-
-  return {
-    categoryId: category.id,
-    categoryName: category.name
-  };
-}
-
-function getCategoryTheme(categories, item, index) {
-  const category = getCategory(categories, item);
-  if (category) {
-    return {
-      color: category.colorHex,
-      iconKey: category.iconKey,
-      categoryId: category.id
-    };
-  }
-
-  const fallback = COLOR_OPTIONS[index % COLOR_OPTIONS.length];
-  return {
-    color: fallback,
-    iconKey: FALLBACK_THEME.iconKey,
-    categoryId: `fallback-${index}`
-  };
-}
-
-function getIconComponent(iconKey) {
-  return ICON_REGISTRY[iconKey] ?? Receipt;
-}
-
-function slugify(value) {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
 function sortRows(rows, sort, monthKey = "2025-10") {
   if (!sort) {
     return rows;
@@ -7921,125 +7743,6 @@ function getSortValue(row, key, monthKey) {
     default:
       return row[key] ?? "";
   }
-}
-
-function uniqueValues(values) {
-  return [...new Set(values.filter(Boolean))];
-}
-
-function buildEntryDraft(view, accounts, categories, people) {
-  const defaultOwnerName = view.id !== "household"
-    ? people.find((person) => person.id === view.id)?.name ?? people[0]?.name ?? ""
-    : people[0]?.name ?? "";
-  const ownershipType = view.monthPage.selectedScope === "shared" ? "shared" : "direct";
-  const defaultAccountName = accounts.find((account) => account.isActive !== false)?.name ?? accounts[0]?.name ?? "";
-  const preferredCategoryName = categories.find((category) => category.name === "Other")?.name ?? categories[0]?.name ?? "";
-  const draft = {
-    id: "entry-draft",
-    date: view.monthPage.month ? `${view.monthPage.month}-01` : new Date().toISOString().slice(0, 10),
-    description: "",
-    accountName: defaultAccountName,
-    categoryName: preferredCategoryName,
-    entryType: "expense",
-    transferDirection: undefined,
-    ownershipType,
-    ownerName: ownershipType === "direct" ? defaultOwnerName : undefined,
-    amountMinor: 0,
-    totalAmountMinor: 0,
-    viewerSplitRatioBasisPoints: view.id === "household" ? undefined : ownershipType === "shared" ? 5000 : 10000,
-    offsetsCategory: false,
-    note: "",
-    linkedTransfer: undefined,
-    splits: []
-  };
-
-  return normalizeEntryShape(draft, people);
-}
-
-function normalizeEntryShape(entry, people, previousEntry = entry) {
-  const nextEntry = {
-    ...entry,
-    amountMinor: Math.max(0, Number(entry.amountMinor ?? 0)),
-    totalAmountMinor: entry.totalAmountMinor ?? entry.amountMinor ?? 0
-  };
-
-  if (typeof nextEntry.categoryName === "string" && nextEntry.categoryName === "Transfer") {
-    nextEntry.entryType = "transfer";
-    nextEntry.transferDirection = nextEntry.transferDirection ?? "out";
-  }
-
-  if (nextEntry.entryType === "transfer") {
-    nextEntry.categoryName = "Transfer";
-    nextEntry.transferDirection = nextEntry.transferDirection ?? "out";
-  } else {
-    nextEntry.transferDirection = undefined;
-    if (nextEntry.categoryName === "Transfer") {
-      nextEntry.categoryName = "Other";
-    }
-  }
-
-  if (nextEntry.ownershipType === "direct") {
-    const ownerName = nextEntry.ownerName ?? previousEntry.ownerName ?? people[0]?.name ?? "";
-    const owner = people.find((person) => person.name === ownerName);
-    nextEntry.ownerName = ownerName;
-    nextEntry.totalAmountMinor = nextEntry.amountMinor;
-    nextEntry.viewerSplitRatioBasisPoints = 10000;
-    nextEntry.splits = ownerName
-      ? [{
-          personId: owner?.id ?? ownerName.toLowerCase(),
-          personName: ownerName,
-          ratioBasisPoints: 10000,
-          amountMinor: nextEntry.amountMinor
-        }]
-      : [];
-    return nextEntry;
-  }
-
-  const ratioPercent = getVisibleSplitPercent(previousEntry, "household")
-    ?? Math.round((previousEntry.splits?.[0]?.ratioBasisPoints ?? 5000) / 100);
-  const sharedSplits = applySharedSplit({
-    ...nextEntry,
-    totalAmountMinor: nextEntry.amountMinor,
-    splits: previousEntry.splits
-  }, people, ratioPercent, "household");
-  nextEntry.ownerName = undefined;
-  nextEntry.totalAmountMinor = nextEntry.amountMinor;
-  nextEntry.viewerSplitRatioBasisPoints = undefined;
-  nextEntry.splits = sharedSplits;
-  return nextEntry;
-}
-
-function applySharedSplit(entry, people, percentage, viewId = "household") {
-  const fallbackPeople = people.slice(0, 2);
-  const sharedPeople = entry.splits.length >= 2
-    ? entry.splits.slice(0, 2).map((split) => ({
-        personId: split.personId,
-        personName: split.personName
-      }))
-    : fallbackPeople.map((person) => ({
-        personId: person.id,
-        personName: person.name
-      }));
-  const primaryIndex = getVisibleSplitIndex(entry, viewId);
-  const secondaryIndex = primaryIndex === 0 ? 1 : 0;
-  const totalAmountMinor = entry.totalAmountMinor ?? entry.amountMinor;
-  const basisPoints = Math.max(0, Math.min(10000, Math.round(Number(percentage || 0) * 100)));
-  const complement = 10000 - basisPoints;
-  const primaryAmount = Math.round((totalAmountMinor * basisPoints) / 10000);
-  const secondaryAmount = totalAmountMinor - primaryAmount;
-  const ordered = [
-    {
-      ...sharedPeople[0],
-      ratioBasisPoints: primaryIndex === 0 ? basisPoints : complement,
-      amountMinor: primaryIndex === 0 ? primaryAmount : secondaryAmount
-    },
-    {
-      ...sharedPeople[1],
-      ratioBasisPoints: secondaryIndex === 1 ? complement : basisPoints,
-      amountMinor: secondaryIndex === 1 ? secondaryAmount : primaryAmount
-    }
-  ];
-  return ordered;
 }
 
 function inferImportMapping(header) {
@@ -8221,66 +7924,6 @@ function selectParsedStatementForCompare(parsed, target) {
   return { checkpoint, rows };
 }
 
-function entryMatchesScope(entry, viewId, scope) {
-  if (viewId === "household") {
-    return scope === "shared" ? entry.ownershipType === "shared" : true;
-  }
-
-  const personId = viewId;
-  if (scope === "shared") {
-    return entry.ownershipType === "shared" && entry.splits.some((split) => split.personId === personId);
-  }
-
-  if (scope === "direct") {
-    return entry.ownershipType === "direct" && entry.splits.some((split) => split.personId === personId);
-  }
-
-  return entry.splits.some((split) => split.personId === personId);
-}
-
-function getVisibleSplitIndex(entry, viewId) {
-  if (entry.ownershipType !== "shared" || !entry.splits.length) {
-    return -1;
-  }
-
-  if (viewId === "household") {
-    return 0;
-  }
-
-  const matchingIndex = entry.splits.findIndex((split) => split.personId === viewId);
-  return matchingIndex === -1 ? 0 : matchingIndex;
-}
-
-function getVisibleSplitPercent(entry, viewId) {
-  if (entry.ownershipType !== "shared") {
-    return null;
-  }
-
-  if (typeof entry.viewerSplitRatioBasisPoints === "number") {
-    return entry.viewerSplitRatioBasisPoints / 100;
-  }
-
-  const splitIndex = getVisibleSplitIndex(entry, viewId);
-  if (splitIndex === -1) {
-    return null;
-  }
-
-  return entry.splits[splitIndex]?.ratioBasisPoints / 100;
-}
-
-function groupEntriesByDate(entries) {
-  const grouped = new Map();
-
-  for (const entry of entries) {
-    const current = grouped.get(entry.date) ?? { date: entry.date, entries: [], netMinor: 0 };
-    current.entries.push(entry);
-    current.netMinor += getSignedAmountMinor(entry);
-    grouped.set(entry.date, current);
-  }
-
-  return [...grouped.values()].sort((left, right) => right.date.localeCompare(left.date));
-}
-
 function groupSplitActivityByDate(items) {
   const grouped = new Map();
 
@@ -8358,165 +8001,6 @@ function getArchivedBatchSummary(batch, viewId) {
   };
 }
 
-function getSignedAmountMinor(entry) {
-  if (entry.entryType === "income" || (entry.entryType === "transfer" && entry.transferDirection === "in")) {
-    return entry.amountMinor;
-  }
-
-  if (entry.entryType === "transfer" && entry.transferDirection === "out") {
-    return -entry.amountMinor;
-  }
-
-  return -entry.amountMinor;
-}
-
-function getSignedTotalAmountMinor(entry) {
-  if (typeof entry.totalAmountMinor !== "number") {
-    return null;
-  }
-
-  if (entry.entryType === "income" || (entry.entryType === "transfer" && entry.transferDirection === "in")) {
-    return entry.totalAmountMinor;
-  }
-
-  return -entry.totalAmountMinor;
-}
-
-function getTransferWallets(entry) {
-  if (entry.transferDirection === "in") {
-    return {
-      fromWalletName: entry.linkedTransfer?.accountName ?? "Unmatched",
-      toWalletName: entry.accountName
-    };
-  }
-
-  return {
-    fromWalletName: entry.accountName,
-    toWalletName: entry.linkedTransfer?.accountName ?? "Unmatched"
-  };
-}
-
-function getTransferMatchCandidates(entry, entries) {
-  const amountMinor = entry.totalAmountMinor ?? entry.amountMinor;
-
-  return entries
-    .filter((candidate) => {
-      if (candidate.id === entry.id) {
-        return false;
-      }
-
-      const candidateAmountMinor = candidate.totalAmountMinor ?? candidate.amountMinor;
-      if (candidateAmountMinor !== amountMinor) {
-        return false;
-      }
-
-      if (candidate.accountName === entry.accountName) {
-        return false;
-      }
-
-      return true;
-    })
-    .sort((left, right) => {
-      const leftOpposite = left.transferDirection && entry.transferDirection
-        ? left.transferDirection !== entry.transferDirection
-        : false;
-      const rightOpposite = right.transferDirection && entry.transferDirection
-        ? right.transferDirection !== entry.transferDirection
-        : false;
-      if (leftOpposite !== rightOpposite) {
-        return leftOpposite ? -1 : 1;
-      }
-
-      const leftGap = Math.abs(daysBetween(entry.date, left.date));
-      const rightGap = Math.abs(daysBetween(entry.date, right.date));
-      if (leftGap !== rightGap) {
-        return leftGap - rightGap;
-      }
-
-      return left.accountName.localeCompare(right.accountName);
-    })
-    .slice(0, 5);
-}
-
-function daysBetween(left, right) {
-  const leftDate = new Date(`${left}T00:00:00Z`);
-  const rightDate = new Date(`${right}T00:00:00Z`);
-  return Math.round((rightDate.getTime() - leftDate.getTime()) / 86400000);
-}
-
-function normalizeMatchText(value) {
-  return String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-}
-
-function textOverlapScore(left, right) {
-  const leftTokens = new Set(normalizeMatchText(left).split(" ").filter((token) => token.length > 2));
-  const rightTokens = new Set(normalizeMatchText(right).split(" ").filter((token) => token.length > 2));
-  if (!leftTokens.size || !rightTokens.size) {
-    return 0;
-  }
-
-  let overlap = 0;
-  for (const token of leftTokens) {
-    if (rightTokens.has(token)) {
-      overlap += 1;
-    }
-  }
-
-  return overlap / Math.max(leftTokens.size, rightTokens.size);
-}
-
-function getAmountToneClass(amountMinor) {
-  if (amountMinor > 0) {
-    return "positive";
-  }
-  if (amountMinor < 0) {
-    return "negative";
-  }
-  return "";
-}
-
-function formatDateOnly(value) {
-  return new Intl.DateTimeFormat("en-SG", {
-    month: "short",
-    day: "numeric",
-    year: "numeric"
-  }).format(new Date(value));
-}
-
-function formatCheckpointCoverage(item) {
-  if (item.statementStartDate && item.statementEndDate) {
-    return `${formatDateOnly(item.statementStartDate)} - ${formatDateOnly(item.statementEndDate)}`;
-  }
-
-  if (item.statementEndDate) {
-    return `Through ${formatDateOnly(item.statementEndDate)}`;
-  }
-
-  return `${formatMonthLabel(item.month)} calendar month`;
-}
-
-function buildCheckpointExportHref(accountId, checkpointMonth) {
-  const params = new URLSearchParams({
-    accountId,
-    checkpointMonth
-  });
-  return `/api/accounts/checkpoints/export?${params.toString()}`;
-}
-
-function getContentDispositionFilename(value) {
-  if (!value) {
-    return null;
-  }
-
-  const filenameStar = value.match(/filename\*=UTF-8''([^;]+)/i);
-  if (filenameStar?.[1]) {
-    return decodeURIComponent(filenameStar[1].replaceAll('"', ""));
-  }
-
-  const filename = value.match(/filename="?([^";]+)"?/i);
-  return filename?.[1] ?? null;
-}
-
 function describeAccountHealth(account) {
   if (account.reconciliationStatus === "matched" && account.latestCheckpointMonth) {
     return messages.settings.accountHealthMatched(formatMonthLabel(account.latestCheckpointMonth));
@@ -8542,98 +8026,6 @@ function formatAuditAction(action) {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
-}
-
-function money(valueMinor) {
-  return moneyFormatter.format(valueMinor / 100);
-}
-
-function minorToDecimalString(valueMinor) {
-  return (Number(valueMinor ?? 0) / 100).toFixed(2);
-}
-
-function decimalStringToMinor(value) {
-  const normalized = Number(value);
-  if (!Number.isFinite(normalized)) {
-    return 0;
-  }
-  return Math.round(normalized * 100);
-}
-
-function formatDate(value) {
-  return new Intl.DateTimeFormat("en-SG", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(new Date(value));
-}
-
-function formatMonthLabel(value) {
-  const [year, month] = value.split("-");
-  return new Intl.DateTimeFormat("en-SG", {
-    month: "short",
-    year: "numeric"
-  }).format(new Date(Number(year), Number(month) - 1, 1));
-}
-
-function formatMinorInput(valueMinor) {
-  return (valueMinor / 100).toFixed(2);
-}
-
-function formatCheckpointStatementInputMinor(valueMinor, accountKind) {
-  const displayMinor = accountKind === "credit_card" ? Math.abs(valueMinor) : valueMinor;
-  return formatMinorInput(displayMinor);
-}
-
-function formatCheckpointHistoryBalanceLine(item, accountKind) {
-  if (accountKind === "credit_card") {
-    return `Statement owed ${money(Math.abs(item.statementBalanceMinor))} • Ledger owed ${money(Math.abs(item.computedBalanceMinor))}`;
-  }
-
-  return `Statement ${money(item.statementBalanceMinor)} • Ledger ${money(item.computedBalanceMinor)}`;
-}
-
-function formatStatementReconciliationLine(item) {
-  if (item.projectedLedgerBalanceMinor == null) {
-    return `Statement ${money(item.statementBalanceMinor)}`;
-  }
-
-  if (item.accountKind === "credit_card") {
-    return `Statement owed ${money(Math.abs(item.statementBalanceMinor))} • Ledger owed ${money(Math.abs(item.projectedLedgerBalanceMinor))}`;
-  }
-
-  return `Statement ${money(item.statementBalanceMinor)} • Ledger ${money(item.projectedLedgerBalanceMinor)}`;
-}
-
-function formatStatementCompareRow(row) {
-  return `${formatDateOnly(row.date)} • ${money(row.signedAmountMinor)} • ${row.description}`;
-}
-
-function formatEditableMinorInput(valueMinor) {
-  const numeric = Number(valueMinor ?? 0) / 100;
-  return Number.isInteger(numeric) ? String(numeric) : String(numeric);
-}
-
-function parseMoneyInput(value, fallback) {
-  const normalized = Number(value.replace(/[^0-9.-]/g, ""));
-  if (Number.isNaN(normalized)) {
-    return fallback;
-  }
-
-  return Math.round(normalized * 100);
-}
-
-function parseDraftMoneyInput(value) {
-  const normalized = value.trim();
-  if (!normalized) {
-    return 0;
-  }
-
-  const parsed = Number(normalized.replace(/[^0-9.-]/g, ""));
-  if (Number.isNaN(parsed)) {
-    return 0;
-  }
-
-  return Math.round(parsed * 100);
 }
 
 function getRowDateValue(row, fallbackMonth) {
@@ -8663,90 +8055,6 @@ function formatRowDateLabel(row, fallbackMonth) {
     month: "short",
     day: "numeric"
   }).format(new Date(Number(year), Number(month) - 1, Number(day)));
-}
-
-function parseFaqMarkdown(markdown) {
-  const lines = markdown.split("\n");
-  const sections = [];
-  let currentSection = null;
-  let paragraphLines = [];
-  let listItems = [];
-
-  function flushParagraph() {
-    if (!currentSection || !paragraphLines.length) {
-      return;
-    }
-    currentSection.blocks.push({ type: "paragraph", text: paragraphLines.join(" ").trim() });
-    paragraphLines = [];
-  }
-
-  function flushList() {
-    if (!currentSection || !listItems.length) {
-      return;
-    }
-    currentSection.blocks.push({ type: "list", items: [...listItems] });
-    listItems = [];
-  }
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line || line === "# FAQ") {
-      flushParagraph();
-      flushList();
-      continue;
-    }
-
-    if (line.startsWith("## ")) {
-      flushParagraph();
-      flushList();
-      currentSection = { title: line.slice(3).trim(), blocks: [] };
-      sections.push(currentSection);
-      continue;
-    }
-
-    if (line.startsWith("- ")) {
-      flushParagraph();
-      listItems.push(line.slice(2).trim());
-      continue;
-    }
-
-    flushList();
-    paragraphLines.push(line);
-  }
-
-  flushParagraph();
-  flushList();
-  return sections;
-}
-
-function renderInlineMarkdown(text) {
-  const segments = [];
-  const pattern = /`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)/g;
-  let lastIndex = 0;
-  let match = pattern.exec(text);
-
-  while (match) {
-    if (match.index > lastIndex) {
-      segments.push(text.slice(lastIndex, match.index));
-    }
-    if (match[1]) {
-      segments.push(<code key={`${match.index}-code`}>{match[1]}</code>);
-    } else {
-      segments.push(
-        <a key={`${match.index}-link`} href={match[3]}>
-          {match[2]}
-        </a>
-      );
-    }
-    lastIndex = pattern.lastIndex;
-    match = pattern.exec(text);
-  }
-
-  if (lastIndex < text.length) {
-    segments.push(text.slice(lastIndex));
-  }
-
-  return segments;
 }
 
 function buildBootstrapErrorMessage(status, detail) {
