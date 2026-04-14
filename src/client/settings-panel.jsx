@@ -3,12 +3,12 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { ChevronRight, SquarePen, X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { describeAccountHealth, formatAuditAction } from "./account-display";
+import { formatAuditAction } from "./account-display";
 import { messages } from "./copy/en-SG";
 import { extractPdfText, selectParsedStatementForCompare } from "./import-helpers";
 import { buildRequestErrorMessage } from "./request-errors";
+import { SettingsAccountsSection } from "./settings-accounts-section";
 import { SettingsAccountDialog, SettingsCategoryDialog, SettingsPersonDialog, SettingsReconciliationDialog } from "./settings-dialogs";
-import { StatementCompareResultView } from "./statement-compare";
 import { CategoryGlyph, DeleteRowButton } from "./ui-components";
 import { FALLBACK_THEME } from "./ui-options";
 import {
@@ -522,6 +522,37 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
     navigate({ pathname: "/entries", search: params.toString() });
   }
 
+  function handleStatementCompareRowsMatched(statementRow, ledgerRow) {
+    setStatementCompareResult((current) => current ? {
+      ...current,
+      matchedRowCount: current.matchedRowCount + 1,
+      unmatchedStatementRows: current.unmatchedStatementRows.filter((row) => row.id !== statementRow.id),
+      unmatchedLedgerRows: current.unmatchedLedgerRows.filter((row) => row.id !== ledgerRow.id),
+      possibleMatches: current.possibleMatches.filter((candidate) => (
+        candidate.statementRow.id !== statementRow.id
+        && candidate.ledgerRow.id !== ledgerRow.id
+      ))
+    } : current);
+    setStatementComparePanel((current) => current ? {
+      ...current,
+      deltaMinor: typeof current.deltaMinor === "number"
+        ? current.deltaMinor + statementRow.signedAmountMinor - ledgerRow.signedAmountMinor
+        : current.deltaMinor
+    } : current);
+    setStatementCompareStatus({ tone: "success", message: messages.settings.statementCompareDirectionFixed });
+    void onRefresh();
+  }
+
+  function handleStatementCompareEntryAdded(rowId) {
+    setStatementCompareResult((current) => current ? {
+      ...current,
+      ledgerRowCount: current.ledgerRowCount + 1,
+      unmatchedStatementRows: current.unmatchedStatementRows.filter((row) => row.id !== rowId)
+    } : current);
+    setStatementCompareStatus({ tone: "success", message: messages.settings.statementCompareEntryAdded });
+    void onRefresh();
+  }
+
   function toggleSettingsSection(sectionKey) {
     setSettingsSectionsOpen((current) => ({
       ...current,
@@ -574,161 +605,26 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
         ) : null}
       </section>
 
-      <section className="chart-card settings-card">
-        <button
-          type="button"
-          className="settings-section-toggle"
-          onClick={() => toggleSettingsSection("accounts")}
-          aria-expanded={settingsSectionsOpen.accounts}
-        >
-          <div className="settings-section-toggle-copy">
-            <div className="chart-head">
-              <h3>{messages.settings.accountsTitle}</h3>
-              <p>{messages.settings.accountsDetail}</p>
-            </div>
-          </div>
-          <span className={`settings-section-toggle-icon ${settingsSectionsOpen.accounts ? "is-open" : ""}`}>
-            <ChevronRight size={18} />
-          </span>
-        </button>
-        {settingsSectionsOpen.accounts ? (
-          <>
-            <div className="settings-actions">
-              <button type="button" className="subtle-action" onClick={openCreateAccountDialog}>
-                {messages.settings.addAccount}
-              </button>
-            </div>
-            <p className="lede compact">{messages.settings.accountBalanceHint}</p>
-            <div className="settings-accounts-grid">
-              {visibleAccounts.map((account) => {
-                const latestCheckpoint = account.latestCheckpointMonth
-                  ? account.checkpointHistory?.find((item) => item.month === account.latestCheckpointMonth)
-                  : null;
-                return (
-                  <div key={account.id} className={`settings-account-row settings-account-card ${!account.isActive ? "is-archived" : ""}`}>
-                    <div className="settings-account-main">
-                      <strong>{account.name}</strong>
-                      <p>{messages.common.triplet(account.institution, account.kind, account.ownerLabel)}</p>
-                      <p>{`Balance ${money(account.balanceMinor ?? 0)} • Opening ${money(account.openingBalanceMinor ?? 0)}`}</p>
-                      <p className={`settings-account-health ${account.reconciliationStatus ? `is-${account.reconciliationStatus}` : ""}`}>
-                        {describeAccountHealth(account)}
-                      </p>
-                      <p className="settings-account-meta">
-                        {account.latestImportAt
-                          ? messages.settings.accountHealthLastImport(formatDate(account.latestImportAt))
-                          : messages.settings.accountHealthNoImports}
-                        {account.unresolvedTransferCount ? ` • ${messages.settings.accountHealthUnresolvedTransfers(account.unresolvedTransferCount)}` : ""}
-                      </p>
-                    </div>
-                    <div className="settings-account-actions">
-                      {!account.isActive ? <span className="account-badge">{messages.settings.archived}</span> : null}
-                      <button type="button" className="subtle-action" onClick={() => openReconciliationDialog(account)}>
-                        {messages.settings.reconcileAccount}
-                      </button>
-                      {latestCheckpoint && account.latestCheckpointDeltaMinor != null && account.latestCheckpointDeltaMinor !== 0 ? (
-                        <button type="button" className="settings-text-link" onClick={() => openStatementComparePanel(account, latestCheckpoint)}>
-                          {messages.settings.statementCompareOpen}
-                        </button>
-                      ) : null}
-                      <button type="button" className="icon-action" aria-label={messages.settings.editAccount} onClick={() => openEditAccountDialog(account)}>
-                        <SquarePen size={16} />
-                      </button>
-                      {account.isActive ? (
-                        <DeleteRowButton
-                          label={account.name}
-                          triggerLabel={messages.settings.archiveAccount}
-                          confirmLabel={messages.settings.archiveAccount}
-                          destructive={false}
-                          prompt={messages.settings.archiveAccountDetail(account.name)}
-                          onConfirm={() => handleArchiveAccount(account.id)}
-                        />
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {statementComparePanel ? (
-              <div className="settings-statement-compare-inline">
-                <div className="settings-statement-compare-head">
-                  <div>
-                    <strong>{messages.settings.statementComparePanelTitle(statementComparePanel.accountName, formatMonthLabel(statementComparePanel.checkpointMonth))}</strong>
-                            <p>{messages.settings.statementComparePanelDetail}</p>
-                            {statementComparePanel.deltaMinor != null ? (
-                              <p className="settings-account-health is-mismatch">{messages.settings.statementCompareDelta(money(Math.abs(statementComparePanel.deltaMinor)))}</p>
-                            ) : null}
-                            {statementComparePanel.statementStartDate && statementComparePanel.statementEndDate ? (
-                              <p>{messages.settings.statementCompareCheckpointPeriod(formatDateOnly(statementComparePanel.statementStartDate), formatDateOnly(statementComparePanel.statementEndDate))}</p>
-                            ) : null}
-                  </div>
-                  <button type="button" className="subtle-cancel" onClick={() => setStatementComparePanel(null)}>
-                    Cancel
-                  </button>
-                </div>
-                <input
-                  id="statement-compare-account-upload"
-                  type="file"
-                  accept=".csv,text/csv,.pdf,application/pdf"
-                  hidden
-                  onChange={(event) => void handleCompareStatementUpload(statementComparePanel, event)}
-                />
-                <button
-                  type="button"
-                  className="subtle-action is-primary"
-                  disabled={isSubmitting}
-                  onClick={() => document.getElementById("statement-compare-account-upload")?.click()}
-                >
-                  {messages.settings.statementCompareUpload}
-                </button>
-                {statementCompareStatus ? (
-                  <section className={`settings-statement-compare is-${statementCompareStatus.tone}`}>
-                    <strong>{messages.settings.statementCompareTitle}</strong>
-                    <p>{statementCompareStatus.message}</p>
-                  </section>
-                ) : null}
-                {statementCompareResult ? (
-                  <StatementCompareResultView
-                    result={statementCompareResult}
-                    deltaMinor={statementComparePanel.deltaMinor}
-                    accounts={accounts}
-                    categories={categories}
-                    people={people}
-                    onRowsMatched={(statementRow, ledgerRow) => {
-                      setStatementCompareResult((current) => current ? {
-                        ...current,
-                        matchedRowCount: current.matchedRowCount + 1,
-                        unmatchedStatementRows: current.unmatchedStatementRows.filter((row) => row.id !== statementRow.id),
-                        unmatchedLedgerRows: current.unmatchedLedgerRows.filter((row) => row.id !== ledgerRow.id),
-                        possibleMatches: current.possibleMatches.filter((candidate) => (
-                          candidate.statementRow.id !== statementRow.id
-                          && candidate.ledgerRow.id !== ledgerRow.id
-                        ))
-                      } : current);
-                      setStatementComparePanel((current) => current ? {
-                        ...current,
-                        deltaMinor: typeof current.deltaMinor === "number"
-                          ? current.deltaMinor + statementRow.signedAmountMinor - ledgerRow.signedAmountMinor
-                          : current.deltaMinor
-                      } : current);
-                      setStatementCompareStatus({ tone: "success", message: messages.settings.statementCompareDirectionFixed });
-                      void onRefresh();
-                    }}
-                    onEntryAdded={(rowId) => {
-                      setStatementCompareResult((current) => current ? {
-                        ...current,
-                        ledgerRowCount: current.ledgerRowCount + 1,
-                        unmatchedStatementRows: current.unmatchedStatementRows.filter((row) => row.id !== rowId)
-                      } : current);
-                      setStatementCompareStatus({ tone: "success", message: messages.settings.statementCompareEntryAdded });
-                      void onRefresh();
-                    }}
-                  />
-                ) : null}
-              </div>
-            ) : null}
-          </>
-        ) : null}
-      </section>
+      <SettingsAccountsSection
+        accounts={visibleAccounts}
+        categories={categories}
+        people={people}
+        isOpen={settingsSectionsOpen.accounts}
+        isSubmitting={isSubmitting}
+        statementComparePanel={statementComparePanel}
+        statementCompareResult={statementCompareResult}
+        statementCompareStatus={statementCompareStatus}
+        onToggle={() => toggleSettingsSection("accounts")}
+        onCreateAccount={openCreateAccountDialog}
+        onEditAccount={openEditAccountDialog}
+        onArchiveAccount={handleArchiveAccount}
+        onReconcileAccount={openReconciliationDialog}
+        onOpenStatementCompare={openStatementComparePanel}
+        onCloseStatementCompare={() => setStatementComparePanel(null)}
+        onUploadStatementCompare={handleCompareStatementUpload}
+        onRowsMatched={handleStatementCompareRowsMatched}
+        onEntryAdded={handleStatementCompareEntryAdded}
+      />
 
       <section className="chart-card settings-card">
         <button
