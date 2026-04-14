@@ -4,13 +4,11 @@ import { messages } from "./copy/en-SG";
 import { commitImportBatch, previewImportBatch, rollbackImportBatch } from "./import-api";
 import { ImportRecentHistorySection } from "./import-history";
 import { buildRecentImportModel } from "./import-history-model";
+import { ImportMappingStage } from "./import-mapping-stage";
 import { buildImportPreviewModel, hasImportDraft } from "./import-preview-model";
 import { ImportPreviewReview } from "./import-preview-review";
-import {
-  ImportMappingStage,
-  ImportPreviewRowsTable,
-  ImportSelectFileStage
-} from "./import-stages";
+import { ImportPreviewRowsTable } from "./import-preview-rows-table";
+import { ImportSelectFileStage } from "./import-select-file-stage";
 import {
   buildMappedImportRows,
   buildRawImportRowFromPreviewRow,
