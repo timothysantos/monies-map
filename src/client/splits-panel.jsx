@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { createSplitGroup, linkSplitMatch, saveSplitExpense, saveSplitSettlement, updateSplitLinkedEntry } from "./splits-api";
 import { SplitArchiveDialog } from "./splits-archive-dialog";
@@ -9,10 +8,7 @@ import { SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./s
 import { buildExpenseDraft, buildLinkedEntryDraft, buildNewExpenseDraft, buildNewSettlementDraft, buildSettlementDraft } from "./splits-drafts";
 import { SplitLinkedEntryDialog } from "./splits-linked-entry-dialog";
 import { SplitsMainSection } from "./splits-main-section";
-import {
-  groupSplitActivityByBatch,
-  groupSplitActivityByDate
-} from "./split-helpers";
+import { buildSplitsPanelModel } from "./splits-selectors";
 
 export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -24,59 +20,36 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [linkedEntryDialog, setLinkedEntryDialog] = useState(null);
   const [formError, setFormError] = useState("");
   const [dismissedMatchIds, setDismissedMatchIds] = useState([]);
-  const groups = view.splitsPage.groups;
-  const groupOptions = useMemo(
-    () => [{ id: "split-group-none", name: messages.splits.nonGroup }, ...groups.filter((group) => group.id !== "split-group-none")],
-    [groups]
-  );
-  const defaultGroupId = groups.find((group) => group.isDefault)?.id ?? "split-group-none";
+  const defaultGroupId = view.splitsPage.groups.find((group) => group.isDefault)?.id ?? "split-group-none";
   const selectedGroupId = searchParams.get("split_group") ?? defaultGroupId;
   const selectedMode = searchParams.get("split_mode") ?? "entries";
-  const activeGroup = groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null;
-  const visibleActivity = view.splitsPage.activity.filter((item) => item.groupId === (activeGroup?.id ?? "split-group-none"));
-  const currentActivity = useMemo(
-    () => visibleActivity.filter((item) => !item.isArchived),
-    [visibleActivity]
+  const splitModel = useMemo(
+    () => buildSplitsPanelModel({
+      view,
+      categories,
+      selectedGroupId,
+      dismissedMatchIds,
+      archiveBatchId: archiveDialog?.batchId
+    }),
+    [archiveDialog?.batchId, categories, dismissedMatchIds, selectedGroupId, view]
   );
-  const archivedActivity = useMemo(
-    () => visibleActivity.filter((item) => item.isArchived),
-    [visibleActivity]
-  );
-  const groupedCurrentActivity = useMemo(() => groupSplitActivityByDate(currentActivity), [currentActivity]);
-  const archivedBatches = useMemo(() => groupSplitActivityByBatch(archivedActivity), [archivedActivity]);
-  const selectedArchivedBatch = archiveDialog?.batchId
-    ? archivedBatches.find((batch) => batch.batchId === archiveDialog.batchId) ?? null
-    : null;
-  const visibleMatches = view.splitsPage.matches.filter((item) => (
-    item.groupId === (activeGroup?.id ?? "split-group-none") && !dismissedMatchIds.includes(item.id)
-  ));
-  const pendingMatchCount = view.splitsPage.matches.filter((item) => !dismissedMatchIds.includes(item.id)).length;
-  const expenseMatchCount = view.splitsPage.matches.filter((item) => item.kind === "expense" && !dismissedMatchIds.includes(item.id)).length;
-  const settlementMatchCount = view.splitsPage.matches.filter((item) => item.kind === "settlement" && !dismissedMatchIds.includes(item.id)).length;
-  const groupBalanceMinor = activeGroup?.balanceMinor ?? 0;
-  const groupSummaryLabel = groupBalanceMinor === 0
-    ? messages.splits.settledUp
-    : groupBalanceMinor > 0
-      ? messages.splits.youAreOwed
-      : messages.splits.youOwe;
-  const totalExpenseMinor = currentActivity
-    .filter((item) => item.kind === "expense")
-    .reduce((sum, item) => sum + item.totalAmountMinor, 0);
-  const linkedEntriesById = useMemo(
-    () => new Map(view.monthPage.entries.map((entry) => [entry.id, entry])),
-    [view.monthPage.entries]
-  );
-  const donutRows = useMemo(
-    () => view.splitsPage.donutChart.map((item, index) => ({
-      ...item,
-      theme: getCategoryTheme(categories, { categoryName: item.label }, index)
-    })),
-    [categories, view.splitsPage.donutChart]
-  );
-  const categoryOptions = categories
-    .slice()
-    .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name))
-    .map((category) => category.name);
+  const {
+    activeGroup,
+    archivedBatches,
+    categoryOptions,
+    donutRows,
+    expenseMatchCount,
+    groupedCurrentActivity,
+    groupBalanceMinor,
+    groups,
+    groupOptions,
+    groupSummaryLabel,
+    pendingMatchCount,
+    selectedArchivedBatch,
+    settlementMatchCount,
+    totalExpenseMinor,
+    visibleMatches
+  } = splitModel;
 
   useEffect(() => {
     setDismissedMatchIds([]);
@@ -179,7 +152,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   }
 
   function openLinkedEntryEditor(item) {
-    const entry = item.linkedTransactionId ? linkedEntriesById.get(item.linkedTransactionId) : null;
+    const entry = item.linkedTransactionId ? splitModel.linkedEntriesById.get(item.linkedTransactionId) : null;
     if (!entry) {
       return;
     }
