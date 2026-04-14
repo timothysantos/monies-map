@@ -8,11 +8,12 @@ import { EntryEditorFields } from "./entry-editor";
 import { EntriesDateGroups } from "./entries-list";
 import { EntriesBreakdownPanel, EntriesFilterStack, EntriesTotalsStrip } from "./entries-overview";
 import {
-  entryMatchesScope,
-  getVisibleSplitPercent,
-  groupEntriesByDate,
-  uniqueValues
-} from "./entry-helpers";
+  getActiveEntryFilterCount,
+  getEntryDerivedData,
+  getEntryFilterOptions,
+  getEntryFormOptions
+} from "./entry-selectors";
+import { getVisibleSplitPercent } from "./entry-helpers";
 
 export function EntriesPanel({ view, accounts, categories, people, onCategoryAppearanceChange, onRefresh }) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -61,99 +62,28 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
     setShowMobileFilters(false);
   }, [view]);
 
-  const wallets = useMemo(() => uniqueValues(entries.map((entry) => entry.accountName)), [entries]);
-  const entryCategoryOptions = useMemo(() => uniqueValues(entries.map((entry) => entry.categoryName)), [entries]);
-  const categoryOptions = useMemo(
-    () => categories
-      .slice()
-      .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name))
-      .map((category) => category.name),
-    [categories]
-  );
-  const accountOptions = useMemo(
-    () => accounts
-      .filter((account) => account.isActive !== false)
-      .slice()
-      .sort((left, right) => left.name.localeCompare(right.name))
-      .map((account) => account.name),
-    [accounts]
-  );
-  const peopleFilterOptions = useMemo(
-    () => uniqueValues(entries.flatMap((entry) => entry.ownershipType === "shared" ? ["Shared"] : [entry.ownerName ?? ""])),
+  const { wallets, entryCategoryOptions, peopleFilterOptions } = useMemo(
+    () => getEntryFilterOptions(entries),
     [entries]
   );
+  const { categoryOptions, accountOptions, ownerOptions } = useMemo(
+    () => getEntryFormOptions({ accounts, categories, people }),
+    [accounts, categories, people]
+  );
   const activeEntryFilterCount = useMemo(
-    () => ["wallet", "category", "person", "type"].reduce((count, key) => count + (entryFilters[key] ? 1 : 0), 0),
+    () => getActiveEntryFilterCount(entryFilters),
     [entryFilters]
   );
-  const ownerOptions = useMemo(
-    () => [...people.map((person) => person.name), "Shared"],
-    [people]
-  );
-
-  const filteredEntries = useMemo(
-    () => entries.filter((entry) => {
-      if (!entryMatchesScope(entry, view.id, selectedScope)) {
-        return false;
-      }
-      if (entryFilters.wallet && entry.accountName !== entryFilters.wallet) {
-        return false;
-      }
-      if (entryFilters.category && entry.categoryName !== entryFilters.category) {
-        return false;
-      }
-      if (entryFilters.type && entry.entryType !== entryFilters.type) {
-        return false;
-      }
-      if (entryFilters.person) {
-        if (entryFilters.person === "Shared") {
-          return entry.ownershipType === "shared";
-        }
-        return entry.ownerName === entryFilters.person || entry.splits.some((split) => split.personName === entryFilters.person);
-      }
-      return true;
-    }),
+  const {
+    groupedEntries,
+    entryTotals,
+    entryOutflowMinor,
+    entryNetMinor,
+    expenseBreakdown
+  } = useMemo(
+    () => getEntryDerivedData({ entries, entryFilters, selectedScope, viewId: view.id }),
     [entries, entryFilters, selectedScope, view.id]
   );
-
-  const groupedEntries = useMemo(() => groupEntriesByDate(filteredEntries), [filteredEntries]);
-  const entryTotals = useMemo(() => filteredEntries.reduce((totals, entry) => {
-    if (entry.entryType === "income") {
-      totals.incomeMinor += entry.amountMinor;
-    } else if (entry.entryType === "expense") {
-      totals.spendMinor += entry.amountMinor;
-    } else if (entry.entryType === "transfer" && entry.transferDirection === "out") {
-      totals.transferOutMinor += entry.amountMinor;
-    } else if (entry.entryType === "transfer" && entry.transferDirection === "in") {
-      totals.transferInMinor += entry.amountMinor;
-    }
-
-    return totals;
-  }, { incomeMinor: 0, spendMinor: 0, transferInMinor: 0, transferOutMinor: 0 }), [filteredEntries]);
-  const entryOutflowMinor = entryTotals.spendMinor + entryTotals.transferOutMinor;
-  const entryNetMinor = entryTotals.incomeMinor - entryTotals.spendMinor;
-  const expenseBreakdown = useMemo(() => {
-    const grouped = new Map();
-    for (const entry of filteredEntries) {
-      if (entry.entryType !== "expense") {
-        continue;
-      }
-      const key = entry.categoryName;
-      const current = grouped.get(key) ?? {
-        key,
-        label: key,
-        categoryName: key,
-        valueMinor: 0,
-        entryCount: 0
-      };
-      current.valueMinor += entry.amountMinor;
-      current.entryCount += 1;
-      grouped.set(key, current);
-    }
-
-    return Array.from(grouped.values())
-      .sort((left, right) => right.valueMinor - left.valueMinor);
-  }, [filteredEntries]);
 
   function updateEntryFilter(key, value) {
     setSearchParams((current) => {
