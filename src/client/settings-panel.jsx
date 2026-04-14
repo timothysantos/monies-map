@@ -7,12 +7,17 @@ import { formatAuditAction } from "./account-display";
 import { messages } from "./copy/en-SG";
 import { extractPdfText, selectParsedStatementForCompare } from "./import-helpers";
 import { buildRequestErrorMessage } from "./request-errors";
+import {
+  compareAccountCheckpointStatement,
+  deleteAccountCheckpoint,
+  fetchCheckpointExport,
+  saveAccountCheckpoint
+} from "./settings-api";
 import { SettingsAccountsSection } from "./settings-accounts-section";
 import { SettingsAccountDialog, SettingsCategoryDialog, SettingsPersonDialog, SettingsReconciliationDialog } from "./settings-dialogs";
 import { CategoryGlyph, DeleteRowButton } from "./ui-components";
 import { FALLBACK_THEME } from "./ui-options";
 import {
-  buildCheckpointExportHref,
   formatCheckpointCoverage,
   formatCheckpointHistoryBalanceLine,
   formatCheckpointStatementInputMinor,
@@ -20,7 +25,6 @@ import {
   formatDateOnly,
   formatMinorInput,
   formatMonthLabel,
-  getContentDispositionFilename,
   money,
   parseDraftMoneyInput
 } from "./formatters";
@@ -296,17 +300,13 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
 
     setIsSubmitting(true);
     try {
-      await fetch("/api/accounts/reconcile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accountId: reconciliationDialog.accountId,
-          checkpointMonth: reconciliationDialog.checkpointMonth,
-          statementStartDate: reconciliationDialog.statementStartDate || null,
-          statementEndDate: reconciliationDialog.statementEndDate || null,
-          statementBalanceMinor: parseDraftMoneyInput(reconciliationDialog.statementBalance ?? "0"),
-          note: reconciliationDialog.note
-        })
+      await saveAccountCheckpoint({
+        accountId: reconciliationDialog.accountId,
+        checkpointMonth: reconciliationDialog.checkpointMonth,
+        statementStartDate: reconciliationDialog.statementStartDate,
+        statementEndDate: reconciliationDialog.statementEndDate,
+        statementBalanceMinor: parseDraftMoneyInput(reconciliationDialog.statementBalance ?? "0"),
+        note: reconciliationDialog.note
       });
       setReconciliationDialog(null);
       await onRefresh();
@@ -322,13 +322,9 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
 
     setIsSubmitting(true);
     try {
-      await fetch("/api/accounts/checkpoints/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accountId: reconciliationDialog.accountId,
-          checkpointMonth: item.month
-        })
+      await deleteAccountCheckpoint({
+        accountId: reconciliationDialog.accountId,
+        checkpointMonth: item.month
       });
       setReconciliationDialog((current) => current ? {
         ...current,
@@ -347,19 +343,15 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(buildCheckpointExportHref(reconciliationDialog.accountId, item.month), {
-        credentials: "same-origin"
+      const exportFile = await fetchCheckpointExport({
+        accountId: reconciliationDialog.accountId,
+        checkpointMonth: item.month
       });
 
-      if (!response.ok) {
-        throw new Error(await buildRequestErrorMessage(response, "Checkpoint export failed."));
-      }
-
-      const blobUrl = URL.createObjectURL(await response.blob());
+      const blobUrl = URL.createObjectURL(exportFile.blob);
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = getContentDispositionFilename(response.headers.get("Content-Disposition"))
-        ?? `checkpoint-${reconciliationDialog.accountId}-${item.month}.csv`;
+      link.download = exportFile.filename;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -396,21 +388,13 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
       }
 
       setStatementCompareStatus({ tone: "active", message: messages.settings.statementCompareChecking(rows.length) });
-      const response = await fetch("/api/accounts/checkpoints/compare-statement", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accountId: target.accountId,
-          checkpointMonth: target.checkpointMonth,
-          uploadedStatementStartDate,
-          uploadedStatementEndDate,
-          rows
-        })
+      const data = await compareAccountCheckpointStatement({
+        accountId: target.accountId,
+        checkpointMonth: target.checkpointMonth,
+        uploadedStatementStartDate,
+        uploadedStatementEndDate,
+        rows
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error ?? "Statement compare failed.");
-      }
 
       setStatementCompareResult(data.comparison);
       setStatementCompareStatus({ tone: "success", message: messages.settings.statementCompareReady(data.comparison) });
