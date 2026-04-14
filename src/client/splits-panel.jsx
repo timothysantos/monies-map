@@ -1,22 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronRight } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
-import { SpendingMixChart } from "./category-visuals";
 import { getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
-import { SplitActivityGroups } from "./splits-activity";
 import { SplitArchiveDialog, SplitExpenseDialog, SplitGroupDialog, SplitLinkedEntryDialog, SplitSettlementDialog } from "./splits-dialogs";
-import { SplitMatchesList } from "./splits-matches";
-import {
-  formatDateOnly,
-  money
-} from "./formatters";
+import { SplitsMainSection } from "./splits-main-section";
 import {
   groupSplitActivityByBatch,
   groupSplitActivityByDate
 } from "./split-helpers";
-import { CategoryGlyph, getIconComponent } from "./ui-components";
 
 export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -332,156 +324,39 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         ) : null}
       </div>
 
-      <section className="splits-groups-row">
-        <div className="splits-group-pills">
-          {groups.map((group) => {
-            const Icon = getIconComponent(group.iconKey);
-            return (
-              <button
-                key={group.id}
-                type="button"
-                className={`split-group-pill ${group.id === activeGroup?.id && selectedMode !== "matches" ? "is-active" : ""}`}
-                onClick={() => updateSplitView({ groupId: group.id, mode: "entries" })}
-              >
-                <span className="split-group-pill-icon"><Icon size={18} strokeWidth={2.1} /></span>
-                <span className="split-group-pill-content">
-                  <strong>{group.name}</strong>
-                  <span>{group.summaryText}</span>
-                  <span>{group.entryCount} {messages.splits.entries}</span>
-                </span>
-              </button>
-            );
-          })}
-          <button
-            type="button"
-            className={`split-group-pill split-matches-pill ${selectedMode === "matches" ? "is-active" : ""}`}
-            onClick={() => updateSplitView({ groupId: activeGroup?.id ?? defaultGroupId, mode: "matches" })}
-          >
-            <span className="split-group-pill-content">
-              <strong>{messages.splits.matches}</strong>
-              <span>{pendingMatchCount ? messages.splits.toReview(pendingMatchCount) : messages.splits.allClear}</span>
-              <span>{expenseMatchCount} expense, {settlementMatchCount} settle-up</span>
-            </span>
-          </button>
-          <button
-            type="button"
-            className="split-group-pill split-group-pill-create"
-            onClick={() => {
-              setFormError("");
-              setGroupDialog({ name: "" });
-            }}
-            aria-label={messages.splits.createGroup}
-          >
-            <strong>{messages.splits.addGroup}</strong>
-          </button>
-        </div>
-      </section>
-
-      <section className="entries-summary-strip splits-summary-strip">
-        <button
-          type="button"
-          className={`summary-chevron ${showBreakdown ? "is-open" : ""}`}
-          aria-label="Toggle split donut"
-          onClick={() => setShowBreakdown((current) => !current)}
-        >
-          <ChevronRight size={18} />
-        </button>
-        <div className="entries-summary-metrics">
-          <span>{messages.entries.totalSpend} <strong>{money(totalExpenseMinor)}</strong></span>
-          <span>{groupSummaryLabel} <strong className={groupBalanceMinor >= 0 ? "tone-positive" : "tone-negative"}>{money(Math.abs(groupBalanceMinor))}</strong></span>
-        </div>
-        <div className="splits-summary-actions">
-          <button
-            type="button"
-            className="subtle-action"
-            onClick={openNewExpenseDialog}
-          >
-            {messages.splits.addExpense}
-          </button>
-        </div>
-      </section>
-
-      {showBreakdown ? (
-        <section className="split-donut-panel">
-          {donutRows.length ? (
-            <div className="entries-breakdown-panel split-breakdown-panel">
-              <div className="entries-breakdown-chart">
-                <SpendingMixChart
-                  data={view.splitsPage.donutChart}
-                  categories={categories}
-                  totalLabel={messages.entries.totalSpend}
-                  compact
-                  height={300}
-                  innerRadius={58}
-                  outerRadius={96}
-                />
-              </div>
-              <div className="entries-breakdown-list category-list">
-                {donutRows.map((item) => (
-                  <div key={item.key} className="category-row">
-                    <div className="category-key">
-                      <span className="category-icon category-icon-static" style={{ "--category-color": item.theme.color }}>
-                        <CategoryGlyph iconKey={item.theme.iconKey} />
-                      </span>
-                      <div>
-                        <strong>{item.label}</strong>
-                        <p>{messages.common.triplet(money(item.valueMinor), `${item.entryCount} ${item.entryCount === 1 ? "entry" : "entries"}`, `${((item.valueMinor / Math.max(totalExpenseMinor, 1)) * 100).toFixed(1)}%`)}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <p className="lede compact">{messages.splits.noEntries}</p>
-          )}
-        </section>
-      ) : null}
-
-      {selectedMode === "matches" ? (
-        <SplitMatchesList
-          matches={visibleMatches}
-          pendingMatchCount={pendingMatchCount}
-          onDismissMatch={(matchId) => setDismissedMatchIds((current) => [...current, matchId])}
-          onConfirmMatch={confirmMatch}
-        />
-      ) : (
-        <section className="split-list-section">
-          <button
-            type="button"
-            data-splits-fab-trigger="true"
-            className="entries-fab-trigger"
-            onClick={openNewExpenseDialog}
-            aria-hidden="true"
-            tabIndex={-1}
-          />
-          <div className="split-activity-list">
-            {groupedCurrentActivity.length ? (
-              <SplitActivityGroups
-                groups={groupedCurrentActivity}
-                categories={categories}
-                onEditExpense={openExpenseEditor}
-                onEditSettlement={openSettlementEditor}
-                onEditLinkedEntry={openLinkedEntryEditor}
-              />
-            ) : null}
-            {!groupedCurrentActivity.length && !archivedBatches.length ? <p className="lede compact">{messages.splits.noEntries}</p> : null}
-            <button
-              type="button"
-              className={`split-archive-trigger ${archivedBatches.length ? "" : "is-empty"}`}
-              onClick={archivedBatches.length ? openArchiveList : undefined}
-              disabled={!archivedBatches.length}
-            >
-              <span>Archived batches</span>
-              <small>
-                {archivedBatches.length
-                  ? `${archivedBatches.length} settled ${archivedBatches.length === 1 ? "batch" : "batches"}`
-                  : "No settled batches yet"}
-              </small>
-            </button>
-          </div>
-        </section>
-      )}
+      <SplitsMainSection
+        groups={groups}
+        activeGroup={activeGroup}
+        defaultGroupId={defaultGroupId}
+        selectedMode={selectedMode}
+        pendingMatchCount={pendingMatchCount}
+        expenseMatchCount={expenseMatchCount}
+        settlementMatchCount={settlementMatchCount}
+        showBreakdown={showBreakdown}
+        totalExpenseMinor={totalExpenseMinor}
+        groupBalanceMinor={groupBalanceMinor}
+        groupSummaryLabel={groupSummaryLabel}
+        donutRows={donutRows}
+        donutChart={view.splitsPage.donutChart}
+        categories={categories}
+        visibleMatches={visibleMatches}
+        groupedCurrentActivity={groupedCurrentActivity}
+        archivedBatches={archivedBatches}
+        onSelectGroup={(groupId) => updateSplitView({ groupId, mode: "entries" })}
+        onSelectMatches={(groupId) => updateSplitView({ groupId, mode: "matches" })}
+        onCreateGroup={() => {
+          setFormError("");
+          setGroupDialog({ name: "" });
+        }}
+        onToggleBreakdown={() => setShowBreakdown((current) => !current)}
+        onAddExpense={openNewExpenseDialog}
+        onDismissMatch={(matchId) => setDismissedMatchIds((current) => [...current, matchId])}
+        onConfirmMatch={confirmMatch}
+        onOpenArchive={openArchiveList}
+        onEditExpense={openExpenseEditor}
+        onEditSettlement={openSettlementEditor}
+        onEditLinkedEntry={openLinkedEntryEditor}
+      />
 
       <SplitArchiveDialog
         archiveDialog={archiveDialog}
