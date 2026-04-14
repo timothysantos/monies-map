@@ -1,22 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Check, ChevronRight, SquarePen, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { CategoryAppearancePopover } from "./category-visuals";
-import { getCategory, getCategoryPatch, getCategorySelectValue, slugify } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import {
   buildPlanLinkCandidates,
   buildMonthMetricCards,
   getDefaultMonthSectionOpen,
-  getMonthSectionTotals,
   getPlanRowById,
   getVisibleMonthAccounts
 } from "./month-helpers";
 import { MonthMetricRow, MonthNotesAndAccounts, MonthPanelHeader } from "./month-overview";
-import { DeleteRowButton, SortableHeader } from "./ui-components";
-import { formatRowDateLabel, getRowDateValue, sortRows } from "./table-helpers";
+import { MonthPlanStack } from "./month-plan-tables";
+import { getRowDateValue } from "./table-helpers";
 import {
   formatDateOnly,
   formatMinorInput,
@@ -488,11 +485,6 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     });
   }
 
-  const sortedIncomeRows = useMemo(
-    () => sortRows(incomeRows, tableSorts.income),
-    [incomeRows, tableSorts.income]
-  );
-
   async function openPlanLinkDialog(row) {
     if (editingSnapshot?.rowId === row.id) {
       await finishEdit();
@@ -606,427 +598,35 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
 
       <MonthMetricRow cards={monthMetricCards} />
 
-      <div className="month-plan-stack">
-        <p className={`month-plan-stack-hint ${isCombinedHouseholdView ? "is-readonly" : ""}`}>
-          {isCombinedHouseholdView ? messages.month.readOnlyCombinedHint : messages.month.editHint}
-        </p>
-        <section className={`month-plan-section month-plan-section-income ${isCombinedHouseholdView ? "is-readonly" : ""}`}>
-          <div className="month-plan-summary">
-            <div className="panel-subhead month-plan-header-bar">
-              <button
-                type="button"
-                className="month-plan-summary-toggle"
-                aria-expanded={sectionOpen.income}
-                onClick={() => toggleSection("income")}
-              >
-                <div className="month-section-head month-section-head-inline month-section-head-with-toggle">
-                  <span className={`month-section-toggle ${sectionOpen.income ? "is-open" : ""}`} aria-hidden="true">
-                    <ChevronRight size={16} />
-                  </span>
-                  <h3>{messages.month.incomeSectionTitle}</h3>
-                  <p className="month-section-detail-inline">{messages.month.incomeSectionDetail}</p>
-                </div>
-              </button>
-              <div className="month-summary-actions">
-                {!isCombinedHouseholdView ? (
-                  <button
-                    type="button"
-                    className="subtle-action"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      handleAddIncomeRow();
-                    }}
-                  >
-                    {messages.month.addIncomeSource}
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          </div>
-          {sectionOpen.income ? (
-          <div className="table-wrap month-table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <SortableHeader label={messages.month.table.category} sort={tableSorts.income} columnKey="categoryName" onSort={handleSortChange} tableKey="income" />
-                  <SortableHeader label={messages.month.table.item} sort={tableSorts.income} columnKey="label" onSort={handleSortChange} tableKey="income" />
-                  <SortableHeader label={messages.month.table.planned} sort={tableSorts.income} columnKey="plannedMinor" onSort={handleSortChange} tableKey="income" />
-                  <SortableHeader label={messages.month.table.actual} sort={tableSorts.income} columnKey="actualMinor" onSort={handleSortChange} tableKey="income" />
-                  <SortableHeader label={messages.month.table.variance} sort={tableSorts.income} columnKey="variance" onSort={handleSortChange} tableKey="income" />
-                  <SortableHeader label={messages.month.table.note} sort={tableSorts.income} columnKey="note" onSort={handleSortChange} tableKey="income" />
-                </tr>
-              </thead>
-              <tbody>
-                {sortedIncomeRows.map((row) => {
-                  const isEditing = editingRowId === row.id;
-                  const canEditRow = !isCombinedHouseholdView && !row.isDerived;
-                  const variance = row.plannedMinor - row.actualMinor;
-
-                  return (
-                    <tr
-                      key={row.id}
-                      className={`${isEditing ? "is-editing" : ""} ${!canEditRow ? "is-readonly" : ""}`}
-                      onClick={canEditRow ? () => beginIncomeEdit(row) : undefined}
-                    >
-                      <td>
-                        <div className="month-category-cell">
-                          <CategoryAppearancePopover
-                            category={getCategory(categories, row)}
-                            onChange={onCategoryAppearanceChange}
-                          />
-                          {isEditing ? (
-                            <select
-                              className="table-edit-input"
-                              value={getCategorySelectValue(categories, row)}
-                              onChange={(event) => handleIncomeRowChange(row.id, getCategoryPatch(categories, event.target.value))}
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              {categories.map((category) => (
-                                <option key={category.id} value={category.id}>{category.name}</option>
-                              ))}
-                            </select>
-                          ) : <span>{row.categoryName}</span>}
-                        </div>
-                      </td>
-                      <td>
-                        {isEditing ? (
-                          <input
-                            className="table-edit-input"
-                            value={row.label}
-                            onChange={(event) => handleIncomeRowChange(row.id, { label: event.target.value })}
-                            onClick={(event) => event.stopPropagation()}
-                          />
-                        ) : row.label}
-                      </td>
-                      <td>
-                        {isEditing ? (
-                          <input
-                            className="table-edit-input table-edit-input-money"
-                            value={editingDrafts.plannedMinor ?? formatMinorInput(row.plannedMinor)}
-                            onChange={(event) => setEditingDrafts((current) => ({
-                              ...current,
-                              plannedMinor: event.target.value
-                            }))}
-                            onClick={(event) => event.stopPropagation()}
-                          />
-                        ) : money(row.plannedMinor)}
-                      </td>
-                      <td>{money(row.actualMinor)}</td>
-                      <td className={variance <= 0 ? "positive" : "negative"}>{money(variance)}</td>
-                      <td>
-                        <div className="table-note-actions">
-                            <button
-                              type="button"
-                              className="note-trigger"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                if (!isCombinedHouseholdView && !row.isDerived) {
-                                  openNoteDialog("income", row.id, null, row.note);
-                                }
-                              }}
-                            >
-                              <span>{row.note || messages.common.emptyValue}</span>
-                              {!isCombinedHouseholdView && !row.isDerived ? <SquarePen size={14} /> : null}
-                            </button>
-                          {isEditing ? (
-                            <>
-                              <button
-                                type="button"
-                                className="icon-action"
-                                aria-label="Done editing"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  finishEdit();
-                                }}
-                              >
-                                <Check size={16} />
-                              </button>
-                              <button
-                                type="button"
-                                className="icon-action subtle-cancel"
-                                aria-label="Cancel editing"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  cancelEdit();
-                                }}
-                              >
-                                <X size={16} />
-                              </button>
-                            </>
-                          ) : null}
-                          {incomeRows.length > 1 && canEditRow ? (
-                            <DeleteRowButton
-                              label={row.label || row.categoryName || "income row"}
-                              onConfirm={() => handleRemoveIncomeRow(row.id)}
-                            />
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                {(() => {
-                  const totals = getMonthSectionTotals(incomeRows);
-                  return (
-                    <tr className="table-total-row">
-                      <td>{messages.month.table.total}</td>
-                      <td>{messages.common.emptyValue}</td>
-                      <td>{money(totals.plannedMinor)}</td>
-                      <td>{money(totals.actualMinor)}</td>
-                      <td className={totals.varianceMinor >= 0 ? "positive" : "negative"}>{money(totals.varianceMinor)}</td>
-                      <td>{messages.common.emptyValue}</td>
-                    </tr>
-                  );
-                })()}
-              </tfoot>
-            </table>
-          </div>
-          ) : null}
-        </section>
-
-        {[...planSections]
-          .sort((left, right) => {
-            const order = {
-              budget_buckets: 0,
-              planned_items: 1
-            };
-            return order[left.key] - order[right.key];
-          })
-          .map((section) => (
-          <section
-            key={section.key}
-            className={`month-plan-section ${section.key === "planned_items" ? "month-plan-section-planned" : "month-plan-section-budgets"} ${isCombinedHouseholdView ? "is-readonly" : ""}`}
-          >
-            <div className="month-plan-summary">
-              <div className="panel-subhead month-plan-header-bar">
-                <button
-                  type="button"
-                  className="month-plan-summary-toggle"
-                  aria-expanded={sectionOpen[section.key]}
-                  onClick={() => toggleSection(section.key)}
-                >
-                  <div className="month-section-head month-section-head-with-toggle">
-                    <span className={`month-section-toggle ${sectionOpen[section.key] ? "is-open" : ""}`} aria-hidden="true">
-                      <ChevronRight size={16} />
-                    </span>
-                    <h3>{section.label}</h3>
-                    <p>{section.description}</p>
-                  </div>
-                </button>
-                <div className="month-summary-actions">
-                  {!isCombinedHouseholdView ? (
-                    <button
-                      type="button"
-                      className="subtle-action"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        handleAddPlanRow(section.key);
-                      }}
-                    >
-                      {section.key === "planned_items" ? messages.month.addPlannedItem : messages.month.addBudgetBucket}
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-            {sectionOpen[section.key] ? (
-            <div className="table-wrap month-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <SortableHeader label={messages.month.table.category} sort={tableSorts[section.key]} columnKey="categoryName" onSort={handleSortChange} tableKey={section.key} />
-                    {section.key === "planned_items" ? <SortableHeader label={messages.month.table.day} sort={tableSorts[section.key]} columnKey="day" onSort={handleSortChange} tableKey={section.key} /> : null}
-                    <SortableHeader label={messages.month.table.item} sort={tableSorts[section.key]} columnKey="label" onSort={handleSortChange} tableKey={section.key} />
-                    <SortableHeader label={messages.month.table.planned} sort={tableSorts[section.key]} columnKey="plannedMinor" onSort={handleSortChange} tableKey={section.key} />
-                    <SortableHeader label={messages.month.table.actual} sort={tableSorts[section.key]} columnKey="actualMinor" onSort={handleSortChange} tableKey={section.key} />
-                    <SortableHeader label={messages.month.table.variance} sort={tableSorts[section.key]} columnKey="variance" onSort={handleSortChange} tableKey={section.key} />
-                    {section.key === "planned_items" ? <SortableHeader label={messages.month.table.account} sort={tableSorts[section.key]} columnKey="accountName" onSort={handleSortChange} tableKey={section.key} /> : null}
-                    <SortableHeader label={messages.month.table.note} sort={tableSorts[section.key]} columnKey="note" onSort={handleSortChange} tableKey={section.key} />
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortRows(section.rows, tableSorts[section.key], monthKey).map((row) => {
-                    const variance = row.plannedMinor - row.actualMinor;
-                    const isEditing = editingRowId === row.id;
-                    const canEditRow = !isCombinedHouseholdView && !row.isDerived;
-                    return (
-                      <tr
-                        key={row.id}
-                        className={`${isEditing ? "is-editing" : ""} ${!canEditRow ? "is-readonly" : ""}`}
-                        onClick={canEditRow ? () => beginPlanEdit(section.key, row) : undefined}
-                      >
-                        <td>
-                          <div className="month-category-cell">
-                            <CategoryAppearancePopover
-                              category={getCategory(categories, row)}
-                              onChange={onCategoryAppearanceChange}
-                            />
-                            {isEditing ? (
-                              <select
-                                className="table-edit-input"
-                                value={getCategorySelectValue(categories, row)}
-                                onChange={(event) => handleRowChange(section.key, row.id, getCategoryPatch(categories, event.target.value))}
-                                onClick={(event) => event.stopPropagation()}
-                              >
-                                {categories.map((category) => (
-                                  <option key={category.id} value={category.id}>{category.name}</option>
-                                ))}
-                              </select>
-                            ) : <span>{row.categoryName}</span>}
-                          </div>
-                        </td>
-                        {section.key === "planned_items" ? (
-                          <td>
-                            {isEditing ? (
-                              <input
-                                className="table-edit-input"
-                                type="date"
-                                value={getRowDateValue(row, view.monthPage.month)}
-                                onChange={(event) => handleRowChange(section.key, row.id, { dayLabel: event.target.value, dayOfWeek: undefined })}
-                                onClick={(event) => event.stopPropagation()}
-                              />
-                            ) : formatRowDateLabel(row, view.monthPage.month)}
-                          </td>
-                        ) : null}
-                        <td>
-                          {isEditing ? (
-                            <input
-                              className="table-edit-input"
-                              value={row.label}
-                              onChange={(event) => handleRowChange(section.key, row.id, { label: event.target.value })}
-                              onClick={(event) => event.stopPropagation()}
-                            />
-                          ) : row.label}
-                        </td>
-                        <td>
-                        {isEditing ? (
-                          <input
-                            className="table-edit-input table-edit-input-money"
-                              value={editingDrafts.plannedMinor ?? formatMinorInput(row.plannedMinor)}
-                              onChange={(event) => setEditingDrafts((current) => ({
-                                ...current,
-                                plannedMinor: event.target.value
-                              }))}
-                              onClick={(event) => event.stopPropagation()}
-                          />
-                        ) : money(row.plannedMinor)}
-                        </td>
-                        <td>
-                          {section.key === "planned_items" ? (
-                            <button
-                              type="button"
-                              className="planned-link-trigger"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                if (canEditRow) {
-                                  void openPlanLinkDialog(row);
-                                }
-                              }}
-                              disabled={!canEditRow}
-                            >
-                              <strong>{money(row.actualMinor)}</strong>
-                              <span>{row.linkedEntryCount ? `${row.linkedEntryCount} linked` : "Link entries"}</span>
-                            </button>
-                          ) : money(row.actualMinor)}
-                        </td>
-                        <td className={variance >= 0 ? "positive" : "negative"}>{money(variance)}</td>
-                        {section.key === "planned_items" ? (
-                          <td>
-                            {isEditing ? (
-                              <select
-                                className="table-edit-input"
-                                value={row.accountName ?? ""}
-                                onChange={(event) => handleRowChange(section.key, row.id, { accountName: event.target.value })}
-                                onClick={(event) => event.stopPropagation()}
-                              >
-                                <option value="">{messages.common.emptyValue}</option>
-                                {accounts.map((account) => (
-                                  <option key={account.id} value={account.name}>{account.name}</option>
-                                ))}
-                              </select>
-                            ) : row.accountName ?? messages.common.emptyValue}
-                          </td>
-                        ) : null}
-                      <td>
-                        <div className="table-note-actions">
-                            <button
-                              type="button"
-                              className="note-trigger"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                if (!isCombinedHouseholdView && !row.isDerived) {
-                                  openNoteDialog("plan", row.id, section.key, row.note);
-                                }
-                              }}
-                            >
-                              <span>{row.note ?? messages.common.emptyValue}</span>
-                            {canEditRow ? <SquarePen size={14} /> : null}
-                            </button>
-                            {isEditing ? (
-                              <>
-                                <button
-                                  type="button"
-                                  className="icon-action"
-                                  aria-label="Done editing"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    finishEdit();
-                                  }}
-                                >
-                                  <Check size={16} />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="icon-action subtle-cancel"
-                                  aria-label="Cancel editing"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    cancelEdit();
-                                  }}
-                                >
-                                  <X size={16} />
-                                </button>
-                              </>
-                            ) : null}
-                            {canEditRow ? (
-                              <DeleteRowButton
-                                label={row.label || row.categoryName || "planning row"}
-                                onConfirm={() => handleRemovePlanRow(section.key, row.id)}
-                              />
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot>
-                  {(() => {
-                    const totals = getMonthSectionTotals(section.rows);
-                    return (
-                      <tr className="table-total-row">
-                        <td>{messages.month.table.total}</td>
-                        {section.key === "planned_items" ? <td>{messages.common.emptyValue}</td> : null}
-                        <td>{messages.common.emptyValue}</td>
-                        <td>{money(totals.plannedMinor)}</td>
-                        <td>{money(totals.actualMinor)}</td>
-                        <td className={totals.varianceMinor >= 0 ? "positive" : "negative"}>{money(totals.varianceMinor)}</td>
-                        {section.key === "planned_items" ? <td>{messages.common.emptyValue}</td> : null}
-                        <td>{messages.common.emptyValue}</td>
-                      </tr>
-                    );
-                  })()}
-                </tfoot>
-              </table>
-            </div>
-            ) : null}
-          </section>
-        ))}
-      </div>
+      <MonthPlanStack
+        view={view}
+        categories={categories}
+        accounts={accounts}
+        incomeRows={incomeRows}
+        planSections={planSections}
+        sectionOpen={sectionOpen}
+        tableSorts={tableSorts}
+        editingRowId={editingRowId}
+        editingDrafts={editingDrafts}
+        isCombinedHouseholdView={isCombinedHouseholdView}
+        monthKey={monthKey}
+        onToggleSection={toggleSection}
+        onAddIncomeRow={handleAddIncomeRow}
+        onAddPlanRow={handleAddPlanRow}
+        onBeginIncomeEdit={beginIncomeEdit}
+        onBeginPlanEdit={beginPlanEdit}
+        onIncomeRowChange={handleIncomeRowChange}
+        onPlanRowChange={handleRowChange}
+        onEditingDraftChange={(patch) => setEditingDrafts((current) => ({ ...current, ...patch }))}
+        onFinishEdit={finishEdit}
+        onCancelEdit={cancelEdit}
+        onRemoveIncomeRow={handleRemoveIncomeRow}
+        onRemovePlanRow={handleRemovePlanRow}
+        onOpenNoteDialog={openNoteDialog}
+        onOpenPlanLinkDialog={openPlanLinkDialog}
+        onSortChange={handleSortChange}
+        onCategoryAppearanceChange={onCategoryAppearanceChange}
+      />
 
       <MonthNotesAndAccounts
         monthNote={view.monthPage.monthNote}
