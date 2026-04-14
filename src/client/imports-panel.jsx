@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { messages } from "./copy/en-SG";
+import { commitImportBatch, previewImportBatch, rollbackImportBatch } from "./import-api";
 import { ImportRecentHistorySection } from "./import-history";
 import { buildRecentImportModel } from "./import-history-model";
 import { buildImportPreviewModel, hasImportDraft } from "./import-preview-model";
@@ -344,33 +345,24 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     nextStatementCheckpoints = statementCheckpoints
   }) {
     setPreviewError("");
-    const response = await fetch("/api/imports/preview", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
+    try {
+      const data = await previewImportBatch({
         sourceLabel: nextSourceLabel,
         rows,
         defaultAccountName: nextDefaultAccountName,
         ownershipType,
         ownerName,
-        splitBasisPoints: Math.round(Number(splitPercent || "50") * 100),
-        statementCheckpoints: nextStatementCheckpoints.map((checkpoint) => ({
-          ...checkpoint,
-          statementBalanceMinor: Number(checkpoint.statementBalanceMinor ?? 0)
-        }))
-      })
-    });
-    const data = await response.json();
-    if (!response.ok) {
+        splitPercent,
+        statementCheckpoints: nextStatementCheckpoints
+      });
+      setDismissedOverlapIds((current) => current.filter((id) => data.preview?.overlapImports?.some((item) => item.id === id)));
+      setPreview(data.preview);
+      setPreviewRows(data.preview?.previewRows ?? []);
+    } catch (error) {
       setPreview(null);
       setPreviewRows([]);
-      throw new Error(data.error ?? "Import preview failed.");
+      throw error;
     }
-    setDismissedOverlapIds((current) => current.filter((id) => data.preview?.overlapImports?.some((item) => item.id === id)));
-    setPreview(data.preview);
-    setPreviewRows(data.preview?.previewRows ?? []);
   }
 
   async function handlePreview() {
@@ -417,33 +409,18 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/imports/commit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          sourceLabel: preview?.sourceLabel ?? sourceLabel,
-          sourceType: statementImportMeta.sourceType,
-          parserKey: statementImportMeta.parserKey,
-          note: importNote,
-          statementCheckpoints: statementCheckpoints.map((checkpoint) => ({
-            ...checkpoint,
-            statementBalanceMinor: Number(checkpoint.statementBalanceMinor ?? 0)
-          })),
-          rows: previewRows.map((row) => ({
-            ...row,
-            splitBasisPoints: Number(row.splitBasisPoints ?? 10000)
-          }))
-        })
+      await commitImportBatch({
+        sourceLabel: preview?.sourceLabel ?? sourceLabel,
+        sourceType: statementImportMeta.sourceType,
+        parserKey: statementImportMeta.parserKey,
+        note: importNote,
+        statementCheckpoints,
+        rows: previewRows
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        setPreviewError(data.error ?? messages.imports.commitFailed);
-        return;
-      }
       resetImportForm();
       await onRefresh();
+    } catch (error) {
+      setPreviewError(error instanceof Error ? error.message : messages.imports.commitFailed);
     } finally {
       setIsSubmitting(false);
     }
@@ -452,13 +429,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   async function handleRollback(importId) {
     setIsSubmitting(true);
     try {
-      await fetch("/api/imports/rollback", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ importId })
-      });
+      await rollbackImportBatch(importId);
       await onRefresh();
     } finally {
       setIsSubmitting(false);
