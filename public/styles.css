@@ -4081,6 +4081,24 @@ h3 {
   min-width: 120px;
 }
 
+.import-preview-row-duplicate {
+  background: rgba(246, 236, 228, 0.72);
+}
+
+.duplicate-row-pill {
+  display: inline-flex;
+  margin-top: 6px;
+}
+
+.duplicate-row-detail {
+  display: block;
+  margin-top: 6px;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .import-amount-input,
 .import-split-input {
   width: 100px;

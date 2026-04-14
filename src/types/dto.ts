@@ -344,6 +344,7 @@ export interface ImportPreviewRowDto {
   splitBasisPoints: number;
   note?: string;
   rawRow: Record<string, string>;
+  duplicateMatches?: DuplicateCandidateDto[];
 }
 
 export interface ImportPreviewDto {

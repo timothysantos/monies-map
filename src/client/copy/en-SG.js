@@ -258,9 +258,11 @@ export const messages = {
       unknown_account: "Needs account"
     },
     duplicateMatchesTitle: "Possible existing matches",
-    duplicateMatchesDetail: "These rows already look similar to transactions in completed imports.",
+    duplicateMatchesDetail: "Duplicate-looking rows are highlighted in the preview table. Remove the row there if you do not want to commit it again.",
     duplicateMatchKindExact: "Exact match",
     duplicateMatchKindNear: "Near match",
+    duplicateRowDetail: (match) => `Already in ledger: ${match}`,
+    removePreviewRow: "Remove row",
     statementCheckpointsTitle: (count) => count === 1 ? "Statement checkpoint" : "Statement checkpoints",
     statementCheckpointsDetail: (count) => count === 1
       ? "This statement balance will be saved during commit. Adjust it here before importing."
@@ -296,7 +298,8 @@ export const messages = {
       category: "Category",
       owner: "Owner",
       split: "Split %",
-      note: "Note"
+      note: "Note",
+      actions: "Actions"
     }
   },
   settings: {

@@ -374,8 +374,10 @@ The import workflow is:
    the PDF. Direct rows use the mapped account's owner when the account belongs
    to one person; the Default owner field is only the fallback for rows without a
    personally owned mapped account.
-5. Review duplicate and overlap warnings. Overlap is scoped by account and
-   transaction coverage dates, not by the date the import batch was created.
+5. Review duplicate and overlap warnings. Duplicate-looking rows are highlighted
+   directly in the preview table, and each preview row has a remove action so a
+   known duplicate can be excluded before commit. Overlap is scoped by account
+   and transaction coverage dates, not by the date the import batch was created.
    Marking an overlap as reviewed only hides the warning; it does not remove
    duplicate rows from the preview.
 6. For supported PDFs, review the statement balance check. It compares the
@@ -397,6 +399,38 @@ duplicate and overlap warnings. The app should preserve the rows you already
 categorized, linked, split, or matched; the statement import/compare step is for
 finding missing rows, wrong directions, duplicates, or period mistakes, then
 saving the final statement checkpoint once the balance matches.
+
+A two-month setup usually looks like this:
+
+1. Create each account in Settings with its institution, owner, and account type.
+2. Use the first statement you trust as the starting point. Enter the opening
+   balance as the balance immediately before the first imported statement
+   activity. For credit cards, the app displays owed balances as internal
+   liability negatives, but statement checkpoint inputs should use the
+   bank-facing positive amount owed.
+3. Import or compare that first statement. Review account mapping, duplicates,
+   ownership, categories, transfers, and splits, then commit the rows and save
+   the statement checkpoint once the ledger matches the statement balance.
+4. During the next month, import only current-transaction exports for new rows
+   that happen after the latest statement cutoff for that specific account. For
+   example, if a Citi Rewards statement's last included transaction is
+   8 Apr 2026, a mid-cycle Citi Rewards export from 1 Apr to 13 Apr should only
+   contribute 9 Apr onward rows. Rows from 1 Apr to 8 Apr already belong to the
+   closed statement and should be treated as possible duplicates.
+5. Keep using those mid-cycle rows for planning, splits, transfer matching, and
+   category cleanup. They are real working ledger entries, not final proof.
+6. When the second statement arrives, compare it to the committed ledger first.
+   If the statement rows were already imported mid-cycle, the preview should
+   highlight duplicates so they can be removed before commit, or the Settings
+   comparison tool can show which ledger rows match, which are missing, which
+   are extra, and whether any duplicate-looking rows exist.
+7. Once the second statement balance matches, save the statement checkpoint.
+   That checkpoint is the month-end proof that the working ledger now agrees
+   with the bank for that account and statement period.
+
+For credit cards and bank accounts, repeat the cutoff check per account. A Citi
+Rewards cutoff date should not be reused for Citi Miles, and a UOB card cycle
+should not be reused for a UOB One savings statement.
 
 For CSV imports, the raw data can include:
 

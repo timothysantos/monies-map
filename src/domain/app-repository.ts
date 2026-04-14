@@ -3928,7 +3928,7 @@ export async function buildImportPreview(
       ? getDirectOwnerNameForAccount(inferredAccount, input.ownerName)
       : undefined;
 
-    const previewRow = {
+    const previewRow: ImportPreviewRowDto = {
       rowId: `preview-${index + 1}`,
       rowIndex: index + 1,
       date: normalized.date!,
@@ -3945,8 +3945,6 @@ export async function buildImportPreview(
       note: normalized.note,
       rawRow
     };
-    previewRows.push(previewRow);
-
     const isExactDuplicate = existingHashSet.has(buildImportRowHash(previewRow));
     const nearMatches = existingTransactions.results
       .filter((candidate) => {
@@ -3966,23 +3964,26 @@ export async function buildImportPreview(
       })
       .slice(0, 3);
 
+    previewRow.duplicateMatches = nearMatches.map((match) => ({
+      existingImportId: match.import_id,
+      date: match.transaction_date,
+      description: match.description,
+      amountMinor: Number(match.amount_minor),
+      accountName: match.account_name,
+      matchKind: isExactDuplicate ? "exact" : "near"
+    }));
+    previewRows.push(previewRow);
+
     if (isExactDuplicate || nearMatches.length) {
       duplicateCandidateCount += 1;
     }
 
-    for (const match of nearMatches) {
+    for (const match of previewRow.duplicateMatches ?? []) {
       if (duplicateCandidates.length >= 8) {
         break;
       }
 
-      duplicateCandidates.push({
-        existingImportId: match.import_id,
-        date: match.transaction_date,
-        description: match.description,
-        amountMinor: Number(match.amount_minor),
-        accountName: match.account_name,
-        matchKind: isExactDuplicate ? "exact" : "near"
-      });
+      duplicateCandidates.push(match);
     }
   }
 

@@ -14,14 +14,20 @@ Your current spreadsheet already has the right business logic:
 
 The app turns that into a durable ledger so imports are repeatable and the summary is generated instead of manually maintained.
 
-## First version scope
+## Current product scope
 
-- Import CSV exports from banks and credit cards
-- Support PDF statement uploads later, after CSV is stable
-- Track accounts owned by you, your wife, or both
-- Assign transactions as personal, joint, or split
-- Produce monthly and yearly summaries
-- Keep category, institution, and account-level views in one place
+- Import CSV exports from banks and credit cards with row-level preview and
+  duplicate highlighting
+- Import supported PDF statements for UOB, Citibank, and OCBC, with statement
+  checkpoints where the parser can prove the statement balance
+- Import supported UOB current-transaction `.xls` exports as mid-cycle working
+  ledger rows
+- Track accounts owned by Tim, Joyce, or shared at the household level
+- Assign transactions as direct, shared, income, expense, or transfer
+- Use the Splits workspace for shared expenses, named groups, settle-up records,
+  and matching ledger entries into shared batches
+- Produce monthly and summary views from the committed ledger and plan rows
+- Keep category, institution, account, icon, and color metadata in one place
 
 ## Recommended stack
 
@@ -59,6 +65,9 @@ on demo data and imports, then connect the same repo to Cloudflare.
 
 The user-facing FAQ lives in [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
 and should be kept updated as the app changes.
+The product workflow guide lives in
+[`docs/git.md`](/Users/tim/22m/ai-projects/monies_map/docs/git.md) and captures
+the current import, reconciliation, and splits workflows.
 
 ## Data model
 
