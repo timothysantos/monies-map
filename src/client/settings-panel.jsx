@@ -6,12 +6,16 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { formatAuditAction } from "./account-display";
 import { messages } from "./copy/en-SG";
 import { extractPdfText, selectParsedStatementForCompare } from "./import-helpers";
-import { buildRequestErrorMessage } from "./request-errors";
 import {
+  archiveSettingsAccount,
   compareAccountCheckpointStatement,
   deleteAccountCheckpoint,
+  deleteSettingsCategory,
   fetchCheckpointExport,
-  saveAccountCheckpoint
+  saveAccountCheckpoint,
+  saveSettingsAccount,
+  saveSettingsCategory,
+  updateSettingsPerson
 } from "./settings-api";
 import { SettingsAccountsSection } from "./settings-accounts-section";
 import { SettingsAccountDialog, SettingsCategoryDialog, SettingsPersonDialog } from "./settings-dialogs";
@@ -252,29 +256,21 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
     setIsSubmitting(true);
     setAccountDialogError("");
     try {
-      const endpoint = accountDialog.mode === "create" ? "/api/accounts/create" : "/api/accounts/update";
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accountId: accountDialog.accountId || undefined,
-          name: accountDialog.name,
-          institution: accountDialog.institution,
-          kind: accountDialog.kind,
-          currency: accountDialog.currency,
-          openingBalanceMinor: parseDraftMoneyInput(accountDialog.openingBalance ?? "0"),
-          ownerPersonId: accountDialog.isJoint ? null : (accountDialog.ownerPersonId || null),
-          isJoint: accountDialog.isJoint
-        })
+      await saveSettingsAccount({
+        mode: accountDialog.mode,
+        accountId: accountDialog.accountId,
+        name: accountDialog.name,
+        institution: accountDialog.institution,
+        kind: accountDialog.kind,
+        currency: accountDialog.currency,
+        openingBalanceMinor: parseDraftMoneyInput(accountDialog.openingBalance ?? "0"),
+        ownerPersonId: accountDialog.ownerPersonId,
+        isJoint: accountDialog.isJoint
       });
-
-      if (!response.ok) {
-        setAccountDialogError(await buildRequestErrorMessage(response, "Account save failed."));
-        return;
-      }
-
       setAccountDialog(null);
       await onRefresh();
+    } catch (error) {
+      setAccountDialogError(error instanceof Error ? error.message : "Account save failed.");
     } finally {
       setIsSubmitting(false);
     }
@@ -283,11 +279,7 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
   async function handleArchiveAccount(accountId) {
     setIsSubmitting(true);
     try {
-      await fetch("/api/accounts/archive", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accountId })
-      });
+      await archiveSettingsAccount(accountId);
       await onRefresh();
     } finally {
       setIsSubmitting(false);
@@ -425,22 +417,14 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
 
     setIsSubmitting(true);
     try {
-      const endpoint = categoryDialog.mode === "create" ? "/api/categories/create" : "/api/categories/update";
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          categoryId: categoryDialog.categoryId || undefined,
-          name: categoryDialog.name,
-          slug: categoryDialog.slug,
-          iconKey: categoryDialog.iconKey,
-          colorHex: categoryDialog.colorHex
-        })
+      await saveSettingsCategory({
+        mode: categoryDialog.mode,
+        categoryId: categoryDialog.categoryId,
+        name: categoryDialog.name,
+        slug: categoryDialog.slug,
+        iconKey: categoryDialog.iconKey,
+        colorHex: categoryDialog.colorHex
       });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error ?? "Failed to save category");
-      }
       setCategoryDialog(null);
       await onRefresh();
     } catch (error) {
@@ -457,18 +441,10 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/people/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          personId: personDialog.personId,
-          name: personDialog.name
-        })
+      await updateSettingsPerson({
+        personId: personDialog.personId,
+        name: personDialog.name
       });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error ?? "Failed to update person");
-      }
       setPersonDialog(null);
       await onRefresh();
     } catch (error) {
@@ -481,15 +457,7 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
   async function handleDeleteCategory(category) {
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/categories/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ categoryId: category.id })
-      });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error ?? "Failed to delete category");
-      }
+      await deleteSettingsCategory(category.id);
       await onRefresh();
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Failed to delete category");
