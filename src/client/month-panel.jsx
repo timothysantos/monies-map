@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import * as Dialog from "@radix-ui/react-dialog";
-import * as Popover from "@radix-ui/react-popover";
-import { Check, ChevronRight, Plus, Receipt, SquarePen, X } from "lucide-react";
+import { Check, ChevronRight, SquarePen, X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { CategoryAppearancePopover } from "./category-visuals";
-import { describeAccountHealth, formatAccountDisplayName } from "./account-display";
 import { getCategory, getCategoryPatch, getCategorySelectValue, slugify } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import {
@@ -17,12 +14,12 @@ import {
   getPlanRowById,
   getVisibleMonthAccounts
 } from "./month-helpers";
-import { BarLine, DeleteRowButton, MetricCard, SortableHeader } from "./ui-components";
+import { MonthMetricRow, MonthNotesAndAccounts, MonthPanelHeader } from "./month-overview";
+import { DeleteRowButton, SortableHeader } from "./ui-components";
 import { formatRowDateLabel, getRowDateValue, sortRows } from "./table-helpers";
 import {
   formatDateOnly,
   formatMinorInput,
-  formatMonthLabel,
   money,
   parseDraftMoneyInput
 } from "./formatters";
@@ -584,148 +581,30 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
 
   return (
     <article className="panel">
-      <div className="panel-head">
-        <div>
-          <h2 className="month-title">{messages.tabs.month}</h2>
-          <span id="month-label" className="month-label">
-            <span className="month-label-period">{formatMonthLabel(view.monthPage.month)}</span>
-            <span className="month-label-separator">•</span>
-            <span className="month-label-view">{view.label}</span>
-          </span>
-        </div>
-        <div className="month-header-controls">
-          {view.monthPage.scopes.length > 1 ? (
-            <div className="scope-toggle pill-row scope-toggle-row desktop-scope-toggle">
-              {view.monthPage.scopes.map((scope) => (
-                <button
-                  key={scope.key}
-                  className={`pill scope-button ${scope.key === view.monthPage.selectedScope ? "is-active" : ""}`}
-                  type="button"
-                  onClick={() => {
-                    setSearchParams((current) => {
-                      const next = new URLSearchParams(current);
-                      next.set("scope", scope.key);
-                      return next;
-                    });
-                  }}
-                >
-                  {scope.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
-          <Popover.Root open={actionsOpen} onOpenChange={setActionsOpen}>
-            <Popover.Trigger asChild>
-              <button type="button" className="month-actions-trigger">
-                {messages.month.actions}
-              </button>
-            </Popover.Trigger>
-            <Popover.Portal>
-              <Popover.Content className="month-actions-popover" sideOffset={12} align="end">
-                <button
-                  type="button"
-                  className="month-actions-item"
-                  onClick={() => {
-                    setActionsOpen(false);
-                    void handleDuplicateMonth();
-                  }}
-                  disabled={isDuplicating}
-                >
-                  {messages.month.duplicateMonth}
-                </button>
-                <Dialog.Root>
-                  <Dialog.Trigger asChild>
-                    <button
-                      type="button"
-                      className="month-actions-item"
-                      onClick={() => setActionsOpen(false)}
-                      disabled={isResettingMonth}
-                    >
-                      {messages.month.resetMonth}
-                    </button>
-                  </Dialog.Trigger>
-                  <Dialog.Portal>
-                    <Dialog.Overlay className="note-dialog-overlay" />
-                    <Dialog.Content className="note-dialog-content">
-                      <div className="note-dialog-head">
-                        <Dialog.Title>{messages.month.resetMonth}</Dialog.Title>
-                        <Dialog.Description>{messages.month.resetMonthDetail}</Dialog.Description>
-                      </div>
-                      <input
-                        className="table-edit-input"
-                        placeholder={messages.month.resetMonthPlaceholder}
-                        value={resetMonthText}
-                        onChange={(event) => setResetMonthText(event.target.value)}
-                      />
-                      <div className="note-dialog-actions">
-                        <Dialog.Close asChild>
-                          <button type="button" className="subtle-action">Cancel</button>
-                        </Dialog.Close>
-                        <Dialog.Close asChild>
-                          <button
-                            type="button"
-                            className="subtle-action subtle-danger"
-                            disabled={resetMonthText.trim().toLowerCase() !== "reset month" || isResettingMonth}
-                            onClick={() => void handleResetMonth()}
-                          >
-                            {messages.month.resetMonthConfirm}
-                          </button>
-                        </Dialog.Close>
-                      </div>
-                    </Dialog.Content>
-                  </Dialog.Portal>
-                </Dialog.Root>
-                <Dialog.Root>
-                  <Dialog.Trigger asChild>
-                    <button
-                      type="button"
-                      className="month-actions-item month-actions-item-danger"
-                      onClick={() => setActionsOpen(false)}
-                      disabled={isDeletingMonth}
-                    >
-                      {messages.month.deleteMonth}
-                    </button>
-                  </Dialog.Trigger>
-                  <Dialog.Portal>
-                    <Dialog.Overlay className="note-dialog-overlay" />
-                    <Dialog.Content className="note-dialog-content">
-                      <div className="note-dialog-head">
-                        <Dialog.Title>{messages.month.deleteMonth}</Dialog.Title>
-                        <Dialog.Description>{messages.month.deleteMonthDetail}</Dialog.Description>
-                      </div>
-                      <input
-                        className="table-edit-input"
-                        placeholder={messages.month.deleteMonthPlaceholder}
-                        value={deleteMonthText}
-                        onChange={(event) => setDeleteMonthText(event.target.value)}
-                      />
-                      <div className="note-dialog-actions">
-                        <Dialog.Close asChild>
-                          <button type="button" className="subtle-action">Cancel</button>
-                        </Dialog.Close>
-                        <Dialog.Close asChild>
-                          <button
-                            type="button"
-                            className="subtle-action subtle-danger"
-                            disabled={deleteMonthText.trim().toLowerCase() !== "delete month" || isDeletingMonth}
-                            onClick={() => void handleDeleteMonth()}
-                          >
-                            {messages.month.deleteMonthConfirm}
-                          </button>
-                        </Dialog.Close>
-                      </div>
-                    </Dialog.Content>
-                  </Dialog.Portal>
-                </Dialog.Root>
-              </Popover.Content>
-            </Popover.Portal>
-          </Popover.Root>
-        </div>
-      </div>
+      <MonthPanelHeader
+        view={view}
+        actionsOpen={actionsOpen}
+        isDuplicating={isDuplicating}
+        isResettingMonth={isResettingMonth}
+        isDeletingMonth={isDeletingMonth}
+        resetMonthText={resetMonthText}
+        deleteMonthText={deleteMonthText}
+        onActionsOpenChange={setActionsOpen}
+        onScopeChange={(scopeKey) => {
+          setSearchParams((current) => {
+            const next = new URLSearchParams(current);
+            next.set("scope", scopeKey);
+            return next;
+          });
+        }}
+        onDuplicateMonth={handleDuplicateMonth}
+        onResetMonthTextChange={setResetMonthText}
+        onDeleteMonthTextChange={setDeleteMonthText}
+        onResetMonth={handleResetMonth}
+        onDeleteMonth={handleDeleteMonth}
+      />
 
-      <div className="metric-row metric-row-month">
-        {monthMetricCards.map((card) => <MetricCard key={card.label} card={card} />)}
-      </div>
+      <MonthMetricRow cards={monthMetricCards} />
 
       <div className="month-plan-stack">
         <p className={`month-plan-stack-hint ${isCombinedHouseholdView ? "is-readonly" : ""}`}>
@@ -1149,43 +1028,12 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         ))}
       </div>
 
-      <div className="panel-subgrid">
-        <section>
-          <div className="panel-subhead">
-            <h3>{messages.month.notesTitle}</h3>
-            <p>{messages.month.notesDetail}</p>
-          </div>
-          <button
-            type="button"
-            className="note-card note-card-button"
-            onClick={() => setMonthNoteDialog({ draft: view.monthPage.monthNote ?? "" })}
-          >
-            <p>{view.monthPage.monthNote || messages.common.emptyValue}</p>
-            <SquarePen size={16} />
-          </button>
-        </section>
-
-        <section>
-          <div className="panel-subhead">
-            <h3>{messages.month.accountsTitle}</h3>
-            <p>{messages.month.accountsDetail}</p>
-          </div>
-          <div className="summary-account-pills">
-            {visibleAccounts.map((account) => (
-              <button
-                key={account.id}
-                type="button"
-                className={`summary-account-pill ${account.reconciliationStatus ? `is-${account.reconciliationStatus}` : ""}`}
-                onClick={() => handleOpenEntriesForAccount(account)}
-              >
-                <span className="summary-account-pill-name">{formatAccountDisplayName(account)}</span>
-                <span className="summary-account-pill-amount">{money(account.balanceMinor ?? 0)}</span>
-                <span className="summary-account-pill-meta">{describeAccountHealth(account)}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      </div>
+      <MonthNotesAndAccounts
+        monthNote={view.monthPage.monthNote}
+        visibleAccounts={visibleAccounts}
+        onEditMonthNote={() => setMonthNoteDialog({ draft: view.monthPage.monthNote ?? "" })}
+        onOpenEntriesForAccount={handleOpenEntriesForAccount}
+      />
 
       <Dialog.Root open={Boolean(noteDialog)} onOpenChange={(open) => { if (!open) setNoteDialog(null); }}>
         <Dialog.Portal>
