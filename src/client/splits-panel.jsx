@@ -4,8 +4,10 @@ import { useSearchParams } from "react-router-dom";
 import { getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { createSplitGroup, linkSplitMatch, saveSplitExpense, saveSplitSettlement, updateSplitLinkedEntry } from "./splits-api";
-import { SplitArchiveDialog, SplitExpenseDialog, SplitGroupDialog, SplitLinkedEntryDialog, SplitSettlementDialog } from "./splits-dialogs";
+import { SplitArchiveDialog } from "./splits-archive-dialog";
+import { SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./splits-dialogs";
 import { buildExpenseDraft, buildLinkedEntryDraft, buildNewExpenseDraft, buildNewSettlementDraft, buildSettlementDraft } from "./splits-drafts";
+import { SplitLinkedEntryDialog } from "./splits-linked-entry-dialog";
 import { SplitsMainSection } from "./splits-main-section";
 import {
   groupSplitActivityByBatch,
