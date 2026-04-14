@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { messages } from "./copy/en-SG";
-import {
-  ImportRecentHistorySection,
-  RECENT_IMPORTS_PAGE_SIZE
-} from "./import-history";
+import { ImportRecentHistorySection } from "./import-history";
+import { buildRecentImportModel } from "./import-history-model";
+import { buildImportPreviewModel, hasImportDraft } from "./import-preview-model";
 import { ImportPreviewReview } from "./import-preview-review";
 import {
   ImportMappingStage,
@@ -142,78 +141,52 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const readyForMapping = csvInspection.headers.length > 0;
   const readyForPreview = mappedRows.length > 0 && missingRequiredFields.length === 0 && duplicateMappings.length === 0;
   const currentStage = preview ? 3 : readyForMapping ? 2 : 1;
-  const hasBlockingCategoryPolicy = unknownCategoryMode === "block" && Boolean(preview?.unknownCategories?.length);
-  const knownAccountNames = useMemo(() => new Set(accounts.map((account) => account.name)), [accounts]);
-  const detectedPreviewAccountNames = useMemo(
-    () => Array.from(new Set(previewRows.map((row) => row.accountName).filter(Boolean))).sort(),
-    [previewRows]
+  const importPreviewModel = useMemo(
+    () => buildImportPreviewModel({
+      accounts,
+      preview,
+      previewRows,
+      statementCheckpoints,
+      statementImportMeta,
+      dismissedOverlapIds,
+      unknownCategoryMode,
+      isSubmitting,
+      isParsingStatement
+    }),
+    [accounts, dismissedOverlapIds, isParsingStatement, isSubmitting, preview, previewRows, statementCheckpoints, statementImportMeta, unknownCategoryMode]
   );
-  const unknownPreviewAccountNames = useMemo(
-    () => detectedPreviewAccountNames.filter((accountName) => !knownAccountNames.has(accountName)),
-    [detectedPreviewAccountNames, knownAccountNames]
+  const importDraftExists = hasImportDraft({
+    preview,
+    previewRows,
+    csvText,
+    importNote,
+    statementCheckpoints,
+    uploadStatus,
+    previewError,
+    sourceLabel
+  });
+  const recentImportModel = useMemo(
+    () => buildRecentImportModel(importsPage.recentImports, recentImportPage),
+    [importsPage.recentImports, recentImportPage]
   );
-  const showStatementAccountMapping = preview && detectedPreviewAccountNames.length > 0 && (
-    statementImportMeta.sourceType === "pdf" || unknownPreviewAccountNames.length > 0
-  );
-  const hasUnmappedAccounts = previewRows.some((row) => !row.accountName || !knownAccountNames.has(row.accountName));
-  const duplicateCheckpointAccounts = useMemo(() => {
-    const counts = new Map();
-    for (const checkpoint of statementCheckpoints) {
-      if (!checkpoint.accountName) {
-        continue;
-      }
-      counts.set(checkpoint.accountName, (counts.get(checkpoint.accountName) ?? 0) + 1);
-    }
-    return Array.from(counts.entries()).filter(([, count]) => count > 1).map(([accountName]) => accountName);
-  }, [statementCheckpoints]);
-  const hasDuplicateCheckpointAccounts = duplicateCheckpointAccounts.length > 0;
-  const visibleOverlapImports = useMemo(
-    () => (preview?.overlapImports ?? []).filter((item) => !dismissedOverlapIds.includes(item.id)),
-    [dismissedOverlapIds, preview?.overlapImports]
-  );
-  const previewDuplicateRowCount = previewRows.filter((row) => row.duplicateMatches?.length).length;
-  const statementReconciliations = preview?.statementReconciliations ?? [];
-  const hasStatementReconciliationMismatch = statementReconciliations.some((item) => item.status !== "matched");
-  const isCommitDisabled = isSubmitting
-    || isParsingStatement
-    || !previewRows.length
-    || hasUnmappedAccounts
-    || hasBlockingCategoryPolicy
-    || hasDuplicateCheckpointAccounts;
-  const hasImportDraft = Boolean(
-    preview
-    || previewRows.length
-    || csvText
-    || importNote
-    || statementCheckpoints.length
-    || uploadStatus
-    || previewError
-    || sourceLabel !== "Imported CSV"
-  );
-  const recentImportPageCount = Math.max(1, Math.ceil(importsPage.recentImports.length / RECENT_IMPORTS_PAGE_SIZE));
-  const paginatedRecentImports = useMemo(() => {
-    const startIndex = (recentImportPage - 1) * RECENT_IMPORTS_PAGE_SIZE;
-    return importsPage.recentImports.slice(startIndex, startIndex + RECENT_IMPORTS_PAGE_SIZE);
-  }, [importsPage.recentImports, recentImportPage]);
-  const recentImportStart = importsPage.recentImports.length
-    ? ((recentImportPage - 1) * RECENT_IMPORTS_PAGE_SIZE) + 1
-    : 0;
-  const recentImportEnd = Math.min(recentImportPage * RECENT_IMPORTS_PAGE_SIZE, importsPage.recentImports.length);
-  const recentImportGroups = useMemo(() => {
-    const grouped = new Map();
-    for (const item of paginatedRecentImports) {
-      const dateKey = item.importedAt.slice(0, 10);
-      if (!grouped.has(dateKey)) {
-        grouped.set(dateKey, []);
-      }
-      grouped.get(dateKey).push(item);
-    }
-    return Array.from(grouped.entries()).map(([date, items]) => ({ date, items }));
-  }, [paginatedRecentImports]);
+  const {
+    detectedPreviewAccountNames,
+    duplicateCheckpointAccounts,
+    hasBlockingCategoryPolicy,
+    hasDuplicateCheckpointAccounts,
+    hasStatementReconciliationMismatch,
+    isCommitDisabled,
+    knownAccountNames,
+    previewDuplicateRowCount,
+    showStatementAccountMapping,
+    statementReconciliations,
+    unknownPreviewAccountNames,
+    visibleOverlapImports
+  } = importPreviewModel;
 
   useEffect(() => {
-    setRecentImportPage((current) => Math.min(Math.max(current, 1), recentImportPageCount));
-  }, [recentImportPageCount]);
+    setRecentImportPage((current) => Math.min(Math.max(current, 1), recentImportModel.pageCount));
+  }, [recentImportModel.pageCount]);
 
   useEffect(() => {
     if (!readyForMapping) {
@@ -586,7 +559,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             <h3>{messages.imports.composerTitle}</h3>
             <p className="lede compact">{messages.imports.composerDetail}</p>
           </div>
-          {hasImportDraft ? (
+          {importDraftExists ? (
             <button type="button" className="subtle-action" onClick={resetImportForm} disabled={isSubmitting}>
               {messages.imports.startOver}
             </button>
@@ -714,15 +687,15 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
       <ImportRecentHistorySection
         recentImports={importsPage.recentImports}
-        recentImportGroups={recentImportGroups}
+        recentImportGroups={recentImportModel.groups}
         recentImportsOpen={recentImportsOpen}
         recentImportPage={recentImportPage}
-        recentImportPageCount={recentImportPageCount}
-        recentImportStart={recentImportStart}
-        recentImportEnd={recentImportEnd}
+        recentImportPageCount={recentImportModel.pageCount}
+        recentImportStart={recentImportModel.start}
+        recentImportEnd={recentImportModel.end}
         onToggleOpen={() => setRecentImportsOpen((current) => !current)}
         onPreviousPage={() => setRecentImportPage((current) => Math.max(1, current - 1))}
-        onNextPage={() => setRecentImportPage((current) => Math.min(recentImportPageCount, current + 1))}
+        onNextPage={() => setRecentImportPage((current) => Math.min(recentImportModel.pageCount, current + 1))}
         onRollback={handleRollback}
       />
     </article>
