@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import { ChevronRight } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
@@ -7,12 +6,10 @@ import { SpendingMixChart } from "./category-visuals";
 import { getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { SplitActivityGroups } from "./splits-activity";
-import { SplitArchiveDialog, SplitGroupDialog } from "./splits-dialogs";
+import { SplitArchiveDialog, SplitExpenseDialog, SplitGroupDialog, SplitLinkedEntryDialog, SplitSettlementDialog } from "./splits-dialogs";
+import { SplitMatchesList } from "./splits-matches";
 import {
-  decimalStringToMinor,
-  formatDate,
   formatDateOnly,
-  minorToDecimalString,
   money
 } from "./formatters";
 import {
@@ -442,35 +439,12 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       ) : null}
 
       {selectedMode === "matches" ? (
-        <section className="split-list-section">
-          <div className="panel-subhead">
-            <div>
-              <h2>{messages.splits.matches}</h2>
-              <p className="lede compact">{pendingMatchCount ? messages.splits.toReview(pendingMatchCount) : messages.splits.noMatches}</p>
-            </div>
-          </div>
-          <div className="split-match-list">
-            {visibleMatches.length ? visibleMatches.map((match) => (
-              <div key={match.id} className="split-match-card">
-                <div>
-                  <strong>{match.reviewLabel}</strong>
-                  <p>{messages.common.triplet(formatDate(match.transactionDate), money(match.amountMinor), match.confidenceLabel)}</p>
-                  <p>{match.transactionDescription}</p>
-                </div>
-                <div className="split-match-actions">
-                  <button type="button" className="subtle-action" onClick={() => setDismissedMatchIds((current) => [...current, match.id])}>
-                    {messages.splits.keepSeparate}
-                  </button>
-                  <button type="button" className="dialog-primary" onClick={() => void confirmMatch(match)}>
-                    {messages.splits.match}
-                  </button>
-                </div>
-              </div>
-            )) : (
-              <p className="lede compact">{messages.splits.noMatches}</p>
-            )}
-          </div>
-        </section>
+        <SplitMatchesList
+          matches={visibleMatches}
+          pendingMatchCount={pendingMatchCount}
+          onDismissMatch={(matchId) => setDismissedMatchIds((current) => [...current, matchId])}
+          onConfirmMatch={confirmMatch}
+        />
       ) : (
         <section className="split-list-section">
           <button
@@ -531,223 +505,36 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onSave={saveGroup}
       />
 
-      <Dialog.Root open={Boolean(expenseDialog)} onOpenChange={(open) => { if (!open) setExpenseDialog(null); }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content split-dialog-content">
-            <div className="note-dialog-head split-dialog-head">
-              <Dialog.Title>{expenseDialog?.id ? messages.splits.editSplit : messages.splits.createExpense}</Dialog.Title>
-              <Dialog.Description>Create or edit a split expense without touching the bank import workflow.</Dialog.Description>
-            </div>
-            <div className="split-dialog-section">
-              <div className="entry-core-grid split-dialog-grid">
-                <label className="split-dialog-field">
-                <span>Group</span>
-                <select className="table-edit-input" value={expenseDialog?.groupId ?? "split-group-none"} onChange={(event) => setExpenseDialog((current) => current ? { ...current, groupId: event.target.value } : current)}>
-                  {groupOptions.map((option) => (
-                    <option key={option.id} value={option.id}>{option.name}</option>
-                  ))}
-                </select>
-                </label>
-                <label className="split-dialog-field">
-                <span>{messages.splits.expenseDate}</span>
-                <input className="table-edit-input" type="date" value={expenseDialog?.date ?? ""} onChange={(event) => setExpenseDialog((current) => current ? { ...current, date: event.target.value } : current)} />
-                </label>
-                <label className="split-dialog-field">
-                <span>{messages.splits.expensePaidBy}</span>
-                <select className="table-edit-input" value={expenseDialog?.payerPersonName ?? ""} onChange={(event) => setExpenseDialog((current) => current ? { ...current, payerPersonName: event.target.value } : current)}>
-                  {people.map((person) => (
-                    <option key={person.id} value={person.name}>{person.name}</option>
-                  ))}
-                </select>
-                </label>
-                <label className="split-dialog-field">
-                <span>{messages.splits.expenseCategory}</span>
-                <select className="table-edit-input" value={expenseDialog?.categoryName ?? ""} onChange={(event) => setExpenseDialog((current) => current ? { ...current, categoryName: event.target.value } : current)}>
-                  {categoryOptions.map((option) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
-                </label>
-              </div>
-            </div>
-            <div className="split-dialog-section split-dialog-section-compact">
-              <div className="split-dialog-inline">
-                <label className="split-dialog-field">
-                <span>{messages.splits.expenseAmount}</span>
-                <input className="table-edit-input table-edit-input-money" type="number" min="0" step="0.01" value={minorToDecimalString(expenseDialog?.amountMinor ?? 0)} onChange={(event) => setExpenseDialog((current) => current ? { ...current, amountMinor: decimalStringToMinor(event.target.value) } : current)} />
-                </label>
-                <label className="split-dialog-field">
-                <span>{messages.splits.expenseSplit}</span>
-                <input className="table-edit-input table-edit-input-money" type="number" min="0" max="100" value={Number(expenseDialog?.splitBasisPoints ?? 5000) / 100} onChange={(event) => setExpenseDialog((current) => current ? { ...current, splitBasisPoints: Math.round(Number(event.target.value || 0) * 100) } : current)} />
-                </label>
-              </div>
-            </div>
-            <div className="split-dialog-section">
-              <div className="entry-writing-grid split-dialog-writing-grid">
-                <label className="split-dialog-field">
-                <span>{messages.splits.expenseDescription}</span>
-                <textarea className="table-edit-input table-edit-textarea" rows={3} value={expenseDialog?.description ?? ""} onChange={(event) => setExpenseDialog((current) => current ? { ...current, description: event.target.value } : current)} />
-                </label>
-                <label className="split-dialog-field">
-                <span>{messages.splits.expenseNote}</span>
-                <textarea className="table-edit-input table-edit-textarea" rows={3} value={expenseDialog?.note ?? ""} onChange={(event) => setExpenseDialog((current) => current ? { ...current, note: event.target.value } : current)} />
-                </label>
-              </div>
-            </div>
-            {formError ? <p className="form-error">{formError}</p> : null}
-            <div className="dialog-actions">
-              <button type="button" className="subtle-cancel" onClick={() => setExpenseDialog(null)}>Cancel</button>
-              <button type="button" className="dialog-primary" onClick={() => void saveExpense()}>{messages.splits.saveExpense}</button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      <SplitExpenseDialog
+        dialog={expenseDialog}
+        groupOptions={groupOptions}
+        people={people}
+        categoryOptions={categoryOptions}
+        formError={formError}
+        onChange={setExpenseDialog}
+        onClose={() => setExpenseDialog(null)}
+        onSave={saveExpense}
+      />
 
-      <Dialog.Root open={Boolean(settlementDialog)} onOpenChange={(open) => { if (!open) setSettlementDialog(null); }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content split-dialog-content">
-            <div className="note-dialog-head split-dialog-head">
-              <Dialog.Title>{settlementDialog?.id ? messages.splits.editSplit : messages.splits.createSettlement}</Dialog.Title>
-              <Dialog.Description>Record or edit a settle-up and match the bank transfer later from the Matches view.</Dialog.Description>
-            </div>
-            <div className="split-dialog-section">
-              <div className="entry-core-grid split-dialog-grid">
-                <label className="split-dialog-field">
-                <span>Group</span>
-                <select className="table-edit-input" value={settlementDialog?.groupId ?? "split-group-none"} onChange={(event) => setSettlementDialog((current) => current ? { ...current, groupId: event.target.value } : current)}>
-                  {groupOptions.map((option) => (
-                    <option key={option.id} value={option.id}>{option.name}</option>
-                  ))}
-                </select>
-                </label>
-                <label className="split-dialog-field">
-                <span>{messages.splits.settlementDate}</span>
-                <input className="table-edit-input" type="date" value={settlementDialog?.date ?? ""} onChange={(event) => setSettlementDialog((current) => current ? { ...current, date: event.target.value } : current)} />
-                </label>
-                <label className="split-dialog-field">
-                <span>{messages.splits.settlementFrom}</span>
-                <select className="table-edit-input" value={settlementDialog?.fromPersonName ?? ""} onChange={(event) => setSettlementDialog((current) => current ? { ...current, fromPersonName: event.target.value } : current)}>
-                  {people.map((person) => (
-                    <option key={person.id} value={person.name}>{person.name}</option>
-                  ))}
-                </select>
-                </label>
-                <label className="split-dialog-field">
-                <span>{messages.splits.settlementTo}</span>
-                <select className="table-edit-input" value={settlementDialog?.toPersonName ?? ""} onChange={(event) => setSettlementDialog((current) => current ? { ...current, toPersonName: event.target.value } : current)}>
-                  {people.map((person) => (
-                    <option key={person.id} value={person.name}>{person.name}</option>
-                  ))}
-                </select>
-                </label>
-              </div>
-            </div>
-            <div className="split-dialog-section split-dialog-section-compact">
-              <div className="split-dialog-inline">
-                <label className="split-dialog-field">
-                <span>{messages.splits.settlementAmount}</span>
-                <input className="table-edit-input table-edit-input-money" type="number" min="0" step="0.01" value={minorToDecimalString(settlementDialog?.amountMinor ?? 0)} onChange={(event) => setSettlementDialog((current) => current ? { ...current, amountMinor: decimalStringToMinor(event.target.value) } : current)} />
-                </label>
-              </div>
-            </div>
-            <div className="split-dialog-section">
-              <label className="split-dialog-field">
-                <span>{messages.splits.expenseNote}</span>
-                <textarea className="table-edit-input table-edit-textarea" rows={4} value={settlementDialog?.note ?? ""} onChange={(event) => setSettlementDialog((current) => current ? { ...current, note: event.target.value } : current)} />
-              </label>
-            </div>
-            {formError ? <p className="form-error">{formError}</p> : null}
-            <div className="dialog-actions">
-              <button type="button" className="subtle-cancel" onClick={() => setSettlementDialog(null)}>Cancel</button>
-              <button type="button" className="dialog-primary" onClick={() => void saveSettlement()}>{messages.splits.saveSettlement}</button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      <SplitSettlementDialog
+        dialog={settlementDialog}
+        groupOptions={groupOptions}
+        people={people}
+        formError={formError}
+        onChange={setSettlementDialog}
+        onClose={() => setSettlementDialog(null)}
+        onSave={saveSettlement}
+      />
 
-      <Dialog.Root open={Boolean(linkedEntryDialog)} onOpenChange={(open) => { if (!open) setLinkedEntryDialog(null); }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content split-dialog-content">
-            <div className="note-dialog-head split-dialog-head">
-              <Dialog.Title>{messages.splits.editLinkedEntry}</Dialog.Title>
-              <Dialog.Description>Edit the same ledger entry that also appears on the Entries page. Changes here update that row there too.</Dialog.Description>
-            </div>
-            <div className="linked-entry-notice">
-              <strong>Linked to Entries</strong>
-              <p>This form edits the underlying ledger row. When you save here, the matching entry in `Entries` updates too.</p>
-            </div>
-            <div className="split-dialog-section">
-              <div className="entry-core-grid split-dialog-grid">
-                <label className="split-dialog-field">
-                <span>{messages.entries.editDate}</span>
-                <input className="table-edit-input" type="date" value={linkedEntryDialog?.date ?? ""} onChange={(event) => setLinkedEntryDialog((current) => current ? { ...current, date: event.target.value } : current)} />
-                </label>
-                <label className="split-dialog-field">
-                <span>{messages.entries.editWallet}</span>
-                <input className="table-edit-input" value={linkedEntryDialog?.accountName ?? ""} onChange={(event) => setLinkedEntryDialog((current) => current ? { ...current, accountName: event.target.value } : current)} />
-                </label>
-                <label className="split-dialog-field">
-                <span>{messages.entries.editCategory}</span>
-                <select className="table-edit-input" value={linkedEntryDialog?.categoryName ?? ""} onChange={(event) => setLinkedEntryDialog((current) => current ? { ...current, categoryName: event.target.value } : current)}>
-                  {categoryOptions.map((option) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
-                </label>
-              </div>
-            </div>
-            <div className="split-dialog-section split-dialog-section-compact">
-              <div className="split-dialog-inline">
-                <label className="split-dialog-field">
-                <span>{messages.entries.editAmount}</span>
-                <input className="table-edit-input table-edit-input-money" type="number" min="0" step="0.01" value={minorToDecimalString(linkedEntryDialog?.amountMinor ?? 0)} onChange={(event) => setLinkedEntryDialog((current) => current ? { ...current, amountMinor: decimalStringToMinor(event.target.value) } : current)} />
-                </label>
-                <label className="split-dialog-field">
-                <span>{messages.entries.editOwner}</span>
-                <select className="table-edit-input" value={linkedEntryDialog?.ownershipType === "shared" ? "Shared" : (linkedEntryDialog?.ownerName ?? "")} onChange={(event) => {
-                  const nextValue = event.target.value;
-                  setLinkedEntryDialog((current) => current ? {
-                    ...current,
-                    ownershipType: nextValue === "Shared" ? "shared" : "direct",
-                    ownerName: nextValue === "Shared" ? undefined : nextValue
-                  } : current);
-                }}>
-                  {[...people.map((person) => person.name), "Shared"].map((option) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
-                </label>
-                {linkedEntryDialog?.ownershipType === "shared" ? (
-                  <label className="split-dialog-field">
-                  <span>{messages.entries.editSplit}</span>
-                  <input className="table-edit-input table-edit-input-money" type="number" min="0" max="100" value={Number(linkedEntryDialog?.splitBasisPoints ?? 5000) / 100} onChange={(event) => setLinkedEntryDialog((current) => current ? { ...current, splitBasisPoints: Math.round(Number(event.target.value || 0) * 100) } : current)} />
-                  </label>
-                ) : null}
-              </div>
-            </div>
-            <div className="split-dialog-section">
-              <div className="entry-writing-grid split-dialog-writing-grid">
-                <label className="split-dialog-field">
-                <span>{messages.entries.editDescription}</span>
-                <textarea className="table-edit-input table-edit-textarea" rows={3} value={linkedEntryDialog?.description ?? ""} onChange={(event) => setLinkedEntryDialog((current) => current ? { ...current, description: event.target.value } : current)} />
-                </label>
-                <label className="split-dialog-field">
-                <span>{messages.entries.editNote}</span>
-                <textarea className="table-edit-input table-edit-textarea" rows={3} value={linkedEntryDialog?.note ?? ""} onChange={(event) => setLinkedEntryDialog((current) => current ? { ...current, note: event.target.value } : current)} />
-                </label>
-              </div>
-            </div>
-            {formError ? <p className="form-error">{formError}</p> : null}
-            <div className="dialog-actions">
-              <button type="button" className="subtle-cancel" onClick={() => setLinkedEntryDialog(null)}>Cancel</button>
-              <button type="button" className="dialog-primary" onClick={() => void saveLinkedEntry()}>Save linked entry</button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      <SplitLinkedEntryDialog
+        dialog={linkedEntryDialog}
+        people={people}
+        categoryOptions={categoryOptions}
+        formError={formError}
+        onChange={setLinkedEntryDialog}
+        onClose={() => setLinkedEntryDialog(null)}
+        onSave={saveLinkedEntry}
+      />
     </article>
   );
 }
