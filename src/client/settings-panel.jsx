@@ -14,7 +14,8 @@ import {
   saveAccountCheckpoint
 } from "./settings-api";
 import { SettingsAccountsSection } from "./settings-accounts-section";
-import { SettingsAccountDialog, SettingsCategoryDialog, SettingsPersonDialog, SettingsReconciliationDialog } from "./settings-dialogs";
+import { SettingsAccountDialog, SettingsCategoryDialog, SettingsPersonDialog } from "./settings-dialogs";
+import { SettingsReconciliationDialog } from "./settings-reconciliation-dialog";
 import { CategoryGlyph, DeleteRowButton } from "./ui-components";
 import { FALLBACK_THEME } from "./ui-options";
 import {
