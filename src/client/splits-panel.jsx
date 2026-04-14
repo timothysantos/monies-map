@@ -6,6 +6,7 @@ import { useSearchParams } from "react-router-dom";
 import { SpendingMixChart } from "./category-visuals";
 import { getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
+import { SplitActivityGroups } from "./splits-activity";
 import {
   decimalStringToMinor,
   formatDate,
@@ -104,53 +105,6 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       }
       return next;
     });
-  }
-
-  function renderActivityGroups(groupsToRender, archived = false) {
-    return groupsToRender.map((group) => (
-      <section key={`${archived ? "archived" : "current"}-${group.date}`} className={`split-date-group ${archived ? "is-archived" : ""}`}>
-        <header className="split-date-header">
-          <strong>{formatDateOnly(group.date)}</strong>
-          <span>{group.items.length} {messages.splits.entries}</span>
-        </header>
-        <div className="split-date-items">
-          {group.items.map((item, index) => {
-            const theme = getCategoryTheme(categories, { categoryName: item.categoryName ?? "Other" }, index);
-            return (
-              <article key={item.id} className="split-activity-card">
-                <div className="split-activity-leading">
-                  <span className="category-icon category-icon-static" style={{ "--category-color": theme.color }}>
-                    <CategoryGlyph iconKey={theme.iconKey} />
-                  </span>
-                </div>
-                <div className="split-activity-copy">
-                  <strong>{item.description}</strong>
-                  <p>{item.kind === "expense" ? `${item.paidByPersonName} paid ${money(item.totalAmountMinor)}` : `${item.fromPersonName} paid ${item.toPersonName}`}</p>
-                  {item.note ? <span className="share-row-meta">{item.note}</span> : null}
-                  <div className="split-card-actions">
-                    <button type="button" className="subtle-action" onClick={() => (item.kind === "expense" ? openExpenseEditor(item) : openSettlementEditor(item))}>
-                      {messages.splits.editSplit}
-                    </button>
-                    {item.linkedTransactionId ? (
-                      <button type="button" className="subtle-action" onClick={() => openLinkedEntryEditor(item)}>
-                        {messages.splits.editLinkedEntry}
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="split-activity-trailing">
-                  <strong className={item.viewerDirectionLabel.includes("borrowed") || item.viewerDirectionLabel.includes("owe") ? "tone-negative" : "tone-positive"}>
-                    {item.viewerDirectionLabel}
-                  </strong>
-                  <span>{money(item.viewerAmountMinor ?? item.totalAmountMinor)}</span>
-                  <span className="share-row-meta">{item.matched ? messages.splits.linked : messages.splits.manual}</span>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-    ));
   }
 
   function openArchiveList() {
@@ -529,7 +483,15 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
             tabIndex={-1}
           />
           <div className="split-activity-list">
-            {groupedCurrentActivity.length ? renderActivityGroups(groupedCurrentActivity) : null}
+            {groupedCurrentActivity.length ? (
+              <SplitActivityGroups
+                groups={groupedCurrentActivity}
+                categories={categories}
+                onEditExpense={openExpenseEditor}
+                onEditSettlement={openSettlementEditor}
+                onEditLinkedEntry={openLinkedEntryEditor}
+              />
+            ) : null}
             {!groupedCurrentActivity.length && !archivedBatches.length ? <p className="lede compact">{messages.splits.noEntries}</p> : null}
             <button
               type="button"
@@ -566,7 +528,14 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
                   Back to archived batches
                 </button>
                 <div className="split-archive-batch-detail">
-                  {renderActivityGroups(selectedArchivedBatch.groups, true)}
+                  <SplitActivityGroups
+                    groups={selectedArchivedBatch.groups}
+                    categories={categories}
+                    archived
+                    onEditExpense={openExpenseEditor}
+                    onEditSettlement={openSettlementEditor}
+                    onEditLinkedEntry={openLinkedEntryEditor}
+                  />
                 </div>
               </div>
             ) : (
