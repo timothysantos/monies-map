@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
-import { ChevronRight, SquarePen, X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { formatAuditAction } from "./account-display";
 import { messages } from "./copy/en-SG";
 import { extractPdfText, selectParsedStatementForCompare } from "./import-helpers";
 import {
@@ -20,14 +17,20 @@ import {
 import { SettingsAccountsSection } from "./settings-accounts-section";
 import { SettingsAccountDialog, SettingsCategoryDialog, SettingsPersonDialog } from "./settings-dialogs";
 import { SettingsReconciliationDialog } from "./settings-reconciliation-dialog";
-import { CategoryGlyph, DeleteRowButton } from "./ui-components";
+import {
+  SettingsActivitySection,
+  SettingsCategoriesSection,
+  SettingsDemoSection,
+  SettingsPeopleSection,
+  SettingsTransfersSection,
+  SettingsTrustSection
+} from "./settings-sections";
+import { DeleteRowButton } from "./ui-components";
 import { FALLBACK_THEME } from "./ui-options";
 import {
   formatCheckpointCoverage,
   formatCheckpointHistoryBalanceLine,
   formatCheckpointStatementInputMinor,
-  formatDate,
-  formatDateOnly,
   formatMinorInput,
   formatMonthLabel,
   money,
@@ -522,41 +525,12 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
         </div>
       </div>
 
-      <section className="chart-card settings-card">
-        <button
-          type="button"
-          className="settings-section-toggle"
-          onClick={() => toggleSettingsSection("people")}
-          aria-expanded={settingsSectionsOpen.people}
-        >
-          <div className="settings-section-toggle-copy">
-            <div className="chart-head">
-              <h3>{messages.settings.peopleTitle}</h3>
-              <p>{messages.settings.peopleDetail}</p>
-            </div>
-          </div>
-          <span className={`settings-section-toggle-icon ${settingsSectionsOpen.people ? "is-open" : ""}`}>
-            <ChevronRight size={18} />
-          </span>
-        </button>
-        {settingsSectionsOpen.people ? (
-          <div className="settings-people-grid">
-            {people.map((person) => (
-              <div key={person.id} className="settings-account-row settings-person-card">
-                <div className="settings-account-main">
-                  <strong>{person.name}</strong>
-                  <p>{messages.settings.personUsageHint}</p>
-                </div>
-                <div className="settings-account-actions">
-                  <button type="button" className="icon-action" aria-label={messages.settings.editPerson} onClick={() => openEditPersonDialog(person)}>
-                    <SquarePen size={16} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </section>
+      <SettingsPeopleSection
+        people={people}
+        isOpen={settingsSectionsOpen.people}
+        onToggle={() => toggleSettingsSection("people")}
+        onEditPerson={openEditPersonDialog}
+      />
 
       <SettingsAccountsSection
         accounts={visibleAccounts}
@@ -579,276 +553,44 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
         onEntryAdded={handleStatementCompareEntryAdded}
       />
 
-      <section className="chart-card settings-card">
-        <button
-          type="button"
-          className="settings-section-toggle"
-          onClick={() => toggleSettingsSection("categories")}
-          aria-expanded={settingsSectionsOpen.categories}
-        >
-          <div className="settings-section-toggle-copy">
-            <div className="chart-head">
-              <h3>{messages.settings.categoriesTitle}</h3>
-              <p>{messages.settings.categoriesDetail}</p>
-            </div>
-          </div>
-          <span className={`settings-section-toggle-icon ${settingsSectionsOpen.categories ? "is-open" : ""}`}>
-            <ChevronRight size={18} />
-          </span>
-        </button>
-        {settingsSectionsOpen.categories ? (
-          <>
-            <div className="settings-actions">
-              <button type="button" className="subtle-action" onClick={openCreateCategoryDialog}>
-                {messages.settings.addCategory}
-              </button>
-            </div>
-            <div className="settings-categories-grid">
-              {visibleCategories.map((category) => (
-                <div key={category.id} className="settings-account-row settings-category-card">
-                  <span
-                    className="category-icon category-icon-static settings-category-icon"
-                    style={{ "--category-color": category.colorHex }}
-                  >
-                    <CategoryGlyph iconKey={category.iconKey} />
-                  </span>
-                  <div className="settings-account-main">
-                    <strong>{category.name}</strong>
-                    <p>{messages.common.triplet(category.slug, category.iconKey, category.colorHex)}</p>
-                  </div>
-                  <div className="settings-account-actions">
-                    <button type="button" className="icon-action" aria-label={messages.settings.editCategory} onClick={() => openEditCategoryDialog(category)}>
-                      <SquarePen size={16} />
-                    </button>
-                    <DeleteRowButton
-                      label={category.name}
-                      triggerLabel={messages.settings.deleteCategory}
-                      confirmLabel={messages.settings.deleteCategory}
-                      destructive={false}
-                      prompt={messages.settings.deleteCategoryDetail(category.name)}
-                      onConfirm={() => handleDeleteCategory(category)}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        ) : null}
-      </section>
+      <SettingsCategoriesSection
+        categories={visibleCategories}
+        isOpen={settingsSectionsOpen.categories}
+        onToggle={() => toggleSettingsSection("categories")}
+        onCreateCategory={openCreateCategoryDialog}
+        onEditCategory={openEditCategoryDialog}
+        onDeleteCategory={handleDeleteCategory}
+      />
 
-      <section className="chart-card settings-card">
-        <button
-          type="button"
-          className="settings-section-toggle"
-          onClick={() => toggleSettingsSection("trust")}
-          aria-expanded={settingsSectionsOpen.trust}
-        >
-          <div className="settings-section-toggle-copy">
-            <div className="chart-head">
-              <h3>{messages.settings.trustRulesTitle}</h3>
-              <p>{messages.settings.trustRulesDetail}</p>
-            </div>
-          </div>
-          <span className={`settings-section-toggle-icon ${settingsSectionsOpen.trust ? "is-open" : ""}`}>
-            <ChevronRight size={18} />
-          </span>
-        </button>
-        {settingsSectionsOpen.trust ? (
-          <div className="settings-trust-grid">
-            <div className="settings-demo-meta-item">
-              <span>{messages.settings.trustOpeningTitle}</span>
-              <strong>{messages.settings.trustOpeningDetail}</strong>
-              <p>{messages.settings.trustOpeningAction}</p>
-            </div>
-            <div className="settings-demo-meta-item">
-              <span>{messages.settings.trustCheckpointTitle}</span>
-              <strong>{messages.settings.trustCheckpointDetail}</strong>
-              <p>{messages.settings.trustCheckpointAction}</p>
-            </div>
-            <div className="settings-demo-meta-item">
-              <span>{messages.settings.trustTransfersTitle}</span>
-              <strong>{messages.settings.trustTransfersDetail}</strong>
-              <p>{messages.settings.trustTransfersAction}</p>
-            </div>
-          </div>
-        ) : null}
-      </section>
+      <SettingsTrustSection
+        isOpen={settingsSectionsOpen.trust}
+        onToggle={() => toggleSettingsSection("trust")}
+      />
 
-      <section className="chart-card settings-card">
-        <button
-          type="button"
-          className="settings-section-toggle"
-          onClick={() => toggleSettingsSection("transfers")}
-          aria-expanded={settingsSectionsOpen.transfers}
-        >
-          <div className="settings-section-toggle-copy">
-            <div className="chart-head">
-              <h3>{messages.settings.unresolvedTransfersTitle}</h3>
-              <p>{messages.settings.unresolvedTransfersDetail}</p>
-            </div>
-          </div>
-          <span className={`settings-section-toggle-icon ${settingsSectionsOpen.transfers ? "is-open" : ""}`}>
-            <ChevronRight size={18} />
-          </span>
-        </button>
-        {settingsSectionsOpen.transfers ? (
-          <>
-            <div className="settings-transfer-list">
-              {settingsPage.unresolvedTransfers.length ? settingsPage.unresolvedTransfers.map((item) => (
-                <div key={item.entryId} className="settings-account-row settings-transfer-row">
-                  <div className="settings-account-main settings-transfer-main">
-                    <strong>{item.description}</strong>
-                    <p>{messages.common.triplet(formatDateOnly(item.date), item.accountName, item.transferDirection === "in" ? "Transfer in" : "Transfer out")}</p>
-                  </div>
-                  <strong className="settings-transfer-amount">{money(item.transferDirection === "out" ? -item.amountMinor : item.amountMinor)}</strong>
-                  <div className="settings-account-actions">
-                    <button type="button" className="subtle-action" onClick={() => openTransferReview(item.entryId)}>
-                      {messages.settings.openTransferReview}
-                    </button>
-                  </div>
-                </div>
-              )) : (
-                <p className="lede compact">{messages.common.emptyValue}</p>
-              )}
-            </div>
-          </>
-        ) : null}
-      </section>
+      <SettingsTransfersSection
+        transfers={settingsPage.unresolvedTransfers}
+        isOpen={settingsSectionsOpen.transfers}
+        onToggle={() => toggleSettingsSection("transfers")}
+        onOpenTransferReview={openTransferReview}
+      />
 
-      <section className="chart-card settings-card">
-        <button
-          type="button"
-          className="settings-section-toggle"
-          onClick={() => toggleSettingsSection("activity")}
-          aria-expanded={settingsSectionsOpen.activity}
-        >
-          <div className="settings-section-toggle-copy">
-            <div className="chart-head">
-              <h3>{messages.settings.recentActivityTitle}</h3>
-              <p>{messages.settings.recentActivityDetail}</p>
-            </div>
-          </div>
-          <span className={`settings-section-toggle-icon ${settingsSectionsOpen.activity ? "is-open" : ""}`}>
-            <ChevronRight size={18} />
-          </span>
-        </button>
-        {settingsSectionsOpen.activity ? (
-          <div className="settings-activity-groups">
-            {recentActivityGroups.length ? recentActivityGroups.map((group) => (
-              <section key={group.date} className="settings-activity-group">
-                <div className="settings-activity-date">{formatDateOnly(group.date)}</div>
-                <div className="settings-activity-list">
-                  {group.events.map((event) => (
-                    <div key={event.id} className="settings-account-row settings-activity-row">
-                      <div className="settings-account-main">
-                        <strong>{formatAuditAction(event.action)}</strong>
-                        <p>{event.detail}</p>
-                      </div>
-                      <p className="settings-account-meta">{formatDate(event.createdAt)}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )) : (
-              <p className="lede compact">{messages.common.emptyValue}</p>
-            )}
-          </div>
-        ) : null}
-      </section>
+      <SettingsActivitySection
+        activityGroups={recentActivityGroups}
+        isOpen={settingsSectionsOpen.activity}
+        onToggle={() => toggleSettingsSection("activity")}
+      />
 
-      <section className="chart-card settings-card">
-        <button
-          type="button"
-          className="settings-section-toggle"
-          onClick={() => setDemoStateOpen((current) => !current)}
-          aria-expanded={demoStateOpen}
-        >
-          <div className="settings-section-toggle-copy">
-            <div className="chart-head">
-              <h3>{messages.settings.demoTitle}</h3>
-              <p>{messages.settings.demoDetail}</p>
-            </div>
-            <div className="settings-demo-meta">
-              <div className="settings-demo-meta-item">
-                <span>{messages.settings.salaryPerPerson}</span>
-                <strong>{money(settingsPage.demo.salaryPerPersonMinor)}</strong>
-              </div>
-              <div className="settings-demo-meta-item">
-                <span>{messages.settings.state}</span>
-                <strong>{settingsPage.demo.emptyState ? messages.settings.emptyMode : messages.settings.seededMode}</strong>
-              </div>
-              <div className="settings-demo-meta-item">
-                <span>{messages.settings.seededAt}</span>
-                <strong>{formatDate(settingsPage.demo.lastSeededAt)}</strong>
-              </div>
-            </div>
-          </div>
-          <span className={`settings-section-toggle-icon ${demoStateOpen ? "is-open" : ""}`}>
-            <ChevronRight size={18} />
-          </span>
-        </button>
-        {demoStateOpen ? (
-          <>
-            <div className="settings-actions">
-              <button type="button" className="subtle-action" onClick={handleReseed} disabled={isSubmitting}>
-                {messages.settings.reseed}
-              </button>
-              <button type="button" className="subtle-action" onClick={handleRefresh} disabled={isSubmitting}>
-                {messages.settings.refresh}
-              </button>
-              <Dialog.Root>
-                <Dialog.Trigger asChild>
-                  <button type="button" className="subtle-action subtle-danger" disabled={isSubmitting}>
-                    {messages.settings.emptyState}
-                  </button>
-                </Dialog.Trigger>
-                <Dialog.Portal>
-                  <Dialog.Overlay className="note-dialog-overlay" />
-                  <Dialog.Content className="note-dialog-content">
-                    <div className="note-dialog-head">
-                      <div>
-                        <Dialog.Title>{messages.settings.emptyState}</Dialog.Title>
-                        <Dialog.Description>{messages.settings.emptyStateDetail}</Dialog.Description>
-                      </div>
-                      <Dialog.Close asChild>
-                        <button
-                          type="button"
-                          className="icon-action subtle-cancel"
-                          aria-label="Close empty-state dialog"
-                        >
-                          <X size={16} />
-                        </button>
-                      </Dialog.Close>
-                    </div>
-                    <input
-                      className="table-edit-input"
-                      placeholder={messages.settings.emptyStatePlaceholder}
-                      value={emptyStateText}
-                      onChange={(event) => setEmptyStateText(event.target.value)}
-                    />
-                    <div className="note-dialog-actions">
-                      <Dialog.Close asChild>
-                        <button type="button" className="subtle-action">Cancel</button>
-                      </Dialog.Close>
-                      <Dialog.Close asChild>
-                        <button
-                          type="button"
-                          className="subtle-action subtle-danger"
-                          disabled={emptyStateText.trim().toLowerCase() !== "empty state" || isSubmitting}
-                          onClick={handleEmptyState}
-                        >
-                          {messages.settings.emptyStateConfirm}
-                        </button>
-                      </Dialog.Close>
-                    </div>
-                  </Dialog.Content>
-                </Dialog.Portal>
-              </Dialog.Root>
-            </div>
-            <p className="lede compact">{messages.settings.refreshHint}</p>
-          </>
-        ) : null}
-      </section>
+      <SettingsDemoSection
+        demo={settingsPage.demo}
+        emptyStateText={emptyStateText}
+        isOpen={demoStateOpen}
+        isSubmitting={isSubmitting}
+        onToggle={() => setDemoStateOpen((current) => !current)}
+        onEmptyStateTextChange={setEmptyStateText}
+        onReseed={handleReseed}
+        onRefresh={handleRefresh}
+        onEmptyState={handleEmptyState}
+      />
 
       <SettingsPersonDialog
         dialog={personDialog}
