@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import { Check, ChevronDown, ChevronRight, X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { CategoryAppearancePopover, SpendingMixChart } from "./category-visuals";
 import { getCategory, getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
+import { EntryEditorFields, EntryTransferTools } from "./entry-editor";
 import {
   applySharedSplit,
   buildEntryDraft,
@@ -14,7 +14,6 @@ import {
   getSignedAmountMinor,
   getSignedTotalAmountMinor,
   getTransferMatchCandidates,
-  getTransferWallets,
   getVisibleSplitIndex,
   getVisibleSplitPercent,
   groupEntriesByDate,
@@ -22,12 +21,7 @@ import {
   uniqueValues
 } from "./entry-helpers";
 import { CategoryGlyph, FilterSelect } from "./ui-components";
-import {
-  formatDateOnly,
-  formatEditableMinorInput,
-  money,
-  parseMoneyInput
-} from "./formatters";
+import { formatDateOnly, money } from "./formatters";
 
 export function EntriesPanel({ view, accounts, categories, people, onCategoryAppearanceChange, onRefresh }) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -609,143 +603,28 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
       {showEntryComposer ? (
         <section className="entry-row is-editing entry-composer">
           <div className="entry-inline-editor">
-            <div className="entry-edit-grid">
-              <label>
-                <span>{messages.entries.editDate}</span>
-                <input
-                  className="table-edit-input"
-                  type="date"
-                  value={entryDraft.date}
-                  onChange={(event) => updateEntryDraft({ date: event.target.value })}
-                />
-              </label>
-              <label>
-                <span>{messages.entries.editType}</span>
-                <select
-                  className="table-edit-input"
-                  value={entryDraft.entryType}
-                  onChange={(event) => updateEntryDraft({ entryType: event.target.value })}
-                >
-                  <option value="expense">Expense</option>
-                  <option value="income">Income</option>
-                  <option value="transfer">Transfer</option>
-                </select>
-              </label>
-              <label>
-                <span>{messages.entries.editAmount}</span>
-                <input
-                  className="table-edit-input table-edit-input-money"
-                  type="number"
-                  step="0.01"
-                  inputMode="decimal"
-                  value={formatEditableMinorInput(entryDraft.amountMinor)}
-                  onChange={(event) => updateEntryDraft({ amountMinor: Math.max(0, parseMoneyInput(event.target.value, entryDraft.amountMinor)) })}
-                />
-              </label>
-              <label>
-                <span>{messages.entries.editCategory}</span>
-                <div className="entry-category-field">
-                  <span
-                    className="category-icon category-icon-static"
-                    style={{ "--category-color": getCategoryTheme(categories, { categoryName: entryDraft.categoryName }, 0).color }}
-                  >
-                    <CategoryGlyph iconKey={getCategoryTheme(categories, { categoryName: entryDraft.categoryName }, 0).iconKey} />
-                  </span>
-                  <select
-                    className="table-edit-input"
-                    value={entryDraft.categoryName}
-                    onChange={(event) => updateEntryDraft({ categoryName: event.target.value })}
-                  >
-                    {categoryOptions.map((option) => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
-                </div>
-              </label>
-              <label>
-                <span>{messages.entries.editWallet}</span>
-                <select
-                  className="table-edit-input"
-                  value={entryDraft.accountName}
-                  onChange={(event) => updateEntryDraft({ accountName: event.target.value })}
-                >
-                  {accountOptions.map((option) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>{messages.entries.editOwner}</span>
-                <select
-                  className="table-edit-input"
-                  value={entryDraft.ownershipType === "shared" ? "Shared" : (entryDraft.ownerName ?? "")}
-                  onChange={(event) => {
-                    const nextValue = event.target.value;
-                    if (nextValue === "Shared") {
-                      updateEntryDraft({ ownershipType: "shared", ownerName: undefined });
-                    } else {
-                      updateEntryDraft({ ownershipType: "direct", ownerName: nextValue });
-                    }
-                  }}
-                >
-                  {ownerOptions.map((person) => (
-                    <option key={person} value={person}>{person}</option>
-                  ))}
-                </select>
-              </label>
-              {entryDraft.entryType === "transfer" ? (
-                <label>
-                  <span>{messages.entries.editTransferDirection}</span>
-                  <select
-                    className="table-edit-input"
-                    value={entryDraft.transferDirection ?? "out"}
-                    onChange={(event) => updateEntryDraft({ transferDirection: event.target.value })}
-                  >
-                    <option value="out">Transfer out</option>
-                    <option value="in">Transfer in</option>
-                  </select>
-                </label>
-              ) : null}
-              {entryDraft.ownershipType === "shared" ? (
-                <label>
-                  <span>{messages.entries.editSplit}</span>
-                  <input
-                    className="table-edit-input table-edit-input-money"
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={getVisibleSplitPercent(entryDraft, view.id) ?? 50}
-                    onChange={(event) => {
-                      const percentage = Number(event.target.value);
-                      updateEntryDraft({
-                        splits: applySharedSplit(entryDraft, people, percentage),
-                        viewerSplitRatioBasisPoints: view.id === "household" ? undefined : Math.round(percentage * 100)
-                      });
-                    }}
-                  />
-                </label>
-              ) : null}
-            </div>
-            <div className="entry-writing-grid">
-              <label>
-                <span>{messages.entries.editDescription}</span>
-                <textarea
-                  className="table-edit-input table-edit-textarea"
-                  value={entryDraft.description}
-                  onChange={(event) => updateEntryDraft({ description: event.target.value })}
-                  rows={3}
-                />
-              </label>
-              <label>
-                <span>{messages.entries.editNote}</span>
-                <textarea
-                  className="table-edit-input table-edit-textarea"
-                  value={entryDraft.note ?? ""}
-                  onChange={(event) => updateEntryDraft({ note: event.target.value })}
-                  rows={3}
-                />
-              </label>
-            </div>
+            <EntryEditorFields
+              entry={entryDraft}
+              categories={categories}
+              categoryOptions={categoryOptions}
+              accountOptions={accountOptions}
+              ownerOptions={ownerOptions}
+              splitPercentValue={entryDraft.ownershipType === "shared" ? getVisibleSplitPercent(entryDraft, view.id) ?? 50 : null}
+              onChange={updateEntryDraft}
+              onOwnerChange={(nextValue) => {
+                if (nextValue === "Shared") {
+                  updateEntryDraft({ ownershipType: "shared", ownerName: undefined });
+                } else {
+                  updateEntryDraft({ ownershipType: "direct", ownerName: nextValue });
+                }
+              }}
+              onSplitPercentChange={(percentage) => {
+                updateEntryDraft({
+                  splits: applySharedSplit(entryDraft, people, percentage),
+                  viewerSplitRatioBasisPoints: view.id === "household" ? undefined : Math.round(percentage * 100)
+                });
+              }}
+            />
             {entrySubmitError ? <p className="entry-submit-error">{entrySubmitError}</p> : null}
             <div className="entry-inline-actions">
               <button type="button" className="icon-action" aria-label="Create entry" onClick={() => void saveEntryDraft()}>
@@ -821,283 +700,40 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
 
                     {isEditing ? (
                       <div className="entry-inline-editor">
-                        <div className="entry-edit-grid">
-                          <label>
-                            <span>{messages.entries.editDate}</span>
-                            <input
-                              className="table-edit-input"
-                              type="date"
-                              value={entry.date}
-                              onChange={(event) => updateEntry(entry.id, { date: event.target.value })}
+                        <EntryEditorFields
+                          entry={entry}
+                          categories={categories}
+                          categoryOptions={categoryOptions}
+                          accountOptions={accountOptions}
+                          ownerOptions={ownerOptions}
+                          splitPercentValue={entry.ownershipType === "shared" ? splitPercent : null}
+                          lockTransferCategory
+                          onChange={(patch) => updateEntry(entry.id, patch)}
+                          onOwnerChange={(nextValue) => {
+                            if (nextValue === "Shared") {
+                              updateEntry(entry.id, { ownershipType: "shared", ownerName: undefined });
+                            } else {
+                              updateEntry(entry.id, { ownershipType: "direct", ownerName: nextValue });
+                            }
+                          }}
+                          onSplitPercentChange={(percentage) => updateEntrySplit(entry.id, percentage)}
+                          transferTools={(
+                            <EntryTransferTools
+                              entry={entry}
+                              categoryOptions={categoryOptions}
+                              transferCandidates={transferCandidates}
+                              transferDialogEntryId={transferDialogEntryId}
+                              transferSettlementDrafts={transferSettlementDrafts}
+                              linkingTransferEntryId={linkingTransferEntryId}
+                              settlingTransferEntryId={settlingTransferEntryId}
+                              onEnsureSettlementDraft={ensureTransferSettlementDraft}
+                              onTransferDialogEntryChange={setTransferDialogEntryId}
+                              onSettlementDraftChange={updateTransferSettlementDraft}
+                              onLinkCandidate={linkTransferCandidate}
+                              onSettleTransfer={settleTransfer}
                             />
-                          </label>
-                          <label>
-                            <span>{messages.entries.editType}</span>
-                            <select
-                              className="table-edit-input"
-                              value={entry.entryType}
-                              onChange={(event) => updateEntry(entry.id, { entryType: event.target.value })}
-                            >
-                              <option value="expense">Expense</option>
-                              <option value="income">Income</option>
-                              <option value="transfer">Transfer</option>
-                            </select>
-                          </label>
-                          <label>
-                            <span>{messages.entries.editAmount}</span>
-                            <input
-                              className="table-edit-input table-edit-input-money"
-                              type="number"
-                              step="0.01"
-                              inputMode="decimal"
-                              value={formatEditableMinorInput(entry.amountMinor)}
-                              onChange={(event) => updateEntry(entry.id, { amountMinor: Math.max(0, parseMoneyInput(event.target.value, entry.amountMinor)) })}
-                            />
-                          </label>
-                          <label>
-                            <span>{messages.entries.editCategory}</span>
-                            {entry.entryType === "transfer" ? (
-                              <div className="entry-category-field">
-                                <span
-                                  className="category-icon category-icon-static"
-                                  style={{ "--category-color": getCategoryTheme(categories, { categoryName: "Transfer" }, 0).color }}
-                                >
-                                  <CategoryGlyph iconKey={getCategoryTheme(categories, { categoryName: "Transfer" }, 0).iconKey} />
-                                </span>
-                                <input
-                                  className="table-edit-input"
-                                  value="Transfer"
-                                  readOnly
-                                />
-                              </div>
-                            ) : (
-                              <div className="entry-category-field">
-                                <span
-                                  className="category-icon category-icon-static"
-                                  style={{ "--category-color": getCategoryTheme(categories, { categoryName: entry.categoryName }, 0).color }}
-                                >
-                                  <CategoryGlyph iconKey={getCategoryTheme(categories, { categoryName: entry.categoryName }, 0).iconKey} />
-                                </span>
-                                <select
-                                  className="table-edit-input"
-                                  value={entry.categoryName}
-                                  onChange={(event) => updateEntry(entry.id, { categoryName: event.target.value })}
-                                >
-                                  {categoryOptions.map((option) => (
-                                    <option key={option} value={option}>{option}</option>
-                                  ))}
-                                </select>
-                              </div>
-                            )}
-                          </label>
-                          <label>
-                            <span>{messages.entries.editWallet}</span>
-                            <select
-                              className="table-edit-input"
-                              value={entry.accountName}
-                              onChange={(event) => updateEntry(entry.id, { accountName: event.target.value })}
-                            >
-                              {accountOptions.map((option) => (
-                                <option key={option} value={option}>{option}</option>
-                              ))}
-                            </select>
-                          </label>
-                          <label>
-                            <span>{messages.entries.editOwner}</span>
-                            <select
-                              className="table-edit-input"
-                              value={entry.ownershipType === "shared" ? "Shared" : (entry.ownerName ?? "")}
-                              onChange={(event) => {
-                                const nextValue = event.target.value;
-                                if (nextValue === "Shared") {
-                                  updateEntry(entry.id, { ownershipType: "shared", ownerName: undefined });
-                                } else {
-                                  updateEntry(entry.id, { ownershipType: "direct", ownerName: nextValue });
-                                }
-                              }}
-                            >
-                              {ownerOptions.map((person) => (
-                                <option key={person} value={person}>{person}</option>
-                              ))}
-                            </select>
-                          </label>
-                          {entry.entryType === "transfer" ? (
-                            <label>
-                              <span>{messages.entries.editTransferDirection}</span>
-                              <select
-                                className="table-edit-input"
-                                value={entry.transferDirection ?? "out"}
-                                onChange={(event) => updateEntry(entry.id, { transferDirection: event.target.value })}
-                              >
-                                <option value="out">Transfer out</option>
-                                <option value="in">Transfer in</option>
-                              </select>
-                            </label>
-                          ) : null}
-                          {entry.entryType === "transfer" ? (
-                            <div className="entry-edit-transfer-helper">
-                              <span>Transfer match</span>
-                              <Dialog.Root
-                                open={transferDialogEntryId === entry.id}
-                                onOpenChange={(open) => {
-                                  if (open) {
-                                    ensureTransferSettlementDraft(entry);
-                                    setTransferDialogEntryId(entry.id);
-                                    return;
-                                  }
-                                  setTransferDialogEntryId((current) => current === entry.id ? null : current);
-                                }}
-                              >
-                                <Dialog.Trigger asChild>
-                                  <button type="button" className="subtle-action">
-                                    Manage transfer
-                                  </button>
-                                </Dialog.Trigger>
-                                <Dialog.Portal>
-                                  <Dialog.Overlay className="note-dialog-overlay" />
-                                  <Dialog.Content className="note-dialog-content transfer-match-dialog">
-                                    <div className="transfer-match-head">
-                                      <div>
-                                        <Dialog.Title>Transfer details</Dialog.Title>
-                                        <Dialog.Description>Relink or unlink this transfer pair together.</Dialog.Description>
-                                      </div>
-                                      <button
-                                        type="button"
-                                        className="icon-action subtle-cancel"
-                                        aria-label="Close transfer manager"
-                                        onClick={() => setTransferDialogEntryId(null)}
-                                      >
-                                        <X size={16} />
-                                      </button>
-                                    </div>
-                                    <div className="transfer-match-layout">
-                                      <section className="transfer-match-section">
-                                        <h4>Wallets</h4>
-                                        <div className="transfer-wallet-grid">
-                                          <div>
-                                            <span className="transfer-match-label">From wallet</span>
-                                            <strong>{getTransferWallets(entry).fromWalletName}</strong>
-                                          </div>
-                                          <div>
-                                            <span className="transfer-match-label">To wallet</span>
-                                            <strong>{getTransferWallets(entry).toWalletName}</strong>
-                                          </div>
-                                        </div>
-                                      </section>
-                                      <section className="transfer-match-section">
-                                        <h4>Exact matches</h4>
-                                        <span className="transfer-match-label">Potential exact matches</span>
-                                        <div className="transfer-match-stack">
-                                          {transferCandidates.length ? transferCandidates.map((candidate) => {
-                                            const isCurrentLink = entry.linkedTransfer?.transactionId === candidate.id;
-                                            return (
-                                              <div key={candidate.id} className="transfer-match-card">
-                                                <div>
-                                                  <strong>{candidate.accountName}</strong>
-                                                  <p>{formatDateOnly(candidate.date)} • {candidate.description}</p>
-                                                </div>
-                                                {isCurrentLink ? (
-                                                  <span className="entry-chip entry-chip-transfer">Current match</span>
-                                                ) : (
-                                                  <button
-                                                    type="button"
-                                                    className="subtle-action"
-                                                    disabled={linkingTransferEntryId === entry.id}
-                                                    onClick={() => void linkTransferCandidate(entry, candidate)}
-                                                  >
-                                                    Use match
-                                                  </button>
-                                                )}
-                                              </div>
-                                            );
-                                          }) : (
-                                            <p className="transfer-match-empty">No exact amount match found in another wallet for this month.</p>
-                                          )}
-                                        </div>
-                                      </section>
-                                      <section className="transfer-match-section transfer-settlement">
-                                        <h4>Break connection</h4>
-                                        <span className="transfer-match-label">Break connection and convert both sides</span>
-                                        <div className="transfer-settlement-grid">
-                                          <label>
-                                            <span>This entry becomes</span>
-                                            <select
-                                              className="table-edit-input"
-                                              value={transferSettlementDrafts[entry.id]?.currentCategoryName ?? "Other"}
-                                              onChange={(event) => updateTransferSettlementDraft(entry.id, { currentCategoryName: event.target.value })}
-                                            >
-                                              {categoryOptions.filter((option) => option !== "Transfer").map((option) => (
-                                                <option key={option} value={option}>{option}</option>
-                                              ))}
-                                            </select>
-                                          </label>
-                                          {entry.linkedTransfer ? (
-                                            <label>
-                                              <span>Counterpart becomes</span>
-                                              <select
-                                                className="table-edit-input"
-                                                value={transferSettlementDrafts[entry.id]?.counterpartCategoryName ?? "Other"}
-                                                onChange={(event) => updateTransferSettlementDraft(entry.id, { counterpartCategoryName: event.target.value })}
-                                              >
-                                                {categoryOptions.filter((option) => option !== "Transfer").map((option) => (
-                                                  <option key={option} value={option}>{option}</option>
-                                                ))}
-                                              </select>
-                                            </label>
-                                          ) : null}
-                                        </div>
-                                        <p className="transfer-match-empty">
-                                          This removes the transfer link for both sides so you do not leave the counterpart behind as a transfer.
-                                        </p>
-                                        <button
-                                          type="button"
-                                          className="subtle-action"
-                                          disabled={settlingTransferEntryId === entry.id}
-                                          onClick={() => void settleTransfer(entry)}
-                                        >
-                                          Break connection
-                                        </button>
-                                      </section>
-                                    </div>
-                                  </Dialog.Content>
-                                </Dialog.Portal>
-                              </Dialog.Root>
-                            </div>
-                          ) : null}
-                          {entry.ownershipType === "shared" && splitPercent != null ? (
-                            <label>
-                              <span>{messages.entries.editSplit}</span>
-                              <input
-                                className="table-edit-input table-edit-input-money"
-                                type="number"
-                                min="0"
-                                max="100"
-                                value={splitPercent}
-                                onChange={(event) => updateEntrySplit(entry.id, Number(event.target.value))}
-                              />
-                            </label>
-                          ) : null}
-                        </div>
-                        <div className="entry-writing-grid">
-                          <label>
-                            <span>{messages.entries.editDescription}</span>
-                            <textarea
-                              className="table-edit-input table-edit-textarea"
-                              value={entry.description}
-                              onChange={(event) => updateEntry(entry.id, { description: event.target.value })}
-                              rows={3}
-                            />
-                          </label>
-                          <label>
-                            <span>{messages.entries.editNote}</span>
-                            <textarea
-                              className="table-edit-input table-edit-textarea"
-                              value={entry.note ?? ""}
-                              onChange={(event) => updateEntry(entry.id, { note: event.target.value })}
-                              rows={3}
-                            />
-                          </label>
-                        </div>
+                          )}
+                        />
                         <div className="entry-inline-actions">
                           {entry.entryType === "expense" ? (
                             <button
