@@ -1,0 +1,51 @@
+import { messages } from "./copy/en-SG";
+import { SplitActivityGroups } from "./splits-activity";
+
+export function SplitsActivitySection({
+  groupedCurrentActivity,
+  archivedBatches,
+  categories,
+  onAddExpense,
+  onOpenArchive,
+  onEditExpense,
+  onEditSettlement,
+  onEditLinkedEntry
+}) {
+  return (
+    <section className="split-list-section">
+      <button
+        type="button"
+        data-splits-fab-trigger="true"
+        className="entries-fab-trigger"
+        onClick={onAddExpense}
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+      <div className="split-activity-list">
+        {groupedCurrentActivity.length ? (
+          <SplitActivityGroups
+            groups={groupedCurrentActivity}
+            categories={categories}
+            onEditExpense={onEditExpense}
+            onEditSettlement={onEditSettlement}
+            onEditLinkedEntry={onEditLinkedEntry}
+          />
+        ) : null}
+        {!groupedCurrentActivity.length && !archivedBatches.length ? <p className="lede compact">{messages.splits.noEntries}</p> : null}
+        <button
+          type="button"
+          className={`split-archive-trigger ${archivedBatches.length ? "" : "is-empty"}`}
+          onClick={archivedBatches.length ? onOpenArchive : undefined}
+          disabled={!archivedBatches.length}
+        >
+          <span>Archived batches</span>
+          <small>
+            {archivedBatches.length
+              ? `${archivedBatches.length} settled ${archivedBatches.length === 1 ? "batch" : "batches"}`
+              : "No settled batches yet"}
+          </small>
+        </button>
+      </div>
+    </section>
+  );
+}
