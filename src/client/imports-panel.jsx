@@ -179,6 +179,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     () => (preview?.overlapImports ?? []).filter((item) => !dismissedOverlapIds.includes(item.id)),
     [dismissedOverlapIds, preview?.overlapImports]
   );
+  const previewDuplicateRowCount = previewRows.filter((row) => row.duplicateMatches?.length).length;
   const statementReconciliations = preview?.statementReconciliations ?? [];
   const hasStatementReconciliationMismatch = statementReconciliations.some((item) => item.status !== "matched");
   const isCommitDisabled = isSubmitting
@@ -500,7 +501,19 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }
 
   function updatePreviewRow(rowId, patch) {
-    setPreviewRows((current) => current.map((row) => (row.rowId === rowId ? { ...row, ...patch } : row)));
+    const duplicateKeyFields = ["date", "description", "amountMinor", "entryType", "transferDirection", "accountName"];
+    const shouldClearDuplicateMatches = duplicateKeyFields.some((field) => Object.prototype.hasOwnProperty.call(patch, field));
+    setPreviewRows((current) => current.map((row) => (
+      row.rowId === rowId
+        ? { ...row, ...patch, duplicateMatches: shouldClearDuplicateMatches ? undefined : row.duplicateMatches }
+        : row
+    )));
+  }
+
+  function removePreviewRow(rowId) {
+    setPreviewRows((current) => current
+      .filter((row) => row.rowId !== rowId)
+      .map((row, index) => ({ ...row, rowIndex: index + 1 })));
   }
 
   function getPreviewAccountOwnerPatch(accountName, row) {
@@ -709,8 +722,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               {preview.startDate && preview.endDate ? (
                 <span className="pill">{messages.imports.previewCoverage(formatDateOnly(preview.startDate), formatDateOnly(preview.endDate))}</span>
               ) : null}
-              {preview.duplicateCandidateCount ? (
-                <span className="pill warning">{messages.imports.duplicateCandidates(preview.duplicateCandidateCount)}</span>
+              {previewDuplicateRowCount ? (
+                <span className="pill warning">{messages.imports.duplicateCandidates(previewDuplicateRowCount)}</span>
               ) : null}
               {visibleOverlapImports.length ? (
                 <span className="pill warning">{messages.imports.overlappingImports(visibleOverlapImports.length)}</span>
@@ -840,26 +853,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             </div>
           ) : null}
 
-          {preview?.duplicateCandidates?.length ? (
+          {previewDuplicateRowCount ? (
             <div className="import-warning import-warning-attention">
               <strong>{messages.imports.duplicateMatchesTitle}</strong>
               <p className="lede compact">{messages.imports.duplicateMatchesDetail}</p>
-              <div className="stack">
-                {preview.duplicateCandidates.map((candidate, index) => (
-                  <div key={`${candidate.existingImportId}-${candidate.date}-${index}`} className="import-card">
-                    <div>
-                      <strong>{candidate.description}</strong>
-                      <p>{messages.common.triplet(formatDateOnly(candidate.date), candidate.accountName ?? messages.common.emptyValue, money(candidate.amountMinor))}</p>
-                    </div>
-                    <div className="import-meta">
-                      <span className={`pill ${candidate.matchKind === "exact" ? "warning" : ""}`}>
-                        {candidate.matchKind === "exact" ? messages.imports.duplicateMatchKindExact : messages.imports.duplicateMatchKindNear}
-                      </span>
-                      <p>{candidate.existingImportId}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           ) : null}
 
@@ -873,6 +870,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               isCommitDisabled={isCommitDisabled}
               onCommit={handleCommit}
               onUpdatePreviewRow={updatePreviewRow}
+              onRemovePreviewRow={removePreviewRow}
               getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
             />
           ) : (

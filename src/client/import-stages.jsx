@@ -113,6 +113,7 @@ export function ImportPreviewRowsTable({
   isCommitDisabled,
   onCommit,
   onUpdatePreviewRow,
+  onRemovePreviewRow,
   getPreviewAccountOwnerPatch
 }) {
   return (
@@ -132,17 +133,32 @@ export function ImportPreviewRowsTable({
               <th>{messages.imports.table.owner}</th>
               <th>{messages.imports.table.split}</th>
               <th>{messages.imports.table.note}</th>
+              <th>{messages.imports.table.actions}</th>
             </tr>
           </thead>
           <tbody>
-            {previewRows.map((row) => (
-              <tr key={row.rowId}>
-                <td>{row.rowIndex}</td>
+            {previewRows.map((row) => {
+              const duplicateMatch = row.duplicateMatches?.[0];
+              return (
+              <tr key={row.rowId} className={duplicateMatch ? "import-preview-row-duplicate" : ""}>
+                <td>
+                  <span>{row.rowIndex}</span>
+                  {duplicateMatch ? (
+                    <span className={`pill duplicate-row-pill ${duplicateMatch.matchKind === "exact" ? "warning" : ""}`}>
+                      {duplicateMatch.matchKind === "exact" ? messages.imports.duplicateMatchKindExact : messages.imports.duplicateMatchKindNear}
+                    </span>
+                  ) : null}
+                </td>
                 <td>
                   <input className="table-edit-input" type="date" value={row.date} onChange={(event) => onUpdatePreviewRow(row.rowId, { date: event.target.value })} />
                 </td>
                 <td>
                   <input className="table-edit-input" value={row.description} onChange={(event) => onUpdatePreviewRow(row.rowId, { description: event.target.value })} />
+                  {duplicateMatch ? (
+                    <small className="duplicate-row-detail">
+                      {messages.imports.duplicateRowDetail(formatDuplicateMatch(duplicateMatch))}
+                    </small>
+                  ) : null}
                 </td>
                 <td className={getAmountToneClass(row.entryType === "expense" || row.transferDirection === "out" ? -row.amountMinor : row.amountMinor)}>
                   <input
@@ -223,14 +239,24 @@ export function ImportPreviewRowsTable({
                 <td>
                   <input className="table-edit-input" value={row.note ?? ""} onChange={(event) => onUpdatePreviewRow(row.rowId, { note: event.target.value })} />
                 </td>
+                <td>
+                  <button type="button" className="subtle-action" onClick={() => onRemovePreviewRow(row.rowId)}>
+                    {messages.imports.removePreviewRow}
+                  </button>
+                </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
       </div>
       <ImportCommitButton disabled={isCommitDisabled} onCommit={onCommit} isBottom />
     </>
   );
+}
+
+function formatDuplicateMatch(match) {
+  return messages.common.triplet(match.date, match.accountName ?? messages.common.emptyValue, formatMinorInput(match.amountMinor));
 }
 
 function ImportCommitButton({ disabled, onCommit, isBottom = false }) {
