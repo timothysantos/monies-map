@@ -14,6 +14,85 @@ async function postJson(endpoint, body, fallbackError) {
   return data;
 }
 
+export async function saveSettingsAccount({
+  mode,
+  accountId,
+  name,
+  institution,
+  kind,
+  currency,
+  openingBalanceMinor,
+  ownerPersonId,
+  isJoint
+}) {
+  const endpoint = mode === "create" ? "/api/accounts/create" : "/api/accounts/update";
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      accountId: accountId || undefined,
+      name,
+      institution,
+      kind,
+      currency,
+      openingBalanceMinor,
+      ownerPersonId: isJoint ? null : (ownerPersonId || null),
+      isJoint
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(await buildRequestErrorMessage(response, "Account save failed."));
+  }
+
+  return response.json().catch(() => ({}));
+}
+
+export function archiveSettingsAccount(accountId) {
+  return postJson(
+    "/api/accounts/archive",
+    { accountId },
+    "Account archive failed."
+  );
+}
+
+export function saveSettingsCategory({
+  mode,
+  categoryId,
+  name,
+  slug,
+  iconKey,
+  colorHex
+}) {
+  return postJson(
+    mode === "create" ? "/api/categories/create" : "/api/categories/update",
+    {
+      categoryId: categoryId || undefined,
+      name,
+      slug,
+      iconKey,
+      colorHex
+    },
+    "Failed to save category"
+  );
+}
+
+export function updateSettingsPerson({ personId, name }) {
+  return postJson(
+    "/api/people/update",
+    { personId, name },
+    "Failed to update person"
+  );
+}
+
+export function deleteSettingsCategory(categoryId) {
+  return postJson(
+    "/api/categories/delete",
+    { categoryId },
+    "Failed to delete category"
+  );
+}
+
 // Checkpoint requests are grouped here because reconcile, history delete, export,
 // and statement compare all operate on the same statement-period boundary.
 export function saveAccountCheckpoint({
