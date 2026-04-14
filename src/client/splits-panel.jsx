@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { ArrowRightLeft, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { SpendingMixChart } from "./category-visuals";
 import { getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { SplitActivityGroups } from "./splits-activity";
+import { SplitArchiveDialog, SplitGroupDialog } from "./splits-dialogs";
 import {
   decimalStringToMinor,
   formatDate,
@@ -15,8 +16,6 @@ import {
   money
 } from "./formatters";
 import {
-  formatArchiveDate,
-  getArchivedBatchSummary,
   groupSplitActivityByBatch,
   groupSplitActivityByDate
 } from "./split-helpers";
@@ -510,81 +509,27 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         </section>
       )}
 
-      <Dialog.Root open={Boolean(archiveDialog)} onOpenChange={(open) => { if (!open) setArchiveDialog(null); }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content split-dialog-content split-archive-dialog">
-            <div className="note-dialog-head split-dialog-head">
-              <Dialog.Title>{selectedArchivedBatch ? selectedArchivedBatch.label : "Archived batches"}</Dialog.Title>
-              <Dialog.Description>
-                {selectedArchivedBatch
-                  ? (selectedArchivedBatch.closedAt ? `Settled ${formatDateOnly(selectedArchivedBatch.closedAt)}` : "Settled batch")
-                  : "Closed settle-up batches stay here as muted history."}
-              </Dialog.Description>
-            </div>
-            {selectedArchivedBatch ? (
-              <div className="split-archive-dialog-body">
-                <button type="button" className="subtle-action split-archive-back" onClick={() => setArchiveDialog({ batchId: null })}>
-                  Back to archived batches
-                </button>
-                <div className="split-archive-batch-detail">
-                  <SplitActivityGroups
-                    groups={selectedArchivedBatch.groups}
-                    categories={categories}
-                    archived
-                    onEditExpense={openExpenseEditor}
-                    onEditSettlement={openSettlementEditor}
-                    onEditLinkedEntry={openLinkedEntryEditor}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="split-archive-dialog-body split-archive-list-dialog">
-                {archivedBatches.map((batch) => {
-                  const summary = getArchivedBatchSummary(batch, view.id);
-                  return (
-                    <button key={batch.batchId} type="button" className="split-archive-row" onClick={() => openArchivedBatch(batch.batchId)}>
-                      <span className="split-archive-row-date">{formatArchiveDate(batch.closedAt)}</span>
-                      <span className="split-archive-row-icon category-icon category-icon-static" style={{ "--category-color": "#c58b62" }}>
-                        <ArrowRightLeft size={16} />
-                      </span>
-                      <span className="split-archive-row-copy">
-                        <strong>{summary.title}</strong>
-                        <small>{summary.subtitle}</small>
-                      </span>
-                      <span className="split-archive-row-meta">{batch.items.length} {batch.items.length === 1 ? "entry" : "entries"}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            <div className="dialog-actions">
-              <button type="button" className="subtle-cancel" onClick={() => setArchiveDialog(null)}>Close</button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      <SplitArchiveDialog
+        archiveDialog={archiveDialog}
+        archivedBatches={archivedBatches}
+        selectedArchivedBatch={selectedArchivedBatch}
+        categories={categories}
+        viewId={view.id}
+        onClose={() => setArchiveDialog(null)}
+        onBackToList={() => setArchiveDialog({ batchId: null })}
+        onOpenBatch={openArchivedBatch}
+        onEditExpense={openExpenseEditor}
+        onEditSettlement={openSettlementEditor}
+        onEditLinkedEntry={openLinkedEntryEditor}
+      />
 
-      <Dialog.Root open={Boolean(groupDialog)} onOpenChange={(open) => { if (!open) setGroupDialog(null); }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content split-dialog-content">
-            <div className="note-dialog-head split-dialog-head">
-              <Dialog.Title>{messages.splits.createGroup}</Dialog.Title>
-              <Dialog.Description>Add a named split group for shared expenses.</Dialog.Description>
-            </div>
-            <label className="split-dialog-field">
-              <span>{messages.splits.groupName}</span>
-              <input className="table-edit-input" value={groupDialog?.name ?? ""} onChange={(event) => setGroupDialog((current) => current ? { ...current, name: event.target.value } : current)} />
-            </label>
-            {formError ? <p className="form-error">{formError}</p> : null}
-            <div className="dialog-actions">
-              <button type="button" className="subtle-cancel" onClick={() => setGroupDialog(null)}>Cancel</button>
-              <button type="button" className="dialog-primary" onClick={() => void saveGroup()}>{messages.splits.saveGroup}</button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      <SplitGroupDialog
+        dialog={groupDialog}
+        formError={formError}
+        onChange={setGroupDialog}
+        onClose={() => setGroupDialog(null)}
+        onSave={saveGroup}
+      />
 
       <Dialog.Root open={Boolean(expenseDialog)} onOpenChange={(open) => { if (!open) setExpenseDialog(null); }}>
         <Dialog.Portal>
