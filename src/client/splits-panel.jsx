@@ -3,7 +3,9 @@ import { useSearchParams } from "react-router-dom";
 
 import { getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
+import { createSplitGroup, linkSplitMatch, saveSplitExpense, saveSplitSettlement, updateSplitLinkedEntry } from "./splits-api";
 import { SplitArchiveDialog, SplitExpenseDialog, SplitGroupDialog, SplitLinkedEntryDialog, SplitSettlementDialog } from "./splits-dialogs";
+import { buildExpenseDraft, buildLinkedEntryDraft, buildNewExpenseDraft, buildNewSettlementDraft, buildSettlementDraft } from "./splits-drafts";
 import { SplitsMainSection } from "./splits-main-section";
 import {
   groupSplitActivityByBatch,
@@ -110,14 +112,11 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
 
     setFormError("");
-    const response = await fetch("/api/splits/groups/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: groupDialog.name })
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      setFormError(data.error ?? "Failed to create split group.");
+    let data;
+    try {
+      data = await createSplitGroup(groupDialog);
+    } catch (error) {
+      setFormError(error.message);
       return;
     }
 
@@ -133,25 +132,10 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
 
     setFormError("");
-    const isEditing = Boolean(expenseDialog?.id);
-    const response = await fetch(isEditing ? "/api/splits/expenses/update" : "/api/splits/expenses/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        splitExpenseId: expenseDialog.id,
-        groupId: expenseDialog.groupId === "split-group-none" ? null : expenseDialog.groupId,
-        date: expenseDialog.date,
-        description: expenseDialog.description,
-        categoryName: expenseDialog.categoryName,
-        payerPersonName: expenseDialog.payerPersonName,
-        amountMinor: Number(expenseDialog.amountMinor ?? 0),
-        note: expenseDialog.note,
-        splitBasisPoints: Number(expenseDialog.splitBasisPoints ?? 5000)
-      })
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      setFormError(data.error ?? "Failed to create split expense.");
+    try {
+      await saveSplitExpense(expenseDialog);
+    } catch (error) {
+      setFormError(error.message);
       return;
     }
 
@@ -166,23 +150,10 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
 
     setFormError("");
-    const isEditing = Boolean(settlementDialog?.id);
-    const response = await fetch(isEditing ? "/api/splits/settlements/update" : "/api/splits/settlements/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        settlementId: settlementDialog.id,
-        groupId: settlementDialog.groupId === "split-group-none" ? null : settlementDialog.groupId,
-        date: settlementDialog.date,
-        fromPersonName: settlementDialog.fromPersonName,
-        toPersonName: settlementDialog.toPersonName,
-        amountMinor: Number(settlementDialog.amountMinor ?? 0),
-        note: settlementDialog.note
-      })
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      setFormError(data.error ?? "Failed to create settlement.");
+    try {
+      await saveSplitSettlement(settlementDialog);
+    } catch (error) {
+      setFormError(error.message);
       return;
     }
 
@@ -191,47 +162,18 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   }
 
   async function confirmMatch(match) {
-    const endpoint = match.kind === "expense" ? "/api/splits/matches/link-expense" : "/api/splits/matches/link-settlement";
-    const body = match.kind === "expense"
-      ? { splitExpenseId: match.splitRecordId, transactionId: match.transactionId }
-      : { settlementId: match.splitRecordId, transactionId: match.transactionId };
-    await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
+    await linkSplitMatch(match);
     await onRefresh();
   }
 
   function openExpenseEditor(item) {
-    const splitPercent = item.totalAmountMinor
-      ? Math.round(((item.viewerAmountMinor ?? item.totalAmountMinor / 2) / item.totalAmountMinor) * 100)
-      : 50;
     setFormError("");
-    setExpenseDialog({
-      id: item.id,
-      groupId: item.groupId,
-      date: item.date,
-      description: item.description,
-      categoryName: item.categoryName ?? (categoryOptions[0] ?? "Other"),
-      payerPersonName: item.paidByPersonName ?? people[0]?.name ?? "",
-      amountMinor: item.totalAmountMinor,
-      note: item.note ?? "",
-      splitBasisPoints: splitPercent * 100
-    });
+    setExpenseDialog(buildExpenseDraft(item, categoryOptions, people));
   }
 
   function openSettlementEditor(item) {
     setFormError("");
-    setSettlementDialog({
-      id: item.id,
-      groupId: item.groupId,
-      date: item.date,
-      fromPersonName: item.fromPersonName ?? people[1]?.name ?? "",
-      toPersonName: item.toPersonName ?? people[0]?.name ?? "",
-      amountMinor: item.totalAmountMinor,
-      note: item.note ?? ""
-    });
+    setSettlementDialog(buildSettlementDraft(item, people));
   }
 
   function openLinkedEntryEditor(item) {
@@ -241,20 +183,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
 
     setFormError("");
-    setLinkedEntryDialog({
-      entryId: entry.id,
-      date: entry.date,
-      description: entry.description,
-      accountName: entry.accountName,
-      categoryName: entry.categoryName,
-      amountMinor: entry.totalAmountMinor ?? entry.amountMinor,
-      entryType: entry.entryType,
-      transferDirection: entry.transferDirection,
-      ownershipType: entry.ownershipType,
-      ownerName: entry.ownerName ?? "",
-      note: entry.note ?? "",
-      splitBasisPoints: entry.viewerSplitRatioBasisPoints ?? entry.splits[0]?.ratioBasisPoints ?? 5000
-    });
+    setLinkedEntryDialog(buildLinkedEntryDraft(entry));
   }
 
   async function saveLinkedEntry() {
@@ -264,14 +193,10 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
 
     setFormError("");
-    const response = await fetch("/api/entries/update", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(linkedEntryDialog)
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      setFormError(data.error ?? "Failed to update linked entry.");
+    try {
+      await updateSplitLinkedEntry(linkedEntryDialog);
+    } catch (error) {
+      setFormError(error.message);
       return;
     }
 
@@ -281,18 +206,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
 
   function openNewExpenseDialog() {
     setFormError("");
-    setExpenseDialog({
-      groupId: activeGroup?.id ?? "split-group-none",
-      date: new Date().toISOString().slice(0, 10),
-      description: "",
-      categoryName: categoryOptions[0] ?? "Other",
-      payerPersonName: (view.id !== "household"
-        ? people.find((person) => person.id === view.id)?.name
-        : people[0]?.name) ?? "",
-      amountMinor: 0,
-      note: "",
-      splitBasisPoints: 5000
-    });
+    setExpenseDialog(buildNewExpenseDraft({ activeGroup, categoryOptions, people, view }));
   }
 
   return (
@@ -308,14 +222,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
             className="subtle-action split-settle-header"
             onClick={() => {
               setFormError("");
-              setSettlementDialog({
-                groupId: activeGroup?.id ?? "split-group-none",
-                date: new Date().toISOString().slice(0, 10),
-                fromPersonName: people[1]?.name ?? "",
-                toPersonName: people[0]?.name ?? "",
-                amountMinor: Math.abs(groupBalanceMinor),
-                note: ""
-              });
+              setSettlementDialog(buildNewSettlementDraft({ activeGroup, groupBalanceMinor, people }));
             }}
             disabled={!activeGroup || groupBalanceMinor === 0}
           >
