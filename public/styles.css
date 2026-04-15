@@ -4033,8 +4033,13 @@ h3 {
 
 .statement-checkpoint-row {
   display: grid;
-  grid-template-columns: repeat(6, minmax(130px, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
+}
+
+.statement-checkpoint-row .entries-filter,
+.statement-checkpoint-row .table-edit-input {
+  min-width: 0;
 }
 
 .import-stage-note {
@@ -4579,9 +4584,17 @@ th {
     align-items: start;
   }
 
+  .statement-checkpoint-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .import-stage-head {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .import-warning-head {
+    flex-direction: column;
   }
 
   .import-history-main,
@@ -4731,6 +4744,45 @@ th {
     max-width: 100%;
     min-width: 0;
     overflow-x: hidden;
+  }
+
+  .import-workflow,
+  .import-stage-card,
+  .import-warning,
+  .import-column-card,
+  .statement-checkpoint-grid,
+  .statement-checkpoint-row,
+  .statement-account-map-grid,
+  .statement-account-map-row,
+  .import-history-main,
+  .import-meta-compact {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .import-stage-card,
+  .import-warning {
+    padding: 14px;
+  }
+
+  .import-stage-card .section-head,
+  .import-warning-head > div,
+  .import-history-main {
+    min-width: 0;
+  }
+
+  .import-stage-card .section-head h3,
+  .import-warning strong,
+  .import-history-main strong,
+  .import-history-inline,
+  .panel-context,
+  .lede.compact {
+    overflow-wrap: anywhere;
+  }
+
+  .import-history-inline {
+    white-space: normal;
   }
 
   h2 {
@@ -5014,6 +5066,21 @@ th {
     grid-template-columns: 1fr;
   }
 
+  .import-form-grid .entries-filter,
+  .import-csv-grid .entries-filter,
+  .import-mapping-topline .entries-filter,
+  .import-column-card .entries-filter,
+  .statement-checkpoint-row .entries-filter,
+  .statement-account-map-row.entries-filter {
+    min-width: 0;
+  }
+
+  .import-stage-card .table-edit-input,
+  .import-stage-card .table-edit-textarea {
+    min-width: 0;
+    max-width: 100%;
+  }
+
   .import-csv-field,
   .import-sidecar,
   .import-dropzone,
@@ -5022,6 +5089,53 @@ th {
     width: 100%;
     max-width: 100%;
     min-width: 0;
+  }
+
+  .import-textarea {
+    min-height: 132px;
+    overflow: auto;
+    white-space: pre;
+  }
+
+  .import-mapping-topline {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .import-mapping-topline .entries-filter {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .import-mapping-state {
+    justify-content: flex-start;
+  }
+
+  .import-mapping-grid,
+  .statement-checkpoint-row {
+    grid-template-columns: 1fr;
+  }
+
+  .import-column-head {
+    align-items: start;
+  }
+
+  .import-column-head strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .statement-account-map-row {
+    max-width: none;
+  }
+
+  .statement-reconciliation-row {
+    align-items: start;
+  }
+
+  .statement-reconciliation-row .import-meta-compact {
+    align-items: flex-start;
   }
 
   .desktop-scope-toggle.scope-toggle-row {
