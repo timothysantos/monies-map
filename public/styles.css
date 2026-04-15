@@ -9,6 +9,7 @@
   --line: rgba(38, 35, 31, 0.12);
   --positive: #1d7a57;
   --negative: #b23a2e;
+  --accent: #934923;
   --accent-strong: #b15e2f;
   --shadow: 0 10px 30px rgba(27, 24, 21, 0.06);
 }
@@ -4071,6 +4072,13 @@ h3 {
 
 .import-commit-button:hover {
   background: var(--accent);
+  color: white;
+  box-shadow: 0 10px 22px rgba(147, 73, 35, 0.24);
+}
+
+.import-commit-button:focus-visible {
+  outline: 3px solid rgba(147, 73, 35, 0.28);
+  outline-offset: 3px;
 }
 
 .import-commit-button:disabled {
