@@ -12,9 +12,9 @@ import type { AccountDto, HouseholdDto } from "../types/dto";
 
 export async function loadHousehold(db: D1Database): Promise<HouseholdDto> {
   const row = await db
-    .prepare("SELECT id, name, currency FROM households WHERE id = ?")
+    .prepare("SELECT id, name, base_currency FROM households WHERE id = ?")
     .bind(DEFAULT_HOUSEHOLD_ID)
-    .first<{ id: string; name: string; currency: string }>();
+    .first<{ id: string; name: string; base_currency: string }>();
 
   const people = await db
     .prepare("SELECT id, display_name FROM people WHERE household_id = ? ORDER BY created_at")
@@ -24,7 +24,7 @@ export async function loadHousehold(db: D1Database): Promise<HouseholdDto> {
   return {
     id: row?.id ?? DEFAULT_HOUSEHOLD_ID,
     name: row?.name ?? "Household",
-    currency: row?.currency ?? "SGD",
+    currency: row?.base_currency ?? "SGD",
     people: people.results.map((person) => ({ id: person.id, name: person.display_name }))
   };
 }
