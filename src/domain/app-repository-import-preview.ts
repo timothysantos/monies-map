@@ -7,7 +7,7 @@ import {
   getMonthEndDate,
   normalizeAccountOpeningBalanceMinor,
   normalizeImportRow,
-  normalizeStatementBalanceMinor,
+  normalizeStatementBalanceInputMinor,
   normalizeStatementDate
 } from "./app-repository-helpers";
 import { loadCategories } from "./app-repository-categories";
@@ -240,7 +240,7 @@ function buildImportPreviewStatementReconciliations(input: {
     const statementStartDate = normalizeStatementDate(checkpoint.statementStartDate) ?? undefined;
     const statementEndDate = normalizeStatementDate(checkpoint.statementEndDate) ?? getMonthEndDate(checkpoint.checkpointMonth);
     const statementBalanceMinor = account
-      ? normalizeStatementBalanceMinor(Math.round(Number(checkpoint.statementBalanceMinor ?? 0)), account.kind)
+      ? normalizeStatementBalanceInputMinor(Math.round(Number(checkpoint.statementBalanceMinor ?? 0)), account.kind)
       : Math.round(Number(checkpoint.statementBalanceMinor ?? 0));
 
     if (!account) {
