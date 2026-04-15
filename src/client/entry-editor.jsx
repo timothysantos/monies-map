@@ -187,6 +187,8 @@ export function EntryTransferTools({
     return null;
   }
 
+  const isLinkedTransfer = Boolean(entry.linkedTransfer);
+
   return (
     <div className="entry-edit-transfer-helper">
       <span>Transfer match</span>
@@ -212,7 +214,11 @@ export function EntryTransferTools({
             <div className="transfer-match-head">
               <div>
                 <Dialog.Title>Transfer details</Dialog.Title>
-                <Dialog.Description>Relink or unlink this transfer pair together.</Dialog.Description>
+                <Dialog.Description>
+                  {isLinkedTransfer
+                    ? "Review, relink, or break this matched transfer pair."
+                    : "This row is marked as a transfer and still needs a matching wallet row."}
+                </Dialog.Description>
               </div>
               <button
                 type="button"
@@ -238,8 +244,10 @@ export function EntryTransferTools({
                 </div>
               </section>
               <section className="transfer-match-section">
-                <h4>Exact matches</h4>
-                <span className="transfer-match-label">Potential exact matches</span>
+                <h4>{isLinkedTransfer ? "Exact matches" : "Find matching side"}</h4>
+                <span className="transfer-match-label">
+                  {isLinkedTransfer ? "Potential exact matches" : "Potential rows with the same amount in another wallet"}
+                </span>
                 <div className="transfer-match-stack">
                   {transferCandidates.length ? transferCandidates.map((candidate) => {
                     const isCurrentLink = entry.linkedTransfer?.transactionId === candidate.id;
@@ -264,13 +272,19 @@ export function EntryTransferTools({
                       </div>
                     );
                   }) : (
-                    <p className="transfer-match-empty">No exact amount match found in another wallet for this month.</p>
+                    <p className="transfer-match-empty">
+                      {isLinkedTransfer
+                        ? "No exact amount match found in another wallet for this month."
+                        : "No matching row exists yet. Import or add the other side of this transfer, then link it here."}
+                    </p>
                   )}
                 </div>
               </section>
               <section className="transfer-match-section transfer-settlement">
-                <h4>Break connection</h4>
-                <span className="transfer-match-label">Break connection and convert both sides</span>
+                <h4>{isLinkedTransfer ? "Break connection" : "Not a transfer?"}</h4>
+                <span className="transfer-match-label">
+                  {isLinkedTransfer ? "Break connection and convert both sides" : "Convert this unmatched transfer into a regular entry"}
+                </span>
                 <div className="transfer-settlement-grid">
                   <label>
                     <span>This entry becomes</span>
@@ -300,7 +314,9 @@ export function EntryTransferTools({
                   ) : null}
                 </div>
                 <p className="transfer-match-empty">
-                  This removes the transfer link for both sides so you do not leave the counterpart behind as a transfer.
+                  {isLinkedTransfer
+                    ? "This removes the transfer link for both sides so you do not leave the counterpart behind as a transfer."
+                    : "Use this only if the import classified the row as a transfer but it is actually normal income or spending."}
                 </p>
                 <button
                   type="button"
@@ -308,7 +324,7 @@ export function EntryTransferTools({
                   disabled={settlingTransferEntryId === entry.id}
                   onClick={() => void onSettleTransfer(entry)}
                 >
-                  Break connection
+                  {isLinkedTransfer ? "Break connection" : "Convert entry"}
                 </button>
               </section>
             </div>

@@ -23,6 +23,7 @@ export function ImportPreviewRowsTable({
           <thead>
             <tr>
               <th>{messages.imports.table.row}</th>
+              <th>{messages.imports.table.actions}</th>
               <th>{messages.imports.table.date}</th>
               <th>{messages.imports.table.description}</th>
               <th>{messages.imports.table.amount}</th>
@@ -32,7 +33,6 @@ export function ImportPreviewRowsTable({
               <th>{messages.imports.table.owner}</th>
               <th>{messages.imports.table.split}</th>
               <th>{messages.imports.table.note}</th>
-              <th>{messages.imports.table.actions}</th>
             </tr>
           </thead>
           <tbody>
@@ -47,6 +47,11 @@ export function ImportPreviewRowsTable({
                         {duplicateMatch.matchKind === "exact" ? messages.imports.duplicateMatchKindExact : messages.imports.duplicateMatchKindNear}
                       </span>
                     ) : null}
+                  </td>
+                  <td>
+                    <button type="button" className="subtle-action" onClick={() => onRemovePreviewRow(row.rowId)}>
+                      {messages.imports.removePreviewRow}
+                    </button>
                   </td>
                   <td>
                     <input className="table-edit-input" type="date" value={row.date} onChange={(event) => onUpdatePreviewRow(row.rowId, { date: event.target.value })} />
@@ -137,11 +142,6 @@ export function ImportPreviewRowsTable({
                   </td>
                   <td>
                     <input className="table-edit-input" value={row.note ?? ""} onChange={(event) => onUpdatePreviewRow(row.rowId, { note: event.target.value })} />
-                  </td>
-                  <td>
-                    <button type="button" className="subtle-action" onClick={() => onRemovePreviewRow(row.rowId)}>
-                      {messages.imports.removePreviewRow}
-                    </button>
                   </td>
                 </tr>
               );
