@@ -19,8 +19,8 @@ reconciliation, splits, or account workflows change.
   edits, duplicate highlighting, row removal, and commit.
 - Supported PDF statement import for UOB, Citibank, and OCBC statement formats
   that include embedded text.
-- Supported UOB current-transaction `.xls` import for mid-cycle working ledger
-  updates.
+- Supported UOB current-transaction `.xls` and Citibank credit-card activity
+  `.csv` imports for mid-cycle working ledger updates.
 - Import traceability, recent import history, rollback, overlap warnings, and
   statement balance checks before commit.
 
@@ -73,7 +73,9 @@ the proof that the ledger is correct through that statement period.
 
 Before the second statement arrives, download current activity exports when you
 want the Month and Entries pages to stay current. Examples are UOB current
-transaction `.xls` exports or Citi card activity CSVs.
+transaction `.xls` exports or Citi card activity CSVs. For Citi activity CSVs,
+choose the matching Citibank credit-card account before uploading so the
+headerless file is parsed with the right account context.
 
 Import only rows that happen after that account's latest statement cutoff. For
 example, if the latest Citi Rewards statement includes transactions through

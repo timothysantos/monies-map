@@ -342,6 +342,8 @@ The app currently supports:
 - CSV files or pasted CSV text
 - supported PDF statements
 - supported UOB One current-transaction `.xls` exports
+- supported Citibank credit-card current-activity `.csv` exports, when the
+  selected default account is a Citibank credit card
 
 Supported PDF parsers include:
 
@@ -393,10 +395,11 @@ creating another split.
 
 Use a current-transaction export as a working ledger update.
 
-Example: download a UOB One `.xls` activity export for the current month, import
-it, review the rows, and commit them. Those rows can then be used for Month,
-Entries, Splits, transfer matching, and category cleanup before the statement
-closes.
+Example: download a UOB One `.xls` activity export or a Citi card activity
+`.csv` for the current period, choose the matching account in the import form,
+import it, review the rows, and commit them. Those rows can then be used for
+Month, Entries, Splits, transfer matching, and category cleanup before the
+statement closes.
 
 Mid-month rows are useful, but they are not final proof. The final proof is still
 the next statement checkpoint.
@@ -542,6 +545,10 @@ the current draft without refreshing the page.
 - UOB One savings PDFs use the statement period and running balances to validate
   withdrawal/deposit direction.
 - Citibank card PDFs use layout-aware parsing for compact card-section rows.
+- Citibank current-activity CSV files are headerless, so the app only applies
+  the Citi activity parser when the selected default account is a Citibank
+  credit card and the file name matches the Citi activity export pattern. The
+  trailing card number is reduced to the last four digits in the note.
 - OCBC 365 card PDFs use the printed statement date, subtotal, and total amount
   due.
 - OCBC 360 account PDFs use the monthly period, running balances, and balance
