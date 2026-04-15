@@ -127,10 +127,19 @@ depends on a schema update, run `npm run db:migrate:remote` before deploy.
 
 ## What does the demo assume right now?
 
-The current demo uses a believable household scenario that can be reseeded from
-the in-app settings view. The default category catalog also persists through
-reseed, local wipes, and the current empty-state path, so imports still start
-from the same baseline set of categories, icons, and colors.
+Fresh databases start in empty-state mode. That blank slate keeps only reference
+data: the household record, the two default people, and the category catalog.
+There are no demo accounts, entries, imports, statement checkpoints, month plan
+rows, snapshots, split records, or balances in the ledger until you add or
+import them.
+
+The current demo uses a believable household scenario, but it only appears after
+you explicitly reseed the demo from the in-app settings view. The default
+category catalog persists through reseed, local wipes, and the empty-state path,
+so imports still start from the same baseline set of categories, icons, and
+colors. Some internal modules still use `demo` naming for the original seed
+fixtures, but app totals are derived from D1 rows rather than hardcoded fixture
+amounts.
 
 ## What is the Splits view for?
 

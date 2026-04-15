@@ -1,9 +1,7 @@
-import { household as demoHousehold } from "./demo-data";
+import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { slugify } from "./app-repository-helpers";
 import { recordAuditEvent } from "./app-repository-audit";
 import type { CategoryDto } from "../types/dto";
-
-const DEMO_HOUSEHOLD_ID = demoHousehold.id;
 
 export async function loadCategories(db: D1Database): Promise<CategoryDto[]> {
   const result = await db
@@ -13,7 +11,7 @@ export async function loadCategories(db: D1Database): Promise<CategoryDto[]> {
       WHERE household_id = ?
       ORDER BY sort_order, name
     `)
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{
       id: string;
       name: string;
@@ -51,7 +49,7 @@ export async function updateCategoryRecord(
       FROM categories
       WHERE household_id = ? AND id = ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID, input.categoryId)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.categoryId)
     .first<{ name: string; slug: string; icon_key: string; color_hex: string }>();
 
   if (!existing) {
@@ -69,7 +67,7 @@ export async function updateCategoryRecord(
       SET name = ?, slug = ?, icon_key = ?, color_hex = ?
       WHERE household_id = ? AND id = ?
     `)
-    .bind(name, slug, iconKey, colorHex, DEMO_HOUSEHOLD_ID, input.categoryId)
+    .bind(name, slug, iconKey, colorHex, DEFAULT_HOUSEHOLD_ID, input.categoryId)
     .run();
 
   return { categoryId: input.categoryId, updated: true };
@@ -95,7 +93,7 @@ export async function createCategoryRecord(
       FROM categories
       WHERE household_id = ? AND (slug = ? OR lower(name) = lower(?))
     `)
-    .bind(DEMO_HOUSEHOLD_ID, slug, name)
+    .bind(DEFAULT_HOUSEHOLD_ID, slug, name)
     .first<{ id: string }>();
 
   if (existing) {
@@ -104,7 +102,7 @@ export async function createCategoryRecord(
 
   const sortOrderResult = await db
     .prepare("SELECT COALESCE(MAX(sort_order), 0) AS max_sort_order FROM categories WHERE household_id = ?")
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .first<{ max_sort_order: number }>();
 
   const categoryId = `cat-${slug}-${crypto.randomUUID().slice(0, 8)}`;
@@ -117,7 +115,7 @@ export async function createCategoryRecord(
     `)
     .bind(
       categoryId,
-      DEMO_HOUSEHOLD_ID,
+      DEFAULT_HOUSEHOLD_ID,
       name,
       slug,
       slug,
@@ -149,7 +147,7 @@ export async function deleteCategoryRecord(
       FROM categories
       WHERE household_id = ? AND id = ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID, input.categoryId)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.categoryId)
     .first<{ id: string; name: string }>();
 
   if (!existing) {
@@ -158,13 +156,13 @@ export async function deleteCategoryRecord(
 
   const references = await Promise.all([
     db.prepare("SELECT id FROM transactions WHERE household_id = ? AND category_id = ? LIMIT 1")
-      .bind(DEMO_HOUSEHOLD_ID, input.categoryId)
+      .bind(DEFAULT_HOUSEHOLD_ID, input.categoryId)
       .first<{ id: string }>(),
     db.prepare("SELECT id FROM monthly_plan_rows WHERE household_id = ? AND category_id = ? LIMIT 1")
-      .bind(DEMO_HOUSEHOLD_ID, input.categoryId)
+      .bind(DEFAULT_HOUSEHOLD_ID, input.categoryId)
       .first<{ id: string }>(),
     db.prepare("SELECT id FROM monthly_budgets WHERE household_id = ? AND category_id = ? LIMIT 1")
-      .bind(DEMO_HOUSEHOLD_ID, input.categoryId)
+      .bind(DEFAULT_HOUSEHOLD_ID, input.categoryId)
       .first<{ id: string }>()
   ]);
 
@@ -174,7 +172,7 @@ export async function deleteCategoryRecord(
 
   await db
     .prepare("DELETE FROM categories WHERE household_id = ? AND id = ?")
-    .bind(DEMO_HOUSEHOLD_ID, input.categoryId)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.categoryId)
     .run();
 
   await recordAuditEvent(db, {

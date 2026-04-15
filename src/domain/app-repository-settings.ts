@@ -1,4 +1,4 @@
-import { household as demoHousehold } from "./demo-data";
+import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import {
   buildAccountHealth,
   computeCheckpointLedgerBalanceMinor,
@@ -10,21 +10,19 @@ import {
 import { recordAuditEvent } from "./app-repository-audit";
 import type { AccountDto, HouseholdDto } from "../types/dto";
 
-const DEMO_HOUSEHOLD_ID = demoHousehold.id;
-
 export async function loadHousehold(db: D1Database): Promise<HouseholdDto> {
   const row = await db
     .prepare("SELECT id, name, currency FROM households WHERE id = ?")
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .first<{ id: string; name: string; currency: string }>();
 
   const people = await db
     .prepare("SELECT id, display_name FROM people WHERE household_id = ? ORDER BY created_at")
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{ id: string; display_name: string }>();
 
   return {
-    id: row?.id ?? DEMO_HOUSEHOLD_ID,
+    id: row?.id ?? DEFAULT_HOUSEHOLD_ID,
     name: row?.name ?? "Household",
     currency: row?.currency ?? "SGD",
     people: people.results.map((person) => ({ id: person.id, name: person.display_name }))
@@ -52,7 +50,7 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
       WHERE accounts.household_id = ?
       ORDER BY lower(institutions.name), lower(accounts.account_name)
     `)
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{
       id: string;
       institution_id: string;
@@ -82,7 +80,7 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
       WHERE transactions.household_id = ?
         AND (transactions.import_id IS NULL OR imports.status = 'completed')
     `)
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{
       account_id: string;
       transaction_date: string;
@@ -110,7 +108,7 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
             AND inner_checkpoint.account_id = account_balance_checkpoints.account_id
         )
     `)
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{
       account_id: string;
       checkpoint_month: string;
@@ -132,7 +130,7 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
       WHERE household_id = ?
       ORDER BY checkpoint_month DESC, created_at DESC
     `)
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{
       account_id: string;
       checkpoint_month: string;
@@ -266,7 +264,7 @@ async function findOrCreateInstitution(db: D1Database, name: string) {
       FROM institutions
       WHERE household_id = ? AND lower(name) = lower(?)
     `)
-    .bind(DEMO_HOUSEHOLD_ID, trimmed)
+    .bind(DEFAULT_HOUSEHOLD_ID, trimmed)
     .first<{ id: string }>();
 
   if (existing) {
@@ -279,7 +277,7 @@ async function findOrCreateInstitution(db: D1Database, name: string) {
       INSERT INTO institutions (id, household_id, name)
       VALUES (?, ?, ?)
     `)
-    .bind(id, DEMO_HOUSEHOLD_ID, trimmed)
+    .bind(id, DEFAULT_HOUSEHOLD_ID, trimmed)
     .run();
 
   return id;
@@ -311,7 +309,7 @@ export async function createAccountRecord(
     `)
     .bind(
       accountId,
-      DEMO_HOUSEHOLD_ID,
+      DEFAULT_HOUSEHOLD_ID,
       institutionId,
       ownerPersonId,
       input.name.trim(),
@@ -351,7 +349,7 @@ export async function updateAccountRecord(
       FROM accounts
       WHERE household_id = ? AND id = ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID, input.accountId)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.accountId)
     .first<{ id: string; account_name: string; opening_balance_minor: number }>();
 
   if (!existing) {
@@ -376,7 +374,7 @@ export async function updateAccountRecord(
       input.currency.trim() || "SGD",
       Math.round(input.openingBalanceMinor ?? 0),
       isJoint ? 1 : 0,
-      DEMO_HOUSEHOLD_ID,
+      DEFAULT_HOUSEHOLD_ID,
       input.accountId
     )
     .run();
@@ -405,7 +403,7 @@ export async function updatePersonRecord(
 
   const existing = await db
     .prepare("SELECT id, display_name FROM people WHERE household_id = ? AND id = ?")
-    .bind(DEMO_HOUSEHOLD_ID, input.personId)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.personId)
     .first<{ id: string; display_name: string }>();
 
   if (!existing) {
@@ -418,7 +416,7 @@ export async function updatePersonRecord(
       SET display_name = ?
       WHERE household_id = ? AND id = ?
     `)
-    .bind(trimmedName, DEMO_HOUSEHOLD_ID, input.personId)
+    .bind(trimmedName, DEFAULT_HOUSEHOLD_ID, input.personId)
     .run();
 
   await recordAuditEvent(db, {
@@ -439,7 +437,7 @@ export async function archiveAccountRecord(
 ) {
   const existing = await db
     .prepare("SELECT account_name FROM accounts WHERE household_id = ? AND id = ?")
-    .bind(DEMO_HOUSEHOLD_ID, input.accountId)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.accountId)
     .first<{ account_name: string }>();
 
   await db
@@ -448,7 +446,7 @@ export async function archiveAccountRecord(
       SET is_active = 0
       WHERE household_id = ? AND id = ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID, input.accountId)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.accountId)
     .run();
 
   await recordAuditEvent(db, {
@@ -490,7 +488,7 @@ export async function loadUnresolvedTransfers(db: D1Database) {
       ORDER BY transactions.transaction_date DESC, transactions.created_at DESC
       LIMIT 8
     `)
-    .bind(DEMO_HOUSEHOLD_ID, DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID)
     .all<{
       id: string;
       transaction_date: string;
@@ -519,7 +517,7 @@ export async function loadAuditEvents(db: D1Database) {
       ORDER BY created_at DESC
       LIMIT 12
     `)
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{ id: string; entity_type: string; entity_id: string; action: string; detail: string; created_at: string }>();
 
   return result.results.map((row) => ({

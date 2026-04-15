@@ -1,6 +1,4 @@
-import { household as demoHousehold } from "./demo-data";
-
-const DEMO_HOUSEHOLD_ID = demoHousehold.id;
+import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 
 export async function resolveAccountId(db: D1Database, accountName?: string) {
   if (!accountName) {
@@ -9,7 +7,7 @@ export async function resolveAccountId(db: D1Database, accountName?: string) {
 
   const account = await db
     .prepare("SELECT id FROM accounts WHERE household_id = ? AND account_name = ?")
-    .bind(DEMO_HOUSEHOLD_ID, accountName)
+    .bind(DEFAULT_HOUSEHOLD_ID, accountName)
     .first<{ id: string }>();
 
   if (!account) {
@@ -26,7 +24,7 @@ export async function resolveCategoryId(db: D1Database, categoryName?: string) {
 
   const category = await db
     .prepare("SELECT id FROM categories WHERE household_id = ? AND name = ?")
-    .bind(DEMO_HOUSEHOLD_ID, categoryName)
+    .bind(DEFAULT_HOUSEHOLD_ID, categoryName)
     .first<{ id: string }>();
 
   if (!category) {
@@ -43,7 +41,7 @@ export async function resolvePersonId(db: D1Database, personName?: string) {
 
   const person = await db
     .prepare("SELECT id FROM people WHERE household_id = ? AND display_name = ?")
-    .bind(DEMO_HOUSEHOLD_ID, personName)
+    .bind(DEFAULT_HOUSEHOLD_ID, personName)
     .first<{ id: string }>();
 
   if (!person) {

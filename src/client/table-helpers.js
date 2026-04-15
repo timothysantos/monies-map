@@ -1,6 +1,6 @@
 import { messages } from "./copy/en-SG";
 
-export function sortRows(rows, sort, monthKey = "2025-10") {
+export function sortRows(rows, sort, monthKey = "") {
   if (!sort) {
     return rows;
   }
