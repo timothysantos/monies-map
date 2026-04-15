@@ -1,7 +1,5 @@
-import { household as demoHousehold } from "./demo-data";
+import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { resolvePersonId } from "./app-repository-lookups";
-
-const DEMO_HOUSEHOLD_ID = demoHousehold.id;
 
 export async function syncMonthlyPlanRowSplits(
   db: D1Database,
@@ -36,7 +34,7 @@ export async function syncMonthlyPlanRowSplits(
 
   const people = await db
     .prepare("SELECT id FROM people WHERE household_id = ? ORDER BY created_at LIMIT 2")
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{ id: string }>();
 
   const [firstPerson, secondPerson] = people.results;
@@ -103,7 +101,7 @@ export async function syncTransactionSplits(
 
   const people = await db
     .prepare("SELECT id FROM people WHERE household_id = ? ORDER BY created_at LIMIT 2")
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{ id: string }>();
 
   const [firstPerson, secondPerson] = people.results;

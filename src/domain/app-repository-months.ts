@@ -1,16 +1,15 @@
-import { household as demoHousehold } from "./demo-data";
+import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import {
   groupSplits,
   normalizePlanMatchHint,
   weekdayLabel
 } from "./app-repository-helpers";
+import { getCurrentMonthKey } from "../lib/month";
 import type {
   MonthIncomeRowDto,
   MonthPlanRowDto,
   SummaryMonthDto
 } from "../types/dto";
-
-const DEMO_HOUSEHOLD_ID = demoHousehold.id;
 
 export async function loadSummaryMonths(db: D1Database, personScope: string): Promise<SummaryMonthDto[]> {
   const result = await db
@@ -21,7 +20,7 @@ export async function loadSummaryMonths(db: D1Database, personScope: string): Pr
       WHERE household_id = ? AND person_scope = ?
       ORDER BY year DESC, month DESC
     `)
-    .bind(DEMO_HOUSEHOLD_ID, personScope)
+    .bind(DEFAULT_HOUSEHOLD_ID, personScope)
     .all<{
       year: number;
       month: number;
@@ -71,7 +70,7 @@ export async function loadTrackedMonths(db: D1Database): Promise<string[]> {
       WHERE month_key IS NOT NULL AND month_key != ''
       ORDER BY month_key
     `)
-    .bind(DEMO_HOUSEHOLD_ID, DEMO_HOUSEHOLD_ID, DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID)
     .all<{ month_key: string }>();
 
   return result.results.map((row) => row.month_key);
@@ -80,7 +79,7 @@ export async function loadTrackedMonths(db: D1Database): Promise<string[]> {
 export async function loadMonthIncomeRows(
   db: D1Database,
   selectedPersonId: string,
-  month = "2025-10"
+  month = getCurrentMonthKey()
 ): Promise<MonthIncomeRowDto[]> {
   const [year, monthNumber] = month.split("-").map(Number);
   const query = selectedPersonId === "household"
@@ -128,7 +127,7 @@ export async function loadMonthIncomeRows(
 
   const statement = db.prepare(query);
   const result = selectedPersonId === "household"
-    ? await statement.bind(DEMO_HOUSEHOLD_ID, year, monthNumber).all<{
+    ? await statement.bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber).all<{
         id: string;
         person_id: string | null;
         category_id: string | null;
@@ -139,7 +138,7 @@ export async function loadMonthIncomeRows(
         category_name: string | null;
         owner_name: string | null;
       }>()
-    : await statement.bind(DEMO_HOUSEHOLD_ID, year, monthNumber, selectedPersonId).all<{
+    : await statement.bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber, selectedPersonId).all<{
         id: string;
         person_id: string | null;
         category_id: string | null;
@@ -166,7 +165,7 @@ export async function loadMonthIncomeRows(
   }));
 }
 
-export async function loadMonthPlanRows(db: D1Database, month = "2025-10"): Promise<MonthPlanRowDto[]> {
+export async function loadMonthPlanRows(db: D1Database, month = getCurrentMonthKey()): Promise<MonthPlanRowDto[]> {
   const [year, monthNumber] = month.split("-").map(Number);
   const rows = await db
     .prepare(`
@@ -192,7 +191,7 @@ export async function loadMonthPlanRows(db: D1Database, month = "2025-10"): Prom
       WHERE monthly_plan_rows.household_id = ? AND monthly_plan_rows.year = ? AND monthly_plan_rows.month = ?
       ORDER BY monthly_plan_rows.created_at
     `)
-    .bind(DEMO_HOUSEHOLD_ID, year, monthNumber)
+    .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber)
     .all<{
       id: string;
       person_id: string | null;
@@ -224,7 +223,7 @@ export async function loadMonthPlanRows(db: D1Database, month = "2025-10"): Prom
       WHERE monthly_plan_rows.household_id = ? AND monthly_plan_rows.year = ? AND monthly_plan_rows.month = ?
       ORDER BY monthly_plan_row_splits.created_at
     `)
-    .bind(DEMO_HOUSEHOLD_ID, year, monthNumber)
+    .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber)
     .all<{
       monthly_plan_row_id: string;
       person_id: string;
@@ -244,7 +243,7 @@ export async function loadMonthPlanRows(db: D1Database, month = "2025-10"): Prom
       WHERE monthly_plan_rows.household_id = ? AND monthly_plan_rows.year = ? AND monthly_plan_rows.month = ?
       ORDER BY monthly_plan_entry_links.created_at
     `)
-    .bind(DEMO_HOUSEHOLD_ID, year, monthNumber)
+    .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber)
     .all<{
       monthly_plan_row_id: string;
       transaction_id: string;
@@ -274,7 +273,7 @@ export async function loadMonthPlanRows(db: D1Database, month = "2025-10"): Prom
       WHERE monthly_plan_match_hints.household_id = ?
       ORDER BY monthly_plan_match_hints.updated_at DESC
     `)
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{
       id: string;
       person_id: string | null;

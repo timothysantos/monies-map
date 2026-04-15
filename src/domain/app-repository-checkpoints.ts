@@ -1,4 +1,4 @@
-import { household as demoHousehold } from "./demo-data";
+import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { recordAuditEvent } from "./app-repository-audit";
 import {
   compareDescriptionSimilarity,
@@ -17,8 +17,6 @@ import {
 } from "./app-repository-helpers";
 import type { StatementCompareDto, StatementCompareRowDto } from "../types/dto";
 
-const DEMO_HOUSEHOLD_ID = demoHousehold.id;
-
 export async function saveAccountCheckpointRecord(
   db: D1Database,
   input: {
@@ -36,7 +34,7 @@ export async function saveAccountCheckpointRecord(
       FROM accounts
       WHERE household_id = ? AND id = ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID, input.accountId)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.accountId)
     .first<{ id: string; account_kind: string }>();
 
   const existingCheckpoint = await db
@@ -45,7 +43,7 @@ export async function saveAccountCheckpointRecord(
       FROM account_balance_checkpoints
       WHERE household_id = ? AND account_id = ? AND checkpoint_month = ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID, input.accountId, input.checkpointMonth)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.accountId, input.checkpointMonth)
     .first<{ statement_balance_minor: number }>();
 
   if (!account) {
@@ -73,7 +71,7 @@ export async function saveAccountCheckpointRecord(
     `)
     .bind(
       checkpointId,
-      DEMO_HOUSEHOLD_ID,
+      DEFAULT_HOUSEHOLD_ID,
       input.accountId,
       input.checkpointMonth,
       statementStartDate,
@@ -108,7 +106,7 @@ export async function deleteAccountCheckpointRecord(
       FROM account_balance_checkpoints
       WHERE household_id = ? AND account_id = ? AND checkpoint_month = ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID, input.accountId, input.checkpointMonth)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.accountId, input.checkpointMonth)
     .first<{ statement_balance_minor: number }>();
 
   if (!existingCheckpoint) {
@@ -120,7 +118,7 @@ export async function deleteAccountCheckpointRecord(
       DELETE FROM account_balance_checkpoints
       WHERE household_id = ? AND account_id = ? AND checkpoint_month = ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID, input.accountId, input.checkpointMonth)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.accountId, input.checkpointMonth)
     .run();
 
   await recordAuditEvent(db, {
@@ -160,7 +158,7 @@ export async function buildAccountCheckpointLedgerCsv(
         AND checkpoints.account_id = ?
         AND checkpoints.checkpoint_month = ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID, input.accountId, input.checkpointMonth)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.accountId, input.checkpointMonth)
     .first<{
       checkpoint_month: string;
       statement_start_date: string | null;
@@ -197,7 +195,7 @@ export async function buildAccountCheckpointLedgerCsv(
           AND transactions.transaction_date < ?
           AND (transactions.import_id IS NULL OR imports.status = 'completed')
       `)
-      .bind(DEMO_HOUSEHOLD_ID, input.accountId, statementStartDate)
+      .bind(DEFAULT_HOUSEHOLD_ID, input.accountId, statementStartDate)
       .all<{
         amount_minor: number;
         entry_type: "expense" | "income" | "transfer";
@@ -239,7 +237,7 @@ export async function buildAccountCheckpointLedgerCsv(
         AND (transactions.import_id IS NULL OR imports.status = 'completed')
       ORDER BY transactions.transaction_date, transactions.created_at
     `)
-    .bind(DEMO_HOUSEHOLD_ID, input.accountId, statementEndDate, statementStartDate, statementStartDate)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.accountId, statementEndDate, statementStartDate, statementStartDate)
     .all<{
       id: string;
       transaction_date: string;
@@ -366,7 +364,7 @@ export async function compareAccountCheckpointStatementRows(
         AND checkpoints.account_id = ?
         AND checkpoints.checkpoint_month = ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID, input.accountId, input.checkpointMonth)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.accountId, input.checkpointMonth)
     .first<{
       checkpoint_month: string;
       statement_start_date: string | null;
@@ -438,7 +436,7 @@ export async function compareAccountCheckpointStatementRows(
         AND (transactions.import_id IS NULL OR imports.status = 'completed')
       ORDER BY transactions.transaction_date, transactions.created_at
     `)
-    .bind(DEMO_HOUSEHOLD_ID, input.accountId, statementEndDate, statementStartDate)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.accountId, statementEndDate, statementStartDate)
     .all<{
       id: string;
       transaction_date: string;

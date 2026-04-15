@@ -1,27 +1,20 @@
-import { household as demoHousehold } from "./demo-data";
+import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import {
   countSharedTokens,
   diffDays,
-  findCategoryId,
   groupSplits,
   slugify
 } from "./app-repository-helpers";
 import { closeSplitBatch, getOrCreateActiveSplitBatch } from "./app-repository-split-batches";
 import { syncTransactionSplits } from "./app-repository-split-sync";
+import { getCurrentMonthKey } from "../lib/month";
 import type {
   SplitExpenseDto,
   SplitMatchCandidateDto,
   SplitSettlementDto
 } from "../types/dto";
 
-const DEMO_HOUSEHOLD_ID = demoHousehold.id;
-
-const PERSON_IDS: Record<string, string> = {
-  Tim: "person-tim",
-  Joyce: "person-joyce"
-};
-
-export async function loadSplitExpenses(db: D1Database, month = "2025-10"): Promise<SplitExpenseDto[]> {
+export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthKey()): Promise<SplitExpenseDto[]> {
   const expenses = await db
     .prepare(`
       SELECT
@@ -49,7 +42,7 @@ export async function loadSplitExpenses(db: D1Database, month = "2025-10"): Prom
       WHERE split_expenses.household_id = ?
       ORDER BY split_expenses.expense_date DESC, split_expenses.created_at DESC
     `)
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{
       id: string;
       split_group_id: string | null;
@@ -82,7 +75,7 @@ export async function loadSplitExpenses(db: D1Database, month = "2025-10"): Prom
       WHERE split_expenses.household_id = ?
       ORDER BY split_expense_shares.created_at
     `)
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{
       split_expense_id: string;
       person_id: string;
@@ -122,7 +115,7 @@ export async function loadSplitExpenses(db: D1Database, month = "2025-10"): Prom
   }));
 }
 
-export async function loadSplitSettlements(db: D1Database, month = "2025-10"): Promise<SplitSettlementDto[]> {
+export async function loadSplitSettlements(db: D1Database, month = getCurrentMonthKey()): Promise<SplitSettlementDto[]> {
   const settlements = await db
     .prepare(`
       SELECT
@@ -150,7 +143,7 @@ export async function loadSplitSettlements(db: D1Database, month = "2025-10"): P
       WHERE split_settlements.household_id = ?
       ORDER BY split_settlements.settlement_date DESC, split_settlements.created_at DESC
     `)
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{
       id: string;
       split_group_id: string | null;
@@ -188,7 +181,7 @@ export async function loadSplitSettlements(db: D1Database, month = "2025-10"): P
   }));
 }
 
-export async function loadSplitMatchCandidates(db: D1Database, month = "2025-10"): Promise<SplitMatchCandidateDto[]> {
+export async function loadSplitMatchCandidates(db: D1Database, month = getCurrentMonthKey()): Promise<SplitMatchCandidateDto[]> {
   const [expenses, settlements] = await Promise.all([
     loadSplitExpenses(db, month),
     loadSplitSettlements(db, month)
@@ -209,7 +202,7 @@ export async function loadSplitMatchCandidates(db: D1Database, month = "2025-10"
         AND imports.status = 'completed'
       ORDER BY transactions.transaction_date DESC, transactions.created_at DESC
     `)
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{
       id: string;
       transaction_date: string;
@@ -300,7 +293,7 @@ export async function createSplitGroupRecord(
         id, household_id, group_name, sort_order
       ) VALUES (?, ?, ?, ?)
     `)
-    .bind(id, DEMO_HOUSEHOLD_ID, input.name.trim(), Date.now())
+    .bind(id, DEFAULT_HOUSEHOLD_ID, input.name.trim(), Date.now())
     .run();
 
   return { groupId: id };
@@ -319,24 +312,24 @@ export async function createSplitExpenseRecord(
     splitBasisPoints?: number;
   }
 ) {
-  const payerPersonId = PERSON_IDS[input.payerPersonName];
-  if (!payerPersonId) {
-    throw new Error("Unknown split expense payer.");
-  }
+  const { categoryId, payerPersonId, sharePeople } = await resolveSplitExpenseRefs(
+    db,
+    input.categoryName,
+    input.payerPersonName
+  );
 
   const id = `split-expense-${Date.now()}`;
   const batchId = await getOrCreateActiveSplitBatch(db, {
     groupId: input.groupId || null,
     date: input.date
   });
-  const categoryId = findCategoryId(input.categoryName);
   const firstBasisPoints = Math.max(0, Math.min(10000, input.splitBasisPoints ?? 5000));
   const secondBasisPoints = 10000 - firstBasisPoints;
   const firstAmount = Math.round(input.amountMinor * (firstBasisPoints / 10000));
   const secondAmount = input.amountMinor - firstAmount;
   const shares = [
-    { personId: "person-tim", ratioBasisPoints: firstBasisPoints, amountMinor: firstAmount },
-    { personId: "person-joyce", ratioBasisPoints: secondBasisPoints, amountMinor: secondAmount }
+    { personId: sharePeople[0].id, ratioBasisPoints: firstBasisPoints, amountMinor: firstAmount },
+    { personId: sharePeople[1].id, ratioBasisPoints: secondBasisPoints, amountMinor: secondAmount }
   ];
 
   await db
@@ -348,7 +341,7 @@ export async function createSplitExpenseRecord(
     `)
     .bind(
       id,
-      DEMO_HOUSEHOLD_ID,
+      DEFAULT_HOUSEHOLD_ID,
       input.groupId || null,
       batchId,
       payerPersonId,
@@ -374,6 +367,72 @@ export async function createSplitExpenseRecord(
   return { splitExpenseId: id };
 }
 
+async function resolveSplitExpenseRefs(db: D1Database, categoryName: string, payerPersonName: string) {
+  // Resolve form labels against current DB rows, not seed fixtures, so renamed people and real categories stay authoritative.
+  const [category, payer, people] = await Promise.all([
+    db
+      .prepare("SELECT id FROM categories WHERE household_id = ? AND name = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, categoryName)
+      .first<{ id: string }>(),
+    db
+      .prepare("SELECT id FROM people WHERE household_id = ? AND display_name = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, payerPersonName)
+      .first<{ id: string }>(),
+    loadSplitSharePeople(db)
+  ]);
+
+  if (!category?.id) {
+    throw new Error("Unknown split expense category.");
+  }
+
+  if (!payer?.id) {
+    throw new Error("Unknown split expense payer.");
+  }
+
+  return { categoryId: category.id, payerPersonId: payer.id, sharePeople: people };
+}
+
+async function resolveSplitSettlementRefs(db: D1Database, fromPersonName: string, toPersonName: string) {
+  const [fromPerson, toPerson] = await Promise.all([
+    db
+      .prepare("SELECT id FROM people WHERE household_id = ? AND display_name = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, fromPersonName)
+      .first<{ id: string }>(),
+    db
+      .prepare("SELECT id FROM people WHERE household_id = ? AND display_name = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, toPersonName)
+      .first<{ id: string }>()
+  ]);
+
+  if (!fromPerson?.id || !toPerson?.id || fromPerson.id === toPerson.id) {
+    throw new Error("Settlement requires two different people.");
+  }
+
+  return { fromPersonId: fromPerson.id, toPersonId: toPerson.id };
+}
+
+async function loadSplitSharePeople(db: D1Database) {
+  const people = await db
+    .prepare(`
+      SELECT id
+      FROM people
+      WHERE household_id = ?
+      ORDER BY
+        CASE role WHEN 'owner' THEN 0 WHEN 'partner' THEN 1 ELSE 2 END,
+        created_at,
+        id
+      LIMIT 2
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID)
+    .all<{ id: string }>();
+
+  if (people.results.length < 2) {
+    throw new Error("Split expenses require two people.");
+  }
+
+  return people.results;
+}
+
 export async function createSplitSettlementRecord(
   db: D1Database,
   input: {
@@ -385,11 +444,7 @@ export async function createSplitSettlementRecord(
     note?: string;
   }
 ) {
-  const fromPersonId = PERSON_IDS[input.fromPersonName];
-  const toPersonId = PERSON_IDS[input.toPersonName];
-  if (!fromPersonId || !toPersonId || fromPersonId === toPersonId) {
-    throw new Error("Settlement requires two different people.");
-  }
+  const { fromPersonId, toPersonId } = await resolveSplitSettlementRefs(db, input.fromPersonName, input.toPersonName);
 
   const id = `split-settlement-${Date.now()}`;
   const batchId = await getOrCreateActiveSplitBatch(db, {
@@ -405,7 +460,7 @@ export async function createSplitSettlementRecord(
     `)
     .bind(
       id,
-      DEMO_HOUSEHOLD_ID,
+      DEFAULT_HOUSEHOLD_ID,
       input.groupId || null,
       batchId,
       fromPersonId,
@@ -434,10 +489,11 @@ export async function updateSplitExpenseRecord(
     splitBasisPoints?: number;
   }
 ) {
-  const payerPersonId = PERSON_IDS[input.payerPersonName];
-  if (!payerPersonId) {
-    throw new Error("Unknown split expense payer.");
-  }
+  const { categoryId, payerPersonId, sharePeople } = await resolveSplitExpenseRefs(
+    db,
+    input.categoryName,
+    input.payerPersonName
+  );
 
   const existing = await db
     .prepare(`
@@ -445,7 +501,7 @@ export async function updateSplitExpenseRecord(
       FROM split_expenses
       WHERE id = ? AND household_id = ?
     `)
-    .bind(input.splitExpenseId, DEMO_HOUSEHOLD_ID)
+    .bind(input.splitExpenseId, DEFAULT_HOUSEHOLD_ID)
     .first<{ split_group_id: string | null; split_batch_id: string | null }>();
   if (!existing) {
     throw new Error("Split expense not found.");
@@ -469,11 +525,11 @@ export async function updateSplitExpenseRecord(
       payerPersonId,
       input.date,
       input.description.trim(),
-      findCategoryId(input.categoryName),
+      categoryId,
       input.amountMinor,
       input.note ?? null,
       input.splitExpenseId,
-      DEMO_HOUSEHOLD_ID
+      DEFAULT_HOUSEHOLD_ID
     )
     .run();
 
@@ -490,14 +546,14 @@ export async function updateSplitExpenseRecord(
       ) VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)
     `)
     .bind(
-      `${input.splitExpenseId}-person-tim`,
+      `${input.splitExpenseId}-${sharePeople[0].id}`,
       input.splitExpenseId,
-      "person-tim",
+      sharePeople[0].id,
       firstBasisPoints,
       firstAmount,
-      `${input.splitExpenseId}-person-joyce`,
+      `${input.splitExpenseId}-${sharePeople[1].id}`,
       input.splitExpenseId,
-      "person-joyce",
+      sharePeople[1].id,
       secondBasisPoints,
       secondAmount
     )
@@ -518,11 +574,7 @@ export async function updateSplitSettlementRecord(
     note?: string;
   }
 ) {
-  const fromPersonId = PERSON_IDS[input.fromPersonName];
-  const toPersonId = PERSON_IDS[input.toPersonName];
-  if (!fromPersonId || !toPersonId || fromPersonId === toPersonId) {
-    throw new Error("Settlement requires two different people.");
-  }
+  const { fromPersonId, toPersonId } = await resolveSplitSettlementRefs(db, input.fromPersonName, input.toPersonName);
 
   const existing = await db
     .prepare(`
@@ -530,7 +582,7 @@ export async function updateSplitSettlementRecord(
       FROM split_settlements
       WHERE id = ? AND household_id = ?
     `)
-    .bind(input.settlementId, DEMO_HOUSEHOLD_ID)
+    .bind(input.settlementId, DEFAULT_HOUSEHOLD_ID)
     .first<{ split_group_id: string | null; split_batch_id: string | null }>();
   if (!existing) {
     throw new Error("Split settlement not found.");
@@ -557,7 +609,7 @@ export async function updateSplitSettlementRecord(
       input.amountMinor,
       input.note ?? null,
       input.settlementId,
-      DEMO_HOUSEHOLD_ID
+      DEFAULT_HOUSEHOLD_ID
     )
     .run();
   if (batchId) {
@@ -573,7 +625,7 @@ export async function linkSplitExpenseMatch(
 ) {
   await db
     .prepare("UPDATE split_expenses SET linked_transaction_id = ? WHERE id = ? AND household_id = ?")
-    .bind(input.transactionId, input.splitExpenseId, DEMO_HOUSEHOLD_ID)
+    .bind(input.transactionId, input.splitExpenseId, DEFAULT_HOUSEHOLD_ID)
     .run();
 
   return { ok: true };
@@ -585,7 +637,7 @@ export async function linkSplitSettlementMatch(
 ) {
   await db
     .prepare("UPDATE split_settlements SET linked_transaction_id = ? WHERE id = ? AND household_id = ?")
-    .bind(input.transactionId, input.settlementId, DEMO_HOUSEHOLD_ID)
+    .bind(input.transactionId, input.settlementId, DEFAULT_HOUSEHOLD_ID)
     .run();
 
   return { ok: true };
@@ -613,7 +665,7 @@ export async function createSplitExpenseFromEntryRecord(
       WHERE transactions.household_id = ?
         AND transactions.id = ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID, input.entryId)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
     .first<{
       id: string;
       transaction_date: string;
@@ -637,7 +689,7 @@ export async function createSplitExpenseFromEntryRecord(
 
   const existingSplit = await db
     .prepare("SELECT id FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ?")
-    .bind(DEMO_HOUSEHOLD_ID, input.entryId)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
     .first<{ id: string }>();
 
   if (existingSplit) {
@@ -659,7 +711,7 @@ export async function createSplitExpenseFromEntryRecord(
         WHERE household_id = ?
           AND id = ?
       `)
-      .bind(DEMO_HOUSEHOLD_ID, input.entryId)
+      .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
       .run();
 
     await syncTransactionSplits(db, {
@@ -680,7 +732,7 @@ export async function createSplitExpenseFromEntryRecord(
     `)
     .bind(
       id,
-      DEMO_HOUSEHOLD_ID,
+      DEFAULT_HOUSEHOLD_ID,
       input.splitGroupId || null,
       payerPersonId,
       entry.transaction_date,

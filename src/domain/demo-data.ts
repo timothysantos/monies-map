@@ -42,7 +42,7 @@ const DEFAULT_DEMO_LAST_SEEDED_AT = "2026-04-05T10:00:00+08:00";
 export const defaultDemoSettings: DemoSettings = {
   salaryPerPersonMinor: 300000,
   lastSeededAt: DEFAULT_DEMO_LAST_SEEDED_AT,
-  emptyState: false
+  emptyState: true
 };
 
 export const household: HouseholdDto = {

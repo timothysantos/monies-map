@@ -1,7 +1,5 @@
-import { household as demoHousehold } from "./demo-data";
+import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { slugify } from "./app-repository-helpers";
-
-const DEMO_HOUSEHOLD_ID = demoHousehold.id;
 
 function splitBatchName(groupName?: string | null, closed = false) {
   const base = groupName ?? "Non-group expenses";
@@ -15,7 +13,7 @@ async function getSplitGroupName(db: D1Database, groupId?: string | null) {
 
   const row = await db
     .prepare("SELECT group_name FROM split_groups WHERE household_id = ? AND id = ?")
-    .bind(DEMO_HOUSEHOLD_ID, groupId)
+    .bind(DEFAULT_HOUSEHOLD_ID, groupId)
     .first<{ group_name: string }>();
   return row?.group_name ?? "Non-group expenses";
 }
@@ -34,7 +32,7 @@ async function createSplitBatch(
     `)
     .bind(
       id,
-      DEMO_HOUSEHOLD_ID,
+      DEFAULT_HOUSEHOLD_ID,
       input.groupId ?? null,
       splitBatchName(groupName, Boolean(input.closedOn)),
       input.openedOn,
@@ -58,7 +56,7 @@ export async function getOrCreateActiveSplitBatch(
       ORDER BY opened_on DESC, created_at DESC
       LIMIT 1
     `)
-    .bind(DEMO_HOUSEHOLD_ID, input.groupId ?? null, input.groupId ?? null)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.groupId ?? null, input.groupId ?? null)
     .first<{ id: string }>();
 
   if (active?.id) {
@@ -78,7 +76,7 @@ export async function closeSplitBatch(
       FROM split_batches
       WHERE id = ? AND household_id = ?
     `)
-    .bind(input.batchId, DEMO_HOUSEHOLD_ID)
+    .bind(input.batchId, DEFAULT_HOUSEHOLD_ID)
     .first<{ split_group_id: string | null }>();
   const groupName = await getSplitGroupName(db, currentBatch?.split_group_id ?? null);
   await db
@@ -91,18 +89,18 @@ export async function closeSplitBatch(
           END
       WHERE id = ? AND household_id = ?
     `)
-    .bind(input.closedOn, splitBatchName(groupName, true), input.batchId, DEMO_HOUSEHOLD_ID)
+    .bind(input.closedOn, splitBatchName(groupName, true), input.batchId, DEFAULT_HOUSEHOLD_ID)
     .run();
 }
 
 export async function backfillSplitBatches(db: D1Database) {
   const unassignedExpenseCount = await db
     .prepare("SELECT COUNT(*) AS count FROM split_expenses WHERE household_id = ? AND split_batch_id IS NULL")
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .first<{ count: number }>();
   const unassignedSettlementCount = await db
     .prepare("SELECT COUNT(*) AS count FROM split_settlements WHERE household_id = ? AND split_batch_id IS NULL")
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .first<{ count: number }>();
 
   if ((unassignedExpenseCount?.count ?? 0) === 0 && (unassignedSettlementCount?.count ?? 0) === 0) {
@@ -120,7 +118,7 @@ export async function backfillSplitBatches(db: D1Database) {
       WHERE household_id = ? AND split_batch_id IS NULL
       ORDER BY activity_date ASC
     `)
-    .bind(DEMO_HOUSEHOLD_ID, DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID)
     .all<{ split_group_id: string | null; activity_date: string; kind: "expense" | "settlement" }>();
 
   const grouped = new Map<string, { groupId: string | null; dates: string[]; latestSettlementDate?: string; latestExpenseDate?: string }>();
@@ -148,11 +146,11 @@ export async function backfillSplitBatches(db: D1Database) {
 
     await db
       .prepare("UPDATE split_expenses SET split_batch_id = ? WHERE household_id = ? AND split_batch_id IS NULL AND split_group_id IS ?")
-      .bind(batchId, DEMO_HOUSEHOLD_ID, current.groupId)
+      .bind(batchId, DEFAULT_HOUSEHOLD_ID, current.groupId)
       .run();
     await db
       .prepare("UPDATE split_settlements SET split_batch_id = ? WHERE household_id = ? AND split_batch_id IS NULL AND split_group_id IS ?")
-      .bind(batchId, DEMO_HOUSEHOLD_ID, current.groupId)
+      .bind(batchId, DEFAULT_HOUSEHOLD_ID, current.groupId)
       .run();
   }
 }

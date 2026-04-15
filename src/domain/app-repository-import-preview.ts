@@ -1,4 +1,4 @@
-import { household as demoHousehold } from "./demo-data";
+import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import {
   buildImportRowHash,
   compareDescriptionSimilarity,
@@ -18,8 +18,6 @@ import type {
   ImportPreviewRowDto,
   StatementCheckpointDraftDto
 } from "../types/dto";
-
-const DEMO_HOUSEHOLD_ID = demoHousehold.id;
 
 export async function buildImportPreview(
   db: D1Database,
@@ -44,7 +42,7 @@ export async function buildImportPreview(
         AND imports.status = 'completed'
         AND import_rows.normalized_hash IS NOT NULL
     `)
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{ normalized_hash: string }>();
   const existingTransactions = await db
     .prepare(`
@@ -63,7 +61,7 @@ export async function buildImportPreview(
       WHERE imports.household_id = ?
         AND imports.status = 'completed'
     `)
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{
       import_id: string;
       account_id: string;
@@ -325,7 +323,7 @@ async function findOverlappingImports(db: D1Database, rows: ImportPreviewRowDto[
       GROUP BY imports.id, imports.source_label, imports.source_type, imports.imported_at, imports.status
       ORDER BY imports.imported_at DESC
     `)
-    .bind(DEMO_HOUSEHOLD_ID, ...accountNames, dates[0], dates[dates.length - 1])
+    .bind(DEFAULT_HOUSEHOLD_ID, ...accountNames, dates[0], dates[dates.length - 1])
     .all<{
       id: string;
       source_label: string;

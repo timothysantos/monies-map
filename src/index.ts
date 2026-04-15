@@ -37,6 +37,7 @@ import {
   updateEntryRecord
 } from "./domain/app-repository";
 import { parseCsv } from "./lib/csv";
+import { getCurrentMonthKey } from "./lib/month";
 import { json } from "./server/json";
 
 export interface Env {
@@ -55,7 +56,7 @@ export default {
       return json(
         await buildBootstrapDto(
           env.DB,
-          url.searchParams.get("month") ?? "2025-10",
+          url.searchParams.get("month") ?? getCurrentMonthKey(),
           (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared",
           url.searchParams.get("summary_start") ?? undefined,
           url.searchParams.get("summary_end") ?? undefined

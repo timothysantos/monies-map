@@ -18,6 +18,7 @@ import {
   loadMonthPlanRows,
   loadTrackedMonths,
   loadUnresolvedTransfers,
+  seedEmptyStateReferenceData,
   loadSummaryMonths
 } from "./app-repository";
 import type {
@@ -52,7 +53,9 @@ export async function buildBootstrapDto(
 ): Promise<AppBootstrapDto> {
   const demo = await loadDemoSettings(db).catch(() => defaultDemoSettings);
   await ensureDemoSchema(db);
-  if (!demo.emptyState) {
+  if (demo.emptyState) {
+    await seedEmptyStateReferenceData(db);
+  } else {
     await ensureSeedData(db, demo);
   }
   const [household, accounts, categories, importBatches, trackedMonths, unresolvedTransfers, recentAuditEvents] = await Promise.all([

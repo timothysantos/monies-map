@@ -1,6 +1,4 @@
-import { household as demoHousehold } from "./demo-data";
-
-const DEMO_HOUSEHOLD_ID = demoHousehold.id;
+import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 
 export async function recordAuditEvent(
   db: D1Database,
@@ -18,7 +16,7 @@ export async function recordAuditEvent(
     `)
     .bind(
       `audit-${crypto.randomUUID()}`,
-      DEMO_HOUSEHOLD_ID,
+      DEFAULT_HOUSEHOLD_ID,
       input.entityType,
       input.entityId,
       input.action,

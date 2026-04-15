@@ -2,9 +2,9 @@ import {
   accounts as demoAccounts,
   buildMonthIncomeRows,
   buildSummaryMonthsByView,
-  categories as demoCategories,
+  categories as defaultCategories,
   demoMonths,
-  household as demoHousehold,
+  household as defaultHousehold,
   importBatches as demoImportBatches,
   monthEntries as demoMonthEntries,
   monthPlanRows as demoMonthPlanRows,
@@ -14,8 +14,6 @@ import {
   buildImportRowHash,
   buildPlanDate,
   buildSnapshotRowsForScope,
-  findAccountId,
-  findCategoryId,
   inferMonthKeyFromPlanRow,
   mapAccountKind,
   nextMonthKey,
@@ -82,12 +80,28 @@ import type {
   StatementCheckpointDraftDto,
 } from "../types/dto";
 
-const DEMO_HOUSEHOLD_ID = demoHousehold.id;
+const DEFAULT_HOUSEHOLD_ID = defaultHousehold.id;
 
 const PERSON_IDS: Record<string, string> = {
   Tim: "person-tim",
   Joyce: "person-joyce"
 };
+
+function findSeedAccountId(accountName?: string) {
+  if (!accountName) {
+    return null;
+  }
+
+  return demoAccounts.find((account) => account.name === accountName)?.id ?? null;
+}
+
+function findSeedCategoryId(categoryName?: string) {
+  if (!categoryName) {
+    return null;
+  }
+
+  return defaultCategories.find((category) => category.name === categoryName)?.id ?? null;
+}
 
 const SHARED_ACCOUNT_INSTITUTION = "DBS";
 const EMPTY_STATE_PEOPLE = [
@@ -100,22 +114,22 @@ export async function ensureSeedData(db: D1Database, settings: DemoSettings) {
   await ensureDemoSchema(db);
   const existing = await db
     .prepare("SELECT COUNT(*) as count FROM households WHERE id = ?")
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .first<{ count: number }>();
 
   const categoryCount = await db
     .prepare("SELECT COUNT(*) as count FROM categories WHERE household_id = ?")
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .first<{ count: number }>();
 
   const snapshotCount = await db
     .prepare("SELECT COUNT(*) as count FROM monthly_snapshots WHERE household_id = ?")
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .first<{ count: number }>();
 
   const incomeRowCount = await db
     .prepare("SELECT COUNT(*) as count FROM monthly_plan_rows WHERE household_id = ? AND section_key = 'income'")
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .first<{ count: number }>();
 
   if (
@@ -406,28 +420,37 @@ export async function seedEmptyStateReferenceData(db: D1Database) {
   await ensureDemoSchema(db);
 
   await db
-    .prepare("INSERT INTO households (id, name, base_currency) VALUES (?, ?, ?)")
-    .bind(demoHousehold.id, demoHousehold.name, demoHousehold.baseCurrency)
+    .prepare(`
+      INSERT INTO households (id, name, base_currency)
+      VALUES (?, ?, ?)
+      ON CONFLICT(id) DO NOTHING
+    `)
+    .bind(defaultHousehold.id, defaultHousehold.name, defaultHousehold.baseCurrency)
     .run();
 
   for (const person of EMPTY_STATE_PEOPLE) {
     await db
-      .prepare("INSERT INTO people (id, household_id, display_name, role) VALUES (?, ?, ?, ?)")
-      .bind(person.id, demoHousehold.id, person.name, person.id === "person-tim" ? "owner" : "partner")
+      .prepare(`
+        INSERT INTO people (id, household_id, display_name, role)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(id) DO NOTHING
+      `)
+      .bind(person.id, defaultHousehold.id, person.name, person.id === "person-tim" ? "owner" : "partner")
       .run();
   }
 
-  for (const category of demoCategories) {
+  for (const category of defaultCategories) {
     await db
       .prepare(`
         INSERT INTO categories (
           id, household_id, name, slug, reporting_group,
           icon_key, color_hex, sort_order, is_system
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO NOTHING
       `)
       .bind(
         category.id,
-        demoHousehold.id,
+        defaultHousehold.id,
         category.name,
         category.slug,
         category.slug,
@@ -478,13 +501,13 @@ export async function clearDemoData(db: D1Database) {
 async function seedDemoData(db: D1Database, settings: DemoSettings) {
   await db
     .prepare("INSERT INTO households (id, name, base_currency) VALUES (?, ?, ?)")
-    .bind(demoHousehold.id, demoHousehold.name, demoHousehold.baseCurrency)
+    .bind(defaultHousehold.id, defaultHousehold.name, defaultHousehold.baseCurrency)
     .run();
 
-  for (const person of demoHousehold.people) {
+  for (const person of defaultHousehold.people) {
     await db
       .prepare("INSERT INTO people (id, household_id, display_name, role) VALUES (?, ?, ?, ?)")
-      .bind(person.id, demoHousehold.id, person.name, person.id === "person-tim" ? "owner" : "partner")
+      .bind(person.id, defaultHousehold.id, person.name, person.id === "person-tim" ? "owner" : "partner")
       .run();
   }
 
@@ -499,7 +522,7 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
     institutionIds.set(name, id);
     await db
       .prepare("INSERT INTO institutions (id, household_id, name) VALUES (?, ?, ?)")
-      .bind(id, demoHousehold.id, name)
+      .bind(id, defaultHousehold.id, name)
       .run();
   }
 
@@ -514,7 +537,7 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
       `)
       .bind(
         account.id,
-        demoHousehold.id,
+        defaultHousehold.id,
         institutionIds.get(account.institution),
         ownerPersonId,
         account.name,
@@ -525,7 +548,7 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
       .run();
   }
 
-  for (const category of demoCategories) {
+  for (const category of defaultCategories) {
     await db
       .prepare(`
         INSERT INTO categories (
@@ -535,7 +558,7 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
       `)
       .bind(
         category.id,
-        demoHousehold.id,
+        defaultHousehold.id,
         category.name,
         category.slug,
         category.slug,
@@ -556,7 +579,7 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
       `)
       .bind(
         item.id,
-        demoHousehold.id,
+        defaultHousehold.id,
         item.sourceType,
         item.sourceLabel,
         item.importedAt,
@@ -584,7 +607,7 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
 
       await db
         .prepare("INSERT INTO transfer_groups (id, household_id, note, matched_confidence) VALUES (?, ?, ?, ?)")
-        .bind(groupId, demoHousehold.id, "Demo seeded transfer pair", 1)
+        .bind(groupId, defaultHousehold.id, "Demo seeded transfer pair", 1)
         .run();
     }
   }
@@ -603,16 +626,16 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
       `)
       .bind(
         row.id,
-        demoHousehold.id,
+        defaultHousehold.id,
         planYear,
         planMonth,
         row.ownerName ? PERSON_IDS[row.ownerName] ?? null : null,
         row.ownershipType,
         row.section,
-        findCategoryId(row.categoryName),
+        findSeedCategoryId(row.categoryName),
         row.label,
         planDate,
-        findAccountId(row.accountName),
+        findSeedAccountId(row.accountName),
         row.plannedMinor,
         row.actualMinor,
         row.note ?? null
@@ -663,13 +686,13 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
         `)
         .bind(
           row.id,
-          demoHousehold.id,
+          defaultHousehold.id,
           year,
           month,
           row.personId,
           "direct",
           "income",
-          findCategoryId(row.categoryName),
+          findSeedCategoryId(row.categoryName),
           row.label,
           null,
           null,
@@ -695,7 +718,7 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
         `)
         .bind(
           `snapshot-${personScope}-${month.month}`,
-          demoHousehold.id,
+          defaultHousehold.id,
           year,
           monthNumber,
           personScope,
@@ -723,8 +746,8 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
       `)
       .bind(
         entry.id,
-        demoHousehold.id,
-        findAccountId(entry.accountName),
+        defaultHousehold.id,
+        findSeedAccountId(entry.accountName),
         transferGroupIdByTransactionId.get(entry.id) ?? null,
         entry.date,
         entry.description,
@@ -732,7 +755,7 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
         "SGD",
         entry.entryType,
         entry.transferDirection ?? null,
-        findCategoryId(entry.categoryName),
+        findSeedCategoryId(entry.categoryName),
         entry.ownershipType,
         directOwnerId,
         entry.offsetsCategory ? 1 : 0,
@@ -797,7 +820,7 @@ async function seedDemoSplitData(db: D1Database) {
           id, household_id, split_group_id, batch_name, opened_on, closed_on
         ) VALUES (?, ?, ?, ?, ?, ?)
       `)
-      .bind(batch.id, DEMO_HOUSEHOLD_ID, batch.groupId, batch.name, batch.openedOn, batch.closedOn)
+      .bind(batch.id, DEFAULT_HOUSEHOLD_ID, batch.groupId, batch.name, batch.openedOn, batch.closedOn)
       .run();
   }
 
@@ -813,7 +836,7 @@ async function seedDemoSplitData(db: D1Database) {
           id, household_id, group_name, icon_key, sort_order
         ) VALUES (?, ?, ?, ?, ?)
       `)
-      .bind(group.id, DEMO_HOUSEHOLD_ID, group.name, group.iconKey, group.sortOrder)
+      .bind(group.id, DEFAULT_HOUSEHOLD_ID, group.name, group.iconKey, group.sortOrder)
       .run();
   }
 
@@ -863,13 +886,13 @@ async function seedDemoSplitData(db: D1Database) {
       `)
       .bind(
         expense.id,
-        DEMO_HOUSEHOLD_ID,
+        DEFAULT_HOUSEHOLD_ID,
         expense.groupId,
         expense.batchId,
         expense.payerPersonId,
         expense.date,
         expense.description,
-        findCategoryId(expense.categoryName),
+        findSeedCategoryId(expense.categoryName),
         expense.totalAmountMinor,
         expense.note
       )
@@ -909,7 +932,7 @@ async function seedDemoSplitData(db: D1Database) {
     `)
     .bind(
       "split-settlement-okaeri",
-      DEMO_HOUSEHOLD_ID,
+      DEFAULT_HOUSEHOLD_ID,
       "split-group-okaeri",
       "split-batch-okaeri-closed",
       "person-joyce",
@@ -932,7 +955,7 @@ export async function duplicateMonthPlan(db: D1Database, sourceMonth: string) {
       FROM monthly_plan_rows
       WHERE household_id = ? AND year = ? AND month = ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID, targetYear, targetMonthNumber)
+    .bind(DEFAULT_HOUSEHOLD_ID, targetYear, targetMonthNumber)
     .first<{ count: number }>();
 
   if ((existingTarget?.count ?? 0) > 0) {
@@ -948,7 +971,7 @@ export async function duplicateMonthPlan(db: D1Database, sourceMonth: string) {
       WHERE household_id = ? AND year = ? AND month = ?
       ORDER BY created_at
     `)
-    .bind(DEMO_HOUSEHOLD_ID, sourceYear, sourceMonthNumber)
+    .bind(DEFAULT_HOUSEHOLD_ID, sourceYear, sourceMonthNumber)
     .all<{
       id: string;
       person_id: string | null;
@@ -1002,7 +1025,7 @@ export async function duplicateMonthPlan(db: D1Database, sourceMonth: string) {
       `)
       .bind(
         nextId,
-        DEMO_HOUSEHOLD_ID,
+        DEFAULT_HOUSEHOLD_ID,
         targetYear,
         targetMonthNumber,
         row.person_id,
@@ -1055,7 +1078,7 @@ export async function duplicateMonthPlan(db: D1Database, sourceMonth: string) {
       `)
       .bind(
         `snapshot-${personScope}-${targetMonth}`,
-        DEMO_HOUSEHOLD_ID,
+        DEFAULT_HOUSEHOLD_ID,
         targetYear,
         targetMonthNumber,
         personScope,
@@ -1097,7 +1120,7 @@ export async function resetMonthPlan(db: D1Database, month: string) {
       `)
       .bind(
         `snapshot-${personScope}-${month}`,
-        DEMO_HOUSEHOLD_ID,
+        DEFAULT_HOUSEHOLD_ID,
         year,
         monthNumber,
         personScope,
@@ -1126,7 +1149,7 @@ export async function deleteMonthPlan(db: D1Database, month: string) {
         AND year = ?
         AND month = ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID, year, monthNumber)
+    .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber)
     .run();
 
   return { month, deleted: true };
@@ -1151,7 +1174,7 @@ export async function updateEntryRecord(
 ) {
   const account = await db
     .prepare("SELECT id FROM accounts WHERE household_id = ? AND account_name = ?")
-    .bind(DEMO_HOUSEHOLD_ID, input.accountName)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.accountName)
     .first<{ id: string }>();
 
   if (!account) {
@@ -1160,7 +1183,7 @@ export async function updateEntryRecord(
 
   const category = await db
     .prepare("SELECT id FROM categories WHERE household_id = ? AND name = ?")
-    .bind(DEMO_HOUSEHOLD_ID, input.categoryName)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.categoryName)
     .first<{ id: string }>();
 
   if (!category) {
@@ -1171,7 +1194,7 @@ export async function updateEntryRecord(
   if (input.ownershipType === "direct") {
     const owner = await db
       .prepare("SELECT id FROM people WHERE household_id = ? AND display_name = ?")
-      .bind(DEMO_HOUSEHOLD_ID, input.ownerName ?? "")
+      .bind(DEFAULT_HOUSEHOLD_ID, input.ownerName ?? "")
       .first<{ id: string }>();
 
     if (!owner) {
@@ -1183,7 +1206,7 @@ export async function updateEntryRecord(
 
   const transaction = await db
     .prepare("SELECT amount_minor, transaction_date, transfer_group_id, transfer_direction, entry_type FROM transactions WHERE id = ? AND household_id = ?")
-    .bind(input.entryId, DEMO_HOUSEHOLD_ID)
+    .bind(input.entryId, DEFAULT_HOUSEHOLD_ID)
     .first<{ amount_minor: number; transaction_date: string; transfer_group_id: string | null; transfer_direction: "in" | "out" | null; entry_type: "expense" | "income" | "transfer" }>();
 
   if (!transaction) {
@@ -1229,18 +1252,18 @@ export async function updateEntryRecord(
       ownerPersonId,
       input.note ?? null,
       input.entryId,
-      DEMO_HOUSEHOLD_ID
+      DEFAULT_HOUSEHOLD_ID
     )
     .run();
 
   if (resolvedEntryType !== "transfer" && transaction.transfer_group_id) {
     await db
       .prepare("UPDATE transactions SET transfer_group_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE household_id = ? AND transfer_group_id = ?")
-      .bind(DEMO_HOUSEHOLD_ID, transaction.transfer_group_id)
+      .bind(DEFAULT_HOUSEHOLD_ID, transaction.transfer_group_id)
       .run();
     await db
       .prepare("DELETE FROM transfer_groups WHERE household_id = ? AND id = ?")
-      .bind(DEMO_HOUSEHOLD_ID, transaction.transfer_group_id)
+      .bind(DEFAULT_HOUSEHOLD_ID, transaction.transfer_group_id)
       .run();
   }
 
@@ -1266,7 +1289,7 @@ export async function updateEntryRecord(
   if (input.ownershipType === "shared") {
     const people = await db
       .prepare("SELECT id FROM people WHERE household_id = ? ORDER BY created_at LIMIT 2")
-      .bind(DEMO_HOUSEHOLD_ID)
+      .bind(DEFAULT_HOUSEHOLD_ID)
       .all<{ id: string }>();
 
     const [firstPerson, secondPerson] = people.results;
@@ -1328,7 +1351,7 @@ export async function updateEntryClassificationRecord(
 ) {
   const transaction = await db
     .prepare("SELECT transfer_group_id, entry_type, description, transaction_date FROM transactions WHERE id = ? AND household_id = ?")
-    .bind(input.entryId, DEMO_HOUSEHOLD_ID)
+    .bind(input.entryId, DEFAULT_HOUSEHOLD_ID)
     .first<{ transfer_group_id: string | null; entry_type: "expense" | "income" | "transfer"; description: string; transaction_date: string }>();
 
   if (!transaction) {
@@ -1337,7 +1360,7 @@ export async function updateEntryClassificationRecord(
 
   const category = await db
     .prepare("SELECT id FROM categories WHERE household_id = ? AND name = ?")
-    .bind(DEMO_HOUSEHOLD_ID, input.categoryName)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.categoryName)
     .first<{ id: string }>();
 
   if (!category) {
@@ -1358,17 +1381,17 @@ export async function updateEntryClassificationRecord(
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND household_id = ?
     `)
-    .bind(input.entryType, nextTransferDirection, nextTransferGroupId, category.id, input.entryId, DEMO_HOUSEHOLD_ID)
+    .bind(input.entryType, nextTransferDirection, nextTransferGroupId, category.id, input.entryId, DEFAULT_HOUSEHOLD_ID)
     .run();
 
   if (input.entryType !== "transfer" && transaction.transfer_group_id) {
     await db
       .prepare("UPDATE transactions SET transfer_group_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE household_id = ? AND transfer_group_id = ?")
-      .bind(DEMO_HOUSEHOLD_ID, transaction.transfer_group_id)
+      .bind(DEFAULT_HOUSEHOLD_ID, transaction.transfer_group_id)
       .run();
     await db
       .prepare("DELETE FROM transfer_groups WHERE household_id = ? AND id = ?")
-      .bind(DEMO_HOUSEHOLD_ID, transaction.transfer_group_id)
+      .bind(DEFAULT_HOUSEHOLD_ID, transaction.transfer_group_id)
       .run();
   }
 
@@ -1421,7 +1444,7 @@ export async function createEntryRecord(
     `)
     .bind(
       entryId,
-      DEMO_HOUSEHOLD_ID,
+      DEFAULT_HOUSEHOLD_ID,
       accountId,
       input.date,
       input.description,
@@ -1473,7 +1496,7 @@ export async function linkTransferPair(
         FROM transactions
         WHERE id = ? AND household_id = ?
       `)
-      .bind(input.fromEntryId, DEMO_HOUSEHOLD_ID)
+      .bind(input.fromEntryId, DEFAULT_HOUSEHOLD_ID)
       .first<{ id: string; household_id: string; amount_minor: number; transfer_group_id: string | null; transaction_date: string }>(),
     db
       .prepare(`
@@ -1481,7 +1504,7 @@ export async function linkTransferPair(
         FROM transactions
         WHERE id = ? AND household_id = ?
       `)
-      .bind(input.toEntryId, DEMO_HOUSEHOLD_ID)
+      .bind(input.toEntryId, DEFAULT_HOUSEHOLD_ID)
       .first<{ id: string; household_id: string; amount_minor: number; transfer_group_id: string | null; transaction_date: string }>()
   ]);
 
@@ -1495,7 +1518,7 @@ export async function linkTransferPair(
 
   const transferCategory = await db
     .prepare("SELECT id FROM categories WHERE household_id = ? AND name = ?")
-    .bind(DEMO_HOUSEHOLD_ID, "Transfer")
+    .bind(DEFAULT_HOUSEHOLD_ID, "Transfer")
     .first<{ id: string }>();
 
   if (!transferCategory) {
@@ -1506,18 +1529,18 @@ export async function linkTransferPair(
   for (const groupId of staleGroupIds) {
     await db
       .prepare("UPDATE transactions SET transfer_group_id = NULL WHERE household_id = ? AND transfer_group_id = ?")
-      .bind(DEMO_HOUSEHOLD_ID, groupId)
+      .bind(DEFAULT_HOUSEHOLD_ID, groupId)
       .run();
     await db
       .prepare("DELETE FROM transfer_groups WHERE household_id = ? AND id = ?")
-      .bind(DEMO_HOUSEHOLD_ID, groupId)
+      .bind(DEFAULT_HOUSEHOLD_ID, groupId)
       .run();
   }
 
   const groupId = `tg-${crypto.randomUUID()}`;
   await db
     .prepare("INSERT INTO transfer_groups (id, household_id, note, matched_confidence) VALUES (?, ?, ?, ?)")
-    .bind(groupId, DEMO_HOUSEHOLD_ID, "Linked from entries editor", 1)
+    .bind(groupId, DEFAULT_HOUSEHOLD_ID, "Linked from entries editor", 1)
     .run();
 
   await Promise.all([
@@ -1533,7 +1556,7 @@ export async function linkTransferPair(
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ? AND household_id = ?
       `)
-      .bind(groupId, transferCategory.id, input.fromEntryId, DEMO_HOUSEHOLD_ID)
+      .bind(groupId, transferCategory.id, input.fromEntryId, DEFAULT_HOUSEHOLD_ID)
       .run(),
     db
       .prepare(`
@@ -1547,7 +1570,7 @@ export async function linkTransferPair(
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ? AND household_id = ?
       `)
-      .bind(groupId, transferCategory.id, input.toEntryId, DEMO_HOUSEHOLD_ID)
+      .bind(groupId, transferCategory.id, input.toEntryId, DEFAULT_HOUSEHOLD_ID)
       .run()
   ]);
 
@@ -1582,7 +1605,7 @@ export async function settleTransferPair(
         FROM transactions
         WHERE id = ? AND household_id = ?
       `)
-      .bind(input.entryId, DEMO_HOUSEHOLD_ID)
+      .bind(input.entryId, DEFAULT_HOUSEHOLD_ID)
       .first<{ id: string; household_id: string; transfer_group_id: string | null; transfer_direction: "in" | "out" | null; transaction_date: string }>(),
     input.counterpartEntryId
       ? db
@@ -1591,7 +1614,7 @@ export async function settleTransferPair(
             FROM transactions
             WHERE id = ? AND household_id = ?
           `)
-          .bind(input.counterpartEntryId, DEMO_HOUSEHOLD_ID)
+          .bind(input.counterpartEntryId, DEFAULT_HOUSEHOLD_ID)
           .first<{ id: string; household_id: string; transfer_group_id: string | null; transfer_direction: "in" | "out" | null; transaction_date: string }>()
       : Promise.resolve(null)
   ]);
@@ -1609,13 +1632,13 @@ export async function settleTransferPair(
         WHERE household_id = ? AND transfer_group_id = ? AND id != ?
         LIMIT 1
       `)
-      .bind(DEMO_HOUSEHOLD_ID, currentEntry.transfer_group_id, currentEntry.id)
+      .bind(DEFAULT_HOUSEHOLD_ID, currentEntry.transfer_group_id, currentEntry.id)
       .first<{ id: string; household_id: string; transfer_group_id: string | null; transfer_direction: "in" | "out" | null; transaction_date: string }>();
   }
 
   const currentCategory = await db
     .prepare("SELECT id FROM categories WHERE household_id = ? AND name = ?")
-    .bind(DEMO_HOUSEHOLD_ID, input.currentCategoryName)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.currentCategoryName)
     .first<{ id: string }>();
 
   if (!currentCategory) {
@@ -1626,7 +1649,7 @@ export async function settleTransferPair(
   if (counterpartEntry) {
     const counterpartCategory = await db
       .prepare("SELECT id FROM categories WHERE household_id = ? AND name = ?")
-      .bind(DEMO_HOUSEHOLD_ID, input.counterpartCategoryName ?? "Other")
+      .bind(DEFAULT_HOUSEHOLD_ID, input.counterpartCategoryName ?? "Other")
       .first<{ id: string }>();
 
     if (!counterpartCategory) {
@@ -1651,7 +1674,7 @@ export async function settleTransferPair(
       currentEntry.transfer_direction === "in" ? "income" : "expense",
       currentCategory.id,
       currentEntry.id,
-      DEMO_HOUSEHOLD_ID
+      DEFAULT_HOUSEHOLD_ID
     )
     .run();
 
@@ -1671,7 +1694,7 @@ export async function settleTransferPair(
         counterpartEntry.transfer_direction === "in" ? "income" : "expense",
         counterpartCategoryId,
         counterpartEntry.id,
-        DEMO_HOUSEHOLD_ID
+        DEFAULT_HOUSEHOLD_ID
       )
       .run();
   }
@@ -1680,7 +1703,7 @@ export async function settleTransferPair(
   for (const groupId of groupIds) {
     await db
       .prepare("DELETE FROM transfer_groups WHERE household_id = ? AND id = ?")
-      .bind(DEMO_HOUSEHOLD_ID, groupId)
+      .bind(DEFAULT_HOUSEHOLD_ID, groupId)
       .run();
   }
 
@@ -1714,7 +1737,7 @@ export async function updateMonthlySnapshotNote(
       FROM monthly_snapshots
       WHERE household_id = ? AND year = ? AND month = ? AND person_scope = ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID, year, monthNumber, input.personScope)
+    .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber, input.personScope)
     .first<{ id: string }>();
 
   if (existing) {
@@ -1724,7 +1747,7 @@ export async function updateMonthlySnapshotNote(
         SET note = ?
         WHERE household_id = ? AND year = ? AND month = ? AND person_scope = ?
       `)
-      .bind(input.note, DEMO_HOUSEHOLD_ID, year, monthNumber, input.personScope)
+      .bind(input.note, DEFAULT_HOUSEHOLD_ID, year, monthNumber, input.personScope)
       .run();
 
     return { month: input.month, personScope: input.personScope, updated: true };
@@ -1740,7 +1763,7 @@ export async function updateMonthlySnapshotNote(
     `)
     .bind(
       `snapshot-${input.personScope}-${input.month}`,
-      DEMO_HOUSEHOLD_ID,
+      DEFAULT_HOUSEHOLD_ID,
       year,
       monthNumber,
       input.personScope,
@@ -1781,7 +1804,7 @@ export async function saveMonthPlanRow(
       FROM monthly_plan_rows
       WHERE household_id = ? AND id = ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID, input.rowId)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.rowId)
     .first<{ actual_amount_minor: number }>();
 
   if (existing) {
@@ -1814,7 +1837,7 @@ export async function saveMonthPlanRow(
         input.sectionKey === "planned_items" ? accountId : null,
         input.plannedMinor,
         input.note ?? null,
-        DEMO_HOUSEHOLD_ID,
+        DEFAULT_HOUSEHOLD_ID,
         input.rowId
       )
       .run();
@@ -1829,7 +1852,7 @@ export async function saveMonthPlanRow(
       `)
       .bind(
         input.rowId,
-        DEMO_HOUSEHOLD_ID,
+        DEFAULT_HOUSEHOLD_ID,
         year,
         monthNumber,
         personId,
@@ -1877,7 +1900,7 @@ export async function saveMonthPlanEntryLinks(
       FROM monthly_plan_rows
       WHERE household_id = ? AND id = ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID, input.rowId)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.rowId)
     .first<{
       section_key: "income" | "planned_items" | "budget_buckets";
       person_id: string | null;
@@ -1902,7 +1925,7 @@ export async function saveMonthPlanEntryLinks(
           AND entry_type = 'expense'
           AND id IN (${placeholders})
       `)
-      .bind(DEMO_HOUSEHOLD_ID, ...uniqueTransactionIds)
+      .bind(DEFAULT_HOUSEHOLD_ID, ...uniqueTransactionIds)
       .all<{ id: string }>();
     const validIds = new Set(validTransactions.results.map((transaction) => transaction.id));
     const invalid = uniqueTransactionIds.find((transactionId) => !validIds.has(transactionId));
@@ -1924,7 +1947,7 @@ export async function saveMonthPlanEntryLinks(
           WHERE transactions.household_id = ?
             AND transactions.id IN (${uniqueTransactionIds.map(() => "?").join(", ")})
         `)
-        .bind(DEMO_HOUSEHOLD_ID, ...uniqueTransactionIds)
+        .bind(DEFAULT_HOUSEHOLD_ID, ...uniqueTransactionIds)
         .all<{
           id: string;
           description: string;
@@ -1965,7 +1988,7 @@ export async function saveMonthPlanEntryLinks(
       `)
       .bind(
         `mpmh-${slugify([row.person_id ?? "household", row.category_id ?? "any-category", transaction.account_id ?? "any-account", labelNormalized, descriptionPattern].join("-"))}`,
-        DEMO_HOUSEHOLD_ID,
+        DEFAULT_HOUSEHOLD_ID,
         row.person_id,
         transaction.category_id ?? row.category_id,
         transaction.account_id ?? row.account_id,
@@ -1999,7 +2022,7 @@ export async function deleteMonthPlanRow(
 
   await db
     .prepare("DELETE FROM monthly_plan_rows WHERE household_id = ? AND id = ?")
-    .bind(DEMO_HOUSEHOLD_ID, input.rowId)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.rowId)
     .run();
 
   await recalculateMonthlySnapshots(db, input.month);
@@ -2018,7 +2041,7 @@ async function clearMonthData(db: D1Database, month: string, year: number, month
           AND transaction_date < ?
       )
     `)
-    .bind(DEMO_HOUSEHOLD_ID, `${month}-01`, nextMonthKey(month) + "-01")
+    .bind(DEFAULT_HOUSEHOLD_ID, `${month}-01`, nextMonthKey(month) + "-01")
     .run();
 
   await db
@@ -2032,7 +2055,7 @@ async function clearMonthData(db: D1Database, month: string, year: number, month
           AND transaction_date < ?
       )
     `)
-    .bind(DEMO_HOUSEHOLD_ID, `${month}-01`, nextMonthKey(month) + "-01")
+    .bind(DEFAULT_HOUSEHOLD_ID, `${month}-01`, nextMonthKey(month) + "-01")
     .run();
 
   await db
@@ -2042,7 +2065,7 @@ async function clearMonthData(db: D1Database, month: string, year: number, month
         AND transaction_date >= ?
         AND transaction_date < ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID, `${month}-01`, nextMonthKey(month) + "-01")
+    .bind(DEFAULT_HOUSEHOLD_ID, `${month}-01`, nextMonthKey(month) + "-01")
     .run();
 
   await db
@@ -2056,7 +2079,7 @@ async function clearMonthData(db: D1Database, month: string, year: number, month
           AND month = ?
       )
     `)
-    .bind(DEMO_HOUSEHOLD_ID, year, monthNumber)
+    .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber)
     .run();
 
   await db
@@ -2070,7 +2093,7 @@ async function clearMonthData(db: D1Database, month: string, year: number, month
           AND month = ?
       )
     `)
-    .bind(DEMO_HOUSEHOLD_ID, year, monthNumber)
+    .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber)
     .run();
 
   await db
@@ -2080,7 +2103,7 @@ async function clearMonthData(db: D1Database, month: string, year: number, month
         AND year = ?
         AND month = ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID, year, monthNumber)
+    .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber)
     .run();
 }
 
@@ -2104,22 +2127,22 @@ export async function commitImportBatch(
         id, household_id, source_type, source_label, parser_key, imported_at, status, note
       ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'draft', ?)
     `)
-    .bind(importId, DEMO_HOUSEHOLD_ID, input.sourceType ?? "csv", input.sourceLabel, input.parserKey ?? "generic_csv", input.note ?? null)
+    .bind(importId, DEFAULT_HOUSEHOLD_ID, input.sourceType ?? "csv", input.sourceLabel, input.parserKey ?? "generic_csv", input.note ?? null)
     .run();
 
   try {
     const [accountRows, categoryRows, personRows] = await Promise.all([
       db
         .prepare("SELECT id, account_name FROM accounts WHERE household_id = ?")
-        .bind(DEMO_HOUSEHOLD_ID)
+        .bind(DEFAULT_HOUSEHOLD_ID)
         .all<{ id: string; account_name: string }>(),
       db
         .prepare("SELECT id, name FROM categories WHERE household_id = ?")
-        .bind(DEMO_HOUSEHOLD_ID)
+        .bind(DEFAULT_HOUSEHOLD_ID)
         .all<{ id: string; name: string }>(),
       db
         .prepare("SELECT id, display_name FROM people WHERE household_id = ? ORDER BY created_at")
-        .bind(DEMO_HOUSEHOLD_ID)
+        .bind(DEFAULT_HOUSEHOLD_ID)
         .all<{ id: string; display_name: string }>()
     ]);
     const accountIdsByName = new Map(accountRows.results.map((account) => [account.account_name, account.id]));
@@ -2173,7 +2196,7 @@ export async function commitImportBatch(
           `)
           .bind(
             transactionId,
-            DEMO_HOUSEHOLD_ID,
+            DEFAULT_HOUSEHOLD_ID,
             importId,
             rowId,
             accountId,
@@ -2256,7 +2279,7 @@ export async function commitImportBatch(
           `)
           .bind(
             `checkpoint-${crypto.randomUUID()}`,
-            DEMO_HOUSEHOLD_ID,
+            DEFAULT_HOUSEHOLD_ID,
             accountId,
             checkpoint.checkpointMonth,
             normalizeStatementDate(checkpoint.statementStartDate),
@@ -2273,7 +2296,7 @@ export async function commitImportBatch(
 
     await db
       .prepare("UPDATE imports SET status = 'completed' WHERE household_id = ? AND id = ?")
-      .bind(DEMO_HOUSEHOLD_ID, importId)
+      .bind(DEFAULT_HOUSEHOLD_ID, importId)
       .run();
 
     for (const month of monthsToRecalculate) {
@@ -2283,7 +2306,7 @@ export async function commitImportBatch(
     await cleanupImportBatchRows(db, importId);
     await db
       .prepare("UPDATE imports SET status = 'rolled_back' WHERE household_id = ? AND id = ?")
-      .bind(DEMO_HOUSEHOLD_ID, importId)
+      .bind(DEFAULT_HOUSEHOLD_ID, importId)
       .run();
     throw error;
   }
@@ -2310,14 +2333,14 @@ export async function rollbackImportBatch(
       FROM transactions
       WHERE household_id = ? AND import_id = ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID, input.importId)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.importId)
     .all<{ transaction_date: string }>();
 
   await cleanupImportBatchRows(db, input.importId);
 
   await db
     .prepare("UPDATE imports SET status = 'rolled_back' WHERE household_id = ? AND id = ?")
-    .bind(DEMO_HOUSEHOLD_ID, input.importId)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.importId)
     .run();
 
   const affectedMonths = Array.from(new Set(transactionMonths.results.map((row) => row.transaction_date.slice(0, 7))));
@@ -2343,12 +2366,12 @@ async function cleanupImportBatchRows(db: D1Database, importId: string) {
         SELECT id FROM transactions WHERE household_id = ? AND import_id = ?
       )
     `)
-    .bind(DEMO_HOUSEHOLD_ID, importId)
+    .bind(DEFAULT_HOUSEHOLD_ID, importId)
     .run();
 
   await db
     .prepare("DELETE FROM transactions WHERE household_id = ? AND import_id = ?")
-    .bind(DEMO_HOUSEHOLD_ID, importId)
+    .bind(DEFAULT_HOUSEHOLD_ID, importId)
     .run();
 
   await db
@@ -2358,7 +2381,7 @@ async function cleanupImportBatchRows(db: D1Database, importId: string) {
         SELECT id FROM imports WHERE household_id = ? AND id = ?
       )
     `)
-    .bind(DEMO_HOUSEHOLD_ID, importId)
+    .bind(DEFAULT_HOUSEHOLD_ID, importId)
     .run();
 }
 
@@ -2373,7 +2396,7 @@ async function recalculateMonthlySnapshots(db: D1Database, month: string) {
         FROM monthly_snapshots
         WHERE household_id = ? AND year = ? AND month = ?
       `)
-      .bind(DEMO_HOUSEHOLD_ID, year, monthNumber)
+      .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber)
       .all<{ person_scope: string; note: string | null }>()
   ]);
 
@@ -2414,7 +2437,7 @@ async function recalculateMonthlySnapshots(db: D1Database, month: string) {
       `)
       .bind(
         `snapshot-${scope.key}-${month}`,
-        DEMO_HOUSEHOLD_ID,
+        DEFAULT_HOUSEHOLD_ID,
         year,
         monthNumber,
         scope.key,

@@ -99,6 +99,10 @@ That distinction matters because the system needs to answer questions like:
 - the settings screen groups demo metadata such as salary-per-person, current
   mode, and reseed timestamp under a collapsible demo-state section
 - the settings screen can reseed the believable default demo and refresh the bootstrap
+- a fresh database defaults to empty-state mode; bootstrap only ensures the
+  household, people, and default category catalog exist, so account balances,
+  entries, imports, checkpoints, month plans, snapshots, and split records stay
+  blank until the user creates or imports them
 - household member names are editable in Settings and propagate through person
   views, split labels, and ownership UI
 - empty-state mode seeds neutral default member names so blank-state behavior

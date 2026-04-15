@@ -1,4 +1,4 @@
-import { accounts as demoAccounts, categories as demoCategories } from "./demo-data";
+import { getCurrentMonthKey } from "../lib/month";
 import type {
   AccountDto,
   EntryDto,
@@ -202,7 +202,7 @@ export function buildPlanDate(month: string, dayLabel?: string) {
 
 export function inferMonthKeyFromPlanRow(id: string) {
   const match = id.match(/plan-(\d{4}-\d{2})-/);
-  return match?.[1] ?? "2025-10";
+  return match?.[1] ?? getCurrentMonthKey();
 }
 
 export function nextMonthKey(month: string) {
@@ -279,22 +279,6 @@ export function mapAccountKind(kind: string) {
     default:
       return "bank";
   }
-}
-
-export function findAccountId(accountName?: string) {
-  if (!accountName) {
-    return null;
-  }
-
-  return demoAccounts.find((account) => account.name === accountName)?.id ?? null;
-}
-
-export function findCategoryId(categoryName?: string) {
-  if (!categoryName) {
-    return null;
-  }
-
-  return demoCategories.find((category) => category.name === categoryName)?.id ?? null;
 }
 
 export function normalizeImportRow(rawRow: Record<string, string>) {

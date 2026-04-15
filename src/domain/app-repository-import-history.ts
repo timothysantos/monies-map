@@ -1,8 +1,6 @@
-import { household as demoHousehold } from "./demo-data";
+import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { hasSetIntersection } from "./app-repository-helpers";
 import type { ImportBatchDto } from "../types/dto";
-
-const DEMO_HOUSEHOLD_ID = demoHousehold.id;
 
 export async function loadImportBatches(db: D1Database): Promise<ImportBatchDto[]> {
   const result = await db
@@ -24,7 +22,7 @@ export async function loadImportBatches(db: D1Database): Promise<ImportBatchDto[
       GROUP BY imports.id, imports.source_label, imports.source_type, imports.imported_at, imports.status, imports.note
       ORDER BY imports.imported_at DESC
     `)
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{
       id: string;
       source_label: string;
@@ -45,7 +43,7 @@ export async function loadImportBatches(db: D1Database): Promise<ImportBatchDto[
       LEFT JOIN accounts ON accounts.id = transactions.account_id
       WHERE imports.household_id = ?
     `)
-    .bind(DEMO_HOUSEHOLD_ID)
+    .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{ import_id: string; account_id: string | null; account_name: string | null }>();
 
   const accountIdsByImportId = new Map<string, Set<string>>();

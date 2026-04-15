@@ -1,10 +1,9 @@
-import { household as demoHousehold } from "./demo-data";
+import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { getMonthBounds, groupSplits } from "./app-repository-helpers";
+import { getCurrentMonthKey } from "../lib/month";
 import type { EntryDto, LinkedTransferDto } from "../types/dto";
 
-const DEMO_HOUSEHOLD_ID = demoHousehold.id;
-
-export async function loadEntries(db: D1Database, month = "2025-10"): Promise<EntryDto[]> {
+export async function loadEntries(db: D1Database, month = getCurrentMonthKey()): Promise<EntryDto[]> {
   const [monthStart, nextMonth] = getMonthBounds(month);
   return loadEntriesForDateRange(db, monthStart, nextMonth);
 }
@@ -48,7 +47,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
         AND (transactions.import_id IS NULL OR imports.status = 'completed')
       ORDER BY transactions.transaction_date, transactions.created_at
     `)
-    .bind(DEMO_HOUSEHOLD_ID, monthStart, nextMonth)
+    .bind(DEFAULT_HOUSEHOLD_ID, monthStart, nextMonth)
     .all<{
       id: string;
       transaction_date: string;
@@ -81,7 +80,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
         AND transactions.transaction_date < ?
       ORDER BY transaction_splits.created_at
     `)
-    .bind(DEMO_HOUSEHOLD_ID, monthStart, nextMonth)
+    .bind(DEFAULT_HOUSEHOLD_ID, monthStart, nextMonth)
     .all<{
       transaction_id: string;
       person_id: string;

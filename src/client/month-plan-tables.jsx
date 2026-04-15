@@ -43,7 +43,7 @@ export function MonthPlanStack({
   onSortChange,
   onCategoryAppearanceChange
 }) {
-  const sortedIncomeRows = sortRows(incomeRows, tableSorts.income);
+  const sortedIncomeRows = sortRows(incomeRows, tableSorts.income, monthKey);
   const sortedSections = [...planSections].sort((left, right) => SECTION_ORDER[left.key] - SECTION_ORDER[right.key]);
 
   return (
