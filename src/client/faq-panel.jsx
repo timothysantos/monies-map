@@ -41,17 +41,22 @@ export function FaqPanel({ viewLabel }) {
                 ))}
               </div>
             ) : (
-              section.blocks.map((block, index) => (
-                block.type === "list" ? (
-                  <ul key={`${section.title}-${index}`}>
-                    {block.items.map((item) => (
-                      <li key={item}>{renderInlineMarkdown(item)}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p key={`${section.title}-${index}`}>{renderInlineMarkdown(block.text)}</p>
-                )
-              ))
+              section.blocks.map((block, index) => {
+                if (block.type === "subheading") {
+                  return <h4 key={`${section.title}-${index}`}>{renderInlineMarkdown(block.text)}</h4>;
+                }
+                if (block.type === "list") {
+                  const ListTag = block.ordered ? "ol" : "ul";
+                  return (
+                    <ListTag key={`${section.title}-${index}`}>
+                      {block.items.map((item) => (
+                        <li key={item}>{renderInlineMarkdown(item)}</li>
+                      ))}
+                    </ListTag>
+                  );
+                }
+                return <p key={`${section.title}-${index}`}>{renderInlineMarkdown(block.text)}</p>;
+              })
             )}
           </article>
         ))}
@@ -66,6 +71,7 @@ function parseFaqMarkdown(markdown) {
   let currentSection = null;
   let paragraphLines = [];
   let listItems = [];
+  let isOrderedList = false;
 
   function flushParagraph() {
     if (!currentSection || !paragraphLines.length) {
@@ -79,8 +85,9 @@ function parseFaqMarkdown(markdown) {
     if (!currentSection || !listItems.length) {
       return;
     }
-    currentSection.blocks.push({ type: "list", items: [...listItems] });
+    currentSection.blocks.push({ type: "list", ordered: isOrderedList, items: [...listItems] });
     listItems = [];
+    isOrderedList = false;
   }
 
   for (const rawLine of lines) {
@@ -99,9 +106,33 @@ function parseFaqMarkdown(markdown) {
       continue;
     }
 
+    if (line.startsWith("### ")) {
+      flushParagraph();
+      flushList();
+      if (currentSection) {
+        currentSection.blocks.push({ type: "subheading", text: line.slice(4).trim() });
+      }
+      continue;
+    }
+
     if (line.startsWith("- ")) {
       flushParagraph();
+      if (listItems.length && isOrderedList) {
+        flushList();
+      }
+      isOrderedList = false;
       listItems.push(line.slice(2).trim());
+      continue;
+    }
+
+    const orderedMatch = line.match(/^\d+\.\s+(.+)$/);
+    if (orderedMatch) {
+      flushParagraph();
+      if (listItems.length && !isOrderedList) {
+        flushList();
+      }
+      isOrderedList = true;
+      listItems.push(orderedMatch[1].trim());
       continue;
     }
 

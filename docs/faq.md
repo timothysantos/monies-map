@@ -264,213 +264,292 @@ for local scripts, so run `nvm use` from the repo root and restart
 
 ## Can it know the real balance of each wallet?
 
-It can compute a running wallet balance from the ledger, but only from what has
-been imported locally.
+Yes, if the ledger is complete from a known starting point. The app does not
+connect directly to the bank, so it can only prove balances from rows you have
+entered or imported.
 
-Each account now has an opening balance. The displayed wallet total is:
+### What the wallet balance means
+
+Each account balance is calculated as:
 
 - opening balance
-- plus imported income
-- plus transfer-ins
+- plus income and transfer-ins
 - minus expenses and transfer-outs
 
-That makes balances internally consistent from a known starting point, but it
-is still not the same as live bank sync. If imports are incomplete, the app can
-still differ from the bank.
+This makes the app internally consistent. It can still differ from the bank if
+rows are missing, duplicated, assigned to the wrong account, or marked with the
+wrong direction.
 
-The app now supports statement checkpoints too. You can save a statement
-closing balance for an account, and the latest checkpoint is compared against
-the computed ledger. Statement start/end dates are optional: if they are blank,
-the app treats the checkpoint as a normal calendar month-end; if they are
-filled, the statement end date becomes the comparison cut-off for credit-card
-cycles that include prior-month rows. When a start date is filled, the app
-computes a baseline balance before that start date, then treats only start-to-end
-transactions as the statement cycle movement. Account health then shows whether
-the ledger matches, is off, or still needs a checkpoint. It also surfaces the
-latest import time and any unresolved transfers that could make a balance look
-wrong. If a checkpoint has a non-zero delta, you can download a CSV with the
-baseline row and the completed ledger rows inside that statement cycle.
-For credit cards, enter the statement as the bank-facing positive amount owed;
-the app normalizes it to the internal liability-negative ledger convention for
-comparison.
+### What statement checkpoints do
 
-Transfers are included in wallet balance and checkpoint calculations. Transfer
-ins increase the computed account balance, and transfer outs decrease it. The
-Entries page keeps `Spend` as category expense only, then shows `Outflow` to
-include expenses plus transfer-outs.
+A statement checkpoint is the bank's closing balance for one account and one
+statement period. Use it as the proof that the app ledger agrees with the bank.
 
-The import workflow now also flags possible duplicate rows already in the
-ledger and warns when the preview overlaps the date range of previous completed
-imports for the same accounts. Recent imports also show which completed batches
-overlap, so a first import for a different card is not flagged just because the
-dates cross. For supported PDFs, the preview also runs the statement balance
-check before commit; duplicate and overlap warnings are separate guardrails for
-catching common CSV and statement-import mistakes.
+- For bank accounts, this is usually a clean monthly period.
+- For credit cards, use the bank-facing positive amount owed. The app converts
+  it to the internal liability-negative balance for comparison.
+- If statement start/end dates are blank, the app treats the checkpoint as a
+  calendar month-end.
+- If start/end dates are filled, the app compares only that statement cycle.
 
-Those duplicate warnings are now a bit smarter than a raw exact hash check. The
-app shows both exact matches and near matches based on amount, account, date
-proximity, and description similarity so you can spot likely overlaps before
-committing a CSV.
+Account health then shows whether the latest checkpoint is matched, off by a
+delta, or missing. If there is a delta, you can download a CSV of the checkpoint
+period to inspect the ledger rows that make up the balance.
 
-Settings also shows a lightweight recent activity log for balance-affecting
-actions like imports, opening-balance edits, checkpoints, entry edits, and
-transfer link changes.
+### What to check when a balance looks wrong
 
-Each account’s reconciliation dialog also keeps checkpoint history, so you can
-review, edit, or delete more than the latest month-end proof. Unresolved
-transfers now have a larger review surface in Settings that links back into
-Entries for cleanup.
+Start with the account card in Settings:
 
-For an already-imported statement period with a mismatch, use Settings ->
-Accounts and choose Compare statement on the mismatched account. The same link
-is also available from the checkpoint history inside Reconcile; choosing it
-closes the dialog and opens a full-width comparison section below the account
-cards. Upload the bank statement there instead of importing it again. The
-section shows the checkpoint period before upload, then fills the uploaded
-statement period from the PDF after upload so you can confirm the right file and
-date range are being compared. It also shows the mismatched amount from the
-checkpoint delta. PDF comparison uses the same deterministic statement parser as
-the Imports page, including account-section scoping for multi-card statements.
-When a checkpoint has no explicit start date, the comparison uses the uploaded
-PDF statement period when available, then falls back to the first day of the
-checkpoint month so earlier ledger rows do not appear as statement differences.
-The comparison treats the statement as evidence only: it matches statement rows
-against the committed ledger rows for that checkpoint period, then lists rows
-that are in the statement but not the ledger, rows that are in the ledger but
-not the statement, and possible near matches. This is a better word than
-“error” for the UI because the difference could be a missing row, duplicate
-manual row, wrong account, posting-date shift, or period-boundary issue.
-Near matches include same-amount rows with opposite income/expense direction,
-because those explain a checkpoint delta without meaning the transaction is
-actually absent from the ledger. The comparison also includes a duplicate check
-for same-date, same-amount, same-description rows on both the uploaded statement
-and the committed ledger, so a mismatch can be separated into missing rows,
-extra rows, direction mistakes, and duplicate-looking rows.
-Direction mistakes can be fixed inline from the comparison panel; the action
-updates only the existing ledger row's type, direction, and category, then
-updates the comparison result without requiring the statement PDF to be uploaded
-again.
-Rows that are present in the statement but missing from the ledger can be added
-from that comparison section; the add-entry popover is prefilled from the
-statement row and the compared account.
+1. Check whether the account has the right opening balance.
+2. Check whether the latest statement checkpoint exists.
+3. Check whether there are unresolved transfers.
+4. Check recent imports and overlap warnings.
+5. Use Compare statement if the mismatch belongs to a specific bank statement.
 
-## Does it already support real CSV or PDF import?
+The comparison tool treats the PDF as evidence, not as a new import. It shows
+which statement rows already match the ledger, which rows are missing, which
+ledger rows are extra, and whether there are likely duplicates or direction
+mistakes. Missing statement rows can be added from there, and direction mistakes
+can be fixed inline without reuploading the PDF.
 
-Yes. The app supports CSV review, row-level cleanup, and commit into the
-ledger. It also supports deterministic PDF statement import for UOB credit-card
-statements, UOB One savings statements, and Citibank Rewards or Citibank Miles
-credit-card statements. OCBC 365 credit-card statements and OCBC 360 account
-statements are also supported when the PDF includes embedded text. UOB One
-current-transaction `.xls` exports are supported as working ledger imports; they
-create reviewable rows but do not create statement checkpoints.
+### How duplicates and overlaps help
 
-The import workflow is:
+Import previews warn about duplicate-looking rows before commit. They also warn
+when the current preview overlaps a previous completed import for the same
+account and date range.
 
-1. Open Imports and paste CSV text, upload a CSV, drag a supported PDF
-   statement, or drag a supported UOB current-transaction `.xls` export into the
-   upload area.
-2. For CSV, review the column mapping. The current import review supports either
-   one signed `amount` column or separate `expense` and `income` columns.
-3. For supported PDFs, the browser extracts statement text locally and converts
-   it to the same reviewable rows as CSV. For supported UOB `.xls` current
-   transaction exports, the browser reads the workbook locally and converts the
-   posted activity into the same reviewable rows, without a checkpoint. The app
-   shows upload status while it is reading, extracting, parsing, and preparing
-   the preview.
-4. Review statement account mapping. This matters when a statement label is
-   ambiguous, such as UOB One bank account versus UOB One Card. The mapping
-   applies to both the preview rows and any statement checkpoints generated from
-   the PDF. Direct rows use the mapped account's owner when the account belongs
-   to one person; the Default owner field is only the fallback for rows without a
-   personally owned mapped account.
-5. Review duplicate and overlap warnings. Duplicate-looking rows are highlighted
-   directly in the preview table, and each preview row has a remove action so a
-   known duplicate can be excluded before commit. Overlap is scoped by account
-   and transaction coverage dates, not by the date the import batch was created.
-   Marking an overlap as reviewed only hides the warning; it does not remove
-   duplicate rows from the preview.
-6. For supported PDFs, review the statement balance check. It compares the
-   projected ledger balance after committing the preview rows against the
-   detected statement balance through the statement end date. If the account
-   mapping or checkpoint fields are edited, use Refresh check before commit.
-7. Review or edit row-level values, then commit. Successful commits reset the
-   composer so stale CSV/PDF content, upload status, checkpoint drafts, and
-   preview rows do not remain on screen. Use Start over anytime to clear the
-   current import draft without refreshing the page.
+- Duplicate warnings help prevent the same row from entering the ledger twice.
+- Overlap warnings are date-range warnings; they do not remove rows by
+  themselves.
+- Marking an overlap as reviewed only hides the warning.
+- Exact and near matches use amount, account, date proximity, and description
+  similarity.
 
-For mid-month tracking, use the current-transaction export as a working ledger
-update. For example, download the UOB One `.xls` activity for the current month,
-import it, review categories and transfers, and commit those rows so the Month
-and Entries pages stay useful before the statement closes. Later, when the bank
-statement is ready, use the statement PDF as reconciliation evidence first:
-compare it against the committed ledger or import it only after reviewing
-duplicate and overlap warnings. The app should preserve the rows you already
-categorized, linked, split, or matched; the statement import/compare step is for
-finding missing rows, wrong directions, duplicates, or period mistakes, then
-saving the final statement checkpoint once the balance matches.
+The Entries page keeps `Spend` as category expense only. It also shows
+`Outflow`, which includes expenses plus transfer-outs, so transfers are visible
+without being mixed into category spending.
 
-A two-month setup usually looks like this:
+## How do I import real bank activity?
 
-1. Create each account in Settings with its institution, owner, and account type.
-2. Use the first statement you trust as the starting point. Enter the opening
-   balance as the balance immediately before the first imported statement
-   activity. For credit cards, the app displays owed balances as internal
-   liability negatives, but statement checkpoint inputs should use the
-   bank-facing positive amount owed.
-3. Import or compare that first statement. Review account mapping, duplicates,
-   ownership, categories, transfers, and splits, then commit the rows and save
-   the statement checkpoint once the ledger matches the statement balance.
-4. During the next month, import only current-transaction exports for new rows
-   that happen after the latest statement cutoff for that specific account. For
-   example, if a Citi Rewards statement's last included transaction is
-   8 Apr 2026, a mid-cycle Citi Rewards export from 1 Apr to 13 Apr should only
-   contribute 9 Apr onward rows. Rows from 1 Apr to 8 Apr already belong to the
-   closed statement and should be treated as possible duplicates.
-5. Keep using those mid-cycle rows for planning, splits, transfer matching, and
-   category cleanup. They are real working ledger entries, not final proof.
-6. When the second statement arrives, compare it to the committed ledger first.
-   If the statement rows were already imported mid-cycle, the preview should
-   highlight duplicates so they can be removed before commit, or the Settings
-   comparison tool can show which ledger rows match, which are missing, which
-   are extra, and whether any duplicate-looking rows exist.
-7. Once the second statement balance matches, save the statement checkpoint.
-   That checkpoint is the month-end proof that the working ledger now agrees
-   with the bank for that account and statement period.
+Use Imports when you want bank or card rows to become ledger entries. Use
+Settings -> Compare statement when you already have rows in the ledger and only
+want to investigate a statement mismatch.
 
-For credit cards and bank accounts, repeat the cutoff check per account. A Citi
-Rewards cutoff date should not be reused for Citi Miles, and a UOB card cycle
-should not be reused for a UOB One savings statement.
+### Supported files
 
-For CSV imports, the raw data can include:
+The app currently supports:
 
-- one signed `amount` column
-- separate `expense` and `income` columns
+- CSV files or pasted CSV text
+- supported PDF statements
+- supported UOB One current-transaction `.xls` exports
 
-You can also override the inferred entry type, amount, account, category,
-owner, split, and note in the preview table before commit.
+Supported PDF parsers include:
 
-For supported PDFs, the browser extracts statement text and converts it to the
-same reviewable rows as CSV. UOB credit-card PDFs are parsed from each card's
-transaction-detail section, use post date as the ledger date, keep transaction
-date in the row note, and must reconcile each card section against its previous
-and total balance. UOB One savings PDFs use the statement period, running
-balances, and ending balance to validate withdrawal/deposit direction.
-Citibank Rewards and Citibank Miles PDFs use layout-aware statement text because
-their transaction rows are printed as compact card-section lines. Parenthesized
-amounts are treated as credits or payments, leading negative statement balances
-are preserved as credit balances, and every card section must reconcile against
-its previous balance and grand total before preview.
-OCBC 365 card PDFs use the printed statement date, last-month balance, subtotal,
-and total amount due. OCBC 360 account PDFs use the printed monthly period,
-balance brought forward, running row balances, and balance carried forward; row
-direction is derived from the running balance movement.
+- UOB credit-card statements
+- UOB One savings statements
+- Citibank Rewards statements
+- Citibank Miles statements
+- OCBC 365 credit-card statements with embedded text
+- OCBC 360 account statements with embedded text
 
-Supported PDF statements can also prefill statement checkpoints in the import
-preview. Those checkpoint fields remain editable before commit, and the preview
-checks whether committing the current rows would make the projected ledger match
-the detected statement balance through the statement end date. Commit then saves
-the checkpoints alongside the imported rows so account reconciliation updates
-with the statement import.
+### If this is your first account setup
+
+1. Create the account in Settings.
+2. Enter the opening balance from just before your first trusted statement
+   period.
+3. Import the first statement or compare it against existing rows.
+4. Review account mapping, ownership, categories, transfers, splits, duplicates,
+   and statement balance check.
+5. Commit the import once the rows look right.
+6. Save the statement checkpoint when the ledger matches the bank statement.
+
+For credit cards, the account card displays owed balances as negative
+liabilities, but the statement checkpoint field should use the positive amount
+owed printed by the bank.
+
+### If you add splits after a fresh statement import
+
+Splits are a household sharing layer on top of ledger rows. They do not replace
+the bank row.
+
+Best option:
+
+1. Import the statement first.
+2. Commit the clean bank rows.
+3. Open the expense entry that should be shared.
+4. Use `Add to splits` from the entry editor.
+5. Adjust payer, people, split percentage, group, category, and notes.
+
+That keeps the bank ledger complete while also recording who owes whom. The
+original entry remains traceable to the import batch, and the split record points
+back to the ledger entry.
+
+If you manually create a split before the bank row exists, it is still useful as
+a reminder, but it is not yet matched to the ledger. When the bank row arrives,
+use the split match prompts to link the split to the imported entry instead of
+creating another split.
+
+### If you are updating mid-month
+
+Use a current-transaction export as a working ledger update.
+
+Example: download a UOB One `.xls` activity export for the current month, import
+it, review the rows, and commit them. Those rows can then be used for Month,
+Entries, Splits, transfer matching, and category cleanup before the statement
+closes.
+
+Mid-month rows are useful, but they are not final proof. The final proof is still
+the next statement checkpoint.
+
+### If you import UOB `.xls` or Citi `.csv` after adding manual splits
+
+Import the activity file normally, but review duplicates and split matches before
+commit.
+
+What should happen:
+
+1. The import preview warns about duplicate-looking rows already in the ledger.
+2. Rows that are genuinely new can be committed.
+3. Rows that duplicate existing ledger entries should be removed from the
+   preview before commit.
+4. If an imported row looks like a manually entered split expense, link the split
+   to the ledger entry after import instead of keeping two separate records.
+
+The import does not automatically replace manual split records. That is
+intentional. A split can be a household agreement, while the imported row is the
+bank evidence. The safe workflow is to import the bank row once, then link or
+adjust the split.
+
+### If a mid-cycle import already covers part of the next statement
+
+Use the statement period printed by the bank, not just the calendar month.
+
+Best option:
+
+1. Keep the mid-cycle import rows if they are real bank activity.
+2. When the statement arrives, compare the statement against the committed
+   ledger first.
+3. If the comparison says a row is already matched, do not import that row again.
+4. If the comparison says a statement row is missing, add or import only that
+   missing row.
+5. If the comparison shows a ledger row with the opposite direction, edit that
+   row instead of adding another row.
+
+This is why statement comparison exists. It lets you prove whether the
+mid-cycle rows already satisfy the statement before you commit more rows.
+
+### If a statement arrives later
+
+When the statement is ready, do this before importing duplicate rows:
+
+1. Check the statement period for that specific account.
+2. Compare the statement against the committed ledger if rows were already
+   imported mid-cycle.
+3. Review missing rows, extra rows, direction mistakes, and duplicate-looking
+   rows.
+4. Import only rows that are truly missing, or remove duplicate preview rows
+   before commit.
+5. Save the statement checkpoint once the ledger matches the statement balance.
+
+Cutoffs are per account. A Citi Rewards cutoff should not be reused for Citi
+Miles, and a UOB card statement cycle should not be reused for UOB One savings.
+
+### After statement reconciliation
+
+When the checkpoint matches, treat that account and period as closed.
+
+Good follow-up work:
+
+1. Resolve transfer links.
+2. Link any unmatched split expenses or settlements to their bank rows.
+3. Clean categories and ownership.
+4. Leave the import batch in history so it can be rolled back if it was wrong.
+
+Avoid editing old reconciled rows unless you are fixing a known mistake. If you
+do edit one, recheck the statement checkpoint because the saved balance may move
+from matched to mismatched.
+
+### Two-month example
+
+Month 1:
+
+1. Create the account.
+2. Set the opening balance from before the first statement's activity.
+3. Import or compare the first statement.
+4. Commit clean rows.
+5. Save the checkpoint once the statement balance matches.
+
+Month 2:
+
+1. Import mid-cycle activity only after the latest statement cutoff.
+2. Use those rows for planning and cleanup during the month.
+3. When the statement arrives, compare it to the committed ledger.
+4. Remove duplicate preview rows or add missing rows.
+5. Save the new checkpoint when the balance matches.
+
+For example, if a Citi Rewards statement last included 8 Apr 2026, then a
+1 Apr to 13 Apr activity export should only contribute 9 Apr onward rows. Rows
+from 1 Apr to 8 Apr already belong to the closed statement.
+
+### Two-month example with splits
+
+Month 1:
+
+1. Create the account and enter the opening balance from before the first
+   statement period.
+2. Import the first PDF statement.
+3. Commit the bank rows.
+4. Add splits from the committed entries that should be shared.
+5. Save the statement checkpoint once the bank balance matches.
+
+Month 2:
+
+1. Import a mid-cycle UOB `.xls` or Citi `.csv` activity file.
+2. Remove any preview rows that duplicate closed Month 1 rows.
+3. Commit only new bank rows.
+4. Add or link splits for shared spending during the month.
+5. When the Month 2 statement arrives, compare it against the ledger.
+6. Add only missing statement rows, fix direction mistakes, and remove
+   duplicates.
+7. Save the Month 2 checkpoint once the statement balance matches.
+
+The user goal is not to import every file blindly. The goal is to have one bank
+ledger row per real bank transaction, with splits linked to those rows where
+household sharing matters.
+
+### What you review before commit
+
+Before committing, check:
+
+- account mapping
+- duplicate rows
+- overlap warnings
+- row date, description, amount, and type
+- category and ownership
+- transfer direction
+- statement checkpoint fields for supported PDFs
+- statement balance check for supported PDFs
+
+Successful commits reset the import composer. Use Start over anytime to clear
+the current draft without refreshing the page.
+
+### Notes on supported statement parsers
+
+- CSV can use one signed `amount` column or separate `expense` and `income`
+  columns.
+- UOB credit-card PDFs use post date as the ledger date and keep transaction
+  date in the row note.
+- UOB One savings PDFs use the statement period and running balances to validate
+  withdrawal/deposit direction.
+- Citibank card PDFs use layout-aware parsing for compact card-section rows.
+- OCBC 365 card PDFs use the printed statement date, subtotal, and total amount
+  due.
+- OCBC 360 account PDFs use the monthly period, running balances, and balance
+  carried forward.
+
+For supported PDFs, the browser extracts statement text locally and turns it
+into reviewable rows. If the PDF creates statement checkpoints, those fields are
+editable before commit.
 
 ## Are uploaded PDF statements stored?
 
