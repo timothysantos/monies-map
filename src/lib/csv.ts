@@ -1,8 +1,5 @@
 export function parseCsv(input: string): Record<string, string>[] {
-  const lines = input
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const lines = parseCsvLines(input);
 
   if (lines.length < 2) {
     return [];
@@ -20,10 +17,7 @@ export function parseCsv(input: string): Record<string, string>[] {
 }
 
 export function inspectCsv(input: string) {
-  const lines = input
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const lines = parseCsvLines(input);
 
   if (!lines.length) {
     return { headers: [], rows: [] as Record<string, string>[] };
@@ -38,6 +32,17 @@ export function inspectCsv(input: string) {
     headers,
     rows: parseCsv(input)
   };
+}
+
+export function parseCsvMatrix(input: string): string[][] {
+  return parseCsvLines(input).map((line) => splitCsvLine(line));
+}
+
+function parseCsvLines(input: string): string[] {
+  return input
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
 }
 
 function splitCsvLine(line: string): string[] {

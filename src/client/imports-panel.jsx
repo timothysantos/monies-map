@@ -17,7 +17,13 @@ import {
   inferImportMapping
 } from "./import-helpers";
 import { inspectCsv } from "../lib/csv";
-import { parseCurrentTransactionSpreadsheet, parseStatementText, statementRowsToCsv } from "../lib/statement-import";
+import {
+  canParseCitibankActivityCsv,
+  parseCitibankActivityCsv,
+  parseCurrentTransactionSpreadsheet,
+  parseStatementText,
+  statementRowsToCsv
+} from "../lib/statement-import";
 
 export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, people, onRefresh }) {
   // Keep import flow state centralized while the UI is being split up: CSV paste,
@@ -54,6 +60,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const defaultAccountDirectOwnerName = useMemo(
     () => getImportDirectOwnerForAccount(accounts, people, defaultAccountName, undefined),
     [accounts, defaultAccountName, people]
+  );
+  const defaultAccount = useMemo(
+    () => accounts.find((account) => account.name === defaultAccountName),
+    [accounts, defaultAccountName]
   );
 
   useEffect(() => {
@@ -320,6 +330,35 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       }
 
       const nextText = await file.text();
+      const activityContext = {
+        accountName: defaultAccount?.name ?? defaultAccountName,
+        accountKind: defaultAccount?.kind,
+        institution: defaultAccount?.institution
+      };
+      if (/\.csv$/i.test(file.name) && canParseCitibankActivityCsv(file.name, activityContext)) {
+        setDismissedOverlapIds([]);
+        setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
+        const parsed = parseCitibankActivityCsv(nextText, file.name, activityContext);
+
+        setSourceLabel(parsed.sourceLabel);
+        setStatementCheckpoints([]);
+        setStatementImportMeta({ sourceType: "csv", parserKey: parsed.parserKey });
+        setCsvText(statementRowsToCsv(parsed.rows));
+        if (parsed.rows[0]?.account) {
+          setDefaultAccountName(parsed.rows[0].account);
+        }
+
+        setUploadStatus({ tone: "active", message: messages.imports.uploadPreviewing(parsed.rows.length) });
+        await previewImportRows({
+          rows: parsed.rows,
+          nextSourceLabel: parsed.sourceLabel,
+          nextDefaultAccountName: parsed.rows[0]?.account ?? defaultAccountName,
+          nextStatementCheckpoints: []
+        });
+        setUploadStatus({ tone: "success", message: messages.imports.uploadReady(parsed.rows.length) });
+        return;
+      }
+
       setDismissedOverlapIds([]);
       setCsvText(nextText);
       setStatementCheckpoints([]);
