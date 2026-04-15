@@ -12,7 +12,8 @@ import {
   getSignedLedgerAmountMinor,
   normalizeAccountOpeningBalanceMinor,
   normalizeImportRow,
-  normalizeStatementBalanceMinor,
+  normalizeStatementBalanceInputMinor,
+  normalizeStoredStatementBalanceMinor,
   normalizeStatementDate
 } from "./app-repository-helpers";
 import type { StatementCompareDto, StatementCompareRowDto } from "../types/dto";
@@ -53,7 +54,7 @@ export async function saveAccountCheckpointRecord(
   const checkpointId = `checkpoint-${input.accountId}-${input.checkpointMonth}`;
   const statementStartDate = normalizeStatementDate(input.statementStartDate);
   const statementEndDate = normalizeStatementDate(input.statementEndDate);
-  const statementBalanceMinor = normalizeStatementBalanceMinor(
+  const statementBalanceMinor = normalizeStatementBalanceInputMinor(
     Math.round(input.statementBalanceMinor),
     account.account_kind
   );
@@ -177,10 +178,6 @@ export async function buildAccountCheckpointLedgerCsv(
 
   const statementStartDate = checkpoint.statement_start_date ?? getMonthBounds(checkpoint.checkpoint_month)[0];
   const statementEndDate = checkpoint.statement_end_date ?? getMonthEndDate(checkpoint.checkpoint_month);
-  const statementBalanceMinor = normalizeStatementBalanceMinor(
-    Number(checkpoint.statement_balance_minor ?? 0),
-    checkpoint.account_kind
-  );
   const baselineRows = statementStartDate
     ? await db
       .prepare(`
@@ -254,6 +251,16 @@ export async function buildAccountCheckpointLedgerCsv(
       source_label: string | null;
       imported_at: string | null;
     }>();
+
+  const computedBalanceMinor = baselineBalanceMinor + rows.results.reduce(
+    (total, row) => total + getSignedLedgerAmountMinor(row),
+    0
+  );
+  const statementBalanceMinor = normalizeStoredStatementBalanceMinor(
+    Number(checkpoint.statement_balance_minor ?? 0),
+    checkpoint.account_kind,
+    computedBalanceMinor
+  );
 
   const csvRows = [
     [

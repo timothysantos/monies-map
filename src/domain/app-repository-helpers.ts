@@ -9,19 +9,43 @@ import type {
 } from "../types/dto";
 
 export function normalizeAccountOpeningBalanceMinor(value: number, accountKind?: string | null) {
-  if (accountKind === "credit_card" && value > 0) {
+  if (accountKind === "credit_card") {
+    // Credit-card inputs are bank-facing: positive means amount owed, negative
+    // means a credit balance. Internally, owed balances are liabilities.
     return -value;
   }
 
   return value;
 }
 
-export function normalizeStatementBalanceMinor(value: number, accountKind?: string | null) {
-  if (accountKind === "credit_card" && value > 0) {
+export function normalizeStatementBalanceInputMinor(value: number, accountKind?: string | null) {
+  if (accountKind === "credit_card") {
+    // Statement balances follow the same bank-facing convention as opening
+    // balances, so a printed negative card balance becomes an internal credit.
     return -value;
   }
 
   return value;
+}
+
+export function normalizeStoredStatementBalanceMinor(
+  value: number,
+  accountKind?: string | null,
+  computedBalanceMinor?: number
+) {
+  if (accountKind !== "credit_card") {
+    return value;
+  }
+
+  const bankFacingStoredMinor = -value;
+  const legacyInternalStoredMinor = value;
+  if (computedBalanceMinor == null) {
+    return bankFacingStoredMinor;
+  }
+
+  return Math.abs(computedBalanceMinor - legacyInternalStoredMinor) < Math.abs(computedBalanceMinor - bankFacingStoredMinor)
+    ? legacyInternalStoredMinor
+    : bankFacingStoredMinor;
 }
 
 export function computeCheckpointLedgerBalanceMinor(input: {
@@ -88,11 +112,15 @@ export function buildAccountHealth(input: {
   const checkpointComputedBalanceMinor = input.checkpoint
     ? input.checkpointLedgerNetMinor ?? input.openingBalanceMinor
     : undefined;
-  const checkpointDeltaMinor = input.checkpoint && checkpointComputedBalanceMinor != null
-    ? checkpointComputedBalanceMinor - normalizeStatementBalanceMinor(
+  const checkpointStatementBalanceMinor = input.checkpoint
+    ? normalizeStoredStatementBalanceMinor(
       Number(input.checkpoint.statement_balance_minor ?? 0),
-      input.accountKind
+      input.accountKind,
+      checkpointComputedBalanceMinor
     )
+    : undefined;
+  const checkpointDeltaMinor = input.checkpoint && checkpointComputedBalanceMinor != null
+    ? checkpointComputedBalanceMinor - (checkpointStatementBalanceMinor ?? 0)
     : undefined;
 
   let reconciliationStatus: AccountDto["reconciliationStatus"];
@@ -110,10 +138,7 @@ export function buildAccountHealth(input: {
     latestCheckpointMonth: input.checkpoint?.checkpoint_month,
     latestCheckpointStartDate: input.checkpoint?.statement_start_date ?? undefined,
     latestCheckpointEndDate: input.checkpoint?.statement_end_date ?? undefined,
-    latestCheckpointBalanceMinor: input.checkpoint ? normalizeStatementBalanceMinor(
-      Number(input.checkpoint.statement_balance_minor ?? 0),
-      input.accountKind
-    ) : undefined,
+    latestCheckpointBalanceMinor: checkpointStatementBalanceMinor,
     latestCheckpointComputedBalanceMinor: checkpointComputedBalanceMinor,
     latestCheckpointDeltaMinor: checkpointDeltaMinor,
     latestCheckpointNote: input.checkpoint?.note ?? undefined,

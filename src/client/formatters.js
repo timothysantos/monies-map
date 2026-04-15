@@ -104,13 +104,13 @@ export function getContentDispositionFilename(value) {
 }
 
 export function formatCheckpointStatementInputMinor(valueMinor, accountKind) {
-  const displayMinor = accountKind === "credit_card" ? Math.abs(valueMinor) : valueMinor;
+  const displayMinor = accountKind === "credit_card" ? -valueMinor : valueMinor;
   return formatMinorInput(displayMinor);
 }
 
 export function formatCheckpointHistoryBalanceLine(item, accountKind) {
   if (accountKind === "credit_card") {
-    return `Statement owed ${money(Math.abs(item.statementBalanceMinor))} • Ledger owed ${money(Math.abs(item.computedBalanceMinor))}`;
+    return `${formatCreditCardStatementSide("Statement", item.statementBalanceMinor)} • ${formatCreditCardStatementSide("Ledger", item.computedBalanceMinor)}`;
   }
 
   return `Statement ${money(item.statementBalanceMinor)} • Ledger ${money(item.computedBalanceMinor)}`;
@@ -122,8 +122,18 @@ export function formatStatementReconciliationLine(item) {
   }
 
   if (item.accountKind === "credit_card") {
-    return `Statement owed ${money(Math.abs(item.statementBalanceMinor))} • Ledger owed ${money(Math.abs(item.projectedLedgerBalanceMinor))}`;
+    return `${formatCreditCardStatementSide("Statement", item.statementBalanceMinor)} • ${formatCreditCardStatementSide("Ledger", item.projectedLedgerBalanceMinor)}`;
   }
 
   return `Statement ${money(item.statementBalanceMinor)} • Ledger ${money(item.projectedLedgerBalanceMinor)}`;
+}
+
+function formatCreditCardStatementSide(label, valueMinor) {
+  if (valueMinor < 0) {
+    return `${label} owed ${money(Math.abs(valueMinor))}`;
+  }
+  if (valueMinor > 0) {
+    return `${label} credit ${money(valueMinor)}`;
+  }
+  return `${label} ${money(0)}`;
 }

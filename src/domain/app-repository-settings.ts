@@ -4,7 +4,7 @@ import {
   computeCheckpointLedgerBalanceMinor,
   formatMoneyMinor,
   normalizeAccountOpeningBalanceMinor,
-  normalizeStatementBalanceMinor,
+  normalizeStoredStatementBalanceMinor,
   slugify
 } from "./app-repository-helpers";
 import { recordAuditEvent } from "./app-repository-audit";
@@ -212,9 +212,10 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
       checkpoint,
       rows: transactionRows.results
     });
-    const statementBalanceMinor = normalizeStatementBalanceMinor(
+    const statementBalanceMinor = normalizeStoredStatementBalanceMinor(
       Number(checkpoint.statement_balance_minor ?? 0),
-      accountKindByAccountId.get(checkpoint.account_id)
+      accountKindByAccountId.get(checkpoint.account_id),
+      computedBalanceMinor
     );
     const currentHistory = checkpointHistoryByAccountId.get(checkpoint.account_id) ?? [];
     currentHistory.push({

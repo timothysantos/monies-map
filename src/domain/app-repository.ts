@@ -18,6 +18,7 @@ import {
   mapAccountKind,
   nextMonthKey,
   normalizePlanMatchHint,
+  normalizeStatementBalanceInputMinor,
   normalizeStatementDate,
   shiftPlanDate,
   slugify,
@@ -2133,9 +2134,9 @@ export async function commitImportBatch(
   try {
     const [accountRows, categoryRows, personRows] = await Promise.all([
       db
-        .prepare("SELECT id, account_name FROM accounts WHERE household_id = ?")
+        .prepare("SELECT id, account_name, account_kind FROM accounts WHERE household_id = ?")
         .bind(DEFAULT_HOUSEHOLD_ID)
-        .all<{ id: string; account_name: string }>(),
+        .all<{ id: string; account_name: string; account_kind: string }>(),
       db
         .prepare("SELECT id, name FROM categories WHERE household_id = ?")
         .bind(DEFAULT_HOUSEHOLD_ID)
@@ -2146,6 +2147,7 @@ export async function commitImportBatch(
         .all<{ id: string; display_name: string }>()
     ]);
     const accountIdsByName = new Map(accountRows.results.map((account) => [account.account_name, account.id]));
+    const accountKindsByName = new Map(accountRows.results.map((account) => [account.account_name, account.account_kind]));
     const categoryIdsByName = new Map(categoryRows.results.map((category) => [category.name, category.id]));
     const personIdsByName = new Map(personRows.results.map((person) => [person.display_name, person.id]));
     const [firstPerson, secondPerson] = personRows.results;
@@ -2284,7 +2286,10 @@ export async function commitImportBatch(
             checkpoint.checkpointMonth,
             normalizeStatementDate(checkpoint.statementStartDate),
             normalizeStatementDate(checkpoint.statementEndDate),
-            Math.round(checkpoint.statementBalanceMinor),
+            normalizeStatementBalanceInputMinor(
+              Math.round(checkpoint.statementBalanceMinor),
+              accountKindsByName.get(checkpoint.accountName)
+            ),
             checkpoint.note ?? null
           )
       );
