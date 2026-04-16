@@ -21,6 +21,26 @@ export function formatAccountDisplayName(account) {
   return account.ownerLabel ? `${accountName} • ${account.ownerLabel}` : accountName;
 }
 
+export function formatAccountSelectLabel(account) {
+  const accountName = account.accountName ?? account.name ?? messages.common.emptyValue;
+  return account.ownerLabel ? `${accountName} - ${account.ownerLabel}` : accountName;
+}
+
+export function getAccountSelectOptions(accounts) {
+  return accounts
+    .slice()
+    .sort((left, right) => (
+      (left.name ?? left.accountName ?? "").localeCompare(right.name ?? right.accountName ?? "")
+      || (left.ownerLabel ?? "").localeCompare(right.ownerLabel ?? "")
+      || (left.institution ?? "").localeCompare(right.institution ?? "")
+    ))
+    .map((account) => ({
+      id: account.id ?? account.accountId ?? `${account.name ?? account.accountName}-${account.ownerLabel ?? ""}`,
+      value: account.name ?? account.accountName ?? "",
+      label: formatAccountSelectLabel(account)
+    }));
+}
+
 export function formatAuditAction(action) {
   return action
     .split("_")

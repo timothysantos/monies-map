@@ -1,3 +1,4 @@
+import { getAccountSelectOptions } from "./account-display";
 import { messages } from "./copy/en-SG";
 import {
   formatDate,
@@ -104,6 +105,8 @@ function StatementAccountMapping({
   unknownPreviewAccountNames,
   onRemapPreviewAccount
 }) {
+  const accountOptions = getAccountSelectOptions(accounts);
+
   return (
     <div className="import-warning import-warning-action">
       <strong>{unknownPreviewAccountNames.length ? messages.imports.unknownAccounts : messages.imports.accountMappingTitle}</strong>
@@ -118,8 +121,8 @@ function StatementAccountMapping({
               onChange={(event) => onRemapPreviewAccount(accountName, event.target.value)}
             >
               <option value="">{messages.imports.chooseAccount}</option>
-              {accounts.map((account) => (
-                <option key={account.id} value={account.name}>{account.name}</option>
+              {accountOptions.map((account) => (
+                <option key={account.id} value={account.value}>{account.label}</option>
               ))}
             </select>
           </label>
@@ -244,6 +247,8 @@ function StatementCheckpointDrafts({
   duplicateCheckpointAccounts,
   onUpdateStatementCheckpoint
 }) {
+  const accountOptions = getAccountSelectOptions(accounts);
+
   return (
     <div className="import-warning import-warning-review">
       <strong>{messages.imports.statementCheckpointsTitle(statementCheckpoints.length)}</strong>
@@ -264,8 +269,8 @@ function StatementCheckpointDrafts({
                 {checkpoint.accountName && !knownAccountNames.has(checkpoint.accountName) ? (
                   <option value={checkpoint.accountName}>{checkpoint.accountName}</option>
                 ) : null}
-                {accounts.map((account) => (
-                  <option key={account.id} value={account.name}>{account.name}</option>
+                {accountOptions.map((account) => (
+                  <option key={account.id} value={account.value}>{account.label}</option>
                 ))}
               </select>
             </label>

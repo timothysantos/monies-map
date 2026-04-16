@@ -19,6 +19,7 @@ export function MonthPlanStack({
   categories,
   categorySelectOptions = getCategoriesForSelect(categories),
   accounts,
+  accountSelectOptions,
   incomeRows,
   planSections,
   sectionOpen,
@@ -81,6 +82,7 @@ export function MonthPlanStack({
           categories={categories}
           categorySelectOptions={categorySelectOptions}
           accounts={accounts}
+          accountSelectOptions={accountSelectOptions}
           section={section}
           sectionOpen={sectionOpen}
           tableSorts={tableSorts}
@@ -275,6 +277,7 @@ function PlanningSection({
   categories,
   categorySelectOptions,
   accounts,
+  accountSelectOptions,
   section,
   sectionOpen,
   tableSorts,
@@ -355,6 +358,7 @@ function PlanningSection({
                   categories={categories}
                   categorySelectOptions={categorySelectOptions}
                   accounts={accounts}
+                  accountSelectOptions={accountSelectOptions}
                   section={section}
                   row={row}
                   isEditing={editingRowId === row.id}
@@ -385,6 +389,7 @@ function PlanningRow({
   categories,
   categorySelectOptions,
   accounts,
+  accountSelectOptions,
   section,
   row,
   isEditing,
@@ -490,8 +495,8 @@ function PlanningRow({
               onClick={(event) => event.stopPropagation()}
             >
               <option value="">{messages.common.emptyValue}</option>
-              {accounts.map((account) => (
-                <option key={account.id} value={account.name}>{account.name}</option>
+              {(accountSelectOptions ?? accounts.map((account) => ({ id: account.id, value: account.name, label: account.name }))).map((account) => (
+                <option key={account.id} value={account.value}>{account.label}</option>
               ))}
             </select>
           ) : row.accountName ?? messages.common.emptyValue}

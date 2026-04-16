@@ -1,3 +1,4 @@
+import { getAccountSelectOptions } from "./account-display";
 import { getCategoriesForSelect } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { getAmountToneClass } from "./entry-helpers";
@@ -17,6 +18,7 @@ export function ImportPreviewRowsTable({
   onRemovePreviewRow,
   getPreviewAccountOwnerPatch
 }) {
+  const accountOptions = getAccountSelectOptions(accounts);
   const categorySelectOptions = getCategoriesForSelect(categories);
 
   return (
@@ -98,8 +100,8 @@ export function ImportPreviewRowsTable({
                       {row.accountName && !knownAccountNames.has(row.accountName) ? (
                         <option value={row.accountName}>{row.accountName}</option>
                       ) : null}
-                      {accounts.map((account) => (
-                        <option key={account.id} value={account.name}>{account.name}</option>
+                      {accountOptions.map((account) => (
+                        <option key={account.id} value={account.value}>{account.label}</option>
                       ))}
                     </select>
                   </td>

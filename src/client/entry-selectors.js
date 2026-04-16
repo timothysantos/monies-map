@@ -1,3 +1,4 @@
+import { getAccountSelectOptions } from "./account-display";
 import { getCategoryNameOptions } from "./category-utils";
 import { entryMatchesScope, groupEntriesByDate, uniqueValues } from "./entry-helpers";
 
@@ -14,11 +15,7 @@ export function getEntryFilterOptions(entries) {
 export function getEntryFormOptions({ accounts, categories, people }) {
   return {
     categoryOptions: getCategoryNameOptions(categories),
-    accountOptions: accounts
-      .filter((account) => account.isActive !== false)
-      .slice()
-      .sort((left, right) => left.name.localeCompare(right.name))
-      .map((account) => account.name),
+    accountOptions: getAccountSelectOptions(accounts.filter((account) => account.isActive !== false)),
     ownerOptions: [...people.map((person) => person.name), "Shared"]
   };
 }
