@@ -165,7 +165,7 @@ function EntryRow({
   const splitPercent = getVisibleSplitPercent(entry, viewId);
   const category = getCategory(categories, entry);
   const transferLabel = entry.entryType === "transfer"
-    ? entry.transferDirection === "in" ? "Transfer in" : "Transfer out"
+    ? `${entry.linkedTransfer ? "Matched transfer" : "Transfer"} ${entry.transferDirection === "in" ? "in" : "out"}`
     : null;
   const transferDetail = entry.linkedTransfer
     ? `${entry.transferDirection === "out" ? "To" : "From"} ${entry.linkedTransfer.accountName}`
