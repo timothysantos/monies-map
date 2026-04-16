@@ -852,6 +852,7 @@ h3 {
   align-items: baseline;
   gap: 10px;
   min-width: 0;
+  max-width: 100%;
 }
 
 .settings-rule-row .settings-account-main strong,
@@ -864,8 +865,13 @@ h3 {
 }
 
 .settings-rule-row .settings-account-main strong {
+  flex: 0 1 auto;
   color: var(--muted);
   font-weight: 700;
+}
+
+.settings-rule-row .settings-account-main p {
+  flex: 1 1 auto;
 }
 
 .settings-account-row {
@@ -880,6 +886,8 @@ h3 {
 }
 
 .settings-account-row.settings-rule-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -887,6 +895,7 @@ h3 {
 
 .settings-rule-row .settings-account-actions {
   flex: 0 0 auto;
+  justify-self: end;
 }
 
 .settings-account-row.is-muted {
@@ -1695,13 +1704,22 @@ h3 {
 }
 
 .table-edit-input {
+  box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.9);
   color: var(--ink);
   font: inherit;
+}
+
+.table-edit-input[type="date"] {
+  min-width: 0;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .table-edit-input-compact {
@@ -1865,6 +1883,7 @@ body:has(.note-dialog-overlay) .entries-fab {
 .split-dialog-field {
   display: grid;
   gap: 4px;
+  min-width: 0;
 }
 
 .split-dialog-field span {
@@ -2219,11 +2238,34 @@ body:has(.note-dialog-overlay) .entries-fab {
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
+  min-width: 0;
+  flex-wrap: nowrap;
 }
 
 .split-inline-actions .icon-action {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
   border: 1px solid rgba(191, 103, 45, 0.18);
   background: rgba(255, 250, 246, 0.96);
+}
+
+.panel-splits .split-inline-actions .subtle-action {
+  flex: 0 1 auto;
+  min-height: 32px;
+  min-width: 0;
+  padding: 0 12px;
+  border-color: rgba(191, 103, 45, 0.18);
+  background: rgba(255, 250, 246, 0.96);
+  color: var(--accent-strong);
+  box-shadow: 0 1px 0 rgba(191, 103, 45, 0.04);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel-splits .split-inline-actions .subtle-action:hover {
+  background: rgba(247, 236, 227, 0.98);
 }
 
 .split-delete-action {
@@ -4620,6 +4662,7 @@ body:has(.note-dialog-overlay) .entries-fab {
 .entry-writing-grid label {
   display: grid;
   gap: 6px;
+  min-width: 0;
 }
 
 .entry-edit-grid span,
@@ -5160,14 +5203,14 @@ th {
   }
 
   .note-dialog-content {
-    top: 50%;
+    top: calc(18px + env(safe-area-inset-top, 0px));
     bottom: auto;
     left: 12px;
     right: 12px;
     width: auto;
-    max-height: calc(100dvh - 128px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    max-height: calc(100dvh - 116px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
-    transform: translateY(-50%);
+    transform: none;
     padding: 18px;
   }
 
@@ -5226,8 +5269,8 @@ th {
   }
 
   .split-inline-actions {
-    flex-wrap: wrap;
-    justify-content: flex-start;
+    gap: 8px;
+    justify-content: flex-end;
   }
 
   .settings-category-dialog {

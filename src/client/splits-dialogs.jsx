@@ -41,9 +41,9 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
     }
 
     const timeout = window.setTimeout(() => {
-      amountInputRef.current?.focus();
+      amountInputRef.current?.focus({ preventScroll: true });
       amountInputRef.current?.select?.();
-    }, 0);
+    }, 80);
 
     return () => window.clearTimeout(timeout);
   }, [autoFocusAmount, dialog?.id]);
@@ -115,7 +115,7 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
     <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
-        <Dialog.Content className="note-dialog-content split-dialog-content">
+        <Dialog.Content className="note-dialog-content split-dialog-content" onOpenAutoFocus={(event) => event.preventDefault()}>
           <div className="note-dialog-head split-dialog-head">
             <Dialog.Title>{dialog?.id ? messages.splits.editSplit : messages.splits.createExpense}</Dialog.Title>
             <Dialog.Description>Create or edit a split expense without touching the bank import workflow.</Dialog.Description>
@@ -143,9 +143,9 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
     }
 
     const timeout = window.setTimeout(() => {
-      amountInputRef.current?.focus();
+      amountInputRef.current?.focus({ preventScroll: true });
       amountInputRef.current?.select?.();
-    }, 0);
+    }, 80);
 
     return () => window.clearTimeout(timeout);
   }, [autoFocusAmount, dialog?.id]);
@@ -207,7 +207,7 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
     <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
-        <Dialog.Content className="note-dialog-content split-dialog-content">
+        <Dialog.Content className="note-dialog-content split-dialog-content" onOpenAutoFocus={(event) => event.preventDefault()}>
           <div className="note-dialog-head split-dialog-head">
             <Dialog.Title>{dialog?.id ? messages.splits.editSplit : messages.splits.createSettlement}</Dialog.Title>
             <Dialog.Description>Record or edit a settle-up and match the bank transfer later from the Matches view.</Dialog.Description>
