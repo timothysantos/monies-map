@@ -58,15 +58,20 @@ export default {
     }
 
     if (url.pathname === "/api/bootstrap") {
-      return json(
-        await buildBootstrapDto(
-          env.DB,
-          url.searchParams.get("month") ?? getCurrentMonthKey(),
-          (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared",
-          url.searchParams.get("summary_start") ?? undefined,
-          url.searchParams.get("summary_end") ?? undefined
-        )
-      );
+      try {
+        return json(
+          await buildBootstrapDto(
+            env.DB,
+            url.searchParams.get("month") ?? getCurrentMonthKey(),
+            (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared",
+            url.searchParams.get("summary_start") ?? undefined,
+            url.searchParams.get("summary_end") ?? undefined
+          )
+        );
+      } catch (error) {
+        console.error("Bootstrap failed", error);
+        return json({ ok: false, error: "Bootstrap failed", message: describeError(error) }, 500);
+      }
     }
 
     if (url.pathname === "/api/demo/reseed" && request.method === "POST") {
@@ -1011,10 +1016,15 @@ export default {
         return json({ ok: false, error: "Missing import id" }, 400);
       }
 
-      return json({
-        ok: true,
-        ...(await rollbackImportBatch(env.DB, { importId: body.importId }))
-      });
+      try {
+        return json({
+          ok: true,
+          ...(await rollbackImportBatch(env.DB, { importId: body.importId }))
+        });
+      } catch (error) {
+        console.error("Import rollback failed", error);
+        return json({ ok: false, error: "Import rollback failed", message: describeError(error) }, 500);
+      }
     }
 
     if (url.pathname === "/api/db-check") {
@@ -1041,3 +1051,7 @@ export default {
     return new Response(null, { status: 404 });
   }
 };
+
+function describeError(error: unknown) {
+  return error instanceof Error && error.message ? error.message : "Unknown server error";
+}

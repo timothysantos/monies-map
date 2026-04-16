@@ -2573,6 +2573,9 @@ async function recalculateMonthlySnapshots(db: D1Database, month: string) {
 
   for (const scope of scopes) {
     const visibleRows = buildSnapshotRowsForScope(planRows, scope.key);
+    const visibleEntryCount = scope.key === "household"
+      ? entries.length
+      : entries.filter((entry) => entry.splits.some((split) => split.personId === scope.key)).length;
     const plannedExpenseMinor = visibleRows.reduce((sum, row) => sum + row.plannedMinor, 0);
     const actualExpenseMinor = sumVisibleExpenseMinor(entries, scope.key);
     const savingsGoalMinor = visibleRows
@@ -2582,6 +2585,15 @@ async function recalculateMonthlySnapshots(db: D1Database, month: string) {
     const sharedMinor = visibleRows
       .filter((row) => row.ownershipType === "shared")
       .reduce((sum, row) => sum + row.plannedMinor, 0);
+    const preservedNote = notesByScope.get(scope.key) ?? null;
+
+    if (!visibleRows.length && !visibleEntryCount && !scope.incomeRows.length && !preservedNote) {
+      await db
+        .prepare("DELETE FROM monthly_snapshots WHERE household_id = ? AND year = ? AND month = ? AND person_scope = ?")
+        .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber, scope.key)
+        .run();
+      continue;
+    }
 
     await db
       .prepare(`
@@ -2611,7 +2623,7 @@ async function recalculateMonthlySnapshots(db: D1Database, month: string) {
         savingsGoalMinor,
         incomeMinor - actualExpenseMinor,
         sharedMinor,
-        notesByScope.get(scope.key) ?? null
+        preservedNote
       )
       .run();
   }

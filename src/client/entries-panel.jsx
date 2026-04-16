@@ -66,6 +66,32 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
     () => getEntryFilterOptions(entries),
     [entries]
   );
+  useEffect(() => {
+    const wallet = searchParams.get("entry_wallet");
+    const category = searchParams.get("entry_category");
+    const person = searchParams.get("entry_person");
+    const walletIsStale = wallet && !wallets.includes(wallet);
+    const categoryIsStale = category && !entryCategoryOptions.includes(category);
+    const personIsStale = person && !peopleFilterOptions.includes(person);
+
+    if (!walletIsStale && !categoryIsStale && !personIsStale) {
+      return;
+    }
+
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (walletIsStale) {
+        next.delete("entry_wallet");
+      }
+      if (categoryIsStale) {
+        next.delete("entry_category");
+      }
+      if (personIsStale) {
+        next.delete("entry_person");
+      }
+      return next;
+    }, { replace: true });
+  }, [entryCategoryOptions, peopleFilterOptions, searchParams, setSearchParams, wallets]);
   const { categoryOptions, accountOptions, ownerOptions } = useMemo(
     () => getEntryFormOptions({ accounts, categories, people }),
     [accounts, categories, people]

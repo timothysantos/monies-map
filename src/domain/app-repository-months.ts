@@ -53,7 +53,9 @@ export async function loadTrackedMonths(db: D1Database): Promise<string[]> {
       FROM (
         SELECT substr(transaction_date, 1, 7) AS month_key
         FROM transactions
-        WHERE household_id = ?
+        LEFT JOIN imports ON imports.id = transactions.import_id
+        WHERE transactions.household_id = ?
+          AND (transactions.import_id IS NULL OR imports.status = 'completed')
 
         UNION
 
