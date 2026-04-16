@@ -350,10 +350,7 @@ export function inferCategory(description: string, isIncome: boolean) {
   if (/JOSEPHPRINCE/.test(normalized)) {
     return "Subscriptions MO";
   }
-  if (/BUS\/MRT|NETS Debit-Consumer/.test(description) && /BUS|MRT|TRANSIT|MR BEAN|JOO HENG|FATTY CHEON/.test(normalized) === false) {
-    return "Public Transport";
-  }
-  if (/BUS\/MRT|HELLO RIDE|ANYWHEEL/.test(normalized)) {
+  if (/BUS\/MRT/.test(normalized)) {
     return "Public Transport";
   }
   if (/GRAB\*|TADA|GOPAY-GOJEK/.test(normalized)) {

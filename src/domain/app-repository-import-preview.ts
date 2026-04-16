@@ -95,8 +95,13 @@ export async function buildImportPreview(
     let inferredEntryType = normalized.entryType;
     let inferredTransferDirection = normalized.transferDirection;
     let inferredCategoryName = normalized.categoryName ?? "Other";
-    if (!normalized.categoryName || normalized.categoryName === "Other" || normalized.categoryName === "Other - Income") {
-      inferredCategoryName = matchCategoryRule(normalized.description, categoryMatchRules) ?? inferredCategoryName;
+
+    // User-maintained match rules are the correction layer above parser guesses.
+    // This lets a rule like "NETS Debit-Consumer -> Food & Drinks" fix an import
+    // row even when a bank-specific parser made a broader first guess.
+    const matchedCategoryName = matchCategoryRule(normalized.description, categoryMatchRules);
+    if (matchedCategoryName) {
+      inferredCategoryName = matchedCategoryName;
     }
 
     if (inferredCategoryName === "Transfer") {

@@ -361,8 +361,9 @@ Supported PDF parsers include:
 
 ### Category matching during preview
 
-The import preview uses editable merchant rules from Settings before it falls
-back to `Other`. This is for repeated bank text such as `TADA`, `SHOPEE`,
+The import preview uses editable merchant rules from Settings to categorize
+future rows before commit. If a rule matches, it can correct the parser's first
+guess. This is for repeated bank text such as `TADA`, `SHOPEE`,
 `AMAZON`, `AMZON`, `JALAIRLINE`,
 `SINGLIFE`, `GOLDENVILLAGE`, `JOSEPHPRINCE`, `GOPAY-GOJEK`, `AXSPTELTD`,
 `KEPPEL ELECTRIC`, `M1LIMITED`, `INCOMEINSURANCE`, and card conversion-fee
@@ -371,8 +372,8 @@ Transfer-looking card rows such as `TSFTO...6349` are treated as transfers, not
 normal expenses.
 
 Use Settings -> Category matching to add or adjust rules. Rules apply to future
-previews when the row is uncategorized or still `Other`; they do not rewrite
-older ledger rows that you already reviewed and committed.
+previews and can override a parser guess; they do not rewrite older ledger rows
+that you already reviewed and committed.
 
 How rules match:
 
