@@ -56,6 +56,21 @@ export function archiveSettingsAccount(accountId) {
   );
 }
 
+export async function runDemoAction(endpoint, fallbackError) {
+  const response = await fetch(endpoint, { method: "POST" });
+
+  if (!response.ok) {
+    throw new Error(await buildRequestErrorMessage(response, fallbackError));
+  }
+
+  const data = await response.json().catch(() => ({}));
+  if (data.ok === false) {
+    throw new Error(data.error ?? fallbackError);
+  }
+
+  return data;
+}
+
 export function saveSettingsCategory({
   mode,
   categoryId,

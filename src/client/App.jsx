@@ -99,6 +99,7 @@ export function App() {
 
     setBootstrapError("");
     setBootstrap(data);
+    return data;
   }, [selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart]);
 
   const handleBootstrapFailure = useCallback((error) => {
@@ -107,10 +108,10 @@ export function App() {
   }, []);
 
   const refreshBootstrap = useCallback(async ({ broadcast = false } = {}) => {
-    await loadBootstrap();
+    const data = await loadBootstrap();
 
     if (!broadcast) {
-      return;
+      return data;
     }
 
     const payload = { type: "bootstrap-refresh", ts: Date.now() };
@@ -121,6 +122,8 @@ export function App() {
     try {
       window.localStorage.setItem(BOOTSTRAP_SYNC_STORAGE_KEY, JSON.stringify(payload));
     } catch {}
+
+    return data;
   }, [loadBootstrap]);
 
   useEffect(() => {

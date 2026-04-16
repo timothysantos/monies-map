@@ -11,6 +11,7 @@ import {
   deleteSettingsCategory,
   fetchCheckpointExport,
   ignoreCategoryMatchRuleSuggestion,
+  runDemoAction,
   saveAccountCheckpoint,
   saveCategoryMatchRule,
   saveSettingsAccount,
@@ -49,6 +50,10 @@ const DEFAULT_MONTH_KEY = getCurrentMonthKey();
 export function SettingsPanel({ settingsPage, accounts, categories, people, viewId, viewLabel, onRefresh }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emptyStateText, setEmptyStateText] = useState("");
+  const [emptyStateDialogOpen, setEmptyStateDialogOpen] = useState(false);
+  const [reloadText, setReloadText] = useState("");
+  const [reloadDialogOpen, setReloadDialogOpen] = useState(false);
+  const [demoActionError, setDemoActionError] = useState("");
   const [demoStateOpen, setDemoStateOpen] = useState(false);
   const [settingsSectionsOpen, setSettingsSectionsOpen] = useState({
     people: false,
@@ -131,9 +136,12 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
 
   async function handleReseed() {
     setIsSubmitting(true);
+    setDemoActionError("");
     try {
-      await fetch("/api/demo/reseed", { method: "POST" });
+      await runDemoAction("/api/demo/reseed", "Demo reseed failed.");
       await onRefresh();
+    } catch (error) {
+      setDemoActionError(error instanceof Error ? error.message : "Demo reseed failed.");
     } finally {
       setIsSubmitting(false);
     }
@@ -141,8 +149,13 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
 
   async function handleRefresh() {
     setIsSubmitting(true);
+    setDemoActionError("");
     try {
       await onRefresh();
+      setReloadText("");
+      setReloadDialogOpen(false);
+    } catch (error) {
+      setDemoActionError(error instanceof Error ? error.message : "Reload failed.");
     } finally {
       setIsSubmitting(false);
     }
@@ -150,10 +163,17 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
 
   async function handleEmptyState() {
     setIsSubmitting(true);
+    setDemoActionError("");
     try {
-      await fetch("/api/demo/empty", { method: "POST" });
-      await onRefresh();
+      await runDemoAction("/api/demo/empty", "Empty-state reset failed.");
+      const refreshedBootstrap = await onRefresh();
+      if (refreshedBootstrap?.accounts?.length) {
+        throw new Error(messages.settings.emptyStateStillHasAccounts);
+      }
       setEmptyStateText("");
+      setEmptyStateDialogOpen(false);
+    } catch (error) {
+      setDemoActionError(error instanceof Error ? error.message : "Empty-state reset failed.");
     } finally {
       setIsSubmitting(false);
     }
@@ -721,11 +741,18 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
 
       <SettingsDemoSection
         demo={settingsPage.demo}
+        error={demoActionError}
+        emptyStateDialogOpen={emptyStateDialogOpen}
         emptyStateText={emptyStateText}
         isOpen={demoStateOpen}
         isSubmitting={isSubmitting}
+        reloadDialogOpen={reloadDialogOpen}
+        reloadText={reloadText}
+        onEmptyStateDialogOpenChange={setEmptyStateDialogOpen}
+        onReloadDialogOpenChange={setReloadDialogOpen}
         onToggle={() => setDemoStateOpen((current) => !current)}
         onEmptyStateTextChange={setEmptyStateText}
+        onReloadTextChange={setReloadText}
         onReseed={handleReseed}
         onRefresh={handleRefresh}
         onEmptyState={handleEmptyState}
