@@ -32,38 +32,6 @@ export function EntryEditorFields({
     <>
       <div className="entry-edit-grid">
         <label>
-          <span>{messages.entries.editDate}</span>
-          <input
-            className="table-edit-input"
-            type="date"
-            value={entry.date}
-            onChange={(event) => onChange({ date: event.target.value })}
-          />
-        </label>
-        <label>
-          <span>{messages.entries.editType}</span>
-          <select
-            className="table-edit-input"
-            value={entry.entryType}
-            onChange={(event) => onChange({ entryType: event.target.value })}
-          >
-            <option value="expense">Expense</option>
-            <option value="income">Income</option>
-            <option value="transfer">Transfer</option>
-          </select>
-        </label>
-        <label>
-          <span>{messages.entries.editAmount}</span>
-          <input
-            className="table-edit-input table-edit-input-money"
-            type="number"
-            step="0.01"
-            inputMode="decimal"
-            value={formatEditableMinorInput(entry.amountMinor)}
-            onChange={(event) => onChange({ amountMinor: Math.max(0, parseMoneyInput(event.target.value, entry.amountMinor)) })}
-          />
-        </label>
-        <label>
           <span>{messages.entries.editCategory}</span>
           <div className="entry-category-field">
             <span
@@ -92,6 +60,15 @@ export function EntryEditorFields({
           </div>
         </label>
         <label>
+          <span>{messages.entries.editDate}</span>
+          <input
+            className="table-edit-input"
+            type="date"
+            value={entry.date}
+            onChange={(event) => onChange({ date: event.target.value })}
+          />
+        </label>
+        <label>
           <span>{messages.entries.editWallet}</span>
           <select
             className="table-edit-input"
@@ -113,6 +90,29 @@ export function EntryEditorFields({
             {ownerOptions.map((person) => (
               <option key={person} value={person}>{person}</option>
             ))}
+          </select>
+        </label>
+        <label>
+          <span>{messages.entries.editAmount}</span>
+          <input
+            className="table-edit-input table-edit-input-money"
+            type="number"
+            step="0.01"
+            inputMode="decimal"
+            value={formatEditableMinorInput(entry.amountMinor)}
+            onChange={(event) => onChange({ amountMinor: Math.max(0, parseMoneyInput(event.target.value, entry.amountMinor)) })}
+          />
+        </label>
+        <label>
+          <span>{messages.entries.editType}</span>
+          <select
+            className="table-edit-input"
+            value={entry.entryType}
+            onChange={(event) => onChange({ entryType: event.target.value })}
+          >
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+            <option value="transfer">Transfer</option>
           </select>
         </label>
         {entry.entryType === "transfer" ? (
