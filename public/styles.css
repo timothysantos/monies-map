@@ -1501,6 +1501,43 @@ h3 {
   color: var(--muted);
 }
 
+.inline-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  min-width: 0;
+  padding: 0 12px;
+  border: 1px solid rgba(191, 103, 45, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 250, 246, 0.96);
+  color: var(--accent-strong);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.inline-action-button svg {
+  display: none;
+}
+
+.inline-save-action {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+  color: white;
+}
+
+.inline-cancel-action {
+  color: var(--muted);
+}
+
+.inline-action-button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
 .subtle-remove {
   color: var(--negative);
   margin-left: auto;
@@ -2283,12 +2320,8 @@ body:has(.note-dialog-overlay) .entries-fab {
   flex-wrap: nowrap;
 }
 
-.split-inline-actions .icon-action {
+.split-inline-actions .inline-action-button {
   flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
-  border: 1px solid rgba(191, 103, 45, 0.18);
-  background: rgba(255, 250, 246, 0.96);
 }
 
 .panel-splits .split-inline-actions .subtle-action {
@@ -5333,6 +5366,21 @@ th {
   .split-inline-actions {
     gap: 8px;
     justify-content: flex-end;
+  }
+
+  .inline-action-button {
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+    padding: 0;
+  }
+
+  .inline-action-button svg {
+    display: block;
+  }
+
+  .inline-action-button .desktop-action-label {
+    display: none;
   }
 
   .settings-category-dialog {

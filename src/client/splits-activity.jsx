@@ -153,11 +153,13 @@ export function SplitActivityGroups({
                   >
                     Delete
                   </button>
-                  <button type="button" className="icon-action" aria-label="Done editing split" disabled={isSubmitting} onClick={() => void onSaveEditing?.()}>
+                  <button type="button" className="inline-action-button inline-save-action" aria-label="Done editing split" disabled={isSubmitting} onClick={() => void onSaveEditing?.()}>
                     <Check size={16} />
+                    <span className="desktop-action-label">Save</span>
                   </button>
-                  <button type="button" className="icon-action subtle-cancel" aria-label="Cancel editing split" disabled={isSubmitting} onClick={onCancelEditing}>
+                  <button type="button" className="inline-action-button inline-cancel-action" aria-label="Cancel editing split" disabled={isSubmitting} onClick={onCancelEditing}>
                     <X size={16} />
+                    <span className="desktop-action-label">Cancel</span>
                   </button>
                 </div>
               </article>
