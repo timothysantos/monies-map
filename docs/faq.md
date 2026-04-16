@@ -354,6 +354,47 @@ Supported PDF parsers include:
 - OCBC 365 credit-card statements with embedded text
 - OCBC 360 account statements with embedded text
 
+### Category matching during preview
+
+The import preview uses editable merchant rules from Settings before it falls
+back to `Other`. This is for repeated bank text such as `TADA`, `SHOPEE`,
+`AMAZON`, `AMZON`, `JALAIRLINE`,
+`SINGLIFE`, `GOLDENVILLAGE`, `JOSEPHPRINCE`, `GOPAY-GOJEK`, `AXSPTELTD`,
+`KEPPEL ELECTRIC`, `M1LIMITED`, `INCOMEINSURANCE`, and card conversion-fee
+descriptions.
+Transfer-looking card rows such as `TSFTO...6349` are treated as transfers, not
+normal expenses.
+
+Use Settings -> Category matching to add or adjust rules. Rules apply to future
+previews when the row is uncategorized or still `Other`; they do not rewrite
+older ledger rows that you already reviewed and committed.
+
+How rules match:
+
+- Capitalization does not matter.
+- Spaces and punctuation do not matter.
+- A specific merchant name can match any part of the bank text.
+- Very short names only match when they appear as their own word, so a rule like
+  `GV` does not accidentally match every word containing those letters.
+- Lower priority numbers are checked first.
+
+### What do category match suggestions mean?
+
+If you keep changing similar merchant rows to the same category, the app does
+not create a rule by itself. It creates a pending suggestion.
+
+You will see a small number badge on Settings when suggestions are waiting. Use
+that badge, or open Settings -> Category matching, to review them.
+
+For each suggestion, choose one action:
+
+1. Add rule if the merchant text is specific enough.
+2. Edit first if the suggested text is too broad or too narrow.
+3. Ignore if you do not want the app to remember that pattern.
+
+Accepted suggestions apply to future import previews. They do not change older
+entries automatically.
+
 ### If this is your first account setup
 
 1. Create the account in Settings.

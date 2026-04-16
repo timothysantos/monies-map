@@ -25,6 +25,7 @@ import {
   sumVisibleExpenseMinor
 } from "./app-repository-helpers";
 import { backfillSplitBatches } from "./app-repository-split-batches";
+import { ensureDefaultCategoryMatchRules, recordCategoryMatchSuggestion } from "./app-repository-category-match-rules";
 import { recordAuditEvent } from "./app-repository-audit";
 import { resolveAccountId, resolveCategoryId, resolvePersonId } from "./app-repository-lookups";
 import { syncMonthlyPlanRowSplits, syncTransactionSplits } from "./app-repository-split-sync";
@@ -36,6 +37,14 @@ export {
   deleteAccountCheckpointRecord,
   saveAccountCheckpointRecord
 } from "./app-repository-checkpoints";
+export {
+  deleteCategoryMatchRule,
+  ignoreCategoryMatchRuleSuggestion,
+  loadCategoryMatchRules,
+  loadCategoryMatchRuleSuggestions,
+  matchCategoryRule,
+  saveCategoryMatchRule
+} from "./app-repository-category-match-rules";
 export {
   createCategoryRecord,
   deleteCategoryRecord,
@@ -139,6 +148,7 @@ export async function ensureSeedData(db: D1Database, settings: DemoSettings) {
     (snapshotCount?.count ?? 0) > 0 &&
     (incomeRowCount?.count ?? 0) > 0
   ) {
+    await ensureDefaultCategoryMatchRules(db);
     for (const month of demoMonths) {
       await recalculateMonthlySnapshots(db, month);
     }
@@ -193,6 +203,40 @@ export async function ensureDemoSchema(db: D1Database) {
       FOREIGN KEY (category_id) REFERENCES categories(id),
       FOREIGN KEY (account_id) REFERENCES accounts(id),
       UNIQUE (household_id, person_id, category_id, account_id, label_normalized, description_pattern)
+    )
+  `).run();
+
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS category_match_rules (
+      id TEXT PRIMARY KEY,
+      household_id TEXT NOT NULL,
+      pattern TEXT NOT NULL,
+      category_id TEXT NOT NULL,
+      priority INTEGER NOT NULL DEFAULT 100,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      note TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (household_id) REFERENCES households(id),
+      FOREIGN KEY (category_id) REFERENCES categories(id),
+      UNIQUE (household_id, pattern)
+    )
+  `).run();
+
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS category_match_rule_suggestions (
+      id TEXT PRIMARY KEY,
+      household_id TEXT NOT NULL,
+      pattern TEXT NOT NULL,
+      category_id TEXT NOT NULL,
+      source_count INTEGER NOT NULL DEFAULT 1,
+      sample_descriptions_json TEXT NOT NULL DEFAULT '[]',
+      status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'ignored')),
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (household_id) REFERENCES households(id),
+      FOREIGN KEY (category_id) REFERENCES categories(id),
+      UNIQUE (household_id, pattern, category_id)
     )
   `).run();
 
@@ -462,6 +506,8 @@ export async function seedEmptyStateReferenceData(db: D1Database) {
       )
       .run();
   }
+
+  await ensureDefaultCategoryMatchRules(db);
 }
 
 export async function clearDemoData(db: D1Database) {
@@ -485,6 +531,8 @@ export async function clearDemoData(db: D1Database) {
     "DELETE FROM imports",
     "DELETE FROM account_balance_checkpoints",
     "DELETE FROM audit_events",
+    "DELETE FROM category_match_rule_suggestions",
+    "DELETE FROM category_match_rules",
     "DELETE FROM transfer_groups",
     "DELETE FROM categories",
     "DELETE FROM accounts",
@@ -570,6 +618,8 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
       )
       .run();
   }
+
+  await ensureDefaultCategoryMatchRules(db);
 
   for (const item of demoImportBatches) {
     await db
@@ -1206,9 +1256,29 @@ export async function updateEntryRecord(
   }
 
   const transaction = await db
-    .prepare("SELECT amount_minor, transaction_date, transfer_group_id, transfer_direction, entry_type FROM transactions WHERE id = ? AND household_id = ?")
+    .prepare(`
+      SELECT
+        transactions.amount_minor,
+        transactions.transaction_date,
+        transactions.transfer_group_id,
+        transactions.transfer_direction,
+        transactions.entry_type,
+        transactions.description,
+        categories.name AS category_name
+      FROM transactions
+      LEFT JOIN categories ON categories.id = transactions.category_id
+      WHERE transactions.id = ? AND transactions.household_id = ?
+    `)
     .bind(input.entryId, DEFAULT_HOUSEHOLD_ID)
-    .first<{ amount_minor: number; transaction_date: string; transfer_group_id: string | null; transfer_direction: "in" | "out" | null; entry_type: "expense" | "income" | "transfer" }>();
+    .first<{
+      amount_minor: number;
+      transaction_date: string;
+      transfer_group_id: string | null;
+      transfer_direction: "in" | "out" | null;
+      entry_type: "expense" | "income" | "transfer";
+      description: string;
+      category_name: string | null;
+    }>();
 
   if (!transaction) {
     throw new Error(`Unknown entry: ${input.entryId}`);
@@ -1338,6 +1408,13 @@ export async function updateEntryRecord(
     detail: `Updated entry ${input.description} on ${input.date} in ${input.accountName}.`
   });
 
+  if (transaction.category_name && transaction.category_name !== input.categoryName) {
+    await recordCategoryMatchSuggestion(db, {
+      description: input.description || transaction.description,
+      categoryName: input.categoryName
+    });
+  }
+
   return { entryId: input.entryId, updated: true };
 }
 
@@ -1351,9 +1428,25 @@ export async function updateEntryClassificationRecord(
   }
 ) {
   const transaction = await db
-    .prepare("SELECT transfer_group_id, entry_type, description, transaction_date FROM transactions WHERE id = ? AND household_id = ?")
+    .prepare(`
+      SELECT
+        transactions.transfer_group_id,
+        transactions.entry_type,
+        transactions.description,
+        transactions.transaction_date,
+        categories.name AS category_name
+      FROM transactions
+      LEFT JOIN categories ON categories.id = transactions.category_id
+      WHERE transactions.id = ? AND transactions.household_id = ?
+    `)
     .bind(input.entryId, DEFAULT_HOUSEHOLD_ID)
-    .first<{ transfer_group_id: string | null; entry_type: "expense" | "income" | "transfer"; description: string; transaction_date: string }>();
+    .first<{
+      transfer_group_id: string | null;
+      entry_type: "expense" | "income" | "transfer";
+      description: string;
+      transaction_date: string;
+      category_name: string | null;
+    }>();
 
   if (!transaction) {
     throw new Error(`Unknown entry: ${input.entryId}`);
@@ -1403,6 +1496,13 @@ export async function updateEntryClassificationRecord(
     action: "entry_classification_updated",
     detail: `Updated entry classification for ${transaction.description} on ${transaction.transaction_date}.`
   });
+
+  if (transaction.category_name && transaction.category_name !== input.categoryName) {
+    await recordCategoryMatchSuggestion(db, {
+      description: transaction.description,
+      categoryName: input.categoryName
+    });
+  }
 
   return { entryId: input.entryId, updated: true };
 }

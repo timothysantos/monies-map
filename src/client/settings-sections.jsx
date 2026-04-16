@@ -1,10 +1,33 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { ChevronRight, SquarePen, X } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { formatAuditAction } from "./account-display";
 import { messages } from "./copy/en-SG";
 import { formatDate, formatDateOnly, money } from "./formatters";
 import { CategoryGlyph, DeleteRowButton } from "./ui-components";
+
+function groupCategoryMatchRules(rules, categories) {
+  const categoriesByName = new Map(categories.map((category) => [category.name, category]));
+  const groupsByCategory = rules.reduce((groups, rule) => {
+    const categoryName = rule.categoryName || messages.common.emptyValue;
+    const group = groups.get(categoryName) ?? [];
+    group.push(rule);
+    groups.set(categoryName, group);
+    return groups;
+  }, new Map());
+
+  return Array.from(groupsByCategory.entries())
+    .map(([categoryName, groupRules]) => ({
+      categoryName,
+      category: categoriesByName.get(categoryName) ?? null,
+      rules: [...groupRules].sort((first, second) => (
+        first.priority - second.priority
+        || first.pattern.localeCompare(second.pattern)
+      ))
+    }))
+    .sort((first, second) => first.categoryName.localeCompare(second.categoryName));
+}
 
 function SettingsSectionToggle({ title, detail, isOpen, onToggle }) {
   return (
@@ -108,6 +131,135 @@ export function SettingsCategoriesSection({
                 </div>
               </div>
             ))}
+          </div>
+        </>
+      ) : null}
+    </section>
+  );
+}
+
+export function SettingsCategoryMatchRulesSection({
+  id,
+  rules,
+  categories,
+  suggestions,
+  isOpen,
+  onToggle,
+  onCreateRule,
+  onEditRule,
+  onDeleteRule,
+  onAcceptSuggestion,
+  onEditSuggestion,
+  onIgnoreSuggestion
+}) {
+  const ruleGroups = useMemo(() => groupCategoryMatchRules(rules, categories), [categories, rules]);
+  const [areRuleGroupsExpanded, setAreRuleGroupsExpanded] = useState(true);
+
+  return (
+    <section id={id} className="chart-card settings-card">
+      <SettingsSectionToggle
+        title={messages.settings.categoryRulesTitle}
+        detail={messages.settings.categoryRulesDetail}
+        isOpen={isOpen}
+        onToggle={onToggle}
+      />
+      {isOpen ? (
+        <>
+          {suggestions.length ? (
+            <section className="settings-suggestion-panel">
+              <div className="settings-rule-group-header">
+                <strong>{messages.settings.categoryRuleSuggestionsTitle}</strong>
+                <span>{messages.settings.categoryRuleSuggestionsCount(suggestions.length)}</span>
+              </div>
+              <p className="lede compact">{messages.settings.categoryRuleSuggestionsDetail}</p>
+              <div className="settings-suggestion-list">
+                {suggestions.map((suggestion) => (
+                  <div key={suggestion.id} className="settings-account-row settings-suggestion-row">
+                    <div className="settings-account-main">
+                      <strong>{suggestion.pattern}</strong>
+                      <p>{messages.common.triplet(suggestion.categoryName, messages.settings.categoryRuleSuggestionSeen(suggestion.sourceCount), suggestion.sampleDescriptions[0] ?? messages.common.emptyValue)}</p>
+                      {suggestion.sampleDescriptions.length > 1 ? (
+                        <ul className="settings-rule-suggestion-samples">
+                          {suggestion.sampleDescriptions.slice(1).map((sample) => (
+                            <li key={sample}>{sample}</li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                    <div className="settings-account-actions settings-suggestion-actions">
+                      <button type="button" className="subtle-action" onClick={() => onAcceptSuggestion(suggestion)}>
+                        {messages.settings.acceptCategoryRuleSuggestion}
+                      </button>
+                      <button type="button" className="subtle-action" onClick={() => onEditSuggestion(suggestion)}>
+                        {messages.settings.editCategoryRuleSuggestion}
+                      </button>
+                      <button type="button" className="subtle-action muted-action" onClick={() => onIgnoreSuggestion(suggestion)}>
+                        {messages.settings.ignoreCategoryRuleSuggestion}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
+          <div className="settings-actions">
+            <button type="button" className="subtle-action" onClick={onCreateRule}>
+              {messages.settings.addCategoryRule}
+            </button>
+            {ruleGroups.length ? (
+              <button
+                type="button"
+                className="subtle-action"
+                onClick={() => setAreRuleGroupsExpanded((current) => !current)}
+              >
+                {areRuleGroupsExpanded ? messages.settings.collapseCategoryRules : messages.settings.expandCategoryRules}
+              </button>
+            ) : null}
+          </div>
+          <div className="settings-rule-list">
+            {ruleGroups.length ? ruleGroups.map((group) => (
+              <details key={`${group.categoryName}-${areRuleGroupsExpanded ? "open" : "closed"}`} className="settings-rule-group" open={areRuleGroupsExpanded}>
+                <summary className="settings-rule-group-header">
+                  <span className="settings-rule-group-title">
+                    {group.category ? (
+                      <span
+                        className="category-icon category-icon-static settings-rule-category-icon"
+                        style={{ "--category-color": group.category.colorHex }}
+                      >
+                        <CategoryGlyph iconKey={group.category.iconKey} />
+                      </span>
+                    ) : null}
+                    <strong>{group.categoryName}</strong>
+                  </span>
+                  <span className="settings-rule-group-count">{messages.settings.categoryRuleGroupCount(group.rules.length)}</span>
+                </summary>
+                <div className="settings-rule-group-list">
+                  {group.rules.map((rule) => (
+                    <div key={rule.id} className={`settings-account-row settings-rule-row ${rule.isActive ? "" : "is-muted"}`}>
+                      <div className="settings-account-main">
+                        <strong>{rule.pattern}</strong>
+                        <p>{messages.common.triplet(messages.settings.categoryRulePriorityValue(rule.priority), rule.isActive ? messages.settings.categoryRuleActive : messages.settings.categoryRuleInactive, rule.note || messages.common.emptyValue)}</p>
+                      </div>
+                      <div className="settings-account-actions">
+                        <button type="button" className="icon-action" aria-label={messages.settings.editCategoryRule} onClick={() => onEditRule(rule)}>
+                          <SquarePen size={16} />
+                        </button>
+                        <DeleteRowButton
+                          label={rule.pattern}
+                          triggerLabel={messages.settings.deleteCategoryRule}
+                          confirmLabel={messages.settings.deleteCategoryRule}
+                          destructive={false}
+                          prompt={messages.settings.deleteCategoryRuleDetail(rule.pattern)}
+                          onConfirm={() => onDeleteRule(rule)}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )) : (
+              <p className="lede compact">{messages.common.emptyValue}</p>
+            )}
           </div>
         </>
       ) : null}

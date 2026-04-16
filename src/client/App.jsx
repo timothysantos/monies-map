@@ -345,6 +345,27 @@ export function App() {
   const periodLabel = isDetailMonthTab
     ? formatMonthLabel(view.monthPage.month)
     : `${formatMonthLabel(view.summaryPage.rangeStartMonth)} - ${formatMonthLabel(view.summaryPage.rangeEndMonth)}`;
+  const pendingCategorySuggestionCount = bootstrap.settingsPage?.categoryMatchRuleSuggestions?.length ?? 0;
+  const buildTabTarget = (tab) => {
+    const params = new URLSearchParams(searchParams);
+    if (tab.id === "settings" && pendingCategorySuggestionCount) {
+      params.set("settings_section", "categoryRules");
+    } else {
+      params.delete("settings_section");
+    }
+
+    return { pathname: tab.path, search: params.toString() ? `?${params.toString()}` : "" };
+  };
+  const renderTabLabel = (tab) => (
+    <span className="tab-label-with-badge">
+      <span>{tab.label}</span>
+      {tab.id === "settings" && pendingCategorySuggestionCount ? (
+        <span className="tab-badge" title={messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount)}>
+          {pendingCategorySuggestionCount}
+        </span>
+      ) : null}
+    </span>
+  );
   const stickyScopeConfig = selectedTabId === "month"
     ? {
         selectedKey: view.monthPage.selectedScope,
@@ -536,18 +557,20 @@ export function App() {
               <NavLink
                 key={tab.id}
                 className={({ isActive }) => `tab ${isActive ? "is-active" : ""}`}
-                to={{ pathname: tab.path, search: searchParams.toString() ? `?${searchParams.toString()}` : "" }}
+                to={buildTabTarget(tab)}
+                title={tab.id === "settings" && pendingCategorySuggestionCount ? messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount) : undefined}
               >
-                {tab.label}
+                {renderTabLabel(tab)}
               </NavLink>
             ))}
             {secondaryRouteTabs.map((tab) => (
               <NavLink
                 key={tab.id}
                 className={({ isActive }) => `tab tab-secondary ${isActive ? "is-active" : ""}`}
-                to={{ pathname: tab.path, search: searchParams.toString() ? `?${searchParams.toString()}` : "" }}
+                to={buildTabTarget(tab)}
+                title={tab.id === "settings" && pendingCategorySuggestionCount ? messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount) : undefined}
               >
-                {tab.label}
+                {renderTabLabel(tab)}
               </NavLink>
             ))}
             <Popover.Root>
@@ -563,9 +586,10 @@ export function App() {
                       <NavLink
                         key={tab.id}
                         className={({ isActive }) => `tab-overflow-link ${isActive ? "is-active" : ""}`}
-                        to={{ pathname: tab.path, search: searchParams.toString() ? `?${searchParams.toString()}` : "" }}
+                        to={buildTabTarget(tab)}
+                        title={tab.id === "settings" && pendingCategorySuggestionCount ? messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount) : undefined}
                       >
-                        {tab.label}
+                        {renderTabLabel(tab)}
                       </NavLink>
                     ))}
                   </div>
