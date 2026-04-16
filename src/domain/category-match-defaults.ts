@@ -48,6 +48,7 @@ export const defaultCategoryMatchRules: DefaultCategoryMatchRule[] = [
   { id: "catrule-fairprice", pattern: "FAIRPRICE", categoryName: "Groceries", priority: 45 },
   { id: "catrule-don-don-donki", pattern: "DON DON DONKI", categoryName: "Groceries", priority: 45 },
   { id: "catrule-cs-fresh", pattern: "CS FRESH", categoryName: "Groceries", priority: 45 },
+  { id: "catrule-cold-storage", pattern: "COLD STORAGE", categoryName: "Groceries", priority: 45 },
   { id: "catrule-little-farms", pattern: "LITTLE FARMS", categoryName: "Groceries", priority: 45 },
   { id: "catrule-meidi-ya", pattern: "MEIDI-YA", categoryName: "Groceries", priority: 45 },
   { id: "catrule-foodloft", pattern: "FOODLOFT", categoryName: "Food & Drinks", priority: 45 },

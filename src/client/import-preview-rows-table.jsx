@@ -1,3 +1,4 @@
+import { getCategoriesForSelect } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { getAmountToneClass } from "./entry-helpers";
 import { formatMinorInput, parseMoneyInput } from "./formatters";
@@ -16,6 +17,8 @@ export function ImportPreviewRowsTable({
   onRemovePreviewRow,
   getPreviewAccountOwnerPatch
 }) {
+  const categorySelectOptions = getCategoriesForSelect(categories);
+
   return (
     <>
       <ImportCommitButton disabled={isCommitDisabled} isSubmitting={isSubmitting} onCommit={onCommit} />
@@ -103,7 +106,7 @@ export function ImportPreviewRowsTable({
                   <td>
                     <select className="table-edit-input" value={row.categoryName ?? ""} onChange={(event) => onUpdatePreviewRow(row.rowId, { categoryName: event.target.value || undefined })}>
                       <option value="">{messages.entries.allCategories}</option>
-                      {categories.map((category) => (
+                      {categorySelectOptions.map((category) => (
                         <option key={category.id} value={category.name}>{category.name}</option>
                       ))}
                     </select>

@@ -46,7 +46,8 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
     settleTransfer,
     addEntryToSplits,
     updateEntry,
-    updateEntrySplit
+    updateEntrySplit,
+    saveEntryCategory
   } = useEntryActions({ view, accounts, categories, people, onRefresh });
   const selectedScope = searchParams.get("entries_scope") ?? view.monthPage.selectedScope;
   const defaultEntryPerson = view.id !== "household" ? view.label : "";
@@ -244,6 +245,7 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
         onCategoryAppearanceChange={onCategoryAppearanceChange}
         onUpdateEntry={updateEntry}
         onUpdateEntrySplit={updateEntrySplit}
+        onSaveEntryCategory={saveEntryCategory}
         onEnsureTransferSettlementDraft={ensureTransferSettlementDraft}
         onTransferDialogEntryChange={setTransferDialogEntryId}
         onUpdateTransferSettlementDraft={updateTransferSettlementDraft}

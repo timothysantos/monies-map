@@ -357,7 +357,7 @@ export function inferCategory(description: string, isIncome: boolean) {
   if (/GRAB\*|TADA|GOPAY-GOJEK/.test(normalized)) {
     return "Taxi";
   }
-  if (/FAIRPRICE|CS FRESH|FINEST|MARKET PLACE|DON DON DONKI|GROCER|NITORI/.test(normalized)) {
+  if (/FAIRPRICE|CS FRESH|FINEST|MARKET PLACE|COLD STORAGE|DON DON DONKI|GROCER|NITORI/.test(normalized)) {
     return "Groceries";
   }
   if (/APPLE\.COM\/BILL|GOOGLE\*?YOUTUBE|YOUTUBEPREMIUM|NETFLIX|OPENAI|VIVIFI|STARHUB/.test(normalized)) {

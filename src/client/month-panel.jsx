@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { CategoryAppearancePopover } from "./category-visuals";
-import { getCategory, getCategoryPatch } from "./category-utils";
+import { getCategoriesForSelect, getCategory, getCategoryPatch } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import {
   buildPlanLinkCandidates,
@@ -47,6 +47,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     planned_items: null,
     budget_buckets: null
   });
+  const categorySelectOptions = useMemo(() => getCategoriesForSelect(categories), [categories]);
   const isCombinedHouseholdView = view.id === "household" && view.monthPage.selectedScope === "direct_plus_shared";
 
   useEffect(() => {
@@ -687,6 +688,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       <MonthPlanStack
         view={view}
         categories={categories}
+        categorySelectOptions={categorySelectOptions}
         accounts={accounts}
         incomeRows={incomeRows}
         planSections={planSections}
@@ -755,7 +757,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
                     value={mobileAddDialog?.categoryValue ?? ""}
                     onChange={(event) => setMobileAddDialog((current) => current ? { ...current, categoryValue: event.target.value } : current)}
                   >
-                    {categories.map((category) => (
+                    {categorySelectOptions.map((category) => (
                       <option key={category.id} value={category.id}>{category.name}</option>
                     ))}
                   </select>

@@ -43,6 +43,7 @@ export function EntriesDateGroups({
   onCategoryAppearanceChange,
   onUpdateEntry,
   onUpdateEntrySplit,
+  onSaveEntryCategory,
   onEnsureTransferSettlementDraft,
   onTransferDialogEntryChange,
   onUpdateTransferSettlementDraft,
@@ -116,6 +117,7 @@ export function EntriesDateGroups({
                 onCategoryAppearanceChange={onCategoryAppearanceChange}
                 onUpdateEntry={onUpdateEntry}
                 onUpdateEntrySplit={onUpdateEntrySplit}
+                onSaveEntryCategory={onSaveEntryCategory}
                 onEnsureTransferSettlementDraft={onEnsureTransferSettlementDraft}
                 onTransferDialogEntryChange={onTransferDialogEntryChange}
                 onUpdateTransferSettlementDraft={onUpdateTransferSettlementDraft}
@@ -151,6 +153,7 @@ function EntryRow({
   onCategoryAppearanceChange,
   onUpdateEntry,
   onUpdateEntrySplit,
+  onSaveEntryCategory,
   onEnsureTransferSettlementDraft,
   onTransferDialogEntryChange,
   onUpdateTransferSettlementDraft,
@@ -237,6 +240,7 @@ function EntryRow({
             splitPercentValue={entry.ownershipType === "shared" ? splitPercent : null}
             lockTransferCategory
             onChange={(patch) => onUpdateEntry(entry.id, patch)}
+            onQuickSaveCategory={(categoryName) => onSaveEntryCategory(entry.id, categoryName)}
             onCategoryAppearanceChange={onCategoryAppearanceChange}
             onOwnerChange={(nextValue) => {
               if (nextValue === "Shared") {

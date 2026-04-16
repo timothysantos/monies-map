@@ -1,6 +1,7 @@
 import { useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 
+import { getCategoriesForSelect } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { getAmountToneClass } from "./entry-helpers";
 import {
@@ -14,6 +15,7 @@ export function StatementCompareResultView({ result, deltaMinor, accounts, categ
   const directionMismatches = result.possibleMatches.filter((candidate) => candidate.amountDirectionMismatch);
   const duplicateStatementGroups = result.duplicateStatementGroups ?? [];
   const duplicateLedgerGroups = result.duplicateLedgerGroups ?? [];
+  const categorySelectOptions = getCategoriesForSelect(categories);
   return (
     <section className="settings-statement-compare">
       <strong>{messages.settings.statementCompareSummary(result)}</strong>
@@ -49,6 +51,7 @@ export function StatementCompareResultView({ result, deltaMinor, accounts, categ
               key={`${candidate.statementRow.id}-${candidate.ledgerRow.id}`}
               candidate={candidate}
               categories={categories}
+              categorySelectOptions={categorySelectOptions}
               onRowsMatched={onRowsMatched}
             />
           ))}
@@ -76,6 +79,7 @@ export function StatementCompareResultView({ result, deltaMinor, accounts, categ
               result={result}
               accounts={accounts}
               categories={categories}
+              categorySelectOptions={categorySelectOptions}
               people={people}
               onEntryAdded={onEntryAdded}
             />
@@ -109,7 +113,7 @@ function StatementCompareDuplicateGroups({ title, groups }) {
   );
 }
 
-function StatementCompareDirectionMismatch({ candidate, categories, onRowsMatched }) {
+function StatementCompareDirectionMismatch({ candidate, categories, categorySelectOptions, onRowsMatched }) {
   const defaultCategoryName = candidate.statementRow.entryType === "transfer"
     ? "Transfer"
     : candidate.statementRow.categoryName && categories.some((category) => category.name === candidate.statementRow.categoryName)
@@ -205,7 +209,7 @@ function StatementCompareDirectionMismatch({ candidate, categories, onRowsMatche
                   <label className="table-edit-field">
                     <span>{messages.imports.table.category}</span>
                     <select className="table-edit-input" value={draft.categoryName} onChange={(event) => updateDraft({ categoryName: event.target.value })}>
-                      {categories.map((category) => (
+                      {categorySelectOptions.map((category) => (
                         <option key={category.id} value={category.name}>{category.name}</option>
                       ))}
                     </select>
@@ -239,7 +243,7 @@ function StatementCompareDisplayRow({ row, label }) {
   );
 }
 
-function StatementCompareMissingRow({ row, result, accounts, categories, people, onEntryAdded }) {
+function StatementCompareMissingRow({ row, result, accounts, categories, categorySelectOptions, people, onEntryAdded }) {
   const account = accounts.find((item) => item.name === result.accountName);
   const preferredOwnerName = people.find((person) => person.name === account?.ownerLabel)?.name ?? people[0]?.name ?? "";
   const defaultCategoryName = row.entryType === "transfer"
@@ -359,7 +363,7 @@ function StatementCompareMissingRow({ row, result, accounts, categories, people,
                 <label className="table-edit-field">
                   <span>{messages.imports.table.category}</span>
                   <select className="table-edit-input" value={draft.categoryName} onChange={(event) => updateDraft({ categoryName: event.target.value })}>
-                    {categories.map((category) => (
+                    {categorySelectOptions.map((category) => (
                       <option key={category.id} value={category.name}>{category.name}</option>
                     ))}
                   </select>
