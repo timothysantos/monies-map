@@ -385,7 +385,7 @@ export async function ensureDemoSchema(db: D1Database) {
         FOREIGN KEY (split_batch_id) REFERENCES split_batches(id),
         FOREIGN KEY (payer_person_id) REFERENCES people(id),
         FOREIGN KEY (category_id) REFERENCES categories(id),
-        FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id)
+        FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id) ON DELETE SET NULL
       )
     `)
     .run();
@@ -426,7 +426,7 @@ export async function ensureDemoSchema(db: D1Database) {
         FOREIGN KEY (split_batch_id) REFERENCES split_batches(id),
         FOREIGN KEY (from_person_id) REFERENCES people(id),
         FOREIGN KEY (to_person_id) REFERENCES people(id),
-        FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id)
+        FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id) ON DELETE SET NULL
       )
     `)
     .run();
@@ -2136,6 +2136,38 @@ export async function deleteMonthPlanRow(
 async function clearMonthData(db: D1Database, month: string, year: number, monthNumber: number) {
   await db
     .prepare(`
+      UPDATE split_expenses
+      SET linked_transaction_id = NULL
+      WHERE household_id = ?
+        AND linked_transaction_id IN (
+          SELECT id
+          FROM transactions
+          WHERE household_id = ?
+            AND transaction_date >= ?
+            AND transaction_date < ?
+        )
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID, `${month}-01`, nextMonthKey(month) + "-01")
+    .run();
+
+  await db
+    .prepare(`
+      UPDATE split_settlements
+      SET linked_transaction_id = NULL
+      WHERE household_id = ?
+        AND linked_transaction_id IN (
+          SELECT id
+          FROM transactions
+          WHERE household_id = ?
+            AND transaction_date >= ?
+            AND transaction_date < ?
+        )
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID, `${month}-01`, nextMonthKey(month) + "-01")
+    .run();
+
+  await db
+    .prepare(`
       DELETE FROM monthly_plan_entry_links
       WHERE transaction_id IN (
         SELECT id
@@ -2467,6 +2499,30 @@ export async function rollbackImportBatch(
 }
 
 async function cleanupImportBatchRows(db: D1Database, importId: string) {
+  await db
+    .prepare(`
+      UPDATE split_expenses
+      SET linked_transaction_id = NULL
+      WHERE household_id = ?
+        AND linked_transaction_id IN (
+          SELECT id FROM transactions WHERE household_id = ? AND import_id = ?
+        )
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID, importId)
+    .run();
+
+  await db
+    .prepare(`
+      UPDATE split_settlements
+      SET linked_transaction_id = NULL
+      WHERE household_id = ?
+        AND linked_transaction_id IN (
+          SELECT id FROM transactions WHERE household_id = ? AND import_id = ?
+        )
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID, importId)
+    .run();
+
   await db
     .prepare(`
       DELETE FROM transaction_splits

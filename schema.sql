@@ -239,7 +239,7 @@ CREATE TABLE IF NOT EXISTS split_expenses (
   FOREIGN KEY (split_batch_id) REFERENCES split_batches(id),
   FOREIGN KEY (payer_person_id) REFERENCES people(id),
   FOREIGN KEY (category_id) REFERENCES categories(id),
-  FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id)
+  FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS split_expense_shares (
@@ -272,7 +272,7 @@ CREATE TABLE IF NOT EXISTS split_settlements (
   FOREIGN KEY (split_batch_id) REFERENCES split_batches(id),
   FOREIGN KEY (from_person_id) REFERENCES people(id),
   FOREIGN KEY (to_person_id) REFERENCES people(id),
-  FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id)
+  FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS monthly_notes (

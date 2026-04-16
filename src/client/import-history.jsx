@@ -86,7 +86,7 @@ export function ImportRecentHistorySection({
                           triggerLabel={messages.imports.rollback}
                           confirmLabel={messages.imports.rollbackConfirm}
                           prompt={<>{messages.imports.rollbackDetail(item.sourceLabel)}</>}
-                          onConfirm={() => void onRollback(item.id)}
+                          onConfirm={() => onRollback(item.id)}
                         />
                       ) : null}
                     </div>
