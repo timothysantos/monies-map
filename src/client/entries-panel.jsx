@@ -213,11 +213,13 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
             />
             {entrySubmitError ? <p className="entry-submit-error">{entrySubmitError}</p> : null}
             <div className="entry-inline-actions">
-              <button type="button" className="icon-action" aria-label="Create entry" onClick={() => void saveEntryDraft()}>
+              <button type="button" className="inline-action-button inline-save-action" aria-label="Create entry" onClick={() => void saveEntryDraft()}>
                 <Check size={16} />
+                <span className="desktop-action-label">Save</span>
               </button>
-              <button type="button" className="icon-action subtle-cancel" aria-label="Cancel new entry" onClick={closeEntryComposer}>
+              <button type="button" className="inline-action-button inline-cancel-action" aria-label="Cancel new entry" onClick={closeEntryComposer}>
                 <X size={16} />
+                <span className="desktop-action-label">Cancel</span>
               </button>
             </div>
           </div>

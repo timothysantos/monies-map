@@ -274,11 +274,13 @@ function EntryRow({
                 {messages.entries.addToSplits}
               </button>
             ) : null}
-            <button type="button" className="icon-action" aria-label="Done editing entry" onClick={onFinishEntryEdit}>
+            <button type="button" className="inline-action-button inline-save-action" aria-label="Done editing entry" onClick={onFinishEntryEdit}>
               <Check size={16} />
+              <span className="desktop-action-label">Save</span>
             </button>
-            <button type="button" className="icon-action subtle-cancel" aria-label="Cancel editing entry" onClick={onCancelEntryEdit}>
+            <button type="button" className="inline-action-button inline-cancel-action" aria-label="Cancel editing entry" onClick={onCancelEntryEdit}>
               <X size={16} />
+              <span className="desktop-action-label">Cancel</span>
             </button>
           </div>
         </div>

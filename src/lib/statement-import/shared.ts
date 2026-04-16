@@ -360,7 +360,7 @@ export function inferCategory(description: string, isIncome: boolean) {
   if (/FAIRPRICE|CS FRESH|FINEST|MARKET PLACE|DON DON DONKI|GROCER|NITORI/.test(normalized)) {
     return "Groceries";
   }
-  if (/APPLE\.COM\/BILL|GOOGLE\*?YOUTUBE|YOUTUBEPREMIUM|OPENAI|VIVIFI|STARHUB/.test(normalized)) {
+  if (/APPLE\.COM\/BILL|GOOGLE\*?YOUTUBE|YOUTUBEPREMIUM|NETFLIX|OPENAI|VIVIFI|STARHUB/.test(normalized)) {
     return "Subscriptions MO";
   }
   if (/KINOKUNIYA|BOOK/.test(normalized)) {
