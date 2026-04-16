@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Check, X } from "lucide-react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
@@ -149,6 +149,7 @@ function EntryRow({
   onFinishEntryEdit,
   onCancelEntryEdit
 }) {
+  const inlineEditorRef = useRef(null);
   const ownerLabel = entry.ownershipType === "shared" ? "Shared" : entry.ownerName ?? messages.common.emptyValue;
   const splitPercent = getVisibleSplitPercent(entry, viewId);
   const category = getCategory(categories, entry);
@@ -164,6 +165,18 @@ function EntryRow({
   const transferCandidates = entry.entryType === "transfer"
     ? getTransferMatchCandidates(entry, allEntries)
     : [];
+
+  useEffect(() => {
+    if (!isEditing) {
+      return undefined;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      inlineEditorRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [isEditing]);
 
   return (
     <div className={`entry-row ${isEditing ? "is-editing" : ""}`} id={entry.id}>
@@ -201,7 +214,7 @@ function EntryRow({
       ) : null}
 
       {isEditing ? (
-        <div className="entry-inline-editor">
+        <div ref={inlineEditorRef} className="entry-inline-editor">
           <EntryEditorFields
             entry={entry}
             categories={categories}
