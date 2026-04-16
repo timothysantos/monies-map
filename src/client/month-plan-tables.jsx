@@ -1,7 +1,7 @@
 import { Check, ChevronRight, SquarePen, X } from "lucide-react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
-import { getCategory, getCategoryPatch, getCategorySelectValue } from "./category-utils";
+import { getCategoriesForSelect, getCategory, getCategoryPatch, getCategorySelectValue } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { formatMinorInput, money } from "./formatters";
 import { getMonthSectionTotals } from "./month-helpers";
@@ -17,6 +17,7 @@ const SECTION_ORDER = {
 export function MonthPlanStack({
   view,
   categories,
+  categorySelectOptions = getCategoriesForSelect(categories),
   accounts,
   incomeRows,
   planSections,
@@ -53,6 +54,7 @@ export function MonthPlanStack({
       </p>
       <IncomePlanSection
         categories={categories}
+        categorySelectOptions={categorySelectOptions}
         incomeRows={incomeRows}
         sortedIncomeRows={sortedIncomeRows}
         sectionOpen={sectionOpen}
@@ -77,6 +79,7 @@ export function MonthPlanStack({
           key={section.key}
           view={view}
           categories={categories}
+          categorySelectOptions={categorySelectOptions}
           accounts={accounts}
           section={section}
           sectionOpen={sectionOpen}
@@ -105,6 +108,7 @@ export function MonthPlanStack({
 
 function IncomePlanSection({
   categories,
+  categorySelectOptions,
   incomeRows,
   sortedIncomeRows,
   sectionOpen,
@@ -197,7 +201,7 @@ function IncomePlanSection({
                             onChange={(event) => onIncomeRowChange(row.id, getCategoryPatch(categories, event.target.value))}
                             onClick={(event) => event.stopPropagation()}
                           >
-                            {categories.map((category) => (
+                            {categorySelectOptions.map((category) => (
                               <option key={category.id} value={category.id}>{category.name}</option>
                             ))}
                           </select>
@@ -269,6 +273,7 @@ function IncomePlanSection({
 function PlanningSection({
   view,
   categories,
+  categorySelectOptions,
   accounts,
   section,
   sectionOpen,
@@ -348,6 +353,7 @@ function PlanningSection({
                   key={row.id}
                   view={view}
                   categories={categories}
+                  categorySelectOptions={categorySelectOptions}
                   accounts={accounts}
                   section={section}
                   row={row}
@@ -377,6 +383,7 @@ function PlanningSection({
 function PlanningRow({
   view,
   categories,
+  categorySelectOptions,
   accounts,
   section,
   row,
@@ -414,7 +421,7 @@ function PlanningRow({
               onChange={(event) => onPlanRowChange(section.key, row.id, getCategoryPatch(categories, event.target.value))}
               onClick={(event) => event.stopPropagation()}
             >
-              {categories.map((category) => (
+              {categorySelectOptions.map((category) => (
                 <option key={category.id} value={category.id}>{category.name}</option>
               ))}
             </select>

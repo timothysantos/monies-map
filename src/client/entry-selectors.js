@@ -1,3 +1,4 @@
+import { getCategoryNameOptions } from "./category-utils";
 import { entryMatchesScope, groupEntriesByDate, uniqueValues } from "./entry-helpers";
 
 export function getEntryFilterOptions(entries) {
@@ -12,10 +13,7 @@ export function getEntryFilterOptions(entries) {
 
 export function getEntryFormOptions({ accounts, categories, people }) {
   return {
-    categoryOptions: categories
-      .slice()
-      .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name))
-      .map((category) => category.name),
+    categoryOptions: getCategoryNameOptions(categories),
     accountOptions: accounts
       .filter((account) => account.isActive !== false)
       .slice()

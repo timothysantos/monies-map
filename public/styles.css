@@ -1565,6 +1565,23 @@ h3 {
   line-height: 1.45;
 }
 
+.entry-category-save-popover {
+  width: min(280px, calc(100vw - 32px));
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(26, 28, 34, 0.12);
+  z-index: 60;
+}
+
+.entry-category-save-popover p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
 .delete-popover-actions {
   display: flex;
   justify-content: flex-end;

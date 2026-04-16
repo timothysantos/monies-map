@@ -1,4 +1,4 @@
-import { getCategoryTheme } from "./category-utils";
+import { getCategoryNameOptions, getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import {
   groupSplitActivityByBatch,
@@ -55,10 +55,7 @@ export function buildSplitsPanelModel({
 }
 
 function getCategoryOptions(categories) {
-  return categories
-    .slice()
-    .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name))
-    .map((category) => category.name);
+  return getCategoryNameOptions(categories);
 }
 
 function buildDonutRows(donutChart, categories) {

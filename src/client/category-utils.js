@@ -23,6 +23,16 @@ export function getCategorySelectValue(categories, item) {
   return category?.id ?? item.categoryId ?? item.categoryName ?? "";
 }
 
+export function getCategoriesForSelect(categories) {
+  return categories
+    .slice()
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+export function getCategoryNameOptions(categories) {
+  return getCategoriesForSelect(categories).map((category) => category.name);
+}
+
 export function getCategoryPatch(categories, value) {
   const category = categories.find((entry) => entry.id === value || entry.name === value);
   if (!category) {

@@ -1,5 +1,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
+import * as Popover from "@radix-ui/react-popover";
 import { X } from "lucide-react";
+import { useState } from "react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { getCategory, getCategoryTheme } from "./category-utils";
@@ -19,11 +21,15 @@ export function EntryEditorFields({
   splitPercentValue,
   lockTransferCategory = false,
   onChange,
+  onQuickSaveCategory,
   onCategoryAppearanceChange,
   onOwnerChange,
   onSplitPercentChange,
   transferTools = null
 }) {
+  const [categorySavePrompt, setCategorySavePrompt] = useState(null);
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [categorySaveError, setCategorySaveError] = useState("");
   const displayCategoryName = lockTransferCategory && entry.entryType === "transfer" ? "Transfer" : entry.categoryName;
   const category = getCategory(categories, { categoryName: displayCategoryName });
   const categoryTheme = getCategoryTheme(
@@ -39,6 +45,32 @@ export function EntryEditorFields({
     : entry.entryType === "expense"
       ? "entry-edit-tone-negative"
       : "entry-edit-tone-transfer";
+
+  function handleCategoryChange(nextCategoryName) {
+    onChange({ categoryName: nextCategoryName });
+    if (!onQuickSaveCategory || nextCategoryName === entry.categoryName) {
+      return;
+    }
+    setCategorySaveError("");
+    setCategorySavePrompt({ categoryName: nextCategoryName });
+  }
+
+  async function saveCategoryShortcut() {
+    if (!categorySavePrompt || !onQuickSaveCategory) {
+      return;
+    }
+
+    setIsSavingCategory(true);
+    setCategorySaveError("");
+    try {
+      await onQuickSaveCategory(categorySavePrompt.categoryName);
+      setCategorySavePrompt(null);
+    } catch (error) {
+      setCategorySaveError(error instanceof Error ? error.message : "Failed to save category.");
+    } finally {
+      setIsSavingCategory(false);
+    }
+  }
 
   return (
     <>
@@ -66,15 +98,40 @@ export function EntryEditorFields({
                 readOnly
               />
             ) : (
-              <select
-                className="table-edit-input"
-                value={entry.categoryName}
-                onChange={(event) => onChange({ categoryName: event.target.value })}
-              >
-                {categoryOptions.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
+              <Popover.Root open={Boolean(categorySavePrompt)} onOpenChange={(open) => {
+                if (!open && !isSavingCategory) {
+                  setCategorySavePrompt(null);
+                  setCategorySaveError("");
+                }
+              }}>
+                <Popover.Anchor asChild>
+                  <select
+                    className="table-edit-input"
+                    value={entry.categoryName}
+                    onChange={(event) => handleCategoryChange(event.target.value)}
+                  >
+                    {categoryOptions.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </Popover.Anchor>
+                <Popover.Portal>
+                  <Popover.Content className="entry-category-save-popover" sideOffset={8} align="end">
+                    <strong>Save this category?</strong>
+                    <p>Update this entry now without saving the rest of the row.</p>
+                    {categorySaveError ? <p className="form-error">{categorySaveError}</p> : null}
+                    <div className="delete-popover-actions">
+                      <button type="button" className="subtle-cancel" disabled={isSavingCategory} onClick={() => setCategorySavePrompt(null)}>
+                        Not yet
+                      </button>
+                      <button type="button" className="subtle-action" disabled={isSavingCategory} onClick={() => void saveCategoryShortcut()}>
+                        {isSavingCategory ? "Saving..." : "Save category"}
+                      </button>
+                    </div>
+                    <Popover.Arrow className="category-popover-arrow" />
+                  </Popover.Content>
+                </Popover.Portal>
+              </Popover.Root>
             )}
           </div>
         </label>
