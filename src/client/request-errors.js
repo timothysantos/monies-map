@@ -3,6 +3,9 @@ export function buildBootstrapErrorMessage(status, detail) {
   if (!normalizedDetail) {
     return `Bootstrap request failed with status ${status}.`;
   }
+  if (/^<!doctype html\b/i.test(normalizedDetail) || /^<html\b/i.test(normalizedDetail)) {
+    return `Bootstrap request failed with status ${status}. The server returned an HTML error page instead of JSON.`;
+  }
 
   return `Bootstrap request failed with status ${status}. ${normalizedDetail.slice(0, 240)}`;
 }
