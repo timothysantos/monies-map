@@ -4327,8 +4327,20 @@ h3 {
   border-top: 1px solid var(--line);
 }
 
+.entry-row.is-editing {
+  margin: 8px -8px;
+  padding: 8px;
+  border: 1px solid rgba(191, 103, 45, 0.16);
+  border-radius: 16px;
+  background: linear-gradient(0deg, rgba(246, 236, 228, 0.68), rgba(255, 255, 255, 0.96) 44%);
+}
+
 .entry-row:first-child {
   border-top: 0;
+}
+
+.entry-row.is-editing:first-child {
+  border-top: 1px solid rgba(191, 103, 45, 0.16);
 }
 
 .entry-row-main {
@@ -4453,7 +4465,7 @@ h3 {
 .entry-inline-editor {
   display: grid;
   gap: 12px;
-  padding: 0 0 12px;
+  padding: 4px 0 8px;
 }
 
 .entry-composer {
@@ -5480,6 +5492,16 @@ th {
 
   .entry-edit-grid {
     grid-template-columns: 1fr;
+  }
+
+  .entry-edit-grid label {
+    grid-template-columns: minmax(72px, 0.32fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+  }
+
+  .entry-edit-grid label > span {
+    align-self: center;
   }
 
   .entry-writing-grid {
