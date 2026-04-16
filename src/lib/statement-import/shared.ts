@@ -190,7 +190,8 @@ export function parseCitibankMoneyToMinor(value: string) {
 }
 
 export function parseCitibankSignedMoneyToMinor(value: string) {
-  const isNegative = value.startsWith("-") || /^\(.+\)$/.test(value);
+  const normalized = value.trim();
+  const isNegative = normalized.startsWith("-") || /^\(.+\)$/.test(normalized) || normalized.endsWith(")");
   const minor = parseCitibankMoneyToMinor(value);
   return isNegative ? -minor : minor;
 }

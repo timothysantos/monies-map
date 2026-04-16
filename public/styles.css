@@ -1767,6 +1767,7 @@ h3 {
   inset: 0;
   background: rgba(18, 24, 22, 0.35);
   backdrop-filter: blur(4px);
+  z-index: 80;
 }
 
 .note-dialog-content {
@@ -1782,6 +1783,11 @@ h3 {
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 22px 50px rgba(27, 24, 21, 0.14);
+  z-index: 81;
+}
+
+body:has(.note-dialog-overlay) .entries-fab {
+  display: none;
 }
 
 .split-dialog-content {
@@ -1912,6 +1918,27 @@ h3 {
   line-height: 1.5;
 }
 
+.split-linked-entry-dialog .note-dialog-head p {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.split-linked-entry-dialog .linked-entry-notice {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+.split-linked-entry-dialog .linked-entry-notice strong {
+  font-size: 0.95rem;
+}
+
+.split-linked-entry-dialog .linked-entry-notice p {
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
 .note-dialog-textarea {
   width: 100%;
   min-height: 240px;
@@ -1948,6 +1975,21 @@ h3 {
   font: inherit;
   padding: 10px 16px;
   cursor: pointer;
+}
+
+.dialog-danger {
+  border: 0;
+  border-radius: 10px;
+  background: var(--negative);
+  color: white;
+  font: inherit;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+.dialog-danger:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 
 .tone-positive {
@@ -2148,8 +2190,44 @@ h3 {
   background: transparent;
 }
 
+.split-activity-card[role="button"] {
+  cursor: pointer;
+}
+
+.split-activity-card[role="button"]:hover {
+  border-color: rgba(191, 103, 45, 0.18);
+}
+
 .split-date-items .split-activity-card:first-child {
   border-top: 0;
+}
+
+.split-inline-editor-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(191, 103, 45, 0.22);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 248, 242, 0.96)),
+    linear-gradient(0deg, rgba(191, 103, 45, 0.08), transparent 46%);
+  box-shadow: 0 10px 24px rgba(56, 40, 28, 0.08);
+}
+
+.split-inline-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.split-inline-actions .icon-action {
+  border: 1px solid rgba(191, 103, 45, 0.18);
+  background: rgba(255, 250, 246, 0.96);
+}
+
+.split-delete-action {
+  color: var(--negative);
 }
 
 .split-activity-leading {
@@ -2181,6 +2259,13 @@ h3 {
   gap: 4px;
   justify-items: end;
   text-align: right;
+}
+
+.split-activity-amount-line {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .split-match-actions {
@@ -2467,6 +2552,26 @@ h3 {
 
 .panel-splits .split-card-actions .subtle-action:hover {
   background: rgba(247, 236, 227, 0.98);
+}
+
+.panel-splits .split-card-actions .split-delete-action,
+.panel-splits .split-inline-actions .split-delete-action {
+  color: var(--negative);
+}
+
+.panel-splits .split-inline-actions .subtle-cancel {
+  color: var(--muted);
+}
+
+.panel-splits .split-inline-actions .dialog-primary {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+  color: white;
+}
+
+.panel-splits .split-inline-actions .dialog-primary:hover {
+  border-color: var(--accent-strong);
+  background: color-mix(in srgb, var(--accent-strong) 88%, black);
 }
 
 .panel-splits .tone-positive,
@@ -4462,10 +4567,25 @@ h3 {
   line-height: 1.1;
 }
 
+.entry-edit-tone-positive {
+  color: var(--positive);
+  font-weight: 700;
+}
+
+.entry-edit-tone-negative {
+  color: var(--negative);
+  font-weight: 700;
+}
+
+.entry-edit-tone-transfer {
+  color: var(--positive);
+  font-weight: 700;
+}
+
 .entry-inline-editor {
   display: grid;
   gap: 12px;
-  padding: 4px 0 8px;
+  padding: 0 0 8px;
 }
 
 .entry-composer {
@@ -5040,15 +5160,24 @@ th {
   }
 
   .note-dialog-content {
-    top: calc(16px + env(safe-area-inset-top, 0px));
+    top: 50%;
     bottom: auto;
     left: 12px;
     right: 12px;
     width: auto;
-    max-height: calc(100dvh - 136px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    max-height: calc(100dvh - 128px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
-    transform: none;
+    transform: translateY(-50%);
     padding: 18px;
+  }
+
+  .note-dialog-content textarea.table-edit-textarea,
+  .note-dialog-content textarea.note-dialog-textarea {
+    min-height: 46px;
+    height: 46px;
+    max-height: 46px;
+    overflow-y: auto;
+    resize: vertical;
   }
 
   .note-dialog-head {
@@ -5085,6 +5214,20 @@ th {
 
   .split-dialog-inline .split-dialog-field {
     min-width: 0;
+  }
+
+  .split-inline-editor-card {
+    padding: 12px;
+  }
+
+  .split-inline-editor-card .split-dialog-grid,
+  .split-inline-editor-card .entry-writing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .split-inline-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
   .settings-category-dialog {
@@ -5703,6 +5846,14 @@ th {
   .split-activity-trailing span {
     font-size: 0.82rem;
     line-height: 1.06;
+  }
+
+  .split-activity-amount-line {
+    gap: 6px;
+  }
+
+  .split-activity-amount-line .share-row-meta {
+    font-size: 0.76rem;
   }
 
   .split-card-actions {

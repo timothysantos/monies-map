@@ -155,7 +155,7 @@ function parseCitibankTransactionLine(line: string, accountName: string, stateme
   const date = dateFromCompactStatementDate(match[1], match[2], statementYear, statementMonth);
   const rawDescription = line.slice(match[0].length, moneyMatch.index);
   const description = cleanCitibankDescription(rawDescription);
-  const isCredit = /^\(.+\)$/.test(moneyMatch.value);
+  const isCredit = isCitibankCreditAmount(moneyMatch.value);
   const type = isCredit && isTransferDescription(description) ? "transfer" : isCredit ? "income" : isTransferDescription(description) ? "transfer" : "expense";
 
   return {
@@ -173,6 +173,13 @@ function parseCitibankTransactionLine(line: string, accountName: string, stateme
       type
     }
   };
+}
+
+function isCitibankCreditAmount(value: string) {
+  const normalized = value.trim();
+  // PDF text extraction can drop the opening parenthesis for Citibank card credits.
+  // Keep the trailing ")" signal so refunds/payments do not become charges.
+  return /^\(.+\)$/.test(normalized) || normalized.endsWith(")");
 }
 
 function findCitibankTransactionMoneyMatch(line: string) {

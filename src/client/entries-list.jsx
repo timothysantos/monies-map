@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Check, X } from "lucide-react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
@@ -40,6 +41,40 @@ export function EntriesDateGroups({
   onFinishEntryEdit,
   onCancelEntryEdit
 }) {
+  useEffect(() => {
+    if (!editingEntryId) {
+      return undefined;
+    }
+
+    function handlePointerDown(event) {
+      const target = event.target;
+      const openEditor = document.getElementById(editingEntryId);
+
+      if (!(target instanceof Element) || !openEditor) {
+        return;
+      }
+
+      if (openEditor.contains(target)) {
+        return;
+      }
+
+      // Dialogs and popovers are portalled outside the row; clicks inside them
+      // should still count as part of the current edit flow.
+      if (
+        target.closest("[role='dialog']") ||
+        target.closest("[data-radix-popper-content-wrapper]") ||
+        target.closest(".note-dialog-content")
+      ) {
+        return;
+      }
+
+      onCancelEntryEdit();
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () => document.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [editingEntryId, onCancelEntryEdit]);
+
   return (
     <div className="entries-date-groups">
       {groupedEntries.map((group) => (
@@ -132,36 +167,38 @@ function EntryRow({
 
   return (
     <div className={`entry-row ${isEditing ? "is-editing" : ""}`} id={entry.id}>
-      <button type="button" className="entry-row-main" onClick={() => onBeginEntryEdit(entry)}>
-        <div className="entry-row-category">
-          <CategoryAppearancePopover
-            category={category}
-            onChange={onCategoryAppearanceChange}
-          />
-          <strong>{category?.name ?? entry.categoryName}</strong>
-        </div>
-        <div className="entry-row-description">
-          <strong>{entry.description}</strong>
-          <p>{entry.note || messages.common.emptyValue}</p>
-        </div>
-        <div className="entry-row-transfer">
-          <strong>{transferDetail}</strong>
-          <p>{entry.accountName}</p>
-        </div>
-        <div className="entry-row-right">
-          <div className="entry-row-amount">
-            <strong className={getAmountToneClass(signedAmountMinor)}>{money(signedAmountMinor)}</strong>
-            {hasWeightedTotal ? <p>({money(signedTotalAmountMinor)} total)</p> : null}
+      {!isEditing ? (
+        <button type="button" className="entry-row-main" onClick={() => onBeginEntryEdit(entry)}>
+          <div className="entry-row-category">
+            <CategoryAppearancePopover
+              category={category}
+              onChange={onCategoryAppearanceChange}
+            />
+            <strong>{category?.name ?? entry.categoryName}</strong>
           </div>
-          <div className="entry-pills">
-            {transferLabel ? <span className="entry-chip entry-chip-transfer">{transferLabel}</span> : null}
-            <span className={`entry-chip ${entry.ownershipType === "shared" ? "entry-chip-shared" : "entry-chip-owner"}`}>{ownerLabel}</span>
-            {entry.ownershipType === "shared" && splitPercent != null ? (
-              <span className="entry-chip entry-chip-split">{splitPercent}%</span>
-            ) : null}
+          <div className="entry-row-description">
+            <strong>{entry.description}</strong>
+            <p>{entry.note || messages.common.emptyValue}</p>
           </div>
-        </div>
-      </button>
+          <div className="entry-row-transfer">
+            <strong>{transferDetail}</strong>
+            <p>{entry.accountName}</p>
+          </div>
+          <div className="entry-row-right">
+            <div className="entry-row-amount">
+              <strong className={getAmountToneClass(signedAmountMinor)}>{money(signedAmountMinor)}</strong>
+              {hasWeightedTotal ? <p>({money(signedTotalAmountMinor)} total)</p> : null}
+            </div>
+            <div className="entry-pills">
+              {transferLabel ? <span className="entry-chip entry-chip-transfer">{transferLabel}</span> : null}
+              <span className={`entry-chip ${entry.ownershipType === "shared" ? "entry-chip-shared" : "entry-chip-owner"}`}>{ownerLabel}</span>
+              {entry.ownershipType === "shared" && splitPercent != null ? (
+                <span className="entry-chip entry-chip-split">{splitPercent}%</span>
+              ) : null}
+            </div>
+          </div>
+        </button>
+      ) : null}
 
       {isEditing ? (
         <div className="entry-inline-editor">
@@ -174,6 +211,7 @@ function EntryRow({
             splitPercentValue={entry.ownershipType === "shared" ? splitPercent : null}
             lockTransferCategory
             onChange={(patch) => onUpdateEntry(entry.id, patch)}
+            onCategoryAppearanceChange={onCategoryAppearanceChange}
             onOwnerChange={(nextValue) => {
               if (nextValue === "Shared") {
                 onUpdateEntry(entry.id, { ownershipType: "shared", ownerName: undefined });

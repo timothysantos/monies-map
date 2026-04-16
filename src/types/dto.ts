@@ -184,6 +184,13 @@ export interface SplitGroupPillDto {
   isDefault?: boolean;
 }
 
+export interface SplitGroupDto {
+  id: string;
+  name: string;
+  iconKey?: string;
+  sortOrder: number;
+}
+
 export interface SplitActivityDto {
   id: string;
   kind: "expense" | "settlement";

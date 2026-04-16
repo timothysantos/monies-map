@@ -10,9 +10,34 @@ import { syncTransactionSplits } from "./app-repository-split-sync";
 import { getCurrentMonthKey } from "../lib/month";
 import type {
   SplitExpenseDto,
+  SplitGroupDto,
   SplitMatchCandidateDto,
   SplitSettlementDto
 } from "../types/dto";
+
+export async function loadSplitGroups(db: D1Database): Promise<SplitGroupDto[]> {
+  const groups = await db
+    .prepare(`
+      SELECT id, group_name, icon_key, sort_order
+      FROM split_groups
+      WHERE household_id = ?
+      ORDER BY sort_order, group_name
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID)
+    .all<{
+      id: string;
+      group_name: string;
+      icon_key: string | null;
+      sort_order: number;
+    }>();
+
+  return groups.results.map((group) => ({
+    id: group.id,
+    name: group.group_name,
+    iconKey: group.icon_key ?? undefined,
+    sortOrder: group.sort_order
+  }));
+}
 
 export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthKey()): Promise<SplitExpenseDto[]> {
   const expenses = await db
@@ -617,6 +642,47 @@ export async function updateSplitSettlementRecord(
   }
 
   return { settlementId: input.settlementId };
+}
+
+export async function deleteSplitExpenseRecord(
+  db: D1Database,
+  input: { splitExpenseId: string }
+) {
+  const existing = await db
+    .prepare("SELECT id FROM split_expenses WHERE id = ? AND household_id = ?")
+    .bind(input.splitExpenseId, DEFAULT_HOUSEHOLD_ID)
+    .first<{ id: string }>();
+  if (!existing) {
+    throw new Error("Split expense not found.");
+  }
+
+  await db.prepare("DELETE FROM split_expense_shares WHERE split_expense_id = ?").bind(input.splitExpenseId).run();
+  await db
+    .prepare("DELETE FROM split_expenses WHERE id = ? AND household_id = ?")
+    .bind(input.splitExpenseId, DEFAULT_HOUSEHOLD_ID)
+    .run();
+
+  return { splitExpenseId: input.splitExpenseId, deleted: true };
+}
+
+export async function deleteSplitSettlementRecord(
+  db: D1Database,
+  input: { settlementId: string }
+) {
+  const existing = await db
+    .prepare("SELECT id FROM split_settlements WHERE id = ? AND household_id = ?")
+    .bind(input.settlementId, DEFAULT_HOUSEHOLD_ID)
+    .first<{ id: string }>();
+  if (!existing) {
+    throw new Error("Split settlement not found.");
+  }
+
+  await db
+    .prepare("DELETE FROM split_settlements WHERE id = ? AND household_id = ?")
+    .bind(input.settlementId, DEFAULT_HOUSEHOLD_ID)
+    .run();
+
+  return { settlementId: input.settlementId, deleted: true };
 }
 
 export async function linkSplitExpenseMatch(

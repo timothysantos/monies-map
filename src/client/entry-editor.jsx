@@ -1,7 +1,8 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 
-import { getCategoryTheme } from "./category-utils";
+import { CategoryAppearancePopover } from "./category-visuals";
+import { getCategory, getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { getTransferWallets } from "./entry-helpers";
 import { CategoryGlyph } from "./ui-components";
@@ -18,15 +19,26 @@ export function EntryEditorFields({
   splitPercentValue,
   lockTransferCategory = false,
   onChange,
+  onCategoryAppearanceChange,
   onOwnerChange,
   onSplitPercentChange,
   transferTools = null
 }) {
+  const displayCategoryName = lockTransferCategory && entry.entryType === "transfer" ? "Transfer" : entry.categoryName;
+  const category = getCategory(categories, { categoryName: displayCategoryName });
   const categoryTheme = getCategoryTheme(
     categories,
-    { categoryName: lockTransferCategory && entry.entryType === "transfer" ? "Transfer" : entry.categoryName },
+    { categoryName: displayCategoryName },
     0
   );
+  const amountToneClass = entry.entryType === "income" || entry.transferDirection === "in"
+    ? "entry-edit-tone-positive"
+    : "entry-edit-tone-negative";
+  const typeToneClass = entry.entryType === "income"
+    ? "entry-edit-tone-positive"
+    : entry.entryType === "expense"
+      ? "entry-edit-tone-negative"
+      : "entry-edit-tone-transfer";
 
   return (
     <>
@@ -34,12 +46,19 @@ export function EntryEditorFields({
         <label>
           <span>{messages.entries.editCategory}</span>
           <div className="entry-category-field">
-            <span
-              className="category-icon category-icon-static"
-              style={{ "--category-color": categoryTheme.color }}
-            >
-              <CategoryGlyph iconKey={categoryTheme.iconKey} />
-            </span>
+            {category && onCategoryAppearanceChange ? (
+              <CategoryAppearancePopover
+                category={category}
+                onChange={onCategoryAppearanceChange}
+              />
+            ) : (
+              <span
+                className="category-icon category-icon-static"
+                style={{ "--category-color": categoryTheme.color }}
+              >
+                <CategoryGlyph iconKey={categoryTheme.iconKey} />
+              </span>
+            )}
             {lockTransferCategory && entry.entryType === "transfer" ? (
               <input
                 className="table-edit-input"
@@ -95,7 +114,7 @@ export function EntryEditorFields({
         <label>
           <span>{messages.entries.editAmount}</span>
           <input
-            className="table-edit-input table-edit-input-money"
+            className={`table-edit-input table-edit-input-money ${amountToneClass}`}
             type="number"
             step="0.01"
             inputMode="decimal"
@@ -106,7 +125,7 @@ export function EntryEditorFields({
         <label>
           <span>{messages.entries.editType}</span>
           <select
-            className="table-edit-input"
+            className={`table-edit-input ${typeToneClass}`}
             value={entry.entryType}
             onChange={(event) => onChange({ entryType: event.target.value })}
           >

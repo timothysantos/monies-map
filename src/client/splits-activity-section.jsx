@@ -5,10 +5,20 @@ export function SplitsActivitySection({
   groupedCurrentActivity,
   archivedBatches,
   categories,
+  groupOptions,
+  people,
+  categoryOptions,
+  inlineSplitDraft,
+  inlineSplitError,
+  isSubmitting,
   onAddExpense,
   onOpenArchive,
   onEditExpense,
   onEditSettlement,
+  onChangeInlineSplitDraft,
+  onCancelInlineSplit,
+  onSaveInlineSplit,
+  onRequestDeleteSplit,
   onEditLinkedEntry
 }) {
   return (
@@ -26,6 +36,16 @@ export function SplitsActivitySection({
           <SplitActivityGroups
             groups={groupedCurrentActivity}
             categories={categories}
+            groupOptions={groupOptions}
+            people={people}
+            categoryOptions={categoryOptions}
+            editingDraft={inlineSplitDraft}
+            inlineFormError={inlineSplitError}
+            isSubmitting={isSubmitting}
+            onChangeEditingDraft={onChangeInlineSplitDraft}
+            onCancelEditing={onCancelInlineSplit}
+            onSaveEditing={onSaveInlineSplit}
+            onRequestDelete={onRequestDeleteSplit}
             onEditExpense={onEditExpense}
             onEditSettlement={onEditSettlement}
             onEditLinkedEntry={onEditLinkedEntry}

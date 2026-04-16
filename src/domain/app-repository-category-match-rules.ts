@@ -126,19 +126,41 @@ export function matchCategoryRule(description: string, rules: CategoryMatchRuleD
   return rules
     .filter((rule) => rule.isActive)
     .find((rule) => {
-      const normalizedPattern = normalizeRuleText(rule.pattern);
-      if (!normalizedPattern) {
+      const patternParts = rule.pattern
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean);
+
+      if (patternParts.length === 0) {
         return false;
       }
 
-      // Short tokens such as "GV" are useful for bank abbreviations but too
-      // broad for a raw substring check, so require a raw token boundary.
-      if (normalizedPattern.length <= 3) {
-        return new RegExp(`(^|[^A-Z0-9])${escapeRegExp(rule.pattern.toUpperCase())}([^A-Z0-9]|$)`).test(upperDescription);
-      }
-
-      return normalizedDescription.includes(normalizedPattern);
+      // Comma-separated rule text means every piece must appear in the bank row,
+      // e.g. "PAYNOW-FAST, LUNCH" catches PayNow lunch reimbursements without
+      // treating every PayNow transfer as food.
+      return patternParts.every((patternPart) =>
+        categoryRulePartMatches(patternPart, normalizedDescription, upperDescription)
+      );
     })?.categoryName;
+}
+
+function categoryRulePartMatches(
+  pattern: string,
+  normalizedDescription: string,
+  upperDescription: string
+) {
+  const normalizedPattern = normalizeRuleText(pattern);
+  if (!normalizedPattern) {
+    return false;
+  }
+
+  // Short tokens such as "GV" are useful for bank abbreviations but too broad
+  // for a raw substring check, so require a raw token boundary.
+  if (normalizedPattern.length <= 3) {
+    return new RegExp(`(^|[^A-Z0-9])${escapeRegExp(pattern.toUpperCase())}([^A-Z0-9]|$)`).test(upperDescription);
+  }
+
+  return normalizedDescription.includes(normalizedPattern);
 }
 
 export async function saveCategoryMatchRule(

@@ -11,6 +11,7 @@ import {
   loadHousehold,
   loadImportBatches,
   loadSplitExpenses,
+  loadSplitGroups,
   loadSplitMatchCandidates,
   loadSplitSettlements,
   loadAuditEvents,
@@ -37,6 +38,7 @@ import type {
   MonthPlanRowDto,
   SplitActivityDto,
   SplitExpenseDto,
+  SplitGroupDto,
   SplitGroupPillDto,
   SplitMatchCandidateDto,
   SplitSettlementDto,
@@ -74,9 +76,10 @@ export async function buildBootstrapDto(
   const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
     ? selectedMonth
     : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
-  const [monthEntries, monthPlanRows, splitExpenses, splitSettlements, splitMatches] = await Promise.all([
+  const [monthEntries, monthPlanRows, splitGroups, splitExpenses, splitSettlements, splitMatches] = await Promise.all([
     loadEntries(db, effectiveSelectedMonth),
     loadMonthPlanRows(db, effectiveSelectedMonth),
+    loadSplitGroups(db),
     loadSplitExpenses(db, effectiveSelectedMonth),
     loadSplitSettlements(db, effectiveSelectedMonth),
     loadSplitMatchCandidates(db, effectiveSelectedMonth)
@@ -107,9 +110,9 @@ export async function buildBootstrapDto(
   const summaryEntries = await loadEntriesForMonths(db, summaryRangeMonths);
   const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
   const views: ContextViewDto[] = [
-    buildContextView("household", "Household", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, splitExpenses, splitSettlements, splitMatches, categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
-    buildContextView("person-tim", personNameById["person-tim"] ?? defaultHousehold.people[0]?.name ?? "Primary", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, splitExpenses, splitSettlements, splitMatches, categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
-    buildContextView("person-joyce", personNameById["person-joyce"] ?? defaultHousehold.people[1]?.name ?? "Partner", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, splitExpenses, splitSettlements, splitMatches, categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById)
+    buildContextView("household", "Household", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, splitGroups, splitExpenses, splitSettlements, splitMatches, categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
+    buildContextView("person-tim", personNameById["person-tim"] ?? defaultHousehold.people[0]?.name ?? "Primary", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, splitGroups, splitExpenses, splitSettlements, splitMatches, categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
+    buildContextView("person-joyce", personNameById["person-joyce"] ?? defaultHousehold.people[1]?.name ?? "Partner", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, splitGroups, splitExpenses, splitSettlements, splitMatches, categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById)
   ];
 
   return {
@@ -142,6 +145,7 @@ function buildContextView(
   summaryEntries: EntryDto[],
   monthEntries: EntryDto[],
   monthPlanRows: MonthPlanRowDto[],
+  splitGroups: SplitGroupDto[],
   splitExpenses: SplitExpenseDto[],
   splitSettlements: SplitSettlementDto[],
   splitMatches: SplitMatchCandidateDto[],
@@ -175,7 +179,7 @@ function buildContextView(
       selectedMonth,
       currentSummaryMonth
     ),
-    splitsPage: buildSplitsPage(id, splitExpenses, splitSettlements, splitMatches, categories, selectedMonth, personNameById)
+    splitsPage: buildSplitsPage(id, splitGroups, splitExpenses, splitSettlements, splitMatches, categories, selectedMonth, personNameById)
   };
 }
 
@@ -294,6 +298,7 @@ function applyActualsFromEntries(
 
 function buildSplitsPage(
   viewId: string,
+  splitGroups: SplitGroupDto[],
   splitExpenses: SplitExpenseDto[],
   splitSettlements: SplitSettlementDto[],
   splitMatches: SplitMatchCandidateDto[],
@@ -305,16 +310,30 @@ function buildSplitsPage(
   const visibleSettlements = splitSettlements.filter((settlement) => splitSettlementMatchesView(settlement, viewId));
   const openExpenses = visibleExpenses.filter((expense) => !expense.batchClosedAt);
   const openSettlements = visibleSettlements.filter((settlement) => !settlement.batchClosedAt);
-  const groupMap = new Map<string, { id: string; name: string; iconKey?: string; balanceMinor: number; entryCount: number; pendingMatchCount: number }>();
+  const groupMap = new Map<string, { id: string; name: string; iconKey?: string; sortOrder?: number; balanceMinor: number; entryCount: number; pendingMatchCount: number }>();
 
   groupMap.set("split-group-none", {
     id: "split-group-none",
     name: "Non-group expenses",
     iconKey: "receipt",
+    sortOrder: -1,
     balanceMinor: 0,
     entryCount: 0,
     pendingMatchCount: 0
   });
+
+  // Persisted groups must exist in the UI even before their first split entry.
+  for (const group of splitGroups) {
+    groupMap.set(group.id, {
+      id: group.id,
+      name: group.name,
+      iconKey: group.iconKey ?? "receipt",
+      sortOrder: group.sortOrder,
+      balanceMinor: 0,
+      entryCount: 0,
+      pendingMatchCount: 0
+    });
+  }
 
   for (const expense of visibleExpenses) {
     const groupId = expense.groupId ?? "split-group-none";
@@ -322,6 +341,7 @@ function buildSplitsPage(
       id: groupId,
       name: expense.groupName,
       iconKey: iconKeyForCategory(expense.categoryName, categories),
+      sortOrder: Number.MAX_SAFE_INTEGER,
       balanceMinor: 0,
       entryCount: 0,
       pendingMatchCount: 0
@@ -335,6 +355,7 @@ function buildSplitsPage(
       id: groupId,
       name: settlement.groupName,
       iconKey: "arrow-right-left",
+      sortOrder: Number.MAX_SAFE_INTEGER,
       balanceMinor: 0,
       entryCount: 0,
       pendingMatchCount: 0
@@ -367,6 +388,7 @@ function buildSplitsPage(
       id: match.groupId,
       name: match.groupName,
       iconKey: "receipt",
+      sortOrder: Number.MAX_SAFE_INTEGER,
       balanceMinor: 0,
       entryCount: 0,
       pendingMatchCount: 0
@@ -383,7 +405,9 @@ function buildSplitsPage(
       if (right.id === "split-group-none") {
         return 1;
       }
-      return Math.abs(right.balanceMinor) - Math.abs(left.balanceMinor) || left.name.localeCompare(right.name);
+      return Math.abs(right.balanceMinor) - Math.abs(left.balanceMinor)
+        || (left.sortOrder ?? 0) - (right.sortOrder ?? 0)
+        || left.name.localeCompare(right.name);
     })
     .map((group) => ({
       id: group.id,

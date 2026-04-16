@@ -173,6 +173,14 @@ The current `Splits` surface includes:
 Imported shared rows or transfer rows can then be matched later from `Matches`
 instead of from the import screen itself.
 
+Click or tap a current split row to edit it in place. The row is replaced by
+the form so you can change the category, people, amount, group, note, or
+settlement details without opening a separate popover. Delete and linked-entry
+editing live inside that inline form so the row itself stays easy to scan.
+Deleting asks for confirmation before removing the split record. If that split
+was linked to an imported bank entry, the bank entry stays in `Entries`; only
+the sharing record is removed.
+
 `Splits` is driven by open unsettled batches, not by the month picker:
 
 - each group has one current open batch
@@ -380,6 +388,10 @@ How rules match:
 - Capitalization does not matter.
 - Spaces and punctuation do not matter.
 - A specific merchant name can match any part of the bank text.
+- Use commas when a row should contain a few separate words before it matches.
+  For example, `paynow-fast, lunch` only matches a bank row that contains both
+  `paynow-fast` and `lunch`, so it can categorize lunch PayNow rows without
+  categorizing every PayNow row as food.
 - Very short names only match when they appear as their own word, so a rule like
   `GV` does not accidentally match every word containing those letters.
 - Lower priority numbers are checked first.

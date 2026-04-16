@@ -9,7 +9,9 @@ export function buildExpenseDraft(item, categoryOptions, people) {
     : 50;
 
   return {
+    kind: "expense",
     id: item.id,
+    linkedTransactionId: item.linkedTransactionId,
     groupId: item.groupId,
     date: item.date,
     description: item.description,
@@ -23,7 +25,9 @@ export function buildExpenseDraft(item, categoryOptions, people) {
 
 export function buildSettlementDraft(item, people) {
   return {
+    kind: "settlement",
     id: item.id,
+    linkedTransactionId: item.linkedTransactionId,
     groupId: item.groupId,
     date: item.date,
     fromPersonName: item.fromPersonName ?? people[1]?.name ?? "",

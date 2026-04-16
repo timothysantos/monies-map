@@ -19,9 +19,15 @@ export function SplitsMainSection({
   donutRows,
   donutChart,
   categories,
+  groupOptions,
+  people,
+  categoryOptions,
   visibleMatches,
   groupedCurrentActivity,
   archivedBatches,
+  inlineSplitDraft,
+  inlineSplitError,
+  isSubmitting,
   onSelectGroup,
   onSelectMatches,
   onCreateGroup,
@@ -32,6 +38,10 @@ export function SplitsMainSection({
   onOpenArchive,
   onEditExpense,
   onEditSettlement,
+  onChangeInlineSplitDraft,
+  onCancelInlineSplit,
+  onSaveInlineSplit,
+  onRequestDeleteSplit,
   onEditLinkedEntry
 }) {
   return (
@@ -73,10 +83,20 @@ export function SplitsMainSection({
           groupedCurrentActivity={groupedCurrentActivity}
           archivedBatches={archivedBatches}
           categories={categories}
+          groupOptions={groupOptions}
+          people={people}
+          categoryOptions={categoryOptions}
+          inlineSplitDraft={inlineSplitDraft}
+          inlineSplitError={inlineSplitError}
+          isSubmitting={isSubmitting}
           onAddExpense={onAddExpense}
           onOpenArchive={onOpenArchive}
           onEditExpense={onEditExpense}
           onEditSettlement={onEditSettlement}
+          onChangeInlineSplitDraft={onChangeInlineSplitDraft}
+          onCancelInlineSplit={onCancelInlineSplit}
+          onSaveInlineSplit={onSaveInlineSplit}
+          onRequestDeleteSplit={onRequestDeleteSplit}
           onEditLinkedEntry={onEditLinkedEntry}
         />
       )}

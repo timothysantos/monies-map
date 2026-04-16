@@ -8,14 +8,14 @@ export function SplitLinkedEntryDialog({ dialog, people, categoryOptions, formEr
     <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
-        <Dialog.Content className="note-dialog-content split-dialog-content">
+        <Dialog.Content className="note-dialog-content split-dialog-content split-linked-entry-dialog">
           <div className="note-dialog-head split-dialog-head">
             <Dialog.Title>{messages.splits.editLinkedEntry}</Dialog.Title>
-            <Dialog.Description>Edit the same ledger entry that also appears on the Entries page. Changes here update that row there too.</Dialog.Description>
+            <Dialog.Description>Edit the ledger entry that also appears on Entries.</Dialog.Description>
           </div>
           <div className="linked-entry-notice">
             <strong>Linked to Entries</strong>
-            <p>This form edits the underlying ledger row. When you save here, the matching entry in `Entries` updates too.</p>
+            <p>Saving here updates the matching row in Entries too.</p>
           </div>
           <div className="split-dialog-section">
             <div className="entry-core-grid split-dialog-grid">

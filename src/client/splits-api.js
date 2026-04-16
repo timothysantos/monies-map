@@ -56,6 +56,22 @@ export function saveSplitSettlement(draft) {
   );
 }
 
+export function deleteSplitExpense(splitExpenseId) {
+  return postJson(
+    "/api/splits/expenses/delete",
+    { splitExpenseId },
+    "Failed to delete split expense."
+  );
+}
+
+export function deleteSplitSettlement(settlementId) {
+  return postJson(
+    "/api/splits/settlements/delete",
+    { settlementId },
+    "Failed to delete settlement."
+  );
+}
+
 export function linkSplitMatch(match) {
   const endpoint = match.kind === "expense" ? "/api/splits/matches/link-expense" : "/api/splits/matches/link-settlement";
   const body = match.kind === "expense"

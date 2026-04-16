@@ -441,7 +441,7 @@ export const messages = {
     categoryIcon: "Icon",
     categoryColor: "Color",
     categoryRulesTitle: "Category matching",
-    categoryRulesDetail: "Rules categorize new import rows during preview and can correct the bank parser when it guesses wrong. Capitalization, spaces, and punctuation do not matter. Detailed merchant names can match anywhere in the bank text. Very short names must appear as their own word, and lower priority numbers are checked first.",
+    categoryRulesDetail: "Rules categorize new import rows during preview and can correct the bank parser when it guesses wrong. Capitalization, spaces, and punctuation do not matter. Write one merchant word or phrase, or separate a few words with commas when all of them must appear, like paynow-fast, lunch. Very short names must appear as their own word, and lower priority numbers are checked first.",
     categoryRuleSuggestionsTitle: "Suggestions",
     categoryRuleSuggestionsDetail: "Repeated manual category changes are held here for review. Add the rule, edit it first, or ignore it.",
     categoryRuleSuggestionsCount: (count) => `${count} pending`,
