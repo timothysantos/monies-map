@@ -11,6 +11,7 @@ import {
   normalizeStatementDate
 } from "./app-repository-helpers";
 import { loadCategories } from "./app-repository-categories";
+import { loadCategoryMatchRules, matchCategoryRule } from "./app-repository-category-match-rules";
 import { loadAccounts } from "./app-repository-settings";
 import type {
   AccountDto,
@@ -33,6 +34,7 @@ export async function buildImportPreview(
 ): Promise<ImportPreviewDto> {
   const accounts = await loadAccounts(db);
   const categories = await loadCategories(db);
+  const categoryMatchRules = await loadCategoryMatchRules(db);
   const existingHashes = await db
     .prepare(`
       SELECT normalized_hash
@@ -90,9 +92,19 @@ export async function buildImportPreview(
       continue;
     }
     const inferredAccountName = normalized.accountName ?? input.defaultAccountName;
+    let inferredEntryType = normalized.entryType;
+    let inferredTransferDirection = normalized.transferDirection;
     let inferredCategoryName = normalized.categoryName ?? "Other";
+    if (!normalized.categoryName || normalized.categoryName === "Other" || normalized.categoryName === "Other - Income") {
+      inferredCategoryName = matchCategoryRule(normalized.description, categoryMatchRules) ?? inferredCategoryName;
+    }
 
-    if (normalized.entryType === "transfer") {
+    if (inferredCategoryName === "Transfer") {
+      inferredEntryType = "transfer";
+      inferredTransferDirection = normalized.entryType === "income" ? "in" : "out";
+    }
+
+    if (inferredEntryType === "transfer") {
       inferredCategoryName = "Transfer";
     }
 
@@ -116,8 +128,8 @@ export async function buildImportPreview(
       date: normalized.date!,
       description: normalized.description,
       amountMinor: normalized.amountMinor!,
-      entryType: normalized.entryType,
-      transferDirection: normalized.transferDirection,
+      entryType: inferredEntryType,
+      transferDirection: inferredTransferDirection,
       accountId: inferredAccount?.id,
       accountName: inferredAccountName,
       categoryName: inferredCategoryName,

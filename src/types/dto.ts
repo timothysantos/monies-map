@@ -79,6 +79,26 @@ export interface CategoryDto {
   isSystem: boolean;
 }
 
+export interface CategoryMatchRuleDto {
+  id: string;
+  pattern: string;
+  categoryId: string;
+  categoryName: string;
+  priority: number;
+  isActive: boolean;
+  note?: string;
+}
+
+export interface CategoryMatchRuleSuggestionDto {
+  id: string;
+  pattern: string;
+  categoryId: string;
+  categoryName: string;
+  sourceCount: number;
+  sampleDescriptions: string[];
+  lastSeenAt: string;
+}
+
 export interface MetricCardDto {
   label: string;
   amountMinor?: number;
@@ -494,6 +514,8 @@ export interface ContextViewDto {
 
 export interface SettingsPageDto {
   demo: DemoSettingsDto;
+  categoryMatchRules: CategoryMatchRuleDto[];
+  categoryMatchRuleSuggestions: CategoryMatchRuleSuggestionDto[];
   unresolvedTransfers: TransferIssueDto[];
   recentAuditEvents: AuditEventDto[];
 }

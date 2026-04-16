@@ -63,6 +63,16 @@ That distinction matters because the system needs to answer questions like:
 - CSV commits pre-resolve accounts, categories, and people before writing, then
   write D1 statements in chunks so larger production imports do not leave
   completed-looking partial batches
+- `category_match_rules` are household-scoped reference data used during import
+  preview. When a row has no category or still says `Other`, the backend matches
+  merchant text such as `TADA`, `SHOPEE`, `SINGLIFE`, `KEPPEL ELECTRIC`,
+  `INCOMEINSURANCE`, or conversion-fee patterns to the configured category.
+  The parser-side inference keeps a similar fallback for local PDF/CSV parsing,
+  but database rules are the editable source of truth in Settings.
+- repeated manual category corrections are stored as pending
+  `category_match_rule_suggestions` instead of silently creating rules. Settings
+  shows a badge when suggestions exist, deep-links to Category matching, and lets
+  the user add, edit, or ignore each suggestion.
 - duplicates are detected by date, amount, description, and statement id
 
 ### 2. Review
@@ -174,6 +184,12 @@ That distinction matters because the system needs to answer questions like:
   back into Entries for settlement work
 - `categories` own their presentation metadata, including icon and color, so
   charts and category cards render from the same source of truth
+- category matching rules live beside categories as editable Settings reference
+  data, so merchant cleanup can improve future imports without changing older
+  entries already committed to the ledger
+- matching a preview row to the system `Transfer` category also promotes that
+  row to transfer type, because transfer semantics affect reconciliation and
+  cannot be represented by category alone
 
 ## Planning semantics
 

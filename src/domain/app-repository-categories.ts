@@ -163,6 +163,9 @@ export async function deleteCategoryRecord(
       .first<{ id: string }>(),
     db.prepare("SELECT id FROM monthly_budgets WHERE household_id = ? AND category_id = ? LIMIT 1")
       .bind(DEFAULT_HOUSEHOLD_ID, input.categoryId)
+      .first<{ id: string }>(),
+    db.prepare("SELECT id FROM category_match_rules WHERE household_id = ? AND category_id = ? LIMIT 1")
+      .bind(DEFAULT_HOUSEHOLD_ID, input.categoryId)
       .first<{ id: string }>()
   ]);
 

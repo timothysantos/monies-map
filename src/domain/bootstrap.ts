@@ -14,6 +14,8 @@ import {
   loadSplitMatchCandidates,
   loadSplitSettlements,
   loadAuditEvents,
+  loadCategoryMatchRules,
+  loadCategoryMatchRuleSuggestions,
   loadMonthIncomeRows,
   loadMonthPlanRows,
   loadTrackedMonths,
@@ -58,10 +60,12 @@ export async function buildBootstrapDto(
   } else {
     await ensureSeedData(db, demo);
   }
-  const [household, accounts, categories, importBatches, trackedMonths, unresolvedTransfers, recentAuditEvents] = await Promise.all([
+  const [household, accounts, categories, categoryMatchRules, categoryMatchRuleSuggestions, importBatches, trackedMonths, unresolvedTransfers, recentAuditEvents] = await Promise.all([
     loadHousehold(db),
     loadAccounts(db),
     loadCategories(db),
+    loadCategoryMatchRules(db),
+    loadCategoryMatchRuleSuggestions(db),
     loadImportBatches(db),
     loadTrackedMonths(db),
     loadUnresolvedTransfers(db),
@@ -121,6 +125,8 @@ export async function buildBootstrapDto(
     },
     settingsPage: {
       demo,
+      categoryMatchRules,
+      categoryMatchRuleSuggestions,
       unresolvedTransfers,
       recentAuditEvents
     }

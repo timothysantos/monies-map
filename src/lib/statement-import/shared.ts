@@ -324,7 +324,7 @@ export function cellString(value: string | number | undefined) {
 export function isTransferDescription(description: string) {
   const normalized = description.replace(/\s+/g, "");
   return /PAYMT THRU E-BANK|Bill Payment|mBK-|Funds Transfer|MONEYSEND|PAYMENT BY INTERNET|PAYMENT VIA|FAST PAYMENT|INB|OTHR Transfer/i.test(description)
-    || /PAYMENTVIA|FASTPAYMENT|PAYMTTHRUE-BANK|PAYMENTBYINTERNET/i.test(normalized);
+    || /PAYMENTVIA|FASTPAYMENT|PAYMTTHRUE-BANK|PAYMENTBYINTERNET|TSFTO/i.test(normalized);
 }
 
 export function inferCategory(description: string, isIncome: boolean) {
@@ -332,14 +332,23 @@ export function inferCategory(description: string, isIncome: boolean) {
   if (/PAYNOW-FAST.*WISE ASIA-PACIFIC/.test(normalized)) {
     return "Family & Personal";
   }
-  if (isIncome) {
-    if (/SALA|SALARY/.test(normalized)) {
-      return "Salary";
-    }
-    return "Other - Income";
+  if (isIncome && /SALA|SALARY/.test(normalized)) {
+    return "Salary";
   }
   if (/NEW CREATION CHURCH/.test(normalized)) {
     return "Church";
+  }
+  if (/CONVERSION ?FEE|CONVERSIONFEES?/.test(normalized)) {
+    return "Fees";
+  }
+  if (/SINGLIFE|INCOMEINSURANCE/.test(normalized)) {
+    return "Insurance";
+  }
+  if (/AXSPTELTD|KEPPEL ELECTRIC|M1LIMITED|M1APP/.test(normalized)) {
+    return "Bills";
+  }
+  if (/JOSEPHPRINCE/.test(normalized)) {
+    return "Subscriptions MO";
   }
   if (/BUS\/MRT|NETS Debit-Consumer/.test(description) && /BUS|MRT|TRANSIT|MR BEAN|JOO HENG|FATTY CHEON/.test(normalized) === false) {
     return "Public Transport";
@@ -347,13 +356,13 @@ export function inferCategory(description: string, isIncome: boolean) {
   if (/BUS\/MRT|HELLO RIDE|ANYWHEEL/.test(normalized)) {
     return "Public Transport";
   }
-  if (/GRAB\*/.test(normalized)) {
+  if (/GRAB\*|TADA|GOPAY-GOJEK/.test(normalized)) {
     return "Taxi";
   }
   if (/FAIRPRICE|CS FRESH|FINEST|MARKET PLACE|DON DON DONKI|GROCER|NITORI/.test(normalized)) {
     return "Groceries";
   }
-  if (/APPLE\.COM\/BILL|OPENAI|VIVIFI|STARHUB/.test(normalized)) {
+  if (/APPLE\.COM\/BILL|GOOGLE\*?YOUTUBE|YOUTUBEPREMIUM|OPENAI|VIVIFI|STARHUB/.test(normalized)) {
     return "Subscriptions MO";
   }
   if (/KINOKUNIYA|BOOK/.test(normalized)) {
@@ -362,17 +371,23 @@ export function inferCategory(description: string, isIncome: boolean) {
   if (/DAILY CUT|SALON|BEAUTY/.test(normalized)) {
     return "Beauty";
   }
-  if (/SHAW THEATRES|SHAW CONCESSIONS/.test(normalized)) {
+  if (/SHAW THEATRES|SHAW CONCESSIONS|GOLDENVILLAGE|GOLDEN VILLAGE/.test(normalized)) {
     return "Entertainment";
   }
-  if (/IKEA|MUJI|HANDS|TAKASHIMAYA|TOOBUKU|THINK/.test(normalized)) {
+  if (/IKEA|MUJI|HANDS|TAKASHIMAYA|TOOBUKU|THINK|SHOPEE|AMAZON|AMZON/.test(normalized)) {
     return "Shopping";
   }
   if (/TAX/.test(normalized)) {
     return "Tax";
   }
+  if (/JALAIRLINE|JAPAN AIRLINES|TWAYAIR|TWAY AIR|TWAYAIRLINES/.test(normalized)) {
+    return "Travel";
+  }
   if (/RESTAURANT|CUIS|THAI|TOAST|FOOD|YTF|BAGUETTE|SUSHI|ELEVEN|GOCHISO|CHOCOLATE|GYG|GASTRONOMIA|COFFEE|LANTERN|KENNY ROGERS|YAKINIKU|WINGSTOP|MCDONALD|SUBWAY|HAWKERS|STARBUCKS|DIN TAI FUNG|TORI-Q|NANTSUTTEI|SABAI|FR WISMA/.test(normalized)) {
     return "Food & Drinks";
+  }
+  if (isIncome) {
+    return "Other - Income";
   }
   return "Other";
 }

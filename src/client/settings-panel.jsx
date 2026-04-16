@@ -6,20 +6,24 @@ import { extractPdfText, selectParsedStatementForCompare } from "./import-helper
 import {
   archiveSettingsAccount,
   compareAccountCheckpointStatement,
+  deleteCategoryMatchRule,
   deleteAccountCheckpoint,
   deleteSettingsCategory,
   fetchCheckpointExport,
+  ignoreCategoryMatchRuleSuggestion,
   saveAccountCheckpoint,
+  saveCategoryMatchRule,
   saveSettingsAccount,
   saveSettingsCategory,
   updateSettingsPerson
 } from "./settings-api";
 import { SettingsAccountsSection } from "./settings-accounts-section";
-import { SettingsAccountDialog, SettingsCategoryDialog, SettingsPersonDialog } from "./settings-dialogs";
+import { SettingsAccountDialog, SettingsCategoryDialog, SettingsCategoryMatchRuleDialog, SettingsPersonDialog } from "./settings-dialogs";
 import { SettingsReconciliationDialog } from "./settings-reconciliation-dialog";
 import {
   SettingsActivitySection,
   SettingsCategoriesSection,
+  SettingsCategoryMatchRulesSection,
   SettingsDemoSection,
   SettingsPeopleSection,
   SettingsTransfersSection,
@@ -50,6 +54,7 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
     people: false,
     accounts: false,
     categories: false,
+    categoryRules: false,
     trust: false,
     transfers: false,
     activity: false
@@ -58,6 +63,7 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
   const [accountDialog, setAccountDialog] = useState(null);
   const [accountDialogError, setAccountDialogError] = useState("");
   const [categoryDialog, setCategoryDialog] = useState(null);
+  const [categoryRuleDialog, setCategoryRuleDialog] = useState(null);
   const [reconciliationDialog, setReconciliationDialog] = useState(null);
   const [checkpointHistoryYear, setCheckpointHistoryYear] = useState("");
   const [statementComparePanel, setStatementComparePanel] = useState(null);
@@ -100,6 +106,17 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
   const visibleCheckpointHistory = useMemo(() => (
     (reconciliationDialog?.history ?? []).filter((item) => !checkpointHistoryYear || item.month.startsWith(`${checkpointHistoryYear}-`))
   ), [checkpointHistoryYear, reconciliationDialog?.history]);
+
+  useEffect(() => {
+    if (searchParams.get("settings_section") !== "categoryRules") {
+      return;
+    }
+
+    setSettingsSectionsOpen((current) => ({ ...current, categoryRules: true }));
+    window.requestAnimationFrame(() => {
+      document.getElementById("settings-category-rules")?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+  }, [searchParams]);
 
   useEffect(() => {
     if (!reconciliationDialog) {
@@ -241,6 +258,45 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
       slug: category.slug,
       iconKey: category.iconKey,
       colorHex: category.colorHex
+    });
+  }
+
+  function openCreateCategoryRuleDialog() {
+    setCategoryRuleDialog({
+      mode: "create",
+      ruleId: "",
+      sourceSuggestionId: "",
+      pattern: "",
+      categoryId: categories.find((category) => category.name === "Other")?.id ?? categories[0]?.id ?? "",
+      priority: 100,
+      isActive: true,
+      note: ""
+    });
+  }
+
+  function openEditCategoryRuleDialog(rule) {
+    setCategoryRuleDialog({
+      mode: "edit",
+      ruleId: rule.id,
+      sourceSuggestionId: "",
+      pattern: rule.pattern,
+      categoryId: rule.categoryId,
+      priority: rule.priority,
+      isActive: rule.isActive,
+      note: rule.note ?? ""
+    });
+  }
+
+  function openCategoryRuleSuggestionDialog(suggestion) {
+    setCategoryRuleDialog({
+      mode: "create",
+      ruleId: "",
+      sourceSuggestionId: suggestion.id,
+      pattern: suggestion.pattern,
+      categoryId: suggestion.categoryId,
+      priority: 100,
+      isActive: true,
+      note: messages.settings.categoryRuleSuggestionNote(suggestion.sourceCount)
     });
   }
 
@@ -469,6 +525,74 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
     }
   }
 
+  async function handleSaveCategoryRule() {
+    if (!categoryRuleDialog?.pattern?.trim() || !categoryRuleDialog.categoryId) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await saveCategoryMatchRule({
+        ruleId: categoryRuleDialog.ruleId || undefined,
+        sourceSuggestionId: categoryRuleDialog.sourceSuggestionId || undefined,
+        pattern: categoryRuleDialog.pattern,
+        categoryId: categoryRuleDialog.categoryId,
+        priority: categoryRuleDialog.priority,
+        isActive: categoryRuleDialog.isActive,
+        note: categoryRuleDialog.note
+      });
+      setCategoryRuleDialog(null);
+      await onRefresh();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Failed to save category match rule");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleAcceptCategoryRuleSuggestion(suggestion) {
+    setIsSubmitting(true);
+    try {
+      await saveCategoryMatchRule({
+        sourceSuggestionId: suggestion.id,
+        pattern: suggestion.pattern,
+        categoryId: suggestion.categoryId,
+        priority: 100,
+        isActive: true,
+        note: messages.settings.categoryRuleSuggestionNote(suggestion.sourceCount)
+      });
+      await onRefresh();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Failed to save category match rule");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleIgnoreCategoryRuleSuggestion(suggestion) {
+    setIsSubmitting(true);
+    try {
+      await ignoreCategoryMatchRuleSuggestion(suggestion.id);
+      await onRefresh();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Failed to ignore category match suggestion");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleDeleteCategoryRule(rule) {
+    setIsSubmitting(true);
+    try {
+      await deleteCategoryMatchRule(rule.id);
+      await onRefresh();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Failed to delete category match rule");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   function openTransferReview(entryId) {
     const params = new URLSearchParams(searchParams);
     params.set("view", viewId);
@@ -562,6 +686,21 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
         onDeleteCategory={handleDeleteCategory}
       />
 
+      <SettingsCategoryMatchRulesSection
+        id="settings-category-rules"
+        rules={settingsPage.categoryMatchRules ?? []}
+        categories={categories}
+        suggestions={settingsPage.categoryMatchRuleSuggestions ?? []}
+        isOpen={settingsSectionsOpen.categoryRules}
+        onToggle={() => toggleSettingsSection("categoryRules")}
+        onCreateRule={openCreateCategoryRuleDialog}
+        onEditRule={openEditCategoryRuleDialog}
+        onDeleteRule={handleDeleteCategoryRule}
+        onAcceptSuggestion={handleAcceptCategoryRuleSuggestion}
+        onEditSuggestion={openCategoryRuleSuggestionDialog}
+        onIgnoreSuggestion={handleIgnoreCategoryRuleSuggestion}
+      />
+
       <SettingsTrustSection
         isOpen={settingsSectionsOpen.trust}
         onToggle={() => toggleSettingsSection("trust")}
@@ -619,6 +758,15 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
         onChange={setCategoryDialog}
         onClose={() => setCategoryDialog(null)}
         onSave={handleSaveCategory}
+      />
+
+      <SettingsCategoryMatchRuleDialog
+        dialog={categoryRuleDialog}
+        categories={categories}
+        isSubmitting={isSubmitting}
+        onChange={setCategoryRuleDialog}
+        onClose={() => setCategoryRuleDialog(null)}
+        onSave={handleSaveCategoryRule}
       />
 
       <SettingsReconciliationDialog

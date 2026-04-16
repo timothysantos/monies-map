@@ -93,6 +93,30 @@ export function deleteSettingsCategory(categoryId) {
   );
 }
 
+export function saveCategoryMatchRule({ ruleId, sourceSuggestionId, pattern, categoryId, priority, isActive, note }) {
+  return postJson(
+    "/api/category-match-rules/save",
+    { ruleId, sourceSuggestionId, pattern, categoryId, priority, isActive, note },
+    "Failed to save category match rule"
+  );
+}
+
+export function deleteCategoryMatchRule(ruleId) {
+  return postJson(
+    "/api/category-match-rules/delete",
+    { ruleId },
+    "Failed to delete category match rule"
+  );
+}
+
+export function ignoreCategoryMatchRuleSuggestion(suggestionId) {
+  return postJson(
+    "/api/category-match-suggestions/ignore",
+    { suggestionId },
+    "Failed to ignore category match suggestion"
+  );
+}
+
 // Checkpoint requests are grouped here because reconcile, history delete, export,
 // and statement compare all operate on the same statement-period boundary.
 export function saveAccountCheckpoint({

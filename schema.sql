@@ -79,6 +79,36 @@ CREATE TABLE IF NOT EXISTS categories (
   UNIQUE (household_id, slug)
 );
 
+CREATE TABLE IF NOT EXISTS category_match_rules (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  pattern TEXT NOT NULL,
+  category_id TEXT NOT NULL,
+  priority INTEGER NOT NULL DEFAULT 100,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  note TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id),
+  FOREIGN KEY (category_id) REFERENCES categories(id),
+  UNIQUE (household_id, pattern)
+);
+
+CREATE TABLE IF NOT EXISTS category_match_rule_suggestions (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  pattern TEXT NOT NULL,
+  category_id TEXT NOT NULL,
+  source_count INTEGER NOT NULL DEFAULT 1,
+  sample_descriptions_json TEXT NOT NULL DEFAULT '[]',
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'ignored')),
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id),
+  FOREIGN KEY (category_id) REFERENCES categories(id),
+  UNIQUE (household_id, pattern, category_id)
+);
+
 CREATE TABLE IF NOT EXISTS imports (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL,

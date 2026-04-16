@@ -13,14 +13,17 @@ import {
   createEntryRecord,
   createCategoryRecord,
   createAccountRecord,
+  deleteCategoryMatchRule,
   deleteAccountCheckpointRecord,
   deleteCategoryRecord,
+  ignoreCategoryMatchRuleSuggestion,
   deleteMonthPlan,
   deleteMonthPlanRow,
   duplicateMonthPlan,
   rollbackImportBatch,
   resetMonthPlan,
   saveAccountCheckpointRecord,
+  saveCategoryMatchRule,
   saveMonthPlanEntryLinks,
   saveMonthPlanRow,
   linkSplitExpenseMatch,
@@ -713,6 +716,73 @@ export default {
         });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to delete category" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/category-match-rules/save" && request.method === "POST") {
+      const body = await request.json<{
+        ruleId?: string;
+        pattern?: string;
+        categoryId?: string;
+        priority?: number;
+        isActive?: boolean;
+        note?: string | null;
+        sourceSuggestionId?: string;
+      }>();
+
+      if (!body.pattern?.trim() || !body.categoryId) {
+        return json({ ok: false, error: "Missing category match rule fields" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await saveCategoryMatchRule(env.DB, {
+            ruleId: body.ruleId,
+            pattern: body.pattern,
+            categoryId: body.categoryId,
+            priority: body.priority,
+            isActive: body.isActive,
+            note: body.note,
+            sourceSuggestionId: body.sourceSuggestionId
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to save category match rule" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/category-match-rules/delete" && request.method === "POST") {
+      const body = await request.json<{ ruleId?: string }>();
+
+      if (!body.ruleId) {
+        return json({ ok: false, error: "Missing category match rule id" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await deleteCategoryMatchRule(env.DB, body.ruleId))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to delete category match rule" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/category-match-suggestions/ignore" && request.method === "POST") {
+      const body = await request.json<{ suggestionId?: string }>();
+
+      if (!body.suggestionId) {
+        return json({ ok: false, error: "Missing category match suggestion id" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await ignoreCategoryMatchRuleSuggestion(env.DB, body.suggestionId))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to ignore category match suggestion" }, 400);
       }
     }
 
