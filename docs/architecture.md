@@ -347,6 +347,10 @@ Person month scopes:
   and add-expense action
 - split activity combines manual split expenses and settle-up records in one
   current chronological list, followed by muted settled-history batches
+- current split rows edit inline by replacing the activity card with the same
+  field set used by the create/edit dialogs; delete and linked-entry editing
+  live inside that inline form, and delete requires confirmation before removing
+  only the split-layer record
 - matching links imported ledger transactions back to manual split expenses or
   settle-up records after the import is already committed
 - entries editor can promote a ledger expense into the splits layer; if the

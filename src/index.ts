@@ -13,6 +13,8 @@ import {
   createEntryRecord,
   createCategoryRecord,
   createAccountRecord,
+  deleteSplitExpenseRecord,
+  deleteSplitSettlementRecord,
   deleteCategoryMatchRule,
   deleteAccountCheckpointRecord,
   deleteCategoryRecord,
@@ -611,6 +613,38 @@ export default {
         });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update split settlement" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/splits/expenses/delete" && request.method === "POST") {
+      const body = await request.json<{ splitExpenseId?: string }>();
+      if (!body.splitExpenseId) {
+        return json({ ok: false, error: "Missing split expense id" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await deleteSplitExpenseRecord(env.DB, { splitExpenseId: body.splitExpenseId }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to delete split expense" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/splits/settlements/delete" && request.method === "POST") {
+      const body = await request.json<{ settlementId?: string }>();
+      if (!body.settlementId) {
+        return json({ ok: false, error: "Missing split settlement id" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await deleteSplitSettlementRecord(env.DB, { settlementId: body.settlementId }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to delete split settlement" }, 400);
       }
     }
 

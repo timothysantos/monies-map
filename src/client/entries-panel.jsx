@@ -181,6 +181,7 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
               ownerOptions={ownerOptions}
               splitPercentValue={entryDraft.ownershipType === "shared" ? getVisibleSplitPercent(entryDraft, view.id) ?? 50 : null}
               onChange={updateEntryDraft}
+              onCategoryAppearanceChange={onCategoryAppearanceChange}
               onOwnerChange={updateEntryDraftOwner}
               onSplitPercentChange={updateEntryDraftSplit}
             />

@@ -2,9 +2,17 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
-import { createSplitGroup, linkSplitMatch, saveSplitExpense, saveSplitSettlement, updateSplitLinkedEntry } from "./splits-api";
+import {
+  createSplitGroup,
+  deleteSplitExpense,
+  deleteSplitSettlement,
+  linkSplitMatch,
+  saveSplitExpense,
+  saveSplitSettlement,
+  updateSplitLinkedEntry
+} from "./splits-api";
 import { SplitArchiveDialog } from "./splits-archive-dialog";
-import { SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./splits-dialogs";
+import { SplitDeleteDialog, SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./splits-dialogs";
 import { buildExpenseDraft, buildLinkedEntryDraft, buildNewExpenseDraft, buildNewSettlementDraft, buildSettlementDraft } from "./splits-drafts";
 import { SplitLinkedEntryDialog } from "./splits-linked-entry-dialog";
 import { SplitsMainSection } from "./splits-main-section";
@@ -18,6 +26,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [expenseDialog, setExpenseDialog] = useState(null);
   const [settlementDialog, setSettlementDialog] = useState(null);
   const [linkedEntryDialog, setLinkedEntryDialog] = useState(null);
+  const [inlineSplitDraft, setInlineSplitDraft] = useState(null);
+  const [inlineSplitError, setInlineSplitError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dismissedMatchIds, setDismissedMatchIds] = useState([]);
@@ -56,6 +67,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setDismissedMatchIds([]);
     setShowBreakdown(false);
     setFormError("");
+    setInlineSplitDraft(null);
+    setInlineSplitError("");
+    setDeleteTarget(null);
     setLinkedEntryDialog(null);
     setArchiveDialog(null);
   }, [view.id, view.splitsPage.month]);
@@ -159,6 +173,50 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setSettlementDialog(buildSettlementDraft(item, people));
   }
 
+  function openInlineExpenseEditor(item) {
+    setFormError("");
+    setInlineSplitError("");
+    setInlineSplitDraft(buildExpenseDraft(item, categoryOptions, people));
+  }
+
+  function openInlineSettlementEditor(item) {
+    setFormError("");
+    setInlineSplitError("");
+    setInlineSplitDraft(buildSettlementDraft(item, people));
+  }
+
+  async function saveInlineSplit() {
+    if (!inlineSplitDraft) {
+      return;
+    }
+
+    if (inlineSplitDraft.kind === "expense" && (!inlineSplitDraft.description?.trim() || !inlineSplitDraft.date || !inlineSplitDraft.payerPersonName || !inlineSplitDraft.categoryName)) {
+      setInlineSplitError("Expense description, date, payer, and category are required.");
+      return;
+    }
+
+    if (inlineSplitDraft.kind === "settlement" && (!inlineSplitDraft.date || !inlineSplitDraft.fromPersonName || !inlineSplitDraft.toPersonName)) {
+      setInlineSplitError("Settlement date and both people are required.");
+      return;
+    }
+
+    setInlineSplitError("");
+    setIsSubmitting(true);
+    try {
+      if (inlineSplitDraft.kind === "expense") {
+        await saveSplitExpense(inlineSplitDraft);
+      } else {
+        await saveSplitSettlement(inlineSplitDraft);
+      }
+      setInlineSplitDraft(null);
+      await onRefresh();
+    } catch (error) {
+      setInlineSplitError(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   function openLinkedEntryEditor(item) {
     const entry = item.linkedTransactionId ? splitModel.linkedEntriesById.get(item.linkedTransactionId) : null;
     if (!entry) {
@@ -191,6 +249,36 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   function openNewExpenseDialog() {
     setFormError("");
     setExpenseDialog(buildNewExpenseDraft({ activeGroup, categoryOptions, people, view }));
+  }
+
+  function requestDeleteSplit(item) {
+    setFormError("");
+    setInlineSplitError("");
+    setDeleteTarget(item);
+  }
+
+  async function confirmDeleteSplit() {
+    if (!deleteTarget) {
+      return;
+    }
+
+    setFormError("");
+    setInlineSplitError("");
+    setIsSubmitting(true);
+    try {
+      if (deleteTarget.kind === "expense") {
+        await deleteSplitExpense(deleteTarget.id);
+      } else {
+        await deleteSplitSettlement(deleteTarget.id);
+      }
+      setDeleteTarget(null);
+      setInlineSplitDraft((current) => (current?.kind === deleteTarget.kind && current?.id === deleteTarget.id ? null : current));
+      await onRefresh();
+    } catch (error) {
+      setFormError(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -230,9 +318,15 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         donutRows={donutRows}
         donutChart={view.splitsPage.donutChart}
         categories={categories}
+        groupOptions={groupOptions}
+        people={people}
+        categoryOptions={categoryOptions}
         visibleMatches={visibleMatches}
         groupedCurrentActivity={groupedCurrentActivity}
         archivedBatches={archivedBatches}
+        inlineSplitDraft={inlineSplitDraft}
+        inlineSplitError={inlineSplitError}
+        isSubmitting={isSubmitting}
         onSelectGroup={(groupId) => updateSplitView({ groupId, mode: "entries" })}
         onSelectMatches={(groupId) => updateSplitView({ groupId, mode: "matches" })}
         onCreateGroup={() => {
@@ -244,8 +338,15 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onDismissMatch={(matchId) => setDismissedMatchIds((current) => [...current, matchId])}
         onConfirmMatch={confirmMatch}
         onOpenArchive={openArchiveList}
-        onEditExpense={openExpenseEditor}
-        onEditSettlement={openSettlementEditor}
+        onEditExpense={openInlineExpenseEditor}
+        onEditSettlement={openInlineSettlementEditor}
+        onChangeInlineSplitDraft={setInlineSplitDraft}
+        onCancelInlineSplit={() => {
+          setInlineSplitDraft(null);
+          setInlineSplitError("");
+        }}
+        onSaveInlineSplit={saveInlineSplit}
+        onRequestDeleteSplit={requestDeleteSplit}
         onEditLinkedEntry={openLinkedEntryEditor}
       />
 
@@ -261,6 +362,14 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onEditExpense={openExpenseEditor}
         onEditSettlement={openSettlementEditor}
         onEditLinkedEntry={openLinkedEntryEditor}
+      />
+
+      <SplitDeleteDialog
+        target={deleteTarget}
+        formError={formError}
+        isSubmitting={isSubmitting}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDeleteSplit}
       />
 
       <SplitGroupDialog

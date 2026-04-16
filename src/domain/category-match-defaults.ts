@@ -51,6 +51,8 @@ export const defaultCategoryMatchRules: DefaultCategoryMatchRule[] = [
   { id: "catrule-meidi-ya", pattern: "MEIDI-YA", categoryName: "Groceries", priority: 45 },
   { id: "catrule-foodloft", pattern: "FOODLOFT", categoryName: "Food & Drinks", priority: 45 },
   { id: "catrule-nets-debit-consumer", pattern: "NETS Debit-Consumer", categoryName: "Food & Drinks", priority: 45 },
+  { id: "catrule-paynow-fast-lunch", pattern: "PAYNOW-FAST, LUNCH", categoryName: "Food & Drinks", priority: 45, note: "Both words must appear in the bank text." },
+  { id: "catrule-paynow-fast-western", pattern: "PAYNOW-FAST, WESTERN", categoryName: "Food & Drinks", priority: 45, note: "Both words must appear in the bank text." },
   { id: "catrule-vending", pattern: "VENDING", categoryName: "Food & Drinks", priority: 45 },
   { id: "catrule-bm-nasi", pattern: "BMV NASI", categoryName: "Food & Drinks", priority: 45 },
   { id: "catrule-vietnamese-food", pattern: "VIETNAMESE", categoryName: "Food & Drinks", priority: 45 },
