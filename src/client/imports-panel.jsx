@@ -682,6 +682,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               people={people}
               knownAccountNames={knownAccountNames}
               isCommitDisabled={isCommitDisabled}
+              isSubmitting={isSubmitting}
               onCommit={handleCommit}
               onUpdatePreviewRow={updatePreviewRow}
               onRemovePreviewRow={removePreviewRow}

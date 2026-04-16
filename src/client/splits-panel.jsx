@@ -19,6 +19,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [settlementDialog, setSettlementDialog] = useState(null);
   const [linkedEntryDialog, setLinkedEntryDialog] = useState(null);
   const [formError, setFormError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [dismissedMatchIds, setDismissedMatchIds] = useState([]);
   const defaultGroupId = view.splitsPage.groups.find((group) => group.isDefault)?.id ?? "split-group-none";
   const selectedGroupId = searchParams.get("split_group") ?? defaultGroupId;
@@ -87,17 +88,17 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
 
     setFormError("");
-    let data;
+    setIsSubmitting(true);
     try {
-      data = await createSplitGroup(groupDialog);
+      const data = await createSplitGroup(groupDialog);
+      setGroupDialog(null);
+      await onRefresh();
+      updateSplitView({ groupId: data.groupId, mode: "entries" });
     } catch (error) {
       setFormError(error.message);
-      return;
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setGroupDialog(null);
-    await onRefresh();
-    updateSplitView({ groupId: data.groupId, mode: "entries" });
   }
 
   async function saveExpense() {
@@ -107,15 +108,16 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
 
     setFormError("");
+    setIsSubmitting(true);
     try {
       await saveSplitExpense(expenseDialog);
+      setExpenseDialog(null);
+      await onRefresh();
     } catch (error) {
       setFormError(error.message);
-      return;
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setExpenseDialog(null);
-    await onRefresh();
   }
 
   async function saveSettlement() {
@@ -125,20 +127,26 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
 
     setFormError("");
+    setIsSubmitting(true);
     try {
       await saveSplitSettlement(settlementDialog);
+      setSettlementDialog(null);
+      await onRefresh();
     } catch (error) {
       setFormError(error.message);
-      return;
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setSettlementDialog(null);
-    await onRefresh();
   }
 
   async function confirmMatch(match) {
-    await linkSplitMatch(match);
-    await onRefresh();
+    setIsSubmitting(true);
+    try {
+      await linkSplitMatch(match);
+      await onRefresh();
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function openExpenseEditor(item) {
@@ -168,15 +176,16 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
 
     setFormError("");
+    setIsSubmitting(true);
     try {
       await updateSplitLinkedEntry(linkedEntryDialog);
+      setLinkedEntryDialog(null);
+      await onRefresh();
     } catch (error) {
       setFormError(error.message);
-      return;
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setLinkedEntryDialog(null);
-    await onRefresh();
   }
 
   function openNewExpenseDialog() {
@@ -257,6 +266,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       <SplitGroupDialog
         dialog={groupDialog}
         formError={formError}
+        isSubmitting={isSubmitting}
         onChange={setGroupDialog}
         onClose={() => setGroupDialog(null)}
         onSave={saveGroup}
@@ -268,6 +278,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         people={people}
         categoryOptions={categoryOptions}
         formError={formError}
+        isSubmitting={isSubmitting}
         onChange={setExpenseDialog}
         onClose={() => setExpenseDialog(null)}
         onSave={saveExpense}
@@ -278,6 +289,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         groupOptions={groupOptions}
         people={people}
         formError={formError}
+        isSubmitting={isSubmitting}
         onChange={setSettlementDialog}
         onClose={() => setSettlementDialog(null)}
         onSave={saveSettlement}
@@ -288,6 +300,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         people={people}
         categoryOptions={categoryOptions}
         formError={formError}
+        isSubmitting={isSubmitting}
         onChange={setLinkedEntryDialog}
         onClose={() => setLinkedEntryDialog(null)}
         onSave={saveLinkedEntry}

@@ -1,5 +1,8 @@
 import * as Popover from "@radix-ui/react-popover";
 import { Receipt, X } from "lucide-react";
+import { useState } from "react";
+
+import { messages } from "./copy/en-SG";
 import { money } from "./formatters";
 import { ICON_REGISTRY } from "./ui-options";
 
@@ -18,13 +21,42 @@ export function FilterSelect({ label, value, options, emptyLabel, onChange }) {
 }
 
 export function DeleteRowButton({ label, onConfirm, triggerLabel, confirmLabel = "Confirm", destructive = true, prompt }) {
+  const [open, setOpen] = useState(false);
+  const [isWorking, setIsWorking] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleConfirm() {
+    setIsWorking(true);
+    setError("");
+    try {
+      await onConfirm?.();
+      setOpen(false);
+    } catch (confirmError) {
+      setError(confirmError instanceof Error ? confirmError.message : "The action could not finish.");
+    } finally {
+      setIsWorking(false);
+    }
+  }
+
   return (
-    <Popover.Root>
+    <Popover.Root
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (isWorking) {
+          return;
+        }
+        setOpen(nextOpen);
+        if (!nextOpen) {
+          setError("");
+        }
+      }}
+    >
       <Popover.Trigger asChild>
         <button
           type="button"
           className={destructive ? "subtle-remove" : "icon-action"}
           aria-label={triggerLabel ?? `Delete ${label}`}
+          disabled={isWorking}
           onClick={(event) => event.stopPropagation()}
         >
           {destructive ? <span aria-hidden="true">&times;</span> : <X size={16} />}
@@ -40,17 +72,21 @@ export function DeleteRowButton({ label, onConfirm, triggerLabel, confirmLabel =
           <p>
             {prompt ?? <>You are deleting <strong>{label}</strong>. Confirm?</>}
           </p>
+          {error ? <p className="form-error">{error}</p> : null}
           <div className="delete-popover-actions">
             <Popover.Close asChild>
-              <button type="button" className="subtle-action">
+              <button type="button" className="subtle-action" disabled={isWorking}>
                 Cancel
               </button>
             </Popover.Close>
-            <Popover.Close asChild>
-              <button type="button" className={`subtle-action ${destructive ? "subtle-danger" : ""}`} onClick={onConfirm}>
-                {confirmLabel}
-              </button>
-            </Popover.Close>
+            <button
+              type="button"
+              className={`subtle-action ${destructive ? "subtle-danger" : ""}`}
+              disabled={isWorking}
+              onClick={() => void handleConfirm()}
+            >
+              {isWorking ? messages.common.working : confirmLabel}
+            </button>
           </div>
         </Popover.Content>
       </Popover.Portal>

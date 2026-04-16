@@ -391,6 +391,11 @@ Frontend direction:
   visual requirements become real product behavior
 - interaction primitives such as popovers should prefer maintained web-native
   packages rather than bespoke UI widgets
+- dialogs and confirmation popovers that save, delete, import, or reset data
+  should stay open while the request is running, disable duplicate actions, and
+  swap the primary action text to a short pending label such as "Saving..." or
+  "Working..."; close the surface only after success and keep it open for inline
+  errors when possible
 
 ## Why Cloudflare
 

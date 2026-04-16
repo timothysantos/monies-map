@@ -1,6 +1,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import { SquarePen } from "lucide-react";
+import { useState } from "react";
 
 import { describeAccountHealth, formatAccountDisplayName } from "./account-display";
 import { messages } from "./copy/en-SG";
@@ -23,6 +24,9 @@ export function MonthPanelHeader({
   onResetMonth,
   onDeleteMonth
 }) {
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
   return (
     <div className="panel-head">
       <div>
@@ -59,20 +63,30 @@ export function MonthPanelHeader({
               <button
                 type="button"
                 className="month-actions-item"
-                onClick={() => {
+                onClick={async () => {
+                  await onDuplicateMonth();
                   onActionsOpenChange(false);
-                  void onDuplicateMonth();
                 }}
                 disabled={isDuplicating}
               >
-                {messages.month.duplicateMonth}
+                {isDuplicating ? messages.common.working : messages.month.duplicateMonth}
               </button>
-              <Dialog.Root>
+              <Dialog.Root
+                open={resetDialogOpen}
+                onOpenChange={(open) => {
+                  if (!open && isResettingMonth) {
+                    return;
+                  }
+                  setResetDialogOpen(open);
+                  if (open) {
+                    onActionsOpenChange(false);
+                  }
+                }}
+              >
                 <Dialog.Trigger asChild>
                   <button
                     type="button"
                     className="month-actions-item"
-                    onClick={() => onActionsOpenChange(false)}
                     disabled={isResettingMonth}
                   >
                     {messages.month.resetMonth}
@@ -93,28 +107,39 @@ export function MonthPanelHeader({
                     />
                     <div className="note-dialog-actions">
                       <Dialog.Close asChild>
-                        <button type="button" className="subtle-action">Cancel</button>
+                        <button type="button" className="subtle-action" disabled={isResettingMonth}>Cancel</button>
                       </Dialog.Close>
-                      <Dialog.Close asChild>
-                        <button
-                          type="button"
-                          className="subtle-action subtle-danger"
-                          disabled={resetMonthText.trim().toLowerCase() !== "reset month" || isResettingMonth}
-                          onClick={() => void onResetMonth()}
-                        >
-                          {messages.month.resetMonthConfirm}
-                        </button>
-                      </Dialog.Close>
+                      <button
+                        type="button"
+                        className="subtle-action subtle-danger"
+                        disabled={resetMonthText.trim().toLowerCase() !== "reset month" || isResettingMonth}
+                        onClick={async () => {
+                          await onResetMonth();
+                          setResetDialogOpen(false);
+                        }}
+                      >
+                        {isResettingMonth ? messages.common.working : messages.month.resetMonthConfirm}
+                      </button>
                     </div>
                   </Dialog.Content>
                 </Dialog.Portal>
               </Dialog.Root>
-              <Dialog.Root>
+              <Dialog.Root
+                open={deleteDialogOpen}
+                onOpenChange={(open) => {
+                  if (!open && isDeletingMonth) {
+                    return;
+                  }
+                  setDeleteDialogOpen(open);
+                  if (open) {
+                    onActionsOpenChange(false);
+                  }
+                }}
+              >
                 <Dialog.Trigger asChild>
                   <button
                     type="button"
                     className="month-actions-item month-actions-item-danger"
-                    onClick={() => onActionsOpenChange(false)}
                     disabled={isDeletingMonth}
                   >
                     {messages.month.deleteMonth}
@@ -135,18 +160,19 @@ export function MonthPanelHeader({
                     />
                     <div className="note-dialog-actions">
                       <Dialog.Close asChild>
-                        <button type="button" className="subtle-action">Cancel</button>
+                        <button type="button" className="subtle-action" disabled={isDeletingMonth}>Cancel</button>
                       </Dialog.Close>
-                      <Dialog.Close asChild>
-                        <button
-                          type="button"
-                          className="subtle-action subtle-danger"
-                          disabled={deleteMonthText.trim().toLowerCase() !== "delete month" || isDeletingMonth}
-                          onClick={() => void onDeleteMonth()}
-                        >
-                          {messages.month.deleteMonthConfirm}
-                        </button>
-                      </Dialog.Close>
+                      <button
+                        type="button"
+                        className="subtle-action subtle-danger"
+                        disabled={deleteMonthText.trim().toLowerCase() !== "delete month" || isDeletingMonth}
+                        onClick={async () => {
+                          await onDeleteMonth();
+                          setDeleteDialogOpen(false);
+                        }}
+                      >
+                        {isDeletingMonth ? messages.common.working : messages.month.deleteMonthConfirm}
+                      </button>
                     </div>
                   </Dialog.Content>
                 </Dialog.Portal>
