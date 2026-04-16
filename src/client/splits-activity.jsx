@@ -107,7 +107,7 @@ export function SplitActivityGroups({
                   {editingDraft.linkedTransactionId ? (
                     <button
                       type="button"
-                      className="subtle-action"
+                      className="subtle-action split-linked-entry-action"
                       disabled={isSubmitting}
                       onClick={(event) => {
                         event.stopPropagation();
