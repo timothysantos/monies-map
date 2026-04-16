@@ -11,6 +11,17 @@ function splitItemKey(item) {
   return `${item.kind}:${item.id}`;
 }
 
+function scrollInlineEditorIntoView(element) {
+  if (window.matchMedia("(max-width: 760px)").matches) {
+    element.scrollIntoView({ block: "start", behavior: "smooth" });
+    return;
+  }
+
+  const rect = element.getBoundingClientRect();
+  const targetTop = window.scrollY + rect.top - ((window.innerHeight - rect.height) / 2) - 48;
+  window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+}
+
 // Activity cards are shared by current split rows and archived batch history.
 export function SplitActivityGroups({
   groups,
@@ -71,7 +82,9 @@ export function SplitActivityGroups({
     }
 
     const frame = window.requestAnimationFrame(() => {
-      inlineEditorRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+      if (inlineEditorRef.current) {
+        scrollInlineEditorIntoView(inlineEditorRef.current);
+      }
     });
 
     return () => window.cancelAnimationFrame(frame);
