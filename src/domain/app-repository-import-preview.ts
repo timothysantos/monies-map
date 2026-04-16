@@ -106,7 +106,7 @@ export async function buildImportPreview(
 
     if (inferredCategoryName === "Transfer") {
       inferredEntryType = "transfer";
-      inferredTransferDirection = normalized.entryType === "income" ? "in" : "out";
+      inferredTransferDirection = normalized.transferDirection ?? (normalized.entryType === "income" ? "in" : "out");
     }
 
     if (inferredEntryType === "transfer") {
