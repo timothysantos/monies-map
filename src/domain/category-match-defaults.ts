@@ -93,6 +93,7 @@ export const defaultCategoryMatchRules: DefaultCategoryMatchRule[] = [
   { id: "catrule-muji", pattern: "MUJI", categoryName: "Shopping", priority: 60 },
   { id: "catrule-takashimaya", pattern: "TAKASHIMAYA", categoryName: "Shopping", priority: 60 },
   { id: "catrule-uniqlo", pattern: "UNIQLO", categoryName: "Shopping", priority: 60 },
+  { id: "catrule-amaze", pattern: "AMAZE*", categoryName: "Travel", priority: 65 },
   { id: "catrule-jal-airline", pattern: "JALAIRLINE", categoryName: "Travel", priority: 65 },
   { id: "catrule-japan-airlines", pattern: "JAPAN AIRLINES", categoryName: "Travel", priority: 65 },
   { id: "catrule-korean-air", pattern: "KOREANAIR", categoryName: "Travel", priority: 65 },
