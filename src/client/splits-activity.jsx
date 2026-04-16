@@ -65,6 +65,18 @@ export function SplitActivityGroups({
     return () => document.removeEventListener("pointerdown", handlePointerDown, true);
   }, [archived, editingDraft, onCancelEditing]);
 
+  useEffect(() => {
+    if (!editingDraft || archived) {
+      return undefined;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      inlineEditorRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [archived, editingDraft]);
+
   return groups.map((group) => (
     <section key={`${archived ? "archived" : "current"}-${group.date}`} className={`split-date-group ${archived ? "is-archived" : ""}`}>
       <header className="split-date-header">
