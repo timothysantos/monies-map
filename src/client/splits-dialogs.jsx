@@ -4,9 +4,9 @@ import { messages } from "./copy/en-SG";
 import { decimalStringToMinor, minorToDecimalString } from "./formatters";
 
 // SplitsPanel owns the draft state; these dialogs keep the long JSX out of the panel body.
-export function SplitGroupDialog({ dialog, formError, onChange, onClose, onSave }) {
+export function SplitGroupDialog({ dialog, formError, isSubmitting, onChange, onClose, onSave }) {
   return (
-    <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content split-dialog-content">
@@ -20,8 +20,10 @@ export function SplitGroupDialog({ dialog, formError, onChange, onClose, onSave 
           </label>
           {formError ? <p className="form-error">{formError}</p> : null}
           <div className="dialog-actions">
-            <button type="button" className="subtle-cancel" onClick={onClose}>Cancel</button>
-            <button type="button" className="dialog-primary" onClick={() => void onSave()}>{messages.splits.saveGroup}</button>
+            <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
+            <button type="button" className="dialog-primary" disabled={isSubmitting} onClick={() => void onSave()}>
+              {isSubmitting ? messages.common.saving : messages.splits.saveGroup}
+            </button>
           </div>
         </Dialog.Content>
       </Dialog.Portal>
@@ -29,9 +31,9 @@ export function SplitGroupDialog({ dialog, formError, onChange, onClose, onSave 
   );
 }
 
-export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, formError, onChange, onClose, onSave }) {
+export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, formError, isSubmitting, onChange, onClose, onSave }) {
   return (
-    <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content split-dialog-content">
@@ -97,8 +99,10 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
           </div>
           {formError ? <p className="form-error">{formError}</p> : null}
           <div className="dialog-actions">
-            <button type="button" className="subtle-cancel" onClick={onClose}>Cancel</button>
-            <button type="button" className="dialog-primary" onClick={() => void onSave()}>{messages.splits.saveExpense}</button>
+            <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
+            <button type="button" className="dialog-primary" disabled={isSubmitting} onClick={() => void onSave()}>
+              {isSubmitting ? messages.common.saving : messages.splits.saveExpense}
+            </button>
           </div>
         </Dialog.Content>
       </Dialog.Portal>
@@ -106,9 +110,9 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
   );
 }
 
-export function SplitSettlementDialog({ dialog, groupOptions, people, formError, onChange, onClose, onSave }) {
+export function SplitSettlementDialog({ dialog, groupOptions, people, formError, isSubmitting, onChange, onClose, onSave }) {
   return (
-    <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content split-dialog-content">
@@ -164,8 +168,10 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
           </div>
           {formError ? <p className="form-error">{formError}</p> : null}
           <div className="dialog-actions">
-            <button type="button" className="subtle-cancel" onClick={onClose}>Cancel</button>
-            <button type="button" className="dialog-primary" onClick={() => void onSave()}>{messages.splits.saveSettlement}</button>
+            <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
+            <button type="button" className="dialog-primary" disabled={isSubmitting} onClick={() => void onSave()}>
+              {isSubmitting ? messages.common.saving : messages.splits.saveSettlement}
+            </button>
           </div>
         </Dialog.Content>
       </Dialog.Portal>

@@ -10,6 +10,7 @@ export function ImportPreviewRowsTable({
   people,
   knownAccountNames,
   isCommitDisabled,
+  isSubmitting,
   onCommit,
   onUpdatePreviewRow,
   onRemovePreviewRow,
@@ -17,7 +18,7 @@ export function ImportPreviewRowsTable({
 }) {
   return (
     <>
-      <ImportCommitButton disabled={isCommitDisabled} onCommit={onCommit} />
+      <ImportCommitButton disabled={isCommitDisabled} isSubmitting={isSubmitting} onCommit={onCommit} />
       <div className="table-wrap import-table-wrap">
         <table className="summary-table import-preview-table">
           <thead>
@@ -149,7 +150,7 @@ export function ImportPreviewRowsTable({
           </tbody>
         </table>
       </div>
-      <ImportCommitButton disabled={isCommitDisabled} onCommit={onCommit} isBottom />
+      <ImportCommitButton disabled={isCommitDisabled} isSubmitting={isSubmitting} onCommit={onCommit} isBottom />
     </>
   );
 }
@@ -158,7 +159,7 @@ function formatDuplicateMatch(match) {
   return messages.common.triplet(match.date, match.accountName ?? messages.common.emptyValue, formatMinorInput(match.amountMinor));
 }
 
-function ImportCommitButton({ disabled, onCommit, isBottom = false }) {
+function ImportCommitButton({ disabled, isSubmitting, onCommit, isBottom = false }) {
   return (
     <div className={`import-actions import-actions-end ${isBottom ? "import-actions-bottom" : ""}`}>
       <button
@@ -167,7 +168,7 @@ function ImportCommitButton({ disabled, onCommit, isBottom = false }) {
         disabled={disabled}
         onClick={onCommit}
       >
-        {messages.imports.commit}
+        {isSubmitting ? messages.common.working : messages.imports.commit}
       </button>
     </div>
   );

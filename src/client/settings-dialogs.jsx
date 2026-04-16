@@ -8,7 +8,7 @@ import { ACCOUNT_KIND_OPTIONS, COLOR_OPTIONS, FALLBACK_THEME, ICON_OPTIONS } fro
 // in the panel because they own API calls and refresh sequencing.
 export function SettingsPersonDialog({ dialog, isSubmitting, onChange, onClose, onSave }) {
   return (
-    <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content settings-account-dialog">
@@ -21,6 +21,7 @@ export function SettingsPersonDialog({ dialog, isSubmitting, onChange, onClose, 
               type="button"
               className="icon-action subtle-cancel"
               aria-label="Close person dialog"
+              disabled={isSubmitting}
               onClick={onClose}
             >
               <X size={16} />
@@ -37,7 +38,7 @@ export function SettingsPersonDialog({ dialog, isSubmitting, onChange, onClose, 
             </label>
           </div>
           <div className="note-dialog-actions">
-            <button type="button" className="subtle-cancel" onClick={onClose}>
+            <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>
               Cancel
             </button>
             <button
@@ -46,7 +47,7 @@ export function SettingsPersonDialog({ dialog, isSubmitting, onChange, onClose, 
               disabled={!dialog?.name?.trim() || isSubmitting}
               onClick={() => void onSave()}
             >
-              {messages.settings.savePerson}
+              {isSubmitting ? messages.common.saving : messages.settings.savePerson}
             </button>
           </div>
         </Dialog.Content>
@@ -57,7 +58,7 @@ export function SettingsPersonDialog({ dialog, isSubmitting, onChange, onClose, 
 
 export function SettingsCategoryDialog({ dialog, isSubmitting, onChange, onClose, onSave }) {
   return (
-    <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content settings-account-dialog settings-category-dialog">
@@ -70,6 +71,7 @@ export function SettingsCategoryDialog({ dialog, isSubmitting, onChange, onClose
               type="button"
               className="icon-action subtle-cancel"
               aria-label="Close category dialog"
+              disabled={isSubmitting}
               onClick={onClose}
             >
               <X size={16} />
@@ -109,7 +111,7 @@ export function SettingsCategoryDialog({ dialog, isSubmitting, onChange, onClose
             </label>
           </div>
           <div className="note-dialog-actions">
-            <button type="button" className="subtle-cancel" onClick={onClose}>
+            <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>
               Cancel
             </button>
             <button
@@ -118,7 +120,7 @@ export function SettingsCategoryDialog({ dialog, isSubmitting, onChange, onClose
               disabled={!dialog?.name?.trim() || isSubmitting}
               onClick={() => void onSave()}
             >
-              {dialog?.mode === "create" ? messages.settings.createCategory : messages.settings.saveCategory}
+              {isSubmitting ? messages.common.saving : dialog?.mode === "create" ? messages.settings.createCategory : messages.settings.saveCategory}
             </button>
           </div>
         </Dialog.Content>
@@ -129,7 +131,7 @@ export function SettingsCategoryDialog({ dialog, isSubmitting, onChange, onClose
 
 export function SettingsAccountDialog({ dialog, error, people, isSubmitting, onChange, onClose, onSave }) {
   return (
-    <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content settings-account-dialog">
@@ -142,6 +144,7 @@ export function SettingsAccountDialog({ dialog, error, people, isSubmitting, onC
               type="button"
               className="icon-action subtle-cancel"
               aria-label="Close account dialog"
+              disabled={isSubmitting}
               onClick={onClose}
             >
               <X size={16} />
@@ -216,7 +219,7 @@ export function SettingsAccountDialog({ dialog, error, people, isSubmitting, onC
             </label>
           </div>
           <div className="note-dialog-actions">
-            <button type="button" className="subtle-cancel" onClick={onClose}>
+            <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>
               Cancel
             </button>
             <button
@@ -225,7 +228,7 @@ export function SettingsAccountDialog({ dialog, error, people, isSubmitting, onC
               disabled={!dialog?.name?.trim() || !dialog?.institution?.trim() || isSubmitting}
               onClick={() => void onSave()}
             >
-              {dialog?.mode === "create" ? messages.settings.createAccount : messages.settings.saveAccount}
+              {isSubmitting ? messages.common.saving : dialog?.mode === "create" ? messages.settings.createAccount : messages.settings.saveAccount}
             </button>
           </div>
         </Dialog.Content>
@@ -236,7 +239,7 @@ export function SettingsAccountDialog({ dialog, error, people, isSubmitting, onC
 
 export function SettingsCategoryMatchRuleDialog({ dialog, categories, isSubmitting, onChange, onClose, onSave }) {
   return (
-    <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content settings-account-dialog">
@@ -249,6 +252,7 @@ export function SettingsCategoryMatchRuleDialog({ dialog, categories, isSubmitti
               type="button"
               className="icon-action subtle-cancel"
               aria-label="Close category matching rule dialog"
+              disabled={isSubmitting}
               onClick={onClose}
             >
               <X size={16} />
@@ -307,7 +311,7 @@ export function SettingsCategoryMatchRuleDialog({ dialog, categories, isSubmitti
             </label>
           </div>
           <div className="note-dialog-actions">
-            <button type="button" className="subtle-cancel" onClick={onClose}>
+            <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>
               Cancel
             </button>
             <button
@@ -316,7 +320,7 @@ export function SettingsCategoryMatchRuleDialog({ dialog, categories, isSubmitti
               disabled={!dialog?.pattern?.trim() || !dialog?.categoryId || isSubmitting}
               onClick={() => void onSave()}
             >
-              {messages.settings.saveCategoryRule}
+              {isSubmitting ? messages.common.saving : messages.settings.saveCategoryRule}
             </button>
           </div>
         </Dialog.Content>

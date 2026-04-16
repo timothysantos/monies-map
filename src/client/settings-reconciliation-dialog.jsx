@@ -25,7 +25,7 @@ export function SettingsReconciliationDialog({
   formatCheckpointDelta
 }) {
   return (
-    <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content settings-account-dialog settings-reconciliation-dialog">
@@ -38,6 +38,7 @@ export function SettingsReconciliationDialog({
               type="button"
               className="icon-action subtle-cancel"
               aria-label="Close reconciliation dialog"
+              disabled={isSubmitting}
               onClick={onClose}
             >
               <X size={16} />
@@ -114,7 +115,7 @@ export function SettingsReconciliationDialog({
             ) : null}
           </div>
           <div className="note-dialog-actions">
-            <button type="button" className="subtle-cancel" onClick={onClose}>
+            <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>
               Cancel
             </button>
             <button
@@ -123,7 +124,7 @@ export function SettingsReconciliationDialog({
               disabled={!dialog?.checkpointMonth?.trim() || isSubmitting}
               onClick={() => void onSave()}
             >
-              {messages.settings.checkpointSave}
+              {isSubmitting ? messages.common.saving : messages.settings.checkpointSave}
             </button>
           </div>
         </Dialog.Content>

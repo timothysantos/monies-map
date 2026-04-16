@@ -418,9 +418,17 @@ export function SettingsDemoSection({
           {error ? <p className="form-error" role="alert">{error}</p> : null}
           <div className="settings-actions">
             <button type="button" className="subtle-action" onClick={onReseed} disabled={isSubmitting}>
-              {messages.settings.reseed}
+              {isSubmitting ? messages.common.working : messages.settings.reseed}
             </button>
-            <Dialog.Root open={reloadDialogOpen} onOpenChange={onReloadDialogOpenChange}>
+            <Dialog.Root
+              open={reloadDialogOpen}
+              onOpenChange={(open) => {
+                if (!open && isSubmitting) {
+                  return;
+                }
+                onReloadDialogOpenChange(open);
+              }}
+            >
               <Dialog.Trigger asChild>
                 <button type="button" className="subtle-action" disabled={isSubmitting}>
                   {messages.settings.refresh}
@@ -439,6 +447,7 @@ export function SettingsDemoSection({
                         type="button"
                         className="icon-action subtle-cancel"
                         aria-label="Close reload app data dialog"
+                        disabled={isSubmitting}
                       >
                         <X size={16} />
                       </button>
@@ -452,7 +461,7 @@ export function SettingsDemoSection({
                   />
                   <div className="note-dialog-actions">
                     <Dialog.Close asChild>
-                      <button type="button" className="subtle-action">Cancel</button>
+                      <button type="button" className="subtle-action" disabled={isSubmitting}>Cancel</button>
                     </Dialog.Close>
                     <button
                       type="button"
@@ -460,13 +469,21 @@ export function SettingsDemoSection({
                       disabled={reloadText.trim().toLowerCase() !== "reload data" || isSubmitting}
                       onClick={onRefresh}
                     >
-                      {messages.settings.reloadDataConfirm}
+                      {isSubmitting ? messages.common.working : messages.settings.reloadDataConfirm}
                     </button>
                   </div>
                 </Dialog.Content>
               </Dialog.Portal>
             </Dialog.Root>
-            <Dialog.Root open={emptyStateDialogOpen} onOpenChange={onEmptyStateDialogOpenChange}>
+            <Dialog.Root
+              open={emptyStateDialogOpen}
+              onOpenChange={(open) => {
+                if (!open && isSubmitting) {
+                  return;
+                }
+                onEmptyStateDialogOpenChange(open);
+              }}
+            >
               <Dialog.Trigger asChild>
                 <button type="button" className="subtle-action subtle-danger" disabled={isSubmitting}>
                   {messages.settings.emptyState}
@@ -485,6 +502,7 @@ export function SettingsDemoSection({
                         type="button"
                         className="icon-action subtle-cancel"
                         aria-label="Close empty-state dialog"
+                        disabled={isSubmitting}
                       >
                         <X size={16} />
                       </button>
@@ -498,7 +516,7 @@ export function SettingsDemoSection({
                   />
                   <div className="note-dialog-actions">
                     <Dialog.Close asChild>
-                      <button type="button" className="subtle-action">Cancel</button>
+                      <button type="button" className="subtle-action" disabled={isSubmitting}>Cancel</button>
                     </Dialog.Close>
                     <button
                       type="button"
@@ -506,7 +524,7 @@ export function SettingsDemoSection({
                       disabled={emptyStateText.trim().toLowerCase() !== "empty state" || isSubmitting}
                       onClick={onEmptyState}
                     >
-                      {messages.settings.emptyStateConfirm}
+                      {isSubmitting ? messages.common.working : messages.settings.emptyStateConfirm}
                     </button>
                   </div>
                 </Dialog.Content>
