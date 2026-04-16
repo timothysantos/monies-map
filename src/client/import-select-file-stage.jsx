@@ -1,3 +1,4 @@
+import { getAccountSelectOptions } from "./account-display";
 import { messages } from "./copy/en-SG";
 
 // Stage 1 collects source defaults and hands file/paste events back to ImportsPanel.
@@ -30,6 +31,7 @@ export function ImportSelectFileStage({
   rollbackPolicy
 }) {
   const stageClassName = currentStage === 1 ? "is-current" : currentStage > 1 ? "is-complete" : "";
+  const accountOptions = getAccountSelectOptions(accounts);
 
   return (
     <div className={`import-stage-card ${stageClassName}`}>
@@ -57,8 +59,8 @@ export function ImportSelectFileStage({
           <span className="entries-filter-label">{messages.imports.defaultAccount}</span>
           <select className="table-edit-input" value={defaultAccountName} onChange={(event) => onDefaultAccountChange(event.target.value)}>
             <option value="">{messages.entries.allWallets}</option>
-            {accounts.map((account) => (
-              <option key={account.id} value={account.name}>{account.name}</option>
+            {accountOptions.map((account) => (
+              <option key={account.id} value={account.value}>{account.label}</option>
             ))}
           </select>
         </label>

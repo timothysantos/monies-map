@@ -152,7 +152,7 @@ export function EntryEditorFields({
             onChange={(event) => onChange({ accountName: event.target.value })}
           >
             {accountOptions.map((option) => (
-              <option key={option} value={option}>{option}</option>
+              <option key={option.id ?? option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
         </label>

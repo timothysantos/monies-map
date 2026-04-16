@@ -1,6 +1,7 @@
 import { useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 
+import { getAccountSelectOptions } from "./account-display";
 import { getCategoriesForSelect } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { getAmountToneClass } from "./entry-helpers";
@@ -245,6 +246,7 @@ function StatementCompareDisplayRow({ row, label }) {
 
 function StatementCompareMissingRow({ row, result, accounts, categories, categorySelectOptions, people, onEntryAdded }) {
   const account = accounts.find((item) => item.name === result.accountName);
+  const accountOptions = getAccountSelectOptions(accounts);
   const preferredOwnerName = people.find((person) => person.name === account?.ownerLabel)?.name ?? people[0]?.name ?? "";
   const defaultCategoryName = row.entryType === "transfer"
     ? "Transfer"
@@ -330,8 +332,8 @@ function StatementCompareMissingRow({ row, result, accounts, categories, categor
               <label className="table-edit-field">
                 <span>{messages.imports.table.account}</span>
                 <select className="table-edit-input" value={draft.accountName} onChange={(event) => updateDraft({ accountName: event.target.value })}>
-                  {accounts.map((accountOption) => (
-                    <option key={accountOption.id} value={accountOption.name}>{accountOption.name}</option>
+                  {accountOptions.map((accountOption) => (
+                    <option key={accountOption.id} value={accountOption.value}>{accountOption.label}</option>
                   ))}
                 </select>
               </label>

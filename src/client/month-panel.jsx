@@ -3,6 +3,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
+import { getAccountSelectOptions } from "./account-display";
 import { CategoryAppearancePopover } from "./category-visuals";
 import { getCategoriesForSelect, getCategory, getCategoryPatch } from "./category-utils";
 import { messages } from "./copy/en-SG";
@@ -83,6 +84,10 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   const visibleAccounts = useMemo(
     () => getVisibleMonthAccounts(accounts, view.id),
     [accounts, view.id]
+  );
+  const visibleAccountOptions = useMemo(
+    () => getAccountSelectOptions(visibleAccounts),
+    [visibleAccounts]
   );
 
   function handleRowChange(sectionKey, rowId, patch) {
@@ -690,6 +695,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         categories={categories}
         categorySelectOptions={categorySelectOptions}
         accounts={accounts}
+        accountSelectOptions={getAccountSelectOptions(accounts)}
         incomeRows={incomeRows}
         planSections={planSections}
         sectionOpen={sectionOpen}
@@ -800,8 +806,8 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
                     onChange={(event) => setMobileAddDialog((current) => current ? { ...current, accountName: event.target.value } : current)}
                   >
                     <option value="">{messages.common.emptyValue}</option>
-                    {visibleAccounts.map((account) => (
-                      <option key={account.id} value={account.name}>{account.name}</option>
+                    {visibleAccountOptions.map((account) => (
+                      <option key={account.id} value={account.value}>{account.label}</option>
                     ))}
                   </select>
                 </label>
