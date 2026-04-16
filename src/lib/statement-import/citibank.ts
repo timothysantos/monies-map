@@ -239,7 +239,7 @@ function findCitibankDueDate(lines: string[]) {
 
 function normalizeCitibankCardAccountName(value: string) {
   if (/CITIREWARDSWORLDMASTERCARD/i.test(value)) {
-    return "Citibank Rewards";
+    return "Citi Rewards";
   }
   if (/CITIPREMIERMILE(?:S|SWORLDMASTER)CARD/i.test(value)) {
     return "Citibank Miles";
