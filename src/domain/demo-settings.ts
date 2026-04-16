@@ -57,8 +57,8 @@ export async function reseedDemoSettings(db: D1Database): Promise<DemoSettings> 
     lastSeededAt: new Date().toISOString(),
     emptyState: false
   };
-  await saveDemoSettings(db, nextSettings);
   await reseedDemoData(db, nextSettings);
+  await saveDemoSettings(db, nextSettings);
   return nextSettings;
 }
 
@@ -68,8 +68,8 @@ export async function enterEmptyState(db: D1Database): Promise<DemoSettings> {
     lastSeededAt: new Date().toISOString(),
     emptyState: true
   };
-  await saveDemoSettings(db, nextSettings);
   await clearDemoData(db);
   await seedEmptyStateReferenceData(db);
+  await saveDemoSettings(db, nextSettings);
   return nextSettings;
 }

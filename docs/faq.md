@@ -133,6 +133,11 @@ There are no demo accounts, entries, imports, statement checkpoints, month plan
 rows, snapshots, split records, or balances in the ledger until you add or
 import them.
 
+When you use `Enter empty state` from Settings, the app waits for the reset
+request to finish, reloads the bootstrap data, and checks that accounts are gone
+before closing the confirmation. If accounts still appear, refresh the page and
+confirm the reset ran against the same database as the app you are viewing.
+
 The current demo uses a believable household scenario, but it only appears after
 you explicitly reseed the demo from the in-app settings view. The default
 category catalog persists through reseed, local wipes, and the empty-state path,

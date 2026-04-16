@@ -108,9 +108,17 @@ That distinction matters because the system needs to answer questions like:
 ### 5. Demo state
 
 - the current prototype now stores its demo settings in D1
-- the settings screen groups demo metadata such as salary-per-person, current
-  mode, and reseed timestamp under a collapsible demo-state section
-- the settings screen can reseed the believable default demo and refresh the bootstrap
+- the settings screen groups demo metadata such as current mode and reseed
+  timestamp under a collapsible demo-state section
+- the settings screen can reseed the believable default demo and reload the
+  current bootstrap from D1
+- reload is a typed-confirmation action because it refreshes the visible app
+  state from the current database; it does not reseed, delete, or import data
+- demo mode is saved after reseed or empty-state reset work succeeds, so failed
+  backend resets do not leave the UI claiming a different mode than the data
+- empty-state reset actions now verify the POST response and reload the bootstrap
+  before the confirmation closes, so failed resets are visible instead of leaving
+  stale account cards on screen
 - a fresh database defaults to empty-state mode; bootstrap only ensures the
   household, people, and default category catalog exist, so account balances,
   entries, imports, checkpoints, month plans, snapshots, and split records stay

@@ -369,11 +369,18 @@ export function SettingsActivitySection({ activityGroups, isOpen, onToggle }) {
 
 export function SettingsDemoSection({
   demo,
+  error,
+  emptyStateDialogOpen,
   emptyStateText,
   isOpen,
   isSubmitting,
+  reloadDialogOpen,
+  reloadText,
+  onEmptyStateDialogOpenChange,
+  onReloadDialogOpenChange,
   onToggle,
   onEmptyStateTextChange,
+  onReloadTextChange,
   onReseed,
   onRefresh,
   onEmptyState
@@ -393,10 +400,6 @@ export function SettingsDemoSection({
           </div>
           <div className="settings-demo-meta">
             <div className="settings-demo-meta-item">
-              <span>{messages.settings.salaryPerPerson}</span>
-              <strong>{money(demo.salaryPerPersonMinor)}</strong>
-            </div>
-            <div className="settings-demo-meta-item">
               <span>{messages.settings.state}</span>
               <strong>{demo.emptyState ? messages.settings.emptyMode : messages.settings.seededMode}</strong>
             </div>
@@ -412,14 +415,58 @@ export function SettingsDemoSection({
       </button>
       {isOpen ? (
         <>
+          {error ? <p className="form-error" role="alert">{error}</p> : null}
           <div className="settings-actions">
             <button type="button" className="subtle-action" onClick={onReseed} disabled={isSubmitting}>
               {messages.settings.reseed}
             </button>
-            <button type="button" className="subtle-action" onClick={onRefresh} disabled={isSubmitting}>
-              {messages.settings.refresh}
-            </button>
-            <Dialog.Root>
+            <Dialog.Root open={reloadDialogOpen} onOpenChange={onReloadDialogOpenChange}>
+              <Dialog.Trigger asChild>
+                <button type="button" className="subtle-action" disabled={isSubmitting}>
+                  {messages.settings.refresh}
+                </button>
+              </Dialog.Trigger>
+              <Dialog.Portal>
+                <Dialog.Overlay className="note-dialog-overlay" />
+                <Dialog.Content className="note-dialog-content">
+                  <div className="note-dialog-head">
+                    <div>
+                      <Dialog.Title>{messages.settings.reloadDataTitle}</Dialog.Title>
+                      <Dialog.Description>{messages.settings.reloadDataDetail}</Dialog.Description>
+                    </div>
+                    <Dialog.Close asChild>
+                      <button
+                        type="button"
+                        className="icon-action subtle-cancel"
+                        aria-label="Close reload app data dialog"
+                      >
+                        <X size={16} />
+                      </button>
+                    </Dialog.Close>
+                  </div>
+                  <input
+                    className="table-edit-input"
+                    placeholder={messages.settings.reloadDataPlaceholder}
+                    value={reloadText}
+                    onChange={(event) => onReloadTextChange(event.target.value)}
+                  />
+                  <div className="note-dialog-actions">
+                    <Dialog.Close asChild>
+                      <button type="button" className="subtle-action">Cancel</button>
+                    </Dialog.Close>
+                    <button
+                      type="button"
+                      className="subtle-action"
+                      disabled={reloadText.trim().toLowerCase() !== "reload data" || isSubmitting}
+                      onClick={onRefresh}
+                    >
+                      {messages.settings.reloadDataConfirm}
+                    </button>
+                  </div>
+                </Dialog.Content>
+              </Dialog.Portal>
+            </Dialog.Root>
+            <Dialog.Root open={emptyStateDialogOpen} onOpenChange={onEmptyStateDialogOpenChange}>
               <Dialog.Trigger asChild>
                 <button type="button" className="subtle-action subtle-danger" disabled={isSubmitting}>
                   {messages.settings.emptyState}
@@ -453,16 +500,14 @@ export function SettingsDemoSection({
                     <Dialog.Close asChild>
                       <button type="button" className="subtle-action">Cancel</button>
                     </Dialog.Close>
-                    <Dialog.Close asChild>
-                      <button
-                        type="button"
-                        className="subtle-action subtle-danger"
-                        disabled={emptyStateText.trim().toLowerCase() !== "empty state" || isSubmitting}
-                        onClick={onEmptyState}
-                      >
-                        {messages.settings.emptyStateConfirm}
-                      </button>
-                    </Dialog.Close>
+                    <button
+                      type="button"
+                      className="subtle-action subtle-danger"
+                      disabled={emptyStateText.trim().toLowerCase() !== "empty state" || isSubmitting}
+                      onClick={onEmptyState}
+                    >
+                      {messages.settings.emptyStateConfirm}
+                    </button>
                   </div>
                 </Dialog.Content>
               </Dialog.Portal>
