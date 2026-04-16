@@ -188,6 +188,7 @@ function findCitibankTransactionMoneyMatch(line: string) {
   if (!match?.[0] || match.index == null) {
     return undefined;
   }
+  const detachedClosingParen = hasDetachedClosingParen(line, match.index + match[0].length) ? ")" : "";
 
   // Citibank layout text can glue an "account ending ####" suffix directly to
   // a four-digit amount, e.g. ENDING63491,208.20. In that case the broad money
@@ -196,16 +197,20 @@ function findCitibankTransactionMoneyMatch(line: string) {
     const compactAmount = match[0].match(/\d,\d{3}\.\d{2}\)?$/)?.[0];
     if (compactAmount && compactAmount !== match[0]) {
       return {
-        value: compactAmount,
+        value: `${compactAmount}${detachedClosingParen}`,
         index: match.index + match[0].lastIndexOf(compactAmount)
       };
     }
   }
 
   return {
-    value: match[0],
+    value: `${match[0]}${detachedClosingParen}`,
     index: match.index
   };
+}
+
+function hasDetachedClosingParen(line: string, amountEndIndex: number) {
+  return /^\s*\)/.test(line.slice(amountEndIndex));
 }
 
 function findCitibankDueDate(lines: string[]) {
