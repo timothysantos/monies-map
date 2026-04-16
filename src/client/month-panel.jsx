@@ -3,6 +3,8 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
+import { CategoryAppearancePopover } from "./category-visuals";
+import { getCategory, getCategoryPatch } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import {
   buildPlanLinkCandidates,
@@ -22,6 +24,7 @@ import {
 } from "./formatters";
 
 const MONTH_SECTION_STATE_CACHE = new Map();
+const MOBILE_ADD_DIALOG_QUERY = "(max-width: 760px), (max-width: 1024px) and (orientation: portrait)";
 
 export function MonthPanel({ view, accounts, people, categories, householdMonthEntries, onCategoryAppearanceChange, onRefresh }) {
   const navigate = useNavigate();
@@ -37,6 +40,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   const [resetMonthText, setResetMonthText] = useState("");
   const [deleteMonthText, setDeleteMonthText] = useState("");
   const [monthNoteDialog, setMonthNoteDialog] = useState(null);
+  const [mobileAddDialog, setMobileAddDialog] = useState(null);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [tableSorts, setTableSorts] = useState({
     income: null,
@@ -53,6 +57,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     setNoteDialog(null);
     setPlanLinkDialog(null);
     setMonthNoteDialog(null);
+    setMobileAddDialog(null);
     setTableSorts({
       income: null,
       planned_items: null,
@@ -201,18 +206,22 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     }
 
     if (editingSnapshot.kind === "income") {
-      setIncomeRows((current) => current.map((row) => (
-        row.id === editingSnapshot.rowId ? editingSnapshot.original : row
-      )));
+      setIncomeRows((current) => editingSnapshot.original.isDraft
+        ? current.filter((row) => row.id !== editingSnapshot.rowId)
+        : current.map((row) => (
+          row.id === editingSnapshot.rowId ? editingSnapshot.original : row
+        )));
     } else {
       setPlanSections((current) => current.map((section) => (
         section.key === editingSnapshot.sectionKey
-          ? {
-              ...section,
-              rows: section.rows.map((row) => (
-                row.id === editingSnapshot.rowId ? editingSnapshot.original : row
-              ))
-            }
+          ? editingSnapshot.original.isDraft
+            ? { ...section, rows: section.rows.filter((row) => row.id !== editingSnapshot.rowId) }
+            : {
+                ...section,
+                rows: section.rows.map((row) => (
+                  row.id === editingSnapshot.rowId ? editingSnapshot.original : row
+                ))
+              }
           : section
       )));
     }
@@ -222,13 +231,29 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     setEditingDrafts({});
   }
 
-  function handleAddPlanRow(sectionKey) {
+  function isMobileAddDialogPreferred() {
+    return typeof window !== "undefined" && window.matchMedia(MOBILE_ADD_DIALOG_QUERY).matches;
+  }
+
+  function openMonthSection(sectionKey) {
+    setSectionOpen((current) => {
+      const next = {
+        ...current,
+        [sectionKey]: true
+      };
+      MONTH_SECTION_STATE_CACHE.set(monthUiKey, next);
+      return next;
+    });
+  }
+
+  function buildPlanRow(sectionKey, patch = {}) {
     const nextId = `month-plan-${crypto.randomUUID()}`;
     const defaultCategoryName = sectionKey === "planned_items" ? "Savings" : "Food & Drinks";
     const ownerName = view.id === "household" ? undefined : view.label;
     const ownerPerson = ownerName ? people.find((person) => person.name === ownerName) : null;
     const ownershipType = view.monthPage.selectedScope === "shared" ? "shared" : "direct";
-    const nextRow = {
+
+    return {
       id: nextId,
       section: sectionKey,
       categoryName: defaultCategoryName,
@@ -255,10 +280,31 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
               personName: ownerPerson.name,
               ratioBasisPoints: 10000,
               amountMinor: 0
-            }]
+          }]
           : [],
-      isDraft: true
+      isDraft: true,
+      ...patch
     };
+  }
+
+  function handleAddPlanRow(sectionKey) {
+    const nextRow = buildPlanRow(sectionKey);
+
+    if (isMobileAddDialogPreferred()) {
+      setMobileAddDialog({
+        kind: "plan",
+        sectionKey,
+        title: sectionKey === "planned_items" ? messages.month.addPlannedItem : messages.month.addBudgetBucket,
+        categoryValue: nextRow.categoryId ?? nextRow.categoryName,
+        label: nextRow.label,
+        plannedMinor: formatMinorInput(nextRow.plannedMinor),
+        planDate: sectionKey === "planned_items" ? getRowDateValue(nextRow, view.monthPage.month) : "",
+        accountName: nextRow.accountName ?? "",
+        note: nextRow.note ?? ""
+      });
+      openMonthSection(sectionKey);
+      return;
+    }
 
     setPlanSections((current) => current.map((section) => (
       section.key === sectionKey
@@ -272,15 +318,9 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       ...current,
       [sectionKey]: null
     }));
-    setSectionOpen((current) => {
-      const next = {
-        ...current,
-        [sectionKey]: true
-      };
-      MONTH_SECTION_STATE_CACHE.set(monthUiKey, next);
-      return next;
-    });
-    setEditingRowId(nextId);
+    openMonthSection(sectionKey);
+    setEditingRowId(nextRow.id);
+    setEditingSnapshot({ kind: "plan", sectionKey, rowId: nextRow.id, original: { ...nextRow } });
     setEditingDrafts({
       plannedMinor: "0.00"
     });
@@ -397,48 +437,94 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     });
   }
 
-  function handleAddIncomeRow() {
+  function buildIncomeRow(patch = {}) {
     const nextId = `month-income-${crypto.randomUUID()}`;
     const ownerName = view.id === "household" ? undefined : view.label;
     const ownerPerson = ownerName ? people.find((person) => person.name === ownerName) : null;
-    setIncomeRows((current) => [
-      {
-        id: nextId,
-        categoryName: "Income",
-        categoryId: categories.find((category) => category.name === "Income")?.id,
-        label: "Other income",
-        plannedMinor: 0,
-        actualMinor: 0,
-        note: messages.month.extraIncomeNote,
-        ownershipType: "direct",
-        personId: ownerPerson?.id,
-        ownerName,
-        splits: ownerPerson ? [{
-          personId: ownerPerson.id,
-          personName: ownerPerson.name,
-          ratioBasisPoints: 10000,
-          amountMinor: 0
-        }] : [],
-        isDraft: true
-      },
-      ...current
-    ]);
+
+    return {
+      id: nextId,
+      categoryName: "Income",
+      categoryId: categories.find((category) => category.name === "Income")?.id,
+      label: "Other income",
+      plannedMinor: 0,
+      actualMinor: 0,
+      note: messages.month.extraIncomeNote,
+      ownershipType: "direct",
+      personId: ownerPerson?.id,
+      ownerName,
+      splits: ownerPerson ? [{
+        personId: ownerPerson.id,
+        personName: ownerPerson.name,
+        ratioBasisPoints: 10000,
+        amountMinor: 0
+      }] : [],
+      isDraft: true,
+      ...patch
+    };
+  }
+
+  function handleAddIncomeRow() {
+    const nextRow = buildIncomeRow();
+
+    if (isMobileAddDialogPreferred()) {
+      setMobileAddDialog({
+        kind: "income",
+        title: messages.month.addIncomeSource,
+        categoryValue: nextRow.categoryId ?? nextRow.categoryName,
+        label: nextRow.label,
+        plannedMinor: formatMinorInput(nextRow.plannedMinor),
+        note: nextRow.note ?? ""
+      });
+      openMonthSection("income");
+      return;
+    }
+
+    setIncomeRows((current) => [nextRow, ...current]);
     setTableSorts((current) => ({
       ...current,
       income: null
     }));
-    setSectionOpen((current) => {
-      const next = {
-        ...current,
-        income: true
-      };
-      MONTH_SECTION_STATE_CACHE.set(monthUiKey, next);
-      return next;
-    });
-    setEditingRowId(nextId);
+    openMonthSection("income");
+    setEditingRowId(nextRow.id);
+    setEditingSnapshot({ kind: "income", rowId: nextRow.id, original: { ...nextRow } });
     setEditingDrafts({
       plannedMinor: "0.00"
     });
+  }
+
+  async function saveMobileAddDialog() {
+    if (!mobileAddDialog) {
+      return;
+    }
+
+    const plannedMinor = parseDraftMoneyInput(mobileAddDialog.plannedMinor);
+    const basePatch = {
+      ...getCategoryPatch(categories, mobileAddDialog.categoryValue),
+      label: mobileAddDialog.label.trim() || (mobileAddDialog.kind === "income"
+        ? "Other income"
+        : mobileAddDialog.sectionKey === "planned_items"
+          ? "New item"
+          : "New bucket"),
+      plannedMinor,
+      note: mobileAddDialog.note.trim() || null
+    };
+
+    if (mobileAddDialog.kind === "income") {
+      await persistMonthRow("income", buildIncomeRow(basePatch), plannedMinor);
+      openMonthSection("income");
+    } else {
+      const sectionKey = mobileAddDialog.sectionKey;
+      await persistMonthRow(sectionKey, buildPlanRow(sectionKey, {
+        ...basePatch,
+        dayLabel: sectionKey === "planned_items" ? mobileAddDialog.planDate : undefined,
+        accountName: sectionKey === "planned_items" ? mobileAddDialog.accountName : undefined
+      }), plannedMinor);
+      openMonthSection(sectionKey);
+    }
+
+    setMobileAddDialog(null);
+    await onRefresh();
   }
 
   async function handleRemoveIncomeRow(rowId) {
@@ -634,6 +720,111 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         onEditMonthNote={() => setMonthNoteDialog({ draft: view.monthPage.monthNote ?? "" })}
         onOpenEntriesForAccount={handleOpenEntriesForAccount}
       />
+
+      <Dialog.Root open={Boolean(mobileAddDialog)} onOpenChange={(open) => { if (!open) setMobileAddDialog(null); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="note-dialog-overlay" />
+          <Dialog.Content className="note-dialog-content month-add-dialog">
+            <div className="note-dialog-head">
+              <div>
+                <Dialog.Title>{mobileAddDialog?.title}</Dialog.Title>
+                <Dialog.Description>Add the row without squeezing controls into the month table.</Dialog.Description>
+              </div>
+              <button
+                type="button"
+                className="icon-action subtle-cancel"
+                aria-label="Close add row form"
+                onClick={() => setMobileAddDialog(null)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="month-add-dialog-grid">
+              <label>
+                <span>{messages.month.table.category}</span>
+                <div className="month-add-dialog-category">
+                  <CategoryAppearancePopover
+                    category={getCategory(categories, {
+                      categoryId: mobileAddDialog?.categoryValue,
+                      categoryName: mobileAddDialog?.categoryValue
+                    })}
+                    onChange={onCategoryAppearanceChange}
+                  />
+                  <select
+                    className="table-edit-input"
+                    value={mobileAddDialog?.categoryValue ?? ""}
+                    onChange={(event) => setMobileAddDialog((current) => current ? { ...current, categoryValue: event.target.value } : current)}
+                  >
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>{category.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </label>
+              {mobileAddDialog?.kind === "plan" && mobileAddDialog.sectionKey === "planned_items" ? (
+                <label>
+                  <span>{messages.month.table.day}</span>
+                  <input
+                    className="table-edit-input"
+                    type="date"
+                    value={mobileAddDialog.planDate ?? ""}
+                    onChange={(event) => setMobileAddDialog((current) => current ? { ...current, planDate: event.target.value } : current)}
+                  />
+                </label>
+              ) : null}
+              <label>
+                <span>{messages.month.table.item}</span>
+                <input
+                  className="table-edit-input"
+                  value={mobileAddDialog?.label ?? ""}
+                  onChange={(event) => setMobileAddDialog((current) => current ? { ...current, label: event.target.value } : current)}
+                />
+              </label>
+              <label>
+                <span>{messages.month.table.planned}</span>
+                <input
+                  className="table-edit-input"
+                  inputMode="decimal"
+                  value={mobileAddDialog?.plannedMinor ?? ""}
+                  onChange={(event) => setMobileAddDialog((current) => current ? { ...current, plannedMinor: event.target.value } : current)}
+                />
+              </label>
+              {mobileAddDialog?.kind === "plan" && mobileAddDialog.sectionKey === "planned_items" ? (
+                <label>
+                  <span>{messages.month.table.account}</span>
+                  <select
+                    className="table-edit-input"
+                    value={mobileAddDialog.accountName ?? ""}
+                    onChange={(event) => setMobileAddDialog((current) => current ? { ...current, accountName: event.target.value } : current)}
+                  >
+                    <option value="">{messages.common.emptyValue}</option>
+                    {visibleAccounts.map((account) => (
+                      <option key={account.id} value={account.name}>{account.name}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              <label className="month-add-dialog-note">
+                <span>{messages.month.table.note}</span>
+                <textarea
+                  className="table-edit-input table-edit-textarea"
+                  value={mobileAddDialog?.note ?? ""}
+                  onChange={(event) => setMobileAddDialog((current) => current ? { ...current, note: event.target.value } : current)}
+                  rows={3}
+                />
+              </label>
+            </div>
+            <div className="note-dialog-actions">
+              <button type="button" className="subtle-cancel" onClick={() => setMobileAddDialog(null)}>
+                {messages.month.cancelEdit}
+              </button>
+              <button type="button" className="dialog-primary" onClick={() => void saveMobileAddDialog()}>
+                {messages.month.doneEdit}
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
       <Dialog.Root open={Boolean(noteDialog)} onOpenChange={(open) => { if (!open) setNoteDialog(null); }}>
         <Dialog.Portal>

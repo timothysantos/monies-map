@@ -1040,6 +1040,46 @@ h3 {
   overflow: hidden;
 }
 
+.month-add-dialog {
+  width: min(560px, calc(100vw - 40px));
+}
+
+.month-add-dialog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.month-add-dialog-grid label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.month-add-dialog-grid span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.month-add-dialog-category {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.month-add-dialog-category .category-icon-button,
+.month-add-dialog-category .category-icon-static {
+  width: 38px;
+  height: 38px;
+}
+
+.month-add-dialog-note {
+  grid-column: 1 / -1;
+}
+
 .planned-link-list {
   display: grid;
   gap: 8px;
@@ -5223,6 +5263,26 @@ th {
     max-height: 46px;
     overflow-y: auto;
     resize: vertical;
+  }
+
+  .month-add-dialog {
+    max-height: calc(100dvh - 140px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  }
+
+  .month-add-dialog-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .month-add-dialog .table-edit-input {
+    min-height: 46px;
+    font-size: 1rem;
+  }
+
+  .month-add-dialog textarea.table-edit-textarea {
+    min-height: 72px;
+    height: 72px;
+    max-height: 120px;
   }
 
   .note-dialog-head {
