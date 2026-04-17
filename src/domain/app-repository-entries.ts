@@ -33,6 +33,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
         transactions.offsets_category,
         transactions.note,
         transactions.transfer_group_id,
+        transactions.account_id,
         people.display_name AS owner_name,
         accounts.account_name AS account_name,
         categories.name AS category_name
@@ -59,6 +60,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       offsets_category: number;
       note: string | null;
       transfer_group_id: string | null;
+      account_id: string;
       owner_name: string | null;
       account_name: string;
       category_name: string | null;
@@ -121,6 +123,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       id: row.id,
       date: row.transaction_date,
       description: row.description,
+      accountId: row.account_id,
       accountName: row.account_name,
       categoryName: row.category_name ?? "Other",
       entryType: row.entry_type,

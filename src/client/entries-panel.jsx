@@ -201,6 +201,7 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
         onToggleMobileFilters={() => setShowMobileFilters((current) => !current)}
         onChangeFilter={updateEntryFilter}
         onResetFilters={resetEntryFilters}
+        onRefresh={onRefresh}
       />
 
       {showEntryComposer ? (

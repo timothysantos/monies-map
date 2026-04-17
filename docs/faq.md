@@ -351,6 +351,9 @@ are checking a specific account for missing or uncategorized activity. Account
 choices include the owner in the label, such as `UOB One - Joyce`, when the
 same account name could appear under different people.
 
+Use the refresh button at the start of the Entries filter row to reload the
+current month after importing or editing data in another tab.
+
 On touch devices, swipe left or right on Month or Entries to move to the next
 or previous month. Splits does not use the selected month as its main filter, so
 the gesture is disabled there.
