@@ -368,12 +368,11 @@ fresh data is needed.
 After the first usable screen renders, the app also uses browser idle time to
 warm the most likely next route code chunks. It also performs a narrow,
 delayed, sequential page-data prefetch only for adjacent Month or Summary
-periods first. If that finishes cleanly and the user has not navigated or
-mutated data, it waits again and then prefetches lower-priority pages such as
-Splits, Imports, Settings, and the current household Entries payload one at a
-time. Any route change, import, edit, rollback, manual refresh, data-saver mode,
-or cache invalidation stops the staged prefetch so first load does not create a
-burst of background dashboard requests.
+periods on non-touch devices. Touch devices skip background API prefetching so
+mobile refreshes do not compete with the visible page request. Any route change,
+import, edit, rollback, manual refresh, data-saver mode, or cache invalidation
+stops the staged prefetch so first load does not create a burst of background
+dashboard requests.
 
 On browser refresh or a later return to the same month/range, the app can render
 the last successful bootstrap payload from local browser storage immediately and
@@ -385,10 +384,12 @@ or previous month. Splits does not use the selected month as its main filter, so
 the gesture is disabled there.
 
 After a month or summary range loads, the app keeps that page payload in memory
-and may gently prefetch the adjacent period before warming lower-priority pages.
-Going back to an already loaded or prefetched period can therefore render
-immediately while imports, edits, rollbacks, and other writes clear the relevant
-page cache before reloading.
+and may gently prefetch the adjacent period on non-touch devices. Going back to
+an already loaded or prefetched period can therefore render immediately while
+imports, edits, rollbacks, and other writes clear the relevant page cache before
+reloading. Entries seeds its first page cache from bootstrap on refresh, then
+uses explicit month changes, manual refreshes, and write invalidations for fresh
+API loads.
 
 The initial bootstrap now acts as the app shell. Summary, Month, Entries,
 Splits, Imports, and Settings each have smaller page-specific reloads so month
