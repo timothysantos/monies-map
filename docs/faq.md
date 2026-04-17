@@ -351,10 +351,11 @@ are checking a specific account for missing or uncategorized activity. Account
 choices include the owner in the label, such as `UOB One - Joyce`, when the
 same account name could appear under different people.
 
-On Entries, the Household, primary, and partner pills reuse the loaded household
-month rows and apply the person as a local filter. Switching between people
-should feel like changing the By people filter, not like reloading the whole
-page.
+On Summary and Month, the Household, primary, and partner pills reuse the
+matching views already loaded in the app shell when the month or summary range
+has not changed. On Entries, the same pills reuse the loaded household month
+rows and apply the person as a local filter. Switching between people should
+feel like changing a filter, not like reloading the whole page.
 
 Use the refresh button at the start of the Entries filter row to reload the
 current month after importing or editing data in another tab.
