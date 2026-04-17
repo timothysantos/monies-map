@@ -332,6 +332,8 @@ when the current preview overlaps a previous completed import for the same
 account and date range.
 
 - Duplicate warnings help prevent the same row from entering the ledger twice.
+- If two accounts share a name, choose the owner-qualified account in the import
+  mapping. Overlap checks use that selected account, not just the display name.
 - Overlap warnings are date-range warnings; they do not remove rows by
   themselves.
 - Marking an overlap as reviewed only hides the warning.

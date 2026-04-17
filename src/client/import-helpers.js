@@ -1,8 +1,12 @@
 import { formatMinorInput } from "./formatters";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 
-export function getImportDirectOwnerForAccount(accounts, people, accountName, fallbackOwnerName) {
-  const account = accounts.find((item) => item.name === accountName);
+export function getImportDirectOwnerForAccount(accounts, people, accountName, fallbackOwnerName, accountId) {
+  const account = accounts.find((item) => (
+    accountId
+      ? item.id === accountId || item.accountId === accountId
+      : item.name === accountName || item.accountName === accountName
+  ));
   if (account && !account.isJoint && account.ownerLabel && account.ownerLabel !== "Shared") {
     return people.some((person) => person.name === account.ownerLabel)
       ? account.ownerLabel
@@ -121,6 +125,7 @@ export function buildRawImportRowFromPreviewRow(row) {
     description: row.description,
     expense: isMoneyIn ? "" : formatMinorInput(row.amountMinor),
     income: isMoneyIn ? formatMinorInput(row.amountMinor) : "",
+    accountId: row.accountId ?? "",
     account: row.accountName ?? "",
     category: row.categoryName ?? "",
     note: row.note ?? "",

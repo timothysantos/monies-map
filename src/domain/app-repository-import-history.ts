@@ -37,14 +37,22 @@ export async function loadImportBatches(db: D1Database): Promise<ImportBatchDto[
 
   const accountRows = await db
     .prepare(`
-      SELECT DISTINCT imports.id AS import_id, accounts.id AS account_id, accounts.account_name
+      SELECT DISTINCT
+        imports.id AS import_id,
+        accounts.id AS account_id,
+        accounts.account_name,
+        CASE
+          WHEN accounts.is_joint = 1 THEN 'Shared'
+          ELSE people.display_name
+        END AS owner_name
       FROM imports
       LEFT JOIN transactions ON transactions.import_id = imports.id
       LEFT JOIN accounts ON accounts.id = transactions.account_id
+      LEFT JOIN people ON people.id = accounts.owner_person_id
       WHERE imports.household_id = ?
     `)
     .bind(DEFAULT_HOUSEHOLD_ID)
-    .all<{ import_id: string; account_id: string | null; account_name: string | null }>();
+    .all<{ import_id: string; account_id: string | null; account_name: string | null; owner_name: string | null }>();
 
   const accountIdsByImportId = new Map<string, Set<string>>();
   const accountNamesByImportId = new Map<string, Set<string>>();
@@ -57,7 +65,7 @@ export async function loadImportBatches(db: D1Database): Promise<ImportBatchDto[
 
     if (row.account_name) {
       const currentNames = accountNamesByImportId.get(row.import_id) ?? new Set<string>();
-      currentNames.add(row.account_name);
+      currentNames.add(formatImportAccountLabel(row.account_name, row.owner_name));
       accountNamesByImportId.set(row.import_id, currentNames);
     }
   }
@@ -104,4 +112,8 @@ export async function loadImportBatches(db: D1Database): Promise<ImportBatchDto[
       note: row.note ?? undefined
     };
   });
+}
+
+function formatImportAccountLabel(accountName: string, ownerName: string | null) {
+  return ownerName ? `${accountName} - ${ownerName}` : accountName;
 }

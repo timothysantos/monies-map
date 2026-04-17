@@ -474,7 +474,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }
 
   function updatePreviewRow(rowId, patch) {
-    const duplicateKeyFields = ["date", "description", "amountMinor", "entryType", "transferDirection", "accountName"];
+    const duplicateKeyFields = ["date", "description", "amountMinor", "entryType", "transferDirection", "accountId", "accountName"];
     const shouldClearDuplicateMatches = duplicateKeyFields.some((field) => Object.prototype.hasOwnProperty.call(patch, field));
     setPreviewRows((current) => current.map((row) => (
       row.rowId === rowId
@@ -489,12 +489,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       .map((row, index) => ({ ...row, rowIndex: index + 1 })));
   }
 
-  function getPreviewAccountOwnerPatch(accountName, row) {
+  function getPreviewAccountOwnerPatch(accountName, row, accountId) {
     if (row.ownershipType !== "direct") {
       return {};
     }
 
-    const nextOwnerName = getImportDirectOwnerForAccount(accounts, people, accountName, row.ownerName ?? ownerName);
+    const nextOwnerName = getImportDirectOwnerForAccount(accounts, people, accountName, row.ownerName ?? ownerName, accountId);
     return nextOwnerName ? { ownerName: nextOwnerName } : {};
   }
 
@@ -504,18 +504,30 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     )));
   }
 
-  function remapPreviewAccount(fromAccountName, toAccountName) {
-    if (!toAccountName) {
+  function remapPreviewAccount(fromAccountName, toAccountId) {
+    if (!toAccountId) {
+      return;
+    }
+
+    const nextAccount = accounts.find((account) => account.id === toAccountId);
+    if (!nextAccount) {
       return;
     }
 
     const nextRows = previewRows.map((row) => (
       row.accountName === fromAccountName
-        ? { ...row, accountName: toAccountName, ...getPreviewAccountOwnerPatch(toAccountName, row) }
+        ? {
+          ...row,
+          accountId: nextAccount.id,
+          accountName: nextAccount.name,
+          ...getPreviewAccountOwnerPatch(nextAccount.name, row, nextAccount.id)
+        }
         : row
     ));
     const nextCheckpoints = statementCheckpoints.map((checkpoint) => (
-      checkpoint.accountName === fromAccountName ? { ...checkpoint, accountName: toAccountName } : checkpoint
+      checkpoint.accountName === fromAccountName
+        ? { ...checkpoint, accountId: nextAccount.id, accountName: nextAccount.name }
+        : checkpoint
     ));
     setPreviewRows(nextRows);
     setStatementCheckpoints(nextCheckpoints);

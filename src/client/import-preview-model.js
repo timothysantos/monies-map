@@ -10,14 +10,19 @@ export function buildImportPreviewModel({
   isParsingStatement
 }) {
   const knownAccountNames = new Set(accounts.map((account) => account.name));
+  const accountNameCounts = accounts.reduce((counts, account) => {
+    counts.set(account.name, (counts.get(account.name) ?? 0) + 1);
+    return counts;
+  }, new Map());
   const detectedPreviewAccountNames = Array.from(new Set(previewRows.map((row) => row.accountName).filter(Boolean))).sort();
   const unknownPreviewAccountNames = detectedPreviewAccountNames.filter((accountName) => !knownAccountNames.has(accountName));
+  const ambiguousPreviewAccountNames = detectedPreviewAccountNames.filter((accountName) => (accountNameCounts.get(accountName) ?? 0) > 1);
   const duplicateCheckpointAccounts = getDuplicateCheckpointAccounts(statementCheckpoints);
   const visibleOverlapImports = (preview?.overlapImports ?? []).filter((item) => !dismissedOverlapIds.includes(item.id));
   const previewDuplicateRowCount = previewRows.filter((row) => row.duplicateMatches?.length).length;
   const statementReconciliations = preview?.statementReconciliations ?? [];
   const hasDuplicateCheckpointAccounts = duplicateCheckpointAccounts.length > 0;
-  const hasUnmappedAccounts = previewRows.some((row) => !row.accountName || !knownAccountNames.has(row.accountName));
+  const hasUnmappedAccounts = previewRows.some((row) => !row.accountId && (!row.accountName || (accountNameCounts.get(row.accountName) ?? 0) !== 1));
   const hasBlockingCategoryPolicy = unknownCategoryMode === "block" && Boolean(preview?.unknownCategories?.length);
 
   return {
@@ -36,7 +41,7 @@ export function buildImportPreviewModel({
     knownAccountNames,
     previewDuplicateRowCount,
     showStatementAccountMapping: preview && detectedPreviewAccountNames.length > 0 && (
-      statementImportMeta.sourceType === "pdf" || unknownPreviewAccountNames.length > 0
+      statementImportMeta.sourceType === "pdf" || unknownPreviewAccountNames.length > 0 || ambiguousPreviewAccountNames.length > 0
     ),
     statementReconciliations,
     unknownPreviewAccountNames,
@@ -47,12 +52,13 @@ export function buildImportPreviewModel({
 function getDuplicateCheckpointAccounts(statementCheckpoints) {
   const counts = new Map();
   for (const checkpoint of statementCheckpoints) {
-    if (!checkpoint.accountName) {
+    const key = checkpoint.accountId ?? checkpoint.accountName;
+    if (!key) {
       continue;
     }
-    counts.set(checkpoint.accountName, (counts.get(checkpoint.accountName) ?? 0) + 1);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
   }
-  return Array.from(counts.entries()).filter(([, count]) => count > 1).map(([accountName]) => accountName);
+  return Array.from(counts.entries()).filter(([, count]) => count > 1).map(([accountKey]) => accountKey);
 }
 
 export function hasImportDraft({

@@ -392,6 +392,7 @@ export interface ImportPreviewDto {
 }
 
 export interface StatementCheckpointDraftDto {
+  accountId?: string;
   accountName: string;
   checkpointMonth: string;
   statementStartDate?: string;
