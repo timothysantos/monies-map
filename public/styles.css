@@ -6252,6 +6252,7 @@ th {
 
   .month-panel-head {
     justify-content: flex-end;
+    margin-bottom: 4px;
   }
 
   .month-panel-head > div:first-child {
@@ -6261,6 +6262,19 @@ th {
   .month-panel-head .month-header-controls {
     width: 100%;
     justify-content: flex-end;
+  }
+
+  .month-panel {
+    padding-top: 8px;
+  }
+
+  .month-panel .month-actions-trigger {
+    padding: 2px 0;
+    line-height: 1.1;
+  }
+
+  .month-panel .metric-row-month {
+    margin-bottom: 12px;
   }
 
   .month-table-wrap {

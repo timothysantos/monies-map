@@ -664,7 +664,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   }
 
   return (
-    <article className="panel">
+    <article className="panel month-panel">
       <MonthPanelHeader
         view={view}
         actionsOpen={actionsOpen}
