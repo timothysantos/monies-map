@@ -66,6 +66,9 @@ That distinction matters because the system needs to answer questions like:
 - UOB and Citibank card PDF parsers detect card sections from statement
   structure first, while known product aliases only polish the displayed account
   names
+- UOB card PDF parsing treats `CR` on card balance lines as a signed credit
+  balance and accepts zero-dollar reward adjustment rows, so section
+  reconciliation follows the bank's printed card convention
 - transactions are normalized to a single ledger shape
 - every imported row is attached to an import batch for audit and rollback
 - CSV commits pre-resolve accounts, categories, and people before writing, then

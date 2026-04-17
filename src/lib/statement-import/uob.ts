@@ -198,7 +198,7 @@ function parseUobCreditCardSection(
   statementYear: number,
   statementMonth: number
 ): CreditCardSection {
-  const previousBalanceMinor = parseMoneyLineToMinor(lines[previousBalanceIndex + 1]);
+  const previousBalanceMinor = parseUobCardBalanceLineToMinor(lines[previousBalanceIndex + 1]);
   if (previousBalanceMinor == null) {
     throw new Error(`Could not read previous balance for ${account.name}.`);
   }
@@ -243,7 +243,7 @@ function parseUobCreditCardSection(
     }
 
     const amountMinor = parseMoneyLineToMinor(amountLine);
-    if (!amountMinor) {
+    if (amountMinor == null) {
       throw new Error(`Could not parse amount for ${account.name} transaction on ${postDate}.`);
     }
 
@@ -273,7 +273,7 @@ function parseUobCreditCardSection(
   }
 
   const totalIndex = lines.findIndex((line, candidateIndex) => candidateIndex >= index && line === `TOTAL BALANCE FOR ${account.heading}`);
-  const totalBalanceMinor = totalIndex >= 0 ? parseMoneyLineToMinor(lines[totalIndex + 1]) : undefined;
+  const totalBalanceMinor = totalIndex >= 0 ? parseUobCardBalanceLineToMinor(lines[totalIndex + 1]) : undefined;
   if (totalBalanceMinor == null) {
     throw new Error(`Could not read total balance for ${account.name}.`);
   }
@@ -295,6 +295,14 @@ function parseUobCreditCardSection(
 
 function isUobSavingsNoiseLine(value: string) {
   return /Please note|United Overseas Bank|Reg\. No\.|www\.uob\.com\.sg|Page \d+ of \d+|不得向本行索取赔偿|本行|UOB Group/i.test(value);
+}
+
+function parseUobCardBalanceLineToMinor(value?: string) {
+  const amountMinor = parseMoneyLineToMinor(value);
+  if (amountMinor == null) {
+    return undefined;
+  }
+  return /\bCR$/i.test(value ?? "") ? -amountMinor : amountMinor;
 }
 
 function readUobCardAccountHeading(lines: string[], index: number) {
