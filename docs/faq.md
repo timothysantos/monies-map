@@ -366,9 +366,14 @@ tab switching fast while still letting mutation flows clear the cache before
 fresh data is needed.
 
 After the first usable screen renders, the app also uses browser idle time to
-warm the most likely next route chunks and current-period page data. This is
-skipped when the browser reports data-saver mode, and it never blocks the first
-screen from becoming usable.
+warm the most likely next route code chunks. It also performs a narrow,
+delayed, sequential page-data prefetch only for adjacent Month or Summary
+periods first. If that finishes cleanly and the user has not navigated or
+mutated data, it waits again and then prefetches lower-priority pages such as
+Splits, Imports, Settings, and the current household Entries payload one at a
+time. Any route change, import, edit, rollback, manual refresh, data-saver mode,
+or cache invalidation stops the staged prefetch so first load does not create a
+burst of background dashboard requests.
 
 On browser refresh or a later return to the same month/range, the app can render
 the last successful bootstrap payload from local browser storage immediately and
@@ -380,10 +385,10 @@ or previous month. Splits does not use the selected month as its main filter, so
 the gesture is disabled there.
 
 After a month or summary range loads, the app keeps that page payload in memory
-and preloads nearby months or ranges. Going back to an adjacent period can
-therefore render immediately while the app refreshes the cached data in the
-background. Imports, edits, rollbacks, and other writes clear the relevant page
-cache before reloading.
+and may gently prefetch the adjacent period before warming lower-priority pages.
+Going back to an already loaded or prefetched period can therefore render
+immediately while imports, edits, rollbacks, and other writes clear the relevant
+page cache before reloading.
 
 The initial bootstrap now acts as the app shell. Summary, Month, Entries,
 Splits, Imports, and Settings each have smaller page-specific reloads so month
@@ -429,7 +434,8 @@ guess. This is for repeated bank text such as `TADA`, `SHOPEE`,
 `SINGLIFE`, `GOLDENVILLAGE`, `JOSEPHPRINCE`, `GOPAY-GOJEK`, `AXSPTELTD`,
 `KEPPEL ELECTRIC`, `M1LIMITED`, `INCOMEINSURANCE`, `INLAND REVENUE`, `IRAS`,
 `SP DIGITAL`, `PRUDENTIAL`, `BTG REWARDS`, `DIN TAI FUNG`, `WATSONS`,
-`EDITOR'S MARKET`, `GIRO` plus `HDB`, and card conversion-fee descriptions.
+`EDITOR'S MARKET`, `NASI LEMAK`, `YOUTRIP`, `PLAYSTATION NETWORK`, `GIRO` plus
+`HDB`, and card conversion-fee descriptions.
 Transfer-looking card rows such as `TSFTO...6349` are treated as transfers, not
 normal expenses.
 

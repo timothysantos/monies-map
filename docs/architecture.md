@@ -80,8 +80,9 @@ That distinction matters because the system needs to answer questions like:
   preview. The backend matches merchant text such as `TADA`, `SHOPEE`,
   `SINGLIFE`, `KEPPEL ELECTRIC`, `INCOMEINSURANCE`, `INLAND REVENUE`, `IRAS`,
   `SP DIGITAL`, `PRUDENTIAL`, `BTG REWARDS`, `DIN TAI FUNG`, `WATSONS`,
-  `EDITOR'S MARKET`, `GIRO` plus `HDB`, or conversion-fee patterns to the
-  configured category, and a matching rule wins over the parser's first category guess. The parser-side inference keeps a
+  `EDITOR'S MARKET`, `NASI LEMAK`, `YOUTRIP`, `PLAYSTATION NETWORK`, `GIRO`
+  plus `HDB`, or conversion-fee patterns to the configured category, and a
+  matching rule wins over the parser's first category guess. The parser-side inference keeps a
   similar fallback for local PDF/CSV parsing, but database rules are the
   editable source of truth in Settings.
 - repeated manual category corrections are stored as pending
@@ -418,9 +419,12 @@ Frontend direction:
   smaller route payload loads; writes clear page and shell caches before
   reloading data
 - route-page responses are cached in memory by endpoint and query string.
-  Adjacent month or summary-range payloads are prefetched after the current page
-  settles, while bootstrap no longer has to reload for ordinary month/range
-  navigation
+  Adjacent month or summary-range payloads are prefetched first after the
+  current page settles. If the session remains stable, lower-priority page
+  payloads are warmed sequentially with spacing between requests. Route changes,
+  mutations, manual refreshes, and cache invalidation cancel the staged prefetch
+  so bootstrap no longer has to reload for ordinary month/range navigation
+  without creating a burst of background API calls.
 - route panels are lazily loaded behind React Suspense so imports, settings,
   PDF parsing, statement parsing, and charting code do not inflate the initial
   app shell bundle
