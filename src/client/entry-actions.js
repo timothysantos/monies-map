@@ -6,6 +6,7 @@ import {
   getVisibleSplitIndex,
   normalizeEntryShape
 } from "./entry-helpers";
+import { buildRequestErrorMessage } from "./request-errors";
 
 // Owns the local edit/draft state and server mutations for the entries page.
 // The panel still owns filters and derived lists so this hook stays about edits.
@@ -180,8 +181,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
     });
 
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.error ?? "Failed to save category.");
+      throw new Error(await buildRequestErrorMessage(response, "Failed to save category."));
     }
 
     setEntrySnapshot((current) => current && current.id === entryId

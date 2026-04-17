@@ -25,6 +25,9 @@ export async function buildRequestErrorMessage(response, fallbackMessage) {
   if (!normalizedDetail) {
     return `${fallbackMessage} Status ${response.status}.`;
   }
+  if (/^<!doctype html\b/i.test(normalizedDetail) || /^<html\b/i.test(normalizedDetail)) {
+    return `${fallbackMessage} Status ${response.status}. The server returned an HTML error page instead of JSON.`;
+  }
 
   return `${fallbackMessage} ${normalizedDetail.slice(0, 240)}`;
 }
