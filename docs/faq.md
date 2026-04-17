@@ -364,6 +364,10 @@ can therefore render immediately while the app refreshes the cached data in the
 background. Imports, edits, rollbacks, and other writes clear the cache before
 reloading.
 
+Entries uses a smaller entries-only payload for month changes. That lets the
+Entries page refresh and preload adjacent months without waiting for imports,
+settings, splits, and the rest of the dashboard bootstrap to reload.
+
 ## How do I import real bank activity?
 
 Use Imports when you want bank or card rows to become ledger entries. Use

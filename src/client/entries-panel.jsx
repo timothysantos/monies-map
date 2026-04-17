@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
@@ -16,10 +16,189 @@ import {
 } from "./entry-selectors";
 import { getVisibleSplitPercent } from "./entry-helpers";
 
-export function EntriesPanel({ view, accounts, categories, people, onCategoryAppearanceChange, onRefresh }) {
+const ENTRIES_PAGE_PREFETCH_DELAY_MS = 160;
+
+export function EntriesPanel({
+  view,
+  selectedMonth,
+  availableMonths,
+  accounts,
+  categories,
+  people,
+  onCategoryAppearanceChange,
+  onInvalidateBootstrapCache
+}) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showExpenseBreakdown, setShowExpenseBreakdown] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [entriesPage, setEntriesPage] = useState(() => buildInitialEntriesPage(view));
+  const [isEntriesPageLoading, setIsEntriesPageLoading] = useState(false);
+  const entriesPageCacheRef = useRef(new Map());
+  const entriesPageInflightRef = useRef(new Map());
+  const entriesPageCacheVersionRef = useRef(0);
+  const entriesPagePrefetchTimerRef = useRef(null);
+  const entriesPageParams = useMemo(
+    () => buildEntriesPageParams({
+      viewId: view.id,
+      month: selectedMonth
+    }),
+    [selectedMonth, view.id]
+  );
+  const entriesPageCacheKey = entriesPageParams.toString();
+  const entryView = useMemo(
+    () => ({
+      ...view,
+      id: entriesPage.viewId,
+      label: entriesPage.label,
+      monthPage: {
+        ...view.monthPage,
+        ...entriesPage.monthPage
+      }
+    }),
+    [entriesPage, view]
+  );
+
+  const clearEntriesPageCache = useCallback(() => {
+    entriesPageCacheVersionRef.current += 1;
+    entriesPageCacheRef.current.clear();
+    entriesPageInflightRef.current.clear();
+  }, []);
+
+  const fetchEntriesPage = useCallback(async (params, { bypassCache = false, signal } = {}) => {
+    const cacheKey = params.toString();
+    const cacheVersion = entriesPageCacheVersionRef.current;
+    if (signal?.aborted) {
+      throw new DOMException("Entries page request aborted.", "AbortError");
+    }
+
+    if (!bypassCache && entriesPageCacheRef.current.has(cacheKey)) {
+      return entriesPageCacheRef.current.get(cacheKey);
+    }
+
+    if (!bypassCache && entriesPageInflightRef.current.has(cacheKey)) {
+      const data = await entriesPageInflightRef.current.get(cacheKey);
+      if (signal?.aborted) {
+        throw new DOMException("Entries page request aborted.", "AbortError");
+      }
+      return data;
+    }
+
+    const request = fetch(`/api/entries-page?${cacheKey}`, { cache: "no-store" })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message ?? data.error ?? "Entries page failed.");
+        }
+        if (entriesPageCacheVersionRef.current === cacheVersion) {
+          entriesPageCacheRef.current.set(cacheKey, data);
+        }
+        return data;
+      })
+      .finally(() => {
+        entriesPageInflightRef.current.delete(cacheKey);
+      });
+
+    entriesPageInflightRef.current.set(cacheKey, request);
+    const data = await request;
+    if (signal?.aborted || entriesPageCacheVersionRef.current !== cacheVersion) {
+      throw new DOMException("Entries page request aborted.", "AbortError");
+    }
+    return data;
+  }, []);
+
+  const refreshEntriesPage = useCallback(async ({ bypassCache = false, invalidateBootstrap = false } = {}) => {
+    if (bypassCache) {
+      clearEntriesPageCache();
+    }
+    if (invalidateBootstrap) {
+      onInvalidateBootstrapCache?.();
+    }
+    setIsEntriesPageLoading(true);
+    try {
+      const data = await fetchEntriesPage(entriesPageParams, { bypassCache });
+      setEntriesPage(data);
+      return data;
+    } finally {
+      setIsEntriesPageLoading(false);
+    }
+  }, [clearEntriesPageCache, entriesPageParams, fetchEntriesPage, onInvalidateBootstrapCache]);
+
+  useEffect(() => {
+    clearEntriesPageCache();
+    setEntriesPage(buildInitialEntriesPage(view));
+  }, [clearEntriesPageCache, view]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const hasCachedPage = entriesPageCacheRef.current.has(entriesPageCacheKey);
+    setIsEntriesPageLoading(!hasCachedPage);
+
+    void fetchEntriesPage(entriesPageParams, { signal: controller.signal })
+      .then(async (data) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setEntriesPage(data);
+        setIsEntriesPageLoading(false);
+
+        if (!hasCachedPage) {
+          return;
+        }
+
+        try {
+          const freshData = await fetchEntriesPage(entriesPageParams, {
+            bypassCache: true,
+            signal: controller.signal
+          });
+          if (!controller.signal.aborted) {
+            setEntriesPage(freshData);
+          }
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            return;
+          }
+        }
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+        setIsEntriesPageLoading(false);
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [entriesPageCacheKey, entriesPageParams, fetchEntriesPage]);
+
+  useEffect(() => {
+    if (!availableMonths.length || typeof window === "undefined" || window.navigator?.connection?.saveData) {
+      return undefined;
+    }
+
+    entriesPagePrefetchTimerRef.current = window.setTimeout(() => {
+      const currentIndex = availableMonths.indexOf(selectedMonth);
+      if (currentIndex === -1) {
+        return;
+      }
+
+      for (const offset of [-1, 1]) {
+        const adjacentMonth = availableMonths[currentIndex + offset];
+        if (!adjacentMonth) {
+          continue;
+        }
+        void fetchEntriesPage(buildEntriesPageParams({ viewId: view.id, month: adjacentMonth })).catch(() => {});
+      }
+    }, ENTRIES_PAGE_PREFETCH_DELAY_MS);
+
+    return () => {
+      if (entriesPagePrefetchTimerRef.current) {
+        window.clearTimeout(entriesPagePrefetchTimerRef.current);
+        entriesPagePrefetchTimerRef.current = null;
+      }
+    };
+  }, [availableMonths, fetchEntriesPage, selectedMonth, view.id]);
+
   const {
     entries,
     editingEntryId,
@@ -49,9 +228,15 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
     updateEntry,
     updateEntrySplit,
     saveEntryCategory
-  } = useEntryActions({ view, accounts, categories, people, onRefresh });
-  const selectedScope = searchParams.get("entries_scope") ?? view.monthPage.selectedScope;
-  const defaultEntryPerson = view.id !== "household" ? view.label : "";
+  } = useEntryActions({
+    view: entryView,
+    accounts,
+    categories,
+    people,
+    onRefresh: () => refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true })
+  });
+  const selectedScope = searchParams.get("entries_scope") ?? entryView.monthPage.selectedScope;
+  const defaultEntryPerson = entryView.id !== "household" ? entryView.label : "";
   const entryFilters = {
     wallet: searchParams.get("entry_wallet") ?? "",
     category: searchParams.get("entry_category") ?? "",
@@ -62,7 +247,7 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
   useEffect(() => {
     setShowExpenseBreakdown(false);
     setShowMobileFilters(false);
-  }, [view]);
+  }, [entryView]);
 
   const wallets = useMemo(
     () => getEntryWalletFilterOptions(accounts),
@@ -114,8 +299,8 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
     entryNetMinor,
     expenseBreakdown
   } = useMemo(
-    () => getEntryDerivedData({ entries, entryFilters, selectedScope, viewId: view.id }),
-    [entries, entryFilters, selectedScope, view.id]
+    () => getEntryDerivedData({ entries, entryFilters, selectedScope, viewId: entryView.id }),
+    [entries, entryFilters, selectedScope, entryView.id]
   );
 
   function updateEntryFilter(key, value) {
@@ -143,14 +328,14 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
   }
 
   return (
-    <article className="panel">
+    <article className="panel entries-panel-root">
       <div className="panel-head">
         <div>
           <h2>{messages.tabs.entries}</h2>
-          <span className="panel-context">{messages.entries.viewing(view.label)}</span>
+          <span className="panel-context">{messages.entries.viewing(entryView.label)}</span>
         </div>
         <div className="scope-toggle pill-row scope-toggle-row desktop-scope-toggle">
-          {view.monthPage.scopes.map((scope) => (
+          {entryView.monthPage.scopes.map((scope) => (
               <button
                 key={scope.key}
                 className={`pill scope-button ${scope.key === selectedScope ? "is-active" : ""}`}
@@ -201,8 +386,15 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
         onToggleMobileFilters={() => setShowMobileFilters((current) => !current)}
         onChangeFilter={updateEntryFilter}
         onResetFilters={resetEntryFilters}
-        onRefresh={onRefresh}
+        onRefresh={() => refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true })}
       />
+
+      {isEntriesPageLoading ? (
+        <div className="app-loading-overlay entries-page-loading" role="status" aria-live="polite">
+          <span className="app-spinner" aria-hidden="true" />
+          <span>{messages.common.loadingLatest}</span>
+        </div>
+      ) : null}
 
       {showEntryComposer ? (
         <section className="entry-row is-editing entry-composer">
@@ -213,7 +405,7 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
               categoryOptions={categoryOptions}
               accountOptions={accountOptions}
               ownerOptions={ownerOptions}
-              splitPercentValue={entryDraft.ownershipType === "shared" ? getVisibleSplitPercent(entryDraft, view.id) ?? 50 : null}
+              splitPercentValue={entryDraft.ownershipType === "shared" ? getVisibleSplitPercent(entryDraft, entryView.id) ?? 50 : null}
               onChange={updateEntryDraft}
               onCategoryAppearanceChange={onCategoryAppearanceChange}
               onOwnerChange={updateEntryDraftOwner}
@@ -241,7 +433,7 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
         categoryOptions={categoryOptions}
         accountOptions={accountOptions}
         ownerOptions={ownerOptions}
-        viewId={view.id}
+        viewId={entryView.id}
         editingEntryId={editingEntryId}
         addingToSplitsEntryId={addingToSplitsEntryId}
         transferDialogEntryId={transferDialogEntryId}
@@ -264,4 +456,25 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
       />
     </article>
   );
+}
+
+function buildInitialEntriesPage(view) {
+  return {
+    viewId: view.id,
+    label: view.label,
+    monthPage: {
+      month: view.monthPage.month,
+      selectedPersonId: view.monthPage.selectedPersonId,
+      selectedScope: view.monthPage.selectedScope,
+      scopes: view.monthPage.scopes,
+      entries: view.monthPage.entries
+    }
+  };
+}
+
+function buildEntriesPageParams({ viewId, month }) {
+  return new URLSearchParams({
+    view: viewId,
+    month
+  });
 }

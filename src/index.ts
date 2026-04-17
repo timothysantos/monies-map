@@ -1,4 +1,4 @@
-import { buildBootstrapDto } from "./domain/bootstrap";
+import { buildBootstrapDto, buildEntriesPageDto } from "./domain/bootstrap";
 import { enterEmptyState, reseedDemoSettings } from "./domain/demo-settings";
 import {
   archiveAccountRecord,
@@ -71,6 +71,21 @@ export default {
       } catch (error) {
         console.error("Bootstrap failed", error);
         return json({ ok: false, error: "Bootstrap failed", message: describeError(error) }, 500);
+      }
+    }
+
+    if (url.pathname === "/api/entries-page") {
+      try {
+        return json(
+          await buildEntriesPageDto(
+            env.DB,
+            url.searchParams.get("view") ?? "household",
+            url.searchParams.get("month") ?? getCurrentMonthKey()
+          )
+        );
+      } catch (error) {
+        console.error("Entries page failed", error);
+        return json({ ok: false, error: "Entries page failed", message: describeError(error) }, 500);
       }
     }
 
