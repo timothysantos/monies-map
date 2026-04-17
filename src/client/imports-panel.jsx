@@ -19,8 +19,10 @@ import {
 import { inspectCsv } from "../lib/csv";
 import {
   canParseCitibankActivityCsv,
+  canParseOcbcActivityCsv,
   parseCitibankActivityCsv,
   parseCurrentTransactionSpreadsheet,
+  parseOcbcActivityCsv,
   parseStatementText,
   statementRowsToCsv
 } from "../lib/statement-import";
@@ -345,6 +347,30 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         setDismissedOverlapIds([]);
         setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
         const parsed = parseCitibankActivityCsv(nextText, file.name, activityContext);
+
+        setSourceLabel(parsed.sourceLabel);
+        setStatementCheckpoints([]);
+        setStatementImportMeta({ sourceType: "csv", parserKey: parsed.parserKey });
+        setCsvText(statementRowsToCsv(parsed.rows));
+        if (parsed.rows[0]?.account) {
+          setDefaultAccountName(parsed.rows[0].account);
+        }
+
+        setUploadStatus({ tone: "active", message: messages.imports.uploadPreviewing(parsed.rows.length) });
+        await previewImportRows({
+          rows: parsed.rows,
+          nextSourceLabel: parsed.sourceLabel,
+          nextDefaultAccountName: parsed.rows[0]?.account ?? defaultAccountName,
+          nextStatementCheckpoints: []
+        });
+        setUploadStatus({ tone: "success", message: messages.imports.uploadReady(parsed.rows.length) });
+        return;
+      }
+
+      if (/\.csv$/i.test(file.name) && canParseOcbcActivityCsv(file.name, activityContext)) {
+        setDismissedOverlapIds([]);
+        setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
+        const parsed = parseOcbcActivityCsv(nextText, file.name, activityContext);
 
         setSourceLabel(parsed.sourceLabel);
         setStatementCheckpoints([]);
