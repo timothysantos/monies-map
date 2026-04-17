@@ -474,6 +474,7 @@ export function App() {
     [routePageData, selectedTabId, view]
   );
   const pageView = activeView ?? view;
+  const householdView = bootstrap?.views.find((item) => item.id === "household") ?? pageView;
   const selectedEntriesScope = searchParams.get("entries_scope") ?? pageView?.monthPage.selectedScope ?? "direct_plus_shared";
   const householdMonthEntries = useMemo(
     () => selectedTabId === "month" && Array.isArray(routePageData?.householdMonthEntries)
@@ -753,6 +754,16 @@ export function App() {
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       next.set("view", nextViewId);
+      if (selectedTabId === "entries") {
+        if (nextViewId === "household") {
+          next.delete("entry_person");
+        } else {
+          const person = bootstrap.household.people.find((item) => item.id === nextViewId);
+          if (person) {
+            next.set("entry_person", person.name);
+          }
+        }
+      }
       return next;
     });
   }
@@ -1225,6 +1236,7 @@ export function App() {
               element={(
                 <EntriesPanel
                   view={pageView}
+                  entriesSourceView={householdView}
                   selectedMonth={selectedMonth}
                   availableMonths={availableMonths}
                   accounts={bootstrap.accounts}
