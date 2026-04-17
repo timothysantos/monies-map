@@ -80,13 +80,13 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
     });
   }
 
-  function handleOpenEntriesForAccount(accountName) {
+  function handleOpenEntriesForAccount(accountId) {
     const next = new URLSearchParams(location.search);
     next.delete("entry_category");
     next.delete("entry_person");
     next.delete("entry_type");
     next.set("month", selectedFocusMonth || selectedMonth);
-    next.set("entry_wallet", accountName);
+    next.set("entry_wallet", accountId);
     navigate({
       pathname: "/entries",
       search: `?${next.toString()}`
@@ -302,7 +302,7 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
                 key={account.accountId}
                 type="button"
                 className={`summary-account-pill ${account.reconciliationStatus ? `is-${account.reconciliationStatus}` : ""}`}
-                onClick={() => handleOpenEntriesForAccount(account.accountName)}
+                onClick={() => handleOpenEntriesForAccount(account.accountId)}
               >
                 <span className="summary-account-pill-name">{formatAccountDisplayName(account)}</span>
                 <span className="summary-account-pill-amount">{money(account.balanceMinor)}</span>

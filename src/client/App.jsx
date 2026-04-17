@@ -47,6 +47,9 @@ const routeTabs = [
 ];
 const primaryRouteTabs = routeTabs.slice(0, 4);
 const secondaryRouteTabs = routeTabs.slice(4);
+const MONTH_SWIPE_MIN_DISTANCE_PX = 72;
+const MONTH_SWIPE_MAX_VERTICAL_PX = 80;
+const MONTH_SWIPE_MIN_RATIO = 1.35;
 
 export function App() {
   const [bootstrap, setBootstrap] = useState(null);
@@ -59,6 +62,7 @@ export function App() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const syncChannelRef = useRef(null);
+  const monthSwipeStartRef = useRef(null);
   const selectedMonth = searchParams.get("month") ?? DEFAULT_MONTH_KEY;
   const selectedScope = searchParams.get("scope") ?? "direct_plus_shared";
   const selectedSummaryStart = searchParams.get("summary_start") ?? undefined;
@@ -227,6 +231,7 @@ export function App() {
     [bootstrap]
   );
   const isDetailMonthTab = selectedTabId === "month" || selectedTabId === "entries" || selectedTabId === "splits";
+  const isMonthSwipeTab = selectedTabId === "month" || selectedTabId === "entries";
   const isSplitsTab = selectedTabId === "splits";
   const detailAvailableYears = useMemo(
     () => isDetailMonthTab
@@ -469,6 +474,46 @@ export function App() {
       }
       return next;
     });
+  }
+
+  function handleMonthSwipeStart(event) {
+    if (!isMonthSwipeTab || event.touches.length !== 1 || shouldIgnoreMonthSwipe(event.target)) {
+      monthSwipeStartRef.current = null;
+      return;
+    }
+
+    const touch = event.touches[0];
+    monthSwipeStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY
+    };
+  }
+
+  function handleMonthSwipeEnd(event) {
+    const start = monthSwipeStartRef.current;
+    monthSwipeStartRef.current = null;
+    if (!start || !isMonthSwipeTab || event.changedTouches.length !== 1) {
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    const absoluteX = Math.abs(deltaX);
+    const absoluteY = Math.abs(deltaY);
+    if (
+      absoluteX < MONTH_SWIPE_MIN_DISTANCE_PX
+      || absoluteY > MONTH_SWIPE_MAX_VERTICAL_PX
+      || absoluteX / Math.max(absoluteY, 1) < MONTH_SWIPE_MIN_RATIO
+    ) {
+      return;
+    }
+
+    handleMonthChange(deltaX < 0 ? 1 : -1);
+  }
+
+  function handleMonthSwipeCancel() {
+    monthSwipeStartRef.current = null;
   }
 
   function handleDetailMonthSelect(month) {
@@ -808,7 +853,13 @@ export function App() {
         </section>
       ) : null}
 
-      <section className="grid app-route-grid" aria-busy={isBootstrapLoading ? "true" : "false"}>
+      <section
+        className={`grid app-route-grid ${isMonthSwipeTab ? "is-month-swipe-enabled" : ""}`}
+        aria-busy={isBootstrapLoading ? "true" : "false"}
+        onTouchStart={handleMonthSwipeStart}
+        onTouchEnd={handleMonthSwipeEnd}
+        onTouchCancel={handleMonthSwipeCancel}
+      >
         <Routes>
           <Route path="/" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
           <Route
@@ -942,4 +993,23 @@ function AppLoadingOverlay() {
       <span>{messages.common.loadingLatest}</span>
     </div>
   );
+}
+
+function shouldIgnoreMonthSwipe(target) {
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
+  return Boolean(target.closest([
+    "a",
+    "button",
+    "input",
+    "label",
+    "select",
+    "textarea",
+    "[contenteditable='true']",
+    "[role='button']",
+    "[role='menuitem']",
+    "[role='option']"
+  ].join(",")));
 }

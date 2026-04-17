@@ -405,6 +405,9 @@ Frontend direction:
   visual requirements become real product behavior
 - page-level bootstrap refreshes keep the current route mounted with a busy
   overlay while the next month or range payload loads
+- Month and Entries support horizontal touch swipes for previous/next month
+  navigation; Splits stays excluded because its main surface is not
+  month-filtered
 - heavyweight charting code should be lazily loaded from the client where it is
   not required for first render
 - interaction primitives such as popovers should prefer maintained web-native

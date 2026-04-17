@@ -347,7 +347,13 @@ without being mixed into category spending.
 
 The account filter on Entries lists every active account, even when an account
 has no rows in the selected month. This keeps the filter predictable when you
-are checking a specific account for missing or uncategorized activity.
+are checking a specific account for missing or uncategorized activity. Account
+choices include the owner in the label, such as `UOB One - Joyce`, when the
+same account name could appear under different people.
+
+On touch devices, swipe left or right on Month or Entries to move to the next
+or previous month. Splits does not use the selected month as its main filter, so
+the gesture is disabled there.
 
 ## How do I import real bank activity?
 

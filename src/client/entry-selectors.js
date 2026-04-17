@@ -13,9 +13,8 @@ export function getEntryFilterOptions(entries) {
 }
 
 export function getEntryWalletFilterOptions(accounts) {
-  return getAccountSelectOptions(accounts)
-    .map((option) => option.value)
-    .filter(Boolean);
+  return getAccountSelectOptions(accounts.filter((account) => account.isActive !== false), { valueKey: "id" })
+    .filter((option) => option.value);
 }
 
 export function getEntryFormOptions({ accounts, categories, people }) {
@@ -38,7 +37,7 @@ export function getFilteredEntries({ entries, entryFilters, selectedScope, viewI
     if (!entryMatchesScope(entry, viewId, selectedScope)) {
       return false;
     }
-    if (entryFilters.wallet && entry.accountName !== entryFilters.wallet) {
+    if (entryFilters.wallet && entry.accountId !== entryFilters.wallet && entry.accountName !== entryFilters.wallet) {
       return false;
     }
     if (entryFilters.category && entry.categoryName !== entryFilters.category) {
