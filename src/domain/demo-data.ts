@@ -116,6 +116,7 @@ export const categories: CategoryDto[] = [
   { id: "cat-food-drinks", name: "Food & Drinks", slug: "food-drinks", iconKey: "utensils", colorHex: "#F7A21B", sortOrder: 20, isSystem: true },
   { id: "cat-shopping", name: "Shopping", slug: "shopping", iconKey: "shopping-bag", colorHex: "#D4B35D", sortOrder: 30, isSystem: true },
   { id: "cat-family-personal", name: "Family & Personal", slug: "family-personal", iconKey: "users", colorHex: "#4F8FD6", sortOrder: 40, isSystem: true },
+  { id: "cat-baby-kids", name: "Baby & Kids", slug: "baby-kids", iconKey: "baby", colorHex: "#7EBDC2", sortOrder: 42, isSystem: true },
   { id: "cat-home", name: "Home", slug: "home", iconKey: "house", colorHex: "#F85A53", sortOrder: 45, isSystem: true },
   { id: "cat-church", name: "Church", slug: "church", iconKey: "church", colorHex: "#F062A6", sortOrder: 50, isSystem: true },
   { id: "cat-tax", name: "Tax", slug: "tax", iconKey: "banknote", colorHex: "#CC63D8", sortOrder: 60, isSystem: true },
