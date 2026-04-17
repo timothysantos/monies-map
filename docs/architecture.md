@@ -416,6 +416,9 @@ Frontend direction:
   Adjacent month or summary-range payloads are prefetched after the current page
   settles, while bootstrap no longer has to reload for ordinary month/range
   navigation
+- route panels are lazily loaded behind React Suspense so imports, settings,
+  PDF parsing, statement parsing, and charting code do not inflate the initial
+  app shell bundle
 - Month and Entries support horizontal touch swipes for previous/next month
   navigation; Splits stays excluded because its main surface is not
   month-filtered

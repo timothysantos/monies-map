@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import * as Popover from "@radix-ui/react-popover";
 import {
@@ -16,19 +16,20 @@ import {
 } from "react-router-dom";
 import { slugify } from "./category-utils";
 import { messages } from "./copy/en-SG";
-import { EntriesPanel } from "./entries-panel";
-import { FaqPanel } from "./faq-panel";
-import { ImportsPanel } from "./imports-panel";
-import { MonthPanel } from "./month-panel";
 import {
   buildBootstrapErrorMessage,
   describeBootstrapError
 } from "./request-errors";
-import { SettingsPanel } from "./settings-panel";
-import { SplitsPanel } from "./splits-panel";
-import { SummaryPanel } from "./summary-panel";
 import { formatMonthLabel } from "./formatters";
 import { getCurrentMonthKey } from "../lib/month";
+
+const EntriesPanel = lazy(() => import("./entries-panel.jsx").then((module) => ({ default: module.EntriesPanel })));
+const FaqPanel = lazy(() => import("./faq-panel.jsx").then((module) => ({ default: module.FaqPanel })));
+const ImportsPanel = lazy(() => import("./imports-panel.jsx").then((module) => ({ default: module.ImportsPanel })));
+const MonthPanel = lazy(() => import("./month-panel.jsx").then((module) => ({ default: module.MonthPanel })));
+const SettingsPanel = lazy(() => import("./settings-panel.jsx").then((module) => ({ default: module.SettingsPanel })));
+const SplitsPanel = lazy(() => import("./splits-panel.jsx").then((module) => ({ default: module.SplitsPanel })));
+const SummaryPanel = lazy(() => import("./summary-panel.jsx").then((module) => ({ default: module.SummaryPanel })));
 
 const SUMMARY_FOCUS_OVERALL = "overall";
 const BOOTSTRAP_SYNC_CHANNEL = "monies-map-bootstrap-sync";
@@ -1190,91 +1191,93 @@ export function App() {
         onTouchEnd={handleMonthSwipeEnd}
         onTouchCancel={handleMonthSwipeCancel}
       >
-        <Routes>
-          <Route path="/" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
-          <Route
-            path="/summary"
-            element={(
-              <SummaryPanel
-                view={pageView}
-                selectedMonth={selectedMonth}
-                categories={categories}
-                onCategoryAppearanceChange={handleCategoryAppearanceChange}
-                onRefresh={() => refreshRoutePage()}
-              />
-            )}
-          />
-          <Route
-            path="/month"
-            element={(
-              <MonthPanel
-                view={pageView}
-                accounts={bootstrap.accounts}
-                people={bootstrap.household.people}
-                categories={categories}
-                householdMonthEntries={householdMonthEntries}
-                onCategoryAppearanceChange={handleCategoryAppearanceChange}
-                onRefresh={() => refreshRoutePage()}
-              />
-            )}
-          />
-          <Route
-            path="/entries"
-            element={(
-              <EntriesPanel
-                view={pageView}
-                selectedMonth={selectedMonth}
-                availableMonths={availableMonths}
-                accounts={bootstrap.accounts}
-                categories={categories}
-                people={bootstrap.household.people}
-                onCategoryAppearanceChange={handleCategoryAppearanceChange}
-                onInvalidateBootstrapCache={invalidatePageAndShellCaches}
-              />
-            )}
-          />
-          <Route
-            path="/splits"
-            element={(
-              <SplitsPanel
-                view={pageView}
-                categories={categories}
-                people={bootstrap.household.people}
-                onRefresh={() => refreshRoutePage()}
-              />
-            )}
-          />
-          <Route
-            path="/imports"
-            element={(
-              <ImportsPanel
-                importsPage={routePageData?.importsPage ?? bootstrap.importsPage}
-                viewId={pageView.id}
-                viewLabel={pageView.label}
-                accounts={bootstrap.accounts}
-                categories={categories}
-                people={bootstrap.household.people}
-                onRefresh={() => refreshBootstrap({ broadcast: true })}
-              />
-            )}
-          />
-          <Route
-            path="/settings"
-            element={(
-              <SettingsPanel
-                settingsPage={routePageData?.settingsPage ?? bootstrap.settingsPage}
-                accounts={bootstrap.accounts}
-                categories={categories}
-                people={bootstrap.household.people}
-                viewId={pageView.id}
-                viewLabel={pageView.label}
-                onRefresh={() => refreshBootstrap({ broadcast: true })}
-              />
-            )}
-          />
-          <Route path="/faq" element={<FaqPanel viewLabel={pageView.label} categories={categories} />} />
-          <Route path="*" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
-        </Routes>
+        <Suspense fallback={<RouteChunkLoadingFallback />}>
+          <Routes>
+            <Route path="/" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
+            <Route
+              path="/summary"
+              element={(
+                <SummaryPanel
+                  view={pageView}
+                  selectedMonth={selectedMonth}
+                  categories={categories}
+                  onCategoryAppearanceChange={handleCategoryAppearanceChange}
+                  onRefresh={() => refreshRoutePage()}
+                />
+              )}
+            />
+            <Route
+              path="/month"
+              element={(
+                <MonthPanel
+                  view={pageView}
+                  accounts={bootstrap.accounts}
+                  people={bootstrap.household.people}
+                  categories={categories}
+                  householdMonthEntries={householdMonthEntries}
+                  onCategoryAppearanceChange={handleCategoryAppearanceChange}
+                  onRefresh={() => refreshRoutePage()}
+                />
+              )}
+            />
+            <Route
+              path="/entries"
+              element={(
+                <EntriesPanel
+                  view={pageView}
+                  selectedMonth={selectedMonth}
+                  availableMonths={availableMonths}
+                  accounts={bootstrap.accounts}
+                  categories={categories}
+                  people={bootstrap.household.people}
+                  onCategoryAppearanceChange={handleCategoryAppearanceChange}
+                  onInvalidateBootstrapCache={invalidatePageAndShellCaches}
+                />
+              )}
+            />
+            <Route
+              path="/splits"
+              element={(
+                <SplitsPanel
+                  view={pageView}
+                  categories={categories}
+                  people={bootstrap.household.people}
+                  onRefresh={() => refreshRoutePage()}
+                />
+              )}
+            />
+            <Route
+              path="/imports"
+              element={(
+                <ImportsPanel
+                  importsPage={routePageData?.importsPage ?? bootstrap.importsPage}
+                  viewId={pageView.id}
+                  viewLabel={pageView.label}
+                  accounts={bootstrap.accounts}
+                  categories={categories}
+                  people={bootstrap.household.people}
+                  onRefresh={() => refreshBootstrap({ broadcast: true })}
+                />
+              )}
+            />
+            <Route
+              path="/settings"
+              element={(
+                <SettingsPanel
+                  settingsPage={routePageData?.settingsPage ?? bootstrap.settingsPage}
+                  accounts={bootstrap.accounts}
+                  categories={categories}
+                  people={bootstrap.household.people}
+                  viewId={pageView.id}
+                  viewLabel={pageView.label}
+                  onRefresh={() => refreshBootstrap({ broadcast: true })}
+                />
+              )}
+            />
+            <Route path="/faq" element={<FaqPanel viewLabel={pageView.label} categories={categories} />} />
+            <Route path="*" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
+          </Routes>
+        </Suspense>
         {isBootstrapLoading ? <AppLoadingOverlay /> : null}
       </section>
 
@@ -1324,6 +1327,15 @@ function AppLoadingOverlay() {
       <span className="app-spinner" aria-hidden="true" />
       <span>{messages.common.loadingLatest}</span>
     </div>
+  );
+}
+
+function RouteChunkLoadingFallback() {
+  return (
+    <section className="panel app-loading-panel route-loading-panel" role="status" aria-live="polite">
+      <span className="app-spinner" aria-hidden="true" />
+      <p>{messages.common.loading}</p>
+    </section>
   );
 }
 
