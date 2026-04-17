@@ -478,15 +478,20 @@ export async function seedEmptyStateReferenceData(db: D1Database) {
     .bind(defaultHousehold.id, defaultHousehold.name, defaultHousehold.baseCurrency)
     .run();
 
-  for (const person of EMPTY_STATE_PEOPLE) {
-    await db
-      .prepare(`
-        INSERT INTO people (id, household_id, display_name, role)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(id) DO NOTHING
-      `)
-      .bind(person.id, defaultHousehold.id, person.name, person.role)
-      .run();
+  const existingPeople = await loadSeedPeople(db);
+  if (existingPeople.length) {
+    await repairAccidentalEmptyStatePeople(db, existingPeople);
+  } else {
+    for (const person of EMPTY_STATE_PEOPLE) {
+      await db
+        .prepare(`
+          INSERT INTO people (id, household_id, display_name, role)
+          VALUES (?, ?, ?, ?)
+          ON CONFLICT(id) DO NOTHING
+        `)
+        .bind(person.id, defaultHousehold.id, person.name, person.role)
+        .run();
+    }
   }
 
   for (const category of defaultCategories) {
@@ -513,6 +518,98 @@ export async function seedEmptyStateReferenceData(db: D1Database) {
   }
 
   await ensureDefaultCategoryMatchRules(db);
+}
+
+async function loadSeedPeople(db: D1Database) {
+  const people = await db
+    .prepare(`
+      SELECT id, display_name
+      FROM people
+      WHERE household_id = ?
+      ORDER BY created_at
+    `)
+    .bind(defaultHousehold.id)
+    .all<{ id: string; display_name: string }>();
+
+  return people.results;
+}
+
+async function repairAccidentalEmptyStatePeople(
+  db: D1Database,
+  existingPeople: { id: string; display_name: string }[]
+) {
+  const accidentalIds = new Set(EMPTY_STATE_PEOPLE.map((person) => person.id));
+  const canonicalPeople = existingPeople.filter((person) => !accidentalIds.has(person.id));
+  const accidentalPeople = existingPeople.filter((person) => accidentalIds.has(person.id));
+
+  if (canonicalPeople.length < 2 || !accidentalPeople.length) {
+    return;
+  }
+
+  const replacements = new Map([
+    [EMPTY_PRIMARY_PERSON_ID, canonicalPeople[0].id],
+    [EMPTY_PARTNER_PERSON_ID, canonicalPeople[1].id]
+  ]);
+
+  for (const accidentalPerson of accidentalPeople) {
+    const replacementPersonId = replacements.get(accidentalPerson.id);
+    if (!replacementPersonId) {
+      continue;
+    }
+
+    await reassignPersonReferences(db, accidentalPerson.id, replacementPersonId);
+    await db
+      .prepare("DELETE FROM people WHERE household_id = ? AND id = ?")
+      .bind(defaultHousehold.id, accidentalPerson.id)
+      .run();
+  }
+}
+
+async function reassignPersonReferences(db: D1Database, fromPersonId: string, toPersonId: string) {
+  await db.prepare("UPDATE accounts SET owner_person_id = ? WHERE household_id = ? AND owner_person_id = ?").bind(toPersonId, defaultHousehold.id, fromPersonId).run();
+  await db.prepare("UPDATE imports SET imported_by_person_id = ? WHERE household_id = ? AND imported_by_person_id = ?").bind(toPersonId, defaultHousehold.id, fromPersonId).run();
+  await db.prepare("UPDATE transactions SET owner_person_id = ? WHERE household_id = ? AND owner_person_id = ?").bind(toPersonId, defaultHousehold.id, fromPersonId).run();
+  await db.prepare("UPDATE split_expenses SET payer_person_id = ? WHERE household_id = ? AND payer_person_id = ?").bind(toPersonId, defaultHousehold.id, fromPersonId).run();
+  await db.prepare("UPDATE split_settlements SET from_person_id = ? WHERE household_id = ? AND from_person_id = ?").bind(toPersonId, defaultHousehold.id, fromPersonId).run();
+  await db.prepare("UPDATE split_settlements SET to_person_id = ? WHERE household_id = ? AND to_person_id = ?").bind(toPersonId, defaultHousehold.id, fromPersonId).run();
+  await db.prepare("UPDATE split_matches SET created_by_person_id = ? WHERE household_id = ? AND created_by_person_id = ?").bind(toPersonId, defaultHousehold.id, fromPersonId).run();
+  await db.prepare("UPDATE monthly_notes SET created_by_person_id = ? WHERE household_id = ? AND created_by_person_id = ?").bind(toPersonId, defaultHousehold.id, fromPersonId).run();
+  await db.prepare("UPDATE monthly_budgets SET person_id = ? WHERE household_id = ? AND person_id = ?").bind(toPersonId, defaultHousehold.id, fromPersonId).run();
+  await db.prepare("UPDATE monthly_plan_rows SET person_id = ? WHERE household_id = ? AND person_id = ?").bind(toPersonId, defaultHousehold.id, fromPersonId).run();
+  await db.prepare("UPDATE monthly_plan_match_hints SET person_id = ? WHERE household_id = ? AND person_id = ?").bind(toPersonId, defaultHousehold.id, fromPersonId).run();
+  await db
+    .prepare(`
+      UPDATE transaction_splits
+      SET person_id = ?
+      WHERE person_id = ?
+        AND transaction_id IN (
+          SELECT id FROM transactions WHERE household_id = ?
+        )
+    `)
+    .bind(toPersonId, fromPersonId, defaultHousehold.id)
+    .run();
+  await db
+    .prepare(`
+      UPDATE split_expense_shares
+      SET person_id = ?
+      WHERE person_id = ?
+        AND split_expense_id IN (
+          SELECT id FROM split_expenses WHERE household_id = ?
+        )
+    `)
+    .bind(toPersonId, fromPersonId, defaultHousehold.id)
+    .run();
+  await db
+    .prepare(`
+      UPDATE monthly_plan_row_splits
+      SET person_id = ?
+      WHERE person_id = ?
+        AND monthly_plan_row_id IN (
+          SELECT id FROM monthly_plan_rows WHERE household_id = ?
+        )
+    `)
+    .bind(toPersonId, fromPersonId, defaultHousehold.id)
+    .run();
 }
 
 export async function clearDemoData(db: D1Database) {

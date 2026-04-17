@@ -79,6 +79,7 @@ export const defaultCategoryMatchRules: DefaultCategoryMatchRule[] = [
   { id: "catrule-fr-wisma", pattern: "FR WISMA", categoryName: "Food & Drinks", priority: 45, note: "Food Republic Wisma foodcourt." },
   { id: "catrule-creative-salon", pattern: "CREATIVE SALON", categoryName: "Beauty", priority: 45 },
   { id: "catrule-natureland", pattern: "NATURELAND", categoryName: "Beauty", priority: 45 },
+  { id: "catrule-giro-hdb", pattern: "GIRO, HDB", categoryName: "Home", priority: 45, note: "Both GIRO and HDB must appear in the bank text." },
   { id: "catrule-aircon-uncle", pattern: "AIRCON UNCLE", categoryName: "Home", priority: 45 },
   { id: "catrule-coin-laundry", pattern: "COIN LAUNDRY", categoryName: "Travel", priority: 45 },
   { id: "catrule-interests", pattern: "INTERESTS", categoryName: "Fees", priority: 45 },

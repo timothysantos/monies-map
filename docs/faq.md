@@ -210,6 +210,7 @@ The current default category catalog is:
 - `Food & Drinks` — icon `utensils` — color `#F7A21B`
 - `Shopping` — icon `shopping-bag` — color `#D4B35D`
 - `Family & Personal` — icon `users` — color `#4F8FD6`
+- `Baby & Kids` — icon `baby` — color `#7EBDC2`
 - `Home` — icon `house` — color `#F85A53`
 - `Church` — icon `church` — color `#F062A6`
 - `Tax` — icon `banknote` — color `#CC63D8`
@@ -376,8 +377,8 @@ future rows before commit. If a rule matches, it can correct the parser's first
 guess. This is for repeated bank text such as `TADA`, `SHOPEE`,
 `AMAZON`, `AMZON`, `JALAIRLINE`,
 `SINGLIFE`, `GOLDENVILLAGE`, `JOSEPHPRINCE`, `GOPAY-GOJEK`, `AXSPTELTD`,
-`KEPPEL ELECTRIC`, `M1LIMITED`, `INCOMEINSURANCE`, and card conversion-fee
-descriptions.
+`KEPPEL ELECTRIC`, `M1LIMITED`, `INCOMEINSURANCE`, `GIRO` plus `HDB`, and card
+conversion-fee descriptions.
 Transfer-looking card rows such as `TSFTO...6349` are treated as transfers, not
 normal expenses.
 

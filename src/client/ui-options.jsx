@@ -1,5 +1,6 @@
 import {
   ArrowRightLeft,
+  Baby,
   BadgeDollarSign,
   Banknote,
   BanknoteArrowUp,
@@ -33,6 +34,7 @@ export const ICON_OPTIONS = [
   { key: "utensils", label: "Food", Icon: UtensilsCrossed },
   { key: "shopping-bag", label: "Shopping", Icon: ShoppingBag },
   { key: "users", label: "Family", Icon: UsersRound },
+  { key: "baby", label: "Baby", Icon: Baby },
   { key: "receipt", label: "Receipt", Icon: Receipt },
   { key: "shopping-cart", label: "Groceries", Icon: ShoppingCart },
   { key: "house", label: "Home", Icon: House },
@@ -65,6 +67,7 @@ export const COLOR_OPTIONS = [
   "#F7A21B",
   "#D4B35D",
   "#4F8FD6",
+  "#7EBDC2",
   "#F85A53",
   "#F062A6",
   "#CC63D8",

@@ -67,11 +67,11 @@ That distinction matters because the system needs to answer questions like:
   completed-looking partial batches
 - `category_match_rules` are household-scoped reference data used during import
   preview. The backend matches merchant text such as `TADA`, `SHOPEE`,
-  `SINGLIFE`, `KEPPEL ELECTRIC`, `INCOMEINSURANCE`, or conversion-fee patterns
-  to the configured category, and a matching rule wins over the parser's first
-  category guess. The parser-side inference keeps a similar fallback for local
-  PDF/CSV parsing, but database rules are the editable source of truth in
-  Settings.
+  `SINGLIFE`, `KEPPEL ELECTRIC`, `INCOMEINSURANCE`, `GIRO` plus `HDB`, or
+  conversion-fee patterns to the configured category, and a matching rule wins
+  over the parser's first category guess. The parser-side inference keeps a
+  similar fallback for local PDF/CSV parsing, but database rules are the
+  editable source of truth in Settings.
 - repeated manual category corrections are stored as pending
   `category_match_rule_suggestions` instead of silently creating rules. Settings
   shows a badge when suggestions exist, deep-links to Category matching, and lets
