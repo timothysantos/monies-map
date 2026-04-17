@@ -5660,6 +5660,10 @@ th {
     gap: 8px;
   }
 
+  .month-title {
+    display: none;
+  }
+
   .panel-context {
     font-size: 0.82rem;
   }
@@ -6244,6 +6248,19 @@ th {
   .month-plan-section .panel-subhead p,
   .month-section-detail-inline {
     display: none;
+  }
+
+  .month-panel-head {
+    justify-content: flex-end;
+  }
+
+  .month-panel-head > div:first-child {
+    display: none;
+  }
+
+  .month-panel-head .month-header-controls {
+    width: 100%;
+    justify-content: flex-end;
   }
 
   .month-table-wrap {

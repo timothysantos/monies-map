@@ -28,7 +28,7 @@ export function MonthPanelHeader({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   return (
-    <div className="panel-head">
+    <div className="panel-head month-panel-head">
       <div>
         <h2 className="month-title">{messages.tabs.month}</h2>
         <span id="month-label" className="month-label">
