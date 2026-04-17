@@ -22,9 +22,9 @@ That distinction matters because the system needs to answer questions like:
 ## Documentation rule
 
 - Keep this file updated alongside meaningful architecture or product changes.
-- Keep [`AGENTS.md`](/Users/tim/22m/ai-projects/monies_map/AGENTS.md) aligned
+- Keep [`AGENTS.md`](../AGENTS.md) aligned
   with implementation conventions and coding expectations.
-- Keep [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
+- Keep [`docs/faq.md`](faq.md)
   updated as a living user-facing reference for setup, workflow, and feature scope.
 
 ## Primary workflows
@@ -210,10 +210,10 @@ Each month should support two distinct planning layers:
 - planned items
 - budget buckets
 
-Monthly planning rows are person-owned first. Tim and Joyce can each have their
-own monthly plan rows, and the household view should be a derived combined view
-over those per-person plans instead of a separate manually maintained household
-plan.
+Monthly planning rows are person-owned first. The primary person and partner can
+each have their own monthly plan rows, and the household view should be a
+derived combined view over those per-person plans instead of a separate manually
+maintained household plan.
 
 Planned items are suitable for rows such as:
 
@@ -416,7 +416,7 @@ Cloudflare is a practical choice here:
 
 The production app now runs as one Cloudflare Worker with static assets served
 from `dist` and a D1 binding named `DB`. The current Worker URL is
-`https://monies-map.timsantos-accts.workers.dev`, backed by the APAC D1 database
+`https://<your-worker-host>`, backed by the APAC D1 database
 `monies-map` (`d1aa440c-d239-48ac-b0a6-d39f34e26e0e`).
 Worker assets use single-page-application not-found handling so direct refreshes
 of React routes such as `/entries` and `/settings` return the app shell instead

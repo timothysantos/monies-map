@@ -57,9 +57,9 @@ After a planned item is matched, the app remembers lightweight matching hints
 from the linked ledger entries so future months can suggest likely matches. It
 does not auto-link them yet; the user still confirms the matches.
 
-Monthly planning is person-based first. Tim and Joyce can have different month
-plans, and the household month view should be derived by combining those plans,
-not by maintaining a separate duplicate household plan.
+Monthly planning is person-based first. The primary person and partner can have
+different month plans, and the household month view should be derived by
+combining those plans, not by maintaining a separate duplicate household plan.
 
 The point is not only to log transactions. The point is to compare plan versus
 actual and understand why the month moved.
@@ -103,7 +103,7 @@ into the app.
 
 The current Cloudflare Worker deployment is:
 
-[https://monies-map.timsantos-accts.workers.dev](https://monies-map.timsantos-accts.workers.dev)
+[https://<your-worker-host>](https://<your-worker-host>)
 
 It uses the Cloudflare D1 database `monies-map`.
 The Worker is configured as a single-page app, so refreshing nested routes such
@@ -112,8 +112,8 @@ as `/entries` should reload the React app instead of returning a Cloudflare 404.
 Before using real household data, protect the Worker with Cloudflare Access.
 The fastest setup is one-time PIN email auth, restricted to:
 
-- `mr.timothysantos@gmail.com`
-- `hellojoyceli@gmail.com`
+- primary household email
+- partner household email
 
 Google login can be added later by configuring Google as a Cloudflare Zero Trust
 identity provider and keeping the same email allowlist.
@@ -121,7 +121,7 @@ identity provider and keeping the same email allowlist.
 ## How do I deploy to production?
 
 Use the Cloudflare deploy steps in
-[`README.md`](/Users/tim/22m/ai-projects/monies_map/README.md#cloudflare-deploy).
+[`README.md`](../README.md#cloudflare-deploy).
 The routine path is to use Node 22, then run `npm run deploy`. If the app change
 depends on a schema update, run `npm run db:migrate:remote` before deploy.
 
@@ -239,9 +239,9 @@ planning lens. The household monthly view should focus on:
 - `Shared`: shared-only planning rows
 
 In person views, shared rows are supposed to be weighted to that person's split.
-If a shared dining row is split 55/45, Tim should see the 55% subtotal and
-Joyce should see the 45% subtotal. The full shared transaction can still be
-shown alongside it for context.
+If a shared dining row is split 55/45, the primary person should see the 55%
+subtotal and the partner should see the 45% subtotal. The full shared
+transaction can still be shown alongside it for context.
 
 ## Why do notes matter so much?
 

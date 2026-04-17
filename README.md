@@ -22,7 +22,7 @@ The app turns that into a durable ledger so imports are repeatable and the summa
   checkpoints where the parser can prove the statement balance
 - Import supported UOB current-transaction `.xls` exports as mid-cycle working
   ledger rows
-- Track accounts owned by Tim, Joyce, or shared at the household level
+- Track accounts owned by the primary person, partner, or shared at the household level
 - Assign transactions as direct, shared, income, expense, or transfer
 - Use the Splits workspace for shared expenses, named groups, settle-up records,
   and matching ledger entries into shared batches
@@ -63,15 +63,15 @@ It does not yet include:
 The intended workflow is local-first: finish the product shape locally, iterate
 on demo data and imports, then connect the same repo to Cloudflare.
 
-The user-facing FAQ lives in [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
+The user-facing FAQ lives in [`docs/faq.md`](docs/faq.md)
 and should be kept updated as the app changes.
 The product workflow guide lives in
-[`docs/git.md`](/Users/tim/22m/ai-projects/monies_map/docs/git.md) and captures
+[`docs/git.md`](docs/git.md) and captures
 the current import, reconciliation, and splits workflows.
 
 ## Data model
 
-Core entities in [`schema.sql`](/Users/tim/22m/ai-projects/monies_map/schema.sql):
+Core entities in [`schema.sql`](schema.sql):
 
 - `households`: one top-level household
 - `people`: you and your wife
@@ -94,7 +94,7 @@ Recommended local environment:
 - npm
 - Git
 
-This repo includes an [`.nvmrc`](/Users/tim/22m/ai-projects/monies_map/.nvmrc) file:
+This repo includes an [`.nvmrc`](.nvmrc) file:
 
 ```bash
 nvm install
@@ -135,7 +135,7 @@ What these commands do:
 - `npm install`
   - installs React, Vite, Recharts, Wrangler, TypeScript, and related tooling
 - `npm run db:migrate`
-  - applies [`schema.sql`](/Users/tim/22m/ai-projects/monies_map/schema.sql) to the local D1 database
+  - applies [`schema.sql`](schema.sql) to the local D1 database
 - `npm run dev`
   - runs Vite on `5173` and the Worker API on `8787`
   - Vite on `5173` is the URL that auto-refreshes when you edit frontend files
@@ -160,7 +160,7 @@ CSV import flows before deployment.
 
 The app is deployed to Cloudflare Workers with Cloudflare D1:
 
-- production Worker: [https://monies-map.timsantos-accts.workers.dev](https://monies-map.timsantos-accts.workers.dev)
+- production Worker: [https://<your-worker-host>](https://<your-worker-host>)
 - D1 database name: `monies-map`
 - D1 database id: `d1aa440c-d239-48ac-b0a6-d39f34e26e0e`
 
@@ -176,7 +176,7 @@ npm run deploy
 ```
 
 `npm run deploy` builds the app and then runs `wrangler deploy`. Wrangler uses
-[`wrangler.jsonc`](/Users/tim/22m/ai-projects/monies_map/wrangler.jsonc) to
+[`wrangler.jsonc`](wrangler.jsonc) to
 publish the Worker, serve the built static assets from `dist`, and bind the
 production D1 database as `DB`.
 
@@ -197,8 +197,8 @@ The current production auth plan is Cloudflare Access in front of the Worker.
 Use one-time PIN email auth first because it does not require setting up a
 Google identity provider. Restrict access to:
 
-- `mr.timothysantos@gmail.com`
-- `hellojoyceli@gmail.com`
+- primary household email
+- partner household email
 
 Once Google is configured as a Cloudflare Zero Trust identity provider, the
 same Access application can be switched to Google login with the same email
@@ -220,7 +220,7 @@ npx wrangler login
 npx wrangler d1 create monies-map
 ```
 
-3. Copy the returned `database_id` into [`wrangler.jsonc`](/Users/tim/22m/ai-projects/monies_map/wrangler.jsonc).
+3. Copy the returned `database_id` into [`wrangler.jsonc`](wrangler.jsonc).
 
 4. Apply the schema remotely:
 

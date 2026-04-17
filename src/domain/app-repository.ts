@@ -95,10 +95,11 @@ import type {
 
 const DEFAULT_HOUSEHOLD_ID = defaultHousehold.id;
 
-const PERSON_IDS: Record<string, string> = {
-  Tim: "person-tim",
-  Joyce: "person-joyce"
-};
+const SEED_PERSON_IDS_BY_NAME = new Map(demoPeople.map((person) => [person.name, person.id]));
+const DEMO_PRIMARY_PERSON_ID = demoPeople[0]?.id ?? "demo-primary";
+const DEMO_PARTNER_PERSON_ID = demoPeople[1]?.id ?? "demo-partner";
+const EMPTY_PRIMARY_PERSON_ID = "person-primary";
+const EMPTY_PARTNER_PERSON_ID = "person-partner";
 
 function findSeedAccountId(accountName?: string) {
   if (!accountName) {
@@ -118,8 +119,8 @@ function findSeedCategoryId(categoryName?: string) {
 
 const SHARED_ACCOUNT_INSTITUTION = "DBS";
 const EMPTY_STATE_PEOPLE = [
-  { id: "person-tim", name: "Primary" },
-  { id: "person-joyce", name: "Partner" }
+  { id: EMPTY_PRIMARY_PERSON_ID, name: "Primary", role: "owner" },
+  { id: EMPTY_PARTNER_PERSON_ID, name: "Partner", role: "partner" }
 ];
 const IMPORT_COMMIT_STATEMENT_CHUNK_SIZE = 90;
 
@@ -483,7 +484,7 @@ export async function seedEmptyStateReferenceData(db: D1Database) {
         VALUES (?, ?, ?, ?)
         ON CONFLICT(id) DO NOTHING
       `)
-      .bind(person.id, defaultHousehold.id, person.name, person.id === "person-tim" ? "owner" : "partner")
+      .bind(person.id, defaultHousehold.id, person.name, person.role)
       .run();
   }
 
@@ -559,7 +560,7 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
   for (const person of defaultHousehold.people) {
     await db
       .prepare("INSERT INTO people (id, household_id, display_name, role) VALUES (?, ?, ?, ?)")
-      .bind(person.id, defaultHousehold.id, person.name, person.id === "person-tim" ? "owner" : "partner")
+      .bind(person.id, defaultHousehold.id, person.name, person.id === DEMO_PRIMARY_PERSON_ID ? "owner" : "partner")
       .run();
   }
 
@@ -579,7 +580,7 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
   }
 
   for (const account of demoAccounts) {
-    const ownerPersonId = PERSON_IDS[account.ownerLabel] ?? null;
+    const ownerPersonId = SEED_PERSON_IDS_BY_NAME.get(account.ownerLabel) ?? null;
     await db
       .prepare(`
         INSERT INTO accounts (
@@ -683,7 +684,7 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
         defaultHousehold.id,
         planYear,
         planMonth,
-        row.ownerName ? PERSON_IDS[row.ownerName] ?? null : null,
+        row.ownerName ? SEED_PERSON_IDS_BY_NAME.get(row.ownerName) ?? null : null,
         row.ownershipType,
         row.section,
         findSeedCategoryId(row.categoryName),
@@ -717,15 +718,15 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
   for (const monthKey of demoMonths) {
     const [year, month] = monthKey.split("-").map(Number);
     const seededIncomeRows = [
-      ...buildMonthIncomeRows("person-tim", settings.salaryPerPersonMinor).map((row) => ({
+      ...buildMonthIncomeRows(DEMO_PRIMARY_PERSON_ID, settings.salaryPerPersonMinor).map((row) => ({
         ...row,
-        id: `seed-${monthKey}-person-tim-${row.id}`,
-        personId: "person-tim"
+        id: `seed-${monthKey}-${DEMO_PRIMARY_PERSON_ID}-${row.id}`,
+        personId: DEMO_PRIMARY_PERSON_ID
       })),
-      ...buildMonthIncomeRows("person-joyce", settings.salaryPerPersonMinor).map((row) => ({
+      ...buildMonthIncomeRows(DEMO_PARTNER_PERSON_ID, settings.salaryPerPersonMinor).map((row) => ({
         ...row,
-        id: `seed-${monthKey}-person-joyce-${row.id}`,
-        personId: "person-joyce"
+        id: `seed-${monthKey}-${DEMO_PARTNER_PERSON_ID}-${row.id}`,
+        personId: DEMO_PARTNER_PERSON_ID
       }))
     ];
 
@@ -789,7 +790,7 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
   }
 
   for (const entry of demoMonthEntries) {
-    const directOwnerId = entry.ownerName ? PERSON_IDS[entry.ownerName] ?? null : null;
+    const directOwnerId = entry.ownerName ? SEED_PERSON_IDS_BY_NAME.get(entry.ownerName) ?? null : null;
     await db
       .prepare(`
         INSERT INTO transactions (
@@ -899,7 +900,7 @@ async function seedDemoSplitData(db: D1Database) {
       id: "split-expense-okaeri-dining",
       groupId: "split-group-okaeri",
       batchId: "split-batch-okaeri-closed",
-      payerPersonId: "person-tim",
+      payerPersonId: DEMO_PRIMARY_PERSON_ID,
       date: "2025-10-03",
       description: "October dining",
       categoryName: "Food & Drinks",
@@ -910,7 +911,7 @@ async function seedDemoSplitData(db: D1Database) {
       id: "split-expense-baby-river-family",
       groupId: "split-group-baby-river",
       batchId: "split-batch-baby-river-open",
-      payerPersonId: "person-joyce",
+      payerPersonId: DEMO_PARTNER_PERSON_ID,
       date: "2025-10-12",
       description: "Family support",
       categoryName: "Family & Personal",
@@ -921,7 +922,7 @@ async function seedDemoSplitData(db: D1Database) {
       id: "split-expense-nongroup-groceries",
       groupId: null,
       batchId: "split-batch-none-open",
-      payerPersonId: "person-joyce",
+      payerPersonId: DEMO_PARTNER_PERSON_ID,
       date: "2025-10-06",
       description: "October groceries",
       categoryName: "Groceries",
@@ -955,8 +956,8 @@ async function seedDemoSplitData(db: D1Database) {
     const primaryShare = Math.floor(expense.totalAmountMinor / 2);
     const secondaryShare = expense.totalAmountMinor - primaryShare;
     const shareRows = [
-      { personId: "person-tim", amountMinor: primaryShare },
-      { personId: "person-joyce", amountMinor: secondaryShare }
+      { personId: DEMO_PRIMARY_PERSON_ID, amountMinor: primaryShare },
+      { personId: DEMO_PARTNER_PERSON_ID, amountMinor: secondaryShare }
     ];
 
     for (const share of shareRows) {
@@ -970,7 +971,7 @@ async function seedDemoSplitData(db: D1Database) {
           `${expense.id}-${share.personId}`,
           expense.id,
           share.personId,
-          share.personId === "person-tim" ? 5000 : 5000,
+          share.personId === DEMO_PRIMARY_PERSON_ID ? 5000 : 5000,
           share.amountMinor
         )
         .run();
@@ -989,8 +990,8 @@ async function seedDemoSplitData(db: D1Database) {
       DEFAULT_HOUSEHOLD_ID,
       "split-group-okaeri",
       "split-batch-okaeri-closed",
-      "person-joyce",
-      "person-tim",
+      DEMO_PARTNER_PERSON_ID,
+      DEMO_PRIMARY_PERSON_ID,
       "2025-10-22",
       93150,
       "Manual settle-up recorded before bank transfer was linked."
@@ -1113,7 +1114,7 @@ export async function duplicateMonthPlan(db: D1Database, sourceMonth: string) {
     }
   }
 
-  const personScopes = ["household", "person-tim", "person-joyce"];
+  const personScopes = await loadPersonScopes(db);
   for (const personScope of personScopes) {
     const incomeRows = await loadMonthIncomeRows(db, personScope, targetMonth);
     const planRows = await loadMonthPlanRows(db, targetMonth);
@@ -1154,7 +1155,7 @@ export async function resetMonthPlan(db: D1Database, month: string) {
   const [year, monthNumber] = month.split("-").map(Number);
   await clearMonthData(db, month, year, monthNumber);
 
-  const personScopes = ["household", "person-tim", "person-joyce"];
+  const personScopes = await loadPersonScopes(db);
   for (const personScope of personScopes) {
     await db
       .prepare(`
@@ -2589,11 +2590,10 @@ async function recalculateMonthlySnapshots(db: D1Database, month: string) {
   ]);
 
   const notesByScope = new Map(existingSnapshots.results.map((row) => [row.person_scope, row.note ?? ""]));
-  const scopes = [
-    { key: "household", incomeRows: await loadMonthIncomeRows(db, "household", month) },
-    { key: "person-tim", incomeRows: await loadMonthIncomeRows(db, "person-tim", month) },
-    { key: "person-joyce", incomeRows: await loadMonthIncomeRows(db, "person-joyce", month) }
-  ];
+  const scopes = await Promise.all((await loadPersonScopes(db)).map(async (personScope) => ({
+    key: personScope,
+    incomeRows: await loadMonthIncomeRows(db, personScope, month)
+  })));
 
   for (const scope of scopes) {
     const visibleRows = buildSnapshotRowsForScope(planRows, scope.key);
@@ -2651,4 +2651,18 @@ async function recalculateMonthlySnapshots(db: D1Database, month: string) {
       )
       .run();
   }
+}
+
+async function loadPersonScopes(db: D1Database) {
+  const people = await db
+    .prepare(`
+      SELECT id
+      FROM people
+      WHERE household_id = ?
+      ORDER BY created_at
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID)
+    .all<{ id: string }>();
+
+  return ["household", ...people.results.map((person) => person.id)];
 }

@@ -1,12 +1,12 @@
 # Product Workflow Guide
 
 This guide is a short product-facing snapshot of Monie's Map. Keep it aligned
-with [`faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md) when import,
+with [`faq.md`](faq.md) when import,
 reconciliation, splits, or account workflows change.
 
 ## Core Features
 
-- Multi-person household views for Household, Tim, and Joyce.
+- Multi-person household views for Household, Primary, and Partner.
 - Monthly planning with income rows, planned items, and flexible budget buckets.
 - Entries ledger with direct, shared, income, expense, and transfer rows.
 - Splits workspace for manual shared expenses, named groups, settle-up records,

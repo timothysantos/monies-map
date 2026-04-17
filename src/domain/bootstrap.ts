@@ -84,23 +84,25 @@ export async function buildBootstrapDto(
     loadSplitSettlements(db, effectiveSelectedMonth),
     loadSplitMatchCandidates(db, effectiveSelectedMonth)
   ]);
-  const [householdSummaryMonths, timSummaryMonths, joyceSummaryMonths, householdIncomeRows, timIncomeRows, joyceIncomeRows] = await Promise.all([
+  const primaryPersonId = household.people[0]?.id ?? "person-primary";
+  const partnerPersonId = household.people[1]?.id ?? "person-partner";
+  const [householdSummaryMonths, primarySummaryMonths, partnerSummaryMonths, householdIncomeRows, primaryIncomeRows, partnerIncomeRows] = await Promise.all([
     loadSummaryMonths(db, "household"),
-    loadSummaryMonths(db, "person-tim"),
-    loadSummaryMonths(db, "person-joyce"),
+    loadSummaryMonths(db, primaryPersonId),
+    loadSummaryMonths(db, partnerPersonId),
     loadMonthIncomeRows(db, "household", effectiveSelectedMonth),
-    loadMonthIncomeRows(db, "person-tim", effectiveSelectedMonth),
-    loadMonthIncomeRows(db, "person-joyce", effectiveSelectedMonth)
+    loadMonthIncomeRows(db, primaryPersonId, effectiveSelectedMonth),
+    loadMonthIncomeRows(db, partnerPersonId, effectiveSelectedMonth)
   ]);
   const summaryMonthsByView = {
     household: householdSummaryMonths,
-    "person-tim": timSummaryMonths,
-    "person-joyce": joyceSummaryMonths
+    [primaryPersonId]: primarySummaryMonths,
+    [partnerPersonId]: partnerSummaryMonths
   };
   const incomeRowsByView = {
     household: householdIncomeRows,
-    "person-tim": timIncomeRows,
-    "person-joyce": joyceIncomeRows
+    [primaryPersonId]: primaryIncomeRows,
+    [partnerPersonId]: partnerIncomeRows
   };
   const summaryRangeMonths = buildSummaryRange(
     trackedMonths,
@@ -111,8 +113,8 @@ export async function buildBootstrapDto(
   const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
   const views: ContextViewDto[] = [
     buildContextView("household", "Household", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, splitGroups, splitExpenses, splitSettlements, splitMatches, categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
-    buildContextView("person-tim", personNameById["person-tim"] ?? defaultHousehold.people[0]?.name ?? "Primary", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, splitGroups, splitExpenses, splitSettlements, splitMatches, categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
-    buildContextView("person-joyce", personNameById["person-joyce"] ?? defaultHousehold.people[1]?.name ?? "Partner", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, splitGroups, splitExpenses, splitSettlements, splitMatches, categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById)
+    buildContextView(primaryPersonId, personNameById[primaryPersonId] ?? "Primary", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, splitGroups, splitExpenses, splitSettlements, splitMatches, categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
+    buildContextView(partnerPersonId, personNameById[partnerPersonId] ?? "Partner", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, splitGroups, splitExpenses, splitSettlements, splitMatches, categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById)
   ];
 
   return {
@@ -885,23 +887,28 @@ function splitMatchMatchesView(
 }
 
 function splitExpenseBalanceForView(expense: SplitExpenseDto, viewId: string) {
-  const timShare = expense.shares.find((share) => share.personId === "person-tim")?.amountMinor ?? 0;
-  const joyceShare = expense.shares.find((share) => share.personId === "person-joyce")?.amountMinor ?? 0;
-  const balanceFromTimPerspective = expense.payerPersonId === "person-tim" ? joyceShare : -timShare;
-  if (viewId === "person-joyce") {
-    return -balanceFromTimPerspective;
+  const [primaryShare, partnerShare] = expense.shares;
+  const primaryShareMinor = primaryShare?.amountMinor ?? 0;
+  const partnerShareMinor = partnerShare?.amountMinor ?? 0;
+  const primaryPersonId = primaryShare?.personId ?? "";
+  const partnerPersonId = partnerShare?.personId ?? "";
+  const balanceFromPrimaryPerspective = expense.payerPersonId === primaryPersonId ? partnerShareMinor : -primaryShareMinor;
+  if (viewId === partnerPersonId) {
+    return -balanceFromPrimaryPerspective;
   }
-  return balanceFromTimPerspective;
+  return balanceFromPrimaryPerspective;
 }
 
 function splitSettlementBalanceForView(settlement: SplitSettlementDto, viewId: string) {
-  const balanceFromTimPerspective = settlement.fromPersonId === "person-joyce"
-    ? settlement.amountMinor
-    : -settlement.amountMinor;
-  if (viewId === "person-joyce") {
-    return -balanceFromTimPerspective;
+  if (viewId === settlement.toPersonId) {
+    return settlement.amountMinor;
   }
-  return balanceFromTimPerspective;
+
+  if (viewId === settlement.fromPersonId) {
+    return -settlement.amountMinor;
+  }
+
+  return settlement.amountMinor;
 }
 
 function formatSplitBalanceSummary(balanceMinor: number, viewId: string, personNameById: Record<string, string>) {
@@ -910,17 +917,23 @@ function formatSplitBalanceSummary(balanceMinor: number, viewId: string, personN
   }
 
   const abs = formatCompactMoney(balanceMinor);
-  const primaryName = personNameById["person-tim"] ?? "Primary";
-  const secondaryName = personNameById["person-joyce"] ?? "Partner";
-  if (viewId === "person-tim") {
+  const [primaryPersonId, partnerPersonId] = getOrderedPersonIds(personNameById);
+  const primaryName = personNameById[primaryPersonId] ?? "Primary";
+  const secondaryName = personNameById[partnerPersonId] ?? "Partner";
+  if (viewId === primaryPersonId) {
     return balanceMinor > 0 ? `${secondaryName} owes you ${abs}` : `You owe ${secondaryName} ${abs}`;
   }
 
-  if (viewId === "person-joyce") {
+  if (viewId === partnerPersonId) {
     return balanceMinor > 0 ? `${primaryName} owes you ${abs}` : `You owe ${primaryName} ${abs}`;
   }
 
   return balanceMinor > 0 ? `${secondaryName} owes ${primaryName} ${abs}` : `${primaryName} owes ${secondaryName} ${abs}`;
+}
+
+function getOrderedPersonIds(personNameById: Record<string, string>) {
+  const personIds = Object.keys(personNameById);
+  return [personIds[0] ?? "person-primary", personIds[1] ?? "person-partner"];
 }
 
 function buildSplitActivity(
@@ -993,8 +1006,9 @@ function viewerExpenseAmountForChart(expense: SplitExpenseDto, viewId: string) {
 function formatExpenseDirectionLabel(expense: SplitExpenseDto, viewId: string, personNameById: Record<string, string>) {
   if (viewId === "household") {
     const balance = splitExpenseBalanceForView(expense, "household");
-    const primaryName = personNameById["person-tim"] ?? "Primary";
-    const secondaryName = personNameById["person-joyce"] ?? "Partner";
+    const [primaryPersonId, partnerPersonId] = getOrderedPersonIds(personNameById);
+    const primaryName = personNameById[primaryPersonId] ?? "Primary";
+    const secondaryName = personNameById[partnerPersonId] ?? "Partner";
     return balance === 0 ? "shared evenly" : balance > 0 ? `${primaryName} covered more` : `${secondaryName} covered more`;
   }
 
