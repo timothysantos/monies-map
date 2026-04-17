@@ -358,15 +358,15 @@ On touch devices, swipe left or right on Month or Entries to move to the next
 or previous month. Splits does not use the selected month as its main filter, so
 the gesture is disabled there.
 
-After a month or summary range loads, the app keeps that bootstrap payload in
-memory and preloads nearby months or ranges. Going back to an adjacent period
-can therefore render immediately while the app refreshes the cached data in the
-background. Imports, edits, rollbacks, and other writes clear the cache before
-reloading.
+After a month or summary range loads, the app keeps that page payload in memory
+and preloads nearby months or ranges. Going back to an adjacent period can
+therefore render immediately while the app refreshes the cached data in the
+background. Imports, edits, rollbacks, and other writes clear the relevant page
+cache before reloading.
 
-Entries uses a smaller entries-only payload for month changes. That lets the
-Entries page refresh and preload adjacent months without waiting for imports,
-settings, splits, and the rest of the dashboard bootstrap to reload.
+The initial bootstrap now acts as the app shell. Summary, Month, Entries,
+Splits, Imports, and Settings each have smaller page-specific reloads so month
+changes and review work do not wait for the whole dashboard bootstrap to reload.
 
 ## How do I import real bank activity?
 

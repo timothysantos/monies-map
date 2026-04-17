@@ -1,4 +1,12 @@
-import { buildBootstrapDto, buildEntriesPageDto } from "./domain/bootstrap";
+import {
+  buildBootstrapDto,
+  buildEntriesPageDto,
+  buildImportsPageDto,
+  buildMonthPageDto,
+  buildSettingsPageDto,
+  buildSplitsPageDto,
+  buildSummaryPageDto
+} from "./domain/bootstrap";
 import { enterEmptyState, reseedDemoSettings } from "./domain/demo-settings";
 import {
   archiveAccountRecord,
@@ -86,6 +94,73 @@ export default {
       } catch (error) {
         console.error("Entries page failed", error);
         return json({ ok: false, error: "Entries page failed", message: describeError(error) }, 500);
+      }
+    }
+
+    if (url.pathname === "/api/summary-page") {
+      try {
+        return json(
+          await buildSummaryPageDto(
+            env.DB,
+            url.searchParams.get("view") ?? "household",
+            url.searchParams.get("month") ?? getCurrentMonthKey(),
+            (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared",
+            url.searchParams.get("summary_start") ?? undefined,
+            url.searchParams.get("summary_end") ?? undefined
+          )
+        );
+      } catch (error) {
+        console.error("Summary page failed", error);
+        return json({ ok: false, error: "Summary page failed", message: describeError(error) }, 500);
+      }
+    }
+
+    if (url.pathname === "/api/month-page") {
+      try {
+        return json(
+          await buildMonthPageDto(
+            env.DB,
+            url.searchParams.get("view") ?? "household",
+            url.searchParams.get("month") ?? getCurrentMonthKey(),
+            (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared"
+          )
+        );
+      } catch (error) {
+        console.error("Month page failed", error);
+        return json({ ok: false, error: "Month page failed", message: describeError(error) }, 500);
+      }
+    }
+
+    if (url.pathname === "/api/splits-page") {
+      try {
+        return json(
+          await buildSplitsPageDto(
+            env.DB,
+            url.searchParams.get("view") ?? "household",
+            url.searchParams.get("month") ?? getCurrentMonthKey()
+          )
+        );
+      } catch (error) {
+        console.error("Splits page failed", error);
+        return json({ ok: false, error: "Splits page failed", message: describeError(error) }, 500);
+      }
+    }
+
+    if (url.pathname === "/api/imports-page") {
+      try {
+        return json(await buildImportsPageDto(env.DB));
+      } catch (error) {
+        console.error("Imports page failed", error);
+        return json({ ok: false, error: "Imports page failed", message: describeError(error) }, 500);
+      }
+    }
+
+    if (url.pathname === "/api/settings-page") {
+      try {
+        return json(await buildSettingsPageDto(env.DB));
+      } catch (error) {
+        console.error("Settings page failed", error);
+        return json({ ok: false, error: "Settings page failed", message: describeError(error) }, 500);
       }
     }
 
