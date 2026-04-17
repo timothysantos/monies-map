@@ -14,9 +14,26 @@ export function buildImportPreviewModel({
     counts.set(account.name, (counts.get(account.name) ?? 0) + 1);
     return counts;
   }, new Map());
-  const detectedPreviewAccountNames = Array.from(new Set(previewRows.map((row) => row.accountName).filter(Boolean))).sort();
-  const unknownPreviewAccountNames = detectedPreviewAccountNames.filter((accountName) => !knownAccountNames.has(accountName));
-  const ambiguousPreviewAccountNames = detectedPreviewAccountNames.filter((accountName) => (accountNameCounts.get(accountName) ?? 0) > 1);
+  const detectedPreviewAccountNames = Array.from(new Set(
+    statementImportMeta.sourceType === "pdf" && statementCheckpoints.length
+      ? statementCheckpoints.map((checkpoint) => checkpoint.detectedAccountName ?? checkpoint.accountName).filter(Boolean)
+      : previewRows.map((row) => row.statementAccountName ?? row.accountName).filter(Boolean)
+  )).sort();
+  const checkpointByDetectedName = new Map(statementCheckpoints.map((checkpoint) => [checkpoint.detectedAccountName ?? checkpoint.accountName, checkpoint]));
+  const unknownPreviewAccountNames = detectedPreviewAccountNames.filter((accountName) => {
+    const checkpoint = checkpointByDetectedName.get(accountName);
+    if (checkpoint?.accountId) {
+      return false;
+    }
+    return !knownAccountNames.has(checkpoint?.accountName ?? accountName);
+  });
+  const ambiguousPreviewAccountNames = detectedPreviewAccountNames.filter((accountName) => {
+    const checkpoint = checkpointByDetectedName.get(accountName);
+    if (checkpoint?.accountId) {
+      return false;
+    }
+    return (accountNameCounts.get(checkpoint?.accountName ?? accountName) ?? 0) > 1;
+  });
   const duplicateCheckpointAccounts = getDuplicateCheckpointAccounts(statementCheckpoints);
   const visibleOverlapImports = (preview?.overlapImports ?? []).filter((item) => !dismissedOverlapIds.includes(item.id));
   const previewDuplicateRowCount = previewRows.filter((row) => row.duplicateMatches?.length).length;

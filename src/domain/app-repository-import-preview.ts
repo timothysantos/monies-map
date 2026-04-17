@@ -125,6 +125,7 @@ export async function buildImportPreview(
     }
 
     const inferredAccount = resolvePreviewAccount(accountsById, accountsByName, normalized.accountId, inferredAccountName);
+    const statementAccountName = rawRow.statementAccountName || rawRow.statementAccount || rawRow.account;
     const inferredOwnerName = input.ownershipType === "direct"
       ? getDirectOwnerNameForAccount(inferredAccount, input.ownerName)
       : undefined;
@@ -139,6 +140,7 @@ export async function buildImportPreview(
       transferDirection: inferredTransferDirection,
       accountId: inferredAccount?.id,
       accountName: inferredAccount?.name ?? inferredAccountName,
+      statementAccountName,
       categoryName: inferredCategoryName,
       ownershipType: input.ownershipType,
       ownerName: inferredOwnerName,

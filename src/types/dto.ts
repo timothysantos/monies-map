@@ -365,6 +365,7 @@ export interface ImportPreviewRowDto {
   transferDirection?: TransferDirection;
   accountId?: string;
   accountName?: string;
+  statementAccountName?: string;
   categoryName?: string;
   ownershipType: "direct" | "shared";
   ownerName?: string;
@@ -394,6 +395,7 @@ export interface ImportPreviewDto {
 export interface StatementCheckpointDraftDto {
   accountId?: string;
   accountName: string;
+  detectedAccountName?: string;
   checkpointMonth: string;
   statementStartDate?: string;
   statementEndDate?: string;
