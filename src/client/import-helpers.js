@@ -127,6 +127,7 @@ export function buildRawImportRowFromPreviewRow(row) {
     income: isMoneyIn ? formatMinorInput(row.amountMinor) : "",
     accountId: row.accountId ?? "",
     account: row.accountName ?? "",
+    statementAccountName: row.statementAccountName ?? row.rawRow?.statementAccountName ?? row.rawRow?.statementAccount ?? row.rawRow?.account ?? row.accountName ?? "",
     category: row.categoryName ?? "",
     note: row.note ?? "",
     type: row.entryType

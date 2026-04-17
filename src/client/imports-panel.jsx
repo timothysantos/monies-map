@@ -285,9 +285,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         const text = await extractPdfText(file);
         setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
         const parsed = parseStatementText(text, file.name);
+        const parsedCheckpoints = withDetectedStatementAccounts(parsed.checkpoints);
 
         setSourceLabel(parsed.sourceLabel);
-        setStatementCheckpoints(parsed.checkpoints);
+        setStatementCheckpoints(parsedCheckpoints);
         setStatementImportMeta({ sourceType: "pdf", parserKey: parsed.parserKey });
         setCsvText(statementRowsToCsv(parsed.rows));
         if (parsed.checkpoints[0]?.accountName) {
@@ -299,7 +300,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           rows: parsed.rows,
           nextSourceLabel: parsed.sourceLabel,
           nextDefaultAccountName: parsed.checkpoints[0]?.accountName ?? defaultAccountName,
-          nextStatementCheckpoints: parsed.checkpoints
+          nextStatementCheckpoints: parsedCheckpoints
         });
         setUploadStatus({
           tone: "success",
@@ -520,9 +521,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
 
     const nextRows = previewRows.map((row) => (
-      row.accountName === fromAccountName
+      getPreviewRowStatementAccountName(row) === fromAccountName
         ? {
           ...row,
+          statementAccountName: fromAccountName,
           accountId: nextAccount.id,
           accountName: nextAccount.name,
           ...getPreviewAccountOwnerPatch(nextAccount.name, row, nextAccount.id)
@@ -530,8 +532,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         : row
     ));
     const nextCheckpoints = statementCheckpoints.map((checkpoint) => (
-      checkpoint.accountName === fromAccountName
-        ? { ...checkpoint, accountId: nextAccount.id, accountName: nextAccount.name }
+      getCheckpointDetectedAccountName(checkpoint) === fromAccountName
+        ? { ...checkpoint, detectedAccountName: fromAccountName, accountId: nextAccount.id, accountName: nextAccount.name }
         : checkpoint
     ));
     setPreviewRows(nextRows);
@@ -726,4 +728,19 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       />
     </article>
   );
+}
+
+function withDetectedStatementAccounts(checkpoints) {
+  return checkpoints.map((checkpoint) => ({
+    ...checkpoint,
+    detectedAccountName: checkpoint.detectedAccountName ?? checkpoint.accountName
+  }));
+}
+
+function getCheckpointDetectedAccountName(checkpoint) {
+  return checkpoint.detectedAccountName ?? checkpoint.accountName;
+}
+
+function getPreviewRowStatementAccountName(row) {
+  return row.statementAccountName ?? row.rawRow?.statementAccountName ?? row.rawRow?.statementAccount ?? row.rawRow?.account ?? row.accountName;
 }

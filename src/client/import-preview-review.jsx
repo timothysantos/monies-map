@@ -44,6 +44,7 @@ export function ImportPreviewReview({
           knownAccountNames={knownAccountNames}
           detectedPreviewAccountNames={detectedPreviewAccountNames}
           unknownPreviewAccountNames={unknownPreviewAccountNames}
+          statementCheckpoints={statementCheckpoints}
           onRemapPreviewAccount={onRemapPreviewAccount}
         />
       ) : null}
@@ -103,6 +104,7 @@ function StatementAccountMapping({
   knownAccountNames,
   detectedPreviewAccountNames,
   unknownPreviewAccountNames,
+  statementCheckpoints,
   onRemapPreviewAccount
 }) {
   const accountOptions = getAccountSelectOptions(accounts, { valueKey: "id" });
@@ -112,6 +114,20 @@ function StatementAccountMapping({
     optionsByName.set(account.name, current);
     return optionsByName;
   }, new Map());
+  const checkpointByDetectedName = statementCheckpoints.reduce((checkpointsByName, checkpoint) => {
+    checkpointsByName.set(checkpoint.detectedAccountName ?? checkpoint.accountName, checkpoint);
+    return checkpointsByName;
+  }, new Map());
+
+  function selectedAccountValue(accountName) {
+    const checkpoint = checkpointByDetectedName.get(accountName);
+    if (checkpoint?.accountId) {
+      return checkpoint.accountId;
+    }
+
+    const accountMatches = accountOptionsByName.get(checkpoint?.accountName ?? accountName) ?? [];
+    return accountMatches.length === 1 ? accountMatches[0].id : "";
+  }
 
   return (
     <div className="import-warning import-warning-action">
@@ -123,7 +139,7 @@ function StatementAccountMapping({
             <span className="entries-filter-label">{messages.imports.detectedAccount(accountName)}</span>
             <select
               className="table-edit-input"
-              value={(accountOptionsByName.get(accountName) ?? []).length === 1 ? accountOptionsByName.get(accountName)[0].id : ""}
+              value={selectedAccountValue(accountName)}
               onChange={(event) => onRemapPreviewAccount(accountName, event.target.value)}
             >
               <option value="">{messages.imports.chooseAccount}</option>
