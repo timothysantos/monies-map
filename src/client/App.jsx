@@ -23,13 +23,24 @@ import {
 import { formatMonthLabel } from "./formatters";
 import { getCurrentMonthKey } from "../lib/month";
 
-const EntriesPanel = lazy(() => import("./entries-panel.jsx").then((module) => ({ default: module.EntriesPanel })));
-const FaqPanel = lazy(() => import("./faq-panel.jsx").then((module) => ({ default: module.FaqPanel })));
-const ImportsPanel = lazy(() => import("./imports-panel.jsx").then((module) => ({ default: module.ImportsPanel })));
-const MonthPanel = lazy(() => import("./month-panel.jsx").then((module) => ({ default: module.MonthPanel })));
-const SettingsPanel = lazy(() => import("./settings-panel.jsx").then((module) => ({ default: module.SettingsPanel })));
-const SplitsPanel = lazy(() => import("./splits-panel.jsx").then((module) => ({ default: module.SplitsPanel })));
-const SummaryPanel = lazy(() => import("./summary-panel.jsx").then((module) => ({ default: module.SummaryPanel })));
+const routeModuleLoaders = {
+  entries: () => import("./entries-panel.jsx"),
+  faq: () => import("./faq-panel.jsx"),
+  imports: () => import("./imports-panel.jsx"),
+  month: () => import("./month-panel.jsx"),
+  settings: () => import("./settings-panel.jsx"),
+  splits: () => import("./splits-panel.jsx"),
+  summary: () => import("./summary-panel.jsx")
+};
+const routeModulePreloads = new Map();
+
+const EntriesPanel = lazy(() => routeModuleLoaders.entries().then((module) => ({ default: module.EntriesPanel })));
+const FaqPanel = lazy(() => routeModuleLoaders.faq().then((module) => ({ default: module.FaqPanel })));
+const ImportsPanel = lazy(() => routeModuleLoaders.imports().then((module) => ({ default: module.ImportsPanel })));
+const MonthPanel = lazy(() => routeModuleLoaders.month().then((module) => ({ default: module.MonthPanel })));
+const SettingsPanel = lazy(() => routeModuleLoaders.settings().then((module) => ({ default: module.SettingsPanel })));
+const SplitsPanel = lazy(() => routeModuleLoaders.splits().then((module) => ({ default: module.SplitsPanel })));
+const SummaryPanel = lazy(() => routeModuleLoaders.summary().then((module) => ({ default: module.SummaryPanel })));
 
 const SUMMARY_FOCUS_OVERALL = "overall";
 const BOOTSTRAP_SYNC_CHANNEL = "monies-map-bootstrap-sync";
@@ -52,6 +63,63 @@ const MONTH_SWIPE_MIN_DISTANCE_PX = 72;
 const MONTH_SWIPE_MAX_VERTICAL_PX = 80;
 const MONTH_SWIPE_MIN_RATIO = 1.35;
 const PAGE_PREFETCH_DELAY_MS = 160;
+
+function preloadRouteModule(routeId) {
+  const loader = routeModuleLoaders[routeId];
+  if (!loader) {
+    return;
+  }
+  if (!routeModulePreloads.has(routeId)) {
+    routeModulePreloads.set(routeId, loader().catch(() => {
+      routeModulePreloads.delete(routeId);
+    }));
+  }
+}
+
+function scheduleIdleTask(callback, timeout = 1000) {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+  if (typeof window.requestIdleCallback === "function") {
+    return { type: "idle", id: window.requestIdleCallback(callback, { timeout }) };
+  }
+  return { type: "timeout", id: window.setTimeout(callback, timeout) };
+}
+
+function cancelIdleTask(handle) {
+  if (!handle || typeof window === "undefined") {
+    return;
+  }
+  if (handle.type === "idle" && typeof window.cancelIdleCallback === "function") {
+    window.cancelIdleCallback(handle.id);
+    return;
+  }
+  window.clearTimeout(handle.id);
+}
+
+function canUseBootstrapRouteForTab(tabId, {
+  bootstrapMonth,
+  bootstrapScope,
+  bootstrapSummaryEnd,
+  bootstrapSummaryStart,
+  selectedMonth,
+  selectedScope,
+  selectedSummaryEnd,
+  selectedSummaryStart
+}) {
+  if (tabId === "summary") {
+    const effectiveSummaryStart = selectedSummaryStart ?? bootstrapSummaryStart;
+    const effectiveSummaryEnd = selectedSummaryEnd ?? bootstrapSummaryEnd;
+    return effectiveSummaryStart === bootstrapSummaryStart
+      && effectiveSummaryEnd === bootstrapSummaryEnd;
+  }
+
+  if (tabId === "month") {
+    return selectedMonth === bootstrapMonth && selectedScope === bootstrapScope;
+  }
+
+  return false;
+}
 
 export function App() {
   const [bootstrap, setBootstrap] = useState(null);
@@ -93,18 +161,16 @@ export function App() {
       return false;
     }
 
-    if (selectedTabId === "summary") {
-      const effectiveSummaryStart = selectedSummaryStart ?? bootstrapSummaryStart;
-      const effectiveSummaryEnd = selectedSummaryEnd ?? bootstrapSummaryEnd;
-      return effectiveSummaryStart === bootstrapSummaryStart
-        && effectiveSummaryEnd === bootstrapSummaryEnd;
-    }
-
-    if (selectedTabId === "month") {
-      return selectedMonth === bootstrapMonth && selectedScope === bootstrapScope;
-    }
-
-    return false;
+    return canUseBootstrapRouteForTab(selectedTabId, {
+      bootstrapMonth,
+      bootstrapScope,
+      bootstrapSummaryEnd,
+      bootstrapSummaryStart,
+      selectedMonth,
+      selectedScope,
+      selectedSummaryEnd,
+      selectedSummaryStart
+    });
   }, [
     bootstrapMonth,
     bootstrapScope,
@@ -177,6 +243,48 @@ export function App() {
     versionRef: entriesPageCacheVersionRef,
     clear: clearEntriesPageCache
   }), [clearEntriesPageCache]);
+
+  const fetchEntriesPageData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
+    const cacheKey = params.toString();
+    const cacheVersion = entriesPageCacheVersionRef.current;
+    if (signal?.aborted) {
+      throw new DOMException("Entries page request aborted.", "AbortError");
+    }
+
+    if (!bypassCache && entriesPageCacheRef.current.has(cacheKey)) {
+      return entriesPageCacheRef.current.get(cacheKey);
+    }
+
+    if (!bypassCache && entriesPageInflightRef.current.has(cacheKey)) {
+      const data = await entriesPageInflightRef.current.get(cacheKey);
+      if (signal?.aborted) {
+        throw new DOMException("Entries page request aborted.", "AbortError");
+      }
+      return data;
+    }
+
+    const request = fetch(`/api/entries-page?${cacheKey}`, { cache: "no-store" })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message ?? data.error ?? "Entries page failed.");
+        }
+        if (entriesPageCacheVersionRef.current === cacheVersion) {
+          entriesPageCacheRef.current.set(cacheKey, data);
+        }
+        return data;
+      })
+      .finally(() => {
+        entriesPageInflightRef.current.delete(cacheKey);
+      });
+
+    entriesPageInflightRef.current.set(cacheKey, request);
+    const data = await request;
+    if (signal?.aborted || entriesPageCacheVersionRef.current !== cacheVersion) {
+      throw new DOMException("Entries page request aborted.", "AbortError");
+    }
+    return data;
+  }, []);
 
   const fetchBootstrapData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
     const cacheKey = params.toString();
@@ -376,6 +484,15 @@ export function App() {
 
     void fetchRoutePageData(request).catch(() => {});
   }, [fetchRoutePageData]);
+
+  const prefetchEntriesPage = useCallback((params) => {
+    const cacheKey = params.toString();
+    if (entriesPageCacheRef.current.has(cacheKey) || entriesPageInflightRef.current.has(cacheKey)) {
+      return;
+    }
+
+    void fetchEntriesPageData(params).catch(() => {});
+  }, [fetchEntriesPageData]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -635,6 +752,100 @@ export function App() {
     selectedTabId,
     selectedMonth,
     selectedScope,
+    selectedViewId
+  ]);
+
+  useEffect(() => {
+    if (!bootstrap || bootstrapError || typeof window === "undefined" || window.navigator?.connection?.saveData) {
+      return undefined;
+    }
+
+    const idleHandle = scheduleIdleTask(() => {
+      const warmRouteIds = routeTabs.map((tab) => tab.id);
+      for (const routeId of warmRouteIds) {
+        if (routeId !== selectedTabId) {
+          preloadRouteModule(routeId);
+        }
+      }
+
+      const requestsToPrefetch = [
+        buildRoutePageRequest({
+          tabId: "splits",
+          viewId: selectedViewId,
+          month: selectedMonth,
+          scope: selectedScope
+        }),
+        buildRoutePageRequest({
+          tabId: "imports",
+          viewId: selectedViewId,
+          month: selectedMonth,
+          scope: selectedScope
+        }),
+        buildRoutePageRequest({
+          tabId: "settings",
+          viewId: selectedViewId,
+          month: selectedMonth,
+          scope: selectedScope
+        })
+      ];
+      if (selectedTabId !== "summary" && !canUseBootstrapRouteForTab("summary", {
+        bootstrapMonth,
+        bootstrapScope,
+        bootstrapSummaryEnd,
+        bootstrapSummaryStart,
+        selectedMonth,
+        selectedScope,
+        selectedSummaryEnd,
+        selectedSummaryStart
+      })) {
+        requestsToPrefetch.push(buildRoutePageRequest({
+          tabId: "summary",
+          viewId: selectedViewId,
+          month: selectedMonth,
+          scope: selectedScope,
+          summaryStart: selectedSummaryStart,
+          summaryEnd: selectedSummaryEnd
+        }));
+      }
+      if (selectedTabId !== "month" && !canUseBootstrapRouteForTab("month", {
+        bootstrapMonth,
+        bootstrapScope,
+        bootstrapSummaryEnd,
+        bootstrapSummaryStart,
+        selectedMonth,
+        selectedScope,
+        selectedSummaryEnd,
+        selectedSummaryStart
+      })) {
+        requestsToPrefetch.push(buildRoutePageRequest({
+          tabId: "month",
+          viewId: selectedViewId,
+          month: selectedMonth,
+          scope: selectedScope
+        }));
+      }
+
+      for (const request of requestsToPrefetch) {
+        prefetchRoutePage(request);
+      }
+      prefetchEntriesPage(buildEntriesPageParams({ viewId: "household", month: selectedMonth }));
+    }, 900);
+
+    return () => cancelIdleTask(idleHandle);
+  }, [
+    bootstrap,
+    bootstrapError,
+    bootstrapMonth,
+    bootstrapScope,
+    bootstrapSummaryEnd,
+    bootstrapSummaryStart,
+    prefetchEntriesPage,
+    prefetchRoutePage,
+    selectedMonth,
+    selectedScope,
+    selectedSummaryEnd,
+    selectedSummaryStart,
+    selectedTabId,
     selectedViewId
   ]);
 
@@ -1429,6 +1640,13 @@ function buildBootstrapParams({ month, scope, summaryStart, summaryEnd }) {
     params.set("summary_end", summaryEnd);
   }
   return params;
+}
+
+function buildEntriesPageParams({ viewId, month }) {
+  return new URLSearchParams({
+    view: viewId,
+    month
+  });
 }
 
 function buildRoutePageRequest({ tabId, viewId, month, scope, summaryStart, summaryEnd }) {
