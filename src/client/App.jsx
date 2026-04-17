@@ -45,6 +45,7 @@ const SummaryPanel = lazy(() => routeModuleLoaders.summary().then((module) => ({
 const SUMMARY_FOCUS_OVERALL = "overall";
 const BOOTSTRAP_SYNC_CHANNEL = "monies-map-bootstrap-sync";
 const BOOTSTRAP_SYNC_STORAGE_KEY = "monies-map-bootstrap-sync";
+const BOOTSTRAP_PERSISTED_CACHE_KEY = "monies-map-bootstrap-cache-v1";
 const MONTH_PICKER_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DEFAULT_MONTH_KEY = getCurrentMonthKey();
 
@@ -95,6 +96,52 @@ function cancelIdleTask(handle) {
     return;
   }
   window.clearTimeout(handle.id);
+}
+
+function readPersistedBootstrap(cacheKey) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const rawCache = window.localStorage.getItem(BOOTSTRAP_PERSISTED_CACHE_KEY);
+    if (!rawCache) {
+      return null;
+    }
+
+    const parsedCache = JSON.parse(rawCache);
+    if (parsedCache?.cacheKey !== cacheKey || !parsedCache?.data) {
+      return null;
+    }
+
+    return parsedCache.data;
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedBootstrap(cacheKey, data) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(BOOTSTRAP_PERSISTED_CACHE_KEY, JSON.stringify({
+      cacheKey,
+      data,
+      storedAt: Date.now()
+    }));
+  } catch {}
+}
+
+function clearPersistedBootstrap() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(BOOTSTRAP_PERSISTED_CACHE_KEY);
+  } catch {}
 }
 
 function canUseBootstrapRouteForTab(tabId, {
@@ -224,6 +271,7 @@ export function App() {
     bootstrapCacheVersionRef.current += 1;
     bootstrapCacheRef.current.clear();
     bootstrapInflightRef.current.clear();
+    clearPersistedBootstrap();
   }, []);
 
   const clearRoutePageCache = useCallback(() => {
@@ -328,6 +376,7 @@ export function App() {
 
         if (bootstrapCacheVersionRef.current === cacheVersion) {
           bootstrapCacheRef.current.set(cacheKey, data);
+          writePersistedBootstrap(cacheKey, data);
         }
         return data;
       })
@@ -496,6 +545,13 @@ export function App() {
 
   useEffect(() => {
     const controller = new AbortController();
+    if (!bootstrapCacheRef.current.has(bootstrapCacheKey)) {
+      const persistedBootstrap = readPersistedBootstrap(bootstrapCacheKey);
+      if (persistedBootstrap) {
+        bootstrapCacheRef.current.set(bootstrapCacheKey, persistedBootstrap);
+      }
+    }
+
     const hasCachedBootstrap = bootstrapCacheRef.current.has(bootstrapCacheKey);
     const finishBootstrapLoad = hasCachedBootstrap ? null : beginBootstrapLoad();
 
