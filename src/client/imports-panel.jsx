@@ -301,7 +301,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           nextDefaultAccountName: parsed.checkpoints[0]?.accountName ?? defaultAccountName,
           nextStatementCheckpoints: parsed.checkpoints
         });
-        setUploadStatus({ tone: "success", message: messages.imports.uploadReady(parsed.rows.length) });
+        setUploadStatus({
+          tone: "success",
+          message: parsed.checkpoints.length > 1
+            ? messages.imports.uploadStatementReady(parsed.rows.length, parsed.checkpoints.length)
+            : messages.imports.uploadReady(parsed.rows.length)
+        });
         return;
       }
 

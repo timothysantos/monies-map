@@ -23,6 +23,7 @@ import {
 
 interface CreditCardSection {
   accountName: string;
+  accountHeading: string;
   previousBalanceMinor: number;
   totalBalanceMinor: number;
   minPostDate?: string;
@@ -39,12 +40,12 @@ export function parseUobCreditCardStatement(text: string, fileName?: string): Pa
   const statementYear = Number(statementDate.slice(0, 4));
   const statementMonth = Number(statementDate.slice(5, 7));
   const sections: CreditCardSection[] = [];
-  let currentAccountName = "";
+  let currentAccount: { name: string; heading: string } | undefined;
 
   for (let index = 0; index < lines.length; index += 1) {
-    const accountName = normalizeUobCardAccountName(lines[index]);
-    if (accountName && /^\d{4}-\d{4}-\d{4}-\d{4}/.test(lines[index + 1] ?? "")) {
-      currentAccountName = accountName;
+    const account = readUobCardAccountHeading(lines, index);
+    if (account) {
+      currentAccount = account;
       continue;
     }
 
@@ -52,11 +53,11 @@ export function parseUobCreditCardStatement(text: string, fileName?: string): Pa
       continue;
     }
 
-    if (!currentAccountName) {
+    if (!currentAccount) {
       throw new Error("Found a UOB card transaction section without a card account heading.");
     }
 
-    const section = parseUobCreditCardSection(lines, index, currentAccountName, statementYear, statementMonth);
+    const section = parseUobCreditCardSection(lines, index, currentAccount, statementYear, statementMonth);
     sections.push(section);
     index = sectionEndIndex(lines, index);
   }
@@ -193,13 +194,13 @@ export function parseUobSavingsStatement(text: string, fileName?: string): Parse
 function parseUobCreditCardSection(
   lines: string[],
   previousBalanceIndex: number,
-  accountName: string,
+  account: { name: string; heading: string },
   statementYear: number,
   statementMonth: number
 ): CreditCardSection {
   const previousBalanceMinor = parseMoneyLineToMinor(lines[previousBalanceIndex + 1]);
   if (previousBalanceMinor == null) {
-    throw new Error(`Could not read previous balance for ${accountName}.`);
+    throw new Error(`Could not read previous balance for ${account.name}.`);
   }
 
   const rows: Record<string, string>[] = [];
@@ -238,12 +239,12 @@ function parseUobCreditCardSection(
     }
 
     if (!amountLine) {
-      throw new Error(`Could not read amount for ${accountName} transaction on ${postDate}.`);
+      throw new Error(`Could not read amount for ${account.name} transaction on ${postDate}.`);
     }
 
     const amountMinor = parseMoneyLineToMinor(amountLine);
     if (!amountMinor) {
-      throw new Error(`Could not parse amount for ${accountName} transaction on ${postDate}.`);
+      throw new Error(`Could not parse amount for ${account.name} transaction on ${postDate}.`);
     }
 
     const isCredit = /\bCR$/i.test(amountLine);
@@ -261,7 +262,7 @@ function parseUobCreditCardSection(
       description,
       expense: isCredit ? "" : minorToDecimal(amountMinor),
       income: isCredit ? minorToDecimal(amountMinor) : "",
-      account: accountName,
+      account: account.name,
       category: type === "transfer" ? "Transfer" : inferCategory(description, isCredit),
       note: `txn date: ${transDate}`,
       type,
@@ -271,19 +272,20 @@ function parseUobCreditCardSection(
     index = cursor;
   }
 
-  const totalIndex = lines.findIndex((line, candidateIndex) => candidateIndex >= index && line === `TOTAL BALANCE FOR ${denormalizeUobCardAccountName(accountName)}`);
+  const totalIndex = lines.findIndex((line, candidateIndex) => candidateIndex >= index && line === `TOTAL BALANCE FOR ${account.heading}`);
   const totalBalanceMinor = totalIndex >= 0 ? parseMoneyLineToMinor(lines[totalIndex + 1]) : undefined;
   if (totalBalanceMinor == null) {
-    throw new Error(`Could not read total balance for ${accountName}.`);
+    throw new Error(`Could not read total balance for ${account.name}.`);
   }
 
   const computedBalanceMinor = previousBalanceMinor + expenseMinor - incomeMinor;
   if (computedBalanceMinor !== totalBalanceMinor) {
-    throw new Error(`UOB card section did not reconcile for ${accountName}. Expected ${minorToDecimal(totalBalanceMinor)}, got ${minorToDecimal(computedBalanceMinor)}.`);
+    throw new Error(`UOB card section did not reconcile for ${account.name}. Expected ${minorToDecimal(totalBalanceMinor)}, got ${minorToDecimal(computedBalanceMinor)}.`);
   }
 
   return {
-    accountName,
+    accountName: account.name,
+    accountHeading: account.heading,
     previousBalanceMinor,
     totalBalanceMinor,
     minPostDate,
@@ -295,6 +297,22 @@ function isUobSavingsNoiseLine(value: string) {
   return /Please note|United Overseas Bank|Reg\. No\.|www\.uob\.com\.sg|Page \d+ of \d+|不得向本行索取赔偿|本行|UOB Group/i.test(value);
 }
 
+function readUobCardAccountHeading(lines: string[], index: number) {
+  const heading = lines[index];
+  if (!heading || !isUobCardNumberLine(lines[index + 1] ?? "")) {
+    return undefined;
+  }
+
+  return {
+    heading,
+    name: normalizeUobCardAccountName(heading)
+  };
+}
+
+function isUobCardNumberLine(value: string) {
+  return /^\d{4}-\d{4}-\d{4}-\d{4}/.test(value);
+}
+
 function normalizeUobCardAccountName(value: string) {
   if (/^UOB ONE CARD$/i.test(value)) {
     return "UOB One Card";
@@ -302,17 +320,21 @@ function normalizeUobCardAccountName(value: string) {
   if (/^LADY'S CARD$/i.test(value)) {
     return "UOB Lady's Card";
   }
-  return "";
+  if (/^UOB PRVI MILES MASTERCARD$/i.test(value)) {
+    return "UOB Privi Miles";
+  }
+  return titleCaseUobCardHeading(value);
 }
 
-function denormalizeUobCardAccountName(accountName: string) {
-  if (accountName === "UOB One" || accountName === "UOB One Card") {
-    return "UOB ONE CARD";
-  }
-  if (accountName === "UOB Lady's" || accountName === "UOB Lady's Card") {
-    return "LADY'S CARD";
-  }
-  return accountName;
+function titleCaseUobCardHeading(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/\buob\b/g, "UOB")
+    .replace(/\bprvi\b/g, "Privi")
+    .replace(/\bvisa\b/g, "Visa")
+    .replace(/\bmastercard\b/g, "Mastercard")
+    .replace(/\bamex\b/g, "Amex")
+    .replace(/\b[a-z]/g, (match) => match.toUpperCase());
 }
 
 function sectionEndIndex(lines: string[], previousBalanceIndex: number) {

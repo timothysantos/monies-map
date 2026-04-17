@@ -363,7 +363,8 @@ The app currently supports:
 
 Supported PDF parsers include:
 
-- UOB credit-card statements
+- UOB credit-card statements, including multi-card statements such as UOB One
+  Card plus UOB Privi Miles
 - UOB One savings statements
 - Citibank Rewards statements
 - Citibank Miles statements

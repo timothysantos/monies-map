@@ -204,6 +204,7 @@ export const messages = {
     uploadParsing: (fileName) => `Parsing import rows from ${fileName}.`,
     uploadPreviewing: (count) => `Preparing preview for ${count} detected row${count === 1 ? "" : "s"}.`,
     uploadReady: (count) => `${count} row${count === 1 ? "" : "s"} ready for review.`,
+    uploadStatementReady: (rowCount, accountCount) => `${rowCount} row${rowCount === 1 ? "" : "s"} ready for review across ${accountCount} statement account${accountCount === 1 ? "" : "s"}.`,
     uploadCsvReady: (fileName) => `${fileName} is loaded. Review the mapping below.`,
     defaultAccount: "Default account",
     ownership: "Default ownership",
