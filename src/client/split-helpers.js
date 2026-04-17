@@ -58,13 +58,7 @@ export function getArchivedBatchSummary(batch, viewId) {
 
   const title = `${settlement.fromPersonName} fully settled up with ${settlement.toPersonName}`;
   const amount = money(settlement.totalAmountMinor);
-  if (viewId === "person-tim") {
-    return {
-      title,
-      subtitle: settlement.toPersonId === viewId ? `${settlement.fromPersonName} paid you ${amount}` : `You paid ${settlement.toPersonName} ${amount}`
-    };
-  }
-  if (viewId === "person-joyce") {
+  if (viewId !== "household") {
     return {
       title,
       subtitle: settlement.toPersonId === viewId ? `${settlement.fromPersonName} paid you ${amount}` : `You paid ${settlement.toPersonName} ${amount}`
