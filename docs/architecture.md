@@ -405,6 +405,9 @@ Frontend direction:
   visual requirements become real product behavior
 - page-level bootstrap refreshes keep the current route mounted with a busy
   overlay while the next month or range payload loads
+- bootstrap responses are cached in memory by query string and adjacent month or
+  summary-range payloads are prefetched after the current page settles; write
+  actions clear this cache before reloading data
 - Month and Entries support horizontal touch swipes for previous/next month
   navigation; Splits stays excluded because its main surface is not
   month-filtered
