@@ -370,6 +370,11 @@ warm the most likely next route chunks and current-period page data. This is
 skipped when the browser reports data-saver mode, and it never blocks the first
 screen from becoming usable.
 
+On browser refresh or a later return to the same month/range, the app can render
+the last successful bootstrap payload from local browser storage immediately and
+then refresh it in the background. Any write that changes app data clears that
+stored bootstrap copy so stale ledger state does not survive edits or imports.
+
 On touch devices, swipe left or right on Month or Entries to move to the next
 or previous month. Splits does not use the selected month as its main filter, so
 the gesture is disabled there.
