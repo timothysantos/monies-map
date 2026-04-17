@@ -18,6 +18,7 @@ import { slugify } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import {
   buildBootstrapErrorMessage,
+  buildRequestErrorMessage,
   describeBootstrapError
 } from "./request-errors";
 import { formatMonthLabel } from "./formatters";
@@ -321,10 +322,10 @@ export function App() {
 
     const request = fetch(`/api/entries-page?${cacheKey}`, { cache: "no-store" })
       .then(async (response) => {
-        const data = await response.json();
         if (!response.ok) {
-          throw new Error(data.message ?? data.error ?? "Entries page failed.");
+          throw new Error(await buildRequestErrorMessage(response, "Entries page failed."));
         }
+        const data = await response.json();
         if (entriesPageCacheVersionRef.current === cacheVersion) {
           entriesPageCacheRef.current.set(cacheKey, data);
         }
