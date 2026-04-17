@@ -46,7 +46,7 @@ That distinction matters because the system needs to answer questions like:
   the selected Citibank credit-card account because the files are headerless.
 - PDF statement parsers are institution-specific. UOB card and savings
   statements use their printed transaction blocks and balances; Citibank
-  Rewards and Citibank Miles card statements use browser-extracted layout text
+  Rewards and Citi Miles card statements use browser-extracted layout text
   because their transaction rows are compact, preserve negative credit balances,
   and reconcile against card-section grand totals before preview; OCBC 365 card
   statements and OCBC 360 account statements use spaced layout text and running
@@ -63,6 +63,9 @@ That distinction matters because the system needs to answer questions like:
 - multi-card PDF statements produce one row set and one checkpoint per detected
   card account, so preview can require mapping each detected card to a ledger
   account before commit
+- UOB and Citibank card PDF parsers detect card sections from statement
+  structure first, while known product aliases only polish the displayed account
+  names
 - transactions are normalized to a single ledger shape
 - every imported row is attached to an import batch for audit and rollback
 - CSV commits pre-resolve accounts, categories, and people before writing, then
