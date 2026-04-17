@@ -415,6 +415,10 @@ Frontend direction:
 - heavy route bodies are split behind focused endpoints:
   `/api/summary-page`, `/api/month-page`, `/api/entries-page`,
   `/api/splits-page`, `/api/imports-page`, and `/api/settings-page`
+- bootstrap and page endpoints emit lightweight Worker diagnostics for slow or
+  failed requests, including a request id, endpoint label, selected route
+  parameters, and duration; error responses include the same request id so
+  production console failures can be matched against Worker logs
 - page refreshes keep the current route mounted with a busy overlay while the
   smaller route payload loads; writes clear page and shell caches before
   reloading data

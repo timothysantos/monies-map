@@ -57,6 +57,8 @@ export interface Env {
   DB: D1Database;
 }
 
+const API_PAGE_SLOW_MS = 750;
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -66,102 +68,67 @@ export default {
     }
 
     if (url.pathname === "/api/bootstrap") {
-      try {
-        return json(
-          await buildBootstrapDto(
-            env.DB,
-            url.searchParams.get("month") ?? getCurrentMonthKey(),
-            (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared",
-            url.searchParams.get("summary_start") ?? undefined,
-            url.searchParams.get("summary_end") ?? undefined
-          )
-        );
-      } catch (error) {
-        console.error("Bootstrap failed", error);
-        return json({ ok: false, error: "Bootstrap failed", message: describeError(error) }, 500);
-      }
+      return apiPageResponse("Bootstrap", request, url, () =>
+        buildBootstrapDto(
+          env.DB,
+          url.searchParams.get("month") ?? getCurrentMonthKey(),
+          (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared",
+          url.searchParams.get("summary_start") ?? undefined,
+          url.searchParams.get("summary_end") ?? undefined
+        )
+      );
     }
 
     if (url.pathname === "/api/entries-page") {
-      try {
-        return json(
-          await buildEntriesPageDto(
-            env.DB,
-            url.searchParams.get("view") ?? "household",
-            url.searchParams.get("month") ?? getCurrentMonthKey()
-          )
-        );
-      } catch (error) {
-        console.error("Entries page failed", error);
-        return json({ ok: false, error: "Entries page failed", message: describeError(error) }, 500);
-      }
+      return apiPageResponse("Entries page", request, url, () =>
+        buildEntriesPageDto(
+          env.DB,
+          url.searchParams.get("view") ?? "household",
+          url.searchParams.get("month") ?? getCurrentMonthKey()
+        )
+      );
     }
 
     if (url.pathname === "/api/summary-page") {
-      try {
-        return json(
-          await buildSummaryPageDto(
-            env.DB,
-            url.searchParams.get("view") ?? "household",
-            url.searchParams.get("month") ?? getCurrentMonthKey(),
-            (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared",
-            url.searchParams.get("summary_start") ?? undefined,
-            url.searchParams.get("summary_end") ?? undefined
-          )
-        );
-      } catch (error) {
-        console.error("Summary page failed", error);
-        return json({ ok: false, error: "Summary page failed", message: describeError(error) }, 500);
-      }
+      return apiPageResponse("Summary page", request, url, () =>
+        buildSummaryPageDto(
+          env.DB,
+          url.searchParams.get("view") ?? "household",
+          url.searchParams.get("month") ?? getCurrentMonthKey(),
+          (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared",
+          url.searchParams.get("summary_start") ?? undefined,
+          url.searchParams.get("summary_end") ?? undefined
+        )
+      );
     }
 
     if (url.pathname === "/api/month-page") {
-      try {
-        return json(
-          await buildMonthPageDto(
-            env.DB,
-            url.searchParams.get("view") ?? "household",
-            url.searchParams.get("month") ?? getCurrentMonthKey(),
-            (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared"
-          )
-        );
-      } catch (error) {
-        console.error("Month page failed", error);
-        return json({ ok: false, error: "Month page failed", message: describeError(error) }, 500);
-      }
+      return apiPageResponse("Month page", request, url, () =>
+        buildMonthPageDto(
+          env.DB,
+          url.searchParams.get("view") ?? "household",
+          url.searchParams.get("month") ?? getCurrentMonthKey(),
+          (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared"
+        )
+      );
     }
 
     if (url.pathname === "/api/splits-page") {
-      try {
-        return json(
-          await buildSplitsPageDto(
-            env.DB,
-            url.searchParams.get("view") ?? "household",
-            url.searchParams.get("month") ?? getCurrentMonthKey()
-          )
-        );
-      } catch (error) {
-        console.error("Splits page failed", error);
-        return json({ ok: false, error: "Splits page failed", message: describeError(error) }, 500);
-      }
+      return apiPageResponse("Splits page", request, url, () =>
+        buildSplitsPageDto(
+          env.DB,
+          url.searchParams.get("view") ?? "household",
+          url.searchParams.get("month") ?? getCurrentMonthKey()
+        )
+      );
     }
 
     if (url.pathname === "/api/imports-page") {
-      try {
-        return json(await buildImportsPageDto(env.DB));
-      } catch (error) {
-        console.error("Imports page failed", error);
-        return json({ ok: false, error: "Imports page failed", message: describeError(error) }, 500);
-      }
+      return apiPageResponse("Imports page", request, url, () => buildImportsPageDto(env.DB));
     }
 
     if (url.pathname === "/api/settings-page") {
-      try {
-        return json(await buildSettingsPageDto(env.DB));
-      } catch (error) {
-        console.error("Settings page failed", error);
-        return json({ ok: false, error: "Settings page failed", message: describeError(error) }, 500);
-      }
+      return apiPageResponse("Settings page", request, url, () => buildSettingsPageDto(env.DB));
     }
 
     if (url.pathname === "/api/demo/reseed" && request.method === "POST") {
@@ -1144,4 +1111,59 @@ export default {
 
 function describeError(error: unknown) {
   return error instanceof Error && error.message ? error.message : "Unknown server error";
+}
+
+async function apiPageResponse<T>(
+  label: string,
+  request: Request,
+  url: URL,
+  handler: () => Promise<T>
+) {
+  const requestId = crypto.randomUUID();
+  const startedAt = Date.now();
+
+  try {
+    const payload = await handler();
+    const durationMs = Date.now() - startedAt;
+    if (durationMs >= API_PAGE_SLOW_MS) {
+      console.warn("API page slow", buildApiDiagnostic(label, request, url, requestId, durationMs));
+    }
+    return json(payload);
+  } catch (error) {
+    const durationMs = Date.now() - startedAt;
+    console.error("API page failed", {
+      ...buildApiDiagnostic(label, request, url, requestId, durationMs),
+      error: describeError(error)
+    });
+    return json({
+      ok: false,
+      error: `${label} failed`,
+      message: describeError(error),
+      requestId,
+      durationMs
+    }, 500);
+  }
+}
+
+function buildApiDiagnostic(label: string, request: Request, url: URL, requestId: string, durationMs: number) {
+  return {
+    requestId,
+    label,
+    method: request.method,
+    path: url.pathname,
+    params: pickDiagnosticSearchParams(url.searchParams),
+    durationMs
+  };
+}
+
+function pickDiagnosticSearchParams(searchParams: URLSearchParams) {
+  const keys = ["view", "month", "scope", "summary_start", "summary_end"];
+  const params: Record<string, string> = {};
+  for (const key of keys) {
+    const value = searchParams.get(key);
+    if (value) {
+      params[key] = value;
+    }
+  }
+  return params;
 }
