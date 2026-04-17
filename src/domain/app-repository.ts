@@ -95,6 +95,7 @@ import type {
 
 const DEFAULT_HOUSEHOLD_ID = defaultHousehold.id;
 
+const demoPeople = defaultHousehold.people;
 const SEED_PERSON_IDS_BY_NAME = new Map(demoPeople.map((person) => [person.name, person.id]));
 const DEMO_PRIMARY_PERSON_ID = demoPeople[0]?.id ?? "demo-primary";
 const DEMO_PARTNER_PERSON_ID = demoPeople[1]?.id ?? "demo-partner";
