@@ -753,7 +753,13 @@ export function App() {
   );
 
   useEffect(() => {
-    if (!bootstrap || bootstrapError || typeof window === "undefined" || window.navigator?.connection?.saveData) {
+    if (
+      !bootstrap
+      || bootstrapError
+      || typeof window === "undefined"
+      || window.navigator?.connection?.saveData
+      || window.matchMedia?.("(pointer: coarse)")?.matches
+    ) {
       return undefined;
     }
 

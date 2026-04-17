@@ -142,8 +142,12 @@ export function EntriesPanel({
   }, [clearEntriesPageCache, entriesPageParams, fetchEntriesPage, onInvalidateBootstrapCache]);
 
   useEffect(() => {
-    setEntriesPage(buildInitialEntriesPage(entriesSourceView));
-  }, [entriesSourceView]);
+    const initialPage = buildInitialEntriesPage(entriesSourceView);
+    setEntriesPage(initialPage);
+    if (!entriesPageCacheRefs.cacheRef.current.has(entriesPageCacheKey)) {
+      entriesPageCacheRefs.cacheRef.current.set(entriesPageCacheKey, initialPage);
+    }
+  }, [entriesPageCacheKey, entriesPageCacheRefs, entriesSourceView]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -157,24 +161,6 @@ export function EntriesPanel({
         }
         setEntriesPage(data);
         setIsEntriesPageLoading(false);
-
-        if (!hasCachedPage) {
-          return;
-        }
-
-        try {
-          const freshData = await fetchEntriesPage(entriesPageParams, {
-            bypassCache: true,
-            signal: controller.signal
-          });
-          if (!controller.signal.aborted) {
-            setEntriesPage(freshData);
-          }
-        } catch (error) {
-          if (error instanceof DOMException && error.name === "AbortError") {
-            return;
-          }
-        }
       })
       .catch((error) => {
         if (error instanceof DOMException && error.name === "AbortError") {
@@ -189,7 +175,12 @@ export function EntriesPanel({
   }, [entriesPageCacheKey, entriesPageParams, fetchEntriesPage]);
 
   useEffect(() => {
-    if (!availableMonths.length || typeof window === "undefined" || window.navigator?.connection?.saveData) {
+    if (
+      !availableMonths.length
+      || typeof window === "undefined"
+      || window.navigator?.connection?.saveData
+      || window.matchMedia?.("(pointer: coarse)")?.matches
+    ) {
       return undefined;
     }
 
