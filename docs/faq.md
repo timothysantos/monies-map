@@ -386,8 +386,8 @@ The app currently supports:
 - supported UOB One current-transaction `.xls` exports
 - supported Citibank credit-card current-activity `.csv` exports, when the
   selected default account is a Citibank credit card
-- supported OCBC card current-activity `.csv` exports, when the selected default
-  account is an OCBC credit card
+- supported OCBC card and 360 current-activity `.csv` exports, when the selected
+  default account is an OCBC account
 
 Supported PDF parsers include:
 
@@ -641,9 +641,9 @@ the current draft without refreshing the page.
   the Citi activity parser when the selected default account is a Citibank
   credit card and the file name matches the Citi activity export pattern. The
   trailing card number is reduced to the last four digits in the note.
-- OCBC card current-activity CSV files use transaction-history headers with
-  withdrawal and deposit columns, so the app normalizes them into reviewable
-  credit-card rows without creating a statement checkpoint.
+- OCBC card and 360 current-activity CSV files use transaction-history headers
+  with withdrawal and deposit columns, so the app normalizes them into
+  reviewable rows without creating a statement checkpoint.
 - OCBC 365 card PDFs use the printed statement date, subtotal, and total amount
   due.
 - OCBC 360 account PDFs use the monthly period, running balances, and balance
