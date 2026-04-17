@@ -20,6 +20,7 @@ const ENTRIES_PAGE_PREFETCH_DELAY_MS = 160;
 
 export function EntriesPanel({
   view,
+  entriesSourceView = view,
   selectedMonth,
   availableMonths,
   accounts,
@@ -39,20 +40,19 @@ export function EntriesPanel({
   const entriesPagePrefetchTimerRef = useRef(null);
   const entriesPageParams = useMemo(
     () => buildEntriesPageParams({
-      viewId: view.id,
+      viewId: entriesSourceView.id,
       month: selectedMonth
     }),
-    [selectedMonth, view.id]
+    [entriesSourceView.id, selectedMonth]
   );
   const entriesPageCacheKey = entriesPageParams.toString();
   const entryView = useMemo(
     () => ({
       ...view,
-      id: entriesPage.viewId,
-      label: entriesPage.label,
       monthPage: {
         ...view.monthPage,
-        ...entriesPage.monthPage
+        month: entriesPage.monthPage.month,
+        entries: entriesPage.monthPage.entries
       }
     }),
     [entriesPage, view]
@@ -125,8 +125,8 @@ export function EntriesPanel({
 
   useEffect(() => {
     clearEntriesPageCache();
-    setEntriesPage(buildInitialEntriesPage(view));
-  }, [clearEntriesPageCache, view]);
+    setEntriesPage(buildInitialEntriesPage(entriesSourceView));
+  }, [clearEntriesPageCache, entriesSourceView]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -187,7 +187,7 @@ export function EntriesPanel({
         if (!adjacentMonth) {
           continue;
         }
-        void fetchEntriesPage(buildEntriesPageParams({ viewId: view.id, month: adjacentMonth })).catch(() => {});
+        void fetchEntriesPage(buildEntriesPageParams({ viewId: entriesSourceView.id, month: adjacentMonth })).catch(() => {});
       }
     }, ENTRIES_PAGE_PREFETCH_DELAY_MS);
 
@@ -197,7 +197,7 @@ export function EntriesPanel({
         entriesPagePrefetchTimerRef.current = null;
       }
     };
-  }, [availableMonths, fetchEntriesPage, selectedMonth, view.id]);
+  }, [availableMonths, entriesSourceView.id, fetchEntriesPage, selectedMonth]);
 
   const {
     entries,
