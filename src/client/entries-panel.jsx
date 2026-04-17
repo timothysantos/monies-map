@@ -27,17 +27,23 @@ export function EntriesPanel({
   categories,
   people,
   onCategoryAppearanceChange,
-  onInvalidateBootstrapCache
+  onInvalidateBootstrapCache,
+  entriesPageCache
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showExpenseBreakdown, setShowExpenseBreakdown] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [entriesPage, setEntriesPage] = useState(() => buildInitialEntriesPage(view));
   const [isEntriesPageLoading, setIsEntriesPageLoading] = useState(false);
-  const entriesPageCacheRef = useRef(new Map());
-  const entriesPageInflightRef = useRef(new Map());
-  const entriesPageCacheVersionRef = useRef(0);
+  const fallbackEntriesPageCacheRef = useRef(new Map());
+  const fallbackEntriesPageInflightRef = useRef(new Map());
+  const fallbackEntriesPageCacheVersionRef = useRef(0);
   const entriesPagePrefetchTimerRef = useRef(null);
+  const entriesPageCacheRefs = useMemo(() => entriesPageCache ?? {
+    cacheRef: fallbackEntriesPageCacheRef,
+    inflightRef: fallbackEntriesPageInflightRef,
+    versionRef: fallbackEntriesPageCacheVersionRef
+  }, [entriesPageCache]);
   const entriesPageParams = useMemo(
     () => buildEntriesPageParams({
       viewId: entriesSourceView.id,
@@ -59,24 +65,28 @@ export function EntriesPanel({
   );
 
   const clearEntriesPageCache = useCallback(() => {
-    entriesPageCacheVersionRef.current += 1;
-    entriesPageCacheRef.current.clear();
-    entriesPageInflightRef.current.clear();
-  }, []);
+    if (entriesPageCache?.clear) {
+      entriesPageCache.clear();
+      return;
+    }
+    entriesPageCacheRefs.versionRef.current += 1;
+    entriesPageCacheRefs.cacheRef.current.clear();
+    entriesPageCacheRefs.inflightRef.current.clear();
+  }, [entriesPageCache, entriesPageCacheRefs]);
 
   const fetchEntriesPage = useCallback(async (params, { bypassCache = false, signal } = {}) => {
     const cacheKey = params.toString();
-    const cacheVersion = entriesPageCacheVersionRef.current;
+    const cacheVersion = entriesPageCacheRefs.versionRef.current;
     if (signal?.aborted) {
       throw new DOMException("Entries page request aborted.", "AbortError");
     }
 
-    if (!bypassCache && entriesPageCacheRef.current.has(cacheKey)) {
-      return entriesPageCacheRef.current.get(cacheKey);
+    if (!bypassCache && entriesPageCacheRefs.cacheRef.current.has(cacheKey)) {
+      return entriesPageCacheRefs.cacheRef.current.get(cacheKey);
     }
 
-    if (!bypassCache && entriesPageInflightRef.current.has(cacheKey)) {
-      const data = await entriesPageInflightRef.current.get(cacheKey);
+    if (!bypassCache && entriesPageCacheRefs.inflightRef.current.has(cacheKey)) {
+      const data = await entriesPageCacheRefs.inflightRef.current.get(cacheKey);
       if (signal?.aborted) {
         throw new DOMException("Entries page request aborted.", "AbortError");
       }
@@ -89,22 +99,22 @@ export function EntriesPanel({
         if (!response.ok) {
           throw new Error(data.message ?? data.error ?? "Entries page failed.");
         }
-        if (entriesPageCacheVersionRef.current === cacheVersion) {
-          entriesPageCacheRef.current.set(cacheKey, data);
+        if (entriesPageCacheRefs.versionRef.current === cacheVersion) {
+          entriesPageCacheRefs.cacheRef.current.set(cacheKey, data);
         }
         return data;
       })
       .finally(() => {
-        entriesPageInflightRef.current.delete(cacheKey);
+        entriesPageCacheRefs.inflightRef.current.delete(cacheKey);
       });
 
-    entriesPageInflightRef.current.set(cacheKey, request);
+    entriesPageCacheRefs.inflightRef.current.set(cacheKey, request);
     const data = await request;
-    if (signal?.aborted || entriesPageCacheVersionRef.current !== cacheVersion) {
+    if (signal?.aborted || entriesPageCacheRefs.versionRef.current !== cacheVersion) {
       throw new DOMException("Entries page request aborted.", "AbortError");
     }
     return data;
-  }, []);
+  }, [entriesPageCacheRefs]);
 
   const refreshEntriesPage = useCallback(async ({ bypassCache = false, invalidateBootstrap = false } = {}) => {
     if (bypassCache) {
@@ -124,13 +134,12 @@ export function EntriesPanel({
   }, [clearEntriesPageCache, entriesPageParams, fetchEntriesPage, onInvalidateBootstrapCache]);
 
   useEffect(() => {
-    clearEntriesPageCache();
     setEntriesPage(buildInitialEntriesPage(entriesSourceView));
-  }, [clearEntriesPageCache, entriesSourceView]);
+  }, [entriesSourceView]);
 
   useEffect(() => {
     const controller = new AbortController();
-    const hasCachedPage = entriesPageCacheRef.current.has(entriesPageCacheKey);
+    const hasCachedPage = entriesPageCacheRefs.cacheRef.current.has(entriesPageCacheKey);
     setIsEntriesPageLoading(!hasCachedPage);
 
     void fetchEntriesPage(entriesPageParams, { signal: controller.signal })

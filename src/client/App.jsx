@@ -72,6 +72,9 @@ export function App() {
   const routePageInflightRef = useRef(new Map());
   const routePageCacheVersionRef = useRef(0);
   const routePagePrefetchTimerRef = useRef(null);
+  const entriesPageCacheRef = useRef(new Map());
+  const entriesPageInflightRef = useRef(new Map());
+  const entriesPageCacheVersionRef = useRef(0);
   const selectedViewId = searchParams.get("view") ?? "household";
   const selectedTabId = routeTabs.find((tab) => tab.path === location.pathname)?.id ?? "summary";
   const selectedMonth = searchParams.get("month") ?? DEFAULT_MONTH_KEY;
@@ -162,6 +165,18 @@ export function App() {
     routePageCacheRef.current.clear();
     routePageInflightRef.current.clear();
   }, []);
+
+  const clearEntriesPageCache = useCallback(() => {
+    entriesPageCacheVersionRef.current += 1;
+    entriesPageCacheRef.current.clear();
+    entriesPageInflightRef.current.clear();
+  }, []);
+  const entriesPageCacheStore = useMemo(() => ({
+    cacheRef: entriesPageCacheRef,
+    inflightRef: entriesPageInflightRef,
+    versionRef: entriesPageCacheVersionRef,
+    clear: clearEntriesPageCache
+  }), [clearEntriesPageCache]);
 
   const fetchBootstrapData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
     const cacheKey = params.toString();
@@ -327,6 +342,7 @@ export function App() {
   const refreshRoutePage = useCallback(async ({ broadcast = false, refreshShell = false } = {}) => {
     clearRoutePageCache();
     clearBootstrapCache();
+    clearEntriesPageCache();
 
     if (!routePageRequest || refreshShell) {
       return refreshBootstrap({ broadcast });
@@ -340,12 +356,13 @@ export function App() {
     } finally {
       finishBootstrapLoad();
     }
-  }, [beginBootstrapLoad, clearBootstrapCache, clearRoutePageCache, fetchRoutePageData, refreshBootstrap, routePageRequest]);
+  }, [beginBootstrapLoad, clearBootstrapCache, clearEntriesPageCache, clearRoutePageCache, fetchRoutePageData, refreshBootstrap, routePageRequest]);
 
   const invalidatePageAndShellCaches = useCallback(() => {
     clearRoutePageCache();
     clearBootstrapCache();
-  }, [clearBootstrapCache, clearRoutePageCache]);
+    clearEntriesPageCache();
+  }, [clearBootstrapCache, clearEntriesPageCache, clearRoutePageCache]);
 
   const prefetchRoutePage = useCallback((request) => {
     if (!request) {
@@ -1273,6 +1290,7 @@ export function App() {
                   people={bootstrap.household.people}
                   onCategoryAppearanceChange={handleCategoryAppearanceChange}
                   onInvalidateBootstrapCache={invalidatePageAndShellCaches}
+                  entriesPageCache={entriesPageCacheStore}
                 />
               )}
             />

@@ -360,6 +360,11 @@ feel like changing a filter, not like reloading the whole page.
 Use the refresh button at the start of the Entries filter row to reload the
 current month after importing or editing data in another tab.
 
+Within one browser session, returning to a tab should reuse cached page data
+when no import, edit, rollback, or manual refresh has invalidated it. This keeps
+tab switching fast while still letting mutation flows clear the cache before
+fresh data is needed.
+
 On touch devices, swipe left or right on Month or Entries to move to the next
 or previous month. Splits does not use the selected month as its main filter, so
 the gesture is disabled there.
