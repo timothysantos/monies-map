@@ -51,6 +51,7 @@ const secondaryRouteTabs = routeTabs.slice(4);
 export function App() {
   const [bootstrap, setBootstrap] = useState(null);
   const [bootstrapError, setBootstrapError] = useState("");
+  const [bootstrapLoadCount, setBootstrapLoadCount] = useState(0);
   const [categoryOverrides, setCategoryOverrides] = useState({});
   const [rangePickerStartYear, setRangePickerStartYear] = useState(null);
   const [rangePickerEndYear, setRangePickerEndYear] = useState(null);
@@ -62,6 +63,21 @@ export function App() {
   const selectedScope = searchParams.get("scope") ?? "direct_plus_shared";
   const selectedSummaryStart = searchParams.get("summary_start") ?? undefined;
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
+  const isBootstrapLoading = bootstrapLoadCount > 0;
+
+  const beginBootstrapLoad = useCallback(() => {
+    let didFinish = false;
+    setBootstrapLoadCount((count) => count + 1);
+
+    return () => {
+      if (didFinish) {
+        return;
+      }
+
+      didFinish = true;
+      setBootstrapLoadCount((count) => Math.max(0, count - 1));
+    };
+  }, []);
 
   const loadBootstrap = useCallback(async (signal) => {
     const params = new URLSearchParams({
@@ -108,39 +124,48 @@ export function App() {
   }, []);
 
   const refreshBootstrap = useCallback(async ({ broadcast = false } = {}) => {
-    const data = await loadBootstrap();
+    const finishBootstrapLoad = beginBootstrapLoad();
 
-    if (!broadcast) {
+    try {
+      const data = await loadBootstrap();
+
+      if (!broadcast) {
+        return data;
+      }
+
+      const payload = { type: "bootstrap-refresh", ts: Date.now() };
+      try {
+        syncChannelRef.current?.postMessage(payload);
+      } catch {}
+
+      try {
+        window.localStorage.setItem(BOOTSTRAP_SYNC_STORAGE_KEY, JSON.stringify(payload));
+      } catch {}
+
       return data;
+    } finally {
+      finishBootstrapLoad();
     }
-
-    const payload = { type: "bootstrap-refresh", ts: Date.now() };
-    try {
-      syncChannelRef.current?.postMessage(payload);
-    } catch {}
-
-    try {
-      window.localStorage.setItem(BOOTSTRAP_SYNC_STORAGE_KEY, JSON.stringify(payload));
-    } catch {}
-
-    return data;
-  }, [loadBootstrap]);
+  }, [beginBootstrapLoad, loadBootstrap]);
 
   useEffect(() => {
     const controller = new AbortController();
+    const finishBootstrapLoad = beginBootstrapLoad();
 
-    void loadBootstrap(controller.signal).catch((error) => {
-      if (error instanceof DOMException && error.name === "AbortError") {
-        return;
-      }
+    void loadBootstrap(controller.signal)
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
 
-      handleBootstrapFailure(error);
-    });
+        handleBootstrapFailure(error);
+      })
+      .finally(finishBootstrapLoad);
 
     return () => {
       controller.abort();
     };
-  }, [loadBootstrap]);
+  }, [beginBootstrapLoad, handleBootstrapFailure, loadBootstrap]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -153,14 +178,20 @@ export function App() {
       syncChannelRef.current = channel;
       channel.onmessage = (event) => {
         if (event.data?.type === "bootstrap-refresh") {
-          void loadBootstrap().catch(handleBootstrapFailure);
+          const finishBootstrapLoad = beginBootstrapLoad();
+          void loadBootstrap()
+            .catch(handleBootstrapFailure)
+            .finally(finishBootstrapLoad);
         }
       };
     }
 
     const handleStorage = (event) => {
       if (event.key === BOOTSTRAP_SYNC_STORAGE_KEY && event.newValue) {
-        void loadBootstrap().catch(handleBootstrapFailure);
+        const finishBootstrapLoad = beginBootstrapLoad();
+        void loadBootstrap()
+          .catch(handleBootstrapFailure)
+          .finally(finishBootstrapLoad);
       }
     };
 
@@ -173,7 +204,7 @@ export function App() {
         syncChannelRef.current = null;
       }
     };
-  }, [handleBootstrapFailure, loadBootstrap]);
+  }, [beginBootstrapLoad, handleBootstrapFailure, loadBootstrap]);
 
   const selectedViewId = searchParams.get("view") ?? "household";
   const selectedTabId = routeTabs.find((tab) => tab.path === location.pathname)?.id ?? "summary";
@@ -337,9 +368,7 @@ export function App() {
   if (!bootstrap || !view) {
     return (
       <main className="shell">
-        <section className="panel">
-          <p>{messages.common.loading}</p>
-        </section>
+        <AppLoadingPanel />
       </main>
     );
   }
@@ -779,7 +808,7 @@ export function App() {
         </section>
       ) : null}
 
-      <section className="grid">
+      <section className="grid app-route-grid" aria-busy={isBootstrapLoading ? "true" : "false"}>
         <Routes>
           <Route path="/" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
           <Route
@@ -863,6 +892,7 @@ export function App() {
           <Route path="/faq" element={<FaqPanel viewLabel={view.label} categories={categories} />} />
           <Route path="*" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
         </Routes>
+        {isBootstrapLoading ? <AppLoadingOverlay /> : null}
       </section>
 
       {selectedTabId === "entries" && typeof document !== "undefined"
@@ -893,5 +923,23 @@ export function App() {
           )
         : null}
     </main>
+  );
+}
+
+function AppLoadingPanel() {
+  return (
+    <section className="panel app-loading-panel" role="status" aria-live="polite">
+      <span className="app-spinner" aria-hidden="true" />
+      <p>{messages.common.loading}</p>
+    </section>
+  );
+}
+
+function AppLoadingOverlay() {
+  return (
+    <div className="app-loading-overlay" role="status" aria-live="polite">
+      <span className="app-spinner" aria-hidden="true" />
+      <span>{messages.common.loadingLatest}</span>
+    </div>
   );
 }

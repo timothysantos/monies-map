@@ -403,6 +403,10 @@ Frontend direction:
 - Worker API remains the source of bootstrap and import endpoints
 - charting should prefer a maintained library over hand-built geometry once the
   visual requirements become real product behavior
+- page-level bootstrap refreshes keep the current route mounted with a busy
+  overlay while the next month or range payload loads
+- heavyweight charting code should be lazily loaded from the client where it is
+  not required for first render
 - interaction primitives such as popovers should prefer maintained web-native
   packages rather than bespoke UI widgets
 - dialogs and confirmation popovers that save, delete, import, or reset data

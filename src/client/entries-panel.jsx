@@ -11,7 +11,8 @@ import {
   getActiveEntryFilterCount,
   getEntryDerivedData,
   getEntryFilterOptions,
-  getEntryFormOptions
+  getEntryFormOptions,
+  getEntryWalletFilterOptions
 } from "./entry-selectors";
 import { getVisibleSplitPercent } from "./entry-helpers";
 
@@ -63,7 +64,11 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
     setShowMobileFilters(false);
   }, [view]);
 
-  const { wallets, entryCategoryOptions, peopleFilterOptions } = useMemo(
+  const wallets = useMemo(
+    () => getEntryWalletFilterOptions(accounts),
+    [accounts]
+  );
+  const { entryCategoryOptions, peopleFilterOptions } = useMemo(
     () => getEntryFilterOptions(entries),
     [entries]
   );

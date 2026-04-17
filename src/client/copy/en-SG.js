@@ -1,6 +1,7 @@
 export const messages = {
   common: {
     loading: "Loading...",
+    loadingLatest: "Loading latest data...",
     saving: "Saving...",
     working: "Working...",
     bootstrapErrorTitle: "Dashboard data could not load.",

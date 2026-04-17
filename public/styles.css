@@ -373,6 +373,58 @@ h3 {
   gap: 16px;
 }
 
+.app-route-grid {
+  position: relative;
+}
+
+.app-loading-panel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 160px;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.app-loading-panel p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.app-loading-overlay {
+  position: absolute;
+  z-index: 20;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.app-spinner,
+.chart-spinner {
+  width: 22px;
+  height: 22px;
+  border: 3px solid rgba(177, 94, 47, 0.18);
+  border-top-color: var(--accent-strong);
+  border-radius: 999px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .tab-panel {
   display: none;
 }
@@ -1669,6 +1721,40 @@ h3 {
 .spending-mix-chart .recharts-wrapper,
 .spending-mix-chart .recharts-surface {
   overflow: visible;
+}
+
+.spending-mix-chart-loading {
+  display: grid;
+  place-items: center;
+}
+
+.spending-mix-chart-loading::before {
+  content: "";
+  position: absolute;
+  width: min(58%, 240px);
+  aspect-ratio: 1;
+  border: 28px solid rgba(38, 35, 31, 0.08);
+  border-top-color: rgba(177, 94, 47, 0.22);
+  border-radius: 999px;
+}
+
+.spending-mix-chart-loading .chart-spinner {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: chart-spin 0.8s linear infinite;
+}
+
+@keyframes chart-spin {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
 }
 
 .recharts-donut-center {

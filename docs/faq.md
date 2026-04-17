@@ -345,6 +345,10 @@ The Entries page keeps `Spend` as category expense only. It also shows
 `Outflow`, which includes expenses plus transfer-outs, so transfers are visible
 without being mixed into category spending.
 
+The account filter on Entries lists every active account, even when an account
+has no rows in the selected month. This keeps the filter predictable when you
+are checking a specific account for missing or uncategorized activity.
+
 ## How do I import real bank activity?
 
 Use Imports when you want bank or card rows to become ledger entries. Use
