@@ -12,6 +12,12 @@ export function getEntryFilterOptions(entries) {
   };
 }
 
+export function getEntryWalletFilterOptions(accounts) {
+  return getAccountSelectOptions(accounts)
+    .map((option) => option.value)
+    .filter(Boolean);
+}
+
 export function getEntryFormOptions({ accounts, categories, people }) {
   return {
     categoryOptions: getCategoryNameOptions(categories),
