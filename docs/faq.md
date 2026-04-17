@@ -367,6 +367,9 @@ cache before reloading.
 The initial bootstrap now acts as the app shell. Summary, Month, Entries,
 Splits, Imports, and Settings each have smaller page-specific reloads so month
 changes and review work do not wait for the whole dashboard bootstrap to reload.
+Those route screens are also loaded as separate JavaScript chunks, so import,
+settings, PDF parsing, and statement parsing code are only downloaded when the
+user opens a screen that needs them.
 
 ## How do I import real bank activity?
 
