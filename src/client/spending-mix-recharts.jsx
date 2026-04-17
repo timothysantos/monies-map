@@ -47,7 +47,7 @@ export default function SpendingMixRecharts({
 function renderPieCallout(props, total, options = {}) {
   const { cx, cy, midAngle, outerRadius, percent, payload } = props;
   const { compact = false } = options;
-  if (!percent) {
+  if (!percent || !payload || !total) {
     return null;
   }
 
