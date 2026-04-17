@@ -471,6 +471,10 @@ For each suggestion, choose one action:
 2. Edit first if the suggested text is too broad or too narrow.
 3. Ignore if you do not want the app to remember that pattern.
 
+If a suggestion points to a pattern that already has a rule, accepting it
+updates the existing rule and marks the suggestion accepted instead of creating a
+duplicate.
+
 Accepted suggestions apply to future import previews. They do not change older
 entries automatically.
 

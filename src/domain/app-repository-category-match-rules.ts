@@ -189,12 +189,22 @@ export async function saveCategoryMatchRule(
     throw new Error("Choose a valid category for this rule.");
   }
 
-  const existing = input.ruleId
+  const existingById = input.ruleId
     ? await db
       .prepare("SELECT id, pattern FROM category_match_rules WHERE household_id = ? AND id = ?")
       .bind(DEFAULT_HOUSEHOLD_ID, input.ruleId)
       .first<{ id: string; pattern: string }>()
     : null;
+  const existingByPattern = await db
+    .prepare("SELECT id, pattern FROM category_match_rules WHERE household_id = ? AND pattern = ?")
+    .bind(DEFAULT_HOUSEHOLD_ID, pattern)
+    .first<{ id: string; pattern: string }>();
+
+  if (existingById && existingByPattern && existingByPattern.id !== existingById.id) {
+    throw new Error("A category match rule for this pattern already exists. Edit that rule instead.");
+  }
+
+  const existing = existingById ?? existingByPattern;
   const ruleId = existing?.id ?? `catrule-${slugify(pattern)}-${crypto.randomUUID().slice(0, 8)}`;
 
   if (existing) {
