@@ -51,7 +51,9 @@ That distinction matters because the system needs to answer questions like:
   and reconcile against card-section grand totals before preview; OCBC 365 card
   statements and OCBC 360 account statements use spaced layout text and running
   balances where available to determine row direction before preview.
-- review step allows whole-file or per-row account attribution
+- review step allows whole-file or per-row account attribution; when multiple
+  accounts share a display name, import mapping and overlap checks use the
+  selected account id so owner-specific accounts do not collide
 - direct import-row ownership follows the mapped account owner when the account
   is personally owned; the composer-level default owner is a fallback for rows
   without a personally owned account mapping

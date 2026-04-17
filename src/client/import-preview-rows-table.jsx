@@ -18,7 +18,7 @@ export function ImportPreviewRowsTable({
   onRemovePreviewRow,
   getPreviewAccountOwnerPatch
 }) {
-  const accountOptions = getAccountSelectOptions(accounts);
+  const accountOptions = getAccountSelectOptions(accounts, { valueKey: "id" });
   const categorySelectOptions = getCategoriesForSelect(categories);
 
   return (
@@ -87,17 +87,20 @@ export function ImportPreviewRowsTable({
                   <td>
                     <select
                       className="table-edit-input"
-                      value={row.accountName ?? ""}
+                      value={row.accountId ?? row.accountName ?? ""}
                       onChange={(event) => {
-                        const nextAccountName = event.target.value || undefined;
+                        const nextAccountId = event.target.value || undefined;
+                        const nextAccount = accounts.find((account) => account.id === nextAccountId);
+                        const nextAccountName = nextAccount?.name ?? (!nextAccountId ? undefined : row.accountName);
                         onUpdatePreviewRow(row.rowId, {
+                          accountId: nextAccount?.id,
                           accountName: nextAccountName,
-                          ...getPreviewAccountOwnerPatch(nextAccountName, row)
+                          ...getPreviewAccountOwnerPatch(nextAccountName, row, nextAccount?.id)
                         });
                       }}
                     >
                       <option value="">{messages.entries.allWallets}</option>
-                      {row.accountName && !knownAccountNames.has(row.accountName) ? (
+                      {row.accountName && !row.accountId && !knownAccountNames.has(row.accountName) ? (
                         <option value={row.accountName}>{row.accountName}</option>
                       ) : null}
                       {accountOptions.map((account) => (

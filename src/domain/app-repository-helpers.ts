@@ -314,6 +314,7 @@ export function normalizeImportRow(rawRow: Record<string, string>) {
 
   const rawDate = firstDefined(entries, ["date", "transaction date", "posting date", "posted date"]);
   const description = firstDefined(entries, ["description", "details", "narrative", "merchant", "memo"]);
+  const accountId = firstDefined(entries, ["accountid", "account id"]);
   const accountName = firstDefined(entries, ["account", "wallet", "account name", "source account"]);
   const categoryName = firstDefined(entries, ["category"]);
   const note = firstDefined(entries, ["note", "notes", "remarks"]);
@@ -364,6 +365,7 @@ export function normalizeImportRow(rawRow: Record<string, string>) {
   return {
     date,
     description,
+    accountId,
     accountName,
     categoryName,
     note,
@@ -422,7 +424,7 @@ export function normalizeDateString(value: string) {
 }
 
 export function buildImportRowHash(row: ImportPreviewRowDto) {
-  return `${row.date}|${row.description}|${row.amountMinor}|${row.accountName ?? ""}|${row.entryType}`;
+  return `${row.date}|${row.description}|${row.amountMinor}|${row.accountId ?? row.accountName ?? ""}|${row.entryType}`;
 }
 
 export function formatMoneyMinor(valueMinor: number) {

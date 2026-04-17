@@ -2281,8 +2281,13 @@ export async function commitImportBatch(
         .bind(DEFAULT_HOUSEHOLD_ID)
         .all<{ id: string; display_name: string }>()
     ]);
-    const accountIdsByName = new Map(accountRows.results.map((account) => [account.account_name, account.id]));
-    const accountKindsByName = new Map(accountRows.results.map((account) => [account.account_name, account.account_kind]));
+    const accountsById = new Map(accountRows.results.map((account) => [account.id, account]));
+    const accountRowsByName = new Map<string, typeof accountRows.results>();
+    for (const account of accountRows.results) {
+      const current = accountRowsByName.get(account.account_name) ?? [];
+      current.push(account);
+      accountRowsByName.set(account.account_name, current);
+    }
     const categoryIdsByName = new Map(categoryRows.results.map((category) => [category.name, category.id]));
     const personIdsByName = new Map(personRows.results.map((person) => [person.display_name, person.id]));
     const [firstPerson, secondPerson] = personRows.results;
@@ -2291,7 +2296,8 @@ export async function commitImportBatch(
     for (const row of input.rows) {
       const rowId = `import-row-${crypto.randomUUID()}`;
       const transactionId = `txn-${crypto.randomUUID()}`;
-      const accountId = row.accountName ? accountIdsByName.get(row.accountName) : null;
+      const account = resolveImportAccount(accountsById, accountRowsByName, row.accountId, row.accountName);
+      const accountId = account?.id ?? null;
 
       if (!accountId) {
         throw new Error(`Unknown account: ${row.accountName ?? "Unassigned"}`);
@@ -2393,8 +2399,8 @@ export async function commitImportBatch(
     }
 
     for (const checkpoint of input.statementCheckpoints ?? []) {
-      const accountId = accountIdsByName.get(checkpoint.accountName);
-      if (!accountId) {
+      const account = resolveImportAccount(accountsById, accountRowsByName, checkpoint.accountId, checkpoint.accountName);
+      if (!account) {
         throw new Error(`Unknown checkpoint account: ${checkpoint.accountName}`);
       }
       if (!checkpoint.checkpointMonth || !Number.isFinite(checkpoint.statementBalanceMinor)) {
@@ -2417,13 +2423,13 @@ export async function commitImportBatch(
           .bind(
             `checkpoint-${crypto.randomUUID()}`,
             DEFAULT_HOUSEHOLD_ID,
-            accountId,
+            account.id,
             checkpoint.checkpointMonth,
             normalizeStatementDate(checkpoint.statementStartDate),
             normalizeStatementDate(checkpoint.statementEndDate),
             normalizeStatementBalanceInputMinor(
               Math.round(checkpoint.statementBalanceMinor),
-              accountKindsByName.get(checkpoint.accountName)
+              account.account_kind
             ),
             checkpoint.note ?? null
           )
@@ -2459,6 +2465,24 @@ export async function commitImportBatch(
   });
 
   return { importId, created: true, importedRows: input.rows.length };
+}
+
+function resolveImportAccount(
+  accountsById: Map<string, { id: string; account_name: string; account_kind: string }>,
+  accountRowsByName: Map<string, { id: string; account_name: string; account_kind: string }[]>,
+  accountId?: string,
+  accountName?: string
+) {
+  if (accountId) {
+    return accountsById.get(accountId);
+  }
+
+  if (!accountName) {
+    return undefined;
+  }
+
+  const nameMatches = accountRowsByName.get(accountName) ?? [];
+  return nameMatches.length === 1 ? nameMatches[0] : undefined;
 }
 
 export async function rollbackImportBatch(

@@ -105,7 +105,13 @@ function StatementAccountMapping({
   unknownPreviewAccountNames,
   onRemapPreviewAccount
 }) {
-  const accountOptions = getAccountSelectOptions(accounts);
+  const accountOptions = getAccountSelectOptions(accounts, { valueKey: "id" });
+  const accountOptionsByName = accounts.reduce((optionsByName, account) => {
+    const current = optionsByName.get(account.name) ?? [];
+    current.push(account);
+    optionsByName.set(account.name, current);
+    return optionsByName;
+  }, new Map());
 
   return (
     <div className="import-warning import-warning-action">
@@ -117,7 +123,7 @@ function StatementAccountMapping({
             <span className="entries-filter-label">{messages.imports.detectedAccount(accountName)}</span>
             <select
               className="table-edit-input"
-              value={knownAccountNames.has(accountName) ? accountName : ""}
+              value={(accountOptionsByName.get(accountName) ?? []).length === 1 ? accountOptionsByName.get(accountName)[0].id : ""}
               onChange={(event) => onRemapPreviewAccount(accountName, event.target.value)}
             >
               <option value="">{messages.imports.chooseAccount}</option>
@@ -247,7 +253,7 @@ function StatementCheckpointDrafts({
   duplicateCheckpointAccounts,
   onUpdateStatementCheckpoint
 }) {
-  const accountOptions = getAccountSelectOptions(accounts);
+  const accountOptions = getAccountSelectOptions(accounts, { valueKey: "id" });
 
   return (
     <div className="import-warning import-warning-review">
@@ -263,8 +269,14 @@ function StatementCheckpointDrafts({
               <span className="entries-filter-label">{messages.imports.statementCheckpointAccount}</span>
               <select
                 className="table-edit-input"
-                value={checkpoint.accountName}
-                onChange={(event) => onUpdateStatementCheckpoint(index, { accountName: event.target.value })}
+                value={checkpoint.accountId ?? accounts.find((account) => account.name === checkpoint.accountName)?.id ?? checkpoint.accountName}
+                onChange={(event) => {
+                  const nextAccount = accounts.find((account) => account.id === event.target.value);
+                  onUpdateStatementCheckpoint(index, {
+                    accountId: nextAccount?.id,
+                    accountName: nextAccount?.name ?? event.target.value
+                  });
+                }}
               >
                 {checkpoint.accountName && !knownAccountNames.has(checkpoint.accountName) ? (
                   <option value={checkpoint.accountName}>{checkpoint.accountName}</option>

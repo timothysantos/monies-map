@@ -26,7 +26,8 @@ export function formatAccountSelectLabel(account) {
   return account.ownerLabel ? `${accountName} - ${account.ownerLabel}` : accountName;
 }
 
-export function getAccountSelectOptions(accounts) {
+export function getAccountSelectOptions(accounts, options = {}) {
+  const valueKey = options.valueKey ?? "name";
   return accounts
     .slice()
     .sort((left, right) => (
@@ -36,7 +37,9 @@ export function getAccountSelectOptions(accounts) {
     ))
     .map((account) => ({
       id: account.id ?? account.accountId ?? `${account.name ?? account.accountName}-${account.ownerLabel ?? ""}`,
-      value: account.name ?? account.accountName ?? "",
+      value: valueKey === "id"
+        ? account.id ?? account.accountId ?? ""
+        : account.name ?? account.accountName ?? "",
       label: formatAccountSelectLabel(account)
     }));
 }

@@ -74,7 +74,8 @@ export async function buildImportPreview(
       transfer_direction: "in" | "out" | null;
       account_name: string;
     }>();
-  const accountsByName = new Map(accounts.map((account) => [account.name, account]));
+  const accountsById = new Map(accounts.map((account) => [account.id, account]));
+  const accountsByName = groupAccountsByName(accounts);
   const accountNames = new Set(accounts.map((account) => account.name));
   const categoryNames = new Set(categories.map((category) => category.name));
   const existingHashSet = new Set(existingHashes.results.map((row) => row.normalized_hash));
@@ -91,6 +92,7 @@ export async function buildImportPreview(
       validationErrors.push(`Row ${index + 1}: ${normalized.errors.join(", ")}`);
       continue;
     }
+    const normalizedDescription = normalized.description!;
     const inferredAccountName = normalized.accountName ?? input.defaultAccountName;
     let inferredEntryType = normalized.entryType;
     let inferredTransferDirection = normalized.transferDirection;
@@ -99,7 +101,7 @@ export async function buildImportPreview(
     // User-maintained match rules are the correction layer above parser guesses.
     // This lets a rule like "NETS Debit-Consumer -> Food & Drinks" fix an import
     // row even when a bank-specific parser made a broader first guess.
-    const matchedCategoryName = matchCategoryRule(normalized.description, categoryMatchRules);
+    const matchedCategoryName = matchCategoryRule(normalizedDescription, categoryMatchRules);
     if (matchedCategoryName) {
       inferredCategoryName = matchedCategoryName;
     }
@@ -122,7 +124,7 @@ export async function buildImportPreview(
       inferredCategoryName = "Other";
     }
 
-    const inferredAccount = inferredAccountName ? accountsByName.get(inferredAccountName) : undefined;
+    const inferredAccount = resolvePreviewAccount(accountsById, accountsByName, normalized.accountId, inferredAccountName);
     const inferredOwnerName = input.ownershipType === "direct"
       ? getDirectOwnerNameForAccount(inferredAccount, input.ownerName)
       : undefined;
@@ -131,12 +133,12 @@ export async function buildImportPreview(
       rowId: `preview-${index + 1}`,
       rowIndex: index + 1,
       date: normalized.date!,
-      description: normalized.description,
+      description: normalizedDescription,
       amountMinor: normalized.amountMinor!,
       entryType: inferredEntryType,
       transferDirection: inferredTransferDirection,
       accountId: inferredAccount?.id,
-      accountName: inferredAccountName,
+      accountName: inferredAccount?.name ?? inferredAccountName,
       categoryName: inferredCategoryName,
       ownershipType: input.ownershipType,
       ownerName: inferredOwnerName,
@@ -152,7 +154,9 @@ export async function buildImportPreview(
           return false;
         }
 
-        const sameAccount = !previewRow.accountName || candidate.account_name === previewRow.accountName;
+        const sameAccount = previewRow.accountId
+          ? candidate.account_id === previewRow.accountId
+          : !previewRow.accountName || candidate.account_name === previewRow.accountName;
         if (!sameAccount) {
           return false;
         }
@@ -210,7 +214,7 @@ export async function buildImportPreview(
     overlapImports,
     startDate: previewRows.length ? previewRows.map((row) => row.date).sort()[0] : undefined,
     endDate: previewRows.length ? previewRows.map((row) => row.date).sort().at(-1) : undefined,
-    accountNames: Array.from(new Set(previewRows.map((row) => row.accountName).filter(Boolean))).sort(),
+    accountNames: Array.from(new Set(previewRows.map((row) => row.accountName).filter((accountName): accountName is string => Boolean(accountName)))).sort(),
     duplicateCandidates,
     statementReconciliations
   };
@@ -222,6 +226,34 @@ function getDirectOwnerNameForAccount(account?: AccountDto, fallbackOwnerName?: 
   }
 
   return fallbackOwnerName;
+}
+
+function groupAccountsByName(accounts: AccountDto[]) {
+  const accountsByName = new Map<string, AccountDto[]>();
+  for (const account of accounts) {
+    const current = accountsByName.get(account.name) ?? [];
+    current.push(account);
+    accountsByName.set(account.name, current);
+  }
+  return accountsByName;
+}
+
+function resolvePreviewAccount(
+  accountsById: Map<string, AccountDto>,
+  accountsByName: Map<string, AccountDto[]>,
+  accountId?: string,
+  accountName?: string
+) {
+  if (accountId) {
+    return accountsById.get(accountId);
+  }
+
+  if (!accountName) {
+    return undefined;
+  }
+
+  const nameMatches = accountsByName.get(accountName) ?? [];
+  return nameMatches.length === 1 ? nameMatches[0] : undefined;
 }
 
 function buildImportPreviewStatementReconciliations(input: {
@@ -240,7 +272,8 @@ function buildImportPreviewStatementReconciliations(input: {
     return [];
   }
 
-  const accountsByName = new Map(input.accounts.map((account) => [account.name, account]));
+  const accountsById = new Map(input.accounts.map((account) => [account.id, account]));
+  const accountsByName = groupAccountsByName(input.accounts);
   const previewLedgerRows = input.previewRows
     .filter((row) => row.accountId)
     .map((row) => ({
@@ -253,7 +286,7 @@ function buildImportPreviewStatementReconciliations(input: {
   const ledgerRows = [...input.existingRows, ...previewLedgerRows];
 
   return input.statementCheckpoints.map((checkpoint) => {
-    const account = accountsByName.get(checkpoint.accountName);
+    const account = resolvePreviewAccount(accountsById, accountsByName, checkpoint.accountId, checkpoint.accountName);
     const statementStartDate = normalizeStatementDate(checkpoint.statementStartDate) ?? undefined;
     const statementEndDate = normalizeStatementDate(checkpoint.statementEndDate) ?? getMonthEndDate(checkpoint.checkpointMonth);
     const statementBalanceMinor = account
@@ -303,26 +336,31 @@ async function findOverlappingImports(db: D1Database, rows: ImportPreviewRowDto[
   }
 
   const dates = rows.map((row) => row.date).sort();
-  const accountNames = Array.from(new Set(rows.map((row) => row.accountName).filter(Boolean)));
-  if (!accountNames.length) {
+  const accountIds = Array.from(new Set(rows.map((row) => row.accountId).filter(Boolean)));
+  if (!accountIds.length) {
     return [];
   }
 
-  const placeholders = accountNames.map(() => "?").join(", ");
+  const placeholders = accountIds.map(() => "?").join(", ");
   const overlapRows = await db
     .prepare(`
       WITH overlapping_imports AS (
         SELECT
           imports.id,
           accounts.account_name,
+          CASE
+            WHEN accounts.is_joint = 1 THEN 'Shared'
+            ELSE people.display_name
+          END AS owner_name,
           transactions.id AS transaction_id,
           transactions.transaction_date
         FROM imports
         INNER JOIN transactions ON transactions.import_id = imports.id
         INNER JOIN accounts ON accounts.id = transactions.account_id
+        LEFT JOIN people ON people.id = accounts.owner_person_id
         WHERE imports.household_id = ?
           AND imports.status = 'completed'
-          AND accounts.account_name IN (${placeholders})
+          AND accounts.id IN (${placeholders})
           AND transactions.transaction_date BETWEEN ? AND ?
       )
       SELECT
@@ -334,13 +372,13 @@ async function findOverlappingImports(db: D1Database, rows: ImportPreviewRowDto[
         COUNT(DISTINCT overlapping_imports.transaction_id) AS transaction_count,
         MIN(overlapping_imports.transaction_date) AS start_date,
         MAX(overlapping_imports.transaction_date) AS end_date,
-        GROUP_CONCAT(DISTINCT overlapping_imports.account_name) AS account_names
+        GROUP_CONCAT(DISTINCT overlapping_imports.account_name || ' - ' || COALESCE(overlapping_imports.owner_name, 'Shared')) AS account_names
       FROM imports
       INNER JOIN overlapping_imports ON overlapping_imports.id = imports.id
       GROUP BY imports.id, imports.source_label, imports.source_type, imports.imported_at, imports.status
       ORDER BY imports.imported_at DESC
     `)
-    .bind(DEFAULT_HOUSEHOLD_ID, ...accountNames, dates[0], dates[dates.length - 1])
+    .bind(DEFAULT_HOUSEHOLD_ID, ...accountIds, dates[0], dates[dates.length - 1])
     .all<{
       id: string;
       source_label: string;
