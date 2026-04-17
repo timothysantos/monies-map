@@ -15,8 +15,16 @@ import {
   getEntryWalletFilterOptions
 } from "./entry-selectors";
 import { getVisibleSplitPercent } from "./entry-helpers";
+import { buildRequestErrorMessage } from "./request-errors";
 
-const ENTRIES_PAGE_PREFETCH_DELAY_MS = 160;
+const ENTRIES_PAGE_PREFETCH_DELAY_MS = 1200;
+const ENTRIES_PAGE_PREFETCH_SPACING_MS = 650;
+
+function waitFor(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
 
 export function EntriesPanel({
   view,
@@ -95,10 +103,10 @@ export function EntriesPanel({
 
     const request = fetch(`/api/entries-page?${cacheKey}`, { cache: "no-store" })
       .then(async (response) => {
-        const data = await response.json();
         if (!response.ok) {
-          throw new Error(data.message ?? data.error ?? "Entries page failed.");
+          throw new Error(await buildRequestErrorMessage(response, "Entries page failed."));
         }
+        const data = await response.json();
         if (entriesPageCacheRefs.versionRef.current === cacheVersion) {
           entriesPageCacheRefs.cacheRef.current.set(cacheKey, data);
         }
@@ -185,28 +193,40 @@ export function EntriesPanel({
       return undefined;
     }
 
+    let isCancelled = false;
+    const entriesPageVersion = entriesPageCacheRefs.versionRef.current;
+
     entriesPagePrefetchTimerRef.current = window.setTimeout(() => {
       const currentIndex = availableMonths.indexOf(selectedMonth);
       if (currentIndex === -1) {
         return;
       }
 
-      for (const offset of [-1, 1]) {
-        const adjacentMonth = availableMonths[currentIndex + offset];
-        if (!adjacentMonth) {
-          continue;
+      void (async () => {
+        for (const offset of [-1, 1]) {
+          if (isCancelled || entriesPageCacheRefs.versionRef.current !== entriesPageVersion) {
+            return;
+          }
+          const adjacentMonth = availableMonths[currentIndex + offset];
+          if (!adjacentMonth) {
+            continue;
+          }
+          await fetchEntriesPage(buildEntriesPageParams({ viewId: entriesSourceView.id, month: adjacentMonth })).catch(() => {});
+          if (!isCancelled) {
+            await waitFor(ENTRIES_PAGE_PREFETCH_SPACING_MS);
+          }
         }
-        void fetchEntriesPage(buildEntriesPageParams({ viewId: entriesSourceView.id, month: adjacentMonth })).catch(() => {});
-      }
+      })();
     }, ENTRIES_PAGE_PREFETCH_DELAY_MS);
 
     return () => {
+      isCancelled = true;
       if (entriesPagePrefetchTimerRef.current) {
         window.clearTimeout(entriesPagePrefetchTimerRef.current);
         entriesPagePrefetchTimerRef.current = null;
       }
     };
-  }, [availableMonths, entriesSourceView.id, fetchEntriesPage, selectedMonth]);
+  }, [availableMonths, entriesPageCacheRefs, entriesSourceView.id, fetchEntriesPage, selectedMonth]);
 
   const {
     entries,
