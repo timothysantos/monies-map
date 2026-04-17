@@ -4014,7 +4014,7 @@ body:has(.note-dialog-overlay) .entries-fab {
 
 .entries-filter-bar {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  grid-template-columns: auto repeat(4, minmax(0, 1fr)) auto;
   align-items: end;
   padding: 14px 16px;
   margin-bottom: 14px;
@@ -4022,6 +4022,18 @@ body:has(.note-dialog-overlay) .entries-fab {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.82);
   gap: 12px;
+}
+
+.entries-filter-refresh {
+  align-self: end;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.entries-filter-refresh:hover {
+  background: rgba(177, 94, 47, 0.08);
 }
 
 .entries-filter-stack {

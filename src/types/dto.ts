@@ -158,6 +158,7 @@ export interface EntryDto {
   id: string;
   date: string;
   description: string;
+  accountId?: string;
   accountName: string;
   categoryName: string;
   entryType: EntryType;

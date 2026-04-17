@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
 
 import { SpendingMixChart } from "./category-visuals";
 import { getCategoryTheme } from "./category-utils";
@@ -101,7 +101,8 @@ export function EntriesFilterStack({
   peopleFilterOptions,
   onToggleMobileFilters,
   onChangeFilter,
-  onResetFilters
+  onResetFilters,
+  onRefresh
 }) {
   return (
     <section className={`entries-filter-stack ${showMobileFilters ? "is-open" : ""}`}>
@@ -110,6 +111,15 @@ export function EntriesFilterStack({
         <span>{showMobileFilters ? "Hide" : "Show"}</span>
       </button>
       <section className="entries-filter-bar">
+        <button
+          type="button"
+          className="icon-action entries-filter-refresh"
+          onClick={() => void onRefresh?.()}
+          aria-label={messages.common.refresh}
+          title={messages.common.refresh}
+        >
+          <RefreshCw size={18} />
+        </button>
         <FilterSelect
           label={messages.entries.wallet}
           value={entryFilters.wallet}
