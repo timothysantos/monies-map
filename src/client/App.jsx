@@ -50,6 +50,7 @@ const secondaryRouteTabs = routeTabs.slice(4);
 const MONTH_SWIPE_MIN_DISTANCE_PX = 72;
 const MONTH_SWIPE_MAX_VERTICAL_PX = 80;
 const MONTH_SWIPE_MIN_RATIO = 1.35;
+const BOOTSTRAP_PREFETCH_DELAY_MS = 160;
 
 export function App() {
   const [bootstrap, setBootstrap] = useState(null);
@@ -63,11 +64,25 @@ export function App() {
   const location = useLocation();
   const syncChannelRef = useRef(null);
   const monthSwipeStartRef = useRef(null);
+  const bootstrapCacheRef = useRef(new Map());
+  const bootstrapInflightRef = useRef(new Map());
+  const bootstrapCacheVersionRef = useRef(0);
+  const bootstrapPrefetchTimerRef = useRef(null);
   const selectedMonth = searchParams.get("month") ?? DEFAULT_MONTH_KEY;
   const selectedScope = searchParams.get("scope") ?? "direct_plus_shared";
   const selectedSummaryStart = searchParams.get("summary_start") ?? undefined;
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
   const isBootstrapLoading = bootstrapLoadCount > 0;
+  const bootstrapParams = useMemo(
+    () => buildBootstrapParams({
+      month: selectedMonth,
+      scope: selectedScope,
+      summaryStart: selectedSummaryStart,
+      summaryEnd: selectedSummaryEnd
+    }),
+    [selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart]
+  );
+  const bootstrapCacheKey = bootstrapParams.toString();
 
   const beginBootstrapLoad = useCallback(() => {
     let didFinish = false;
@@ -83,44 +98,76 @@ export function App() {
     };
   }, []);
 
-  const loadBootstrap = useCallback(async (signal) => {
-    const params = new URLSearchParams({
-      month: selectedMonth,
-      scope: selectedScope
-    });
-    if (selectedSummaryStart) {
-      params.set("summary_start", selectedSummaryStart);
-    }
-    if (selectedSummaryEnd) {
-      params.set("summary_end", selectedSummaryEnd);
-    }
-    const response = await fetch(`/api/bootstrap?${params.toString()}`, {
-      signal,
-      cache: "no-store"
-    });
-    const responseText = await response.text();
-    let data = null;
+  const clearBootstrapCache = useCallback(() => {
+    bootstrapCacheVersionRef.current += 1;
+    bootstrapCacheRef.current.clear();
+    bootstrapInflightRef.current.clear();
+  }, []);
 
-    if (responseText) {
-      try {
-        data = JSON.parse(responseText);
-      } catch {
-        if (!response.ok) {
-          throw new Error(buildBootstrapErrorMessage(response.status, responseText));
+  const fetchBootstrapData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
+    const cacheKey = params.toString();
+    const cacheVersion = bootstrapCacheVersionRef.current;
+    if (signal?.aborted) {
+      throw new DOMException("Bootstrap request aborted.", "AbortError");
+    }
+
+    if (!bypassCache && bootstrapCacheRef.current.has(cacheKey)) {
+      return bootstrapCacheRef.current.get(cacheKey);
+    }
+
+    if (!bypassCache && bootstrapInflightRef.current.has(cacheKey)) {
+      const data = await bootstrapInflightRef.current.get(cacheKey);
+      if (signal?.aborted) {
+        throw new DOMException("Bootstrap request aborted.", "AbortError");
+      }
+      return data;
+    }
+
+    const request = fetch(`/api/bootstrap?${cacheKey}`, { cache: "no-store" })
+      .then(async (response) => {
+        const responseText = await response.text();
+        let data = null;
+
+        if (responseText) {
+          try {
+            data = JSON.parse(responseText);
+          } catch {
+            if (!response.ok) {
+              throw new Error(buildBootstrapErrorMessage(response.status, responseText));
+            }
+
+            throw new Error("Bootstrap returned invalid JSON.");
+          }
         }
 
-        throw new Error("Bootstrap returned invalid JSON.");
-      }
-    }
+        if (!response.ok) {
+          throw new Error(buildBootstrapErrorMessage(response.status, data?.message ?? responseText));
+        }
 
-    if (!response.ok) {
-      throw new Error(buildBootstrapErrorMessage(response.status, data?.message ?? responseText));
+        if (bootstrapCacheVersionRef.current === cacheVersion) {
+          bootstrapCacheRef.current.set(cacheKey, data);
+        }
+        return data;
+      })
+      .finally(() => {
+        bootstrapInflightRef.current.delete(cacheKey);
+      });
+
+    bootstrapInflightRef.current.set(cacheKey, request);
+    const data = await request;
+    if (signal?.aborted || bootstrapCacheVersionRef.current !== cacheVersion) {
+      throw new DOMException("Bootstrap request aborted.", "AbortError");
     }
+    return data;
+  }, []);
+
+  const loadBootstrap = useCallback(async (signal, { bypassCache = false } = {}) => {
+    const data = await fetchBootstrapData(bootstrapParams, { bypassCache, signal });
 
     setBootstrapError("");
     setBootstrap(data);
     return data;
-  }, [selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart]);
+  }, [bootstrapParams, fetchBootstrapData]);
 
   const handleBootstrapFailure = useCallback((error) => {
     setBootstrap(null);
@@ -128,10 +175,11 @@ export function App() {
   }, []);
 
   const refreshBootstrap = useCallback(async ({ broadcast = false } = {}) => {
+    clearBootstrapCache();
     const finishBootstrapLoad = beginBootstrapLoad();
 
     try {
-      const data = await loadBootstrap();
+      const data = await loadBootstrap(undefined, { bypassCache: true });
 
       if (!broadcast) {
         return data;
@@ -150,26 +198,58 @@ export function App() {
     } finally {
       finishBootstrapLoad();
     }
-  }, [beginBootstrapLoad, loadBootstrap]);
+  }, [beginBootstrapLoad, clearBootstrapCache, loadBootstrap]);
+
+  const prefetchBootstrap = useCallback((params) => {
+    const cacheKey = params.toString();
+    if (bootstrapCacheRef.current.has(cacheKey) || bootstrapInflightRef.current.has(cacheKey)) {
+      return;
+    }
+
+    void fetchBootstrapData(params).catch(() => {});
+  }, [fetchBootstrapData]);
 
   useEffect(() => {
     const controller = new AbortController();
-    const finishBootstrapLoad = beginBootstrapLoad();
+    const hasCachedBootstrap = bootstrapCacheRef.current.has(bootstrapCacheKey);
+    const finishBootstrapLoad = hasCachedBootstrap ? null : beginBootstrapLoad();
 
     void loadBootstrap(controller.signal)
+      .then(async () => {
+        if (!hasCachedBootstrap) {
+          return;
+        }
+
+        try {
+          const data = await fetchBootstrapData(bootstrapParams, {
+            bypassCache: true,
+            signal: controller.signal
+          });
+          if (!controller.signal.aborted) {
+            setBootstrapError("");
+            setBootstrap(data);
+          }
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            return;
+          }
+        }
+      })
       .catch((error) => {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
 
-        handleBootstrapFailure(error);
+        if (!hasCachedBootstrap) {
+          handleBootstrapFailure(error);
+        }
       })
-      .finally(finishBootstrapLoad);
+      .finally(() => finishBootstrapLoad?.());
 
     return () => {
       controller.abort();
     };
-  }, [beginBootstrapLoad, handleBootstrapFailure, loadBootstrap]);
+  }, [beginBootstrapLoad, bootstrapCacheKey, bootstrapParams, fetchBootstrapData, handleBootstrapFailure, loadBootstrap]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -182,6 +262,7 @@ export function App() {
       syncChannelRef.current = channel;
       channel.onmessage = (event) => {
         if (event.data?.type === "bootstrap-refresh") {
+          clearBootstrapCache();
           const finishBootstrapLoad = beginBootstrapLoad();
           void loadBootstrap()
             .catch(handleBootstrapFailure)
@@ -192,6 +273,7 @@ export function App() {
 
     const handleStorage = (event) => {
       if (event.key === BOOTSTRAP_SYNC_STORAGE_KEY && event.newValue) {
+        clearBootstrapCache();
         const finishBootstrapLoad = beginBootstrapLoad();
         void loadBootstrap()
           .catch(handleBootstrapFailure)
@@ -208,7 +290,7 @@ export function App() {
         syncChannelRef.current = null;
       }
     };
-  }, [beginBootstrapLoad, handleBootstrapFailure, loadBootstrap]);
+  }, [beginBootstrapLoad, clearBootstrapCache, handleBootstrapFailure, loadBootstrap]);
 
   const selectedViewId = searchParams.get("view") ?? "household";
   const selectedTabId = routeTabs.find((tab) => tab.path === location.pathname)?.id ?? "summary";
@@ -263,6 +345,74 @@ export function App() {
       : [],
     [isDetailMonthTab, rangePickerEndYear, view]
   );
+
+  useEffect(() => {
+    if (!bootstrap || bootstrapError || typeof window === "undefined" || window.navigator?.connection?.saveData) {
+      return undefined;
+    }
+
+    bootstrapPrefetchTimerRef.current = window.setTimeout(() => {
+      const paramsToPrefetch = [];
+
+      if (isMonthSwipeTab) {
+        const currentIndex = availableMonths.indexOf(selectedMonth);
+        if (currentIndex !== -1) {
+          for (const offset of [-1, 1]) {
+            const adjacentMonth = availableMonths[currentIndex + offset];
+            if (adjacentMonth) {
+              paramsToPrefetch.push(buildBootstrapParams({
+                month: adjacentMonth,
+                scope: selectedScope,
+                summaryStart: selectedSummaryStart,
+                summaryEnd: selectedSummaryEnd
+              }));
+            }
+          }
+        }
+      } else if (!isDetailMonthTab && view?.summaryPage.availableMonths.length) {
+        const summaryMonths = view.summaryPage.availableMonths;
+        const startIndex = summaryMonths.indexOf(view.summaryPage.rangeStartMonth);
+        const endIndex = summaryMonths.indexOf(view.summaryPage.rangeEndMonth);
+        if (startIndex !== -1 && endIndex !== -1) {
+          for (const offset of [-1, 1]) {
+            const nextStartIndex = startIndex + offset;
+            const nextEndIndex = endIndex + offset;
+            if (nextStartIndex >= 0 && nextEndIndex < summaryMonths.length) {
+              paramsToPrefetch.push(buildBootstrapParams({
+                month: selectedMonth,
+                scope: selectedScope,
+                summaryStart: summaryMonths[nextStartIndex],
+                summaryEnd: summaryMonths[nextEndIndex]
+              }));
+            }
+          }
+        }
+      }
+
+      for (const params of paramsToPrefetch) {
+        prefetchBootstrap(params);
+      }
+    }, BOOTSTRAP_PREFETCH_DELAY_MS);
+
+    return () => {
+      if (bootstrapPrefetchTimerRef.current) {
+        window.clearTimeout(bootstrapPrefetchTimerRef.current);
+        bootstrapPrefetchTimerRef.current = null;
+      }
+    };
+  }, [
+    availableMonths,
+    bootstrap,
+    bootstrapError,
+    isDetailMonthTab,
+    isMonthSwipeTab,
+    prefetchBootstrap,
+    selectedMonth,
+    selectedScope,
+    selectedSummaryEnd,
+    selectedSummaryStart,
+    view
+  ]);
 
   useEffect(() => {
     if (!bootstrap) {
@@ -588,7 +738,7 @@ export function App() {
       }
     }));
 
-    await fetch("/api/categories/update", {
+    const response = await fetch("/api/categories/update", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -601,6 +751,10 @@ export function App() {
         colorHex: normalizedAppearance.colorHex
       })
     });
+    if (!response.ok) {
+      throw new Error("Category appearance could not be saved.");
+    }
+    clearBootstrapCache();
   }
 
   return (
@@ -1012,4 +1166,18 @@ function shouldIgnoreMonthSwipe(target) {
     "[role='menuitem']",
     "[role='option']"
   ].join(",")));
+}
+
+function buildBootstrapParams({ month, scope, summaryStart, summaryEnd }) {
+  const params = new URLSearchParams({
+    month,
+    scope
+  });
+  if (summaryStart) {
+    params.set("summary_start", summaryStart);
+  }
+  if (summaryEnd) {
+    params.set("summary_end", summaryEnd);
+  }
+  return params;
 }

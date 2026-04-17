@@ -358,6 +358,12 @@ On touch devices, swipe left or right on Month or Entries to move to the next
 or previous month. Splits does not use the selected month as its main filter, so
 the gesture is disabled there.
 
+After a month or summary range loads, the app keeps that bootstrap payload in
+memory and preloads nearby months or ranges. Going back to an adjacent period
+can therefore render immediately while the app refreshes the cached data in the
+background. Imports, edits, rollbacks, and other writes clear the cache before
+reloading.
+
 ## How do I import real bank activity?
 
 Use Imports when you want bank or card rows to become ledger entries. Use
