@@ -63,7 +63,9 @@ const secondaryRouteTabs = routeTabs.slice(4);
 const MONTH_SWIPE_MIN_DISTANCE_PX = 72;
 const MONTH_SWIPE_MAX_VERTICAL_PX = 80;
 const MONTH_SWIPE_MIN_RATIO = 1.35;
-const PAGE_PREFETCH_DELAY_MS = 160;
+const PAGE_PREFETCH_DELAY_MS = 1200;
+const PAGE_PREFETCH_SPACING_MS = 650;
+const PAGE_PREFETCH_STAGE_DELAY_MS = 1800;
 
 function preloadRouteModule(routeId) {
   const loader = routeModuleLoaders[routeId];
@@ -96,6 +98,12 @@ function cancelIdleTask(handle) {
     return;
   }
   window.clearTimeout(handle.id);
+}
+
+function waitFor(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 }
 
 function readPersistedBootstrap(cacheKey) {
@@ -521,7 +529,7 @@ export function App() {
     clearEntriesPageCache();
   }, [clearBootstrapCache, clearEntriesPageCache, clearRoutePageCache]);
 
-  const prefetchRoutePage = useCallback((request) => {
+  const prefetchRoutePage = useCallback(async (request) => {
     if (!request) {
       return;
     }
@@ -531,16 +539,16 @@ export function App() {
       return;
     }
 
-    void fetchRoutePageData(request).catch(() => {});
+    await fetchRoutePageData(request).catch(() => {});
   }, [fetchRoutePageData]);
 
-  const prefetchEntriesPage = useCallback((params) => {
+  const prefetchEntriesPage = useCallback(async (params) => {
     const cacheKey = params.toString();
     if (entriesPageCacheRef.current.has(cacheKey) || entriesPageInflightRef.current.has(cacheKey)) {
       return;
     }
 
-    void fetchEntriesPageData(params).catch(() => {});
+    await fetchEntriesPageData(params).catch(() => {});
   }, [fetchEntriesPageData]);
 
   useEffect(() => {
@@ -748,8 +756,36 @@ export function App() {
       return undefined;
     }
 
+    let isCancelled = false;
+    const bootstrapVersion = bootstrapCacheVersionRef.current;
+    const routePageVersion = routePageCacheVersionRef.current;
+    const entriesPageVersion = entriesPageCacheVersionRef.current;
+    const isStable = () => !isCancelled
+      && bootstrapCacheVersionRef.current === bootstrapVersion
+      && routePageCacheVersionRef.current === routePageVersion
+      && entriesPageCacheVersionRef.current === entriesPageVersion;
+    const runPrefetchTasks = async (tasks) => {
+      const seenKeys = new Set();
+      for (const task of tasks) {
+        if (!task || seenKeys.has(task.key)) {
+          continue;
+        }
+        seenKeys.add(task.key);
+        if (!isStable()) {
+          return false;
+        }
+        await task.run();
+        if (!isStable()) {
+          return false;
+        }
+        await waitFor(PAGE_PREFETCH_SPACING_MS);
+      }
+      return isStable();
+    };
+
     routePagePrefetchTimerRef.current = window.setTimeout(() => {
-      const requestsToPrefetch = [];
+      const highPriorityTasks = [];
+      const lowPriorityTasks = [];
 
       if (selectedTabId === "month") {
         const currentIndex = availableMonths.indexOf(selectedMonth);
@@ -757,12 +793,16 @@ export function App() {
           for (const offset of [-1, 1]) {
             const adjacentMonth = availableMonths[currentIndex + offset];
             if (adjacentMonth) {
-              requestsToPrefetch.push(buildRoutePageRequest({
+              const request = buildRoutePageRequest({
                 tabId: "month",
                 viewId: selectedViewId,
                 month: adjacentMonth,
                 scope: selectedScope
-              }));
+              });
+              highPriorityTasks.push({
+                key: `${request.path}?${request.params.toString()}`,
+                run: () => prefetchRoutePage(request)
+              });
             }
           }
         }
@@ -775,25 +815,61 @@ export function App() {
             const nextStartIndex = startIndex + offset;
             const nextEndIndex = endIndex + offset;
             if (nextStartIndex >= 0 && nextEndIndex < summaryMonths.length) {
-              requestsToPrefetch.push(buildRoutePageRequest({
+              const request = buildRoutePageRequest({
                 tabId: "summary",
                 viewId: selectedViewId,
                 month: selectedMonth,
                 scope: selectedScope,
                 summaryStart: summaryMonths[nextStartIndex],
                 summaryEnd: summaryMonths[nextEndIndex]
-              }));
+              });
+              highPriorityTasks.push({
+                key: `${request.path}?${request.params.toString()}`,
+                run: () => prefetchRoutePage(request)
+              });
             }
           }
         }
       }
 
-      for (const request of requestsToPrefetch) {
-        prefetchRoutePage(request);
+      for (const tabId of ["splits", "imports", "settings"]) {
+        if (tabId === selectedTabId) {
+          continue;
+        }
+        const request = buildRoutePageRequest({
+          tabId,
+          viewId: selectedViewId,
+          month: selectedMonth,
+          scope: selectedScope
+        });
+        if (request) {
+          lowPriorityTasks.push({
+            key: `${request.path}?${request.params.toString()}`,
+            run: () => prefetchRoutePage(request)
+          });
+        }
       }
+
+      if (selectedTabId !== "entries") {
+        const params = buildEntriesPageParams({ viewId: "household", month: selectedMonth });
+        lowPriorityTasks.push({
+          key: `/api/entries-page?${params.toString()}`,
+          run: () => prefetchEntriesPage(params)
+        });
+      }
+
+      void (async () => {
+        const highPriorityComplete = await runPrefetchTasks(highPriorityTasks.slice(0, 2));
+        if (!highPriorityComplete) {
+          return;
+        }
+        await waitFor(PAGE_PREFETCH_STAGE_DELAY_MS);
+        await runPrefetchTasks(lowPriorityTasks);
+      })();
     }, PAGE_PREFETCH_DELAY_MS);
 
     return () => {
+      isCancelled = true;
       if (routePagePrefetchTimerRef.current) {
         window.clearTimeout(routePagePrefetchTimerRef.current);
         routePagePrefetchTimerRef.current = null;
@@ -804,10 +880,11 @@ export function App() {
     bootstrap,
     bootstrapError,
     pageView,
+    prefetchEntriesPage,
     prefetchRoutePage,
-    selectedTabId,
     selectedMonth,
     selectedScope,
+    selectedTabId,
     selectedViewId
   ]);
 
@@ -823,86 +900,13 @@ export function App() {
           preloadRouteModule(routeId);
         }
       }
-
-      const requestsToPrefetch = [
-        buildRoutePageRequest({
-          tabId: "splits",
-          viewId: selectedViewId,
-          month: selectedMonth,
-          scope: selectedScope
-        }),
-        buildRoutePageRequest({
-          tabId: "imports",
-          viewId: selectedViewId,
-          month: selectedMonth,
-          scope: selectedScope
-        }),
-        buildRoutePageRequest({
-          tabId: "settings",
-          viewId: selectedViewId,
-          month: selectedMonth,
-          scope: selectedScope
-        })
-      ];
-      if (selectedTabId !== "summary" && !canUseBootstrapRouteForTab("summary", {
-        bootstrapMonth,
-        bootstrapScope,
-        bootstrapSummaryEnd,
-        bootstrapSummaryStart,
-        selectedMonth,
-        selectedScope,
-        selectedSummaryEnd,
-        selectedSummaryStart
-      })) {
-        requestsToPrefetch.push(buildRoutePageRequest({
-          tabId: "summary",
-          viewId: selectedViewId,
-          month: selectedMonth,
-          scope: selectedScope,
-          summaryStart: selectedSummaryStart,
-          summaryEnd: selectedSummaryEnd
-        }));
-      }
-      if (selectedTabId !== "month" && !canUseBootstrapRouteForTab("month", {
-        bootstrapMonth,
-        bootstrapScope,
-        bootstrapSummaryEnd,
-        bootstrapSummaryStart,
-        selectedMonth,
-        selectedScope,
-        selectedSummaryEnd,
-        selectedSummaryStart
-      })) {
-        requestsToPrefetch.push(buildRoutePageRequest({
-          tabId: "month",
-          viewId: selectedViewId,
-          month: selectedMonth,
-          scope: selectedScope
-        }));
-      }
-
-      for (const request of requestsToPrefetch) {
-        prefetchRoutePage(request);
-      }
-      prefetchEntriesPage(buildEntriesPageParams({ viewId: "household", month: selectedMonth }));
     }, 900);
 
     return () => cancelIdleTask(idleHandle);
   }, [
     bootstrap,
     bootstrapError,
-    bootstrapMonth,
-    bootstrapScope,
-    bootstrapSummaryEnd,
-    bootstrapSummaryStart,
-    prefetchEntriesPage,
-    prefetchRoutePage,
-    selectedMonth,
-    selectedScope,
-    selectedSummaryEnd,
-    selectedSummaryStart,
-    selectedTabId,
-    selectedViewId
+    selectedTabId
   ]);
 
   useEffect(() => {
