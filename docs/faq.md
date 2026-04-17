@@ -365,6 +365,11 @@ when no import, edit, rollback, or manual refresh has invalidated it. This keeps
 tab switching fast while still letting mutation flows clear the cache before
 fresh data is needed.
 
+After the first usable screen renders, the app also uses browser idle time to
+warm the most likely next route chunks and current-period page data. This is
+skipped when the browser reports data-saver mode, and it never blocks the first
+screen from becoming usable.
+
 On touch devices, swipe left or right on Month or Entries to move to the next
 or previous month. Splits does not use the selected month as its main filter, so
 the gesture is disabled there.
