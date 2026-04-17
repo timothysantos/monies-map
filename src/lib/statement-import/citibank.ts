@@ -38,8 +38,8 @@ export function parseCitibankCreditCardStatement(lines: string[], fileName?: str
   const sections: CitibankCreditCardSection[] = [];
 
   for (let index = 0; index < lines.length; index += 1) {
-    const accountName = normalizeCitibankCardAccountName(lines[index]);
-    if (!accountName || !lines[index].startsWith("TRANSACTIONSFOR")) {
+    const accountName = readCitibankCardAccountName(lines[index]);
+    if (!accountName) {
       continue;
     }
 
@@ -237,14 +237,77 @@ function findCitibankDueDate(lines: string[]) {
   return undefined;
 }
 
+function readCitibankCardAccountName(value: string) {
+  const match = value.match(/^TRANSACTIONSFOR(.+)$/i);
+  if (!match?.[1]) {
+    return "";
+  }
+  return normalizeCitibankCardAccountName(match[1]);
+}
+
 function normalizeCitibankCardAccountName(value: string) {
   if (/CITIREWARDSWORLDMASTERCARD/i.test(value)) {
     return "Citi Rewards";
   }
   if (/CITIPREMIERMILE(?:S|SWORLDMASTER)CARD/i.test(value)) {
-    return "Citibank Miles";
+    return "Citi Miles";
   }
-  return "";
+  return prettifyCompactCitibankCardName(value);
+}
+
+const CITIBANK_CARD_NAME_TOKENS = [
+  ["CITI", "Citi"],
+  ["PREMIERMILES", "Premier Miles"],
+  ["REWARDS", "Rewards"],
+  ["CASHBACK", "Cashback"],
+  ["WORLD", "World"],
+  ["MASTERCARD", "Mastercard"],
+  ["VISA", "Visa"],
+  ["AMEX", "Amex"],
+  ["PLATINUM", "Platinum"],
+  ["PRESTIGE", "Prestige"],
+  ["DIVIDEND", "Dividend"],
+  ["CLEAR", "Clear"],
+  ["SMRT", "SMRT"],
+  ["CASH", "Cash"],
+  ["BACK", "Back"],
+  ["PLUS", "Plus"],
+  ["CARD", "Card"]
+] as const;
+
+function prettifyCompactCitibankCardName(value: string) {
+  const compactName = value
+    .replace(/ACCOUNTENDING\d+$/i, "")
+    .replace(/[^A-Z0-9]/gi, "")
+    .toUpperCase();
+  const parts: string[] = [];
+  let index = 0;
+
+  while (index < compactName.length) {
+    const token = CITIBANK_CARD_NAME_TOKENS.find(([raw]) => compactName.startsWith(raw, index));
+    if (token) {
+      parts.push(token[1]);
+      index += token[0].length;
+      continue;
+    }
+
+    let endIndex = index + 1;
+    while (
+      endIndex < compactName.length
+      && !CITIBANK_CARD_NAME_TOKENS.some(([raw]) => compactName.startsWith(raw, endIndex))
+    ) {
+      endIndex += 1;
+    }
+    parts.push(toTitleCase(compactName.slice(index, endIndex)));
+    index = endIndex;
+  }
+
+  const label = compactDescription(parts.join(" "));
+  return /^Citi\b/i.test(label) ? label : `Citi ${label}`;
+}
+
+function toTitleCase(value: string) {
+  return value.toLowerCase().replace(/\b[a-z]/g, (match) => match.toUpperCase());
 }
 
 function cleanCitibankDescription(value: string) {

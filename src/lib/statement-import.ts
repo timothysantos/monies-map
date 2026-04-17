@@ -21,7 +21,7 @@ export function parseStatementText(text: string, fileName?: string): ParsedState
   const normalizedText = text.replace(/\r/g, "\n");
   const layoutLines = getPdfLayoutLines(normalizedText);
   const spacedLayoutLines = getPdfSpacedLayoutLines(normalizedText);
-  if (layoutLines.some((line) => /TRANSACTIONSFORCITI(?:REWARDSWORLDMASTERCARD|PREMIERMILE(?:S|SWORLDMASTER)CARD)/i.test(line))) {
+  if (layoutLines.some((line) => /^TRANSACTIONSFORCITI/i.test(line))) {
     return parseCitibankCreditCardStatement(layoutLines, fileName);
   }
 
@@ -41,5 +41,5 @@ export function parseStatementText(text: string, fileName?: string): ParsedState
     return parseUobSavingsStatement(normalizedText, fileName);
   }
 
-  throw new Error("Unsupported statement PDF. This importer currently recognizes UOB, Citibank Rewards, Citibank Miles, OCBC 365, and OCBC 360 statement text.");
+  throw new Error("Unsupported statement PDF. This importer currently recognizes UOB, Citi Rewards, Citi Miles, OCBC 365, and OCBC 360 statement text.");
 }

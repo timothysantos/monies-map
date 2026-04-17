@@ -366,8 +366,8 @@ Supported PDF parsers include:
 - UOB credit-card statements, including multi-card statements such as UOB One
   Card plus UOB Privi Miles
 - UOB One savings statements
-- Citibank Rewards statements
-- Citibank Miles statements
+- Citibank credit-card statements, including known Citi Rewards and Citibank
+  Miles layouts
 - OCBC 365 credit-card statements with embedded text
 - OCBC 360 account statements with embedded text
 

@@ -137,7 +137,7 @@ function resolveCitibankActivityAccountName(fileName?: string, context?: Citiban
     return "Citi Rewards";
   }
   if (/-miles\.csv$/i.test(fileName ?? "")) {
-    return "Citibank Miles";
+    return "Citi Miles";
   }
   return context?.accountName || "Citibank card";
 }
