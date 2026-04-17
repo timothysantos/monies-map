@@ -39,10 +39,27 @@ export function parseCsvMatrix(input: string): string[][] {
 }
 
 function parseCsvLines(input: string): string[] {
-  return input
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (const rawLine of input.split(/\r?\n/)) {
+    current = current ? `${current}\n${rawLine}` : rawLine;
+    inQuotes = updateCsvQuoteState(rawLine, inQuotes);
+    if (!inQuotes) {
+      const line = current.trim();
+      if (line) {
+        lines.push(line);
+      }
+      current = "";
+    }
+  }
+
+  const finalLine = current.trim();
+  if (finalLine) {
+    lines.push(finalLine);
+  }
+  return lines;
 }
 
 function splitCsvLine(line: string): string[] {
@@ -102,4 +119,19 @@ function alignCsvValues(headers: string[], values: string[]): string[] {
   }
 
   return repaired.slice(0, headers.length);
+}
+
+function updateCsvQuoteState(line: string, initialState: boolean) {
+  let inQuotes = initialState;
+  for (let index = 0; index < line.length; index += 1) {
+    if (line[index] !== '"') {
+      continue;
+    }
+    if (inQuotes && line[index + 1] === '"') {
+      index += 1;
+      continue;
+    }
+    inQuotes = !inQuotes;
+  }
+  return inQuotes;
 }

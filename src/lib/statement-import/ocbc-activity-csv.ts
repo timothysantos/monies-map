@@ -17,6 +17,7 @@ interface OcbcActivityContext {
 
 interface OcbcActivityCandidate {
   date: string;
+  valueDate?: string;
   description: string;
   amountMinor: number;
   isCredit: boolean;
@@ -24,7 +25,7 @@ interface OcbcActivityCandidate {
 
 export function canParseOcbcActivityCsv(fileName: string | undefined, context?: OcbcActivityContext) {
   return isOcbcActivityFileName(fileName)
-    && (isOcbcCreditCardContext(context) || /ocbc-cards/i.test(fileName ?? ""));
+    && (isOcbcAccountContext(context) || /ocbc-(?:cards|360)/i.test(fileName ?? ""));
 }
 
 export function parseOcbcActivityCsv(
@@ -33,17 +34,18 @@ export function parseOcbcActivityCsv(
   context?: OcbcActivityContext
 ): ParsedStatementImport {
   if (!canParseOcbcActivityCsv(fileName, context)) {
-    throw new Error("OCBC card activity CSV needs an OCBC credit card account selected.");
+    throw new Error("OCBC activity CSV needs an OCBC account selected.");
   }
 
   const matrix = parseCsvMatrix(text);
+  const isBankActivity = isOcbc360Activity(matrix, fileName, context);
   const cardEnding = findOcbcActivityCardEnding(matrix);
-  const rows = matrix.map(parseOcbcActivityRow).filter((row): row is OcbcActivityCandidate => Boolean(row));
+  const rows = matrix.map((row) => parseOcbcActivityRow(row, isBankActivity)).filter((row): row is OcbcActivityCandidate => Boolean(row));
   if (!rows.length) {
-    throw new Error("No OCBC card activity rows were found.");
+    throw new Error("No OCBC activity rows were found.");
   }
 
-  const accountName = resolveOcbcActivityAccountName(context);
+  const accountName = resolveOcbcActivityAccountName(isBankActivity, context);
   const importRows = rows.map((row) => {
     const type = isTransferDescription(row.description)
       ? "transfer"
@@ -58,29 +60,35 @@ export function parseOcbcActivityCsv(
       income: row.isCredit ? minorToDecimal(row.amountMinor) : "",
       account: accountName,
       category: type === "transfer" ? "Transfer" : inferCategory(row.description, row.isCredit),
-      note: cardEnding ? `card ending: ${cardEnding}` : "",
+      note: buildOcbcActivityNote({ cardEnding: isBankActivity ? undefined : cardEnding, date: row.date, valueDate: row.valueDate }),
       type
     };
   }).sort(compareImportRowsByDate);
 
   return {
-    parserKey: "ocbc_credit_card_activity_csv",
-    sourceLabel: labelFromFile(fileName, "OCBC card activity"),
+    parserKey: isBankActivity ? "ocbc_360_activity_csv" : "ocbc_credit_card_activity_csv",
+    sourceLabel: labelFromFile(fileName, isBankActivity ? "OCBC 360 activity" : "OCBC card activity"),
     rows: importRows,
     checkpoints: [],
     warnings: []
   };
 }
 
-function parseOcbcActivityRow(cells: string[]) {
-  if (cells.length < 4) {
+function parseOcbcActivityRow(cells: string[], isBankActivity: boolean) {
+  const dateIndex = 0;
+  const valueDateIndex = isBankActivity ? 1 : undefined;
+  const descriptionIndex = isBankActivity ? 2 : 1;
+  const withdrawalIndex = isBankActivity ? 3 : 2;
+  const depositIndex = isBankActivity ? 4 : 3;
+  if (cells.length <= depositIndex) {
     return undefined;
   }
 
-  const date = parseOcbcActivityDate(cleanCsvCell(cells[0]));
-  const description = cleanOcbcDescription(cleanCsvCell(cells[1]));
-  const withdrawalMinor = parseOcbcActivityAmount(cells[2]);
-  const depositMinor = parseOcbcActivityAmount(cells[3]);
+  const date = parseOcbcActivityDate(cleanCsvCell(cells[dateIndex]));
+  const valueDate = valueDateIndex == null ? undefined : parseOcbcActivityDate(cleanCsvCell(cells[valueDateIndex]));
+  const description = cleanOcbcDescription(cleanCsvCell(cells[descriptionIndex]));
+  const withdrawalMinor = parseOcbcActivityAmount(cells[withdrawalIndex]);
+  const depositMinor = parseOcbcActivityAmount(cells[depositIndex]);
   if (!date || !description) {
     return undefined;
   }
@@ -93,6 +101,7 @@ function parseOcbcActivityRow(cells: string[]) {
 
   return {
     date,
+    valueDate,
     description,
     amountMinor: withdrawalMinor ?? depositMinor ?? 0,
     isCredit: depositMinor != null
@@ -133,19 +142,40 @@ function findOcbcActivityCardEnding(rows: string[][]) {
   return undefined;
 }
 
-function resolveOcbcActivityAccountName(context?: OcbcActivityContext) {
-  if (isOcbcCreditCardContext(context) && context?.accountName) {
+function resolveOcbcActivityAccountName(isBankActivity: boolean, context?: OcbcActivityContext) {
+  if (isOcbcAccountContext(context) && context?.accountName) {
     return context.accountName;
   }
-  return "OCBC 365 Credit Card";
+  return isBankActivity ? "OCBC 360" : "OCBC 365 Credit Card";
 }
 
 function isOcbcActivityFileName(fileName?: string) {
-  return /^TrxHistory_\d+(?:-[\w-]+)?\.csv$/i.test(fileName ?? "");
+  return /^(?:TrxHistory|TransactionHistory)_\d+(?:-[\w-]+)?\.csv$/i.test(fileName ?? "");
 }
 
-function isOcbcCreditCardContext(context?: OcbcActivityContext) {
-  return context?.accountKind === "credit_card" && /ocbc/i.test(context.institution ?? context.accountName ?? "");
+function isOcbcAccountContext(context?: OcbcActivityContext) {
+  return /ocbc/i.test(context?.institution ?? context?.accountName ?? "");
+}
+
+function isOcbc360Activity(rows: string[][], fileName?: string, context?: OcbcActivityContext) {
+  if (/ocbc-360/i.test(fileName ?? "")) {
+    return true;
+  }
+  if (context?.accountKind && context.accountKind !== "credit_card") {
+    return true;
+  }
+  return rows.some((row) => row.join(" ").toUpperCase().includes("360 ACCOUNT"));
+}
+
+function buildOcbcActivityNote(input: { cardEnding?: string; date: string; valueDate?: string }) {
+  const notes = [];
+  if (input.cardEnding) {
+    notes.push(`card ending: ${input.cardEnding}`);
+  }
+  if (input.valueDate && input.valueDate !== input.date) {
+    notes.push(`value date: ${input.valueDate}`);
+  }
+  return notes.join("; ");
 }
 
 function cleanCsvCell(value: string) {
