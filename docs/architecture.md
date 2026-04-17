@@ -40,10 +40,12 @@ That distinction matters because the system needs to answer questions like:
 - statement import code is split by source family under `src/lib/statement-import/`:
   UOB, Citibank, OCBC, current-transaction XLS, and shared normalization helpers
 - current-transaction imports are deterministic working-ledger imports: for
-  example, UOB One `.xls` history exports and Citibank credit-card activity
-  `.csv` exports are parsed locally into reviewable rows but do not create
-  statement checkpoints. Citibank activity CSV parsing is intentionally gated by
-  the selected Citibank credit-card account because the files are headerless.
+  example, UOB One `.xls` history exports, Citibank credit-card activity `.csv`
+  exports, and OCBC card activity `.csv` exports are parsed locally into
+  reviewable rows but do not create statement checkpoints. Citibank activity CSV
+  parsing is intentionally gated by the selected Citibank credit-card account
+  because the files are headerless; OCBC card activity parsing is gated by an
+  OCBC credit-card context or an OCBC-card filename.
 - PDF statement parsers are institution-specific. UOB card and savings
   statements use their printed transaction blocks and balances; Citibank
   Rewards and Citi Miles card statements use browser-extracted layout text

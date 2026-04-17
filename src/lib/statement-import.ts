@@ -3,6 +3,10 @@ import {
   canParseCitibankActivityCsv,
   parseCitibankActivityCsv
 } from "./statement-import/citibank-activity-csv";
+import {
+  canParseOcbcActivityCsv,
+  parseOcbcActivityCsv
+} from "./statement-import/ocbc-activity-csv";
 import { parseOcbc360Statement, parseOcbcCreditCardStatement } from "./statement-import/ocbc";
 import {
   getPdfLayoutLines,
@@ -14,7 +18,14 @@ import {
 import { parseUobCreditCardStatement, parseUobSavingsStatement } from "./statement-import/uob";
 import { parseCurrentTransactionSpreadsheet } from "./statement-import/xls";
 
-export { canParseCitibankActivityCsv, parseCitibankActivityCsv, parseCurrentTransactionSpreadsheet, statementRowsToCsv };
+export {
+  canParseCitibankActivityCsv,
+  canParseOcbcActivityCsv,
+  parseCitibankActivityCsv,
+  parseCurrentTransactionSpreadsheet,
+  parseOcbcActivityCsv,
+  statementRowsToCsv
+};
 export type { ParsedStatementImport, StatementCheckpointDraft };
 
 export function parseStatementText(text: string, fileName?: string): ParsedStatementImport {
