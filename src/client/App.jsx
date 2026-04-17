@@ -85,6 +85,35 @@ export function App() {
   const bootstrapSummaryStart = bootstrapShellView?.summaryPage?.rangeStartMonth ?? selectedSummaryStart;
   const bootstrapSummaryEnd = bootstrapShellView?.summaryPage?.rangeEndMonth ?? selectedSummaryEnd;
   const bootstrapScope = bootstrapShellView?.monthPage?.selectedScope ?? selectedScope;
+  const canUseBootstrapRoutePage = useMemo(() => {
+    if (!bootstrapShellView) {
+      return false;
+    }
+
+    if (selectedTabId === "summary") {
+      const effectiveSummaryStart = selectedSummaryStart ?? bootstrapSummaryStart;
+      const effectiveSummaryEnd = selectedSummaryEnd ?? bootstrapSummaryEnd;
+      return effectiveSummaryStart === bootstrapSummaryStart
+        && effectiveSummaryEnd === bootstrapSummaryEnd;
+    }
+
+    if (selectedTabId === "month") {
+      return selectedMonth === bootstrapMonth && selectedScope === bootstrapScope;
+    }
+
+    return false;
+  }, [
+    bootstrapMonth,
+    bootstrapScope,
+    bootstrapShellView,
+    bootstrapSummaryEnd,
+    bootstrapSummaryStart,
+    selectedMonth,
+    selectedScope,
+    selectedSummaryEnd,
+    selectedSummaryStart,
+    selectedTabId
+  ]);
   const bootstrapParams = useMemo(
     () => buildBootstrapParams({
       month: bootstrapMonth,
@@ -96,7 +125,7 @@ export function App() {
   );
   const bootstrapCacheKey = bootstrapParams.toString();
   const routePageRequest = useMemo(
-    () => buildRoutePageRequest({
+    () => canUseBootstrapRoutePage ? null : buildRoutePageRequest({
       tabId: selectedTabId,
       viewId: selectedViewId,
       month: selectedMonth,
@@ -104,7 +133,7 @@ export function App() {
       summaryStart: selectedSummaryStart,
       summaryEnd: selectedSummaryEnd
     }),
-    [selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart, selectedTabId, selectedViewId]
+    [canUseBootstrapRoutePage, selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart, selectedTabId, selectedViewId]
   );
   const routePageCacheKey = routePageRequest ? `${routePageRequest.path}?${routePageRequest.params.toString()}` : "";
 
