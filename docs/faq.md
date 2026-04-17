@@ -379,7 +379,8 @@ guess. This is for repeated bank text such as `TADA`, `SHOPEE`,
 `AMAZON`, `AMZON`, `JALAIRLINE`,
 `SINGLIFE`, `GOLDENVILLAGE`, `JOSEPHPRINCE`, `GOPAY-GOJEK`, `AXSPTELTD`,
 `KEPPEL ELECTRIC`, `M1LIMITED`, `INCOMEINSURANCE`, `INLAND REVENUE`, `IRAS`,
-`GIRO` plus `HDB`, and card conversion-fee descriptions.
+`SP DIGITAL`, `PRUDENTIAL`, `BTG REWARDS`, `DIN TAI FUNG`, `WATSONS`,
+`EDITOR'S MARKET`, `GIRO` plus `HDB`, and card conversion-fee descriptions.
 Transfer-looking card rows such as `TSFTO...6349` are treated as transfers, not
 normal expenses.
 
