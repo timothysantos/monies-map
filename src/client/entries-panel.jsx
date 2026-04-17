@@ -76,7 +76,8 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
     const wallet = searchParams.get("entry_wallet");
     const category = searchParams.get("entry_category");
     const person = searchParams.get("entry_person");
-    const walletIsStale = wallet && !wallets.includes(wallet);
+    const walletValues = wallets.map((option) => option.value);
+    const walletIsStale = wallet && !walletValues.includes(wallet) && !entries.some((entry) => entry.accountName === wallet);
     const categoryIsStale = category && !entryCategoryOptions.includes(category);
     const personIsStale = person && !peopleFilterOptions.includes(person);
 
@@ -97,7 +98,7 @@ export function EntriesPanel({ view, accounts, categories, people, onCategoryApp
       }
       return next;
     }, { replace: true });
-  }, [entryCategoryOptions, peopleFilterOptions, searchParams, setSearchParams, wallets]);
+  }, [entries, entryCategoryOptions, peopleFilterOptions, searchParams, setSearchParams, wallets]);
   const { categoryOptions, accountOptions, ownerOptions } = useMemo(
     () => getEntryFormOptions({ accounts, categories, people }),
     [accounts, categories, people]

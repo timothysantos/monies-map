@@ -12,9 +12,13 @@ export function FilterSelect({ label, value, options, emptyLabel, onChange }) {
       <span className="entries-filter-label">{label}</span>
       <select className="table-edit-input" value={value} onChange={(event) => onChange(event.target.value)}>
         <option value="">{emptyLabel}</option>
-        {options.map((option) => (
-          <option key={option} value={option}>{option}</option>
-        ))}
+        {options.map((option) => {
+          const optionValue = typeof option === "string" ? option : option.value;
+          const optionLabel = typeof option === "string" ? option : option.label;
+          return (
+            <option key={optionValue} value={optionValue}>{optionLabel}</option>
+          );
+        })}
       </select>
     </label>
   );

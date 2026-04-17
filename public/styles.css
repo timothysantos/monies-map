@@ -377,6 +377,10 @@ h3 {
   position: relative;
 }
 
+.app-route-grid.is-month-swipe-enabled {
+  touch-action: pan-y;
+}
+
 .app-loading-panel {
   display: flex;
   align-items: center;
