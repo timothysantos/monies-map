@@ -572,7 +572,6 @@ async function reassignPersonReferences(db: D1Database, fromPersonId: string, to
   await db.prepare("UPDATE split_expenses SET payer_person_id = ? WHERE household_id = ? AND payer_person_id = ?").bind(toPersonId, defaultHousehold.id, fromPersonId).run();
   await db.prepare("UPDATE split_settlements SET from_person_id = ? WHERE household_id = ? AND from_person_id = ?").bind(toPersonId, defaultHousehold.id, fromPersonId).run();
   await db.prepare("UPDATE split_settlements SET to_person_id = ? WHERE household_id = ? AND to_person_id = ?").bind(toPersonId, defaultHousehold.id, fromPersonId).run();
-  await db.prepare("UPDATE split_matches SET created_by_person_id = ? WHERE household_id = ? AND created_by_person_id = ?").bind(toPersonId, defaultHousehold.id, fromPersonId).run();
   await db.prepare("UPDATE monthly_notes SET created_by_person_id = ? WHERE household_id = ? AND created_by_person_id = ?").bind(toPersonId, defaultHousehold.id, fromPersonId).run();
   await db.prepare("UPDATE monthly_budgets SET person_id = ? WHERE household_id = ? AND person_id = ?").bind(toPersonId, defaultHousehold.id, fromPersonId).run();
   await db.prepare("UPDATE monthly_plan_rows SET person_id = ? WHERE household_id = ? AND person_id = ?").bind(toPersonId, defaultHousehold.id, fromPersonId).run();

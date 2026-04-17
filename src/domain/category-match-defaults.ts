@@ -44,6 +44,8 @@ export const defaultCategoryMatchRules: DefaultCategoryMatchRule[] = [
   { id: "catrule-grab", pattern: "GRAB", categoryName: "Taxi", priority: 35 },
   { id: "catrule-tennis", pattern: "TENNIS", categoryName: "Sports & Hobbies", priority: 35 },
   { id: "catrule-myactive-sg", pattern: "MYACTIVESG", categoryName: "Sports & Hobbies", priority: 35 },
+  { id: "catrule-inland-revenue", pattern: "INLAND REVENUE", categoryName: "Tax", priority: 35 },
+  { id: "catrule-iras", pattern: "IRAS", categoryName: "Tax", priority: 35 },
   { id: "catrule-bus-mrt", pattern: "BUS/MRT", categoryName: "Public Transport", priority: 40 },
   { id: "catrule-fairprice", pattern: "FAIRPRICE", categoryName: "Groceries", priority: 45 },
   { id: "catrule-don-don-donki", pattern: "DON DON DONKI", categoryName: "Groceries", priority: 45 },
