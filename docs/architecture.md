@@ -60,6 +60,9 @@ That distinction matters because the system needs to answer questions like:
 - supported PDF statements can also produce editable statement checkpoints; the
   preview projects the post-import ledger balance against those checkpoints
   before commit, then saves them during commit for account reconciliation
+- multi-card PDF statements produce one row set and one checkpoint per detected
+  card account, so preview can require mapping each detected card to a ledger
+  account before commit
 - transactions are normalized to a single ledger shape
 - every imported row is attached to an import batch for audit and rollback
 - CSV commits pre-resolve accounts, categories, and people before writing, then
