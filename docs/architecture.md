@@ -408,6 +408,9 @@ Frontend direction:
 - bootstrap responses are cached in memory by query string and adjacent month or
   summary-range payloads are prefetched after the current page settles; write
   actions clear this cache before reloading data
+- Entries has a dedicated `/api/entries-page` payload for month/view changes so
+  it can refresh and prefetch ledger rows without reloading the full dashboard
+  bootstrap
 - Month and Entries support horizontal touch swipes for previous/next month
   navigation; Splits stays excluded because its main surface is not
   month-filtered

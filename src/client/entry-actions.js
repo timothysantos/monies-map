@@ -188,6 +188,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
       ? { ...current, categoryName }
       : current
     );
+    await onRefresh();
   }
 
   function cancelEntryEdit() {

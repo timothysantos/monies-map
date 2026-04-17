@@ -174,6 +174,18 @@ export interface EntryDto {
   splits: EntrySplitDto[];
 }
 
+export interface EntriesPageDto {
+  viewId: string;
+  label: string;
+  monthPage: {
+    month: string;
+    selectedPersonId: string;
+    selectedScope: PersonScope;
+    scopes: Array<{ key: PersonScope; label: string }>;
+    entries: EntryDto[];
+  };
+}
+
 export interface SplitGroupPillDto {
   id: string;
   name: string;

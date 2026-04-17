@@ -30,6 +30,7 @@ import type {
   CategoryDto,
   ContextViewDto,
   DonutChartDatumDto,
+  EntriesPageDto,
   EntryDto,
   EntrySplitDto,
   MetricCardDto,
@@ -134,6 +135,46 @@ export async function buildBootstrapDto(
       categoryMatchRuleSuggestions,
       unresolvedTransfers,
       recentAuditEvents
+    }
+  };
+}
+
+export async function buildEntriesPageDto(
+  db: D1Database,
+  selectedViewId = "household",
+  selectedMonth = getCurrentMonthKey()
+): Promise<EntriesPageDto> {
+  const demo = await loadDemoSettings(db).catch(() => defaultDemoSettings);
+  await ensureDemoSchema(db);
+  if (demo.emptyState) {
+    await seedEmptyStateReferenceData(db);
+  } else {
+    await ensureSeedData(db, demo);
+  }
+
+  const [household, trackedMonths] = await Promise.all([
+    loadHousehold(db),
+    loadTrackedMonths(db)
+  ]);
+  const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
+    ? selectedMonth
+    : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
+  const monthEntries = await loadEntries(db, effectiveSelectedMonth);
+  const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
+  const viewId = selectedViewId === "household" || household.people.some((person) => person.id === selectedViewId)
+    ? selectedViewId
+    : "household";
+  const label = viewId === "household" ? "Household" : personNameById[viewId] ?? "Household";
+
+  return {
+    viewId,
+    label,
+    monthPage: {
+      month: effectiveSelectedMonth,
+      selectedPersonId: viewId,
+      selectedScope: viewId === "household" ? "direct_plus_shared" : "direct_plus_shared",
+      scopes: buildPersonScopes(viewId),
+      entries: adjustEntriesForView(monthEntries, viewId)
     }
   };
 }
@@ -505,13 +546,7 @@ function buildMonthPage(
     month: selectedMonth,
     selectedPersonId,
     selectedScope: effectiveScope,
-    scopes: selectedPersonId === "household"
-      ? [{ key: "direct_plus_shared", label: "Combined" }]
-      : [
-          { key: "direct", label: "Direct ownership" },
-          { key: "shared", label: "Shared" },
-          { key: "direct_plus_shared", label: "Direct + Shared" }
-        ],
+    scopes: buildPersonScopes(selectedPersonId),
     metricCards: [
       {
         label: "Planned spend",
@@ -552,6 +587,16 @@ function buildMonthPage(
     categoryShareChart: buildDonutChart(visibleEntries, categories),
     entries: monthEntries
   };
+}
+
+function buildPersonScopes(selectedPersonId: string): Array<{ key: PersonScope; label: string }> {
+  return selectedPersonId === "household"
+    ? [{ key: "direct_plus_shared", label: "Combined" }]
+    : [
+        { key: "direct", label: "Direct ownership" },
+        { key: "shared", label: "Shared" },
+        { key: "direct_plus_shared", label: "Direct + Shared" }
+      ];
 }
 
 function deriveIncomeRowActuals(

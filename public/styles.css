@@ -4041,6 +4041,15 @@ body:has(.note-dialog-overlay) .entries-fab {
   gap: 10px;
 }
 
+.entries-panel-root {
+  position: relative;
+}
+
+.entries-page-loading {
+  top: 12px;
+  right: 12px;
+}
+
 .entries-filter-toggle {
   display: none;
   align-items: center;

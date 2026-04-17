@@ -68,19 +68,24 @@ export function App() {
   const bootstrapInflightRef = useRef(new Map());
   const bootstrapCacheVersionRef = useRef(0);
   const bootstrapPrefetchTimerRef = useRef(null);
+  const selectedViewId = searchParams.get("view") ?? "household";
+  const selectedTabId = routeTabs.find((tab) => tab.path === location.pathname)?.id ?? "summary";
   const selectedMonth = searchParams.get("month") ?? DEFAULT_MONTH_KEY;
   const selectedScope = searchParams.get("scope") ?? "direct_plus_shared";
   const selectedSummaryStart = searchParams.get("summary_start") ?? undefined;
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
   const isBootstrapLoading = bootstrapLoadCount > 0;
+  const bootstrapMonth = selectedTabId === "entries"
+    ? bootstrap?.views[0]?.monthPage?.month ?? selectedMonth
+    : selectedMonth;
   const bootstrapParams = useMemo(
     () => buildBootstrapParams({
-      month: selectedMonth,
+      month: bootstrapMonth,
       scope: selectedScope,
       summaryStart: selectedSummaryStart,
       summaryEnd: selectedSummaryEnd
     }),
-    [selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart]
+    [bootstrapMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart]
   );
   const bootstrapCacheKey = bootstrapParams.toString();
 
@@ -292,9 +297,6 @@ export function App() {
     };
   }, [beginBootstrapLoad, clearBootstrapCache, handleBootstrapFailure, loadBootstrap]);
 
-  const selectedViewId = searchParams.get("view") ?? "household";
-  const selectedTabId = routeTabs.find((tab) => tab.path === location.pathname)?.id ?? "summary";
-
   const view = useMemo(
     () => bootstrap?.views.find((item) => item.id === selectedViewId) ?? null,
     [bootstrap, selectedViewId]
@@ -354,7 +356,7 @@ export function App() {
     bootstrapPrefetchTimerRef.current = window.setTimeout(() => {
       const paramsToPrefetch = [];
 
-      if (isMonthSwipeTab) {
+      if (selectedTabId === "month") {
         const currentIndex = availableMonths.indexOf(selectedMonth);
         if (currentIndex !== -1) {
           for (const offset of [-1, 1]) {
@@ -405,8 +407,8 @@ export function App() {
     bootstrap,
     bootstrapError,
     isDetailMonthTab,
-    isMonthSwipeTab,
     prefetchBootstrap,
+    selectedTabId,
     selectedMonth,
     selectedScope,
     selectedSummaryEnd,
@@ -530,7 +532,7 @@ export function App() {
 
   const periodMode = isDetailMonthTab ? messages.period.month : messages.period.year;
   const periodLabel = isDetailMonthTab
-    ? formatMonthLabel(view.monthPage.month)
+    ? formatMonthLabel(selectedMonth)
     : `${formatMonthLabel(view.summaryPage.rangeStartMonth)} - ${formatMonthLabel(view.summaryPage.rangeEndMonth)}`;
   const pendingCategorySuggestionCount = bootstrap.settingsPage?.categoryMatchRuleSuggestions?.length ?? 0;
   const buildTabTarget = (tab) => {
@@ -1047,11 +1049,13 @@ export function App() {
             element={(
               <EntriesPanel
                 view={view}
+                selectedMonth={selectedMonth}
+                availableMonths={availableMonths}
                 accounts={bootstrap.accounts}
                 categories={categories}
                 people={bootstrap.household.people}
                 onCategoryAppearanceChange={handleCategoryAppearanceChange}
-                onRefresh={() => refreshBootstrap({ broadcast: true })}
+                onInvalidateBootstrapCache={clearBootstrapCache}
               />
             )}
           />
