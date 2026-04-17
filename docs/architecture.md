@@ -400,17 +400,22 @@ Frontend direction:
 - React + Vite for the app shell and UI state
 - React Router should own page-level navigation so dashboard sections have stable URLs
 - UI labels and helper copy should be sourced from locale modules instead of being hardcoded across components
-- Worker API remains the source of bootstrap and import endpoints
+- Worker API remains the source of bootstrap, route-page, mutation, and import
+  endpoints
 - charting should prefer a maintained library over hand-built geometry once the
   visual requirements become real product behavior
-- page-level bootstrap refreshes keep the current route mounted with a busy
-  overlay while the next month or range payload loads
-- bootstrap responses are cached in memory by query string and adjacent month or
-  summary-range payloads are prefetched after the current page settles; write
-  actions clear this cache before reloading data
-- Entries has a dedicated `/api/entries-page` payload for month/view changes so
-  it can refresh and prefetch ledger rows without reloading the full dashboard
-  bootstrap
+- the initial bootstrap remains the app shell and fallback payload for
+  household, account, category, view, import, and settings data
+- heavy route bodies are split behind focused endpoints:
+  `/api/summary-page`, `/api/month-page`, `/api/entries-page`,
+  `/api/splits-page`, `/api/imports-page`, and `/api/settings-page`
+- page refreshes keep the current route mounted with a busy overlay while the
+  smaller route payload loads; writes clear page and shell caches before
+  reloading data
+- route-page responses are cached in memory by endpoint and query string.
+  Adjacent month or summary-range payloads are prefetched after the current page
+  settles, while bootstrap no longer has to reload for ordinary month/range
+  navigation
 - Month and Entries support horizontal touch swipes for previous/next month
   navigation; Splits stays excluded because its main surface is not
   month-filtered

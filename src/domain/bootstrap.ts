@@ -33,19 +33,23 @@ import type {
   EntriesPageDto,
   EntryDto,
   EntrySplitDto,
+  ImportsPageDto,
   MetricCardDto,
   MonthPageDto,
   MonthIncomeRowDto,
   MonthPlanRowDto,
+  SettingsPageDto,
   SplitActivityDto,
   SplitExpenseDto,
   SplitGroupDto,
   SplitGroupPillDto,
   SplitMatchCandidateDto,
   SplitSettlementDto,
+  SplitsPageDto,
   PersonScope,
   SummaryAccountPillDto,
   SummaryDonutMonthDto,
+  SummaryPageDto,
   SummaryMonthDto
 } from "../types/dto";
 
@@ -176,6 +180,174 @@ export async function buildEntriesPageDto(
       scopes: buildPersonScopes(viewId),
       entries: adjustEntriesForView(monthEntries, viewId)
     }
+  };
+}
+
+export async function buildSummaryPageDto(
+  db: D1Database,
+  selectedViewId = "household",
+  selectedMonth = getCurrentMonthKey(),
+  selectedScope: PersonScope = "direct_plus_shared",
+  summaryStartMonth?: string,
+  summaryEndMonth?: string
+): Promise<{ viewId: string; label: string; summaryPage: SummaryPageDto }> {
+  const { household, accounts, categories, trackedMonths, viewId, label, personNameById } = await loadPageShell(db, selectedViewId);
+  const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
+    ? selectedMonth
+    : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
+  const summaryRangeMonths = buildSummaryRange(trackedMonths, summaryStartMonth, summaryEndMonth ?? effectiveSelectedMonth);
+  const [summaryMonths, summaryEntries] = await Promise.all([
+    loadSummaryMonths(db, viewId),
+    loadEntriesForMonths(db, summaryRangeMonths)
+  ]);
+  const adjustedSummaryEntries = adjustEntriesForView(summaryEntries, viewId);
+  const visibleSummaryEntries = filterEntriesForView(adjustedSummaryEntries, viewId, selectedScope);
+
+  return {
+    viewId,
+    label,
+    summaryPage: buildSummaryPage(
+      viewId,
+      visibleSummaryEntries,
+      { [viewId]: summaryMonths },
+      categories,
+      accountsForSummary(viewId, accounts),
+      effectiveSelectedMonth,
+      summaryRangeMonths,
+      trackedMonths,
+      personNameById
+    )
+  };
+}
+
+export async function buildMonthPageDto(
+  db: D1Database,
+  selectedViewId = "household",
+  selectedMonth = getCurrentMonthKey(),
+  selectedScope: PersonScope = "direct_plus_shared"
+): Promise<{ viewId: string; label: string; summaryPage: Pick<SummaryPageDto, "months">; monthPage: MonthPageDto; householdMonthEntries: EntryDto[] }> {
+  const { categories, trackedMonths, viewId, label } = await loadPageShell(db, selectedViewId);
+  const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
+    ? selectedMonth
+    : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
+  const [monthEntries, monthPlanRows, incomeRows, summaryMonths] = await Promise.all([
+    loadEntries(db, effectiveSelectedMonth),
+    loadMonthPlanRows(db, effectiveSelectedMonth),
+    loadMonthIncomeRows(db, viewId, effectiveSelectedMonth),
+    loadSummaryMonths(db, viewId)
+  ]);
+  const adjustedMonthEntries = adjustEntriesForView(monthEntries, viewId);
+  const visibleEntries = filterEntriesForView(adjustedMonthEntries, viewId, viewId === "household" ? "direct_plus_shared" : selectedScope);
+  const currentSnapshotMonth = summaryMonths.find((month) => month.month === effectiveSelectedMonth) ?? null;
+  const currentSummaryMonth = currentSnapshotMonth
+    ? applyActualsFromEntries(currentSnapshotMonth, visibleEntries, effectiveSelectedMonth)
+    : buildDerivedSummaryMonth(effectiveSelectedMonth, visibleEntries);
+
+  return {
+    viewId,
+    label,
+    summaryPage: { months: [currentSummaryMonth] },
+    monthPage: buildMonthPage(
+      viewId,
+      selectedScope,
+      incomeRows,
+      adjustedMonthEntries,
+      monthPlanRows,
+      categories,
+      effectiveSelectedMonth,
+      currentSummaryMonth
+    ),
+    householdMonthEntries: monthEntries
+  };
+}
+
+export async function buildSplitsPageDto(
+  db: D1Database,
+  selectedViewId = "household",
+  selectedMonth = getCurrentMonthKey()
+): Promise<{ viewId: string; label: string; splitsPage: SplitsPageDto }> {
+  const { categories, trackedMonths, viewId, label, personNameById } = await loadPageShell(db, selectedViewId);
+  const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
+    ? selectedMonth
+    : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
+  const [splitGroups, splitExpenses, splitSettlements, splitMatches] = await Promise.all([
+    loadSplitGroups(db),
+    loadSplitExpenses(db, effectiveSelectedMonth),
+    loadSplitSettlements(db, effectiveSelectedMonth),
+    loadSplitMatchCandidates(db, effectiveSelectedMonth)
+  ]);
+
+  return {
+    viewId,
+    label,
+    splitsPage: buildSplitsPage(viewId, splitGroups, splitExpenses, splitSettlements, splitMatches, categories, effectiveSelectedMonth, personNameById)
+  };
+}
+
+export async function buildImportsPageDto(db: D1Database): Promise<{ importsPage: ImportsPageDto }> {
+  await ensureAppData(db);
+  const importBatches = await loadImportBatches(db);
+  return {
+    importsPage: {
+      recentImports: importBatches,
+      rollbackPolicy:
+        "Every transaction is tied to an import batch so the last import can be removed without touching older data."
+    }
+  };
+}
+
+export async function buildSettingsPageDto(db: D1Database): Promise<{ settingsPage: SettingsPageDto }> {
+  const demo = await ensureAppData(db);
+  const [categoryMatchRules, categoryMatchRuleSuggestions, unresolvedTransfers, recentAuditEvents] = await Promise.all([
+    loadCategoryMatchRules(db),
+    loadCategoryMatchRuleSuggestions(db),
+    loadUnresolvedTransfers(db),
+    loadAuditEvents(db)
+  ]);
+  return {
+    settingsPage: {
+      demo,
+      categoryMatchRules,
+      categoryMatchRuleSuggestions,
+      unresolvedTransfers,
+      recentAuditEvents
+    }
+  };
+}
+
+async function ensureAppData(db: D1Database) {
+  const demo = await loadDemoSettings(db).catch(() => defaultDemoSettings);
+  await ensureDemoSchema(db);
+  if (demo.emptyState) {
+    await seedEmptyStateReferenceData(db);
+  } else {
+    await ensureSeedData(db, demo);
+  }
+  return demo;
+}
+
+async function loadPageShell(db: D1Database, selectedViewId: string) {
+  await ensureAppData(db);
+  const [household, accounts, categories, trackedMonths] = await Promise.all([
+    loadHousehold(db),
+    loadAccounts(db),
+    loadCategories(db),
+    loadTrackedMonths(db)
+  ]);
+  const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
+  const viewId = selectedViewId === "household" || household.people.some((person) => person.id === selectedViewId)
+    ? selectedViewId
+    : "household";
+  const label = viewId === "household" ? "Household" : personNameById[viewId] ?? "Household";
+
+  return {
+    household,
+    accounts,
+    categories,
+    trackedMonths,
+    viewId,
+    label,
+    personNameById
   };
 }
 

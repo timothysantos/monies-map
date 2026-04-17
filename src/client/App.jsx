@@ -50,7 +50,7 @@ const secondaryRouteTabs = routeTabs.slice(4);
 const MONTH_SWIPE_MIN_DISTANCE_PX = 72;
 const MONTH_SWIPE_MAX_VERTICAL_PX = 80;
 const MONTH_SWIPE_MIN_RATIO = 1.35;
-const BOOTSTRAP_PREFETCH_DELAY_MS = 160;
+const PAGE_PREFETCH_DELAY_MS = 160;
 
 export function App() {
   const [bootstrap, setBootstrap] = useState(null);
@@ -67,7 +67,10 @@ export function App() {
   const bootstrapCacheRef = useRef(new Map());
   const bootstrapInflightRef = useRef(new Map());
   const bootstrapCacheVersionRef = useRef(0);
-  const bootstrapPrefetchTimerRef = useRef(null);
+  const routePageCacheRef = useRef(new Map());
+  const routePageInflightRef = useRef(new Map());
+  const routePageCacheVersionRef = useRef(0);
+  const routePagePrefetchTimerRef = useRef(null);
   const selectedViewId = searchParams.get("view") ?? "household";
   const selectedTabId = routeTabs.find((tab) => tab.path === location.pathname)?.id ?? "summary";
   const selectedMonth = searchParams.get("month") ?? DEFAULT_MONTH_KEY;
@@ -75,19 +78,34 @@ export function App() {
   const selectedSummaryStart = searchParams.get("summary_start") ?? undefined;
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
   const isBootstrapLoading = bootstrapLoadCount > 0;
-  const bootstrapMonth = selectedTabId === "entries"
-    ? bootstrap?.views[0]?.monthPage?.month ?? selectedMonth
-    : selectedMonth;
+  const [routePageData, setRoutePageData] = useState(null);
+  const bootstrapShellView = bootstrap?.views[0] ?? null;
+  const bootstrapMonth = bootstrapShellView?.monthPage?.month ?? selectedMonth;
+  const bootstrapSummaryStart = bootstrapShellView?.summaryPage?.rangeStartMonth ?? selectedSummaryStart;
+  const bootstrapSummaryEnd = bootstrapShellView?.summaryPage?.rangeEndMonth ?? selectedSummaryEnd;
+  const bootstrapScope = bootstrapShellView?.monthPage?.selectedScope ?? selectedScope;
   const bootstrapParams = useMemo(
     () => buildBootstrapParams({
       month: bootstrapMonth,
+      scope: bootstrapScope,
+      summaryStart: bootstrapSummaryStart,
+      summaryEnd: bootstrapSummaryEnd
+    }),
+    [bootstrapMonth, bootstrapScope, bootstrapSummaryEnd, bootstrapSummaryStart]
+  );
+  const bootstrapCacheKey = bootstrapParams.toString();
+  const routePageRequest = useMemo(
+    () => buildRoutePageRequest({
+      tabId: selectedTabId,
+      viewId: selectedViewId,
+      month: selectedMonth,
       scope: selectedScope,
       summaryStart: selectedSummaryStart,
       summaryEnd: selectedSummaryEnd
     }),
-    [bootstrapMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart]
+    [selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart, selectedTabId, selectedViewId]
   );
-  const bootstrapCacheKey = bootstrapParams.toString();
+  const routePageCacheKey = routePageRequest ? `${routePageRequest.path}?${routePageRequest.params.toString()}` : "";
 
   const beginBootstrapLoad = useCallback(() => {
     let didFinish = false;
@@ -107,6 +125,12 @@ export function App() {
     bootstrapCacheVersionRef.current += 1;
     bootstrapCacheRef.current.clear();
     bootstrapInflightRef.current.clear();
+  }, []);
+
+  const clearRoutePageCache = useCallback(() => {
+    routePageCacheVersionRef.current += 1;
+    routePageCacheRef.current.clear();
+    routePageInflightRef.current.clear();
   }, []);
 
   const fetchBootstrapData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
@@ -181,6 +205,8 @@ export function App() {
 
   const refreshBootstrap = useCallback(async ({ broadcast = false } = {}) => {
     clearBootstrapCache();
+    clearRoutePageCache();
+    setRoutePageData(null);
     const finishBootstrapLoad = beginBootstrapLoad();
 
     try {
@@ -203,16 +229,106 @@ export function App() {
     } finally {
       finishBootstrapLoad();
     }
-  }, [beginBootstrapLoad, clearBootstrapCache, loadBootstrap]);
+  }, [beginBootstrapLoad, clearBootstrapCache, clearRoutePageCache, loadBootstrap]);
 
-  const prefetchBootstrap = useCallback((params) => {
-    const cacheKey = params.toString();
-    if (bootstrapCacheRef.current.has(cacheKey) || bootstrapInflightRef.current.has(cacheKey)) {
+  const fetchRoutePageData = useCallback(async (request, { bypassCache = false, signal } = {}) => {
+    if (!request) {
+      return null;
+    }
+
+    const cacheKey = `${request.path}?${request.params.toString()}`;
+    const cacheVersion = routePageCacheVersionRef.current;
+    if (signal?.aborted) {
+      throw new DOMException("Page request aborted.", "AbortError");
+    }
+
+    if (!bypassCache && routePageCacheRef.current.has(cacheKey)) {
+      return routePageCacheRef.current.get(cacheKey);
+    }
+
+    if (!bypassCache && routePageInflightRef.current.has(cacheKey)) {
+      const data = await routePageInflightRef.current.get(cacheKey);
+      if (signal?.aborted) {
+        throw new DOMException("Page request aborted.", "AbortError");
+      }
+      return data;
+    }
+
+    const query = request.params.toString();
+    const requestUrl = query ? `${request.path}?${query}` : request.path;
+    const pageRequest = fetch(requestUrl, { cache: "no-store" })
+      .then(async (response) => {
+        const responseText = await response.text();
+        let data = null;
+
+        if (responseText) {
+          try {
+            data = JSON.parse(responseText);
+          } catch {
+            if (!response.ok) {
+              throw new Error(buildBootstrapErrorMessage(response.status, responseText));
+            }
+
+            throw new Error("Page request returned invalid JSON.");
+          }
+        }
+
+        if (!response.ok) {
+          throw new Error(buildBootstrapErrorMessage(response.status, data?.message ?? responseText));
+        }
+
+        if (routePageCacheVersionRef.current === cacheVersion) {
+          routePageCacheRef.current.set(cacheKey, data);
+        }
+        return data;
+      })
+      .finally(() => {
+        routePageInflightRef.current.delete(cacheKey);
+      });
+
+    routePageInflightRef.current.set(cacheKey, pageRequest);
+    const data = await pageRequest;
+    if (signal?.aborted || routePageCacheVersionRef.current !== cacheVersion) {
+      throw new DOMException("Page request aborted.", "AbortError");
+    }
+    return data;
+  }, []);
+
+  const refreshRoutePage = useCallback(async ({ broadcast = false, refreshShell = false } = {}) => {
+    clearRoutePageCache();
+    clearBootstrapCache();
+
+    if (!routePageRequest || refreshShell) {
+      return refreshBootstrap({ broadcast });
+    }
+
+    const finishBootstrapLoad = beginBootstrapLoad();
+    try {
+      const data = await fetchRoutePageData(routePageRequest, { bypassCache: true });
+      setRoutePageData(data);
+      return data;
+    } finally {
+      finishBootstrapLoad();
+    }
+  }, [beginBootstrapLoad, clearBootstrapCache, clearRoutePageCache, fetchRoutePageData, refreshBootstrap, routePageRequest]);
+
+  const invalidatePageAndShellCaches = useCallback(() => {
+    clearRoutePageCache();
+    clearBootstrapCache();
+  }, [clearBootstrapCache, clearRoutePageCache]);
+
+  const prefetchRoutePage = useCallback((request) => {
+    if (!request) {
       return;
     }
 
-    void fetchBootstrapData(params).catch(() => {});
-  }, [fetchBootstrapData]);
+    const cacheKey = `${request.path}?${request.params.toString()}`;
+    if (routePageCacheRef.current.has(cacheKey) || routePageInflightRef.current.has(cacheKey)) {
+      return;
+    }
+
+    void fetchRoutePageData(request).catch(() => {});
+  }, [fetchRoutePageData]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -268,6 +384,7 @@ export function App() {
       channel.onmessage = (event) => {
         if (event.data?.type === "bootstrap-refresh") {
           clearBootstrapCache();
+          clearRoutePageCache();
           const finishBootstrapLoad = beginBootstrapLoad();
           void loadBootstrap()
             .catch(handleBootstrapFailure)
@@ -279,6 +396,7 @@ export function App() {
     const handleStorage = (event) => {
       if (event.key === BOOTSTRAP_SYNC_STORAGE_KEY && event.newValue) {
         clearBootstrapCache();
+        clearRoutePageCache();
         const finishBootstrapLoad = beginBootstrapLoad();
         void loadBootstrap()
           .catch(handleBootstrapFailure)
@@ -295,16 +413,72 @@ export function App() {
         syncChannelRef.current = null;
       }
     };
-  }, [beginBootstrapLoad, clearBootstrapCache, handleBootstrapFailure, loadBootstrap]);
+  }, [beginBootstrapLoad, clearBootstrapCache, clearRoutePageCache, handleBootstrapFailure, loadBootstrap]);
+
+  useEffect(() => {
+    if (!bootstrap || !routePageRequest) {
+      setRoutePageData(null);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const hasCachedPage = routePageCacheRef.current.has(routePageCacheKey);
+    const finishBootstrapLoad = hasCachedPage ? null : beginBootstrapLoad();
+
+    void fetchRoutePageData(routePageRequest, { signal: controller.signal })
+      .then(async (data) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setRoutePageData(data);
+        if (!hasCachedPage) {
+          return;
+        }
+
+        try {
+          const freshData = await fetchRoutePageData(routePageRequest, {
+            bypassCache: true,
+            signal: controller.signal
+          });
+          if (!controller.signal.aborted) {
+            setRoutePageData(freshData);
+          }
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            return;
+          }
+        }
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        setRoutePageData(null);
+      })
+      .finally(() => finishBootstrapLoad?.());
+
+    return () => {
+      controller.abort();
+    };
+  }, [beginBootstrapLoad, bootstrap, fetchRoutePageData, routePageCacheKey, routePageRequest]);
 
   const view = useMemo(
     () => bootstrap?.views.find((item) => item.id === selectedViewId) ?? null,
     [bootstrap, selectedViewId]
   );
-  const selectedEntriesScope = searchParams.get("entries_scope") ?? view?.monthPage.selectedScope ?? "direct_plus_shared";
+  const activeView = useMemo(
+    () => mergeRoutePageIntoView(view, routePageData, selectedTabId),
+    [routePageData, selectedTabId, view]
+  );
+  const pageView = activeView ?? view;
+  const selectedEntriesScope = searchParams.get("entries_scope") ?? pageView?.monthPage.selectedScope ?? "direct_plus_shared";
   const householdMonthEntries = useMemo(
-    () => bootstrap?.views.find((item) => item.id === "household")?.monthPage.entries ?? [],
-    [bootstrap]
+    () => selectedTabId === "month" && Array.isArray(routePageData?.householdMonthEntries)
+      ? routePageData.householdMonthEntries
+      : bootstrap?.views.find((item) => item.id === "household")?.monthPage.entries ?? [],
+    [bootstrap, routePageData, selectedTabId]
   );
   const categories = useMemo(
     () => bootstrap?.categories.map((category) => ({ ...category, ...(categoryOverrides[category.id] ?? {}) })) ?? [],
@@ -330,22 +504,22 @@ export function App() {
     [availableMonths, isDetailMonthTab, monthPickerYear]
   );
   const summaryAvailableYears = useMemo(
-    () => !isDetailMonthTab && view
-      ? [...new Set(view.summaryPage.availableMonths.map((month) => Number(month.slice(0, 4))))].sort((left, right) => left - right)
+    () => !isDetailMonthTab && pageView
+      ? [...new Set(pageView.summaryPage.availableMonths.map((month) => Number(month.slice(0, 4))))].sort((left, right) => left - right)
       : [],
-    [isDetailMonthTab, view]
+    [isDetailMonthTab, pageView]
   );
   const summaryAvailableMonthsForPickerYear = useMemo(
-    () => !isDetailMonthTab && view && rangePickerStartYear != null
-      ? view.summaryPage.availableMonths.filter((month) => Number(month.slice(0, 4)) === rangePickerStartYear)
+    () => !isDetailMonthTab && pageView && rangePickerStartYear != null
+      ? pageView.summaryPage.availableMonths.filter((month) => Number(month.slice(0, 4)) === rangePickerStartYear)
       : [],
-    [isDetailMonthTab, rangePickerStartYear, view]
+    [isDetailMonthTab, rangePickerStartYear, pageView]
   );
   const summaryAvailableMonthsForEndPickerYear = useMemo(
-    () => !isDetailMonthTab && view && rangePickerEndYear != null
-      ? view.summaryPage.availableMonths.filter((month) => Number(month.slice(0, 4)) === rangePickerEndYear)
+    () => !isDetailMonthTab && pageView && rangePickerEndYear != null
+      ? pageView.summaryPage.availableMonths.filter((month) => Number(month.slice(0, 4)) === rangePickerEndYear)
       : [],
-    [isDetailMonthTab, rangePickerEndYear, view]
+    [isDetailMonthTab, rangePickerEndYear, pageView]
   );
 
   useEffect(() => {
@@ -353,8 +527,8 @@ export function App() {
       return undefined;
     }
 
-    bootstrapPrefetchTimerRef.current = window.setTimeout(() => {
-      const paramsToPrefetch = [];
+    routePagePrefetchTimerRef.current = window.setTimeout(() => {
+      const requestsToPrefetch = [];
 
       if (selectedTabId === "month") {
         const currentIndex = availableMonths.indexOf(selectedMonth);
@@ -362,25 +536,27 @@ export function App() {
           for (const offset of [-1, 1]) {
             const adjacentMonth = availableMonths[currentIndex + offset];
             if (adjacentMonth) {
-              paramsToPrefetch.push(buildBootstrapParams({
+              requestsToPrefetch.push(buildRoutePageRequest({
+                tabId: "month",
+                viewId: selectedViewId,
                 month: adjacentMonth,
-                scope: selectedScope,
-                summaryStart: selectedSummaryStart,
-                summaryEnd: selectedSummaryEnd
+                scope: selectedScope
               }));
             }
           }
         }
-      } else if (!isDetailMonthTab && view?.summaryPage.availableMonths.length) {
-        const summaryMonths = view.summaryPage.availableMonths;
-        const startIndex = summaryMonths.indexOf(view.summaryPage.rangeStartMonth);
-        const endIndex = summaryMonths.indexOf(view.summaryPage.rangeEndMonth);
+      } else if (selectedTabId === "summary" && pageView?.summaryPage.availableMonths.length) {
+        const summaryMonths = pageView.summaryPage.availableMonths;
+        const startIndex = summaryMonths.indexOf(pageView.summaryPage.rangeStartMonth);
+        const endIndex = summaryMonths.indexOf(pageView.summaryPage.rangeEndMonth);
         if (startIndex !== -1 && endIndex !== -1) {
           for (const offset of [-1, 1]) {
             const nextStartIndex = startIndex + offset;
             const nextEndIndex = endIndex + offset;
             if (nextStartIndex >= 0 && nextEndIndex < summaryMonths.length) {
-              paramsToPrefetch.push(buildBootstrapParams({
+              requestsToPrefetch.push(buildRoutePageRequest({
+                tabId: "summary",
+                viewId: selectedViewId,
                 month: selectedMonth,
                 scope: selectedScope,
                 summaryStart: summaryMonths[nextStartIndex],
@@ -391,29 +567,27 @@ export function App() {
         }
       }
 
-      for (const params of paramsToPrefetch) {
-        prefetchBootstrap(params);
+      for (const request of requestsToPrefetch) {
+        prefetchRoutePage(request);
       }
-    }, BOOTSTRAP_PREFETCH_DELAY_MS);
+    }, PAGE_PREFETCH_DELAY_MS);
 
     return () => {
-      if (bootstrapPrefetchTimerRef.current) {
-        window.clearTimeout(bootstrapPrefetchTimerRef.current);
-        bootstrapPrefetchTimerRef.current = null;
+      if (routePagePrefetchTimerRef.current) {
+        window.clearTimeout(routePagePrefetchTimerRef.current);
+        routePagePrefetchTimerRef.current = null;
       }
     };
   }, [
     availableMonths,
     bootstrap,
     bootstrapError,
-    isDetailMonthTab,
-    prefetchBootstrap,
+    pageView,
+    prefetchRoutePage,
     selectedTabId,
     selectedMonth,
     selectedScope,
-    selectedSummaryEnd,
-    selectedSummaryStart,
-    view
+    selectedViewId
   ]);
 
   useEffect(() => {
@@ -450,11 +624,11 @@ export function App() {
   }, [availableMonths, bootstrap, selectedMonth, setSearchParams]);
 
   useEffect(() => {
-    if (isDetailMonthTab || !view?.summaryPage.availableMonths.length) {
+    if (isDetailMonthTab || !pageView?.summaryPage.availableMonths.length) {
       return;
     }
 
-    const summaryMonths = view.summaryPage.availableMonths;
+    const summaryMonths = pageView.summaryPage.availableMonths;
     const startIsValid = selectedSummaryStart && summaryMonths.includes(selectedSummaryStart);
     const endIsValid = selectedSummaryEnd && summaryMonths.includes(selectedSummaryEnd);
     if (startIsValid && endIsValid && selectedSummaryStart <= selectedSummaryEnd) {
@@ -474,15 +648,15 @@ export function App() {
       }
       return next;
     }, { replace: true });
-  }, [isDetailMonthTab, selectedSummaryEnd, selectedSummaryStart, setSearchParams, view]);
+  }, [isDetailMonthTab, pageView, selectedSummaryEnd, selectedSummaryStart, setSearchParams]);
 
   useEffect(() => {
-    if (isDetailMonthTab || !view) {
+    if (isDetailMonthTab || !pageView) {
       return;
     }
 
-    const nextStartYear = Number(view.summaryPage.rangeStartMonth.slice(0, 4));
-    const nextEndYear = Number(view.summaryPage.rangeEndMonth.slice(0, 4));
+    const nextStartYear = Number(pageView.summaryPage.rangeStartMonth.slice(0, 4));
+    const nextEndYear = Number(pageView.summaryPage.rangeEndMonth.slice(0, 4));
     setRangePickerStartYear((current) => {
       if (current != null && summaryAvailableYears.includes(current)) {
         return current;
@@ -495,7 +669,7 @@ export function App() {
       }
       return nextEndYear;
     });
-  }, [isDetailMonthTab, summaryAvailableYears, view]);
+  }, [isDetailMonthTab, pageView, summaryAvailableYears]);
 
   useEffect(() => {
     if (!isDetailMonthTab || !detailAvailableYears.length) {
@@ -533,7 +707,7 @@ export function App() {
   const periodMode = isDetailMonthTab ? messages.period.month : messages.period.year;
   const periodLabel = isDetailMonthTab
     ? formatMonthLabel(selectedMonth)
-    : `${formatMonthLabel(view.summaryPage.rangeStartMonth)} - ${formatMonthLabel(view.summaryPage.rangeEndMonth)}`;
+    : `${formatMonthLabel(pageView.summaryPage.rangeStartMonth)} - ${formatMonthLabel(pageView.summaryPage.rangeEndMonth)}`;
   const pendingCategorySuggestionCount = bootstrap.settingsPage?.categoryMatchRuleSuggestions?.length ?? 0;
   const buildTabTarget = (tab) => {
     const params = new URLSearchParams(searchParams);
@@ -557,7 +731,7 @@ export function App() {
   );
   const stickyScopeConfig = selectedTabId === "month"
     ? {
-        selectedKey: view.monthPage.selectedScope,
+        selectedKey: pageView.monthPage.selectedScope,
         paramKey: "scope",
         label: "Month view scope"
       }
@@ -602,10 +776,10 @@ export function App() {
       return;
     }
 
-    const rangeMonths = view.summaryPage.rangeMonths;
-    const availableSummaryMonths = view.summaryPage.availableMonths;
-    const startIndex = availableSummaryMonths.indexOf(view.summaryPage.rangeStartMonth);
-    const endIndex = availableSummaryMonths.indexOf(view.summaryPage.rangeEndMonth);
+    const rangeMonths = pageView.summaryPage.rangeMonths;
+    const availableSummaryMonths = pageView.summaryPage.availableMonths;
+    const startIndex = availableSummaryMonths.indexOf(pageView.summaryPage.rangeStartMonth);
+    const endIndex = availableSummaryMonths.indexOf(pageView.summaryPage.rangeEndMonth);
     if (startIndex === -1 || endIndex === -1) {
       return;
     }
@@ -685,7 +859,7 @@ export function App() {
       return;
     }
 
-    const endMonth = view.summaryPage.rangeEndMonth;
+    const endMonth = pageView.summaryPage.rangeEndMonth;
     if (startMonth > endMonth) {
       return;
     }
@@ -695,7 +869,7 @@ export function App() {
       next.set("summary_start", startMonth);
       next.set("summary_end", endMonth);
       const focus = next.get("summary_focus");
-      const nextRangeMonths = view.summaryPage.availableMonths.filter((month) => month >= startMonth && month <= endMonth);
+      const nextRangeMonths = pageView.summaryPage.availableMonths.filter((month) => month >= startMonth && month <= endMonth);
       if (focus && focus !== SUMMARY_FOCUS_OVERALL && !nextRangeMonths.includes(focus)) {
         next.delete("summary_focus");
       }
@@ -708,7 +882,7 @@ export function App() {
       return;
     }
 
-    const startMonth = view.summaryPage.rangeStartMonth;
+    const startMonth = pageView.summaryPage.rangeStartMonth;
     if (endMonth < startMonth) {
       return;
     }
@@ -718,7 +892,7 @@ export function App() {
       next.set("summary_start", startMonth);
       next.set("summary_end", endMonth);
       const focus = next.get("summary_focus");
-      const nextRangeMonths = view.summaryPage.availableMonths.filter((month) => month >= startMonth && month <= endMonth);
+      const nextRangeMonths = pageView.summaryPage.availableMonths.filter((month) => month >= startMonth && month <= endMonth);
       if (focus && focus !== SUMMARY_FOCUS_OVERALL && !nextRangeMonths.includes(focus)) {
         next.delete("summary_focus");
       }
@@ -888,7 +1062,7 @@ export function App() {
                   <Popover.Root>
                     <Popover.Trigger asChild>
                       <button type="button" className="period-range-segment">
-                        {formatMonthLabel(view.summaryPage.rangeStartMonth)}
+                        {formatMonthLabel(pageView.summaryPage.rangeStartMonth)}
                       </button>
                     </Popover.Trigger>
                     <Popover.Portal>
@@ -912,8 +1086,8 @@ export function App() {
                         <div className="period-picker-months">
                           {summaryAvailableMonthsForPickerYear.map((month) => {
                             const monthIndex = Number(month.slice(5, 7)) - 1;
-                            const isSelected = month === view.summaryPage.rangeStartMonth;
-                            const isDisabled = month > view.summaryPage.rangeEndMonth;
+                            const isSelected = month === pageView.summaryPage.rangeStartMonth;
+                            const isDisabled = month > pageView.summaryPage.rangeEndMonth;
                             return (
                               <button
                                 key={month}
@@ -935,7 +1109,7 @@ export function App() {
                   <Popover.Root>
                     <Popover.Trigger asChild>
                       <button type="button" className="period-range-segment">
-                        {formatMonthLabel(view.summaryPage.rangeEndMonth)}
+                        {formatMonthLabel(pageView.summaryPage.rangeEndMonth)}
                       </button>
                     </Popover.Trigger>
                     <Popover.Portal>
@@ -959,8 +1133,8 @@ export function App() {
                         <div className="period-picker-months">
                           {summaryAvailableMonthsForEndPickerYear.map((month) => {
                             const monthIndex = Number(month.slice(5, 7)) - 1;
-                            const isSelected = month === view.summaryPage.rangeEndMonth;
-                            const isDisabled = month < view.summaryPage.rangeStartMonth;
+                            const isSelected = month === pageView.summaryPage.rangeEndMonth;
+                            const isDisabled = month < pageView.summaryPage.rangeStartMonth;
                             return (
                               <button
                                 key={month}
@@ -986,10 +1160,10 @@ export function App() {
         </div>
       </section>
 
-      {stickyScopeConfig && view.monthPage.scopes.length > 1 ? (
+      {stickyScopeConfig && pageView.monthPage.scopes.length > 1 ? (
         <section className="mobile-scope-sticky-wrap" aria-label={stickyScopeConfig.label}>
           <div className="scope-toggle pill-row scope-toggle-row mobile-scope-sticky">
-            {view.monthPage.scopes.map((scope) => (
+            {pageView.monthPage.scopes.map((scope) => (
               <button
                 key={scope.key}
                 className={`pill scope-button ${scope.key === stickyScopeConfig.selectedKey ? "is-active" : ""}`}
@@ -1022,11 +1196,11 @@ export function App() {
             path="/summary"
             element={(
               <SummaryPanel
-                view={view}
+                view={pageView}
                 selectedMonth={selectedMonth}
                 categories={categories}
                 onCategoryAppearanceChange={handleCategoryAppearanceChange}
-                onRefresh={() => refreshBootstrap({ broadcast: true })}
+                onRefresh={() => refreshRoutePage()}
               />
             )}
           />
@@ -1034,13 +1208,13 @@ export function App() {
             path="/month"
             element={(
               <MonthPanel
-                view={view}
+                view={pageView}
                 accounts={bootstrap.accounts}
                 people={bootstrap.household.people}
                 categories={categories}
                 householdMonthEntries={householdMonthEntries}
                 onCategoryAppearanceChange={handleCategoryAppearanceChange}
-                onRefresh={() => refreshBootstrap({ broadcast: true })}
+                onRefresh={() => refreshRoutePage()}
               />
             )}
           />
@@ -1048,14 +1222,14 @@ export function App() {
             path="/entries"
             element={(
               <EntriesPanel
-                view={view}
+                view={pageView}
                 selectedMonth={selectedMonth}
                 availableMonths={availableMonths}
                 accounts={bootstrap.accounts}
                 categories={categories}
                 people={bootstrap.household.people}
                 onCategoryAppearanceChange={handleCategoryAppearanceChange}
-                onInvalidateBootstrapCache={clearBootstrapCache}
+                onInvalidateBootstrapCache={invalidatePageAndShellCaches}
               />
             )}
           />
@@ -1063,10 +1237,10 @@ export function App() {
             path="/splits"
             element={(
               <SplitsPanel
-                view={view}
+                view={pageView}
                 categories={categories}
                 people={bootstrap.household.people}
-                onRefresh={() => refreshBootstrap({ broadcast: true })}
+                onRefresh={() => refreshRoutePage()}
               />
             )}
           />
@@ -1074,9 +1248,9 @@ export function App() {
             path="/imports"
             element={(
               <ImportsPanel
-                importsPage={bootstrap.importsPage}
-                viewId={view.id}
-                viewLabel={view.label}
+                importsPage={routePageData?.importsPage ?? bootstrap.importsPage}
+                viewId={pageView.id}
+                viewLabel={pageView.label}
                 accounts={bootstrap.accounts}
                 categories={categories}
                 people={bootstrap.household.people}
@@ -1088,17 +1262,17 @@ export function App() {
             path="/settings"
             element={(
               <SettingsPanel
-                settingsPage={bootstrap.settingsPage}
+                settingsPage={routePageData?.settingsPage ?? bootstrap.settingsPage}
                 accounts={bootstrap.accounts}
                 categories={categories}
                 people={bootstrap.household.people}
-                viewId={view.id}
-                viewLabel={view.label}
+                viewId={pageView.id}
+                viewLabel={pageView.label}
                 onRefresh={() => refreshBootstrap({ broadcast: true })}
               />
             )}
           />
-          <Route path="/faq" element={<FaqPanel viewLabel={view.label} categories={categories} />} />
+          <Route path="/faq" element={<FaqPanel viewLabel={pageView.label} categories={categories} />} />
           <Route path="*" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
         </Routes>
         {isBootstrapLoading ? <AppLoadingOverlay /> : null}
@@ -1184,4 +1358,92 @@ function buildBootstrapParams({ month, scope, summaryStart, summaryEnd }) {
     params.set("summary_end", summaryEnd);
   }
   return params;
+}
+
+function buildRoutePageRequest({ tabId, viewId, month, scope, summaryStart, summaryEnd }) {
+  if (tabId === "summary") {
+    const params = new URLSearchParams({
+      view: viewId,
+      month,
+      scope
+    });
+    if (summaryStart) {
+      params.set("summary_start", summaryStart);
+    }
+    if (summaryEnd) {
+      params.set("summary_end", summaryEnd);
+    }
+    return { path: "/api/summary-page", params };
+  }
+
+  if (tabId === "month") {
+    return {
+      path: "/api/month-page",
+      params: new URLSearchParams({
+        view: viewId,
+        month,
+        scope
+      })
+    };
+  }
+
+  if (tabId === "splits") {
+    return {
+      path: "/api/splits-page",
+      params: new URLSearchParams({
+        view: viewId,
+        month
+      })
+    };
+  }
+
+  if (tabId === "imports") {
+    return { path: "/api/imports-page", params: new URLSearchParams() };
+  }
+
+  if (tabId === "settings") {
+    return { path: "/api/settings-page", params: new URLSearchParams() };
+  }
+
+  return null;
+}
+
+function mergeRoutePageIntoView(view, pageData, tabId) {
+  if (!view || !pageData) {
+    return view;
+  }
+
+  if ((tabId === "summary" || tabId === "month" || tabId === "splits") && pageData.viewId !== view.id) {
+    return view;
+  }
+
+  if (tabId === "summary" && pageData.summaryPage) {
+    return {
+      ...view,
+      label: pageData.label ?? view.label,
+      summaryPage: pageData.summaryPage
+    };
+  }
+
+  if (tabId === "month" && pageData.monthPage) {
+    return {
+      ...view,
+      label: pageData.label ?? view.label,
+      summaryPage: {
+        ...view.summaryPage,
+        ...(pageData.summaryPage ?? {})
+      },
+      monthPage: pageData.monthPage
+    };
+  }
+
+  if (tabId === "splits" && pageData.splitsPage) {
+    return {
+      ...view,
+      label: pageData.label ?? view.label,
+      splitsPage: pageData.splitsPage
+    };
+  }
+
+  return view;
 }
