@@ -368,11 +368,14 @@ fresh data is needed.
 After the first usable screen renders, the app also uses browser idle time to
 warm the most likely next route code chunks. It also performs a narrow,
 delayed, sequential page-data prefetch only for adjacent Month or Summary
-periods on non-touch devices. Touch devices skip background API prefetching so
-mobile refreshes do not compete with the visible page request. Any route change,
-import, edit, rollback, manual refresh, data-saver mode, or cache invalidation
-stops the staged prefetch so first load does not create a burst of background
-dashboard requests.
+periods on non-touch devices. Only after the visible page has finished loading
+and the session stays quiet does it warm lower-priority page data such as
+Imports, Splits, Settings, and Entries, one request at a time with spacing
+between each request. Touch devices skip background API prefetching so mobile
+refreshes do not compete with the visible page request. Any route change,
+browser-tab hide, import, edit, rollback, manual refresh, data-saver mode, or
+cache invalidation stops the staged prefetch so first load does not create a
+burst of background dashboard requests.
 
 On browser refresh or a later return to the same month/range, the app can render
 the last successful bootstrap payload from local browser storage immediately and
