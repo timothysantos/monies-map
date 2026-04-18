@@ -143,11 +143,15 @@ export function EntriesPanel({
 
   useEffect(() => {
     const initialPage = buildInitialEntriesPage(entriesSourceView);
+    if (initialPage.monthPage.month !== selectedMonth) {
+      return;
+    }
+
     setEntriesPage(initialPage);
     if (!entriesPageCacheRefs.cacheRef.current.has(entriesPageCacheKey)) {
       entriesPageCacheRefs.cacheRef.current.set(entriesPageCacheKey, initialPage);
     }
-  }, [entriesPageCacheKey, entriesPageCacheRefs, entriesSourceView]);
+  }, [entriesPageCacheKey, entriesPageCacheRefs, entriesSourceView, selectedMonth]);
 
   useEffect(() => {
     const controller = new AbortController();
