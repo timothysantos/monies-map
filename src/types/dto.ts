@@ -160,6 +160,7 @@ export interface EntryDto {
   description: string;
   accountId?: string;
   accountName: string;
+  accountOwnerLabel?: string;
   categoryName: string;
   entryType: EntryType;
   transferDirection?: TransferDirection;
