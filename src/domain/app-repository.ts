@@ -454,7 +454,27 @@ export async function ensureDemoSchema(db: D1Database) {
     await db.prepare("ALTER TABLE split_settlements ADD COLUMN split_batch_id TEXT").run();
   }
 
+  await ensureHotReadIndexes(db);
   await backfillSplitBatches(db);
+}
+
+async function ensureHotReadIndexes(db: D1Database) {
+  const indexStatements = [
+    "CREATE INDEX IF NOT EXISTS idx_imports_household_imported_at ON imports (household_id, imported_at DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_import_rows_import ON import_rows (import_id)",
+    "CREATE INDEX IF NOT EXISTS idx_transactions_household_date ON transactions (household_id, transaction_date)",
+    "CREATE INDEX IF NOT EXISTS idx_transactions_account_date ON transactions (account_id, transaction_date)",
+    "CREATE INDEX IF NOT EXISTS idx_transactions_import ON transactions (import_id)",
+    "CREATE INDEX IF NOT EXISTS idx_transactions_transfer_group ON transactions (transfer_group_id)",
+    "CREATE INDEX IF NOT EXISTS idx_transaction_splits_transaction ON transaction_splits (transaction_id)",
+    "CREATE INDEX IF NOT EXISTS idx_monthly_snapshots_household_month ON monthly_snapshots (household_id, year, month, person_scope)",
+    "CREATE INDEX IF NOT EXISTS idx_monthly_plan_rows_household_month ON monthly_plan_rows (household_id, year, month, section_key)",
+    "CREATE INDEX IF NOT EXISTS idx_split_expenses_household_date ON split_expenses (household_id, expense_date)",
+    "CREATE INDEX IF NOT EXISTS idx_split_settlements_household_date ON split_settlements (household_id, settlement_date)",
+    "CREATE INDEX IF NOT EXISTS idx_category_match_rules_household_active ON category_match_rules (household_id, is_active, priority)"
+  ];
+
+  await db.batch(indexStatements.map((statement) => db.prepare(statement)));
 }
 
 export async function reseedDemoData(db: D1Database, settings: DemoSettings) {

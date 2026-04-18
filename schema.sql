@@ -411,5 +411,26 @@ CREATE INDEX IF NOT EXISTS idx_transactions_import
 CREATE INDEX IF NOT EXISTS idx_transactions_transfer_group
   ON transactions (transfer_group_id);
 
+CREATE INDEX IF NOT EXISTS idx_import_rows_import
+  ON import_rows (import_id);
+
+CREATE INDEX IF NOT EXISTS idx_transaction_splits_transaction
+  ON transaction_splits (transaction_id);
+
+CREATE INDEX IF NOT EXISTS idx_monthly_snapshots_household_month
+  ON monthly_snapshots (household_id, year, month, person_scope);
+
+CREATE INDEX IF NOT EXISTS idx_monthly_plan_rows_household_month
+  ON monthly_plan_rows (household_id, year, month, section_key);
+
 CREATE INDEX IF NOT EXISTS idx_monthly_notes_household_month
   ON monthly_notes (household_id, year, month, scope);
+
+CREATE INDEX IF NOT EXISTS idx_split_expenses_household_date
+  ON split_expenses (household_id, expense_date);
+
+CREATE INDEX IF NOT EXISTS idx_split_settlements_household_date
+  ON split_settlements (household_id, settlement_date);
+
+CREATE INDEX IF NOT EXISTS idx_category_match_rules_household_active
+  ON category_match_rules (household_id, is_active, priority);
