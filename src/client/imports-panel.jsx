@@ -189,6 +189,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     isCommitDisabled,
     knownAccountNames,
     previewDuplicateRowCount,
+    skippedPreviewRowCount,
+    needsReviewPreviewRowCount,
     showStatementAccountMapping,
     statementReconciliations,
     unknownPreviewAccountNames,
@@ -472,7 +474,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }
 
   async function handleCommit() {
-    if (!previewRows.length) {
+    const rowsToCommit = previewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review");
+    if (!rowsToCommit.length && !statementCheckpoints.length) {
       return;
     }
 
@@ -484,7 +487,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         parserKey: statementImportMeta.parserKey,
         note: importNote,
         statementCheckpoints,
-        rows: previewRows
+        rows: rowsToCommit
       });
       resetImportForm();
       await onRefresh();
@@ -510,15 +513,35 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     const shouldClearDuplicateMatches = duplicateKeyFields.some((field) => Object.prototype.hasOwnProperty.call(patch, field));
     setPreviewRows((current) => current.map((row) => (
       row.rowId === rowId
-        ? { ...row, ...patch, duplicateMatches: shouldClearDuplicateMatches ? undefined : row.duplicateMatches }
+        ? {
+          ...row,
+          ...patch,
+          duplicateMatches: shouldClearDuplicateMatches ? undefined : row.duplicateMatches,
+          commitStatus: shouldClearDuplicateMatches ? "included" : (patch.commitStatus ?? row.commitStatus),
+          commitStatusReason: shouldClearDuplicateMatches ? undefined : row.commitStatusReason
+        }
         : row
     )));
   }
 
-  function removePreviewRow(rowId) {
-    setPreviewRows((current) => current
-      .filter((row) => row.rowId !== rowId)
-      .map((row, index) => ({ ...row, rowIndex: index + 1 })));
+  function updatePreviewRowCommitStatus(rowId, commitStatus) {
+    const nextRows = previewRows.map((row) => (
+      row.rowId === rowId
+        ? { ...row, commitStatus, commitStatusReason: getPreviewCommitStatusReason(commitStatus, row.duplicateMatches?.[0]?.matchKind) }
+        : row
+    ));
+    setPreviewRows(nextRows);
+    if (statementCheckpoints.length) {
+      setUploadStatus({ tone: "active", message: messages.imports.statementReconciliationRefreshing });
+      void previewImportRows({ rows: nextRows.map(buildRawImportRowFromPreviewRow) })
+        .then(() => {
+          setUploadStatus({ tone: "success", message: messages.imports.statementReconciliationRefreshed });
+        })
+        .catch((error) => {
+          setPreviewError(error instanceof Error ? error.message : "Import preview failed.");
+          setUploadStatus({ tone: "error", message: error instanceof Error ? error.message : "Import preview failed." });
+        });
+    }
   }
 
   function getPreviewAccountOwnerPatch(accountName, row, accountId) {
@@ -707,6 +730,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             showStatementAccountMapping={showStatementAccountMapping}
             visibleOverlapImports={visibleOverlapImports}
             previewDuplicateRowCount={previewDuplicateRowCount}
+            skippedPreviewRowCount={skippedPreviewRowCount}
+            needsReviewPreviewRowCount={needsReviewPreviewRowCount}
             statementReconciliations={statementReconciliations}
             hasStatementReconciliationMismatch={hasStatementReconciliationMismatch}
             statementCheckpoints={statementCheckpoints}
@@ -730,7 +755,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               isSubmitting={isSubmitting}
               onCommit={handleCommit}
               onUpdatePreviewRow={updatePreviewRow}
-              onRemovePreviewRow={removePreviewRow}
+              onUpdatePreviewRowCommitStatus={updatePreviewRowCommitStatus}
               getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
             />
           ) : (
@@ -769,4 +794,24 @@ function getCheckpointDetectedAccountName(checkpoint) {
 
 function getPreviewRowStatementAccountName(row) {
   return row.statementAccountName ?? row.rawRow?.statementAccountName ?? row.rawRow?.statementAccount ?? row.rawRow?.account ?? row.accountName;
+}
+
+function getPreviewCommitStatusReason(commitStatus, matchKind) {
+  if (commitStatus === "skipped" && matchKind === "exact") {
+    return "Exact duplicate already exists in the ledger.";
+  }
+
+  if (commitStatus === "skipped" && matchKind === "probable") {
+    return "Probable duplicate already exists in the ledger.";
+  }
+
+  if (commitStatus === "skipped") {
+    return "Skipped by user before commit.";
+  }
+
+  if (commitStatus === "needs_review") {
+    return "Possible duplicate needs a user decision before commit.";
+  }
+
+  return undefined;
 }

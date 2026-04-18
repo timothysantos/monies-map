@@ -4732,6 +4732,12 @@ body:has(.split-inline-editor-card) .splits-fab {
   overflow-x: auto;
 }
 
+.import-preview-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .import-preview-table th,
 .import-preview-table td {
   vertical-align: top;
@@ -4743,6 +4749,28 @@ body:has(.split-inline-editor-card) .splits-fab {
 
 .import-preview-row-duplicate {
   background: rgba(246, 236, 228, 0.72);
+}
+
+.import-row-actions {
+  display: grid;
+  gap: 6px;
+  min-width: 96px;
+}
+
+.import-skipped-rows {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(91, 107, 125, 0.16);
+  border-radius: 12px;
+  background: rgba(244, 246, 248, 0.72);
+}
+
+.import-skipped-rows summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 700;
 }
 
 .duplicate-row-pill {

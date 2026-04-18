@@ -148,35 +148,50 @@ export async function buildImportPreview(
       note: normalized.note,
       rawRow
     };
+    const requestedCommitStatus = getRequestedCommitStatus(rawRow);
     const isExactDuplicate = existingHashSet.has(buildImportRowHash(previewRow));
     const nearMatches = existingTransactions.results
-      .filter((candidate) => {
+      .map((candidate) => {
         const sameAmount = Number(candidate.amount_minor) === Number(previewRow.amountMinor);
         if (!sameAmount) {
-          return false;
+          return undefined;
         }
 
         const sameAccount = previewRow.accountId
           ? candidate.account_id === previewRow.accountId
           : !previewRow.accountName || candidate.account_name === previewRow.accountName;
         if (!sameAccount) {
-          return false;
+          return undefined;
         }
 
         const dayDistance = Math.abs(daysBetween(previewRow.date, candidate.transaction_date));
         const descriptionSimilarity = compareDescriptionSimilarity(previewRow.description, candidate.description);
-        return isExactDuplicate || (dayDistance <= 3 && descriptionSimilarity >= 0.55);
+        if (!isExactDuplicate && (dayDistance > 3 || descriptionSimilarity < 0.55)) {
+          return undefined;
+        }
+
+        return {
+          candidate,
+          matchKind: getDuplicateMatchKind(isExactDuplicate, dayDistance, descriptionSimilarity)
+        };
       })
+      .filter((match): match is {
+        candidate: typeof existingTransactions.results[number];
+        matchKind: "exact" | "probable" | "near";
+      } => Boolean(match))
       .slice(0, 3);
 
-    previewRow.duplicateMatches = nearMatches.map((match) => ({
-      existingImportId: match.import_id,
-      date: match.transaction_date,
-      description: match.description,
-      amountMinor: Number(match.amount_minor),
-      accountName: match.account_name,
-      matchKind: isExactDuplicate ? "exact" : "near"
+    previewRow.duplicateMatches = nearMatches.map(({ candidate, matchKind }) => ({
+      existingImportId: candidate.import_id,
+      date: candidate.transaction_date,
+      description: candidate.description,
+      amountMinor: Number(candidate.amount_minor),
+      accountName: candidate.account_name,
+      matchKind
     }));
+    const strongestMatch = previewRow.duplicateMatches[0]?.matchKind;
+    previewRow.commitStatus = requestedCommitStatus ?? getDefaultCommitStatus(strongestMatch);
+    previewRow.commitStatusReason = getCommitStatusReason(previewRow.commitStatus, strongestMatch);
     previewRows.push(previewRow);
 
     if (isExactDuplicate || nearMatches.length) {
@@ -277,7 +292,7 @@ function buildImportPreviewStatementReconciliations(input: {
   const accountsById = new Map(input.accounts.map((account) => [account.id, account]));
   const accountsByName = groupAccountsByName(input.accounts);
   const previewLedgerRows = input.previewRows
-    .filter((row) => row.accountId)
+    .filter((row) => row.accountId && row.commitStatus !== "skipped" && row.commitStatus !== "needs_review")
     .map((row) => ({
       account_id: row.accountId!,
       transaction_date: row.date,
@@ -330,6 +345,51 @@ function buildImportPreviewStatementReconciliations(input: {
       status: deltaMinor === 0 ? "matched" as const : "mismatch" as const
     };
   });
+}
+
+function getRequestedCommitStatus(rawRow: Record<string, string>) {
+  const value = rawRow.commitStatus ?? rawRow.previewCommitStatus;
+  return value === "included" || value === "skipped" || value === "needs_review" ? value : undefined;
+}
+
+function getDuplicateMatchKind(isExactDuplicate: boolean, dayDistance: number, descriptionSimilarity: number) {
+  if (isExactDuplicate) {
+    return "exact" as const;
+  }
+
+  if (dayDistance <= 3 && descriptionSimilarity >= 0.85) {
+    return "probable" as const;
+  }
+
+  return "near" as const;
+}
+
+function getDefaultCommitStatus(matchKind?: "exact" | "probable" | "near") {
+  if (matchKind === "exact" || matchKind === "probable") {
+    return "skipped" as const;
+  }
+
+  if (matchKind === "near") {
+    return "needs_review" as const;
+  }
+
+  return "included" as const;
+}
+
+function getCommitStatusReason(commitStatus: "included" | "skipped" | "needs_review", matchKind?: "exact" | "probable" | "near") {
+  if (commitStatus === "skipped" && matchKind === "exact") {
+    return "Exact duplicate already exists in the ledger.";
+  }
+
+  if (commitStatus === "skipped" && matchKind === "probable") {
+    return "Probable duplicate already exists in the ledger.";
+  }
+
+  if (commitStatus === "needs_review") {
+    return "Possible duplicate needs a user decision before commit.";
+  }
+
+  return undefined;
 }
 
 async function findOverlappingImports(db: D1Database, rows: ImportPreviewRowDto[]) {

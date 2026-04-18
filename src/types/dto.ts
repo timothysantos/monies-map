@@ -372,6 +372,8 @@ export interface ImportOverlapDto {
 export interface ImportPreviewRowDto {
   rowId: string;
   rowIndex: number;
+  commitStatus?: "included" | "skipped" | "needs_review";
+  commitStatusReason?: string;
   date: string;
   description: string;
   amountMinor: number;
@@ -476,7 +478,7 @@ export interface DuplicateCandidateDto {
   description: string;
   amountMinor: number;
   accountName?: string;
-  matchKind: "exact" | "near";
+  matchKind: "exact" | "probable" | "near";
 }
 
 export interface TransferIssueDto {

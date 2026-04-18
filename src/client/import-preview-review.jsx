@@ -21,6 +21,8 @@ export function ImportPreviewReview({
   showStatementAccountMapping,
   visibleOverlapImports,
   previewDuplicateRowCount,
+  skippedPreviewRowCount,
+  needsReviewPreviewRowCount,
   statementReconciliations,
   hasStatementReconciliationMismatch,
   statementCheckpoints,
@@ -59,6 +61,8 @@ export function ImportPreviewReview({
       <PreviewGuardrailPills
         preview={preview}
         previewDuplicateRowCount={previewDuplicateRowCount}
+        skippedPreviewRowCount={skippedPreviewRowCount}
+        needsReviewPreviewRowCount={needsReviewPreviewRowCount}
         visibleOverlapImports={visibleOverlapImports}
       />
 
@@ -170,7 +174,7 @@ function UnknownCategories({ categoryNames, unknownCategoryMode }) {
   );
 }
 
-function PreviewGuardrailPills({ preview, previewDuplicateRowCount, visibleOverlapImports }) {
+function PreviewGuardrailPills({ preview, previewDuplicateRowCount, skippedPreviewRowCount, needsReviewPreviewRowCount, visibleOverlapImports }) {
   return (
     <div className="pill-row dense">
       {preview.startDate && preview.endDate ? (
@@ -178,6 +182,12 @@ function PreviewGuardrailPills({ preview, previewDuplicateRowCount, visibleOverl
       ) : null}
       {previewDuplicateRowCount ? (
         <span className="pill warning">{messages.imports.duplicateCandidates(previewDuplicateRowCount)}</span>
+      ) : null}
+      {skippedPreviewRowCount ? (
+        <span className="pill">{messages.imports.willSkipRows(skippedPreviewRowCount)}</span>
+      ) : null}
+      {needsReviewPreviewRowCount ? (
+        <span className="pill warning">{messages.imports.needsReviewRows(needsReviewPreviewRowCount)}</span>
       ) : null}
       {visibleOverlapImports.length ? (
         <span className="pill warning">{messages.imports.overlappingImports(visibleOverlapImports.length)}</span>
