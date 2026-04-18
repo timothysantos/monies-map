@@ -423,6 +423,18 @@ Frontend direction:
   successful initialization. Demo reseed and empty-state reset clear that cache.
   The read-path seed guard does not recalculate monthly snapshots; writes and
   imports remain responsible for refreshing derived snapshot rows.
+- hot read paths have explicit D1 indexes for import history, ledger entries,
+  plan rows, snapshots, category rules, and split activity. Runtime schema
+  checks also ensure those indexes exist for older databases that predate the
+  current `schema.sql`.
+- bootstrap carries only the split-page shell fallback; split groups, expenses,
+  settlements, and match candidates load from `/api/splits-page` so the app
+  shell does not pay for split workspace data on every refresh.
+- the imports page returns a bounded recent-history summary for first paint.
+  Full import preview, duplicate checks, rollback, and overlap checks still run
+  through their dedicated import flows, but the collapsed recent-history panel
+  no longer forces all historical batches to be scanned before the page is
+  usable.
 - page refreshes keep the current route mounted with a busy overlay while the
   smaller route payload loads; writes clear page and shell caches before
   reloading data. Cached route payloads are reused without automatic

@@ -408,6 +408,16 @@ history, full category match rules, unresolved transfers, and audit history load
 from their own page endpoints instead of being carried in every app-shell
 request.
 
+Bootstrap also leaves detailed split workspace rows to the Splits page endpoint.
+That keeps refreshes focused on the visible app shell while the split page
+loads its own groups, expenses, settlements, and match candidates when opened.
+
+The Imports page initially loads a recent-history summary instead of scanning
+every import batch. Import preview, commit, rollback, duplicate detection, and
+same-account overlap checks still use their focused flows; the collapsed recent
+history section is kept lightweight so opening Imports does not block on the
+whole audit history.
+
 ## How do I import real bank activity?
 
 Use Imports when you want bank or card rows to become ledger entries. Use

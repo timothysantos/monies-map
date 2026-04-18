@@ -77,13 +77,9 @@ export async function buildBootstrapDto(
   const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
     ? selectedMonth
     : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
-  const [monthEntries, monthPlanRows, splitGroups, splitExpenses, splitSettlements, splitMatches] = await Promise.all([
+  const [monthEntries, monthPlanRows] = await Promise.all([
     loadEntries(db, effectiveSelectedMonth),
-    loadMonthPlanRows(db, effectiveSelectedMonth),
-    loadSplitGroups(db),
-    loadSplitExpenses(db, effectiveSelectedMonth),
-    loadSplitSettlements(db, effectiveSelectedMonth),
-    loadSplitMatchCandidates(db, effectiveSelectedMonth)
+    loadMonthPlanRows(db, effectiveSelectedMonth)
   ]);
   const primaryPersonId = household.people[0]?.id ?? "person-primary";
   const partnerPersonId = household.people[1]?.id ?? "person-partner";
@@ -113,9 +109,9 @@ export async function buildBootstrapDto(
   const summaryEntries = await loadEntriesForMonths(db, summaryRangeMonths);
   const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
   const views: ContextViewDto[] = [
-    buildContextView("household", "Household", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, splitGroups, splitExpenses, splitSettlements, splitMatches, categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
-    buildContextView(primaryPersonId, personNameById[primaryPersonId] ?? "Primary", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, splitGroups, splitExpenses, splitSettlements, splitMatches, categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
-    buildContextView(partnerPersonId, personNameById[partnerPersonId] ?? "Partner", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, splitGroups, splitExpenses, splitSettlements, splitMatches, categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById)
+    buildContextView("household", "Household", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, [], [], [], [], categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
+    buildContextView(primaryPersonId, personNameById[primaryPersonId] ?? "Primary", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, [], [], [], [], categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
+    buildContextView(partnerPersonId, personNameById[partnerPersonId] ?? "Partner", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, [], [], [], [], categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById)
   ];
 
   return {
@@ -276,7 +272,7 @@ export async function buildSplitsPageDto(
 
 export async function buildImportsPageDto(db: D1Database): Promise<{ importsPage: ImportsPageDto }> {
   await ensureAppData(db);
-  const importBatches = await loadImportBatches(db);
+  const importBatches = await loadImportBatches(db, { limit: 30, includeOverlapDetails: false });
   return {
     importsPage: {
       recentImports: importBatches,
