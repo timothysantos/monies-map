@@ -31,21 +31,43 @@ export function parseCurrentTransactionSpreadsheet(data: ArrayBuffer, fileName?:
     }));
 
   const accountType = cellString(flattenedRows.find((row) => /^Account Type:$/i.test(cellString(row.values.get(0))))?.values.get(1));
-  const accountName = /One Account/i.test(accountType) ? "UOB One" : accountType ? `UOB ${accountType}` : "UOB Account";
+  const accountName = normalizeUobSpreadsheetAccountName(accountType);
   const period = cellString(flattenedRows.find((row) => /^Statement Period:$/i.test(cellString(row.values.get(0))))?.values.get(1));
-  const headerRow = flattenedRows.find((row) => (
+  const bankHeaderRow = flattenedRows.find((row) => (
     /^Transaction Date$/i.test(cellString(row.values.get(0)))
     && /^Transaction Description$/i.test(cellString(row.values.get(1)))
     && /^Withdrawal$/i.test(cellString(row.values.get(2)))
     && /^Deposit$/i.test(cellString(row.values.get(3)))
   ));
+  const cardHeaderRow = flattenedRows.find((row) => (
+    /^Transaction Date$/i.test(cellString(row.values.get(0)))
+    && /^Posting Date$/i.test(cellString(row.values.get(1)))
+    && /^Description$/i.test(cellString(row.values.get(2)))
+    && /^Transaction Amount\(Local\)$/i.test(cellString(row.values.get(6)))
+  ));
 
-  if (!headerRow) {
-    throw new Error("Unsupported XLS transaction history. Could not find the UOB transaction history header row.");
+  if (bankHeaderRow) {
+    return parseUobBankTransactionRows(flattenedRows, bankHeaderRow.rowIndex, accountName, period, fileName);
   }
 
+  if (cardHeaderRow) {
+    return parseUobCreditCardTransactionRows(flattenedRows, cardHeaderRow.rowIndex, accountName, period, fileName);
+  }
+
+  if (!bankHeaderRow && !cardHeaderRow) {
+    throw new Error("Unsupported XLS transaction history. Could not find the UOB transaction history header row.");
+  }
+}
+
+function parseUobBankTransactionRows(
+  flattenedRows: Array<{ rowIndex: number; values: Map<number, string | number> }>,
+  headerRowIndex: number,
+  accountName: string,
+  period: string,
+  fileName?: string
+) {
   const rows: Record<string, string>[] = [];
-  for (const row of flattenedRows.filter((candidate) => candidate.rowIndex > headerRow.rowIndex)) {
+  for (const row of flattenedRows.filter((candidate) => candidate.rowIndex > headerRowIndex)) {
     const date = parseLongDateCell(cellString(row.values.get(0)));
     const rawDescription = cellString(row.values.get(1));
     if (!date || !rawDescription) {
@@ -87,6 +109,89 @@ export function parseCurrentTransactionSpreadsheet(data: ArrayBuffer, fileName?:
   };
 }
 
+function parseUobCreditCardTransactionRows(
+  flattenedRows: Array<{ rowIndex: number; values: Map<number, string | number> }>,
+  headerRowIndex: number,
+  accountName: string,
+  period: string,
+  fileName?: string
+) {
+  const rows: Record<string, string>[] = [];
+  for (const row of flattenedRows.filter((candidate) => candidate.rowIndex > headerRowIndex)) {
+    const transactionDate = parseLongDateCell(cellString(row.values.get(0)));
+    const postingDate = parseLongDateCell(cellString(row.values.get(1)));
+    const rawDescription = cellString(row.values.get(2));
+    const signedAmountMinor = cellMoneyToMinor(row.values.get(6));
+    if (!postingDate || !rawDescription || !signedAmountMinor) {
+      continue;
+    }
+
+    const amountMinor = Math.abs(signedAmountMinor);
+    const isCredit = signedAmountMinor < 0;
+    const descriptionParts = parseUobCardHistoryDescription(rawDescription);
+    const description = descriptionParts.description;
+    const type = isCredit && isTransferDescription(description) ? "transfer" : isCredit ? "income" : isTransferDescription(description) ? "transfer" : "expense";
+    rows.push({
+      date: postingDate,
+      description,
+      expense: isCredit ? "" : minorToDecimal(amountMinor),
+      income: isCredit ? minorToDecimal(amountMinor) : "",
+      account: accountName,
+      category: type === "transfer" ? "Transfer" : inferCategory(description, isCredit),
+      note: transactionDate ? `txn date: ${transactionDate}` : "",
+      type,
+      reference: descriptionParts.reference
+    });
+  }
+
+  if (!rows.length) {
+    throw new Error("No UOB credit card current transaction rows were found in this XLS file.");
+  }
+
+  return {
+    parserKey: "uob_credit_card_current_transactions_xls",
+    sourceLabel: labelFromFile(fileName, period ? `UOB card current transactions ${period}` : "UOB card current transactions"),
+    rows: rows.sort(compareImportRowsByDate),
+    checkpoints: [],
+    warnings: []
+  };
+}
+
+function normalizeUobSpreadsheetAccountName(accountType: string) {
+  if (/One Account/i.test(accountType)) {
+    return "UOB One";
+  }
+  if (/^UOB ONE CARD$/i.test(accountType)) {
+    return "UOB One Card";
+  }
+  if (/^LADY'S CARD$/i.test(accountType)) {
+    return "UOB Lady's Card";
+  }
+  if (/^UOB PRVI MILES MASTERCARD$/i.test(accountType)) {
+    return "UOB Privi Miles";
+  }
+  return accountType ? `UOB ${titleCaseUobAccountType(accountType)}` : "UOB Account";
+}
+
+function titleCaseUobAccountType(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/\buob\b/g, "UOB")
+    .replace(/\bprvi\b/g, "Privi")
+    .replace(/\bvisa\b/g, "Visa")
+    .replace(/\bmastercard\b/g, "Mastercard")
+    .replace(/\bamex\b/g, "Amex")
+    .replace(/\b[a-z]/g, (match) => match.toUpperCase());
+}
+
+function parseUobCardHistoryDescription(value: string) {
+  const reference = value.match(/\bRef No:\s*([A-Z0-9]+)/i)?.[1] ?? "";
+  return {
+    description: cleanUobSavingsDescription(compactDescription(value.replace(/\bRef No:\s*[A-Z0-9]+/gi, ""))),
+    reference
+  };
+}
+
 function parseBiff8XlsCells(data: ArrayBuffer): SpreadsheetCell[] {
   const bytes = new Uint8Array(data);
   const workbook = readCompoundDocumentWorkbook(bytes);
@@ -104,7 +209,21 @@ function parseBiff8XlsCells(data: ArrayBuffer): SpreadsheetCell[] {
     }
 
     if (recordType === 0x00fc) {
-      sharedStrings.splice(0, sharedStrings.length, ...readSharedStringTable(workbook.slice(recordStart, recordEnd)));
+      const sharedStringParts = [workbook.slice(recordStart, recordEnd)];
+      let continuationOffset = recordEnd;
+      while (continuationOffset + 4 <= workbook.length && readUInt16(workbook, continuationOffset) === 0x003c) {
+        const continuationLength = readUInt16(workbook, continuationOffset + 2);
+        const continuationStart = continuationOffset + 4;
+        const continuationEnd = continuationStart + continuationLength;
+        if (continuationEnd > workbook.length) {
+          break;
+        }
+        sharedStringParts.push(workbook.slice(continuationStart, continuationEnd));
+        continuationOffset = continuationEnd;
+      }
+      sharedStrings.splice(0, sharedStrings.length, ...readSharedStringTable(sharedStringParts));
+      offset = continuationOffset;
+      continue;
     } else if (recordType === 0x00fd && recordLength >= 10) {
       const sharedStringIndex = readUInt32(workbook, recordStart + 6);
       cells.push({
@@ -195,44 +314,119 @@ function compoundSectorOffset(sector: number, sectorSize: number) {
   return (sector + 1) * sectorSize;
 }
 
-function readSharedStringTable(data: Uint8Array) {
+function readSharedStringTable(parts: Uint8Array[]) {
   const strings: string[] = [];
-  const uniqueCount = readUInt32(data, 4);
-  let offset = 8;
-  for (let index = 0; index < uniqueCount && offset < data.length; index += 1) {
-    const result = readBiffString(data, offset);
-    strings.push(result.value);
-    offset = result.offset;
+  const cursor = new BiffContinuationCursor(parts);
+  cursor.readUInt32();
+  const uniqueCount = cursor.readUInt32();
+  for (let index = 0; index < uniqueCount && !cursor.isDone(); index += 1) {
+    strings.push(readBiffString(cursor));
   }
   return strings;
 }
 
-function readBiffString(data: Uint8Array, offset: number) {
-  const characterCount = readUInt16(data, offset);
-  let cursor = offset + 2;
-  const flags = data[cursor];
-  cursor += 1;
+function readBiffString(cursor: BiffContinuationCursor) {
+  const characterCount = cursor.readUInt16();
+  let flags = cursor.readByte();
   const hasAsianPhonetics = Boolean(flags & 0x04);
   const hasRichText = Boolean(flags & 0x08);
-  const isUtf16 = Boolean(flags & 0x01);
+  let isUtf16 = Boolean(flags & 0x01);
   let richTextRunCount = 0;
   let asianPhoneticByteCount = 0;
   if (hasRichText) {
-    richTextRunCount = readUInt16(data, cursor);
-    cursor += 2;
+    richTextRunCount = cursor.readUInt16();
   }
   if (hasAsianPhonetics) {
-    asianPhoneticByteCount = readUInt32(data, cursor);
-    cursor += 4;
+    asianPhoneticByteCount = cursor.readUInt32();
   }
 
-  const byteLength = isUtf16 ? characterCount * 2 : characterCount;
-  const value = isUtf16
-    ? decodeUtf16Le(data.slice(cursor, cursor + byteLength))
-    : decodeSingleByteString(data.slice(cursor, cursor + byteLength));
-  cursor += byteLength + richTextRunCount * 4 + asianPhoneticByteCount;
+  let value = "";
+  let remainingCharacters = characterCount;
+  while (remainingCharacters > 0 && !cursor.isDone()) {
+    const bytesPerCharacter = isUtf16 ? 2 : 1;
+    const availableCharacters = Math.floor(cursor.currentPartRemaining() / bytesPerCharacter);
+    const takeCharacters = Math.min(remainingCharacters, availableCharacters);
+    if (takeCharacters > 0) {
+      const bytes = cursor.readBytes(takeCharacters * bytesPerCharacter);
+      value += isUtf16 ? decodeUtf16Le(bytes) : decodeSingleByteString(bytes);
+      remainingCharacters -= takeCharacters;
+    }
+    if (remainingCharacters > 0) {
+      flags = cursor.moveToContinuationStringPart();
+      isUtf16 = Boolean(flags & 0x01);
+    }
+  }
 
-  return { value, offset: cursor };
+  cursor.skipBytes(richTextRunCount * 4 + asianPhoneticByteCount);
+  return value;
+}
+
+class BiffContinuationCursor {
+  private partIndex = 0;
+  private offset = 0;
+
+  constructor(private readonly parts: Uint8Array[]) {}
+
+  isDone() {
+    return this.partIndex >= this.parts.length;
+  }
+
+  currentPartRemaining() {
+    const part = this.parts[this.partIndex];
+    return part ? part.length - this.offset : 0;
+  }
+
+  readByte() {
+    this.ensureAvailable();
+    return this.parts[this.partIndex][this.offset++];
+  }
+
+  readUInt16() {
+    const bytes = this.readBytes(2);
+    return new DataView(bytes.buffer, bytes.byteOffset, 2).getUint16(0, true);
+  }
+
+  readUInt32() {
+    const bytes = this.readBytes(4);
+    return new DataView(bytes.buffer, bytes.byteOffset, 4).getUint32(0, true);
+  }
+
+  readBytes(length: number) {
+    const output = new Uint8Array(length);
+    let written = 0;
+    while (written < length && !this.isDone()) {
+      this.ensureAvailable();
+      const available = this.currentPartRemaining();
+      const take = Math.min(length - written, available);
+      output.set(this.parts[this.partIndex].slice(this.offset, this.offset + take), written);
+      this.offset += take;
+      written += take;
+    }
+    return output;
+  }
+
+  skipBytes(length: number) {
+    let remaining = length;
+    while (remaining > 0 && !this.isDone()) {
+      this.ensureAvailable();
+      const take = Math.min(remaining, this.currentPartRemaining());
+      this.offset += take;
+      remaining -= take;
+    }
+  }
+
+  moveToContinuationStringPart() {
+    this.partIndex += 1;
+    this.offset = 0;
+    return this.readByte();
+  }
+
+  private ensureAvailable() {
+    while (!this.isDone() && this.offset >= this.parts[this.partIndex].length) {
+      this.partIndex += 1;
+      this.offset = 0;
+    }
+  }
 }
 
 function concatBytes(chunks: Uint8Array[]) {
