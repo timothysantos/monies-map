@@ -300,6 +300,24 @@ export async function ensureDemoSchema(db: D1Database) {
     await db.prepare("ALTER TABLE accounts ADD COLUMN opening_balance_minor INTEGER NOT NULL DEFAULT 0").run();
   }
 
+  const peopleColumns = await db
+    .prepare("PRAGMA table_info(people)")
+    .all<{ name: string }>();
+
+  const hasPeopleUpdatedAt = peopleColumns.results.some((column) => column.name === "updated_at");
+  if (!hasPeopleUpdatedAt && peopleColumns.results.length > 0) {
+    await db.prepare("ALTER TABLE people ADD COLUMN updated_at TEXT").run();
+  }
+
+  const loginIdentityColumns = await db
+    .prepare("PRAGMA table_info(login_identities)")
+    .all<{ name: string }>();
+
+  const hasLoginIdentityUpdatedAt = loginIdentityColumns.results.some((column) => column.name === "updated_at");
+  if (!hasLoginIdentityUpdatedAt && loginIdentityColumns.results.length > 0) {
+    await db.prepare("ALTER TABLE login_identities ADD COLUMN updated_at TEXT").run();
+  }
+
   await db
     .prepare(`
       CREATE TABLE IF NOT EXISTS account_balance_checkpoints (
