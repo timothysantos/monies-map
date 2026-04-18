@@ -403,6 +403,11 @@ Those route screens are also loaded as separate JavaScript chunks, so import,
 settings, PDF parsing, and statement parsing code are only downloaded when the
 user opens a screen that needs them.
 
+Bootstrap intentionally keeps Imports and Settings details light. Import
+history, full category match rules, unresolved transfers, and audit history load
+from their own page endpoints instead of being carried in every app-shell
+request.
+
 ## How do I import real bank activity?
 
 Use Imports when you want bank or card rows to become ledger entries. Use

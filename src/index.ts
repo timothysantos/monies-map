@@ -5,7 +5,8 @@ import {
   buildMonthPageDto,
   buildSettingsPageDto,
   buildSplitsPageDto,
-  buildSummaryPageDto
+  buildSummaryPageDto,
+  invalidateAppDataCache
 } from "./domain/bootstrap";
 import { enterEmptyState, reseedDemoSettings } from "./domain/demo-settings";
 import {
@@ -133,11 +134,13 @@ export default {
 
     if (url.pathname === "/api/demo/reseed" && request.method === "POST") {
       const demo = await reseedDemoSettings(env.DB);
+      invalidateAppDataCache();
       return json({ ok: true, demo });
     }
 
     if (url.pathname === "/api/demo/empty" && request.method === "POST") {
       const demo = await enterEmptyState(env.DB);
+      invalidateAppDataCache();
       return json({ ok: true, demo });
     }
 
