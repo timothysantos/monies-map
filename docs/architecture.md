@@ -426,11 +426,14 @@ Frontend direction:
   Adjacent month or summary-range payloads are prefetched first after the
   current page settles on non-touch devices. Touch devices skip background API
   prefetching so mobile refreshes do not compete with the visible page request.
-  Route changes, mutations, manual refreshes, and cache invalidation cancel the
-  staged prefetch so bootstrap no longer has to reload for ordinary month/range
-  navigation without creating a burst of background API calls. Entries seeds its
-  first page cache from bootstrap on refresh and relies on explicit month
-  changes, manual refreshes, and write invalidations for fresh API loads.
+  Lower-priority page data warms only after the visible route has finished
+  loading and an additional quiet period passes; those background requests run
+  one at a time with spacing between them. Route changes, browser-tab hiding,
+  mutations, manual refreshes, and cache invalidation cancel the staged prefetch
+  so bootstrap no longer has to reload for ordinary month/range navigation
+  without creating a burst of background API calls. Entries seeds its first page
+  cache from bootstrap on refresh and relies on explicit month changes, manual
+  refreshes, and write invalidations for fresh API loads.
 - route panels are lazily loaded behind React Suspense so imports, settings,
   PDF parsing, statement parsing, and charting code do not inflate the initial
   app shell bundle

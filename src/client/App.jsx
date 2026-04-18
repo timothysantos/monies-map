@@ -65,8 +65,8 @@ const MONTH_SWIPE_MIN_DISTANCE_PX = 72;
 const MONTH_SWIPE_MAX_VERTICAL_PX = 80;
 const MONTH_SWIPE_MIN_RATIO = 1.35;
 const PAGE_PREFETCH_DELAY_MS = 1200;
-const PAGE_PREFETCH_SPACING_MS = 650;
-const PAGE_PREFETCH_STAGE_DELAY_MS = 1800;
+const PAGE_PREFETCH_SPACING_MS = 1500;
+const PAGE_PREFETCH_STAGE_DELAY_MS = 5000;
 
 function preloadRouteModule(routeId) {
   const loader = routeModuleLoaders[routeId];
@@ -756,6 +756,7 @@ export function App() {
     if (
       !bootstrap
       || bootstrapError
+      || isBootstrapLoading
       || typeof window === "undefined"
       || window.navigator?.connection?.saveData
       || window.matchMedia?.("(pointer: coarse)")?.matches
@@ -770,7 +771,8 @@ export function App() {
     const isStable = () => !isCancelled
       && bootstrapCacheVersionRef.current === bootstrapVersion
       && routePageCacheVersionRef.current === routePageVersion
-      && entriesPageCacheVersionRef.current === entriesPageVersion;
+      && entriesPageCacheVersionRef.current === entriesPageVersion
+      && document.visibilityState === "visible";
     const runPrefetchTasks = async (tasks) => {
       const seenKeys = new Set();
       for (const task of tasks) {
@@ -886,6 +888,7 @@ export function App() {
     availableMonths,
     bootstrap,
     bootstrapError,
+    isBootstrapLoading,
     pageView,
     prefetchEntriesPage,
     prefetchRoutePage,
