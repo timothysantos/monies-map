@@ -661,23 +661,6 @@ export function App() {
         }
 
         setRoutePageData(data);
-        if (!hasCachedPage) {
-          return;
-        }
-
-        try {
-          const freshData = await fetchRoutePageData(routePageRequest, {
-            bypassCache: true,
-            signal: controller.signal
-          });
-          if (!controller.signal.aborted) {
-            setRoutePageData(freshData);
-          }
-        } catch (error) {
-          if (error instanceof DOMException && error.name === "AbortError") {
-            return;
-          }
-        }
       })
       .catch((error) => {
         if (error instanceof DOMException && error.name === "AbortError") {

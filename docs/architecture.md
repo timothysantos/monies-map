@@ -421,7 +421,9 @@ Frontend direction:
   production console failures can be matched against Worker logs
 - page refreshes keep the current route mounted with a busy overlay while the
   smaller route payload loads; writes clear page and shell caches before
-  reloading data
+  reloading data. Cached route payloads are reused without automatic
+  stale-while-revalidate requests because those page endpoints can be expensive;
+  explicit refreshes and mutations remain the freshness boundary.
 - route-page responses are cached in memory by endpoint and query string.
   Adjacent month or summary-range payloads are prefetched first after the
   current page settles on non-touch devices. Touch devices skip background API
