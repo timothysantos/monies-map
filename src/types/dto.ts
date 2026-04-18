@@ -550,6 +550,15 @@ export interface AppBootstrapDto {
   categories: CategoryDto[];
   views: ContextViewDto[];
   selectedViewId: string;
+  viewerPersonId?: string;
+  viewerIdentity?: {
+    email: string;
+    personId?: string;
+  };
+  viewerRegistration?: {
+    email: string;
+    suggestedPersonId: string;
+  };
   importsPage: ImportsPageDto;
   settingsPage: SettingsPageDto;
 }

@@ -1,9 +1,11 @@
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import {
   Receipt,
   Ellipsis,
+  LogOut,
   Plus
 } from "lucide-react";
 import {
@@ -199,7 +201,8 @@ export function App() {
   const entriesPageCacheRef = useRef(new Map());
   const entriesPageInflightRef = useRef(new Map());
   const entriesPageCacheVersionRef = useRef(0);
-  const selectedViewId = searchParams.get("view") ?? "household";
+  const explicitViewId = searchParams.get("view");
+  const selectedViewId = explicitViewId ?? "household";
   const selectedTabId = routeTabs.find((tab) => tab.path === location.pathname)?.id ?? "summary";
   const selectedMonth = searchParams.get("month") ?? DEFAULT_MONTH_KEY;
   const selectedScope = searchParams.get("scope") ?? "direct_plus_shared";
@@ -207,6 +210,12 @@ export function App() {
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
   const isBootstrapLoading = bootstrapLoadCount > 0;
   const [routePageData, setRoutePageData] = useState(null);
+  const [loginRegistrationDraft, setLoginRegistrationDraft] = useState(null);
+  const [loginRegistrationError, setLoginRegistrationError] = useState("");
+  const [isRegisteringLogin, setIsRegisteringLogin] = useState(false);
+  const [loginIdentityError, setLoginIdentityError] = useState("");
+  const [isUnregisteringLogin, setIsUnregisteringLogin] = useState(false);
+  const [suppressedLoginRegistrationEmail, setSuppressedLoginRegistrationEmail] = useState("");
   const bootstrapShellView = bootstrap?.views[0] ?? null;
   const bootstrapMonth = bootstrapShellView?.monthPage?.month ?? selectedMonth;
   const bootstrapSummaryStart = bootstrapShellView?.summaryPage?.rangeStartMonth ?? selectedSummaryStart;
@@ -907,6 +916,18 @@ export function App() {
       return;
     }
 
+    if (selectedTabId === "splits" && !explicitViewId && bootstrap.viewerPersonId) {
+      setSearchParams((current) => {
+        if (current.has("view")) {
+          return current;
+        }
+        const next = new URLSearchParams(current);
+        next.set("view", bootstrap.viewerPersonId);
+        return next;
+      }, { replace: true });
+      return;
+    }
+
     const matchesKnownView = bootstrap.views.some((item) => item.id === selectedViewId);
     if (matchesKnownView) {
       return;
@@ -917,7 +938,37 @@ export function App() {
       next.set("view", bootstrap.selectedViewId);
       return next;
     }, { replace: true });
-  }, [bootstrap, selectedViewId, setSearchParams]);
+  }, [bootstrap, explicitViewId, selectedTabId, selectedViewId, setSearchParams]);
+
+  useEffect(() => {
+    if (!bootstrap?.viewerRegistration) {
+      setLoginRegistrationDraft(null);
+      setLoginRegistrationError("");
+      return;
+    }
+
+    if (bootstrap.viewerRegistration.email === suppressedLoginRegistrationEmail) {
+      setLoginRegistrationDraft(null);
+      setLoginRegistrationError("");
+      return;
+    }
+
+    setLoginRegistrationDraft((current) => {
+      if (current?.email === bootstrap.viewerRegistration.email) {
+        return current;
+      }
+      const suggestedPerson = bootstrap.household.people.find((person) => person.id === bootstrap.viewerRegistration.suggestedPersonId)
+        ?? bootstrap.household.people[0];
+      const suggestedName = isPlaceholderPersonName(suggestedPerson?.name)
+        ? formatNameFromEmail(bootstrap.viewerRegistration.email)
+        : suggestedPerson?.name ?? "";
+      return {
+        email: bootstrap.viewerRegistration.email,
+        personId: suggestedPerson?.id ?? "",
+        name: suggestedName
+      };
+    });
+  }, [bootstrap, suppressedLoginRegistrationEmail]);
 
   useEffect(() => {
     if (!bootstrap || !availableMonths.length) {
@@ -1255,6 +1306,87 @@ export function App() {
     clearBootstrapCache();
   }
 
+  async function handleRegisterLogin(event) {
+    event.preventDefault();
+    if (!loginRegistrationDraft?.personId) {
+      setLoginRegistrationError("Choose a household profile for this login.");
+      return;
+    }
+
+    setLoginRegistrationError("");
+    setIsRegisteringLogin(true);
+    try {
+      const response = await fetch("/api/login-identities/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          personId: loginRegistrationDraft.personId,
+          name: loginRegistrationDraft.name
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error ?? "Login could not be linked.");
+      }
+      setLoginRegistrationDraft(null);
+      setLoginIdentityError("");
+      setSuppressedLoginRegistrationEmail("");
+      clearBootstrapCache();
+      clearRoutePageCache();
+      clearEntriesPageCache();
+      await refreshBootstrap({ broadcast: true });
+      if (selectedTabId === "splits") {
+        setSearchParams((current) => {
+          const next = new URLSearchParams(current);
+          next.set("view", data.personId ?? loginRegistrationDraft.personId);
+          return next;
+        }, { replace: true });
+      }
+    } catch (error) {
+      setLoginRegistrationError(error instanceof Error ? error.message : "Login could not be linked.");
+    } finally {
+      setIsRegisteringLogin(false);
+    }
+  }
+
+  async function handleUnregisterLogin() {
+    const viewerEmail = bootstrap.viewerIdentity?.email;
+    const viewerPersonId = bootstrap.viewerIdentity?.personId;
+    setLoginIdentityError("");
+    setIsUnregisteringLogin(true);
+    try {
+      const response = await fetch("/api/login-identities/unregister", { method: "POST" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error ?? "Login could not be unregistered.");
+      }
+      clearBootstrapCache();
+      clearRoutePageCache();
+      clearEntriesPageCache();
+      if (viewerEmail) {
+        setSuppressedLoginRegistrationEmail(viewerEmail);
+      }
+      await refreshBootstrap({ broadcast: true });
+      if (selectedTabId === "splits" && viewerPersonId && selectedViewId === viewerPersonId) {
+        setSearchParams((current) => {
+          const next = new URLSearchParams(current);
+          next.set("view", "household");
+          return next;
+        }, { replace: true });
+      }
+    } catch (error) {
+      setLoginIdentityError(error instanceof Error ? error.message : "Login could not be unregistered.");
+    } finally {
+      setIsUnregisteringLogin(false);
+    }
+  }
+
+  function handleLogout() {
+    window.location.href = "/cdn-cgi/access/logout";
+  }
+
   return (
     <main className="shell">
       <section className="control-bar">
@@ -1278,6 +1410,31 @@ export function App() {
               </button>
             ))}
           </div>
+          {bootstrap.viewerIdentity?.email ? (
+            <Popover.Root>
+              <Popover.Trigger asChild>
+                <button type="button" className="login-menu-trigger" aria-label="Login options" title={bootstrap.viewerIdentity.email}>
+                  <LogOut size={18} />
+                </button>
+              </Popover.Trigger>
+              <Popover.Portal>
+                <Popover.Content className="login-menu-popover" sideOffset={10} align="end">
+                  <strong>{bootstrap.viewerIdentity.personId ? "Login linked" : "Signed in"}</strong>
+                  <p>{bootstrap.viewerIdentity.email}</p>
+                  {loginIdentityError ? <span className="form-error">{loginIdentityError}</span> : null}
+                  <div className="login-menu-actions">
+                    {bootstrap.viewerIdentity.personId ? (
+                      <button type="button" className="subtle-action" disabled={isUnregisteringLogin} onClick={() => void handleUnregisterLogin()}>
+                        {isUnregisteringLogin ? "Unregistering..." : "Unregister"}
+                      </button>
+                    ) : null}
+                    <button type="button" className="subtle-action" onClick={handleLogout}>Log out</button>
+                  </div>
+                  <Popover.Arrow className="category-popover-arrow" />
+                </Popover.Content>
+              </Popover.Portal>
+            </Popover.Root>
+          ) : null}
         </div>
 
         <div className="period-inline">
@@ -1427,7 +1584,7 @@ export function App() {
                       </Popover.Content>
                     </Popover.Portal>
                   </Popover.Root>
-                  <span className="period-range-separator"> - </span>
+                  <span className="period-range-separator" aria-hidden="true">-</span>
                   <Popover.Root>
                     <Popover.Trigger asChild>
                       <button type="button" className="period-range-segment">
@@ -1604,6 +1761,61 @@ export function App() {
         {isBootstrapLoading ? <AppLoadingOverlay /> : null}
       </section>
 
+      {loginRegistrationDraft ? (
+        <Dialog.Root open>
+          <Dialog.Portal>
+            <Dialog.Overlay className="note-dialog-overlay" />
+            <Dialog.Content className="note-dialog-content login-registration-dialog" onOpenAutoFocus={(event) => event.preventDefault()}>
+              <form onSubmit={handleRegisterLogin}>
+                <div className="note-dialog-head">
+                  <div>
+                    <Dialog.Title>Set up this login</Dialog.Title>
+                    <Dialog.Description>
+                      Link {loginRegistrationDraft.email} to one household profile. This lets Splits open on your view next time.
+                    </Dialog.Description>
+                  </div>
+                </div>
+                <div className="login-registration-form">
+                  <label>
+                    <span>Household profile</span>
+                    <select
+                      className="table-edit-input"
+                      value={loginRegistrationDraft.personId}
+                      onChange={(event) => {
+                        const person = bootstrap.household.people.find((item) => item.id === event.target.value);
+                        setLoginRegistrationDraft((current) => current ? {
+                          ...current,
+                          personId: event.target.value,
+                          name: isPlaceholderPersonName(person?.name) ? formatNameFromEmail(current.email) : person?.name ?? current.name
+                        } : current);
+                      }}
+                    >
+                      {bootstrap.household.people.map((person) => (
+                        <option key={person.id} value={person.id}>{person.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Display name</span>
+                    <input
+                      className="table-edit-input"
+                      value={loginRegistrationDraft.name}
+                      onChange={(event) => setLoginRegistrationDraft((current) => current ? { ...current, name: event.target.value } : current)}
+                    />
+                  </label>
+                </div>
+                {loginRegistrationError ? <p className="form-error">{loginRegistrationError}</p> : null}
+                <div className="note-dialog-actions">
+                  <button type="submit" className="dialog-primary" disabled={isRegisteringLogin}>
+                    {isRegisteringLogin ? "Saving..." : "Save login"}
+                  </button>
+                </div>
+              </form>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      ) : null}
+
       {selectedTabId === "entries" && typeof document !== "undefined"
         ? createPortal(
             <button type="button" className="entries-fab" onClick={() => {
@@ -1618,7 +1830,7 @@ export function App() {
           )
         : null}
 
-      {selectedTabId === "splits" && typeof document !== "undefined"
+      {selectedTabId === "splits" && pageView.id !== "household" && typeof document !== "undefined"
         ? createPortal(
             <button type="button" className="entries-fab splits-fab" onClick={() => {
               const trigger = document.querySelector("[data-splits-fab-trigger='true']");
@@ -1633,6 +1845,16 @@ export function App() {
         : null}
     </main>
   );
+}
+
+function isPlaceholderPersonName(name) {
+  return ["primary", "partner"].includes(String(name ?? "").trim().toLowerCase());
+}
+
+function formatNameFromEmail(email) {
+  const localPart = String(email ?? "").split("@")[0] ?? "";
+  const firstToken = localPart.split(/[._+\-]/).find(Boolean) ?? "Me";
+  return firstToken.charAt(0).toUpperCase() + firstToken.slice(1);
 }
 
 function AppLoadingPanel() {

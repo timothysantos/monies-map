@@ -35,6 +35,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const defaultGroupId = view.splitsPage.groups.find((group) => group.isDefault)?.id ?? "split-group-none";
   const selectedGroupId = searchParams.get("split_group") ?? defaultGroupId;
   const selectedMode = searchParams.get("split_mode") ?? "entries";
+  const isHouseholdView = view.id === "household";
   const splitModel = useMemo(
     () => buildSplitsPanelModel({
       view,
@@ -288,7 +289,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
           <h2>{messages.tabs.splits}</h2>
           <p className="panel-context">{messages.splits.viewing(view.label)}</p>
         </div>
-        {selectedMode !== "matches" ? (
+        {!isHouseholdView && selectedMode !== "matches" ? (
           <button
             type="button"
             className="subtle-action split-settle-header"
@@ -338,8 +339,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onDismissMatch={(matchId) => setDismissedMatchIds((current) => [...current, matchId])}
         onConfirmMatch={confirmMatch}
         onOpenArchive={openArchiveList}
-        onEditExpense={openInlineExpenseEditor}
-        onEditSettlement={openInlineSettlementEditor}
+        readOnly={isHouseholdView}
+        onEditExpense={isHouseholdView ? undefined : openInlineExpenseEditor}
+        onEditSettlement={isHouseholdView ? undefined : openInlineSettlementEditor}
         onChangeInlineSplitDraft={setInlineSplitDraft}
         onCancelInlineSplit={() => {
           setInlineSplitDraft(null);

@@ -152,6 +152,9 @@ export function EntriesFilterStack({
           <button type="button" className="subtle-action" onClick={onResetFilters}>
             {messages.entries.resetFilters}
           </button>
+          <button type="button" className="subtle-action entries-filter-hide" onClick={onToggleMobileFilters}>
+            Hide
+          </button>
         </div>
       </section>
     </section>

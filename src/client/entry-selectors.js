@@ -20,7 +20,7 @@ export function getEntryWalletFilterOptions(accounts) {
 export function getEntryFormOptions({ accounts, categories, people }) {
   return {
     categoryOptions: getCategoryNameOptions(categories),
-    accountOptions: getAccountSelectOptions(accounts.filter((account) => account.isActive !== false)),
+    accountOptions: getAccountSelectOptions(accounts.filter((account) => account.isActive !== false), { valueKey: "id" }),
     ownerOptions: [...people.map((person) => person.name), "Shared"]
   };
 }

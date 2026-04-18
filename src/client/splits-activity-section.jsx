@@ -19,18 +19,21 @@ export function SplitsActivitySection({
   onCancelInlineSplit,
   onSaveInlineSplit,
   onRequestDeleteSplit,
-  onEditLinkedEntry
+  onEditLinkedEntry,
+  readOnly = false
 }) {
   return (
     <section className="split-list-section">
-      <button
-        type="button"
-        data-splits-fab-trigger="true"
-        className="entries-fab-trigger"
-        onClick={onAddExpense}
-        aria-hidden="true"
-        tabIndex={-1}
-      />
+      {!readOnly ? (
+        <button
+          type="button"
+          data-splits-fab-trigger="true"
+          className="entries-fab-trigger"
+          onClick={onAddExpense}
+          aria-hidden="true"
+          tabIndex={-1}
+        />
+      ) : null}
       <div className="split-activity-list">
         {groupedCurrentActivity.length ? (
           <SplitActivityGroups
@@ -49,6 +52,7 @@ export function SplitsActivitySection({
             onEditExpense={onEditExpense}
             onEditSettlement={onEditSettlement}
             onEditLinkedEntry={onEditLinkedEntry}
+            readOnly={readOnly}
           />
         ) : null}
         {!groupedCurrentActivity.length && !archivedBatches.length ? <p className="lede compact">{messages.splits.noEntries}</p> : null}

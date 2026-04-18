@@ -11,7 +11,8 @@ export function SplitsGroupsNav({
   settlementMatchCount,
   onSelectGroup,
   onSelectMatches,
-  onCreateGroup
+  onCreateGroup,
+  readOnly = false
 }) {
   return (
     <section className="splits-groups-row">
@@ -45,14 +46,16 @@ export function SplitsGroupsNav({
             <span>{expenseMatchCount} expense, {settlementMatchCount} settle-up</span>
           </span>
         </button>
-        <button
-          type="button"
-          className="split-group-pill split-group-pill-create"
-          onClick={onCreateGroup}
-          aria-label={messages.splits.createGroup}
-        >
-          <strong>{messages.splits.addGroup}</strong>
-        </button>
+        {!readOnly ? (
+          <button
+            type="button"
+            className="split-group-pill split-group-pill-create"
+            onClick={onCreateGroup}
+            aria-label={messages.splits.createGroup}
+          >
+            <strong>{messages.splits.addGroup}</strong>
+          </button>
+        ) : null}
       </div>
     </section>
   );
