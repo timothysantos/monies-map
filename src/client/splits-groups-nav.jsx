@@ -12,10 +12,11 @@ export function SplitsGroupsNav({
   onSelectGroup,
   onSelectMatches,
   onCreateGroup,
-  readOnly = false
+  readOnly = false,
+  floating = false
 }) {
   return (
-    <section className="splits-groups-row">
+    <section className={`splits-groups-row ${floating ? "splits-groups-row-floating" : ""}`}>
       <div className="splits-group-pills">
         {groups.map((group) => {
           const Icon = getIconComponent(group.iconKey);
