@@ -419,6 +419,10 @@ Frontend direction:
   failed requests, including a request id, endpoint label, selected route
   parameters, and duration; error responses include the same request id so
   production console failures can be matched against Worker logs
+- app-data schema and seed checks are cached per Worker instance after a
+  successful initialization. Demo reseed and empty-state reset clear that cache.
+  The read-path seed guard does not recalculate monthly snapshots; writes and
+  imports remain responsible for refreshing derived snapshot rows.
 - page refreshes keep the current route mounted with a busy overlay while the
   smaller route payload loads; writes clear page and shell caches before
   reloading data. Cached route payloads are reused without automatic

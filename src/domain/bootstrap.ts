@@ -1,4 +1,4 @@
-import { categories as defaultCategories, defaultDemoSettings, household as defaultHousehold } from "./demo-data";
+import { categories as defaultCategories, defaultDemoSettings, household as defaultHousehold, type DemoSettings } from "./demo-data";
 import { loadDemoSettings } from "./demo-settings";
 import { getCurrentMonthKey } from "../lib/month";
 import {
@@ -53,6 +53,12 @@ import type {
   SummaryMonthDto
 } from "../types/dto";
 
+let appDataReadyPromise: Promise<DemoSettings> | null = null;
+
+export function invalidateAppDataCache() {
+  appDataReadyPromise = null;
+}
+
 export async function buildBootstrapDto(
   db: D1Database,
   selectedMonth = getCurrentMonthKey(),
@@ -60,23 +66,13 @@ export async function buildBootstrapDto(
   summaryStartMonth?: string,
   summaryEndMonth?: string
 ): Promise<AppBootstrapDto> {
-  const demo = await loadDemoSettings(db).catch(() => defaultDemoSettings);
-  await ensureDemoSchema(db);
-  if (demo.emptyState) {
-    await seedEmptyStateReferenceData(db);
-  } else {
-    await ensureSeedData(db, demo);
-  }
-  const [household, accounts, categories, categoryMatchRules, categoryMatchRuleSuggestions, importBatches, trackedMonths, unresolvedTransfers, recentAuditEvents] = await Promise.all([
+  const demo = await ensureAppData(db);
+  const [household, accounts, categories, categoryMatchRuleSuggestions, trackedMonths] = await Promise.all([
     loadHousehold(db),
     loadAccounts(db),
     loadCategories(db),
-    loadCategoryMatchRules(db),
     loadCategoryMatchRuleSuggestions(db),
-    loadImportBatches(db),
-    loadTrackedMonths(db),
-    loadUnresolvedTransfers(db),
-    loadAuditEvents(db)
+    loadTrackedMonths(db)
   ]);
   const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
     ? selectedMonth
@@ -129,16 +125,16 @@ export async function buildBootstrapDto(
     views,
     selectedViewId: "household",
     importsPage: {
-      recentImports: importBatches,
+      recentImports: [],
       rollbackPolicy:
         "Every transaction is tied to an import batch so the last import can be removed without touching older data."
     },
     settingsPage: {
       demo,
-      categoryMatchRules,
+      categoryMatchRules: [],
       categoryMatchRuleSuggestions,
-      unresolvedTransfers,
-      recentAuditEvents
+      unresolvedTransfers: [],
+      recentAuditEvents: []
     }
   };
 }
@@ -148,13 +144,7 @@ export async function buildEntriesPageDto(
   selectedViewId = "household",
   selectedMonth = getCurrentMonthKey()
 ): Promise<EntriesPageDto> {
-  const demo = await loadDemoSettings(db).catch(() => defaultDemoSettings);
-  await ensureDemoSchema(db);
-  if (demo.emptyState) {
-    await seedEmptyStateReferenceData(db);
-  } else {
-    await ensureSeedData(db, demo);
-  }
+  await ensureAppData(db);
 
   const [household, trackedMonths] = await Promise.all([
     loadHousehold(db),
@@ -316,6 +306,16 @@ export async function buildSettingsPageDto(db: D1Database): Promise<{ settingsPa
 }
 
 async function ensureAppData(db: D1Database) {
+  appDataReadyPromise ??= initializeAppData(db);
+  try {
+    return await appDataReadyPromise;
+  } catch (error) {
+    appDataReadyPromise = null;
+    throw error;
+  }
+}
+
+async function initializeAppData(db: D1Database) {
   const demo = await loadDemoSettings(db).catch(() => defaultDemoSettings);
   await ensureDemoSchema(db);
   if (demo.emptyState) {

@@ -154,9 +154,6 @@ export async function ensureSeedData(db: D1Database, settings: DemoSettings) {
     (incomeRowCount?.count ?? 0) > 0
   ) {
     await ensureDefaultCategoryMatchRules(db);
-    for (const month of demoMonths) {
-      await recalculateMonthlySnapshots(db, month);
-    }
     return;
   }
 
