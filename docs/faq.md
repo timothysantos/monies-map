@@ -363,7 +363,9 @@ current month after importing or editing data in another tab.
 Within one browser session, returning to a tab should reuse cached page data
 when no import, edit, rollback, or manual refresh has invalidated it. This keeps
 tab switching fast while still letting mutation flows clear the cache before
-fresh data is needed.
+fresh data is needed. Cached route pages do not automatically force a second
+fresh request on return; use the screen refresh action when you need to pull the
+latest data without an edit or import.
 
 After the first usable screen renders, the app also uses browser idle time to
 warm the most likely next route code chunks. It also performs a narrow,
