@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { SplitsActivitySection } from "./splits-activity-section";
 import { SplitsBreakdownSection } from "./splits-breakdown-section";
 import { SplitsGroupsNav } from "./splits-groups-nav";
@@ -45,21 +46,45 @@ export function SplitsMainSection({
   onEditLinkedEntry,
   readOnly = false
 }) {
+  const groupsNav = (
+    <SplitsGroupsNav
+      groups={groups}
+      activeGroup={activeGroup}
+      defaultGroupId={defaultGroupId}
+      selectedMode={selectedMode}
+      pendingMatchCount={pendingMatchCount}
+      expenseMatchCount={expenseMatchCount}
+      settlementMatchCount={settlementMatchCount}
+      onSelectGroup={onSelectGroup}
+      onSelectMatches={onSelectMatches}
+      onCreateGroup={onCreateGroup}
+      readOnly={readOnly}
+    />
+  );
+  const floatingGroupsNav = typeof document === "undefined"
+    ? null
+    : createPortal(
+        <SplitsGroupsNav
+          groups={groups}
+          activeGroup={activeGroup}
+          defaultGroupId={defaultGroupId}
+          selectedMode={selectedMode}
+          pendingMatchCount={pendingMatchCount}
+          expenseMatchCount={expenseMatchCount}
+          settlementMatchCount={settlementMatchCount}
+          onSelectGroup={onSelectGroup}
+          onSelectMatches={onSelectMatches}
+          onCreateGroup={onCreateGroup}
+          readOnly={readOnly}
+          floating
+        />,
+        document.body
+      );
+
   return (
     <>
-      <SplitsGroupsNav
-        groups={groups}
-        activeGroup={activeGroup}
-        defaultGroupId={defaultGroupId}
-        selectedMode={selectedMode}
-        pendingMatchCount={pendingMatchCount}
-        expenseMatchCount={expenseMatchCount}
-        settlementMatchCount={settlementMatchCount}
-        onSelectGroup={onSelectGroup}
-        onSelectMatches={onSelectMatches}
-        onCreateGroup={onCreateGroup}
-        readOnly={readOnly}
-      />
+      {groupsNav}
+      {floatingGroupsNav}
 
       <SplitsBreakdownSection
         showBreakdown={showBreakdown}
