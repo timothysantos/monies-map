@@ -40,7 +40,9 @@ export function getAccountSelectOptions(accounts, options = {}) {
       value: valueKey === "id"
         ? account.id ?? account.accountId ?? ""
         : account.name ?? account.accountName ?? "",
-      label: formatAccountSelectLabel(account)
+      label: formatAccountSelectLabel(account),
+      accountName: account.name ?? account.accountName ?? "",
+      ownerLabel: account.ownerLabel ?? ""
     }));
 }
 
