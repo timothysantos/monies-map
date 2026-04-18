@@ -36,10 +36,15 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
         transactions.account_id,
         people.display_name AS owner_name,
         accounts.account_name AS account_name,
+        CASE
+          WHEN accounts.is_joint = 1 THEN 'Shared'
+          ELSE account_owners.display_name
+        END AS account_owner_label,
         categories.name AS category_name
       FROM transactions
       INNER JOIN accounts ON accounts.id = transactions.account_id
       LEFT JOIN people ON people.id = transactions.owner_person_id
+      LEFT JOIN people AS account_owners ON account_owners.id = accounts.owner_person_id
       LEFT JOIN categories ON categories.id = transactions.category_id
       LEFT JOIN imports ON imports.id = transactions.import_id
       WHERE transactions.household_id = ?
@@ -63,6 +68,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       account_id: string;
       owner_name: string | null;
       account_name: string;
+      account_owner_label: string | null;
       category_name: string | null;
     }>();
 
@@ -125,6 +131,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       description: row.description,
       accountId: row.account_id,
       accountName: row.account_name,
+      accountOwnerLabel: row.account_owner_label ?? undefined,
       categoryName: row.category_name ?? "Other",
       entryType: row.entry_type,
       transferDirection: row.transfer_direction ?? undefined,
