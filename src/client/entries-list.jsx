@@ -173,6 +173,10 @@ function EntryRow({
   const transferDetail = entry.linkedTransfer
     ? `${entry.transferDirection === "out" ? "To" : "From"} ${entry.linkedTransfer.accountName}`
     : entry.accountName;
+  const accountDetail = [
+    entry.linkedTransfer ? entry.accountName : null,
+    entry.accountOwnerLabel
+  ].filter(Boolean).join(" - ");
   const signedAmountMinor = getSignedAmountMinor(entry);
   const signedTotalAmountMinor = getSignedTotalAmountMinor(entry);
   const hasWeightedTotal = signedTotalAmountMinor != null && signedTotalAmountMinor !== signedAmountMinor;
@@ -211,7 +215,7 @@ function EntryRow({
           </div>
           <div className="entry-row-transfer">
             <strong>{transferDetail}</strong>
-            <p>{entry.accountName}</p>
+            <p>{accountDetail || messages.common.emptyValue}</p>
           </div>
           <div className="entry-row-right">
             <div className="entry-row-amount">

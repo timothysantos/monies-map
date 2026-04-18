@@ -1,7 +1,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { getCategory, getCategoryTheme } from "./category-utils";
@@ -30,6 +30,7 @@ export function EntryEditorFields({
   const [categorySavePrompt, setCategorySavePrompt] = useState(null);
   const [isSavingCategory, setIsSavingCategory] = useState(false);
   const [categorySaveError, setCategorySaveError] = useState("");
+  const [useMobileCategorySaveDialog, setUseMobileCategorySaveDialog] = useState(false);
   const displayCategoryName = lockTransferCategory && entry.entryType === "transfer" ? "Transfer" : entry.categoryName;
   const category = getCategory(categories, { categoryName: displayCategoryName });
   const categoryTheme = getCategoryTheme(
@@ -45,6 +46,18 @@ export function EntryEditorFields({
     : entry.entryType === "expense"
       ? "entry-edit-tone-negative"
       : "entry-edit-tone-transfer";
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 900px)");
+    const update = () => setUseMobileCategorySaveDialog(mediaQuery.matches);
+    update();
+    mediaQuery.addEventListener?.("change", update);
+    return () => mediaQuery.removeEventListener?.("change", update);
+  }, []);
 
   function handleCategoryChange(nextCategoryName) {
     onChange({ categoryName: nextCategoryName });
@@ -72,6 +85,42 @@ export function EntryEditorFields({
     }
   }
 
+  function dismissCategorySavePrompt() {
+    if (isSavingCategory) {
+      return;
+    }
+    setCategorySavePrompt(null);
+    setCategorySaveError("");
+  }
+
+  const categorySelect = (
+    <select
+      className="table-edit-input"
+      value={entry.categoryName}
+      onChange={(event) => handleCategoryChange(event.target.value)}
+    >
+      {categoryOptions.map((option) => (
+        <option key={option} value={option}>{option}</option>
+      ))}
+    </select>
+  );
+
+  const categorySavePromptBody = (
+    <>
+      <strong>Save this category?</strong>
+      <p>Update this entry now without saving the rest of the row.</p>
+      {categorySaveError ? <p className="form-error">{categorySaveError}</p> : null}
+      <div className="delete-popover-actions">
+        <button type="button" className="subtle-cancel" disabled={isSavingCategory} onClick={dismissCategorySavePrompt}>
+          Not yet
+        </button>
+        <button type="button" className="subtle-action" disabled={isSavingCategory} onClick={() => void saveCategoryShortcut()}>
+          {isSavingCategory ? "Saving..." : "Save category"}
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <>
       <div className="entry-edit-grid">
@@ -98,40 +147,49 @@ export function EntryEditorFields({
                 readOnly
               />
             ) : (
-              <Popover.Root open={Boolean(categorySavePrompt)} onOpenChange={(open) => {
-                if (!open && !isSavingCategory) {
-                  setCategorySavePrompt(null);
-                  setCategorySaveError("");
-                }
-              }}>
-                <Popover.Anchor asChild>
-                  <select
-                    className="table-edit-input"
-                    value={entry.categoryName}
-                    onChange={(event) => handleCategoryChange(event.target.value)}
-                  >
-                    {categoryOptions.map((option) => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
-                </Popover.Anchor>
-                <Popover.Portal>
-                  <Popover.Content className="entry-category-save-popover" sideOffset={8} align="end">
-                    <strong>Save this category?</strong>
-                    <p>Update this entry now without saving the rest of the row.</p>
-                    {categorySaveError ? <p className="form-error">{categorySaveError}</p> : null}
-                    <div className="delete-popover-actions">
-                      <button type="button" className="subtle-cancel" disabled={isSavingCategory} onClick={() => setCategorySavePrompt(null)}>
-                        Not yet
-                      </button>
-                      <button type="button" className="subtle-action" disabled={isSavingCategory} onClick={() => void saveCategoryShortcut()}>
-                        {isSavingCategory ? "Saving..." : "Save category"}
-                      </button>
-                    </div>
-                    <Popover.Arrow className="category-popover-arrow" />
-                  </Popover.Content>
-                </Popover.Portal>
-              </Popover.Root>
+              useMobileCategorySaveDialog ? (
+                <>
+                  {categorySelect}
+                  <Dialog.Root open={Boolean(categorySavePrompt)} onOpenChange={(open) => {
+                    if (!open) {
+                      dismissCategorySavePrompt();
+                    }
+                  }}>
+                    <Dialog.Portal>
+                      <Dialog.Overlay className="entry-category-save-overlay" />
+                      <Dialog.Content className="entry-category-save-popover entry-category-save-dialog" onOpenAutoFocus={(event) => event.preventDefault()}>
+                        <Dialog.Title className="entry-category-save-title">Save this category?</Dialog.Title>
+                        <p>Update this entry now without saving the rest of the row.</p>
+                        {categorySaveError ? <p className="form-error">{categorySaveError}</p> : null}
+                        <div className="delete-popover-actions">
+                          <button type="button" className="subtle-cancel" disabled={isSavingCategory} onClick={dismissCategorySavePrompt}>
+                            Not yet
+                          </button>
+                          <button type="button" className="subtle-action" disabled={isSavingCategory} onClick={() => void saveCategoryShortcut()}>
+                            {isSavingCategory ? "Saving..." : "Save category"}
+                          </button>
+                        </div>
+                      </Dialog.Content>
+                    </Dialog.Portal>
+                  </Dialog.Root>
+                </>
+              ) : (
+                <Popover.Root open={Boolean(categorySavePrompt)} onOpenChange={(open) => {
+                  if (!open) {
+                    dismissCategorySavePrompt();
+                  }
+                }}>
+                  <Popover.Anchor asChild>
+                    {categorySelect}
+                  </Popover.Anchor>
+                  <Popover.Portal>
+                    <Popover.Content className="entry-category-save-popover" sideOffset={8} align="end">
+                      {categorySavePromptBody}
+                      <Popover.Arrow className="category-popover-arrow" />
+                    </Popover.Content>
+                  </Popover.Portal>
+                </Popover.Root>
+              )
             )}
           </div>
         </label>
@@ -148,8 +206,15 @@ export function EntryEditorFields({
           <span>{messages.entries.editWallet}</span>
           <select
             className="table-edit-input"
-            value={entry.accountName}
-            onChange={(event) => onChange({ accountName: event.target.value })}
+            value={entry.accountId ?? entry.accountName}
+            onChange={(event) => {
+              const selectedAccount = accountOptions.find((option) => option.value === event.target.value);
+              onChange({
+                accountId: selectedAccount?.value,
+                accountName: selectedAccount?.accountName ?? event.target.value,
+                accountOwnerLabel: selectedAccount?.ownerLabel
+              });
+            }}
           >
             {accountOptions.map((option) => (
               <option key={option.id ?? option.value} value={option.value}>{option.label}</option>

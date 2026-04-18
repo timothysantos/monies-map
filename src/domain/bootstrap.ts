@@ -17,8 +17,10 @@ import {
   loadAuditEvents,
   loadCategoryMatchRules,
   loadCategoryMatchRuleSuggestions,
+  findSuggestedLoginPersonId,
   loadMonthIncomeRows,
   loadMonthPlanRows,
+  resolveLoginIdentityPersonId,
   loadTrackedMonths,
   loadUnresolvedTransfers,
   seedEmptyStateReferenceData,
@@ -64,7 +66,8 @@ export async function buildBootstrapDto(
   selectedMonth = getCurrentMonthKey(),
   selectedScope: PersonScope = "direct_plus_shared",
   summaryStartMonth?: string,
-  summaryEndMonth?: string
+  summaryEndMonth?: string,
+  viewerEmail?: string
 ): Promise<AppBootstrapDto> {
   const demo = await ensureAppData(db);
   const [household, accounts, categories, categoryMatchRuleSuggestions, trackedMonths] = await Promise.all([
@@ -108,6 +111,10 @@ export async function buildBootstrapDto(
   );
   const summaryEntries = await loadEntriesForMonths(db, summaryRangeMonths);
   const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
+  const viewerPersonId = await resolveLoginIdentityPersonId(db, viewerEmail);
+  const suggestedPersonId = viewerEmail && !viewerPersonId
+    ? await findSuggestedLoginPersonId(db)
+    : undefined;
   const views: ContextViewDto[] = [
     buildContextView("household", "Household", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, [], [], [], [], categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
     buildContextView(primaryPersonId, personNameById[primaryPersonId] ?? "Primary", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, [], [], [], [], categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
@@ -120,6 +127,15 @@ export async function buildBootstrapDto(
     categories,
     views,
     selectedViewId: "household",
+    viewerPersonId,
+    viewerIdentity: viewerEmail ? {
+      email: viewerEmail,
+      personId: viewerPersonId
+    } : undefined,
+    viewerRegistration: viewerEmail && suggestedPersonId ? {
+      email: viewerEmail,
+      suggestedPersonId
+    } : undefined,
     importsPage: {
       recentImports: [],
       rollbackPolicy:
@@ -1130,6 +1146,10 @@ function formatSplitBalanceSummary(balanceMinor: number, viewId: string, personN
   }
 
   const abs = formatCompactMoney(balanceMinor);
+  if (viewId === "household") {
+    return `Net balance ${abs}`;
+  }
+
   const [primaryPersonId, partnerPersonId] = getOrderedPersonIds(personNameById);
   const primaryName = personNameById[primaryPersonId] ?? "Primary";
   const secondaryName = personNameById[partnerPersonId] ?? "Partner";
@@ -1218,11 +1238,7 @@ function viewerExpenseAmountForChart(expense: SplitExpenseDto, viewId: string) {
 
 function formatExpenseDirectionLabel(expense: SplitExpenseDto, viewId: string, personNameById: Record<string, string>) {
   if (viewId === "household") {
-    const balance = splitExpenseBalanceForView(expense, "household");
-    const [primaryPersonId, partnerPersonId] = getOrderedPersonIds(personNameById);
-    const primaryName = personNameById[primaryPersonId] ?? "Primary";
-    const secondaryName = personNameById[partnerPersonId] ?? "Partner";
-    return balance === 0 ? "shared evenly" : balance > 0 ? `${primaryName} covered more` : `${secondaryName} covered more`;
+    return "";
   }
 
   if (expense.payerPersonId === viewId) {

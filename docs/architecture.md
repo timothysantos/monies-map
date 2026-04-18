@@ -110,6 +110,10 @@ That distinction matters because the system needs to answer questions like:
 - splits view shows named shared-expense groups, non-group shared expenses,
   settle-up records, and a dedicated matches queue without polluting CSV import
   review
+- when Cloudflare Access provides an authenticated email, the app can link that
+  login to one household person. Splits then opens on that person's view by
+  default, while Household remains a read-only overview without person-specific
+  "you owe" copy or inline split editing.
 - person views support `Direct ownership`, `Shared`, and `Direct + Shared`
 - household monthly view supports `Combined` and `Shared`
 - account filter shows source account and institution
@@ -160,6 +164,9 @@ That distinction matters because the system needs to answer questions like:
 - `transaction_splits` allocate shared expenses between people
 - `split_groups`, `split_expenses`, and `split_settlements` model the
   Splitwise-style layer separately from imported ledger rows
+- `login_identities` links a Cloudflare Access email to a household person so
+  authentication remains separate from household member records. Users can
+  unregister that link without deleting or renaming the person.
 - `transfers` are first-class linked entries, not fake income or expense rows
 - split records can optionally link back to imported transactions later through
   `matches`, so CSV import stays focused on ledger cleanup while shared-expense

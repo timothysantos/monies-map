@@ -7,13 +7,15 @@ export function buildEntryDraft(view, accounts, categories, people) {
     ? people.find((person) => person.id === view.id)?.name ?? people[0]?.name ?? ""
     : people[0]?.name ?? "";
   const ownershipType = view.monthPage.selectedScope === "shared" ? "shared" : "direct";
-  const defaultAccountName = accounts.find((account) => account.isActive !== false)?.name ?? accounts[0]?.name ?? "";
+  const defaultAccount = accounts.find((account) => account.isActive !== false) ?? accounts[0];
   const preferredCategoryName = categories.find((category) => category.name === "Other")?.name ?? categories[0]?.name ?? "";
   const draft = {
     id: "entry-draft",
     date: view.monthPage.month ? `${view.monthPage.month}-01` : new Date().toISOString().slice(0, 10),
     description: "",
-    accountName: defaultAccountName,
+    accountId: defaultAccount?.id ?? defaultAccount?.accountId,
+    accountName: defaultAccount?.name ?? defaultAccount?.accountName ?? "",
+    accountOwnerLabel: defaultAccount?.ownerLabel,
     categoryName: preferredCategoryName,
     entryType: "expense",
     transferDirection: undefined,

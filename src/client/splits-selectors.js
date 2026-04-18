@@ -42,7 +42,7 @@ export function buildSplitsPanelModel({
     groupedCurrentActivity,
     groups,
     groupOptions,
-    groupSummaryLabel: getGroupSummaryLabel(groupBalanceMinor),
+    groupSummaryLabel: view.id === "household" ? "" : getGroupSummaryLabel(groupBalanceMinor),
     linkedEntriesById: new Map(view.monthPage.entries.map((entry) => [entry.id, entry])),
     pendingMatchCount: pendingMatches.length,
     selectedArchivedBatch,

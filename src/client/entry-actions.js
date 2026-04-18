@@ -87,6 +87,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
       body: JSON.stringify({
         date: entryDraft.date,
         description: entryDraft.description,
+        accountId: entryDraft.accountId,
         accountName: entryDraft.accountName,
         categoryName: entryDraft.categoryName,
         amountMinor: entryDraft.amountMinor,
@@ -140,6 +141,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
         entryId: currentEntry.id,
         date: currentEntry.date,
         description: currentEntry.description,
+        accountId: currentEntry.accountId,
         accountName: currentEntry.accountName,
         categoryName: currentEntry.categoryName,
         amountMinor: currentEntry.amountMinor,

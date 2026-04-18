@@ -242,6 +242,21 @@ export async function ensureDemoSchema(db: D1Database) {
     )
   `).run();
 
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS login_identities (
+      id TEXT PRIMARY KEY,
+      household_id TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      email TEXT NOT NULL COLLATE NOCASE,
+      person_id TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (household_id) REFERENCES households(id),
+      FOREIGN KEY (person_id) REFERENCES people(id),
+      UNIQUE (household_id, provider, email)
+    )
+  `).run();
+
   const categoryColumns = await db
     .prepare("PRAGMA table_info(categories)")
     .all<{ name: string }>();
@@ -1330,7 +1345,8 @@ export async function updateEntryRecord(
     entryId: string;
     date: string;
     description: string;
-    accountName: string;
+    accountId?: string;
+    accountName?: string;
     categoryName: string;
     amountMinor?: number;
     entryType?: "expense" | "income" | "transfer";
@@ -1341,13 +1357,18 @@ export async function updateEntryRecord(
     splitBasisPoints?: number;
   }
 ) {
-  const account = await db
-    .prepare("SELECT id FROM accounts WHERE household_id = ? AND account_name = ?")
-    .bind(DEFAULT_HOUSEHOLD_ID, input.accountName)
-    .first<{ id: string }>();
+  const account = input.accountId
+    ? await db
+      .prepare("SELECT id, account_name FROM accounts WHERE household_id = ? AND id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, input.accountId)
+      .first<{ id: string; account_name: string }>()
+    : await db
+      .prepare("SELECT id, account_name FROM accounts WHERE household_id = ? AND account_name = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, input.accountName ?? "")
+      .first<{ id: string; account_name: string }>();
 
   if (!account) {
-    throw new Error(`Unknown account: ${input.accountName}`);
+    throw new Error(`Unknown account: ${input.accountName ?? input.accountId ?? "Unassigned"}`);
   }
 
   const category = await db
@@ -1523,7 +1544,7 @@ export async function updateEntryRecord(
     entityType: "transaction",
     entityId: input.entryId,
     action: "entry_updated",
-    detail: `Updated entry ${input.description} on ${input.date} in ${input.accountName}.`
+    detail: `Updated entry ${input.description} on ${input.date} in ${account.account_name}.`
   });
 
   if (transaction.category_name && transaction.category_name !== input.categoryName) {
@@ -1630,7 +1651,8 @@ export async function createEntryRecord(
   input: {
     date: string;
     description: string;
-    accountName: string;
+    accountId?: string;
+    accountName?: string;
     categoryName: string;
     amountMinor: number;
     entryType: "expense" | "income" | "transfer";
@@ -1645,7 +1667,11 @@ export async function createEntryRecord(
     throw new Error("Amount must be greater than zero");
   }
 
-  const accountId = await resolveAccountId(db, input.accountName);
+  const accountId = input.accountId ?? await resolveAccountId(db, input.accountName);
+  if (!accountId) {
+    throw new Error(`Unknown account: ${input.accountName ?? "Unassigned"}`);
+  }
+  const accountName = input.accountName ?? await loadAccountName(db, accountId);
   const categoryName = input.entryType === "transfer" ? "Transfer" : input.categoryName;
   const categoryId = await resolveCategoryId(db, categoryName);
   const ownerPersonId = input.ownershipType === "direct"
@@ -1691,10 +1717,23 @@ export async function createEntryRecord(
     entityType: "transaction",
     entityId: entryId,
     action: "entry_created",
-    detail: `Created ${input.entryType} entry ${input.description} on ${input.date} in ${input.accountName}.`
+    detail: `Created ${input.entryType} entry ${input.description} on ${input.date} in ${accountName}.`
   });
 
   return { entryId, created: true };
+}
+
+async function loadAccountName(db: D1Database, accountId: string | null) {
+  if (!accountId) {
+    return "Unassigned";
+  }
+
+  const account = await db
+    .prepare("SELECT account_name FROM accounts WHERE household_id = ? AND id = ?")
+    .bind(DEFAULT_HOUSEHOLD_ID, accountId)
+    .first<{ account_name: string }>();
+
+  return account?.account_name ?? "Unassigned";
 }
 
 export async function linkTransferPair(
@@ -2779,4 +2818,113 @@ async function loadPersonScopes(db: D1Database) {
     .all<{ id: string }>();
 
   return ["household", ...people.results.map((person) => person.id)];
+}
+
+export async function resolveLoginIdentityPersonId(db: D1Database, email?: string | null) {
+  if (!email?.trim()) {
+    return undefined;
+  }
+
+  await ensureDemoSchema(db);
+  const identity = await db
+    .prepare(`
+      SELECT person_id
+      FROM login_identities
+      WHERE household_id = ? AND provider = ? AND email = ?
+      LIMIT 1
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, "cloudflare_access", email.trim().toLowerCase())
+    .first<{ person_id: string }>();
+
+  return identity?.person_id;
+}
+
+export async function findSuggestedLoginPersonId(db: D1Database) {
+  await ensureDemoSchema(db);
+  const person = await db
+    .prepare(`
+      SELECT people.id
+      FROM people
+      LEFT JOIN login_identities
+        ON login_identities.household_id = people.household_id
+       AND login_identities.person_id = people.id
+      WHERE people.household_id = ? AND login_identities.id IS NULL
+      ORDER BY people.created_at
+      LIMIT 1
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID)
+    .first<{ id: string }>();
+
+  if (person?.id) {
+    return person.id;
+  }
+
+  const fallback = await db
+    .prepare(`
+      SELECT id
+      FROM people
+      WHERE household_id = ?
+      ORDER BY created_at
+      LIMIT 1
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID)
+    .first<{ id: string }>();
+
+  return fallback?.id;
+}
+
+export async function registerLoginIdentity(db: D1Database, input: { email: string; personId: string; name?: string }) {
+  const email = input.email.trim().toLowerCase();
+  if (!email) {
+    throw new Error("Missing login email");
+  }
+
+  await ensureDemoSchema(db);
+
+  const person = await db
+    .prepare("SELECT id FROM people WHERE household_id = ? AND id = ?")
+    .bind(DEFAULT_HOUSEHOLD_ID, input.personId)
+    .first<{ id: string }>();
+  if (!person) {
+    throw new Error("Unknown household profile");
+  }
+
+  if (input.name?.trim()) {
+    await db
+      .prepare("UPDATE people SET display_name = ?, updated_at = CURRENT_TIMESTAMP WHERE household_id = ? AND id = ?")
+      .bind(input.name.trim(), DEFAULT_HOUSEHOLD_ID, input.personId)
+      .run();
+  }
+
+  await db
+    .prepare(`
+      INSERT INTO login_identities (
+        id, household_id, provider, email, person_id
+      ) VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(household_id, provider, email) DO UPDATE SET
+        person_id = excluded.person_id,
+        updated_at = CURRENT_TIMESTAMP
+    `)
+    .bind(`login-cloudflare-${slugify(email)}`, DEFAULT_HOUSEHOLD_ID, "cloudflare_access", email, input.personId)
+    .run();
+
+  return { personId: input.personId };
+}
+
+export async function unregisterLoginIdentity(db: D1Database, email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) {
+    throw new Error("Missing login email");
+  }
+
+  await ensureDemoSchema(db);
+  await db
+    .prepare(`
+      DELETE FROM login_identities
+      WHERE household_id = ? AND provider = ? AND email = ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, "cloudflare_access", normalizedEmail)
+    .run();
+
+  return { unregistered: true };
 }

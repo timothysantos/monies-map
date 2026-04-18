@@ -75,6 +75,12 @@ Those names flow through person views, entry ownership filters, and split
 labels. In empty-state mode the app seeds neutral defaults instead of generic
 placeholder labels.
 
+When the app is protected by Cloudflare Access, the first signed-in visit can
+link that login to one household member. If the selected member still has a
+neutral default name, the setup prompt lets you rename it at the same time.
+After that, Splits opens on that person by default. The login menu also lets
+you unregister the link or log out without changing any household finance data.
+
 ## What does over-granular mean here?
 
 Over-granular means planning too many unstable or one-off spending lines as if
@@ -169,6 +175,10 @@ The current `Splits` surface includes:
 - manual `Settle up` recording flow
 - `Add to splits` from the entries editor for promoting a ledger expense into
   the shared-expense layer
+
+The Household split view is a read-only overview. It avoids person-specific
+wording such as "you owe" and does not allow inline split edits; use a person
+tab to add, edit, or settle split records.
 
 Imported shared rows or transfer rows can then be matched later from `Matches`
 instead of from the import screen itself.

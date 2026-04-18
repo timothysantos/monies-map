@@ -40,7 +40,9 @@ import {
   linkSplitExpenseMatch,
   linkSplitSettlementMatch,
   linkTransferPair,
+  registerLoginIdentity,
   settleTransferPair,
+  unregisterLoginIdentity,
   updateSplitExpenseRecord,
   updateSplitSettlementRecord,
   updateAccountRecord,
@@ -75,7 +77,8 @@ export default {
           url.searchParams.get("month") ?? getCurrentMonthKey(),
           (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared",
           url.searchParams.get("summary_start") ?? undefined,
-          url.searchParams.get("summary_end") ?? undefined
+          url.searchParams.get("summary_end") ?? undefined,
+          getAuthenticatedEmail(request)
         )
       );
     }
@@ -231,6 +234,39 @@ export default {
       });
     }
 
+    if (url.pathname === "/api/login-identities/register" && request.method === "POST") {
+      const authenticatedEmail = getAuthenticatedEmail(request);
+      if (!authenticatedEmail) {
+        return json({ ok: false, error: "No authenticated login email available" }, 401);
+      }
+
+      const body = await request.json<{ personId?: string; name?: string }>();
+      if (!body.personId) {
+        return json({ ok: false, error: "Missing household profile" }, 400);
+      }
+
+      return json({
+        ok: true,
+        ...(await registerLoginIdentity(env.DB, {
+          email: authenticatedEmail,
+          personId: body.personId,
+          name: body.name
+        }))
+      });
+    }
+
+    if (url.pathname === "/api/login-identities/unregister" && request.method === "POST") {
+      const authenticatedEmail = getAuthenticatedEmail(request);
+      if (!authenticatedEmail) {
+        return json({ ok: false, error: "No authenticated login email available" }, 401);
+      }
+
+      return json({
+        ok: true,
+        ...(await unregisterLoginIdentity(env.DB, authenticatedEmail))
+      });
+    }
+
     if (url.pathname === "/api/accounts/reconcile" && request.method === "POST") {
       const body = await request.json<{
         accountId?: string;
@@ -358,6 +394,7 @@ export default {
         entryId?: string;
         date?: string;
         description?: string;
+        accountId?: string;
         accountName?: string;
         categoryName?: string;
         amountMinor?: number;
@@ -369,7 +406,7 @@ export default {
         splitBasisPoints?: number;
       }>();
 
-      if (!body.entryId || !body.date || !body.description || !body.accountName || !body.categoryName || !body.ownershipType) {
+      if (!body.entryId || !body.date || !body.description || (!body.accountId && !body.accountName) || !body.categoryName || !body.ownershipType) {
         return json({ ok: false, error: "Missing entry update fields" }, 400);
       }
 
@@ -379,6 +416,7 @@ export default {
           entryId: body.entryId,
           date: body.date,
           description: body.description,
+          accountId: body.accountId,
           accountName: body.accountName,
           categoryName: body.categoryName,
           amountMinor: body.amountMinor,
@@ -419,6 +457,7 @@ export default {
       const body = await request.json<{
         date?: string;
         description?: string;
+        accountId?: string;
         accountName?: string;
         categoryName?: string;
         amountMinor?: number;
@@ -433,7 +472,7 @@ export default {
       if (
         !body.date
         || !body.description
-        || !body.accountName
+        || (!body.accountId && !body.accountName)
         || !body.categoryName
         || typeof body.amountMinor !== "number"
         || !body.entryType
@@ -448,6 +487,7 @@ export default {
           ...(await createEntryRecord(env.DB, {
             date: body.date,
             description: body.description,
+            accountId: body.accountId,
             accountName: body.accountName,
             categoryName: body.categoryName,
             amountMinor: body.amountMinor,
@@ -1114,6 +1154,12 @@ export default {
 
 function describeError(error: unknown) {
   return error instanceof Error && error.message ? error.message : "Unknown server error";
+}
+
+function getAuthenticatedEmail(request: Request) {
+  return request.headers.get("CF-Access-Authenticated-User-Email")?.trim().toLowerCase()
+    || request.headers.get("Cf-Access-Authenticated-User-Email")?.trim().toLowerCase()
+    || undefined;
 }
 
 async function apiPageResponse<T>(

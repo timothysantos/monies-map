@@ -14,7 +14,8 @@ export function SplitsBreakdownSection({
   donutChart,
   categories,
   onToggleBreakdown,
-  onAddExpense
+  onAddExpense,
+  readOnly = false
 }) {
   return (
     <>
@@ -29,17 +30,21 @@ export function SplitsBreakdownSection({
         </button>
         <div className="entries-summary-metrics">
           <span>{messages.entries.totalSpend} <strong>{money(totalExpenseMinor)}</strong></span>
-          <span>{groupSummaryLabel} <strong className={groupBalanceMinor >= 0 ? "tone-positive" : "tone-negative"}>{money(Math.abs(groupBalanceMinor))}</strong></span>
+          {!readOnly ? (
+            <span>{groupSummaryLabel} <strong className={groupBalanceMinor >= 0 ? "tone-positive" : "tone-negative"}>{money(Math.abs(groupBalanceMinor))}</strong></span>
+          ) : null}
         </div>
-        <div className="splits-summary-actions">
-          <button
-            type="button"
-            className="subtle-action"
-            onClick={onAddExpense}
-          >
-            {messages.splits.addExpense}
-          </button>
-        </div>
+        {!readOnly ? (
+          <div className="splits-summary-actions">
+            <button
+              type="button"
+              className="subtle-action"
+              onClick={onAddExpense}
+            >
+              {messages.splits.addExpense}
+            </button>
+          </div>
+        ) : null}
       </section>
 
       {showBreakdown ? (

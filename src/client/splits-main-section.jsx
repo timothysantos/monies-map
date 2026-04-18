@@ -42,7 +42,8 @@ export function SplitsMainSection({
   onCancelInlineSplit,
   onSaveInlineSplit,
   onRequestDeleteSplit,
-  onEditLinkedEntry
+  onEditLinkedEntry,
+  readOnly = false
 }) {
   return (
     <>
@@ -57,6 +58,7 @@ export function SplitsMainSection({
         onSelectGroup={onSelectGroup}
         onSelectMatches={onSelectMatches}
         onCreateGroup={onCreateGroup}
+        readOnly={readOnly}
       />
 
       <SplitsBreakdownSection
@@ -69,6 +71,7 @@ export function SplitsMainSection({
         categories={categories}
         onToggleBreakdown={onToggleBreakdown}
         onAddExpense={onAddExpense}
+        readOnly={readOnly}
       />
 
       {selectedMode === "matches" ? (
@@ -98,6 +101,7 @@ export function SplitsMainSection({
           onSaveInlineSplit={onSaveInlineSplit}
           onRequestDeleteSplit={onRequestDeleteSplit}
           onEditLinkedEntry={onEditLinkedEntry}
+          readOnly={readOnly}
         />
       )}
     </>

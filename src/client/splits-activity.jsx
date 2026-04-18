@@ -33,6 +33,7 @@ export function SplitActivityGroups({
   editingDraft = null,
   inlineFormError = "",
   isSubmitting = false,
+  readOnly = false,
   onChangeEditingDraft,
   onCancelEditing,
   onSaveEditing,
@@ -99,9 +100,11 @@ export function SplitActivityGroups({
       <div className="split-date-items">
         {group.items.map((item, index) => {
           const theme = getCategoryTheme(categories, { categoryName: item.categoryName ?? "Other" }, index);
-          const isEditing = !archived && editingDraft && splitItemKey(item) === `${editingDraft.kind}:${editingDraft.id}`;
+          const isEditable = !archived && !readOnly;
+          const isEditing = isEditable && editingDraft && splitItemKey(item) === `${editingDraft.kind}:${editingDraft.id}`;
+          const showDirectionLabel = Boolean(item.viewerDirectionLabel) && !readOnly;
           const openEditor = () => {
-            if (!archived) {
+            if (isEditable) {
               item.kind === "expense" ? onEditExpense(item) : onEditSettlement(item);
             }
           };
@@ -170,11 +173,11 @@ export function SplitActivityGroups({
             <article
               key={splitItemKey(item)}
               className="split-activity-card"
-              role={archived ? undefined : "button"}
-              tabIndex={archived ? undefined : 0}
+              role={isEditable ? "button" : undefined}
+              tabIndex={isEditable ? 0 : undefined}
               onClick={openEditor}
               onKeyDown={(event) => {
-                if (!archived && (event.key === "Enter" || event.key === " ")) {
+                if (isEditable && (event.key === "Enter" || event.key === " ")) {
                   event.preventDefault();
                   openEditor();
                 }
@@ -189,7 +192,7 @@ export function SplitActivityGroups({
                 <strong>{item.description}</strong>
                 <p>{item.kind === "expense" ? `${item.paidByPersonName} paid ${money(item.totalAmountMinor)}` : `${item.fromPersonName} paid ${item.toPersonName}`}</p>
                 {item.note ? <span className="share-row-meta">{item.note}</span> : null}
-                {archived ? (
+                {archived && !readOnly ? (
                   <div className="split-card-actions">
                     <button
                       type="button"
@@ -217,9 +220,11 @@ export function SplitActivityGroups({
                 ) : null}
               </div>
               <div className="split-activity-trailing">
-                <strong className={item.viewerDirectionLabel.includes("borrowed") || item.viewerDirectionLabel.includes("owe") ? "tone-negative" : "tone-positive"}>
-                  {item.viewerDirectionLabel}
-                </strong>
+                {showDirectionLabel ? (
+                  <strong className={item.viewerDirectionLabel.includes("borrowed") || item.viewerDirectionLabel.includes("owe") ? "tone-negative" : "tone-positive"}>
+                    {item.viewerDirectionLabel}
+                  </strong>
+                ) : null}
                 <span className="split-activity-amount-line">
                   <span>{money(item.viewerAmountMinor ?? item.totalAmountMinor)}</span>
                   <span className="share-row-meta">{item.matched ? messages.splits.linked : messages.splits.manual}</span>
