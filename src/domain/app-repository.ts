@@ -991,6 +991,22 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
 }
 
 async function seedDemoSplitData(db: D1Database) {
+  const groupSeeds = [
+    { id: "split-group-baby-river", name: "Baby River", iconKey: "heart-pulse", sortOrder: 1 },
+    { id: "split-group-okaeri", name: "Okaeri", iconKey: "house", sortOrder: 2 }
+  ];
+
+  for (const group of groupSeeds) {
+    await db
+      .prepare(`
+        INSERT INTO split_groups (
+          id, household_id, group_name, icon_key, sort_order
+        ) VALUES (?, ?, ?, ?, ?)
+      `)
+      .bind(group.id, DEFAULT_HOUSEHOLD_ID, group.name, group.iconKey, group.sortOrder)
+      .run();
+  }
+
   const batchSeeds = [
     {
       id: "split-batch-okaeri-closed",
@@ -1023,22 +1039,6 @@ async function seedDemoSplitData(db: D1Database) {
         ) VALUES (?, ?, ?, ?, ?, ?)
       `)
       .bind(batch.id, DEFAULT_HOUSEHOLD_ID, batch.groupId, batch.name, batch.openedOn, batch.closedOn)
-      .run();
-  }
-
-  const groupSeeds = [
-    { id: "split-group-baby-river", name: "Baby River", iconKey: "heart-pulse", sortOrder: 1 },
-    { id: "split-group-okaeri", name: "Okaeri", iconKey: "house", sortOrder: 2 }
-  ];
-
-  for (const group of groupSeeds) {
-    await db
-      .prepare(`
-        INSERT INTO split_groups (
-          id, household_id, group_name, icon_key, sort_order
-        ) VALUES (?, ?, ?, ?, ?)
-      `)
-      .bind(group.id, DEFAULT_HOUSEHOLD_ID, group.name, group.iconKey, group.sortOrder)
       .run();
   }
 

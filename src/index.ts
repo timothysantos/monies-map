@@ -1032,6 +1032,7 @@ export default {
         ownerName?: string;
         splitBasisPoints?: number;
         statementCheckpoints?: {
+          accountId?: string;
           accountName: string;
           checkpointMonth: string;
           statementStartDate?: string;
@@ -1068,6 +1069,7 @@ export default {
         parserKey?: string;
         note?: string;
         statementCheckpoints?: {
+          accountId?: string;
           accountName: string;
           checkpointMonth: string;
           statementStartDate?: string;
@@ -1084,16 +1086,18 @@ export default {
           entryType: "expense" | "income" | "transfer";
           transferDirection?: "in" | "out";
           accountName?: string;
+          accountId?: string;
           categoryName?: string;
           ownershipType: "direct" | "shared";
           ownerName?: string;
           splitBasisPoints: number;
+          commitStatus?: "included" | "skipped" | "needs_review";
           note?: string;
           rawRow: Record<string, string>;
         }[];
       }>();
 
-      if (!body.sourceLabel || !body.rows?.length) {
+      if (!body.sourceLabel || (!body.rows?.length && !body.statementCheckpoints?.length)) {
         return json({ ok: false, error: "Missing import payload" }, 400);
       }
 

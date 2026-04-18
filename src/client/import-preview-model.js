@@ -37,10 +37,14 @@ export function buildImportPreviewModel({
   const duplicateCheckpointAccounts = getDuplicateCheckpointAccounts(statementCheckpoints);
   const visibleOverlapImports = (preview?.overlapImports ?? []).filter((item) => !dismissedOverlapIds.includes(item.id));
   const previewDuplicateRowCount = previewRows.filter((row) => row.duplicateMatches?.length).length;
+  const skippedPreviewRowCount = previewRows.filter((row) => row.commitStatus === "skipped").length;
+  const needsReviewPreviewRowCount = previewRows.filter((row) => row.commitStatus === "needs_review").length;
+  const includedPreviewRows = previewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review");
   const statementReconciliations = preview?.statementReconciliations ?? [];
   const hasDuplicateCheckpointAccounts = duplicateCheckpointAccounts.length > 0;
-  const hasUnmappedAccounts = previewRows.some((row) => !row.accountId && (!row.accountName || (accountNameCounts.get(row.accountName) ?? 0) !== 1));
+  const hasUnmappedAccounts = includedPreviewRows.some((row) => !row.accountId && (!row.accountName || (accountNameCounts.get(row.accountName) ?? 0) !== 1));
   const hasBlockingCategoryPolicy = unknownCategoryMode === "block" && Boolean(preview?.unknownCategories?.length);
+  const hasCommitPayload = includedPreviewRows.length > 0 || statementCheckpoints.length > 0;
 
   return {
     detectedPreviewAccountNames,
@@ -51,12 +55,15 @@ export function buildImportPreviewModel({
     hasUnmappedAccounts,
     isCommitDisabled: isSubmitting
       || isParsingStatement
-      || !previewRows.length
+      || !hasCommitPayload
       || hasUnmappedAccounts
       || hasBlockingCategoryPolicy
-      || hasDuplicateCheckpointAccounts,
+      || hasDuplicateCheckpointAccounts
+      || needsReviewPreviewRowCount > 0,
     knownAccountNames,
+    needsReviewPreviewRowCount,
     previewDuplicateRowCount,
+    skippedPreviewRowCount,
     showStatementAccountMapping: preview && detectedPreviewAccountNames.length > 0 && (
       statementImportMeta.sourceType === "pdf" || unknownPreviewAccountNames.length > 0 || ambiguousPreviewAccountNames.length > 0
     ),

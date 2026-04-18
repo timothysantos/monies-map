@@ -567,8 +567,9 @@ What should happen:
 
 1. The import preview warns about duplicate-looking rows already in the ledger.
 2. Rows that are genuinely new can be committed.
-3. Rows that duplicate existing ledger entries should be removed from the
-   preview before commit.
+3. Rows that duplicate existing ledger entries should be skipped before commit.
+   Exact and strong probable duplicates are skipped by default, while ambiguous
+   near matches need a review decision.
 4. If an imported row looks like a manually entered split expense, link the split
    to the ledger entry after import instead of keeping two separate records.
 
@@ -591,6 +592,9 @@ Best option:
    missing row.
 5. If the comparison shows a ledger row with the opposite direction, edit that
    row instead of adding another row.
+6. If the statement preview skipped every row because the ledger already has
+   them, commit the statement checkpoint by itself once the balance check
+   matches.
 
 This is why statement comparison exists. It lets you prove whether the
 mid-cycle rows already satisfy the statement before you commit more rows.
@@ -604,9 +608,13 @@ When the statement is ready, do this before importing duplicate rows:
    imported mid-cycle.
 3. Review missing rows, extra rows, direction mistakes, and duplicate-looking
    rows.
-4. Import only rows that are truly missing, or remove duplicate preview rows
-   before commit.
+4. Import only rows that are truly missing, and skip duplicate preview rows
+   before commit. Skipped rows stay visible and can be restored if the match was
+   wrong.
 5. Save the statement checkpoint once the ledger matches the statement balance.
+   The balance check recalculates as rows are skipped or restored, counting
+   skipped duplicates through the existing ledger instead of double-counting
+   them.
 
 Cutoffs are per account. A Citi Rewards cutoff should not be reused for Citi
 Miles, and a UOB card statement cycle should not be reused for UOB One savings.
@@ -641,7 +649,7 @@ Month 2:
 1. Import mid-cycle activity only after the latest statement cutoff.
 2. Use those rows for planning and cleanup during the month.
 3. When the statement arrives, compare it to the committed ledger.
-4. Remove duplicate preview rows or add missing rows.
+4. Skip duplicate preview rows or add missing rows.
 5. Save the new checkpoint when the balance matches.
 
 For example, if a Citi Rewards statement last included 8 Apr 2026, then a
@@ -662,12 +670,11 @@ Month 1:
 Month 2:
 
 1. Import a mid-cycle UOB `.xls` or Citi `.csv` activity file.
-2. Remove any preview rows that duplicate closed Month 1 rows.
+2. Skip any preview rows that duplicate closed Month 1 rows.
 3. Commit only new bank rows.
 4. Add or link splits for shared spending during the month.
 5. When the Month 2 statement arrives, compare it against the ledger.
-6. Add only missing statement rows, fix direction mistakes, and remove
-   duplicates.
+6. Add only missing statement rows, fix direction mistakes, and skip duplicates.
 7. Save the Month 2 checkpoint once the statement balance matches.
 
 The user goal is not to import every file blindly. The goal is to have one bank
@@ -681,6 +688,7 @@ Before committing, check:
 - account mapping
 - duplicate rows
 - overlap warnings
+- skipped rows and rows that still need a duplicate-review decision
 - row date, description, amount, and type
 - category and ownership
 - transfer direction

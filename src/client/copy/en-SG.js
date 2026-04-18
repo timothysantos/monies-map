@@ -263,11 +263,20 @@ export const messages = {
       unknown_account: "Needs account"
     },
     duplicateMatchesTitle: "Possible existing matches",
-    duplicateMatchesDetail: "Duplicate-looking rows are highlighted in the preview table. Remove the row there if you do not want to commit it again.",
+    duplicateMatchesDetail: "Duplicate-looking rows are highlighted in the preview table. Exact and probable duplicates are skipped by default, and near matches need a decision before commit.",
     duplicateMatchKindExact: "Exact match",
+    duplicateMatchKindProbable: "Probable match",
     duplicateMatchKindNear: "Near match",
     duplicateRowDetail: (match) => `Already in ledger: ${match}`,
-    removePreviewRow: "Remove row",
+    needsReview: "Needs review",
+    willImportRows: (count) => `${count} row${count === 1 ? "" : "s"} will import`,
+    willSkipRows: (count) => `${count} row${count === 1 ? "" : "s"} will skip`,
+    needsReviewRows: (count) => `${count} row${count === 1 ? "" : "s"} need review`,
+    noRowsToImport: "No transaction rows are set to import. You can still commit statement checkpoints when the balance check matches.",
+    skipPreviewRow: "Skip row",
+    restorePreviewRow: "Restore row",
+    importPreviewRow: "Import row",
+    skippedRowsTitle: (count) => `Skipped rows (${count})`,
     statementCheckpointsTitle: (count) => count === 1 ? "Statement checkpoint" : "Statement checkpoints",
     statementCheckpointsDetail: (count) => count === 1
       ? "This statement balance will be saved during commit. Adjust it here before importing."

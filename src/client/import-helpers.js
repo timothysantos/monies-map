@@ -130,7 +130,8 @@ export function buildRawImportRowFromPreviewRow(row) {
     statementAccountName: row.statementAccountName ?? row.rawRow?.statementAccountName ?? row.rawRow?.statementAccount ?? row.rawRow?.account ?? row.accountName ?? "",
     category: row.categoryName ?? "",
     note: row.note ?? "",
-    type: row.entryType
+    type: row.entryType,
+    commitStatus: row.commitStatus ?? "included"
   };
 }
 
