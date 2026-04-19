@@ -742,6 +742,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
           <ImportPreviewReview
             preview={preview}
+            previewRows={previewRows}
             accounts={accounts}
             knownAccountNames={knownAccountNames}
             detectedPreviewAccountNames={detectedPreviewAccountNames}

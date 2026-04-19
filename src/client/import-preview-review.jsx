@@ -13,6 +13,7 @@ import {
 // Preview review surfaces the import guardrails while ImportsPanel keeps ownership of the mutable draft.
 export function ImportPreviewReview({
   preview,
+  previewRows,
   accounts,
   knownAccountNames,
   detectedPreviewAccountNames,
@@ -46,6 +47,7 @@ export function ImportPreviewReview({
           knownAccountNames={knownAccountNames}
           detectedPreviewAccountNames={detectedPreviewAccountNames}
           unknownPreviewAccountNames={unknownPreviewAccountNames}
+          previewRows={previewRows}
           statementCheckpoints={statementCheckpoints}
           onRemapPreviewAccount={onRemapPreviewAccount}
         />
@@ -108,6 +110,7 @@ function StatementAccountMapping({
   knownAccountNames,
   detectedPreviewAccountNames,
   unknownPreviewAccountNames,
+  previewRows,
   statementCheckpoints,
   onRemapPreviewAccount
 }) {
@@ -127,6 +130,15 @@ function StatementAccountMapping({
     const checkpoint = checkpointByDetectedName.get(accountName);
     if (checkpoint?.accountId) {
       return checkpoint.accountId;
+    }
+
+    const mappedRowAccountIds = new Set(
+      previewRows
+        .filter((row) => getPreviewRowStatementAccountName(row) === accountName && row.accountId)
+        .map((row) => row.accountId)
+    );
+    if (mappedRowAccountIds.size === 1) {
+      return Array.from(mappedRowAccountIds)[0];
     }
 
     const accountMatches = accountOptionsByName.get(checkpoint?.accountName ?? accountName) ?? [];
@@ -156,6 +168,10 @@ function StatementAccountMapping({
       </div>
     </div>
   );
+}
+
+function getPreviewRowStatementAccountName(row) {
+  return row.statementAccountName ?? row.rawRow?.statementAccountName ?? row.rawRow?.statementAccount ?? row.rawRow?.account ?? row.accountName;
 }
 
 function UnknownCategories({ categoryNames, unknownCategoryMode }) {
