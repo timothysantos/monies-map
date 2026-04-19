@@ -136,6 +136,8 @@ export const messages = {
     nonGroup: "Non-group expenses",
     addGroup: "+",
     matches: "Matches",
+    reviewMatches: "Review matches",
+    backToGroup: "Back to split group",
     entries: "entries",
     allClear: "All clear",
     toReview: (count) => `${count} to review`,

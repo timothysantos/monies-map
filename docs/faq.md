@@ -175,7 +175,7 @@ The current `Splits` surface includes:
 - `Non-group expenses` plus named group pills
 - context-aware owed or owing copy on each pill
 - entry counts on the pills
-- a `Matches` pill that replaces the activity list with review candidates
+- a `Review matches` text action that opens possible ledger and split matches
 - manual `Add expense` flow
 - manual `Settle up` recording flow
 - `Add to splits` from the entries editor for promoting a ledger expense into

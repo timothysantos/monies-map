@@ -8,11 +8,8 @@ import { SplitMatchesList } from "./splits-matches";
 export function SplitsMainSection({
   groups,
   activeGroup,
-  defaultGroupId,
   selectedMode,
   pendingMatchCount,
-  expenseMatchCount,
-  settlementMatchCount,
   showBreakdown,
   totalExpenseMinor,
   groupBalanceMinor,
@@ -30,7 +27,6 @@ export function SplitsMainSection({
   inlineSplitError,
   isSubmitting,
   onSelectGroup,
-  onSelectMatches,
   onCreateGroup,
   onToggleBreakdown,
   onAddExpense,
@@ -50,30 +46,22 @@ export function SplitsMainSection({
     <SplitsGroupsNav
       groups={groups}
       activeGroup={activeGroup}
-      defaultGroupId={defaultGroupId}
       selectedMode={selectedMode}
-      pendingMatchCount={pendingMatchCount}
-      expenseMatchCount={expenseMatchCount}
-      settlementMatchCount={settlementMatchCount}
       onSelectGroup={onSelectGroup}
-      onSelectMatches={onSelectMatches}
       onCreateGroup={onCreateGroup}
       readOnly={readOnly}
     />
   );
   const floatingGroupsNav = typeof document === "undefined"
     ? null
-    : createPortal(
+    : inlineSplitDraft
+      ? null
+      : createPortal(
         <SplitsGroupsNav
           groups={groups}
           activeGroup={activeGroup}
-          defaultGroupId={defaultGroupId}
           selectedMode={selectedMode}
-          pendingMatchCount={pendingMatchCount}
-          expenseMatchCount={expenseMatchCount}
-          settlementMatchCount={settlementMatchCount}
           onSelectGroup={onSelectGroup}
-          onSelectMatches={onSelectMatches}
           onCreateGroup={onCreateGroup}
           readOnly={readOnly}
           floating
