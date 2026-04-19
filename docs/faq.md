@@ -225,7 +225,7 @@ The current default category catalog is:
 - `Subscriptions MO` — icon `washing-machine` — color `#E96A7A`
 - `Subscriptions YR` — icon `washing-machine` — color `#F08FA0`
 - `Food & Drinks` — icon `utensils` — color `#F7A21B`
-- `Shopping` — icon `shopping-bag` — color `#D4B35D`
+- `Shopping` — icon `shopping-bag` — color `#D86B73`
 - `Family & Personal` — icon `users` — color `#4F8FD6`
 - `Baby & Kids` — icon `baby` — color `#7EBDC2`
 - `Home` — icon `house` — color `#F85A53`
@@ -241,7 +241,7 @@ The current default category catalog is:
 - `Fees` — icon `receipt` — color `#8B78E6`
 - `Beauty` — icon `receipt` — color `#D56BDD`
 - `Entertainment` — icon `clapperboard` — color `#FFA51A`
-- `Healthcare` — icon `heart-pulse` — color `#D86B73`
+- `Healthcare` — icon `heart-pulse` — color `#D4B35D`
 - `Gifts` — icon `gift` — color `#C98A5A`
 - `Other` — icon `wallet-cards` — color `#717379`
 - `Public Transport` — icon `bus` — color `#56A4C9`
