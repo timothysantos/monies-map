@@ -3,6 +3,7 @@ const moneyFormatter = new Intl.NumberFormat("en-SG", {
   currency: "SGD"
 });
 const APP_TIME_ZONE = "Asia/Singapore";
+const SQL_DATETIME_WITHOUT_ZONE = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?$/;
 
 export function money(valueMinor) {
   return moneyFormatter.format(valueMinor / 100);
@@ -25,7 +26,7 @@ export function formatDate(value) {
     timeZone: APP_TIME_ZONE,
     dateStyle: "medium",
     timeStyle: "short"
-  }).format(new Date(value));
+  }).format(parseDisplayDate(value));
 }
 
 export function formatDateOnly(value) {
@@ -34,7 +35,20 @@ export function formatDateOnly(value) {
     month: "short",
     day: "numeric",
     year: "numeric"
-  }).format(new Date(value));
+  }).format(parseDisplayDate(value));
+}
+
+function parseDisplayDate(value) {
+  if (typeof value !== "string") {
+    return new Date(value);
+  }
+
+  const trimmed = value.trim();
+  if (SQL_DATETIME_WITHOUT_ZONE.test(trimmed)) {
+    return new Date(`${trimmed.replace(" ", "T")}Z`);
+  }
+
+  return new Date(trimmed);
 }
 
 export function formatMonthLabel(value) {
