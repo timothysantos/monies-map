@@ -33,7 +33,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dismissedMatchIds, setDismissedMatchIds] = useState([]);
   const defaultGroupId = view.splitsPage.groups.find((group) => group.isDefault)?.id ?? "split-group-none";
-  const selectedGroupId = searchParams.get("split_group") ?? defaultGroupId;
+  const selectedGroupParam = searchParams.get("split_group");
+  const selectedGroupId = selectedGroupParam ?? defaultGroupId;
   const selectedMode = searchParams.get("split_mode") ?? "entries";
   const isHouseholdView = view.id === "household";
   const splitModel = useMemo(
@@ -51,7 +52,6 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     archivedBatches,
     categoryOptions,
     donutRows,
-    expenseMatchCount,
     groupedCurrentActivity,
     groupBalanceMinor,
     groups,
@@ -59,10 +59,17 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     groupSummaryLabel,
     pendingMatchCount,
     selectedArchivedBatch,
-    settlementMatchCount,
     totalExpenseMinor,
     visibleMatches
   } = splitModel;
+
+  useEffect(() => {
+    if (selectedGroupParam || selectedMode === "matches" || selectedGroupId === defaultGroupId) {
+      return;
+    }
+
+    updateSplitView({ groupId: defaultGroupId, mode: "entries" });
+  }, [defaultGroupId, selectedGroupId, selectedGroupParam, selectedMode]);
 
   useEffect(() => {
     setDismissedMatchIds([]);
@@ -252,6 +259,14 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setExpenseDialog(buildNewExpenseDraft({ activeGroup, categoryOptions, people, view }));
   }
 
+  function openMatchesView() {
+    updateSplitView({ groupId: activeGroup?.id ?? defaultGroupId, mode: "matches" });
+  }
+
+  function openActiveGroupView() {
+    updateSplitView({ groupId: activeGroup?.id ?? defaultGroupId, mode: "entries" });
+  }
+
   function requestDeleteSplit(item) {
     setFormError("");
     setInlineSplitError("");
@@ -289,29 +304,36 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
           <h2>{messages.tabs.splits}</h2>
           <p className="panel-context">{messages.splits.viewing(view.label)}</p>
         </div>
-        {!isHouseholdView && selectedMode !== "matches" ? (
+        <div className="split-head-actions">
           <button
             type="button"
-            className="subtle-action split-settle-header"
-            onClick={() => {
-              setFormError("");
-              setSettlementDialog(buildNewSettlementDraft({ activeGroup, groupBalanceMinor, people }));
-            }}
-            disabled={!activeGroup || groupBalanceMinor === 0}
+            className={`split-matches-link ${selectedMode === "matches" ? "is-active" : ""}`}
+            onClick={selectedMode === "matches" ? openActiveGroupView : openMatchesView}
           >
-            {messages.splits.settleUp}
+            {selectedMode === "matches" ? messages.splits.backToGroup : messages.splits.reviewMatches}
+            {selectedMode !== "matches" && pendingMatchCount ? ` (${pendingMatchCount})` : ""}
           </button>
-        ) : null}
+          {!isHouseholdView && selectedMode !== "matches" ? (
+            <button
+              type="button"
+              className="subtle-action split-settle-header"
+              onClick={() => {
+                setFormError("");
+                setSettlementDialog(buildNewSettlementDraft({ activeGroup, groupBalanceMinor, people }));
+              }}
+              disabled={!activeGroup || groupBalanceMinor === 0}
+            >
+              {messages.splits.settleUp}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <SplitsMainSection
         groups={groups}
         activeGroup={activeGroup}
-        defaultGroupId={defaultGroupId}
         selectedMode={selectedMode}
         pendingMatchCount={pendingMatchCount}
-        expenseMatchCount={expenseMatchCount}
-        settlementMatchCount={settlementMatchCount}
         showBreakdown={showBreakdown}
         totalExpenseMinor={totalExpenseMinor}
         groupBalanceMinor={groupBalanceMinor}
@@ -329,7 +351,6 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         inlineSplitError={inlineSplitError}
         isSubmitting={isSubmitting}
         onSelectGroup={(groupId) => updateSplitView({ groupId, mode: "entries" })}
-        onSelectMatches={(groupId) => updateSplitView({ groupId, mode: "matches" })}
         onCreateGroup={() => {
           setFormError("");
           setGroupDialog({ name: "" });

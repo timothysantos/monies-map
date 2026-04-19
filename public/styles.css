@@ -2871,6 +2871,58 @@ body:has(.split-inline-editor-card) .splits-fab {
   flex: 0 0 auto;
 }
 
+.split-head-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.split-matches-link {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  font: inherit;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: none;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.split-matches-link:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.split-matches-link:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.62);
+  outline-offset: 3px;
+}
+
+.split-matches-link.is-active {
+  background: rgba(255, 248, 243, 0.98);
+  border-color: rgba(255, 248, 243, 0.98);
+  color: var(--accent-strong);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.split-matches-link.is-active:hover {
+  background: white;
+  border-color: white;
+}
+
 .panel-splits .splits-summary-actions .subtle-action,
 .panel-splits .splits-summary-actions .dialog-primary {
   background: rgba(255, 248, 243, 0.98);
@@ -2915,6 +2967,24 @@ body:has(.split-inline-editor-card) .splits-fab {
 .panel-splits .tone-positive,
 .panel-splits .tone-negative {
   color: white;
+}
+
+.panel-splits .split-match-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 230, 216, 0.72);
+  border-radius: 14px;
+  background: rgba(251, 242, 236, 0.95);
+  color: var(--text);
+}
+
+.panel-splits .split-match-card strong {
+  color: var(--text);
+}
+
+.panel-splits .split-match-card p {
+  color: var(--muted);
 }
 
 @media (max-width: 860px) {
@@ -6580,6 +6650,28 @@ th {
     font-size: 0.76rem;
   }
 
+  .panel-splits .split-match-list {
+    gap: 10px;
+  }
+
+  .panel-splits .split-match-card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+    margin-right: -12px;
+    margin-left: -12px;
+    padding: 12px;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .panel-splits .split-match-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
   .splits-groups-row {
     position: fixed;
     right: 12px;
@@ -6783,6 +6875,27 @@ th {
     min-height: 34px;
     padding: 0 12px;
     font-size: 0.82rem;
+  }
+
+  .split-head-actions {
+    justify-content: flex-start;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .split-matches-link {
+    min-height: 34px;
+    padding: 0 12px;
+    border-color: rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.82rem;
+  }
+
+  .split-matches-link.is-active {
+    background: rgba(255, 248, 243, 0.98);
+    border-color: rgba(255, 248, 243, 0.98);
+    color: var(--accent-strong);
   }
 
   .month-plan-stack {

@@ -361,8 +361,8 @@ Person month scopes:
 - group pills start with `Non-group expenses`, followed by named split groups
 - each group pill shows context-aware owed/owing copy plus the current open
   entry count
-- a `Matches` pill sits on the right and swaps the list into a split-match
-  review surface
+- a lightweight `Review matches` text action opens the split-match review
+  surface without making matches look like a real expense group
 - splits are not month-filtered; the month picker is passive desktop chrome and
   hidden on mobile because the page is driven by unsettled activity instead
 - each group has one active open batch of unsettled entries

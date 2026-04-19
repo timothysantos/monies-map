@@ -4,13 +4,8 @@ import { getIconComponent } from "./ui-components";
 export function SplitsGroupsNav({
   groups,
   activeGroup,
-  defaultGroupId,
   selectedMode,
-  pendingMatchCount,
-  expenseMatchCount,
-  settlementMatchCount,
   onSelectGroup,
-  onSelectMatches,
   onCreateGroup,
   readOnly = false,
   floating = false
@@ -36,17 +31,6 @@ export function SplitsGroupsNav({
             </button>
           );
         })}
-        <button
-          type="button"
-          className={`split-group-pill split-matches-pill ${selectedMode === "matches" ? "is-active" : ""}`}
-          onClick={() => onSelectMatches(activeGroup?.id ?? defaultGroupId)}
-        >
-          <span className="split-group-pill-content">
-            <strong>{messages.splits.matches}</strong>
-            <span>{pendingMatchCount ? messages.splits.toReview(pendingMatchCount) : messages.splits.allClear}</span>
-            <span>{expenseMatchCount} expense, {settlementMatchCount} settle-up</span>
-          </span>
-        </button>
         {!readOnly ? (
           <button
             type="button"

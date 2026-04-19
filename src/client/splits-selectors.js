@@ -25,9 +25,7 @@ export function buildSplitsPanelModel({
   const selectedArchivedBatch = archiveBatchId
     ? archivedBatches.find((batch) => batch.batchId === archiveBatchId) ?? null
     : null;
-  const visibleMatches = view.splitsPage.matches.filter((item) => (
-    item.groupId === activeGroupId && !dismissedMatchIds.includes(item.id)
-  ));
+  const visibleMatches = view.splitsPage.matches.filter((item) => !dismissedMatchIds.includes(item.id));
   const pendingMatches = view.splitsPage.matches.filter((item) => !dismissedMatchIds.includes(item.id));
   const groupBalanceMinor = activeGroup?.balanceMinor ?? 0;
 

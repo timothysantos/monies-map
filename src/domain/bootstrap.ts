@@ -647,10 +647,13 @@ function buildSplitsPage(
       isDefault: false
     }));
 
-  const defaultGroupId = groups.find((group) => group.id !== "split-group-none" && group.entryCount > 0)?.id
+  const nonGroup = groups.find((group) => group.id === "split-group-none");
+  const defaultGroupId = (nonGroup && nonGroup.entryCount > 0 ? nonGroup.id : undefined)
+    ?? groups.find((group) => group.id !== "split-group-none" && group.entryCount > 0 && group.balanceMinor !== 0)?.id
+    ?? groups.find((group) => group.id !== "split-group-none" && group.entryCount > 0)?.id
     ?? groups.find((group) => group.id !== "split-group-none" && group.pendingMatchCount > 0)?.id
     ?? groups.find((group) => group.id !== "split-group-none")?.id
-    ?? groups.find((group) => group.id === "split-group-none" && (group.entryCount > 0 || group.pendingMatchCount > 0))?.id
+    ?? (nonGroup && (nonGroup.entryCount > 0 || nonGroup.pendingMatchCount > 0) ? nonGroup.id : undefined)
     ?? "split-group-none";
 
   const activity: SplitActivityDto[] = buildSplitActivity(viewId, visibleExpenses, visibleSettlements, personNameById);
