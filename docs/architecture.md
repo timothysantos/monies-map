@@ -442,10 +442,11 @@ Frontend direction:
   settlements, and match candidates load from `/api/splits-page` so the app
   shell does not pay for split workspace data on every refresh.
 - the imports page returns a bounded recent-history summary for first paint.
-  Full import preview, duplicate checks, rollback, and overlap checks still run
-  through their dedicated import flows, but the collapsed recent-history panel
-  no longer forces all historical batches to be scanned before the page is
-  usable.
+  Recent history opens by default and filters that bounded set by
+  owner-qualified account labels. Full import preview, duplicate checks,
+  rollback, and overlap checks still run through their dedicated import flows,
+  but recent history no longer forces all historical batches to be scanned
+  before the page is usable.
 - page refreshes keep the current route mounted with a busy overlay while the
   smaller route payload loads; writes clear page and shell caches before
   reloading data. Cached route payloads are reused without automatic

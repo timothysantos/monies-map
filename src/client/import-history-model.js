@@ -15,6 +15,25 @@ export function buildRecentImportModel(recentImports, recentImportPage) {
   };
 }
 
+export function getRecentImportAccountOptions(recentImports) {
+  const accountLabels = new Set();
+  for (const item of recentImports) {
+    for (const accountName of item.accountNames ?? []) {
+      accountLabels.add(accountName);
+    }
+  }
+
+  return Array.from(accountLabels).sort((left, right) => left.localeCompare(right));
+}
+
+export function filterRecentImportsByAccount(recentImports, accountFilter) {
+  if (!accountFilter) {
+    return recentImports;
+  }
+
+  return recentImports.filter((item) => item.accountNames?.includes(accountFilter));
+}
+
 function groupRecentImportsByDate(recentImports) {
   const grouped = new Map();
   for (const item of recentImports) {

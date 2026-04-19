@@ -346,6 +346,7 @@ export interface ImportBatchDto {
   id: string;
   sourceLabel: string;
   sourceType: "csv" | "pdf" | "manual";
+  parserKey?: string;
   importedAt: string;
   status: "draft" | "completed" | "rolled_back";
   transactionCount: number;
@@ -361,6 +362,7 @@ export interface ImportOverlapDto {
   id: string;
   sourceLabel: string;
   sourceType: "csv" | "pdf" | "manual";
+  parserKey?: string;
   importedAt: string;
   status: "draft" | "completed" | "rolled_back";
   transactionCount: number;
