@@ -106,6 +106,7 @@ function parseFaqMarkdown(markdown) {
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
+    const isIndented = rawLine.length > line.length;
     if (!line || line === "# FAQ") {
       flushParagraph();
       flushList();
@@ -141,6 +142,11 @@ function parseFaqMarkdown(markdown) {
           href: imageMatch[2].trim().replace("/thumbs/", "/")
         });
       }
+      continue;
+    }
+
+    if (isIndented && listItems.length) {
+      listItems[listItems.length - 1] = `${listItems[listItems.length - 1]} ${line}`;
       continue;
     }
 

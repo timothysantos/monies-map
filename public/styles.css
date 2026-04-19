@@ -4051,6 +4051,18 @@ body:has(.split-inline-editor-card) .splits-fab {
   line-height: 1.7;
 }
 
+.faq-item p + p,
+.faq-item ul + p,
+.faq-item ol + p,
+.faq-item .faq-image-link + p {
+  margin-top: 12px;
+}
+
+.faq-item p + ul,
+.faq-item p + ol {
+  margin-top: 10px;
+}
+
 .faq-category-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
