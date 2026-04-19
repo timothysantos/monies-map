@@ -288,7 +288,7 @@ export async function buildSplitsPageDto(
 
 export async function buildImportsPageDto(db: D1Database): Promise<{ importsPage: ImportsPageDto }> {
   await ensureAppData(db);
-  const importBatches = await loadImportBatches(db, { limit: 30, includeOverlapDetails: false });
+  const importBatches = await loadImportBatches(db, { includeOverlapDetails: false });
   return {
     importsPage: {
       recentImports: importBatches,

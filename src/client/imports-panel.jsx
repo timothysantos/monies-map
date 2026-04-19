@@ -178,8 +178,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     sourceLabel
   });
   const recentImportAccountOptions = useMemo(
-    () => getRecentImportAccountOptions(importsPage.recentImports),
-    [importsPage.recentImports]
+    () => getRecentImportAccountOptions(importsPage.recentImports, accounts),
+    [accounts, importsPage.recentImports]
   );
   const filteredRecentImports = useMemo(
     () => filterRecentImportsByAccount(importsPage.recentImports, recentImportAccountFilter),
