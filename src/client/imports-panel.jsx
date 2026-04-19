@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { messages } from "./copy/en-SG";
 import { commitImportBatch, previewImportBatch, rollbackImportBatch } from "./import-api";
 import { ImportRecentHistorySection } from "./import-history";
-import { buildRecentImportModel } from "./import-history-model";
+import { buildRecentImportModel, filterRecentImportsByAccount, getRecentImportAccountOptions } from "./import-history-model";
 import { ImportMappingStage } from "./import-mapping-stage";
 import { buildImportPreviewModel, hasImportDraft } from "./import-preview-model";
 import { ImportPreviewReview } from "./import-preview-review";
@@ -48,8 +48,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [isParsingStatement, setIsParsingStatement] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [recentImportsOpen, setRecentImportsOpen] = useState(false);
+  const [recentImportsOpen, setRecentImportsOpen] = useState(true);
   const [recentImportPage, setRecentImportPage] = useState(1);
+  const [recentImportAccountFilter, setRecentImportAccountFilter] = useState("");
   const [dismissedOverlapIds, setDismissedOverlapIds] = useState([]);
   const fileInputRef = useRef(null);
   const mappingSectionRef = useRef(null);
@@ -176,9 +177,17 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     previewError,
     sourceLabel
   });
+  const recentImportAccountOptions = useMemo(
+    () => getRecentImportAccountOptions(importsPage.recentImports),
+    [importsPage.recentImports]
+  );
+  const filteredRecentImports = useMemo(
+    () => filterRecentImportsByAccount(importsPage.recentImports, recentImportAccountFilter),
+    [importsPage.recentImports, recentImportAccountFilter]
+  );
   const recentImportModel = useMemo(
-    () => buildRecentImportModel(importsPage.recentImports, recentImportPage),
-    [importsPage.recentImports, recentImportPage]
+    () => buildRecentImportModel(filteredRecentImports, recentImportPage),
+    [filteredRecentImports, recentImportPage]
   );
   const {
     detectedPreviewAccountNames,
@@ -201,6 +210,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   useEffect(() => {
     setRecentImportPage((current) => Math.min(Math.max(current, 1), recentImportModel.pageCount));
   }, [recentImportModel.pageCount]);
+
+  useEffect(() => {
+    setRecentImportPage(1);
+  }, [recentImportAccountFilter]);
 
   useEffect(() => {
     if (!readyForMapping) {
@@ -773,7 +786,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       </section>
 
       <ImportRecentHistorySection
-        recentImports={importsPage.recentImports}
+        recentImports={filteredRecentImports}
+        recentImportAccountFilter={recentImportAccountFilter}
+        recentImportAccountOptions={recentImportAccountOptions}
         recentImportGroups={recentImportModel.groups}
         recentImportsOpen={recentImportsOpen}
         recentImportPage={recentImportPage}
@@ -781,6 +796,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         recentImportStart={recentImportModel.start}
         recentImportEnd={recentImportModel.end}
         onToggleOpen={() => setRecentImportsOpen((current) => !current)}
+        onAccountFilterChange={setRecentImportAccountFilter}
         onPreviousPage={() => setRecentImportPage((current) => Math.max(1, current - 1))}
         onNextPage={() => setRecentImportPage((current) => Math.min(recentImportModel.pageCount, current + 1))}
         onRollback={handleRollback}

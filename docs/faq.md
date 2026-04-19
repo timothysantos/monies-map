@@ -452,10 +452,12 @@ That keeps refreshes focused on the visible app shell while the split page
 loads its own groups, expenses, settlements, and match candidates when opened.
 
 The Imports page initially loads a recent-history summary instead of scanning
-every import batch. Import preview, commit, rollback, duplicate detection, and
-same-account overlap checks still use their focused flows; the collapsed recent
-history section is kept lightweight so opening Imports does not block on the
-whole audit history.
+every import batch. Recent imports open by default, can be filtered by
+owner-qualified account, and label each batch as a PDF statement, mid-cycle
+activity import, CSV import, or manual import. Import preview, commit, rollback,
+duplicate detection, and same-account overlap checks still use their focused
+flows; the recent history section is kept lightweight so opening Imports does
+not block on the whole audit history.
 
 ## How do I import real bank activity?
 

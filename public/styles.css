@@ -5106,6 +5106,28 @@ body:has(.split-inline-editor-card) .splits-fab {
   gap: 10px;
 }
 
+.import-history-filter {
+  max-width: 420px;
+}
+
+.import-history-filter select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink);
+  font: inherit;
+  box-shadow: 0 1px 0 rgba(25, 64, 53, 0.04);
+}
+
+.import-history-filter select:focus {
+  border-color: rgba(177, 94, 47, 0.42);
+  outline: 3px solid rgba(177, 94, 47, 0.14);
+}
+
 .import-history-pagination {
   display: flex;
   align-items: center;

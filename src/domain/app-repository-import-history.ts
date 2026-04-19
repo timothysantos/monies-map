@@ -25,6 +25,7 @@ export async function loadImportBatches(
         imports.id,
         imports.source_label,
         imports.source_type,
+        imports.parser_key,
         imports.imported_at,
         imports.status,
         imports.note,
@@ -34,7 +35,7 @@ export async function loadImportBatches(
       FROM imports
       LEFT JOIN transactions ON transactions.import_id = imports.id
       WHERE imports.household_id = ?
-      GROUP BY imports.id, imports.source_label, imports.source_type, imports.imported_at, imports.status, imports.note
+      GROUP BY imports.id, imports.source_label, imports.source_type, imports.parser_key, imports.imported_at, imports.status, imports.note
       ORDER BY imports.imported_at DESC
       LIMIT ?
     `)
@@ -43,6 +44,7 @@ export async function loadImportBatches(
       id: string;
       source_label: string;
       source_type: "csv" | "pdf" | "manual";
+      parser_key: string | null;
       imported_at: string;
       status: "draft" | "completed" | "rolled_back";
       note: string | null;
@@ -114,6 +116,7 @@ export async function loadImportBatches(
             id: candidate.id,
             sourceLabel: candidate.source_label,
             sourceType: candidate.source_type,
+            parserKey: candidate.parser_key ?? undefined,
             importedAt: candidate.imported_at,
             status: candidate.status,
             transactionCount: Number(candidate.transaction_count ?? 0),
@@ -128,6 +131,7 @@ export async function loadImportBatches(
       id: row.id,
       sourceLabel: row.source_label,
       sourceType: row.source_type,
+      parserKey: row.parser_key ?? undefined,
       importedAt: row.imported_at,
       status: row.status,
       transactionCount: Number(row.transaction_count ?? 0),

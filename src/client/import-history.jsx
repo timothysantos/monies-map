@@ -9,6 +9,8 @@ export const RECENT_IMPORTS_PAGE_SIZE = 25;
 // Recent history is read-only except rollback; pagination only changes which batches are visible.
 export function ImportRecentHistorySection({
   recentImports,
+  recentImportAccountFilter,
+  recentImportAccountOptions,
   recentImportGroups,
   recentImportsOpen,
   recentImportPage,
@@ -16,6 +18,7 @@ export function ImportRecentHistorySection({
   recentImportStart,
   recentImportEnd,
   onToggleOpen,
+  onAccountFilterChange,
   onPreviousPage,
   onNextPage,
   onRollback
@@ -42,6 +45,15 @@ export function ImportRecentHistorySection({
       </button>
       {recentImportsOpen ? (
         <div className="import-history-groups">
+          <label className="entries-filter import-history-filter">
+            <span className="entries-filter-label">{messages.imports.recentAccountFilter}</span>
+            <select value={recentImportAccountFilter} onChange={(event) => onAccountFilterChange(event.target.value)}>
+              <option value="">{messages.imports.recentAllAccounts}</option>
+              {recentImportAccountOptions.map((accountName) => (
+                <option key={accountName} value={accountName}>{accountName}</option>
+              ))}
+            </select>
+          </label>
           {shouldPaginate ? (
             <ImportRecentPagination
               recentImportPage={recentImportPage}
@@ -63,7 +75,7 @@ export function ImportRecentHistorySection({
                       <strong>{item.sourceLabel}</strong>
                       <span className="import-history-inline">
                         {messages.common.triplet(
-                          item.sourceType.toUpperCase(),
+                          getImportBatchKindLabel(item),
                           formatDate(item.importedAt),
                           messages.imports.transactionCount(item.transactionCount)
                         )}
@@ -95,6 +107,7 @@ export function ImportRecentHistorySection({
               </div>
             </section>
           ))}
+          {!recentImportGroups.length ? <p className="lede compact">{messages.imports.recentEmpty}</p> : null}
           {shouldPaginate ? (
             <ImportRecentPagination
               className="import-history-pagination-bottom"
@@ -172,7 +185,7 @@ function ImportOverlapPopover({ item }) {
                   <strong>{overlap.sourceLabel}</strong>
                   <p>
                     {messages.common.triplet(
-                      overlap.sourceType.toUpperCase(),
+                      getImportBatchKindLabel(overlap),
                       formatDate(overlap.importedAt),
                       messages.imports.transactionCount(overlap.transactionCount)
                     )}
@@ -192,4 +205,18 @@ function ImportOverlapPopover({ item }) {
       </Popover.Portal>
     </Popover.Root>
   );
+}
+
+function getImportBatchKindLabel(item) {
+  const parserKey = item.parserKey ?? "";
+  if (item.sourceType === "pdf" || parserKey.endsWith("_pdf")) {
+    return messages.imports.importKindPdfStatement;
+  }
+  if (parserKey.includes("activity") || parserKey.includes("current_transactions")) {
+    return messages.imports.importKindMidcycle;
+  }
+  if (item.sourceType === "manual") {
+    return messages.imports.importKindManual;
+  }
+  return messages.imports.importKindCsv;
 }
