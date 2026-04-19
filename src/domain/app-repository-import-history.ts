@@ -2,8 +2,8 @@ import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { hasSetIntersection } from "./app-repository-helpers";
 import type { ImportBatchDto } from "../types/dto";
 
-const DEFAULT_IMPORT_HISTORY_LIMIT = 30;
-const MAX_IMPORT_HISTORY_LIMIT = 100;
+const DEFAULT_IMPORT_HISTORY_LIMIT = 100;
+const MAX_IMPORT_HISTORY_LIMIT = 200;
 
 type LoadImportBatchesOptions = {
   limit?: number;

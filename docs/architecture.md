@@ -426,6 +426,10 @@ Frontend direction:
 - heavy route bodies are split behind focused endpoints:
   `/api/summary-page`, `/api/month-page`, `/api/entries-page`,
   `/api/splits-page`, `/api/imports-page`, and `/api/settings-page`
+- the Imports page loads a bounded recent-history payload for browsing, while
+  the recent-import account filter is built from the household account list so
+  accounts do not disappear when their latest imports are outside the visible
+  history slice
 - bootstrap and page endpoints emit lightweight Worker diagnostics for slow or
   failed requests, including a request id, endpoint label, selected route
   parameters, and duration; error responses include the same request id so
