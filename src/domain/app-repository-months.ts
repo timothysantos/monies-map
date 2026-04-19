@@ -46,6 +46,59 @@ export async function loadSummaryMonths(db: D1Database, personScope: string): Pr
     .sort((left, right) => left.month.localeCompare(right.month));
 }
 
+export async function loadSummaryMonthsForScopes(
+  db: D1Database,
+  personScopes: string[]
+): Promise<Record<string, SummaryMonthDto[]>> {
+  const uniqueScopes = [...new Set(personScopes)].filter(Boolean);
+  if (!uniqueScopes.length) {
+    return {};
+  }
+
+  const placeholders = uniqueScopes.map(() => "?").join(", ");
+  const result = await db
+    .prepare(`
+      SELECT person_scope, year, month, total_income_minor, total_expense_minor, note
+      , estimated_expense_minor, savings_goal_minor
+      FROM monthly_snapshots
+      WHERE household_id = ? AND person_scope IN (${placeholders})
+      ORDER BY person_scope, year DESC, month DESC
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, ...uniqueScopes)
+    .all<{
+      person_scope: string;
+      year: number;
+      month: number;
+      total_income_minor: number;
+      estimated_expense_minor: number;
+      total_expense_minor: number;
+      savings_goal_minor: number;
+      note: string | null;
+    }>();
+
+  const monthsByScope = Object.fromEntries(uniqueScopes.map((scope) => [scope, [] as SummaryMonthDto[]]));
+  for (const row of result.results) {
+    monthsByScope[row.person_scope] ??= [];
+    monthsByScope[row.person_scope].push({
+      month: `${row.year}-${String(row.month).padStart(2, "0")}`,
+      incomeMinor: row.total_income_minor,
+      estimatedExpensesMinor: row.estimated_expense_minor,
+      realExpensesMinor: row.total_expense_minor,
+      savingsGoalMinor: row.savings_goal_minor,
+      realizedSavingsMinor: row.total_income_minor - row.total_expense_minor,
+      estimatedDiffMinor: row.total_income_minor - row.estimated_expense_minor,
+      realDiffMinor: row.total_income_minor - row.total_expense_minor,
+      note: row.note ?? "Month tracked close to plan overall."
+    });
+  }
+
+  for (const scope of uniqueScopes) {
+    monthsByScope[scope].sort((left, right) => left.month.localeCompare(right.month));
+  }
+
+  return monthsByScope;
+}
+
 export async function loadTrackedMonths(db: D1Database): Promise<string[]> {
   const result = await db
     .prepare(`
@@ -165,6 +218,80 @@ export async function loadMonthIncomeRows(
     isDerived: false,
     sourceRowIds: [row.id]
   }));
+}
+
+export async function loadMonthIncomeRowsForViews(
+  db: D1Database,
+  selectedPersonIds: string[],
+  month = getCurrentMonthKey()
+): Promise<Record<string, MonthIncomeRowDto[]>> {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const uniqueViewIds = [...new Set(selectedPersonIds)].filter(Boolean);
+  const result = await db
+    .prepare(`
+      SELECT
+        monthly_plan_rows.id,
+        monthly_plan_rows.person_id,
+        monthly_plan_rows.category_id,
+        monthly_plan_rows.label,
+        monthly_plan_rows.planned_amount_minor,
+        monthly_plan_rows.actual_amount_minor,
+        monthly_plan_rows.notes,
+        categories.name AS category_name,
+        people.display_name AS owner_name
+      FROM monthly_plan_rows
+      LEFT JOIN categories ON categories.id = monthly_plan_rows.category_id
+      LEFT JOIN people ON people.id = monthly_plan_rows.person_id
+      WHERE monthly_plan_rows.household_id = ?
+        AND monthly_plan_rows.year = ?
+        AND monthly_plan_rows.month = ?
+        AND monthly_plan_rows.section_key = 'income'
+      ORDER BY monthly_plan_rows.created_at
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber)
+    .all<{
+      id: string;
+      person_id: string | null;
+      category_id: string | null;
+      label: string;
+      planned_amount_minor: number;
+      actual_amount_minor: number;
+      notes: string | null;
+      category_name: string | null;
+      owner_name: string | null;
+    }>();
+
+  const rowsByView = Object.fromEntries(uniqueViewIds.map((viewId) => [viewId, [] as MonthIncomeRowDto[]]));
+  for (const row of result.results) {
+    const dtoBase = {
+      id: row.id,
+      categoryId: row.category_id ?? undefined,
+      categoryName: row.category_name ?? "Income",
+      plannedMinor: row.planned_amount_minor,
+      actualMinor: row.actual_amount_minor,
+      personId: row.person_id ?? undefined,
+      ownerName: row.owner_name ?? undefined,
+      note: row.notes ?? undefined,
+      isDerived: false,
+      sourceRowIds: [row.id]
+    };
+
+    if (rowsByView.household) {
+      rowsByView.household.push({
+        ...dtoBase,
+        label: row.owner_name ? `${row.owner_name} ${row.label.toLowerCase()}` : row.label
+      });
+    }
+
+    if (row.person_id && rowsByView[row.person_id]) {
+      rowsByView[row.person_id].push({
+        ...dtoBase,
+        label: row.label
+      });
+    }
+  }
+
+  return rowsByView;
 }
 
 export async function loadMonthPlanRows(db: D1Database, month = getCurrentMonthKey()): Promise<MonthPlanRowDto[]> {

@@ -56,8 +56,10 @@ export { buildImportPreview } from "./app-repository-import-preview";
 export { loadImportBatches } from "./app-repository-import-history";
 export {
   loadMonthIncomeRows,
+  loadMonthIncomeRowsForViews,
   loadMonthPlanRows,
   loadSummaryMonths,
+  loadSummaryMonthsForScopes,
   loadTrackedMonths
 } from "./app-repository-months";
 export {
@@ -501,6 +503,7 @@ async function ensureHotReadIndexes(db: D1Database) {
     "CREATE INDEX IF NOT EXISTS idx_transactions_transfer_group ON transactions (transfer_group_id)",
     "CREATE INDEX IF NOT EXISTS idx_transaction_splits_transaction ON transaction_splits (transaction_id)",
     "CREATE INDEX IF NOT EXISTS idx_monthly_snapshots_household_month ON monthly_snapshots (household_id, year, month, person_scope)",
+    "CREATE INDEX IF NOT EXISTS idx_monthly_snapshots_household_scope_month ON monthly_snapshots (household_id, person_scope, year, month)",
     "CREATE INDEX IF NOT EXISTS idx_monthly_plan_rows_household_month ON monthly_plan_rows (household_id, year, month, section_key)",
     "CREATE INDEX IF NOT EXISTS idx_split_expenses_household_date ON split_expenses (household_id, expense_date)",
     "CREATE INDEX IF NOT EXISTS idx_split_settlements_household_date ON split_settlements (household_id, settlement_date)",
