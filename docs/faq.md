@@ -362,6 +362,11 @@ account and date range.
 Skipped rows stay visible in the preview. You can restore one if the duplicate
 decision was wrong, and statement checks refresh against the current commit set.
 
+If a statement mismatch is exactly resolved by including unresolved near-match
+rows for that account, the preview treats those rows as statement-confirmed
+rows instead of duplicate warnings. They stay in the commit set, and the
+statement check recalculates against the updated rows.
+
 When a PDF statement has no new rows because every row was already imported from
 mid-cycle activity files, the import action changes to "Save statement
 checkpoints" once the statement checks are matched. That lets you save the

@@ -4,6 +4,7 @@ import { Check, X } from "lucide-react";
 import { getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { formatDateOnly, money } from "./formatters";
+import { keepFocusedControlVisible } from "./mobile-focus-visibility";
 import { SplitExpenseFields, SplitSettlementFields } from "./splits-dialogs";
 import { CategoryGlyph } from "./ui-components";
 
@@ -43,6 +44,7 @@ export function SplitActivityGroups({
   onEditLinkedEntry
 }) {
   const inlineEditorRef = useRef(null);
+  const editingDraftKey = editingDraft ? `${editingDraft.kind}:${editingDraft.id}` : "";
 
   useEffect(() => {
     if (!editingDraft || archived) {
@@ -50,6 +52,10 @@ export function SplitActivityGroups({
     }
 
     function handlePointerDown(event) {
+      if (isSubmitting) {
+        return;
+      }
+
       const target = event.target;
 
       if (!(target instanceof Element)) {
@@ -75,7 +81,7 @@ export function SplitActivityGroups({
 
     document.addEventListener("pointerdown", handlePointerDown, true);
     return () => document.removeEventListener("pointerdown", handlePointerDown, true);
-  }, [archived, editingDraft, onCancelEditing]);
+  }, [archived, editingDraft, isSubmitting, onCancelEditing]);
 
   useEffect(() => {
     if (!editingDraft || archived) {
@@ -89,7 +95,7 @@ export function SplitActivityGroups({
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [archived, editingDraft]);
+  }, [archived, editingDraftKey]);
 
   return groups.map((group) => (
     <section key={`${archived ? "archived" : "current"}-${group.date}`} className={`split-date-group ${archived ? "is-archived" : ""}`}>
@@ -111,7 +117,16 @@ export function SplitActivityGroups({
 
           if (isEditing) {
             return (
-              <article ref={inlineEditorRef} key={splitItemKey(item)} className="split-inline-editor-card" onClick={(event) => event.stopPropagation()}>
+              <article
+                ref={inlineEditorRef}
+                key={splitItemKey(item)}
+                className="split-inline-editor-card"
+                onClick={(event) => event.stopPropagation()}
+                onFocusCapture={(event) => {
+                  window.setTimeout(() => keepFocusedControlVisible(event.target, { bottomPadding: 160 }), 120);
+                  window.setTimeout(() => keepFocusedControlVisible(event.target, { bottomPadding: 160 }), 380);
+                }}
+              >
                 {editingDraft.kind === "expense" ? (
                   <SplitExpenseFields
                     dialog={editingDraft}
@@ -157,8 +172,8 @@ export function SplitActivityGroups({
                     Delete
                   </button>
                   <button type="button" className="inline-action-button inline-save-action" aria-label="Done editing split" disabled={isSubmitting} onClick={() => void onSaveEditing?.()}>
-                    <Check size={16} />
-                    <span className="desktop-action-label">Save</span>
+                    {isSubmitting ? null : <Check size={16} />}
+                    <span className="desktop-action-label">{isSubmitting ? messages.common.saving : "Save"}</span>
                   </button>
                   <button type="button" className="inline-action-button inline-cancel-action" aria-label="Cancel editing split" disabled={isSubmitting} onClick={onCancelEditing}>
                     <X size={16} />

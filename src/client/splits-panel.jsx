@@ -113,8 +113,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setIsSubmitting(true);
     try {
       const data = await createSplitGroup(groupDialog);
-      setGroupDialog(null);
       await onRefresh();
+      setGroupDialog(null);
       updateSplitView({ groupId: data.groupId, mode: "entries" });
     } catch (error) {
       setFormError(error.message);
@@ -133,8 +133,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setIsSubmitting(true);
     try {
       await saveSplitExpense(expenseDialog);
-      setExpenseDialog(null);
       await onRefresh();
+      setExpenseDialog(null);
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -152,8 +152,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setIsSubmitting(true);
     try {
       await saveSplitSettlement(settlementDialog);
-      setSettlementDialog(null);
       await onRefresh();
+      setSettlementDialog(null);
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -216,8 +216,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       } else {
         await saveSplitSettlement(inlineSplitDraft);
       }
-      setInlineSplitDraft(null);
       await onRefresh();
+      setInlineSplitDraft(null);
     } catch (error) {
       setInlineSplitError(error.message);
     } finally {
@@ -245,8 +245,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setIsSubmitting(true);
     try {
       await updateSplitLinkedEntry(linkedEntryDialog);
-      setLinkedEntryDialog(null);
       await onRefresh();
+      setLinkedEntryDialog(null);
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -287,9 +287,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       } else {
         await deleteSplitSettlement(deleteTarget.id);
       }
+      await onRefresh();
       setDeleteTarget(null);
       setInlineSplitDraft((current) => (current?.kind === deleteTarget.kind && current?.id === deleteTarget.id ? null : current));
-      await onRefresh();
     } catch (error) {
       setFormError(error.message);
     } finally {

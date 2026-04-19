@@ -194,6 +194,10 @@ That distinction matters because the system needs to answer questions like:
   Skipped duplicate rows are excluded from the pending import set and are
   counted through the already committed ledger instead, so restoring a skipped
   row immediately refreshes only that row's account checkpoint.
+- When a statement preview mismatch is exactly resolved by including unresolved
+  near-match rows for that same account, the preview treats those rows as
+  statement-confirmed import rows, clears their duplicate warning, and
+  recalculates the account checkpoint before returning the preview DTO.
 - mismatched checkpoints can compare an uploaded statement against the already
   committed ledger for that checkpoint period without treating the statement as
   a new import; if the saved checkpoint has no explicit period, the comparison
