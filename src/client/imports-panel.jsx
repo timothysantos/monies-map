@@ -187,6 +187,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     hasDuplicateCheckpointAccounts,
     hasStatementReconciliationMismatch,
     isCommitDisabled,
+    commitLabel,
     knownAccountNames,
     previewDuplicateRowCount,
     skippedPreviewRowCount,
@@ -518,7 +519,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           ...patch,
           duplicateMatches: shouldClearDuplicateMatches ? undefined : row.duplicateMatches,
           commitStatus: shouldClearDuplicateMatches ? "included" : (patch.commitStatus ?? row.commitStatus),
-          commitStatusReason: shouldClearDuplicateMatches ? undefined : row.commitStatusReason
+          commitStatusReason: shouldClearDuplicateMatches ? undefined : row.commitStatusReason,
+          commitStatusExplicit: shouldClearDuplicateMatches ? false : row.commitStatusExplicit
         }
         : row
     )));
@@ -527,7 +529,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   function updatePreviewRowCommitStatus(rowId, commitStatus) {
     const nextRows = previewRows.map((row) => (
       row.rowId === rowId
-        ? { ...row, commitStatus, commitStatusReason: getPreviewCommitStatusReason(commitStatus, row.duplicateMatches?.[0]?.matchKind) }
+        ? {
+          ...row,
+          commitStatus,
+          commitStatusReason: getPreviewCommitStatusReason(commitStatus, row.duplicateMatches?.[0]?.matchKind),
+          commitStatusExplicit: true
+        }
         : row
     ));
     setPreviewRows(nextRows);
@@ -753,6 +760,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               knownAccountNames={knownAccountNames}
               isCommitDisabled={isCommitDisabled}
               isSubmitting={isSubmitting}
+              commitLabel={commitLabel}
               onCommit={handleCommit}
               onUpdatePreviewRow={updatePreviewRow}
               onUpdatePreviewRowCommitStatus={updatePreviewRowCommitStatus}

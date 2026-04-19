@@ -30,6 +30,7 @@ export type { ParsedStatementImport, StatementCheckpointDraft };
 
 export function parseStatementText(text: string, fileName?: string): ParsedStatementImport {
   const normalizedText = text.replace(/\r/g, "\n");
+  const rawText = normalizedText.split("__PDF_LAYOUT_TEXT__")[0] ?? normalizedText;
   const layoutLines = getPdfLayoutLines(normalizedText);
   const spacedLayoutLines = getPdfSpacedLayoutLines(normalizedText);
   if (layoutLines.some((line) => /^TRANSACTIONSFORCITI/i.test(line))) {
@@ -44,12 +45,12 @@ export function parseStatementText(text: string, fileName?: string): ParsedState
     return parseOcbc360Statement(spacedLayoutLines, fileName);
   }
 
-  if (/Credit Card\(s\) Statement/i.test(normalizedText) || /TOTAL BALANCE FOR/i.test(normalizedText)) {
-    return parseUobCreditCardStatement(normalizedText, fileName);
+  if (/Credit Card\(s\) Statement/i.test(rawText) || /TOTAL BALANCE FOR/i.test(rawText)) {
+    return parseUobCreditCardStatement(rawText, fileName);
   }
 
-  if (/Statement of Account/i.test(normalizedText) && /Account Transaction Details/i.test(normalizedText)) {
-    return parseUobSavingsStatement(normalizedText, fileName);
+  if (/Statement of Account/i.test(rawText) && /Account Transaction Details/i.test(rawText)) {
+    return parseUobSavingsStatement(rawText, fileName);
   }
 
   throw new Error("Unsupported statement PDF. This importer currently recognizes UOB, Citi Rewards, Citi Miles, OCBC 365, and OCBC 360 statement text.");

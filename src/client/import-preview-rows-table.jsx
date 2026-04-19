@@ -13,6 +13,7 @@ export function ImportPreviewRowsTable({
   knownAccountNames,
   isCommitDisabled,
   isSubmitting,
+  commitLabel,
   onCommit,
   onUpdatePreviewRow,
   onUpdatePreviewRowCommitStatus,
@@ -32,7 +33,7 @@ export function ImportPreviewRowsTable({
         {skippedRows.length ? <span className="pill">{messages.imports.willSkipRows(skippedRows.length)}</span> : null}
         {needsReviewCount ? <span className="pill warning">{messages.imports.needsReviewRows(needsReviewCount)}</span> : null}
       </div>
-      <ImportCommitButton disabled={isCommitDisabled} isSubmitting={isSubmitting} onCommit={onCommit} />
+      <ImportCommitButton disabled={isCommitDisabled} isSubmitting={isSubmitting} onCommit={onCommit} label={commitLabel} />
       {activeRows.length ? (
         <PreviewRowsTable
           rows={activeRows}
@@ -65,7 +66,7 @@ export function ImportPreviewRowsTable({
           />
         </details>
       ) : null}
-      <ImportCommitButton disabled={isCommitDisabled} isSubmitting={isSubmitting} onCommit={onCommit} isBottom />
+      <ImportCommitButton disabled={isCommitDisabled} isSubmitting={isSubmitting} onCommit={onCommit} label={commitLabel} isBottom />
     </>
   );
 }
@@ -259,7 +260,7 @@ function formatDuplicateMatchKind(matchKind) {
   return messages.imports.duplicateMatchKindNear;
 }
 
-function ImportCommitButton({ disabled, isSubmitting, onCommit, isBottom = false }) {
+function ImportCommitButton({ disabled, isSubmitting, onCommit, label, isBottom = false }) {
   return (
     <div className={`import-actions import-actions-end ${isBottom ? "import-actions-bottom" : ""}`}>
       <button
@@ -268,7 +269,7 @@ function ImportCommitButton({ disabled, isSubmitting, onCommit, isBottom = false
         disabled={disabled}
         onClick={onCommit}
       >
-        {isSubmitting ? messages.common.working : messages.imports.commit}
+        {isSubmitting ? messages.common.working : label}
       </button>
     </div>
   );
