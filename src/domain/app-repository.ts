@@ -126,6 +126,8 @@ const EMPTY_STATE_PEOPLE = [
   { id: EMPTY_PARTNER_PERSON_ID, name: "Partner", role: "partner" }
 ];
 const IMPORT_COMMIT_STATEMENT_CHUNK_SIZE = 90;
+const OLD_SHOPPING_COLOR_HEX = "#D4B35D";
+const SHOPPING_COLOR_HEX = "#D86B73";
 
 export async function ensureSeedData(db: D1Database, settings: DemoSettings) {
   await ensureDemoSchema(db);
@@ -155,6 +157,7 @@ export async function ensureSeedData(db: D1Database, settings: DemoSettings) {
     (snapshotCount?.count ?? 0) > 0 &&
     (incomeRowCount?.count ?? 0) > 0
   ) {
+    await ensureDefaultCategoryPalette(db);
     await ensureDefaultCategoryMatchRules(db);
     return;
   }
@@ -571,6 +574,32 @@ export async function seedEmptyStateReferenceData(db: D1Database) {
   }
 
   await ensureDefaultCategoryMatchRules(db);
+  await ensureDefaultCategoryPalette(db);
+}
+
+async function ensureDefaultCategoryPalette(db: D1Database) {
+  await db
+    .prepare(`
+      UPDATE categories
+      SET color_hex = CASE
+        WHEN id = 'cat-shopping' THEN ?
+        WHEN id = 'cat-healthcare' THEN ?
+        ELSE color_hex
+      END
+      WHERE household_id = ?
+        AND (
+          (id = 'cat-shopping' AND color_hex = ?)
+          OR (id = 'cat-healthcare' AND color_hex = ?)
+        )
+    `)
+    .bind(
+      SHOPPING_COLOR_HEX,
+      OLD_SHOPPING_COLOR_HEX,
+      DEFAULT_HOUSEHOLD_ID,
+      OLD_SHOPPING_COLOR_HEX,
+      SHOPPING_COLOR_HEX
+    )
+    .run();
 }
 
 async function loadSeedPeople(db: D1Database) {
