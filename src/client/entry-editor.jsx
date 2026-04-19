@@ -249,7 +249,18 @@ export function EntryEditorFields({
           <select
             className={`table-edit-input ${typeToneClass}`}
             value={entry.entryType}
-            onChange={(event) => onChange({ entryType: event.target.value })}
+            onChange={(event) => {
+              const nextEntryType = event.target.value;
+              onChange({
+                entryType: nextEntryType,
+                categoryName: nextEntryType === "transfer"
+                  ? "Transfer"
+                  : entry.categoryName === "Transfer"
+                    ? "Other"
+                    : entry.categoryName,
+                transferDirection: nextEntryType === "transfer" ? (entry.transferDirection ?? "out") : undefined
+              });
+            }}
           >
             <option value="expense">Expense</option>
             <option value="income">Income</option>

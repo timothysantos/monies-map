@@ -19,12 +19,14 @@ import {
   loadCategoryMatchRuleSuggestions,
   findSuggestedLoginPersonId,
   loadMonthIncomeRows,
+  loadMonthIncomeRowsForViews,
   loadMonthPlanRows,
   resolveLoginIdentityPersonId,
   loadTrackedMonths,
   loadUnresolvedTransfers,
   seedEmptyStateReferenceData,
-  loadSummaryMonths
+  loadSummaryMonths,
+  loadSummaryMonthsForScopes
 } from "./app-repository";
 import type {
   AccountDto,
@@ -86,24 +88,11 @@ export async function buildBootstrapDto(
   ]);
   const primaryPersonId = household.people[0]?.id ?? "person-primary";
   const partnerPersonId = household.people[1]?.id ?? "person-partner";
-  const [householdSummaryMonths, primarySummaryMonths, partnerSummaryMonths, householdIncomeRows, primaryIncomeRows, partnerIncomeRows] = await Promise.all([
-    loadSummaryMonths(db, "household"),
-    loadSummaryMonths(db, primaryPersonId),
-    loadSummaryMonths(db, partnerPersonId),
-    loadMonthIncomeRows(db, "household", effectiveSelectedMonth),
-    loadMonthIncomeRows(db, primaryPersonId, effectiveSelectedMonth),
-    loadMonthIncomeRows(db, partnerPersonId, effectiveSelectedMonth)
+  const viewIds = ["household", primaryPersonId, partnerPersonId];
+  const [summaryMonthsByView, incomeRowsByView] = await Promise.all([
+    loadSummaryMonthsForScopes(db, viewIds),
+    loadMonthIncomeRowsForViews(db, viewIds, effectiveSelectedMonth)
   ]);
-  const summaryMonthsByView = {
-    household: householdSummaryMonths,
-    [primaryPersonId]: primarySummaryMonths,
-    [partnerPersonId]: partnerSummaryMonths
-  };
-  const incomeRowsByView = {
-    household: householdIncomeRows,
-    [primaryPersonId]: primaryIncomeRows,
-    [partnerPersonId]: partnerIncomeRows
-  };
   const summaryRangeMonths = buildSummaryRange(
     trackedMonths,
     summaryStartMonth,

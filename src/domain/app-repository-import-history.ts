@@ -21,23 +21,35 @@ export async function loadImportBatches(
   const includeOverlapDetails = options.includeOverlapDetails ?? true;
   const result = await db
     .prepare(`
+      WITH recent_imports AS (
+        SELECT
+          id,
+          source_label,
+          source_type,
+          parser_key,
+          imported_at,
+          status,
+          note
+        FROM imports
+        WHERE household_id = ?
+        ORDER BY imported_at DESC
+        LIMIT ?
+      )
       SELECT
-        imports.id,
-        imports.source_label,
-        imports.source_type,
-        imports.parser_key,
-        imports.imported_at,
-        imports.status,
-        imports.note,
-        COUNT(DISTINCT transactions.id) AS transaction_count,
+        recent_imports.id,
+        recent_imports.source_label,
+        recent_imports.source_type,
+        recent_imports.parser_key,
+        recent_imports.imported_at,
+        recent_imports.status,
+        recent_imports.note,
+        COUNT(transactions.id) AS transaction_count,
         MIN(transactions.transaction_date) AS start_date,
         MAX(transactions.transaction_date) AS end_date
-      FROM imports
-      LEFT JOIN transactions ON transactions.import_id = imports.id
-      WHERE imports.household_id = ?
-      GROUP BY imports.id, imports.source_label, imports.source_type, imports.parser_key, imports.imported_at, imports.status, imports.note
-      ORDER BY imports.imported_at DESC
-      LIMIT ?
+      FROM recent_imports
+      LEFT JOIN transactions ON transactions.import_id = recent_imports.id
+      GROUP BY recent_imports.id, recent_imports.source_label, recent_imports.source_type, recent_imports.parser_key, recent_imports.imported_at, recent_imports.status, recent_imports.note
+      ORDER BY recent_imports.imported_at DESC
     `)
     .bind(DEFAULT_HOUSEHOLD_ID, limit)
     .all<{
@@ -96,19 +108,21 @@ export async function loadImportBatches(
   }
 
   return result.results.map((row) => {
-    const rowAccountIds = accountIdsByImportId.get(row.id) ?? new Set<string>();
-    const overlapCandidates = result.results.filter((candidate) => (
-      candidate.id !== row.id
-      && row.status === "completed"
-      && candidate.status === "completed"
-      && row.start_date
-      && row.end_date
-      && candidate.start_date
-      && candidate.end_date
-      && row.start_date <= candidate.end_date
-      && row.end_date >= candidate.start_date
-      && hasSetIntersection(rowAccountIds, accountIdsByImportId.get(candidate.id) ?? new Set<string>())
-    ));
+    const overlapCandidates = includeOverlapDetails
+      ? result.results.filter((candidate) => {
+        const rowAccountIds = accountIdsByImportId.get(row.id) ?? new Set<string>();
+        return candidate.id !== row.id
+          && row.status === "completed"
+          && candidate.status === "completed"
+          && row.start_date
+          && row.end_date
+          && candidate.start_date
+          && candidate.end_date
+          && row.start_date <= candidate.end_date
+          && row.end_date >= candidate.start_date
+          && hasSetIntersection(rowAccountIds, accountIdsByImportId.get(candidate.id) ?? new Set<string>());
+      })
+      : [];
     const overlapImports = includeOverlapDetails
       ? overlapCandidates
         .map((candidate) => (
