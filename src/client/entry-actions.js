@@ -297,7 +297,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
     }
   }
 
-  async function addEntryToSplits(entry) {
+  async function addEntryToSplits(entry, splitGroupId = null) {
     setEntrySubmitError("");
     setAddingToSplitsEntryId(entry.id);
 
@@ -309,7 +309,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
         },
         body: JSON.stringify({
           entryId: entry.id,
-          splitGroupId: null
+          splitGroupId
         })
       });
       const data = await response.json();

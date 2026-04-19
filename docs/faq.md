@@ -208,8 +208,9 @@ the sharing record is removed.
 
 When you use `Add to splits` from the entries editor, the app treats the entry
 owner or owning account as the payer. If the ledger row is still direct, it is
-converted to shared first with a default `50/50` transaction split, then the
-linked split expense is created under `Non-group expenses`.
+converted to shared first with a default `50/50` transaction split. The app then
+opens a centered split-group picker; nothing is saved until you choose a group,
+and you can cancel the picker without creating a split expense.
 
 ## What are the default app categories?
 

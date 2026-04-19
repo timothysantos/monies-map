@@ -2091,6 +2091,11 @@ body:has(.split-inline-editor-card) .splits-fab {
   box-shadow: 0 24px 58px rgba(27, 24, 21, 0.16);
 }
 
+.entry-split-picker-dialog {
+  width: min(460px, calc(100vw - 40px));
+  overflow: visible;
+}
+
 .note-dialog-head {
   display: flex;
   align-items: flex-start;
@@ -2101,6 +2106,43 @@ body:has(.split-inline-editor-card) .splits-fab {
 
 .note-dialog-head p {
   margin: 4px 0 0;
+}
+
+.entry-split-picker-field {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.entry-split-picker-field span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.entry-split-picker-field select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.98);
+  color: var(--ink);
+  font: inherit;
+  box-shadow: 0 1px 0 rgba(25, 64, 53, 0.04);
+}
+
+.entry-split-picker-field select:focus {
+  border-color: rgba(177, 94, 47, 0.42);
+  outline: 3px solid rgba(177, 94, 47, 0.14);
+}
+
+.entry-split-picker-status {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
 }
 
 .split-dialog-head {

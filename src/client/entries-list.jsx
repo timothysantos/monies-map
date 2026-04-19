@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { Check, X } from "lucide-react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
@@ -13,6 +14,8 @@ import {
   getVisibleSplitPercent
 } from "./entry-helpers";
 import { formatDateOnly, money } from "./formatters";
+
+const NON_GROUP_SPLIT_VALUE = "__split_group_none__";
 
 function scrollInlineEditorIntoView(element) {
   if (window.matchMedia("(max-width: 760px)").matches) {
@@ -32,6 +35,7 @@ export function EntriesDateGroups({
   categoryOptions,
   accountOptions,
   ownerOptions,
+  splitGroups = [],
   viewId,
   editingEntryId,
   addingToSplitsEntryId,
@@ -53,6 +57,20 @@ export function EntriesDateGroups({
   onFinishEntryEdit,
   onCancelEntryEdit
 }) {
+  const [splitPickerEntry, setSplitPickerEntry] = useState(null);
+  const splitGroupOptions = useMemo(
+    () => splitGroups.map((group) => ({
+      value: group.id === "split-group-none" ? NON_GROUP_SPLIT_VALUE : group.id,
+      label: group.name
+    })),
+    [splitGroups]
+  );
+
+  async function handleAddEntryToSplits(entry, splitGroupId) {
+    await onAddEntryToSplits(entry, splitGroupId === NON_GROUP_SPLIT_VALUE ? null : splitGroupId);
+    setSplitPickerEntry(null);
+  }
+
   useEffect(() => {
     if (!editingEntryId) {
       return undefined;
@@ -123,7 +141,7 @@ export function EntriesDateGroups({
                 onUpdateTransferSettlementDraft={onUpdateTransferSettlementDraft}
                 onLinkTransferCandidate={onLinkTransferCandidate}
                 onSettleTransfer={onSettleTransfer}
-                onAddEntryToSplits={onAddEntryToSplits}
+                onOpenSplitPicker={setSplitPickerEntry}
                 onFinishEntryEdit={onFinishEntryEdit}
                 onCancelEntryEdit={onCancelEntryEdit}
               />
@@ -131,7 +149,69 @@ export function EntriesDateGroups({
           </div>
         </section>
       ))}
+      <EntrySplitGroupPickerDialog
+        entry={splitPickerEntry}
+        splitGroupOptions={splitGroupOptions}
+        isSubmitting={Boolean(splitPickerEntry && addingToSplitsEntryId === splitPickerEntry.id)}
+        onClose={() => setSplitPickerEntry(null)}
+        onSelectGroup={(splitGroupId) => splitPickerEntry ? handleAddEntryToSplits(splitPickerEntry, splitGroupId) : undefined}
+      />
     </div>
+  );
+}
+
+function EntrySplitGroupPickerDialog({ entry, splitGroupOptions, isSubmitting, onClose, onSelectGroup }) {
+  const selectRef = useRef(null);
+
+  return (
+    <Dialog.Root open={Boolean(entry)} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="note-dialog-overlay" />
+        <Dialog.Content
+          className="note-dialog-content entry-split-picker-dialog"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            window.requestAnimationFrame(() => selectRef.current?.focus());
+          }}
+        >
+          <div className="note-dialog-head">
+            <div>
+              <Dialog.Title>Add to splits</Dialog.Title>
+              <Dialog.Description>
+                Choose the split group for this entry.
+              </Dialog.Description>
+            </div>
+            <button type="button" className="icon-button" aria-label="Close split group picker" onClick={onClose}>
+              <X size={18} />
+            </button>
+          </div>
+          <label className="entry-split-picker-field">
+            <span>Split group</span>
+            <select
+              ref={selectRef}
+              value=""
+              disabled={isSubmitting}
+              onChange={(event) => {
+                void onSelectGroup(event.target.value);
+              }}
+            >
+              <option value="" disabled>Choose split group</option>
+              {splitGroupOptions.map((group) => (
+                <option key={group.value || "split-group-none"} value={group.value}>
+                  {group.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {isSubmitting ? <p className="entry-split-picker-status">Adding entry to splits...</p> : null}
+          <div className="note-dialog-actions">
+            <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>
+              Cancel
+            </button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
@@ -159,7 +239,7 @@ function EntryRow({
   onUpdateTransferSettlementDraft,
   onLinkTransferCandidate,
   onSettleTransfer,
-  onAddEntryToSplits,
+  onOpenSplitPicker,
   onFinishEntryEdit,
   onCancelEntryEdit
 }) {
@@ -277,7 +357,7 @@ function EntryRow({
                 type="button"
                 className="subtle-action"
                 disabled={addingToSplitsEntryId === entry.id}
-                onClick={() => void onAddEntryToSplits(entry)}
+                onClick={() => onOpenSplitPicker(entry)}
               >
                 {messages.entries.addToSplits}
               </button>

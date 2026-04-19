@@ -457,6 +457,7 @@ export function EntriesPanel({
         categoryOptions={categoryOptions}
         accountOptions={accountOptions}
         ownerOptions={ownerOptions}
+        splitGroups={entryView.splitsPage.groups}
         viewId={entryView.id}
         editingEntryId={editingEntryId}
         addingToSplitsEntryId={addingToSplitsEntryId}
