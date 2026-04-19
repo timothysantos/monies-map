@@ -2,6 +2,7 @@ const moneyFormatter = new Intl.NumberFormat("en-SG", {
   style: "currency",
   currency: "SGD"
 });
+const APP_TIME_ZONE = "Asia/Singapore";
 
 export function money(valueMinor) {
   return moneyFormatter.format(valueMinor / 100);
@@ -21,6 +22,7 @@ export function decimalStringToMinor(value) {
 
 export function formatDate(value) {
   return new Intl.DateTimeFormat("en-SG", {
+    timeZone: APP_TIME_ZONE,
     dateStyle: "medium",
     timeStyle: "short"
   }).format(new Date(value));
@@ -28,6 +30,7 @@ export function formatDate(value) {
 
 export function formatDateOnly(value) {
   return new Intl.DateTimeFormat("en-SG", {
+    timeZone: APP_TIME_ZONE,
     month: "short",
     day: "numeric",
     year: "numeric"
