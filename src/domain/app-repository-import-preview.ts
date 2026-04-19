@@ -5,6 +5,7 @@ import {
   computeCheckpointLedgerBalanceMinor,
   daysBetween,
   getMonthEndDate,
+  getSignedLedgerAmountMinor,
   normalizeAccountOpeningBalanceMinor,
   normalizeImportRow,
   normalizeStatementBalanceInputMinor,
@@ -83,9 +84,6 @@ export async function buildImportPreview(
   const unknownCategories = new Set<string>();
   const previewRows: ImportPreviewRowDto[] = [];
   const validationErrors: string[] = [];
-  let duplicateCandidateCount = 0;
-  const duplicateCandidates = [];
-
   for (const [index, rawRow] of input.rows.entries()) {
     const normalized = normalizeImportRow(rawRow);
     if (normalized.errors.length) {
@@ -194,17 +192,6 @@ export async function buildImportPreview(
     previewRow.commitStatusReason = getCommitStatusReason(previewRow.commitStatus, strongestMatch);
     previewRows.push(previewRow);
 
-    if (isExactDuplicate || nearMatches.length) {
-      duplicateCandidateCount += 1;
-    }
-
-    for (const match of previewRow.duplicateMatches ?? []) {
-      if (duplicateCandidates.length >= 8) {
-        break;
-      }
-
-      duplicateCandidates.push(match);
-    }
   }
 
   if (validationErrors.length) {
@@ -212,6 +199,14 @@ export async function buildImportPreview(
   }
 
   const overlapImports = await findOverlappingImports(db, previewRows);
+  autoIncludeNearMatchesExplainedByStatementBalance({
+    accounts,
+    existingRows: existingTransactions.results,
+    previewRows,
+    statementCheckpoints: input.statementCheckpoints ?? []
+  });
+  const visibleDuplicateRows = previewRows.filter((row) => row.duplicateMatches?.length);
+  const duplicateCandidates = visibleDuplicateRows.flatMap((row) => row.duplicateMatches ?? []).slice(0, 8);
   const statementReconciliations = buildImportPreviewStatementReconciliations({
     accounts,
     existingRows: existingTransactions.results,
@@ -226,7 +221,7 @@ export async function buildImportPreview(
     previewRows,
     unknownAccounts: Array.from(unknownAccounts).sort(),
     unknownCategories: Array.from(unknownCategories).sort(),
-    duplicateCandidateCount,
+    duplicateCandidateCount: visibleDuplicateRows.length,
     overlappingImportCount: overlapImports.length,
     overlapImports,
     startDate: previewRows.length ? previewRows.map((row) => row.date).sort()[0] : undefined,
@@ -273,6 +268,93 @@ function resolvePreviewAccount(
   return nameMatches.length === 1 ? nameMatches[0] : undefined;
 }
 
+function buildPreviewLedgerRows(previewRows: ImportPreviewRowDto[]) {
+  return previewRows
+    .filter((row) => row.accountId && row.commitStatus !== "skipped" && row.commitStatus !== "needs_review")
+    .map((row) => ({
+      account_id: row.accountId!,
+      transaction_date: row.date,
+      entry_type: row.entryType,
+      transfer_direction: row.transferDirection ?? null,
+      amount_minor: row.amountMinor
+    }));
+}
+
+function getNearMatchReviewRowsForAccount(previewRows: ImportPreviewRowDto[], accountId: string, statementEndDate: string) {
+  return previewRows.filter((row) => (
+    row.accountId === accountId
+    && row.commitStatus === "needs_review"
+    && row.date <= statementEndDate
+    && row.duplicateMatches?.some((match) => match.matchKind === "near")
+  ));
+}
+
+function sumSignedPreviewRows(previewRows: ImportPreviewRowDto[]) {
+  return previewRows.reduce((total, row) => (
+    total + getSignedLedgerAmountMinor({
+      entry_type: row.entryType,
+      transfer_direction: row.transferDirection ?? null,
+      amount_minor: row.amountMinor
+    })
+  ), 0);
+}
+
+function autoIncludeNearMatchesExplainedByStatementBalance(input: {
+  accounts: AccountDto[];
+  existingRows: {
+    account_id: string;
+    transaction_date: string;
+    entry_type: "expense" | "income" | "transfer";
+    transfer_direction: "in" | "out" | null;
+    amount_minor: number;
+  }[];
+  previewRows: ImportPreviewRowDto[];
+  statementCheckpoints: StatementCheckpointDraftDto[];
+}) {
+  if (!input.statementCheckpoints.length) {
+    return;
+  }
+
+  const accountsById = new Map(input.accounts.map((account) => [account.id, account]));
+  const accountsByName = groupAccountsByName(input.accounts);
+
+  for (const checkpoint of input.statementCheckpoints) {
+    const account = resolvePreviewAccount(accountsById, accountsByName, checkpoint.accountId, checkpoint.accountName);
+    if (!account) {
+      continue;
+    }
+
+    const statementStartDate = normalizeStatementDate(checkpoint.statementStartDate) ?? undefined;
+    const statementEndDate = normalizeStatementDate(checkpoint.statementEndDate) ?? getMonthEndDate(checkpoint.checkpointMonth);
+    const statementBalanceMinor = normalizeStatementBalanceInputMinor(Math.round(Number(checkpoint.statementBalanceMinor ?? 0)), account.kind);
+    const projectedLedgerBalanceMinor = computeCheckpointLedgerBalanceMinor({
+      openingBalanceMinor: normalizeAccountOpeningBalanceMinor(Number(account.openingBalanceMinor ?? 0), account.kind),
+      checkpoint: {
+        account_id: account.id,
+        checkpoint_month: checkpoint.checkpointMonth,
+        statement_start_date: statementStartDate ?? null,
+        statement_end_date: statementEndDate
+      },
+      rows: [...input.existingRows, ...buildPreviewLedgerRows(input.previewRows)]
+    });
+    const deltaMinor = projectedLedgerBalanceMinor - statementBalanceMinor;
+    const nearMatchReviewRows = getNearMatchReviewRowsForAccount(input.previewRows, account.id, statementEndDate);
+    const nearMatchReviewTotalMinor = sumSignedPreviewRows(nearMatchReviewRows);
+
+    // A near match is normally ambiguous. If adding the ambiguous rows removes
+    // the exact account-level statement delta, the statement check has resolved
+    // the ambiguity, so the rows should remain importable instead of needing
+    // manual duplicate review.
+    if (deltaMinor !== 0 && nearMatchReviewRows.length > 0 && deltaMinor + nearMatchReviewTotalMinor === 0) {
+      for (const row of nearMatchReviewRows) {
+        row.commitStatus = "included";
+        row.commitStatusReason = "Statement balance check confirmed this row belongs in the import.";
+        row.duplicateMatches = undefined;
+      }
+    }
+  }
+}
+
 function buildImportPreviewStatementReconciliations(input: {
   accounts: AccountDto[];
   existingRows: {
@@ -291,15 +373,7 @@ function buildImportPreviewStatementReconciliations(input: {
 
   const accountsById = new Map(input.accounts.map((account) => [account.id, account]));
   const accountsByName = groupAccountsByName(input.accounts);
-  const previewLedgerRows = input.previewRows
-    .filter((row) => row.accountId && row.commitStatus !== "skipped" && row.commitStatus !== "needs_review")
-    .map((row) => ({
-      account_id: row.accountId!,
-      transaction_date: row.date,
-      entry_type: row.entryType,
-      transfer_direction: row.transferDirection ?? null,
-      amount_minor: row.amountMinor
-    }));
+  const previewLedgerRows = buildPreviewLedgerRows(input.previewRows);
   const ledgerRows = [...input.existingRows, ...previewLedgerRows];
 
   return input.statementCheckpoints.map((checkpoint) => {
@@ -332,7 +406,6 @@ function buildImportPreviewStatementReconciliations(input: {
       rows: ledgerRows
     });
     const deltaMinor = projectedLedgerBalanceMinor - statementBalanceMinor;
-
     return {
       accountName: account.name,
       accountKind: account.kind,

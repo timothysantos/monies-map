@@ -23,6 +23,7 @@ import {
   buildRequestErrorMessage,
   describeBootstrapError
 } from "./request-errors";
+import { installMobileFocusVisibility } from "./mobile-focus-visibility";
 import { formatMonthLabel } from "./formatters";
 import { getCurrentMonthKey } from "../lib/month";
 
@@ -221,6 +222,9 @@ export function App() {
   const bootstrapSummaryStart = bootstrapShellView?.summaryPage?.rangeStartMonth ?? selectedSummaryStart;
   const bootstrapSummaryEnd = bootstrapShellView?.summaryPage?.rangeEndMonth ?? selectedSummaryEnd;
   const bootstrapScope = bootstrapShellView?.monthPage?.selectedScope ?? selectedScope;
+
+  useEffect(() => installMobileFocusVisibility(), []);
+
   const canUseBootstrapRoutePage = useMemo(() => {
     if (!bootstrapShellView) {
       return false;

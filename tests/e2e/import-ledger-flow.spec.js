@@ -389,6 +389,118 @@ test.describe("import flow", () => {
     expect(Number.isFinite(afterAccount?.latestCheckpointDeltaMinor)).toBeTruthy();
   });
 
+  test("statement balance can confirm a near-match row should be imported", async ({ page }) => {
+    const bootstrap = await loadBootstrap(page, { month: "2025-08" });
+    const account = bootstrap.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    expect(account).toBeTruthy();
+
+    const existingRow = {
+      rowId: "near-match-existing",
+      rowIndex: 1,
+      date: "2025-08-11",
+      description: "BUS MRT 123",
+      amountMinor: 248,
+      entryType: "expense",
+      accountId: account.id,
+      accountName: account.name,
+      categoryName: "Public Transport",
+      ownershipType: "direct",
+      ownerName: "Tim",
+      splitBasisPoints: 10000,
+      rawRow: {
+        date: "2025-08-11",
+        description: "BUS MRT 123",
+        expense: "2.48",
+        accountId: account.id,
+        account: account.name,
+        category: "Public Transport"
+      }
+    };
+
+    const existingCommit = await page.evaluate(async ({ row }) => {
+      const response = await fetch("/api/imports/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Playwright existing transit",
+          sourceType: "csv",
+          parserKey: "uob_current_xls",
+          rows: [row],
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { row: existingRow });
+    expect(existingCommit.ok, existingCommit.text).toBeTruthy();
+
+    const statementRow = {
+      date: "2025-08-14",
+      description: "BUS MRT 687",
+      expense: "2.48",
+      accountId: account.id,
+      account: account.name,
+      category: "Public Transport"
+    };
+    const statementCheckpoints = [{
+      accountId: account.id,
+      accountName: account.name,
+      detectedAccountName: account.name,
+      checkpointMonth: "2025-08",
+      statementStartDate: "2025-08-01",
+      statementEndDate: "2025-08-31",
+      statementBalanceMinor: 0,
+      note: "Playwright near-match statement checkpoint"
+    }];
+
+    const mismatchedPreview = await page.evaluate(async ({ row, statementCheckpoints }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Playwright near-match PDF",
+          rows: [row],
+          defaultAccountName: row.account,
+          ownershipType: "direct",
+          ownerName: "Tim",
+          statementCheckpoints
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { row: statementRow, statementCheckpoints });
+    expect(mismatchedPreview.ok, JSON.stringify(mismatchedPreview.json)).toBeTruthy();
+    expect(mismatchedPreview.json.preview.previewRows[0].commitStatus).toBe("needs_review");
+    expect(mismatchedPreview.json.preview.previewRows[0].duplicateMatches[0].matchKind).toBe("near");
+
+    const projectedWithoutNearMatch = mismatchedPreview.json.preview.statementReconciliations[0].projectedLedgerBalanceMinor;
+    const projectedWithNearMatch = projectedWithoutNearMatch - 248;
+    const resolvingStatementCheckpoints = [{
+      ...statementCheckpoints[0],
+      statementBalanceMinor: account.kind === "credit_card" ? -projectedWithNearMatch : projectedWithNearMatch
+    }];
+
+    const resolvedPreview = await page.evaluate(async ({ row, statementCheckpoints }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Playwright near-match PDF",
+          rows: [row],
+          defaultAccountName: row.account,
+          ownershipType: "direct",
+          ownerName: "Tim",
+          statementCheckpoints
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { row: statementRow, statementCheckpoints: resolvingStatementCheckpoints });
+
+    expect(resolvedPreview.ok, JSON.stringify(resolvedPreview.json)).toBeTruthy();
+    expect(resolvedPreview.json.preview.previewRows[0].commitStatus).toBe("included");
+    expect(resolvedPreview.json.preview.previewRows[0].duplicateMatches).toBeUndefined();
+    expect(resolvedPreview.json.preview.duplicateCandidateCount).toBe(0);
+    expect(resolvedPreview.json.preview.statementReconciliations[0].status).toBe("matched");
+  });
+
   test("multi-card statements reconcile with growing midcycle duplicates and restore mistakes", async ({ page }, testInfo) => {
     test.setTimeout(180_000);
 
