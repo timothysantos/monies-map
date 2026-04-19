@@ -4104,6 +4104,34 @@ body:has(.split-inline-editor-card) .splits-fab {
   color: var(--accent-strong);
 }
 
+.faq-image-link {
+  display: block;
+  width: min(100%, 560px);
+  margin: 12px 0 18px;
+  text-decoration: none;
+}
+
+.faq-image-link img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  object-fit: cover;
+  object-position: top left;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 12px 30px rgba(38, 35, 31, 0.1);
+}
+
+.faq-image-link span {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
 .includes-disclosure {
   margin-top: 16px;
   padding-top: 12px;

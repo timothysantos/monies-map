@@ -53,6 +53,82 @@ function formatMoney(minor) {
   return currencyFormatter.format(minor / 100);
 }
 
+function money(valueMinor) {
+  return (valueMinor / 100).toFixed(2);
+}
+
+function csvFromRows(rows) {
+  return [
+    "date,description,expense,income,account,category,note,type",
+    ...rows.map((row) => [
+      row.date,
+      row.description,
+      money(row.expenseMinor),
+      "",
+      row.account,
+      row.category,
+      row.note ?? "",
+      "expense"
+    ].join(","))
+  ].join("\n");
+}
+
+function buildSyntheticUobCardStatement({ statementDate, sections }) {
+  const lines = [
+    "UOB CARD STATEMENT",
+    "Statement Date",
+    statementDate
+  ];
+
+  for (const section of sections) {
+    lines.push(
+      section.heading,
+      section.cardNumber,
+      "PREVIOUS BALANCE",
+      money(section.previousBalanceMinor)
+    );
+
+    for (const row of section.rows) {
+      lines.push(
+        row.postDate,
+        row.transactionDate,
+        row.description,
+        `Ref No. : ${row.reference}`,
+        money(row.amountMinor)
+      );
+    }
+
+    lines.push(
+      "SUB TOTAL",
+      "TOTAL BALANCE FOR " + section.heading,
+      money(section.totalBalanceMinor)
+    );
+  }
+
+  lines.push("End of Transaction Details");
+  return lines.join("\n");
+}
+
+function escapeHtml(value) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+async function writeTextPdf(page, path, text) {
+  const pdfPage = await page.context().newPage();
+  await pdfPage.setContent(`
+    <html>
+      <body>
+        <pre style="font-family: Helvetica, Arial, sans-serif; font-size: 11px; line-height: 1.55; white-space: pre-wrap;">${escapeHtml(text)}</pre>
+      </body>
+    </html>
+  `);
+  await pdfPage.pdf({ path, format: "A4", printBackground: true });
+  await pdfPage.close();
+}
+
 test.describe("import flow", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
@@ -141,7 +217,7 @@ test.describe("import flow", () => {
     await expect(page.locator("strong").filter({ hasText: formatMoney(afterActualSpend) }).first()).toBeVisible();
 
     await page.goto("/summary?view=person-tim&month=2025-10");
-    await expect(page.getByRole("button", { name: "Oct 2025" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Oct 2025" }).first()).toBeVisible();
     await expect(page.locator("strong").filter({ hasText: formatMoney(afterMonth.realExpensesMinor) }).first()).toBeVisible();
   });
 
@@ -313,165 +389,230 @@ test.describe("import flow", () => {
     expect(Number.isFinite(afterAccount?.latestCheckpointDeltaMinor)).toBeTruthy();
   });
 
-  test("growing midcycle exports only commit new rows before final statement checkpoint", async ({ page }) => {
-    const bootstrap = await loadBootstrap(page, { month: "2025-11" });
-    const account = bootstrap.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
-    expect(account).toBeTruthy();
+  test("multi-card statements reconcile with growing midcycle duplicates and restore mistakes", async ({ page }, testInfo) => {
+    test.setTimeout(180_000);
 
-    const statementRows = [
-      {
-        date: "2025-11-03",
-        description: "Playwright growing export coffee",
-        expense: "6.10",
-        accountId: account.id,
-        account: account.name,
-        category: "Food & Drinks"
-      },
-      {
-        date: "2025-11-08",
-        description: "Playwright growing export groceries",
-        expense: "42.35",
-        accountId: account.id,
-        account: account.name,
-        category: "Groceries"
-      },
-      {
-        date: "2025-11-18",
-        description: "Playwright growing export taxi",
-        expense: "18.90",
-        accountId: account.id,
-        account: account.name,
-        category: "Taxi"
-      }
-    ];
-
-    const previewAndCommitNewRows = async (snapshotRows, snapshotLabel, expectedSkippedCount, expectedIncludedCount) => {
-      const preview = await page.evaluate(async ({ rows, accountName }) => {
-        const response = await fetch("/api/imports/preview", {
+    const createAccount = async (name, openingBalanceMinor) => {
+      const result = await page.evaluate(async ({ name, openingBalanceMinor }) => {
+        const response = await fetch("/api/accounts/create", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            sourceLabel: "Playwright growing midcycle XLS",
-            rows,
-            defaultAccountName: accountName,
-            ownershipType: "direct",
-            ownerName: "Tim",
-            statementCheckpoints: []
+            name,
+            institution: "Synthetic Test Bank",
+            kind: "credit_card",
+            currency: "SGD",
+            openingBalanceMinor,
+            isJoint: true
           })
         });
         return { ok: response.ok, json: await response.json() };
-      }, { rows: snapshotRows, accountName: account.name });
-
-      expect(preview.ok, JSON.stringify(preview.json)).toBeTruthy();
-      const previewRows = preview.json.preview.previewRows;
-      const skippedRows = previewRows.filter((row) => row.commitStatus === "skipped");
-      const includedRows = previewRows.filter((row) => row.commitStatus === "included" || !row.commitStatus);
-
-      expect(skippedRows).toHaveLength(expectedSkippedCount);
-      expect(includedRows).toHaveLength(expectedIncludedCount);
-      for (const row of skippedRows) {
-        expect(row.duplicateMatches?.[0]?.matchKind).toBe("exact");
-      }
-
-      if (!includedRows.length) {
-        return;
-      }
-
-      const commit = await page.evaluate(async ({ label, rows }) => {
-        const response = await fetch("/api/imports/commit", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sourceLabel: label,
-            sourceType: "csv",
-            parserKey: "uob_current_xls",
-            rows,
-            statementCheckpoints: []
-          })
-        });
-        return { ok: response.ok, text: await response.text() };
-      }, { label: snapshotLabel, rows: includedRows });
-      expect(commit.ok, commit.text).toBeTruthy();
+      }, { name, openingBalanceMinor });
+      expect(result.ok, JSON.stringify(result.json)).toBeTruthy();
+      return result.json.accountId;
     };
 
-    await previewAndCommitNewRows(statementRows.slice(0, 1), "Playwright midcycle snapshot 1", 0, 1);
-    await previewAndCommitNewRows(statementRows.slice(0, 2), "Playwright midcycle snapshot 2", 1, 1);
-    await previewAndCommitNewRows(statementRows.slice(0, 3), "Playwright midcycle snapshot 3", 2, 1);
+    const alphaAccount = {
+      id: await createAccount("Playwright Alpha Card", 10_000),
+      name: "Playwright Alpha Card",
+      detectedName: "Synthetic Card Alpha",
+      heading: "SYNTHETIC CARD ALPHA",
+      cardNumber: "1111-2222-3333-4444"
+    };
+    const betaAccount = {
+      id: await createAccount("Playwright Beta Card", 20_000),
+      name: "Playwright Beta Card",
+      detectedName: "Synthetic Card Beta",
+      heading: "SYNTHETIC CARD BETA",
+      cardNumber: "5555-6666-7777-8888"
+    };
 
-    const statementCheckpoints = [{
-      accountId: account.id,
-      accountName: account.name,
-      detectedAccountName: account.name,
-      checkpointMonth: "2025-11",
-      statementStartDate: "2025-11-01",
-      statementEndDate: "2025-11-30",
-      statementBalanceMinor: 0,
-      note: "Playwright growing export statement checkpoint"
-    }];
+    const janAlphaRows = [
+      { postDate: "05 JAN", transactionDate: "04 JAN", description: "ALPHA JAN COFFEE", reference: "JAN-A1", amountMinor: 1_000 },
+      { postDate: "10 JAN", transactionDate: "09 JAN", description: "ALPHA JAN GROCERIES", reference: "JAN-A2", amountMinor: 2_000 }
+    ];
+    const janBetaRows = [
+      { postDate: "06 JAN", transactionDate: "05 JAN", description: "BETA JAN DINING", reference: "JAN-B1", amountMinor: 1_500 },
+      { postDate: "12 JAN", transactionDate: "11 JAN", description: "BETA JAN TAXI", reference: "JAN-B2", amountMinor: 2_500 }
+    ];
+    const febAlphaRows = [
+      { date: "2026-02-03", postDate: "03 FEB", transactionDate: "02 FEB", description: "ALPHA FEB COFFEE", reference: "FEB-A1", expenseMinor: 500, category: "Food & Drinks" },
+      { date: "2026-02-11", postDate: "11 FEB", transactionDate: "10 FEB", description: "ALPHA FEB GROCERIES", reference: "FEB-A2", expenseMinor: 700, category: "Groceries" },
+      { date: "2026-02-22", postDate: "22 FEB", transactionDate: "21 FEB", description: "ALPHA FEB TAXI", reference: "FEB-A3", expenseMinor: 900, category: "Taxi" }
+    ];
+    const febBetaRows = [
+      { date: "2026-02-04", postDate: "04 FEB", transactionDate: "03 FEB", description: "BETA FEB DINING", reference: "FEB-B1", expenseMinor: 1_100, category: "Food & Drinks" },
+      { date: "2026-02-09", postDate: "09 FEB", transactionDate: "08 FEB", description: "BETA FEB GROCERIES", reference: "FEB-B2", expenseMinor: 1_300, category: "Groceries" },
+      { date: "2026-02-18", postDate: "18 FEB", transactionDate: "17 FEB", description: "BETA FEB PLAYSTATION", reference: "FEB-B3", expenseMinor: 1_700, category: "Entertainment" },
+      { date: "2026-02-24", postDate: "24 FEB", transactionDate: "23 FEB", description: "BETA FEB BUS", reference: "FEB-B4", expenseMinor: 1_900, category: "Public Transport" }
+    ];
+    const lateStatementOnlyRow = {
+      date: "2026-02-27",
+      postDate: "27 FEB",
+      transactionDate: "26 FEB",
+      description: "ALPHA FEB LATE FEE",
+      reference: "FEB-A4",
+      expenseMinor: 400,
+      category: "Fees"
+    };
 
-    const finalPreviewWithMismatchedCheckpoint = await page.evaluate(async ({ rows, accountName, statementCheckpoints }) => {
-      const response = await fetch("/api/imports/preview", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sourceLabel: "Playwright final monthly PDF",
-          rows,
-          defaultAccountName: accountName,
-          ownershipType: "direct",
-          ownerName: "Tim",
-          statementCheckpoints
-        })
-      });
-      return { ok: response.ok, json: await response.json() };
-    }, { rows: statementRows, accountName: account.name, statementCheckpoints });
+    const janPdfPath = testInfo.outputPath("synthetic-uob-two-card-jan-2026.pdf");
+    const febPdfPath = testInfo.outputPath("synthetic-uob-two-card-feb-2026.pdf");
+    await writeTextPdf(page, janPdfPath, buildSyntheticUobCardStatement({
+      statementDate: "31 JAN 2026",
+      sections: [
+        {
+          heading: alphaAccount.heading,
+          cardNumber: alphaAccount.cardNumber,
+          previousBalanceMinor: 10_000,
+          totalBalanceMinor: 13_000,
+          rows: janAlphaRows.map((row) => ({ ...row, amountMinor: row.amountMinor }))
+        },
+        {
+          heading: betaAccount.heading,
+          cardNumber: betaAccount.cardNumber,
+          previousBalanceMinor: 20_000,
+          totalBalanceMinor: 24_000,
+          rows: janBetaRows.map((row) => ({ ...row, amountMinor: row.amountMinor }))
+        }
+      ]
+    }));
+    await writeTextPdf(page, febPdfPath, buildSyntheticUobCardStatement({
+      statementDate: "28 FEB 2026",
+      sections: [
+        {
+          heading: alphaAccount.heading,
+          cardNumber: alphaAccount.cardNumber,
+          previousBalanceMinor: 13_000,
+          totalBalanceMinor: 15_500,
+          rows: [...febAlphaRows, lateStatementOnlyRow].map((row) => ({ ...row, amountMinor: row.expenseMinor }))
+        },
+        {
+          heading: betaAccount.heading,
+          cardNumber: betaAccount.cardNumber,
+          previousBalanceMinor: 24_000,
+          totalBalanceMinor: 30_000,
+          rows: febBetaRows.map((row) => ({ ...row, amountMinor: row.expenseMinor }))
+        }
+      ]
+    }));
 
-    expect(finalPreviewWithMismatchedCheckpoint.ok, JSON.stringify(finalPreviewWithMismatchedCheckpoint.json)).toBeTruthy();
-    const projectedBalanceMinor = finalPreviewWithMismatchedCheckpoint.json.preview.statementReconciliations[0].projectedLedgerBalanceMinor;
-    expect(Number.isFinite(projectedBalanceMinor)).toBeTruthy();
-    const matchingStatementCheckpoints = [{
-      ...statementCheckpoints[0],
-      statementBalanceMinor: account.kind === "credit_card" ? -projectedBalanceMinor : projectedBalanceMinor
-    }];
+    const screenshot = async (name) => {
+      if (!process.env.CAPTURE_IMPORT_FLOW_SCREENSHOTS) {
+        return;
+      }
+      await page.screenshot({ path: testInfo.outputPath(`${name}.png`), fullPage: true });
+    };
 
-    const finalPreview = await page.evaluate(async ({ rows, accountName, statementCheckpoints }) => {
-      const response = await fetch("/api/imports/preview", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sourceLabel: "Playwright final monthly PDF",
-          rows,
-          defaultAccountName: accountName,
-          ownershipType: "direct",
-          ownerName: "Tim",
-          statementCheckpoints
-        })
-      });
-      return { ok: response.ok, json: await response.json() };
-    }, { rows: statementRows, accountName: account.name, statementCheckpoints: matchingStatementCheckpoints });
+    const mapDetectedAccounts = async () => {
+      await page
+        .locator(".statement-account-map-row")
+        .filter({ hasText: `Detected: ${alphaAccount.detectedName}` })
+        .getByRole("combobox")
+        .selectOption(alphaAccount.id);
+      await expect(page.locator(".statement-account-map-row").filter({ hasText: `Detected: ${alphaAccount.detectedName}` }).getByRole("combobox")).toHaveValue(alphaAccount.id);
 
-    expect(finalPreview.ok, JSON.stringify(finalPreview.json)).toBeTruthy();
-    expect(finalPreview.json.preview.previewRows).toHaveLength(3);
-    expect(finalPreview.json.preview.previewRows.every((row) => row.commitStatus === "skipped")).toBeTruthy();
-    expect(finalPreview.json.preview.previewRows.every((row) => row.duplicateMatches?.[0]?.matchKind === "exact")).toBeTruthy();
-    expect(
-      finalPreview.json.preview.statementReconciliations[0].status,
-      JSON.stringify(finalPreview.json.preview.statementReconciliations[0])
-    ).toBe("matched");
+      await page
+        .locator(".statement-account-map-row")
+        .filter({ hasText: `Detected: ${betaAccount.detectedName}` })
+        .getByRole("combobox")
+        .selectOption(betaAccount.id);
+      await expect(page.locator(".statement-account-map-row").filter({ hasText: `Detected: ${betaAccount.detectedName}` }).getByRole("combobox")).toHaveValue(betaAccount.id);
+      await expect(page.locator(".statement-reconciliation-row .pill.success")).toHaveCount(2);
+    };
 
-    const checkpointOnlyCommit = await page.evaluate(async ({ statementCheckpoints }) => {
-      const response = await fetch("/api/imports/commit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sourceLabel: "Playwright final monthly PDF checkpoint",
-          sourceType: "pdf",
-          parserKey: "uob_credit_card_pdf",
-          rows: [],
-          statementCheckpoints
-        })
-      });
-      return { ok: response.ok, text: await response.text() };
-    }, { statementCheckpoints: matchingStatementCheckpoints });
-    expect(checkpointOnlyCommit.ok, checkpointOnlyCommit.text).toBeTruthy();
+    const uploadPdfAndMap = async (path) => {
+      await page.goto("/imports?view=person-tim&month=2026-02");
+      await page.locator("input[type=\"file\"]").setInputFiles(path);
+      await expect(page.getByText("Unknown accounts need mapping before commit.")).toBeVisible();
+      await mapDetectedAccounts();
+    };
+
+    const commitCurrentPreview = async () => {
+      await expect(page.getByRole("button", { name: /Commit import/ }).first()).toBeEnabled();
+      await page.getByRole("button", { name: /Commit import/ }).first().click();
+      await expect(page.getByText("No preview yet.").first()).toBeVisible();
+    };
+
+    await uploadPdfAndMap(janPdfPath);
+    await expect(page.locator(".statement-reconciliation-row").filter({ hasText: alphaAccount.name }).locator(".pill.success")).toBeVisible();
+    await expect(page.locator(".statement-reconciliation-row").filter({ hasText: betaAccount.name }).locator(".pill.success")).toBeVisible();
+    await screenshot("01-jan-two-card-pdf-mapped-and-matched");
+    await commitCurrentPreview();
+
+    await uploadPdfAndMap(janPdfPath);
+    await expect(page.getByText("0 rows will import")).toBeVisible();
+    await expect(page.getByText("4 rows will skip").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save statement checkpoints" }).first()).toBeEnabled();
+    await screenshot("02-jan-two-card-pdf-all-duplicates-save-checkpoints");
+    await page.getByRole("button", { name: "Save statement checkpoints" }).first().click();
+    await expect(page.getByText("No preview yet.").first()).toBeVisible();
+
+    const midcycleRows = [
+      ...febAlphaRows.map((row) => ({ ...row, account: alphaAccount.name, note: "synthetic growing midcycle" })),
+      ...febBetaRows.map((row) => ({ ...row, account: betaAccount.name, note: "synthetic growing midcycle" }))
+    ];
+    const sortedMidcycleRows = [
+      midcycleRows.find((row) => row.reference === "FEB-A1"),
+      midcycleRows.find((row) => row.reference === "FEB-B1"),
+      midcycleRows.find((row) => row.reference === "FEB-B2"),
+      midcycleRows.find((row) => row.reference === "FEB-A2"),
+      midcycleRows.find((row) => row.reference === "FEB-B3"),
+      midcycleRows.find((row) => row.reference === "FEB-A3"),
+      midcycleRows.find((row) => row.reference === "FEB-B4")
+    ].filter(Boolean);
+
+    const previewCsvSnapshot = async (label, rows, expectedImportCount, expectedSkipCount) => {
+      await page.goto("/imports?view=person-tim&month=2026-02");
+      await page.getByLabel("Source label").fill(label);
+      await page.getByLabel("CSV content").fill(csvFromRows(rows));
+      await page.getByRole("button", { name: "Preview import" }).click();
+      await expect(page.getByText(`${expectedImportCount} row${expectedImportCount === 1 ? "" : "s"} will import`)).toBeVisible();
+      if (expectedSkipCount) {
+        await expect(page.getByText(`${expectedSkipCount} row${expectedSkipCount === 1 ? "" : "s"} will skip`).first()).toBeVisible();
+        await page.locator("details.import-skipped-rows summary").click();
+      }
+      await screenshot(label.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
+    };
+
+    await previewCsvSnapshot("03-midcycle-snapshot-1", sortedMidcycleRows.slice(0, 3), 3, 0);
+    await commitCurrentPreview();
+
+    await previewCsvSnapshot("04-midcycle-snapshot-2", sortedMidcycleRows.slice(0, 5), 2, 3);
+    await commitCurrentPreview();
+
+    await previewCsvSnapshot("05-midcycle-snapshot-3", sortedMidcycleRows, 2, 5);
+    await commitCurrentPreview();
+
+    await previewCsvSnapshot("06-final-csv-all-midcycle-duplicates", sortedMidcycleRows, 0, 7);
+
+    await uploadPdfAndMap(febPdfPath);
+    await expect(page.getByText("7 rows will skip").first()).toBeVisible();
+    const lateStatementOnlyDescription = page.locator(`input[value="${lateStatementOnlyRow.description}"]`);
+    await expect(lateStatementOnlyDescription).toBeVisible();
+    const lateStatementOnlyPreviewRow = lateStatementOnlyDescription.locator("xpath=ancestor::tr[1]");
+    await expect(page.locator(".statement-reconciliation-row .pill.success")).toHaveCount(2);
+    await screenshot("07-feb-two-card-pdf-duplicates-plus-late-row-matched");
+
+    await lateStatementOnlyPreviewRow.getByRole("button", { name: "Skip row" }).click();
+    await expect(page.locator(".statement-reconciliation-row").filter({ hasText: alphaAccount.name }).locator(".pill.warning")).toBeVisible();
+    await expect(page.locator(".statement-reconciliation-row").filter({ hasText: betaAccount.name }).locator(".pill.success")).toBeVisible();
+    await page.locator("details.import-skipped-rows summary").click();
+    await expect(page.locator("details.import-skipped-rows").locator(`input[value="${lateStatementOnlyRow.description}"]`)).toBeVisible();
+    await screenshot("08-user-skipped-late-row-alpha-check-fails");
+
+    await page.locator("details.import-skipped-rows").locator(`input[value="${lateStatementOnlyRow.description}"]`).locator("xpath=ancestor::tr[1]").getByRole("button", { name: "Restore row" }).click();
+    await expect(page.locator(".statement-reconciliation-row .pill.success")).toHaveCount(2);
+    await expect(page.locator(`input[value="${lateStatementOnlyRow.description}"]`)).toBeVisible();
+    await screenshot("09-user-restored-late-row-both-checks-match");
+
+    await commitCurrentPreview();
+    await expect(page.getByText("Recent imports")).toBeVisible();
+    await page.getByRole("button", { name: /Recent imports/ }).click();
+    await expect(page.getByText("03-midcycle-snapshot-1")).toBeVisible();
+    await expect(page.getByText("04-midcycle-snapshot-2")).toBeVisible();
+    await expect(page.getByText("05-midcycle-snapshot-3")).toBeVisible();
+    await expect(page.getByText("synthetic-uob-two-card-feb-2026")).toBeVisible();
+    await screenshot("10-recent-imports-after-combined-flow");
   });
 });

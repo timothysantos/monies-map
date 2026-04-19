@@ -226,6 +226,7 @@ export const messages = {
     mappingNext: "When the mappings look right, click Preview import.",
     preview: "Preview import",
     commit: "Commit import to ledger",
+    saveStatementCheckpoints: "Save statement checkpoints",
     commitFailed: "Import commit failed. No partial transactions were kept.",
     clearPreview: "Clear preview",
     startOver: "Start over",

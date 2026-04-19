@@ -1,3 +1,5 @@
+import { messages } from "./copy/en-SG";
+
 export function buildImportPreviewModel({
   accounts,
   preview,
@@ -42,6 +44,10 @@ export function buildImportPreviewModel({
   const includedPreviewRows = previewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review");
   const statementReconciliations = preview?.statementReconciliations ?? [];
   const hasDuplicateCheckpointAccounts = duplicateCheckpointAccounts.length > 0;
+  const hasCheckpointOnlyCommit = statementCheckpoints.length > 0 && includedPreviewRows.length === 0;
+  const hasMatchedCheckpointOnlyCommit = hasCheckpointOnlyCommit
+    && statementReconciliations.length > 0
+    && statementReconciliations.every((item) => item.status === "matched");
   const hasUnmappedAccounts = includedPreviewRows.some((row) => !row.accountId && (!row.accountName || (accountNameCounts.get(row.accountName) ?? 0) !== 1));
   const hasBlockingCategoryPolicy = unknownCategoryMode === "block" && Boolean(preview?.unknownCategories?.length);
   const hasCommitPayload = includedPreviewRows.length > 0 || statementCheckpoints.length > 0;
@@ -57,6 +63,7 @@ export function buildImportPreviewModel({
       || isParsingStatement
       || !hasCommitPayload
       || hasUnmappedAccounts
+      || (hasCheckpointOnlyCommit && !hasMatchedCheckpointOnlyCommit)
       || hasBlockingCategoryPolicy
       || hasDuplicateCheckpointAccounts
       || needsReviewPreviewRowCount > 0,
@@ -64,6 +71,7 @@ export function buildImportPreviewModel({
     needsReviewPreviewRowCount,
     previewDuplicateRowCount,
     skippedPreviewRowCount,
+    commitLabel: hasCheckpointOnlyCommit ? messages.imports.saveStatementCheckpoints : messages.imports.commit,
     showStatementAccountMapping: preview && detectedPreviewAccountNames.length > 0 && (
       statementImportMeta.sourceType === "pdf" || unknownPreviewAccountNames.length > 0 || ambiguousPreviewAccountNames.length > 0
     ),

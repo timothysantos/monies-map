@@ -131,7 +131,7 @@ export function buildRawImportRowFromPreviewRow(row) {
     category: row.categoryName ?? "",
     note: row.note ?? "",
     type: row.entryType,
-    commitStatus: row.commitStatus ?? "included"
+    ...(row.commitStatusExplicit && row.commitStatus ? { commitStatus: row.commitStatus } : {})
   };
 }
 

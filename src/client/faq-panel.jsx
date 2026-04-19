@@ -55,6 +55,20 @@ export function FaqPanel({ viewLabel }) {
                     </ListTag>
                   );
                 }
+                if (block.type === "image") {
+                  return (
+                    <a
+                      key={`${section.title}-${index}`}
+                      className="faq-image-link"
+                      href={block.href}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <img src={block.src} alt={block.alt} loading="lazy" />
+                      <span>{block.alt}</span>
+                    </a>
+                  );
+                }
                 return <p key={`${section.title}-${index}`}>{renderInlineMarkdown(block.text)}</p>;
               })
             )}
@@ -111,6 +125,21 @@ function parseFaqMarkdown(markdown) {
       flushList();
       if (currentSection) {
         currentSection.blocks.push({ type: "subheading", text: line.slice(4).trim() });
+      }
+      continue;
+    }
+
+    const imageMatch = line.match(/^!\[([^\]]+)\]\(([^)]+)\)$/);
+    if (imageMatch) {
+      flushParagraph();
+      flushList();
+      if (currentSection) {
+        currentSection.blocks.push({
+          type: "image",
+          alt: imageMatch[1].trim(),
+          src: imageMatch[2].trim(),
+          href: imageMatch[2].trim().replace("/thumbs/", "/")
+        });
       }
       continue;
     }

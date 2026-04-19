@@ -47,7 +47,8 @@ That distinction matters because the system needs to answer questions like:
   because the files are headerless; OCBC activity parsing is gated by an OCBC
   account context or an OCBC activity filename.
 - PDF statement parsers are institution-specific. UOB card and savings
-  statements use their printed transaction blocks and balances; Citibank
+  statements use the raw extracted PDF text so the derived layout variants do
+  not duplicate printed transaction blocks; Citibank
   Rewards and Citi Miles card statements use browser-extracted layout text
   because their transaction rows are compact, preserve negative credit balances,
   and reconcile against card-section grand totals before preview; OCBC 365 card
@@ -189,7 +190,10 @@ That distinction matters because the system needs to answer questions like:
 - import previews and recent import batches expose duplicate and same-account
   overlapping date-range signals so CSV trust is visible before and after commit
 - PDF statement previews also compare detected statement balances with the
-  projected account ledger through each statement end date before commit
+  projected account ledger through each statement end date before commit.
+  Skipped duplicate rows are excluded from the pending import set and are
+  counted through the already committed ledger instead, so restoring a skipped
+  row immediately refreshes only that row's account checkpoint.
 - mismatched checkpoints can compare an uploaded statement against the already
   committed ledger for that checkpoint period without treating the statement as
   a new import; if the saved checkpoint has no explicit period, the comparison

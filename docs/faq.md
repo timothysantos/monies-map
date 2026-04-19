@@ -616,8 +616,87 @@ When the statement is ready, do this before importing duplicate rows:
    skipped duplicates through the existing ledger instead of double-counting
    them.
 
-Cutoffs are per account. A Citi Rewards cutoff should not be reused for Citi
-Miles, and a UOB card statement cycle should not be reused for UOB One savings.
+Cutoffs and skipped-row effects are per account. If one PDF contains two card
+sections, each card gets its own checkpoint and only rows mapped to that card
+change that card's balance check. A Citi Rewards cutoff should not be reused for
+Citi Miles, and a UOB card statement cycle should not be reused for UOB One
+savings.
+
+## Example: growing mid-cycle exports before a two-card statement
+
+This example uses a synthetic two-card UOB-style statement and growing
+mid-cycle exports. It models the same workflow as a real credit-card statement
+that contains two cards in one PDF.
+
+The thumbnails below open the full screenshot in a new tab.
+
+### Step 1: import the first two-card statement
+
+The user uploads the first PDF statement, maps each detected card section to
+its ledger account, and checks that both card balances match before committing.
+
+![Jan two-card PDF mapped to two accounts with both statement checks matched](/faq/import-midcycle-two-card/thumbs/01-jan-two-card-pdf-mapped-and-matched.png)
+
+### Step 2: import the first mid-cycle export
+
+The user imports a current-transaction export during the next statement period.
+These are new rows, so they stay in the commit set.
+
+![First mid-cycle export contains only new rows](/faq/import-midcycle-two-card/thumbs/03-midcycle-snapshot-1.png)
+
+### Step 3: import a growing mid-cycle export
+
+The next export starts from the same beginning date and includes rows already
+imported earlier plus new rows. The preview skips the exact duplicates and keeps
+only the new rows in the commit set.
+
+![Second growing mid-cycle export skips old rows and keeps new rows](/faq/import-midcycle-two-card/thumbs/04-midcycle-snapshot-2.png)
+
+### Step 4: import another growing export
+
+The same rule applies as the export grows. Old rows are skipped, and only rows
+that have not reached the ledger yet remain committable.
+
+![Third growing mid-cycle export skips more old rows and keeps the remaining new rows](/faq/import-midcycle-two-card/thumbs/05-midcycle-snapshot-3.png)
+
+### Step 5: review a final current-transaction export
+
+If the final current-transaction export contains only rows that were already
+committed from earlier mid-cycle imports, the preview skips all rows. Skipped
+rows remain visible and can be restored if the duplicate decision is wrong.
+
+![Final current-transaction export has all rows skipped as already imported](/faq/import-midcycle-two-card/thumbs/06-final-csv-all-midcycle-duplicates.png)
+
+### Step 6: import the next two-card statement
+
+When the monthly PDF arrives, the user maps both card sections again. Rows
+already imported from mid-cycle exports are skipped, any statement-only rows
+remain in the commit set, and each card has its own statement balance check.
+
+![Next two-card PDF skips mid-cycle duplicates and keeps a statement-only row](/faq/import-midcycle-two-card/thumbs/07-feb-two-card-pdf-duplicates-plus-late-row-matched.png)
+
+### Step 7: recover from a mistaken manual skip
+
+If the user manually skips a statement-only row, the affected card's statement
+check fails while the other card stays matched. This proves skipped rows affect
+only their mapped account's checkpoint.
+
+![Mistakenly skipped statement-only row makes only one card check fail](/faq/import-midcycle-two-card/thumbs/08-user-skipped-late-row-alpha-check-fails.png)
+
+The user restores the row from skipped rows. The row returns to the commit set
+and both statement checks return to matched.
+
+![Restoring the skipped row makes both statement checks matched again](/faq/import-midcycle-two-card/thumbs/09-user-restored-late-row-both-checks-match.png)
+
+### Step 8: commit and keep the import history
+
+After the statement checks match, the user commits the statement. Recent imports
+show the earlier mid-cycle batches and the final statement batch, so the work
+remains auditable and rollbackable.
+
+![Recent imports show the mid-cycle batches and final statement batch](/faq/import-midcycle-two-card/thumbs/10-recent-imports-after-combined-flow.png)
+
+## How do I close a reconciled statement period?
 
 ### After statement reconciliation
 
