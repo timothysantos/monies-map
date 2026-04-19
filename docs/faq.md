@@ -26,11 +26,13 @@ The core questions behind the app are:
 - splits view with group pills, manual split expenses, settle-up records, and a
   matches review mode
 - manual single-entry creation from the entries view
-- imports view
+- imports view with CSV, XLS, PDF preview, duplicate review, rollback history,
+  and statement checkpoint saving
 - FAQ view
-- demo data shaped like the intended product and planning model
-- a settings view for reseeding and refreshing the current demo bootstrap, plus
-  editing household member display names
+- empty-state setup plus optional demo data shaped like the intended product and
+  planning model
+- a settings view for accounts, people, category rules, login identity links,
+  unresolved transfers, balance activity, and demo reset/reseed tools
 - React + Vite frontend talking to the existing Worker API
 - category colors and icons as first-class metadata for charts and category cards
 
@@ -99,29 +101,32 @@ into the app.
 
 ## What is still in progress?
 
-- full D1-backed persistence for edits
-- CSV import review and commit flow
-- editing and saving changes
-- Google login
+- more bank and card parser coverage
+- more automated reconciliation help around unusual statement formats
+- deeper split matching and settle-up workflows
 - in-app AI analysis
+- optional direct bank connections, if the product ever decides to support them
 
 ## Where is the production app deployed?
 
 The current Cloudflare Worker deployment is:
 
-[https://<your-worker-host>](https://<your-worker-host>)
+[https://monies-map.timsantos-accts.workers.dev](https://monies-map.timsantos-accts.workers.dev)
 
 It uses the Cloudflare D1 database `monies-map`.
 The Worker is configured as a single-page app, so refreshing nested routes such
 as `/entries` should reload the React app instead of returning a Cloudflare 404.
 
-Before using real household data, protect the Worker with Cloudflare Access.
-The fastest setup is one-time PIN email auth, restricted to:
+Before using real household data, protect the Worker with Cloudflare Access. The
+app reads Cloudflare Access identity headers and can link a signed-in email to a
+household member, but it does not implement standalone OAuth itself.
+
+The fastest Access setup is one-time PIN email auth, restricted to:
 
 - primary household email
 - partner household email
 
-Google login can be added later by configuring Google as a Cloudflare Zero Trust
+Google sign-in can be used by configuring Google as a Cloudflare Zero Trust
 identity provider and keeping the same email allowlist.
 
 ## How do I deploy to production?
@@ -179,6 +184,8 @@ The current `Splits` surface includes:
 The Household split view is a read-only overview. It avoids person-specific
 wording such as "you owe" and does not allow inline split edits; use a person
 tab to add, edit, or settle split records.
+
+![Splits shows open groups, owed totals, and linked split entries](/faq/features/thumbs/splits-overview.png)
 
 Imported shared rows or transfer rows can then be matched later from `Matches`
 instead of from the import screen itself.
@@ -336,7 +343,7 @@ ledger rows are extra, and whether there are likely duplicates or direction
 mistakes. Missing statement rows can be added from there, and direction mistakes
 can be fixed inline without reuploading the PDF.
 
-### How duplicates and overlaps help
+## How duplicates and overlaps help
 
 Import previews warn about duplicate-looking rows before commit. They also warn
 when the current preview overlaps a previous completed import for the same
@@ -351,6 +358,16 @@ account and date range.
 - Exact and near matches use amount, account, date proximity, and description
   similarity.
 
+Skipped rows stay visible in the preview. You can restore one if the duplicate
+decision was wrong, and statement checks refresh against the current commit set.
+
+When a PDF statement has no new rows because every row was already imported from
+mid-cycle activity files, the import action changes to "Save statement
+checkpoints" once the statement checks are matched. That lets you save the
+statement balance evidence without adding duplicate ledger rows.
+
+## How do Entries filters and refresh work?
+
 The Entries page keeps `Spend` as category expense only. It also shows
 `Outflow`, which includes expenses plus transfer-outs, so transfers are visible
 without being mixed into category spending.
@@ -358,17 +375,21 @@ without being mixed into category spending.
 The account filter on Entries lists every active account, even when an account
 has no rows in the selected month. This keeps the filter predictable when you
 are checking a specific account for missing or uncategorized activity. Account
-choices include the owner in the label, such as `UOB One - Joyce`, when the
+choices include the owner in the label, such as "UOB One - Joyce", when the
 same account name could appear under different people.
+
+![Entries filters include refresh, wallet, category, people, and type controls](/faq/features/thumbs/entries-filters.png)
+
+Use the refresh button at the start of the Entries filter row to reload the
+current month after importing or editing data in another tab.
+
+## Why does switching views usually feel fast?
 
 On Summary and Month, the Household, primary, and partner pills reuse the
 matching views already loaded in the app shell when the month or summary range
 has not changed. On Entries, the same pills reuse the loaded household month
 rows and apply the person as a local filter. Switching between people should
 feel like changing a filter, not like reloading the whole page.
-
-Use the refresh button at the start of the Entries filter row to reload the
-current month after importing or editing data in another tab.
 
 Within one browser session, returning to a tab should reuse cached page data
 when no import, edit, rollback, or manual refresh has invalidated it. This keeps
@@ -377,22 +398,28 @@ fresh data is needed. Cached route pages do not automatically force a second
 fresh request on return; use the screen refresh action when you need to pull the
 latest data without an edit or import.
 
-After the first usable screen renders, the app also uses browser idle time to
-warm the most likely next route code chunks. It also performs a narrow,
-delayed, sequential page-data prefetch only for adjacent Month or Summary
-periods on non-touch devices. Only after the visible page has finished loading
-and the session stays quiet does it warm lower-priority page data such as
-Imports, Splits, Settings, and Entries, one request at a time with spacing
-between each request. Touch devices skip background API prefetching so mobile
-refreshes do not compete with the visible page request. Any route change,
-browser-tab hide, import, edit, rollback, manual refresh, data-saver mode, or
-cache invalidation stops the staged prefetch so first load does not create a
-burst of background dashboard requests.
-
 On browser refresh or a later return to the same month/range, the app can render
 the last successful bootstrap payload from local browser storage immediately and
 then refresh it in the background. Any write that changes app data clears that
 stored bootstrap copy so stale ledger state does not survive edits or imports.
+
+## What does background prefetching do?
+
+After the first usable screen renders, the app also uses browser idle time to
+warm the most likely next route code chunks.
+
+On non-touch devices, it can also prefetch adjacent Month or Summary periods in
+a narrow, delayed sequence. Only after the visible page has finished loading and
+the session stays quiet does it warm lower-priority page data such as Imports,
+Splits, Settings, and Entries.
+
+The prefetcher sends one request at a time with spacing between requests. Touch
+devices skip background API prefetching so mobile refreshes do not compete with
+the visible page request. Any route change, browser-tab hide, import, edit,
+rollback, manual refresh, data-saver mode, or cache invalidation stops the staged
+prefetch.
+
+## How does month navigation work?
 
 On touch devices, swipe left or right on Month or Entries to move to the next
 or previous month. Splits does not use the selected month as its main filter, so
@@ -405,6 +432,8 @@ imports, edits, rollbacks, and other writes clear the relevant page cache before
 reloading. Entries seeds its first page cache from bootstrap on refresh, then
 uses explicit month changes, manual refreshes, and write invalidations for fresh
 API loads.
+
+## Why is the app shell split into smaller page loads?
 
 The initial bootstrap now acts as the app shell. Summary, Month, Entries,
 Splits, Imports, and Settings each have smaller page-specific reloads so month
@@ -440,7 +469,7 @@ The app currently supports:
 
 - CSV files or pasted CSV text
 - supported PDF statements
-- supported UOB One current-transaction `.xls` exports
+- supported UOB bank and credit-card current-transaction `.xls` exports
 - supported Citibank credit-card current-activity `.csv` exports, when the
   selected default account is a Citibank credit card
 - supported OCBC card and 360 current-activity `.csv` exports, when the selected
@@ -473,6 +502,8 @@ normal expenses.
 Use Settings -> Category matching to add or adjust rules. Rules apply to future
 previews and can override a parser guess; they do not rewrite older ledger rows
 that you already reviewed and committed.
+
+![Settings category matching keeps editable rules and pending suggestions together](/faq/features/thumbs/category-matching.png)
 
 How rules match:
 
@@ -549,7 +580,7 @@ creating another split.
 
 Use a current-transaction export as a working ledger update.
 
-Example: download a UOB One `.xls` activity export or a Citi card activity
+Example: download a UOB `.xls` activity export or a Citi card activity
 `.csv` for the current period, choose the matching account in the import form,
 import it, review the rows, and commit them. Those rows can then be used for
 Month, Entries, Splits, transfer matching, and category cleanup before the
@@ -637,14 +668,23 @@ its ledger account, and checks that both card balances match before committing.
 
 ![Jan two-card PDF mapped to two accounts with both statement checks matched](/faq/import-midcycle-two-card/thumbs/01-jan-two-card-pdf-mapped-and-matched.png)
 
-### Step 2: import the first mid-cycle export
+### Step 2: save checkpoints when the statement has no new rows
+
+If the same statement is reviewed after its rows are already in the ledger, the
+preview skips every duplicate row. When both statement checks are green, the
+action becomes "Save statement checkpoints" so the user can save the balance
+evidence without adding duplicate ledger rows.
+
+![Already imported two-card PDF skips all rows but can save matched statement checkpoints](/faq/import-midcycle-two-card/thumbs/02-jan-two-card-pdf-all-duplicates-save-checkpoints.png)
+
+### Step 3: import the first mid-cycle export
 
 The user imports a current-transaction export during the next statement period.
 These are new rows, so they stay in the commit set.
 
 ![First mid-cycle export contains only new rows](/faq/import-midcycle-two-card/thumbs/03-midcycle-snapshot-1.png)
 
-### Step 3: import a growing mid-cycle export
+### Step 4: import a growing mid-cycle export
 
 The next export starts from the same beginning date and includes rows already
 imported earlier plus new rows. The preview skips the exact duplicates and keeps
@@ -652,14 +692,14 @@ only the new rows in the commit set.
 
 ![Second growing mid-cycle export skips old rows and keeps new rows](/faq/import-midcycle-two-card/thumbs/04-midcycle-snapshot-2.png)
 
-### Step 4: import another growing export
+### Step 5: import another growing export
 
 The same rule applies as the export grows. Old rows are skipped, and only rows
 that have not reached the ledger yet remain committable.
 
 ![Third growing mid-cycle export skips more old rows and keeps the remaining new rows](/faq/import-midcycle-two-card/thumbs/05-midcycle-snapshot-3.png)
 
-### Step 5: review a final current-transaction export
+### Step 6: review a final current-transaction export
 
 If the final current-transaction export contains only rows that were already
 committed from earlier mid-cycle imports, the preview skips all rows. Skipped
@@ -667,7 +707,7 @@ rows remain visible and can be restored if the duplicate decision is wrong.
 
 ![Final current-transaction export has all rows skipped as already imported](/faq/import-midcycle-two-card/thumbs/06-final-csv-all-midcycle-duplicates.png)
 
-### Step 6: import the next two-card statement
+### Step 7: import the next two-card statement
 
 When the monthly PDF arrives, the user maps both card sections again. Rows
 already imported from mid-cycle exports are skipped, any statement-only rows
@@ -675,7 +715,7 @@ remain in the commit set, and each card has its own statement balance check.
 
 ![Next two-card PDF skips mid-cycle duplicates and keeps a statement-only row](/faq/import-midcycle-two-card/thumbs/07-feb-two-card-pdf-duplicates-plus-late-row-matched.png)
 
-### Step 7: recover from a mistaken manual skip
+### Step 8: recover from a mistaken manual skip
 
 If the user manually skips a statement-only row, the affected card's statement
 check fails while the other card stays matched. This proves skipped rows affect
@@ -688,7 +728,7 @@ and both statement checks return to matched.
 
 ![Restoring the skipped row makes both statement checks matched again](/faq/import-midcycle-two-card/thumbs/09-user-restored-late-row-both-checks-match.png)
 
-### Step 8: commit and keep the import history
+### Step 9: commit and keep the import history
 
 After the statement checks match, the user commits the statement. Recent imports
 show the earlier mid-cycle batches and the final statement batch, so the work
@@ -785,6 +825,9 @@ the current draft without refreshing the page.
   date in the row note.
 - UOB One savings PDFs use the statement period and running balances to validate
   withdrawal/deposit direction.
+- UOB current-transaction `.xls` files are old Excel binary workbooks. The
+  parser recognizes both bank-account exports and credit-card exports when the
+  UOB header row is present.
 - Citibank card PDFs use layout-aware parsing for compact card-section rows.
 - Citibank current-activity CSV files are headerless, so the app only applies
   the Citi activity parser when the selected default account is a Citibank
