@@ -2921,17 +2921,22 @@ body:has(.split-inline-editor-card) .splits-fab {
   flex-wrap: wrap;
 }
 
+.split-summary-toolbar {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
 .split-matches-link {
   appearance: none;
   -webkit-appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 38px;
-  padding: 0 14px;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: white;
   font: inherit;
   font-weight: 600;
@@ -2940,12 +2945,11 @@ body:has(.split-inline-editor-card) .splits-fab {
   white-space: nowrap;
   box-shadow: none;
   cursor: pointer;
-  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+  transition: color 140ms ease, opacity 140ms ease;
 }
 
 .split-matches-link:hover {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .split-matches-link:focus-visible {
@@ -2954,15 +2958,12 @@ body:has(.split-inline-editor-card) .splits-fab {
 }
 
 .split-matches-link.is-active {
-  background: rgba(255, 248, 243, 0.98);
-  border-color: rgba(255, 248, 243, 0.98);
-  color: var(--accent-strong);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.86);
+  box-shadow: none;
 }
 
 .split-matches-link.is-active:hover {
-  background: white;
-  border-color: white;
+  color: white;
 }
 
 .panel-splits .splits-summary-actions .subtle-action,
@@ -5668,8 +5669,8 @@ th {
   }
 
   .panel-splits > .panel-head {
-    align-items: center;
-    margin-bottom: 8px;
+    display: none;
+    margin-bottom: 0;
   }
 
   .panel-splits > .panel-head > div:first-child {
@@ -6877,11 +6878,17 @@ th {
 
   .splits-summary-strip {
     gap: 8px;
-    padding: 6px 9px;
+    margin-right: -12px;
+    margin-left: -12px;
+    padding: 6px 12px;
+    width: calc(100% + 24px);
+    max-width: calc(100% + 24px);
     overflow-x: auto;
     overflow-y: hidden;
     flex-wrap: nowrap;
-    border-radius: 14px;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
   }
 
   .splits-summary-strip .summary-chevron {
@@ -6890,7 +6897,9 @@ th {
   }
 
   .splits-summary-strip .entries-summary-metrics {
-    gap: 8px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
     font-size: 0.82rem;
   }
 
@@ -6936,22 +6945,27 @@ th {
   .split-head-actions {
     justify-content: flex-end;
     gap: 8px;
-    width: 100%;
+    width: auto;
+  }
+
+  .splits-summary-strip .split-summary-toolbar {
+    margin-left: auto;
+    flex-wrap: nowrap;
   }
 
   .split-matches-link {
-    min-height: 34px;
-    padding: 0 12px;
-    border-color: rgba(255, 255, 255, 0.28);
-    background: rgba(255, 255, 255, 0.1);
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
     color: rgba(255, 255, 255, 0.9);
     font-size: 0.82rem;
   }
 
   .split-matches-link.is-active {
-    background: rgba(255, 248, 243, 0.98);
-    border-color: rgba(255, 248, 243, 0.98);
-    color: var(--accent-strong);
+    background: transparent;
+    border-color: transparent;
+    color: white;
   }
 
   .month-plan-stack {
