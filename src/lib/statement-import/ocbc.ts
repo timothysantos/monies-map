@@ -2,14 +2,15 @@ import {
   cleanOcbcDescription,
   compareImportRowsByDate,
   dateFromNumericStatementDate,
-  dateFromShortParts,
   findOcbc360Period,
   findOcbcStatementDate,
+  formatDate,
   inferCategory,
   isTransferDescription,
   labelFromFile,
   minorToDecimal,
   parseOcbcLastMoney,
+  MONTHS,
   parseOcbcMoneyToMinor,
   type ParsedStatementImport
 } from "./shared";
@@ -69,9 +70,6 @@ export function parseOcbc360Statement(lines: string[], fileName?: string): Parse
   let finalBalanceMinor: number | undefined;
   let minDate: string | undefined;
   let maxDate: string | undefined;
-  const statementYear = Number(period.endDate.slice(0, 4));
-  const statementMonth = Number(period.endDate.slice(5, 7));
-
   for (let index = previousIndex + 1; index < lines.length; index += 1) {
     const line = lines[index];
     if (/^BALANCE C\/F\b/i.test(line)) {
@@ -79,7 +77,7 @@ export function parseOcbc360Statement(lines: string[], fileName?: string): Parse
       break;
     }
 
-    const parsedHeader = parseOcbc360TransactionHeader(line, statementYear, statementMonth);
+    const parsedHeader = parseOcbc360TransactionHeader(line, period.startDate, period.endDate);
     if (!parsedHeader) {
       continue;
     }
@@ -107,7 +105,7 @@ export function parseOcbc360Statement(lines: string[], fileName?: string): Parse
       income: isIncome ? minorToDecimal(amountMinor) : "",
       account: accountName,
       category: type === "transfer" ? "Transfer" : inferCategory(description, isIncome),
-      note: parsedHeader.valueDate === parsedHeader.date ? "" : `value date: ${parsedHeader.valueDate}`,
+      note: parsedHeader.postDate === parsedHeader.date ? "" : `posted date: ${parsedHeader.postDate}`,
       type
     });
     minDate = minDate && minDate < parsedHeader.date ? minDate : parsedHeader.date;
@@ -227,18 +225,47 @@ function parseOcbcCardTransactionLine(line: string, accountName: string, stateme
   };
 }
 
-function parseOcbc360TransactionHeader(line: string, statementYear: number, statementMonth: number) {
+function parseOcbc360TransactionHeader(line: string, statementStartDate: string, statementEndDate: string) {
   const match = line.match(/^(\d{2})\s+([A-Z]{3})\s+(\d{2})\s+([A-Z]{3})\s+(.+?)\s+(\d{1,3}(?:,\d{3})*\.\d{2})\s+(\d{1,3}(?:,\d{3})*\.\d{2})$/);
   if (!match) {
     return null;
   }
+  const postDate = dateFromOcbc360StatementParts(match[1], match[2], statementStartDate, statementEndDate);
+  const valueDate = dateFromOcbc360StatementParts(match[3], match[4], statementStartDate, statementEndDate);
+  const date = postDate > statementEndDate && valueDate >= statementStartDate && valueDate <= statementEndDate
+    ? valueDate
+    : postDate;
   return {
-    date: dateFromShortParts(match[1], match[2], statementYear, statementMonth),
-    valueDate: dateFromShortParts(match[3], match[4], statementYear, statementMonth),
+    date,
+    postDate,
+    valueDate,
     description: match[5],
     amountMinor: parseOcbcMoneyToMinor(match[6]),
     balanceMinor: parseOcbcMoneyToMinor(match[7])
   };
+}
+
+function dateFromOcbc360StatementParts(day: string, monthLabel: string, statementStartDate: string, statementEndDate: string) {
+  const month = MONTHS[monthLabel.toUpperCase()];
+  const statementStartYear = Number(statementStartDate.slice(0, 4));
+  const statementEndYear = Number(statementEndDate.slice(0, 4));
+  const candidateYears = Array.from(new Set([
+    statementStartYear - 1,
+    statementStartYear,
+    statementEndYear,
+    statementEndYear + 1
+  ]));
+  const candidates = candidateYears.map((year) => formatDate(year, month, Number(day)));
+  const inPeriod = candidates.find((date) => date >= statementStartDate && date <= statementEndDate);
+  if (inPeriod) {
+    return inPeriod;
+  }
+
+  return candidates.sort((left, right) => distanceFromDate(left, statementEndDate) - distanceFromDate(right, statementEndDate))[0];
+}
+
+function distanceFromDate(left: string, right: string) {
+  return Math.abs(Date.parse(`${left}T00:00:00Z`) - Date.parse(`${right}T00:00:00Z`));
 }
 
 function isOcbc360TransactionBoundary(line: string) {
