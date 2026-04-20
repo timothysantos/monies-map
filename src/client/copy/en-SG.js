@@ -296,6 +296,7 @@ export const messages = {
     recentAccountFilter: "By account",
     recentAllAccounts: "All accounts",
     recentEmpty: "No imports match this account filter.",
+    recentRefreshing: "Updating recent imports...",
     recentPageSummary: (start, end, total) => `Showing ${start}-${end} of ${total} imports`,
     recentPageCount: (page, pageCount) => `Page ${page} of ${pageCount}`,
     previousPage: "Previous",

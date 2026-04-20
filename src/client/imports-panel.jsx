@@ -792,6 +792,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         recentImportAccountOptions={recentImportAccountOptions}
         recentImportGroups={recentImportModel.groups}
         recentImportsOpen={recentImportsOpen}
+        isRefreshing={isSubmitting}
         recentImportPage={recentImportPage}
         recentImportPageCount={recentImportModel.pageCount}
         recentImportStart={recentImportModel.start}
