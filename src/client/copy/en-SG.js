@@ -262,11 +262,11 @@ export const messages = {
       "It does not compare against unrelated accounts.",
       "It ignores draft and rolled-back imports."
     ],
-    previewOverlapDetail: "This can be normal for statement PDFs. Some banks start the next statement on the same day the previous statement ended, or include a prior-month posted transaction.",
+    previewOverlapDetail: "These rows are already in the ledger from earlier committed imports, not from the file currently being previewed. This can be normal for statement PDFs when a bank starts the next statement on the same day the previous statement ended, or includes a prior-month posted transaction.",
     previewOverlapActionTitle: "What to do",
     previewOverlapActions: ({ skippedPreviewRowCount, needsReviewPreviewRowCount, hasStatementReconciliationMismatch, hasStatementReconciliations }) => {
       const actions = [
-        "Use the entries below to see which already-committed ledger rows fall inside this statement's date range."
+        "Use the entries below to see which earlier committed ledger rows fall inside this statement's date range."
       ];
       if (needsReviewPreviewRowCount) {
         actions.push("Resolve the rows marked Needs review in the preview table before committing.");
@@ -284,7 +284,8 @@ export const messages = {
       }
       return actions;
     },
-    previewOverlapEntriesLabel: "Existing overlapping entries",
+    previewOverlapMismatchExplained: (amount) => `The statement difference is exactly ${amount}, which matches the overlapping entries below. That usually means a prior import is on this account but is not part of this statement. Check whether that earlier import belongs to another card account, then roll it back or remap before committing this statement.`,
+    previewOverlapEntriesLabel: "Already committed overlapping entries",
     dismissOverlap: "Reviewed",
     statementReconciliationTitle: "Statement balance check",
     statementReconciliationMatchedDetail: "If committed now, the preview rows reconcile against the detected statement balance using the ledger through the statement end date.",

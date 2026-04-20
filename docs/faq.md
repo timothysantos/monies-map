@@ -360,6 +360,9 @@ account and date range.
   statement ended. Leave already-committed duplicate rows skipped, resolve any
   rows marked for review, and commit only after the statement balance check
   matches or the remaining mismatch is understood.
+- Citibank activity CSV filenames that end in `-rewards.csv` or `-miles.csv`
+  are treated as that card account even if another Citibank card is selected as
+  the default account.
 - If two accounts share a name, choose the owner-qualified account in the import
   mapping. Overlap checks use that selected account, not just the display name.
 - Overlap warnings are date-range warnings; they do not remove rows by
