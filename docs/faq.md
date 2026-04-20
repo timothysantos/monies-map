@@ -363,9 +363,11 @@ Skipped rows stay visible in the preview. You can restore one if the duplicate
 decision was wrong, and statement checks refresh against the current commit set.
 
 If a statement mismatch is exactly resolved by including unresolved near-match
-rows for that account, the preview treats those rows as statement-confirmed
-rows instead of duplicate warnings. They stay in the commit set, and the
-statement check recalculates against the updated rows.
+rows, probable duplicates, or other app-skipped duplicate rows for that account,
+the preview treats those rows as statement-confirmed instead of duplicate
+warnings. They stay in the commit set, and the statement check recalculates
+against the updated rows. Rows you explicitly skipped stay skipped until you
+restore them.
 
 When a PDF statement has no new rows because every row was already imported from
 mid-cycle activity files, the import action changes to "Save statement

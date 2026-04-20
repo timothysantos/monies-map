@@ -199,7 +199,7 @@ export async function buildImportPreview(
   }
 
   const overlapImports = await findOverlappingImports(db, previewRows);
-  autoIncludeNearMatchesExplainedByStatementBalance({
+  autoIncludeDuplicateMatchesExplainedByStatementBalance({
     accounts,
     existingRows: existingTransactions.results,
     previewRows,
@@ -280,12 +280,15 @@ function buildPreviewLedgerRows(previewRows: ImportPreviewRowDto[]) {
     }));
 }
 
-function getNearMatchReviewRowsForAccount(previewRows: ImportPreviewRowDto[], accountId: string, statementEndDate: string) {
+function getStatementConfirmableDuplicateRowsForAccount(previewRows: ImportPreviewRowDto[], accountId: string, statementEndDate: string) {
   return previewRows.filter((row) => (
     row.accountId === accountId
-    && row.commitStatus === "needs_review"
     && row.date <= statementEndDate
-    && row.duplicateMatches?.some((match) => match.matchKind === "near")
+    && Boolean(row.duplicateMatches?.length)
+    && (
+      row.commitStatus === "needs_review"
+      || (row.commitStatus === "skipped" && !getRequestedCommitStatus(row.rawRow))
+    )
   ));
 }
 
@@ -299,7 +302,7 @@ function sumSignedPreviewRows(previewRows: ImportPreviewRowDto[]) {
   ), 0);
 }
 
-function autoIncludeNearMatchesExplainedByStatementBalance(input: {
+function autoIncludeDuplicateMatchesExplainedByStatementBalance(input: {
   accounts: AccountDto[];
   existingRows: {
     account_id: string;
@@ -338,15 +341,16 @@ function autoIncludeNearMatchesExplainedByStatementBalance(input: {
       rows: [...input.existingRows, ...buildPreviewLedgerRows(input.previewRows)]
     });
     const deltaMinor = projectedLedgerBalanceMinor - statementBalanceMinor;
-    const nearMatchReviewRows = getNearMatchReviewRowsForAccount(input.previewRows, account.id, statementEndDate);
-    const nearMatchReviewTotalMinor = sumSignedPreviewRows(nearMatchReviewRows);
+    const confirmableDuplicateRows = getStatementConfirmableDuplicateRowsForAccount(input.previewRows, account.id, statementEndDate);
+    const confirmableDuplicateTotalMinor = sumSignedPreviewRows(confirmableDuplicateRows);
 
-    // A near match is normally ambiguous. If adding the ambiguous rows removes
-    // the exact account-level statement delta, the statement check has resolved
-    // the ambiguity, so the rows should remain importable instead of needing
-    // manual duplicate review.
-    if (deltaMinor !== 0 && nearMatchReviewRows.length > 0 && deltaMinor + nearMatchReviewTotalMinor === 0) {
-      for (const row of nearMatchReviewRows) {
+    // Duplicate matches are intentionally cautious because bank posting dates
+    // can differ across mid-cycle exports and final statements. If adding the
+    // app-skipped or still-unresolved duplicate rows removes the exact
+    // account-level statement delta, the statement has confirmed those rows
+    // belong in this import. User-skipped rows keep their explicit decision.
+    if (deltaMinor !== 0 && confirmableDuplicateRows.length > 0 && deltaMinor + confirmableDuplicateTotalMinor === 0) {
+      for (const row of confirmableDuplicateRows) {
         row.commitStatus = "included";
         row.commitStatusReason = "Statement balance check confirmed this row belongs in the import.";
         row.duplicateMatches = undefined;

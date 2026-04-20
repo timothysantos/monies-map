@@ -4896,6 +4896,8 @@ button.split-activity-card:hover {
 
 .import-table-wrap {
   overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .import-preview-status-row {
@@ -4926,11 +4928,18 @@ button.split-activity-card:hover {
 .import-skipped-rows {
   display: grid;
   gap: 10px;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
   margin-top: 14px;
   padding: 12px;
   border: 1px solid rgba(91, 107, 125, 0.16);
   border-radius: 12px;
   background: rgba(244, 246, 248, 0.72);
+}
+
+.import-skipped-rows > * {
+  min-width: 0;
 }
 
 .import-skipped-rows summary {
