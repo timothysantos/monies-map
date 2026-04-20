@@ -1,3 +1,6 @@
+import * as Popover from "@radix-ui/react-popover";
+import { useState } from "react";
+import { Info } from "lucide-react";
 import { getAccountSelectOptions } from "./account-display";
 import { messages } from "./copy/en-SG";
 import {
@@ -226,7 +229,10 @@ function OverlapImports({
 }) {
   return (
     <div className="import-warning import-warning-overlap">
-      <strong>{messages.imports.previewOverlapTitle}</strong>
+      <div className="import-warning-title-row">
+        <strong>{messages.imports.previewOverlapTitle}</strong>
+        <OverlapScopeInfo />
+      </div>
       <p className="lede compact">{messages.imports.previewOverlapDetail}</p>
       <div className="import-overlap-guidance">
         <strong>{messages.imports.previewOverlapActionTitle}</strong>
@@ -282,6 +288,48 @@ function OverlapImports({
         ))}
       </div>
     </div>
+  );
+}
+
+function OverlapScopeInfo() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          className="info-icon-button"
+          aria-label={messages.imports.previewOverlapScopeAriaLabel}
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setOpen(false)}
+        >
+          <Info size={15} aria-hidden="true" />
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          className="import-overlap-scope-popover"
+          sideOffset={8}
+          align="start"
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+        >
+          <div className="category-popover-head">
+            <strong>{messages.imports.previewOverlapScopeTitle}</strong>
+            <span>{messages.imports.previewOverlapScopeDetail}</span>
+          </div>
+          <ul>
+            {messages.imports.previewOverlapScopeItems.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <Popover.Arrow className="category-popover-arrow" />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }
 
