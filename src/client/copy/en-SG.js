@@ -307,6 +307,7 @@ export const messages = {
     duplicateRowDetail: (match) => `Already in ledger: ${match}`,
     needsReview: "Needs review",
     willImportRows: (count) => `${count} row${count === 1 ? "" : "s"} will import`,
+    willSaveStatementCheckpoints: (count) => `${count} statement checkpoint${count === 1 ? "" : "s"} will save`,
     willSkipRows: (count) => `${count} row${count === 1 ? "" : "s"} will skip`,
     needsReviewRows: (count) => `${count} row${count === 1 ? "" : "s"} need review`,
     noRowsToImport: "No transaction rows are set to import. You can still commit statement checkpoints when the balance check matches.",

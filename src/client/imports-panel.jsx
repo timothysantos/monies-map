@@ -765,13 +765,14 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             onUpdateStatementCheckpoint={updateStatementCheckpoint}
           />
 
-          {previewRows.length ? (
+          {preview ? (
             <ImportPreviewRowsTable
               previewRows={previewRows}
               accounts={accounts}
               categories={categories}
               people={people}
               knownAccountNames={knownAccountNames}
+              statementCheckpointCount={statementCheckpoints.length}
               isCommitDisabled={isCommitDisabled}
               isSubmitting={isSubmitting}
               commitLabel={commitLabel}
