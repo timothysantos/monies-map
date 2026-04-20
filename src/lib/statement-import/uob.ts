@@ -255,6 +255,11 @@ function parseUobCreditCardSection(
     }
     minPostDate = minPostDate && minPostDate < postDate ? minPostDate : postDate;
 
+    if (amountMinor === 0) {
+      index = cursor;
+      continue;
+    }
+
     const description = cleanUobSavingsDescription(compactDescription(descriptionLines.join(" ")));
     const type = isCredit && isTransferDescription(description) ? "transfer" : isCredit ? "income" : isTransferDescription(description) ? "transfer" : "expense";
     rows.push({
