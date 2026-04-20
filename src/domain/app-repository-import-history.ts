@@ -4,6 +4,7 @@ import type { ImportBatchDto } from "../types/dto";
 
 const DEFAULT_IMPORT_HISTORY_LIMIT = 100;
 const MAX_IMPORT_HISTORY_LIMIT = 200;
+const IMPORT_HISTORY_ACCOUNT_LOOKUP_CHUNK_SIZE = 80;
 
 type LoadImportBatchesOptions = {
   limit?: number;
@@ -69,31 +70,11 @@ export async function loadImportBatches(
     return [];
   }
 
-  const importIds = result.results.map((row) => row.id);
-  const importIdPlaceholders = importIds.map(() => "?").join(", ");
-  const accountRows = await db
-    .prepare(`
-      SELECT DISTINCT
-        imports.id AS import_id,
-        accounts.id AS account_id,
-        accounts.account_name,
-        CASE
-          WHEN accounts.is_joint = 1 THEN 'Shared'
-          ELSE people.display_name
-        END AS owner_name
-      FROM imports
-      LEFT JOIN transactions ON transactions.import_id = imports.id
-      LEFT JOIN accounts ON accounts.id = transactions.account_id
-      LEFT JOIN people ON people.id = accounts.owner_person_id
-      WHERE imports.household_id = ?
-        AND imports.id IN (${importIdPlaceholders})
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, ...importIds)
-    .all<{ import_id: string; account_id: string | null; account_name: string | null; owner_name: string | null }>();
+  const accountRows = await loadImportAccountRows(db, result.results.map((row) => row.id));
 
   const accountIdsByImportId = new Map<string, Set<string>>();
   const accountNamesByImportId = new Map<string, Set<string>>();
-  for (const row of accountRows.results) {
+  for (const row of accountRows) {
     if (row.account_id) {
       const currentIds = accountIdsByImportId.get(row.import_id) ?? new Set<string>();
       currentIds.add(row.account_id);
@@ -157,6 +138,38 @@ export async function loadImportBatches(
       note: row.note ?? undefined
     };
   });
+}
+
+async function loadImportAccountRows(db: D1Database, importIds: string[]) {
+  const rows: { import_id: string; account_id: string | null; account_name: string | null; owner_name: string | null }[] = [];
+
+  for (let index = 0; index < importIds.length; index += IMPORT_HISTORY_ACCOUNT_LOOKUP_CHUNK_SIZE) {
+    const chunk = importIds.slice(index, index + IMPORT_HISTORY_ACCOUNT_LOOKUP_CHUNK_SIZE);
+    const importIdPlaceholders = chunk.map(() => "?").join(", ");
+    const accountRows = await db
+      .prepare(`
+        SELECT DISTINCT
+          imports.id AS import_id,
+          accounts.id AS account_id,
+          accounts.account_name,
+          CASE
+            WHEN accounts.is_joint = 1 THEN 'Shared'
+            ELSE people.display_name
+          END AS owner_name
+        FROM imports
+        LEFT JOIN transactions ON transactions.import_id = imports.id
+        LEFT JOIN accounts ON accounts.id = transactions.account_id
+        LEFT JOIN people ON people.id = accounts.owner_person_id
+        WHERE imports.household_id = ?
+          AND imports.id IN (${importIdPlaceholders})
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, ...chunk)
+      .all<{ import_id: string; account_id: string | null; account_name: string | null; owner_name: string | null }>();
+
+    rows.push(...accountRows.results);
+  }
+
+  return rows;
 }
 
 function formatImportAccountLabel(accountName: string, ownerName: string | null) {
