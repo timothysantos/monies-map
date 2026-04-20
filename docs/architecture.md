@@ -190,7 +190,9 @@ That distinction matters because the system needs to answer questions like:
 - import previews and recent import batches expose duplicate and same-account
   overlapping date-range signals so CSV trust is visible before and after
   commit; preview overlap DTOs include the committed transactions that sit
-  inside the overlapping account/date range
+  inside the overlapping account/date range, and the review UI turns those
+  signals into next-step guidance based on duplicate skip state and statement
+  balance reconciliation
 - PDF statement previews also compare detected statement balances with the
   projected account ledger through each statement end date before commit.
   Skipped duplicate rows are excluded from the pending import set and are

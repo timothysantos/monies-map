@@ -250,7 +250,28 @@ export const messages = {
     overlappingImports: (count) => `${count} existing import${count === 1 ? "" : "s"} overlap this date range`,
     previewCoverage: (start, end) => `Preview coverage ${start} - ${end}`,
     previewOverlapTitle: "Existing import overlap",
-    previewOverlapDetail: "Overlap is based on transaction coverage dates and account, not the date the import batch was created.",
+    previewOverlapDetail: "This can be normal for statement PDFs. Some banks start the next statement on the same day the previous statement ended, or include a prior-month posted transaction.",
+    previewOverlapActionTitle: "What to do",
+    previewOverlapActions: ({ skippedPreviewRowCount, needsReviewPreviewRowCount, hasStatementReconciliationMismatch, hasStatementReconciliations }) => {
+      const actions = [
+        "Use the entries below to see which already-committed ledger rows fall inside this statement's date range."
+      ];
+      if (needsReviewPreviewRowCount) {
+        actions.push("Resolve the rows marked Needs review in the preview table before committing.");
+      } else if (skippedPreviewRowCount) {
+        actions.push("Leave duplicate rows skipped when they are already in the ledger. Restore a skipped row only if the ledger is missing it.");
+      } else {
+        actions.push("If none of the preview rows are duplicates, this overlap may only be a statement date-range warning.");
+      }
+      if (hasStatementReconciliations) {
+        actions.push(hasStatementReconciliationMismatch
+          ? "Do not commit yet if the statement balance check is still mismatched. Fix skipped, restored, or missing rows first."
+          : "When the statement balance check is matched, mark the overlap Reviewed and commit.");
+      } else {
+        actions.push("Mark the overlap Reviewed only after the preview rows match what should be added to the ledger.");
+      }
+      return actions;
+    },
     previewOverlapEntriesLabel: "Existing overlapping entries",
     dismissOverlap: "Reviewed",
     statementReconciliationTitle: "Statement balance check",
