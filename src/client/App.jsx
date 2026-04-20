@@ -523,8 +523,12 @@ export function App() {
     clearBootstrapCache();
     clearEntriesPageCache();
 
-    if (!routePageRequest || refreshShell) {
+    if (!routePageRequest) {
       return refreshBootstrap({ broadcast });
+    }
+
+    if (refreshShell) {
+      await refreshBootstrap({ broadcast });
     }
 
     const finishBootstrapLoad = beginBootstrapLoad();
