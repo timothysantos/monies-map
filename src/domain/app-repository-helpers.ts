@@ -459,8 +459,9 @@ export function countSharedTokens(left: string, right: string) {
 export function compareDescriptionSimilarity(left: string, right: string) {
   const leftTokens = new Set(normalizeDescriptionForMatch(left).split(" ").filter(Boolean));
   const rightTokens = new Set(normalizeDescriptionForMatch(right).split(" ").filter(Boolean));
+  const compactSimilarity = compareCompactDescriptionSimilarity(left, right);
   if (!leftTokens.size || !rightTokens.size) {
-    return 0;
+    return compactSimilarity;
   }
 
   let overlap = 0;
@@ -470,7 +471,27 @@ export function compareDescriptionSimilarity(left: string, right: string) {
     }
   }
 
-  return overlap / Math.max(leftTokens.size, rightTokens.size);
+  return Math.max(compactSimilarity, overlap / Math.max(leftTokens.size, rightTokens.size));
+}
+
+function compareCompactDescriptionSimilarity(left: string, right: string) {
+  const leftCompact = normalizeDescriptionForMatch(left).replaceAll(" ", "");
+  const rightCompact = normalizeDescriptionForMatch(right).replaceAll(" ", "");
+  if (!leftCompact || !rightCompact) {
+    return 0;
+  }
+
+  if (leftCompact === rightCompact) {
+    return 1;
+  }
+
+  const shorter = leftCompact.length < rightCompact.length ? leftCompact : rightCompact;
+  const longer = leftCompact.length < rightCompact.length ? rightCompact : leftCompact;
+  if (shorter.length >= 6 && longer.includes(shorter)) {
+    return 0.9;
+  }
+
+  return 0;
 }
 
 export function normalizeDescriptionForMatch(value: string) {
