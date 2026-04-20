@@ -2077,6 +2077,10 @@ body:has(.note-dialog-overlay) .entries-fab {
   display: none;
 }
 
+body:has(.entry-inline-editor) .entries-fab:not(.splits-fab) {
+  display: none;
+}
+
 body:has(.split-inline-editor-card) .splits-fab {
   display: none;
 }
