@@ -12,6 +12,7 @@ export function ImportPreviewRowsTable({
   categories,
   people,
   knownAccountNames,
+  statementCheckpointCount = 0,
   isCommitDisabled,
   isSubmitting,
   commitLabel,
@@ -26,11 +27,17 @@ export function ImportPreviewRowsTable({
   const skippedRows = previewRows.filter((row) => row.commitStatus === "skipped");
   const includedCount = previewRows.filter((row) => row.commitStatus === "included" || !row.commitStatus).length;
   const needsReviewCount = previewRows.filter((row) => row.commitStatus === "needs_review").length;
+  const hasPreviewRows = previewRows.length > 0;
 
   return (
     <>
       <div className="import-summary-strip import-preview-status-row" aria-label={messages.imports.previewCommitSummaryLabel}>
-        <span className="import-summary-item is-success">{messages.imports.willImportRows(includedCount)}</span>
+        {includedCount || !statementCheckpointCount ? (
+          <span className="import-summary-item is-success">{messages.imports.willImportRows(includedCount)}</span>
+        ) : null}
+        {statementCheckpointCount ? (
+          <span className="import-summary-item is-success">{messages.imports.willSaveStatementCheckpoints(statementCheckpointCount)}</span>
+        ) : null}
         {skippedRows.length ? <span className="import-summary-item">{messages.imports.willSkipRows(skippedRows.length)}</span> : null}
         {needsReviewCount ? <span className="import-summary-item is-warning">{messages.imports.needsReviewRows(needsReviewCount)}</span> : null}
       </div>
@@ -67,7 +74,9 @@ export function ImportPreviewRowsTable({
           />
         </details>
       ) : null}
-      <ImportCommitButton disabled={isCommitDisabled} isSubmitting={isSubmitting} onCommit={onCommit} label={commitLabel} isBottom />
+      {hasPreviewRows ? (
+        <ImportCommitButton disabled={isCommitDisabled} isSubmitting={isSubmitting} onCommit={onCommit} label={commitLabel} isBottom />
+      ) : null}
     </>
   );
 }
