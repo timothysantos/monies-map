@@ -351,6 +351,8 @@ when the current preview overlaps a previous completed import for the same
 account and date range.
 
 - Duplicate warnings help prevent the same row from entering the ledger twice.
+- Duplicate matching normalizes punctuation and missing spaces in merchant text,
+  so rows like `M1LTDRECURRING` and `M1 LTD RECURRING` can still match.
 - Overlap warnings list the existing entries inside the overlapping account/date
   range so you can see which committed rows triggered the warning.
 - The info icon on the overlap warning explains that the check is scoped to
