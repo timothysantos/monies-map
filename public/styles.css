@@ -2544,15 +2544,23 @@ body:has(.split-inline-editor-card) .splits-fab {
   gap: 14px;
   align-items: start;
   padding: 10px 0;
+  width: 100%;
+  border: 0;
   border-top: 1px solid var(--line);
   background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
 }
 
-.split-activity-card[role="button"] {
+button.split-activity-card {
+  appearance: none;
+  -webkit-appearance: none;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
-.split-activity-card[role="button"]:hover {
+button.split-activity-card:hover {
   border-color: rgba(191, 103, 45, 0.18);
 }
 
