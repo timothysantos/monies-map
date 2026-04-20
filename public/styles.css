@@ -5279,6 +5279,25 @@ button.split-activity-card:hover {
   opacity: 0.5;
 }
 
+.import-history-refreshing {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  padding: 10px 12px;
+  border: 1px solid rgba(177, 94, 47, 0.22);
+  border-radius: 10px;
+  background: rgba(255, 250, 246, 0.92);
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.import-history-refreshing .app-spinner {
+  width: 18px;
+  height: 18px;
+  border-width: 2px;
+}
+
 .import-history-group {
   display: grid;
   gap: 6px;

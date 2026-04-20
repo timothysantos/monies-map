@@ -1744,7 +1744,7 @@ export function App() {
                   accounts={bootstrap.accounts}
                   categories={categories}
                   people={bootstrap.household.people}
-                  onRefresh={() => refreshBootstrap({ broadcast: true })}
+                  onRefresh={() => refreshRoutePage()}
                 />
               )}
             />

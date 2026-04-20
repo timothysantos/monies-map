@@ -13,6 +13,7 @@ export function ImportRecentHistorySection({
   recentImportAccountOptions,
   recentImportGroups,
   recentImportsOpen,
+  isRefreshing = false,
   recentImportPage,
   recentImportPageCount,
   recentImportStart,
@@ -65,6 +66,12 @@ export function ImportRecentHistorySection({
               onNextPage={onNextPage}
             />
           ) : null}
+          {isRefreshing ? (
+            <div className="import-history-refreshing" role="status" aria-live="polite">
+              <span className="app-spinner" aria-hidden="true" />
+              <span>{messages.imports.recentRefreshing}</span>
+            </div>
+          ) : null}
           {recentImportGroups.map((group) => (
             <section key={group.date} className="import-history-group">
               <div className="import-history-date">{formatDateOnly(group.date)}</div>
@@ -107,7 +114,7 @@ export function ImportRecentHistorySection({
               </div>
             </section>
           ))}
-          {!recentImportGroups.length ? <p className="lede compact">{messages.imports.recentEmpty}</p> : null}
+          {!recentImportGroups.length && !isRefreshing ? <p className="lede compact">{messages.imports.recentEmpty}</p> : null}
           {shouldPaginate ? (
             <ImportRecentPagination
               className="import-history-pagination-bottom"
