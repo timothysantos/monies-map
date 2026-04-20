@@ -188,7 +188,9 @@ That distinction matters because the system needs to answer questions like:
 - account health exposes reconciliation status, latest import freshness, and
   unresolved transfer counts so trust warnings stay close to balances
 - import previews and recent import batches expose duplicate and same-account
-  overlapping date-range signals so CSV trust is visible before and after commit
+  overlapping date-range signals so CSV trust is visible before and after
+  commit; preview overlap DTOs include the committed transactions that sit
+  inside the overlapping account/date range
 - PDF statement previews also compare detected statement balances with the
   projected account ledger through each statement end date before commit.
   Skipped duplicate rows are excluded from the pending import set and are
