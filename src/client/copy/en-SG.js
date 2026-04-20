@@ -250,6 +250,16 @@ export const messages = {
     overlappingImports: (count) => `${count} existing import${count === 1 ? "" : "s"} overlap this date range`,
     previewCoverage: (start, end) => `Preview coverage ${start} - ${end}`,
     previewOverlapTitle: "Existing import overlap",
+    previewOverlapScopeAriaLabel: "How overlap checks work",
+    previewOverlapScopeTitle: "Scope",
+    previewOverlapScopeDetail: "The overlap check is account-aware and import-aware.",
+    previewOverlapScopeItems: [
+      "It checks against all completed historical imports.",
+      "It only checks accounts present in the current preview, after account mapping.",
+      "If a PDF contains multiple account sections, it can detect overlaps for any of those mapped accounts.",
+      "It does not compare against unrelated accounts.",
+      "It ignores draft and rolled-back imports."
+    ],
     previewOverlapDetail: "This can be normal for statement PDFs. Some banks start the next statement on the same day the previous statement ended, or include a prior-month posted transaction.",
     previewOverlapActionTitle: "What to do",
     previewOverlapActions: ({ skippedPreviewRowCount, needsReviewPreviewRowCount, hasStatementReconciliationMismatch, hasStatementReconciliations }) => {
