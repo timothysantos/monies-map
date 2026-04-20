@@ -251,6 +251,7 @@ export const messages = {
     previewCoverage: (start, end) => `Preview coverage ${start} - ${end}`,
     previewOverlapTitle: "Existing import overlap",
     previewOverlapDetail: "Overlap is based on transaction coverage dates and account, not the date the import batch was created.",
+    previewOverlapEntriesLabel: "Existing overlapping entries",
     dismissOverlap: "Reviewed",
     statementReconciliationTitle: "Statement balance check",
     statementReconciliationMatchedDetail: "If committed now, the preview rows reconcile against the detected statement balance using the ledger through the statement end date.",

@@ -233,6 +233,21 @@ function OverlapImports({ imports, onDismissOverlap }) {
                 <span className="import-history-inline">{messages.imports.importCoverage(formatDateOnly(item.startDate), formatDateOnly(item.endDate))}</span>
               ) : null}
               {item.accountNames.length ? <span className="import-history-inline">{item.accountNames.join(", ")}</span> : null}
+              {item.overlapEntries?.length ? (
+                <>
+                  <span className="import-history-inline import-overlap-entry-title">{messages.imports.previewOverlapEntriesLabel}</span>
+                  <div className="import-overlap-entry-list" aria-label={messages.imports.previewOverlapEntriesLabel}>
+                    {item.overlapEntries.map((entry) => (
+                      <div key={entry.id} className="import-overlap-entry-row">
+                        <span className="import-overlap-entry-date">{formatDateOnly(entry.date)}</span>
+                        <span className="import-overlap-entry-description">{entry.description}</span>
+                        <span className="import-overlap-entry-account">{entry.accountName}</span>
+                        <strong className="import-overlap-entry-amount">{formatOverlapEntryAmount(entry)}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : null}
             </div>
             <div className="import-meta import-meta-compact">
               <button type="button" className="subtle-action" onClick={() => onDismissOverlap(item.id)}>
@@ -244,6 +259,14 @@ function OverlapImports({ imports, onDismissOverlap }) {
       </div>
     </div>
   );
+}
+
+function formatOverlapEntryAmount(entry) {
+  if (entry.entryType === "transfer" && entry.transferDirection) {
+    return `${entry.transferDirection === "in" ? "Transfer in" : "Transfer out"} ${money(Math.abs(entry.amountMinor))}`;
+  }
+
+  return money(entry.amountMinor);
 }
 
 function StatementBalanceCheck({ reconciliations, hasMismatch, isSubmitting, onRefreshStatementReconciliation }) {

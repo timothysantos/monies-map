@@ -369,6 +369,17 @@ export interface ImportOverlapDto {
   startDate?: string;
   endDate?: string;
   accountNames: string[];
+  overlapEntries?: ImportOverlapEntryDto[];
+}
+
+export interface ImportOverlapEntryDto {
+  id: string;
+  date: string;
+  description: string;
+  amountMinor: number;
+  accountName: string;
+  entryType: EntryType;
+  transferDirection?: TransferDirection;
 }
 
 export interface ImportPreviewRowDto {

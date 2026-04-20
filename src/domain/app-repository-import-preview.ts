@@ -16,6 +16,7 @@ import { loadCategoryMatchRules, matchCategoryRule } from "./app-repository-cate
 import { loadAccounts } from "./app-repository-settings";
 import type {
   AccountDto,
+  ImportOverlapDto,
   ImportPreviewDto,
   ImportPreviewRowDto,
   StatementCheckpointDraftDto
@@ -483,39 +484,32 @@ async function findOverlappingImports(db: D1Database, rows: ImportPreviewRowDto[
   const placeholders = accountIds.map(() => "?").join(", ");
   const overlapRows = await db
     .prepare(`
-      WITH overlapping_imports AS (
-        SELECT
-          imports.id,
-          accounts.account_name,
-          CASE
-            WHEN accounts.is_joint = 1 THEN 'Shared'
-            ELSE people.display_name
-          END AS owner_name,
-          transactions.id AS transaction_id,
-          transactions.transaction_date
-        FROM imports
-        INNER JOIN transactions ON transactions.import_id = imports.id
-        INNER JOIN accounts ON accounts.id = transactions.account_id
-        LEFT JOIN people ON people.id = accounts.owner_person_id
-        WHERE imports.household_id = ?
-          AND imports.status = 'completed'
-          AND accounts.id IN (${placeholders})
-          AND transactions.transaction_date BETWEEN ? AND ?
-      )
       SELECT
         imports.id,
         imports.source_label,
         imports.source_type,
         imports.imported_at,
         imports.status,
-        COUNT(DISTINCT overlapping_imports.transaction_id) AS transaction_count,
-        MIN(overlapping_imports.transaction_date) AS start_date,
-        MAX(overlapping_imports.transaction_date) AS end_date,
-        GROUP_CONCAT(DISTINCT overlapping_imports.account_name || ' - ' || COALESCE(overlapping_imports.owner_name, 'Shared')) AS account_names
+        accounts.account_name,
+        CASE
+          WHEN accounts.is_joint = 1 THEN 'Shared'
+          ELSE people.display_name
+        END AS owner_name,
+        transactions.id AS transaction_id,
+        transactions.transaction_date,
+        transactions.description,
+        transactions.amount_minor,
+        transactions.entry_type,
+        transactions.transfer_direction
       FROM imports
-      INNER JOIN overlapping_imports ON overlapping_imports.id = imports.id
-      GROUP BY imports.id, imports.source_label, imports.source_type, imports.imported_at, imports.status
-      ORDER BY imports.imported_at DESC
+      INNER JOIN transactions ON transactions.import_id = imports.id
+      INNER JOIN accounts ON accounts.id = transactions.account_id
+      LEFT JOIN people ON people.id = accounts.owner_person_id
+      WHERE imports.household_id = ?
+        AND imports.status = 'completed'
+        AND accounts.id IN (${placeholders})
+        AND transactions.transaction_date BETWEEN ? AND ?
+      ORDER BY imports.imported_at DESC, transactions.transaction_date ASC, transactions.id ASC
     `)
     .bind(DEFAULT_HOUSEHOLD_ID, ...accountIds, dates[0], dates[dates.length - 1])
     .all<{
@@ -524,21 +518,48 @@ async function findOverlappingImports(db: D1Database, rows: ImportPreviewRowDto[
       source_type: "csv" | "pdf" | "manual";
       imported_at: string;
       status: "draft" | "completed" | "rolled_back";
-      transaction_count: number;
-      start_date: string | null;
-      end_date: string | null;
-      account_names: string | null;
+      account_name: string;
+      owner_name: string | null;
+      transaction_id: string;
+      transaction_date: string;
+      description: string;
+      amount_minor: number;
+      entry_type: "expense" | "income" | "transfer";
+      transfer_direction: "in" | "out" | null;
     }>();
 
-  return overlapRows.results.map((row) => ({
-    id: row.id,
-    sourceLabel: row.source_label,
-    sourceType: row.source_type,
-    importedAt: row.imported_at,
-    status: row.status,
-    transactionCount: Number(row.transaction_count ?? 0),
-    startDate: row.start_date ?? undefined,
-    endDate: row.end_date ?? undefined,
-    accountNames: row.account_names?.split(",").sort() ?? []
-  }));
+  const importsById = new Map<string, ImportOverlapDto>();
+  for (const row of overlapRows.results) {
+    const overlap = importsById.get(row.id) ?? {
+      id: row.id,
+      sourceLabel: row.source_label,
+      sourceType: row.source_type,
+      importedAt: row.imported_at,
+      status: row.status,
+      transactionCount: 0,
+      startDate: undefined,
+      endDate: undefined,
+      accountNames: [],
+      overlapEntries: []
+    };
+    const accountLabel = `${row.account_name} - ${row.owner_name ?? "Shared"}`;
+    const accountNames = new Set(overlap.accountNames);
+    accountNames.add(accountLabel);
+    overlap.accountNames = Array.from(accountNames).sort();
+    overlap.transactionCount += 1;
+    overlap.startDate = overlap.startDate && overlap.startDate < row.transaction_date ? overlap.startDate : row.transaction_date;
+    overlap.endDate = overlap.endDate && overlap.endDate > row.transaction_date ? overlap.endDate : row.transaction_date;
+    overlap.overlapEntries?.push({
+      id: row.transaction_id,
+      date: row.transaction_date,
+      description: row.description,
+      amountMinor: Number(row.amount_minor),
+      accountName: accountLabel,
+      entryType: row.entry_type,
+      transferDirection: row.transfer_direction ?? undefined
+    });
+    importsById.set(row.id, overlap);
+  }
+
+  return Array.from(importsById.values());
 }
