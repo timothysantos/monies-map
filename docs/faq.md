@@ -353,6 +353,11 @@ account and date range.
 - Duplicate warnings help prevent the same row from entering the ledger twice.
 - Overlap warnings list the existing entries inside the overlapping account/date
   range so you can see which committed rows triggered the warning.
+- Statement PDF overlaps can be normal when a bank includes a prior-month posted
+  transaction or starts the next statement on the same day the previous
+  statement ended. Leave already-committed duplicate rows skipped, resolve any
+  rows marked for review, and commit only after the statement balance check
+  matches or the remaining mismatch is understood.
 - If two accounts share a name, choose the owner-qualified account in the import
   mapping. Overlap checks use that selected account, not just the display name.
 - Overlap warnings are date-range warnings; they do not remove rows by

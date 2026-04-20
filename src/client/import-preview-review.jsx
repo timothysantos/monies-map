@@ -71,6 +71,10 @@ export function ImportPreviewReview({
       {visibleOverlapImports.length ? (
         <OverlapImports
           imports={visibleOverlapImports}
+          skippedPreviewRowCount={skippedPreviewRowCount}
+          needsReviewPreviewRowCount={needsReviewPreviewRowCount}
+          hasStatementReconciliationMismatch={hasStatementReconciliationMismatch}
+          hasStatementReconciliations={statementReconciliations.length > 0}
           onDismissOverlap={onDismissOverlap}
         />
       ) : null}
@@ -212,11 +216,31 @@ function PreviewGuardrailPills({ preview, previewDuplicateRowCount, skippedPrevi
   );
 }
 
-function OverlapImports({ imports, onDismissOverlap }) {
+function OverlapImports({
+  imports,
+  skippedPreviewRowCount,
+  needsReviewPreviewRowCount,
+  hasStatementReconciliationMismatch,
+  hasStatementReconciliations,
+  onDismissOverlap
+}) {
   return (
     <div className="import-warning import-warning-overlap">
       <strong>{messages.imports.previewOverlapTitle}</strong>
       <p className="lede compact">{messages.imports.previewOverlapDetail}</p>
+      <div className="import-overlap-guidance">
+        <strong>{messages.imports.previewOverlapActionTitle}</strong>
+        <ol>
+          {messages.imports.previewOverlapActions({
+            skippedPreviewRowCount,
+            needsReviewPreviewRowCount,
+            hasStatementReconciliationMismatch,
+            hasStatementReconciliations
+          }).map((action) => (
+            <li key={action}>{action}</li>
+          ))}
+        </ol>
+      </div>
       <div className="stack">
         {imports.map((item) => (
           <div key={item.id} className="import-card import-card-compact">

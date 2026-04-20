@@ -4817,6 +4817,25 @@ button.split-activity-card:hover {
   font-weight: 700;
 }
 
+.import-overlap-guidance {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid rgba(204, 154, 47, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.54);
+}
+
+.import-overlap-guidance ol {
+  margin: 0;
+  padding-left: 22px;
+  color: var(--muted);
+}
+
+.import-overlap-guidance li + li {
+  margin-top: 4px;
+}
+
 .import-overlap-entry-row {
   display: grid;
   grid-template-columns: minmax(120px, 0.8fr) minmax(180px, 2fr) minmax(140px, 1fr) max-content;
