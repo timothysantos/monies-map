@@ -297,6 +297,36 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
   }
 
+  function renderSplitActions(className) {
+    return (
+      <div className={className}>
+        <button
+          type="button"
+          className={`split-matches-link ${selectedMode === "matches" ? "is-active" : ""}`}
+          onClick={selectedMode === "matches" ? openActiveGroupView : openMatchesView}
+        >
+          {selectedMode === "matches" ? messages.splits.backToGroup : messages.splits.reviewMatches}
+          {selectedMode !== "matches" && pendingMatchCount ? ` (${pendingMatchCount})` : ""}
+        </button>
+        {!isHouseholdView && selectedMode !== "matches" ? (
+          <button
+            type="button"
+            className="subtle-action split-settle-header"
+            onClick={() => {
+              setFormError("");
+              setSettlementDialog(buildNewSettlementDraft({ activeGroup, groupBalanceMinor, people }));
+            }}
+            disabled={!activeGroup || groupBalanceMinor === 0}
+          >
+            {messages.splits.settleUp}
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  const splitSummaryToolbar = renderSplitActions("split-head-actions split-summary-toolbar");
+
   return (
     <article className="panel panel-accent panel-splits">
       <div className="panel-head">
@@ -304,29 +334,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
           <h2>{messages.tabs.splits}</h2>
           <p className="panel-context">{messages.splits.viewing(view.label)}</p>
         </div>
-        <div className="split-head-actions">
-          <button
-            type="button"
-            className={`split-matches-link ${selectedMode === "matches" ? "is-active" : ""}`}
-            onClick={selectedMode === "matches" ? openActiveGroupView : openMatchesView}
-          >
-            {selectedMode === "matches" ? messages.splits.backToGroup : messages.splits.reviewMatches}
-            {selectedMode !== "matches" && pendingMatchCount ? ` (${pendingMatchCount})` : ""}
-          </button>
-          {!isHouseholdView && selectedMode !== "matches" ? (
-            <button
-              type="button"
-              className="subtle-action split-settle-header"
-              onClick={() => {
-                setFormError("");
-                setSettlementDialog(buildNewSettlementDraft({ activeGroup, groupBalanceMinor, people }));
-              }}
-              disabled={!activeGroup || groupBalanceMinor === 0}
-            >
-              {messages.splits.settleUp}
-            </button>
-          ) : null}
-        </div>
+        {renderSplitActions("split-head-actions split-header-toolbar")}
       </div>
 
       <SplitsMainSection
@@ -344,6 +352,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         groupOptions={groupOptions}
         people={people}
         categoryOptions={categoryOptions}
+        summaryToolbar={splitSummaryToolbar}
         visibleMatches={visibleMatches}
         groupedCurrentActivity={groupedCurrentActivity}
         archivedBatches={archivedBatches}

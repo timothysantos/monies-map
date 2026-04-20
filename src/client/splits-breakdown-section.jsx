@@ -15,6 +15,7 @@ export function SplitsBreakdownSection({
   categories,
   onToggleBreakdown,
   onAddExpense,
+  summaryToolbar = null,
   readOnly = false
 }) {
   return (
@@ -29,11 +30,12 @@ export function SplitsBreakdownSection({
           <ChevronRight size={18} />
         </button>
         <div className="entries-summary-metrics">
-          <span>{messages.entries.totalSpend} <strong>{money(totalExpenseMinor)}</strong></span>
           {!readOnly ? (
             <span>{groupSummaryLabel} <strong className={groupBalanceMinor >= 0 ? "tone-positive" : "tone-negative"}>{money(Math.abs(groupBalanceMinor))}</strong></span>
           ) : null}
+          <span>{messages.entries.totalSpend} <strong>{money(totalExpenseMinor)}</strong></span>
         </div>
+        {summaryToolbar}
         {!readOnly ? (
           <div className="splits-summary-actions">
             <button

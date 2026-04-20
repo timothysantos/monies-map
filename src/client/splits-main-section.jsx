@@ -30,6 +30,7 @@ export function SplitsMainSection({
   onCreateGroup,
   onToggleBreakdown,
   onAddExpense,
+  summaryToolbar,
   onDismissMatch,
   onConfirmMatch,
   onOpenArchive,
@@ -84,6 +85,7 @@ export function SplitsMainSection({
         categories={categories}
         onToggleBreakdown={onToggleBreakdown}
         onAddExpense={onAddExpense}
+        summaryToolbar={summaryToolbar}
         readOnly={readOnly}
       />
 
