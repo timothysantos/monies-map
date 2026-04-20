@@ -4885,6 +4885,16 @@ button.split-activity-card:hover {
   margin-top: 4px;
 }
 
+.import-overlap-mismatch-hint {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(180, 35, 24, 0.14);
+  border-radius: 8px;
+  background: rgba(180, 35, 24, 0.07);
+  color: var(--negative);
+  font-weight: 700;
+}
+
 .import-overlap-entry-row {
   display: grid;
   grid-template-columns: minmax(120px, 0.8fr) minmax(180px, 2fr) minmax(140px, 1fr) max-content;

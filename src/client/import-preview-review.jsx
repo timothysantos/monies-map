@@ -78,6 +78,7 @@ export function ImportPreviewReview({
           needsReviewPreviewRowCount={needsReviewPreviewRowCount}
           hasStatementReconciliationMismatch={hasStatementReconciliationMismatch}
           hasStatementReconciliations={statementReconciliations.length > 0}
+          statementReconciliations={statementReconciliations}
           onDismissOverlap={onDismissOverlap}
         />
       ) : null}
@@ -225,8 +226,11 @@ function OverlapImports({
   needsReviewPreviewRowCount,
   hasStatementReconciliationMismatch,
   hasStatementReconciliations,
+  statementReconciliations,
   onDismissOverlap
 }) {
+  const overlapMismatchHint = getOverlapMismatchHint(imports, statementReconciliations);
+
   return (
     <div className="import-warning import-warning-overlap">
       <div className="import-warning-title-row">
@@ -246,6 +250,9 @@ function OverlapImports({
             <li key={action}>{action}</li>
           ))}
         </ol>
+        {overlapMismatchHint ? (
+          <p className="import-overlap-mismatch-hint">{overlapMismatchHint}</p>
+        ) : null}
       </div>
       <div className="stack">
         {imports.map((item) => (
@@ -289,6 +296,29 @@ function OverlapImports({
       </div>
     </div>
   );
+}
+
+function getOverlapMismatchHint(imports, statementReconciliations) {
+  const mismatch = statementReconciliations.find((item) => item.status === "mismatch" && item.deltaMinor);
+  if (!mismatch) {
+    return "";
+  }
+
+  const overlapLedgerDeltaMinor = imports
+    .flatMap((item) => item.overlapEntries ?? [])
+    .reduce((total, entry) => total + getOverlapEntrySignedMinor(entry), 0);
+
+  if (Math.abs(overlapLedgerDeltaMinor) !== Math.abs(mismatch.deltaMinor)) {
+    return "";
+  }
+
+  return messages.imports.previewOverlapMismatchExplained(money(Math.abs(mismatch.deltaMinor)));
+}
+
+function getOverlapEntrySignedMinor(entry) {
+  return entry.entryType === "income" || (entry.entryType === "transfer" && entry.transferDirection === "in")
+    ? Number(entry.amountMinor)
+    : -Number(entry.amountMinor);
 }
 
 function OverlapScopeInfo() {

@@ -43,7 +43,9 @@ That distinction matters because the system needs to answer questions like:
   example, UOB One `.xls` history exports, Citibank credit-card activity `.csv`
   exports, and OCBC card or 360 account activity `.csv` exports are parsed locally into
   reviewable rows but do not create statement checkpoints. Citibank activity CSV
-  parsing is intentionally gated by the selected Citibank credit-card account
+  parsing is intentionally gated by the selected Citibank credit-card account,
+  then `-rewards.csv` and `-miles.csv` filename hints set the parsed account so
+  one Citi card's activity cannot silently import into another selected Citi card
   because the files are headerless; OCBC activity parsing is gated by an OCBC
   account context or an OCBC activity filename.
 - PDF statement parsers are institution-specific. UOB card and savings
