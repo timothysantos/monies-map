@@ -4,7 +4,6 @@ import { Check, X } from "lucide-react";
 import { getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { formatDateOnly, money } from "./formatters";
-import { keepFocusedControlVisible } from "./mobile-focus-visibility";
 import { SplitExpenseFields, SplitSettlementFields } from "./splits-dialogs";
 import { CategoryGlyph } from "./ui-components";
 
@@ -122,10 +121,6 @@ export function SplitActivityGroups({
                 key={splitItemKey(item)}
                 className="split-inline-editor-card"
                 onClick={(event) => event.stopPropagation()}
-                onFocusCapture={(event) => {
-                  window.setTimeout(() => keepFocusedControlVisible(event.target, { bottomPadding: 160 }), 120);
-                  window.setTimeout(() => keepFocusedControlVisible(event.target, { bottomPadding: 160 }), 380);
-                }}
               >
                 {editingDraft.kind === "expense" ? (
                   <SplitExpenseFields

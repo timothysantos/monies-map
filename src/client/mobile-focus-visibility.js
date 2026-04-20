@@ -46,7 +46,7 @@ export function keepFocusedControlVisible(target, options = {}) {
   if (Math.abs(scrollDelta) > 1) {
     window.scrollBy({
       top: scrollDelta,
-      behavior: options.behavior ?? "smooth"
+      behavior: options.behavior ?? "auto"
     });
   }
 }
@@ -57,6 +57,7 @@ export function installMobileFocusVisibility() {
   }
 
   const timers = new Set();
+  const scheduledTargets = new WeakMap();
 
   function clearTimer(timer) {
     timers.delete(timer);
@@ -67,13 +68,19 @@ export function installMobileFocusVisibility() {
       return;
     }
 
-    for (const delay of [40, 180, 360]) {
-      const timer = window.setTimeout(() => {
-        clearTimer(timer);
-        keepFocusedControlVisible(target);
-      }, delay);
-      timers.add(timer);
+    const currentTimer = scheduledTargets.get(target);
+    if (currentTimer) {
+      window.clearTimeout(currentTimer);
+      clearTimer(currentTimer);
     }
+
+    const timer = window.setTimeout(() => {
+      clearTimer(timer);
+      scheduledTargets.delete(target);
+      keepFocusedControlVisible(target);
+    }, 240);
+    scheduledTargets.set(target, timer);
+    timers.add(timer);
   }
 
   function handleFocusIn(event) {
@@ -86,12 +93,10 @@ export function installMobileFocusVisibility() {
 
   document.addEventListener("focusin", handleFocusIn, true);
   window.visualViewport?.addEventListener("resize", handleVisualViewportChange);
-  window.visualViewport?.addEventListener("scroll", handleVisualViewportChange);
 
   return () => {
     document.removeEventListener("focusin", handleFocusIn, true);
     window.visualViewport?.removeEventListener("resize", handleVisualViewportChange);
-    window.visualViewport?.removeEventListener("scroll", handleVisualViewportChange);
     for (const timer of timers) {
       window.clearTimeout(timer);
     }
