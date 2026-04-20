@@ -5663,8 +5663,17 @@ th {
       linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 45%);
     color: white;
     min-height: calc(100dvh - 104px - env(safe-area-inset-bottom, 0px));
-    padding-top: 12px;
+    padding-top: 8px;
     padding-bottom: calc(174px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .panel-splits > .panel-head {
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .panel-splits > .panel-head > div:first-child {
+    display: none;
   }
 
   .chart-card,
@@ -5830,6 +5839,11 @@ th {
     background: rgba(255, 255, 255, 0.96);
     box-shadow: 0 12px 30px rgba(27, 24, 21, 0.14);
     backdrop-filter: blur(10px);
+  }
+
+  body:has(.entry-row.is-editing) .tab-strip,
+  body:has(.split-inline-editor-card) .tab-strip {
+    display: none;
   }
 
   .note-dialog-content {
@@ -6863,7 +6877,7 @@ th {
 
   .splits-summary-strip {
     gap: 8px;
-    padding: 7px 10px;
+    padding: 6px 9px;
     overflow-x: auto;
     overflow-y: hidden;
     flex-wrap: nowrap;
@@ -6871,13 +6885,13 @@ th {
   }
 
   .splits-summary-strip .summary-chevron {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
   }
 
   .splits-summary-strip .entries-summary-metrics {
     gap: 8px;
-    font-size: 0.86rem;
+    font-size: 0.82rem;
   }
 
   .splits-summary-actions {
@@ -6920,7 +6934,7 @@ th {
   }
 
   .split-head-actions {
-    justify-content: flex-start;
+    justify-content: flex-end;
     gap: 8px;
     width: 100%;
   }
