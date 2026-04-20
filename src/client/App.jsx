@@ -1730,7 +1730,7 @@ export function App() {
                   view={pageView}
                   categories={categories}
                   people={bootstrap.household.people}
-                  onRefresh={() => refreshRoutePage()}
+                  onRefresh={() => refreshRoutePage({ refreshShell: true, broadcast: true })}
                 />
               )}
             />
