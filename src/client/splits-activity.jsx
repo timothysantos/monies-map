@@ -179,20 +179,8 @@ export function SplitActivityGroups({
             );
           }
 
-          return (
-            <article
-              key={splitItemKey(item)}
-              className="split-activity-card"
-              role={isEditable ? "button" : undefined}
-              tabIndex={isEditable ? 0 : undefined}
-              onClick={openEditor}
-              onKeyDown={(event) => {
-                if (isEditable && (event.key === "Enter" || event.key === " ")) {
-                  event.preventDefault();
-                  openEditor();
-                }
-              }}
-            >
+          const cardContent = (
+            <>
               <div className="split-activity-leading">
                 <span className="category-icon category-icon-static" style={{ "--category-color": theme.color }}>
                   <CategoryGlyph iconKey={theme.iconKey} />
@@ -240,6 +228,25 @@ export function SplitActivityGroups({
                   <span className="share-row-meta">{item.matched ? messages.splits.linked : messages.splits.manual}</span>
                 </span>
               </div>
+            </>
+          );
+
+          if (isEditable) {
+            return (
+              <button
+                key={splitItemKey(item)}
+                type="button"
+                className="split-activity-card"
+                onClick={openEditor}
+              >
+                {cardContent}
+              </button>
+            );
+          }
+
+          return (
+            <article key={splitItemKey(item)} className="split-activity-card">
+              {cardContent}
             </article>
           );
         })}
