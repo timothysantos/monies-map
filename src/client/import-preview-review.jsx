@@ -1,5 +1,5 @@
 import * as Popover from "@radix-ui/react-popover";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Info } from "lucide-react";
 import { getAccountSelectOptions } from "./account-display";
 import { messages } from "./copy/en-SG";
@@ -293,6 +293,17 @@ function OverlapImports({
 
 function OverlapScopeInfo() {
   const [open, setOpen] = useState(false);
+  const closeTimeoutRef = useRef();
+
+  function openPopover() {
+    window.clearTimeout(closeTimeoutRef.current);
+    setOpen(true);
+  }
+
+  function closePopoverSoon() {
+    window.clearTimeout(closeTimeoutRef.current);
+    closeTimeoutRef.current = window.setTimeout(() => setOpen(false), 120);
+  }
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
@@ -301,10 +312,10 @@ function OverlapScopeInfo() {
           type="button"
           className="info-icon-button"
           aria-label={messages.imports.previewOverlapScopeAriaLabel}
-          onMouseEnter={() => setOpen(true)}
-          onMouseLeave={() => setOpen(false)}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setOpen(false)}
+          onMouseEnter={openPopover}
+          onMouseLeave={closePopoverSoon}
+          onFocus={openPopover}
+          onBlur={closePopoverSoon}
         >
           <Info size={15} aria-hidden="true" />
         </button>
@@ -314,8 +325,10 @@ function OverlapScopeInfo() {
           className="import-overlap-scope-popover"
           sideOffset={8}
           align="start"
-          onMouseEnter={() => setOpen(true)}
-          onMouseLeave={() => setOpen(false)}
+          onOpenAutoFocus={(event) => event.preventDefault()}
+          onCloseAutoFocus={(event) => event.preventDefault()}
+          onMouseEnter={openPopover}
+          onMouseLeave={closePopoverSoon}
         >
           <div className="category-popover-head">
             <strong>{messages.imports.previewOverlapScopeTitle}</strong>
