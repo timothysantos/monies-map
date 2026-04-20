@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { getAccountSelectOptions } from "./account-display";
 import { getCategoriesForSelect } from "./category-utils";
 import { messages } from "./copy/en-SG";
@@ -28,10 +29,10 @@ export function ImportPreviewRowsTable({
 
   return (
     <>
-      <div className="import-preview-status-row">
-        <span className="pill success">{messages.imports.willImportRows(includedCount)}</span>
-        {skippedRows.length ? <span className="pill">{messages.imports.willSkipRows(skippedRows.length)}</span> : null}
-        {needsReviewCount ? <span className="pill warning">{messages.imports.needsReviewRows(needsReviewCount)}</span> : null}
+      <div className="import-summary-strip import-preview-status-row" aria-label={messages.imports.previewCommitSummaryLabel}>
+        <span className="import-summary-item is-success">{messages.imports.willImportRows(includedCount)}</span>
+        {skippedRows.length ? <span className="import-summary-item">{messages.imports.willSkipRows(skippedRows.length)}</span> : null}
+        {needsReviewCount ? <span className="import-summary-item is-warning">{messages.imports.needsReviewRows(needsReviewCount)}</span> : null}
       </div>
       <ImportCommitButton disabled={isCommitDisabled} isSubmitting={isSubmitting} onCommit={onCommit} label={commitLabel} />
       {activeRows.length ? (
@@ -104,138 +105,151 @@ function PreviewRowsTable({
         <tbody>
           {rows.map((row) => {
             const duplicateMatch = row.duplicateMatches?.[0];
+            const showReviewDetails = Boolean(duplicateMatch || row.commitStatus === "needs_review" || row.commitStatusReason);
             return (
-              <tr key={row.rowId} className={duplicateMatch ? "import-preview-row-duplicate" : ""}>
-                <td>
-                  <span>{row.rowIndex}</span>
-                  {duplicateMatch ? (
-                    <span className={`pill duplicate-row-pill ${duplicateMatch.matchKind === "near" ? "warning" : ""}`}>
-                      {formatDuplicateMatchKind(duplicateMatch.matchKind)}
-                    </span>
-                  ) : null}
-                  {row.commitStatus === "needs_review" ? (
-                    <span className="pill warning duplicate-row-pill">{messages.imports.needsReview}</span>
-                  ) : null}
-                </td>
-                <td>
-                  <div className="import-row-actions">
-                    {row.commitStatus === "needs_review" ? (
-                      <button type="button" className="subtle-action" onClick={() => onUpdatePreviewRowCommitStatus(row.rowId, "included")}>
-                        {messages.imports.importPreviewRow}
-                      </button>
-                    ) : null}
-                    {isSkippedTable ? (
-                      <button type="button" className="subtle-action" onClick={() => onUpdatePreviewRowCommitStatus(row.rowId, "included")}>
-                        {messages.imports.restorePreviewRow}
-                      </button>
-                    ) : (
-                      <button type="button" className="subtle-action" onClick={() => onUpdatePreviewRowCommitStatus(row.rowId, "skipped")}>
-                        {messages.imports.skipPreviewRow}
-                      </button>
-                    )}
-                  </div>
-                </td>
-                <td>
-                  <input className="table-edit-input" type="date" value={row.date} onChange={(event) => onUpdatePreviewRow(row.rowId, { date: event.target.value })} disabled={isSkippedTable} />
-                </td>
-                <td>
-                  <input className="table-edit-input" value={row.description} onChange={(event) => onUpdatePreviewRow(row.rowId, { description: event.target.value })} disabled={isSkippedTable} />
-                  {duplicateMatch ? (
-                    <small className="duplicate-row-detail">
-                      {messages.imports.duplicateRowDetail(formatDuplicateMatch(duplicateMatch))}
-                    </small>
-                  ) : null}
-                  {row.commitStatusReason ? (
-                    <small className="duplicate-row-detail muted">{row.commitStatusReason}</small>
-                  ) : null}
-                </td>
-                <td className={getAmountToneClass(row.entryType === "expense" || row.transferDirection === "out" ? -row.amountMinor : row.amountMinor)}>
-                  <input
-                    className="table-edit-input import-amount-input"
-                    value={formatMinorInput(row.amountMinor)}
-                    onChange={(event) => onUpdatePreviewRow(row.rowId, { amountMinor: parseMoneyInput(event.target.value, row.amountMinor) })}
-                    disabled={isSkippedTable}
-                  />
-                </td>
-                <td>
-                  <select className="table-edit-input" value={row.entryType} onChange={(event) => onUpdatePreviewRow(row.rowId, { entryType: event.target.value })} disabled={isSkippedTable}>
-                    <option value="expense">Expense</option>
-                    <option value="income">Income</option>
-                    <option value="transfer">Transfer</option>
-                  </select>
-                </td>
-                <td>
-                  <select
-                    className="table-edit-input"
-                    value={row.accountId ?? row.accountName ?? ""}
-                    onChange={(event) => {
-                      const nextAccountId = event.target.value || undefined;
-                      const nextAccount = accounts.find((account) => account.id === nextAccountId);
-                      const nextAccountName = nextAccount?.name ?? (!nextAccountId ? undefined : row.accountName);
-                      onUpdatePreviewRow(row.rowId, {
-                        accountId: nextAccount?.id,
-                        accountName: nextAccountName,
-                        ...getPreviewAccountOwnerPatch(nextAccountName, row, nextAccount?.id)
-                      });
-                    }}
-                    disabled={isSkippedTable}
-                  >
-                    <option value="">{messages.entries.allWallets}</option>
-                    {row.accountName && !row.accountId && !knownAccountNames.has(row.accountName) ? (
-                      <option value={row.accountName}>{row.accountName}</option>
-                    ) : null}
-                    {accountOptions.map((account) => (
-                      <option key={account.id} value={account.value}>{account.label}</option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <select className="table-edit-input" value={row.categoryName ?? ""} onChange={(event) => onUpdatePreviewRow(row.rowId, { categoryName: event.target.value || undefined })} disabled={isSkippedTable}>
-                    <option value="">{messages.entries.allCategories}</option>
-                    {categorySelectOptions.map((category) => (
-                      <option key={category.id} value={category.name}>{category.name}</option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <select
-                    className="table-edit-input"
-                    value={row.ownershipType === "shared" ? "Shared" : (row.ownerName ?? "")}
-                    onChange={(event) => {
-                      const nextOwner = event.target.value;
-                      if (nextOwner === "Shared") {
-                        onUpdatePreviewRow(row.rowId, { ownershipType: "shared", ownerName: undefined, splitBasisPoints: 5000 });
-                        return;
-                      }
-                      onUpdatePreviewRow(row.rowId, { ownershipType: "direct", ownerName: nextOwner, splitBasisPoints: 10000 });
-                    }}
-                    disabled={isSkippedTable}
-                  >
-                    {people.map((person) => (
-                      <option key={person.id} value={person.name}>{person.name}</option>
-                    ))}
-                    <option value="Shared">{messages.entries.shared}</option>
-                  </select>
-                </td>
-                <td>
-                  {row.ownershipType === "shared" ? (
+              <Fragment key={row.rowId}>
+                <tr className={duplicateMatch ? "import-preview-row-duplicate" : ""}>
+                  <td>{row.rowIndex}</td>
+                  <td>
+                    <div className="import-row-actions">
+                      {row.commitStatus === "needs_review" ? (
+                        <button type="button" className="subtle-action" onClick={() => onUpdatePreviewRowCommitStatus(row.rowId, "included")}>
+                          {messages.imports.importPreviewRow}
+                        </button>
+                      ) : null}
+                      {isSkippedTable ? (
+                        <button type="button" className="subtle-action" onClick={() => onUpdatePreviewRowCommitStatus(row.rowId, "included")}>
+                          {messages.imports.restorePreviewRow}
+                        </button>
+                      ) : (
+                        <button type="button" className="subtle-action" onClick={() => onUpdatePreviewRowCommitStatus(row.rowId, "skipped")}>
+                          {messages.imports.skipPreviewRow}
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                  <td>
+                    <input className="table-edit-input" type="date" value={row.date} onChange={(event) => onUpdatePreviewRow(row.rowId, { date: event.target.value })} disabled={isSkippedTable} />
+                  </td>
+                  <td>
+                    <input className="table-edit-input import-description-input" value={row.description} onChange={(event) => onUpdatePreviewRow(row.rowId, { description: event.target.value })} disabled={isSkippedTable} />
+                  </td>
+                  <td className={getAmountToneClass(row.entryType === "expense" || row.transferDirection === "out" ? -row.amountMinor : row.amountMinor)}>
                     <input
-                      className="table-edit-input import-split-input"
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={Math.round((row.splitBasisPoints ?? 5000) / 100)}
-                      onChange={(event) => onUpdatePreviewRow(row.rowId, { splitBasisPoints: Math.round(Number(event.target.value || "50") * 100) })}
+                      className="table-edit-input import-amount-input"
+                      value={formatMinorInput(row.amountMinor)}
+                      onChange={(event) => onUpdatePreviewRow(row.rowId, { amountMinor: parseMoneyInput(event.target.value, row.amountMinor) })}
                       disabled={isSkippedTable}
                     />
-                  ) : (
-                    messages.common.emptyValue
-                  )}
-                </td>
-                <td>
-                  <input className="table-edit-input" value={row.note ?? ""} onChange={(event) => onUpdatePreviewRow(row.rowId, { note: event.target.value })} disabled={isSkippedTable} />
-                </td>
-              </tr>
+                  </td>
+                  <td>
+                    <select className="table-edit-input" value={row.entryType} onChange={(event) => onUpdatePreviewRow(row.rowId, { entryType: event.target.value })} disabled={isSkippedTable}>
+                      <option value="expense">Expense</option>
+                      <option value="income">Income</option>
+                      <option value="transfer">Transfer</option>
+                    </select>
+                  </td>
+                  <td>
+                    <select
+                      className="table-edit-input"
+                      value={row.accountId ?? row.accountName ?? ""}
+                      onChange={(event) => {
+                        const nextAccountId = event.target.value || undefined;
+                        const nextAccount = accounts.find((account) => account.id === nextAccountId);
+                        const nextAccountName = nextAccount?.name ?? (!nextAccountId ? undefined : row.accountName);
+                        onUpdatePreviewRow(row.rowId, {
+                          accountId: nextAccount?.id,
+                          accountName: nextAccountName,
+                          ...getPreviewAccountOwnerPatch(nextAccountName, row, nextAccount?.id)
+                        });
+                      }}
+                      disabled={isSkippedTable}
+                    >
+                      <option value="">{messages.entries.allWallets}</option>
+                      {row.accountName && !row.accountId && !knownAccountNames.has(row.accountName) ? (
+                        <option value={row.accountName}>{row.accountName}</option>
+                      ) : null}
+                      {accountOptions.map((account) => (
+                        <option key={account.id} value={account.value}>{account.label}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
+                    <select className="table-edit-input" value={row.categoryName ?? ""} onChange={(event) => onUpdatePreviewRow(row.rowId, { categoryName: event.target.value || undefined })} disabled={isSkippedTable}>
+                      <option value="">{messages.entries.allCategories}</option>
+                      {categorySelectOptions.map((category) => (
+                        <option key={category.id} value={category.name}>{category.name}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
+                    <select
+                      className="table-edit-input"
+                      value={row.ownershipType === "shared" ? "Shared" : (row.ownerName ?? "")}
+                      onChange={(event) => {
+                        const nextOwner = event.target.value;
+                        if (nextOwner === "Shared") {
+                          onUpdatePreviewRow(row.rowId, { ownershipType: "shared", ownerName: undefined, splitBasisPoints: 5000 });
+                          return;
+                        }
+                        onUpdatePreviewRow(row.rowId, { ownershipType: "direct", ownerName: nextOwner, splitBasisPoints: 10000 });
+                      }}
+                      disabled={isSkippedTable}
+                    >
+                      {people.map((person) => (
+                        <option key={person.id} value={person.name}>{person.name}</option>
+                      ))}
+                      <option value="Shared">{messages.entries.shared}</option>
+                    </select>
+                  </td>
+                  <td>
+                    {row.ownershipType === "shared" ? (
+                      <input
+                        className="table-edit-input import-split-input"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={Math.round((row.splitBasisPoints ?? 5000) / 100)}
+                        onChange={(event) => onUpdatePreviewRow(row.rowId, { splitBasisPoints: Math.round(Number(event.target.value || "50") * 100) })}
+                        disabled={isSkippedTable}
+                      />
+                    ) : (
+                      messages.common.emptyValue
+                    )}
+                  </td>
+                  <td>
+                    <input className="table-edit-input" value={row.note ?? ""} onChange={(event) => onUpdatePreviewRow(row.rowId, { note: event.target.value })} disabled={isSkippedTable} />
+                  </td>
+                </tr>
+                {showReviewDetails ? (
+                  <tr className="import-preview-row-detail">
+                    <td colSpan={11}>
+                      <div className="duplicate-row-detail-panel">
+                        <div className="duplicate-row-badges">
+                          {duplicateMatch ? (
+                            <span className={`pill duplicate-row-pill ${duplicateMatch.matchKind === "near" ? "warning" : ""}`}>
+                              {formatDuplicateMatchKind(duplicateMatch.matchKind)}
+                            </span>
+                          ) : null}
+                          {row.commitStatus === "needs_review" ? (
+                            <span className="pill warning duplicate-row-pill">{messages.imports.needsReview}</span>
+                          ) : null}
+                        </div>
+                        <div className="duplicate-row-copy">
+                          {duplicateMatch ? (
+                            <small className="duplicate-row-detail">
+                              {messages.imports.duplicateRowDetail(formatDuplicateMatch(duplicateMatch))}
+                            </small>
+                          ) : null}
+                          {row.commitStatusReason ? (
+                            <small className="duplicate-row-detail muted">{row.commitStatusReason}</small>
+                          ) : null}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
+              </Fragment>
             );
           })}
         </tbody>

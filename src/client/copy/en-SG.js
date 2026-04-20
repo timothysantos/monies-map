@@ -248,6 +248,8 @@ export const messages = {
     largeImportNotice: (count) => `Large import: ${count} rows will be committed in protected chunks. If Cloudflare still rejects the request, split the CSV into smaller batches.`,
     duplicateCandidates: (count) => `${count} possible duplicate${count === 1 ? "" : "s"} already in the ledger`,
     overlappingImports: (count) => `${count} existing import${count === 1 ? "" : "s"} overlap this date range`,
+    previewGuardrailsLabel: "Import preview checks",
+    previewCommitSummaryLabel: "Import commit summary",
     previewCoverage: (start, end) => `Preview coverage ${start} - ${end}`,
     previewOverlapTitle: "Existing import overlap",
     previewOverlapScopeAriaLabel: "How overlap checks work",

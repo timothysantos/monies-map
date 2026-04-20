@@ -5006,9 +5006,43 @@ button.split-activity-card:hover {
 }
 
 .import-preview-status-row {
-  display: flex;
-  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.import-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 8px;
+  align-items: stretch;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.import-summary-item {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 9px 14px;
+  border: 1px solid rgba(91, 107, 125, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.import-summary-item.is-warning {
+  border-color: rgba(180, 35, 24, 0.14);
+  background: rgba(180, 35, 24, 0.08);
+  color: var(--negative);
+}
+
+.import-summary-item.is-success {
+  border-color: rgba(31, 122, 99, 0.16);
+  background: rgba(31, 122, 99, 0.1);
+  color: #1f7a63;
 }
 
 .import-preview-table th,
@@ -5020,7 +5054,17 @@ button.split-activity-card:hover {
   min-width: 120px;
 }
 
+.import-preview-table .import-description-input {
+  min-width: 220px;
+}
+
 .import-preview-row-duplicate {
+  background: rgba(246, 236, 228, 0.72);
+}
+
+.import-preview-row-detail td {
+  padding-top: 0;
+  border-top: 0;
   background: rgba(246, 236, 228, 0.72);
 }
 
@@ -5055,14 +5099,38 @@ button.split-activity-card:hover {
 
 .duplicate-row-pill {
   display: inline-flex;
-  margin-top: 6px;
+  padding: 7px 12px;
+}
+
+.duplicate-row-detail-panel {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(180, 35, 24, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.56);
+}
+
+.duplicate-row-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.duplicate-row-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 
 .duplicate-row-detail {
-  display: block;
-  margin-top: 6px;
+  display: inline;
+  margin-top: 0;
   color: var(--accent);
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   font-weight: 700;
   line-height: 1.35;
 }
@@ -5912,6 +5980,14 @@ th {
 
   .import-overlap-entry-amount {
     justify-self: start;
+  }
+
+  .import-summary-strip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .duplicate-row-detail-panel {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .settings-rule-row {
