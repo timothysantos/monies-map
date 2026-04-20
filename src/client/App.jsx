@@ -611,6 +611,7 @@ export function App() {
 
     return () => {
       controller.abort();
+      finishBootstrapLoad?.();
     };
   }, [beginBootstrapLoad, bootstrapCacheKey, bootstrapParams, fetchBootstrapData, handleBootstrapFailure, loadBootstrap]);
 
@@ -657,8 +658,10 @@ export function App() {
     };
   }, [beginBootstrapLoad, clearBootstrapCache, clearRoutePageCache, handleBootstrapFailure, loadBootstrap]);
 
+  const hasBootstrap = Boolean(bootstrap);
+
   useEffect(() => {
-    if (!bootstrap || !routePageRequest) {
+    if (!hasBootstrap || !routePageRequest) {
       setRoutePageData(null);
       return undefined;
     }
@@ -686,8 +689,9 @@ export function App() {
 
     return () => {
       controller.abort();
+      finishBootstrapLoad?.();
     };
-  }, [beginBootstrapLoad, bootstrap, fetchRoutePageData, routePageCacheKey, routePageRequest]);
+  }, [beginBootstrapLoad, fetchRoutePageData, hasBootstrap, routePageCacheKey, routePageRequest]);
 
   const view = useMemo(
     () => bootstrap?.views.find((item) => item.id === selectedViewId) ?? null,
