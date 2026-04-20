@@ -199,21 +199,21 @@ function UnknownCategories({ categoryNames, unknownCategoryMode }) {
 
 function PreviewGuardrailPills({ preview, previewDuplicateRowCount, skippedPreviewRowCount, needsReviewPreviewRowCount, visibleOverlapImports }) {
   return (
-    <div className="pill-row dense">
+    <div className="import-summary-strip" aria-label={messages.imports.previewGuardrailsLabel}>
       {preview.startDate && preview.endDate ? (
-        <span className="pill">{messages.imports.previewCoverage(formatDateOnly(preview.startDate), formatDateOnly(preview.endDate))}</span>
+        <span className="import-summary-item">{messages.imports.previewCoverage(formatDateOnly(preview.startDate), formatDateOnly(preview.endDate))}</span>
       ) : null}
       {previewDuplicateRowCount ? (
-        <span className="pill warning">{messages.imports.duplicateCandidates(previewDuplicateRowCount)}</span>
+        <span className="import-summary-item is-warning">{messages.imports.duplicateCandidates(previewDuplicateRowCount)}</span>
       ) : null}
       {skippedPreviewRowCount ? (
-        <span className="pill">{messages.imports.willSkipRows(skippedPreviewRowCount)}</span>
+        <span className="import-summary-item">{messages.imports.willSkipRows(skippedPreviewRowCount)}</span>
       ) : null}
       {needsReviewPreviewRowCount ? (
-        <span className="pill warning">{messages.imports.needsReviewRows(needsReviewPreviewRowCount)}</span>
+        <span className="import-summary-item is-warning">{messages.imports.needsReviewRows(needsReviewPreviewRowCount)}</span>
       ) : null}
       {visibleOverlapImports.length ? (
-        <span className="pill warning">{messages.imports.overlappingImports(visibleOverlapImports.length)}</span>
+        <span className="import-summary-item is-warning">{messages.imports.overlappingImports(visibleOverlapImports.length)}</span>
       ) : null}
     </div>
   );
