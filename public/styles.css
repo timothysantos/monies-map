@@ -2922,6 +2922,7 @@ body:has(.split-inline-editor-card) .splits-fab {
 }
 
 .split-summary-toolbar {
+  display: none;
   margin-left: auto;
   flex: 0 0 auto;
 }
@@ -6949,6 +6950,7 @@ th {
   }
 
   .splits-summary-strip .split-summary-toolbar {
+    display: flex;
     margin-left: auto;
     flex-wrap: nowrap;
   }
