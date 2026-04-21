@@ -1019,13 +1019,10 @@ export function App() {
       }
       const suggestedPerson = bootstrap.household.people.find((person) => person.id === bootstrap.viewerRegistration.suggestedPersonId)
         ?? bootstrap.household.people[0];
-      const suggestedName = isPlaceholderPersonName(suggestedPerson?.name)
-        ? formatNameFromEmail(bootstrap.viewerRegistration.email)
-        : suggestedPerson?.name ?? "";
       return {
         email: bootstrap.viewerRegistration.email,
         personId: suggestedPerson?.id ?? "",
-        name: suggestedName
+        name: isPlaceholderPersonName(suggestedPerson?.name) ? "" : suggestedPerson?.name ?? ""
       };
     });
   }, [bootstrap, suppressedLoginRegistrationEmail]);
@@ -1831,7 +1828,7 @@ export function App() {
                         setLoginRegistrationDraft((current) => current ? {
                           ...current,
                           personId: event.target.value,
-                          name: isPlaceholderPersonName(person?.name) ? formatNameFromEmail(current.email) : person?.name ?? current.name
+                          name: isPlaceholderPersonName(person?.name) ? "" : person?.name ?? current.name
                         } : current);
                       }}
                     >
@@ -1845,6 +1842,7 @@ export function App() {
                     <input
                       className="table-edit-input"
                       value={loginRegistrationDraft.name}
+                      placeholder="Name for this household profile"
                       onChange={(event) => setLoginRegistrationDraft((current) => current ? { ...current, name: event.target.value } : current)}
                     />
                   </label>
@@ -1894,12 +1892,6 @@ export function App() {
 
 function isPlaceholderPersonName(name) {
   return ["primary", "partner"].includes(String(name ?? "").trim().toLowerCase());
-}
-
-function formatNameFromEmail(email) {
-  const localPart = String(email ?? "").split("@")[0] ?? "";
-  const firstToken = localPart.split(/[._+\-]/).find(Boolean) ?? "Me";
-  return firstToken.charAt(0).toUpperCase() + firstToken.slice(1);
 }
 
 function AppLoadingPanel() {
