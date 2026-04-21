@@ -199,6 +199,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     commitLabel,
     knownAccountNames,
     previewDuplicateRowCount,
+    statementCertificationRowCount,
     skippedPreviewRowCount,
     needsReviewPreviewRowCount,
     showStatementAccountMapping,
@@ -433,6 +434,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     try {
       const data = await previewImportBatch({
         sourceLabel: nextSourceLabel,
+        sourceType: statementImportMeta.sourceType,
         rows,
         defaultAccountName: nextDefaultAccountName,
         ownershipType,
@@ -531,6 +533,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           ...row,
           ...patch,
           duplicateMatches: shouldClearDuplicateMatches ? undefined : row.duplicateMatches,
+          statementCertificationTargetTransactionId: shouldClearDuplicateMatches ? undefined : row.statementCertificationTargetTransactionId,
           commitStatus: shouldClearDuplicateMatches ? "included" : (patch.commitStatus ?? row.commitStatus),
           commitStatusReason: shouldClearDuplicateMatches ? undefined : row.commitStatusReason,
           commitStatusExplicit: shouldClearDuplicateMatches ? false : row.commitStatusExplicit
@@ -751,6 +754,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             showStatementAccountMapping={showStatementAccountMapping}
             visibleOverlapImports={visibleOverlapImports}
             previewDuplicateRowCount={previewDuplicateRowCount}
+            statementCertificationRowCount={statementCertificationRowCount}
             skippedPreviewRowCount={skippedPreviewRowCount}
             needsReviewPreviewRowCount={needsReviewPreviewRowCount}
             statementReconciliations={statementReconciliations}
@@ -773,6 +777,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               people={people}
               knownAccountNames={knownAccountNames}
               statementCheckpointCount={statementCheckpoints.length}
+              statementCertificationRowCount={statementCertificationRowCount}
               isCommitDisabled={isCommitDisabled}
               isSubmitting={isSubmitting}
               commitLabel={commitLabel}

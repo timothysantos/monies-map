@@ -107,6 +107,91 @@ into the app.
 - in-app AI analysis
 - optional direct bank connections, if the product ever decides to support them
 
+## How should I treat PDF statements versus mid-cycle exports?
+
+Supported PDF statements are the strongest import source in the app. Treat them
+like a bank-sync checkpoint for the account and statement period: the statement
+certifies posted date, description, amount, direction, and ending balance after
+the parser has reconciled the statement structure.
+
+Mid-cycle CSV or XLS exports are still useful for keeping the working ledger
+current, but they are provisional until the official statement arrives. When a
+PDF statement row matches a provisional mid-cycle ledger row, the app promotes
+the existing row instead of creating a duplicate. That preserves user-added
+category choices, notes, ownership, splits, and links while updating the
+bank-facing facts from the statement.
+
+If the same official statement row has already been imported or previously
+certified, the app treats it as already certified rather than asking for another
+duplicate decision. Completed PDF statement imports are not rolled back like
+ordinary working imports; use a replacement statement or an explicit adjustment
+if a correction is needed.
+
+The statement certification check is necessary but not always sufficient. For a
+mapped account with no prior ledger activity, statement checkpoint history, or
+non-zero opening balance, the app also requires account identity confidence from
+the detected statement account name. This prevents a first PDF import into a
+zero-balance wrong account from passing just because the statement's own rows
+and ending balance are internally consistent.
+
+## Glossary: accounting terms in the app
+
+### Bank facts
+
+Bank facts are the parts of a transaction that come from the bank or card
+issuer: posted date, description, amount, direction, account, and statement
+period. A supported PDF statement is the strongest source for bank facts because
+it is the closed official record for that period.
+
+### User annotations
+
+User annotations are the app-side details layered on top of bank facts:
+category, note, ownership, split ratios, transfer links, and split-expense links.
+When a PDF statement certifies an existing mid-cycle row, the app updates the
+bank facts from the statement but preserves these annotations.
+
+### Provisional row
+
+A provisional row is useful working data that has not yet been proven by a final
+statement. Mid-cycle CSV and XLS exports create provisional rows. They help with
+planning during the month, but the final PDF statement gets the last word on
+posted bank facts.
+
+### Statement-certified row
+
+A statement-certified row is a ledger row whose bank facts have been verified by
+a supported PDF statement. The row may have been imported directly from the
+statement, or it may be an existing mid-cycle row that the statement promoted in
+place.
+
+### Statement checkpoint
+
+A statement checkpoint is the official closing balance for one account and one
+statement period. It is the control total: after applying the statement rows and
+prior ledger baseline, the computed ledger balance should equal this number.
+
+### Checks and balances
+
+Checks and balances are the independent proofs the app uses before trusting an
+import. The row list proves individual transactions, the checkpoint proves the
+ending balance, and account identity confidence proves the statement is mapped
+to the intended ledger account.
+
+### Identity unconfirmed
+
+Identity unconfirmed means the statement may balance mathematically, but the app
+does not yet have enough evidence that the selected ledger account is the right
+account. This mainly protects brand-new zero-balance accounts, where a wrong PDF
+could otherwise reconcile against itself.
+
+### Near match and probable match
+
+Near and probable matches are duplicate-detection labels for non-statement
+imports. For official PDF statements, the app tries to avoid turning these into
+manual decisions: if a statement row matches a provisional mid-cycle row, it
+promotes the existing row to statement-certified instead of asking the user to
+resolve a duplicate.
+
 ## Where is the production app deployed?
 
 The current Cloudflare Worker deployment is:
@@ -357,11 +442,10 @@ account and date range.
   range so you can see which committed rows triggered the warning.
 - The info icon on the overlap warning explains that the check is scoped to
   completed imports for the mapped preview accounts, not unrelated accounts.
-- Statement PDF overlaps can be normal when a bank includes a prior-month posted
-  transaction or starts the next statement on the same day the previous
-  statement ended. Leave already-committed duplicate rows skipped, resolve any
-  rows marked for review, and commit only after the statement balance check
-  matches or the remaining mismatch is understood.
+- Statement PDF overlaps can be normal when mid-cycle exports already placed
+  rows in the ledger. The PDF statement can promote matching provisional rows to
+  statement-certified, preserving user notes, categories, ownership, splits, and
+  links instead of asking for duplicate decisions.
 - Citibank activity CSV filenames that end in `-rewards.csv` or `-miles.csv`
   are treated as that card account even if another Citibank card is selected as
   the default account.
@@ -373,15 +457,18 @@ account and date range.
 - Exact and near matches use amount, account, date proximity, and description
   similarity.
 
-Skipped rows stay visible in the preview. You can restore one if the duplicate
-decision was wrong, and statement checks refresh against the current commit set.
+Already-covered rows stay visible in the preview. You can include one if the
+match decision was wrong, and statement checks refresh against the current
+commit set. For supported PDF statements, already-covered rows should mostly
+mean "already statement-certified" rather than "please inspect this duplicate."
 
 If a statement mismatch is exactly resolved by including unresolved near-match
 rows, probable duplicates, or other app-skipped duplicate rows for that account,
 the preview treats those rows as statement-confirmed instead of duplicate
-warnings. They stay in the commit set, and the statement check recalculates
-against the updated rows. Rows you explicitly skipped stay skipped until you
-restore them.
+warnings. With the statement-certification model, matching provisional mid-cycle
+rows are promoted in place: the statement owns the bank facts, while user
+annotations stay attached to the existing transaction. Rows you explicitly
+skipped stay skipped until you restore them.
 
 When a PDF statement has no new rows because every row was already imported from
 mid-cycle activity files, the import action changes to "Save statement
@@ -570,8 +657,8 @@ entries automatically.
 2. Enter the opening balance from just before your first trusted statement
    period.
 3. Import the first statement or compare it against existing rows.
-4. Review account mapping, ownership, categories, transfers, splits, duplicates,
-   and statement balance check.
+4. Review account mapping, ownership, categories, transfers, splits, exceptions,
+   and the statement certification check.
 5. Commit the import once the rows look right.
 6. Save the statement checkpoint when the ledger matches the bank statement.
 
@@ -649,7 +736,7 @@ Best option:
 5. If the comparison shows a ledger row with the opposite direction, edit that
    row instead of adding another row.
 6. If the statement preview skipped every row because the ledger already has
-   them, commit the statement checkpoint by itself once the balance check
+   them, commit the statement checkpoint by itself once the certification check
    matches.
 
 This is why statement comparison exists. It lets you prove whether the
@@ -664,19 +751,19 @@ When the statement is ready, do this before importing duplicate rows:
    imported mid-cycle.
 3. Review missing rows, extra rows, direction mistakes, and duplicate-looking
    rows.
-4. Import only rows that are truly missing, and skip duplicate preview rows
-   before commit. Skipped rows stay visible and can be restored if the match was
-   wrong.
+4. Import only rows that are truly missing, and leave duplicate preview rows
+   marked as already covered before commit. Already-covered rows stay visible
+   and can be included if the match was wrong.
 5. Save the statement checkpoint once the ledger matches the statement balance.
-   The balance check recalculates as rows are skipped or restored, counting
-   skipped duplicates through the existing ledger instead of double-counting
-   them.
+   The certification check recalculates as rows are excluded or included,
+   counting already-covered rows through the existing ledger instead of
+   double-counting them.
 
-Cutoffs and skipped-row effects are per account. If one PDF contains two card
+Cutoffs and row-inclusion effects are per account. If one PDF contains two card
 sections, each card gets its own checkpoint and only rows mapped to that card
-change that card's balance check. A Citi Rewards cutoff should not be reused for
-Citi Miles, and a UOB card statement cycle should not be reused for UOB One
-savings.
+change that card's certification check. A Citi Rewards cutoff should not be
+reused for Citi Miles, and a UOB card statement cycle should not be reused for
+UOB One savings.
 
 ## Example: growing mid-cycle exports before a two-card statement
 
@@ -727,37 +814,42 @@ that have not reached the ledger yet remain committable.
 ### Step 6: review a final current-transaction export
 
 If the final current-transaction export contains only rows that were already
-committed from earlier mid-cycle imports, the preview skips all rows. Skipped
-rows remain visible and can be restored if the duplicate decision is wrong.
+committed from earlier mid-cycle imports, the preview marks all rows as already
+covered. Those rows remain visible and can be included if the match decision is
+wrong.
 
 ![Final current-transaction export has all rows skipped as already imported](/faq/import-midcycle-two-card/thumbs/06-final-csv-all-midcycle-duplicates.png)
 
 ### Step 7: import the next two-card statement
 
 When the monthly PDF arrives, the user maps both card sections again. Rows
-already imported from mid-cycle exports are skipped, any statement-only rows
-remain in the commit set, and each card has its own statement balance check.
+already imported from mid-cycle exports are promoted to statement-certified,
+any statement-only rows remain in the commit set, and each card has its own
+statement certification check. The user should see this as the app closing the
+period, not as a duplicate cleanup exercise.
 
-![Next two-card PDF skips mid-cycle duplicates and keeps a statement-only row](/faq/import-midcycle-two-card/thumbs/07-feb-two-card-pdf-duplicates-plus-late-row-matched.png)
+![Next two-card PDF certifies mid-cycle rows and keeps a statement-only row](/faq/import-midcycle-two-card/thumbs/07-feb-two-card-pdf-duplicates-plus-late-row-matched.png)
 
 ### Step 8: recover from a mistaken manual skip
 
-If the user manually skips a statement-only row, the affected card's statement
-check fails while the other card stays matched. This proves skipped rows affect
-only their mapped account's checkpoint.
+If the user manually excludes a statement-only row, the affected card's
+statement check fails while the other card stays matched. This proves row inclusion
+decisions affect only their mapped account's checkpoint.
 
 ![Mistakenly skipped statement-only row makes only one card check fail](/faq/import-midcycle-two-card/thumbs/08-user-skipped-late-row-alpha-check-fails.png)
 
-The user restores the row from skipped rows. The row returns to the commit set
-and both statement checks return to matched.
+The user includes the row again from already-covered rows. The row returns to
+the commit set and both statement checks return to matched.
 
 ![Restoring the skipped row makes both statement checks matched again](/faq/import-midcycle-two-card/thumbs/09-user-restored-late-row-both-checks-match.png)
 
 ### Step 9: commit and keep the import history
 
 After the statement checks match, the user commits the statement. Recent imports
-show the earlier mid-cycle batches and the final statement batch, so the work
-remains auditable and rollbackable.
+show the earlier mid-cycle batches and the final statement batch, while the
+certified rows keep their user annotations. Mid-cycle batches remain ordinary
+working imports; completed PDF statement imports are protected because they may
+have certified existing ledger rows.
 
 ![Recent imports show the mid-cycle batches and final statement batch](/faq/import-midcycle-two-card/thumbs/10-recent-imports-after-combined-flow.png)
 
@@ -792,9 +884,11 @@ Month 2:
 
 1. Import mid-cycle activity only after the latest statement cutoff.
 2. Use those rows for planning and cleanup during the month.
-3. When the statement arrives, compare it to the committed ledger.
-4. Skip duplicate preview rows or add missing rows.
-5. Save the new checkpoint when the balance matches.
+3. When the statement arrives, import or compare it against the committed
+   ledger.
+4. Let the statement certify matching provisional mid-cycle rows; add only rows
+   that were truly missing from the working ledger.
+5. Save the new checkpoint when the balance and account identity checks match.
 
 For example, if a Citi Rewards statement last included 8 Apr 2026, then a
 1 Apr to 13 Apr activity export should only contribute 9 Apr onward rows. Rows
@@ -814,11 +908,13 @@ Month 1:
 Month 2:
 
 1. Import a mid-cycle UOB `.xls` or Citi `.csv` activity file.
-2. Skip any preview rows that duplicate closed Month 1 rows.
+2. Leave any preview rows that duplicate closed Month 1 rows marked as already
+   covered.
 3. Commit only new bank rows.
 4. Add or link splits for shared spending during the month.
 5. When the Month 2 statement arrives, compare it against the ledger.
-6. Add only missing statement rows, fix direction mistakes, and skip duplicates.
+6. Add only missing statement rows, fix direction mistakes, and let the
+   statement certify matched provisional rows.
 7. Save the Month 2 checkpoint once the statement balance matches.
 
 The user goal is not to import every file blindly. The goal is to have one bank
@@ -830,14 +926,14 @@ household sharing matters.
 Before committing, check:
 
 - account mapping
-- duplicate rows
-- overlap warnings
-- skipped rows and rows that still need a duplicate-review decision
+- duplicate or already-covered rows
+- prior import context
+- rows that still need a review decision
 - row date, description, amount, and type
 - category and ownership
 - transfer direction
 - statement checkpoint fields for supported PDFs
-- statement balance check for supported PDFs
+- statement certification check for supported PDFs
 
 Successful commits reset the import composer. Use Start over anytime to clear
 the current draft without refreshing the page.

@@ -21,8 +21,8 @@ reconciliation, splits, or account workflows change.
   that include embedded text.
 - Supported UOB current-transaction `.xls` and Citibank credit-card activity
   `.csv` imports for mid-cycle working ledger updates.
-- Import traceability, recent import history, rollback, overlap warnings, and
-  statement balance checks before commit.
+- Import traceability, recent import history, rollback, overlap context, and
+  statement certification checks before commit.
 
 ## Account And Statement Setup
 
@@ -101,17 +101,22 @@ When the second statement arrives, compare or import it against the ledger:
 1. Upload the statement PDF in the import flow or use Compare statement from the
    Settings account card.
 2. Confirm the detected statement period and account mapping.
-3. Review highlighted duplicate rows. If a row was already imported from the
-   mid-cycle activity export, remove it from the preview before commit.
-4. Review overlap warnings. They are account/date-range warnings and may be
-   valid when a mid-cycle import already covered part of the statement.
+3. Let the PDF statement certify matching mid-cycle rows. The statement updates
+   bank-facing facts such as posted date, description, amount, and direction,
+   while preserving user annotations such as categories, notes, splits, and
+   links on the existing ledger row.
+4. Review overlap warnings only when the statement cannot certify the existing
+   row set. They are account/date-range warnings and may be valid when a
+   mid-cycle import already covered part of the statement.
 5. If the checkpoint is off, use comparison details to find missing rows, extra
    rows, wrong income/expense direction, or duplicate-looking ledger rows.
 6. Once the ledger matches the statement balance, save the new statement
    checkpoint.
 
 This keeps planning useful during the month while still making the bank
-statement the final proof.
+statement the final proof. Do not silently delete provisional rows that are
+absent from the statement; treat them as extra ledger evidence that needs an
+explicit correction, reversal, or rollback decision.
 
 ## Splits Workflow
 

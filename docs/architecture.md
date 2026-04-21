@@ -195,6 +195,27 @@ That distinction matters because the system needs to answer questions like:
   inside the overlapping account/date range, and the review UI turns those
   signals into next-step guidance based on duplicate skip state and statement
   balance reconciliation
+- imported transaction bank facts carry a certification status. Working exports
+  such as CSV activity and current-transaction XLS rows start as `provisional`,
+  while supported PDF statement rows are saved as `statement_certified`.
+- official PDF statement imports act like a bank-sync authority layer for the
+  account and statement period. If a statement row matches an existing
+  provisional mid-cycle row, commit promotes that existing transaction in place:
+  the bank-facing facts are updated from the statement and the row is marked
+  statement-certified, while user-maintained fields such as category, note,
+  ownership, splits, and links remain attached to the same transaction.
+- official PDF statement rows that already match statement-certified ledger rows
+  are treated as already certified rather than as duplicate conflicts.
+- PDF statement commit requires both balance reconciliation and account identity
+  confidence. If the mapped account has no prior checkpoint history or ledger
+  activity, the detected statement account name must match the mapped ledger
+  account closely enough before the preview can be committed. This prevents a
+  first statement on a zero-balance wrong account from passing only because the
+  statement is internally consistent.
+- completed official PDF statement imports cannot be rolled back as ordinary
+  working imports because they may have certified existing ledger rows. Corrections
+  should come from a replacement statement import or an explicit manual
+  adjustment, preserving audit continuity.
 - PDF statement previews also compare detected statement balances with the
   projected account ledger through each statement end date before commit.
   Skipped duplicate rows are excluded from the pending import set and are

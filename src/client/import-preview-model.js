@@ -39,6 +39,7 @@ export function buildImportPreviewModel({
   const duplicateCheckpointAccounts = getDuplicateCheckpointAccounts(statementCheckpoints);
   const visibleOverlapImports = (preview?.overlapImports ?? []).filter((item) => !dismissedOverlapIds.includes(item.id));
   const previewDuplicateRowCount = previewRows.filter((row) => row.duplicateMatches?.length).length;
+  const statementCertificationRowCount = previewRows.filter((row) => row.statementCertificationTargetTransactionId).length;
   const skippedPreviewRowCount = previewRows.filter((row) => row.commitStatus === "skipped").length;
   const needsReviewPreviewRowCount = previewRows.filter((row) => row.commitStatus === "needs_review").length;
   const includedPreviewRows = previewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review");
@@ -70,6 +71,7 @@ export function buildImportPreviewModel({
     knownAccountNames,
     needsReviewPreviewRowCount,
     previewDuplicateRowCount,
+    statementCertificationRowCount,
     skippedPreviewRowCount,
     commitLabel: hasCheckpointOnlyCommit ? messages.imports.saveStatementCheckpoints : messages.imports.commit,
     showStatementAccountMapping: preview && detectedPreviewAccountNames.length > 0 && (

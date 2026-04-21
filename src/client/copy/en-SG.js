@@ -183,8 +183,8 @@ export const messages = {
   imports: {
     viewing: (label) => `Viewing imports for ${label}`,
     transactionCount: (count) => `${count} transactions`,
-    composerTitle: "Import review",
-    composerDetail: "Paste or upload a CSV, upload a supported PDF statement, or upload a supported current-transaction XLS, then review one import batch before it reaches the ledger.",
+    composerTitle: "Import and certify",
+    composerDetail: "Paste or upload a CSV, upload a supported PDF statement, or upload a supported current-transaction XLS. PDF statements certify the period like a bank sync; mid-cycle files keep the working ledger current.",
     stepsLabel: "Import steps",
     steps: ["Select file", "Data mapping", "Review"],
     selectFileTitle: "Select file",
@@ -244,14 +244,15 @@ export const messages = {
     categoryFallbackBlocked: "Unknown categories must be mapped or cleaned before this import can be committed.",
     previewEmpty: "No preview yet.",
     previewRows: "Preview rows",
-    previewReady: "Preview ready. Review row-level details and then commit the import.",
+    previewReady: "Preview ready. For PDF statements, matched mid-cycle rows will be certified automatically before commit.",
     largeImportNotice: (count) => `Large import: ${count} rows will be committed in protected chunks. If Cloudflare still rejects the request, split the CSV into smaller batches.`,
-    duplicateCandidates: (count) => `${count} possible duplicate${count === 1 ? "" : "s"} already in the ledger`,
-    overlappingImports: (count) => `${count} existing import${count === 1 ? "" : "s"} overlap this date range`,
+    duplicateCandidates: (count) => `${count} ledger match${count === 1 ? "" : "es"} need a decision`,
+    statementCertifiedRows: (count) => `${count} mid-cycle row${count === 1 ? "" : "s"} will be certified by the statement`,
+    overlappingImports: (count) => `${count} prior import${count === 1 ? "" : "s"} in this account period`,
     previewGuardrailsLabel: "Import preview checks",
     previewCommitSummaryLabel: "Import commit summary",
     previewCoverage: (start, end) => `Preview coverage ${start} - ${end}`,
-    previewOverlapTitle: "Existing import overlap",
+    previewOverlapTitle: "Prior import context",
     previewOverlapScopeAriaLabel: "How overlap checks work",
     previewOverlapScopeTitle: "Scope",
     previewOverlapScopeDetail: "The overlap check is account-aware and import-aware.",
@@ -262,60 +263,62 @@ export const messages = {
       "It does not compare against unrelated accounts.",
       "It ignores draft and rolled-back imports."
     ],
-    previewOverlapDetail: "These rows are already in the ledger from earlier committed imports, not from the file currently being previewed. This can be normal for statement PDFs when a bank starts the next statement on the same day the previous statement ended, or includes a prior-month posted transaction.",
+    previewOverlapDetail: "Earlier imports in the same account period can be normal when mid-cycle activity already exists. Statement-certified rows are handled automatically; use this section only for unresolved exceptions.",
     previewOverlapActionTitle: "What to do",
     previewOverlapActions: ({ skippedPreviewRowCount, needsReviewPreviewRowCount, hasStatementReconciliationMismatch, hasStatementReconciliations }) => {
       const actions = [
-        "Use the entries below to see which earlier committed ledger rows fall inside this statement's date range."
+        "Use the entries below as context for earlier committed ledger rows inside this statement's date range."
       ];
       if (needsReviewPreviewRowCount) {
-        actions.push("Resolve the rows marked Needs review in the preview table before committing.");
+        actions.push("Resolve rows still marked Needs review before committing.");
       } else if (skippedPreviewRowCount) {
-        actions.push("Leave duplicate rows skipped when they are already in the ledger. Restore a skipped row only if the ledger is missing it.");
+        actions.push("Rows listed as already covered can stay out of the import unless the statement check shows the ledger is missing them.");
       } else {
-        actions.push("If none of the preview rows are duplicates, this overlap may only be a statement date-range warning.");
+        actions.push("If there are no unresolved rows, this is context rather than a blocker.");
       }
       if (hasStatementReconciliations) {
         actions.push(hasStatementReconciliationMismatch
-          ? "Do not commit yet if the statement balance check is still mismatched. Fix skipped, restored, or missing rows first."
-          : "When the statement balance check is matched, mark the overlap Reviewed and commit.");
+          ? "Do not commit yet if the statement certification check is still mismatched. Fix account mapping, missing rows, or row direction first."
+          : "When the statement certification check is matched, mark the context Reviewed and commit.");
       } else {
-        actions.push("Mark the overlap Reviewed only after the preview rows match what should be added to the ledger.");
+        actions.push("Mark the context Reviewed after the preview rows match what should be added to the ledger.");
       }
       return actions;
     },
     previewOverlapMismatchExplained: (amount) => `The statement difference is exactly ${amount}, which matches the overlapping entries below. That usually means a prior import is on this account but is not part of this statement. Check whether that earlier import belongs to another card account, then roll it back or remap before committing this statement.`,
     previewOverlapEntriesLabel: "Already committed overlapping entries",
     dismissOverlap: "Reviewed",
-    statementReconciliationTitle: "Statement balance check",
-    statementReconciliationMatchedDetail: "If committed now, the preview rows reconcile against the detected statement balance using the ledger through the statement end date.",
-    statementReconciliationMismatchDetail: "If committed now, the preview rows do not reconcile yet. Check account mapping, overlapping imports, or missing rows before committing.",
+    statementReconciliationTitle: "Statement certification check",
+    statementReconciliationMatchedDetail: "The preview reconciles to the official statement balance. Matching provisional rows will be certified without changing user annotations.",
+    statementReconciliationMismatchDetail: "The statement cannot close yet. Check account mapping, missing or extra rows, row direction, or account identity before committing.",
     statementReconciliationRefresh: "Refresh check",
-    statementReconciliationRefreshing: "Refreshing statement balance check.",
-    statementReconciliationRefreshed: "Statement balance check refreshed.",
+    statementReconciliationRefreshing: "Refreshing statement certification check.",
+    statementReconciliationRefreshed: "Statement certification check refreshed.",
     statementReconciliationAccount: (accountName, month) => `${accountName} • ${month}`,
     statementReconciliationDelta: (amount) => `Difference ${amount}`,
     statementReconciliationStatus: {
       matched: "Matched",
       mismatch: "Mismatch",
-      unknown_account: "Needs account"
+      unknown_account: "Needs account",
+      identity_unconfirmed: "Needs account proof"
     },
-    duplicateMatchesTitle: "Possible existing matches",
-    duplicateMatchesDetail: "Duplicate-looking rows are highlighted in the preview table. Exact and probable duplicates are skipped by default, and near matches need a decision before commit.",
+    duplicateMatchesTitle: "Ledger matches needing decision",
+    duplicateMatchesDetail: "These rows could not be certified automatically. Review only these exceptions before commit.",
     duplicateMatchKindExact: "Exact match",
     duplicateMatchKindProbable: "Probable match",
     duplicateMatchKindNear: "Near match",
     duplicateRowDetail: (match) => `Already in ledger: ${match}`,
     needsReview: "Needs review",
     willImportRows: (count) => `${count} row${count === 1 ? "" : "s"} will import`,
+    willCertifyRows: (count) => `${count} existing row${count === 1 ? "" : "s"} will be certified by the statement`,
     willSaveStatementCheckpoints: (count) => `${count} statement checkpoint${count === 1 ? "" : "s"} will save`,
-    willSkipRows: (count) => `${count} row${count === 1 ? "" : "s"} will skip`,
+    willSkipRows: (count) => `${count} row${count === 1 ? "" : "s"} already covered`,
     needsReviewRows: (count) => `${count} row${count === 1 ? "" : "s"} need review`,
-    noRowsToImport: "No transaction rows are set to import. You can still commit statement checkpoints when the balance check matches.",
-    skipPreviewRow: "Skip row",
-    restorePreviewRow: "Restore row",
-    importPreviewRow: "Import row",
-    skippedRowsTitle: (count) => `Skipped rows (${count})`,
+    noRowsToImport: "No new transaction rows are set to import. You can still save statement checkpoints and certification when the checks match.",
+    skipPreviewRow: "Exclude row",
+    restorePreviewRow: "Include row",
+    importPreviewRow: "Include row",
+    skippedRowsTitle: (count) => `Already covered rows (${count})`,
     statementCheckpointsTitle: (count) => count === 1 ? "Statement checkpoint" : "Statement checkpoints",
     statementCheckpointsDetail: (count) => count === 1
       ? "This statement balance will be saved during commit. Adjust it here before importing."

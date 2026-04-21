@@ -25,6 +25,7 @@ export function ImportPreviewReview({
   showStatementAccountMapping,
   visibleOverlapImports,
   previewDuplicateRowCount,
+  statementCertificationRowCount,
   skippedPreviewRowCount,
   needsReviewPreviewRowCount,
   statementReconciliations,
@@ -69,6 +70,7 @@ export function ImportPreviewReview({
         skippedPreviewRowCount={skippedPreviewRowCount}
         needsReviewPreviewRowCount={needsReviewPreviewRowCount}
         visibleOverlapImports={visibleOverlapImports}
+        statementCertificationRowCount={statementCertificationRowCount}
       />
 
       {visibleOverlapImports.length ? (
@@ -198,7 +200,7 @@ function UnknownCategories({ categoryNames, unknownCategoryMode }) {
   );
 }
 
-function PreviewGuardrailPills({ preview, previewDuplicateRowCount, skippedPreviewRowCount, needsReviewPreviewRowCount, visibleOverlapImports }) {
+function PreviewGuardrailPills({ preview, previewDuplicateRowCount, statementCertificationRowCount, skippedPreviewRowCount, needsReviewPreviewRowCount, visibleOverlapImports }) {
   return (
     <div className="import-summary-strip" aria-label={messages.imports.previewGuardrailsLabel}>
       {preview.startDate && preview.endDate ? (
@@ -206,6 +208,9 @@ function PreviewGuardrailPills({ preview, previewDuplicateRowCount, skippedPrevi
       ) : null}
       {previewDuplicateRowCount ? (
         <span className="import-summary-item is-warning">{messages.imports.duplicateCandidates(previewDuplicateRowCount)}</span>
+      ) : null}
+      {statementCertificationRowCount ? (
+        <span className="import-summary-item is-success">{messages.imports.statementCertifiedRows(statementCertificationRowCount)}</span>
       ) : null}
       {skippedPreviewRowCount ? (
         <span className="import-summary-item">{messages.imports.willSkipRows(skippedPreviewRowCount)}</span>

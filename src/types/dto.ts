@@ -402,6 +402,7 @@ export interface ImportPreviewRowDto {
   note?: string;
   rawRow: Record<string, string>;
   duplicateMatches?: DuplicateCandidateDto[];
+  statementCertificationTargetTransactionId?: string;
 }
 
 export interface ImportPreviewDto {
@@ -441,7 +442,7 @@ export interface ImportPreviewStatementReconciliationDto {
   statementBalanceMinor: number;
   projectedLedgerBalanceMinor?: number;
   deltaMinor?: number;
-  status: "matched" | "mismatch" | "unknown_account";
+  status: "matched" | "mismatch" | "unknown_account" | "identity_unconfirmed";
 }
 
 export interface StatementCompareRowDto {
@@ -487,6 +488,9 @@ export interface StatementCompareDto {
 
 export interface DuplicateCandidateDto {
   existingImportId: string;
+  existingTransactionId?: string;
+  existingSourceType?: "csv" | "pdf" | "manual";
+  existingBankCertificationStatus?: "provisional" | "statement_certified";
   date: string;
   description: string;
   amountMinor: number;

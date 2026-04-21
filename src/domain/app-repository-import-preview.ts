@@ -31,6 +31,7 @@ export async function buildImportPreview(
     ownershipType: "direct" | "shared";
     ownerName?: string;
     splitBasisPoints?: number;
+    sourceType?: "csv" | "pdf" | "manual";
     statementCheckpoints?: StatementCheckpointDraftDto[];
   }
 ): Promise<ImportPreviewDto> {
@@ -52,12 +53,15 @@ export async function buildImportPreview(
     .prepare(`
       SELECT
         imports.id AS import_id,
+        imports.source_type,
+        transactions.id AS transaction_id,
         transactions.account_id,
         transactions.transaction_date,
         transactions.description,
         transactions.amount_minor,
         transactions.entry_type,
         transactions.transfer_direction,
+        transactions.bank_certification_status,
         accounts.account_name
       FROM transactions
       INNER JOIN imports ON imports.id = transactions.import_id
@@ -68,12 +72,15 @@ export async function buildImportPreview(
     .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{
       import_id: string;
+      source_type: "csv" | "pdf" | "manual";
+      transaction_id: string;
       account_id: string;
       transaction_date: string;
       description: string;
       amount_minor: number;
       entry_type: "expense" | "income" | "transfer";
       transfer_direction: "in" | "out" | null;
+      bank_certification_status: "provisional" | "statement_certified";
       account_name: string;
     }>();
   const accountsById = new Map(accounts.map((account) => [account.id, account]));
@@ -182,6 +189,9 @@ export async function buildImportPreview(
 
     previewRow.duplicateMatches = nearMatches.map(({ candidate, matchKind }) => ({
       existingImportId: candidate.import_id,
+      existingTransactionId: candidate.transaction_id,
+      existingSourceType: candidate.source_type,
+      existingBankCertificationStatus: candidate.bank_certification_status,
       date: candidate.transaction_date,
       description: candidate.description,
       amountMinor: Number(candidate.amount_minor),
@@ -191,6 +201,7 @@ export async function buildImportPreview(
     const strongestMatch = previewRow.duplicateMatches[0]?.matchKind;
     previewRow.commitStatus = requestedCommitStatus ?? getDefaultCommitStatus(strongestMatch);
     previewRow.commitStatusReason = getCommitStatusReason(previewRow.commitStatus, strongestMatch);
+    applyStatementAuthorityToPreviewRow(previewRow, input.sourceType);
     previewRows.push(previewRow);
 
   }
@@ -212,6 +223,7 @@ export async function buildImportPreview(
     accounts,
     existingRows: existingTransactions.results,
     previewRows,
+    sourceType: input.sourceType,
     statementCheckpoints: input.statementCheckpoints ?? []
   });
 
@@ -231,6 +243,35 @@ export async function buildImportPreview(
     duplicateCandidates,
     statementReconciliations
   };
+}
+
+function applyStatementAuthorityToPreviewRow(
+  previewRow: ImportPreviewRowDto,
+  sourceType?: "csv" | "pdf" | "manual"
+) {
+  if (sourceType !== "pdf") {
+    return;
+  }
+
+  const strongestMatch = previewRow.duplicateMatches?.[0];
+  if (!strongestMatch?.existingTransactionId) {
+    return;
+  }
+
+  const isAlreadyStatementCertified = strongestMatch.existingSourceType === "pdf"
+    || strongestMatch.existingBankCertificationStatus === "statement_certified";
+
+  if (isAlreadyStatementCertified) {
+    previewRow.commitStatus = "skipped";
+    previewRow.commitStatusReason = "Official statement row is already certified in the ledger.";
+    previewRow.duplicateMatches = undefined;
+    return;
+  }
+
+  previewRow.commitStatus = "included";
+  previewRow.commitStatusReason = "Official statement will certify the existing mid-cycle ledger row while preserving user edits.";
+  previewRow.statementCertificationTargetTransactionId = strongestMatch.existingTransactionId;
+  previewRow.duplicateMatches = undefined;
 }
 
 function getDirectOwnerNameForAccount(account?: AccountDto, fallbackOwnerName?: string) {
@@ -271,7 +312,11 @@ function resolvePreviewAccount(
 
 function buildPreviewLedgerRows(previewRows: ImportPreviewRowDto[]) {
   return previewRows
-    .filter((row) => row.accountId && row.commitStatus !== "skipped" && row.commitStatus !== "needs_review")
+    .filter((row) => (
+      row.accountId
+      && row.commitStatus !== "skipped"
+      && row.commitStatus !== "needs_review"
+    ))
     .map((row) => ({
       account_id: row.accountId!,
       transaction_date: row.date,
@@ -279,6 +324,28 @@ function buildPreviewLedgerRows(previewRows: ImportPreviewRowDto[]) {
       transfer_direction: row.transferDirection ?? null,
       amount_minor: row.amountMinor
     }));
+}
+
+function buildProjectedLedgerRows(
+  existingRows: {
+    transaction_id?: string;
+    account_id: string;
+    transaction_date: string;
+    entry_type: "expense" | "income" | "transfer";
+    transfer_direction: "in" | "out" | null;
+    amount_minor: number;
+  }[],
+  previewRows: ImportPreviewRowDto[]
+) {
+  const certificationTargetIds = new Set(
+    previewRows
+      .map((row) => row.statementCertificationTargetTransactionId)
+      .filter((id): id is string => Boolean(id))
+  );
+  return [
+    ...existingRows.filter((row) => !row.transaction_id || !certificationTargetIds.has(row.transaction_id)),
+    ...buildPreviewLedgerRows(previewRows)
+  ];
 }
 
 function getStatementConfirmableDuplicateRowsForAccount(previewRows: ImportPreviewRowDto[], accountId: string, statementEndDate: string) {
@@ -339,7 +406,7 @@ function autoIncludeDuplicateMatchesExplainedByStatementBalance(input: {
         statement_start_date: statementStartDate ?? null,
         statement_end_date: statementEndDate
       },
-      rows: [...input.existingRows, ...buildPreviewLedgerRows(input.previewRows)]
+      rows: buildProjectedLedgerRows(input.existingRows, input.previewRows)
     });
     const deltaMinor = projectedLedgerBalanceMinor - statementBalanceMinor;
     const confirmableDuplicateRows = getStatementConfirmableDuplicateRowsForAccount(input.previewRows, account.id, statementEndDate);
@@ -349,11 +416,11 @@ function autoIncludeDuplicateMatchesExplainedByStatementBalance(input: {
     // can differ across mid-cycle exports and final statements. If adding the
     // app-skipped or still-unresolved duplicate rows removes the exact
     // account-level statement delta, the statement has confirmed those rows
-    // belong in this import. User-skipped rows keep their explicit decision.
+    // belong in this import. User-excluded rows keep their explicit decision.
     if (deltaMinor !== 0 && confirmableDuplicateRows.length > 0 && deltaMinor + confirmableDuplicateTotalMinor === 0) {
       for (const row of confirmableDuplicateRows) {
         row.commitStatus = "included";
-        row.commitStatusReason = "Statement balance check confirmed this row belongs in the import.";
+        row.commitStatusReason = "Statement certification check confirmed this row belongs in the import.";
         row.duplicateMatches = undefined;
       }
     }
@@ -370,6 +437,7 @@ function buildImportPreviewStatementReconciliations(input: {
     amount_minor: number;
   }[];
   previewRows: ImportPreviewRowDto[];
+  sourceType?: "csv" | "pdf" | "manual";
   statementCheckpoints: StatementCheckpointDraftDto[];
 }) {
   if (!input.statementCheckpoints.length) {
@@ -378,8 +446,7 @@ function buildImportPreviewStatementReconciliations(input: {
 
   const accountsById = new Map(input.accounts.map((account) => [account.id, account]));
   const accountsByName = groupAccountsByName(input.accounts);
-  const previewLedgerRows = buildPreviewLedgerRows(input.previewRows);
-  const ledgerRows = [...input.existingRows, ...previewLedgerRows];
+  const ledgerRows = buildProjectedLedgerRows(input.existingRows, input.previewRows);
 
   return input.statementCheckpoints.map((checkpoint) => {
     const account = resolvePreviewAccount(accountsById, accountsByName, checkpoint.accountId, checkpoint.accountName);
@@ -411,6 +478,11 @@ function buildImportPreviewStatementReconciliations(input: {
       rows: ledgerRows
     });
     const deltaMinor = projectedLedgerBalanceMinor - statementBalanceMinor;
+    const hasIdentityConfidence = hasStatementAccountIdentityConfidence({
+      sourceType: input.sourceType,
+      checkpoint,
+      account
+    });
     return {
       accountName: account.name,
       accountKind: account.kind,
@@ -420,9 +492,43 @@ function buildImportPreviewStatementReconciliations(input: {
       statementBalanceMinor,
       projectedLedgerBalanceMinor,
       deltaMinor,
-      status: deltaMinor === 0 ? "matched" as const : "mismatch" as const
+      status: deltaMinor === 0
+        ? hasIdentityConfidence ? "matched" as const : "identity_unconfirmed" as const
+        : "mismatch" as const
     };
   });
+}
+
+function hasStatementAccountIdentityConfidence(input: {
+  sourceType?: "csv" | "pdf" | "manual";
+  checkpoint: StatementCheckpointDraftDto;
+  account: AccountDto;
+}) {
+  if (input.sourceType !== "pdf") {
+    return true;
+  }
+
+  if (
+    (input.account.checkpointHistory?.length ?? 0) > 0
+    || input.account.latestTransactionDate
+    || Number(input.account.openingBalanceMinor ?? 0) !== 0
+  ) {
+    return true;
+  }
+
+  const detectedName = normalizeAccountIdentityName(input.checkpoint.detectedAccountName ?? input.checkpoint.accountName);
+  const accountName = normalizeAccountIdentityName(input.account.name);
+  if (!detectedName || !accountName) {
+    return false;
+  }
+
+  return detectedName === accountName
+    || detectedName.includes(accountName)
+    || accountName.includes(detectedName);
+}
+
+function normalizeAccountIdentityName(value?: string) {
+  return value?.toLowerCase().replace(/[^a-z0-9]+/g, "") ?? "";
 }
 
 function getRequestedCommitStatus(rawRow: Record<string, string>) {

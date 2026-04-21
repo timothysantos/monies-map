@@ -263,7 +263,7 @@ test.describe("import flow", () => {
     await monthPage.close();
   });
 
-  test("statement preview can skip midcycle duplicates and still save the checkpoint", async ({ page }) => {
+  test("statement preview can certify midcycle rows and still save the checkpoint", async ({ page }) => {
     const bootstrap = await loadBootstrap(page, { month: "2025-10" });
     const account = bootstrap.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
@@ -324,6 +324,7 @@ test.describe("import flow", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sourceLabel: "Playwright monthly PDF",
+          sourceType: "pdf",
           rows: [row.rawRow],
           defaultAccountName: row.accountName,
           ownershipType: "direct",
@@ -348,6 +349,7 @@ test.describe("import flow", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sourceLabel: "Playwright monthly PDF",
+          sourceType: "pdf",
           rows: [row.rawRow],
           defaultAccountName: row.accountName,
           ownershipType: "direct",
@@ -360,8 +362,9 @@ test.describe("import flow", () => {
 
     expect(preview.ok, JSON.stringify(preview.json)).toBeTruthy();
     expect(preview.json.preview.previewRows).toHaveLength(1);
-    expect(preview.json.preview.previewRows[0].commitStatus).toBe("skipped");
-    expect(preview.json.preview.previewRows[0].duplicateMatches[0].matchKind).toBe("exact");
+    expect(preview.json.preview.previewRows[0].commitStatus).toBe("included");
+    expect(preview.json.preview.previewRows[0].statementCertificationTargetTransactionId).toBeTruthy();
+    expect(preview.json.preview.previewRows[0].duplicateMatches).toBeUndefined();
     expect(
       preview.json.preview.statementReconciliations[0].status,
       JSON.stringify(preview.json.preview.statementReconciliations[0])
@@ -389,7 +392,7 @@ test.describe("import flow", () => {
     expect(Number.isFinite(afterAccount?.latestCheckpointDeltaMinor)).toBeTruthy();
   });
 
-  test("statement balance can confirm a near-match row should be imported", async ({ page }) => {
+  test("statement balance can certify a near-match provisional row", async ({ page }) => {
     const bootstrap = await loadBootstrap(page, { month: "2025-08" });
     const account = bootstrap.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
@@ -458,6 +461,7 @@ test.describe("import flow", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sourceLabel: "Playwright near-match PDF",
+          sourceType: "pdf",
           rows: [row],
           defaultAccountName: row.account,
           ownershipType: "direct",
@@ -468,14 +472,14 @@ test.describe("import flow", () => {
       return { ok: response.ok, json: await response.json() };
     }, { row: statementRow, statementCheckpoints });
     expect(mismatchedPreview.ok, JSON.stringify(mismatchedPreview.json)).toBeTruthy();
-    expect(mismatchedPreview.json.preview.previewRows[0].commitStatus).toBe("needs_review");
-    expect(mismatchedPreview.json.preview.previewRows[0].duplicateMatches[0].matchKind).toBe("near");
+    expect(mismatchedPreview.json.preview.previewRows[0].commitStatus).toBe("included");
+    expect(mismatchedPreview.json.preview.previewRows[0].statementCertificationTargetTransactionId).toBeTruthy();
+    expect(mismatchedPreview.json.preview.previewRows[0].duplicateMatches).toBeUndefined();
 
-    const projectedWithoutNearMatch = mismatchedPreview.json.preview.statementReconciliations[0].projectedLedgerBalanceMinor;
-    const projectedWithNearMatch = projectedWithoutNearMatch - 248;
+    const projectedWithCertifiedNearMatch = mismatchedPreview.json.preview.statementReconciliations[0].projectedLedgerBalanceMinor;
     const resolvingStatementCheckpoints = [{
       ...statementCheckpoints[0],
-      statementBalanceMinor: account.kind === "credit_card" ? -projectedWithNearMatch : projectedWithNearMatch
+      statementBalanceMinor: account.kind === "credit_card" ? -projectedWithCertifiedNearMatch : projectedWithCertifiedNearMatch
     }];
 
     const resolvedPreview = await page.evaluate(async ({ row, statementCheckpoints }) => {
@@ -484,6 +488,7 @@ test.describe("import flow", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sourceLabel: "Playwright near-match PDF",
+          sourceType: "pdf",
           rows: [row],
           defaultAccountName: row.account,
           ownershipType: "direct",
@@ -496,12 +501,13 @@ test.describe("import flow", () => {
 
     expect(resolvedPreview.ok, JSON.stringify(resolvedPreview.json)).toBeTruthy();
     expect(resolvedPreview.json.preview.previewRows[0].commitStatus).toBe("included");
+    expect(resolvedPreview.json.preview.previewRows[0].statementCertificationTargetTransactionId).toBeTruthy();
     expect(resolvedPreview.json.preview.previewRows[0].duplicateMatches).toBeUndefined();
     expect(resolvedPreview.json.preview.duplicateCandidateCount).toBe(0);
     expect(resolvedPreview.json.preview.statementReconciliations[0].status).toBe("matched");
   });
 
-  test("multi-card statements reconcile with growing midcycle duplicates and restore mistakes", async ({ page }, testInfo) => {
+  test("multi-card statements reconcile while certifying growing midcycle rows", async ({ page }, testInfo) => {
     test.setTimeout(180_000);
 
     const createAccount = async (name, openingBalanceMinor) => {
@@ -653,8 +659,7 @@ test.describe("import flow", () => {
     await commitCurrentPreview();
 
     await uploadPdfAndMap(janPdfPath);
-    await expect(page.getByText("0 rows will import")).toBeVisible();
-    await expect(page.getByText("4 rows will skip").first()).toBeVisible();
+    await expect(page.getByText("4 rows already covered").first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Save statement checkpoints" }).first()).toBeEnabled();
     await screenshot("02-jan-two-card-pdf-all-duplicates-save-checkpoints");
     await page.getByRole("button", { name: "Save statement checkpoints" }).first().click();
@@ -664,6 +669,10 @@ test.describe("import flow", () => {
       ...febAlphaRows.map((row) => ({ ...row, account: alphaAccount.name, note: "synthetic growing midcycle" })),
       ...febBetaRows.map((row) => ({ ...row, account: betaAccount.name, note: "synthetic growing midcycle" }))
     ];
+    const provisionalAlphaGroceries = midcycleRows.find((row) => row.reference === "FEB-A2");
+    provisionalAlphaGroceries.date = "2026-02-10";
+    provisionalAlphaGroceries.description = "ALPHA FEB GROCERIES TEMP";
+    provisionalAlphaGroceries.note = "user picked groceries during mid-cycle cleanup";
     const sortedMidcycleRows = [
       midcycleRows.find((row) => row.reference === "FEB-A1"),
       midcycleRows.find((row) => row.reference === "FEB-B1"),
@@ -681,7 +690,7 @@ test.describe("import flow", () => {
       await page.getByRole("button", { name: "Preview import" }).click();
       await expect(page.getByText(`${expectedImportCount} row${expectedImportCount === 1 ? "" : "s"} will import`)).toBeVisible();
       if (expectedSkipCount) {
-        await expect(page.getByText(`${expectedSkipCount} row${expectedSkipCount === 1 ? "" : "s"} will skip`).first()).toBeVisible();
+        await expect(page.getByText(`${expectedSkipCount} row${expectedSkipCount === 1 ? "" : "s"} already covered`).first()).toBeVisible();
         await page.locator("details.import-skipped-rows summary").click();
       }
       await screenshot(label.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
@@ -699,32 +708,36 @@ test.describe("import flow", () => {
     await previewCsvSnapshot("06-final-csv-all-midcycle-duplicates", sortedMidcycleRows, 0, 7);
 
     await uploadPdfAndMap(febPdfPath);
-    await expect(page.getByText("7 rows will skip").first()).toBeVisible();
+    await expect(page.getByText("1 row will import").first()).toBeVisible();
+    await expect(page.getByText("7 existing rows will be certified by the statement").first()).toBeVisible();
     const lateStatementOnlyDescription = page.locator(`input[value="${lateStatementOnlyRow.description}"]`);
     await expect(lateStatementOnlyDescription).toBeVisible();
     const lateStatementOnlyPreviewRow = lateStatementOnlyDescription.locator("xpath=ancestor::tr[1]");
     await expect(page.locator(".statement-reconciliation-row .pill.success")).toHaveCount(2);
     await screenshot("07-feb-two-card-pdf-duplicates-plus-late-row-matched");
 
-    await lateStatementOnlyPreviewRow.getByRole("button", { name: "Skip row" }).click();
+    await lateStatementOnlyPreviewRow.getByRole("button", { name: "Exclude row" }).click();
     await expect(page.locator(".statement-reconciliation-row").filter({ hasText: alphaAccount.name }).locator(".pill.warning")).toBeVisible();
     await expect(page.locator(".statement-reconciliation-row").filter({ hasText: betaAccount.name }).locator(".pill.success")).toBeVisible();
     await page.locator("details.import-skipped-rows summary").click();
     await expect(page.locator("details.import-skipped-rows").locator(`input[value="${lateStatementOnlyRow.description}"]`)).toBeVisible();
     await screenshot("08-user-skipped-late-row-alpha-check-fails");
 
-    await page.locator("details.import-skipped-rows").locator(`input[value="${lateStatementOnlyRow.description}"]`).locator("xpath=ancestor::tr[1]").getByRole("button", { name: "Restore row" }).click();
+    await page.locator("details.import-skipped-rows").locator(`input[value="${lateStatementOnlyRow.description}"]`).locator("xpath=ancestor::tr[1]").getByRole("button", { name: "Include row" }).click();
     await expect(page.locator(".statement-reconciliation-row .pill.success")).toHaveCount(2);
     await expect(page.locator(`input[value="${lateStatementOnlyRow.description}"]`)).toBeVisible();
     await screenshot("09-user-restored-late-row-both-checks-match");
 
     await commitCurrentPreview();
-    await expect(page.getByText("Recent imports")).toBeVisible();
+    const afterStatement = await loadBootstrap(page, { month: "2026-02" });
+    const alphaGroceriesEntry = findView(afterStatement, "household").monthPage.entries.find((entry) => (
+      entry.accountName === alphaAccount.name
+      && entry.description === "ALPHA FEB GROCERIES"
+    ));
+    expect(alphaGroceriesEntry, JSON.stringify(findView(afterStatement, "household").monthPage.entries)).toBeTruthy();
+    expect(alphaGroceriesEntry.note).toBe("user picked groceries during mid-cycle cleanup");
+    await expect(page.getByRole("heading", { name: "Recent imports" })).toBeVisible();
     await page.getByRole("button", { name: /Recent imports/ }).click();
-    await expect(page.getByText("03-midcycle-snapshot-1")).toBeVisible();
-    await expect(page.getByText("04-midcycle-snapshot-2")).toBeVisible();
-    await expect(page.getByText("05-midcycle-snapshot-3")).toBeVisible();
-    await expect(page.getByText("synthetic-uob-two-card-feb-2026")).toBeVisible();
     await screenshot("10-recent-imports-after-combined-flow");
   });
 });

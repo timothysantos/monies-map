@@ -1027,6 +1027,7 @@ export default {
         sourceLabel?: string;
         csv?: string;
         rows?: Record<string, string>[];
+        sourceType?: "csv" | "pdf" | "manual";
         defaultAccountName?: string;
         ownershipType?: "direct" | "shared";
         ownerName?: string;
@@ -1053,6 +1054,7 @@ export default {
             ownershipType: body.ownershipType ?? "direct",
             ownerName: body.ownerName,
             splitBasisPoints: body.splitBasisPoints,
+            sourceType: body.sourceType ?? "csv",
             statementCheckpoints: body.statementCheckpoints ?? []
           })
         });
@@ -1094,6 +1096,7 @@ export default {
           commitStatus?: "included" | "skipped" | "needs_review";
           note?: string;
           rawRow: Record<string, string>;
+          statementCertificationTargetTransactionId?: string;
         }[];
       }>();
 
@@ -1109,7 +1112,7 @@ export default {
           parserKey: body.parserKey ?? "generic_csv",
           note: body.note,
           statementCheckpoints: body.statementCheckpoints ?? [],
-          rows: body.rows
+          rows: body.rows ?? []
         }))
       });
     }
