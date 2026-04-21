@@ -35,6 +35,7 @@ export function ImportPreviewReview({
   duplicateCheckpointAccounts,
   isSubmitting,
   onRemapPreviewAccount,
+  onCreateStatementAccount,
   onDismissOverlap,
   onRefreshStatementReconciliation,
   onUpdateStatementCheckpoint
@@ -54,6 +55,7 @@ export function ImportPreviewReview({
           previewRows={previewRows}
           statementCheckpoints={statementCheckpoints}
           onRemapPreviewAccount={onRemapPreviewAccount}
+          onCreateStatementAccount={onCreateStatementAccount}
         />
       ) : null}
 
@@ -145,7 +147,8 @@ function StatementAccountMapping({
   unknownPreviewAccountNames,
   previewRows,
   statementCheckpoints,
-  onRemapPreviewAccount
+  onRemapPreviewAccount,
+  onCreateStatementAccount
 }) {
   const accountOptions = getAccountSelectOptions(accounts, { valueKey: "id" });
   const accountOptionsByName = accounts.reduce((optionsByName, account) => {
@@ -184,19 +187,24 @@ function StatementAccountMapping({
       <p className="lede compact">{messages.imports.accountMappingDetail}</p>
       <div className="statement-account-map-grid">
         {detectedPreviewAccountNames.map((accountName) => (
-          <label key={accountName} className="entries-filter statement-account-map-row">
-            <span className="entries-filter-label">{messages.imports.detectedAccount(accountName)}</span>
-            <select
-              className="table-edit-input"
-              value={selectedAccountValue(accountName)}
-              onChange={(event) => onRemapPreviewAccount(accountName, event.target.value)}
-            >
-              <option value="">{messages.imports.chooseAccount}</option>
-              {accountOptions.map((account) => (
-                <option key={account.id} value={account.value}>{account.label}</option>
-              ))}
-            </select>
-          </label>
+          <div key={accountName} className="statement-account-map-row">
+            <label className="entries-filter">
+              <span className="entries-filter-label">{messages.imports.detectedAccount(accountName)}</span>
+              <select
+                className="table-edit-input"
+                value={selectedAccountValue(accountName)}
+                onChange={(event) => onRemapPreviewAccount(accountName, event.target.value)}
+              >
+                <option value="">{messages.imports.chooseAccount}</option>
+                {accountOptions.map((account) => (
+                  <option key={account.id} value={account.value}>{account.label}</option>
+                ))}
+              </select>
+            </label>
+            <button type="button" className="subtle-action" onClick={() => onCreateStatementAccount(accountName)}>
+              {messages.imports.createDetectedAccount}
+            </button>
+          </div>
         ))}
       </div>
     </div>
