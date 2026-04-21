@@ -227,7 +227,8 @@ h3 {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  min-width: 210px;
+  flex: 0 0 auto;
+  min-width: 260px;
   padding: 8px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -244,13 +245,15 @@ h3 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.45ch;
   min-width: 0;
   text-align: center;
+  white-space: nowrap;
 }
 
 .period-range-segment {
+  flex: 0 0 auto;
   border: 0;
   background: transparent;
   color: inherit;
@@ -812,6 +815,50 @@ h3 {
   display: grid;
   gap: 10px;
   padding: 16px 18px;
+}
+
+.settings-login-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.settings-login-main {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 12px;
+}
+
+.settings-login-main h3,
+.settings-login-main p {
+  margin: 0;
+}
+
+.settings-login-main p {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.settings-login-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(177, 94, 47, 0.08);
+  color: var(--accent-strong);
+}
+
+.settings-login-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .settings-section-toggle {
@@ -5715,6 +5762,15 @@ th {
 
   .settings-page {
     gap: 14px;
+  }
+
+  .settings-login-card {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .settings-login-actions {
+    justify-content: flex-start;
   }
 
   .settings-section-toggle {
