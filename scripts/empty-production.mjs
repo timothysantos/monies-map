@@ -57,8 +57,6 @@ if (answer.trim() !== confirmationText) {
 
 const now = new Date().toISOString();
 const sql = `
-PRAGMA defer_foreign_keys = ON;
-BEGIN TRANSACTION;
 ${deleteStatements.map((statement) => `${statement};`).join("\n")}
 CREATE TABLE IF NOT EXISTS demo_settings (
   key TEXT PRIMARY KEY,
@@ -74,8 +72,6 @@ VALUES ('current', '${JSON.stringify({
 ON CONFLICT(key) DO UPDATE SET
   value_json = excluded.value_json,
   updated_at = CURRENT_TIMESTAMP;
-COMMIT;
-PRAGMA defer_foreign_keys = OFF;
 `;
 
 const tempDir = mkdtempSync(join(tmpdir(), "monies-map-empty-production-"));
