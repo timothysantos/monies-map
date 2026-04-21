@@ -517,7 +517,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         rows: rowsToCommit
       });
       resetImportForm();
-      await onRefresh();
+      await onRefresh({ refreshShell: true, broadcast: true });
     } catch (error) {
       setPreviewError(error instanceof Error ? error.message : messages.imports.commitFailed);
     } finally {
@@ -529,7 +529,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsSubmitting(true);
     try {
       await rollbackImportBatch(importId);
-      await onRefresh();
+      await onRefresh({ refreshShell: true, broadcast: true });
     } finally {
       setIsSubmitting(false);
     }
