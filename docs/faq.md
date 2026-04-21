@@ -286,12 +286,25 @@ The fastest Access setup is one-time PIN email auth, restricted to:
 Google sign-in can be used by configuring Google as a Cloudflare Zero Trust
 identity provider and keeping the same email allowlist.
 
+The public demo deployment is:
+
+[https://monies-map-demo.timsantos-accts.workers.dev](https://monies-map-demo.timsantos-accts.workers.dev)
+
+It uses the separate Cloudflare D1 database `monies-map-demo` and intentionally
+does not require Cloudflare Access. Without Access, the app has no authenticated
+viewer email, so login-to-person linking is unavailable and users switch between
+household/person views manually. Keep the demo database limited to fake data
+because anyone with the URL can make changes. The demo app shows a thin sticky
+blue `demo` banner at the top of the page.
+
 ## How do I deploy to production?
 
 Use the Cloudflare deploy steps in
 [`README.md`](../README.md#cloudflare-deploy).
-The routine path is to use Node 22, then run `npm run deploy`. If the app change
-depends on a schema update, run `npm run db:migrate:remote` before deploy.
+The routine production path is to use Node 22, then run `npm run deploy:prod`.
+Use `npm run deploy:demo` for only the public demo, or `npm run deploy:all` to
+build once and publish both Workers. If the app change depends on a schema
+update, run the matching D1 migration before deploy.
 
 ## What does the demo assume right now?
 
@@ -444,6 +457,9 @@ The current setup runs as two local processes during development:
 
 - Vite for the frontend
 - Wrangler for the Worker API
+
+Local development shows a thin sticky green `local` banner at the top of the
+page so it is visually distinct from deployed environments.
 
 If the app sits on `Loading...` and the browser console shows `/api/bootstrap`
 returning `500` plus a JSON parse error, the usual local cause is that Vite is

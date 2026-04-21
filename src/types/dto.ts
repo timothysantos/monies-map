@@ -574,6 +574,7 @@ export interface SettingsPageDto {
 }
 
 export interface AppBootstrapDto {
+  appEnvironment?: "demo" | "local" | "production";
   household: HouseholdDto;
   accounts: AccountDto[];
   categories: CategoryDto[];

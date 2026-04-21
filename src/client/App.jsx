@@ -110,6 +110,33 @@ function waitFor(ms) {
   });
 }
 
+function getClientAppEnvironment() {
+  if (typeof window === "undefined") {
+    return "production";
+  }
+
+  const { hostname } = window.location;
+  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") {
+    return "local";
+  }
+  if (hostname.includes("demo")) {
+    return "demo";
+  }
+  return "production";
+}
+
+function EnvironmentBanner({ environment }) {
+  if (environment !== "demo" && environment !== "local") {
+    return null;
+  }
+
+  return (
+    <div className={`environment-banner environment-banner-${environment}`}>
+      {environment}
+    </div>
+  );
+}
+
 function readPersistedBootstrap(cacheKey) {
   if (typeof window === "undefined") {
     return null;
@@ -202,6 +229,7 @@ export function App() {
   const entriesPageCacheRef = useRef(new Map());
   const entriesPageInflightRef = useRef(new Map());
   const entriesPageCacheVersionRef = useRef(0);
+  const appEnvironment = bootstrap?.appEnvironment ?? getClientAppEnvironment();
   const explicitViewId = searchParams.get("view");
   const selectedViewId = explicitViewId ?? "household";
   const selectedTabId = routeTabs.find((tab) => tab.path === location.pathname)?.id ?? "summary";
@@ -1063,6 +1091,7 @@ export function App() {
   if (bootstrapError) {
     return (
       <main className="shell">
+        <EnvironmentBanner environment={appEnvironment} />
         <section className="panel">
           <p>{messages.common.bootstrapErrorTitle}</p>
           <p>{bootstrapError}</p>
@@ -1074,6 +1103,7 @@ export function App() {
   if (!bootstrap || !view) {
     return (
       <main className="shell">
+        <EnvironmentBanner environment={appEnvironment} />
         <AppLoadingPanel />
       </main>
     );
@@ -1401,6 +1431,7 @@ export function App() {
 
   return (
     <main className="shell">
+      <EnvironmentBanner environment={appEnvironment} />
       <section className="control-bar">
         <div className="context-block">
           <div className="pill-row">

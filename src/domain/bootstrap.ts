@@ -69,7 +69,8 @@ export async function buildBootstrapDto(
   selectedScope: PersonScope = "direct_plus_shared",
   summaryStartMonth?: string,
   summaryEndMonth?: string,
-  viewerEmail?: string
+  viewerEmail?: string,
+  appEnvironment?: AppBootstrapDto["appEnvironment"]
 ): Promise<AppBootstrapDto> {
   const demo = await ensureAppData(db);
   const [household, accounts, categories, categoryMatchRuleSuggestions, trackedMonths] = await Promise.all([
@@ -111,6 +112,7 @@ export async function buildBootstrapDto(
   ];
 
   return {
+    appEnvironment,
     household,
     accounts,
     categories,
@@ -424,9 +426,15 @@ function buildSummaryPage(
   });
   const plannedTotalMinor = sumMinor(months, "estimatedExpensesMinor");
   const actualTotalMinor = sumMinor(months, "realExpensesMinor");
+  const incomeTotalMinor = sumMinor(months, "incomeMinor");
   const targetSavingsMinor = sumMinor(months, "savingsGoalMinor");
   const realizedSavingsMinor = sumMinor(months, "realizedSavingsMinor");
   const metricCards: MetricCardDto[] = [
+    {
+      label: "Income",
+      amountMinor: incomeTotalMinor,
+      tone: "positive"
+    },
     {
       label: "Planned spend",
       amountMinor: plannedTotalMinor
@@ -1293,7 +1301,7 @@ function buildDonutChart(entries: EntryDto[], categories: CategoryDto[]): DonutC
 
 function sumMinor(months: SummaryMonthDto[], key: keyof Pick<
   SummaryMonthDto,
-  "estimatedExpensesMinor" | "realExpensesMinor" | "savingsGoalMinor" | "realizedSavingsMinor"
+  "incomeMinor" | "estimatedExpensesMinor" | "realExpensesMinor" | "savingsGoalMinor" | "realizedSavingsMinor"
 >) {
   return months.reduce((sum, month) => sum + month[key], 0);
 }
