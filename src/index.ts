@@ -1194,8 +1194,12 @@ export default {
           ...(await rollbackImportBatch(env.DB, { importId: body.importId }))
         });
       } catch (error) {
+        const message = describeError(error);
+        if (message.includes("cannot be rolled back")) {
+          return json({ ok: false, error: message }, 409);
+        }
         console.error("Import rollback failed", error);
-        return json({ ok: false, error: "Import rollback failed", message: describeError(error) }, 500);
+        return json({ ok: false, error: "Import rollback failed", message }, 500);
       }
     }
 

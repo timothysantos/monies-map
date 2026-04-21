@@ -104,7 +104,7 @@ export function ImportRecentHistorySection({
                       {item.overlapImportCount ? (
                         <ImportOverlapPopover item={item} />
                       ) : null}
-                      {item.status === "completed" ? (
+                      {canRollbackImport(item) ? (
                         <DeleteRowButton
                           label={item.sourceLabel}
                           destructive={false}
@@ -113,6 +113,10 @@ export function ImportRecentHistorySection({
                           prompt={<>{messages.imports.rollbackDetail(item.sourceLabel)}</>}
                           onConfirm={() => onRollback(item.id)}
                         />
+                      ) : item.status === "completed" && isStatementCertifiedImport(item) ? (
+                        <span className="pill neutral" title={messages.imports.statementRollbackLockedDetail}>
+                          {messages.imports.statementRollbackLocked}
+                        </span>
                       ) : null}
                     </div>
                   </div>
@@ -218,6 +222,14 @@ function ImportOverlapPopover({ item }) {
       </Popover.Portal>
     </Popover.Root>
   );
+}
+
+function canRollbackImport(item) {
+  return item.status === "completed" && !isStatementCertifiedImport(item);
+}
+
+function isStatementCertifiedImport(item) {
+  return item.sourceType === "pdf" || item.statementCertificateCount > 0;
 }
 
 function getImportBatchKindLabel(item) {
