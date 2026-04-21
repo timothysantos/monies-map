@@ -10,6 +10,8 @@ import {
   deleteCategoryMatchRule,
   deleteAccountCheckpoint,
   deleteSettingsCategory,
+  dismissAllUnresolvedTransfers,
+  dismissUnresolvedTransfer,
   fetchCheckpointExport,
   ignoreCategoryMatchRuleSuggestion,
   runDemoAction,
@@ -629,6 +631,37 @@ export function SettingsPanel({
     }
   }
 
+  async function handleDismissUnresolvedTransfer(entryId) {
+    setIsSubmitting(true);
+    try {
+      await dismissUnresolvedTransfer(entryId);
+      await onRefresh();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Failed to clear unresolved transfer");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleDismissAllUnresolvedTransfers() {
+    if (!settingsPage.unresolvedTransfers.length) {
+      return;
+    }
+    if (!window.confirm(`Clear all ${settingsPage.unresolvedTransfers.length} unresolved transfer reviews? This will only hide them from this review list.`)) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await dismissAllUnresolvedTransfers();
+      await onRefresh();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Failed to clear unresolved transfers");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   function openTransferReview(entryId) {
     const params = new URLSearchParams(searchParams);
     params.set("view", viewId);
@@ -768,7 +801,10 @@ export function SettingsPanel({
       <SettingsTransfersSection
         transfers={settingsPage.unresolvedTransfers}
         isOpen={settingsSectionsOpen.transfers}
+        isSubmitting={isSubmitting}
         onToggle={() => toggleSettingsSection("transfers")}
+        onDismissTransfer={handleDismissUnresolvedTransfer}
+        onDismissAllTransfers={handleDismissAllUnresolvedTransfers}
         onOpenTransferReview={openTransferReview}
       />
 

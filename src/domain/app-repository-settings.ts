@@ -481,13 +481,13 @@ export async function loadUnresolvedTransfers(db: D1Database) {
       ) AS grouped ON grouped.transfer_group_id = transactions.transfer_group_id
       WHERE transactions.household_id = ?
         AND transactions.entry_type = 'transfer'
+        AND transactions.transfer_review_dismissed_at IS NULL
         AND (transactions.import_id IS NULL OR imports.status = 'completed')
         AND (
           transactions.transfer_group_id IS NULL
           OR COALESCE(grouped.pair_count, 0) < 2
         )
       ORDER BY transactions.transaction_date DESC, transactions.created_at DESC
-      LIMIT 8
     `)
     .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID)
     .all<{
@@ -507,6 +507,75 @@ export async function loadUnresolvedTransfers(db: D1Database) {
     amountMinor: Number(row.amount_minor),
     transferDirection: row.transfer_direction ?? undefined
   }));
+}
+
+export async function dismissUnresolvedTransfer(db: D1Database, entryId: string) {
+  const transfer = await db
+    .prepare(`
+      SELECT id, description
+      FROM transactions
+      WHERE household_id = ?
+        AND id = ?
+        AND entry_type = 'transfer'
+        AND transfer_review_dismissed_at IS NULL
+      LIMIT 1
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, entryId)
+    .first<{ id: string; description: string }>();
+
+  if (!transfer) {
+    throw new Error("Unknown unresolved transfer.");
+  }
+
+  await db
+    .prepare(`
+      UPDATE transactions
+      SET transfer_review_dismissed_at = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE household_id = ? AND id = ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, entryId)
+    .run();
+
+  await recordAuditEvent(db, {
+    entityType: "transaction",
+    entityId: entryId,
+    action: "transfer_review_dismissed",
+    detail: `Cleared unresolved transfer review for ${transfer.description}.`
+  });
+
+  return { dismissedCount: 1 };
+}
+
+export async function dismissAllUnresolvedTransfers(db: D1Database) {
+  const transfers = await loadUnresolvedTransfers(db);
+  if (!transfers.length) {
+    return { dismissedCount: 0 };
+  }
+
+  for (let index = 0; index < transfers.length; index += 50) {
+    const chunk = transfers.slice(index, index + 50);
+    const placeholders = chunk.map(() => "?").join(", ");
+    await db
+      .prepare(`
+        UPDATE transactions
+        SET transfer_review_dismissed_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE household_id = ?
+          AND id IN (${placeholders})
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, ...chunk.map((transfer) => transfer.entryId))
+      .run();
+  }
+
+  await recordAuditEvent(db, {
+    entityType: "transaction",
+    entityId: "unresolved-transfers",
+    action: "transfer_review_dismissed_all",
+    detail: `Cleared ${transfers.length} unresolved transfer reviews.`
+  });
+
+  return { dismissedCount: transfers.length };
 }
 
 export async function loadAuditEvents(db: D1Database) {
