@@ -134,6 +134,64 @@ the detected statement account name. This prevents a first PDF import into a
 zero-balance wrong account from passing just because the statement's own rows
 and ending balance are internally consistent.
 
+When a PDF statement closes successfully, the app stores a reconciliation
+certificate for each account section. The certificate records row counts,
+debit/credit totals, net movement, statement balance, projected ledger balance,
+how many rows were imported, how many existing rows were certified, how many
+were already covered, and whether any exception remained.
+
+After a row is statement-certified inside a saved statement period, its bank
+facts are locked. You can still edit user annotations such as category, note,
+ownership, and splits, but changing date, description, account, amount, type, or
+transfer direction requires a replacement statement or explicit adjustment.
+
+## What if I import a PDF statement to the wrong account?
+
+The app tries to prevent this before commit. A PDF statement must pass the
+statement certification check, and first-time zero-balance accounts also need
+account identity confidence from the detected statement account name. If the
+selected account has no prior ledger activity, no statement checkpoint history,
+and no opening balance, a wrong PDF can otherwise balance against its own rows,
+so the app marks the result as identity unconfirmed instead of certified.
+
+If a wrong PDF still gets committed, do not treat it like an ordinary CSV
+rollback. A completed PDF statement may have certified existing ledger rows and
+locked bank facts inside the period. The correction should be handled as a
+replacement statement workflow or explicit adjustment so the audit trail remains
+clear.
+
+### Why does this need a special correction path?
+
+The full replacement workflow is not automatically required on day one. It
+becomes relevant because of the accounting controls the app applies:
+
+- PDF statements are treated as high-authority evidence.
+- PDF imports can certify existing mid-cycle rows.
+- Certified bank facts are locked after a statement period closes.
+- Completed PDF imports are blocked from normal rollback.
+- Reconciliation certificates make the period auditable.
+
+The accounting concept is that closed periods need traceable corrections, not
+silent history rewrites. The replacement workflow is the app-specific way to
+apply that concept when the evidence source was wrong.
+
+The intended replacement workflow is:
+
+1. Upload the correct PDF statement for the same account and statement period.
+2. Compare its account identity, statement dates, row count, debit and credit
+   totals, ending balance, and existing reconciliation certificate against the
+   committed statement.
+3. Preserve user annotations on rows that still match, such as categories,
+   notes, ownership, splits, and links.
+4. Re-certify matching rows from the replacement statement.
+5. Mark wrong rows from the mistaken statement as explicit corrections,
+   reversals, or adjustment exceptions rather than silently deleting them.
+
+That full replacement UI is not implemented yet. Until it exists, the safer
+manual path is to add a correcting statement or adjustment with a clear note, or
+restore from backup if the mistaken PDF was committed to the wrong production
+account and the correction would be too noisy.
+
 ## Glossary: accounting terms in the app
 
 ### Bank facts
@@ -170,6 +228,12 @@ A statement checkpoint is the official closing balance for one account and one
 statement period. It is the control total: after applying the statement rows and
 prior ledger baseline, the computed ledger balance should equal this number.
 
+### Reconciliation certificate
+
+A reconciliation certificate is the saved proof that a PDF statement section
+closed. It stores control totals and exception counts so the app can later show
+that the period was certified, not merely imported.
+
 ### Checks and balances
 
 Checks and balances are the independent proofs the app uses before trusting an
@@ -183,6 +247,14 @@ Identity unconfirmed means the statement may balance mathematically, but the app
 does not yet have enough evidence that the selected ledger account is the right
 account. This mainly protects brand-new zero-balance accounts, where a wrong PDF
 could otherwise reconcile against itself.
+
+### Exception register
+
+The exception register is the preview's short list of things that still require
+attention. Normal matched statement rows should not appear as work for the user.
+The register focuses on blockers such as account mapping, account identity,
+statement mismatch, unknown categories, unresolved row decisions, and prior
+import context.
 
 ### Near match and probable match
 
@@ -847,9 +919,11 @@ the commit set and both statement checks return to matched.
 
 After the statement checks match, the user commits the statement. Recent imports
 show the earlier mid-cycle batches and the final statement batch, while the
-certified rows keep their user annotations. Mid-cycle batches remain ordinary
-working imports; completed PDF statement imports are protected because they may
-have certified existing ledger rows.
+certified rows keep their user annotations. The app also saves statement
+certificates for both card sections, then locks certified bank facts for the
+closed period. Mid-cycle batches remain ordinary working imports; completed PDF
+statement imports are protected because they may have certified existing ledger
+rows.
 
 ![Recent imports show the mid-cycle batches and final statement batch](/faq/import-midcycle-two-card/thumbs/10-recent-imports-after-combined-flow.png)
 
@@ -866,9 +940,10 @@ Good follow-up work:
 3. Clean categories and ownership.
 4. Leave the import batch in history so it can be rolled back if it was wrong.
 
-Avoid editing old reconciled rows unless you are fixing a known mistake. If you
-do edit one, recheck the statement checkpoint because the saved balance may move
-from matched to mismatched.
+Avoid editing old reconciled bank facts unless you are fixing a known mistake.
+For statement-certified rows in a saved period, the app blocks bank-fact edits
+and asks for a replacement statement or adjustment instead. User annotations
+remain editable because they do not change the bank evidence.
 
 ### Two-month example
 

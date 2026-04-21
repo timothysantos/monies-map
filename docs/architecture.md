@@ -206,6 +206,19 @@ That distinction matters because the system needs to answer questions like:
   ownership, splits, and links remain attached to the same transaction.
 - official PDF statement rows that already match statement-certified ledger rows
   are treated as already certified rather than as duplicate conflicts.
+- saving matched PDF statement checkpoints also writes compact reconciliation
+  certificates. A certificate records the account, statement period, row count,
+  debit and credit totals, net movement, statement balance, projected ledger
+  balance, imported row count, certified-existing row count, already-covered row
+  count, and whether any exceptions remained.
+- once a statement-certified transaction sits inside a saved statement period,
+  its bank facts are locked: date, description, account, amount, entry type, and
+  transfer direction require a replacement statement or explicit adjustment.
+  User annotations such as category, note, ownership, and splits remain editable.
+- import preview exposes an exception register so the user works blockers and
+  review items instead of scanning every duplicate-looking row. Exceptions include
+  unknown account, unknown category, statement mismatch, account identity proof,
+  row review decisions, unresolved ledger matches, and prior import context.
 - PDF statement commit requires both balance reconciliation and account identity
   confidence. If the mapped account has no prior checkpoint history or ledger
   activity, the detected statement account name must match the mapped ledger
@@ -216,6 +229,12 @@ That distinction matters because the system needs to answer questions like:
   working imports because they may have certified existing ledger rows. Corrections
   should come from a replacement statement import or an explicit manual
   adjustment, preserving audit continuity.
+- replacement statement correction should compare account identity, period,
+  row count, debit and credit totals, ending balance, and the saved
+  reconciliation certificate before changing certified rows. Matching rows
+  should keep user annotations; rows unique to the wrong statement should become
+  explicit corrections, reversals, or adjustment exceptions rather than silent
+  deletes.
 - PDF statement previews also compare detected statement balances with the
   projected account ledger through each statement end date before commit.
   Skipped duplicate rows are excluded from the pending import set and are

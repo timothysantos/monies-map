@@ -1073,11 +1073,43 @@ export default {
         statementCheckpoints?: {
           accountId?: string;
           accountName: string;
+          detectedAccountName?: string;
           checkpointMonth: string;
           statementStartDate?: string;
           statementEndDate?: string;
           statementBalanceMinor: number;
           note?: string;
+        }[];
+        statementControlRows?: {
+          rowId: string;
+          rowIndex: number;
+          date: string;
+          description: string;
+          amountMinor: number;
+          entryType: "expense" | "income" | "transfer";
+          transferDirection?: "in" | "out";
+          accountName?: string;
+          accountId?: string;
+          categoryName?: string;
+          ownershipType: "direct" | "shared";
+          ownerName?: string;
+          splitBasisPoints: number;
+          commitStatus?: "included" | "skipped" | "needs_review";
+          note?: string;
+          rawRow: Record<string, string>;
+          statementCertificationTargetTransactionId?: string;
+        }[];
+        statementReconciliations?: {
+          accountName: string;
+          accountId?: string;
+          accountKind?: string;
+          checkpointMonth: string;
+          statementStartDate?: string;
+          statementEndDate?: string;
+          statementBalanceMinor: number;
+          projectedLedgerBalanceMinor?: number;
+          deltaMinor?: number;
+          status: "matched" | "mismatch" | "unknown_account" | "identity_unconfirmed";
         }[];
         rows?: {
           rowId: string;
@@ -1112,6 +1144,8 @@ export default {
           parserKey: body.parserKey ?? "generic_csv",
           note: body.note,
           statementCheckpoints: body.statementCheckpoints ?? [],
+          statementControlRows: body.statementControlRows,
+          statementReconciliations: body.statementReconciliations,
           rows: body.rows ?? []
         }))
       });

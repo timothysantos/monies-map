@@ -73,6 +73,10 @@ export function ImportPreviewReview({
         statementCertificationRowCount={statementCertificationRowCount}
       />
 
+      {preview.exceptionSummary?.length ? (
+        <ExceptionRegister exceptions={preview.exceptionSummary} />
+      ) : null}
+
       {visibleOverlapImports.length ? (
         <OverlapImports
           imports={visibleOverlapImports}
@@ -112,6 +116,25 @@ export function ImportPreviewReview({
         </div>
       ) : null}
     </>
+  );
+}
+
+function ExceptionRegister({ exceptions }) {
+  return (
+    <div className="import-warning import-warning-review">
+      <strong>{messages.imports.exceptionRegisterTitle}</strong>
+      <p className="lede compact">{messages.imports.exceptionRegisterDetail}</p>
+      <div className="pill-row dense">
+        {exceptions.map((item) => (
+          <span
+            key={item.kind}
+            className={`pill ${item.tone === "blocking" ? "warning" : item.tone === "review" ? "neutral" : ""}`}
+          >
+            {messages.imports.exceptionKinds[item.kind](item.count)}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 

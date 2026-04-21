@@ -67,7 +67,11 @@ During preview, check:
 - the statement checkpoint end balance matches the projected ledger
 
 After commit, the account should show a reconciled statement checkpoint. That is
-the proof that the ledger is correct through that statement period.
+the proof that the ledger is correct through that statement period. PDF
+statement commits also save reconciliation certificates with row counts,
+debit/credit totals, net movement, projected balance, and exception status. Once
+a certified row is inside a saved statement period, bank facts are locked while
+user annotations remain editable.
 
 ### Month 2: Use Mid-Cycle Downloads As Working Ledger
 

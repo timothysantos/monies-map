@@ -46,6 +46,8 @@ export function commitImportBatch({
   parserKey,
   note,
   statementCheckpoints,
+  statementControlRows,
+  statementReconciliations,
   rows
 }) {
   return postJson(
@@ -56,6 +58,11 @@ export function commitImportBatch({
       parserKey,
       note,
       statementCheckpoints: normalizeStatementCheckpoints(statementCheckpoints),
+      statementControlRows: statementControlRows?.map((row) => ({
+        ...row,
+        splitBasisPoints: Number(row.splitBasisPoints ?? 10000)
+      })),
+      statementReconciliations,
       rows: rows.map((row) => ({
         ...row,
         splitBasisPoints: Number(row.splitBasisPoints ?? 10000)

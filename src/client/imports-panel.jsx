@@ -503,6 +503,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         parserKey: statementImportMeta.parserKey,
         note: importNote,
         statementCheckpoints,
+        statementControlRows: statementImportMeta.sourceType === "pdf" ? previewRows : undefined,
+        statementReconciliations: statementImportMeta.sourceType === "pdf" ? statementReconciliations : undefined,
         rows: rowsToCommit
       });
       resetImportForm();

@@ -355,6 +355,8 @@ export interface ImportBatchDto {
   accountNames: string[];
   overlapImportCount?: number;
   overlapImports?: ImportOverlapDto[];
+  statementCertificateCount?: number;
+  statementCertificateStatus?: "certified" | "exception";
   note?: string;
 }
 
@@ -420,6 +422,13 @@ export interface ImportPreviewDto {
   accountNames: string[];
   duplicateCandidates: DuplicateCandidateDto[];
   statementReconciliations: ImportPreviewStatementReconciliationDto[];
+  exceptionSummary: ImportPreviewExceptionDto[];
+}
+
+export interface ImportPreviewExceptionDto {
+  kind: "unknown_account" | "unknown_category" | "review_rows" | "statement_mismatch" | "account_identity" | "ledger_match" | "prior_import_context";
+  count: number;
+  tone: "blocking" | "review" | "context";
 }
 
 export interface StatementCheckpointDraftDto {
@@ -436,6 +445,7 @@ export interface StatementCheckpointDraftDto {
 export interface ImportPreviewStatementReconciliationDto {
   accountName: string;
   accountKind?: string;
+  accountId?: string;
   checkpointMonth: string;
   statementStartDate?: string;
   statementEndDate?: string;

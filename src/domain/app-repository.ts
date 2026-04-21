@@ -14,6 +14,9 @@ import {
   buildImportRowHash,
   buildPlanDate,
   buildSnapshotRowsForScope,
+  computeCheckpointLedgerBalanceMinor,
+  getSignedLedgerAmountMinor,
+  getMonthEndDate,
   inferMonthKeyFromPlanRow,
   mapAccountKind,
   nextMonthKey,
@@ -90,6 +93,7 @@ export {
 } from "./app-repository-settings";
 import type {
   ImportPreviewRowDto,
+  ImportPreviewStatementReconciliationDto,
   SplitActivityDto,
   SplitGroupPillDto,
   StatementCheckpointDraftDto,
@@ -363,6 +367,37 @@ export async function ensureDemoSchema(db: D1Database) {
     `)
     .run();
 
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS statement_reconciliation_certificates (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL,
+        import_id TEXT NOT NULL,
+        account_id TEXT NOT NULL,
+        checkpoint_month TEXT NOT NULL,
+        statement_start_date TEXT,
+        statement_end_date TEXT,
+        statement_row_count INTEGER NOT NULL DEFAULT 0,
+        imported_row_count INTEGER NOT NULL DEFAULT 0,
+        certified_existing_row_count INTEGER NOT NULL DEFAULT 0,
+        already_covered_row_count INTEGER NOT NULL DEFAULT 0,
+        needs_review_row_count INTEGER NOT NULL DEFAULT 0,
+        debit_total_minor INTEGER NOT NULL DEFAULT 0,
+        credit_total_minor INTEGER NOT NULL DEFAULT 0,
+        net_total_minor INTEGER NOT NULL DEFAULT 0,
+        statement_balance_minor INTEGER NOT NULL,
+        projected_ledger_balance_minor INTEGER NOT NULL,
+        delta_minor INTEGER NOT NULL,
+        exception_count INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL CHECK (status IN ('certified', 'exception')),
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (household_id) REFERENCES households(id),
+        FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE,
+        FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+      )
+    `)
+    .run();
+
   const checkpointColumns = await db
     .prepare("PRAGMA table_info(account_balance_checkpoints)")
     .all<{ name: string }>();
@@ -524,6 +559,8 @@ async function ensureHotReadIndexes(db: D1Database) {
     "CREATE INDEX IF NOT EXISTS idx_transactions_account_date ON transactions (account_id, transaction_date)",
     "CREATE INDEX IF NOT EXISTS idx_transactions_import ON transactions (import_id)",
     "CREATE INDEX IF NOT EXISTS idx_transactions_statement_certified_import ON transactions (statement_certified_import_id)",
+    "CREATE INDEX IF NOT EXISTS idx_statement_reconciliation_certificates_import ON statement_reconciliation_certificates (import_id)",
+    "CREATE INDEX IF NOT EXISTS idx_statement_reconciliation_certificates_account_period ON statement_reconciliation_certificates (account_id, statement_start_date, statement_end_date)",
     "CREATE INDEX IF NOT EXISTS idx_transactions_transfer_group ON transactions (transfer_group_id)",
     "CREATE INDEX IF NOT EXISTS idx_transaction_splits_transaction ON transaction_splits (transaction_id)",
     "CREATE INDEX IF NOT EXISTS idx_monthly_snapshots_household_month ON monthly_snapshots (household_id, year, month, person_scope)",
@@ -1410,6 +1447,80 @@ export async function deleteMonthPlan(db: D1Database, month: string) {
   return { month, deleted: true };
 }
 
+async function assertUnlockedBankFactsForEntryUpdate(
+  db: D1Database,
+  input: {
+    transactionId: string;
+    current: {
+      account_id: string;
+      transaction_date: string;
+      description: string;
+      amount_minor: number;
+      entry_type: "expense" | "income" | "transfer";
+      transfer_direction: "in" | "out" | null;
+      bank_certification_status: "provisional" | "statement_certified";
+    };
+    next: {
+      accountId: string;
+      date: string;
+      description: string;
+      amountMinor: number;
+      entryType: "expense" | "income" | "transfer";
+      transferDirection: "in" | "out" | null;
+    };
+  }
+) {
+  if (input.current.bank_certification_status !== "statement_certified") {
+    return;
+  }
+
+  const bankFactsChanged = input.current.account_id !== input.next.accountId
+    || input.current.transaction_date !== input.next.date
+    || input.current.description !== input.next.description
+    || Number(input.current.amount_minor) !== Number(input.next.amountMinor)
+    || input.current.entry_type !== input.next.entryType
+    || (input.current.transfer_direction ?? null) !== (input.next.transferDirection ?? null);
+
+  if (!bankFactsChanged) {
+    return;
+  }
+
+  const lockedCheckpoint = await findClosedStatementCheckpointForTransaction(db, {
+    accountId: input.current.account_id,
+    transactionDate: input.current.transaction_date
+  });
+
+  if (!lockedCheckpoint) {
+    return;
+  }
+
+  throw new Error(
+    `This entry's bank facts are locked by the ${lockedCheckpoint.checkpoint_month} statement certificate. Change category, note, ownership, or splits here; use a replacement statement or adjustment for bank-fact corrections.`
+  );
+}
+
+async function findClosedStatementCheckpointForTransaction(
+  db: D1Database,
+  input: {
+    accountId: string;
+    transactionDate: string;
+  }
+) {
+  return db
+    .prepare(`
+      SELECT checkpoint_month, statement_start_date, statement_end_date
+      FROM account_balance_checkpoints
+      WHERE household_id = ?
+        AND account_id = ?
+        AND COALESCE(statement_start_date, checkpoint_month || '-01') <= ?
+        AND COALESCE(statement_end_date, date(checkpoint_month || '-01', '+1 month', '-1 day')) >= ?
+      ORDER BY statement_end_date DESC, checkpoint_month DESC
+      LIMIT 1
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.accountId, input.transactionDate, input.transactionDate)
+    .first<{ checkpoint_month: string; statement_start_date: string | null; statement_end_date: string | null }>();
+}
+
 export async function updateEntryRecord(
   db: D1Database,
   input: {
@@ -1469,11 +1580,13 @@ export async function updateEntryRecord(
     .prepare(`
       SELECT
         transactions.amount_minor,
+        transactions.account_id,
         transactions.transaction_date,
         transactions.transfer_group_id,
         transactions.transfer_direction,
         transactions.entry_type,
         transactions.description,
+        transactions.bank_certification_status,
         categories.name AS category_name
       FROM transactions
       LEFT JOIN categories ON categories.id = transactions.category_id
@@ -1482,11 +1595,13 @@ export async function updateEntryRecord(
     .bind(input.entryId, DEFAULT_HOUSEHOLD_ID)
     .first<{
       amount_minor: number;
+      account_id: string;
       transaction_date: string;
       transfer_group_id: string | null;
       transfer_direction: "in" | "out" | null;
       entry_type: "expense" | "income" | "transfer";
       description: string;
+      bank_certification_status: "provisional" | "statement_certified";
       category_name: string | null;
     }>();
 
@@ -1501,6 +1616,19 @@ export async function updateEntryRecord(
   const resolvedTransferDirection = resolvedEntryType === "transfer"
     ? (input.transferDirection ?? transaction.transfer_direction ?? "out")
     : null;
+
+  await assertUnlockedBankFactsForEntryUpdate(db, {
+    transactionId: input.entryId,
+    current: transaction,
+    next: {
+      accountId: account.id,
+      date: input.date,
+      description: input.description,
+      amountMinor: resolvedAmountMinor,
+      entryType: resolvedEntryType,
+      transferDirection: resolvedTransferDirection
+    }
+  });
 
   await db
     .prepare(`
@@ -1640,10 +1768,14 @@ export async function updateEntryClassificationRecord(
   const transaction = await db
     .prepare(`
       SELECT
+        transactions.account_id,
+        transactions.amount_minor,
         transactions.transfer_group_id,
         transactions.entry_type,
+        transactions.transfer_direction,
         transactions.description,
         transactions.transaction_date,
+        transactions.bank_certification_status,
         categories.name AS category_name
       FROM transactions
       LEFT JOIN categories ON categories.id = transactions.category_id
@@ -1651,10 +1783,14 @@ export async function updateEntryClassificationRecord(
     `)
     .bind(input.entryId, DEFAULT_HOUSEHOLD_ID)
     .first<{
+      account_id: string;
+      amount_minor: number;
       transfer_group_id: string | null;
       entry_type: "expense" | "income" | "transfer";
+      transfer_direction: "in" | "out" | null;
       description: string;
       transaction_date: string;
+      bank_certification_status: "provisional" | "statement_certified";
       category_name: string | null;
     }>();
 
@@ -1673,6 +1809,19 @@ export async function updateEntryClassificationRecord(
 
   const nextTransferDirection = input.entryType === "transfer" ? (input.transferDirection ?? "out") : null;
   const nextTransferGroupId = input.entryType === "transfer" ? transaction.transfer_group_id : null;
+
+  await assertUnlockedBankFactsForEntryUpdate(db, {
+    transactionId: input.entryId,
+    current: transaction,
+    next: {
+      accountId: transaction.account_id,
+      date: transaction.transaction_date,
+      description: transaction.description,
+      amountMinor: Number(transaction.amount_minor),
+      entryType: input.entryType,
+      transferDirection: nextTransferDirection
+    }
+  });
 
   await db
     .prepare(`
@@ -2475,6 +2624,8 @@ export async function commitImportBatch(
     sourceType?: "csv" | "pdf" | "manual";
     parserKey?: string;
     rows: ImportPreviewRowDto[];
+    statementControlRows?: ImportPreviewRowDto[];
+    statementReconciliations?: ImportPreviewStatementReconciliationDto[];
     statementCheckpoints?: StatementCheckpointDraftDto[];
     note?: string;
   }
@@ -2495,9 +2646,9 @@ export async function commitImportBatch(
   try {
     const [accountRows, categoryRows, personRows] = await Promise.all([
       db
-        .prepare("SELECT id, account_name, account_kind FROM accounts WHERE household_id = ?")
+        .prepare("SELECT id, account_name, account_kind, opening_balance_minor FROM accounts WHERE household_id = ?")
         .bind(DEFAULT_HOUSEHOLD_ID)
-        .all<{ id: string; account_name: string; account_kind: string }>(),
+        .all<{ id: string; account_name: string; account_kind: string; opening_balance_minor: number }>(),
       db
         .prepare("SELECT id, name FROM categories WHERE household_id = ?")
         .bind(DEFAULT_HOUSEHOLD_ID)
@@ -2730,6 +2881,18 @@ export async function commitImportBatch(
       await db.batch(statements.slice(index, index + IMPORT_COMMIT_STATEMENT_CHUNK_SIZE));
     }
 
+    if (isOfficialStatementImport && input.statementCheckpoints?.length) {
+      await saveStatementReconciliationCertificates(db, {
+        importId,
+        checkpoints: input.statementCheckpoints,
+        committedRows: input.rows,
+        statementControlRows: input.statementControlRows ?? input.rows,
+        statementReconciliations: input.statementReconciliations ?? [],
+        accountsById,
+        accountRowsByName
+      });
+    }
+
     await db
       .prepare("UPDATE imports SET status = 'completed' WHERE household_id = ? AND id = ?")
       .bind(DEFAULT_HOUSEHOLD_ID, importId)
@@ -2757,9 +2920,145 @@ export async function commitImportBatch(
   return { importId, created: true, importedRows: input.rows.length };
 }
 
+async function saveStatementReconciliationCertificates(
+  db: D1Database,
+  input: {
+    importId: string;
+    checkpoints: StatementCheckpointDraftDto[];
+    committedRows: ImportPreviewRowDto[];
+    statementControlRows: ImportPreviewRowDto[];
+    statementReconciliations: ImportPreviewStatementReconciliationDto[];
+    accountsById: Map<string, { id: string; account_name: string; account_kind: string; opening_balance_minor: number }>;
+    accountRowsByName: Map<string, { id: string; account_name: string; account_kind: string; opening_balance_minor: number }[]>;
+  }
+) {
+  const ledgerRows = await db
+    .prepare(`
+      SELECT account_id, transaction_date, entry_type, transfer_direction, amount_minor
+      FROM transactions
+      WHERE household_id = ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID)
+    .all<{
+      account_id: string;
+      transaction_date: string;
+      entry_type: "expense" | "income" | "transfer";
+      transfer_direction: "in" | "out" | null;
+      amount_minor: number;
+    }>();
+
+  const statements: D1PreparedStatement[] = [];
+  for (const checkpoint of input.checkpoints) {
+    const account = resolveImportAccount(input.accountsById, input.accountRowsByName, checkpoint.accountId, checkpoint.accountName);
+    if (!account) {
+      throw new Error(`Unknown checkpoint account: ${checkpoint.accountName}`);
+    }
+
+    const statementStartDate = normalizeStatementDate(checkpoint.statementStartDate);
+    const statementEndDate = normalizeStatementDate(checkpoint.statementEndDate) ?? getMonthEndDate(checkpoint.checkpointMonth);
+    const statementBalanceMinor = normalizeStatementBalanceInputMinor(
+      Math.round(checkpoint.statementBalanceMinor),
+      account.account_kind
+    );
+    const controlRows = input.statementControlRows.filter((row) => {
+      const rowAccount = resolveImportAccount(input.accountsById, input.accountRowsByName, row.accountId, row.accountName);
+      return rowAccount?.id === account.id
+        && (!statementStartDate || row.date >= statementStartDate)
+        && row.date <= statementEndDate;
+    });
+    const committedRows = input.committedRows.filter((row) => {
+      const rowAccount = resolveImportAccount(input.accountsById, input.accountRowsByName, row.accountId, row.accountName);
+      return rowAccount?.id === account.id
+        && (!statementStartDate || row.date >= statementStartDate)
+        && row.date <= statementEndDate;
+    });
+    const totals = controlRows.reduce((summary, row) => {
+      const signedMinor = getSignedLedgerAmountMinor({
+        entry_type: row.entryType,
+        transfer_direction: row.transferDirection ?? null,
+        amount_minor: row.amountMinor
+      });
+      if (signedMinor < 0) {
+        summary.debitTotalMinor += Math.abs(signedMinor);
+      } else {
+        summary.creditTotalMinor += signedMinor;
+      }
+      summary.netTotalMinor += signedMinor;
+      return summary;
+    }, { debitTotalMinor: 0, creditTotalMinor: 0, netTotalMinor: 0 });
+
+    const previewReconciliation = input.statementReconciliations.find((item) => (
+      item.checkpointMonth === checkpoint.checkpointMonth
+      && (
+        (item.accountId && item.accountId === account.id)
+        || (!item.accountId && item.accountName === account.account_name)
+      )
+    ));
+    const computedProjectedLedgerBalanceMinor = computeCheckpointLedgerBalanceMinor({
+      openingBalanceMinor: Number(account.opening_balance_minor ?? 0),
+      checkpoint: {
+        account_id: account.id,
+        checkpoint_month: checkpoint.checkpointMonth,
+        statement_start_date: statementStartDate,
+        statement_end_date: statementEndDate
+      },
+      rows: ledgerRows.results
+    });
+    const projectedLedgerBalanceMinor = typeof previewReconciliation?.projectedLedgerBalanceMinor === "number"
+      ? previewReconciliation.projectedLedgerBalanceMinor
+      : computedProjectedLedgerBalanceMinor;
+    const deltaMinor = typeof previewReconciliation?.deltaMinor === "number"
+      ? previewReconciliation.deltaMinor
+      : projectedLedgerBalanceMinor - statementBalanceMinor;
+    const needsReviewRowCount = controlRows.filter((row) => row.commitStatus === "needs_review").length;
+    const reconciliationExceptionCount = previewReconciliation?.status && previewReconciliation.status !== "matched" ? 1 : 0;
+    const exceptionCount = needsReviewRowCount + reconciliationExceptionCount;
+
+    statements.push(
+      db
+        .prepare(`
+          INSERT INTO statement_reconciliation_certificates (
+            id, household_id, import_id, account_id, checkpoint_month,
+            statement_start_date, statement_end_date, statement_row_count,
+            imported_row_count, certified_existing_row_count, already_covered_row_count,
+            needs_review_row_count, debit_total_minor, credit_total_minor,
+            net_total_minor, statement_balance_minor, projected_ledger_balance_minor,
+            delta_minor, exception_count, status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `)
+        .bind(
+          `statement-cert-${crypto.randomUUID()}`,
+          DEFAULT_HOUSEHOLD_ID,
+          input.importId,
+          account.id,
+          checkpoint.checkpointMonth,
+          statementStartDate,
+          statementEndDate,
+          controlRows.length,
+          committedRows.filter((row) => !row.statementCertificationTargetTransactionId).length,
+          committedRows.filter((row) => row.statementCertificationTargetTransactionId).length,
+          controlRows.filter((row) => row.commitStatus === "skipped").length,
+          needsReviewRowCount,
+          totals.debitTotalMinor,
+          totals.creditTotalMinor,
+          totals.netTotalMinor,
+          statementBalanceMinor,
+          projectedLedgerBalanceMinor,
+          deltaMinor,
+          exceptionCount,
+          exceptionCount === 0 ? "certified" : "exception"
+        )
+    );
+  }
+
+  if (statements.length) {
+    await db.batch(statements);
+  }
+}
+
 function resolveImportAccount(
-  accountsById: Map<string, { id: string; account_name: string; account_kind: string }>,
-  accountRowsByName: Map<string, { id: string; account_name: string; account_kind: string }[]>,
+  accountsById: Map<string, { id: string; account_name: string; account_kind: string; opening_balance_minor?: number }>,
+  accountRowsByName: Map<string, { id: string; account_name: string; account_kind: string; opening_balance_minor?: number }[]>,
   accountId?: string,
   accountName?: string
 ) {
