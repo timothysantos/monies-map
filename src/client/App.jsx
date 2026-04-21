@@ -145,6 +145,15 @@ function getDocumentTitle(environment) {
   return APP_DOCUMENT_TITLE;
 }
 
+function getInactivePersonViewLabel(name) {
+  const trimmedName = name.trim();
+  const firstName = trimmedName.split(/\s+/)[0] ?? trimmedName;
+  if (firstName.length <= 10) {
+    return firstName;
+  }
+  return `${firstName.slice(0, 9)}...`;
+}
+
 function readPersistedBootstrap(cacheKey) {
   if (typeof window === "undefined") {
     return null;
@@ -1460,8 +1469,9 @@ export function App() {
                 className={`pill ${selectedViewId === person.id ? "is-active" : ""}`}
                 type="button"
                 onClick={() => handleViewChange(person.id)}
+                title={person.name}
               >
-                {person.name}
+                {selectedViewId === person.id ? person.name : getInactivePersonViewLabel(person.name)}
               </button>
             ))}
           </div>
