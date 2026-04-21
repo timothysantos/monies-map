@@ -738,11 +738,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         isJoint: accountDialog.isJoint
       };
       const detectedAccountName = pendingStatementAccountName;
-      setAccountDialog(null);
-      setPendingStatementAccountName("");
-      setUploadStatus({ tone: "success", message: messages.imports.accountCreatedFromStatement(createdAccount.name) });
       await onRefresh({ refreshShell: true });
       await applyStatementAccountMapping(detectedAccountName, createdAccount);
+      setUploadStatus({ tone: "success", message: messages.imports.accountCreatedFromStatement(createdAccount.name) });
+      setAccountDialog(null);
+      setPendingStatementAccountName("");
     } catch (error) {
       setAccountDialogError(error instanceof Error ? error.message : "Account save failed.");
     } finally {
