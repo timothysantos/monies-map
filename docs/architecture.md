@@ -170,6 +170,9 @@ That distinction matters because the system needs to answer questions like:
 - `login_identities` links a Cloudflare Access email to a household person so
   authentication remains separate from household member records. Users can
   unregister that link without deleting or renaming the person.
+- the public `monies-map-demo` deployment intentionally runs without
+  Cloudflare Access. In that mode there is no viewer email, so login identity
+  linking is skipped and users choose household/person views manually.
 - `transfers` are first-class linked entries, not fake income or expense rows
 - split records can optionally link back to imported transactions later through
   `matches`, so CSV import stays focused on ledger cleanup while shared-expense

@@ -58,6 +58,7 @@ import { json } from "./server/json";
 
 export interface Env {
   DB: D1Database;
+  APP_ENVIRONMENT?: "demo" | "local" | "production";
 }
 
 const API_PAGE_SLOW_MS = 750;
@@ -78,7 +79,8 @@ export default {
           (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared",
           url.searchParams.get("summary_start") ?? undefined,
           url.searchParams.get("summary_end") ?? undefined,
-          getAuthenticatedEmail(request)
+          getAuthenticatedEmail(request),
+          getAppEnvironment(env, url)
         )
       );
     }
@@ -1244,6 +1246,18 @@ function buildApiDiagnostic(label: string, request: Request, url: URL, requestId
     params: pickDiagnosticSearchParams(url.searchParams),
     durationMs
   };
+}
+
+function getAppEnvironment(env: Env, url: URL): Env["APP_ENVIRONMENT"] {
+  if (env.APP_ENVIRONMENT) {
+    return env.APP_ENVIRONMENT;
+  }
+
+  return isLocalHostname(url.hostname) ? "local" : "production";
+}
+
+function isLocalHostname(hostname: string) {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
 }
 
 function pickDiagnosticSearchParams(searchParams: URLSearchParams) {

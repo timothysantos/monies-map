@@ -42,6 +42,30 @@ button {
   padding: 24px 18px 46px;
 }
 
+.environment-banner {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  width: 100vw;
+  margin: -24px calc(50% - 50vw) 18px;
+  padding: 3px 12px;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.environment-banner-demo {
+  background: #1f66d1;
+}
+
+.environment-banner-local {
+  background: #18824f;
+}
+
 h1,
 h2,
 h3,
@@ -665,7 +689,8 @@ h3 {
 }
 
 .metric-row-summary {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
   margin-bottom: 0;
 }
 
@@ -684,11 +709,16 @@ h3 {
 
 .summary-head-metrics .metric {
   min-width: 0;
-  padding: 14px 16px;
+  padding: 11px 14px;
 }
 
 .summary-head-metrics .metric strong {
-  font-size: clamp(1.1rem, 2vw, 1.55rem);
+  font-size: clamp(1rem, 1.45vw, 1.26rem);
+}
+
+.summary-head-metrics .metric span {
+  margin-bottom: 5px;
+  font-size: 0.68rem;
 }
 
 .metric {
@@ -5848,6 +5878,11 @@ th {
     padding: 12px 0 calc(208px + env(safe-area-inset-bottom, 0px));
     max-width: 100%;
     overflow-x: hidden;
+  }
+
+  .environment-banner {
+    margin-top: -12px;
+    margin-bottom: 12px;
   }
 
   .shell:has(.panel-splits) {

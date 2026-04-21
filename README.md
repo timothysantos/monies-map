@@ -163,6 +163,9 @@ The app is deployed to Cloudflare Workers with Cloudflare D1:
 - production Worker: [https://<your-worker-host>](https://<your-worker-host>)
 - D1 database name: `monies-map`
 - D1 database id: `d1aa440c-d239-48ac-b0a6-d39f34e26e0e`
+- demo Worker: [https://monies-map-demo.timsantos-accts.workers.dev](https://monies-map-demo.timsantos-accts.workers.dev)
+- demo D1 database name: `monies-map-demo`
+- demo D1 database id: `db26f82f-49d5-496e-93c0-d9035bb1f814`
 
 ### Routine deploy
 
@@ -172,10 +175,10 @@ production. The repo requires Node 22 for local scripts:
 ```bash
 source ~/.nvm/nvm.sh
 nvm use 22
-npm run deploy
+npm run deploy:prod
 ```
 
-`npm run deploy` builds the app and then runs `wrangler deploy`. Wrangler uses
+`npm run deploy:prod` builds the app and then runs `wrangler deploy`. Wrangler uses
 [`wrangler.jsonc`](wrangler.jsonc) to
 publish the Worker, serve the built static assets from `dist`, and bind the
 production D1 database as `DB`.
@@ -187,7 +190,7 @@ deploying the code:
 source ~/.nvm/nvm.sh
 nvm use 22
 npm run db:migrate:remote
-npm run deploy
+npm run deploy:prod
 ```
 
 Before deploying real household data, make sure Cloudflare Access is enabled for
@@ -231,7 +234,7 @@ npm run db:migrate:remote
 5. Deploy using the routine deploy command above:
 
 ```bash
-npm run deploy
+npm run deploy:prod
 ```
 
 6. In Cloudflare Dashboard, enable Access for the Worker:
@@ -241,6 +244,33 @@ Workers & Pages -> monies-map -> Settings -> Domains & Routes -> workers.dev -> 
 ```
 
 Create an Access policy that allows only the two household emails above.
+
+### Demo deploy
+
+The public demo runs as a separate Worker and D1 database so it can be shared
+without exposing real household data:
+
+```bash
+source ~/.nvm/nvm.sh
+nvm use 22
+npm run db:migrate:demo
+npm run deploy:demo
+```
+
+The demo uses [`wrangler.demo.jsonc`](wrangler.demo.jsonc), deploys the Worker
+as `monies-map-demo`, and binds the `monies-map-demo` D1 database. Do not enable
+Cloudflare Access on the demo if it should stay login-free. A login-free demo is
+public and mutable, so keep it limited to fake data.
+
+To deploy both Workers from the same build:
+
+```bash
+source ~/.nvm/nvm.sh
+nvm use 22
+npm run deploy:all
+```
+
+`npm run deploy` remains an alias for the production-only deploy path.
 
 ## What to build next
 
