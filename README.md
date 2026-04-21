@@ -20,6 +20,9 @@ The app turns that into a durable ledger so imports are repeatable and the summa
   duplicate highlighting
 - Import supported PDF statements for UOB, Citibank, and OCBC, with statement
   checkpoints where the parser can prove the statement balance
+- Create a new account directly from a detected PDF statement account when the
+  import should not be matched to an existing account, using extracted details
+  such as institution, account name, account type, and balance where available
 - Import supported UOB current-transaction `.xls` exports as mid-cycle working
   ledger rows
 - Track accounts owned by the primary person, partner, or shared at the household level
@@ -28,6 +31,9 @@ The app turns that into a durable ledger so imports are repeatable and the summa
   and matching ledger entries into shared batches
 - Produce monthly and summary views from the committed ledger and plan rows
 - Keep category, institution, account, icon, and color metadata in one place
+- Manage account, category, person, and category-rule settings from the app
+- Keep local, demo, and production environments visibly separated with
+  environment banners and production-only guardrails
 
 ## Recommended stack
 
@@ -39,32 +45,42 @@ The app turns that into a durable ledger so imports are repeatable and the summa
 
 This is a good fit because the app is mostly forms, uploads, categorization, and reporting. It does not need a heavy server footprint.
 
-## Current scaffold
+## Current app status
 
-This repo is currently a scaffold, meaning the foundational structure is in place
-but the production features are not finished yet.
+The app is now a working Cloudflare Workers + D1 finance ledger, not just a UI
+scaffold. It has a persisted domain model, D1-backed repositories, import
+preview and commit flows, statement reconciliation checkpoints, settings
+management, and separate local, demo, and production deployment paths.
 
-Right now it includes:
+The main working surfaces are:
 
-- a Worker entrypoint and React + Vite frontend shell
-- a first-pass schema for imports, transactions, splits, notes, and transfers
-- typed DTOs and bootstrap data shaped like the real app
-- a D1-backed demo settings layer for reseeding believable prototype data
-- a UI shell for `Summary`, `Month`, `Entries`, `Imports`, and `Settings`
+- `Summary`, with income as the first metric followed by planned spend, actual
+  spend, savings target, and realized savings
+- `Month`, with plan-vs-actual monthly views generated from committed data
+- `Entries`, with ledger filtering, categorization, transfer handling, and
+  transaction detail editing
+- `Imports`, with CSV, PDF statement, and UOB `.xls` preview flows before commit
+- `Splits`, with shared expense groups, settle-up records, and ledger matching
+- `Settings`, with editable household metadata and local/demo-only demo-state
+  controls
 
-It does not yet include:
+Authentication is intentionally handled outside the app by Cloudflare Access in
+production. The app does not implement its own username/password or OAuth
+session layer; use Cloudflare Access one-time PIN or Google as described in the
+deployment section below.
 
-- full D1-backed repositories for app edits
-- a finished CSV import review flow
-- persistent editing
-- Google login
-- production AI analysis
+The remaining product direction is about deeper automation and coverage rather
+than basic persistence: broader bank parser support, richer reconciliation
+workflows, export/backup tooling, and future AI analysis over the ledger and
+notes.
 
-The intended workflow is local-first: finish the product shape locally, iterate
-on demo data and imports, then connect the same repo to Cloudflare.
+The intended workflow remains local-first: develop against local D1, verify
+imports and settings locally, deploy to the public demo when useful, then deploy
+to production only when the change is ready for real household data.
 
-The user-facing FAQ lives in [`docs/faq.md`](docs/faq.md)
-and should be kept updated as the app changes.
+Detailed user-facing and operational setup now belongs in this README. Narrow
+implementation notes can still live under [`docs/`](docs/) when they are too
+specific for the README.
 The product workflow guide lives in
 [`docs/git.md`](docs/git.md) and captures
 the current import, reconciliation, and splits workflows.
@@ -145,16 +161,17 @@ What these commands do:
 The recommended flow is:
 
 1. Run the app locally.
-2. Review the scaffolded UI and data model.
-3. Give product and UX feedback before wiring Cloudflare production resources.
-4. Build the real import flow locally first.
-5. Replace demo bootstrap data with D1-backed data.
-6. Deploy to Cloudflare only after the local product shape is stable.
+2. Apply local migrations with `npm run db:migrate`.
+3. Use the import preview screens to test CSV, PDF statement, or UOB `.xls`
+   files before committing rows to the ledger.
+4. Manage accounts, categories, people, and category rules in Settings.
+5. Deploy to demo when you want a public fake-data environment.
+6. Deploy to production only after Cloudflare Access is configured for the real
+   household allowlist.
 
-Yes, you can and should give feedback now before setting up Cloudflare.
-
-Yes, the app can be developed locally first with demo data and then with real
-CSV import flows before deployment.
+Local and demo environments expose demo-state controls for reseeding or emptying
+fake data. Production hides those controls and returns `403` for the demo-state
+API routes.
 
 ## Cloudflare deploy
 
@@ -356,12 +373,15 @@ blank reference household, people, categories, and category rules.
 
 ## What to build next
 
-1. Expand the new D1-backed demo settings into real repositories for categories, month plan rows, and entry edits.
-2. Add CSV import mapping profiles per institution.
-3. Persist imports into D1 instead of previewing only.
-4. Add category rules and merchant normalization.
-5. Add manual review for unknown transactions, split logic, and transfer linking.
-6. Generate the summary and month views directly from persisted ledger data.
+1. Broaden parser and mapping coverage for more banks, cards, and export
+   formats.
+2. Add richer reconciliation tools for statement balances, pending rows, and
+   import-batch review.
+3. Add backup, export, and restore workflows before relying on production for
+   long-term household records.
+4. Store raw statement files in R2 if retaining source documents becomes useful.
+5. Add production AI analysis over ledger data, statement notes, and monthly
+   explanations after the core workflows are stable.
 
 ## Product direction
 
