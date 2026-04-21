@@ -736,6 +736,60 @@ test.describe("import flow", () => {
     ));
     expect(alphaGroceriesEntry, JSON.stringify(findView(afterStatement, "household").monthPage.entries)).toBeTruthy();
     expect(alphaGroceriesEntry.note).toBe("user picked groceries during mid-cycle cleanup");
+    const lockedBankFactEdit = await page.evaluate(async ({ entry }) => {
+      const response = await fetch("/api/entries/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entryId: entry.id,
+          date: entry.date,
+          description: `${entry.description} MANUAL FIX`,
+          accountId: entry.accountId,
+          categoryName: entry.categoryName,
+          amountMinor: entry.amountMinor,
+          entryType: entry.entryType,
+          transferDirection: entry.transferDirection,
+          ownershipType: entry.ownershipType,
+          ownerName: entry.ownerName,
+          note: entry.note,
+          splitBasisPoints: entry.viewerSplitRatioBasisPoints ?? 10000
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { entry: alphaGroceriesEntry });
+    expect(lockedBankFactEdit.ok, lockedBankFactEdit.text).toBeFalsy();
+    expect(lockedBankFactEdit.text).toContain("bank facts are locked");
+
+    const annotationOnlyEdit = await page.evaluate(async ({ entry }) => {
+      const response = await fetch("/api/entries/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entryId: entry.id,
+          date: entry.date,
+          description: entry.description,
+          accountId: entry.accountId,
+          categoryName: entry.categoryName,
+          amountMinor: entry.amountMinor,
+          entryType: entry.entryType,
+          transferDirection: entry.transferDirection,
+          ownershipType: entry.ownershipType,
+          ownerName: entry.ownerName,
+          note: "post-close user annotation still editable",
+          splitBasisPoints: entry.viewerSplitRatioBasisPoints ?? 10000
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { entry: alphaGroceriesEntry });
+    expect(annotationOnlyEdit.ok, annotationOnlyEdit.text).toBeTruthy();
+    const importsPage = await page.evaluate(async () => {
+      const response = await fetch("/api/imports-page");
+      return response.json();
+    });
+    const statementImport = importsPage.importsPage.recentImports.find((item) => item.sourceLabel === "synthetic-uob-two-card-feb-2026");
+    expect(statementImport?.statementCertificateCount).toBe(2);
+    expect(statementImport?.statementCertificateStatus).toBe("certified");
+    await page.goto("/imports?view=person-tim&month=2026-02");
     await expect(page.getByRole("heading", { name: "Recent imports" })).toBeVisible();
     await page.getByRole("button", { name: /Recent imports/ }).click();
     await screenshot("10-recent-imports-after-combined-flow");

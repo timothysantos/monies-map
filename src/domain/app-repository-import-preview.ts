@@ -226,6 +226,14 @@ export async function buildImportPreview(
     sourceType: input.sourceType,
     statementCheckpoints: input.statementCheckpoints ?? []
   });
+  const exceptionSummary = buildImportPreviewExceptionSummary({
+    unknownAccountCount: unknownAccounts.size,
+    unknownCategoryCount: unknownCategories.size,
+    duplicateCandidateCount: visibleDuplicateRows.length,
+    overlappingImportCount: overlapImports.length,
+    previewRows,
+    statementReconciliations
+  });
 
   return {
     sourceLabel: input.sourceLabel,
@@ -241,8 +249,32 @@ export async function buildImportPreview(
     endDate: previewRows.length ? previewRows.map((row) => row.date).sort().at(-1) : undefined,
     accountNames: Array.from(new Set(previewRows.map((row) => row.accountName).filter((accountName): accountName is string => Boolean(accountName)))).sort(),
     duplicateCandidates,
-    statementReconciliations
+    statementReconciliations,
+    exceptionSummary
   };
+}
+
+function buildImportPreviewExceptionSummary(input: {
+  unknownAccountCount: number;
+  unknownCategoryCount: number;
+  duplicateCandidateCount: number;
+  overlappingImportCount: number;
+  previewRows: ImportPreviewRowDto[];
+  statementReconciliations: ImportPreviewDto["statementReconciliations"];
+}): ImportPreviewDto["exceptionSummary"] {
+  const needsReviewCount = input.previewRows.filter((row) => row.commitStatus === "needs_review").length;
+  const statementMismatchCount = input.statementReconciliations.filter((item) => item.status === "mismatch").length;
+  const identityUnconfirmedCount = input.statementReconciliations.filter((item) => item.status === "identity_unconfirmed").length;
+
+  return [
+    { kind: "unknown_account" as const, count: input.unknownAccountCount, tone: "blocking" as const },
+    { kind: "unknown_category" as const, count: input.unknownCategoryCount, tone: "blocking" as const },
+    { kind: "statement_mismatch" as const, count: statementMismatchCount, tone: "blocking" as const },
+    { kind: "account_identity" as const, count: identityUnconfirmedCount, tone: "blocking" as const },
+    { kind: "review_rows" as const, count: needsReviewCount, tone: "review" as const },
+    { kind: "ledger_match" as const, count: input.duplicateCandidateCount, tone: "review" as const },
+    { kind: "prior_import_context" as const, count: input.overlappingImportCount, tone: "context" as const }
+  ].filter((item) => item.count > 0);
 }
 
 function applyStatementAuthorityToPreviewRow(
@@ -485,6 +517,7 @@ function buildImportPreviewStatementReconciliations(input: {
     });
     return {
       accountName: account.name,
+      accountId: account.id,
       accountKind: account.kind,
       checkpointMonth: checkpoint.checkpointMonth,
       statementStartDate,

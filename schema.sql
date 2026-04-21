@@ -62,6 +62,33 @@ CREATE TABLE IF NOT EXISTS account_balance_checkpoints (
   UNIQUE (account_id, checkpoint_month)
 );
 
+CREATE TABLE IF NOT EXISTS statement_reconciliation_certificates (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  import_id TEXT NOT NULL,
+  account_id TEXT NOT NULL,
+  checkpoint_month TEXT NOT NULL,
+  statement_start_date TEXT,
+  statement_end_date TEXT,
+  statement_row_count INTEGER NOT NULL DEFAULT 0,
+  imported_row_count INTEGER NOT NULL DEFAULT 0,
+  certified_existing_row_count INTEGER NOT NULL DEFAULT 0,
+  already_covered_row_count INTEGER NOT NULL DEFAULT 0,
+  needs_review_row_count INTEGER NOT NULL DEFAULT 0,
+  debit_total_minor INTEGER NOT NULL DEFAULT 0,
+  credit_total_minor INTEGER NOT NULL DEFAULT 0,
+  net_total_minor INTEGER NOT NULL DEFAULT 0,
+  statement_balance_minor INTEGER NOT NULL,
+  projected_ledger_balance_minor INTEGER NOT NULL,
+  delta_minor INTEGER NOT NULL,
+  exception_count INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL CHECK (status IN ('certified', 'exception')),
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id),
+  FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE,
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS categories (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL,
@@ -418,6 +445,12 @@ CREATE INDEX IF NOT EXISTS idx_transactions_import
 
 CREATE INDEX IF NOT EXISTS idx_transactions_statement_certified_import
   ON transactions (statement_certified_import_id);
+
+CREATE INDEX IF NOT EXISTS idx_statement_reconciliation_certificates_import
+  ON statement_reconciliation_certificates (import_id);
+
+CREATE INDEX IF NOT EXISTS idx_statement_reconciliation_certificates_account_period
+  ON statement_reconciliation_certificates (account_id, statement_start_date, statement_end_date);
 
 CREATE INDEX IF NOT EXISTS idx_transactions_transfer_group
   ON transactions (transfer_group_id);

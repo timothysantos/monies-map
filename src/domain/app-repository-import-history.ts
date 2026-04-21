@@ -71,6 +71,7 @@ export async function loadImportBatches(
   }
 
   const accountRows = await loadImportAccountRows(db, result.results.map((row) => row.id));
+  const certificateRows = await loadImportStatementCertificateRows(db, result.results.map((row) => row.id));
 
   const accountIdsByImportId = new Map<string, Set<string>>();
   const accountNamesByImportId = new Map<string, Set<string>>();
@@ -87,6 +88,7 @@ export async function loadImportBatches(
       accountNamesByImportId.set(row.import_id, currentNames);
     }
   }
+  const certificateSummaryByImportId = new Map(certificateRows.map((row) => [row.import_id, row]));
 
   return result.results.map((row) => {
     const overlapCandidates = includeOverlapDetails
@@ -135,9 +137,42 @@ export async function loadImportBatches(
       accountNames: Array.from(accountNamesByImportId.get(row.id) ?? []).sort(),
       overlapImportCount: includeOverlapDetails ? overlapCandidates.length : 0,
       overlapImports,
+      statementCertificateCount: Number(certificateSummaryByImportId.get(row.id)?.certificate_count ?? 0),
+      statementCertificateStatus: certificateSummaryByImportId.get(row.id)?.exception_count
+        ? "exception"
+        : certificateSummaryByImportId.has(row.id) ? "certified" : undefined,
       note: row.note ?? undefined
     };
   });
+}
+
+async function loadImportStatementCertificateRows(db: D1Database, importIds: string[]) {
+  if (!importIds.length) {
+    return [];
+  }
+
+  const rows: { import_id: string; certificate_count: number; exception_count: number }[] = [];
+  for (let index = 0; index < importIds.length; index += IMPORT_HISTORY_ACCOUNT_LOOKUP_CHUNK_SIZE) {
+    const chunk = importIds.slice(index, index + IMPORT_HISTORY_ACCOUNT_LOOKUP_CHUNK_SIZE);
+    const importIdPlaceholders = chunk.map(() => "?").join(", ");
+    const result = await db
+      .prepare(`
+        SELECT
+          import_id,
+          COUNT(*) AS certificate_count,
+          SUM(CASE WHEN status = 'exception' THEN 1 ELSE 0 END) AS exception_count
+        FROM statement_reconciliation_certificates
+        WHERE household_id = ?
+          AND import_id IN (${importIdPlaceholders})
+        GROUP BY import_id
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, ...chunk)
+      .all<{ import_id: string; certificate_count: number; exception_count: number }>();
+
+    rows.push(...result.results);
+  }
+
+  return rows;
 }
 
 async function loadImportAccountRows(db: D1Database, importIds: string[]) {

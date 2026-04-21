@@ -91,6 +91,12 @@ export function ImportRecentHistorySection({
                         <span className="import-history-inline">{messages.imports.importCoverage(formatDateOnly(item.startDate), formatDateOnly(item.endDate))}</span>
                       ) : null}
                       {item.accountNames.length ? <span className="import-history-inline">{item.accountNames.join(", ")}</span> : null}
+                      {item.statementCertificateCount ? (
+                        <span className="import-history-inline">
+                          {messages.imports.recentStatementCertificates(item.statementCertificateCount)}
+                          {item.statementCertificateStatus === "exception" ? ` • ${messages.imports.recentStatementCertificateException}` : ""}
+                        </span>
+                      ) : null}
                       {item.note ? <span className="import-history-inline">{item.note}</span> : null}
                     </div>
                     <div className="import-meta import-meta-compact">
