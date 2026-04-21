@@ -5,7 +5,6 @@ import * as Popover from "@radix-ui/react-popover";
 import {
   Receipt,
   Ellipsis,
-  LogOut,
   Plus
 } from "lucide-react";
 import {
@@ -1475,31 +1474,6 @@ export function App() {
               </button>
             ))}
           </div>
-          {bootstrap.viewerIdentity?.email ? (
-            <Popover.Root>
-              <Popover.Trigger asChild>
-                <button type="button" className="login-menu-trigger" aria-label="Login options" title={bootstrap.viewerIdentity.email}>
-                  <LogOut size={18} />
-                </button>
-              </Popover.Trigger>
-              <Popover.Portal>
-                <Popover.Content className="login-menu-popover" sideOffset={10} align="end">
-                  <strong>{bootstrap.viewerIdentity.personId ? "Login linked" : "Signed in"}</strong>
-                  <p>{bootstrap.viewerIdentity.email}</p>
-                  {loginIdentityError ? <span className="form-error">{loginIdentityError}</span> : null}
-                  <div className="login-menu-actions">
-                    {bootstrap.viewerIdentity.personId ? (
-                      <button type="button" className="subtle-action" disabled={isUnregisteringLogin} onClick={() => void handleUnregisterLogin()}>
-                        {isUnregisteringLogin ? "Unregistering..." : "Unregister"}
-                      </button>
-                    ) : null}
-                    <button type="button" className="subtle-action" onClick={handleLogout}>Log out</button>
-                  </div>
-                  <Popover.Arrow className="category-popover-arrow" />
-                </Popover.Content>
-              </Popover.Portal>
-            </Popover.Root>
-          ) : null}
         </div>
 
         <div className="period-inline">
@@ -1816,6 +1790,11 @@ export function App() {
                   viewId={pageView.id}
                   viewLabel={pageView.label}
                   appEnvironment={appEnvironment}
+                  viewerIdentity={bootstrap.viewerIdentity}
+                  loginIdentityError={loginIdentityError}
+                  isUnregisteringLogin={isUnregisteringLogin}
+                  onUnregisterLogin={handleUnregisterLogin}
+                  onLogout={handleLogout}
                   onRefresh={() => refreshBootstrap({ broadcast: true })}
                 />
               )}

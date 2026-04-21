@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { LogOut } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
@@ -47,7 +48,21 @@ import { parseStatementText } from "../lib/statement-import";
 
 const DEFAULT_MONTH_KEY = getCurrentMonthKey();
 
-export function SettingsPanel({ settingsPage, accounts, categories, people, viewId, viewLabel, appEnvironment, onRefresh }) {
+export function SettingsPanel({
+  settingsPage,
+  accounts,
+  categories,
+  people,
+  viewId,
+  viewLabel,
+  appEnvironment,
+  viewerIdentity,
+  loginIdentityError,
+  isUnregisteringLogin,
+  onUnregisterLogin,
+  onLogout,
+  onRefresh
+}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emptyStateText, setEmptyStateText] = useState("");
   const [emptyStateDialogOpen, setEmptyStateDialogOpen] = useState(false);
@@ -669,6 +684,29 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
           <span className="panel-context">{messages.settings.viewing(viewLabel)}</span>
         </div>
       </div>
+
+      {viewerIdentity?.email ? (
+        <section className="chart-card settings-card settings-login-card">
+          <div className="settings-login-main">
+            <span className="settings-login-icon" aria-hidden="true">
+              <LogOut size={18} />
+            </span>
+            <div>
+              <h3>{viewerIdentity.personId ? "Login linked" : "Signed in"}</h3>
+              <p>{viewerIdentity.email}</p>
+              {loginIdentityError ? <span className="form-error">{loginIdentityError}</span> : null}
+            </div>
+          </div>
+          <div className="settings-login-actions">
+            {viewerIdentity.personId ? (
+              <button type="button" className="subtle-action" disabled={isUnregisteringLogin} onClick={() => void onUnregisterLogin()}>
+                {isUnregisteringLogin ? "Unregistering..." : "Unregister"}
+              </button>
+            ) : null}
+            <button type="button" className="subtle-action" onClick={onLogout}>Log out</button>
+          </div>
+        </section>
+      ) : null}
 
       <SettingsPeopleSection
         people={people}
