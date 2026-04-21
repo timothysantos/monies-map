@@ -685,6 +685,12 @@ h3 {
   color: var(--negative);
 }
 
+.pill.neutral {
+  border-color: rgba(101, 92, 83, 0.16);
+  background: rgba(101, 92, 83, 0.1);
+  color: var(--muted);
+}
+
 .pill.success {
   border-color: rgba(31, 122, 99, 0.2);
   background: rgba(31, 122, 99, 0.12);
