@@ -486,10 +486,10 @@ h3 {
 }
 
 .app-loading-overlay {
-  position: absolute;
+  position: fixed;
   z-index: 20;
-  top: 14px;
-  right: 14px;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
   display: flex;
   align-items: center;
   gap: 10px;
@@ -4424,8 +4424,8 @@ button.split-activity-card:hover {
 }
 
 .entries-page-loading {
-  top: 12px;
-  right: 12px;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
 }
 
 .entries-filter-toggle {
