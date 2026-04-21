@@ -1793,6 +1793,7 @@ export function App() {
                   people={bootstrap.household.people}
                   viewId={pageView.id}
                   viewLabel={pageView.label}
+                  appEnvironment={appEnvironment}
                   onRefresh={() => refreshBootstrap({ broadcast: true })}
                 />
               )}

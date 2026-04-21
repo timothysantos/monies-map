@@ -47,7 +47,7 @@ import { parseStatementText } from "../lib/statement-import";
 
 const DEFAULT_MONTH_KEY = getCurrentMonthKey();
 
-export function SettingsPanel({ settingsPage, accounts, categories, people, viewId, viewLabel, onRefresh }) {
+export function SettingsPanel({ settingsPage, accounts, categories, people, viewId, viewLabel, appEnvironment, onRefresh }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emptyStateText, setEmptyStateText] = useState("");
   const [emptyStateDialogOpen, setEmptyStateDialogOpen] = useState(false);
@@ -111,6 +111,7 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
   const visibleCheckpointHistory = useMemo(() => (
     (reconciliationDialog?.history ?? []).filter((item) => !checkpointHistoryYear || item.month.startsWith(`${checkpointHistoryYear}-`))
   ), [checkpointHistoryYear, reconciliationDialog?.history]);
+  const canUseDemoControls = appEnvironment === "demo" || appEnvironment === "local";
 
   useEffect(() => {
     if (searchParams.get("settings_section") !== "categoryRules") {
@@ -739,24 +740,26 @@ export function SettingsPanel({ settingsPage, accounts, categories, people, view
         onToggle={() => toggleSettingsSection("activity")}
       />
 
-      <SettingsDemoSection
-        demo={settingsPage.demo}
-        error={demoActionError}
-        emptyStateDialogOpen={emptyStateDialogOpen}
-        emptyStateText={emptyStateText}
-        isOpen={demoStateOpen}
-        isSubmitting={isSubmitting}
-        reloadDialogOpen={reloadDialogOpen}
-        reloadText={reloadText}
-        onEmptyStateDialogOpenChange={setEmptyStateDialogOpen}
-        onReloadDialogOpenChange={setReloadDialogOpen}
-        onToggle={() => setDemoStateOpen((current) => !current)}
-        onEmptyStateTextChange={setEmptyStateText}
-        onReloadTextChange={setReloadText}
-        onReseed={handleReseed}
-        onRefresh={handleRefresh}
-        onEmptyState={handleEmptyState}
-      />
+      {canUseDemoControls ? (
+        <SettingsDemoSection
+          demo={settingsPage.demo}
+          error={demoActionError}
+          emptyStateDialogOpen={emptyStateDialogOpen}
+          emptyStateText={emptyStateText}
+          isOpen={demoStateOpen}
+          isSubmitting={isSubmitting}
+          reloadDialogOpen={reloadDialogOpen}
+          reloadText={reloadText}
+          onEmptyStateDialogOpenChange={setEmptyStateDialogOpen}
+          onReloadDialogOpenChange={setReloadDialogOpen}
+          onToggle={() => setDemoStateOpen((current) => !current)}
+          onEmptyStateTextChange={setEmptyStateText}
+          onReloadTextChange={setReloadText}
+          onReseed={handleReseed}
+          onRefresh={handleRefresh}
+          onEmptyState={handleEmptyState}
+        />
+      ) : null}
 
       <SettingsPersonDialog
         dialog={personDialog}

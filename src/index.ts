@@ -138,12 +138,18 @@ export default {
     }
 
     if (url.pathname === "/api/demo/reseed" && request.method === "POST") {
+      if (!canUseDemoControls(env, url)) {
+        return json({ ok: false, error: "Demo controls are disabled in production." }, 403);
+      }
       const demo = await reseedDemoSettings(env.DB);
       invalidateAppDataCache();
       return json({ ok: true, demo });
     }
 
     if (url.pathname === "/api/demo/empty" && request.method === "POST") {
+      if (!canUseDemoControls(env, url)) {
+        return json({ ok: false, error: "Demo controls are disabled in production." }, 403);
+      }
       const demo = await enterEmptyState(env.DB);
       invalidateAppDataCache();
       return json({ ok: true, demo });
@@ -1254,6 +1260,11 @@ function getAppEnvironment(env: Env, url: URL): Env["APP_ENVIRONMENT"] {
   }
 
   return isLocalHostname(url.hostname) ? "local" : "production";
+}
+
+function canUseDemoControls(env: Env, url: URL) {
+  const environment = getAppEnvironment(env, url);
+  return environment === "demo" || environment === "local";
 }
 
 function isLocalHostname(hostname: string) {
