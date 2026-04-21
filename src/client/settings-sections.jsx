@@ -299,31 +299,72 @@ export function SettingsTrustSection({ isOpen, onToggle }) {
   );
 }
 
-export function SettingsTransfersSection({ transfers, isOpen, onToggle, onOpenTransferReview }) {
+const SETTINGS_TRANSFER_PAGE_SIZE = 6;
+
+export function SettingsTransfersSection({
+  transfers,
+  isOpen,
+  isSubmitting,
+  onToggle,
+  onDismissTransfer,
+  onDismissAllTransfers,
+  onOpenTransferReview
+}) {
+  const [page, setPage] = useState(1);
+  const pageCount = Math.max(1, Math.ceil(transfers.length / SETTINGS_TRANSFER_PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pageStart = (currentPage - 1) * SETTINGS_TRANSFER_PAGE_SIZE;
+  const visibleTransfers = transfers.slice(pageStart, pageStart + SETTINGS_TRANSFER_PAGE_SIZE);
+
   return (
     <section className="chart-card settings-card">
       <SettingsSectionToggle
         title={messages.settings.unresolvedTransfersTitle}
-        detail={messages.settings.unresolvedTransfersDetail}
+        detail={transfers.length ? messages.settings.unresolvedTransfersDetailWithCount(transfers.length) : messages.settings.unresolvedTransfersDetail}
         isOpen={isOpen}
         onToggle={onToggle}
       />
       {isOpen ? (
         <div className="settings-transfer-list">
-          {transfers.length ? transfers.map((item) => (
-            <div key={item.entryId} className="settings-account-row settings-transfer-row">
-              <div className="settings-account-main settings-transfer-main">
-                <strong>{item.description}</strong>
-                <p>{messages.common.triplet(formatDateOnly(item.date), item.accountName, item.transferDirection === "in" ? "Transfer in" : "Transfer out")}</p>
-              </div>
-              <strong className="settings-transfer-amount">{money(item.transferDirection === "out" ? -item.amountMinor : item.amountMinor)}</strong>
-              <div className="settings-account-actions">
-                <button type="button" className="subtle-action" onClick={() => onOpenTransferReview(item.entryId)}>
-                  {messages.settings.openTransferReview}
+          {transfers.length ? (
+            <>
+              <div className="settings-actions settings-transfer-actions">
+                <button type="button" className="subtle-action" disabled={isSubmitting} onClick={onDismissAllTransfers}>
+                  {messages.settings.clearAllTransfers}
                 </button>
               </div>
-            </div>
-          )) : (
+              {visibleTransfers.map((item) => (
+                <div key={item.entryId} className="settings-account-row settings-transfer-row">
+                  <div className="settings-account-main settings-transfer-main">
+                    <strong>{item.description}</strong>
+                    <p>{messages.common.triplet(formatDateOnly(item.date), item.accountName, item.transferDirection === "in" ? "Transfer in" : "Transfer out")}</p>
+                  </div>
+                  <strong className="settings-transfer-amount">{money(item.transferDirection === "out" ? -item.amountMinor : item.amountMinor)}</strong>
+                  <div className="settings-account-actions">
+                    <button type="button" className="subtle-action" disabled={isSubmitting} onClick={() => onDismissTransfer(item.entryId)}>
+                      {messages.settings.clearTransfer}
+                    </button>
+                    <button type="button" className="subtle-action" onClick={() => onOpenTransferReview(item.entryId)}>
+                      {messages.settings.openTransferReview}
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {pageCount > 1 ? (
+                <div className="import-history-pagination settings-transfer-pagination">
+                  <span>{messages.settings.transferPage(currentPage, pageCount, transfers.length)}</span>
+                  <div className="import-history-pagination-actions">
+                    <button type="button" className="subtle-action" disabled={currentPage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
+                      {messages.imports.previousPage}
+                    </button>
+                    <button type="button" className="subtle-action" disabled={currentPage >= pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))}>
+                      {messages.imports.nextPage}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ) : (
             <p className="lede compact">{messages.common.emptyValue}</p>
           )}
         </div>

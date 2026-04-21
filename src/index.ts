@@ -52,6 +52,10 @@ import {
   updateEntryClassificationRecord,
   updateEntryRecord
 } from "./domain/app-repository";
+import {
+  dismissAllUnresolvedTransfers,
+  dismissUnresolvedTransfer
+} from "./domain/app-repository-settings";
 import { parseCsv } from "./lib/csv";
 import { getCurrentMonthKey } from "./lib/month";
 import { json } from "./server/json";
@@ -551,6 +555,25 @@ export default {
           currentCategoryName: body.currentCategoryName,
           counterpartCategoryName: body.counterpartCategoryName
         }))
+      });
+    }
+
+    if (url.pathname === "/api/transfers/dismiss-unresolved" && request.method === "POST") {
+      const body = await request.json<{ entryId?: string }>();
+      if (!body.entryId) {
+        return json({ ok: false, error: "Missing unresolved transfer id" }, 400);
+      }
+
+      return json({
+        ok: true,
+        ...(await dismissUnresolvedTransfer(env.DB, body.entryId))
+      });
+    }
+
+    if (url.pathname === "/api/transfers/dismiss-all-unresolved" && request.method === "POST") {
+      return json({
+        ok: true,
+        ...(await dismissAllUnresolvedTransfers(env.DB))
       });
     }
 

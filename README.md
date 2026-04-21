@@ -32,7 +32,8 @@ The app turns that into a durable ledger so imports are repeatable and the summa
 - Produce monthly and summary views from committed ledger rows, plan rows, and
   account checkpoints
 - Keep category, institution, account, icon, and color metadata in one place
-- Manage account, category, person, and category-rule settings from the app
+- Manage account, category, person, category-rule, and unresolved-transfer
+  review settings from the app
 - Keep local, demo, and production environments visibly separated with
   environment banners and production-only guardrails
 

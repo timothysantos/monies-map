@@ -208,6 +208,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   statement_certified_import_id TEXT,
   statement_certified_import_row_id TEXT,
   statement_certified_at TEXT,
+  transfer_review_dismissed_at TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (household_id) REFERENCES households(id),

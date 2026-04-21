@@ -276,8 +276,10 @@ That distinction matters because the system needs to answer questions like:
 - account dialogs expose editable/deletable checkpoint history so
   reconciliation can be reviewed as a timeline rather than only as the latest
   status
-- unresolved transfers have a dedicated review surface in Settings that links
-  back into Entries for settlement work
+- unresolved transfers have a paginated review surface in Settings that links
+  back into Entries for settlement work. Users can also clear one or all
+  transfer reviews, which marks the row as dismissed from that queue without
+  rewriting imported bank facts.
 - `categories` own their presentation metadata, including icon and color, so
   charts and category cards render from the same source of truth
 - category matching rules live beside categories as editable Settings reference

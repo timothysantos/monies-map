@@ -547,6 +547,11 @@ export async function ensureDemoSchema(db: D1Database) {
     await db.prepare("ALTER TABLE split_settlements ADD COLUMN split_batch_id TEXT").run();
   }
 
+  const transactionColumns = await db.prepare("PRAGMA table_info(transactions)").all<{ name: string }>();
+  if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "transfer_review_dismissed_at")) {
+    await db.prepare("ALTER TABLE transactions ADD COLUMN transfer_review_dismissed_at TEXT").run();
+  }
+
   await ensureHotReadIndexes(db);
   await backfillSplitBatches(db);
 }

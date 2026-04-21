@@ -124,6 +124,22 @@ export function deleteCategoryMatchRule(ruleId) {
   );
 }
 
+export function dismissUnresolvedTransfer(entryId) {
+  return postJson(
+    "/api/transfers/dismiss-unresolved",
+    { entryId },
+    "Failed to clear unresolved transfer"
+  );
+}
+
+export function dismissAllUnresolvedTransfers() {
+  return postJson(
+    "/api/transfers/dismiss-all-unresolved",
+    {},
+    "Failed to clear unresolved transfers"
+  );
+}
+
 export function ignoreCategoryMatchRuleSuggestion(suggestionId) {
   return postJson(
     "/api/category-match-suggestions/ignore",
