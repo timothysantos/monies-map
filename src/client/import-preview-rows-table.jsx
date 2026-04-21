@@ -13,6 +13,7 @@ export function ImportPreviewRowsTable({
   people,
   knownAccountNames,
   statementCheckpointCount = 0,
+  statementCertificationRowCount = 0,
   isCommitDisabled,
   isSubmitting,
   commitLabel,
@@ -26,14 +27,18 @@ export function ImportPreviewRowsTable({
   const activeRows = previewRows.filter((row) => row.commitStatus !== "skipped");
   const skippedRows = previewRows.filter((row) => row.commitStatus === "skipped");
   const includedCount = previewRows.filter((row) => row.commitStatus === "included" || !row.commitStatus).length;
+  const newImportCount = includedCount - statementCertificationRowCount;
   const needsReviewCount = previewRows.filter((row) => row.commitStatus === "needs_review").length;
   const hasPreviewRows = previewRows.length > 0;
 
   return (
     <>
       <div className="import-summary-strip import-preview-status-row" aria-label={messages.imports.previewCommitSummaryLabel}>
-        {includedCount || !statementCheckpointCount ? (
-          <span className="import-summary-item is-success">{messages.imports.willImportRows(includedCount)}</span>
+        {newImportCount || !statementCheckpointCount ? (
+          <span className="import-summary-item is-success">{messages.imports.willImportRows(newImportCount)}</span>
+        ) : null}
+        {statementCertificationRowCount ? (
+          <span className="import-summary-item is-success">{messages.imports.willCertifyRows(statementCertificationRowCount)}</span>
         ) : null}
         {statementCheckpointCount ? (
           <span className="import-summary-item is-success">{messages.imports.willSaveStatementCheckpoints(statementCheckpointCount)}</span>

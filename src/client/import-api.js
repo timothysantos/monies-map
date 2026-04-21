@@ -16,6 +16,7 @@ async function postJson(endpoint, body, fallbackError) {
 // Keep import endpoint payloads out of ImportsPanel so the panel can focus on flow state.
 export function previewImportBatch({
   sourceLabel,
+  sourceType,
   rows,
   defaultAccountName,
   ownershipType,
@@ -27,6 +28,7 @@ export function previewImportBatch({
     "/api/imports/preview",
     {
       sourceLabel,
+      sourceType,
       rows,
       defaultAccountName,
       ownershipType,

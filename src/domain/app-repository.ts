@@ -305,6 +305,26 @@ export async function ensureDemoSchema(db: D1Database) {
     await db.prepare("ALTER TABLE accounts ADD COLUMN opening_balance_minor INTEGER NOT NULL DEFAULT 0").run();
   }
 
+  const transactionColumns = await db
+    .prepare("PRAGMA table_info(transactions)")
+    .all<{ name: string }>();
+
+  if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "bank_certification_status")) {
+    await db.prepare("ALTER TABLE transactions ADD COLUMN bank_certification_status TEXT NOT NULL DEFAULT 'provisional'").run();
+  }
+
+  if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "statement_certified_import_id")) {
+    await db.prepare("ALTER TABLE transactions ADD COLUMN statement_certified_import_id TEXT").run();
+  }
+
+  if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "statement_certified_import_row_id")) {
+    await db.prepare("ALTER TABLE transactions ADD COLUMN statement_certified_import_row_id TEXT").run();
+  }
+
+  if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "statement_certified_at")) {
+    await db.prepare("ALTER TABLE transactions ADD COLUMN statement_certified_at TEXT").run();
+  }
+
   const peopleColumns = await db
     .prepare("PRAGMA table_info(people)")
     .all<{ name: string }>();
@@ -503,6 +523,7 @@ async function ensureHotReadIndexes(db: D1Database) {
     "CREATE INDEX IF NOT EXISTS idx_transactions_household_date ON transactions (household_id, transaction_date)",
     "CREATE INDEX IF NOT EXISTS idx_transactions_account_date ON transactions (account_id, transaction_date)",
     "CREATE INDEX IF NOT EXISTS idx_transactions_import ON transactions (import_id)",
+    "CREATE INDEX IF NOT EXISTS idx_transactions_statement_certified_import ON transactions (statement_certified_import_id)",
     "CREATE INDEX IF NOT EXISTS idx_transactions_transfer_group ON transactions (transfer_group_id)",
     "CREATE INDEX IF NOT EXISTS idx_transaction_splits_transaction ON transaction_splits (transaction_id)",
     "CREATE INDEX IF NOT EXISTS idx_monthly_snapshots_household_month ON monthly_snapshots (household_id, year, month, person_scope)",
@@ -2460,6 +2481,7 @@ export async function commitImportBatch(
 ) {
   const importId = `import-${crypto.randomUUID()}`;
   const monthsToRecalculate = new Set<string>();
+  const isOfficialStatementImport = input.sourceType === "pdf";
 
   await db
     .prepare(`
@@ -2518,6 +2540,24 @@ export async function commitImportBatch(
         throw new Error(`Unknown owner: ${row.ownerName ?? "Unassigned"}`);
       }
 
+      const certificationTarget = isOfficialStatementImport && row.statementCertificationTargetTransactionId
+        ? await db
+          .prepare(`
+            SELECT id, transaction_date
+            FROM transactions
+            WHERE household_id = ?
+              AND id = ?
+              AND account_id = ?
+              AND bank_certification_status = 'provisional'
+          `)
+          .bind(DEFAULT_HOUSEHOLD_ID, row.statementCertificationTargetTransactionId, accountId)
+          .first<{ id: string; transaction_date: string }>()
+        : null;
+
+      if (isOfficialStatementImport && row.statementCertificationTargetTransactionId && !certificationTarget) {
+        throw new Error("Statement certification target is no longer available. Refresh the import preview and try again.");
+      }
+
       statements.push(
         db
           .prepare(`
@@ -2532,14 +2572,56 @@ export async function commitImportBatch(
             accountId,
             JSON.stringify(row.rawRow),
             buildImportRowHash(row)
-          ),
+          )
+      );
+
+      if (certificationTarget) {
+        statements.push(
+          db
+            .prepare(`
+              UPDATE transactions
+              SET transaction_date = ?,
+                description = ?,
+                amount_minor = ?,
+                entry_type = ?,
+                transfer_direction = ?,
+                bank_certification_status = 'statement_certified',
+                statement_certified_import_id = ?,
+                statement_certified_import_row_id = ?,
+                statement_certified_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+              WHERE household_id = ?
+                AND id = ?
+                AND account_id = ?
+                AND bank_certification_status = 'provisional'
+            `)
+            .bind(
+              row.date,
+              row.description,
+              row.amountMinor,
+              row.entryType,
+              row.transferDirection ?? null,
+              importId,
+              rowId,
+              DEFAULT_HOUSEHOLD_ID,
+              certificationTarget.id,
+              accountId
+            )
+        );
+        monthsToRecalculate.add(certificationTarget.transaction_date.slice(0, 7));
+        monthsToRecalculate.add(row.date.slice(0, 7));
+        continue;
+      }
+
+      statements.push(
         db
           .prepare(`
             INSERT INTO transactions (
               id, household_id, import_id, import_row_id, account_id, transaction_date,
               description, amount_minor, currency, entry_type, transfer_direction,
-              category_id, ownership_type, owner_person_id, offsets_category, note
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, ?, 0, ?)
+              category_id, ownership_type, owner_person_id, offsets_category, note,
+              bank_certification_status, statement_certified_import_id, statement_certified_import_row_id, statement_certified_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
           `)
           .bind(
             transactionId,
@@ -2555,7 +2637,11 @@ export async function commitImportBatch(
             categoryId,
             row.ownershipType,
             directOwnerId ?? null,
-            row.note ?? null
+            row.note ?? null,
+            isOfficialStatementImport ? "statement_certified" : "provisional",
+            isOfficialStatementImport ? importId : null,
+            isOfficialStatementImport ? rowId : null,
+            isOfficialStatementImport ? new Date().toISOString() : null
           )
       );
 
@@ -2695,6 +2781,19 @@ export async function rollbackImportBatch(
     importId: string;
   }
 ) {
+  const importRecord = await db
+    .prepare(`
+      SELECT source_type, status
+      FROM imports
+      WHERE household_id = ? AND id = ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.importId)
+    .first<{ source_type: "csv" | "pdf" | "manual"; status: string }>();
+
+  if (importRecord?.source_type === "pdf" && importRecord.status === "completed") {
+    throw new Error("Official PDF statement imports are statement-certified records and cannot be rolled back. Correct them with a replacement statement or manual adjustment.");
+  }
+
   const transactionMonths = await db
     .prepare(`
       SELECT DISTINCT transaction_date

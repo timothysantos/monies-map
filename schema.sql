@@ -175,6 +175,12 @@ CREATE TABLE IF NOT EXISTS transactions (
   offsets_category INTEGER NOT NULL DEFAULT 0,
   note TEXT,
   external_reference TEXT,
+  bank_certification_status TEXT NOT NULL DEFAULT 'provisional' CHECK (
+    bank_certification_status IN ('provisional', 'statement_certified')
+  ),
+  statement_certified_import_id TEXT,
+  statement_certified_import_row_id TEXT,
+  statement_certified_at TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (household_id) REFERENCES households(id),
@@ -183,7 +189,9 @@ CREATE TABLE IF NOT EXISTS transactions (
   FOREIGN KEY (account_id) REFERENCES accounts(id),
   FOREIGN KEY (transfer_group_id) REFERENCES transfer_groups(id),
   FOREIGN KEY (category_id) REFERENCES categories(id),
-  FOREIGN KEY (owner_person_id) REFERENCES people(id)
+  FOREIGN KEY (owner_person_id) REFERENCES people(id),
+  FOREIGN KEY (statement_certified_import_id) REFERENCES imports(id),
+  FOREIGN KEY (statement_certified_import_row_id) REFERENCES import_rows(id)
 );
 
 CREATE TABLE IF NOT EXISTS transaction_splits (
@@ -407,6 +415,9 @@ CREATE INDEX IF NOT EXISTS idx_transactions_account_date
 
 CREATE INDEX IF NOT EXISTS idx_transactions_import
   ON transactions (import_id);
+
+CREATE INDEX IF NOT EXISTS idx_transactions_statement_certified_import
+  ON transactions (statement_certified_import_id);
 
 CREATE INDEX IF NOT EXISTS idx_transactions_transfer_group
   ON transactions (transfer_group_id);
