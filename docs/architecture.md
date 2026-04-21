@@ -140,6 +140,9 @@ That distinction matters because the system needs to answer questions like:
   timestamp under a collapsible demo-state section
 - the settings screen can reseed the believable default demo and reload the
   current bootstrap from D1
+- demo-state controls are only rendered for `local` and `demo` environments;
+  production hides the section, and the reseed/empty-state API routes return
+  `403` if called directly
 - reload is a typed-confirmation action because it refreshes the visible app
   state from the current database; it does not reseed, delete, or import data
 - demo mode is saved after reseed or empty-state reset work succeeds, so failed

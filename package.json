@@ -16,6 +16,7 @@
     "predb:migrate": "node ./scripts/ensure-node-major.mjs 22",
     "predb:migrate:remote": "node ./scripts/ensure-node-major.mjs 22",
     "predb:migrate:demo": "node ./scripts/ensure-node-major.mjs 22",
+    "predb:empty-production": "node ./scripts/ensure-node-major.mjs 22",
     "pretest:e2e": "node ./scripts/ensure-node-major.mjs 22",
     "dev": "concurrently -k -n API,UI \"npm:dev:api\" \"npm:dev:ui\"",
     "dev:api": "wrangler dev --port 8787",
@@ -29,7 +30,8 @@
     "deploy:all": "npm run build && wrangler deploy && wrangler deploy --config wrangler.demo.jsonc",
     "db:migrate": "wrangler d1 execute monies-map --local --file=schema.sql",
     "db:migrate:remote": "wrangler d1 execute monies-map --remote --file=schema.sql",
-    "db:migrate:demo": "wrangler d1 execute monies-map-demo --remote --file=schema.sql"
+    "db:migrate:demo": "wrangler d1 execute monies-map-demo --remote --file=schema.sql",
+    "db:empty-production": "node ./scripts/empty-production.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260402.0",

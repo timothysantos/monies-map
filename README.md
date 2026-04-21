@@ -160,21 +160,51 @@ CSV import flows before deployment.
 
 The app is deployed to Cloudflare Workers with Cloudflare D1:
 
-- production Worker: [https://<your-worker-host>](https://<your-worker-host>)
-- D1 database name: `monies-map`
-- D1 database id: `d1aa440c-d239-48ac-b0a6-d39f34e26e0e`
-- demo Worker: [https://monies-map-demo.timsantos-accts.workers.dev](https://monies-map-demo.timsantos-accts.workers.dev)
-- demo D1 database name: `monies-map-demo`
-- demo D1 database id: `db26f82f-49d5-496e-93c0-d9035bb1f814`
+- local development uses Vite on [http://localhost:5173](http://localhost:5173)
+  and Wrangler on `8787`; it shows a thin green `local` banner and allows
+  demo-state controls.
+- production uses [`wrangler.jsonc`](wrangler.jsonc), Worker
+  [https://<your-worker-host>](https://<your-worker-host>), D1 database
+  `monies-map`, and D1 database id `d1aa440c-d239-48ac-b0a6-d39f34e26e0e`.
+  It should be protected by Cloudflare Access, shows no environment banner, and
+  hides demo-state controls.
+- demo uses [`wrangler.demo.jsonc`](wrangler.demo.jsonc), Worker
+  [https://monies-map-demo.timsantos-accts.workers.dev](https://monies-map-demo.timsantos-accts.workers.dev),
+  D1 database `monies-map-demo`, and D1 database id
+  `db26f82f-49d5-496e-93c0-d9035bb1f814`. It sets
+  `APP_ENVIRONMENT=demo`, shows a thin blue `demo` banner, and allows
+  demo-state controls.
 
-### Routine deploy
+### Command reference
 
-Deploy the current working tree only when the local changes are ready to go to
-production. The repo requires Node 22 for local scripts:
+The repo requires Node 22 for local scripts:
 
 ```bash
 source ~/.nvm/nvm.sh
 nvm use 22
+```
+
+Use these commands from the repo root:
+
+```bash
+npm run dev                  # local UI + Worker API
+npm run build                # production frontend bundle
+npm run db:migrate           # local D1 schema
+npm run db:migrate:remote    # production D1 schema
+npm run db:migrate:demo      # demo D1 schema
+npm run deploy:prod          # build + deploy only production
+npm run deploy:demo          # build + deploy only demo
+npm run deploy:all           # build once, deploy production and demo
+npm run deploy               # alias for deploy:prod
+npm run db:empty-production  # terminal-only production empty-state reset
+```
+
+### Production deploy
+
+Deploy the current working tree only when the local changes are ready to go to
+production:
+
+```bash
 npm run deploy:prod
 ```
 
@@ -187,8 +217,6 @@ If the change depends on a schema update, apply the remote D1 migration before
 deploying the code:
 
 ```bash
-source ~/.nvm/nvm.sh
-nvm use 22
 npm run db:migrate:remote
 npm run deploy:prod
 ```
@@ -203,9 +231,44 @@ Google identity provider. Restrict access to:
 - primary household email
 - partner household email
 
-Once Google is configured as a Cloudflare Zero Trust identity provider, the
-same Access application can be switched to Google login with the same email
-allowlist.
+### Production auth with Cloudflare Access and Google
+
+Start with Cloudflare Access one-time PIN email auth if you want the quickest
+private production deployment. Cloudflare documents enabling Access for a
+`workers.dev` route under
+[Manage access to workers.dev](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/#manage-access-to-workersdev).
+
+To use Google login instead, configure Google as a Cloudflare Zero Trust
+identity provider, then keep the same Access allowlist policy:
+
+1. In Cloudflare Zero Trust, find the team domain under Settings -> Team name
+   and domain.
+2. In Google Cloud Console, create or select a Google Cloud project, configure
+   the OAuth consent screen, then create an OAuth client with application type
+   `Web application`.
+3. In the Google OAuth client, set Authorized JavaScript origins to:
+
+```text
+https://<your-team-name>.cloudflareaccess.com
+```
+
+4. In the Google OAuth client, set Authorized redirect URIs to:
+
+```text
+https://<your-team-name>.cloudflareaccess.com/cdn-cgi/access/callback
+```
+
+5. Copy the Google OAuth Client ID and Client secret.
+6. In Cloudflare Zero Trust, go to Integrations -> Identity providers, add
+   Google, and paste the Client ID and Client secret.
+7. Test the Google identity provider in Cloudflare.
+8. In the production Access application for the Worker, allow only the primary
+   and partner household emails.
+
+Official references:
+
+- [Cloudflare Google identity provider setup](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/google/)
+- [Google OAuth 2.0 for web server applications](https://developers.google.com/identity/protocols/oauth2/web-server)
 
 ### First-time setup
 
@@ -243,7 +306,9 @@ npm run deploy:prod
 Workers & Pages -> monies-map -> Settings -> Domains & Routes -> workers.dev -> Access
 ```
 
-Create an Access policy that allows only the two household emails above.
+Create an Access policy that allows only the two household emails above. Use
+the one-time PIN identity provider at first, or use the Google OAuth setup above
+after the Google identity provider has been tested.
 
 ### Demo deploy
 
@@ -251,8 +316,6 @@ The public demo runs as a separate Worker and D1 database so it can be shared
 without exposing real household data:
 
 ```bash
-source ~/.nvm/nvm.sh
-nvm use 22
 npm run db:migrate:demo
 npm run deploy:demo
 ```
@@ -265,12 +328,31 @@ public and mutable, so keep it limited to fake data.
 To deploy both Workers from the same build:
 
 ```bash
-source ~/.nvm/nvm.sh
-nvm use 22
 npm run deploy:all
 ```
 
 `npm run deploy` remains an alias for the production-only deploy path.
+
+### Production empty-state reset
+
+The in-app demo-state reset controls are only available in local and demo
+environments. Production hides that section, and direct POST calls to
+`/api/demo/reseed` or `/api/demo/empty` return `403`.
+
+If production must be cleared, use the local terminal command below. It requires
+repo access, Cloudflare Wrangler credentials for this account, and a typed
+confirmation. It is not exposed through the app UI or public API:
+
+```bash
+source ~/.nvm/nvm.sh
+nvm use 22
+npm run db:empty-production
+```
+
+The command will prompt for the exact text `empty state`. If confirmed, it
+empties the production D1 database `monies-map`, writes `demo_settings` in
+empty-state mode, and relies on the next app bootstrap to recreate only the
+blank reference household, people, categories, and category rules.
 
 ## What to build next
 
