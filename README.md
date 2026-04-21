@@ -14,43 +14,45 @@ Your current spreadsheet already has the right business logic:
 
 The app turns that into a durable ledger so imports are repeatable and the summary is generated instead of manually maintained.
 
-## Current product scope
+## Current Product Scope
 
-- Import CSV exports from banks and credit cards with row-level preview and
-  duplicate highlighting
+- Import generic CSV exports from banks and credit cards with column mapping,
+  row-level preview, duplicate highlighting, and commit review
 - Import supported PDF statements for UOB, Citibank, and OCBC, with statement
   checkpoints where the parser can prove the statement balance
 - Create a new account directly from a detected PDF statement account when the
   import should not be matched to an existing account, using extracted details
   such as institution, account name, account type, and balance where available
-- Import supported UOB current-transaction `.xls` exports as mid-cycle working
-  ledger rows
+- Import supported mid-cycle working exports: UOB current-transaction `.xls`,
+  Citibank credit-card activity `.csv`, and OCBC activity `.csv`
 - Track accounts owned by the primary person, partner, or shared at the household level
 - Assign transactions as direct, shared, income, expense, or transfer
 - Use the Splits workspace for shared expenses, named groups, settle-up records,
   and matching ledger entries into shared batches
-- Produce monthly and summary views from the committed ledger and plan rows
+- Produce monthly and summary views from committed ledger rows, plan rows, and
+  account checkpoints
 - Keep category, institution, account, icon, and color metadata in one place
 - Manage account, category, person, and category-rule settings from the app
 - Keep local, demo, and production environments visibly separated with
   environment banners and production-only guardrails
 
-## Recommended stack
+## Recommended Stack
 
 - Cloudflare Workers for API and edge hosting
 - Cloudflare D1 for relational storage
-- Cloudflare R2 later for raw statement file storage
 - React + Vite frontend
 - Worker asset pipeline serving the built frontend from `dist`
+- Cloudflare Access in front of production for authentication
+- Cloudflare R2 later if raw statement file retention becomes useful
 
 This is a good fit because the app is mostly forms, uploads, categorization, and reporting. It does not need a heavy server footprint.
 
-## Current app status
+## Current App Status
 
-The app is now a working Cloudflare Workers + D1 finance ledger, not just a UI
-scaffold. It has a persisted domain model, D1-backed repositories, import
-preview and commit flows, statement reconciliation checkpoints, settings
-management, and separate local, demo, and production deployment paths.
+The app is a working Cloudflare Workers + D1 finance ledger. It has a persisted
+domain model, D1-backed repositories, import preview and commit flows, statement
+reconciliation checkpoints, import rollback for ordinary working imports,
+settings management, and separate local, demo, and production deployment paths.
 
 The main working surfaces are:
 
@@ -59,15 +61,17 @@ The main working surfaces are:
 - `Month`, with plan-vs-actual monthly views generated from committed data
 - `Entries`, with ledger filtering, categorization, transfer handling, and
   transaction detail editing
-- `Imports`, with CSV, PDF statement, and UOB `.xls` preview flows before commit
+- `Imports`, with generic CSV, supported PDF statements, UOB `.xls`, Citibank
+  activity CSV, and OCBC activity CSV preview flows before commit
 - `Splits`, with shared expense groups, settle-up records, and ledger matching
 - `Settings`, with editable household metadata and local/demo-only demo-state
   controls
 
 Authentication is intentionally handled outside the app by Cloudflare Access in
 production. The app does not implement its own username/password or OAuth
-session layer; use Cloudflare Access one-time PIN or Google as described in the
-deployment section below.
+session layer. Use Cloudflare Access one-time PIN first, or configure Google as
+the Cloudflare Access identity provider as described in the deployment section
+below.
 
 The remaining product direction is about deeper automation and coverage rather
 than basic persistence: broader bank parser support, richer reconciliation
@@ -85,7 +89,40 @@ The product workflow guide lives in
 [`docs/git.md`](docs/git.md) and captures
 the current import, reconciliation, and splits workflows.
 
-## Data model
+## Supported Imports
+
+The import flow has two layers:
+
+- generic CSV import, where the user maps uploaded or pasted columns to the
+  app's normalized row fields
+- source-specific parsers, where the app recognizes a known bank file and
+  converts it directly into preview rows and, for official statements,
+  statement checkpoints
+
+Supported official PDF statements:
+
+- UOB credit-card statements
+- UOB savings account statements
+- Citibank credit-card statements, including Citi Rewards and Citi Miles
+- OCBC 365 credit-card statements
+- OCBC 360 account statements
+
+Supported mid-cycle working exports:
+
+- UOB current-transaction `.xls` history exports
+- Citibank credit-card activity `.csv` files named like
+  `ACCT_<digits>_<dd>_<mm>_<yyyy>-rewards.csv` or
+  `ACCT_<digits>_<dd>_<mm>_<yyyy>-miles.csv`
+- OCBC card or 360 account activity `.csv` files named like
+  `TrxHistory_<digits>.csv` or `TransactionHistory_<digits>.csv`
+
+Official PDF statements are treated as the strongest source. When a PDF
+statement reconciles, the app can save account checkpoints and reconciliation
+certificates, and matching provisional mid-cycle rows can be promoted to
+statement-certified rows. Mid-cycle exports are useful for staying current
+before the next statement arrives, but they do not create statement checkpoints.
+
+## Data Model
 
 Core entities in [`schema.sql`](schema.sql):
 
@@ -93,14 +130,25 @@ Core entities in [`schema.sql`](schema.sql):
 - `people`: you and your wife
 - `institutions`: UOB, Citi, DBS, and so on
 - `accounts`: each bank account, credit card, loan, or investment account
+- `account_balance_checkpoints`: statement-ending balances and dates by account
+- `statement_reconciliation_certificates`: proof records for reconciled PDF
+  statement commits
+- `categories`, `category_match_rules`, and
+  `category_match_rule_suggestions`: taxonomy and import matching metadata
 - `imports`: each import batch
 - `import_rows`: raw row-level import traceability
 - `transactions`: normalized ledger entries
 - `transaction_splits`: split a charge between two people
 - `transfer_groups`: linked transfer pairs between accounts
+- `split_groups`, `split_batches`, `split_expenses`,
+  `split_expense_shares`, and `split_settlements`: shared-expense workspace
+  records
 - `monthly_notes`: summary and monthly notes for analysis context
-- `monthly_budgets`: target budget by month/category/person
+- `monthly_budgets`, `monthly_plan_rows`, `monthly_plan_row_splits`,
+  `monthly_plan_entry_links`, and `monthly_plan_match_hints`: planning and
+  plan-to-ledger matching records
 - `monthly_snapshots`: generated monthly rollups for the dashboard
+- `demo_settings`: local/demo state and empty-state mode
 
 ## Environment
 
@@ -156,24 +204,28 @@ What these commands do:
   - runs Vite on `5173` and the Worker API on `8787`
   - Vite on `5173` is the URL that auto-refreshes when you edit frontend files
 
-## Suggested workflow
+## Suggested Workflow
 
 The recommended flow is:
 
 1. Run the app locally.
 2. Apply local migrations with `npm run db:migrate`.
-3. Use the import preview screens to test CSV, PDF statement, or UOB `.xls`
-   files before committing rows to the ledger.
-4. Manage accounts, categories, people, and category rules in Settings.
-5. Deploy to demo when you want a public fake-data environment.
-6. Deploy to production only after Cloudflare Access is configured for the real
+3. Manage accounts, categories, people, and category rules in Settings.
+4. Import the first trusted official PDF statement for each account so the app
+   has a statement checkpoint baseline.
+5. Use mid-cycle exports between statements, such as UOB `.xls`, Citibank
+   activity CSV, or OCBC activity CSV, to keep the working ledger current.
+6. Import the next official PDF statement to certify matching provisional rows
+   and save the next checkpoint.
+7. Deploy to demo when you want a public fake-data environment.
+8. Deploy to production only after Cloudflare Access is configured for the real
    household allowlist.
 
 Local and demo environments expose demo-state controls for reseeding or emptying
 fake data. Production hides those controls and returns `403` for the demo-state
 API routes.
 
-## Cloudflare deploy
+## Cloudflare Deploy
 
 The app is deployed to Cloudflare Workers with Cloudflare D1:
 
@@ -216,7 +268,7 @@ npm run deploy               # alias for deploy:prod
 npm run db:empty-production  # terminal-only production empty-state reset
 ```
 
-### Production deploy
+### Production Deploy
 
 Deploy the current working tree only when the local changes are ready to go to
 production:
@@ -248,7 +300,7 @@ Google identity provider. Restrict access to:
 - primary household email
 - partner household email
 
-### Production auth with Cloudflare Access and Google
+### Production Auth With Cloudflare Access And Google
 
 Start with Cloudflare Access one-time PIN email auth if you want the quickest
 private production deployment. Cloudflare documents enabling Access for a
@@ -287,7 +339,7 @@ Official references:
 - [Cloudflare Google identity provider setup](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/google/)
 - [Google OAuth 2.0 for web server applications](https://developers.google.com/identity/protocols/oauth2/web-server)
 
-### First-time setup
+### First-Time Setup
 
 If this app is recreated in a new Cloudflare account:
 
@@ -327,7 +379,7 @@ Create an Access policy that allows only the two household emails above. Use
 the one-time PIN identity provider at first, or use the Google OAuth setup above
 after the Google identity provider has been tested.
 
-### Demo deploy
+### Demo Deploy
 
 The public demo runs as a separate Worker and D1 database so it can be shared
 without exposing real household data:
@@ -350,7 +402,7 @@ npm run deploy:all
 
 `npm run deploy` remains an alias for the production-only deploy path.
 
-### Production empty-state reset
+### Production Empty-State Reset
 
 The in-app demo-state reset controls are only available in local and demo
 environments. Production hides that section, and direct POST calls to
@@ -371,7 +423,7 @@ empties the production D1 database `monies-map`, writes `demo_settings` in
 empty-state mode, and relies on the next app bootstrap to recreate only the
 blank reference household, people, categories, and category rules.
 
-## What to build next
+## What To Build Next
 
 1. Broaden parser and mapping coverage for more banks, cards, and export
    formats.
