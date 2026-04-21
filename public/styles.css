@@ -4981,6 +4981,10 @@ button.split-activity-card:hover {
 }
 
 .statement-account-map-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
   max-width: 520px;
 }
 
@@ -6429,7 +6433,7 @@ th {
   .import-mapping-topline .entries-filter,
   .import-column-card .entries-filter,
   .statement-checkpoint-row .entries-filter,
-  .statement-account-map-row.entries-filter {
+  .statement-account-map-row .entries-filter {
     min-width: 0;
   }
 
@@ -6485,6 +6489,8 @@ th {
   }
 
   .statement-account-map-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
     max-width: none;
   }
 

@@ -68,6 +68,11 @@ That distinction matters because the system needs to answer questions like:
 - multi-card PDF statements produce one row set and one checkpoint per detected
   card account, so preview can require mapping each detected card to a ledger
   account before commit
+- statement account mapping can create a new tracked account directly from a
+  detected PDF statement account. The import flow reuses the settings account
+  form, prefills known statement facts, derives the opening balance from the
+  printed ending balance minus parsed statement movement, and then remaps the
+  preview rows and checkpoint draft to the created account.
 - UOB and Citibank card PDF parsers detect card sections from statement
   structure first, while known product aliases only polish the displayed account
   names

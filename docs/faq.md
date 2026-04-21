@@ -1026,6 +1026,12 @@ Before committing, check:
 - statement checkpoint fields for supported PDFs
 - statement certification check for supported PDFs
 
+When a supported PDF statement contains an account that is not tracked yet, use
+Create account in the statement account mapping section. The account form is
+prefilled from the detected statement name, bank, account type, and a starting
+balance derived from the statement balance and parsed rows so the new account
+can reconcile after import.
+
 Successful commits reset the import composer. Use Start over anytime to clear
 the current draft without refreshing the page.
 

@@ -9,6 +9,8 @@ import { buildImportPreviewModel, hasImportDraft } from "./import-preview-model"
 import { ImportPreviewReview } from "./import-preview-review";
 import { ImportPreviewRowsTable } from "./import-preview-rows-table";
 import { ImportSelectFileStage } from "./import-select-file-stage";
+import { SettingsAccountDialog } from "./settings-dialogs";
+import { saveSettingsAccount } from "./settings-api";
 import {
   buildMappedImportRows,
   buildRawImportRowFromPreviewRow,
@@ -17,6 +19,10 @@ import {
   inferImportMapping
 } from "./import-helpers";
 import { inspectCsv } from "../lib/csv";
+import {
+  formatMinorInput,
+  parseDraftMoneyInput
+} from "./formatters";
 import {
   canParseCitibankActivityCsv,
   canParseOcbcActivityCsv,
@@ -48,6 +54,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [isParsingStatement, setIsParsingStatement] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [accountDialog, setAccountDialog] = useState(null);
+  const [accountDialogError, setAccountDialogError] = useState("");
+  const [pendingStatementAccountName, setPendingStatementAccountName] = useState("");
   const [recentImportsOpen, setRecentImportsOpen] = useState(true);
   const [recentImportPage, setRecentImportPage] = useState(1);
   const [recentImportAccountFilter, setRecentImportAccountFilter] = useState("");
@@ -628,6 +637,119 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       .finally(() => setIsSubmitting(false));
   }
 
+  async function applyStatementAccountMapping(fromAccountName, nextAccount) {
+    const nextRows = previewRows.map((row) => (
+      getPreviewRowStatementAccountName(row) === fromAccountName
+        ? {
+          ...row,
+          statementAccountName: fromAccountName,
+          accountId: nextAccount.id,
+          accountName: nextAccount.name,
+          ...getCreatedAccountOwnerPatch(nextAccount, row)
+        }
+        : row
+    ));
+    const nextCheckpoints = statementCheckpoints.map((checkpoint) => (
+      getCheckpointDetectedAccountName(checkpoint) === fromAccountName
+        ? { ...checkpoint, detectedAccountName: fromAccountName, accountId: nextAccount.id, accountName: nextAccount.name }
+        : checkpoint
+    ));
+
+    setPreviewRows(nextRows);
+    setStatementCheckpoints(nextCheckpoints);
+    setUploadStatus({ tone: "active", message: messages.imports.accountMappingRefreshing });
+    setIsSubmitting(true);
+    try {
+      await previewImportRows({
+        rows: nextRows.map(buildRawImportRowFromPreviewRow),
+        nextStatementCheckpoints: nextCheckpoints
+      });
+      setUploadStatus({ tone: "success", message: messages.imports.accountMappingRefreshed });
+    } catch (error) {
+      setPreviewError(error instanceof Error ? error.message : "Import preview failed.");
+      setUploadStatus({ tone: "error", message: error instanceof Error ? error.message : "Import preview failed." });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  function openCreateStatementAccountDialog(statementAccountName) {
+    const checkpoint = statementCheckpoints.find((item) => getCheckpointDetectedAccountName(item) === statementAccountName);
+    const kind = inferStatementAccountKind(statementAccountName, statementImportMeta.parserKey);
+    const openingBalanceMinor = inferOpeningBalanceInputMinor({
+      checkpoint,
+      kind,
+      previewRows: previewRows.filter((row) => getPreviewRowStatementAccountName(row) === statementAccountName)
+    });
+
+    setPendingStatementAccountName(statementAccountName);
+    setAccountDialogError("");
+    setAccountDialog({
+      mode: "create",
+      accountId: "",
+      name: checkpoint?.accountName || statementAccountName,
+      institution: inferStatementInstitution(statementAccountName, statementImportMeta.parserKey),
+      kind,
+      currency: "SGD",
+      openingBalance: formatMinorInput(openingBalanceMinor),
+      ownerPersonId: viewId === "household" ? "" : viewId,
+      isJoint: viewId === "household"
+    });
+  }
+
+  function getCreatedAccountOwnerPatch(account, row) {
+    if (row.ownershipType !== "direct") {
+      return {};
+    }
+    if (account.isJoint) {
+      return {};
+    }
+
+    const owner = people.find((person) => person.id === account.ownerPersonId);
+    return owner ? { ownerName: owner.name } : {};
+  }
+
+  async function handleSaveStatementAccount() {
+    if (!accountDialog || !pendingStatementAccountName) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setAccountDialogError("");
+    try {
+      const data = await saveSettingsAccount({
+        mode: "create",
+        accountId: "",
+        name: accountDialog.name,
+        institution: accountDialog.institution,
+        kind: accountDialog.kind,
+        currency: accountDialog.currency,
+        openingBalanceMinor: parseDraftMoneyInput(accountDialog.openingBalance ?? "0"),
+        ownerPersonId: accountDialog.ownerPersonId,
+        isJoint: accountDialog.isJoint
+      });
+      const createdAccount = {
+        id: data.accountId,
+        name: accountDialog.name.trim(),
+        institution: accountDialog.institution.trim(),
+        kind: accountDialog.kind,
+        currency: accountDialog.currency,
+        ownerPersonId: accountDialog.isJoint ? "" : accountDialog.ownerPersonId,
+        isJoint: accountDialog.isJoint
+      };
+      const detectedAccountName = pendingStatementAccountName;
+      setAccountDialog(null);
+      setPendingStatementAccountName("");
+      setUploadStatus({ tone: "success", message: messages.imports.accountCreatedFromStatement(createdAccount.name) });
+      await onRefresh({ refreshShell: true });
+      await applyStatementAccountMapping(detectedAccountName, createdAccount);
+    } catch (error) {
+      setAccountDialogError(error instanceof Error ? error.message : "Account save failed.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   function handleRefreshStatementReconciliation() {
     if (!previewRows.length) {
       return;
@@ -766,6 +888,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             duplicateCheckpointAccounts={duplicateCheckpointAccounts}
             isSubmitting={isSubmitting}
             onRemapPreviewAccount={remapPreviewAccount}
+            onCreateStatementAccount={openCreateStatementAccountDialog}
             onDismissOverlap={(importId) => setDismissedOverlapIds((current) => [...new Set([...current, importId])])}
             onRefreshStatementReconciliation={handleRefreshStatementReconciliation}
             onUpdateStatementCheckpoint={updateStatementCheckpoint}
@@ -811,8 +934,59 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         onNextPage={() => setRecentImportPage((current) => Math.min(recentImportModel.pageCount, current + 1))}
         onRollback={handleRollback}
       />
+      <SettingsAccountDialog
+        dialog={accountDialog}
+        error={accountDialogError}
+        people={people}
+        isSubmitting={isSubmitting}
+        onChange={setAccountDialog}
+        onClose={() => {
+          setAccountDialog(null);
+          setAccountDialogError("");
+          setPendingStatementAccountName("");
+        }}
+        onSave={handleSaveStatementAccount}
+      />
     </article>
   );
+}
+
+function inferStatementAccountKind(accountName, parserKey) {
+  return /credit_card|card/i.test(parserKey) || /card/i.test(accountName)
+    ? "credit_card"
+    : "bank";
+}
+
+function inferStatementInstitution(accountName, parserKey) {
+  if (/citibank|citi/i.test(parserKey) || /citi/i.test(accountName)) {
+    return "Citibank";
+  }
+  if (/ocbc/i.test(parserKey) || /ocbc/i.test(accountName)) {
+    return "OCBC";
+  }
+  if (/uob/i.test(parserKey) || /uob/i.test(accountName)) {
+    return "UOB";
+  }
+  return "";
+}
+
+function inferOpeningBalanceInputMinor({ checkpoint, kind, previewRows }) {
+  if (!checkpoint) {
+    return 0;
+  }
+
+  const internalStatementBalanceMinor = kind === "credit_card"
+    ? -checkpoint.statementBalanceMinor
+    : checkpoint.statementBalanceMinor;
+  const statementNetMinor = previewRows.reduce((sum, row) => sum + getPreviewRowSignedMinor(row), 0);
+  const internalOpeningBalanceMinor = internalStatementBalanceMinor - statementNetMinor;
+  return kind === "credit_card" ? -internalOpeningBalanceMinor : internalOpeningBalanceMinor;
+}
+
+function getPreviewRowSignedMinor(row) {
+  return row.entryType === "income" || (row.entryType === "transfer" && row.transferDirection === "in")
+    ? Number(row.amountMinor)
+    : -Number(row.amountMinor);
 }
 
 function withDetectedStatementAccounts(checkpoints) {
