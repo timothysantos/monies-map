@@ -70,6 +70,7 @@ const MONTH_SWIPE_MIN_RATIO = 1.35;
 const PAGE_PREFETCH_DELAY_MS = 1200;
 const PAGE_PREFETCH_SPACING_MS = 1500;
 const PAGE_PREFETCH_STAGE_DELAY_MS = 5000;
+const APP_DOCUMENT_TITLE = "Monie's Map";
 
 function preloadRouteModule(routeId) {
   const loader = routeModuleLoaders[routeId];
@@ -135,6 +136,13 @@ function EnvironmentBanner({ environment }) {
       {environment}
     </div>
   );
+}
+
+function getDocumentTitle(environment) {
+  if (environment === "demo" || environment === "local") {
+    return `${APP_DOCUMENT_TITLE} - ${environment}`;
+  }
+  return APP_DOCUMENT_TITLE;
 }
 
 function readPersistedBootstrap(cacheKey) {
@@ -252,6 +260,10 @@ export function App() {
   const bootstrapScope = bootstrapShellView?.monthPage?.selectedScope ?? selectedScope;
 
   useEffect(() => installMobileFocusVisibility(), []);
+
+  useEffect(() => {
+    document.title = getDocumentTitle(appEnvironment);
+  }, [appEnvironment]);
 
   const canUseBootstrapRoutePage = useMemo(() => {
     if (!bootstrapShellView) {
