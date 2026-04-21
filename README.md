@@ -423,6 +423,12 @@ empties the production D1 database `monies-map`, writes `demo_settings` in
 empty-state mode, and relies on the next app bootstrap to recreate only the
 blank reference household, people, categories, and category rules.
 
+The reset also deletes app-side Cloudflare Access email-to-person links. It
+cannot silently clear an existing browser's Cloudflare Access cookie, so after a
+successful reset it prints the production Access logout URL and asks whether to
+open it locally. If the production Worker URL changes, set
+`MONIES_MAP_PRODUCTION_URL` before running the command.
+
 ## What To Build Next
 
 1. Broaden parser and mapping coverage for more banks, cards, and export
