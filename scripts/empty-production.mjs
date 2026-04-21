@@ -1,12 +1,14 @@
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { platform, tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 
 const databaseName = "monies-map";
 const confirmationText = "empty state";
+const productionAppUrl = (process.env.MONIES_MAP_PRODUCTION_URL ?? "https://monies-map.timsantos-accts.workers.dev").replace(/\/+$/, "");
+const accessLogoutUrl = `${productionAppUrl}/cdn-cgi/access/logout`;
 
 const deleteStatements = [
   "DELETE FROM split_expense_shares",
@@ -93,3 +95,29 @@ try {
 }
 
 console.log("Production database was moved to empty-state mode.");
+console.log("App-side login links were deleted. To end the current browser session, use Cloudflare Access logout:");
+console.log(accessLogoutUrl);
+
+const logoutRl = createInterface({ input, output });
+const openLogout = await logoutRl.question("Open the logout URL in this browser now? (y/N): ");
+logoutRl.close();
+
+if (/^y(?:es)?$/i.test(openLogout.trim())) {
+  const result = openBrowser(accessLogoutUrl);
+  if (result.status === 0) {
+    console.log("Opened Cloudflare Access logout URL.");
+  } else {
+    console.error(`Could not open the browser automatically. Open this URL manually: ${accessLogoutUrl}`);
+    process.exit(result.status ?? 1);
+  }
+}
+
+function openBrowser(url) {
+  if (platform() === "darwin") {
+    return spawnSync("open", [url], { stdio: "inherit" });
+  }
+  if (platform() === "win32") {
+    return spawnSync("cmd", ["/c", "start", "", url], { stdio: "inherit" });
+  }
+  return spawnSync("xdg-open", [url], { stdio: "inherit" });
+}
