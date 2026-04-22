@@ -3105,13 +3105,14 @@ export async function rollbackImportBatch(
       FROM transactions
       WHERE household_id = ?
         AND bank_certification_status = 'statement_certified'
-        AND (import_id = ? OR statement_certified_import_id = ?)
+        AND statement_certified_import_id = ?
+        AND (import_id IS NULL OR import_id != ?)
     `)
     .bind(DEFAULT_HOUSEHOLD_ID, input.importId, input.importId)
     .first<{ row_count: number }>();
 
   if (importRecord.source_type === "pdf" && Number(protectedStatementRows?.row_count ?? 0) > 0) {
-    throw new Error("This PDF statement import certified ledger rows and cannot be rolled back. Correct it with a replacement statement or manual adjustment.");
+    throw new Error("This PDF statement import certified pre-existing ledger rows and cannot be rolled back. Correct it with a replacement statement or manual adjustment.");
   }
 
   const transactionMonths = await db
