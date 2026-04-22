@@ -53,7 +53,7 @@ export async function buildImportPreview(
     .prepare(`
       SELECT
         imports.id AS import_id,
-        imports.source_type,
+        COALESCE(imports.source_type, 'manual') AS source_type,
         transactions.id AS transaction_id,
         transactions.account_id,
         transactions.transaction_date,
@@ -64,14 +64,14 @@ export async function buildImportPreview(
         transactions.bank_certification_status,
         accounts.account_name
       FROM transactions
-      INNER JOIN imports ON imports.id = transactions.import_id
+      LEFT JOIN imports ON imports.id = transactions.import_id
       INNER JOIN accounts ON accounts.id = transactions.account_id
-      WHERE imports.household_id = ?
-        AND imports.status = 'completed'
+      WHERE transactions.household_id = ?
+        AND (transactions.import_id IS NULL OR imports.status = 'completed')
     `)
     .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{
-      import_id: string;
+      import_id: string | null;
       source_type: "csv" | "pdf" | "manual";
       transaction_id: string;
       account_id: string;
@@ -188,7 +188,7 @@ export async function buildImportPreview(
       .slice(0, 3);
 
     previewRow.duplicateMatches = nearMatches.map(({ candidate, matchKind }) => ({
-      existingImportId: candidate.import_id,
+      ...(candidate.import_id ? { existingImportId: candidate.import_id } : {}),
       existingTransactionId: candidate.transaction_id,
       existingSourceType: candidate.source_type,
       existingBankCertificationStatus: candidate.bank_certification_status,

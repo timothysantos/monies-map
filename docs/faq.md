@@ -301,6 +301,41 @@ Supported query parameters are:
 After the app reads the parameters, it removes them from the URL so refreshing
 the page does not reopen the draft.
 
+Quick-entry Apple Pay rows are provisional ledger entries. If a later bank
+activity export or PDF statement contains the same transaction, import preview
+compares against those manual rows by account, amount, nearby date, and merchant
+similarity. CSV and XLS rows that duplicate a manual entry should be skipped.
+Supported PDF statement rows can certify the matching manual entry in place,
+preserving the category, owner, splits, and notes while replacing bank-facing
+facts such as posted date and statement description.
+
+### If you add manual entries before importing bank activity
+
+Manual entries and Apple Pay quick entries are useful when you want the month to
+stay current before the bank export is available. Treat them as provisional
+claims about what happened, not as final bank evidence.
+
+Expected workflow:
+
+1. Enter enough bank-like detail for matching: account, amount, transaction date,
+   and merchant. Use merchant names such as `Starbucks`, `Grab`, or `FairPrice`
+   instead of personal descriptions such as `lunch`.
+2. When a mid-cycle `.xls` or `.csv` arrives, import it normally. Rows that match
+   manual entries should appear as exact, probable, or near ledger matches.
+3. Keep genuinely new bank rows included. Leave exact and probable duplicates
+   skipped unless the match is wrong. Review near matches before commit.
+4. When the PDF statement arrives, import or compare it against the current
+   ledger. Matching statement rows can certify existing manual or mid-cycle rows
+   instead of adding duplicates.
+5. After certification, the bank-facing facts come from the statement, while the
+   user-maintained fields stay with the row: category, owner, split setup, and
+   notes.
+
+If the bank statement uses a very different merchant description, the row may
+show as a near match or remain unmatched. In that case, compare account, amount,
+and date before deciding whether to skip the import row, certify the manual row,
+or keep both because they are genuinely different transactions.
+
 ### If you import UOB `.xls` or Citi `.csv` after adding manual splits
 
 Import the activity file normally, but review duplicates and split matches before
@@ -372,12 +407,12 @@ like a bank-sync checkpoint for the account and statement period: the statement
 certifies posted date, description, amount, direction, and ending balance after
 the parser has reconciled the statement structure.
 
-Mid-cycle CSV or XLS exports are still useful for keeping the working ledger
-current, but they are provisional until the official statement arrives. When a
-PDF statement row matches a provisional mid-cycle ledger row, the app promotes
-the existing row instead of creating a duplicate. That preserves user-added
-category choices, notes, ownership, splits, and links while updating the
-bank-facing facts from the statement.
+Mid-cycle CSV or XLS exports and manual quick entries are still useful for
+keeping the working ledger current, but they are provisional until the official
+statement arrives. When a PDF statement row matches a provisional mid-cycle or
+manual ledger row, the app promotes the existing row instead of creating a
+duplicate. That preserves user-added category choices, notes, ownership, splits,
+and links while updating the bank-facing facts from the statement.
 
 If the same official statement row has already been imported or previously
 certified, the app treats it as already certified rather than asking for another
@@ -831,10 +866,11 @@ account and date range.
   range so you can see which committed rows triggered the warning.
 - The info icon on the overlap warning explains that the check is scoped to
   completed imports for the mapped preview accounts, not unrelated accounts.
-- Statement PDF overlaps can be normal when mid-cycle exports already placed
-  rows in the ledger. The PDF statement can promote matching provisional rows to
-  statement-certified, preserving user notes, categories, ownership, splits, and
-  links instead of asking for duplicate decisions.
+- Statement PDF overlaps can be normal when mid-cycle exports or manual quick
+  entries already placed rows in the ledger. The PDF statement can promote
+  matching provisional rows to statement-certified, preserving user notes,
+  categories, ownership, splits, and links instead of asking for duplicate
+  decisions.
 - Citibank activity CSV filenames that end in `-rewards.csv` or `-miles.csv`
   are treated as that card account even if another Citibank card is selected as
   the default account.
@@ -845,6 +881,24 @@ account and date range.
 - Marking an overlap as reviewed only hides the warning.
 - Exact and near matches use amount, account, date proximity, and description
   similarity.
+
+Description similarity is token-based. The app lowercases descriptions, replaces
+punctuation and symbols with spaces, then compares normalized words. It also
+checks compact text with spaces removed, so bank text like `M1LTDRECURRING` can
+still match a manual description like `M1 LTD RECURRING`.
+
+Import duplicate matching requires the same amount, the same mapped account, a
+date within 3 days, and description similarity of at least `0.55`. Exact import
+hashes and strong probable matches are skipped by default. Probable matches need
+date proximity and similarity of at least `0.85`. Weaker matches above the
+minimum are shown as near matches and need a user decision before commit.
+
+Statement comparison is slightly more flexible because the statement is used as
+evidence. A same-date statement row can match with description similarity of
+`0.45`, while nearby-date matches within 3 days require `0.65`. The possible
+matches list may also show candidates within 7 days or with similarity around
+`0.5`, so the user can resolve posting-date or wording differences without
+creating duplicate ledger rows.
 
 Already-covered rows stay visible in the preview. You can include one if the
 match decision was wrong, and statement checks refresh against the current
