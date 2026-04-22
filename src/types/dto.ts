@@ -498,7 +498,7 @@ export interface StatementCompareDto {
 }
 
 export interface DuplicateCandidateDto {
-  existingImportId: string;
+  existingImportId?: string;
   existingTransactionId?: string;
   existingSourceType?: "csv" | "pdf" | "manual";
   existingBankCertificationStatus?: "provisional" | "statement_certified";

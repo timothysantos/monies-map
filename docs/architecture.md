@@ -209,12 +209,17 @@ That distinction matters because the system needs to answer questions like:
 - imported transaction bank facts carry a certification status. Working exports
   such as CSV activity and current-transaction XLS rows start as `provisional`,
   while supported PDF statement rows are saved as `statement_certified`.
+- manual entries created from Entries or Apple Pay quick-entry URLs also start
+  as provisional ledger facts. Import preview compares future bank rows against
+  those manual rows so duplicate CSV/XLS rows can be skipped, and supported PDF
+  statements can certify the manual row in place instead of creating another
+  transaction.
 - official PDF statement imports act like a bank-sync authority layer for the
   account and statement period. If a statement row matches an existing
-  provisional mid-cycle row, commit promotes that existing transaction in place:
-  the bank-facing facts are updated from the statement and the row is marked
-  statement-certified, while user-maintained fields such as category, note,
-  ownership, splits, and links remain attached to the same transaction.
+  provisional mid-cycle or manual row, commit promotes that existing transaction
+  in place: the bank-facing facts are updated from the statement and the row is
+  marked statement-certified, while user-maintained fields such as category,
+  note, ownership, splits, and links remain attached to the same transaction.
 - official PDF statement rows that already match statement-certified ledger rows
   are treated as already certified rather than as duplicate conflicts.
 - saving matched PDF statement checkpoints also writes compact reconciliation
