@@ -263,6 +263,7 @@ function EntryRow({
   const transferCandidates = entry.entryType === "transfer"
     ? getTransferMatchCandidates(entry, allEntries)
     : [];
+  const bankState = getEntryBankState(entry);
 
   useEffect(() => {
     if (!isEditing) {
@@ -304,6 +305,7 @@ function EntryRow({
             </div>
             <div className="entry-pills">
               {transferLabel ? <span className="entry-chip entry-chip-transfer">{transferLabel}</span> : null}
+              <span className={`entry-chip entry-chip-bank-state ${bankState.className}`} title={bankState.title}>{bankState.label}</span>
               <span className={`entry-chip ${entry.ownershipType === "shared" ? "entry-chip-shared" : "entry-chip-owner"}`}>{ownerLabel}</span>
               {entry.ownershipType === "shared" && splitPercent != null ? (
                 <span className="entry-chip entry-chip-split">{splitPercent}%</span>
@@ -375,4 +377,32 @@ function EntryRow({
       ) : null}
     </div>
   );
+}
+
+function getEntryBankState(entry) {
+  if (entry.bankCertificationStatus === "statement_certified") {
+    return {
+      label: entry.bankCertificationLabel ?? "Statement certified",
+      title: entry.statementCertifiedAt
+        ? `Bank facts certified ${formatDateOnly(entry.statementCertifiedAt.slice(0, 10))}`
+        : "Bank facts are locked by a saved statement.",
+      className: "is-statement-certified"
+    };
+  }
+
+  if (entry.bankCertificationStatus === "import_provisional") {
+    return {
+      label: entry.bankCertificationLabel ?? "Import provisional",
+      title: entry.importedSourceLabel
+        ? `Imported from ${entry.importedSourceLabel}; final statement can still certify it.`
+        : "Imported working row; final statement can still certify it.",
+      className: "is-import-provisional"
+    };
+  }
+
+  return {
+    label: entry.bankCertificationLabel ?? "Manual provisional",
+    title: "Manual row; a later bank import or statement should match or certify it.",
+    className: "is-manual-provisional"
+  };
 }

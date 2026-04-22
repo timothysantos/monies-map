@@ -200,6 +200,30 @@ export function compareAccountCheckpointStatement({
   );
 }
 
+export function createReconciliationException({
+  accountId,
+  transactionId,
+  checkpointMonth,
+  kind,
+  severity,
+  title,
+  note
+}) {
+  return postJson(
+    "/api/reconciliation-exceptions/create",
+    { accountId, transactionId, checkpointMonth, kind, severity, title, note },
+    "Failed to create reconciliation exception."
+  );
+}
+
+export function resolveReconciliationException({ exceptionId, resolutionNote }) {
+  return postJson(
+    "/api/reconciliation-exceptions/resolve",
+    { exceptionId, resolutionNote },
+    "Failed to resolve reconciliation exception."
+  );
+}
+
 export async function fetchCheckpointExport({ accountId, checkpointMonth }) {
   const response = await fetch(buildCheckpointExportHref(accountId, checkpointMonth), {
     credentials: "same-origin"

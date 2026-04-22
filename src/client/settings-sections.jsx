@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 import { formatAuditAction } from "./account-display";
 import { messages } from "./copy/en-SG";
-import { formatDate, formatDateOnly, money } from "./formatters";
+import { formatDate, formatDateOnly, formatMonthLabel, money } from "./formatters";
 import { CategoryGlyph, DeleteRowButton } from "./ui-components";
 
 function groupCategoryMatchRules(rules, categories) {
@@ -267,35 +267,237 @@ export function SettingsCategoryMatchRulesSection({
   );
 }
 
-export function SettingsTrustSection({ isOpen, onToggle }) {
+const RECONCILIATION_EXCEPTION_KINDS = [
+  "missing_bank_row",
+  "extra_ledger_row",
+  "duplicate",
+  "direction_mismatch",
+  "wrong_account",
+  "timing_difference",
+  "manual_review",
+  "adjustment_needed"
+];
+
+const RECONCILIATION_EXCEPTION_SEVERITIES = ["review", "blocking", "info"];
+
+function buildEmptyExceptionDraft(accounts) {
+  return {
+    accountId: accounts[0]?.id ?? "",
+    checkpointMonth: "",
+    kind: "manual_review",
+    severity: "review",
+    title: "",
+    note: ""
+  };
+}
+
+export function SettingsTrustSection({
+  accounts = [],
+  exceptions = [],
+  isOpen,
+  isSubmitting,
+  onToggle,
+  onCreateException,
+  onResolveException
+}) {
+  const [draftOpen, setDraftOpen] = useState(false);
+  const [draft, setDraft] = useState(() => buildEmptyExceptionDraft(accounts));
+  const visibleExceptions = exceptions.slice(0, 12);
+  const openExceptionCount = exceptions.filter((item) => item.status === "open").length;
+
+  function updateDraft(nextValues) {
+    setDraft((current) => ({ ...current, ...nextValues }));
+  }
+
+  async function handleCreateException() {
+    if (!draft.title.trim()) {
+      return;
+    }
+
+    const didSave = await onCreateException?.({
+      accountId: draft.accountId || undefined,
+      checkpointMonth: draft.checkpointMonth || undefined,
+      kind: draft.kind,
+      severity: draft.severity,
+      title: draft.title.trim(),
+      note: draft.note.trim() || undefined
+    });
+    if (didSave) {
+      setDraftOpen(false);
+      setDraft(buildEmptyExceptionDraft(accounts));
+    }
+  }
+
   return (
     <section className="chart-card settings-card">
       <SettingsSectionToggle
         title={messages.settings.trustRulesTitle}
-        detail={messages.settings.trustRulesDetail}
+        detail={openExceptionCount ? messages.settings.trustRulesDetailWithExceptions(openExceptionCount) : messages.settings.trustRulesDetail}
         isOpen={isOpen}
         onToggle={onToggle}
       />
       {isOpen ? (
-        <div className="settings-trust-grid">
-          <div className="settings-demo-meta-item">
-            <span>{messages.settings.trustOpeningTitle}</span>
-            <strong>{messages.settings.trustOpeningDetail}</strong>
-            <p>{messages.settings.trustOpeningAction}</p>
+        <div className="settings-trust-stack">
+          <div className="settings-trust-grid">
+            <div className="settings-demo-meta-item">
+              <span>{messages.settings.trustOpeningTitle}</span>
+              <strong>{messages.settings.trustOpeningDetail}</strong>
+              <p>{messages.settings.trustOpeningAction}</p>
+            </div>
+            <div className="settings-demo-meta-item">
+              <span>{messages.settings.trustCheckpointTitle}</span>
+              <strong>{messages.settings.trustCheckpointDetail}</strong>
+              <p>{messages.settings.trustCheckpointAction}</p>
+            </div>
+            <div className="settings-demo-meta-item">
+              <span>{messages.settings.trustTransfersTitle}</span>
+              <strong>{messages.settings.trustTransfersDetail}</strong>
+              <p>{messages.settings.trustTransfersAction}</p>
+            </div>
           </div>
-          <div className="settings-demo-meta-item">
-            <span>{messages.settings.trustCheckpointTitle}</span>
-            <strong>{messages.settings.trustCheckpointDetail}</strong>
-            <p>{messages.settings.trustCheckpointAction}</p>
-          </div>
-          <div className="settings-demo-meta-item">
-            <span>{messages.settings.trustTransfersTitle}</span>
-            <strong>{messages.settings.trustTransfersDetail}</strong>
-            <p>{messages.settings.trustTransfersAction}</p>
+
+          <div className="settings-exception-panel">
+            <div className="settings-exception-head">
+              <div>
+                <h3>{messages.settings.reconciliationExceptionsTitle}</h3>
+                <p>{messages.settings.reconciliationExceptionsDetail}</p>
+              </div>
+              <button
+                type="button"
+                className="subtle-action"
+                disabled={isSubmitting}
+                onClick={() => {
+                  setDraftOpen((current) => !current);
+                  setDraft((current) => current.accountId ? current : buildEmptyExceptionDraft(accounts));
+                }}
+              >
+                {draftOpen ? messages.settings.cancelException : messages.settings.addReconciliationException}
+              </button>
+            </div>
+
+            {draftOpen ? (
+              <div className="settings-exception-form">
+                <label>
+                  <span>{messages.settings.exceptionAccountLabel}</span>
+                  <select
+                    className="table-edit-input"
+                    value={draft.accountId}
+                    onChange={(event) => updateDraft({ accountId: event.target.value })}
+                  >
+                    <option value="">{messages.settings.exceptionNoAccount}</option>
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.id}>{account.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>{messages.settings.exceptionMonthLabel}</span>
+                  <input
+                    className="table-edit-input"
+                    type="month"
+                    value={draft.checkpointMonth}
+                    onChange={(event) => updateDraft({ checkpointMonth: event.target.value })}
+                  />
+                </label>
+                <label>
+                  <span>{messages.settings.exceptionKindLabel}</span>
+                  <select
+                    className="table-edit-input"
+                    value={draft.kind}
+                    onChange={(event) => updateDraft({ kind: event.target.value })}
+                  >
+                    {RECONCILIATION_EXCEPTION_KINDS.map((kind) => (
+                      <option key={kind} value={kind}>{messages.settings.exceptionKindLabels[kind]}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>{messages.settings.exceptionSeverityLabel}</span>
+                  <select
+                    className="table-edit-input"
+                    value={draft.severity}
+                    onChange={(event) => updateDraft({ severity: event.target.value })}
+                  >
+                    {RECONCILIATION_EXCEPTION_SEVERITIES.map((severity) => (
+                      <option key={severity} value={severity}>{messages.settings.exceptionSeverityLabels[severity]}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="settings-exception-form-wide">
+                  <span>{messages.settings.exceptionTitleLabel}</span>
+                  <input
+                    className="table-edit-input"
+                    value={draft.title}
+                    onChange={(event) => updateDraft({ title: event.target.value })}
+                    placeholder={messages.settings.exceptionTitlePlaceholder}
+                  />
+                </label>
+                <label className="settings-exception-form-wide">
+                  <span>{messages.settings.exceptionNoteLabel}</span>
+                  <textarea
+                    className="table-edit-input"
+                    rows={3}
+                    value={draft.note}
+                    onChange={(event) => updateDraft({ note: event.target.value })}
+                    placeholder={messages.settings.exceptionNotePlaceholder}
+                  />
+                </label>
+                <div className="settings-exception-form-actions">
+                  <button
+                    type="button"
+                    className="subtle-action"
+                    disabled={isSubmitting || !draft.title.trim()}
+                    onClick={handleCreateException}
+                  >
+                    {isSubmitting ? messages.common.working : messages.settings.saveReconciliationException}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="settings-exception-list">
+              {visibleExceptions.length ? visibleExceptions.map((item) => (
+                <div key={item.id} className={`settings-account-row settings-exception-row is-${item.status}`}>
+                  <div className="settings-account-main settings-exception-main">
+                    <strong>{item.title}</strong>
+                    <p>{formatExceptionMeta(item)}</p>
+                    {item.note ? <small>{item.note}</small> : null}
+                  </div>
+                  <div className="settings-exception-status">
+                    <span className={`entry-chip entry-chip-exception is-${item.severity}`}>
+                      {messages.settings.exceptionSeverityLabels[item.severity]}
+                    </span>
+                    <span className={`entry-chip entry-chip-exception-status is-${item.status}`}>
+                      {item.status === "open" ? messages.settings.exceptionOpen : messages.settings.exceptionResolved}
+                    </span>
+                  </div>
+                  {item.status === "open" ? (
+                    <button
+                      type="button"
+                      className="subtle-action"
+                      disabled={isSubmitting}
+                      onClick={() => onResolveException?.(item.id)}
+                    >
+                      {messages.settings.resolveReconciliationException}
+                    </button>
+                  ) : null}
+                </div>
+              )) : (
+                <p className="lede compact">{messages.settings.noReconciliationExceptions}</p>
+              )}
+            </div>
           </div>
         </div>
       ) : null}
     </section>
+  );
+}
+
+function formatExceptionMeta(item) {
+  return messages.common.triplet(
+    messages.settings.exceptionKindLabels[item.kind] ?? item.kind,
+    item.accountName ?? messages.settings.exceptionNoAccount,
+    item.checkpointMonth ? formatMonthLabel(item.checkpointMonth) : formatDateOnly(item.createdAt)
   );
 }
 

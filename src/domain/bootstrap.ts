@@ -17,6 +17,7 @@ import {
   loadAuditEvents,
   loadCategoryMatchRules,
   loadCategoryMatchRuleSuggestions,
+  loadReconciliationExceptions,
   findSuggestedLoginPersonId,
   loadMonthIncomeRows,
   loadMonthIncomeRowsForViews,
@@ -137,6 +138,7 @@ export async function buildBootstrapDto(
       categoryMatchRules: [],
       categoryMatchRuleSuggestions,
       unresolvedTransfers: [],
+      reconciliationExceptions: [],
       recentAuditEvents: []
     }
   };
@@ -291,10 +293,11 @@ export async function buildImportsPageDto(db: D1Database): Promise<{ importsPage
 
 export async function buildSettingsPageDto(db: D1Database): Promise<{ settingsPage: SettingsPageDto }> {
   const demo = await ensureAppData(db);
-  const [categoryMatchRules, categoryMatchRuleSuggestions, unresolvedTransfers, recentAuditEvents] = await Promise.all([
+  const [categoryMatchRules, categoryMatchRuleSuggestions, unresolvedTransfers, reconciliationExceptions, recentAuditEvents] = await Promise.all([
     loadCategoryMatchRules(db),
     loadCategoryMatchRuleSuggestions(db),
     loadUnresolvedTransfers(db),
+    loadReconciliationExceptions(db),
     loadAuditEvents(db)
   ]);
   return {
@@ -303,6 +306,7 @@ export async function buildSettingsPageDto(db: D1Database): Promise<{ settingsPa
       categoryMatchRules,
       categoryMatchRuleSuggestions,
       unresolvedTransfers,
+      reconciliationExceptions,
       recentAuditEvents
     }
   };

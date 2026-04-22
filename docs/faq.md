@@ -547,16 +547,16 @@ bank facts from the statement but preserves these annotations.
 ### Provisional row
 
 A provisional row is useful working data that has not yet been proven by a final
-statement. Mid-cycle CSV and XLS exports create provisional rows. They help with
-planning during the month, but the final PDF statement gets the last word on
-posted bank facts.
+statement. Manual quick-entry rows show as `Manual provisional`; mid-cycle CSV
+and XLS exports show as `Import provisional`. They help with planning during the
+month, but the final PDF statement gets the last word on posted bank facts.
 
 ### Statement-certified row
 
 A statement-certified row is a ledger row whose bank facts have been verified by
 a supported PDF statement. The row may have been imported directly from the
 statement, or it may be an existing mid-cycle row that the statement promoted in
-place.
+place. These rows show as `Statement certified` in Entries.
 
 ### Statement checkpoint
 
@@ -591,6 +591,29 @@ attention. Normal matched statement rows should not appear as work for the user.
 The register focuses on blockers such as account mapping, account identity,
 statement mismatch, unknown categories, unresolved row decisions, and prior
 import context.
+
+Settings also has a persistent reconciliation exception list under Balance trust
+rules. Use it when a known issue survives beyond one import preview: a missing
+bank row, an extra manual ledger row, a likely duplicate, a direction mismatch,
+a wrong account, a timing difference, or an adjustment that still needs proof.
+Open exceptions mean the account balance is not fully certified yet, even if
+the ledger is useful for daily planning. Resolve the exception only after the
+bank statement, corrected import, or manual adjustment explains the gap.
+
+### Visible row states
+
+Entries shows the current proof level for each row:
+
+- `Manual provisional` means the row came from a manual entry or Apple Pay
+  quick-entry URL and still needs bank evidence.
+- `Import provisional` means the row came from a CSV, XLS, or other working
+  import but has not yet been certified by a final PDF statement.
+- `Statement certified` means a supported PDF statement verified the row's bank
+  facts.
+
+These labels are not category or ownership states. They are evidence states.
+User annotations can still be edited, but certified bank facts should be
+changed only through a replacement statement or explicit adjustment workflow.
 
 ### Near match and probable match
 
@@ -846,12 +869,19 @@ Start with the account card in Settings:
 3. Check whether there are unresolved transfers.
 4. Check recent imports and overlap warnings.
 5. Use Compare statement if the mismatch belongs to a specific bank statement.
+6. Open a reconciliation exception under Balance trust rules if the gap cannot
+   be fixed immediately but should remain visible.
 
 The comparison tool treats the PDF as evidence, not as a new import. It shows
 which statement rows already match the ledger, which rows are missing, which
 ledger rows are extra, and whether there are likely duplicates or direction
 mistakes. Missing statement rows can be added from there, and direction mistakes
 can be fixed inline without reuploading the PDF.
+
+Reconciliation exceptions are the app's "do not forget this gap" workflow. They
+do not change balances by themselves. They make a known issue visible until a
+later import, statement comparison, replacement statement, or manual adjustment
+resolves it.
 
 ## How duplicates and overlaps help
 

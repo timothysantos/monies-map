@@ -89,6 +89,28 @@ CREATE TABLE IF NOT EXISTS statement_reconciliation_certificates (
   FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS reconciliation_exceptions (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  account_id TEXT,
+  transaction_id TEXT,
+  checkpoint_month TEXT,
+  kind TEXT NOT NULL CHECK (
+    kind IN ('missing_bank_row', 'extra_ledger_row', 'duplicate', 'direction_mismatch', 'wrong_account', 'timing_difference', 'manual_review', 'adjustment_needed')
+  ),
+  severity TEXT NOT NULL DEFAULT 'review' CHECK (severity IN ('info', 'review', 'blocking')),
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved')),
+  title TEXT NOT NULL,
+  note TEXT,
+  resolution_note TEXT,
+  resolved_at TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id),
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL,
+  FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE SET NULL
+);
+
 CREATE TABLE IF NOT EXISTS categories (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL,
@@ -452,6 +474,9 @@ CREATE INDEX IF NOT EXISTS idx_statement_reconciliation_certificates_import
 
 CREATE INDEX IF NOT EXISTS idx_statement_reconciliation_certificates_account_period
   ON statement_reconciliation_certificates (account_id, statement_start_date, statement_end_date);
+
+CREATE INDEX IF NOT EXISTS idx_reconciliation_exceptions_household_status
+  ON reconciliation_exceptions (household_id, status, updated_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_transactions_transfer_group
   ON transactions (transfer_group_id);

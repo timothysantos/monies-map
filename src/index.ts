@@ -22,6 +22,7 @@ import {
   createEntryRecord,
   createCategoryRecord,
   createAccountRecord,
+  createReconciliationExceptionRecord,
   deleteSplitExpenseRecord,
   deleteSplitSettlementRecord,
   deleteCategoryMatchRule,
@@ -33,6 +34,7 @@ import {
   duplicateMonthPlan,
   rollbackImportBatch,
   resetMonthPlan,
+  resolveReconciliationExceptionRecord,
   saveAccountCheckpointRecord,
   saveCategoryMatchRule,
   saveMonthPlanEntryLinks,
@@ -372,6 +374,54 @@ export default {
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Statement compare failed" }, 400);
       }
+    }
+
+    if (url.pathname === "/api/reconciliation-exceptions/create" && request.method === "POST") {
+      const body = await request.json<{
+        accountId?: string;
+        transactionId?: string;
+        checkpointMonth?: string;
+        kind?: "missing_bank_row" | "extra_ledger_row" | "duplicate" | "direction_mismatch" | "wrong_account" | "timing_difference" | "manual_review" | "adjustment_needed";
+        severity?: "info" | "review" | "blocking";
+        title?: string;
+        note?: string;
+      }>();
+
+      if (!body.kind || !body.title?.trim()) {
+        return json({ ok: false, error: "Missing reconciliation exception fields" }, 400);
+      }
+
+      return json({
+        ok: true,
+        ...(await createReconciliationExceptionRecord(env.DB, {
+          accountId: body.accountId,
+          transactionId: body.transactionId,
+          checkpointMonth: body.checkpointMonth,
+          kind: body.kind,
+          severity: body.severity,
+          title: body.title,
+          note: body.note
+        }))
+      });
+    }
+
+    if (url.pathname === "/api/reconciliation-exceptions/resolve" && request.method === "POST") {
+      const body = await request.json<{
+        exceptionId?: string;
+        resolutionNote?: string;
+      }>();
+
+      if (!body.exceptionId) {
+        return json({ ok: false, error: "Missing reconciliation exception id" }, 400);
+      }
+
+      return json({
+        ok: true,
+        ...(await resolveReconciliationExceptionRecord(env.DB, {
+          exceptionId: body.exceptionId,
+          resolutionNote: body.resolutionNote
+        }))
+      });
     }
 
     if (url.pathname === "/api/months/duplicate" && request.method === "POST") {
