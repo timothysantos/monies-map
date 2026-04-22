@@ -124,6 +124,14 @@ export async function loadImportBatches(
         ))
       : [];
 
+    const certificateSummary = certificateSummaryByImportId.get(row.id);
+    const transactionCount = Number(row.transaction_count ?? 0);
+    const rollbackProtected = row.source_type === "pdf" && (
+      transactionCount > 0
+      || Number(certificateSummary?.imported_row_count ?? 0) > 0
+      || Number(certificateSummary?.certified_existing_row_count ?? 0) > 0
+    );
+
     return {
       id: row.id,
       sourceLabel: row.source_label,
@@ -131,16 +139,17 @@ export async function loadImportBatches(
       parserKey: row.parser_key ?? undefined,
       importedAt: row.imported_at,
       status: row.status,
-      transactionCount: Number(row.transaction_count ?? 0),
+      transactionCount,
       startDate: row.start_date ?? undefined,
       endDate: row.end_date ?? undefined,
       accountNames: Array.from(accountNamesByImportId.get(row.id) ?? []).sort(),
       overlapImportCount: includeOverlapDetails ? overlapCandidates.length : 0,
       overlapImports,
-      statementCertificateCount: Number(certificateSummaryByImportId.get(row.id)?.certificate_count ?? 0),
-      statementCertificateStatus: certificateSummaryByImportId.get(row.id)?.exception_count
+      statementCertificateCount: Number(certificateSummary?.certificate_count ?? 0),
+      statementCertificateStatus: certificateSummary?.exception_count
         ? "exception"
         : certificateSummaryByImportId.has(row.id) ? "certified" : undefined,
+      rollbackProtected,
       note: row.note ?? undefined
     };
   });
@@ -151,7 +160,13 @@ async function loadImportStatementCertificateRows(db: D1Database, importIds: str
     return [];
   }
 
-  const rows: { import_id: string; certificate_count: number; exception_count: number }[] = [];
+  const rows: {
+    import_id: string;
+    certificate_count: number;
+    exception_count: number;
+    imported_row_count: number;
+    certified_existing_row_count: number;
+  }[] = [];
   for (let index = 0; index < importIds.length; index += IMPORT_HISTORY_ACCOUNT_LOOKUP_CHUNK_SIZE) {
     const chunk = importIds.slice(index, index + IMPORT_HISTORY_ACCOUNT_LOOKUP_CHUNK_SIZE);
     const importIdPlaceholders = chunk.map(() => "?").join(", ");
@@ -160,14 +175,22 @@ async function loadImportStatementCertificateRows(db: D1Database, importIds: str
         SELECT
           import_id,
           COUNT(*) AS certificate_count,
-          SUM(CASE WHEN status = 'exception' THEN 1 ELSE 0 END) AS exception_count
+          SUM(CASE WHEN status = 'exception' THEN 1 ELSE 0 END) AS exception_count,
+          SUM(imported_row_count) AS imported_row_count,
+          SUM(certified_existing_row_count) AS certified_existing_row_count
         FROM statement_reconciliation_certificates
         WHERE household_id = ?
           AND import_id IN (${importIdPlaceholders})
         GROUP BY import_id
       `)
       .bind(DEFAULT_HOUSEHOLD_ID, ...chunk)
-      .all<{ import_id: string; certificate_count: number; exception_count: number }>();
+      .all<{
+        import_id: string;
+        certificate_count: number;
+        exception_count: number;
+        imported_row_count: number;
+        certified_existing_row_count: number;
+      }>();
 
     rows.push(...result.results);
   }

@@ -3095,8 +3095,23 @@ export async function rollbackImportBatch(
     .bind(DEFAULT_HOUSEHOLD_ID, input.importId)
     .first<{ source_type: "csv" | "pdf" | "manual"; status: string }>();
 
-  if (importRecord?.source_type === "pdf" && importRecord.status === "completed") {
-    throw new Error("Official PDF statement imports are statement-certified records and cannot be rolled back. Correct them with a replacement statement or manual adjustment.");
+  if (!importRecord) {
+    throw new Error("Import batch not found.");
+  }
+
+  const protectedStatementRows = await db
+    .prepare(`
+      SELECT COUNT(*) AS row_count
+      FROM transactions
+      WHERE household_id = ?
+        AND bank_certification_status = 'statement_certified'
+        AND (import_id = ? OR statement_certified_import_id = ?)
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.importId, input.importId)
+    .first<{ row_count: number }>();
+
+  if (importRecord.source_type === "pdf" && Number(protectedStatementRows?.row_count ?? 0) > 0) {
+    throw new Error("This PDF statement import certified ledger rows and cannot be rolled back. Correct it with a replacement statement or manual adjustment.");
   }
 
   const transactionMonths = await db
@@ -3131,6 +3146,8 @@ export async function rollbackImportBatch(
 }
 
 async function cleanupImportBatchRows(db: D1Database, importId: string) {
+  await cleanupStatementImportMetadata(db, importId);
+
   await db
     .prepare(`
       UPDATE split_expenses
@@ -3177,6 +3194,55 @@ async function cleanupImportBatchRows(db: D1Database, importId: string) {
         SELECT id FROM imports WHERE household_id = ? AND id = ?
       )
     `)
+    .bind(DEFAULT_HOUSEHOLD_ID, importId)
+    .run();
+}
+
+async function cleanupStatementImportMetadata(db: D1Database, importId: string) {
+  const certificates = await db
+    .prepare(`
+      SELECT
+        account_id,
+        checkpoint_month,
+        statement_start_date,
+        statement_end_date,
+        statement_balance_minor
+      FROM statement_reconciliation_certificates
+      WHERE household_id = ? AND import_id = ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, importId)
+    .all<{
+      account_id: string;
+      checkpoint_month: string;
+      statement_start_date: string | null;
+      statement_end_date: string | null;
+      statement_balance_minor: number;
+    }>();
+
+  for (const certificate of certificates.results) {
+    await db
+      .prepare(`
+        DELETE FROM account_balance_checkpoints
+        WHERE household_id = ?
+          AND account_id = ?
+          AND checkpoint_month = ?
+          AND COALESCE(statement_start_date, '') = COALESCE(?, '')
+          AND COALESCE(statement_end_date, '') = COALESCE(?, '')
+          AND statement_balance_minor = ?
+      `)
+      .bind(
+        DEFAULT_HOUSEHOLD_ID,
+        certificate.account_id,
+        certificate.checkpoint_month,
+        certificate.statement_start_date,
+        certificate.statement_end_date,
+        certificate.statement_balance_minor
+      )
+      .run();
+  }
+
+  await db
+    .prepare("DELETE FROM statement_reconciliation_certificates WHERE household_id = ? AND import_id = ?")
     .bind(DEFAULT_HOUSEHOLD_ID, importId)
     .run();
 }

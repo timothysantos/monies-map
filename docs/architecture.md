@@ -236,10 +236,11 @@ That distinction matters because the system needs to answer questions like:
   account closely enough before the preview can be committed. This prevents a
   first statement on a zero-balance wrong account from passing only because the
   statement is internally consistent.
-- completed official PDF statement imports cannot be rolled back as ordinary
-  working imports because they may have certified existing ledger rows. Corrections
-  should come from a replacement statement import or an explicit manual
-  adjustment, preserving audit continuity.
+- completed official PDF statement imports are rollback-protected only when they
+  create or certify ledger rows. Checkpoint-only statement imports can be rolled
+  back to correct a wrong first account mapping; row-certified corrections should
+  come from a replacement statement import or an explicit manual adjustment,
+  preserving audit continuity.
 - replacement statement correction should compare account identity, period,
   row count, debit and credit totals, ending balance, and the saved
   reconciliation certificate before changing certified rows. Matching rows

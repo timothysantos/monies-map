@@ -123,9 +123,9 @@ bank-facing facts from the statement.
 
 If the same official statement row has already been imported or previously
 certified, the app treats it as already certified rather than asking for another
-duplicate decision. Completed PDF statement imports are not rolled back like
-ordinary working imports; use a replacement statement or an explicit adjustment
-if a correction is needed.
+duplicate decision. PDF statement imports that create or certify ledger rows are
+not rolled back like ordinary working imports; use a replacement statement or an
+explicit adjustment if a correction is needed.
 
 The statement certification check is necessary but not always sufficient. For a
 mapped account with no prior ledger activity, statement checkpoint history, or
@@ -154,11 +154,12 @@ selected account has no prior ledger activity, no statement checkpoint history,
 and no opening balance, a wrong PDF can otherwise balance against its own rows,
 so the app marks the result as identity unconfirmed instead of certified.
 
-If a wrong PDF still gets committed, do not treat it like an ordinary CSV
-rollback. A completed PDF statement may have certified existing ledger rows and
-locked bank facts inside the period. The correction should be handled as a
-replacement statement workflow or explicit adjustment so the audit trail remains
-clear.
+If a wrong PDF still gets committed, first check what it changed. If it only
+saved statement checkpoint or certificate metadata, rollback can remove that
+metadata so the account mapping can be corrected and re-imported. If it created
+or certified ledger rows, do not treat it like an ordinary CSV rollback. The
+correction should be handled as a replacement statement workflow or explicit
+adjustment so the audit trail remains clear.
 
 ### Why does this need a special correction path?
 
@@ -168,7 +169,8 @@ becomes relevant because of the accounting controls the app applies:
 - PDF statements are treated as high-authority evidence.
 - PDF imports can certify existing mid-cycle rows.
 - Certified bank facts are locked after a statement period closes.
-- Completed PDF imports are blocked from normal rollback.
+- PDF imports are blocked from normal rollback only after they create or certify
+  ledger rows.
 - Reconciliation certificates make the period auditable.
 
 The accounting concept is that closed periods need traceable corrections, not
