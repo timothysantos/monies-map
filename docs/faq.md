@@ -4,6 +4,24 @@ This is a living FAQ for Monie's Map.
 It should be updated whenever setup, workflow, scope, or user-facing behavior
 changes.
 
+## How should I read this FAQ?
+
+Start with the product basics first: what the app is, what screens exist, and
+how the monthly planning model works. Then read the import and statement
+sections, because that is where the app's accounting rules become stricter.
+
+If you are trying the app for the first time, this order is usually easiest:
+
+1. Understand the basic workflow.
+2. Create or import accounts.
+3. Import working bank activity during the month.
+4. Reconcile with PDF statements when the statement closes.
+5. Use Settings to review balances, checkpoints, category rules, and unresolved
+   transfers.
+
+Deployment, Cloudflare, and production reset details are intentionally later in
+this FAQ because they are operational details, not the first mental model.
+
 ## What is Monie's Map?
 
 Monie's Map is a household finance app for planning and tracking money across
@@ -35,6 +53,22 @@ The core questions behind the app are:
   unresolved transfers, balance activity, and demo reset/reseed tools
 - React + Vite frontend talking to the existing Worker API
 - category colors and icons as first-class metadata for charts and category cards
+
+## What is the basic workflow?
+
+The everyday workflow is:
+
+1. Use Month to set the plan for the period.
+2. Use Imports or manual Entries to keep the ledger current.
+3. Use Splits when a household expense needs sharing or settle-up tracking.
+4. Use Summary to see whether income, spending, and savings moved as expected.
+5. Use Settings to maintain accounts, checkpoints, category rules, and cleanup
+   queues.
+
+During the month, CSV, XLS, and current-activity imports are useful working
+data. At statement close, the PDF statement is the stronger proof. It can
+confirm rows, save a statement checkpoint, and explain whether the app balance
+matches the bank.
 
 ## What is the planning model?
 
@@ -107,6 +141,230 @@ into the app.
 - in-app AI analysis
 - optional direct bank connections, if the product ever decides to support them
 
+## How do I import real bank activity?
+
+Use Imports when you want bank or card rows to become ledger entries. Use
+Settings -> Compare statement when you already have rows in the ledger and only
+want to investigate a statement mismatch.
+
+### Supported files
+
+The app currently supports:
+
+- CSV files or pasted CSV text
+- supported PDF statements
+- supported UOB bank and credit-card current-transaction `.xls` exports
+- supported Citibank credit-card current-activity `.csv` exports, when the
+  selected default account is a Citibank credit card
+- supported OCBC card and 360 current-activity `.csv` exports, when the selected
+  default account is an OCBC account
+
+Supported PDF parsers include:
+
+- UOB credit-card statements, including multi-card statements such as UOB One
+  Card plus UOB Privi Miles
+- UOB One savings statements
+- Citibank credit-card statements, including known Citi Rewards and Citibank
+  Miles layouts
+- OCBC 365 credit-card statements with embedded text
+- OCBC 360 account statements with embedded text
+
+### If this is your first account setup
+
+1. Create the account in Settings.
+2. Enter the opening balance from just before your first trusted statement
+   period.
+3. Import the first statement or compare it against existing rows.
+4. Review account mapping, ownership, categories, transfers, splits, exceptions,
+   and the statement certification check.
+5. Commit the import once the rows look right.
+6. Save the statement checkpoint when the ledger matches the bank statement.
+
+For credit cards, the account card displays owed balances as negative
+liabilities, but the statement checkpoint field should use the positive amount
+owed printed by the bank.
+
+### Category matching during preview
+
+The import preview uses editable merchant rules from Settings to categorize
+future rows before commit. If a rule matches, it can correct the parser's first
+guess. This is for repeated bank text such as `TADA`, `SHOPEE`,
+`AMAZON`, `AMZON`, `JALAIRLINE`,
+`SINGLIFE`, `GOLDENVILLAGE`, `JOSEPHPRINCE`, `GOPAY-GOJEK`, `AXSPTELTD`,
+`KEPPEL ELECTRIC`, `M1LIMITED`, `INCOMEINSURANCE`, `INLAND REVENUE`, `IRAS`,
+`SP DIGITAL`, `PRUDENTIAL`, `BTG REWARDS`, `DIN TAI FUNG`, `WATSONS`,
+`EDITOR'S MARKET`, `NASI LEMAK`, `YOUTRIP`, `PLAYSTATION NETWORK`, `GIRO` plus
+`HDB`, and card conversion-fee descriptions.
+Transfer-looking card rows such as `TSFTO...6349` are treated as transfers, not
+normal expenses.
+
+Use Settings -> Category matching to add or adjust rules. Rules apply to future
+previews and can override a parser guess; they do not rewrite older ledger rows
+that you already reviewed and committed.
+
+![Settings category matching keeps editable rules and pending suggestions together](/faq/features/thumbs/category-matching.png)
+
+How rules match:
+
+- Capitalization does not matter.
+- Spaces and punctuation do not matter.
+- A specific merchant name can match any part of the bank text.
+- Use commas when a row should contain a few separate words before it matches.
+  For example, `paynow-fast, lunch` only matches a bank row that contains both
+  `paynow-fast` and `lunch`, so it can categorize lunch PayNow rows without
+  categorizing every PayNow row as food.
+- Very short names only match when they appear as their own word, so a rule like
+  `GV` does not accidentally match every word containing those letters.
+- Lower priority numbers are checked first.
+
+### What do category match suggestions mean?
+
+If you keep changing similar merchant rows to the same category, the app does
+not create a rule by itself. It creates a pending suggestion.
+
+You will see a small number badge on Settings when suggestions are waiting. Use
+that badge, or open Settings -> Category matching, to review them.
+
+For each suggestion, choose one action:
+
+1. Add rule if the merchant text is specific enough.
+2. Edit first if the suggested text is too broad or too narrow.
+3. Ignore if you do not want the app to remember that pattern.
+
+If a suggestion points to a pattern that already has a rule, accepting it
+updates the existing rule and marks the suggestion accepted instead of creating a
+duplicate.
+
+Accepted suggestions apply to future import previews. They do not change older
+entries automatically.
+
+### If you add splits after a fresh statement import
+
+Splits are a household sharing layer on top of ledger rows. They do not replace
+the bank row.
+
+Best option:
+
+1. Import the statement first.
+2. Commit the clean bank rows.
+3. Open the expense entry that should be shared.
+4. Use `Add to splits` from the entry editor.
+5. Adjust payer, people, split percentage, group, category, and notes.
+
+That keeps the bank ledger complete while also recording who owes whom. The
+original entry remains traceable to the import batch, and the split record points
+back to the ledger entry.
+
+If you manually create a split before the bank row exists, it is still useful as
+a reminder, but it is not yet matched to the ledger. When the bank row arrives,
+use the split match prompts to link the split to the imported entry instead of
+creating another split.
+
+### If you are updating mid-month
+
+Use a current-transaction export as a working ledger update.
+
+Example: download a UOB `.xls` activity export or a Citi card activity
+`.csv` for the current period, choose the matching account in the import form,
+import it, review the rows, and commit them. Those rows can then be used for
+Month, Entries, Splits, transfer matching, and category cleanup before the
+statement closes.
+
+Mid-month rows are useful, but they are not final proof. The final proof is still
+the next statement checkpoint.
+
+### Can Apple Pay open a prefilled expense?
+
+Yes. iOS Shortcuts can use a Wallet transaction automation to open the Entries
+page with a prefilled expense draft. The app does not save the row
+automatically; it opens the draft so the user can review the merchant, amount,
+account, category, and owner before tapping Save.
+
+Use a URL like this:
+
+```text
+https://monies-map.timsantos-accts.workers.dev/entries?action=add-expense&amount=12.34&merchant=Starbucks&date=2026-04-22&account=UOB%20One&category=Food%20%26%20Drinks
+```
+
+Supported query parameters are:
+
+- `action=add-expense`
+- `amount`
+- `merchant` or `description`
+- `date`, preferably `YYYY-MM-DD`
+- `account` or `account_id`
+- `category`
+- `owner`
+- `shared=true`
+- `note`
+
+After the app reads the parameters, it removes them from the URL so refreshing
+the page does not reopen the draft.
+
+### If you import UOB `.xls` or Citi `.csv` after adding manual splits
+
+Import the activity file normally, but review duplicates and split matches before
+commit.
+
+What should happen:
+
+1. The import preview warns about duplicate-looking rows already in the ledger.
+2. Rows that are genuinely new can be committed.
+3. Rows that duplicate existing ledger entries should be skipped before commit.
+   Exact and strong probable duplicates are skipped by default, while ambiguous
+   near matches need a review decision.
+4. If an imported row looks like a manually entered split expense, link the split
+   to the ledger entry after import instead of keeping two separate records.
+
+The import does not automatically replace manual split records. That is
+intentional. A split can be a household agreement, while the imported row is the
+bank evidence. The safe workflow is to import the bank row once, then link or
+adjust the split.
+
+### If a mid-cycle import already covers part of the next statement
+
+Use the statement period printed by the bank, not just the calendar month.
+
+Best option:
+
+1. Keep the mid-cycle import rows if they are real bank activity.
+2. When the statement arrives, compare the statement against the committed
+   ledger first.
+3. If the comparison says a row is already matched, do not import that row again.
+4. If the comparison says a statement row is missing, add or import only that
+   missing row.
+5. If the comparison shows a ledger row with the opposite direction, edit that
+   row instead of adding another row.
+6. If the statement preview skipped every row because the ledger already has
+   them, commit the statement checkpoint by itself once the certification check
+   matches.
+
+This is why statement comparison exists. It lets you prove whether the
+mid-cycle rows already satisfy the statement before you commit more rows.
+
+### If a statement arrives later
+
+When the statement is ready, do this before importing duplicate rows:
+
+1. Check the statement period for that specific account.
+2. Compare the statement against the committed ledger if rows were already
+   imported mid-cycle.
+3. Review missing rows, extra rows, direction mistakes, and duplicate-looking
+   rows.
+4. Import only rows that are truly missing, and leave duplicate preview rows
+   marked as already covered before commit. Already-covered rows stay visible
+   and can be included if the match was wrong.
+5. Save the statement checkpoint once the ledger matches the statement balance.
+   The certification check recalculates as rows are excluded or included,
+   counting already-covered rows through the existing ledger instead of
+   double-counting them.
+
+Cutoffs and row-inclusion effects are per account. If one PDF contains two card
+sections, each card gets its own checkpoint and only rows mapped to that card
+change that card's certification check. A Citi Rewards cutoff should not be
+reused for Citi Miles, and a UOB card statement cycle should not be reused for
+UOB One savings.
+
 ## How should I treat PDF statements versus mid-cycle exports?
 
 Supported PDF statements are the strongest import source in the app. Treat them
@@ -161,6 +419,33 @@ be corrected and re-imported. If it certified pre-existing ledger rows, do not
 treat it like an ordinary CSV rollback. The correction should be handled as a
 replacement statement workflow or explicit adjustment so the audit trail remains
 clear.
+
+### What can be rolled back?
+
+Ordinary CSV, XLS, and mid-cycle imports can be rolled back as working imports.
+They are provisional working data until a statement confirms them.
+
+A first PDF statement can also be rolled back when the ledger rows were created
+by that same PDF import. This includes the case where the user creates a new
+account from the import page and the form pre-fills an opening balance from the
+statement. The app calculates the opening balance from the statement ending
+balance minus the statement's net activity, so the newly created account can
+reconcile immediately. If that account mapping was wrong, rollbacking the PDF
+batch and re-importing to the right account is the clean correction.
+
+A checkpoint-only PDF can be rolled back too. That removes the statement
+checkpoint and reconciliation certificate metadata, without touching older
+ledger activity.
+
+A PDF statement should not be rolled back once it certifies pre-existing ledger
+rows, such as rows that came from a mid-cycle export. At that point the
+statement has promoted existing working rows to bank-certified facts while
+preserving user annotations. Corrections should use a replacement statement or
+an explicit adjustment instead of silently unwinding that certification.
+
+Renaming an account is only the right fix when the account object represents the
+correct real-world bank account and the label was wrong. It is not the right fix
+for a statement that was mapped to a different account.
 
 ### Why does this need a special correction path?
 
@@ -266,48 +551,6 @@ imports. For official PDF statements, the app tries to avoid turning these into
 manual decisions: if a statement row matches a provisional mid-cycle row, it
 promotes the existing row to statement-certified instead of asking the user to
 resolve a duplicate.
-
-## Where is the production app deployed?
-
-The current Cloudflare Worker deployment is:
-
-[https://monies-map.timsantos-accts.workers.dev](https://monies-map.timsantos-accts.workers.dev)
-
-It uses the Cloudflare D1 database `monies-map`.
-The Worker is configured as a single-page app, so refreshing nested routes such
-as `/entries` should reload the React app instead of returning a Cloudflare 404.
-
-Before using real household data, protect the Worker with Cloudflare Access. The
-app reads Cloudflare Access identity headers and can link a signed-in email to a
-household member, but it does not implement standalone OAuth itself.
-
-The fastest Access setup is one-time PIN email auth, restricted to:
-
-- primary household email
-- partner household email
-
-Google sign-in can be used by configuring Google as a Cloudflare Zero Trust
-identity provider and keeping the same email allowlist.
-
-The public demo deployment is:
-
-[https://monies-map-demo.timsantos-accts.workers.dev](https://monies-map-demo.timsantos-accts.workers.dev)
-
-It uses the separate Cloudflare D1 database `monies-map-demo` and intentionally
-does not require Cloudflare Access. Without Access, the app has no authenticated
-viewer email, so login-to-person linking is unavailable and users switch between
-household/person views manually. Keep the demo database limited to fake data
-because anyone with the URL can make changes. The demo app shows a thin sticky
-blue `demo` banner at the top of the page.
-
-## How do I deploy to production?
-
-Use the Cloudflare deploy steps in
-[`README.md`](../README.md#cloudflare-deploy).
-The routine production path is to use Node 22, then run `npm run deploy:prod`.
-Use `npm run deploy:demo` for only the public demo, or `npm run deploy:all` to
-build once and publish both Workers. If the app change depends on a schema
-update, run the matching D1 migration before deploy.
 
 ## What does the demo assume right now?
 
@@ -469,6 +712,48 @@ returning `500` plus a JSON parse error, the usual local cause is that Vite is
 still running while the Worker API failed to start. This repo expects Node 22
 for local scripts, so run `nvm use` from the repo root and restart
 `npm run dev`.
+
+## Where is the production app deployed?
+
+The current Cloudflare Worker deployment is:
+
+[https://monies-map.timsantos-accts.workers.dev](https://monies-map.timsantos-accts.workers.dev)
+
+It uses the Cloudflare D1 database `monies-map`.
+The Worker is configured as a single-page app, so refreshing nested routes such
+as `/entries` should reload the React app instead of returning a Cloudflare 404.
+
+Before using real household data, protect the Worker with Cloudflare Access. The
+app reads Cloudflare Access identity headers and can link a signed-in email to a
+household member, but it does not implement standalone OAuth itself.
+
+The fastest Access setup is one-time PIN email auth, restricted to:
+
+- primary household email
+- partner household email
+
+Google sign-in can be used by configuring Google as a Cloudflare Zero Trust
+identity provider and keeping the same email allowlist.
+
+The public demo deployment is:
+
+[https://monies-map-demo.timsantos-accts.workers.dev](https://monies-map-demo.timsantos-accts.workers.dev)
+
+It uses the separate Cloudflare D1 database `monies-map-demo` and intentionally
+does not require Cloudflare Access. Without Access, the app has no authenticated
+viewer email, so login-to-person linking is unavailable and users switch between
+household/person views manually. Keep the demo database limited to fake data
+because anyone with the URL can make changes. The demo app shows a thin sticky
+blue `demo` banner at the top of the page.
+
+## How do I deploy to production?
+
+Use the Cloudflare deploy steps in
+[`README.md`](../README.md#cloudflare-deploy).
+The routine production path is to use Node 22, then run `npm run deploy:prod`.
+Use `npm run deploy:demo` for only the public demo, or `npm run deploy:all` to
+build once and publish both Workers. If the app change depends on a schema
+update, run the matching D1 migration before deploy.
 
 ## Can it know the real balance of each wallet?
 
@@ -659,202 +944,6 @@ preview, commit, rollback, duplicate detection, and same-account overlap checks
 still use their focused flows. Because overlap checks inspect the account and
 date range being imported, they can warn about an older matching batch even when
 that batch is beyond the compact recent-history page currently visible.
-
-## How do I import real bank activity?
-
-Use Imports when you want bank or card rows to become ledger entries. Use
-Settings -> Compare statement when you already have rows in the ledger and only
-want to investigate a statement mismatch.
-
-### Supported files
-
-The app currently supports:
-
-- CSV files or pasted CSV text
-- supported PDF statements
-- supported UOB bank and credit-card current-transaction `.xls` exports
-- supported Citibank credit-card current-activity `.csv` exports, when the
-  selected default account is a Citibank credit card
-- supported OCBC card and 360 current-activity `.csv` exports, when the selected
-  default account is an OCBC account
-
-Supported PDF parsers include:
-
-- UOB credit-card statements, including multi-card statements such as UOB One
-  Card plus UOB Privi Miles
-- UOB One savings statements
-- Citibank credit-card statements, including known Citi Rewards and Citibank
-  Miles layouts
-- OCBC 365 credit-card statements with embedded text
-- OCBC 360 account statements with embedded text
-
-### Category matching during preview
-
-The import preview uses editable merchant rules from Settings to categorize
-future rows before commit. If a rule matches, it can correct the parser's first
-guess. This is for repeated bank text such as `TADA`, `SHOPEE`,
-`AMAZON`, `AMZON`, `JALAIRLINE`,
-`SINGLIFE`, `GOLDENVILLAGE`, `JOSEPHPRINCE`, `GOPAY-GOJEK`, `AXSPTELTD`,
-`KEPPEL ELECTRIC`, `M1LIMITED`, `INCOMEINSURANCE`, `INLAND REVENUE`, `IRAS`,
-`SP DIGITAL`, `PRUDENTIAL`, `BTG REWARDS`, `DIN TAI FUNG`, `WATSONS`,
-`EDITOR'S MARKET`, `NASI LEMAK`, `YOUTRIP`, `PLAYSTATION NETWORK`, `GIRO` plus
-`HDB`, and card conversion-fee descriptions.
-Transfer-looking card rows such as `TSFTO...6349` are treated as transfers, not
-normal expenses.
-
-Use Settings -> Category matching to add or adjust rules. Rules apply to future
-previews and can override a parser guess; they do not rewrite older ledger rows
-that you already reviewed and committed.
-
-![Settings category matching keeps editable rules and pending suggestions together](/faq/features/thumbs/category-matching.png)
-
-How rules match:
-
-- Capitalization does not matter.
-- Spaces and punctuation do not matter.
-- A specific merchant name can match any part of the bank text.
-- Use commas when a row should contain a few separate words before it matches.
-  For example, `paynow-fast, lunch` only matches a bank row that contains both
-  `paynow-fast` and `lunch`, so it can categorize lunch PayNow rows without
-  categorizing every PayNow row as food.
-- Very short names only match when they appear as their own word, so a rule like
-  `GV` does not accidentally match every word containing those letters.
-- Lower priority numbers are checked first.
-
-### What do category match suggestions mean?
-
-If you keep changing similar merchant rows to the same category, the app does
-not create a rule by itself. It creates a pending suggestion.
-
-You will see a small number badge on Settings when suggestions are waiting. Use
-that badge, or open Settings -> Category matching, to review them.
-
-For each suggestion, choose one action:
-
-1. Add rule if the merchant text is specific enough.
-2. Edit first if the suggested text is too broad or too narrow.
-3. Ignore if you do not want the app to remember that pattern.
-
-If a suggestion points to a pattern that already has a rule, accepting it
-updates the existing rule and marks the suggestion accepted instead of creating a
-duplicate.
-
-Accepted suggestions apply to future import previews. They do not change older
-entries automatically.
-
-### If this is your first account setup
-
-1. Create the account in Settings.
-2. Enter the opening balance from just before your first trusted statement
-   period.
-3. Import the first statement or compare it against existing rows.
-4. Review account mapping, ownership, categories, transfers, splits, exceptions,
-   and the statement certification check.
-5. Commit the import once the rows look right.
-6. Save the statement checkpoint when the ledger matches the bank statement.
-
-For credit cards, the account card displays owed balances as negative
-liabilities, but the statement checkpoint field should use the positive amount
-owed printed by the bank.
-
-### If you add splits after a fresh statement import
-
-Splits are a household sharing layer on top of ledger rows. They do not replace
-the bank row.
-
-Best option:
-
-1. Import the statement first.
-2. Commit the clean bank rows.
-3. Open the expense entry that should be shared.
-4. Use `Add to splits` from the entry editor.
-5. Adjust payer, people, split percentage, group, category, and notes.
-
-That keeps the bank ledger complete while also recording who owes whom. The
-original entry remains traceable to the import batch, and the split record points
-back to the ledger entry.
-
-If you manually create a split before the bank row exists, it is still useful as
-a reminder, but it is not yet matched to the ledger. When the bank row arrives,
-use the split match prompts to link the split to the imported entry instead of
-creating another split.
-
-### If you are updating mid-month
-
-Use a current-transaction export as a working ledger update.
-
-Example: download a UOB `.xls` activity export or a Citi card activity
-`.csv` for the current period, choose the matching account in the import form,
-import it, review the rows, and commit them. Those rows can then be used for
-Month, Entries, Splits, transfer matching, and category cleanup before the
-statement closes.
-
-Mid-month rows are useful, but they are not final proof. The final proof is still
-the next statement checkpoint.
-
-### If you import UOB `.xls` or Citi `.csv` after adding manual splits
-
-Import the activity file normally, but review duplicates and split matches before
-commit.
-
-What should happen:
-
-1. The import preview warns about duplicate-looking rows already in the ledger.
-2. Rows that are genuinely new can be committed.
-3. Rows that duplicate existing ledger entries should be skipped before commit.
-   Exact and strong probable duplicates are skipped by default, while ambiguous
-   near matches need a review decision.
-4. If an imported row looks like a manually entered split expense, link the split
-   to the ledger entry after import instead of keeping two separate records.
-
-The import does not automatically replace manual split records. That is
-intentional. A split can be a household agreement, while the imported row is the
-bank evidence. The safe workflow is to import the bank row once, then link or
-adjust the split.
-
-### If a mid-cycle import already covers part of the next statement
-
-Use the statement period printed by the bank, not just the calendar month.
-
-Best option:
-
-1. Keep the mid-cycle import rows if they are real bank activity.
-2. When the statement arrives, compare the statement against the committed
-   ledger first.
-3. If the comparison says a row is already matched, do not import that row again.
-4. If the comparison says a statement row is missing, add or import only that
-   missing row.
-5. If the comparison shows a ledger row with the opposite direction, edit that
-   row instead of adding another row.
-6. If the statement preview skipped every row because the ledger already has
-   them, commit the statement checkpoint by itself once the certification check
-   matches.
-
-This is why statement comparison exists. It lets you prove whether the
-mid-cycle rows already satisfy the statement before you commit more rows.
-
-### If a statement arrives later
-
-When the statement is ready, do this before importing duplicate rows:
-
-1. Check the statement period for that specific account.
-2. Compare the statement against the committed ledger if rows were already
-   imported mid-cycle.
-3. Review missing rows, extra rows, direction mistakes, and duplicate-looking
-   rows.
-4. Import only rows that are truly missing, and leave duplicate preview rows
-   marked as already covered before commit. Already-covered rows stay visible
-   and can be included if the match was wrong.
-5. Save the statement checkpoint once the ledger matches the statement balance.
-   The certification check recalculates as rows are excluded or included,
-   counting already-covered rows through the existing ledger instead of
-   double-counting them.
-
-Cutoffs and row-inclusion effects are per account. If one PDF contains two card
-sections, each card gets its own checkpoint and only rows mapped to that card
-change that card's certification check. A Citi Rewards cutoff should not be
-reused for Citi Miles, and a UOB card statement cycle should not be reused for
-UOB One savings.
 
 ## Example: growing mid-cycle exports before a two-card statement
 

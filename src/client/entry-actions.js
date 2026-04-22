@@ -37,8 +37,16 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
     setAddingToSplitsEntryId(null);
   }, [view, accounts, categories, people]);
 
-  function openEntryComposer() {
+  function openEntryComposer(initialPatch) {
     if (showEntryComposer) {
+      if (initialPatch) {
+        setEditingEntryId(null);
+        setEntrySnapshot(null);
+        setEntrySubmitError("");
+        setEntryDraft(normalizeEntryShape({ ...buildEntryDraft(view, accounts, categories, people), ...initialPatch }, people));
+        setShowEntryComposer(true);
+        return;
+      }
       closeEntryComposer();
       return;
     }
@@ -46,7 +54,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
     setEditingEntryId(null);
     setEntrySnapshot(null);
     setEntrySubmitError("");
-    setEntryDraft(buildEntryDraft(view, accounts, categories, people));
+    setEntryDraft(normalizeEntryShape({ ...buildEntryDraft(view, accounts, categories, people), ...(initialPatch ?? {}) }, people));
     setShowEntryComposer(true);
   }
 

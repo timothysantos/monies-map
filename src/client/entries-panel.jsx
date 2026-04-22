@@ -15,6 +15,7 @@ import {
   getEntryWalletFilterOptions
 } from "./entry-selectors";
 import { getVisibleSplitPercent } from "./entry-helpers";
+import { parseDraftMoneyInput } from "./formatters";
 import { buildRequestErrorMessage } from "./request-errors";
 
 const ENTRIES_PAGE_PREFETCH_DELAY_MS = 1200;
@@ -312,6 +313,26 @@ export function EntriesPanel({
     () => getEntryFormOptions({ accounts, categories, people }),
     [accounts, categories, people]
   );
+  useEffect(() => {
+    const quickAction = searchParams.get("action");
+    if (quickAction !== "add-expense" && quickAction !== "quick-expense") {
+      return;
+    }
+
+    const draftPatch = buildQuickExpenseDraftPatch({
+      searchParams,
+      accountOptions,
+      categoryOptions,
+      ownerOptions,
+      fallbackOwnerName: defaultEntryPerson || people[0]?.name
+    });
+    openEntryComposer(draftPatch);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      QUICK_EXPENSE_PARAMS.forEach((key) => next.delete(key));
+      return next;
+    }, { replace: true });
+  }, [accountOptions, categoryOptions, defaultEntryPerson, openEntryComposer, ownerOptions, people, searchParams, setSearchParams]);
   const activeEntryFilterCount = useMemo(
     () => getActiveEntryFilterCount(entryFilters),
     [entryFilters]
@@ -481,6 +502,102 @@ export function EntriesPanel({
       />
     </article>
   );
+}
+
+const QUICK_EXPENSE_PARAMS = [
+  "action",
+  "amount",
+  "merchant",
+  "description",
+  "date",
+  "account",
+  "account_id",
+  "category",
+  "note",
+  "owner",
+  "shared"
+];
+
+function buildQuickExpenseDraftPatch({ searchParams, accountOptions, categoryOptions, ownerOptions, fallbackOwnerName }) {
+  const account = findQuickExpenseAccount(accountOptions, {
+    accountId: searchParams.get("account_id"),
+    accountName: searchParams.get("account")
+  });
+  const categoryName = findCaseInsensitiveOption(categoryOptions, searchParams.get("category")) ?? "Other";
+  const ownerName = findCaseInsensitiveOption(ownerOptions.filter((option) => option !== "Shared"), searchParams.get("owner"))
+    ?? fallbackOwnerName
+    ?? "";
+  const isShared = ["1", "true", "yes", "shared"].includes(String(searchParams.get("shared") ?? "").trim().toLowerCase());
+  const amountMinor = Math.abs(parseDraftMoneyInput(searchParams.get("amount") ?? "0"));
+  const description = searchParams.get("merchant") ?? searchParams.get("description") ?? "";
+  const date = normalizeQuickExpenseDate(searchParams.get("date"));
+
+  return {
+    ...(date ? { date } : {}),
+    ...(description ? { description } : {}),
+    ...(account ? {
+      accountId: account.value,
+      accountName: account.accountName,
+      accountOwnerLabel: account.ownerLabel
+    } : {}),
+    categoryName,
+    amountMinor,
+    totalAmountMinor: amountMinor,
+    entryType: "expense",
+    transferDirection: undefined,
+    ownershipType: isShared ? "shared" : "direct",
+    ownerName: isShared ? undefined : ownerName,
+    note: searchParams.get("note") ?? ""
+  };
+}
+
+function findQuickExpenseAccount(accountOptions, { accountId, accountName }) {
+  if (accountId) {
+    const byId = accountOptions.find((option) => option.value === accountId || option.id === accountId);
+    if (byId) {
+      return byId;
+    }
+  }
+
+  if (!accountName) {
+    return undefined;
+  }
+
+  const normalizedAccountName = normalizeQuickExpenseToken(accountName);
+  return accountOptions.find((option) => (
+    normalizeQuickExpenseToken(option.accountName) === normalizedAccountName
+    || normalizeQuickExpenseToken(option.label) === normalizedAccountName
+    || normalizeQuickExpenseToken(option.value) === normalizedAccountName
+  ));
+}
+
+function findCaseInsensitiveOption(options, value) {
+  if (!value) {
+    return undefined;
+  }
+  const normalizedValue = normalizeQuickExpenseToken(value);
+  return options.find((option) => normalizeQuickExpenseToken(option) === normalizedValue);
+}
+
+function normalizeQuickExpenseToken(value) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function normalizeQuickExpenseDate(value) {
+  if (!value) {
+    return "";
+  }
+
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+  return parsed.toISOString().slice(0, 10);
 }
 
 function buildInitialEntriesPage(view) {
