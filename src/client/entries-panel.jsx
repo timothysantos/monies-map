@@ -48,6 +48,7 @@ export function EntriesPanel({
   const fallbackEntriesPageInflightRef = useRef(new Map());
   const fallbackEntriesPageCacheVersionRef = useRef(0);
   const entriesPagePrefetchTimerRef = useRef(null);
+  const handledQuickExpenseKeyRef = useRef("");
   const entriesPageCacheRefs = useMemo(() => entriesPageCache ?? {
     cacheRef: fallbackEntriesPageCacheRef,
     inflightRef: fallbackEntriesPageInflightRef,
@@ -318,6 +319,11 @@ export function EntriesPanel({
     if (quickAction !== "add-expense" && quickAction !== "quick-expense") {
       return;
     }
+    const quickExpenseKey = buildQuickExpenseKey(searchParams);
+    if (handledQuickExpenseKeyRef.current === quickExpenseKey) {
+      return;
+    }
+    handledQuickExpenseKeyRef.current = quickExpenseKey;
 
     const draftPatch = buildQuickExpenseDraftPatch({
       searchParams,
@@ -530,7 +536,7 @@ function buildQuickExpenseDraftPatch({ searchParams, accountOptions, categoryOpt
   const isShared = ["1", "true", "yes", "shared"].includes(String(searchParams.get("shared") ?? "").trim().toLowerCase());
   const amountMinor = Math.abs(parseDraftMoneyInput(searchParams.get("amount") ?? "0"));
   const description = searchParams.get("merchant") ?? searchParams.get("description") ?? "";
-  const date = normalizeQuickExpenseDate(searchParams.get("date"));
+  const date = normalizeQuickExpenseDate(searchParams.get("date")) || new Date().toISOString().slice(0, 10);
 
   return {
     ...(date ? { date } : {}),
@@ -598,6 +604,10 @@ function normalizeQuickExpenseDate(value) {
     return "";
   }
   return parsed.toISOString().slice(0, 10);
+}
+
+function buildQuickExpenseKey(searchParams) {
+  return QUICK_EXPENSE_PARAMS.map((key) => `${key}=${searchParams.get(key) ?? ""}`).join("&");
 }
 
 function buildInitialEntriesPage(view) {
