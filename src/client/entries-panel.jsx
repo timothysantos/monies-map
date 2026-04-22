@@ -263,6 +263,7 @@ export function EntriesPanel({
     people,
     onRefresh: () => refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true })
   });
+  const openEntryComposerRef = useRef(openEntryComposer);
   const selectedScope = searchParams.get("entries_scope") ?? entryView.monthPage.selectedScope;
   const defaultEntryPerson = entryView.id !== "household" ? entryView.label : "";
   const entryFilters = {
@@ -271,6 +272,10 @@ export function EntriesPanel({
     person: searchParams.get("entry_person") ?? defaultEntryPerson,
     type: searchParams.get("entry_type") ?? ""
   };
+
+  useEffect(() => {
+    openEntryComposerRef.current = openEntryComposer;
+  }, [openEntryComposer]);
 
   useEffect(() => {
     setShowExpenseBreakdown(false);
@@ -341,21 +346,23 @@ export function EntriesPanel({
       return next;
     }, { replace: true });
   }, [accountOptions, categoryOptions, defaultEntryPerson, ownerOptions, people, searchParams, setSearchParams]);
+
   useEffect(() => {
     if (
-      isEntriesPageLoading
-      || entriesPage.monthPage.month !== selectedMonth
-      || !quickExpensePendingKey
+      !quickExpensePendingKey
       || !pendingQuickExpenseDraftRef.current
+      || isEntriesPageLoading
+      || entriesPage.monthPage.month !== selectedMonth
     ) {
-      return;
+      return undefined;
     }
 
     const draftPatch = pendingQuickExpenseDraftRef.current;
     pendingQuickExpenseDraftRef.current = null;
     setQuickExpensePendingKey("");
-    openEntryComposer(draftPatch);
-  }, [entriesPage.monthPage.month, isEntriesPageLoading, openEntryComposer, quickExpensePendingKey, selectedMonth]);
+    openEntryComposerRef.current(draftPatch);
+    return undefined;
+  }, [entriesPage.monthPage.month, isEntriesPageLoading, quickExpensePendingKey, selectedMonth]);
   const activeEntryFilterCount = useMemo(
     () => getActiveEntryFilterCount(entryFilters),
     [entryFilters]
@@ -587,11 +594,20 @@ function findQuickExpenseAccount(accountOptions, { accountId, accountName }) {
   }
 
   const normalizedAccountName = normalizeQuickExpenseToken(accountName);
-  return accountOptions.find((option) => (
+  const exactMatch = accountOptions.find((option) => (
     normalizeQuickExpenseToken(option.accountName) === normalizedAccountName
     || normalizeQuickExpenseToken(option.label) === normalizedAccountName
     || normalizeQuickExpenseToken(option.value) === normalizedAccountName
   ));
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  const partialMatches = accountOptions.filter((option) => (
+    normalizeQuickExpenseToken(option.accountName).includes(normalizedAccountName)
+    || normalizeQuickExpenseToken(option.label).includes(normalizedAccountName)
+  ));
+  return partialMatches.length === 1 ? partialMatches[0] : undefined;
 }
 
 function findCaseInsensitiveOption(options, value) {
