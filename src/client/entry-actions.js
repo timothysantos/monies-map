@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   applySharedSplit,
@@ -22,13 +22,16 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
   const [transferSettlementDrafts, setTransferSettlementDrafts] = useState({});
   const [transferDialogEntryId, setTransferDialogEntryId] = useState(null);
   const [addingToSplitsEntryId, setAddingToSplitsEntryId] = useState(null);
+  const queuedComposerDraftRef = useRef(null);
 
   useEffect(() => {
+    const queuedComposerDraft = queuedComposerDraftRef.current;
+    queuedComposerDraftRef.current = null;
     setEntries(view.monthPage.entries);
     setEditingEntryId(null);
     setEntrySnapshot(null);
-    setShowEntryComposer(false);
-    setEntryDraft(buildEntryDraft(view, accounts, categories, people));
+    setShowEntryComposer(Boolean(queuedComposerDraft));
+    setEntryDraft(normalizeEntryShape({ ...buildEntryDraft(view, accounts, categories, people), ...(queuedComposerDraft ?? {}) }, people));
     setEntrySubmitError("");
     setLinkingTransferEntryId(null);
     setSettlingTransferEntryId(null);
@@ -38,6 +41,9 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
   }, [view, accounts, categories, people]);
 
   function openEntryComposer(initialPatch) {
+    if (initialPatch) {
+      queuedComposerDraftRef.current = initialPatch;
+    }
     if (showEntryComposer) {
       if (initialPatch) {
         setEditingEntryId(null);
