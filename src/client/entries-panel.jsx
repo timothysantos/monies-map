@@ -44,11 +44,13 @@ export function EntriesPanel({
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [entriesPage, setEntriesPage] = useState(() => buildInitialEntriesPage(view));
   const [isEntriesPageLoading, setIsEntriesPageLoading] = useState(false);
+  const [quickExpensePendingKey, setQuickExpensePendingKey] = useState("");
   const fallbackEntriesPageCacheRef = useRef(new Map());
   const fallbackEntriesPageInflightRef = useRef(new Map());
   const fallbackEntriesPageCacheVersionRef = useRef(0);
   const entriesPagePrefetchTimerRef = useRef(null);
   const handledQuickExpenseKeyRef = useRef("");
+  const pendingQuickExpenseDraftRef = useRef(null);
   const entriesPageCacheRefs = useMemo(() => entriesPageCache ?? {
     cacheRef: fallbackEntriesPageCacheRef,
     inflightRef: fallbackEntriesPageInflightRef,
@@ -325,20 +327,35 @@ export function EntriesPanel({
     }
     handledQuickExpenseKeyRef.current = quickExpenseKey;
 
-    const draftPatch = buildQuickExpenseDraftPatch({
+    pendingQuickExpenseDraftRef.current = buildQuickExpenseDraftPatch({
       searchParams,
       accountOptions,
       categoryOptions,
       ownerOptions,
       fallbackOwnerName: defaultEntryPerson || people[0]?.name
     });
-    openEntryComposer(draftPatch);
+    setQuickExpensePendingKey(quickExpenseKey);
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       QUICK_EXPENSE_PARAMS.forEach((key) => next.delete(key));
       return next;
     }, { replace: true });
-  }, [accountOptions, categoryOptions, defaultEntryPerson, openEntryComposer, ownerOptions, people, searchParams, setSearchParams]);
+  }, [accountOptions, categoryOptions, defaultEntryPerson, ownerOptions, people, searchParams, setSearchParams]);
+  useEffect(() => {
+    if (
+      isEntriesPageLoading
+      || entriesPage.monthPage.month !== selectedMonth
+      || !quickExpensePendingKey
+      || !pendingQuickExpenseDraftRef.current
+    ) {
+      return;
+    }
+
+    const draftPatch = pendingQuickExpenseDraftRef.current;
+    pendingQuickExpenseDraftRef.current = null;
+    setQuickExpensePendingKey("");
+    openEntryComposer(draftPatch);
+  }, [entriesPage.monthPage.month, isEntriesPageLoading, openEntryComposer, quickExpensePendingKey, selectedMonth]);
   const activeEntryFilterCount = useMemo(
     () => getActiveEntryFilterCount(entryFilters),
     [entryFilters]
