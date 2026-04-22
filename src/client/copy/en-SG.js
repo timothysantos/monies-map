@@ -368,7 +368,7 @@ export const messages = {
     rollbackDetail: (label) => `You are rolling back ${label}. Confirm?`,
     rollbackConfirm: "Confirm rollback",
     statementRollbackLocked: "Statement locked",
-    statementRollbackLockedDetail: "PDF statement imports certify ledger rows and cannot be rolled back.",
+    statementRollbackLockedDetail: "PDF statement imports are locked after they certify existing rows or when a later statement exists for the same account.",
     table: {
       row: "Row",
       date: "Date",

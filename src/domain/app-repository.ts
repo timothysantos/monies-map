@@ -3115,6 +3115,27 @@ export async function rollbackImportBatch(
     throw new Error("This PDF statement import certified pre-existing ledger rows and cannot be rolled back. Correct it with a replacement statement or manual adjustment.");
   }
 
+  const laterStatementRows = await db
+    .prepare(`
+      SELECT COUNT(*) AS row_count
+      FROM statement_reconciliation_certificates current_certificate
+      WHERE current_certificate.household_id = ?
+        AND current_certificate.import_id = ?
+        AND EXISTS (
+          SELECT 1
+          FROM statement_reconciliation_certificates later_certificate
+          WHERE later_certificate.household_id = current_certificate.household_id
+            AND later_certificate.account_id = current_certificate.account_id
+            AND later_certificate.checkpoint_month > current_certificate.checkpoint_month
+        )
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.importId)
+    .first<{ row_count: number }>();
+
+  if (importRecord.source_type === "pdf" && Number(laterStatementRows?.row_count ?? 0) > 0) {
+    throw new Error("This PDF statement import has a later statement for the same account. Roll back newer statements first, or use a replacement statement or manual adjustment.");
+  }
+
   const transactionMonths = await db
     .prepare(`
       SELECT DISTINCT transaction_date

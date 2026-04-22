@@ -126,7 +126,10 @@ export async function loadImportBatches(
 
     const certificateSummary = certificateSummaryByImportId.get(row.id);
     const transactionCount = Number(row.transaction_count ?? 0);
-    const rollbackProtected = row.source_type === "pdf" && Number(certificateSummary?.certified_existing_row_count ?? 0) > 0;
+    const rollbackProtected = row.source_type === "pdf" && (
+      Number(certificateSummary?.certified_existing_row_count ?? 0) > 0
+      || Number(certificateSummary?.later_statement_count ?? 0) > 0
+    );
 
     return {
       id: row.id,
@@ -162,6 +165,7 @@ async function loadImportStatementCertificateRows(db: D1Database, importIds: str
     exception_count: number;
     imported_row_count: number;
     certified_existing_row_count: number;
+    later_statement_count: number;
   }[] = [];
   for (let index = 0; index < importIds.length; index += IMPORT_HISTORY_ACCOUNT_LOOKUP_CHUNK_SIZE) {
     const chunk = importIds.slice(index, index + IMPORT_HISTORY_ACCOUNT_LOOKUP_CHUNK_SIZE);
@@ -173,7 +177,16 @@ async function loadImportStatementCertificateRows(db: D1Database, importIds: str
           COUNT(*) AS certificate_count,
           SUM(CASE WHEN status = 'exception' THEN 1 ELSE 0 END) AS exception_count,
           SUM(imported_row_count) AS imported_row_count,
-          SUM(certified_existing_row_count) AS certified_existing_row_count
+          SUM(certified_existing_row_count) AS certified_existing_row_count,
+          SUM(
+            CASE WHEN EXISTS (
+              SELECT 1
+              FROM statement_reconciliation_certificates later_certificate
+              WHERE later_certificate.household_id = statement_reconciliation_certificates.household_id
+                AND later_certificate.account_id = statement_reconciliation_certificates.account_id
+                AND later_certificate.checkpoint_month > statement_reconciliation_certificates.checkpoint_month
+            ) THEN 1 ELSE 0 END
+          ) AS later_statement_count
         FROM statement_reconciliation_certificates
         WHERE household_id = ?
           AND import_id IN (${importIdPlaceholders})
@@ -186,6 +199,7 @@ async function loadImportStatementCertificateRows(db: D1Database, importIds: str
         exception_count: number;
         imported_row_count: number;
         certified_existing_row_count: number;
+        later_statement_count: number;
       }>();
 
     rows.push(...result.results);

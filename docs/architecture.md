@@ -236,12 +236,14 @@ That distinction matters because the system needs to answer questions like:
   account closely enough before the preview can be committed. This prevents a
   first statement on a zero-balance wrong account from passing only because the
   statement is internally consistent.
-- completed official PDF statement imports are rollback-protected only when they
-  certify pre-existing ledger rows. First-statement imports that created their
-  own rows, plus checkpoint-only statement imports, can be rolled back to correct
-  a wrong account mapping; pre-existing-row-certified corrections should come
-  from a replacement statement import or an explicit manual adjustment,
-  preserving audit continuity.
+- completed official PDF statement imports are rollback-protected when they
+  certify pre-existing ledger rows, or when a later statement certificate exists
+  for the same account. First-statement imports that created their own rows, plus
+  checkpoint-only statement imports, can be rolled back to correct a wrong
+  account mapping only while they are still the newest statement for that
+  account; pre-existing-row-certified or superseded corrections should come from
+  a replacement statement import or an explicit manual adjustment, preserving
+  audit continuity.
 - replacement statement correction should compare account identity, period,
   row count, debit and credit totals, ending balance, and the saved
   reconciliation certificate before changing certified rows. Matching rows

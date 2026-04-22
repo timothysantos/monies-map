@@ -426,22 +426,35 @@ Ordinary CSV, XLS, and mid-cycle imports can be rolled back as working imports.
 They are provisional working data until a statement confirms them.
 
 A first PDF statement can also be rolled back when the ledger rows were created
-by that same PDF import. This includes the case where the user creates a new
-account from the import page and the form pre-fills an opening balance from the
-statement. The app calculates the opening balance from the statement ending
-balance minus the statement's net activity, so the newly created account can
-reconcile immediately. If that account mapping was wrong, rollbacking the PDF
-batch and re-importing to the right account is the clean correction.
+by that same PDF import and no later statement exists for the same account. This
+includes the case where the user creates a new account from the import page and
+the form pre-fills an opening balance from the statement. The app calculates the
+opening balance from the statement ending balance minus the statement's net
+activity, so the newly created account can reconcile immediately. If that
+account mapping was wrong, rollbacking the PDF batch and re-importing to the
+right account is the clean correction before newer statements are added.
 
-A checkpoint-only PDF can be rolled back too. That removes the statement
-checkpoint and reconciliation certificate metadata, without touching older
-ledger activity.
+A checkpoint-only PDF can be rolled back too, as long as it is still the newest
+statement certificate for that account. That removes the statement checkpoint
+and reconciliation certificate metadata, without touching older ledger activity.
 
 A PDF statement should not be rolled back once it certifies pre-existing ledger
 rows, such as rows that came from a mid-cycle export. At that point the
 statement has promoted existing working rows to bank-certified facts while
 preserving user annotations. Corrections should use a replacement statement or
 an explicit adjustment instead of silently unwinding that certification.
+
+Older PDF statements should also not be rolled back after a later statement for
+the same account has been saved. Rollbacks should move backward from the newest
+statement, or use a replacement statement or explicit adjustment when the period
+has already become part of a later certified sequence.
+
+In Recent imports, this means a run of monthly PDF statements should not all
+show the rollback action. For one account, only the newest rollbackable
+statement should show rollback. Older statements should show `Statement locked`
+because later statement certificates now depend on the account's certified
+sequence. If every completed PDF statement for the same account shows rollback,
+the UI and server protection logic are wrong.
 
 Renaming an account is only the right fix when the account object represents the
 correct real-world bank account and the label was wrong. It is not the right fix
@@ -455,8 +468,8 @@ becomes relevant because of the accounting controls the app applies:
 - PDF statements are treated as high-authority evidence.
 - PDF imports can certify existing mid-cycle rows.
 - Certified bank facts are locked after a statement period closes.
-- PDF imports are blocked from normal rollback only after they certify
-  pre-existing ledger rows.
+- PDF imports are blocked from normal rollback after they certify pre-existing
+  ledger rows, or after a later statement exists for the same account.
 - Reconciliation certificates make the period auditable.
 
 The accounting concept is that closed periods need traceable corrections, not
