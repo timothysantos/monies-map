@@ -52,7 +52,8 @@ This is a good fit because the app is mostly forms, uploads, categorization, and
 
 The app is a working Cloudflare Workers + D1 finance ledger. It has a persisted
 domain model, D1-backed repositories, import preview and commit flows, statement
-reconciliation checkpoints, import rollback for ordinary working imports,
+reconciliation checkpoints, import rollback for ordinary working imports and
+checkpoint-only statement imports,
 settings management, and separate local, demo, and production deployment paths.
 
 The main working surfaces are:
@@ -122,6 +123,9 @@ statement reconciles, the app can save account checkpoints and reconciliation
 certificates, and matching provisional mid-cycle rows can be promoted to
 statement-certified rows. Mid-cycle exports are useful for staying current
 before the next statement arrives, but they do not create statement checkpoints.
+Statement imports that create or certify ledger rows are rollback-protected;
+checkpoint-only statement imports can be rolled back to fix a wrong first
+account mapping.
 
 ## Data Model
 

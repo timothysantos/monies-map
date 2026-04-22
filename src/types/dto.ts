@@ -357,6 +357,7 @@ export interface ImportBatchDto {
   overlapImports?: ImportOverlapDto[];
   statementCertificateCount?: number;
   statementCertificateStatus?: "certified" | "exception";
+  rollbackProtected?: boolean;
   note?: string;
 }
 

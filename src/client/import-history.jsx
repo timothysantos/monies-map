@@ -225,11 +225,11 @@ function ImportOverlapPopover({ item }) {
 }
 
 function canRollbackImport(item) {
-  return item.status === "completed" && !isStatementCertifiedImport(item);
+  return item.status === "completed" && !item.rollbackProtected;
 }
 
 function isStatementCertifiedImport(item) {
-  return item.sourceType === "pdf" || item.statementCertificateCount > 0;
+  return item.rollbackProtected;
 }
 
 function getImportBatchKindLabel(item) {
