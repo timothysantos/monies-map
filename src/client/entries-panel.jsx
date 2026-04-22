@@ -47,6 +47,7 @@ export function EntriesPanel({
   const [entriesPage, setEntriesPage] = useState(() => buildInitialEntriesPage(view));
   const [isEntriesPageLoading, setIsEntriesPageLoading] = useState(false);
   const [quickExpensePendingKey, setQuickExpensePendingKey] = useState("");
+  const [quickExpenseWarning, setQuickExpenseWarning] = useState("");
   const fallbackEntriesPageCacheRef = useRef(new Map());
   const fallbackEntriesPageInflightRef = useRef(new Map());
   const fallbackEntriesPageCacheVersionRef = useRef(0);
@@ -334,14 +335,16 @@ export function EntriesPanel({
     }
     handledQuickExpenseKeyRef.current = quickExpenseKey;
 
-    pendingQuickExpenseDraftRef.current = buildQuickExpenseDraftPatch({
+    const quickExpenseDraft = buildQuickExpenseDraftPatch({
       searchParams,
       accountOptions,
       categoryOptions,
       ownerOptions,
       fallbackOwnerName: defaultEntryPerson || people[0]?.name
     });
-    storeQuickExpenseDraft(quickExpenseKey, pendingQuickExpenseDraftRef.current);
+    pendingQuickExpenseDraftRef.current = quickExpenseDraft.draft;
+    setQuickExpenseWarning(quickExpenseDraft.warning);
+    storeQuickExpenseDraft(quickExpenseKey, quickExpenseDraft.draft, quickExpenseDraft.warning);
     setQuickExpensePendingKey(quickExpenseKey);
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
@@ -361,6 +364,7 @@ export function EntriesPanel({
     }
 
     pendingQuickExpenseDraftRef.current = storedDraft.draft;
+    setQuickExpenseWarning(storedDraft.warning ?? "");
     setQuickExpensePendingKey(storedDraft.key);
   }, [quickExpensePendingKey, showEntryComposer]);
 
@@ -384,11 +388,13 @@ export function EntriesPanel({
   async function saveEntryDraftAndClearQuickExpense() {
     const saved = await saveEntryDraft();
     if (saved) {
+      setQuickExpenseWarning("");
       clearStoredQuickExpenseDraft();
     }
   }
 
   function closeEntryComposerAndClearQuickExpense() {
+    setQuickExpenseWarning("");
     clearStoredQuickExpenseDraft();
     closeEntryComposer();
   }
@@ -503,6 +509,7 @@ export function EntriesPanel({
       {showEntryComposer ? (
         <section className="entry-row is-editing entry-composer">
           <div className="entry-inline-editor">
+            {quickExpenseWarning ? <p className="entry-submit-error">{quickExpenseWarning}</p> : null}
             <EntryEditorFields
               entry={entryDraft}
               categories={categories}
@@ -578,36 +585,61 @@ const QUICK_EXPENSE_PARAMS = [
 ];
 
 function buildQuickExpenseDraftPatch({ searchParams, accountOptions, categoryOptions, ownerOptions, fallbackOwnerName }) {
+  const warnings = [];
+  const rawAmount = searchParams.get("amount");
+  const rawDescription = searchParams.get("merchant") ?? searchParams.get("description");
+  const rawAccount = searchParams.get("account");
   const account = findQuickExpenseAccount(accountOptions, {
     accountId: searchParams.get("account_id"),
-    accountName: searchParams.get("account")
+    accountName: rawAccount
   });
   const categoryName = findCaseInsensitiveOption(categoryOptions, searchParams.get("category")) ?? "Other";
   const ownerName = findCaseInsensitiveOption(ownerOptions.filter((option) => option !== "Shared"), searchParams.get("owner"))
     ?? fallbackOwnerName
     ?? "";
   const isShared = ["1", "true", "yes", "shared"].includes(String(searchParams.get("shared") ?? "").trim().toLowerCase());
-  const amountMinor = Math.abs(parseDraftMoneyInput(searchParams.get("amount") ?? "0"));
-  const description = searchParams.get("merchant") ?? searchParams.get("description") ?? "";
+  const amountMinor = Math.abs(parseDraftMoneyInput(rawAmount ?? "0"));
+  const description = isQuickExpensePlaceholder(rawDescription) ? "" : rawDescription ?? "";
   const date = normalizeQuickExpenseDate(searchParams.get("date")) || new Date().toISOString().slice(0, 10);
 
+  if (!hasQuickExpenseAmount(rawAmount)) {
+    warnings.push("Shortcut did not pass an amount. Check that the URL uses the real Amount variable, not placeholder text.");
+  }
+  if (isQuickExpensePlaceholder(rawDescription)) {
+    warnings.push("Shortcut did not pass a merchant or description.");
+  }
+  if (rawAccount && !account && isQuickExpensePlaceholder(rawAccount)) {
+    warnings.push("Shortcut did not pass a card or account.");
+  }
+
   return {
-    ...(date ? { date } : {}),
-    ...(description ? { description } : {}),
-    ...(account ? {
-      accountId: account.value,
-      accountName: account.accountName,
-      accountOwnerLabel: account.ownerLabel
-    } : {}),
-    categoryName,
-    amountMinor,
-    totalAmountMinor: amountMinor,
-    entryType: "expense",
-    transferDirection: undefined,
-    ownershipType: isShared ? "shared" : "direct",
-    ownerName: isShared ? undefined : ownerName,
-    note: searchParams.get("note") ?? ""
+    draft: {
+      ...(date ? { date } : {}),
+      ...(description ? { description } : {}),
+      ...(account ? {
+        accountId: account.value,
+        accountName: account.accountName,
+        accountOwnerLabel: account.ownerLabel
+      } : {}),
+      categoryName,
+      amountMinor,
+      totalAmountMinor: amountMinor,
+      entryType: "expense",
+      transferDirection: undefined,
+      ownershipType: isShared ? "shared" : "direct",
+      ownerName: isShared ? undefined : ownerName,
+      note: isQuickExpensePlaceholder(searchParams.get("note")) ? "" : searchParams.get("note") ?? ""
+    },
+    warning: warnings.join(" ")
   };
+}
+
+function hasQuickExpenseAmount(value) {
+  return /\d/.test(String(value ?? "")) && !isQuickExpensePlaceholder(value);
+}
+
+function isQuickExpensePlaceholder(value) {
+  return /^\s*\[[^\]]+\]\s*$/.test(String(value ?? ""));
 }
 
 function findQuickExpenseAccount(accountOptions, { accountId, accountName }) {
@@ -672,7 +704,7 @@ function buildQuickExpenseKey(searchParams) {
   return QUICK_EXPENSE_PARAMS.map((key) => `${key}=${searchParams.get(key) ?? ""}`).join("&");
 }
 
-function storeQuickExpenseDraft(key, draft) {
+function storeQuickExpenseDraft(key, draft, warning = "") {
   if (typeof window === "undefined") {
     return;
   }
@@ -681,6 +713,7 @@ function storeQuickExpenseDraft(key, draft) {
     window.sessionStorage.setItem(QUICK_EXPENSE_DRAFT_STORAGE_KEY, JSON.stringify({
       key,
       draft,
+      warning,
       createdAt: Date.now()
     }));
   } catch {
