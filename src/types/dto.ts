@@ -171,6 +171,11 @@ export interface EntryDto {
   viewerSplitRatioBasisPoints?: number;
   offsetsCategory: boolean;
   note?: string;
+  bankCertificationStatus?: "manual_provisional" | "import_provisional" | "statement_certified";
+  bankCertificationLabel?: string;
+  importedSourceType?: "csv" | "pdf" | "manual";
+  importedSourceLabel?: string;
+  statementCertifiedAt?: string;
   linkedTransfer?: LinkedTransferDto;
   splits: EntrySplitDto[];
 }
@@ -527,6 +532,25 @@ export interface AuditEventDto {
   entityId?: string;
 }
 
+export interface ReconciliationExceptionDto {
+  id: string;
+  accountId?: string;
+  accountName?: string;
+  transactionId?: string;
+  transactionDate?: string;
+  transactionDescription?: string;
+  checkpointMonth?: string;
+  kind: "missing_bank_row" | "extra_ledger_row" | "duplicate" | "direction_mismatch" | "wrong_account" | "timing_difference" | "manual_review" | "adjustment_needed";
+  severity: "info" | "review" | "blocking";
+  status: "open" | "resolved";
+  title: string;
+  note?: string;
+  resolutionNote?: string;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt?: string;
+}
+
 export interface SummaryPageDto {
   metricCards: MetricCardDto[];
   availableMonths: string[];
@@ -571,6 +595,7 @@ export interface SettingsPageDto {
   categoryMatchRules: CategoryMatchRuleDto[];
   categoryMatchRuleSuggestions: CategoryMatchRuleSuggestionDto[];
   unresolvedTransfers: TransferIssueDto[];
+  reconciliationExceptions: ReconciliationExceptionDto[];
   recentAuditEvents: AuditEventDto[];
 }
 

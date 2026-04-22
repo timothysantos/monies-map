@@ -34,6 +34,11 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
         transactions.note,
         transactions.transfer_group_id,
         transactions.account_id,
+        transactions.bank_certification_status,
+        transactions.statement_certified_at,
+        transactions.import_id,
+        imports.source_type AS import_source_type,
+        imports.source_label AS import_source_label,
         people.display_name AS owner_name,
         accounts.account_name AS account_name,
         CASE
@@ -66,6 +71,11 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       note: string | null;
       transfer_group_id: string | null;
       account_id: string;
+      bank_certification_status: "provisional" | "statement_certified";
+      statement_certified_at: string | null;
+      import_id: string | null;
+      import_source_type: "csv" | "pdf" | "manual" | null;
+      import_source_label: string | null;
       owner_name: string | null;
       account_name: string;
       account_owner_label: string | null;
@@ -140,8 +150,35 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       amountMinor: row.amount_minor,
       offsetsCategory: Boolean(row.offsets_category),
       note: row.note ?? undefined,
+      bankCertificationStatus: getEntryBankCertificationStatus(row),
+      bankCertificationLabel: getEntryBankCertificationLabel(row),
+      importedSourceType: row.import_source_type ?? undefined,
+      importedSourceLabel: row.import_source_label ?? undefined,
+      statementCertifiedAt: row.statement_certified_at ?? undefined,
       linkedTransfer,
       splits: splitMap.get(row.id) ?? []
     };
   });
+}
+
+function getEntryBankCertificationStatus(row: {
+  bank_certification_status: "provisional" | "statement_certified";
+  import_id: string | null;
+}): EntryDto["bankCertificationStatus"] {
+  if (row.bank_certification_status === "statement_certified") {
+    return "statement_certified";
+  }
+
+  return row.import_id ? "import_provisional" : "manual_provisional";
+}
+
+function getEntryBankCertificationLabel(row: {
+  bank_certification_status: "provisional" | "statement_certified";
+  import_id: string | null;
+}) {
+  if (row.bank_certification_status === "statement_certified") {
+    return "Statement certified";
+  }
+
+  return row.import_id ? "Import provisional" : "Manual provisional";
 }

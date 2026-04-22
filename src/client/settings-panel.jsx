@@ -7,6 +7,7 @@ import { extractPdfText, selectParsedStatementForCompare } from "./import-helper
 import {
   archiveSettingsAccount,
   compareAccountCheckpointStatement,
+  createReconciliationException,
   deleteCategoryMatchRule,
   deleteAccountCheckpoint,
   deleteSettingsCategory,
@@ -14,6 +15,7 @@ import {
   dismissUnresolvedTransfer,
   fetchCheckpointExport,
   ignoreCategoryMatchRuleSuggestion,
+  resolveReconciliationException,
   runDemoAction,
   saveAccountCheckpoint,
   saveCategoryMatchRule,
@@ -662,6 +664,32 @@ export function SettingsPanel({
     }
   }
 
+  async function handleCreateReconciliationException(draft) {
+    setIsSubmitting(true);
+    try {
+      await createReconciliationException(draft);
+      await onRefresh();
+      return true;
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Failed to create reconciliation exception.");
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleResolveReconciliationException(exceptionId) {
+    setIsSubmitting(true);
+    try {
+      await resolveReconciliationException({ exceptionId });
+      await onRefresh();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Failed to resolve reconciliation exception.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   function openTransferReview(entryId) {
     const params = new URLSearchParams(searchParams);
     params.set("view", viewId);
@@ -794,8 +822,13 @@ export function SettingsPanel({
       />
 
       <SettingsTrustSection
+        accounts={visibleAccounts}
+        exceptions={settingsPage.reconciliationExceptions ?? []}
         isOpen={settingsSectionsOpen.trust}
+        isSubmitting={isSubmitting}
         onToggle={() => toggleSettingsSection("trust")}
+        onCreateException={handleCreateReconciliationException}
+        onResolveException={handleResolveReconciliationException}
       />
 
       <SettingsTransfersSection

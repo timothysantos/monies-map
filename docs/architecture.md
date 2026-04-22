@@ -214,6 +214,10 @@ That distinction matters because the system needs to answer questions like:
   those manual rows so duplicate CSV/XLS rows can be skipped, and supported PDF
   statements can certify the manual row in place instead of creating another
   transaction.
+- the Entries UI exposes the certification state explicitly: manual rows show
+  as `Manual provisional`, CSV/XLS working imports show as `Import
+  provisional`, and supported PDF-certified rows show as `Statement certified`.
+  This keeps daily planning usefulness separate from bank-statement proof.
 - official PDF statement imports act like a bank-sync authority layer for the
   account and statement period. If a statement row matches an existing
   provisional mid-cycle or manual row, commit promotes that existing transaction
@@ -235,6 +239,13 @@ That distinction matters because the system needs to answer questions like:
   review items instead of scanning every duplicate-looking row. Exceptions include
   unknown account, unknown category, statement mismatch, account identity proof,
   row review decisions, unresolved ledger matches, and prior import context.
+- `reconciliation_exceptions` persist longer-lived balance trust issues outside
+  a single import preview. Settings -> Balance trust rules can record open or
+  resolved issues such as missing bank rows, extra ledger rows, duplicate
+  suspicions, direction mismatches, wrong accounts, timing differences, manual
+  reviews, and adjustments. Open exceptions are audit-visible blockers to fully
+  trusting a balance; resolving one records an audit event but does not mutate
+  ledger amounts by itself.
 - PDF statement commit requires both balance reconciliation and account identity
   confidence. If the mapped account has no prior checkpoint history or ledger
   activity, the detected statement account name must match the mapped ledger
