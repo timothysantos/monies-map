@@ -20,6 +20,8 @@ import { buildRequestErrorMessage } from "./request-errors";
 
 const ENTRIES_PAGE_PREFETCH_DELAY_MS = 1200;
 const ENTRIES_PAGE_PREFETCH_SPACING_MS = 650;
+const QUICK_EXPENSE_DRAFT_STORAGE_KEY = "monies.quickExpenseDraft";
+const QUICK_EXPENSE_DRAFT_STORAGE_TTL_MS = 15 * 60 * 1000;
 
 function waitFor(ms) {
   return new Promise((resolve) => {
@@ -339,6 +341,7 @@ export function EntriesPanel({
       ownerOptions,
       fallbackOwnerName: defaultEntryPerson || people[0]?.name
     });
+    storeQuickExpenseDraft(quickExpenseKey, pendingQuickExpenseDraftRef.current);
     setQuickExpensePendingKey(quickExpenseKey);
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
@@ -346,6 +349,20 @@ export function EntriesPanel({
       return next;
     }, { replace: true });
   }, [accountOptions, categoryOptions, defaultEntryPerson, ownerOptions, people, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (quickExpensePendingKey || pendingQuickExpenseDraftRef.current || showEntryComposer) {
+      return;
+    }
+
+    const storedDraft = readStoredQuickExpenseDraft();
+    if (!storedDraft) {
+      return;
+    }
+
+    pendingQuickExpenseDraftRef.current = storedDraft.draft;
+    setQuickExpensePendingKey(storedDraft.key);
+  }, [quickExpensePendingKey, showEntryComposer]);
 
   useEffect(() => {
     if (
@@ -363,6 +380,18 @@ export function EntriesPanel({
     openEntryComposerRef.current(draftPatch);
     return undefined;
   }, [entriesPage.monthPage.month, isEntriesPageLoading, quickExpensePendingKey, selectedMonth]);
+
+  async function saveEntryDraftAndClearQuickExpense() {
+    const saved = await saveEntryDraft();
+    if (saved) {
+      clearStoredQuickExpenseDraft();
+    }
+  }
+
+  function closeEntryComposerAndClearQuickExpense() {
+    clearStoredQuickExpenseDraft();
+    closeEntryComposer();
+  }
   const activeEntryFilterCount = useMemo(
     () => getActiveEntryFilterCount(entryFilters),
     [entryFilters]
@@ -488,11 +517,11 @@ export function EntriesPanel({
             />
             {entrySubmitError ? <p className="entry-submit-error">{entrySubmitError}</p> : null}
             <div className="entry-inline-actions">
-              <button type="button" className="inline-action-button inline-save-action" aria-label="Create entry" onClick={() => void saveEntryDraft()}>
+              <button type="button" className="inline-action-button inline-save-action" aria-label="Create entry" onClick={() => void saveEntryDraftAndClearQuickExpense()}>
                 <Check size={16} />
                 <span className="desktop-action-label">Save</span>
               </button>
-              <button type="button" className="inline-action-button inline-cancel-action" aria-label="Cancel new entry" onClick={closeEntryComposer}>
+              <button type="button" className="inline-action-button inline-cancel-action" aria-label="Cancel new entry" onClick={closeEntryComposerAndClearQuickExpense}>
                 <X size={16} />
                 <span className="desktop-action-label">Cancel</span>
               </button>
@@ -641,6 +670,61 @@ function normalizeQuickExpenseDate(value) {
 
 function buildQuickExpenseKey(searchParams) {
   return QUICK_EXPENSE_PARAMS.map((key) => `${key}=${searchParams.get(key) ?? ""}`).join("&");
+}
+
+function storeQuickExpenseDraft(key, draft) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(QUICK_EXPENSE_DRAFT_STORAGE_KEY, JSON.stringify({
+      key,
+      draft,
+      createdAt: Date.now()
+    }));
+  } catch {
+    // The URL flow still works without storage; storage only protects against a reload.
+  }
+}
+
+function readStoredQuickExpenseDraft() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const storedValue = window.sessionStorage.getItem(QUICK_EXPENSE_DRAFT_STORAGE_KEY);
+    if (!storedValue) {
+      return null;
+    }
+
+    const parsed = JSON.parse(storedValue);
+    if (
+      !parsed?.draft
+      || typeof parsed.key !== "string"
+      || Date.now() - Number(parsed.createdAt ?? 0) > QUICK_EXPENSE_DRAFT_STORAGE_TTL_MS
+    ) {
+      clearStoredQuickExpenseDraft();
+      return null;
+    }
+    return parsed;
+  } catch {
+    clearStoredQuickExpenseDraft();
+    return null;
+  }
+}
+
+function clearStoredQuickExpenseDraft() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.removeItem(QUICK_EXPENSE_DRAFT_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures; this should not block entry editing.
+  }
 }
 
 function buildInitialEntriesPage(view) {

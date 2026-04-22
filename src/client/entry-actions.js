@@ -117,11 +117,12 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
     const data = await response.json();
     if (!response.ok) {
       setEntrySubmitError(data.error ?? "Failed to create entry.");
-      return;
+      return false;
     }
 
     closeEntryComposer();
     await onRefresh();
+    return true;
   }
 
   function beginEntryEdit(entry) {
