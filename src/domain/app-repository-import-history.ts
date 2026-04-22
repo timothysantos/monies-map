@@ -126,11 +126,7 @@ export async function loadImportBatches(
 
     const certificateSummary = certificateSummaryByImportId.get(row.id);
     const transactionCount = Number(row.transaction_count ?? 0);
-    const rollbackProtected = row.source_type === "pdf" && (
-      transactionCount > 0
-      || Number(certificateSummary?.imported_row_count ?? 0) > 0
-      || Number(certificateSummary?.certified_existing_row_count ?? 0) > 0
-    );
+    const rollbackProtected = row.source_type === "pdf" && Number(certificateSummary?.certified_existing_row_count ?? 0) > 0;
 
     return {
       id: row.id,

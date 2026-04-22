@@ -123,9 +123,9 @@ statement reconciles, the app can save account checkpoints and reconciliation
 certificates, and matching provisional mid-cycle rows can be promoted to
 statement-certified rows. Mid-cycle exports are useful for staying current
 before the next statement arrives, but they do not create statement checkpoints.
-Statement imports that create or certify ledger rows are rollback-protected;
-checkpoint-only statement imports can be rolled back to fix a wrong first
-account mapping.
+Statement imports that certify pre-existing ledger rows are rollback-protected;
+first-statement imports that created their own rows and checkpoint-only
+statement imports can be rolled back to fix a wrong account mapping.
 
 ## Data Model
 
