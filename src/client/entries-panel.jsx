@@ -354,7 +354,13 @@ export function EntriesPanel({
   }, [accountOptions, categoryOptions, defaultEntryPerson, ownerOptions, people, searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (quickExpensePendingKey || pendingQuickExpenseDraftRef.current || showEntryComposer) {
+    if (
+      quickExpensePendingKey
+      || pendingQuickExpenseDraftRef.current
+      || showEntryComposer
+      || editingEntryId
+      || searchParams.get("editing_entry")
+    ) {
       return;
     }
 
@@ -366,7 +372,7 @@ export function EntriesPanel({
     pendingQuickExpenseDraftRef.current = storedDraft.draft;
     setQuickExpenseWarning(storedDraft.warning ?? "");
     setQuickExpensePendingKey(storedDraft.key);
-  }, [quickExpensePendingKey, showEntryComposer]);
+  }, [editingEntryId, quickExpensePendingKey, searchParams, showEntryComposer]);
 
   useEffect(() => {
     if (
@@ -396,6 +402,10 @@ export function EntriesPanel({
       return;
     }
 
+    pendingQuickExpenseDraftRef.current = null;
+    setQuickExpensePendingKey("");
+    setQuickExpenseWarning("");
+    clearStoredQuickExpenseDraft();
     beginEntryEdit(linkedEntry);
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
