@@ -144,8 +144,10 @@ into the app.
 ## How do I import real bank activity?
 
 Use Imports when you want bank or card rows to become ledger entries. Use
-Settings -> Compare statement when you already have rows in the ledger and only
-want to investigate a statement mismatch.
+Settings -> Accounts -> Reconcile to save a statement checkpoint. If that
+checkpoint is mismatched, the account card and checkpoint history show
+`Compare statement` so you can investigate the statement against rows already
+in the ledger.
 
 ### Supported files
 
@@ -868,7 +870,8 @@ Start with the account card in Settings:
 2. Check whether the latest statement checkpoint exists.
 3. Check whether there are unresolved transfers.
 4. Check recent imports and overlap warnings.
-5. Use Compare statement if the mismatch belongs to a specific bank statement.
+5. Use Settings -> Accounts -> Reconcile, then `Compare statement`, if the
+   mismatch belongs to a specific saved statement checkpoint.
 6. Open a reconciliation exception under Balance trust rules if the gap cannot
    be fixed immediately but should remain visible.
 
@@ -922,6 +925,13 @@ date within 3 days, and description similarity of at least `0.55`. Exact import
 hashes and strong probable matches are skipped by default. Probable matches need
 date proximity and similarity of at least `0.85`. Weaker matches above the
 minimum are shown as near matches and need a user decision before commit.
+
+A normalized import hash is the strict fingerprint for one reviewed import row.
+It is built from the normalized date, description, amount, mapped account, and
+entry type. If all of those fields match an existing imported ledger row, the app
+can call it an exact match. If the date is different, such as an April Netflix
+row compared with a January Netflix row, it should not be the same normalized
+hash; at most it should be evaluated by the looser duplicate checks below.
 
 Statement comparison is slightly more flexible because the statement is used as
 evidence. A same-date statement row can match with description similarity of

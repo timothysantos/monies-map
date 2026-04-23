@@ -38,17 +38,6 @@ export async function buildImportPreview(
   const accounts = await loadAccounts(db);
   const categories = await loadCategories(db);
   const categoryMatchRules = await loadCategoryMatchRules(db);
-  const existingHashes = await db
-    .prepare(`
-      SELECT normalized_hash
-      FROM import_rows
-      INNER JOIN imports ON imports.id = import_rows.import_id
-      WHERE imports.household_id = ?
-        AND imports.status = 'completed'
-        AND import_rows.normalized_hash IS NOT NULL
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID)
-    .all<{ normalized_hash: string }>();
   const existingTransactions = await db
     .prepare(`
       SELECT
@@ -62,9 +51,12 @@ export async function buildImportPreview(
         transactions.entry_type,
         transactions.transfer_direction,
         transactions.bank_certification_status,
-        accounts.account_name
+        accounts.account_name,
+        COALESCE(statement_import_rows.normalized_hash, import_rows.normalized_hash) AS normalized_hash
       FROM transactions
       LEFT JOIN imports ON imports.id = transactions.import_id
+      LEFT JOIN import_rows ON import_rows.id = transactions.import_row_id
+      LEFT JOIN import_rows AS statement_import_rows ON statement_import_rows.id = transactions.statement_certified_import_row_id
       INNER JOIN accounts ON accounts.id = transactions.account_id
       WHERE transactions.household_id = ?
         AND (transactions.import_id IS NULL OR imports.status = 'completed')
@@ -82,12 +74,12 @@ export async function buildImportPreview(
       transfer_direction: "in" | "out" | null;
       bank_certification_status: "provisional" | "statement_certified";
       account_name: string;
+      normalized_hash: string | null;
     }>();
   const accountsById = new Map(accounts.map((account) => [account.id, account]));
   const accountsByName = groupAccountsByName(accounts);
   const accountNames = new Set(accounts.map((account) => account.name));
   const categoryNames = new Set(categories.map((category) => category.name));
-  const existingHashSet = new Set(existingHashes.results.map((row) => row.normalized_hash));
   const unknownAccounts = new Set<string>();
   const unknownCategories = new Set<string>();
   const previewRows: ImportPreviewRowDto[] = [];
@@ -155,7 +147,7 @@ export async function buildImportPreview(
       rawRow
     };
     const requestedCommitStatus = getRequestedCommitStatus(rawRow);
-    const isExactDuplicate = existingHashSet.has(buildImportRowHash(previewRow));
+    const previewRowHash = buildImportRowHash(previewRow);
     const nearMatches = existingTransactions.results
       .map((candidate) => {
         const sameAmount = Number(candidate.amount_minor) === Number(previewRow.amountMinor);
@@ -172,19 +164,29 @@ export async function buildImportPreview(
 
         const dayDistance = Math.abs(daysBetween(previewRow.date, candidate.transaction_date));
         const descriptionSimilarity = compareDescriptionSimilarity(previewRow.description, candidate.description);
+        const isExactDuplicate = candidate.normalized_hash === previewRowHash;
         if (!isExactDuplicate && (dayDistance > 3 || descriptionSimilarity < 0.55)) {
           return undefined;
         }
 
         return {
           candidate,
+          dayDistance,
+          descriptionSimilarity,
           matchKind: getDuplicateMatchKind(isExactDuplicate, dayDistance, descriptionSimilarity)
         };
       })
       .filter((match): match is {
         candidate: typeof existingTransactions.results[number];
+        dayDistance: number;
+        descriptionSimilarity: number;
         matchKind: "exact" | "probable" | "near";
       } => Boolean(match))
+      .sort((left, right) => (
+        getDuplicateMatchRank(left.matchKind) - getDuplicateMatchRank(right.matchKind)
+        || left.dayDistance - right.dayDistance
+        || right.descriptionSimilarity - left.descriptionSimilarity
+      ))
       .slice(0, 3);
 
     previewRow.duplicateMatches = nearMatches.map(({ candidate, matchKind }) => ({
@@ -579,6 +581,18 @@ function getDuplicateMatchKind(isExactDuplicate: boolean, dayDistance: number, d
   }
 
   return "near" as const;
+}
+
+function getDuplicateMatchRank(matchKind: "exact" | "probable" | "near") {
+  if (matchKind === "exact") {
+    return 0;
+  }
+
+  if (matchKind === "probable") {
+    return 1;
+  }
+
+  return 2;
 }
 
 function getDefaultCommitStatus(matchKind?: "exact" | "probable" | "near") {
