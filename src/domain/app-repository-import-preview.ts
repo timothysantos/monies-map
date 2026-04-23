@@ -192,6 +192,7 @@ export async function buildImportPreview(
     previewRow.duplicateMatches = nearMatches.map(({ candidate, matchKind }) => ({
       ...(candidate.import_id ? { existingImportId: candidate.import_id } : {}),
       existingTransactionId: candidate.transaction_id,
+      existingAccountId: candidate.account_id,
       existingSourceType: candidate.source_type,
       existingBankCertificationStatus: candidate.bank_certification_status,
       date: candidate.transaction_date,

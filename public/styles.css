@@ -5374,9 +5374,102 @@ button.split-activity-card:hover {
 }
 
 .duplicate-row-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
   color: var(--accent-strong);
   font-size: 0.82rem;
   font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.duplicate-match-popover {
+  z-index: 80;
+  width: min(560px, calc(100vw - 32px));
+  padding: 14px;
+  border: 1px solid rgba(177, 94, 47, 0.22);
+  border-radius: 12px;
+  background: rgba(255, 252, 248, 0.98);
+  box-shadow: 0 18px 42px rgba(41, 32, 25, 0.18);
+}
+
+.duplicate-match-head {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 12px;
+}
+
+.duplicate-match-head strong {
+  color: var(--ink);
+  font-size: 0.96rem;
+}
+
+.duplicate-match-head span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.duplicate-match-flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 10px;
+}
+
+.duplicate-match-card {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.duplicate-match-card span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.duplicate-match-card strong,
+.duplicate-match-card p {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.duplicate-match-card strong {
+  color: var(--ink);
+  font-size: 0.94rem;
+  line-height: 1.15;
+}
+
+.duplicate-match-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
+.duplicate-match-arrow {
+  align-self: center;
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+
+.duplicate-match-open-link {
+  display: inline-flex;
+  margin-top: 12px;
+  color: var(--accent-strong);
+  font-size: 0.86rem;
+  font-weight: 800;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -6291,6 +6384,14 @@ th {
 
   .duplicate-row-detail-panel {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .duplicate-match-flow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .duplicate-match-arrow {
+    justify-self: start;
   }
 
   .settings-rule-row {
