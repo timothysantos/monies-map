@@ -202,7 +202,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     detectedPreviewAccountNames,
     duplicateCheckpointAccounts,
     hasBlockingCategoryPolicy,
+    hasAlreadyCoveredCheckpointRefresh,
     hasDuplicateCheckpointAccounts,
+    hasEmptyStatementCheckpointOnly,
     hasStatementReconciliationMismatch,
     isCommitDisabled,
     commitLabel,
@@ -903,6 +905,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               knownAccountNames={knownAccountNames}
               statementCheckpointCount={statementCheckpoints.length}
               statementCertificationRowCount={statementCertificationRowCount}
+              hasAlreadyCoveredCheckpointRefresh={hasAlreadyCoveredCheckpointRefresh}
+              hasEmptyStatementCheckpointOnly={hasEmptyStatementCheckpointOnly}
               isCommitDisabled={isCommitDisabled}
               isSubmitting={isSubmitting}
               commitLabel={commitLabel}

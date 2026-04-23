@@ -15,6 +15,8 @@ export function ImportPreviewRowsTable({
   knownAccountNames,
   statementCheckpointCount = 0,
   statementCertificationRowCount = 0,
+  hasAlreadyCoveredCheckpointRefresh = false,
+  hasEmptyStatementCheckpointOnly = false,
   isCommitDisabled,
   isSubmitting,
   commitLabel,
@@ -61,7 +63,13 @@ export function ImportPreviewRowsTable({
           getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
         />
       ) : (
-        <p className="lede compact">{messages.imports.noRowsToImport}</p>
+        <p className="lede compact">
+          {hasAlreadyCoveredCheckpointRefresh
+            ? messages.imports.noRowsToImportCoveredStatement
+            : hasEmptyStatementCheckpointOnly
+              ? messages.imports.noRowsToImportEmptyStatement
+              : messages.imports.noRowsToImport}
+        </p>
       )}
       {skippedRows.length ? (
         <details className="import-skipped-rows">
@@ -133,7 +141,19 @@ function PreviewRowsTable({
                         </button>
                       ) : null}
                       {isSkippedTable ? (
-                        <button type="button" className="subtle-action" onClick={() => onUpdatePreviewRowCommitStatus(row.rowId, "included")}>
+                        <button
+                          type="button"
+                          className="subtle-action"
+                          onClick={() => {
+                            if (
+                              duplicateMatch?.matchKind === "exact"
+                              && !window.confirm(messages.imports.restoreExactCoveredRowConfirm)
+                            ) {
+                              return;
+                            }
+                            onUpdatePreviewRowCommitStatus(row.rowId, "included");
+                          }}
+                        >
                           {messages.imports.restorePreviewRow}
                         </button>
                       ) : (

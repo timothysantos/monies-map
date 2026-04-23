@@ -46,6 +46,8 @@ export function buildImportPreviewModel({
   const statementReconciliations = preview?.statementReconciliations ?? [];
   const hasDuplicateCheckpointAccounts = duplicateCheckpointAccounts.length > 0;
   const hasCheckpointOnlyCommit = statementCheckpoints.length > 0 && includedPreviewRows.length === 0;
+  const hasAlreadyCoveredCheckpointRefresh = hasCheckpointOnlyCommit && skippedPreviewRowCount > 0;
+  const hasEmptyStatementCheckpointOnly = hasCheckpointOnlyCommit && skippedPreviewRowCount === 0;
   const hasMatchedCheckpointOnlyCommit = hasCheckpointOnlyCommit
     && statementReconciliations.length > 0
     && statementReconciliations.every((item) => item.status === "matched");
@@ -70,10 +72,18 @@ export function buildImportPreviewModel({
       || needsReviewPreviewRowCount > 0,
     knownAccountNames,
     needsReviewPreviewRowCount,
+    hasAlreadyCoveredCheckpointRefresh,
+    hasEmptyStatementCheckpointOnly,
     previewDuplicateRowCount,
     statementCertificationRowCount,
     skippedPreviewRowCount,
-    commitLabel: hasCheckpointOnlyCommit ? messages.imports.saveStatementCheckpoints : messages.imports.commit,
+    commitLabel: hasAlreadyCoveredCheckpointRefresh
+      ? messages.imports.refreshCoveredStatementCheckpoint
+      : hasEmptyStatementCheckpointOnly
+        ? messages.imports.saveEmptyStatementCheckpoint
+        : hasCheckpointOnlyCommit
+          ? messages.imports.saveStatementCheckpoints
+          : messages.imports.commit,
     showStatementAccountMapping: preview && detectedPreviewAccountNames.length > 0 && (
       statementImportMeta.sourceType === "pdf" || unknownPreviewAccountNames.length > 0 || ambiguousPreviewAccountNames.length > 0
     ),
