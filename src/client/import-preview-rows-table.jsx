@@ -290,7 +290,7 @@ function DuplicateMatchPopover({ row, match }) {
         </button>
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content className="duplicate-match-popover" sideOffset={8} align="start">
+        <Popover.Content className="duplicate-match-popover" sideOffset={8} align="center">
           <div className="duplicate-match-head">
             <strong>{messages.imports.duplicateMatchPopoverTitle}</strong>
             <span>{messages.imports.duplicateMatchPopoverDetail}</span>

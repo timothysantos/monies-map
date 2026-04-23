@@ -5386,29 +5386,35 @@ button.split-activity-card:hover {
 }
 
 .duplicate-match-popover {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
   z-index: 80;
-  width: min(560px, calc(100vw - 32px));
-  padding: 14px;
+  width: min(920px, calc(100vw - 48px));
+  max-height: min(78vh, 680px);
+  overflow-y: auto;
+  padding: 22px 24px;
   border: 1px solid rgba(177, 94, 47, 0.22);
-  border-radius: 12px;
+  border-radius: 16px;
   background: rgba(255, 252, 248, 0.98);
-  box-shadow: 0 18px 42px rgba(41, 32, 25, 0.18);
+  box-shadow: 0 24px 70px rgba(41, 32, 25, 0.24);
 }
 
 .duplicate-match-head {
   display: grid;
-  gap: 3px;
-  margin-bottom: 12px;
+  gap: 6px;
+  margin-bottom: 18px;
 }
 
 .duplicate-match-head strong {
   color: var(--ink);
-  font-size: 0.96rem;
+  font-size: 1.06rem;
 }
 
 .duplicate-match-head span {
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   line-height: 1.35;
 }
 
@@ -5416,16 +5422,17 @@ button.split-activity-card:hover {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: stretch;
-  gap: 10px;
+  gap: 14px;
 }
 
 .duplicate-match-card {
   display: grid;
-  gap: 5px;
+  align-content: start;
+  gap: 8px;
   min-width: 0;
-  padding: 10px 12px;
+  padding: 16px 18px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.72);
 }
 
@@ -5437,7 +5444,6 @@ button.split-activity-card:hover {
   text-transform: uppercase;
 }
 
-.duplicate-match-card strong,
 .duplicate-match-card p {
   min-width: 0;
   overflow: hidden;
@@ -5447,8 +5453,10 @@ button.split-activity-card:hover {
 
 .duplicate-match-card strong {
   color: var(--ink);
-  font-size: 0.94rem;
-  line-height: 1.15;
+  font-size: 1rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .duplicate-match-card p {
@@ -5466,12 +5474,16 @@ button.split-activity-card:hover {
 
 .duplicate-match-open-link {
   display: inline-flex;
-  margin-top: 12px;
+  margin-top: 18px;
   color: var(--accent-strong);
   font-size: 0.86rem;
   font-weight: 800;
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+.duplicate-match-popover .category-popover-arrow {
+  display: none;
 }
 
 .import-amount-input,
@@ -6392,6 +6404,12 @@ th {
 
   .duplicate-match-arrow {
     justify-self: start;
+  }
+
+  .duplicate-match-popover {
+    width: min(520px, calc(100vw - 24px));
+    max-height: calc(100dvh - 80px);
+    padding: 18px;
   }
 
   .settings-rule-row {
