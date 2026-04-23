@@ -251,9 +251,21 @@ function PreviewRowsTable({
                         </div>
                         <div className="duplicate-row-copy">
                           {duplicateMatch ? (
-                            <small className="duplicate-row-detail">
-                              {messages.imports.duplicateRowDetail(formatDuplicateMatch(duplicateMatch))}
-                            </small>
+                            <div className="duplicate-row-detail-line">
+                              <small className="duplicate-row-detail">
+                                {messages.imports.duplicateRowDetail(formatDuplicateMatch(duplicateMatch))}
+                              </small>
+                              {duplicateMatch.existingTransactionId ? (
+                                <a
+                                  className="duplicate-row-link"
+                                  href={buildDuplicateLedgerEntryHref(duplicateMatch)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  {messages.imports.openLedgerEntry}
+                                </a>
+                              ) : null}
+                            </div>
                           ) : null}
                           {row.commitStatusReason ? (
                             <small className="duplicate-row-detail muted">{row.commitStatusReason}</small>
@@ -274,6 +286,18 @@ function PreviewRowsTable({
 
 function formatDuplicateMatch(match) {
   return messages.common.triplet(match.date, match.accountName ?? messages.common.emptyValue, formatMinorInput(match.amountMinor));
+}
+
+function buildDuplicateLedgerEntryHref(match) {
+  const params = new URLSearchParams({
+    view: "household",
+    month: match.date.slice(0, 7),
+    editing_entry: match.existingTransactionId
+  });
+  if (match.accountName) {
+    params.set("entry_wallet", match.accountName);
+  }
+  return `/entries?${params.toString()}`;
 }
 
 function formatDuplicateMatchKind(matchKind) {

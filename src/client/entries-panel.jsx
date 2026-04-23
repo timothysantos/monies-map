@@ -385,6 +385,25 @@ export function EntriesPanel({
     return undefined;
   }, [entriesPage.monthPage.month, isEntriesPageLoading, quickExpensePendingKey, selectedMonth]);
 
+  useEffect(() => {
+    const linkedEntryId = searchParams.get("editing_entry");
+    if (!linkedEntryId || isEntriesPageLoading || editingEntryId === linkedEntryId) {
+      return;
+    }
+
+    const linkedEntry = entries.find((entry) => entry.id === linkedEntryId);
+    if (!linkedEntry) {
+      return;
+    }
+
+    beginEntryEdit(linkedEntry);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete("editing_entry");
+      return next;
+    }, { replace: true });
+  }, [beginEntryEdit, editingEntryId, entries, isEntriesPageLoading, searchParams, setSearchParams]);
+
   async function saveEntryDraftAndClearQuickExpense() {
     const saved = await saveEntryDraft();
     if (saved) {

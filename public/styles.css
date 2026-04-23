@@ -5356,6 +5356,14 @@ button.split-activity-card:hover {
   min-width: 0;
 }
 
+.duplicate-row-detail-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
 .duplicate-row-detail {
   display: inline;
   margin-top: 0;
@@ -5363,6 +5371,14 @@ button.split-activity-card:hover {
   font-size: 0.88rem;
   font-weight: 700;
   line-height: 1.35;
+}
+
+.duplicate-row-link {
+  color: var(--accent-strong);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .import-amount-input,

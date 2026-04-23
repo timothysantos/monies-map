@@ -321,6 +321,7 @@ export const messages = {
     duplicateMatchKindProbable: "Probable match",
     duplicateMatchKindNear: "Near match",
     duplicateRowDetail: (match) => `Already in ledger: ${match}`,
+    openLedgerEntry: "Open ledger entry",
     needsReview: "Needs review",
     willImportRows: (count) => `${count} row${count === 1 ? "" : "s"} will import`,
     willCertifyRows: (count) => `${count} existing row${count === 1 ? "" : "s"} will be certified by the statement`,
