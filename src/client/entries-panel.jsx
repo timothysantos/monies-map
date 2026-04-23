@@ -48,6 +48,7 @@ export function EntriesPanel({
   const [isEntriesPageLoading, setIsEntriesPageLoading] = useState(false);
   const [quickExpensePendingKey, setQuickExpensePendingKey] = useState("");
   const [quickExpenseWarning, setQuickExpenseWarning] = useState("");
+  const [pendingLinkedEntryId, setPendingLinkedEntryId] = useState(() => searchParams.get("editing_entry") ?? "");
   const fallbackEntriesPageCacheRef = useRef(new Map());
   const fallbackEntriesPageInflightRef = useRef(new Map());
   const fallbackEntriesPageCacheVersionRef = useRef(0);
@@ -354,6 +355,15 @@ export function EntriesPanel({
   }, [accountOptions, categoryOptions, defaultEntryPerson, ownerOptions, people, searchParams, setSearchParams]);
 
   useEffect(() => {
+    const linkedEntryId = searchParams.get("editing_entry") ?? "";
+    if (!linkedEntryId || linkedEntryId === pendingLinkedEntryId) {
+      return;
+    }
+
+    setPendingLinkedEntryId(linkedEntryId);
+  }, [pendingLinkedEntryId, searchParams]);
+
+  useEffect(() => {
     if (
       quickExpensePendingKey
       || pendingQuickExpenseDraftRef.current
@@ -392,12 +402,11 @@ export function EntriesPanel({
   }, [entriesPage.monthPage.month, isEntriesPageLoading, quickExpensePendingKey, selectedMonth]);
 
   useEffect(() => {
-    const linkedEntryId = searchParams.get("editing_entry");
-    if (!linkedEntryId || isEntriesPageLoading || editingEntryId === linkedEntryId) {
+    if (!pendingLinkedEntryId || isEntriesPageLoading || editingEntryId === pendingLinkedEntryId) {
       return;
     }
 
-    const linkedEntry = entries.find((entry) => entry.id === linkedEntryId);
+    const linkedEntry = entries.find((entry) => entry.id === pendingLinkedEntryId);
     if (!linkedEntry) {
       return;
     }
@@ -407,12 +416,20 @@ export function EntriesPanel({
     setQuickExpenseWarning("");
     clearStoredQuickExpenseDraft();
     beginEntryEdit(linkedEntry);
+  }, [beginEntryEdit, editingEntryId, entries, isEntriesPageLoading, pendingLinkedEntryId]);
+
+  useEffect(() => {
+    if (!pendingLinkedEntryId || editingEntryId !== pendingLinkedEntryId) {
+      return;
+    }
+
+    setPendingLinkedEntryId("");
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       next.delete("editing_entry");
       return next;
     }, { replace: true });
-  }, [beginEntryEdit, editingEntryId, entries, isEntriesPageLoading, searchParams, setSearchParams]);
+  }, [editingEntryId, pendingLinkedEntryId, setSearchParams]);
 
   async function saveEntryDraftAndClearQuickExpense() {
     const saved = await saveEntryDraft();
