@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import * as Popover from "@radix-ui/react-popover";
 import { getAccountSelectOptions } from "./account-display";
 import { getCategoriesForSelect } from "./category-utils";
 import { messages } from "./copy/en-SG";
@@ -255,16 +256,7 @@ function PreviewRowsTable({
                               <small className="duplicate-row-detail">
                                 {messages.imports.duplicateRowDetail(formatDuplicateMatch(duplicateMatch))}
                               </small>
-                              {duplicateMatch.existingTransactionId ? (
-                                <a
-                                  className="duplicate-row-link"
-                                  href={buildDuplicateLedgerEntryHref(duplicateMatch)}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                >
-                                  {messages.imports.openLedgerEntry}
-                                </a>
-                              ) : null}
+                              <DuplicateMatchPopover row={row} match={duplicateMatch} />
                             </div>
                           ) : null}
                           {row.commitStatusReason ? (
@@ -288,13 +280,69 @@ function formatDuplicateMatch(match) {
   return messages.common.triplet(match.date, match.accountName ?? messages.common.emptyValue, formatMinorInput(match.amountMinor));
 }
 
+function DuplicateMatchPopover({ row, match }) {
+  const ledgerHref = match.existingTransactionId ? buildDuplicateLedgerEntryHref(match) : "";
+  return (
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <button type="button" className="duplicate-row-link">
+          {messages.imports.viewLedgerMatch}
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content className="duplicate-match-popover" sideOffset={8} align="start">
+          <div className="duplicate-match-head">
+            <strong>{messages.imports.duplicateMatchPopoverTitle}</strong>
+            <span>{messages.imports.duplicateMatchPopoverDetail}</span>
+          </div>
+          <div className="duplicate-match-flow">
+            <DuplicateMatchCard
+              label={messages.imports.duplicateMatchIncomingLabel}
+              date={row.date}
+              description={row.description}
+              accountName={row.accountName}
+              amountMinor={row.amountMinor}
+            />
+            <span className="duplicate-match-arrow" aria-hidden="true">{"->"}</span>
+            <DuplicateMatchCard
+              label={messages.imports.duplicateMatchLedgerLabel}
+              date={match.date}
+              description={match.description}
+              accountName={match.accountName}
+              amountMinor={match.amountMinor}
+            />
+          </div>
+          {ledgerHref ? (
+            <a className="duplicate-match-open-link" href={ledgerHref} target="_blank" rel="noreferrer">
+              {messages.imports.openLedgerEntry}
+            </a>
+          ) : null}
+          <Popover.Arrow className="category-popover-arrow" />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
+function DuplicateMatchCard({ label, date, description, accountName, amountMinor }) {
+  return (
+    <div className="duplicate-match-card">
+      <span>{label}</span>
+      <strong>{description || messages.common.emptyValue}</strong>
+      <p>{messages.common.triplet(date, accountName ?? messages.common.emptyValue, formatMinorInput(amountMinor))}</p>
+    </div>
+  );
+}
+
 function buildDuplicateLedgerEntryHref(match) {
   const params = new URLSearchParams({
     view: "household",
     month: match.date.slice(0, 7),
     editing_entry: match.existingTransactionId
   });
-  if (match.accountName) {
+  if (match.existingAccountId) {
+    params.set("entry_wallet", match.existingAccountId);
+  } else if (match.accountName) {
     params.set("entry_wallet", match.accountName);
   }
   return `/entries?${params.toString()}`;

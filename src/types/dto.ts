@@ -505,6 +505,7 @@ export interface StatementCompareDto {
 export interface DuplicateCandidateDto {
   existingImportId?: string;
   existingTransactionId?: string;
+  existingAccountId?: string;
   existingSourceType?: "csv" | "pdf" | "manual";
   existingBankCertificationStatus?: "provisional" | "statement_certified";
   date: string;
