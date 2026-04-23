@@ -4,7 +4,7 @@ import { getAccountSelectOptions } from "./account-display";
 import { getCategoriesForSelect } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { getAmountToneClass } from "./entry-helpers";
-import { formatMinorInput, parseMoneyInput } from "./formatters";
+import { formatDateOnly, formatMinorInput, parseMoneyInput } from "./formatters";
 
 // Preview rows are edited here, while ImportsPanel owns the canonical payload and commit callback.
 export function ImportPreviewRowsTable({
@@ -277,7 +277,15 @@ function PreviewRowsTable({
 }
 
 function formatDuplicateMatch(match) {
-  return messages.common.triplet(match.date, match.accountName ?? messages.common.emptyValue, formatMinorInput(match.amountMinor));
+  return messages.common.triplet(formatImportPreviewDate(match.date), match.accountName ?? messages.common.emptyValue, formatMinorInput(match.amountMinor));
+}
+
+function formatImportPreviewDate(value) {
+  const [year, month, day] = String(value ?? "").split("-");
+  if (year && month && day) {
+    return `${day}/${month}/${year}`;
+  }
+  return formatDateOnly(value);
 }
 
 function DuplicateMatchPopover({ row, match }) {
