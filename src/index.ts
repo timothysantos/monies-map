@@ -1190,6 +1190,7 @@ export default {
             accountName?: string;
             matchKind: "exact" | "probable" | "near";
           };
+          comparisonMatchCount?: number;
           statementCertificationTargetTransactionId?: string;
         }[];
         statementReconciliations?: {
@@ -1233,6 +1234,7 @@ export default {
             accountName?: string;
             matchKind: "exact" | "probable" | "near";
           };
+          comparisonMatchCount?: number;
           statementCertificationTargetTransactionId?: string;
         }[];
       }>();

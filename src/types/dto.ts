@@ -411,7 +411,9 @@ export interface ImportPreviewRowDto {
   rawRow: Record<string, string>;
   duplicateMatches?: DuplicateCandidateDto[];
   comparisonMatch?: DuplicateCandidateDto;
+  comparisonMatchCount?: number;
   statementCertificationTargetTransactionId?: string;
+  isStatementMatchResolved?: boolean;
 }
 
 export interface ImportPreviewDto {

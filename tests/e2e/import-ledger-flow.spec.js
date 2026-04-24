@@ -595,6 +595,442 @@ test.describe("import flow", () => {
     expect(preview.json.preview.previewRows[0].duplicateMatches).toBeUndefined();
   });
 
+  test("remapped certified row is prioritized when it matches the statement mismatch", async ({ page }) => {
+    const accountId = await page.evaluate(async () => {
+      const response = await fetch("/api/accounts/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Playwright UOB Remap",
+          institution: "Synthetic Test Bank",
+          kind: "credit_card",
+          openingBalanceMinor: 0,
+          currency: "SGD",
+          ownerPersonId: "",
+          isJoint: false
+        })
+      });
+      const payload = await response.json();
+      return payload.accountId;
+    });
+    expect(accountId).toBeTruthy();
+
+    const certifiedStatementRow = {
+      rowId: "certified-remap-seed-row",
+      rowIndex: 1,
+      date: "2025-08-14",
+      description: "BUS MRT 687",
+      amountMinor: 248,
+      entryType: "expense",
+      accountId,
+      account: "Playwright UOB Remap",
+      accountName: "Playwright UOB Remap",
+      category: "Public Transport",
+      categoryName: "Public Transport",
+      ownershipType: "direct",
+      ownerName: "Tim",
+      splitBasisPoints: 10000,
+      rawRow: {
+        date: "2025-08-14",
+        description: "BUS MRT 687",
+        expense: "2.48",
+        accountId,
+        account: "Playwright UOB Remap",
+        category: "Public Transport"
+      }
+    };
+
+    const commitResponse = await page.evaluate(async ({ row }) => {
+      const response = await fetch("/api/imports/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Certified statement remap seed",
+          sourceType: "pdf",
+          parserKey: "uob_pdf",
+          rows: [row],
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { row: certifiedStatementRow });
+    expect(commitResponse.ok, commitResponse.text).toBeTruthy();
+
+    const preview = await page.evaluate(async ({ accountId }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Certified statement remap preview",
+          sourceType: "pdf",
+          rows: [{
+            date: "2025-08-14",
+            description: "BUS MRT 687",
+            expense: "2.48",
+            accountId,
+            account: "Playwright UOB Remap",
+            statementAccountName: "Synthetic Card Alpha",
+            category: "Public Transport"
+          }],
+          defaultAccountName: "Playwright UOB Remap",
+          ownershipType: "direct",
+          ownerName: "Tim",
+          statementCheckpoints: [{
+            accountId,
+            accountName: "Playwright UOB Remap",
+            detectedAccountName: "Synthetic Card Alpha",
+            checkpointMonth: "2025-08",
+            statementStartDate: "2025-08-01",
+            statementEndDate: "2025-08-31",
+            statementBalanceMinor: 0,
+            note: "Playwright remap mismatch"
+          }]
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId });
+
+    expect(preview.ok, JSON.stringify(preview.json)).toBeTruthy();
+    expect(preview.json.preview.statementReconciliations[0].status).toBe("mismatch");
+    expect(preview.json.preview.previewRows[0].commitStatus).toBe("skipped");
+    expect(preview.json.preview.previewRows[0].comparisonMatch).toBeTruthy();
+    expect(preview.json.preview.previewRows[0].commitStatusReason).toContain("matches the current statement mismatch difference of 2.48");
+  });
+
+  test("matched remapped certified row is hidden from already covered rows", async ({ page }) => {
+    const accountId = await page.evaluate(async () => {
+      const response = await fetch("/api/accounts/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Playwright UOB Remap Matched",
+          institution: "Synthetic Test Bank",
+          kind: "credit_card",
+          openingBalanceMinor: 0,
+          currency: "SGD",
+          ownerPersonId: "",
+          isJoint: false
+        })
+      });
+      const payload = await response.json();
+      return payload.accountId;
+    });
+    expect(accountId).toBeTruthy();
+
+    const certifiedStatementRow = {
+      rowId: "certified-remap-matched-seed-row",
+      rowIndex: 1,
+      date: "2025-08-14",
+      description: "BUS MRT 687",
+      amountMinor: 248,
+      entryType: "expense",
+      accountId,
+      account: "Playwright UOB Remap Matched",
+      accountName: "Playwright UOB Remap Matched",
+      category: "Public Transport",
+      categoryName: "Public Transport",
+      ownershipType: "direct",
+      ownerName: "Tim",
+      splitBasisPoints: 10000,
+      rawRow: {
+        date: "2025-08-14",
+        description: "BUS MRT 687",
+        expense: "2.48",
+        accountId,
+        account: "Playwright UOB Remap Matched",
+        category: "Public Transport"
+      }
+    };
+
+    const commitResponse = await page.evaluate(async ({ row }) => {
+      const response = await fetch("/api/imports/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Certified statement remap matched seed",
+          sourceType: "pdf",
+          parserKey: "uob_pdf",
+          rows: [row],
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { row: certifiedStatementRow });
+    expect(commitResponse.ok, commitResponse.text).toBeTruthy();
+
+    const preview = await page.evaluate(async ({ accountId }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Certified statement remap matched preview",
+          sourceType: "pdf",
+          rows: [{
+            date: "2025-08-14",
+            description: "BUS MRT 687",
+            expense: "2.48",
+            accountId,
+            account: "Playwright UOB Remap Matched",
+            statementAccountName: "Synthetic Card Alpha",
+            category: "Public Transport"
+          }],
+          defaultAccountName: "Playwright UOB Remap Matched",
+          ownershipType: "direct",
+          ownerName: "Tim",
+          statementCheckpoints: [{
+            accountId,
+            accountName: "Playwright UOB Remap Matched",
+            detectedAccountName: "Synthetic Card Alpha",
+            checkpointMonth: "2025-08",
+            statementStartDate: "2025-08-01",
+            statementEndDate: "2025-08-31",
+            statementBalanceMinor: 248,
+            note: "Playwright remap matched"
+          }]
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId });
+
+    expect(preview.ok, JSON.stringify(preview.json)).toBeTruthy();
+    expect(preview.json.preview.statementReconciliations[0].status).toBe("matched");
+    expect(preview.json.preview.previewRows[0].commitStatus).toBe("skipped");
+    expect(preview.json.preview.previewRows[0].isStatementMatchResolved).toBe(true);
+  });
+
+  test("same-amount certified rows do not falsely prioritize an ambiguous match", async ({ page }) => {
+    const firstAccountId = await page.evaluate(async () => {
+      const response = await fetch("/api/accounts/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Playwright UOB Ambiguous A",
+          institution: "Synthetic Test Bank",
+          kind: "credit_card",
+          openingBalanceMinor: 0,
+          currency: "SGD",
+          ownerPersonId: "",
+          isJoint: false
+        })
+      });
+      const payload = await response.json();
+      return payload.accountId;
+    });
+    const secondAccountId = await page.evaluate(async () => {
+      const response = await fetch("/api/accounts/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Playwright UOB Ambiguous B",
+          institution: "Synthetic Test Bank",
+          kind: "credit_card",
+          openingBalanceMinor: 0,
+          currency: "SGD",
+          ownerPersonId: "",
+          isJoint: false
+        })
+      });
+      const payload = await response.json();
+      return payload.accountId;
+    });
+    expect(firstAccountId).toBeTruthy();
+    expect(secondAccountId).toBeTruthy();
+
+    const seedRow = (rowId, accountId, accountName, description) => ({
+      rowId,
+      rowIndex: 1,
+      date: "2025-08-14",
+      description,
+      amountMinor: 248,
+      entryType: "expense",
+      accountId,
+      account: accountName,
+      accountName,
+      category: "Public Transport",
+      categoryName: "Public Transport",
+      ownershipType: "direct",
+      ownerName: "Tim",
+      splitBasisPoints: 10000,
+      rawRow: {
+        date: "2025-08-14",
+        description,
+        expense: "2.48",
+        accountId,
+        account: accountName,
+        category: "Public Transport"
+      }
+    });
+
+    for (const row of [
+      seedRow("ambiguous-seed-a", firstAccountId, "Playwright UOB Ambiguous A", "BUS MRT 687"),
+      seedRow("ambiguous-seed-b", firstAccountId, "Playwright UOB Ambiguous A", "BUS MRT 688")
+    ]) {
+      const commitResponse = await page.evaluate(async ({ row }) => {
+        const response = await fetch("/api/imports/commit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sourceLabel: "Certified statement ambiguous seed",
+            sourceType: "pdf",
+            parserKey: "uob_pdf",
+            rows: [row],
+            statementCheckpoints: []
+          })
+        });
+        return { ok: response.ok, text: await response.text() };
+      }, { row });
+      expect(commitResponse.ok, commitResponse.text).toBeTruthy();
+    }
+
+    const preview = await page.evaluate(async ({ accountId }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Certified statement ambiguous preview",
+          sourceType: "pdf",
+          rows: [{
+            date: "2025-08-14",
+            description: "BUS MRT 687",
+            expense: "2.48",
+            accountId,
+            account: "Playwright UOB Ambiguous A",
+            statementAccountName: "Synthetic Card Alpha",
+            category: "Public Transport"
+          }],
+          defaultAccountName: "Playwright UOB Ambiguous A",
+          ownershipType: "direct",
+          ownerName: "Tim",
+          statementCheckpoints: [{
+            accountId,
+            accountName: "Playwright UOB Ambiguous A",
+            detectedAccountName: "Synthetic Card Alpha",
+            checkpointMonth: "2025-08",
+            statementStartDate: "2025-08-01",
+            statementEndDate: "2025-08-31",
+            statementBalanceMinor: 248,
+            note: "Playwright ambiguous mismatch"
+          }]
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId: firstAccountId });
+
+    expect(preview.ok, JSON.stringify(preview.json)).toBeTruthy();
+    expect(preview.json.preview.statementReconciliations[0].status).toBe("mismatch");
+    expect(preview.json.preview.previewRows[0].commitStatus).toBe("skipped");
+    expect(preview.json.preview.previewRows[0].comparisonMatch).toBeTruthy();
+    expect(preview.json.preview.previewRows[0].comparisonMatchCount).toBeGreaterThan(1);
+    expect(preview.json.preview.previewRows[0].commitStatusReason).not.toContain("matches the current statement mismatch difference");
+  });
+
+  test("wrong-card remap stays mismatched and does not resolve the certified row", async ({ page }) => {
+    const createAccount = async (name) => {
+      const result = await page.evaluate(async ({ name }) => {
+        const response = await fetch("/api/accounts/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            institution: "Synthetic Test Bank",
+            kind: "credit_card",
+            openingBalanceMinor: 0,
+            currency: "SGD",
+            ownerPersonId: "",
+            isJoint: false
+          })
+        });
+        const payload = await response.json();
+        return payload.accountId;
+      }, { name });
+      expect(result).toBeTruthy();
+      return result;
+    };
+
+    const correctAccountId = await createAccount("Playwright Wrong Remap Correct");
+    const wrongAccountId = await createAccount("Playwright Wrong Remap Wrong");
+
+    const seedRow = {
+      rowId: "wrong-remap-seed-row",
+      rowIndex: 1,
+      date: "2025-08-14",
+      description: "BUS MRT 687",
+      amountMinor: 248,
+      entryType: "expense",
+      accountId: correctAccountId,
+      account: "Playwright Wrong Remap Correct",
+      accountName: "Playwright Wrong Remap Correct",
+      category: "Public Transport",
+      categoryName: "Public Transport",
+      ownershipType: "direct",
+      ownerName: "Tim",
+      splitBasisPoints: 10000,
+      rawRow: {
+        date: "2025-08-14",
+        description: "BUS MRT 687",
+        expense: "2.48",
+        accountId: correctAccountId,
+        account: "Playwright Wrong Remap Correct",
+        category: "Public Transport"
+      }
+    };
+
+    const commitResponse = await page.evaluate(async ({ row }) => {
+      const response = await fetch("/api/imports/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Certified statement wrong remap seed",
+          sourceType: "pdf",
+          parserKey: "uob_pdf",
+          rows: [row],
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { row: seedRow });
+    expect(commitResponse.ok, commitResponse.text).toBeTruthy();
+
+    const preview = await page.evaluate(async ({ wrongAccountId }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Certified statement wrong remap preview",
+          sourceType: "pdf",
+          rows: [{
+            date: "2025-08-14",
+            description: "BUS MRT 687",
+            expense: "2.48",
+            accountId: wrongAccountId,
+            account: "Playwright Wrong Remap Wrong",
+            statementAccountName: "Synthetic Card Wrong",
+            category: "Public Transport"
+          }],
+          defaultAccountName: "Playwright Wrong Remap Wrong",
+          ownershipType: "direct",
+          ownerName: "Tim",
+          statementCheckpoints: [{
+            accountId: wrongAccountId,
+            accountName: "Playwright Wrong Remap Wrong",
+            detectedAccountName: "Synthetic Card Wrong",
+            checkpointMonth: "2025-08",
+            statementStartDate: "2025-08-01",
+            statementEndDate: "2025-08-31",
+            statementBalanceMinor: 248,
+            note: "Playwright wrong remap mismatch"
+          }]
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { wrongAccountId });
+
+    expect(preview.ok, JSON.stringify(preview.json)).toBeTruthy();
+    expect(preview.json.preview.statementReconciliations[0].status).not.toBe("matched");
+    expect(preview.json.preview.previewRows[0].comparisonMatch).toBeUndefined();
+    expect(preview.json.preview.previewRows[0].isStatementMatchResolved).not.toBe(true);
+  });
+
   test("multi-card statements reconcile while certifying growing midcycle rows", async ({ page }, testInfo) => {
     test.setTimeout(180_000);
 
