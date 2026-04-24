@@ -220,6 +220,13 @@ export async function buildImportPreview(
     previewRows,
     statementCheckpoints: input.statementCheckpoints ?? []
   });
+  autoIncludeCurrentPeriodStatementRowsReplacingPriorCertifiedMatches({
+    accounts,
+    existingRows: existingTransactions.results,
+    previewRows,
+    sourceType: input.sourceType,
+    statementCheckpoints: input.statementCheckpoints ?? []
+  });
   prioritizeCertifiedRowsExplainingStatementMismatch({
     accounts,
     existingRows: existingTransactions.results,
@@ -473,6 +480,90 @@ function autoIncludeDuplicateMatchesExplainedByStatementBalance(input: {
   }
 }
 
+function autoIncludeCurrentPeriodStatementRowsReplacingPriorCertifiedMatches(input: {
+  accounts: AccountDto[];
+  existingRows: {
+    account_id: string;
+    transaction_date: string;
+    entry_type: "expense" | "income" | "transfer";
+    transfer_direction: "in" | "out" | null;
+    amount_minor: number;
+  }[];
+  previewRows: ImportPreviewRowDto[];
+  sourceType?: "csv" | "pdf" | "manual";
+  statementCheckpoints: StatementCheckpointDraftDto[];
+}) {
+  if (input.sourceType !== "pdf" || !input.statementCheckpoints.length) {
+    return;
+  }
+
+  const accountsById = new Map(input.accounts.map((account) => [account.id, account]));
+  const accountsByName = groupAccountsByName(input.accounts);
+
+  for (const checkpoint of input.statementCheckpoints) {
+    const account = resolvePreviewAccount(accountsById, accountsByName, checkpoint.accountId, checkpoint.accountName);
+    if (!account) {
+      continue;
+    }
+
+    const previousCheckpoint = getImmediatePreviousMatchedCheckpoint(account, checkpoint.checkpointMonth);
+    if (!previousCheckpoint) {
+      continue;
+    }
+
+    const statementStartDate = normalizeStatementDate(checkpoint.statementStartDate) ?? undefined;
+    const statementEndDate = normalizeStatementDate(checkpoint.statementEndDate) ?? getMonthEndDate(checkpoint.checkpointMonth);
+    const statementBalanceMinor = normalizeStatementBalanceInputMinor(Math.round(Number(checkpoint.statementBalanceMinor ?? 0)), account.kind);
+    const projectedLedgerBalanceMinor = computeCheckpointLedgerBalanceMinor({
+      openingBalanceMinor: normalizeAccountOpeningBalanceMinor(Number(account.openingBalanceMinor ?? 0), account.kind),
+      checkpoint: {
+        account_id: account.id,
+        checkpoint_month: checkpoint.checkpointMonth,
+        statement_start_date: statementStartDate ?? null,
+        statement_end_date: statementEndDate
+      },
+      rows: buildProjectedLedgerRows(input.existingRows, input.previewRows)
+    });
+    const deltaMinor = projectedLedgerBalanceMinor - statementBalanceMinor;
+    if (deltaMinor === 0) {
+      continue;
+    }
+
+    const promotableRows = input.previewRows.filter((row) => {
+      const signedMinor = getSignedLedgerAmountMinor({
+        entry_type: row.entryType,
+        transfer_direction: row.transferDirection ?? null,
+        amount_minor: row.amountMinor
+      });
+      const matchedLedgerDate = row.comparisonMatch?.date;
+      return (
+        row.accountId === account.id
+        && row.date >= (statementStartDate ?? "0000-00-00")
+        && row.date <= statementEndDate
+        && row.commitStatus === "skipped"
+        && Boolean(row.comparisonMatch?.existingTransactionId)
+        && (row.comparisonMatchCount ?? 0) === 1
+        && Boolean(matchedLedgerDate)
+        && isDateWithinCheckpoint(matchedLedgerDate!, previousCheckpoint)
+        && !isDateWithinRange(matchedLedgerDate!, statementStartDate, statementEndDate)
+        && deltaMinor + signedMinor === 0
+      );
+    });
+
+    if (promotableRows.length !== 1) {
+      continue;
+    }
+
+    const row = promotableRows[0];
+    row.commitStatus = "included";
+    row.commitStatusReason = "Official statement row belongs to this statement period and will import. The prior certified match belongs to the previous matched statement.";
+    row.statementCertificationTargetTransactionId = undefined;
+    row.duplicateMatches = undefined;
+    row.isCertifiedConflict = false;
+    row.isStatementMatchResolved = false;
+  }
+}
+
 function prioritizeCertifiedRowsExplainingStatementMismatch(input: {
   accounts: AccountDto[];
   existingRows: {
@@ -539,6 +630,37 @@ function prioritizeCertifiedRowsExplainingStatementMismatch(input: {
 
 function formatMinorForReason(amountMinor: number) {
   return (amountMinor / 100).toFixed(2);
+}
+
+function getImmediatePreviousMatchedCheckpoint(account: AccountDto, checkpointMonth: string) {
+  const previous = (account.checkpointHistory ?? [])
+    .filter((item) => item.month < checkpointMonth)
+    .sort((left, right) => right.month.localeCompare(left.month))[0];
+
+  if (!previous || previous.deltaMinor !== 0) {
+    return undefined;
+  }
+
+  return {
+    checkpoint_month: previous.month,
+    statement_start_date: previous.statementStartDate ?? null,
+    statement_end_date: previous.statementEndDate ?? null
+  };
+}
+
+function isDateWithinRange(value: string, startDate?: string, endDate?: string) {
+  return value >= (startDate ?? "0000-00-00") && value <= (endDate ?? "9999-12-31");
+}
+
+function isDateWithinCheckpoint(
+  value: string,
+  checkpoint: { checkpoint_month: string; statement_start_date: string | null; statement_end_date: string | null }
+) {
+  return isDateWithinRange(
+    value,
+    checkpoint.statement_start_date ?? undefined,
+    checkpoint.statement_end_date ?? getMonthEndDate(checkpoint.checkpoint_month)
+  );
 }
 
 function markResolvedCertifiedRowsForMatchedStatements(
