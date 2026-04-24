@@ -944,6 +944,9 @@ Already-covered rows stay visible in the preview. You can include one if the
 match decision was wrong, and statement checks refresh against the current
 commit set. For supported PDF statements, already-covered rows should mostly
 mean "already statement-certified" rather than "please inspect this duplicate."
+Those already-certified rows still keep the same import-versus-ledger comparison
+popover in the preview so a mismatch can be inspected without restoring the row
+first.
 
 If a statement mismatch is exactly resolved by including unresolved near-match
 rows, probable duplicates, or other app-skipped duplicate rows for that account,

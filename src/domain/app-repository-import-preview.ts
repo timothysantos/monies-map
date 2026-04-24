@@ -293,6 +293,8 @@ function applyStatementAuthorityToPreviewRow(
     return;
   }
 
+  previewRow.comparisonMatch = strongestMatch;
+
   const isAlreadyStatementCertified = strongestMatch.existingSourceType === "pdf"
     || strongestMatch.existingBankCertificationStatus === "statement_certified";
 

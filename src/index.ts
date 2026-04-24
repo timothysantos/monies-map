@@ -1178,6 +1178,18 @@ export default {
           commitStatus?: "included" | "skipped" | "needs_review";
           note?: string;
           rawRow: Record<string, string>;
+          comparisonMatch?: {
+            existingImportId?: string;
+            existingTransactionId?: string;
+            existingAccountId?: string;
+            existingSourceType?: "csv" | "pdf" | "manual";
+            existingBankCertificationStatus?: "provisional" | "statement_certified";
+            date: string;
+            description: string;
+            amountMinor: number;
+            accountName?: string;
+            matchKind: "exact" | "probable" | "near";
+          };
           statementCertificationTargetTransactionId?: string;
         }[];
         statementReconciliations?: {
@@ -1209,6 +1221,18 @@ export default {
           commitStatus?: "included" | "skipped" | "needs_review";
           note?: string;
           rawRow: Record<string, string>;
+          comparisonMatch?: {
+            existingImportId?: string;
+            existingTransactionId?: string;
+            existingAccountId?: string;
+            existingSourceType?: "csv" | "pdf" | "manual";
+            existingBankCertificationStatus?: "provisional" | "statement_certified";
+            date: string;
+            description: string;
+            amountMinor: number;
+            accountName?: string;
+            matchKind: "exact" | "probable" | "near";
+          };
           statementCertificationTargetTransactionId?: string;
         }[];
       }>();
