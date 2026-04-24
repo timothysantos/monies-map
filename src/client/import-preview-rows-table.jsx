@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, useEffect, useRef } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { getAccountSelectOptions } from "./account-display";
 import { getCategoriesForSelect } from "./category-utils";
@@ -20,6 +20,7 @@ export function ImportPreviewRowsTable({
   isCommitDisabled,
   isSubmitting,
   commitLabel,
+  jumpToSkippedRowsRequestKey = 0,
   onCommit,
   onUpdatePreviewRow,
   onUpdatePreviewRowCommitStatus,
@@ -34,6 +35,16 @@ export function ImportPreviewRowsTable({
   const newImportCount = includedCount - statementCertificationRowCount;
   const needsReviewCount = visibleRows.filter((row) => row.commitStatus === "needs_review").length;
   const hasPreviewRows = visibleRows.length > 0 || statementCheckpointCount > 0;
+  const skippedRowsRef = useRef(null);
+
+  useEffect(() => {
+    if (!jumpToSkippedRowsRequestKey || !skippedRows.length || !skippedRowsRef.current) {
+      return;
+    }
+
+    skippedRowsRef.current.open = true;
+    skippedRowsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [jumpToSkippedRowsRequestKey, skippedRows.length]);
 
   return (
     <>
@@ -73,7 +84,7 @@ export function ImportPreviewRowsTable({
         </p>
       )}
       {skippedRows.length ? (
-        <details className="import-skipped-rows">
+        <details ref={skippedRowsRef} className="import-skipped-rows" id="import-skipped-rows">
           <summary>{messages.imports.skippedRowsTitle(skippedRows.length)}</summary>
           <PreviewRowsTable
             rows={skippedRows}
