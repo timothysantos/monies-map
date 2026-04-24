@@ -7201,6 +7201,10 @@ th {
     min-width: 0;
   }
 
+  .entry-row-transfer {
+    display: none;
+  }
+
   .entry-row-right {
     display: contents;
   }
