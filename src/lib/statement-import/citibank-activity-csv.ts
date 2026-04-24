@@ -130,10 +130,10 @@ function cleanCsvCell(value: string) {
 }
 
 function resolveCitibankActivityAccountName(fileName?: string, context?: CitibankActivityContext) {
-  if (/-rewards\.csv$/i.test(fileName ?? "")) {
+  if (/\brewards\b/i.test(fileName ?? "")) {
     return "Citi Rewards";
   }
-  if (/-miles\.csv$/i.test(fileName ?? "")) {
+  if (/\bmiles\b/i.test(fileName ?? "")) {
     return "Citi Miles";
   }
   if (isCitibankCreditCardContext(context) && context?.accountName) {
@@ -143,7 +143,7 @@ function resolveCitibankActivityAccountName(fileName?: string, context?: Citiban
 }
 
 function isCitibankActivityFileName(fileName?: string) {
-  return /^ACCT_\d+_\d{2}_\d{2}_\d{4}-(?:rewards|miles)\.csv$/i.test(fileName ?? "");
+  return /^ACCT_\d+_\d{2}_\d{2}_\d{4}-.*(?:rewards|miles).*\.(?:csv)$/i.test(fileName ?? "");
 }
 
 function isCitibankCreditCardContext(context?: CitibankActivityContext) {
