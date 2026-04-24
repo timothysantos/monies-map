@@ -1,3 +1,5 @@
+import { formatEditableMinorInput } from "./formatters";
+
 export function uniqueValues(values) {
   return [...new Set(values.filter(Boolean))];
 }
@@ -22,6 +24,7 @@ export function buildEntryDraft(view, accounts, categories, people) {
     ownershipType,
     ownerName: ownershipType === "direct" ? defaultOwnerName : undefined,
     amountMinor: 0,
+    amountInput: "0",
     totalAmountMinor: 0,
     viewerSplitRatioBasisPoints: view.id === "household" ? undefined : ownershipType === "shared" ? 5000 : 10000,
     offsetsCategory: false,
@@ -34,9 +37,17 @@ export function buildEntryDraft(view, accounts, categories, people) {
 }
 
 export function normalizeEntryShape(entry, people, previousEntry = entry) {
+  const nextAmountMinor = Math.max(0, Number(entry.amountMinor ?? 0));
+  const previousAmountMinor = Math.max(0, Number(previousEntry?.amountMinor ?? 0));
+  const hasExplicitAmountInput = Object.prototype.hasOwnProperty.call(entry, "amountInput");
   const nextEntry = {
     ...entry,
-    amountMinor: Math.max(0, Number(entry.amountMinor ?? 0)),
+    amountMinor: nextAmountMinor,
+    amountInput: hasExplicitAmountInput
+      ? entry.amountInput
+      : nextAmountMinor !== previousAmountMinor
+        ? formatEditableMinorInput(nextAmountMinor)
+        : previousEntry?.amountInput ?? formatEditableMinorInput(nextAmountMinor),
     totalAmountMinor: entry.totalAmountMinor ?? entry.amountMinor ?? 0
   };
 
