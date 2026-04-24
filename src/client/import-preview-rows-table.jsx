@@ -127,7 +127,7 @@ function PreviewRowsTable({
         </thead>
         <tbody>
           {rows.map((row) => {
-            const duplicateMatch = row.duplicateMatches?.[0];
+            const duplicateMatch = row.duplicateMatches?.[0] ?? row.comparisonMatch;
             const showReviewDetails = Boolean(duplicateMatch || row.commitStatus === "needs_review" || row.commitStatusReason);
             return (
               <Fragment key={row.rowId}>

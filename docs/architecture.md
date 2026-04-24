@@ -275,6 +275,10 @@ That distinction matters because the system needs to answer questions like:
   near-match rows for that same account, the preview treats those rows as
   statement-confirmed import rows, clears their duplicate warning, and
   recalculates the account checkpoint before returning the preview DTO.
+- Statement-certified skipped rows keep their matched-ledger comparison payload
+  for the preview UI even after duplicate warnings are cleared, so mismatch
+  investigation can still open the side-by-side popover without reclassifying
+  the row as a duplicate candidate.
 - mismatched checkpoints can compare an uploaded statement against the already
   committed ledger for that checkpoint period without treating the statement as
   a new import; if the saved checkpoint has no explicit period, the comparison

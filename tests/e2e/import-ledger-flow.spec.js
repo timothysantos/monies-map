@@ -474,6 +474,7 @@ test.describe("import flow", () => {
     expect(mismatchedPreview.ok, JSON.stringify(mismatchedPreview.json)).toBeTruthy();
     expect(mismatchedPreview.json.preview.previewRows[0].commitStatus).toBe("included");
     expect(mismatchedPreview.json.preview.previewRows[0].statementCertificationTargetTransactionId).toBeTruthy();
+    expect(mismatchedPreview.json.preview.previewRows[0].comparisonMatch).toBeTruthy();
     expect(mismatchedPreview.json.preview.previewRows[0].duplicateMatches).toBeUndefined();
 
     const projectedWithCertifiedNearMatch = mismatchedPreview.json.preview.statementReconciliations[0].projectedLedgerBalanceMinor;
@@ -502,9 +503,96 @@ test.describe("import flow", () => {
     expect(resolvedPreview.ok, JSON.stringify(resolvedPreview.json)).toBeTruthy();
     expect(resolvedPreview.json.preview.previewRows[0].commitStatus).toBe("included");
     expect(resolvedPreview.json.preview.previewRows[0].statementCertificationTargetTransactionId).toBeTruthy();
+    expect(resolvedPreview.json.preview.previewRows[0].comparisonMatch).toBeTruthy();
     expect(resolvedPreview.json.preview.previewRows[0].duplicateMatches).toBeUndefined();
     expect(resolvedPreview.json.preview.duplicateCandidateCount).toBe(0);
     expect(resolvedPreview.json.preview.statementReconciliations[0].status).toBe("matched");
+  });
+
+  test("already certified statement rows retain ledger comparison details", async ({ page }) => {
+    const accountId = await page.evaluate(async () => {
+      const response = await fetch("/api/accounts/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Playwright UOB Certified",
+          institution: "Synthetic Test Bank",
+          kind: "credit_card",
+          openingBalanceMinor: 0,
+          currency: "SGD",
+          ownerPersonId: "",
+          isJoint: false
+        })
+      });
+      const payload = await response.json();
+      return payload.accountId;
+    });
+    expect(accountId).toBeTruthy();
+
+    const certifiedStatementRow = {
+      rowId: "certified-seed-row",
+      rowIndex: 1,
+      date: "2025-08-14",
+      description: "BUS MRT 687",
+      amountMinor: 248,
+      entryType: "expense",
+      accountId,
+      account: "Playwright UOB Certified",
+      accountName: "Playwright UOB Certified",
+      category: "Public Transport",
+      categoryName: "Public Transport",
+      ownershipType: "direct",
+      ownerName: "Tim",
+      splitBasisPoints: 10000,
+      rawRow: {
+        date: "2025-08-14",
+        description: "BUS MRT 687",
+        expense: "2.48",
+        accountId,
+        account: "Playwright UOB Certified",
+        category: "Public Transport"
+      }
+    };
+
+    const commitResponse = await page.evaluate(async ({ row }) => {
+      const response = await fetch("/api/imports/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Certified statement seed",
+          sourceType: "pdf",
+          parserKey: "uob_pdf",
+          rows: [row],
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { row: certifiedStatementRow });
+    expect(commitResponse.ok, commitResponse.text).toBeTruthy();
+
+    const preview = await page.evaluate(async ({ row }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Certified statement repeat",
+          sourceType: "pdf",
+          rows: [row.rawRow],
+          defaultAccountName: row.accountName,
+          ownershipType: "direct",
+          ownerName: "Tim",
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { row: certifiedStatementRow });
+
+    expect(preview.ok, JSON.stringify(preview.json)).toBeTruthy();
+    expect(preview.json.preview.previewRows[0].commitStatus).toBe("skipped");
+    expect(preview.json.preview.previewRows[0].commitStatusReason).toContain("already certified");
+    expect(preview.json.preview.previewRows[0].comparisonMatch).toBeTruthy();
+    expect(preview.json.preview.previewRows[0].comparisonMatch.matchKind).toBe("exact");
+    expect(preview.json.preview.previewRows[0].duplicateMatches).toBeUndefined();
   });
 
   test("multi-card statements reconcile while certifying growing midcycle rows", async ({ page }, testInfo) => {

@@ -546,6 +546,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           ...row,
           ...patch,
           duplicateMatches: shouldClearDuplicateMatches ? undefined : row.duplicateMatches,
+          comparisonMatch: shouldClearDuplicateMatches ? undefined : row.comparisonMatch,
           statementCertificationTargetTransactionId: shouldClearDuplicateMatches ? undefined : row.statementCertificationTargetTransactionId,
           commitStatus: shouldClearDuplicateMatches ? "included" : (patch.commitStatus ?? row.commitStatus),
           commitStatusReason: shouldClearDuplicateMatches ? undefined : row.commitStatusReason,
@@ -561,7 +562,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         ? {
           ...row,
           commitStatus,
-          commitStatusReason: getPreviewCommitStatusReason(commitStatus, row.duplicateMatches?.[0]?.matchKind),
+          commitStatusReason: getPreviewCommitStatusReason(commitStatus, row.duplicateMatches?.[0]?.matchKind ?? row.comparisonMatch?.matchKind),
           commitStatusExplicit: true
         }
         : row

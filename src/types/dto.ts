@@ -410,6 +410,7 @@ export interface ImportPreviewRowDto {
   note?: string;
   rawRow: Record<string, string>;
   duplicateMatches?: DuplicateCandidateDto[];
+  comparisonMatch?: DuplicateCandidateDto;
   statementCertificationTargetTransactionId?: string;
 }
 
