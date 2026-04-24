@@ -27,7 +27,7 @@ export function ImportPreviewRowsTable({
 }) {
   const accountOptions = getAccountSelectOptions(accounts, { valueKey: "id" });
   const categorySelectOptions = getCategoriesForSelect(categories);
-  const visibleRows = previewRows.filter((row) => !row.isStatementMatchResolved);
+  const visibleRows = previewRows.filter((row) => !row.isStatementMatchResolved && !row.isCertifiedConflict);
   const activeRows = visibleRows.filter((row) => row.commitStatus !== "skipped");
   const skippedRows = visibleRows.filter((row) => row.commitStatus === "skipped");
   const includedCount = visibleRows.filter((row) => row.commitStatus === "included" || !row.commitStatus).length;
@@ -309,7 +309,7 @@ function formatImportPreviewDate(value) {
   return formatDateOnly(value);
 }
 
-function DuplicateMatchPopover({ row, match }) {
+export function DuplicateMatchPopover({ row, match }) {
   const ledgerHref = match.existingTransactionId ? buildDuplicateLedgerEntryHref(match) : "";
   return (
     <Popover.Root>

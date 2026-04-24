@@ -1,6 +1,7 @@
 import * as Popover from "@radix-ui/react-popover";
 import { useRef, useState } from "react";
 import { Info } from "lucide-react";
+import { DuplicateMatchPopover } from "./import-preview-rows-table";
 import { getAccountSelectOptions } from "./account-display";
 import { messages } from "./copy/en-SG";
 import {
@@ -25,6 +26,7 @@ export function ImportPreviewReview({
   showStatementAccountMapping,
   visibleOverlapImports,
   previewDuplicateRowCount,
+  certifiedConflictRows,
   statementCertificationRowCount,
   skippedPreviewRowCount,
   needsReviewPreviewRowCount,
@@ -100,6 +102,10 @@ export function ImportPreviewReview({
         />
       ) : null}
 
+      {certifiedConflictRows.length ? (
+        <CertifiedConflictRows rows={certifiedConflictRows} />
+      ) : null}
+
       {statementCheckpoints.length ? (
         <StatementCheckpointDrafts
           accounts={accounts}
@@ -118,6 +124,39 @@ export function ImportPreviewReview({
         </div>
       ) : null}
     </>
+  );
+}
+
+function CertifiedConflictRows({ rows }) {
+  return (
+    <div className="import-warning import-warning-attention">
+      <strong>{messages.imports.certifiedConflictTitle(rows.length)}</strong>
+      <p className="lede compact">{messages.imports.certifiedConflictDetail}</p>
+      <div className="stack">
+        {rows.map((row) => {
+          const match = row.comparisonMatch;
+          return (
+            <div key={row.rowId} className="import-card import-card-compact">
+              <div className="import-history-main">
+                <strong>{messages.imports.certifiedConflictRow(formatDateOnly(row.date), row.description, formatMinorInput(row.amountMinor))}</strong>
+                <span className="import-history-inline">
+                  {messages.common.triplet(row.accountName ?? messages.common.emptyValue, row.entryType, formatMinorInput(row.amountMinor))}
+                </span>
+                <p className="lede compact">{row.commitStatusReason}</p>
+                {match ? (
+                  <div className="duplicate-row-detail-line">
+                    <small className="duplicate-row-detail">
+                      {messages.imports.duplicateRowDetail(formatDuplicateMatch(match))}
+                    </small>
+                    <DuplicateMatchPopover row={row} match={match} />
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -213,6 +252,10 @@ function StatementAccountMapping({
 
 function getPreviewRowStatementAccountName(row) {
   return row.statementAccountName ?? row.rawRow?.statementAccountName ?? row.rawRow?.statementAccount ?? row.rawRow?.account ?? row.accountName;
+}
+
+function formatDuplicateMatch(match) {
+  return messages.common.triplet(formatDateOnly(match.date), match.accountName ?? messages.common.emptyValue, formatMinorInput(match.amountMinor));
 }
 
 function UnknownCategories({ categoryNames, unknownCategoryMode }) {

@@ -200,6 +200,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   );
   const {
     detectedPreviewAccountNames,
+    certifiedConflictRows,
     duplicateCheckpointAccounts,
     hasBlockingCategoryPolicy,
     hasAlreadyCoveredCheckpointRefresh,
@@ -882,6 +883,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             showStatementAccountMapping={showStatementAccountMapping}
             visibleOverlapImports={visibleOverlapImports}
             previewDuplicateRowCount={previewDuplicateRowCount}
+            certifiedConflictRows={certifiedConflictRows}
             statementCertificationRowCount={statementCertificationRowCount}
             skippedPreviewRowCount={skippedPreviewRowCount}
             needsReviewPreviewRowCount={needsReviewPreviewRowCount}

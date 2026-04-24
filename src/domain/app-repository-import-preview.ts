@@ -236,6 +236,7 @@ export async function buildImportPreview(
     statementCheckpoints: input.statementCheckpoints ?? []
   });
   markResolvedCertifiedRowsForMatchedStatements(previewRows, statementReconciliations);
+  markCertifiedConflictRows(previewRows, statementReconciliations);
   const exceptionSummary = buildImportPreviewExceptionSummary({
     unknownAccountCount: unknownAccounts.size,
     unknownCategoryCount: unknownCategories.size,
@@ -555,6 +556,7 @@ function markResolvedCertifiedRowsForMatchedStatements(
 
   for (const checkpoint of matchedCheckpoints) {
     for (const row of previewRows) {
+      row.isCertifiedConflict = false;
       if (
         row.accountId === checkpoint.accountId
         && row.date <= checkpoint.statementEndDate!
@@ -563,6 +565,45 @@ function markResolvedCertifiedRowsForMatchedStatements(
       ) {
         row.isStatementMatchResolved = true;
       }
+    }
+  }
+}
+
+function markCertifiedConflictRows(
+  previewRows: ImportPreviewRowDto[],
+  statementReconciliations: ImportPreviewDto["statementReconciliations"]
+) {
+  const checkpointsByAccountId = new Map(
+    statementReconciliations
+      .filter((item) => item.accountId)
+      .map((item) => [item.accountId!, item])
+  );
+
+  for (const row of previewRows) {
+    if (row.isStatementMatchResolved) {
+      row.isCertifiedConflict = false;
+      continue;
+    }
+
+    const checkpoint = row.accountId ? checkpointsByAccountId.get(row.accountId) : undefined;
+    const hasCertifiedComparison = row.commitStatus === "skipped" && Boolean(row.comparisonMatch?.existingTransactionId);
+    row.isCertifiedConflict = Boolean(hasCertifiedComparison && checkpoint && checkpoint.status !== "matched");
+
+    if (!row.isCertifiedConflict || !checkpoint) {
+      continue;
+    }
+
+    const ledgerMatchDate = row.comparisonMatch?.date;
+    const isOutsidePeriod = Boolean(
+      ledgerMatchDate
+      && (
+        (checkpoint.statementStartDate && ledgerMatchDate < checkpoint.statementStartDate)
+        || (checkpoint.statementEndDate && ledgerMatchDate > checkpoint.statementEndDate)
+      )
+    );
+
+    if (isOutsidePeriod && row.commitStatusReason) {
+      row.commitStatusReason = `${row.commitStatusReason} The matched certified ledger row is outside this statement period.`;
     }
   }
 }

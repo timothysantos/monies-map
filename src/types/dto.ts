@@ -414,6 +414,7 @@ export interface ImportPreviewRowDto {
   comparisonMatchCount?: number;
   statementCertificationTargetTransactionId?: string;
   isStatementMatchResolved?: boolean;
+  isCertifiedConflict?: boolean;
 }
 
 export interface ImportPreviewDto {
