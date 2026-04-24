@@ -27,12 +27,13 @@ export function ImportPreviewRowsTable({
 }) {
   const accountOptions = getAccountSelectOptions(accounts, { valueKey: "id" });
   const categorySelectOptions = getCategoriesForSelect(categories);
-  const activeRows = previewRows.filter((row) => row.commitStatus !== "skipped");
-  const skippedRows = previewRows.filter((row) => row.commitStatus === "skipped");
-  const includedCount = previewRows.filter((row) => row.commitStatus === "included" || !row.commitStatus).length;
+  const visibleRows = previewRows.filter((row) => !row.isStatementMatchResolved);
+  const activeRows = visibleRows.filter((row) => row.commitStatus !== "skipped");
+  const skippedRows = visibleRows.filter((row) => row.commitStatus === "skipped");
+  const includedCount = visibleRows.filter((row) => row.commitStatus === "included" || !row.commitStatus).length;
   const newImportCount = includedCount - statementCertificationRowCount;
-  const needsReviewCount = previewRows.filter((row) => row.commitStatus === "needs_review").length;
-  const hasPreviewRows = previewRows.length > 0;
+  const needsReviewCount = visibleRows.filter((row) => row.commitStatus === "needs_review").length;
+  const hasPreviewRows = visibleRows.length > 0 || statementCheckpointCount > 0;
 
   return (
     <>

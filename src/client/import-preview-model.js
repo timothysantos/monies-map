@@ -38,11 +38,12 @@ export function buildImportPreviewModel({
   });
   const duplicateCheckpointAccounts = getDuplicateCheckpointAccounts(statementCheckpoints);
   const visibleOverlapImports = (preview?.overlapImports ?? []).filter((item) => !dismissedOverlapIds.includes(item.id));
-  const previewDuplicateRowCount = previewRows.filter((row) => row.duplicateMatches?.length).length;
+  const visiblePreviewRows = previewRows.filter((row) => !row.isStatementMatchResolved);
+  const previewDuplicateRowCount = visiblePreviewRows.filter((row) => row.duplicateMatches?.length).length;
   const statementCertificationRowCount = previewRows.filter((row) => row.statementCertificationTargetTransactionId).length;
-  const skippedPreviewRowCount = previewRows.filter((row) => row.commitStatus === "skipped").length;
-  const needsReviewPreviewRowCount = previewRows.filter((row) => row.commitStatus === "needs_review").length;
-  const includedPreviewRows = previewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review");
+  const skippedPreviewRowCount = visiblePreviewRows.filter((row) => row.commitStatus === "skipped").length;
+  const needsReviewPreviewRowCount = visiblePreviewRows.filter((row) => row.commitStatus === "needs_review").length;
+  const includedPreviewRows = visiblePreviewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review");
   const statementReconciliations = preview?.statementReconciliations ?? [];
   const hasDuplicateCheckpointAccounts = duplicateCheckpointAccounts.length > 0;
   const hasCheckpointOnlyCommit = statementCheckpoints.length > 0 && includedPreviewRows.length === 0;
