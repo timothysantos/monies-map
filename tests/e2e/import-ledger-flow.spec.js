@@ -925,7 +925,7 @@ test.describe("import flow", () => {
     expect(preview.json.preview.previewRows[0].commitStatusReason).not.toContain("matches the current statement mismatch difference");
   });
 
-  test("outside-period certified match becomes a blocking conflict instead of a skipped row action", async ({ page }) => {
+  test("current-period PDF row auto-resolves when prior matched checkpoint owns the earlier certified row", async ({ page }) => {
     const accountId = await page.evaluate(async () => {
       const response = await fetch("/api/accounts/create", {
         method: "POST",
@@ -983,6 +983,140 @@ test.describe("import flow", () => {
       return { ok: response.ok, text: await response.text() };
     }, { accountId });
     expect(commitResponse.ok, commitResponse.text).toBeTruthy();
+
+    const priorCheckpointResponse = await page.evaluate(async ({ accountId }) => {
+      const response = await fetch("/api/accounts/checkpoints/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountId,
+          checkpointMonth: "2025-08",
+          statementStartDate: "2025-07-13",
+          statementEndDate: "2025-08-12",
+          statementBalanceMinor: 248,
+          note: "Matched prior statement"
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { accountId });
+    expect(priorCheckpointResponse.ok, priorCheckpointResponse.text).toBeTruthy();
+
+    const preview = await page.evaluate(async ({ accountId }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Outside period certified preview",
+          sourceType: "pdf",
+          rows: [{
+            date: "2025-08-14",
+            description: "BUS MRT 687",
+            expense: "2.48",
+            accountId,
+            account: "Playwright Outside Period Conflict",
+            statementAccountName: "Synthetic Card Alpha",
+            category: "Public Transport"
+          }],
+          defaultAccountName: "Playwright Outside Period Conflict",
+          ownershipType: "direct",
+          ownerName: "Tim",
+          statementCheckpoints: [{
+            accountId,
+            accountName: "Playwright Outside Period Conflict",
+            detectedAccountName: "Synthetic Card Alpha",
+            checkpointMonth: "2025-09",
+            statementStartDate: "2025-08-13",
+            statementEndDate: "2025-09-12",
+            statementBalanceMinor: 0,
+            note: "Playwright outside period conflict"
+          }]
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId });
+
+    expect(preview.ok, JSON.stringify(preview.json)).toBeTruthy();
+    expect(preview.json.preview.statementReconciliations[0].status).toBe("matched");
+    expect(preview.json.preview.previewRows[0].commitStatus).toBe("included");
+    expect(preview.json.preview.previewRows[0].isCertifiedConflict).not.toBe(true);
+    expect(preview.json.preview.previewRows[0].commitStatusReason).toContain("will import");
+  });
+
+  test("outside-period certified match stays a conflict when the immediate previous checkpoint is not matched", async ({ page }) => {
+    const accountId = await page.evaluate(async () => {
+      const response = await fetch("/api/accounts/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Playwright Outside Period Conflict",
+          institution: "Synthetic Test Bank",
+          kind: "credit_card",
+          openingBalanceMinor: 0,
+          currency: "SGD",
+          ownerPersonId: "",
+          isJoint: false
+        })
+      });
+      const payload = await response.json();
+      return payload.accountId;
+    });
+    expect(accountId).toBeTruthy();
+
+    const commitResponse = await page.evaluate(async ({ accountId }) => {
+      const response = await fetch("/api/imports/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Outside period certified seed",
+          sourceType: "pdf",
+          parserKey: "uob_pdf",
+          rows: [{
+            rowId: "outside-period-seed-row",
+            rowIndex: 1,
+            date: "2025-08-11",
+            description: "BUS MRT 687",
+            amountMinor: 248,
+            entryType: "expense",
+            accountId,
+            account: "Playwright Outside Period Conflict",
+            accountName: "Playwright Outside Period Conflict",
+            category: "Public Transport",
+            categoryName: "Public Transport",
+            ownershipType: "direct",
+            ownerName: "Tim",
+            splitBasisPoints: 10000,
+            rawRow: {
+              date: "2025-08-11",
+              description: "BUS MRT 687",
+              expense: "2.48",
+              accountId,
+              account: "Playwright Outside Period Conflict",
+              category: "Public Transport"
+            }
+          }],
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { accountId });
+    expect(commitResponse.ok, commitResponse.text).toBeTruthy();
+
+    const previousCheckpointResponse = await page.evaluate(async ({ accountId }) => {
+      const response = await fetch("/api/accounts/checkpoints/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountId,
+          checkpointMonth: "2025-08",
+          statementStartDate: "2025-07-13",
+          statementEndDate: "2025-08-12",
+          statementBalanceMinor: 0,
+          note: "Mismatched prior statement"
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { accountId });
+    expect(previousCheckpointResponse.ok, previousCheckpointResponse.text).toBeTruthy();
 
     const preview = await page.evaluate(async ({ accountId }) => {
       const response = await fetch("/api/imports/preview", {
