@@ -36,9 +36,11 @@ export function ImportPreviewReview({
   hasDuplicateCheckpointAccounts,
   duplicateCheckpointAccounts,
   isSubmitting,
+  canJumpToSkippedRows = false,
   onRemapPreviewAccount,
   onCreateStatementAccount,
   onDismissOverlap,
+  onJumpToSkippedRows,
   onRefreshStatementReconciliation,
   onUpdateStatementCheckpoint
 }) {
@@ -89,7 +91,9 @@ export function ImportPreviewReview({
           hasStatementReconciliationMismatch={hasStatementReconciliationMismatch}
           hasStatementReconciliations={statementReconciliations.length > 0}
           statementReconciliations={statementReconciliations}
+          canJumpToSkippedRows={canJumpToSkippedRows}
           onDismissOverlap={onDismissOverlap}
+          onJumpToSkippedRows={onJumpToSkippedRows}
         />
       ) : null}
 
@@ -306,6 +310,8 @@ function OverlapImports({
   hasStatementReconciliationMismatch,
   hasStatementReconciliations,
   statementReconciliations,
+  canJumpToSkippedRows = false,
+  onJumpToSkippedRows,
   onDismissOverlap
 }) {
   const overlapMismatchHint = getOverlapMismatchHint(imports, statementReconciliations);
@@ -351,7 +357,17 @@ function OverlapImports({
               {item.accountNames.length ? <span className="import-history-inline">{item.accountNames.join(", ")}</span> : null}
               {item.overlapEntries?.length ? (
                 <>
-                  <span className="import-history-inline import-overlap-entry-title">{messages.imports.previewOverlapEntriesLabel}</span>
+                  {canJumpToSkippedRows && onJumpToSkippedRows ? (
+                    <button
+                      type="button"
+                      className="subtle-action import-overlap-entry-title-button"
+                      onClick={onJumpToSkippedRows}
+                    >
+                      {messages.imports.previewOverlapEntriesLabel}
+                    </button>
+                  ) : (
+                    <span className="import-history-inline import-overlap-entry-title">{messages.imports.previewOverlapEntriesLabel}</span>
+                  )}
                   <div className="import-overlap-entry-list" aria-label={messages.imports.previewOverlapEntriesLabel}>
                     {item.overlapEntries.map((entry) => (
                       <div key={entry.id} className="import-overlap-entry-row">

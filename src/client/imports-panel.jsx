@@ -61,6 +61,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [recentImportPage, setRecentImportPage] = useState(1);
   const [recentImportAccountFilter, setRecentImportAccountFilter] = useState("");
   const [dismissedOverlapIds, setDismissedOverlapIds] = useState([]);
+  const [jumpToSkippedRowsRequestKey, setJumpToSkippedRowsRequestKey] = useState(0);
   const fileInputRef = useRef(null);
   const mappingSectionRef = useRef(null);
   const previewSectionRef = useRef(null);
@@ -286,6 +287,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsParsingStatement(false);
     setIsDragActive(false);
     setDismissedOverlapIds([]);
+    setJumpToSkippedRowsRequestKey(0);
     hasAutoScrolledMappingRef.current = false;
     hasAutoScrolledPreviewRef.current = false;
     if (fileInputRef.current) {
@@ -893,9 +895,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             hasDuplicateCheckpointAccounts={hasDuplicateCheckpointAccounts}
             duplicateCheckpointAccounts={duplicateCheckpointAccounts}
             isSubmitting={isSubmitting}
+            canJumpToSkippedRows={skippedPreviewRowCount > 0}
             onRemapPreviewAccount={remapPreviewAccount}
             onCreateStatementAccount={openCreateStatementAccountDialog}
             onDismissOverlap={(importId) => setDismissedOverlapIds((current) => [...new Set([...current, importId])])}
+            onJumpToSkippedRows={() => setJumpToSkippedRowsRequestKey((current) => current + 1)}
             onRefreshStatementReconciliation={handleRefreshStatementReconciliation}
             onUpdateStatementCheckpoint={updateStatementCheckpoint}
           />
@@ -914,6 +918,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               isCommitDisabled={isCommitDisabled}
               isSubmitting={isSubmitting}
               commitLabel={commitLabel}
+              jumpToSkippedRowsRequestKey={jumpToSkippedRowsRequestKey}
               onCommit={handleCommit}
               onUpdatePreviewRow={updatePreviewRow}
               onUpdatePreviewRowCommitStatus={updatePreviewRowCommitStatus}
