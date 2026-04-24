@@ -1299,8 +1299,7 @@ function buildDonutChart(entries: EntryDto[], categories: CategoryDto[]): DonutC
       entryCount: counts.get(label) ?? 0
       };
     })
-    .sort((left, right) => right.valueMinor - left.valueMinor)
-    .slice(0, 5);
+    .sort((left, right) => right.valueMinor - left.valueMinor);
 }
 
 function sumMinor(months: SummaryMonthDto[], key: keyof Pick<

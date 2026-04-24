@@ -12,13 +12,16 @@ const LazySpendingMixRecharts = lazy(() => import("./spending-mix-recharts.jsx")
 export function SpendingMixChart({
   data,
   categories,
+  totalMinor,
   totalLabel = messages.summary.totalSpend,
   compact = false,
   height = 360,
   innerRadius = 70,
   outerRadius = 120
 }) {
-  const total = data.reduce((sum, item) => sum + item.valueMinor, 0);
+  const total = typeof totalMinor === "number"
+    ? totalMinor
+    : data.reduce((sum, item) => sum + item.valueMinor, 0);
   const isNarrowViewport = typeof window !== "undefined" && window.innerWidth <= 760;
   const resolvedHeight = isNarrowViewport ? Math.min(height, compact ? 250 : 280) : height;
   const resolvedInnerRadius = isNarrowViewport ? Math.min(innerRadius, compact ? 54 : 62) : innerRadius;

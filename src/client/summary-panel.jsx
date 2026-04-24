@@ -42,7 +42,9 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
       : latestRangeMonth);
   const selectedDonutMonth = view.summaryPage.categoryShareByMonth.find((month) => month.month === selectedFocusMonth) ?? null;
   const donutData = selectedDonutMonth?.data ?? view.summaryPage.categoryShareChart;
-  const totalSpendMinor = donutData.reduce((sum, item) => sum + item.valueMinor, 0);
+  const totalSpendMinor = selectedDonutMonth
+    ? view.summaryPage.months.find((month) => month.month === selectedDonutMonth.month)?.realExpensesMinor ?? 0
+    : view.summaryPage.months.reduce((sum, month) => sum + month.realExpensesMinor, 0);
 
   function handleFocusChange(value) {
     setSearchParams((current) => {
@@ -152,7 +154,7 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
                   </button>
                 ))}
               </div>
-              <SpendingMixChart data={donutData} categories={categories} />
+              <SpendingMixChart data={donutData} categories={categories} totalMinor={totalSpendMinor} />
               <div className="share-list">
                 {donutData.map((item) => {
                   const category = getCategory(categories, item);
