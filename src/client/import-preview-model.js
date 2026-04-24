@@ -11,6 +11,7 @@ export function buildImportPreviewModel({
   isSubmitting,
   isParsingStatement
 }) {
+  const certifiedConflictRows = previewRows.filter((row) => row.isCertifiedConflict);
   const knownAccountNames = new Set(accounts.map((account) => account.name));
   const accountNameCounts = accounts.reduce((counts, account) => {
     counts.set(account.name, (counts.get(account.name) ?? 0) + 1);
@@ -38,7 +39,7 @@ export function buildImportPreviewModel({
   });
   const duplicateCheckpointAccounts = getDuplicateCheckpointAccounts(statementCheckpoints);
   const visibleOverlapImports = (preview?.overlapImports ?? []).filter((item) => !dismissedOverlapIds.includes(item.id));
-  const visiblePreviewRows = previewRows.filter((row) => !row.isStatementMatchResolved);
+  const visiblePreviewRows = previewRows.filter((row) => !row.isStatementMatchResolved && !row.isCertifiedConflict);
   const previewDuplicateRowCount = visiblePreviewRows.filter((row) => row.duplicateMatches?.length).length;
   const statementCertificationRowCount = previewRows.filter((row) => row.statementCertificationTargetTransactionId).length;
   const skippedPreviewRowCount = visiblePreviewRows.filter((row) => row.commitStatus === "skipped").length;
@@ -71,6 +72,7 @@ export function buildImportPreviewModel({
       || hasBlockingCategoryPolicy
       || hasDuplicateCheckpointAccounts
       || needsReviewPreviewRowCount > 0,
+    certifiedConflictRows,
     knownAccountNames,
     needsReviewPreviewRowCount,
     hasAlreadyCoveredCheckpointRefresh,

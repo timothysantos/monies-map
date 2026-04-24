@@ -1192,6 +1192,8 @@ export default {
           };
           comparisonMatchCount?: number;
           statementCertificationTargetTransactionId?: string;
+          isStatementMatchResolved?: boolean;
+          isCertifiedConflict?: boolean;
         }[];
         statementReconciliations?: {
           accountName: string;
@@ -1236,6 +1238,8 @@ export default {
           };
           comparisonMatchCount?: number;
           statementCertificationTargetTransactionId?: string;
+          isStatementMatchResolved?: boolean;
+          isCertifiedConflict?: boolean;
         }[];
       }>();
 
