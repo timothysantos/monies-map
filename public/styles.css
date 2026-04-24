@@ -5565,7 +5565,6 @@ button.split-activity-card:hover {
 }
 
 .entry-row-category,
-.entry-row-details,
 .entry-row-category-label,
 .entry-row-description,
 .entry-row-transfer,
@@ -5575,14 +5574,8 @@ button.split-activity-card:hover {
 
 .entry-row-category {
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
-}
-
-.entry-row-details {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 8px;
 }
 
 .entry-row-category-label strong {
@@ -5607,6 +5600,10 @@ button.split-activity-card:hover {
 
 .entry-row-transfer strong {
   font-weight: 600;
+}
+
+.entry-row-category strong {
+  display: none;
 }
 
 .entry-row-main p {
@@ -7146,7 +7143,7 @@ th {
   .entry-row-main {
     grid-template-columns: 38px minmax(0, 1fr) auto;
     grid-template-areas:
-      "category details right"
+      "category description right"
       "category meta meta";
     gap: 8px 10px;
     padding: 8px 0;
@@ -7196,8 +7193,8 @@ th {
     align-items: flex-start;
   }
 
-  .entry-row-details {
-    grid-area: details;
+  .entry-row-description {
+    grid-area: description;
     min-width: 0;
   }
 
@@ -7260,6 +7257,7 @@ th {
     font-size: 0.82rem;
     font-weight: 500;
     line-height: 1.06;
+    margin-bottom: 1px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
