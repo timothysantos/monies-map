@@ -237,11 +237,21 @@ export function EntryEditorFields({
           <span>{messages.entries.editAmount}</span>
           <input
             className={`table-edit-input table-edit-input-money ${amountToneClass}`}
-            type="number"
-            step="0.01"
+            type="text"
             inputMode="decimal"
-            value={formatEditableMinorInput(entry.amountMinor)}
-            onChange={(event) => onChange({ amountMinor: Math.max(0, parseMoneyInput(event.target.value, entry.amountMinor)) })}
+            value={entry.amountInput ?? formatEditableMinorInput(entry.amountMinor)}
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              if (!nextValue.trim()) {
+                onChange({ amountInput: "", amountMinor: 0 });
+                return;
+              }
+              onChange({
+                amountInput: nextValue,
+                amountMinor: Math.max(0, parseMoneyInput(nextValue, entry.amountMinor))
+              });
+            }}
+            onBlur={() => onChange({ amountInput: formatEditableMinorInput(entry.amountMinor) })}
           />
         </label>
         <label>

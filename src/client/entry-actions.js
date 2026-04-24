@@ -17,6 +17,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
   const [showEntryComposer, setShowEntryComposer] = useState(false);
   const [entryDraft, setEntryDraft] = useState(() => buildEntryDraft(view, accounts, categories, people));
   const [entrySubmitError, setEntrySubmitError] = useState("");
+  const [isSavingEntryDraft, setIsSavingEntryDraft] = useState(false);
   const [linkingTransferEntryId, setLinkingTransferEntryId] = useState(null);
   const [settlingTransferEntryId, setSettlingTransferEntryId] = useState(null);
   const [transferSettlementDrafts, setTransferSettlementDrafts] = useState({});
@@ -33,6 +34,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
     setShowEntryComposer(Boolean(queuedComposerDraft));
     setEntryDraft(normalizeEntryShape({ ...buildEntryDraft(view, accounts, categories, people), ...(queuedComposerDraft ?? {}) }, people));
     setEntrySubmitError("");
+    setIsSavingEntryDraft(false);
     setLinkingTransferEntryId(null);
     setSettlingTransferEntryId(null);
     setTransferSettlementDrafts({});
@@ -91,38 +93,48 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
   }
 
   async function saveEntryDraft() {
-    setEntrySubmitError("");
-    const primarySplit = entryDraft.ownershipType === "shared" ? entryDraft.splits[0] : undefined;
-    const response = await fetch("/api/entries/create", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        date: entryDraft.date,
-        description: entryDraft.description,
-        accountId: entryDraft.accountId,
-        accountName: entryDraft.accountName,
-        categoryName: entryDraft.categoryName,
-        amountMinor: entryDraft.amountMinor,
-        entryType: entryDraft.entryType,
-        transferDirection: entryDraft.transferDirection,
-        ownershipType: entryDraft.ownershipType,
-        ownerName: entryDraft.ownerName,
-        note: entryDraft.note ?? "",
-        splitBasisPoints: primarySplit?.ratioBasisPoints
-      })
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      setEntrySubmitError(data.error ?? "Failed to create entry.");
+    if (isSavingEntryDraft) {
       return false;
     }
 
-    closeEntryComposer();
-    await onRefresh();
-    return true;
+    setEntrySubmitError("");
+    const primarySplit = entryDraft.ownershipType === "shared" ? entryDraft.splits[0] : undefined;
+    setIsSavingEntryDraft(true);
+    try {
+      const response = await fetch("/api/entries/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          date: entryDraft.date,
+          description: entryDraft.description,
+          accountId: entryDraft.accountId,
+          accountName: entryDraft.accountName,
+          categoryName: entryDraft.categoryName,
+          amountMinor: entryDraft.amountMinor,
+          entryType: entryDraft.entryType,
+          transferDirection: entryDraft.transferDirection,
+          ownershipType: entryDraft.ownershipType,
+          ownerName: entryDraft.ownerName,
+          note: entryDraft.note ?? "",
+          splitBasisPoints: primarySplit?.ratioBasisPoints
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setEntrySubmitError(data.error ?? "Failed to create entry.");
+        return false;
+      }
+
+      queuedComposerDraftRef.current = null;
+      closeEntryComposer();
+      await onRefresh();
+      return true;
+    } finally {
+      setIsSavingEntryDraft(false);
+    }
   }
 
   function beginEntryEdit(entry) {
@@ -377,6 +389,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
     showEntryComposer,
     entryDraft,
     entrySubmitError,
+    isSavingEntryDraft,
     linkingTransferEntryId,
     settlingTransferEntryId,
     transferSettlementDrafts,

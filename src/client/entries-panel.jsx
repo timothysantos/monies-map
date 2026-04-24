@@ -46,6 +46,7 @@ export function EntriesPanel({
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [entriesPage, setEntriesPage] = useState(() => buildInitialEntriesPage(view));
   const [isEntriesPageLoading, setIsEntriesPageLoading] = useState(false);
+  const [isQuickExpenseSaving, setIsQuickExpenseSaving] = useState(false);
   const [quickExpensePendingKey, setQuickExpensePendingKey] = useState("");
   const [quickExpenseWarning, setQuickExpenseWarning] = useState("");
   const [pendingLinkedEntryId, setPendingLinkedEntryId] = useState(() => searchParams.get("editing_entry") ?? "");
@@ -237,6 +238,7 @@ export function EntriesPanel({
     showEntryComposer,
     entryDraft,
     entrySubmitError,
+    isSavingEntryDraft,
     linkingTransferEntryId,
     settlingTransferEntryId,
     transferSettlementDrafts,
@@ -368,6 +370,7 @@ export function EntriesPanel({
       quickExpensePendingKey
       || pendingQuickExpenseDraftRef.current
       || showEntryComposer
+      || isQuickExpenseSaving
       || editingEntryId
       || searchParams.get("editing_entry")
     ) {
@@ -382,7 +385,7 @@ export function EntriesPanel({
     pendingQuickExpenseDraftRef.current = storedDraft.draft;
     setQuickExpenseWarning(storedDraft.warning ?? "");
     setQuickExpensePendingKey(storedDraft.key);
-  }, [editingEntryId, quickExpensePendingKey, searchParams, showEntryComposer]);
+  }, [editingEntryId, isQuickExpenseSaving, quickExpensePendingKey, searchParams, showEntryComposer]);
 
   useEffect(() => {
     if (
@@ -432,14 +435,27 @@ export function EntriesPanel({
   }, [editingEntryId, pendingLinkedEntryId, setSearchParams]);
 
   async function saveEntryDraftAndClearQuickExpense() {
-    const saved = await saveEntryDraft();
-    if (saved) {
-      setQuickExpenseWarning("");
-      clearStoredQuickExpenseDraft();
+    if (isSavingEntryDraft || isQuickExpenseSaving) {
+      return;
+    }
+
+    setIsQuickExpenseSaving(true);
+    try {
+      const saved = await saveEntryDraft();
+      if (saved) {
+        pendingQuickExpenseDraftRef.current = null;
+        setQuickExpensePendingKey("");
+        setQuickExpenseWarning("");
+        clearStoredQuickExpenseDraft();
+      }
+    } finally {
+      setIsQuickExpenseSaving(false);
     }
   }
 
   function closeEntryComposerAndClearQuickExpense() {
+    pendingQuickExpenseDraftRef.current = null;
+    setQuickExpensePendingKey("");
     setQuickExpenseWarning("");
     clearStoredQuickExpenseDraft();
     closeEntryComposer();
@@ -570,11 +586,23 @@ export function EntriesPanel({
             />
             {entrySubmitError ? <p className="entry-submit-error">{entrySubmitError}</p> : null}
             <div className="entry-inline-actions">
-              <button type="button" className="inline-action-button inline-save-action" aria-label="Create entry" onClick={() => void saveEntryDraftAndClearQuickExpense()}>
+              <button
+                type="button"
+                className="inline-action-button inline-save-action"
+                aria-label="Create entry"
+                disabled={isSavingEntryDraft || isQuickExpenseSaving}
+                onClick={() => void saveEntryDraftAndClearQuickExpense()}
+              >
                 <Check size={16} />
-                <span className="desktop-action-label">Save</span>
+                <span className="desktop-action-label">{isSavingEntryDraft || isQuickExpenseSaving ? "Saving..." : "Save"}</span>
               </button>
-              <button type="button" className="inline-action-button inline-cancel-action" aria-label="Cancel new entry" onClick={closeEntryComposerAndClearQuickExpense}>
+              <button
+                type="button"
+                className="inline-action-button inline-cancel-action"
+                aria-label="Cancel new entry"
+                disabled={isSavingEntryDraft || isQuickExpenseSaving}
+                onClick={closeEntryComposerAndClearQuickExpense}
+              >
                 <X size={16} />
                 <span className="desktop-action-label">Cancel</span>
               </button>
