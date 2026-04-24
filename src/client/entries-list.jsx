@@ -288,15 +288,19 @@ function EntryRow({
               category={category}
               onChange={onCategoryAppearanceChange}
             />
-            <strong>{category?.name ?? entry.categoryName}</strong>
           </div>
-          <div className="entry-row-description">
-            <strong>{entry.description}</strong>
-            <p>{entry.note || messages.common.emptyValue}</p>
-          </div>
-          <div className="entry-row-transfer">
-            <strong>{transferDetail}</strong>
-            <p>{accountDetail || messages.common.emptyValue}</p>
+          <div className="entry-row-details">
+            <div className="entry-row-category-label">
+              <strong>{category?.name ?? entry.categoryName}</strong>
+            </div>
+            <div className="entry-row-description">
+              <strong>{entry.description}</strong>
+              <p>{entry.note || messages.common.emptyValue}</p>
+            </div>
+            <div className="entry-row-transfer">
+              <strong>{transferDetail}</strong>
+              <p>{accountDetail || messages.common.emptyValue}</p>
+            </div>
           </div>
           <div className="entry-row-right">
             <div className="entry-row-amount">
