@@ -2641,6 +2641,16 @@ body:has(.split-inline-editor-card) .splits-fab {
   margin-top: 12px;
 }
 
+.split-dialog-actions-divider {
+  align-self: center;
+  width: 1px;
+  height: 24px;
+  background: rgba(122, 127, 125, 0.36);
+  color: transparent;
+  font-size: 0;
+  line-height: 0;
+}
+
 .dialog-primary {
   border: 0;
   border-radius: 10px;

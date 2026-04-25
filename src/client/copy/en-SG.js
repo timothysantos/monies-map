@@ -176,7 +176,7 @@ export const messages = {
     imported: "Imported transaction",
     manual: "Manual split",
     editSplit: "Edit split",
-    editLinkedEntry: "Edit linked entry",
+    viewLinkedEntry: "View entry",
     linkedEntry: "Linked entry",
     categoryBreakdown: "Category breakdown"
   },

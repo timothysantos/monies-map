@@ -163,7 +163,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
     if (!currentEntry) {
       setEditingEntryId(null);
       setEntrySnapshot(null);
-      return;
+      return false;
     }
 
     const primarySplit = currentEntry.ownershipType === "shared" ? currentEntry.splits[0] : undefined;
@@ -191,12 +191,13 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
     });
 
     if (!response.ok) {
-      return;
+      return false;
     }
 
     setEditingEntryId(null);
     setEntrySnapshot(null);
     await onRefresh();
+    return true;
   }
 
   async function saveEntryCategory(entryId, categoryName) {

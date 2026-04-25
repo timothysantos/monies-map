@@ -16,7 +16,7 @@ export function SplitArchiveDialog({
   onOpenBatch,
   onEditExpense,
   onEditSettlement,
-  onEditLinkedEntry
+  onViewLinkedEntry
 }) {
   return (
     <Dialog.Root open={Boolean(archiveDialog)} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -43,7 +43,7 @@ export function SplitArchiveDialog({
                   archived
                   onEditExpense={onEditExpense}
                   onEditSettlement={onEditSettlement}
-                  onEditLinkedEntry={onEditLinkedEntry}
+                  onViewLinkedEntry={onViewLinkedEntry}
                 />
               </div>
             </div>

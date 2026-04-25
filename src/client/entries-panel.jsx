@@ -454,18 +454,17 @@ export function EntriesPanel({
     beginEntryEdit(linkedEntry);
   }, [beginEntryEdit, editingEntryId, entries, isEntriesPageLoading, pendingLinkedEntryId]);
 
-  useEffect(() => {
-    if (!pendingLinkedEntryId || editingEntryId !== pendingLinkedEntryId) {
-      return;
-    }
-
+  function clearEditingEntrySearchParam() {
     setPendingLinkedEntryId("");
     setSearchParams((current) => {
+      if (!current.get("editing_entry")) {
+        return current;
+      }
       const next = new URLSearchParams(current);
       next.delete("editing_entry");
       return next;
     }, { replace: true });
-  }, [editingEntryId, pendingLinkedEntryId, setSearchParams]);
+  }
 
   async function saveEntryDraftAndClearQuickExpense() {
     if (isSavingEntryDraft || isQuickExpenseSaving) {
@@ -537,11 +536,19 @@ export function EntriesPanel({
   }, [activeEditingEntry, createdSplitAction]);
 
   function closeEntryEditSheet() {
+    clearEditingEntrySearchParam();
     setCreatedSplitAction(null);
     setDeletingCreatedSplitId("");
     setCreatedSplitActionError("");
     setIsConfirmingAddToSplits(false);
     cancelEntryEdit();
+  }
+
+  async function finishEntryEditAndClearLink() {
+    const saved = await finishEntryEdit();
+    if (saved) {
+      clearEditingEntrySearchParam();
+    }
   }
 
   function preserveEntryEditorInUrl(entryId) {
@@ -790,7 +797,7 @@ export function EntriesPanel({
                     </button>
                     <span className="entry-mobile-sheet-action-divider" aria-hidden="true">|</span>
                     <button type="button" className="subtle-cancel" onClick={closeEntryEditSheet}>Cancel</button>
-                    <button type="button" className="dialog-primary" onClick={() => void finishEntryEdit()}>Save</button>
+                    <button type="button" className="dialog-primary" onClick={() => void finishEntryEditAndClearLink()}>Save</button>
                   </div>
                 ) : isConfirmingAddToSplits ? (
                   <div className="entry-mobile-sheet-confirm-actions">
@@ -826,13 +833,13 @@ export function EntriesPanel({
                     </button>
                     <span className="entry-mobile-sheet-action-divider" aria-hidden="true">|</span>
                     <button type="button" className="subtle-cancel" onClick={closeEntryEditSheet}>Cancel</button>
-                    <button type="button" className="dialog-primary" onClick={() => void finishEntryEdit()}>Save</button>
+                    <button type="button" className="dialog-primary" onClick={() => void finishEntryEditAndClearLink()}>Save</button>
                   </div>
                 )
               )
             : null}
           onClose={closeEntryEditSheet}
-          onSave={() => void finishEntryEdit()}
+          onSave={() => void finishEntryEditAndClearLink()}
         >
           <EntryEditorFields
             entry={activeEditingEntry}
@@ -920,8 +927,8 @@ export function EntriesPanel({
         onAddEntryToSplits={handleAddEntryToSplits}
         onViewCreatedSplit={openCreatedSplit}
         onDeleteCreatedSplit={handleDeleteCreatedSplit}
-        onFinishEntryEdit={finishEntryEdit}
-        onCancelEntryEdit={cancelEntryEdit}
+        onFinishEntryEdit={finishEntryEditAndClearLink}
+        onCancelEntryEdit={closeEntryEditSheet}
         renderInlineEditor={!useMobileEntrySheet}
       />
     </article>

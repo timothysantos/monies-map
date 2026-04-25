@@ -40,7 +40,7 @@ export function SplitActivityGroups({
   onRequestDelete,
   onEditExpense,
   onEditSettlement,
-  onEditLinkedEntry
+  onViewLinkedEntry
 }) {
   const inlineEditorRef = useRef(null);
   const editingDraftKey = editingDraft ? `${editingDraft.kind}:${editingDraft.id}` : "";
@@ -149,10 +149,10 @@ export function SplitActivityGroups({
                       disabled={isSubmitting}
                       onClick={(event) => {
                         event.stopPropagation();
-                        onEditLinkedEntry?.(editingDraft);
+                        onViewLinkedEntry?.(editingDraft);
                       }}
                     >
-                      {messages.splits.editLinkedEntry}
+                      {messages.splits.viewLinkedEntry}
                     </button>
                   ) : null}
                   <button
@@ -208,10 +208,10 @@ export function SplitActivityGroups({
                         className="subtle-action"
                         onClick={(event) => {
                           event.stopPropagation();
-                          onEditLinkedEntry?.(item);
+                          onViewLinkedEntry?.(item);
                         }}
                       >
-                        {messages.splits.editLinkedEntry}
+                        {messages.splits.viewLinkedEntry}
                       </button>
                     ) : null}
                   </div>
