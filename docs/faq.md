@@ -70,6 +70,155 @@ data. At statement close, the PDF statement is the stronger proof. It can
 confirm rows, save a statement checkpoint, and explain whether the app balance
 matches the bank.
 
+## Can an Apple Shortcut create an entry directly?
+
+Yes, but it should use the dedicated shortcut endpoint, not the normal browser
+entry API and not the quick-entry URL flow.
+
+Use this method when the shortcut should create the row immediately and then
+open the saved entry. Use the quick-entry URL method when you want a prefilled
+draft that the user still reviews before saving.
+
+The dedicated endpoint is:
+
+- `POST /api/shortcuts/entries/create`
+
+It is separate from the existing quick-entry URL, which still only opens the
+Entries composer. The shortcut endpoint actually creates the ledger row and
+returns:
+
+- `entryId`
+- `openUrl`
+
+`openUrl` deep-links back into Entries with the created row already opened in
+the editor. It now uses a stable route of the form `/entries/by-id/:entryId`,
+and the app resolves the month and account context itself before redirecting to
+the normal Entries page.
+
+### Security model for the shortcut endpoint
+
+The shortcut endpoint is protected by:
+
+- a shared secret in the `X-Monies-Shortcut-Token` header
+- a one-time nonce in the `X-Monies-Shortcut-Nonce` header
+- a recent timestamp in the `X-Monies-Shortcut-Timestamp` header
+
+The server rejects missing or invalid tokens, expired requests, and replayed
+nonces.
+
+### How do I configure the server secret?
+
+Set a Cloudflare Worker secret named:
+
+- `SHORTCUT_INGEST_TOKEN`
+
+Example:
+
+```bash
+wrangler secret put SHORTCUT_INGEST_TOKEN
+```
+
+Use a long random value. Do not put that value in URLs. Keep it only in the
+Shortcut headers.
+
+Before using this in production, also apply the database migration so replay
+protection storage exists:
+
+```bash
+npm run db:migrate:remote
+```
+
+### What body should the shortcut send?
+
+Send JSON. These fields are the practical minimum:
+
+```json
+{
+  "date": "2026-04-25",
+  "description": "Bus fare",
+  "amount": "4.20",
+  "accountName": "UOB One",
+  "categoryName": "Transport",
+  "ownershipType": "direct",
+  "ownerName": "Tim",
+  "entryType": "expense",
+  "note": "Created from Shortcut"
+}
+```
+
+`amount` can be decimal text or number. `amountMinor` also works if the
+shortcut already uses cents.
+
+### How do I build the Apple Shortcut?
+
+Apple documents `Get Contents of URL` as the API action for Shortcuts and
+`Open URLs` for opening returned links. See Apple Support:
+
+- [Request your first API in Shortcuts on iPhone or iPad](https://support.apple.com/en-euro/guide/shortcuts/apd58d46713f/ios)
+- [Intro to URL schemes in Shortcuts on iPhone or iPad](https://support.apple.com/en-au/guide/shortcuts/apd621a1ad7a/ios)
+
+The practical action flow is:
+
+1. `Current Date`
+2. `Format Date` as ISO 8601
+3. `Generate UUID`
+4. `Dictionary` for the JSON body
+5. `Text` for the endpoint URL:
+   `https://monies-map.timsantos-accts.workers.dev/api/shortcuts/entries/create`
+6. `Get Contents of URL`
+   - Method: `POST`
+   - Request Body: `JSON`
+   - Headers:
+     - `X-Monies-Shortcut-Token: <your secret>`
+     - `X-Monies-Shortcut-Nonce: <UUID>`
+     - `X-Monies-Shortcut-Timestamp: <formatted date>`
+7. `Get Dictionary Value` for `openUrl`
+8. `Open URLs`
+
+If you want a safer review step, read the returned `entryId` and `openUrl`,
+show a quick result card, then open the URL only when the API says `ok: true`.
+
+### Step-by-step shortcut setup for the direct-create method
+
+1. Create a Wallet transaction automation in Shortcuts.
+2. Add `Current Date`.
+3. Add `Format Date` and output ISO 8601 text.
+4. Add `Generate UUID`.
+5. Add `Dictionary` and set keys such as:
+   - `date`
+   - `description`
+   - `amount`
+   - `accountName`
+   - `categoryName`
+   - `ownershipType`
+   - `ownerName`
+   - `entryType`
+   - `note`
+6. Add `URL` with:
+   `https://monies-map.timsantos-accts.workers.dev/api/shortcuts/entries/create`
+7. Add `Get Contents of URL`:
+   - method: `POST`
+   - request body: `JSON`
+   - body: the Dictionary from step 5
+   - headers:
+     - `X-Monies-Shortcut-Token`
+     - `X-Monies-Shortcut-Nonce`
+     - `X-Monies-Shortcut-Timestamp`
+8. Add `Get Dictionary from Input` on the API response.
+9. Add `Get Dictionary Value` with key `openUrl`.
+10. Add `Open URLs`.
+
+Expected response shape:
+
+```json
+{
+  "ok": true,
+  "entryId": "txn-...",
+  "created": true,
+  "openUrl": "https://monies-map.timsantos-accts.workers.dev/entries/by-id/txn-..."
+}
+```
+
 ## What is the planning model?
 
 The app separates a month into two layers:
@@ -302,6 +451,34 @@ Supported query parameters are:
 
 After the app reads the parameters, it removes them from the URL so refreshing
 the page does not reopen the draft.
+
+### Step-by-step shortcut setup for the quick-entry URL method
+
+1. Create a Wallet transaction automation in Shortcuts.
+2. Add `Receive transaction as input`.
+3. Add `Text`.
+4. Build a URL like:
+
+```text
+https://monies-map.timsantos-accts.workers.dev/entries?action=add-expense&amount=<Amount>&merchant=<Merchant>&date=<ISO date>&account=<Account name>&category=<Category>
+```
+
+5. Use the Wallet transaction variables inside that text:
+   - `Amount`
+   - `Merchant`
+   - transaction date, formatted as `YYYY-MM-DD`
+   - card or account name
+6. Add `Open URLs`.
+7. Save the automation with `Run Immediately` if you want it to trigger without
+   an extra approval step.
+
+What happens next:
+
+1. The app opens Entries with a prefilled draft.
+2. The draft is not saved yet.
+3. The user reviews the fields and taps `Save`.
+4. The query parameters are stripped from the URL after the draft is loaded so a
+   normal refresh does not reopen it.
 
 Quick-entry Apple Pay rows are provisional ledger entries. If a later bank
 activity export or PDF statement contains the same transaction, import preview

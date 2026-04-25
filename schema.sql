@@ -111,6 +111,12 @@ CREATE TABLE IF NOT EXISTS reconciliation_exceptions (
   FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE SET NULL
 );
 
+CREATE TABLE IF NOT EXISTS shortcut_request_nonces (
+  nonce TEXT PRIMARY KEY,
+  scope TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS categories (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL,

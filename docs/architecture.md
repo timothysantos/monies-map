@@ -214,6 +214,15 @@ That distinction matters because the system needs to answer questions like:
   those manual rows so duplicate CSV/XLS rows can be skipped, and supported PDF
   statements can certify the manual row in place instead of creating another
   transaction.
+- Apple Shortcut ingestion is a separate write path from the quick-entry URL.
+  The quick-entry URL still opens the composer only. A dedicated Worker route,
+  `POST /api/shortcuts/entries/create`, creates the entry server-side and
+  returns a deep link back into the created ledger row. The returned `openUrl`
+  uses `/entries/by-id/:entryId`, and the app resolves month/account context
+  through `GET /api/entries/locate` before redirecting into the normal Entries
+  route. The shortcut endpoint is protected with a shared secret header, a
+  timestamp freshness check, and a one-time nonce stored in
+  `shortcut_request_nonces` for replay protection.
 - the Entries UI exposes the certification state explicitly: manual rows show
   as `Manual provisional`, CSV/XLS working imports show as `Import
   provisional`, and supported PDF-certified rows show as `Statement certified`.

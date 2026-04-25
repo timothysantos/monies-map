@@ -20,6 +20,7 @@ import {
   createSplitGroupRecord,
   createSplitSettlementRecord,
   createEntryRecord,
+  locateEntryDeepLinkContext,
   createCategoryRecord,
   createAccountRecord,
   createReconciliationExceptionRecord,
@@ -65,9 +66,12 @@ import { json } from "./server/json";
 export interface Env {
   DB: D1Database;
   APP_ENVIRONMENT?: "demo" | "local" | "production";
+  SHORTCUT_INGEST_TOKEN?: string;
 }
 
 const API_PAGE_SLOW_MS = 750;
+const SHORTCUT_REQUEST_MAX_AGE_MS = 2 * 60 * 1000;
+const SHORTCUT_NONCE_RETENTION_HOURS = 24;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -563,6 +567,86 @@ export default {
         });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to create entry" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/entries/locate" && request.method === "GET") {
+      const entryId = url.searchParams.get("entryId");
+      if (!entryId) {
+        return json({ ok: false, error: "Missing entry id" }, 400);
+      }
+
+      const context = await locateEntryDeepLinkContext(env.DB, entryId);
+      if (!context) {
+        return json({ ok: false, error: "Entry not found" }, 404);
+      }
+
+      return json({
+        ok: true,
+        context
+      });
+    }
+
+    if (url.pathname === "/api/shortcuts/entries/create" && request.method === "POST") {
+      const shortcutAuth = await authenticateShortcutRequest(request, env, "entries:create");
+      if (!shortcutAuth.ok) {
+        return json({ ok: false, error: shortcutAuth.error }, shortcutAuth.status);
+      }
+
+      const body = await request.json<{
+        date?: string;
+        description?: string;
+        accountId?: string;
+        accountName?: string;
+        categoryName?: string;
+        amountMinor?: number;
+        amount?: number | string;
+        entryType?: "expense" | "income" | "transfer";
+        transferDirection?: "in" | "out";
+        ownershipType?: "direct" | "shared";
+        ownerName?: string;
+        note?: string;
+        splitBasisPoints?: number;
+        view?: string;
+      }>();
+
+      const amountMinor = normalizeShortcutAmountMinor(body.amountMinor, body.amount);
+      if (
+        !body.date
+        || !body.description
+        || (!body.accountId && !body.accountName)
+        || amountMinor == null
+      ) {
+        return json({ ok: false, error: "Missing shortcut entry fields" }, 400);
+      }
+
+      try {
+        const created = await createEntryRecord(env.DB, {
+          date: body.date,
+          description: body.description,
+          accountId: body.accountId,
+          accountName: body.accountName,
+          categoryName: body.categoryName ?? "Other",
+          amountMinor,
+          entryType: body.entryType ?? "expense",
+          transferDirection: body.transferDirection,
+          ownershipType: body.ownershipType ?? "direct",
+          ownerName: body.ownerName,
+          note: body.note,
+          splitBasisPoints: body.splitBasisPoints
+        });
+        const openUrl = buildShortcutEntryOpenUrl(request, {
+          entryId: created.entryId
+        });
+
+        return json({
+          ok: true,
+          entryId: created.entryId,
+          created: true,
+          openUrl
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to create shortcut entry" }, 400);
       }
     }
 
@@ -1316,6 +1400,139 @@ function getAuthenticatedEmail(request: Request) {
   return request.headers.get("CF-Access-Authenticated-User-Email")?.trim().toLowerCase()
     || request.headers.get("Cf-Access-Authenticated-User-Email")?.trim().toLowerCase()
     || undefined;
+}
+
+async function authenticateShortcutRequest(
+  request: Request,
+  env: Env,
+  scope: string
+): Promise<
+  | { ok: true }
+  | { ok: false; status: number; error: string }
+> {
+  const configuredToken = env.SHORTCUT_INGEST_TOKEN?.trim();
+  if (!configuredToken) {
+    return { ok: false, status: 503, error: "Shortcut ingest is not configured." };
+  }
+
+  const providedToken = request.headers.get("X-Monies-Shortcut-Token")?.trim()
+    || request.headers.get("Authorization")?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim()
+    || "";
+  if (!providedToken) {
+    return { ok: false, status: 401, error: "Missing shortcut token." };
+  }
+
+  const tokenMatches = await constantTimeEqual(configuredToken, providedToken);
+  if (!tokenMatches) {
+    return { ok: false, status: 401, error: "Invalid shortcut token." };
+  }
+
+  const nonce = request.headers.get("X-Monies-Shortcut-Nonce")?.trim();
+  if (!nonce) {
+    return { ok: false, status: 400, error: "Missing shortcut nonce." };
+  }
+
+  const timestampHeader = request.headers.get("X-Monies-Shortcut-Timestamp")?.trim();
+  const timestamp = parseShortcutTimestamp(timestampHeader);
+  if (timestamp == null) {
+    return { ok: false, status: 400, error: "Missing or invalid shortcut timestamp." };
+  }
+
+  if (Math.abs(Date.now() - timestamp) > SHORTCUT_REQUEST_MAX_AGE_MS) {
+    return { ok: false, status: 401, error: "Shortcut request expired." };
+  }
+
+  await cleanupExpiredShortcutNonces(env.DB);
+  const nonceAccepted = await consumeShortcutNonce(env.DB, nonce, scope);
+  if (!nonceAccepted) {
+    return { ok: false, status: 409, error: "Shortcut request was already used." };
+  }
+
+  return { ok: true };
+}
+
+function parseShortcutTimestamp(value?: string | null) {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (/^\d{10,13}$/.test(trimmed)) {
+    const numeric = Number(trimmed);
+    return trimmed.length === 13 ? numeric : numeric * 1000;
+  }
+
+  const parsed = Date.parse(trimmed);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+async function consumeShortcutNonce(db: D1Database, nonce: string, scope: string) {
+  try {
+    await db
+      .prepare(`
+        INSERT INTO shortcut_request_nonces (nonce, scope)
+        VALUES (?, ?)
+      `)
+      .bind(nonce, scope)
+      .run();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function cleanupExpiredShortcutNonces(db: D1Database) {
+  await db
+    .prepare(`
+      DELETE FROM shortcut_request_nonces
+      WHERE created_at < datetime('now', ?)
+    `)
+    .bind(`-${SHORTCUT_NONCE_RETENTION_HOURS} hours`)
+    .run();
+}
+
+async function constantTimeEqual(left: string, right: string) {
+  const encoder = new TextEncoder();
+  const [leftDigest, rightDigest] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(left)),
+    crypto.subtle.digest("SHA-256", encoder.encode(right))
+  ]);
+  const leftBytes = new Uint8Array(leftDigest);
+  const rightBytes = new Uint8Array(rightDigest);
+  let mismatch = leftBytes.length ^ rightBytes.length;
+  for (let index = 0; index < Math.max(leftBytes.length, rightBytes.length); index += 1) {
+    mismatch |= (leftBytes[index] ?? 0) ^ (rightBytes[index] ?? 0);
+  }
+  return mismatch === 0;
+}
+
+function normalizeShortcutAmountMinor(amountMinor?: number, amount?: number | string) {
+  if (typeof amountMinor === "number" && Number.isFinite(amountMinor)) {
+    return Math.round(amountMinor);
+  }
+
+  if (typeof amount === "number" && Number.isFinite(amount)) {
+    return Math.round(amount * 100);
+  }
+
+  if (typeof amount === "string") {
+    const normalized = Number(amount.trim().replace(/,/g, ""));
+    if (Number.isFinite(normalized)) {
+      return Math.round(normalized * 100);
+    }
+  }
+
+  return null;
+}
+
+function buildShortcutEntryOpenUrl(
+  request: Request,
+  input: {
+    entryId: string;
+  }
+) {
+  const url = new URL(`/entries/by-id/${encodeURIComponent(input.entryId)}`, request.url);
+  return url.toString();
 }
 
 async function apiPageResponse<T>(
