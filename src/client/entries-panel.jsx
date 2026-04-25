@@ -16,7 +16,7 @@ import {
   getEntryWalletFilterOptions
 } from "./entry-selectors";
 import { getTransferMatchCandidates, getVisibleSplitPercent } from "./entry-helpers";
-import { parseDraftMoneyInput } from "./formatters";
+import { formatDateOnly, parseDraftMoneyInput } from "./formatters";
 import { buildRequestErrorMessage } from "./request-errors";
 
 const ENTRIES_PAGE_PREFETCH_DELAY_MS = 1200;
@@ -506,6 +506,10 @@ export function EntriesPanel({
     () => editingEntryId ? entries.find((entry) => entry.id === editingEntryId) ?? null : null,
     [editingEntryId, entries]
   );
+  const activeEditingEntryBankState = useMemo(
+    () => activeEditingEntry ? getEntryBankState(activeEditingEntry) : null,
+    [activeEditingEntry]
+  );
 
   function updateEntryFilter(key, value) {
     setSearchParams((current) => {
@@ -726,6 +730,19 @@ export function EntriesPanel({
               />
             )}
           />
+          {activeEditingEntryBankState ? (
+            <div className="entry-inline-status-legend" aria-label="Entry status legend">
+              <span className="entry-inline-status-item">
+                <span className="entry-inline-status-label">Status:</span>
+                <span
+                  className={`entry-chip entry-chip-bank-state ${activeEditingEntryBankState.className} entry-status-dot`}
+                  aria-hidden="true"
+                />
+                <span className="entry-inline-status-separator">-</span>
+                <span>{activeEditingEntryBankState.label}</span>
+              </span>
+            </div>
+          ) : null}
         </EntryMobileSheet>,
         document.body
       ) : null}
@@ -1000,6 +1017,34 @@ function clearStoredQuickExpenseDraft() {
   } catch {
     // Ignore storage failures; this should not block entry editing.
   }
+}
+
+function getEntryBankState(entry) {
+  if (entry.bankCertificationStatus === "statement_certified") {
+    return {
+      label: entry.bankCertificationLabel ?? "Statement certified",
+      title: entry.statementCertifiedAt
+        ? `Bank facts certified ${formatDateOnly(entry.statementCertifiedAt.slice(0, 10))}`
+        : "Bank facts are locked by a saved statement.",
+      className: "is-statement-certified"
+    };
+  }
+
+  if (entry.bankCertificationStatus === "import_provisional") {
+    return {
+      label: entry.bankCertificationLabel ?? "Import provisional",
+      title: entry.importedSourceLabel
+        ? `Imported from ${entry.importedSourceLabel}; final statement can still certify it.`
+        : "Imported working row; final statement can still certify it.",
+      className: "is-import-provisional"
+    };
+  }
+
+  return {
+    label: entry.bankCertificationLabel ?? "Manual provisional",
+    title: "Manual row; a later bank import or statement should match or certify it.",
+    className: "is-manual-provisional"
+  };
 }
 
 function buildInitialEntriesPage(view) {
