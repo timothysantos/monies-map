@@ -751,6 +751,10 @@ export function App() {
   );
   const pageView = activeView ?? view;
   const householdView = bootstrap?.views.find((item) => item.id === "household") ?? pageView;
+  const defaultSplitsViewId = bootstrap?.viewerPersonId
+    ?? bootstrap?.household?.people?.[0]?.id
+    ?? bootstrap?.selectedViewId
+    ?? "household";
   const selectedEntriesScope = searchParams.get("entries_scope") ?? pageView?.monthPage.selectedScope ?? "direct_plus_shared";
   const householdMonthEntries = useMemo(
     () => selectedTabId === "month" && Array.isArray(routePageData?.householdMonthEntries)
@@ -977,16 +981,19 @@ export function App() {
       return;
     }
 
-    if (selectedTabId === "splits" && !explicitViewId && bootstrap.viewerPersonId) {
-      setSearchParams((current) => {
-        if (current.has("view")) {
-          return current;
-        }
-        const next = new URLSearchParams(current);
-        next.set("view", bootstrap.viewerPersonId);
-        return next;
-      }, { replace: true });
-      return;
+    if (selectedTabId === "splits") {
+      if ((!explicitViewId || selectedViewId === "household") && defaultSplitsViewId && defaultSplitsViewId !== selectedViewId) {
+        setSearchParams((current) => {
+          const currentViewId = current.get("view");
+          if (currentViewId && currentViewId !== "household") {
+            return current;
+          }
+          const next = new URLSearchParams(current);
+          next.set("view", defaultSplitsViewId);
+          return next;
+        }, { replace: true });
+        return;
+      }
     }
 
     const matchesKnownView = bootstrap.views.some((item) => item.id === selectedViewId);
@@ -999,7 +1006,7 @@ export function App() {
       next.set("view", bootstrap.selectedViewId);
       return next;
     }, { replace: true });
-  }, [bootstrap, explicitViewId, selectedTabId, selectedViewId, setSearchParams]);
+  }, [bootstrap, defaultSplitsViewId, explicitViewId, selectedTabId, selectedViewId, setSearchParams]);
 
   useEffect(() => {
     if (!bootstrap?.viewerRegistration) {
@@ -1413,13 +1420,21 @@ export function App() {
       <section className="control-bar">
         <div className="context-block">
           <div className="pill-row">
-            <button
-              className={`pill ${selectedViewId === "household" ? "is-active" : ""}`}
-              type="button"
-              onClick={() => handleViewChange("household")}
-            >
-              {messages.views.household}
-            </button>
+            {selectedTabId !== "splits"
+              ? (
+                  <button
+                    className={`pill ${selectedViewId === "household" ? "is-active" : ""}`}
+                    type="button"
+                    onClick={() => handleViewChange("household")}
+                  >
+                    {messages.views.household}
+                  </button>
+                )
+              : (
+                  <span className="pill pill-disabled" aria-disabled="true">
+                    {messages.views.household}
+                  </span>
+                )}
             {bootstrap.household.people.map((person) => (
               <button
                 key={person.id}

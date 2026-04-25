@@ -21,6 +21,7 @@ import { buildSplitsPanelModel } from "./splits-selectors";
 export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const [useMobileSplitSheet, setUseMobileSplitSheet] = useState(false);
   const [archiveDialog, setArchiveDialog] = useState(null);
   const [groupDialog, setGroupDialog] = useState(null);
   const [expenseDialog, setExpenseDialog] = useState(null);
@@ -72,6 +73,18 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   }, [defaultGroupId, selectedGroupId, selectedGroupParam, selectedMode]);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 760px)");
+    const update = () => setUseMobileSplitSheet(mediaQuery.matches);
+    update();
+    mediaQuery.addEventListener?.("change", update);
+    return () => mediaQuery.removeEventListener?.("change", update);
+  }, []);
+
+  useEffect(() => {
     setDismissedMatchIds([]);
     setShowBreakdown(false);
     setFormError("");
@@ -81,6 +94,15 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setLinkedEntryDialog(null);
     setArchiveDialog(null);
   }, [view.id, view.splitsPage.month]);
+
+  useEffect(() => {
+    if (!useMobileSplitSheet) {
+      return;
+    }
+
+    setInlineSplitDraft(null);
+    setInlineSplitError("");
+  }, [useMobileSplitSheet]);
 
   function updateSplitView(patch) {
     setSearchParams((current) => {
@@ -370,8 +392,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onConfirmMatch={confirmMatch}
         onOpenArchive={openArchiveList}
         readOnly={isHouseholdView}
-        onEditExpense={isHouseholdView ? undefined : openInlineExpenseEditor}
-        onEditSettlement={isHouseholdView ? undefined : openInlineSettlementEditor}
+        onEditExpense={isHouseholdView ? undefined : (useMobileSplitSheet ? openExpenseEditor : openInlineExpenseEditor)}
+        onEditSettlement={isHouseholdView ? undefined : (useMobileSplitSheet ? openSettlementEditor : openInlineSettlementEditor)}
         onChangeInlineSplitDraft={setInlineSplitDraft}
         onCancelInlineSplit={() => {
           setInlineSplitDraft(null);

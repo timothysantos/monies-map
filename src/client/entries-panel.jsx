@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
 import { useEntryActions } from "./entry-actions";
-import { EntryEditorFields } from "./entry-editor";
+import { EntryEditorFields, EntryTransferTools } from "./entry-editor";
 import { EntriesDateGroups } from "./entries-list";
 import { EntriesBreakdownPanel, EntriesFilterStack, EntriesTotalsStrip } from "./entries-overview";
 import {
@@ -14,7 +15,7 @@ import {
   getEntryFormOptions,
   getEntryWalletFilterOptions
 } from "./entry-selectors";
-import { getVisibleSplitPercent } from "./entry-helpers";
+import { getTransferMatchCandidates, getVisibleSplitPercent } from "./entry-helpers";
 import { parseDraftMoneyInput } from "./formatters";
 import { buildRequestErrorMessage } from "./request-errors";
 
@@ -44,6 +45,7 @@ export function EntriesPanel({
   const [searchParams, setSearchParams] = useSearchParams();
   const [showExpenseBreakdown, setShowExpenseBreakdown] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [useMobileEntrySheet, setUseMobileEntrySheet] = useState(false);
   const [entriesPage, setEntriesPage] = useState(() => buildInitialEntriesPage(view));
   const [isEntriesPageLoading, setIsEntriesPageLoading] = useState(false);
   const [isQuickExpenseSaving, setIsQuickExpenseSaving] = useState(false);
@@ -270,6 +272,7 @@ export function EntriesPanel({
     onRefresh: () => refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true })
   });
   const openEntryComposerRef = useRef(openEntryComposer);
+  const entryComposerEditorRef = useRef(null);
   const selectedScope = searchParams.get("entries_scope") ?? entryView.monthPage.selectedScope;
   const defaultEntryPerson = entryView.id !== "household" ? entryView.label : "";
   const entryFilters = {
@@ -282,6 +285,30 @@ export function EntriesPanel({
   useEffect(() => {
     openEntryComposerRef.current = openEntryComposer;
   }, [openEntryComposer]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 760px)");
+    const update = () => setUseMobileEntrySheet(mediaQuery.matches);
+    update();
+    mediaQuery.addEventListener?.("change", update);
+    return () => mediaQuery.removeEventListener?.("change", update);
+  }, []);
+
+  useEffect(() => {
+    if (!showEntryComposer) {
+      return undefined;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      entryComposerEditorRef.current?.scrollTo({ top: 0, behavior: "auto" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [showEntryComposer]);
 
   useEffect(() => {
     setShowExpenseBreakdown(false);
@@ -474,6 +501,11 @@ export function EntriesPanel({
     () => getEntryDerivedData({ entries, entryFilters, selectedScope, viewId: entryView.id }),
     [entries, entryFilters, selectedScope, entryView.id]
   );
+  const canPortalEntryComposer = typeof document !== "undefined";
+  const activeEditingEntry = useMemo(
+    () => editingEntryId ? entries.find((entry) => entry.id === editingEntryId) ?? null : null,
+    [editingEntryId, entries]
+  );
 
   function updateEntryFilter(key, value) {
     setSearchParams((current) => {
@@ -568,7 +600,7 @@ export function EntriesPanel({
         </div>
       ) : null}
 
-      {showEntryComposer ? (
+      {showEntryComposer && !useMobileEntrySheet ? (
         <section className="entry-row is-editing entry-composer">
           <div className="entry-inline-editor">
             {quickExpenseWarning ? <p className="entry-submit-error">{quickExpenseWarning}</p> : null}
@@ -611,6 +643,93 @@ export function EntriesPanel({
         </section>
       ) : null}
 
+      {showEntryComposer && canPortalEntryComposer && useMobileEntrySheet ? createPortal(
+        <EntryMobileSheet
+          title="Add entry"
+          description="Create a ledger row without leaving the Entries page."
+          errorMessage={entrySubmitError || quickExpenseWarning}
+          saveLabel={isSavingEntryDraft || isQuickExpenseSaving ? "Saving..." : "Save"}
+          isSaveDisabled={isSavingEntryDraft || isQuickExpenseSaving}
+          onClose={closeEntryComposerAndClearQuickExpense}
+          onSave={() => void saveEntryDraftAndClearQuickExpense()}
+        >
+          <EntryEditorFields
+            entry={entryDraft}
+            categories={categories}
+            categoryOptions={categoryOptions}
+            accountOptions={accountOptions}
+            ownerOptions={ownerOptions}
+            splitPercentValue={entryDraft.ownershipType === "shared" ? getVisibleSplitPercent(entryDraft, entryView.id) ?? 50 : null}
+            onChange={updateEntryDraft}
+            onCategoryAppearanceChange={onCategoryAppearanceChange}
+            onOwnerChange={updateEntryDraftOwner}
+            onSplitPercentChange={updateEntryDraftSplit}
+          />
+        </EntryMobileSheet>,
+        document.body
+      ) : null}
+
+      {activeEditingEntry && canPortalEntryComposer && useMobileEntrySheet ? createPortal(
+        <EntryMobileSheet
+          title="Edit entry"
+          description="Update the row in a bottom sheet instead of editing inline."
+          saveLabel="Save"
+          secondaryAction={activeEditingEntry.entryType === "expense" ? (
+            <button
+              type="button"
+              className="subtle-action"
+              disabled={addingToSplitsEntryId === activeEditingEntry.id}
+              onClick={() => void addEntryToSplits(activeEditingEntry)}
+            >
+              {addingToSplitsEntryId === activeEditingEntry.id ? "Adding..." : messages.entries.addToSplits}
+            </button>
+          ) : null}
+          onClose={cancelEntryEdit}
+          onSave={() => void finishEntryEdit()}
+        >
+          <EntryEditorFields
+            entry={activeEditingEntry}
+            categories={categories}
+            categoryOptions={categoryOptions}
+            accountOptions={accountOptions}
+            ownerOptions={ownerOptions}
+            splitPercentValue={activeEditingEntry.ownershipType === "shared" ? getVisibleSplitPercent(activeEditingEntry, entryView.id) ?? null : null}
+            lockTransferCategory
+            onChange={(patch) => updateEntry(activeEditingEntry.id, patch)}
+            onQuickSaveCategory={(categoryName) => saveEntryCategory(activeEditingEntry.id, categoryName)}
+            onCategoryAppearanceChange={onCategoryAppearanceChange}
+            onOwnerChange={(nextValue) => {
+              if (nextValue === "Shared") {
+                updateEntry(activeEditingEntry.id, { ownershipType: "shared", ownerName: undefined });
+                return;
+              }
+
+              updateEntry(activeEditingEntry.id, { ownershipType: "direct", ownerName: nextValue });
+            }}
+            onSplitPercentChange={(percentage) => updateEntrySplit(activeEditingEntry.id, percentage)}
+            transferTools={(
+              <EntryTransferTools
+                entry={activeEditingEntry}
+                categoryOptions={categoryOptions}
+                transferCandidates={activeEditingEntry.entryType === "transfer"
+                  ? getTransferMatchCandidates(activeEditingEntry, entries)
+                  : []}
+                transferDialogEntryId={transferDialogEntryId}
+                transferSettlementDrafts={transferSettlementDrafts}
+                linkingTransferEntryId={linkingTransferEntryId}
+                settlingTransferEntryId={settlingTransferEntryId}
+                onEnsureSettlementDraft={ensureTransferSettlementDraft}
+                onTransferDialogEntryChange={setTransferDialogEntryId}
+                onSettlementDraftChange={updateTransferSettlementDraft}
+                onLinkCandidate={linkTransferCandidate}
+                onSettleTransfer={settleTransfer}
+              />
+            )}
+          />
+        </EntryMobileSheet>,
+        document.body
+      ) : null}
+
       <EntriesDateGroups
         groupedEntries={groupedEntries}
         allEntries={entries}
@@ -639,8 +758,57 @@ export function EntriesPanel({
         onAddEntryToSplits={addEntryToSplits}
         onFinishEntryEdit={finishEntryEdit}
         onCancelEntryEdit={cancelEntryEdit}
+        renderInlineEditor={!useMobileEntrySheet}
       />
     </article>
+  );
+}
+
+function EntryMobileSheet({
+  title,
+  description,
+  errorMessage = "",
+  saveLabel,
+  isSaveDisabled = false,
+  secondaryAction = null,
+  onClose,
+  onSave,
+  children
+}) {
+  return (
+    <>
+      <button
+        type="button"
+        className="entry-composer-overlay"
+        aria-label={`Close ${title.toLowerCase()}`}
+        onClick={onClose}
+      />
+      <section className="entry-composer entry-mobile-sheet" role="dialog" aria-modal="true" aria-label={title}>
+        <div className="entry-mobile-sheet-scroll">
+          <div className="entry-composer-head">
+            <div className="entry-composer-copy">
+              <strong>{title}</strong>
+              <p>{description}</p>
+            </div>
+            <button
+              type="button"
+              className="icon-action subtle-cancel entry-composer-close"
+              aria-label={`Close ${title.toLowerCase()}`}
+              onClick={onClose}
+            >
+              <X size={16} />
+            </button>
+          </div>
+          {errorMessage ? <p className="entry-submit-error">{errorMessage}</p> : null}
+          {children}
+          <div className="entry-inline-actions entry-mobile-sheet-actions">
+            {secondaryAction}
+            <button type="button" className="subtle-cancel" onClick={onClose}>Cancel</button>
+            <button type="button" className="dialog-primary" disabled={isSaveDisabled} onClick={onSave}>{saveLabel}</button>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }
 
