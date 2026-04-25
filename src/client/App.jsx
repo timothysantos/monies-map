@@ -13,6 +13,8 @@ import {
   Route,
   Routes,
   useLocation,
+  useNavigate,
+  useParams,
   useSearchParams
 } from "react-router-dom";
 import { slugify } from "./category-utils";
@@ -244,7 +246,7 @@ export function App() {
   const appEnvironment = bootstrap?.appEnvironment ?? getClientAppEnvironment();
   const explicitViewId = searchParams.get("view");
   const selectedViewId = explicitViewId ?? "household";
-  const selectedTabId = routeTabs.find((tab) => tab.path === location.pathname)?.id ?? "summary";
+  const selectedTabId = getSelectedTabId(location.pathname);
   const selectedMonth = searchParams.get("month") ?? DEFAULT_MONTH_KEY;
   const selectedScope = searchParams.get("scope") ?? "direct_plus_shared";
   const selectedSummaryStart = searchParams.get("summary_start") ?? undefined;
@@ -1701,6 +1703,7 @@ export function App() {
         <Suspense fallback={<RouteChunkLoadingFallback />}>
           <Routes>
             <Route path="/" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
+            <Route path="/entries/by-id/:entryId" element={<EntryDeepLinkRoute />} />
             <Route
               path="/summary"
               element={(
@@ -1967,6 +1970,14 @@ function buildEntriesPageParams({ viewId, month }) {
   });
 }
 
+function getSelectedTabId(pathname) {
+  if (pathname.startsWith("/entries")) {
+    return "entries";
+  }
+
+  return routeTabs.find((tab) => tab.path === pathname)?.id ?? "summary";
+}
+
 function buildRoutePageRequest({ tabId, viewId, month, scope, summaryStart, summaryEnd }) {
   if (tabId === "summary") {
     const params = new URLSearchParams({
@@ -2013,6 +2024,72 @@ function buildRoutePageRequest({ tabId, viewId, month, scope, summaryStart, summ
   }
 
   return null;
+}
+
+function EntryDeepLinkRoute() {
+  const { entryId = "" } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [status, setStatus] = useState({ loading: true, error: "" });
+
+  useEffect(() => {
+    if (!entryId) {
+      setStatus({ loading: false, error: "Missing entry id." });
+      return;
+    }
+
+    const controller = new AbortController();
+    setStatus({ loading: true, error: "" });
+
+    void fetch(`/api/entries/locate?entryId=${encodeURIComponent(entryId)}`, {
+      cache: "no-store",
+      signal: controller.signal
+    })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || !data?.context) {
+          throw new Error(data?.error ?? "Entry not found.");
+        }
+
+        const next = new URLSearchParams(location.search);
+        next.set("view", data.context.viewId ?? "household");
+        next.set("month", data.context.month);
+        next.set("editing_entry", data.context.entryId);
+        if (data.context.accountId) {
+          next.set("entry_wallet", data.context.accountId);
+        } else if (data.context.accountName) {
+          next.set("entry_wallet", data.context.accountName);
+        }
+        navigate({
+          pathname: "/entries",
+          search: `?${next.toString()}`
+        }, { replace: true });
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+        setStatus({
+          loading: false,
+          error: error instanceof Error ? error.message : "Entry not found."
+        });
+      });
+
+    return () => controller.abort();
+  }, [entryId, location.search, navigate]);
+
+  if (status.loading) {
+    return <RouteChunkLoadingFallback />;
+  }
+
+  return (
+    <section className="panel panel-accent">
+      <div className="import-warning import-warning-attention">
+        <strong>Entry link unavailable</strong>
+        <p className="lede compact">{status.error || "The requested entry could not be opened."}</p>
+      </div>
+    </section>
+  );
 }
 
 function mergeRoutePageIntoView(view, pageData, tabId) {

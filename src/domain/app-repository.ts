@@ -97,6 +97,7 @@ export {
   updatePersonRecord
 } from "./app-repository-settings";
 import type {
+  EntryDeepLinkContextDto,
   ImportPreviewRowDto,
   ImportPreviewStatementReconciliationDto,
   SplitActivityDto,
@@ -429,6 +430,16 @@ export async function ensureDemoSchema(db: D1Database) {
         FOREIGN KEY (household_id) REFERENCES households(id),
         FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL,
         FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE SET NULL
+      )
+    `)
+    .run();
+
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS shortcut_request_nonces (
+        nonce TEXT PRIMARY KEY,
+        scope TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `)
     .run();
@@ -1979,6 +1990,44 @@ export async function createEntryRecord(
   });
 
   return { entryId, created: true };
+}
+
+export async function locateEntryDeepLinkContext(
+  db: D1Database,
+  entryId: string
+): Promise<EntryDeepLinkContextDto | null> {
+  const row = await db
+    .prepare(`
+      SELECT
+        transactions.id,
+        transactions.transaction_date,
+        transactions.account_id,
+        accounts.account_name
+      FROM transactions
+      INNER JOIN accounts ON accounts.id = transactions.account_id
+      WHERE transactions.household_id = ?
+        AND transactions.id = ?
+      LIMIT 1
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, entryId)
+    .first<{
+      id: string;
+      transaction_date: string;
+      account_id: string;
+      account_name: string;
+    }>();
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    entryId: row.id,
+    month: row.transaction_date.slice(0, 7),
+    accountId: row.account_id,
+    accountName: row.account_name,
+    viewId: "household"
+  };
 }
 
 async function loadAccountName(db: D1Database, accountId: string | null) {
