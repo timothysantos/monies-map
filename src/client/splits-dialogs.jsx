@@ -159,7 +159,7 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
   );
 }
 
-export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, categories = [], formError, isSubmitting, onChange, onClose, onSave }) {
+export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, categories = [], formError, isSubmitting, onChange, onClose, onSave, onViewLinkedEntry }) {
   return (
     <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
@@ -172,6 +172,19 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
           <SplitExpenseFields dialog={dialog} groupOptions={groupOptions} people={people} categoryOptions={categoryOptions} categories={categories} onChange={onChange} autoFocusAmount />
           {formError ? <p className="form-error">{formError}</p> : null}
           <div className="dialog-actions">
+            {dialog?.linkedTransactionId ? (
+              <>
+                <button
+                  type="button"
+                  className="subtle-action"
+                  disabled={isSubmitting}
+                  onClick={() => onViewLinkedEntry?.(dialog)}
+                >
+                  {messages.splits.viewLinkedEntry}
+                </button>
+                <span className="split-dialog-actions-divider" aria-hidden="true">|</span>
+              </>
+            ) : null}
             <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
             <button type="button" className="dialog-primary" disabled={isSubmitting} onClick={() => void onSave()}>
               {isSubmitting ? messages.common.saving : messages.splits.saveExpense}
@@ -273,7 +286,7 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
   );
 }
 
-export function SplitSettlementDialog({ dialog, groupOptions, people, formError, isSubmitting, onChange, onClose, onSave }) {
+export function SplitSettlementDialog({ dialog, groupOptions, people, formError, isSubmitting, onChange, onClose, onSave, onViewLinkedEntry }) {
   return (
     <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
@@ -286,6 +299,19 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
           <SplitSettlementFields dialog={dialog} groupOptions={groupOptions} people={people} onChange={onChange} autoFocusAmount />
           {formError ? <p className="form-error">{formError}</p> : null}
           <div className="dialog-actions">
+            {dialog?.linkedTransactionId ? (
+              <>
+                <button
+                  type="button"
+                  className="subtle-action"
+                  disabled={isSubmitting}
+                  onClick={() => onViewLinkedEntry?.(dialog)}
+                >
+                  {messages.splits.viewLinkedEntry}
+                </button>
+                <span className="split-dialog-actions-divider" aria-hidden="true">|</span>
+              </>
+            ) : null}
             <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
             <button type="button" className="dialog-primary" disabled={isSubmitting} onClick={() => void onSave()}>
               {isSubmitting ? messages.common.saving : messages.splits.saveSettlement}

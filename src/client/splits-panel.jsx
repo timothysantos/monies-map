@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
 import {
@@ -8,17 +8,16 @@ import {
   deleteSplitSettlement,
   linkSplitMatch,
   saveSplitExpense,
-  saveSplitSettlement,
-  updateSplitLinkedEntry
+  saveSplitSettlement
 } from "./splits-api";
 import { SplitArchiveDialog } from "./splits-archive-dialog";
 import { SplitDeleteDialog, SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./splits-dialogs";
-import { buildExpenseDraft, buildLinkedEntryDraft, buildNewExpenseDraft, buildNewSettlementDraft, buildSettlementDraft } from "./splits-drafts";
-import { SplitLinkedEntryDialog } from "./splits-linked-entry-dialog";
+import { buildExpenseDraft, buildNewExpenseDraft, buildNewSettlementDraft, buildSettlementDraft } from "./splits-drafts";
 import { SplitsMainSection } from "./splits-main-section";
 import { buildSplitsPanelModel } from "./splits-selectors";
 
 export function SplitsPanel({ view, categories, people, onRefresh }) {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [useMobileSplitSheet, setUseMobileSplitSheet] = useState(false);
@@ -26,7 +25,6 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [groupDialog, setGroupDialog] = useState(null);
   const [expenseDialog, setExpenseDialog] = useState(null);
   const [settlementDialog, setSettlementDialog] = useState(null);
-  const [linkedEntryDialog, setLinkedEntryDialog] = useState(null);
   const [inlineSplitDraft, setInlineSplitDraft] = useState(null);
   const [inlineSplitError, setInlineSplitError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -91,7 +89,6 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setInlineSplitDraft(null);
     setInlineSplitError("");
     setDeleteTarget(null);
-    setLinkedEntryDialog(null);
     setArchiveDialog(null);
   }, [view.id, view.splitsPage.month]);
 
@@ -285,33 +282,20 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
   }
 
-  function openLinkedEntryEditor(item) {
-    const entry = item.linkedTransactionId ? splitModel.linkedEntriesById.get(item.linkedTransactionId) : null;
-    if (!entry) {
+  function openLinkedEntry(item) {
+    if (!item.linkedTransactionId) {
       return;
     }
 
-    setFormError("");
-    setLinkedEntryDialog(buildLinkedEntryDraft(entry));
-  }
-
-  async function saveLinkedEntry() {
-    if (!linkedEntryDialog?.entryId || !linkedEntryDialog.date || !linkedEntryDialog.description || !linkedEntryDialog.accountName || !linkedEntryDialog.categoryName) {
-      setFormError("Linked entry is missing required fields.");
-      return;
-    }
-
-    setFormError("");
-    setIsSubmitting(true);
-    try {
-      await updateSplitLinkedEntry(linkedEntryDialog);
-      await onRefresh();
-      setLinkedEntryDialog(null);
-    } catch (error) {
-      setFormError(error.message);
-    } finally {
-      setIsSubmitting(false);
-    }
+    const params = new URLSearchParams({
+      view: view.id,
+      month: view.splitsPage.month,
+      editing_entry: item.linkedTransactionId
+    });
+    navigate({
+      pathname: "/entries",
+      search: `?${params.toString()}`
+    });
   }
 
   function openNewExpenseDialog() {
@@ -439,7 +423,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         }}
         onSaveInlineSplit={saveInlineSplit}
         onRequestDeleteSplit={requestDeleteSplit}
-        onEditLinkedEntry={openLinkedEntryEditor}
+        onViewLinkedEntry={openLinkedEntry}
       />
 
       <SplitArchiveDialog
@@ -453,7 +437,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onOpenBatch={openArchivedBatch}
         onEditExpense={openExpenseEditor}
         onEditSettlement={openSettlementEditor}
-        onEditLinkedEntry={openLinkedEntryEditor}
+        onViewLinkedEntry={openLinkedEntry}
       />
 
       <SplitDeleteDialog
@@ -484,6 +468,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onChange={setExpenseDialog}
         onClose={() => setExpenseDialog(null)}
         onSave={saveExpense}
+        onViewLinkedEntry={openLinkedEntry}
       />
 
       <SplitSettlementDialog
@@ -495,17 +480,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onChange={setSettlementDialog}
         onClose={() => setSettlementDialog(null)}
         onSave={saveSettlement}
-      />
-
-      <SplitLinkedEntryDialog
-        dialog={linkedEntryDialog}
-        people={people}
-        categoryOptions={categoryOptions}
-        formError={formError}
-        isSubmitting={isSubmitting}
-        onChange={setLinkedEntryDialog}
-        onClose={() => setLinkedEntryDialog(null)}
-        onSave={saveLinkedEntry}
+        onViewLinkedEntry={openLinkedEntry}
       />
     </article>
   );
