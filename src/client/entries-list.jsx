@@ -55,7 +55,8 @@ export function EntriesDateGroups({
   onSettleTransfer,
   onAddEntryToSplits,
   onFinishEntryEdit,
-  onCancelEntryEdit
+  onCancelEntryEdit,
+  renderInlineEditor = true
 }) {
   const [splitPickerEntry, setSplitPickerEntry] = useState(null);
   const splitGroupOptions = useMemo(
@@ -72,7 +73,7 @@ export function EntriesDateGroups({
   }
 
   useEffect(() => {
-    if (!editingEntryId) {
+    if (!renderInlineEditor || !editingEntryId) {
       return undefined;
     }
 
@@ -103,7 +104,7 @@ export function EntriesDateGroups({
 
     document.addEventListener("pointerdown", handlePointerDown, true);
     return () => document.removeEventListener("pointerdown", handlePointerDown, true);
-  }, [editingEntryId, onCancelEntryEdit]);
+  }, [editingEntryId, onCancelEntryEdit, renderInlineEditor]);
 
   return (
     <div className="entries-date-groups">
@@ -144,6 +145,7 @@ export function EntriesDateGroups({
                 onOpenSplitPicker={setSplitPickerEntry}
                 onFinishEntryEdit={onFinishEntryEdit}
                 onCancelEntryEdit={onCancelEntryEdit}
+                renderInlineEditor={renderInlineEditor}
               />
             ))}
           </div>
@@ -241,7 +243,8 @@ function EntryRow({
   onSettleTransfer,
   onOpenSplitPicker,
   onFinishEntryEdit,
-  onCancelEntryEdit
+  onCancelEntryEdit,
+  renderInlineEditor = true
 }) {
   const inlineEditorRef = useRef(null);
   const ownerLabel = entry.ownershipType === "shared" ? "Shared" : entry.ownerName ?? messages.common.emptyValue;
@@ -266,7 +269,7 @@ function EntryRow({
   const bankState = getEntryBankState(entry);
 
   useEffect(() => {
-    if (!isEditing) {
+    if (!renderInlineEditor || !isEditing) {
       return undefined;
     }
 
@@ -277,12 +280,29 @@ function EntryRow({
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [isEditing]);
+  }, [isEditing, renderInlineEditor]);
 
   return (
-    <div className={`entry-row ${isEditing ? "is-editing" : ""}`} id={entry.id}>
-      {!isEditing ? (
-        <button type="button" className="entry-row-main" onClick={() => onBeginEntryEdit(entry)}>
+    <div className={`entry-row ${isEditing ? "is-editing" : ""} ${renderInlineEditor && isEditing ? "is-inline-editing" : ""}`} id={entry.id}>
+      {!isEditing || !renderInlineEditor ? (
+        <div
+          className="entry-row-main"
+          role="button"
+          tabIndex={0}
+          onClick={(event) => {
+            if (shouldIgnoreRowEditClick(event.target, event.currentTarget)) {
+              return;
+            }
+            onBeginEntryEdit(entry);
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" && event.key !== " ") {
+              return;
+            }
+            event.preventDefault();
+            onBeginEntryEdit(entry);
+          }}
+        >
           <div className="entry-row-category">
             <CategoryAppearancePopover
               category={category}
@@ -319,10 +339,10 @@ function EntryRow({
               ) : null}
             </div>
           </div>
-        </button>
+        </div>
       ) : null}
 
-      {isEditing ? (
+      {renderInlineEditor && isEditing ? (
         <div ref={inlineEditorRef} className="entry-inline-editor">
           <EntryEditorFields
             entry={entry}
@@ -392,6 +412,17 @@ function EntryRow({
       ) : null}
     </div>
   );
+}
+
+function shouldIgnoreRowEditClick(target, currentTarget) {
+  if (!(target instanceof Element) || !(currentTarget instanceof Element)) {
+    return false;
+  }
+
+  const interactiveAncestor = target.closest(
+    "button, a, input, select, textarea, [role='button'], [role='link']"
+  );
+  return Boolean(interactiveAncestor && interactiveAncestor !== currentTarget);
 }
 
 function getEntryBankState(entry) {

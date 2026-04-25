@@ -32,7 +32,10 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
     setEditingEntryId(null);
     setEntrySnapshot(null);
     setShowEntryComposer(Boolean(queuedComposerDraft));
-    setEntryDraft(normalizeEntryShape({ ...buildEntryDraft(view, accounts, categories, people), ...(queuedComposerDraft ?? {}) }, people));
+    setEntryDraft(normalizeEntryShape(
+      mergeEntryDraftPatch(buildEntryDraft(view, accounts, categories, people), queuedComposerDraft),
+      people
+    ));
     setEntrySubmitError("");
     setIsSavingEntryDraft(false);
     setLinkingTransferEntryId(null);
@@ -51,7 +54,10 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
         setEditingEntryId(null);
         setEntrySnapshot(null);
         setEntrySubmitError("");
-        setEntryDraft(normalizeEntryShape({ ...buildEntryDraft(view, accounts, categories, people), ...initialPatch }, people));
+        setEntryDraft(normalizeEntryShape(
+          mergeEntryDraftPatch(buildEntryDraft(view, accounts, categories, people), initialPatch),
+          people
+        ));
         setShowEntryComposer(true);
         return;
       }
@@ -62,7 +68,10 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
     setEditingEntryId(null);
     setEntrySnapshot(null);
     setEntrySubmitError("");
-    setEntryDraft(normalizeEntryShape({ ...buildEntryDraft(view, accounts, categories, people), ...(initialPatch ?? {}) }, people));
+    setEntryDraft(normalizeEntryShape(
+      mergeEntryDraftPatch(buildEntryDraft(view, accounts, categories, people), initialPatch),
+      people
+    ));
     setShowEntryComposer(true);
   }
 
@@ -414,4 +423,19 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
     updateEntrySplit,
     saveEntryCategory
   };
+}
+
+function mergeEntryDraftPatch(baseDraft, patch) {
+  if (!patch) {
+    return baseDraft;
+  }
+
+  const nextDraft = { ...baseDraft, ...patch };
+  if (
+    Object.prototype.hasOwnProperty.call(patch, "amountMinor")
+    && !Object.prototype.hasOwnProperty.call(patch, "amountInput")
+  ) {
+    delete nextDraft.amountInput;
+  }
+  return nextDraft;
 }
