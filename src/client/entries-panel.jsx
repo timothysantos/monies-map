@@ -526,12 +526,20 @@ export function EntriesPanel({
       return;
     }
 
-    if (!activeEditingEntry || activeEditingEntry.id !== createdSplitAction.entryId) {
+    if (activeEditingEntry && activeEditingEntry.id !== createdSplitAction.entryId) {
       setCreatedSplitAction(null);
       setDeletingCreatedSplitId("");
       setCreatedSplitActionError("");
     }
   }, [activeEditingEntry, createdSplitAction]);
+
+  function closeEntryEditSheet() {
+    setCreatedSplitAction(null);
+    setDeletingCreatedSplitId("");
+    setCreatedSplitActionError("");
+    setIsConfirmingAddToSplits(false);
+    cancelEntryEdit();
+  }
 
   function preserveEntryEditorInUrl(entryId) {
     setSearchParams((current) => {
@@ -814,13 +822,13 @@ export function EntriesPanel({
                       {messages.entries.addToSplits}
                     </button>
                     <span className="entry-mobile-sheet-action-divider" aria-hidden="true">|</span>
-                    <button type="button" className="subtle-cancel" onClick={cancelEntryEdit}>Cancel</button>
+                    <button type="button" className="subtle-cancel" onClick={closeEntryEditSheet}>Cancel</button>
                     <button type="button" className="dialog-primary" onClick={() => void finishEntryEdit()}>Save</button>
                   </div>
                 )
               )
             : null}
-          onClose={cancelEntryEdit}
+          onClose={closeEntryEditSheet}
           onSave={() => void finishEntryEdit()}
         >
           <EntryEditorFields
