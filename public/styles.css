@@ -5911,6 +5911,13 @@ button.split-activity-card:hover {
   gap: 10px;
 }
 
+.entry-created-split-label {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
 .entry-inline-status-legend {
   display: flex;
   flex-wrap: wrap;
@@ -6901,27 +6908,40 @@ th {
     flex-wrap: wrap;
   }
 
+  .entry-mobile-sheet .dialog-primary,
+  .split-dialog-content .dialog-actions .dialog-primary {
+    min-width: 116px;
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
   .entry-mobile-sheet-secondary {
     margin-right: 2px;
   }
 
   .entry-mobile-sheet-action-divider {
     align-self: center;
-    margin: 0 8px 0 2px;
-    color: rgba(122, 127, 125, 0.7);
-    font-size: 1rem;
-    line-height: 1;
+    width: 1px;
+    height: 28px;
+    margin: 0 10px 0 4px;
+    background: rgba(122, 127, 125, 0.48);
+    color: transparent;
+    font-size: 0;
+    line-height: 0;
   }
 
   .entry-mobile-sheet-confirm-actions {
-    display: grid;
-    gap: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     margin-top: 10px;
     padding: 14px 0 calc(28px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid rgba(177, 94, 47, 0.1);
   }
 
   .entry-mobile-sheet-confirm-copy {
+    flex: 1 1 auto;
     color: var(--muted);
     font-size: 0.92rem;
     font-weight: 600;
@@ -6931,8 +6951,14 @@ th {
   .entry-mobile-sheet-confirm-buttons {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
     gap: 10px;
-    flex-wrap: wrap;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+  }
+
+  .entry-mobile-sheet-success-actions .entry-mobile-sheet-confirm-copy {
+    color: var(--accent-strong);
   }
 
   .note-dialog-head {
