@@ -785,7 +785,7 @@ function EntryMobileSheet({
       />
       <section className="entry-composer entry-mobile-sheet" role="dialog" aria-modal="true" aria-label={title}>
         <div className="entry-mobile-sheet-scroll">
-          <div className="entry-composer-head">
+          <div className="note-dialog-head split-dialog-head entry-composer-head">
             <div className="entry-composer-copy">
               <strong>{title}</strong>
               <p>{description}</p>

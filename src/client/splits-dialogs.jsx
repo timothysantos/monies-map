@@ -1,8 +1,11 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useRef } from "react";
 
+import { getCategory } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { decimalStringToMinor, minorToDecimalString } from "./formatters";
+import { ResponsiveSelect } from "./responsive-select";
+import { CategoryGlyph } from "./ui-components";
 
 // SplitsPanel owns the draft state; these dialogs keep the long JSX out of the panel body.
 export function SplitGroupDialog({ dialog, formError, isSubmitting, onChange, onClose, onSave }) {
@@ -32,7 +35,7 @@ export function SplitGroupDialog({ dialog, formError, isSubmitting, onChange, on
   );
 }
 
-export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptions, onChange, autoFocusAmount = false }) {
+export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptions, categories = [], onChange, autoFocusAmount = false }) {
   const amountInputRef = useRef(null);
 
   useEffect(() => {
@@ -54,11 +57,13 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
         <div className="entry-core-grid split-dialog-grid">
           <label className="split-dialog-field">
             <span>Group</span>
-            <select className="table-edit-input" value={dialog?.groupId ?? "split-group-none"} onChange={(event) => onChange((current) => current ? { ...current, groupId: event.target.value } : current)}>
-              {groupOptions.map((option) => (
-                <option key={option.id} value={option.id}>{option.name}</option>
-              ))}
-            </select>
+            <ResponsiveSelect
+              className="table-edit-input"
+              title="Group"
+              value={dialog?.groupId ?? "split-group-none"}
+              options={groupOptions.map((option) => ({ value: option.id, label: option.name }))}
+              onValueChange={(nextValue) => onChange((current) => current ? { ...current, groupId: nextValue } : current)}
+            />
           </label>
           <label className="split-dialog-field">
             <span>{messages.splits.expenseDate}</span>
@@ -66,19 +71,32 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
           </label>
           <label className="split-dialog-field">
             <span>{messages.splits.expensePaidBy}</span>
-            <select className="table-edit-input" value={dialog?.payerPersonName ?? ""} onChange={(event) => onChange((current) => current ? { ...current, payerPersonName: event.target.value } : current)}>
-              {people.map((person) => (
-                <option key={person.id} value={person.name}>{person.name}</option>
-              ))}
-            </select>
+            <ResponsiveSelect
+              className="table-edit-input"
+              title={messages.splits.expensePaidBy}
+              value={dialog?.payerPersonName ?? ""}
+              options={people.map((person) => ({ value: person.name, label: person.name }))}
+              onValueChange={(nextValue) => onChange((current) => current ? { ...current, payerPersonName: nextValue } : current)}
+            />
           </label>
           <label className="split-dialog-field">
             <span>{messages.splits.expenseCategory}</span>
-            <select className="table-edit-input" value={dialog?.categoryName ?? ""} onChange={(event) => onChange((current) => current ? { ...current, categoryName: event.target.value } : current)}>
-              {categoryOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
+            <ResponsiveSelect
+              className="table-edit-input"
+              title={messages.splits.expenseCategory}
+              value={dialog?.categoryName ?? ""}
+              options={categoryOptions.map((option) => {
+                const optionCategory = getCategory(categories, { categoryName: option });
+                return {
+                  value: option,
+                  label: option,
+                  iconKey: optionCategory?.iconKey,
+                  colorHex: optionCategory?.colorHex,
+                  icon: optionCategory ? <CategoryGlyph iconKey={optionCategory.iconKey} /> : null
+                };
+              })}
+              onValueChange={(nextValue) => onChange((current) => current ? { ...current, categoryName: nextValue } : current)}
+            />
           </label>
         </div>
       </div>
@@ -86,11 +104,42 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
         <div className="split-dialog-inline">
           <label className="split-dialog-field">
             <span>{messages.splits.expenseAmount}</span>
-            <input ref={amountInputRef} className="table-edit-input table-edit-input-money" type="number" min="0" step="0.01" value={minorToDecimalString(dialog?.amountMinor ?? 0)} onChange={(event) => onChange((current) => current ? { ...current, amountMinor: decimalStringToMinor(event.target.value) } : current)} />
+            <input
+              ref={amountInputRef}
+              className="table-edit-input table-edit-input-money"
+              type="number"
+              min="0"
+              step="0.01"
+              value={dialog?.amountInput ?? minorToDecimalString(dialog?.amountMinor ?? 0)}
+              onChange={(event) => onChange((current) => current ? {
+                ...current,
+                amountInput: event.target.value,
+                amountMinor: decimalStringToMinor(event.target.value)
+              } : current)}
+              onBlur={() => onChange((current) => current ? {
+                ...current,
+                amountInput: minorToDecimalString(current.amountMinor ?? 0)
+              } : current)}
+            />
           </label>
           <label className="split-dialog-field">
             <span>{messages.splits.expenseSplit}</span>
-            <input className="table-edit-input table-edit-input-money" type="number" min="0" max="100" value={Number(dialog?.splitBasisPoints ?? 5000) / 100} onChange={(event) => onChange((current) => current ? { ...current, splitBasisPoints: Math.round(Number(event.target.value || 0) * 100) } : current)} />
+            <input
+              className="table-edit-input table-edit-input-money"
+              type="number"
+              min="0"
+              max="100"
+              value={dialog?.splitPercentInput ?? String(Number(dialog?.splitBasisPoints ?? 5000) / 100)}
+              onChange={(event) => onChange((current) => current ? {
+                ...current,
+                splitPercentInput: event.target.value,
+                splitBasisPoints: Math.round(Number(event.target.value || 0) * 100)
+              } : current)}
+              onBlur={() => onChange((current) => current ? {
+                ...current,
+                splitPercentInput: String(Number(current.splitBasisPoints ?? 5000) / 100)
+              } : current)}
+            />
           </label>
         </div>
       </div>
@@ -110,7 +159,7 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
   );
 }
 
-export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, formError, isSubmitting, onChange, onClose, onSave }) {
+export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, categories = [], formError, isSubmitting, onChange, onClose, onSave }) {
   return (
     <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
@@ -120,7 +169,7 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
             <Dialog.Title>{dialog?.id ? messages.splits.editSplit : messages.splits.createExpense}</Dialog.Title>
             <Dialog.Description>Create or edit a split expense without touching the bank import workflow.</Dialog.Description>
           </div>
-          <SplitExpenseFields dialog={dialog} groupOptions={groupOptions} people={people} categoryOptions={categoryOptions} onChange={onChange} autoFocusAmount />
+          <SplitExpenseFields dialog={dialog} groupOptions={groupOptions} people={people} categoryOptions={categoryOptions} categories={categories} onChange={onChange} autoFocusAmount />
           {formError ? <p className="form-error">{formError}</p> : null}
           <div className="dialog-actions">
             <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
@@ -156,11 +205,13 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
         <div className="entry-core-grid split-dialog-grid">
           <label className="split-dialog-field">
             <span>Group</span>
-            <select className="table-edit-input" value={dialog?.groupId ?? "split-group-none"} onChange={(event) => onChange((current) => current ? { ...current, groupId: event.target.value } : current)}>
-              {groupOptions.map((option) => (
-                <option key={option.id} value={option.id}>{option.name}</option>
-              ))}
-            </select>
+            <ResponsiveSelect
+              className="table-edit-input"
+              title="Group"
+              value={dialog?.groupId ?? "split-group-none"}
+              options={groupOptions.map((option) => ({ value: option.id, label: option.name }))}
+              onValueChange={(nextValue) => onChange((current) => current ? { ...current, groupId: nextValue } : current)}
+            />
           </label>
           <label className="split-dialog-field">
             <span>{messages.splits.settlementDate}</span>
@@ -168,19 +219,23 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
           </label>
           <label className="split-dialog-field">
             <span>{messages.splits.settlementFrom}</span>
-            <select className="table-edit-input" value={dialog?.fromPersonName ?? ""} onChange={(event) => onChange((current) => current ? { ...current, fromPersonName: event.target.value } : current)}>
-              {people.map((person) => (
-                <option key={person.id} value={person.name}>{person.name}</option>
-              ))}
-            </select>
+            <ResponsiveSelect
+              className="table-edit-input"
+              title={messages.splits.settlementFrom}
+              value={dialog?.fromPersonName ?? ""}
+              options={people.map((person) => ({ value: person.name, label: person.name }))}
+              onValueChange={(nextValue) => onChange((current) => current ? { ...current, fromPersonName: nextValue } : current)}
+            />
           </label>
           <label className="split-dialog-field">
             <span>{messages.splits.settlementTo}</span>
-            <select className="table-edit-input" value={dialog?.toPersonName ?? ""} onChange={(event) => onChange((current) => current ? { ...current, toPersonName: event.target.value } : current)}>
-              {people.map((person) => (
-                <option key={person.id} value={person.name}>{person.name}</option>
-              ))}
-            </select>
+            <ResponsiveSelect
+              className="table-edit-input"
+              title={messages.splits.settlementTo}
+              value={dialog?.toPersonName ?? ""}
+              options={people.map((person) => ({ value: person.name, label: person.name }))}
+              onValueChange={(nextValue) => onChange((current) => current ? { ...current, toPersonName: nextValue } : current)}
+            />
           </label>
         </div>
       </div>
@@ -188,7 +243,23 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
         <div className="split-dialog-inline">
           <label className="split-dialog-field">
             <span>{messages.splits.settlementAmount}</span>
-            <input ref={amountInputRef} className="table-edit-input table-edit-input-money" type="number" min="0" step="0.01" value={minorToDecimalString(dialog?.amountMinor ?? 0)} onChange={(event) => onChange((current) => current ? { ...current, amountMinor: decimalStringToMinor(event.target.value) } : current)} />
+            <input
+              ref={amountInputRef}
+              className="table-edit-input table-edit-input-money"
+              type="number"
+              min="0"
+              step="0.01"
+              value={dialog?.amountInput ?? minorToDecimalString(dialog?.amountMinor ?? 0)}
+              onChange={(event) => onChange((current) => current ? {
+                ...current,
+                amountInput: event.target.value,
+                amountMinor: decimalStringToMinor(event.target.value)
+              } : current)}
+              onBlur={() => onChange((current) => current ? {
+                ...current,
+                amountInput: minorToDecimalString(current.amountMinor ?? 0)
+              } : current)}
+            />
           </label>
         </div>
       </div>

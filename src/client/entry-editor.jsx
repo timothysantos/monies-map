@@ -7,6 +7,7 @@ import { CategoryAppearancePopover } from "./category-visuals";
 import { getCategory, getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { getTransferWallets } from "./entry-helpers";
+import { ResponsiveSelect } from "./responsive-select";
 import { CategoryGlyph } from "./ui-components";
 import { formatDateOnly, formatEditableMinorInput, parseMoneyInput } from "./formatters";
 
@@ -93,7 +94,7 @@ export function EntryEditorFields({
     setCategorySaveError("");
   }
 
-  const categorySelect = (
+  const desktopCategorySelect = (
     <select
       className="table-edit-input"
       value={entry.categoryName}
@@ -103,6 +104,25 @@ export function EntryEditorFields({
         <option key={option} value={option}>{option}</option>
       ))}
     </select>
+  );
+
+  const mobileCategorySelect = (
+    <ResponsiveSelect
+      className="table-edit-input"
+      title={messages.entries.editCategory}
+      value={entry.categoryName}
+      options={categoryOptions.map((option) => {
+        const optionCategory = categories.find((categoryItem) => categoryItem.name === option);
+        return {
+          value: option,
+          label: option,
+          iconKey: optionCategory?.iconKey,
+          colorHex: optionCategory?.colorHex,
+          icon: optionCategory ? <CategoryGlyph iconKey={optionCategory.iconKey} /> : null
+        };
+      })}
+      onValueChange={handleCategoryChange}
+    />
   );
 
   const categorySavePromptBody = (
@@ -149,7 +169,7 @@ export function EntryEditorFields({
             ) : (
               useMobileCategorySaveDialog ? (
                 <>
-                  {categorySelect}
+                  {mobileCategorySelect}
                   <Dialog.Root open={Boolean(categorySavePrompt)} onOpenChange={(open) => {
                     if (!open) {
                       dismissCategorySavePrompt();
@@ -180,7 +200,7 @@ export function EntryEditorFields({
                   }
                 }}>
                   <Popover.Anchor asChild>
-                    {categorySelect}
+                    {desktopCategorySelect}
                   </Popover.Anchor>
                   <Popover.Portal>
                     <Popover.Content className="entry-category-save-popover" sideOffset={8} align="end">
@@ -204,34 +224,33 @@ export function EntryEditorFields({
         </label>
         <label>
           <span>{messages.entries.editWallet}</span>
-          <select
+          <ResponsiveSelect
             className="table-edit-input"
+            title={messages.entries.editWallet}
             value={entry.accountId ?? entry.accountName}
-            onChange={(event) => {
-              const selectedAccount = accountOptions.find((option) => option.value === event.target.value);
+            options={accountOptions.map((option) => ({
+              value: option.value,
+              label: option.label
+            }))}
+            onValueChange={(nextValue) => {
+              const selectedAccount = accountOptions.find((option) => option.value === nextValue);
               onChange({
                 accountId: selectedAccount?.value,
-                accountName: selectedAccount?.accountName ?? event.target.value,
+                accountName: selectedAccount?.accountName ?? nextValue,
                 accountOwnerLabel: selectedAccount?.ownerLabel
               });
             }}
-          >
-            {accountOptions.map((option) => (
-              <option key={option.id ?? option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
+          />
         </label>
         <label>
           <span>{messages.entries.editOwner}</span>
-          <select
+          <ResponsiveSelect
             className="table-edit-input"
+            title={messages.entries.editOwner}
             value={entry.ownershipType === "shared" ? "Shared" : (entry.ownerName ?? "")}
-            onChange={(event) => onOwnerChange(event.target.value)}
-          >
-            {ownerOptions.map((person) => (
-              <option key={person} value={person}>{person}</option>
-            ))}
-          </select>
+            options={ownerOptions.map((person) => ({ value: person, label: person }))}
+            onValueChange={onOwnerChange}
+          />
         </label>
         <label>
           <span>{messages.entries.editAmount}</span>
@@ -256,11 +275,16 @@ export function EntryEditorFields({
         </label>
         <label>
           <span>{messages.entries.editType}</span>
-          <select
+          <ResponsiveSelect
             className={`table-edit-input ${typeToneClass}`}
+            title={messages.entries.editType}
             value={entry.entryType}
-            onChange={(event) => {
-              const nextEntryType = event.target.value;
+            options={[
+              { value: "expense", label: "Expense" },
+              { value: "income", label: "Income" },
+              { value: "transfer", label: "Transfer" }
+            ]}
+            onValueChange={(nextEntryType) => {
               onChange({
                 entryType: nextEntryType,
                 categoryName: nextEntryType === "transfer"
@@ -271,23 +295,21 @@ export function EntryEditorFields({
                 transferDirection: nextEntryType === "transfer" ? (entry.transferDirection ?? "out") : undefined
               });
             }}
-          >
-            <option value="expense">Expense</option>
-            <option value="income">Income</option>
-            <option value="transfer">Transfer</option>
-          </select>
+          />
         </label>
         {entry.entryType === "transfer" ? (
           <label>
             <span>{messages.entries.editTransferDirection}</span>
-            <select
+            <ResponsiveSelect
               className="table-edit-input"
+              title={messages.entries.editTransferDirection}
               value={entry.transferDirection ?? "out"}
-              onChange={(event) => onChange({ transferDirection: event.target.value })}
-            >
-              <option value="out">Transfer out</option>
-              <option value="in">Transfer in</option>
-            </select>
+              options={[
+                { value: "out", label: "Transfer out" },
+                { value: "in", label: "Transfer in" }
+              ]}
+              onValueChange={(nextValue) => onChange({ transferDirection: nextValue })}
+            />
           </label>
         ) : null}
         {transferTools}

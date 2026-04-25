@@ -2225,6 +2225,25 @@ h3 {
   max-width: 120px;
 }
 
+.responsive-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+}
+
+.responsive-select-trigger svg {
+  flex: 0 0 auto;
+}
+
+.responsive-select-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .table-edit-textarea {
   min-height: 64px;
   resize: vertical;
@@ -2501,6 +2520,77 @@ body:has(.split-inline-editor-card) .splits-fab {
 .split-linked-entry-dialog .linked-entry-notice p {
   font-size: 0.9rem;
   line-height: 1.4;
+}
+
+.mobile-select-dialog {
+  width: min(420px, calc(100vw - 32px));
+  padding: 18px;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 249, 0.99), rgba(255, 255, 255, 0.99)),
+    radial-gradient(circle at top right, rgba(177, 94, 47, 0.08), transparent 42%);
+  box-shadow: 0 24px 58px rgba(27, 24, 21, 0.16);
+}
+
+.mobile-select-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.mobile-select-options {
+  display: grid;
+  gap: 8px;
+}
+
+.mobile-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid rgba(177, 94, 47, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mobile-select-option-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mobile-select-option-main > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-select-option-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--category-color) 16%, white);
+  color: var(--category-color);
+  flex: 0 0 auto;
+}
+
+.mobile-select-option.is-selected {
+  border-color: rgba(177, 94, 47, 0.24);
+  background: rgba(250, 239, 230, 0.72);
+  color: var(--accent-strong);
 }
 
 .note-dialog-textarea {
@@ -5782,9 +5872,10 @@ button.split-activity-card:hover {
 }
 
 .entry-submit-error {
-  margin: 0;
-  color: var(--danger);
-  font-size: 0.92rem;
+  margin: 0 0 12px;
+  color: #b33a3a;
+  font-size: 0.9rem;
+  line-height: 1.4;
 }
 
 .entry-edit-grid {
@@ -5796,20 +5887,22 @@ button.split-activity-card:hover {
 .entry-writing-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 10px;
 }
 
 .entry-edit-grid label,
 .entry-writing-grid label {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 
 .entry-edit-grid span,
 .entry-writing-grid span {
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .entry-inline-actions {
@@ -6681,13 +6774,10 @@ th {
   }
 
   .entry-composer-head {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 8px 12px;
-    align-items: start;
-    margin-bottom: 12px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid rgba(177, 94, 47, 0.12);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
   }
 
   .entry-composer-copy strong,
@@ -6696,10 +6786,17 @@ th {
     margin: 0;
   }
 
+  .entry-composer-copy strong {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.08;
+  }
+
   .entry-composer-copy p {
-    margin-top: 2px;
+    margin-top: 4px;
     color: var(--muted);
-    font-size: 0.82rem;
+    font-size: 0.92rem;
     line-height: 1.35;
   }
 
@@ -6754,6 +6851,15 @@ th {
   .split-dialog-content .table-edit-textarea {
     min-height: 92px;
     max-height: 160px;
+  }
+
+  .entry-mobile-sheet textarea.table-edit-textarea {
+    min-height: 46px;
+    height: 46px;
+    max-height: 46px;
+    padding-top: 10px;
+    overflow-y: auto;
+    resize: vertical;
   }
 
   .entry-mobile-sheet .entry-category-field {

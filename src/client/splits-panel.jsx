@@ -440,6 +440,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         groupOptions={groupOptions}
         people={people}
         categoryOptions={categoryOptions}
+        categories={categories}
         formError={formError}
         isSubmitting={isSubmitting}
         onChange={setExpenseDialog}
