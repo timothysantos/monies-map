@@ -467,10 +467,6 @@ h3 {
   position: relative;
 }
 
-.app-route-grid.is-month-swipe-enabled {
-  touch-action: pan-y;
-}
-
 .app-loading-panel {
   display: flex;
   align-items: center;
@@ -620,6 +616,11 @@ h3 {
 
 .mobile-scope-sticky-wrap,
 .mobile-scope-sticky {
+  display: none;
+}
+
+.mobile-scope-sticky-bar,
+.mobile-month-jump {
   display: none;
 }
 
@@ -5649,6 +5650,16 @@ button.split-activity-card:hover {
   white-space: nowrap;
 }
 
+.entry-status-dot {
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  min-height: 22px;
+  padding: 0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
 .entry-chip-owner {
   background: rgba(38, 35, 31, 0.05);
   color: var(--text);
@@ -5791,6 +5802,26 @@ button.split-activity-card:hover {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.entry-inline-status-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.entry-inline-status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.entry-inline-status-separator {
+  color: var(--line-strong);
 }
 
 .import-meta {
@@ -6915,18 +6946,26 @@ th {
   }
 
   .mobile-scope-sticky-wrap {
-    display: contents;
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    z-index: 58;
+    display: block;
+  }
+
+  .mobile-scope-sticky-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
   }
 
   .mobile-scope-sticky.scope-toggle-row {
-    position: fixed;
-    left: 50%;
-    right: auto;
-    width: min(312px, calc(100vw - 56px));
-    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
-    z-index: 58;
-    display: grid;
-    transform: translateX(-50%);
+    position: static;
+    width: min(324px, calc(100vw - 116px));
+    flex: 0 1 min(324px, calc(100vw - 116px));
+    grid-template-columns: 0.9fr 0.95fr 1.25fr;
     padding: 5px;
     border: 1px solid var(--line);
     border-radius: 16px;
@@ -6935,13 +6974,33 @@ th {
     backdrop-filter: blur(10px);
   }
 
+  .mobile-month-jump {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .mobile-month-jump-button {
+    width: 46px;
+    height: 40px;
+    min-width: 46px;
+    padding: 0 10px;
+    border-radius: 14px;
+  }
+
   .scope-button {
     width: 100%;
     min-width: 0;
-    padding: 7px 6px;
+    padding: 7px 10px;
     font-size: 0.72rem;
     line-height: 1.15;
     letter-spacing: -0.01em;
+  }
+
+  .mobile-scope-sticky .scope-button.is-active {
+    padding-left: 18px;
+    padding-right: 18px;
   }
 
   .metric-row-summary,
