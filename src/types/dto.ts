@@ -177,6 +177,7 @@ export interface EntryDto {
   importedSourceLabel?: string;
   statementCertifiedAt?: string;
   linkedTransfer?: LinkedTransferDto;
+  linkedSplitExpenseId?: string;
   splits: EntrySplitDto[];
 }
 

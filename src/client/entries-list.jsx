@@ -279,7 +279,9 @@ function EntryRow({
     ? getTransferMatchCandidates(entry, allEntries)
     : [];
   const bankState = getEntryBankState(entry);
-  const createdSplitForEntry = createdSplitAction?.entryId === entry.id ? createdSplitAction : null;
+  const linkedSplitExpenseId = createdSplitAction && createdSplitAction.entryId === entry.id
+    ? createdSplitAction.splitExpenseId
+    : entry.linkedSplitExpenseId;
 
   useEffect(() => {
     if (!renderInlineEditor || !isEditing) {
@@ -402,24 +404,24 @@ function EntryRow({
             </span>
           </div>
           <div className="entry-inline-actions">
-            {createdSplitForEntry ? (
+            {linkedSplitExpenseId ? (
               <>
-                <span className="entry-created-split-label">Added to Splits</span>
                 <button
                   type="button"
                   className="subtle-action"
-                  onClick={() => onViewCreatedSplit?.(entry.id, createdSplitForEntry.splitExpenseId)}
+                  onClick={() => onViewCreatedSplit?.(entry.id, linkedSplitExpenseId)}
                 >
                   View split
                 </button>
                 <button
                   type="button"
                   className="subtle-action"
-                  disabled={deletingCreatedSplitId === createdSplitForEntry.splitExpenseId}
-                  onClick={() => void onDeleteCreatedSplit?.(entry.id, createdSplitForEntry.splitExpenseId)}
+                  disabled={deletingCreatedSplitId === linkedSplitExpenseId}
+                  onClick={() => void onDeleteCreatedSplit?.(entry.id, linkedSplitExpenseId)}
                 >
-                  {deletingCreatedSplitId === createdSplitForEntry.splitExpenseId ? messages.common.working : "Delete split"}
+                  {deletingCreatedSplitId === linkedSplitExpenseId ? messages.common.working : "Delete split"}
                 </button>
+                <span className="entry-inline-actions-divider" aria-hidden="true">|</span>
               </>
             ) : entry.entryType === "expense" ? (
               <button

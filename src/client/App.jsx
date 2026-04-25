@@ -1141,6 +1141,7 @@ export function App() {
   const pendingCategorySuggestionCount = bootstrap.settingsPage?.categoryMatchRuleSuggestions?.length ?? 0;
   const buildTabTarget = (tab) => {
     const params = new URLSearchParams(searchParams);
+    sanitizeTabParams(params, tab.id);
     if (tab.id === "settings" && pendingCategorySuggestionCount) {
       params.set("settings_section", "categoryRules");
     } else {
@@ -1925,6 +1926,38 @@ function buildBootstrapParams({ month, scope, summaryStart, summaryEnd }) {
     params.set("summary_end", summaryEnd);
   }
   return params;
+}
+
+function sanitizeTabParams(params, tabId) {
+  if (tabId !== "entries") {
+    [
+      "action",
+      "amount",
+      "merchant",
+      "description",
+      "date",
+      "account",
+      "account_id",
+      "category",
+      "note",
+      "owner",
+      "shared",
+      "editing_entry",
+      "entries_scope",
+      "entry_wallet",
+      "entry_category",
+      "entry_person",
+      "entry_type"
+    ].forEach((key) => params.delete(key));
+  }
+
+  if (tabId !== "splits") {
+    [
+      "split_group",
+      "split_mode",
+      "editing_split_expense"
+    ].forEach((key) => params.delete(key));
+  }
 }
 
 function buildEntriesPageParams({ viewId, month }) {
