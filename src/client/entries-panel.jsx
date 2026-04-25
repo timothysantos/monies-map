@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
 import { createPortal } from "react-dom";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
 import { useEntryActions } from "./entry-actions";
@@ -18,6 +18,7 @@ import {
 import { getTransferMatchCandidates, getVisibleSplitPercent } from "./entry-helpers";
 import { formatDateOnly, parseDraftMoneyInput } from "./formatters";
 import { buildRequestErrorMessage } from "./request-errors";
+import { deleteSplitExpense } from "./splits-api";
 
 const ENTRIES_PAGE_PREFETCH_DELAY_MS = 1200;
 const ENTRIES_PAGE_PREFETCH_SPACING_MS = 650;
@@ -42,6 +43,7 @@ export function EntriesPanel({
   onInvalidateBootstrapCache,
   entriesPageCache
 }) {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showExpenseBreakdown, setShowExpenseBreakdown] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -49,9 +51,13 @@ export function EntriesPanel({
   const [entriesPage, setEntriesPage] = useState(() => buildInitialEntriesPage(view));
   const [isEntriesPageLoading, setIsEntriesPageLoading] = useState(false);
   const [isQuickExpenseSaving, setIsQuickExpenseSaving] = useState(false);
+  const [isConfirmingAddToSplits, setIsConfirmingAddToSplits] = useState(false);
   const [quickExpensePendingKey, setQuickExpensePendingKey] = useState("");
   const [quickExpenseWarning, setQuickExpenseWarning] = useState("");
   const [pendingLinkedEntryId, setPendingLinkedEntryId] = useState(() => searchParams.get("editing_entry") ?? "");
+  const [createdSplitAction, setCreatedSplitAction] = useState(null);
+  const [deletingCreatedSplitId, setDeletingCreatedSplitId] = useState("");
+  const [createdSplitActionError, setCreatedSplitActionError] = useState("");
   const fallbackEntriesPageCacheRef = useRef(new Map());
   const fallbackEntriesPageInflightRef = useRef(new Map());
   const fallbackEntriesPageCacheVersionRef = useRef(0);
@@ -511,6 +517,78 @@ export function EntriesPanel({
     [activeEditingEntry]
   );
 
+  useEffect(() => {
+    setIsConfirmingAddToSplits(false);
+  }, [activeEditingEntry?.id]);
+
+  useEffect(() => {
+    if (!createdSplitAction) {
+      return;
+    }
+
+    if (!activeEditingEntry || activeEditingEntry.id !== createdSplitAction.entryId) {
+      setCreatedSplitAction(null);
+      setDeletingCreatedSplitId("");
+      setCreatedSplitActionError("");
+    }
+  }, [activeEditingEntry, createdSplitAction]);
+
+  function preserveEntryEditorInUrl(entryId) {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("editing_entry", entryId);
+      return next;
+    }, { replace: true });
+  }
+
+  async function handleAddEntryToSplits(entry, splitGroupId = null) {
+    setCreatedSplitActionError("");
+    preserveEntryEditorInUrl(entry.id);
+    const result = await addEntryToSplits(entry, splitGroupId);
+    if (!result?.splitExpenseId) {
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        next.delete("editing_entry");
+        return next;
+      }, { replace: true });
+      return;
+    }
+
+    setCreatedSplitAction({ entryId: entry.id, splitExpenseId: result.splitExpenseId });
+    setIsConfirmingAddToSplits(false);
+  }
+
+  async function handleDeleteCreatedSplit(entryId, splitExpenseId) {
+    preserveEntryEditorInUrl(entryId);
+    setDeletingCreatedSplitId(splitExpenseId);
+    setCreatedSplitActionError("");
+    try {
+      await deleteSplitExpense(splitExpenseId);
+      setCreatedSplitAction((current) => (
+        current?.splitExpenseId === splitExpenseId ? null : current
+      ));
+      await refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true });
+    } catch (error) {
+      setCreatedSplitActionError(error instanceof Error ? error.message : "Failed to delete split expense.");
+    } finally {
+      setDeletingCreatedSplitId("");
+    }
+  }
+
+  function openCreatedSplit(entryId, splitExpenseId) {
+    setCreatedSplitAction(null);
+    navigate({
+      pathname: "/splits",
+      search: (() => {
+        const next = new URLSearchParams(searchParams);
+        next.delete("editing_entry");
+        next.set("editing_split_expense", splitExpenseId);
+        next.set("split_mode", "entries");
+        return next.toString();
+      })()
+    });
+  }
+
   function updateEntryFilter(key, value) {
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
@@ -677,17 +755,71 @@ export function EntriesPanel({
         <EntryMobileSheet
           title="Edit entry"
           description="Update the row in a bottom sheet instead of editing inline."
+          errorMessage={entrySubmitError || createdSplitActionError}
           saveLabel="Save"
-          secondaryAction={activeEditingEntry.entryType === "expense" ? (
-            <button
-              type="button"
-              className="subtle-action"
-              disabled={addingToSplitsEntryId === activeEditingEntry.id}
-              onClick={() => void addEntryToSplits(activeEditingEntry)}
-            >
-              {addingToSplitsEntryId === activeEditingEntry.id ? "Adding..." : messages.entries.addToSplits}
-            </button>
-          ) : null}
+          footerContent={activeEditingEntry.entryType === "expense"
+            ? (
+                createdSplitAction?.entryId === activeEditingEntry.id ? (
+                  <div className="entry-mobile-sheet-confirm-actions entry-mobile-sheet-success-actions">
+                    <span className="entry-mobile-sheet-confirm-copy">Added to Splits</span>
+                    <div className="entry-mobile-sheet-confirm-buttons">
+                      <button
+                        type="button"
+                        className="subtle-action"
+                        disabled={deletingCreatedSplitId === createdSplitAction.splitExpenseId}
+                        onClick={() => openCreatedSplit(activeEditingEntry.id, createdSplitAction.splitExpenseId)}
+                      >
+                        View split
+                      </button>
+                      <button
+                        type="button"
+                        className="dialog-primary"
+                        disabled={deletingCreatedSplitId === createdSplitAction.splitExpenseId}
+                        onClick={() => void handleDeleteCreatedSplit(activeEditingEntry.id, createdSplitAction.splitExpenseId)}
+                      >
+                        {deletingCreatedSplitId === createdSplitAction.splitExpenseId ? messages.common.working : "Delete split"}
+                      </button>
+                    </div>
+                  </div>
+                ) : isConfirmingAddToSplits ? (
+                  <div className="entry-mobile-sheet-confirm-actions">
+                    <span className="entry-mobile-sheet-confirm-copy">Add this entry to Splits?</span>
+                    <div className="entry-mobile-sheet-confirm-buttons">
+                      <button
+                        type="button"
+                        className="subtle-cancel"
+                        disabled={addingToSplitsEntryId === activeEditingEntry.id}
+                        onClick={() => setIsConfirmingAddToSplits(false)}
+                      >
+                        Not now
+                      </button>
+                      <button
+                        type="button"
+                        className="dialog-primary"
+                        disabled={addingToSplitsEntryId === activeEditingEntry.id}
+                        onClick={() => void handleAddEntryToSplits(activeEditingEntry)}
+                      >
+                        {addingToSplitsEntryId === activeEditingEntry.id ? messages.common.saving : "Yes, add it"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="entry-inline-actions entry-mobile-sheet-actions">
+                    <button
+                      type="button"
+                      className="subtle-action entry-mobile-sheet-secondary"
+                      disabled={addingToSplitsEntryId === activeEditingEntry.id}
+                      onClick={() => setIsConfirmingAddToSplits(true)}
+                    >
+                      {messages.entries.addToSplits}
+                    </button>
+                    <span className="entry-mobile-sheet-action-divider" aria-hidden="true">|</span>
+                    <button type="button" className="subtle-cancel" onClick={cancelEntryEdit}>Cancel</button>
+                    <button type="button" className="dialog-primary" onClick={() => void finishEntryEdit()}>Save</button>
+                  </div>
+                )
+              )
+            : null}
           onClose={cancelEntryEdit}
           onSave={() => void finishEntryEdit()}
         >
@@ -772,7 +904,11 @@ export function EntriesPanel({
         onUpdateTransferSettlementDraft={updateTransferSettlementDraft}
         onLinkTransferCandidate={linkTransferCandidate}
         onSettleTransfer={settleTransfer}
-        onAddEntryToSplits={addEntryToSplits}
+        createdSplitAction={createdSplitAction}
+        deletingCreatedSplitId={deletingCreatedSplitId}
+        onAddEntryToSplits={handleAddEntryToSplits}
+        onViewCreatedSplit={openCreatedSplit}
+        onDeleteCreatedSplit={handleDeleteCreatedSplit}
         onFinishEntryEdit={finishEntryEdit}
         onCancelEntryEdit={cancelEntryEdit}
         renderInlineEditor={!useMobileEntrySheet}
@@ -788,6 +924,7 @@ function EntryMobileSheet({
   saveLabel,
   isSaveDisabled = false,
   secondaryAction = null,
+  footerContent = null,
   onClose,
   onSave,
   children
@@ -818,11 +955,13 @@ function EntryMobileSheet({
           </div>
           {errorMessage ? <p className="entry-submit-error">{errorMessage}</p> : null}
           {children}
-          <div className="entry-inline-actions entry-mobile-sheet-actions">
-            {secondaryAction}
-            <button type="button" className="subtle-cancel" onClick={onClose}>Cancel</button>
-            <button type="button" className="dialog-primary" disabled={isSaveDisabled} onClick={onSave}>{saveLabel}</button>
-          </div>
+          {footerContent ?? (
+            <div className="entry-inline-actions entry-mobile-sheet-actions">
+              {secondaryAction}
+              <button type="button" className="subtle-cancel" onClick={onClose}>Cancel</button>
+              <button type="button" className="dialog-primary" disabled={isSaveDisabled} onClick={onSave}>{saveLabel}</button>
+            </div>
+          )}
         </div>
       </section>
     </>

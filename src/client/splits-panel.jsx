@@ -104,6 +104,44 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setInlineSplitError("");
   }, [useMobileSplitSheet]);
 
+  useEffect(() => {
+    const targetSplitExpenseId = searchParams.get("editing_split_expense");
+    if (!targetSplitExpenseId) {
+      return;
+    }
+
+    const targetExpense = view.splitsPage.activity.find((item) => (
+      item.kind === "expense" && item.id === targetSplitExpenseId && !item.isArchived
+    ));
+    if (!targetExpense) {
+      return;
+    }
+
+    const targetGroupId = targetExpense.groupId ?? "split-group-none";
+    if (selectedMode !== "entries" || selectedGroupId !== targetGroupId) {
+      updateSplitView({ groupId: targetGroupId, mode: "entries" });
+      return;
+    }
+
+    if (expenseDialog?.id === targetSplitExpenseId) {
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        next.delete("editing_split_expense");
+        return next;
+      }, { replace: true });
+      return;
+    }
+
+    openExpenseEditor(targetExpense);
+  }, [
+    expenseDialog?.id,
+    searchParams,
+    selectedGroupId,
+    selectedMode,
+    setSearchParams,
+    view.splitsPage.activity
+  ]);
+
   function updateSplitView(patch) {
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
