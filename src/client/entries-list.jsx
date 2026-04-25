@@ -308,7 +308,11 @@ function EntryRow({
             </div>
             <div className="entry-pills">
               {transferLabel ? <span className="entry-chip entry-chip-transfer">{transferLabel}</span> : null}
-              <span className={`entry-chip entry-chip-bank-state ${bankState.className}`} title={bankState.title}>{bankState.label}</span>
+              <span
+                className={`entry-chip entry-chip-bank-state ${bankState.className} entry-status-dot`}
+                aria-label={bankState.label}
+                title={bankState.label}
+              />
               <span className={`entry-chip ${entry.ownershipType === "shared" ? "entry-chip-shared" : "entry-chip-owner"}`}>{ownerLabel}</span>
               {entry.ownershipType === "shared" && splitPercent != null ? (
                 <span className="entry-chip entry-chip-split">{splitPercent}%</span>
@@ -356,6 +360,14 @@ function EntryRow({
               />
             )}
           />
+          <div className="entry-inline-status-legend" aria-label="Entry status legend">
+            <span className="entry-inline-status-item">
+              <span className="entry-inline-status-label">Status:</span>
+              <span className={`entry-chip entry-chip-bank-state ${bankState.className} entry-status-dot`} aria-hidden="true" />
+              <span className="entry-inline-status-separator">-</span>
+              <span>{bankState.label}</span>
+            </span>
+          </div>
           <div className="entry-inline-actions">
             {entry.entryType === "expense" ? (
               <button

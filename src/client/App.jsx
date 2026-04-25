@@ -63,9 +63,6 @@ const routeTabs = [
 ];
 const primaryRouteTabs = routeTabs.slice(0, 4);
 const secondaryRouteTabs = routeTabs.slice(4);
-const MONTH_SWIPE_MIN_DISTANCE_PX = 72;
-const MONTH_SWIPE_MAX_VERTICAL_PX = 80;
-const MONTH_SWIPE_MIN_RATIO = 1.35;
 const PAGE_PREFETCH_DELAY_MS = 1200;
 const PAGE_PREFETCH_SPACING_MS = 1500;
 const PAGE_PREFETCH_STAGE_DELAY_MS = 5000;
@@ -234,7 +231,6 @@ export function App() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const syncChannelRef = useRef(null);
-  const monthSwipeStartRef = useRef(null);
   const bootstrapCacheRef = useRef(new Map());
   const bootstrapInflightRef = useRef(new Map());
   const bootstrapCacheVersionRef = useRef(0);
@@ -771,8 +767,13 @@ export function App() {
     [bootstrap]
   );
   const isDetailMonthTab = selectedTabId === "month" || selectedTabId === "entries" || selectedTabId === "splits";
-  const isMonthSwipeTab = selectedTabId === "month" || selectedTabId === "entries";
   const isSplitsTab = selectedTabId === "splits";
+  const currentDetailMonthIndex = useMemo(
+    () => isDetailMonthTab ? availableMonths.indexOf(selectedMonth) : -1,
+    [availableMonths, isDetailMonthTab, selectedMonth]
+  );
+  const canMoveToPreviousDetailMonth = currentDetailMonthIndex > 0;
+  const canMoveToNextDetailMonth = currentDetailMonthIndex !== -1 && currentDetailMonthIndex < availableMonths.length - 1;
   const detailAvailableYears = useMemo(
     () => isDetailMonthTab
       ? [...new Set(availableMonths.map((month) => Number(month.slice(0, 4))))].sort((left, right) => left - right)
@@ -1234,46 +1235,6 @@ export function App() {
     });
   }
 
-  function handleMonthSwipeStart(event) {
-    if (!isMonthSwipeTab || event.touches.length !== 1 || shouldIgnoreMonthSwipe(event.target)) {
-      monthSwipeStartRef.current = null;
-      return;
-    }
-
-    const touch = event.touches[0];
-    monthSwipeStartRef.current = {
-      x: touch.clientX,
-      y: touch.clientY
-    };
-  }
-
-  function handleMonthSwipeEnd(event) {
-    const start = monthSwipeStartRef.current;
-    monthSwipeStartRef.current = null;
-    if (!start || !isMonthSwipeTab || event.changedTouches.length !== 1) {
-      return;
-    }
-
-    const touch = event.changedTouches[0];
-    const deltaX = touch.clientX - start.x;
-    const deltaY = touch.clientY - start.y;
-    const absoluteX = Math.abs(deltaX);
-    const absoluteY = Math.abs(deltaY);
-    if (
-      absoluteX < MONTH_SWIPE_MIN_DISTANCE_PX
-      || absoluteY > MONTH_SWIPE_MAX_VERTICAL_PX
-      || absoluteX / Math.max(absoluteY, 1) < MONTH_SWIPE_MIN_RATIO
-    ) {
-      return;
-    }
-
-    handleMonthChange(deltaX < 0 ? 1 : -1);
-  }
-
-  function handleMonthSwipeCancel() {
-    monthSwipeStartRef.current = null;
-  }
-
   function handleDetailMonthSelect(month) {
     if (!isDetailMonthTab || !availableMonths.includes(month)) {
       return;
@@ -1677,34 +1638,50 @@ export function App() {
 
       {stickyScopeConfig && pageView.monthPage.scopes.length > 1 ? (
         <section className="mobile-scope-sticky-wrap" aria-label={stickyScopeConfig.label}>
-          <div className="scope-toggle pill-row scope-toggle-row mobile-scope-sticky">
-            {pageView.monthPage.scopes.map((scope) => (
+          <div className="mobile-scope-sticky-bar">
+            <div className="scope-toggle pill-row scope-toggle-row mobile-scope-sticky">
+              {pageView.monthPage.scopes.map((scope) => (
+                <button
+                  key={scope.key}
+                  className={`pill scope-button ${scope.key === stickyScopeConfig.selectedKey ? "is-active" : ""}`}
+                  type="button"
+                  onClick={() => {
+                    setSearchParams((current) => {
+                      const next = new URLSearchParams(current);
+                      next.set(stickyScopeConfig.paramKey, scope.key);
+                      return next;
+                    });
+                  }}
+                >
+                  {mobileScopeLabels[scope.key] ?? scope.label}
+                </button>
+              ))}
+            </div>
+            <div className="mobile-month-jump" aria-label="Month navigation">
               <button
-                key={scope.key}
-                className={`pill scope-button ${scope.key === stickyScopeConfig.selectedKey ? "is-active" : ""}`}
+                className="period-button mobile-month-jump-button"
                 type="button"
-                onClick={() => {
-                  setSearchParams((current) => {
-                    const next = new URLSearchParams(current);
-                    next.set(stickyScopeConfig.paramKey, scope.key);
-                    return next;
-                  });
-                }}
+                aria-label={messages.period.previousAriaLabel}
+                onClick={() => handleMonthChange(-1)}
+                disabled={!canMoveToPreviousDetailMonth}
               >
-                {mobileScopeLabels[scope.key] ?? scope.label}
+                ‹
               </button>
-            ))}
+              <button
+                className="period-button mobile-month-jump-button"
+                type="button"
+                aria-label={messages.period.nextAriaLabel}
+                onClick={() => handleMonthChange(1)}
+                disabled={!canMoveToNextDetailMonth}
+              >
+                ›
+              </button>
+            </div>
           </div>
         </section>
       ) : null}
 
-      <section
-        className={`grid app-route-grid ${isMonthSwipeTab ? "is-month-swipe-enabled" : ""}`}
-        aria-busy={isBootstrapLoading ? "true" : "false"}
-        onTouchStart={handleMonthSwipeStart}
-        onTouchEnd={handleMonthSwipeEnd}
-        onTouchCancel={handleMonthSwipeCancel}
-      >
+      <section className="grid app-route-grid" aria-busy={isBootstrapLoading ? "true" : "false"}>
         <Suspense fallback={<RouteChunkLoadingFallback />}>
           <Routes>
             <Route path="/" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
@@ -1919,25 +1896,6 @@ function RouteChunkLoadingFallback() {
       <p>{messages.common.loading}</p>
     </section>
   );
-}
-
-function shouldIgnoreMonthSwipe(target) {
-  if (!(target instanceof Element)) {
-    return false;
-  }
-
-  return Boolean(target.closest([
-    "a",
-    "button",
-    "input",
-    "label",
-    "select",
-    "textarea",
-    "[contenteditable='true']",
-    "[role='button']",
-    "[role='menuitem']",
-    "[role='option']"
-  ].join(",")));
 }
 
 function buildBootstrapParams({ month, scope, summaryStart, summaryEnd }) {
