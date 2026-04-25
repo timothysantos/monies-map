@@ -39,6 +39,8 @@ export function EntriesDateGroups({
   viewId,
   editingEntryId,
   addingToSplitsEntryId,
+  createdSplitAction = null,
+  deletingCreatedSplitId = "",
   transferDialogEntryId,
   transferSettlementDrafts,
   linkingTransferEntryId,
@@ -54,6 +56,8 @@ export function EntriesDateGroups({
   onLinkTransferCandidate,
   onSettleTransfer,
   onAddEntryToSplits,
+  onViewCreatedSplit,
+  onDeleteCreatedSplit,
   onFinishEntryEdit,
   onCancelEntryEdit,
   renderInlineEditor = true
@@ -128,6 +132,8 @@ export function EntriesDateGroups({
                 viewId={viewId}
                 isEditing={editingEntryId === entry.id}
                 addingToSplitsEntryId={addingToSplitsEntryId}
+                createdSplitAction={createdSplitAction}
+                deletingCreatedSplitId={deletingCreatedSplitId}
                 transferDialogEntryId={transferDialogEntryId}
                 transferSettlementDrafts={transferSettlementDrafts}
                 linkingTransferEntryId={linkingTransferEntryId}
@@ -143,6 +149,8 @@ export function EntriesDateGroups({
                 onLinkTransferCandidate={onLinkTransferCandidate}
                 onSettleTransfer={onSettleTransfer}
                 onOpenSplitPicker={setSplitPickerEntry}
+                onViewCreatedSplit={onViewCreatedSplit}
+                onDeleteCreatedSplit={onDeleteCreatedSplit}
                 onFinishEntryEdit={onFinishEntryEdit}
                 onCancelEntryEdit={onCancelEntryEdit}
                 renderInlineEditor={renderInlineEditor}
@@ -227,6 +235,8 @@ function EntryRow({
   viewId,
   isEditing,
   addingToSplitsEntryId,
+  createdSplitAction,
+  deletingCreatedSplitId,
   transferDialogEntryId,
   transferSettlementDrafts,
   linkingTransferEntryId,
@@ -242,6 +252,8 @@ function EntryRow({
   onLinkTransferCandidate,
   onSettleTransfer,
   onOpenSplitPicker,
+  onViewCreatedSplit,
+  onDeleteCreatedSplit,
   onFinishEntryEdit,
   onCancelEntryEdit,
   renderInlineEditor = true
@@ -267,6 +279,7 @@ function EntryRow({
     ? getTransferMatchCandidates(entry, allEntries)
     : [];
   const bankState = getEntryBankState(entry);
+  const createdSplitForEntry = createdSplitAction?.entryId === entry.id ? createdSplitAction : null;
 
   useEffect(() => {
     if (!renderInlineEditor || !isEditing) {
@@ -389,7 +402,26 @@ function EntryRow({
             </span>
           </div>
           <div className="entry-inline-actions">
-            {entry.entryType === "expense" ? (
+            {createdSplitForEntry ? (
+              <>
+                <span className="entry-created-split-label">Added to Splits</span>
+                <button
+                  type="button"
+                  className="subtle-action"
+                  onClick={() => onViewCreatedSplit?.(entry.id, createdSplitForEntry.splitExpenseId)}
+                >
+                  View split
+                </button>
+                <button
+                  type="button"
+                  className="subtle-action"
+                  disabled={deletingCreatedSplitId === createdSplitForEntry.splitExpenseId}
+                  onClick={() => void onDeleteCreatedSplit?.(entry.id, createdSplitForEntry.splitExpenseId)}
+                >
+                  {deletingCreatedSplitId === createdSplitForEntry.splitExpenseId ? messages.common.working : "Delete split"}
+                </button>
+              </>
+            ) : entry.entryType === "expense" ? (
               <button
                 type="button"
                 className="subtle-action"

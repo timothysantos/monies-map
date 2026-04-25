@@ -351,12 +351,13 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
       const data = await response.json();
       if (!response.ok) {
         setEntrySubmitError(data.error ?? "Failed to add entry to splits.");
-        return;
+        return null;
       }
 
       setEditingEntryId(null);
       setEntrySnapshot(null);
       await onRefresh();
+      return data;
     } finally {
       setAddingToSplitsEntryId(null);
     }
