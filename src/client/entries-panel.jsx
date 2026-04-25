@@ -516,6 +516,9 @@ export function EntriesPanel({
     () => activeEditingEntry ? getEntryBankState(activeEditingEntry) : null,
     [activeEditingEntry]
   );
+  const activeLinkedSplitExpenseId = createdSplitAction && createdSplitAction.entryId === activeEditingEntry?.id
+    ? createdSplitAction.splitExpenseId
+    : activeEditingEntry?.linkedSplitExpenseId;
 
   useEffect(() => {
     setIsConfirmingAddToSplits(false);
@@ -767,27 +770,27 @@ export function EntriesPanel({
           saveLabel="Save"
           footerContent={activeEditingEntry.entryType === "expense"
             ? (
-                createdSplitAction?.entryId === activeEditingEntry.id ? (
-                  <div className="entry-mobile-sheet-confirm-actions entry-mobile-sheet-success-actions">
-                    <span className="entry-mobile-sheet-confirm-copy">Added to Splits</span>
-                    <div className="entry-mobile-sheet-confirm-buttons">
-                      <button
-                        type="button"
-                        className="subtle-action"
-                        disabled={deletingCreatedSplitId === createdSplitAction.splitExpenseId}
-                        onClick={() => openCreatedSplit(activeEditingEntry.id, createdSplitAction.splitExpenseId)}
-                      >
-                        View split
-                      </button>
-                      <button
-                        type="button"
-                        className="dialog-primary"
-                        disabled={deletingCreatedSplitId === createdSplitAction.splitExpenseId}
-                        onClick={() => void handleDeleteCreatedSplit(activeEditingEntry.id, createdSplitAction.splitExpenseId)}
-                      >
-                        {deletingCreatedSplitId === createdSplitAction.splitExpenseId ? messages.common.working : "Delete split"}
-                      </button>
-                    </div>
+                activeLinkedSplitExpenseId ? (
+                  <div className="entry-inline-actions entry-mobile-sheet-actions entry-mobile-sheet-linked-actions">
+                    <button
+                      type="button"
+                      className="subtle-action entry-mobile-sheet-secondary"
+                      disabled={deletingCreatedSplitId === activeLinkedSplitExpenseId}
+                      onClick={() => openCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
+                    >
+                      View split
+                    </button>
+                    <button
+                      type="button"
+                      className="subtle-action entry-mobile-sheet-secondary"
+                      disabled={deletingCreatedSplitId === activeLinkedSplitExpenseId}
+                      onClick={() => void handleDeleteCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
+                    >
+                      {deletingCreatedSplitId === activeLinkedSplitExpenseId ? messages.common.working : "Delete split"}
+                    </button>
+                    <span className="entry-mobile-sheet-action-divider" aria-hidden="true">|</span>
+                    <button type="button" className="subtle-cancel" onClick={closeEntryEditSheet}>Cancel</button>
+                    <button type="button" className="dialog-primary" onClick={() => void finishEntryEdit()}>Save</button>
                   </div>
                 ) : isConfirmingAddToSplits ? (
                   <div className="entry-mobile-sheet-confirm-actions">

@@ -39,6 +39,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
         transactions.import_id,
         imports.source_type AS import_source_type,
         imports.source_label AS import_source_label,
+        split_expenses.id AS linked_split_expense_id,
         people.display_name AS owner_name,
         accounts.account_name AS account_name,
         CASE
@@ -52,6 +53,9 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       LEFT JOIN people AS account_owners ON account_owners.id = accounts.owner_person_id
       LEFT JOIN categories ON categories.id = transactions.category_id
       LEFT JOIN imports ON imports.id = transactions.import_id
+      LEFT JOIN split_expenses
+        ON split_expenses.household_id = transactions.household_id
+       AND split_expenses.linked_transaction_id = transactions.id
       WHERE transactions.household_id = ?
         AND transactions.transaction_date >= ?
         AND transactions.transaction_date < ?
@@ -76,6 +80,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       import_id: string | null;
       import_source_type: "csv" | "pdf" | "manual" | null;
       import_source_label: string | null;
+      linked_split_expense_id: string | null;
       owner_name: string | null;
       account_name: string;
       account_owner_label: string | null;
@@ -156,6 +161,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       importedSourceLabel: row.import_source_label ?? undefined,
       statementCertifiedAt: row.statement_certified_at ?? undefined,
       linkedTransfer,
+      linkedSplitExpenseId: row.linked_split_expense_id ?? undefined,
       splits: splitMap.get(row.id) ?? []
     };
   });
