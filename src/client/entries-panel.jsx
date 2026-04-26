@@ -560,6 +560,11 @@ export function EntriesPanel({
     setCreatedSplitActionError("");
     preserveEntryEditorInUrl(entry.id);
     const result = await addEntryToSplits(entry, splitGroupId);
+    if (result?.alreadyLinked) {
+      await refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true });
+      return;
+    }
+
     if (!result?.splitExpenseId) {
       setSearchParams((current) => {
         const next = new URLSearchParams(current);
