@@ -513,6 +513,7 @@ export function EntriesPanel({
     [entryFilters]
   );
   const {
+    filteredEntries,
     groupedEntries,
     entryTotals,
     entryOutflowMinor,
@@ -521,6 +522,17 @@ export function EntriesPanel({
   } = useMemo(
     () => getEntryDerivedData({ entries, entryFilters, selectedScope, viewId: entryView.id }),
     [entries, entryFilters, selectedScope, entryView.id]
+  );
+  const entriesEmptyStateSuggestion = useMemo(
+    () => getEntriesEmptyStateSuggestion({
+      accounts,
+      people,
+      walletFilters,
+      filteredEntries,
+      viewId: entryView.id,
+      searchParams
+    }),
+    [accounts, filteredEntries, people, searchParams, walletFilterKey, entryView.id]
   );
   const canPortalEntryComposer = typeof document !== "undefined";
   const activeEditingEntry = useMemo(
@@ -714,6 +726,22 @@ export function EntriesPanel({
       next.delete("entry_category");
       next.delete("entry_person");
       next.delete("entry_type");
+      return next;
+    });
+  }
+
+  function applySuggestedView(viewId) {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("view", viewId);
+      if (viewId === "household") {
+        next.delete("entry_person");
+      } else {
+        const person = people.find((item) => item.id === viewId);
+        if (person) {
+          next.set("entry_person", person.name);
+        }
+      }
       return next;
     });
   }
@@ -942,42 +970,70 @@ export function EntriesPanel({
         document.body
       ) : null}
 
-      <EntriesDateGroups
-        groupedEntries={groupedEntries}
-        allEntries={entries}
-        categories={categories}
-        categoryOptions={categoryOptions}
-        accountOptions={accountOptions}
-        ownerOptions={ownerOptions}
-        splitGroups={entriesPage.splitGroups}
-        viewId={entryView.id}
-        editingEntryId={editingEntryId}
-        addingToSplitsEntryId={addingToSplitsEntryId}
-        transferDialogEntryId={transferDialogEntryId}
-        transferSettlementDrafts={transferSettlementDrafts}
-        linkingTransferEntryId={linkingTransferEntryId}
-        settlingTransferEntryId={settlingTransferEntryId}
-        onBeginEntryEdit={beginEntryEdit}
-        onCategoryAppearanceChange={onCategoryAppearanceChange}
-        onUpdateEntry={updateEntry}
-        onUpdateEntrySplit={updateEntrySplit}
-        onSaveEntryCategory={saveEntryCategory}
-        onEnsureTransferSettlementDraft={ensureTransferSettlementDraft}
-        onTransferDialogEntryChange={setTransferDialogEntryId}
-        onUpdateTransferSettlementDraft={updateTransferSettlementDraft}
-        onLinkTransferCandidate={linkTransferCandidate}
-        onSettleTransfer={settleTransfer}
-        createdSplitAction={createdSplitAction}
-        deletingCreatedSplitId={deletingCreatedSplitId}
-        onAddEntryToSplits={handleAddEntryToSplits}
-        onViewCreatedSplit={openCreatedSplit}
-        onDeleteCreatedSplit={handleDeleteCreatedSplit}
-        onFinishEntryEdit={finishEntryEditAndClearLink}
-        onCancelEntryEdit={closeEntryEditSheet}
-        hasEditingChanges={hasEditingEntryChanges}
-        renderInlineEditor={!useMobileEntrySheet}
-      />
+      {groupedEntries.length ? (
+        <EntriesDateGroups
+          groupedEntries={groupedEntries}
+          allEntries={entries}
+          categories={categories}
+          categoryOptions={categoryOptions}
+          accountOptions={accountOptions}
+          ownerOptions={ownerOptions}
+          splitGroups={entriesPage.splitGroups}
+          viewId={entryView.id}
+          editingEntryId={editingEntryId}
+          addingToSplitsEntryId={addingToSplitsEntryId}
+          transferDialogEntryId={transferDialogEntryId}
+          transferSettlementDrafts={transferSettlementDrafts}
+          linkingTransferEntryId={linkingTransferEntryId}
+          settlingTransferEntryId={settlingTransferEntryId}
+          onBeginEntryEdit={beginEntryEdit}
+          onCategoryAppearanceChange={onCategoryAppearanceChange}
+          onUpdateEntry={updateEntry}
+          onUpdateEntrySplit={updateEntrySplit}
+          onSaveEntryCategory={saveEntryCategory}
+          onEnsureTransferSettlementDraft={ensureTransferSettlementDraft}
+          onTransferDialogEntryChange={setTransferDialogEntryId}
+          onUpdateTransferSettlementDraft={updateTransferSettlementDraft}
+          onLinkTransferCandidate={linkTransferCandidate}
+          onSettleTransfer={settleTransfer}
+          createdSplitAction={createdSplitAction}
+          deletingCreatedSplitId={deletingCreatedSplitId}
+          onAddEntryToSplits={handleAddEntryToSplits}
+          onViewCreatedSplit={openCreatedSplit}
+          onDeleteCreatedSplit={handleDeleteCreatedSplit}
+          onFinishEntryEdit={finishEntryEditAndClearLink}
+          onCancelEntryEdit={closeEntryEditSheet}
+          hasEditingChanges={hasEditingEntryChanges}
+          renderInlineEditor={!useMobileEntrySheet}
+        />
+      ) : (
+        <EntriesEmptyState
+          suggestion={entriesEmptyStateSuggestion}
+          onSwitchView={applySuggestedView}
+        />
+      )}
     </article>
+  );
+}
+
+function EntriesEmptyState({ suggestion, onSwitchView }) {
+  if (!suggestion) {
+    return <p className="empty-state">{messages.entries.noEntries}</p>;
+  }
+
+  return (
+    <section className="entries-empty-state linked-entry-notice">
+      <strong>{messages.entries.walletViewMismatchTitle}</strong>
+      <p>{messages.entries.walletViewMismatchDetail(suggestion.walletLabel, suggestion.ownerLabel, suggestion.viewLabel)}</p>
+      <div className="entries-empty-state-actions">
+        <button type="button" className="subtle-action" onClick={() => onSwitchView("household")}>
+          {messages.entries.walletViewMismatchHouseholdAction}
+        </button>
+        <button type="button" className="subtle-action is-primary" onClick={() => onSwitchView(suggestion.ownerPersonId)}>
+          {messages.entries.walletViewMismatchOwnerAction(suggestion.ownerLabel)}
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -1016,6 +1072,47 @@ function normalizeWalletFilterValues(values) {
   return Array.from(new Set((Array.isArray(values) ? values : [])
     .map((value) => String(value ?? "").trim())
     .filter(Boolean)));
+}
+
+function getEntriesEmptyStateSuggestion({ accounts, people, walletFilters, filteredEntries, viewId, searchParams }) {
+  if (
+    viewId === "household"
+    || filteredEntries.length
+    || walletFilters.length !== 1
+    || searchParams.get("entry_category")
+    || searchParams.get("entry_type")
+  ) {
+    return null;
+  }
+
+  const currentPerson = people.find((person) => person.id === viewId);
+  const explicitPersonFilter = searchParams.get("entry_person");
+  if (explicitPersonFilter && explicitPersonFilter !== currentPerson?.name) {
+    return null;
+  }
+
+  const selectedWallet = walletFilters[0];
+  const account = accounts.find((item) => (
+    item.id === selectedWallet
+    || item.accountId === selectedWallet
+    || item.name === selectedWallet
+    || item.accountName === selectedWallet
+  ));
+  if (!account || account.isJoint || !account.ownerPersonId || account.ownerPersonId === viewId) {
+    return null;
+  }
+
+  const owner = people.find((person) => person.id === account.ownerPersonId);
+  if (!owner) {
+    return null;
+  }
+
+  return {
+    ownerPersonId: owner.id,
+    ownerLabel: owner.name,
+    viewLabel: currentPerson?.name ?? "this view",
+    walletLabel: account.name ?? account.accountName ?? owner.name
+  };
 }
 
 function buildQuickExpenseDraftPatch({ searchParams, accountOptions, categoryOptions, ownerOptions, fallbackOwnerName }) {
