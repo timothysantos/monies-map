@@ -360,21 +360,23 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
         };
       }
 
+      let nextLinkedEntry = null;
       setEntries((current) => current.map((currentEntry) => {
         if (currentEntry.id !== entry.id) {
           return currentEntry;
         }
 
-        return normalizeEntryShape({
+        nextLinkedEntry = normalizeEntryShape({
           ...currentEntry,
           ownershipType: "shared",
           ownerName: undefined,
           linkedSplitExpenseId: data.splitExpenseId
         }, people, currentEntry);
+        return nextLinkedEntry;
       }));
-      setEditingEntryId(null);
-      setEntrySnapshot(null);
-      await onRefresh();
+      if (nextLinkedEntry) {
+        setEntrySnapshot(nextLinkedEntry);
+      }
       return {
         ok: true,
         ...data
