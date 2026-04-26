@@ -70,10 +70,22 @@ export function EntriesDateGroups({
     })),
     [splitGroups]
   );
+  const singleSplitGroupValue = splitGroupOptions.length === 1
+    ? splitGroupOptions[0].value
+    : null;
 
   async function handleAddEntryToSplits(entry, splitGroupId) {
     await onAddEntryToSplits(entry, splitGroupId === NON_GROUP_SPLIT_VALUE ? null : splitGroupId);
     setSplitPickerEntry(null);
+  }
+
+  function openSplitPicker(entry) {
+    if (singleSplitGroupValue) {
+      void handleAddEntryToSplits(entry, singleSplitGroupValue);
+      return;
+    }
+
+    setSplitPickerEntry(entry);
   }
 
   useEffect(() => {
@@ -148,7 +160,7 @@ export function EntriesDateGroups({
                 onUpdateTransferSettlementDraft={onUpdateTransferSettlementDraft}
                 onLinkTransferCandidate={onLinkTransferCandidate}
                 onSettleTransfer={onSettleTransfer}
-                onOpenSplitPicker={setSplitPickerEntry}
+                onOpenSplitPicker={openSplitPicker}
                 onViewCreatedSplit={onViewCreatedSplit}
                 onDeleteCreatedSplit={onDeleteCreatedSplit}
                 onFinishEntryEdit={onFinishEntryEdit}

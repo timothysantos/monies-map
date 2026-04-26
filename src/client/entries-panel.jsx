@@ -18,12 +18,14 @@ import {
 import { getTransferMatchCandidates, getVisibleSplitPercent } from "./entry-helpers";
 import { formatDateOnly, parseDraftMoneyInput } from "./formatters";
 import { buildRequestErrorMessage } from "./request-errors";
+import { ResponsiveSelect } from "./responsive-select";
 import { deleteSplitExpense } from "./splits-api";
 
 const ENTRIES_PAGE_PREFETCH_DELAY_MS = 1200;
 const ENTRIES_PAGE_PREFETCH_SPACING_MS = 650;
 const QUICK_EXPENSE_DRAFT_STORAGE_KEY = "monies.quickExpenseDraft";
 const QUICK_EXPENSE_DRAFT_STORAGE_TTL_MS = 15 * 60 * 1000;
+const NON_GROUP_SPLIT_VALUE = "__split_group_none__";
 
 function waitFor(ms) {
   return new Promise((resolve) => {
@@ -58,6 +60,8 @@ export function EntriesPanel({
   const [createdSplitAction, setCreatedSplitAction] = useState(null);
   const [deletingCreatedSplitId, setDeletingCreatedSplitId] = useState("");
   const [createdSplitActionError, setCreatedSplitActionError] = useState("");
+  const [isMobileSplitPickerOpen, setIsMobileSplitPickerOpen] = useState(false);
+  const [mobileSplitGroupId, setMobileSplitGroupId] = useState("");
   const fallbackEntriesPageCacheRef = useRef(new Map());
   const fallbackEntriesPageInflightRef = useRef(new Map());
   const fallbackEntriesPageCacheVersionRef = useRef(0);
@@ -512,12 +516,29 @@ export function EntriesPanel({
     () => activeEditingEntry ? getEntryBankState(activeEditingEntry) : null,
     [activeEditingEntry]
   );
+  const splitGroupOptions = useMemo(
+    () => [
+      { value: "", label: "Choose split group" },
+      ...entriesPage.splitGroups.map((group) => ({
+        value: group.id === "split-group-none" ? NON_GROUP_SPLIT_VALUE : group.id,
+        label: group.name
+      }))
+    ],
+    [entriesPage.splitGroups]
+  );
+  const singleSplitGroupValue = entriesPage.splitGroups.length === 1
+    ? (entriesPage.splitGroups[0].id === "split-group-none"
+        ? NON_GROUP_SPLIT_VALUE
+        : entriesPage.splitGroups[0].id)
+    : null;
   const activeLinkedSplitExpenseId = createdSplitAction && createdSplitAction.entryId === activeEditingEntry?.id
     ? createdSplitAction.splitExpenseId
     : activeEditingEntry?.linkedSplitExpenseId;
 
   useEffect(() => {
     setIsConfirmingAddToSplits(false);
+    setIsMobileSplitPickerOpen(false);
+    setMobileSplitGroupId("");
   }, [activeEditingEntry?.id]);
 
   useEffect(() => {
@@ -538,6 +559,8 @@ export function EntriesPanel({
     setDeletingCreatedSplitId("");
     setCreatedSplitActionError("");
     setIsConfirmingAddToSplits(false);
+    setIsMobileSplitPickerOpen(false);
+    setMobileSplitGroupId("");
     cancelEntryEdit();
   }
 
@@ -571,6 +594,19 @@ export function EntriesPanel({
 
     setCreatedSplitAction(null);
     setIsConfirmingAddToSplits(false);
+    setIsMobileSplitPickerOpen(false);
+    setMobileSplitGroupId("");
+  }
+
+  async function confirmMobileAddToSplits() {
+    if (!activeEditingEntry || !mobileSplitGroupId) {
+      return;
+    }
+
+    await handleAddEntryToSplits(
+      activeEditingEntry,
+      mobileSplitGroupId === NON_GROUP_SPLIT_VALUE ? null : mobileSplitGroupId
+    );
   }
 
   async function handleDeleteCreatedSplit(entryId, splitExpenseId) {
@@ -812,9 +848,52 @@ export function EntriesPanel({
                         type="button"
                         className="dialog-primary"
                         disabled={addingToSplitsEntryId === activeEditingEntry.id}
-                        onClick={() => void handleAddEntryToSplits(activeEditingEntry)}
+                        onClick={() => {
+                          if (singleSplitGroupValue) {
+                            void handleAddEntryToSplits(
+                              activeEditingEntry,
+                              singleSplitGroupValue === NON_GROUP_SPLIT_VALUE ? null : singleSplitGroupValue
+                            );
+                            return;
+                          }
+
+                          setIsConfirmingAddToSplits(false);
+                          setIsMobileSplitPickerOpen(true);
+                        }}
                       >
-                        {addingToSplitsEntryId === activeEditingEntry.id ? messages.common.saving : "Yes, add it"}
+                        Continue
+                      </button>
+                    </div>
+                  </div>
+                ) : isMobileSplitPickerOpen ? (
+                  <div className="entry-mobile-sheet-confirm-actions">
+                    <span className="entry-mobile-sheet-confirm-copy">Choose split group</span>
+                    <ResponsiveSelect
+                      title="Split group"
+                      value={mobileSplitGroupId}
+                      options={splitGroupOptions}
+                      onValueChange={setMobileSplitGroupId}
+                      disabled={addingToSplitsEntryId === activeEditingEntry.id}
+                    />
+                    <div className="entry-mobile-sheet-confirm-buttons">
+                      <button
+                        type="button"
+                        className="subtle-cancel"
+                        disabled={addingToSplitsEntryId === activeEditingEntry.id}
+                        onClick={() => {
+                          setIsMobileSplitPickerOpen(false);
+                          setMobileSplitGroupId("");
+                        }}
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        className="dialog-primary"
+                        disabled={addingToSplitsEntryId === activeEditingEntry.id || !mobileSplitGroupId}
+                        onClick={() => void confirmMobileAddToSplits()}
+                      >
+                        {addingToSplitsEntryId === activeEditingEntry.id ? messages.common.saving : "Add to splits"}
                       </button>
                     </div>
                   </div>
