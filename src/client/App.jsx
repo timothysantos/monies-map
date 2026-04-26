@@ -50,7 +50,9 @@ const SummaryPanel = lazy(() => routeModuleLoaders.summary().then((module) => ({
 const SUMMARY_FOCUS_OVERALL = "overall";
 const BOOTSTRAP_SYNC_CHANNEL = "monies-map-bootstrap-sync";
 const BOOTSTRAP_SYNC_STORAGE_KEY = "monies-map-bootstrap-sync";
-const BOOTSTRAP_PERSISTED_CACHE_KEY = "monies-map-bootstrap-cache-v1";
+// Bump this when bootstrap payload usage changes so deployed clients do not
+// hydrate from an incompatible persisted shell.
+const BOOTSTRAP_PERSISTED_CACHE_KEY = "monies-map-bootstrap-cache-v2";
 const MONTH_PICKER_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DEFAULT_MONTH_KEY = getCurrentMonthKey();
 
