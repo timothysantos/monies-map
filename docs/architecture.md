@@ -46,8 +46,9 @@ That distinction matters because the system needs to answer questions like:
   parsing is intentionally gated by the selected Citibank credit-card account,
   then `-rewards.csv` and `-miles.csv` filename hints set the parsed account so
   one Citi card's activity cannot silently import into another selected Citi card
-  because the files are headerless; OCBC activity parsing is gated by an OCBC
-  account context or an OCBC activity filename.
+  because the files are headerless; OCBC activity parsing prefers an OCBC
+  account context or filename hint, but it can also recognize OCBC transaction
+  history CSVs from their account-details and transaction-history headers.
 - PDF statement parsers are institution-specific. UOB card and savings
   statements use the raw extracted PDF text so the derived layout variants do
   not duplicate printed transaction blocks; Citibank

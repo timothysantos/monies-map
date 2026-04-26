@@ -1431,8 +1431,10 @@ the current draft without refreshing the page.
   credit card and the file name matches the Citi activity export pattern. The
   trailing card number is reduced to the last four digits in the note.
 - OCBC card and 360 current-activity CSV files use transaction-history headers
-  with withdrawal and deposit columns, so the app normalizes them into
-  reviewable rows without creating a statement checkpoint.
+  with withdrawal and deposit columns, so the app can recognize them from
+  either the filename or the OCBC account-details and transaction-history
+  headers, then normalize them into reviewable rows without creating a
+  statement checkpoint.
 - OCBC 365 card PDFs use the printed statement date, subtotal, and total amount
   due.
 - OCBC 360 account PDFs use the monthly period, running balances, and balance
