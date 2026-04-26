@@ -476,12 +476,15 @@ export function EntriesPanel({
 
     setIsQuickExpenseSaving(true);
     try {
-      const saved = await saveEntryDraft();
-      if (saved) {
+      const result = await saveEntryDraft();
+      if (result?.saved) {
         pendingQuickExpenseDraftRef.current = null;
         setQuickExpensePendingKey("");
         setQuickExpenseWarning("");
         clearStoredQuickExpenseDraft();
+        if (result.splitAddError && typeof window !== "undefined") {
+          window.setTimeout(() => window.alert(result.splitAddError), 0);
+        }
       }
     } finally {
       setIsQuickExpenseSaving(false);
@@ -518,24 +521,56 @@ export function EntriesPanel({
     () => activeEditingEntry ? getEntryBankState(activeEditingEntry) : null,
     [activeEditingEntry]
   );
+  const entrySplitGroupOptions = useMemo(
+    () => entriesPage.splitGroups.map((group) => ({
+      value: group.id,
+      label: group.name
+    })),
+    [entriesPage.splitGroups]
+  );
   const splitGroupOptions = useMemo(
     () => [
       { value: "", label: "Choose split group" },
-      ...entriesPage.splitGroups.map((group) => ({
-        value: group.id === "split-group-none" ? NON_GROUP_SPLIT_VALUE : group.id,
-        label: group.name
-      }))
+      ...entrySplitGroupOptions
     ],
-    [entriesPage.splitGroups]
+    [entrySplitGroupOptions]
   );
-  const singleSplitGroupValue = entriesPage.splitGroups.length === 1
-    ? (entriesPage.splitGroups[0].id === "split-group-none"
-        ? NON_GROUP_SPLIT_VALUE
-        : entriesPage.splitGroups[0].id)
+  const singleSplitGroupValue = entrySplitGroupOptions.length === 1
+    ? entrySplitGroupOptions[0].value
     : null;
+  const shouldShowComposerSplitOptions = showEntryComposer && entryDraft.entryType === "expense";
+  const shouldShowComposerSplitGroupSelect = shouldShowComposerSplitOptions
+    && entryDraft.addToSplits
+    && !singleSplitGroupValue;
+  const isComposerSaveDisabled = isSavingEntryDraft
+    || isQuickExpenseSaving
+    || (shouldShowComposerSplitGroupSelect && !entryDraft.splitGroupId);
   const activeLinkedSplitExpenseId = createdSplitAction && createdSplitAction.entryId === activeEditingEntry?.id
     ? createdSplitAction.splitExpenseId
     : activeEditingEntry?.linkedSplitExpenseId;
+
+  useEffect(() => {
+    if (!shouldShowComposerSplitOptions || !entryDraft.addToSplits) {
+      return;
+    }
+
+    if (singleSplitGroupValue && entryDraft.splitGroupId !== singleSplitGroupValue) {
+      updateEntryDraft({ splitGroupId: singleSplitGroupValue });
+      return;
+    }
+
+    if (!singleSplitGroupValue && entryDraft.splitGroupId && !entrySplitGroupOptions.some((option) => option.value === entryDraft.splitGroupId)) {
+      updateEntryDraft({ splitGroupId: "" });
+    }
+  }, [
+    entryDraft.addToSplits,
+    entryDraft.splitGroupId,
+    entryDraft.entryType,
+    entrySplitGroupOptions,
+    shouldShowComposerSplitOptions,
+    singleSplitGroupValue,
+    updateEntryDraft
+  ]);
 
   useEffect(() => {
     setIsConfirmingAddToSplits(false);
@@ -755,13 +790,26 @@ export function EntriesPanel({
               onOwnerChange={updateEntryDraftOwner}
               onSplitPercentChange={updateEntryDraftSplit}
             />
+            {shouldShowComposerSplitOptions ? (
+              <EntryComposerSplitOptions
+                addToSplits={entryDraft.addToSplits}
+                splitGroupId={entryDraft.splitGroupId}
+                splitGroupOptions={entrySplitGroupOptions}
+                showSplitGroupSelect={shouldShowComposerSplitGroupSelect}
+                onToggleAddToSplits={(checked) => updateEntryDraft({
+                  addToSplits: checked,
+                  splitGroupId: checked && singleSplitGroupValue ? singleSplitGroupValue : ""
+                })}
+                onSelectSplitGroup={(splitGroupId) => updateEntryDraft({ splitGroupId })}
+              />
+            ) : null}
             {entrySubmitError ? <p className="entry-submit-error">{entrySubmitError}</p> : null}
             <div className="entry-inline-actions">
               <button
                 type="button"
                 className="inline-action-button inline-save-action"
                 aria-label="Create entry"
-                disabled={isSavingEntryDraft || isQuickExpenseSaving}
+                disabled={isComposerSaveDisabled}
                 onClick={() => void saveEntryDraftAndClearQuickExpense()}
               >
                 <Check size={16} />
@@ -788,7 +836,7 @@ export function EntriesPanel({
           description="Create a ledger row without leaving the Entries page."
           errorMessage={entrySubmitError || quickExpenseWarning}
           saveLabel={isSavingEntryDraft || isQuickExpenseSaving ? "Saving..." : "Save"}
-          isSaveDisabled={isSavingEntryDraft || isQuickExpenseSaving}
+          isSaveDisabled={isComposerSaveDisabled}
           onClose={closeEntryComposerAndClearQuickExpense}
           onSave={() => void saveEntryDraftAndClearQuickExpense()}
         >
@@ -804,6 +852,19 @@ export function EntriesPanel({
             onOwnerChange={updateEntryDraftOwner}
             onSplitPercentChange={updateEntryDraftSplit}
           />
+          {shouldShowComposerSplitOptions ? (
+            <EntryComposerSplitOptions
+              addToSplits={entryDraft.addToSplits}
+              splitGroupId={entryDraft.splitGroupId}
+              splitGroupOptions={entrySplitGroupOptions}
+              showSplitGroupSelect={shouldShowComposerSplitGroupSelect}
+              onToggleAddToSplits={(checked) => updateEntryDraft({
+                addToSplits: checked,
+                splitGroupId: checked && singleSplitGroupValue ? singleSplitGroupValue : ""
+              })}
+              onSelectSplitGroup={(splitGroupId) => updateEntryDraft({ splitGroupId })}
+            />
+          ) : null}
         </EntryMobileSheet>,
         document.body
       ) : null}
@@ -1024,6 +1085,43 @@ export function EntriesPanel({
   );
 }
 
+function EntryComposerSplitOptions({
+  addToSplits,
+  splitGroupId,
+  splitGroupOptions,
+  showSplitGroupSelect,
+  onToggleAddToSplits,
+  onSelectSplitGroup
+}) {
+  return (
+    <div className="entry-composer-split-options">
+      <label className="planned-link-row entry-composer-split-toggle">
+        <input
+          type="checkbox"
+          checked={addToSplits}
+          onChange={(event) => onToggleAddToSplits(event.target.checked)}
+        />
+        <span className="planned-link-row-main">
+          <strong>Add this new entry to Splits</strong>
+          <small>Create the entry and immediately create a linked split expense.</small>
+        </span>
+      </label>
+      {addToSplits && showSplitGroupSelect ? (
+        <label className="split-dialog-field entry-composer-split-group">
+          <span>Split group</span>
+          <ResponsiveSelect
+            className="table-edit-input"
+            title="Split group"
+            value={splitGroupId}
+            options={splitGroupOptions}
+            onValueChange={onSelectSplitGroup}
+          />
+        </label>
+      ) : null}
+    </div>
+  );
+}
+
 function EntryMobileSheet({
   title,
   description,
@@ -1133,7 +1231,9 @@ function buildQuickExpenseDraftPatch({ searchParams, accountOptions, categoryOpt
       transferDirection: undefined,
       ownershipType: isShared ? "shared" : "direct",
       ownerName: isShared ? undefined : ownerName,
-      note: isQuickExpensePlaceholder(searchParams.get("note")) ? "" : searchParams.get("note") ?? ""
+      note: isQuickExpensePlaceholder(searchParams.get("note")) ? "" : searchParams.get("note") ?? "",
+      addToSplits: false,
+      splitGroupId: ""
     },
     warning: warnings.join(" ")
   };

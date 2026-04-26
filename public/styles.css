@@ -1363,6 +1363,21 @@ h3 {
   font-style: normal;
 }
 
+.entry-composer-split-options {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.entry-composer-split-toggle {
+  min-height: 0;
+}
+
+.entry-composer-split-group {
+  display: grid;
+  gap: 6px;
+}
+
 .settings-account-health.is-mismatch {
   color: var(--negative);
 }

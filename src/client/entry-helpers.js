@@ -29,6 +29,8 @@ export function buildEntryDraft(view, accounts, categories, people) {
     viewerSplitRatioBasisPoints: view.id === "household" ? undefined : ownershipType === "shared" ? 5000 : 10000,
     offsetsCategory: false,
     note: "",
+    addToSplits: false,
+    splitGroupId: "",
     linkedTransfer: undefined,
     splits: []
   };
