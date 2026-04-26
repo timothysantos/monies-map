@@ -61,6 +61,7 @@ export function EntriesPanel({
   const [deletingCreatedSplitId, setDeletingCreatedSplitId] = useState("");
   const [createdSplitActionError, setCreatedSplitActionError] = useState("");
   const [isMobileSplitPickerOpen, setIsMobileSplitPickerOpen] = useState(false);
+  const [isMobileSplitSelectorOpen, setIsMobileSplitSelectorOpen] = useState(false);
   const [mobileSplitGroupId, setMobileSplitGroupId] = useState("");
   const fallbackEntriesPageCacheRef = useRef(new Map());
   const fallbackEntriesPageInflightRef = useRef(new Map());
@@ -538,6 +539,7 @@ export function EntriesPanel({
   useEffect(() => {
     setIsConfirmingAddToSplits(false);
     setIsMobileSplitPickerOpen(false);
+    setIsMobileSplitSelectorOpen(false);
     setMobileSplitGroupId("");
   }, [activeEditingEntry?.id]);
 
@@ -560,6 +562,7 @@ export function EntriesPanel({
     setCreatedSplitActionError("");
     setIsConfirmingAddToSplits(false);
     setIsMobileSplitPickerOpen(false);
+    setIsMobileSplitSelectorOpen(false);
     setMobileSplitGroupId("");
     cancelEntryEdit();
   }
@@ -595,17 +598,19 @@ export function EntriesPanel({
     setCreatedSplitAction(null);
     setIsConfirmingAddToSplits(false);
     setIsMobileSplitPickerOpen(false);
+    setIsMobileSplitSelectorOpen(false);
     setMobileSplitGroupId("");
   }
 
-  async function confirmMobileAddToSplits() {
-    if (!activeEditingEntry || !mobileSplitGroupId) {
+  async function handleMobileSplitGroupSelection(nextGroupId) {
+    setMobileSplitGroupId(nextGroupId);
+    if (!activeEditingEntry || !nextGroupId) {
       return;
     }
 
     await handleAddEntryToSplits(
       activeEditingEntry,
-      mobileSplitGroupId === NON_GROUP_SPLIT_VALUE ? null : mobileSplitGroupId
+      nextGroupId === NON_GROUP_SPLIT_VALUE ? null : nextGroupId
     );
   }
 
@@ -859,9 +864,10 @@ export function EntriesPanel({
 
                           setIsConfirmingAddToSplits(false);
                           setIsMobileSplitPickerOpen(true);
+                          setIsMobileSplitSelectorOpen(true);
                         }}
                       >
-                        Continue
+                        Yes, add it
                       </button>
                     </div>
                   </div>
@@ -872,8 +878,19 @@ export function EntriesPanel({
                       title="Split group"
                       value={mobileSplitGroupId}
                       options={splitGroupOptions}
-                      onValueChange={setMobileSplitGroupId}
+                      onValueChange={(nextValue) => {
+                        void handleMobileSplitGroupSelection(nextValue);
+                      }}
                       disabled={addingToSplitsEntryId === activeEditingEntry.id}
+                      open={isMobileSplitSelectorOpen}
+                      onOpenChange={(open) => {
+                        setIsMobileSplitSelectorOpen(open);
+                        if (!open && !addingToSplitsEntryId) {
+                          setIsMobileSplitPickerOpen(false);
+                          setMobileSplitGroupId("");
+                        }
+                      }}
+                      hideMobileTrigger
                     />
                     <div className="entry-mobile-sheet-confirm-buttons">
                       <button
@@ -882,18 +899,11 @@ export function EntriesPanel({
                         disabled={addingToSplitsEntryId === activeEditingEntry.id}
                         onClick={() => {
                           setIsMobileSplitPickerOpen(false);
+                          setIsMobileSplitSelectorOpen(false);
                           setMobileSplitGroupId("");
                         }}
                       >
-                        Back
-                      </button>
-                      <button
-                        type="button"
-                        className="dialog-primary"
-                        disabled={addingToSplitsEntryId === activeEditingEntry.id || !mobileSplitGroupId}
-                        onClick={() => void confirmMobileAddToSplits()}
-                      >
-                        {addingToSplitsEntryId === activeEditingEntry.id ? messages.common.saving : "Add to splits"}
+                        Cancel
                       </button>
                     </div>
                   </div>

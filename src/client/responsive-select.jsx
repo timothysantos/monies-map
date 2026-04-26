@@ -8,14 +8,26 @@ export function ResponsiveSelect({
   onValueChange,
   title,
   className = "table-edit-input",
-  disabled = false
+  disabled = false,
+  open,
+  onOpenChange,
+  hideMobileTrigger = false
 }) {
   const [useMobilePicker, setUseMobilePicker] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpenInternal, setIsOpenInternal] = useState(false);
   const selectedOption = useMemo(
     () => options.find((option) => option.value === value) ?? options[0] ?? null,
     [options, value]
   );
+  const isControlledOpen = typeof open === "boolean";
+  const isOpen = isControlledOpen ? open : isOpenInternal;
+
+  function updateOpen(nextOpen) {
+    if (!isControlledOpen) {
+      setIsOpenInternal(nextOpen);
+    }
+    onOpenChange?.(nextOpen);
+  }
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -46,18 +58,20 @@ export function ResponsiveSelect({
 
   return (
     <>
-      <button
-        type="button"
-        className={`${className} responsive-select-trigger`}
-        disabled={disabled}
-        aria-haspopup="dialog"
-        aria-expanded={isOpen}
-        onClick={() => setIsOpen(true)}
-      >
-        <span className="responsive-select-value">{selectedOption?.label ?? ""}</span>
-        <ChevronDown size={18} />
-      </button>
-      <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
+      {!hideMobileTrigger ? (
+        <button
+          type="button"
+          className={`${className} responsive-select-trigger`}
+          disabled={disabled}
+          aria-haspopup="dialog"
+          aria-expanded={isOpen}
+          onClick={() => updateOpen(true)}
+        >
+          <span className="responsive-select-value">{selectedOption?.label ?? ""}</span>
+          <ChevronDown size={18} />
+        </button>
+      ) : null}
+      <Dialog.Root open={isOpen} onOpenChange={updateOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="note-dialog-overlay" />
           <Dialog.Content className="note-dialog-content mobile-select-dialog" onOpenAutoFocus={(event) => event.preventDefault()}>
@@ -67,7 +81,7 @@ export function ResponsiveSelect({
                 type="button"
                 className="icon-action subtle-cancel mobile-select-close"
                 aria-label={`Close ${title.toLowerCase()}`}
-                onClick={() => setIsOpen(false)}
+                onClick={() => updateOpen(false)}
               >
                 <X size={16} />
               </button>
@@ -80,7 +94,7 @@ export function ResponsiveSelect({
                   className={`mobile-select-option ${option.value === value ? "is-selected" : ""}`}
                   onClick={() => {
                     onValueChange(option.value);
-                    setIsOpen(false);
+                    updateOpen(false);
                   }}
                 >
                   <span className="mobile-select-option-main">
