@@ -25,7 +25,7 @@ import {
 } from "./formatters";
 import {
   canParseCitibankActivityCsv,
-  canParseOcbcActivityCsv,
+  canRecognizeOcbcActivityCsv,
   parseCitibankActivityCsv,
   parseCurrentTransactionSpreadsheet,
   parseOcbcActivityCsv,
@@ -398,7 +398,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         return;
       }
 
-      if (/\.csv$/i.test(file.name) && canParseOcbcActivityCsv(file.name, activityContext)) {
+      if (/\.csv$/i.test(file.name) && canRecognizeOcbcActivityCsv(nextText, file.name, activityContext)) {
         setDismissedOverlapIds([]);
         setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
         const parsed = parseOcbcActivityCsv(nextText, file.name, activityContext);

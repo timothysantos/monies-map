@@ -28,12 +28,21 @@ export function canParseOcbcActivityCsv(fileName: string | undefined, context?: 
     && (isOcbcAccountContext(context) || /ocbc-(?:cards|360)/i.test(fileName ?? ""));
 }
 
+export function canRecognizeOcbcActivityCsv(
+  text: string,
+  fileName?: string,
+  context?: OcbcActivityContext
+) {
+  return canParseOcbcActivityCsv(fileName, context)
+    || (isOcbcActivityFileName(fileName) && hasOcbcActivitySignature(text));
+}
+
 export function parseOcbcActivityCsv(
   text: string,
   fileName?: string,
   context?: OcbcActivityContext
 ): ParsedStatementImport {
-  if (!canParseOcbcActivityCsv(fileName, context)) {
+  if (!canRecognizeOcbcActivityCsv(text, fileName, context)) {
     throw new Error("OCBC activity CSV needs an OCBC account selected.");
   }
 
@@ -151,6 +160,16 @@ function resolveOcbcActivityAccountName(isBankActivity: boolean, context?: OcbcA
 
 function isOcbcActivityFileName(fileName?: string) {
   return /^(?:TrxHistory|TransactionHistory)_\d+(?:-[\w-]+)?\.csv$/i.test(fileName ?? "");
+}
+
+function hasOcbcActivitySignature(text: string) {
+  return /Account details for:/i.test(text)
+    && /Transaction history/i.test(text)
+    && (
+      /Main credit card OCBC/i.test(text)
+      || /Transaction date,Description,Withdrawals \(SGD\),Deposits \(SGD\)/i.test(text)
+      || /Transaction date,Value date,Description,Withdrawals \(SGD\),Deposits \(SGD\),Balance \(SGD\)/i.test(text)
+    );
 }
 
 function isOcbcAccountContext(context?: OcbcActivityContext) {
