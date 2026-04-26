@@ -5,7 +5,7 @@ import { getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { getAmountToneClass } from "./entry-helpers";
 import { money } from "./formatters";
-import { CategoryGlyph, FilterSelect } from "./ui-components";
+import { CategoryGlyph, FilterMultiSelect, FilterSelect } from "./ui-components";
 
 export function EntriesTotalsStrip({
   showExpenseBreakdown,
@@ -120,12 +120,18 @@ export function EntriesFilterStack({
         >
           <RefreshCw size={18} />
         </button>
-        <FilterSelect
+        <FilterMultiSelect
           label={messages.entries.wallet}
-          value={entryFilters.wallet}
+          values={entryFilters.wallets}
           options={wallets}
           emptyLabel={messages.entries.allWallets}
-          onChange={(value) => onChangeFilter("wallet", value)}
+          selectionLabel={(selectedOptions) => {
+            if (selectedOptions.length === 1) {
+              return selectedOptions[0].label;
+            }
+            return `${selectedOptions.length} wallets`;
+          }}
+          onChange={(values) => onChangeFilter("wallet", values)}
         />
         <FilterSelect
           label={messages.entries.category}
