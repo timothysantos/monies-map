@@ -3,6 +3,11 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
 import {
+  useSplitEditState,
+  validateSplitExpenseDraft,
+  validateSplitSettlementDraft
+} from "./split-editing";
+import {
   createSplitGroup,
   deleteSplitExpense,
   deleteSplitSettlement,
@@ -12,7 +17,6 @@ import {
 } from "./splits-api";
 import { SplitArchiveDialog } from "./splits-archive-dialog";
 import { SplitDeleteDialog, SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./splits-dialogs";
-import { buildExpenseDraft, buildNewExpenseDraft, buildNewSettlementDraft, buildSettlementDraft } from "./splits-drafts";
 import { SplitsMainSection } from "./splits-main-section";
 import { buildSplitsPanelModel } from "./splits-selectors";
 
@@ -23,15 +27,6 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [useMobileSplitSheet, setUseMobileSplitSheet] = useState(false);
   const [archiveDialog, setArchiveDialog] = useState(null);
   const [groupDialog, setGroupDialog] = useState(null);
-  const [expenseDialog, setExpenseDialog] = useState(null);
-  const [settlementDialog, setSettlementDialog] = useState(null);
-  const [inlineSplitDraft, setInlineSplitDraft] = useState(null);
-  const [expenseDialogSnapshot, setExpenseDialogSnapshot] = useState(null);
-  const [settlementDialogSnapshot, setSettlementDialogSnapshot] = useState(null);
-  const [inlineSplitDraftSnapshot, setInlineSplitDraftSnapshot] = useState(null);
-  const [inlineSplitError, setInlineSplitError] = useState("");
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dismissedMatchIds, setDismissedMatchIds] = useState([]);
   const defaultGroupId = view.splitsPage.groups.find((group) => group.isDefault)?.id ?? "split-group-none";
@@ -64,32 +59,37 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     totalExpenseMinor,
     visibleMatches
   } = splitModel;
-  const isEditingExpenseDialog = Boolean(expenseDialog?.id);
-  const isEditingSettlementDialog = Boolean(settlementDialog?.id);
-  const hasExpenseDialogChanges = useMemo(() => {
-    if (!isEditingExpenseDialog || !expenseDialogSnapshot) {
-      return true;
-    }
-
-    return JSON.stringify(buildComparableSplitDraft(expenseDialog))
-      !== JSON.stringify(buildComparableSplitDraft(expenseDialogSnapshot));
-  }, [expenseDialog, expenseDialogSnapshot, isEditingExpenseDialog]);
-  const hasSettlementDialogChanges = useMemo(() => {
-    if (!isEditingSettlementDialog || !settlementDialogSnapshot) {
-      return true;
-    }
-
-    return JSON.stringify(buildComparableSplitDraft(settlementDialog))
-      !== JSON.stringify(buildComparableSplitDraft(settlementDialogSnapshot));
-  }, [isEditingSettlementDialog, settlementDialog, settlementDialogSnapshot]);
-  const hasInlineSplitChanges = useMemo(() => {
-    if (!inlineSplitDraft?.id || !inlineSplitDraftSnapshot) {
-      return true;
-    }
-
-    return JSON.stringify(buildComparableSplitDraft(inlineSplitDraft))
-      !== JSON.stringify(buildComparableSplitDraft(inlineSplitDraftSnapshot));
-  }, [inlineSplitDraft, inlineSplitDraftSnapshot]);
+  const {
+    expenseDialog,
+    settlementDialog,
+    inlineSplitDraft,
+    inlineSplitError,
+    deleteTarget,
+    formError,
+    hasExpenseDialogChanges,
+    hasSettlementDialogChanges,
+    hasInlineSplitChanges,
+    setExpenseDialog,
+    setSettlementDialog,
+    setInlineSplitDraft,
+    setInlineSplitError,
+    setDeleteTarget,
+    setFormError,
+    openExpenseEditor,
+    openSettlementEditor,
+    openInlineExpenseEditor,
+    openInlineSettlementEditor,
+    openNewExpenseDialog,
+    openNewSettlementDialog,
+    closeExpenseDialog,
+    closeSettlementDialog,
+    clearInlineSplitDraft,
+    resetForViewChange,
+    requestDeleteSplit,
+    clearExpenseDialogSnapshot,
+    clearSettlementDialogSnapshot,
+    clearInlineSplitSnapshot
+  } = useSplitEditState({ categoryOptions, people });
 
   useEffect(() => {
     if (selectedGroupParam || selectedMode === "matches" || selectedGroupId === defaultGroupId) {
@@ -114,23 +114,17 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   useEffect(() => {
     setDismissedMatchIds([]);
     setShowBreakdown(false);
-    setFormError("");
-    setInlineSplitDraft(null);
-    setInlineSplitDraftSnapshot(null);
-    setInlineSplitError("");
-    setDeleteTarget(null);
+    resetForViewChange();
     setArchiveDialog(null);
-  }, [view.id, view.splitsPage.month]);
+  }, [resetForViewChange, view.id, view.splitsPage.month]);
 
   useEffect(() => {
     if (!useMobileSplitSheet) {
       return;
     }
 
-    setInlineSplitDraft(null);
-    setInlineSplitDraftSnapshot(null);
-    setInlineSplitError("");
-  }, [useMobileSplitSheet]);
+    clearInlineSplitDraft();
+  }, [clearInlineSplitDraft, useMobileSplitSheet]);
 
   useEffect(() => {
     const targetSplitExpenseId = searchParams.get("editing_split_expense");
@@ -212,8 +206,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   }
 
   async function saveExpense() {
-    if (!expenseDialog?.description?.trim() || !expenseDialog.date || !expenseDialog.payerPersonName || !expenseDialog.categoryName) {
-      setFormError("Expense description, date, payer, and category are required.");
+    const validationError = validateSplitExpenseDraft(expenseDialog);
+    if (validationError) {
+      setFormError(validationError);
       return;
     }
 
@@ -222,8 +217,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     try {
       await saveSplitExpense(expenseDialog);
       await onRefresh();
-      setExpenseDialog(null);
-      setExpenseDialogSnapshot(null);
+      closeExpenseDialog();
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -232,8 +226,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   }
 
   async function saveSettlement() {
-    if (!settlementDialog?.date || !settlementDialog.fromPersonName || !settlementDialog.toPersonName) {
-      setFormError("Settlement date and both people are required.");
+    const validationError = validateSplitSettlementDraft(settlementDialog);
+    if (validationError) {
+      setFormError(validationError);
       return;
     }
 
@@ -242,8 +237,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     try {
       await saveSplitSettlement(settlementDialog);
       await onRefresh();
-      setSettlementDialog(null);
-      setSettlementDialogSnapshot(null);
+      closeSettlementDialog();
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -261,48 +255,16 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
   }
 
-  function openExpenseEditor(item) {
-    setFormError("");
-    const draft = buildExpenseDraft(item, categoryOptions, people);
-    setExpenseDialog(draft);
-    setExpenseDialogSnapshot(draft);
-  }
-
-  function openSettlementEditor(item) {
-    setFormError("");
-    const draft = buildSettlementDraft(item, people);
-    setSettlementDialog(draft);
-    setSettlementDialogSnapshot(draft);
-  }
-
-  function openInlineExpenseEditor(item) {
-    setFormError("");
-    setInlineSplitError("");
-    const draft = buildExpenseDraft(item, categoryOptions, people);
-    setInlineSplitDraft(draft);
-    setInlineSplitDraftSnapshot(draft);
-  }
-
-  function openInlineSettlementEditor(item) {
-    setFormError("");
-    setInlineSplitError("");
-    const draft = buildSettlementDraft(item, people);
-    setInlineSplitDraft(draft);
-    setInlineSplitDraftSnapshot(draft);
-  }
-
   async function saveInlineSplit() {
     if (!inlineSplitDraft) {
       return;
     }
 
-    if (inlineSplitDraft.kind === "expense" && (!inlineSplitDraft.description?.trim() || !inlineSplitDraft.date || !inlineSplitDraft.payerPersonName || !inlineSplitDraft.categoryName)) {
-      setInlineSplitError("Expense description, date, payer, and category are required.");
-      return;
-    }
-
-    if (inlineSplitDraft.kind === "settlement" && (!inlineSplitDraft.date || !inlineSplitDraft.fromPersonName || !inlineSplitDraft.toPersonName)) {
-      setInlineSplitError("Settlement date and both people are required.");
+    const validationError = inlineSplitDraft.kind === "expense"
+      ? validateSplitExpenseDraft(inlineSplitDraft)
+      : validateSplitSettlementDraft(inlineSplitDraft);
+    if (validationError) {
+      setInlineSplitError(validationError);
       return;
     }
 
@@ -315,8 +277,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         await saveSplitSettlement(inlineSplitDraft);
       }
       await onRefresh();
-      setInlineSplitDraft(null);
-      setInlineSplitDraftSnapshot(null);
+      clearInlineSplitDraft();
     } catch (error) {
       setInlineSplitError(error.message);
     } finally {
@@ -340,24 +301,12 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     });
   }
 
-  function openNewExpenseDialog() {
-    setFormError("");
-    setExpenseDialog(buildNewExpenseDraft({ activeGroup, categoryOptions, people, view }));
-    setExpenseDialogSnapshot(null);
-  }
-
   function openMatchesView() {
     updateSplitView({ groupId: activeGroup?.id ?? defaultGroupId, mode: "matches" });
   }
 
   function openActiveGroupView() {
     updateSplitView({ groupId: activeGroup?.id ?? defaultGroupId, mode: "entries" });
-  }
-
-  function requestDeleteSplit(item) {
-    setFormError("");
-    setInlineSplitError("");
-    setDeleteTarget(item);
   }
 
   async function confirmDeleteSplit() {
@@ -369,6 +318,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setInlineSplitError("");
     setIsSubmitting(true);
     try {
+      const deletedSplitKey = `${deleteTarget.kind}:${deleteTarget.id}`;
       if (deleteTarget.kind === "expense") {
         await deleteSplitExpense(deleteTarget.id);
       } else {
@@ -376,7 +326,11 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       }
       await onRefresh();
       setDeleteTarget(null);
-      setInlineSplitDraft((current) => (current?.kind === deleteTarget.kind && current?.id === deleteTarget.id ? null : current));
+      if (`${inlineSplitDraft?.kind}:${inlineSplitDraft?.id}` === deletedSplitKey) {
+        clearInlineSplitSnapshot();
+        setInlineSplitError("");
+        setInlineSplitDraft(null);
+      }
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -400,9 +354,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
             type="button"
             className="subtle-action split-settle-header"
             onClick={() => {
-              setFormError("");
-              setSettlementDialog(buildNewSettlementDraft({ activeGroup, groupBalanceMinor, people }));
-              setSettlementDialogSnapshot(null);
+              openNewSettlementDialog({ activeGroup, groupBalanceMinor });
             }}
             disabled={!activeGroup || groupBalanceMinor === 0}
           >
@@ -453,7 +405,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
           setGroupDialog({ name: "" });
         }}
         onToggleBreakdown={() => setShowBreakdown((current) => !current)}
-        onAddExpense={openNewExpenseDialog}
+        onAddExpense={() => openNewExpenseDialog({ activeGroup, view })}
         onDismissMatch={(matchId) => setDismissedMatchIds((current) => [...current, matchId])}
         onConfirmMatch={confirmMatch}
         onOpenArchive={openArchiveList}
@@ -514,8 +466,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         isSaveDisabled={!hasExpenseDialogChanges}
         onChange={setExpenseDialog}
         onClose={() => {
-          setExpenseDialog(null);
-          setExpenseDialogSnapshot(null);
+          closeExpenseDialog();
         }}
         onSave={saveExpense}
         onViewLinkedEntry={openLinkedEntry}
@@ -530,44 +481,11 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         isSaveDisabled={!hasSettlementDialogChanges}
         onChange={setSettlementDialog}
         onClose={() => {
-          setSettlementDialog(null);
-          setSettlementDialogSnapshot(null);
+          closeSettlementDialog();
         }}
         onSave={saveSettlement}
         onViewLinkedEntry={openLinkedEntry}
       />
     </article>
   );
-}
-
-function buildComparableSplitDraft(draft) {
-  if (!draft) {
-    return null;
-  }
-
-  if (draft.kind === "expense") {
-    return {
-      kind: draft.kind,
-      id: draft.id ?? null,
-      groupId: draft.groupId ?? "split-group-none",
-      date: draft.date,
-      description: draft.description,
-      categoryName: draft.categoryName,
-      payerPersonName: draft.payerPersonName,
-      amountMinor: Number(draft.amountMinor ?? 0),
-      note: draft.note ?? "",
-      splitBasisPoints: Number(draft.splitBasisPoints ?? 5000)
-    };
-  }
-
-  return {
-    kind: draft.kind,
-    id: draft.id ?? null,
-    groupId: draft.groupId ?? "split-group-none",
-    date: draft.date,
-    fromPersonName: draft.fromPersonName,
-    toPersonName: draft.toPersonName,
-    amountMinor: Number(draft.amountMinor ?? 0),
-    note: draft.note ?? ""
-  };
 }
