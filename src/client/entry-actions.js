@@ -94,7 +94,17 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
   }
 
   function updateEntryDraft(patch) {
-    setEntryDraft((current) => normalizeEntryShape({ ...current, ...patch }, people));
+    setEntryDraft((current) => {
+      const nextDraft = { ...current, ...patch };
+      if (nextDraft.entryType !== "expense") {
+        nextDraft.addToSplits = false;
+        nextDraft.splitGroupId = "";
+      } else if (!nextDraft.addToSplits) {
+        nextDraft.splitGroupId = "";
+      }
+
+      return normalizeEntryShape(nextDraft, people);
+    });
   }
 
   function updateEntryDraftOwner(nextValue) {
@@ -149,10 +159,34 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
         return false;
       }
 
+      let splitAddError = "";
+      if (entryDraft.addToSplits && entryDraft.entryType === "expense") {
+        const splitResponse = await fetch("/api/splits/expenses/from-entry", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            entryId: data.entryId,
+            splitGroupId: entryDraft.splitGroupId === "split-group-none"
+              ? null
+              : (entryDraft.splitGroupId || null)
+          })
+        });
+
+        if (!splitResponse.ok) {
+          const splitData = await splitResponse.json().catch(() => ({}));
+          splitAddError = splitData.error ?? "Entry was created, but adding it to splits failed.";
+        }
+      }
+
       queuedComposerDraftRef.current = null;
       closeEntryComposer();
       await onRefresh();
-      return true;
+      return {
+        saved: true,
+        splitAddError
+      };
     } finally {
       setIsSavingEntryDraft(false);
     }
