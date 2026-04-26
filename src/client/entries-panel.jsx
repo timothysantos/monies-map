@@ -904,7 +904,7 @@ export function EntriesPanel({
         categoryOptions={categoryOptions}
         accountOptions={accountOptions}
         ownerOptions={ownerOptions}
-        splitGroups={entryView.splitsPage.groups}
+        splitGroups={entriesPage.splitGroups}
         viewId={entryView.id}
         editingEntryId={editingEntryId}
         addingToSplitsEntryId={addingToSplitsEntryId}
@@ -1208,6 +1208,10 @@ function buildInitialEntriesPage(view) {
   return {
     viewId: view.id,
     label: view.label,
+    splitGroups: view.splitsPage.groups.map((group) => ({
+      id: group.id,
+      name: group.name
+    })),
     monthPage: {
       month: view.monthPage.month,
       selectedPersonId: view.monthPage.selectedPersonId,

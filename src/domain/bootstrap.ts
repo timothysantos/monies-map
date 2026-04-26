@@ -151,9 +151,10 @@ export async function buildEntriesPageDto(
 ): Promise<EntriesPageDto> {
   await ensureAppData(db);
 
-  const [household, trackedMonths] = await Promise.all([
+  const [household, trackedMonths, splitGroups] = await Promise.all([
     loadHousehold(db),
-    loadTrackedMonths(db)
+    loadTrackedMonths(db),
+    loadSplitGroups(db)
   ]);
   const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
     ? selectedMonth
@@ -168,6 +169,13 @@ export async function buildEntriesPageDto(
   return {
     viewId,
     label,
+    splitGroups: [
+      { id: "split-group-none", name: "Non-group expenses" },
+      ...splitGroups.map((group) => ({
+        id: group.id,
+        name: group.name
+      }))
+    ],
     monthPage: {
       month: effectiveSelectedMonth,
       selectedPersonId: viewId,
