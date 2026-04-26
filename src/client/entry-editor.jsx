@@ -9,7 +9,7 @@ import { messages } from "./copy/en-SG";
 import { getTransferWallets } from "./entry-helpers";
 import { ResponsiveSelect } from "./responsive-select";
 import { CategoryGlyph } from "./ui-components";
-import { formatDateOnly, formatEditableMinorInput, parseMoneyInput } from "./formatters";
+import { formatDateOnly, formatEditableMinorInput, money, parseMoneyInput } from "./formatters";
 
 // Shared field layout for creating and editing entries. Callers keep ownership of
 // persistence so row editing and draft creation can each preserve their own flow.
@@ -370,12 +370,20 @@ export function EntryTransferTools({
   onLinkCandidate,
   onSettleTransfer
 }) {
+  const [expandedCandidateId, setExpandedCandidateId] = useState(null);
+
   if (entry.entryType !== "transfer") {
     return null;
   }
 
   const isLinkedTransfer = Boolean(entry.linkedTransfer);
   const isRefreshingCandidates = refreshingTransferCandidatesEntryId === entry.id;
+  const entryWalletLabel = entry.accountOwnerLabel
+    ? `${entry.accountName} - ${entry.accountOwnerLabel}`
+    : entry.accountName;
+  const entrySignedAmountMinor = entry.transferDirection === "out"
+    ? -Math.abs(entry.amountMinor)
+    : Math.abs(entry.amountMinor);
 
   return (
     <div className="entry-edit-transfer-helper">
@@ -386,9 +394,11 @@ export function EntryTransferTools({
           if (open) {
             onEnsureSettlementDraft(entry);
             onTransferDialogEntryChange(entry.id);
+            setExpandedCandidateId(null);
             void onRefreshCandidates?.(entry);
             return;
           }
+          setExpandedCandidateId(null);
           onTransferDialogEntryChange((current) => current === entry.id ? null : current);
         }}
       >
@@ -433,6 +443,28 @@ export function EntryTransferTools({
                 </div>
               </section>
               <section className="transfer-match-section">
+                <h4>This entry</h4>
+                <div className="transfer-match-card transfer-match-card-static">
+                  <div className="transfer-match-card-body">
+                    <strong>{entryWalletLabel}</strong>
+                    <p>{formatDateOnly(entry.date)} • {entry.description}</p>
+                    <div className="transfer-match-detail-grid">
+                      <span>
+                        <span className="transfer-match-label">Amount</span>
+                        <strong>{money(entrySignedAmountMinor)}</strong>
+                      </span>
+                      <span>
+                        <span className="transfer-match-label">Direction</span>
+                        <strong>{entry.transferDirection === "in" ? "Transfer in" : "Transfer out"}</strong>
+                      </span>
+                    </div>
+                    {entry.note ? (
+                      <p className="transfer-match-detail-note">{entry.note}</p>
+                    ) : null}
+                  </div>
+                </div>
+              </section>
+              <section className="transfer-match-section">
                 <h4>{isLinkedTransfer ? "Exact matches" : "Find matching side"}</h4>
                 <div className="transfer-match-section-head">
                   <span className="transfer-match-label">
@@ -456,12 +488,49 @@ export function EntryTransferTools({
                     const candidateWalletLabel = candidate.accountOwnerLabel
                       ? `${candidate.accountName} - ${candidate.accountOwnerLabel}`
                       : candidate.accountName;
+                    const candidateSignedAmountMinor = candidate.transferDirection === "out"
+                      ? -Math.abs(candidate.amountMinor)
+                      : Math.abs(candidate.amountMinor);
+                    const isExpanded = expandedCandidateId === candidate.id;
                     return (
                       <div key={candidate.id} className="transfer-match-card">
-                        <div>
-                          <strong>{candidateWalletLabel}</strong>
-                          <p>{formatDateOnly(candidate.date)} • {candidate.description}</p>
-                        </div>
+                        <button
+                          type="button"
+                          className="transfer-match-card-toggle"
+                          aria-expanded={isExpanded}
+                          onClick={() => setExpandedCandidateId((current) => current === candidate.id ? null : candidate.id)}
+                        >
+                          <div className="transfer-match-card-body">
+                            <strong>{candidateWalletLabel}</strong>
+                            <p>{formatDateOnly(candidate.date)} • {candidate.description}</p>
+                            {isExpanded ? (
+                              <div className="transfer-match-detail-grid">
+                                <span>
+                                  <span className="transfer-match-label">Amount</span>
+                                  <strong>{money(candidateSignedAmountMinor)}</strong>
+                                </span>
+                                <span>
+                                  <span className="transfer-match-label">Direction</span>
+                                  <strong>{candidate.transferDirection === "in" ? "Transfer in" : "Transfer out"}</strong>
+                                </span>
+                                <span>
+                                  <span className="transfer-match-label">Wallet</span>
+                                  <strong>{candidateWalletLabel}</strong>
+                                </span>
+                                <span>
+                                  <span className="transfer-match-label">Type</span>
+                                  <strong>{candidate.entryType}</strong>
+                                </span>
+                              </div>
+                            ) : null}
+                            {isExpanded && candidate.note ? (
+                              <p className="transfer-match-detail-note">{candidate.note}</p>
+                            ) : null}
+                          </div>
+                          <span className="transfer-match-detail-toggle">
+                            {isExpanded ? "Hide details" : "View details"}
+                          </span>
+                        </button>
                         {isCurrentLink ? (
                           <span className="entry-chip entry-chip-transfer">Current match</span>
                         ) : (
