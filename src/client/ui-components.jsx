@@ -24,6 +24,87 @@ export function FilterSelect({ label, value, options, emptyLabel, onChange }) {
   );
 }
 
+export function FilterMultiSelect({
+  label,
+  values,
+  options,
+  emptyLabel,
+  onChange,
+  selectionLabel
+}) {
+  const [open, setOpen] = useState(false);
+  const selectedValues = Array.isArray(values) ? values : [];
+  const normalizedOptions = options.map((option) => (
+    typeof option === "string"
+      ? { value: option, label: option }
+      : option
+  ));
+  const selectedOptions = normalizedOptions.filter((option) => selectedValues.includes(option.value));
+  const triggerLabel = selectedOptions.length
+    ? selectionLabel?.(selectedOptions) ?? `${selectedOptions.length} selected`
+    : emptyLabel;
+
+  function toggleValue(nextValue) {
+    const nextValues = selectedValues.includes(nextValue)
+      ? selectedValues.filter((value) => value !== nextValue)
+      : [...selectedValues, nextValue];
+    onChange(nextValues);
+  }
+
+  return (
+    <label className="entries-filter">
+      <span className="entries-filter-label">{label}</span>
+      <Popover.Root open={open} onOpenChange={setOpen}>
+        <Popover.Trigger asChild>
+          <button
+            type="button"
+            className="table-edit-input entries-filter-multiselect-trigger"
+            aria-haspopup="dialog"
+            aria-expanded={open}
+          >
+            <span className="entries-filter-multiselect-value">{triggerLabel}</span>
+          </button>
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content className="entries-filter-multiselect-popover" sideOffset={8} align="start">
+            <div className="entries-filter-multiselect-options">
+              {normalizedOptions.map((option) => {
+                const checked = selectedValues.includes(option.value);
+                return (
+                  <label key={option.value} className="entries-filter-multiselect-option">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleValue(option.value)}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+            <div className="entries-filter-multiselect-actions">
+              <button
+                type="button"
+                className="subtle-action"
+                onClick={() => onChange([])}
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                className="subtle-action"
+                onClick={() => setOpen(false)}
+              >
+                Done
+              </button>
+            </div>
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+    </label>
+  );
+}
+
 export function DeleteRowButton({ label, onConfirm, triggerLabel, confirmLabel = "Confirm", destructive = true, prompt }) {
   const [open, setOpen] = useState(false);
   const [isWorking, setIsWorking] = useState(false);

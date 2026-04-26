@@ -26,9 +26,9 @@ export function getEntryFormOptions({ accounts, categories, people }) {
 }
 
 export function getActiveEntryFilterCount(entryFilters) {
-  return ["wallet", "category", "person", "type"].reduce(
+  return ["category", "person", "type"].reduce(
     (count, key) => count + (entryFilters[key] ? 1 : 0),
-    0
+    entryFilters.wallets?.length ? 1 : 0
   );
 }
 
@@ -37,7 +37,10 @@ export function getFilteredEntries({ entries, entryFilters, selectedScope, viewI
     if (!entryMatchesScope(entry, viewId, selectedScope)) {
       return false;
     }
-    if (entryFilters.wallet && entry.accountId !== entryFilters.wallet && entry.accountName !== entryFilters.wallet) {
+    if (
+      entryFilters.wallets?.length
+      && !entryFilters.wallets.some((wallet) => entry.accountId === wallet || entry.accountName === wallet)
+    ) {
       return false;
     }
     if (entryFilters.category && entry.categoryName !== entryFilters.category) {

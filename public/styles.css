@@ -4720,6 +4720,63 @@ button.split-activity-card:hover {
   gap: 8px;
 }
 
+.entries-filter-multiselect-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+  text-align: left;
+}
+
+.entries-filter-multiselect-value {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entries-filter-multiselect-popover {
+  width: min(280px, calc(100vw - 32px));
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 252, 249, 0.98);
+  box-shadow: 0 18px 40px rgba(27, 24, 21, 0.14);
+}
+
+.entries-filter-multiselect-options {
+  display: grid;
+  gap: 6px;
+  max-height: min(280px, 50vh);
+  overflow-y: auto;
+}
+
+.entries-filter-multiselect-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: var(--text);
+}
+
+.entries-filter-multiselect-option:hover {
+  background: rgba(177, 94, 47, 0.08);
+}
+
+.entries-filter-multiselect-option input {
+  margin: 0;
+}
+
+.entries-filter-multiselect-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
 .entries-totals-strip {
   display: flex;
   flex-wrap: nowrap;

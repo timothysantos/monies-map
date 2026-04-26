@@ -288,8 +288,10 @@ export function EntriesPanel({
   const entryComposerEditorRef = useRef(null);
   const selectedScope = searchParams.get("entries_scope") ?? entryView.monthPage.selectedScope;
   const defaultEntryPerson = entryView.id !== "household" ? entryView.label : "";
+  const walletFilters = getWalletFilterValues(searchParams);
+  const walletFilterKey = walletFilters.join("\u0000");
   const entryFilters = {
-    wallet: searchParams.get("entry_wallet") ?? "",
+    wallets: walletFilters,
     category: searchParams.get("entry_category") ?? "",
     person: searchParams.get("entry_person") ?? defaultEntryPerson,
     type: searchParams.get("entry_type") ?? ""
@@ -337,22 +339,26 @@ export function EntriesPanel({
     [entries]
   );
   useEffect(() => {
-    const wallet = searchParams.get("entry_wallet");
     const category = searchParams.get("entry_category");
     const person = searchParams.get("entry_person");
     const walletValues = wallets.map((option) => option.value);
-    const walletIsStale = wallet && !walletValues.includes(wallet) && !entries.some((entry) => entry.accountName === wallet);
+    const staleWalletFilters = walletFilters.filter((wallet) => (
+      !walletValues.includes(wallet) && !entries.some((entry) => entry.accountName === wallet)
+    ));
     const categoryIsStale = category && !entryCategoryOptions.includes(category);
     const personIsStale = person && !peopleFilterOptions.includes(person);
 
-    if (!walletIsStale && !categoryIsStale && !personIsStale) {
+    if (!staleWalletFilters.length && !categoryIsStale && !personIsStale) {
       return;
     }
 
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
-      if (walletIsStale) {
+      if (staleWalletFilters.length) {
         next.delete("entry_wallet");
+        walletFilters
+          .filter((wallet) => !staleWalletFilters.includes(wallet))
+          .forEach((wallet) => next.append("entry_wallet", wallet));
       }
       if (categoryIsStale) {
         next.delete("entry_category");
@@ -362,7 +368,7 @@ export function EntriesPanel({
       }
       return next;
     }, { replace: true });
-  }, [entries, entryCategoryOptions, peopleFilterOptions, searchParams, setSearchParams, wallets]);
+  }, [entries, entryCategoryOptions, peopleFilterOptions, searchParams, setSearchParams, walletFilterKey, wallets]);
   const { categoryOptions, accountOptions, ownerOptions } = useMemo(
     () => getEntryFormOptions({ accounts, categories, people }),
     [accounts, categories, people]
@@ -687,6 +693,11 @@ export function EntriesPanel({
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       const paramKey = `entry_${key}`;
+      if (key === "wallet") {
+        next.delete(paramKey);
+        normalizeWalletFilterValues(value).forEach((wallet) => next.append(paramKey, wallet));
+        return next;
+      }
       if (!value) {
         next.delete(paramKey);
       } else {
@@ -983,6 +994,29 @@ const QUICK_EXPENSE_PARAMS = [
   "owner",
   "shared"
 ];
+
+function getWalletFilterValues(searchParams) {
+  const values = searchParams.getAll("entry_wallet");
+  if (values.length > 1) {
+    return normalizeWalletFilterValues(values);
+  }
+
+  const singleValue = values[0] ?? searchParams.get("entry_wallet") ?? "";
+  if (!singleValue) {
+    return [];
+  }
+
+  return normalizeWalletFilterValues(singleValue
+    .split(",")
+    .map((value) => value.trim())
+  );
+}
+
+function normalizeWalletFilterValues(values) {
+  return Array.from(new Set((Array.isArray(values) ? values : [])
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean)));
+}
 
 function buildQuickExpenseDraftPatch({ searchParams, accountOptions, categoryOptions, ownerOptions, fallbackOwnerName }) {
   const warnings = [];
