@@ -1868,6 +1868,12 @@ h3 {
   color: white;
 }
 
+.inline-save-action:disabled {
+  border-color: rgba(191, 103, 45, 0.16);
+  background: rgba(191, 103, 45, 0.14);
+  color: rgba(113, 62, 34, 0.58);
+}
+
 .inline-cancel-action {
   color: var(--muted);
 }
@@ -2659,6 +2665,12 @@ body:has(.split-inline-editor-card) .splits-fab {
   font: inherit;
   padding: 10px 16px;
   cursor: pointer;
+}
+
+.dialog-primary:disabled {
+  background: rgba(191, 103, 45, 0.18);
+  color: rgba(113, 62, 34, 0.58);
+  cursor: not-allowed;
 }
 
 .dialog-danger {

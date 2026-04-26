@@ -60,6 +60,7 @@ export function EntriesDateGroups({
   onDeleteCreatedSplit,
   onFinishEntryEdit,
   onCancelEntryEdit,
+  hasEditingChanges = false,
   renderInlineEditor = true
 }) {
   const [splitPickerEntry, setSplitPickerEntry] = useState(null);
@@ -165,6 +166,7 @@ export function EntriesDateGroups({
                 onDeleteCreatedSplit={onDeleteCreatedSplit}
                 onFinishEntryEdit={onFinishEntryEdit}
                 onCancelEntryEdit={onCancelEntryEdit}
+                hasEditingChanges={hasEditingChanges}
                 renderInlineEditor={renderInlineEditor}
               />
             ))}
@@ -268,6 +270,7 @@ function EntryRow({
   onDeleteCreatedSplit,
   onFinishEntryEdit,
   onCancelEntryEdit,
+  hasEditingChanges = false,
   renderInlineEditor = true
 }) {
   const inlineEditorRef = useRef(null);
@@ -445,7 +448,7 @@ function EntryRow({
                 {messages.entries.addToSplits}
               </button>
             ) : null}
-            <button type="button" className="inline-action-button inline-save-action" aria-label="Done editing entry" onClick={onFinishEntryEdit}>
+            <button type="button" className="inline-action-button inline-save-action" aria-label="Done editing entry" disabled={!hasEditingChanges} onClick={onFinishEntryEdit}>
               <Check size={16} />
               <span className="desktop-action-label">Save</span>
             </button>

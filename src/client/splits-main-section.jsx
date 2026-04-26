@@ -26,6 +26,7 @@ export function SplitsMainSection({
   inlineSplitDraft,
   inlineSplitError,
   isSubmitting,
+  hasInlineSplitChanges,
   onSelectGroup,
   onCreateGroup,
   onToggleBreakdown,
@@ -107,6 +108,7 @@ export function SplitsMainSection({
           inlineSplitDraft={inlineSplitDraft}
           inlineSplitError={inlineSplitError}
           isSubmitting={isSubmitting}
+          hasInlineSplitChanges={hasInlineSplitChanges}
           onAddExpense={onAddExpense}
           onOpenArchive={onOpenArchive}
           onEditExpense={onEditExpense}

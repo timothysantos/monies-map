@@ -33,6 +33,7 @@ export function SplitActivityGroups({
   editingDraft = null,
   inlineFormError = "",
   isSubmitting = false,
+  hasEditingChanges = true,
   readOnly = false,
   onChangeEditingDraft,
   onCancelEditing,
@@ -166,7 +167,7 @@ export function SplitActivityGroups({
                   >
                     Delete
                   </button>
-                  <button type="button" className="inline-action-button inline-save-action" aria-label="Done editing split" disabled={isSubmitting} onClick={() => void onSaveEditing?.()}>
+                  <button type="button" className="inline-action-button inline-save-action" aria-label="Done editing split" disabled={isSubmitting || !hasEditingChanges} onClick={() => void onSaveEditing?.()}>
                     {isSubmitting ? null : <Check size={16} />}
                     <span className="desktop-action-label">{isSubmitting ? messages.common.saving : "Save"}</span>
                   </button>

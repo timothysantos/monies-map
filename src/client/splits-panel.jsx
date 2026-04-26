@@ -26,6 +26,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [expenseDialog, setExpenseDialog] = useState(null);
   const [settlementDialog, setSettlementDialog] = useState(null);
   const [inlineSplitDraft, setInlineSplitDraft] = useState(null);
+  const [expenseDialogSnapshot, setExpenseDialogSnapshot] = useState(null);
+  const [settlementDialogSnapshot, setSettlementDialogSnapshot] = useState(null);
+  const [inlineSplitDraftSnapshot, setInlineSplitDraftSnapshot] = useState(null);
   const [inlineSplitError, setInlineSplitError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [formError, setFormError] = useState("");
@@ -61,6 +64,32 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     totalExpenseMinor,
     visibleMatches
   } = splitModel;
+  const isEditingExpenseDialog = Boolean(expenseDialog?.id);
+  const isEditingSettlementDialog = Boolean(settlementDialog?.id);
+  const hasExpenseDialogChanges = useMemo(() => {
+    if (!isEditingExpenseDialog || !expenseDialogSnapshot) {
+      return true;
+    }
+
+    return JSON.stringify(buildComparableSplitDraft(expenseDialog))
+      !== JSON.stringify(buildComparableSplitDraft(expenseDialogSnapshot));
+  }, [expenseDialog, expenseDialogSnapshot, isEditingExpenseDialog]);
+  const hasSettlementDialogChanges = useMemo(() => {
+    if (!isEditingSettlementDialog || !settlementDialogSnapshot) {
+      return true;
+    }
+
+    return JSON.stringify(buildComparableSplitDraft(settlementDialog))
+      !== JSON.stringify(buildComparableSplitDraft(settlementDialogSnapshot));
+  }, [isEditingSettlementDialog, settlementDialog, settlementDialogSnapshot]);
+  const hasInlineSplitChanges = useMemo(() => {
+    if (!inlineSplitDraft?.id || !inlineSplitDraftSnapshot) {
+      return true;
+    }
+
+    return JSON.stringify(buildComparableSplitDraft(inlineSplitDraft))
+      !== JSON.stringify(buildComparableSplitDraft(inlineSplitDraftSnapshot));
+  }, [inlineSplitDraft, inlineSplitDraftSnapshot]);
 
   useEffect(() => {
     if (selectedGroupParam || selectedMode === "matches" || selectedGroupId === defaultGroupId) {
@@ -87,6 +116,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setShowBreakdown(false);
     setFormError("");
     setInlineSplitDraft(null);
+    setInlineSplitDraftSnapshot(null);
     setInlineSplitError("");
     setDeleteTarget(null);
     setArchiveDialog(null);
@@ -98,6 +128,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
 
     setInlineSplitDraft(null);
+    setInlineSplitDraftSnapshot(null);
     setInlineSplitError("");
   }, [useMobileSplitSheet]);
 
@@ -192,6 +223,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       await saveSplitExpense(expenseDialog);
       await onRefresh();
       setExpenseDialog(null);
+      setExpenseDialogSnapshot(null);
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -211,6 +243,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       await saveSplitSettlement(settlementDialog);
       await onRefresh();
       setSettlementDialog(null);
+      setSettlementDialogSnapshot(null);
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -230,24 +263,32 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
 
   function openExpenseEditor(item) {
     setFormError("");
-    setExpenseDialog(buildExpenseDraft(item, categoryOptions, people));
+    const draft = buildExpenseDraft(item, categoryOptions, people);
+    setExpenseDialog(draft);
+    setExpenseDialogSnapshot(draft);
   }
 
   function openSettlementEditor(item) {
     setFormError("");
-    setSettlementDialog(buildSettlementDraft(item, people));
+    const draft = buildSettlementDraft(item, people);
+    setSettlementDialog(draft);
+    setSettlementDialogSnapshot(draft);
   }
 
   function openInlineExpenseEditor(item) {
     setFormError("");
     setInlineSplitError("");
-    setInlineSplitDraft(buildExpenseDraft(item, categoryOptions, people));
+    const draft = buildExpenseDraft(item, categoryOptions, people);
+    setInlineSplitDraft(draft);
+    setInlineSplitDraftSnapshot(draft);
   }
 
   function openInlineSettlementEditor(item) {
     setFormError("");
     setInlineSplitError("");
-    setInlineSplitDraft(buildSettlementDraft(item, people));
+    const draft = buildSettlementDraft(item, people);
+    setInlineSplitDraft(draft);
+    setInlineSplitDraftSnapshot(draft);
   }
 
   async function saveInlineSplit() {
@@ -275,6 +316,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       }
       await onRefresh();
       setInlineSplitDraft(null);
+      setInlineSplitDraftSnapshot(null);
     } catch (error) {
       setInlineSplitError(error.message);
     } finally {
@@ -301,6 +343,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   function openNewExpenseDialog() {
     setFormError("");
     setExpenseDialog(buildNewExpenseDraft({ activeGroup, categoryOptions, people, view }));
+    setExpenseDialogSnapshot(null);
   }
 
   function openMatchesView() {
@@ -359,6 +402,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
             onClick={() => {
               setFormError("");
               setSettlementDialog(buildNewSettlementDraft({ activeGroup, groupBalanceMinor, people }));
+              setSettlementDialogSnapshot(null);
             }}
             disabled={!activeGroup || groupBalanceMinor === 0}
           >
@@ -419,8 +463,10 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onChangeInlineSplitDraft={setInlineSplitDraft}
         onCancelInlineSplit={() => {
           setInlineSplitDraft(null);
+          setInlineSplitDraftSnapshot(null);
           setInlineSplitError("");
         }}
+        hasInlineSplitChanges={hasInlineSplitChanges}
         onSaveInlineSplit={saveInlineSplit}
         onRequestDeleteSplit={requestDeleteSplit}
         onViewLinkedEntry={openLinkedEntry}
@@ -465,8 +511,12 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         categories={categories}
         formError={formError}
         isSubmitting={isSubmitting}
+        isSaveDisabled={!hasExpenseDialogChanges}
         onChange={setExpenseDialog}
-        onClose={() => setExpenseDialog(null)}
+        onClose={() => {
+          setExpenseDialog(null);
+          setExpenseDialogSnapshot(null);
+        }}
         onSave={saveExpense}
         onViewLinkedEntry={openLinkedEntry}
       />
@@ -477,11 +527,47 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         people={people}
         formError={formError}
         isSubmitting={isSubmitting}
+        isSaveDisabled={!hasSettlementDialogChanges}
         onChange={setSettlementDialog}
-        onClose={() => setSettlementDialog(null)}
+        onClose={() => {
+          setSettlementDialog(null);
+          setSettlementDialogSnapshot(null);
+        }}
         onSave={saveSettlement}
         onViewLinkedEntry={openLinkedEntry}
       />
     </article>
   );
+}
+
+function buildComparableSplitDraft(draft) {
+  if (!draft) {
+    return null;
+  }
+
+  if (draft.kind === "expense") {
+    return {
+      kind: draft.kind,
+      id: draft.id ?? null,
+      groupId: draft.groupId ?? "split-group-none",
+      date: draft.date,
+      description: draft.description,
+      categoryName: draft.categoryName,
+      payerPersonName: draft.payerPersonName,
+      amountMinor: Number(draft.amountMinor ?? 0),
+      note: draft.note ?? "",
+      splitBasisPoints: Number(draft.splitBasisPoints ?? 5000)
+    };
+  }
+
+  return {
+    kind: draft.kind,
+    id: draft.id ?? null,
+    groupId: draft.groupId ?? "split-group-none",
+    date: draft.date,
+    fromPersonName: draft.fromPersonName,
+    toPersonName: draft.toPersonName,
+    amountMinor: Number(draft.amountMinor ?? 0),
+    note: draft.note ?? ""
+  };
 }

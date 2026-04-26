@@ -11,6 +11,7 @@ export function SplitsActivitySection({
   inlineSplitDraft,
   inlineSplitError,
   isSubmitting,
+  hasInlineSplitChanges,
   onAddExpense,
   onOpenArchive,
   onEditExpense,
@@ -45,6 +46,7 @@ export function SplitsActivitySection({
             editingDraft={inlineSplitDraft}
             inlineFormError={inlineSplitError}
             isSubmitting={isSubmitting}
+            hasEditingChanges={hasInlineSplitChanges}
             onChangeEditingDraft={onChangeInlineSplitDraft}
             onCancelEditing={onCancelInlineSplit}
             onSaveEditing={onSaveInlineSplit}

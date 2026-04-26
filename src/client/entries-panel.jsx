@@ -245,6 +245,7 @@ export function EntriesPanel({
   const {
     entries,
     editingEntryId,
+    hasEditingEntryChanges,
     showEntryComposer,
     entryDraft,
     entrySubmitError,
@@ -813,6 +814,7 @@ export function EntriesPanel({
           description="Update the row in a bottom sheet instead of editing inline."
           errorMessage={entrySubmitError || createdSplitActionError}
           saveLabel="Save"
+          isSaveDisabled={!hasEditingEntryChanges}
           footerContent={activeEditingEntry.entryType === "expense"
             ? (
                 activeLinkedSplitExpenseId ? (
@@ -835,7 +837,7 @@ export function EntriesPanel({
                     </button>
                     <span className="entry-mobile-sheet-action-divider" aria-hidden="true">|</span>
                     <button type="button" className="subtle-cancel" onClick={closeEntryEditSheet}>Cancel</button>
-                    <button type="button" className="dialog-primary" onClick={() => void finishEntryEditAndClearLink()}>Save</button>
+                    <button type="button" className="dialog-primary" disabled={!hasEditingEntryChanges} onClick={() => void finishEntryEditAndClearLink()}>Save</button>
                   </div>
                 ) : isConfirmingAddToSplits ? (
                   <div className="entry-mobile-sheet-confirm-actions">
@@ -919,7 +921,7 @@ export function EntriesPanel({
                     </button>
                     <span className="entry-mobile-sheet-action-divider" aria-hidden="true">|</span>
                     <button type="button" className="subtle-cancel" onClick={closeEntryEditSheet}>Cancel</button>
-                    <button type="button" className="dialog-primary" onClick={() => void finishEntryEditAndClearLink()}>Save</button>
+                    <button type="button" className="dialog-primary" disabled={!hasEditingEntryChanges} onClick={() => void finishEntryEditAndClearLink()}>Save</button>
                   </div>
                 )
               )
@@ -1015,6 +1017,7 @@ export function EntriesPanel({
         onDeleteCreatedSplit={handleDeleteCreatedSplit}
         onFinishEntryEdit={finishEntryEditAndClearLink}
         onCancelEntryEdit={closeEntryEditSheet}
+        hasEditingChanges={hasEditingEntryChanges}
         renderInlineEditor={!useMobileEntrySheet}
       />
     </article>
