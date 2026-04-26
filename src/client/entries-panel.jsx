@@ -1,13 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
 import { useEntryActions } from "./entry-actions";
+import {
+  EntryComposerInlineSection,
+  EntryComposerMobileSection,
+  useEntryComposerSplitOptions
+} from "./entry-composer-section";
 import { EntryEditorFields, EntryTransferTools } from "./entry-editor";
 import { EntriesDateGroups } from "./entries-list";
 import { EntriesBreakdownPanel, EntriesFilterStack, EntriesTotalsStrip } from "./entries-overview";
+import { EntryMobileEditExpenseFooter, EntryMobileSheet } from "./entry-mobile-sheet";
 import {
   getActiveEntryFilterCount,
   getEntryDerivedData,
@@ -18,7 +23,6 @@ import {
 import { getTransferMatchCandidates, getVisibleSplitPercent } from "./entry-helpers";
 import { formatDateOnly, parseDraftMoneyInput } from "./formatters";
 import { buildRequestErrorMessage } from "./request-errors";
-import { ResponsiveSelect } from "./responsive-select";
 import { deleteSplitExpense } from "./splits-api";
 
 const ENTRIES_PAGE_PREFETCH_DELAY_MS = 1200;
@@ -539,6 +543,13 @@ export function EntriesPanel({
   const activeLinkedSplitExpenseId = createdSplitAction && createdSplitAction.entryId === activeEditingEntry?.id
     ? createdSplitAction.splitExpenseId
     : activeEditingEntry?.linkedSplitExpenseId;
+  const mobileEditExpenseFooterMode = activeLinkedSplitExpenseId
+    ? "linked"
+    : isConfirmingAddToSplits
+      ? "confirm"
+      : isMobileSplitPickerOpen
+        ? "picker"
+        : "default";
 
   useEffect(() => {
     if (!shouldShowComposerSplitOptions || !entryDraft.addToSplits) {
@@ -766,75 +777,48 @@ export function EntriesPanel({
       ) : null}
 
       {showEntryComposer && !useMobileEntrySheet ? (
-        <section className="entry-row is-editing entry-composer">
-          <div className="entry-inline-editor">
-            {quickExpenseWarning ? <p className="entry-submit-error">{quickExpenseWarning}</p> : null}
-            <EntryComposerContent
-              entry={entryDraft}
-              categories={categories}
-              categoryOptions={categoryOptions}
-              accountOptions={accountOptions}
-              ownerOptions={ownerOptions}
-              viewId={entryView.id}
-              showSplitOptions={shouldShowComposerSplitOptions}
-              splitOptionsProps={composerSplitOptionsProps}
-              onChange={updateEntryDraft}
-              onCategoryAppearanceChange={onCategoryAppearanceChange}
-              onOwnerChange={updateEntryDraftOwner}
-              onSplitPercentChange={updateEntryDraftSplit}
-            />
-            {entrySubmitError ? <p className="entry-submit-error">{entrySubmitError}</p> : null}
-            <div className="entry-inline-actions">
-              <button
-                type="button"
-                className="inline-action-button inline-save-action"
-                aria-label="Create entry"
-                disabled={isComposerSaveDisabled}
-                onClick={() => void saveEntryDraftAndClearQuickExpense()}
-              >
-                <Check size={16} />
-                <span className="desktop-action-label">{isSavingEntryDraft || isQuickExpenseSaving ? "Saving..." : "Save"}</span>
-              </button>
-              <button
-                type="button"
-                className="inline-action-button inline-cancel-action"
-                aria-label="Cancel new entry"
-                disabled={isSavingEntryDraft || isQuickExpenseSaving}
-                onClick={closeEntryComposerAndClearQuickExpense}
-              >
-                <X size={16} />
-                <span className="desktop-action-label">Cancel</span>
-              </button>
-            </div>
-          </div>
-        </section>
+        <EntryComposerInlineSection
+          warningMessage={quickExpenseWarning}
+          errorMessage={entrySubmitError}
+          isSaveDisabled={isComposerSaveDisabled}
+          isSaving={isSavingEntryDraft || isQuickExpenseSaving}
+          entry={entryDraft}
+          categories={categories}
+          categoryOptions={categoryOptions}
+          accountOptions={accountOptions}
+          ownerOptions={ownerOptions}
+          viewId={entryView.id}
+          showSplitOptions={shouldShowComposerSplitOptions}
+          splitOptionsProps={composerSplitOptionsProps}
+          onChange={updateEntryDraft}
+          onCategoryAppearanceChange={onCategoryAppearanceChange}
+          onOwnerChange={updateEntryDraftOwner}
+          onSplitPercentChange={updateEntryDraftSplit}
+          onSave={() => void saveEntryDraftAndClearQuickExpense()}
+          onCancel={closeEntryComposerAndClearQuickExpense}
+        />
       ) : null}
 
       {showEntryComposer && canPortalEntryComposer && useMobileEntrySheet ? createPortal(
-        <EntryMobileSheet
-          title="Add entry"
-          description="Create a ledger row without leaving the Entries page."
+        <EntryComposerMobileSection
           errorMessage={entrySubmitError || quickExpenseWarning}
           saveLabel={isSavingEntryDraft || isQuickExpenseSaving ? "Saving..." : "Save"}
           isSaveDisabled={isComposerSaveDisabled}
+          entry={entryDraft}
+          categories={categories}
+          categoryOptions={categoryOptions}
+          accountOptions={accountOptions}
+          ownerOptions={ownerOptions}
+          viewId={entryView.id}
+          showSplitOptions={shouldShowComposerSplitOptions}
+          splitOptionsProps={composerSplitOptionsProps}
+          onChange={updateEntryDraft}
+          onCategoryAppearanceChange={onCategoryAppearanceChange}
+          onOwnerChange={updateEntryDraftOwner}
+          onSplitPercentChange={updateEntryDraftSplit}
           onClose={closeEntryComposerAndClearQuickExpense}
           onSave={() => void saveEntryDraftAndClearQuickExpense()}
-        >
-          <EntryComposerContent
-            entry={entryDraft}
-            categories={categories}
-            categoryOptions={categoryOptions}
-            accountOptions={accountOptions}
-            ownerOptions={ownerOptions}
-            viewId={entryView.id}
-            showSplitOptions={shouldShowComposerSplitOptions}
-            splitOptionsProps={composerSplitOptionsProps}
-            onChange={updateEntryDraft}
-            onCategoryAppearanceChange={onCategoryAppearanceChange}
-            onOwnerChange={updateEntryDraftOwner}
-            onSplitPercentChange={updateEntryDraftSplit}
-          />
-        </EntryMobileSheet>,
+        />,
         document.body
       ) : null}
 
@@ -847,61 +831,45 @@ export function EntriesPanel({
           isSaveDisabled={!hasEditingEntryChanges}
           footerContent={activeEditingEntry.entryType === "expense"
             ? (
-                activeLinkedSplitExpenseId ? (
-                  <EntryMobileLinkedSplitActions
-                    isDeleting={deletingCreatedSplitId === activeLinkedSplitExpenseId}
-                    isSaveDisabled={!hasEditingEntryChanges}
-                    deleteLabel={deletingCreatedSplitId === activeLinkedSplitExpenseId ? messages.common.working : "Delete split"}
-                    onViewSplit={() => openCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
-                    onDeleteSplit={() => void handleDeleteCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
-                    onCancel={closeEntryEditSheet}
-                    onSave={() => void finishEntryEditAndClearLink()}
-                  />
-                ) : isConfirmingAddToSplits ? (
-                  <EntryMobileAddToSplitsConfirm
-                    isWorking={addingToSplitsEntryId === activeEditingEntry.id}
-                    onCancel={() => setIsConfirmingAddToSplits(false)}
-                    onConfirm={() => {
-                      if (singleSplitGroupValue) {
-                        void handleAddEntryToSplits(
-                          activeEditingEntry,
-                          singleSplitGroupValue === NON_GROUP_SPLIT_VALUE ? null : singleSplitGroupValue
-                        );
-                        return;
-                      }
+                <EntryMobileEditExpenseFooter
+                  mode={mobileEditExpenseFooterMode}
+                  addToSplitsLabel={messages.entries.addToSplits}
+                  deleteLabel={deletingCreatedSplitId === activeLinkedSplitExpenseId ? messages.common.working : "Delete split"}
+                  isWorking={addingToSplitsEntryId === activeEditingEntry.id || deletingCreatedSplitId === activeLinkedSplitExpenseId}
+                  isSaveDisabled={!hasEditingEntryChanges}
+                  splitGroupId={mobileSplitGroupId}
+                  splitGroupOptions={splitGroupOptions}
+                  isSplitSelectorOpen={isMobileSplitSelectorOpen}
+                  onViewSplit={() => openCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
+                  onDeleteSplit={() => void handleDeleteCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
+                  onCancel={closeEntryEditSheet}
+                  onSave={() => void finishEntryEditAndClearLink()}
+                  onOpenAddToSplitsConfirm={() => setIsConfirmingAddToSplits(true)}
+                  onDismissAddToSplitsConfirm={() => setIsConfirmingAddToSplits(false)}
+                  onConfirmAddToSplits={() => {
+                    if (singleSplitGroupValue) {
+                      void handleAddEntryToSplits(
+                        activeEditingEntry,
+                        singleSplitGroupValue === NON_GROUP_SPLIT_VALUE ? null : singleSplitGroupValue
+                      );
+                      return;
+                    }
 
-                      setIsConfirmingAddToSplits(false);
-                      setIsMobileSplitPickerOpen(true);
-                      setIsMobileSplitSelectorOpen(true);
-                    }}
-                  />
-                ) : isMobileSplitPickerOpen ? (
-                  <EntryMobileSplitGroupPicker
-                    splitGroupId={mobileSplitGroupId}
-                    splitGroupOptions={splitGroupOptions}
-                    isOpen={isMobileSplitSelectorOpen}
-                    isWorking={addingToSplitsEntryId === activeEditingEntry.id}
-                    onOpenChange={(open) => {
-                      setIsMobileSplitSelectorOpen(open);
-                      if (!open && !addingToSplitsEntryId) {
-                        resetMobileSplitPickerState();
-                      }
-                    }}
-                    onSelectSplitGroup={(nextValue) => {
-                      void handleMobileSplitGroupSelection(nextValue);
-                    }}
-                    onCancel={resetMobileSplitPickerState}
-                  />
-                ) : (
-                  <EntryMobileDefaultActions
-                    addToSplitsLabel={messages.entries.addToSplits}
-                    isWorking={addingToSplitsEntryId === activeEditingEntry.id}
-                    isSaveDisabled={!hasEditingEntryChanges}
-                    onAddToSplits={() => setIsConfirmingAddToSplits(true)}
-                    onCancel={closeEntryEditSheet}
-                    onSave={() => void finishEntryEditAndClearLink()}
-                  />
-                )
+                    setIsConfirmingAddToSplits(false);
+                    setIsMobileSplitPickerOpen(true);
+                    setIsMobileSplitSelectorOpen(true);
+                  }}
+                  onSplitSelectorOpenChange={(open) => {
+                    setIsMobileSplitSelectorOpen(open);
+                    if (!open && !addingToSplitsEntryId) {
+                      resetMobileSplitPickerState();
+                    }
+                  }}
+                  onSelectSplitGroup={(nextValue) => {
+                    void handleMobileSplitGroupSelection(nextValue);
+                  }}
+                  onCancelSplitPicker={resetMobileSplitPickerState}
+                />
               )
             : null}
           onClose={closeEntryEditSheet}
@@ -999,338 +967,6 @@ export function EntriesPanel({
         renderInlineEditor={!useMobileEntrySheet}
       />
     </article>
-  );
-}
-
-function useEntryComposerSplitOptions({
-  showEntryComposer,
-  entryDraft,
-  splitGroups,
-  isSavingEntryDraft,
-  isQuickExpenseSaving,
-  updateEntryDraft
-}) {
-  const entrySplitGroupOptions = useMemo(
-    () => splitGroups.map((group) => ({
-      value: group.id,
-      label: group.name
-    })),
-    [splitGroups]
-  );
-  const splitGroupOptions = useMemo(
-    () => [
-      { value: "", label: "Choose split group" },
-      ...entrySplitGroupOptions
-    ],
-    [entrySplitGroupOptions]
-  );
-  const singleSplitGroupValue = entrySplitGroupOptions.length === 1
-    ? entrySplitGroupOptions[0].value
-    : null;
-  const shouldShowComposerSplitOptions = showEntryComposer && entryDraft.entryType === "expense";
-  const shouldShowComposerSplitGroupSelect = shouldShowComposerSplitOptions
-    && entryDraft.addToSplits
-    && !singleSplitGroupValue;
-  const isComposerSaveDisabled = isSavingEntryDraft
-    || isQuickExpenseSaving
-    || (shouldShowComposerSplitGroupSelect && !entryDraft.splitGroupId);
-  const composerSplitOptionsProps = useMemo(
-    () => ({
-      addToSplits: entryDraft.addToSplits,
-      splitGroupId: entryDraft.splitGroupId,
-      splitGroupOptions: entrySplitGroupOptions,
-      showSplitGroupSelect: shouldShowComposerSplitGroupSelect,
-      onToggleAddToSplits: (checked) => updateEntryDraft({
-        addToSplits: checked,
-        splitGroupId: checked && singleSplitGroupValue ? singleSplitGroupValue : ""
-      }),
-      onSelectSplitGroup: (splitGroupId) => updateEntryDraft({ splitGroupId })
-    }),
-    [
-      entryDraft.addToSplits,
-      entryDraft.splitGroupId,
-      entrySplitGroupOptions,
-      shouldShowComposerSplitGroupSelect,
-      singleSplitGroupValue,
-      updateEntryDraft
-    ]
-  );
-
-  useEffect(() => {
-    if (!shouldShowComposerSplitOptions || !entryDraft.addToSplits) {
-      return;
-    }
-
-    if (singleSplitGroupValue && entryDraft.splitGroupId !== singleSplitGroupValue) {
-      updateEntryDraft({ splitGroupId: singleSplitGroupValue });
-      return;
-    }
-
-    if (!singleSplitGroupValue && entryDraft.splitGroupId && !entrySplitGroupOptions.some((option) => option.value === entryDraft.splitGroupId)) {
-      updateEntryDraft({ splitGroupId: "" });
-    }
-  }, [
-    entryDraft.addToSplits,
-    entryDraft.splitGroupId,
-    entrySplitGroupOptions,
-    shouldShowComposerSplitOptions,
-    singleSplitGroupValue,
-    updateEntryDraft
-  ]);
-
-  return {
-    entrySplitGroupOptions,
-    splitGroupOptions,
-    singleSplitGroupValue,
-    shouldShowComposerSplitOptions,
-    isComposerSaveDisabled,
-    composerSplitOptionsProps
-  };
-}
-
-function EntryComposerContent({
-  entry,
-  categories,
-  categoryOptions,
-  accountOptions,
-  ownerOptions,
-  viewId,
-  showSplitOptions,
-  splitOptionsProps,
-  onChange,
-  onCategoryAppearanceChange,
-  onOwnerChange,
-  onSplitPercentChange
-}) {
-  return (
-    <>
-      <EntryEditorFields
-        entry={entry}
-        categories={categories}
-        categoryOptions={categoryOptions}
-        accountOptions={accountOptions}
-        ownerOptions={ownerOptions}
-        splitPercentValue={entry.ownershipType === "shared" ? getVisibleSplitPercent(entry, viewId) ?? 50 : null}
-        onChange={onChange}
-        onCategoryAppearanceChange={onCategoryAppearanceChange}
-        onOwnerChange={onOwnerChange}
-        onSplitPercentChange={onSplitPercentChange}
-      />
-      {showSplitOptions ? <EntryComposerSplitOptions {...splitOptionsProps} /> : null}
-    </>
-  );
-}
-
-function EntryComposerSplitOptions({
-  addToSplits,
-  splitGroupId,
-  splitGroupOptions,
-  showSplitGroupSelect,
-  onToggleAddToSplits,
-  onSelectSplitGroup
-}) {
-  return (
-    <div className="entry-composer-split-options">
-      <label className="planned-link-row entry-composer-split-toggle">
-        <input
-          type="checkbox"
-          checked={addToSplits}
-          onChange={(event) => onToggleAddToSplits(event.target.checked)}
-        />
-        <span className="planned-link-row-main">
-          <strong>Add this new entry to Splits</strong>
-          <small>Create the entry and immediately create a linked split expense.</small>
-        </span>
-      </label>
-      {addToSplits && showSplitGroupSelect ? (
-        <label className="split-dialog-field entry-composer-split-group">
-          <span>Split group</span>
-          <ResponsiveSelect
-            className="table-edit-input"
-            title="Split group"
-            value={splitGroupId}
-            options={splitGroupOptions}
-            onValueChange={onSelectSplitGroup}
-          />
-        </label>
-      ) : null}
-    </div>
-  );
-}
-
-function EntryMobileLinkedSplitActions({
-  isDeleting,
-  isSaveDisabled,
-  deleteLabel,
-  onViewSplit,
-  onDeleteSplit,
-  onCancel,
-  onSave
-}) {
-  return (
-    <div className="entry-inline-actions entry-mobile-sheet-actions entry-mobile-sheet-linked-actions">
-      <button
-        type="button"
-        className="subtle-action entry-mobile-sheet-secondary"
-        disabled={isDeleting}
-        onClick={onViewSplit}
-      >
-        View split
-      </button>
-      <button
-        type="button"
-        className="subtle-action entry-mobile-sheet-secondary"
-        disabled={isDeleting}
-        onClick={onDeleteSplit}
-      >
-        {deleteLabel}
-      </button>
-      <span className="entry-mobile-sheet-action-divider" aria-hidden="true">|</span>
-      <button type="button" className="subtle-cancel" onClick={onCancel}>Cancel</button>
-      <button type="button" className="dialog-primary" disabled={isSaveDisabled} onClick={onSave}>Save</button>
-    </div>
-  );
-}
-
-function EntryMobileAddToSplitsConfirm({
-  isWorking,
-  onCancel,
-  onConfirm
-}) {
-  return (
-    <div className="entry-mobile-sheet-confirm-actions">
-      <span className="entry-mobile-sheet-confirm-copy">Add this entry to Splits?</span>
-      <div className="entry-mobile-sheet-confirm-buttons">
-        <button
-          type="button"
-          className="subtle-cancel"
-          disabled={isWorking}
-          onClick={onCancel}
-        >
-          Not now
-        </button>
-        <button
-          type="button"
-          className="dialog-primary"
-          disabled={isWorking}
-          onClick={onConfirm}
-        >
-          Yes, add it
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function EntryMobileSplitGroupPicker({
-  splitGroupId,
-  splitGroupOptions,
-  isOpen,
-  isWorking,
-  onOpenChange,
-  onSelectSplitGroup,
-  onCancel
-}) {
-  return (
-    <div className="entry-mobile-sheet-confirm-actions">
-      <span className="entry-mobile-sheet-confirm-copy">Choose split group</span>
-      <ResponsiveSelect
-        title="Split group"
-        value={splitGroupId}
-        options={splitGroupOptions}
-        onValueChange={onSelectSplitGroup}
-        disabled={isWorking}
-        open={isOpen}
-        onOpenChange={onOpenChange}
-        hideMobileTrigger
-      />
-      <div className="entry-mobile-sheet-confirm-buttons">
-        <button
-          type="button"
-          className="subtle-cancel"
-          disabled={isWorking}
-          onClick={onCancel}
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function EntryMobileDefaultActions({
-  addToSplitsLabel,
-  isWorking,
-  isSaveDisabled,
-  onAddToSplits,
-  onCancel,
-  onSave
-}) {
-  return (
-    <div className="entry-inline-actions entry-mobile-sheet-actions">
-      <button
-        type="button"
-        className="subtle-action entry-mobile-sheet-secondary"
-        disabled={isWorking}
-        onClick={onAddToSplits}
-      >
-        {addToSplitsLabel}
-      </button>
-      <span className="entry-mobile-sheet-action-divider" aria-hidden="true">|</span>
-      <button type="button" className="subtle-cancel" onClick={onCancel}>Cancel</button>
-      <button type="button" className="dialog-primary" disabled={isSaveDisabled} onClick={onSave}>Save</button>
-    </div>
-  );
-}
-
-function EntryMobileSheet({
-  title,
-  description,
-  errorMessage = "",
-  saveLabel,
-  isSaveDisabled = false,
-  secondaryAction = null,
-  footerContent = null,
-  onClose,
-  onSave,
-  children
-}) {
-  return (
-    <>
-      <button
-        type="button"
-        className="entry-composer-overlay"
-        aria-label={`Close ${title.toLowerCase()}`}
-        onClick={onClose}
-      />
-      <section className="entry-composer entry-mobile-sheet" role="dialog" aria-modal="true" aria-label={title}>
-        <div className="entry-mobile-sheet-scroll">
-          <div className="note-dialog-head split-dialog-head entry-composer-head">
-            <div className="entry-composer-copy">
-              <strong>{title}</strong>
-              <p>{description}</p>
-            </div>
-            <button
-              type="button"
-              className="icon-action subtle-cancel entry-composer-close"
-              aria-label={`Close ${title.toLowerCase()}`}
-              onClick={onClose}
-            >
-              <X size={16} />
-            </button>
-          </div>
-          {errorMessage ? <p className="entry-submit-error">{errorMessage}</p> : null}
-          {children}
-          {footerContent ?? (
-            <div className="entry-inline-actions entry-mobile-sheet-actions">
-              {secondaryAction}
-              <button type="button" className="subtle-cancel" onClick={onClose}>Cancel</button>
-              <button type="button" className="dialog-primary" disabled={isSaveDisabled} onClick={onSave}>{saveLabel}</button>
-            </div>
-          )}
-        </div>
-      </section>
-    </>
   );
 }
 
