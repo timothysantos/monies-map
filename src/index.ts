@@ -11,6 +11,7 @@ import {
 import { enterEmptyState, reseedDemoSettings } from "./domain/demo-settings";
 import {
   archiveAccountRecord,
+  loadTransferMatchCandidates,
   buildAccountCheckpointLedgerCsv,
   buildImportPreview,
   compareAccountCheckpointStatementRows,
@@ -103,6 +104,18 @@ export default {
           url.searchParams.get("month") ?? getCurrentMonthKey()
         )
       );
+    }
+
+    if (url.pathname === "/api/transfers/candidates" && request.method === "GET") {
+      const entryId = url.searchParams.get("entryId");
+      if (!entryId) {
+        return json({ ok: false, error: "Missing transfer candidate entry id" }, 400);
+      }
+
+      return json({
+        ok: true,
+        ...(await loadTransferMatchCandidates(env.DB, entryId))
+      });
     }
 
     if (url.pathname === "/api/summary-page") {

@@ -218,16 +218,25 @@ export function getSignedTotalAmountMinor(entry) {
 }
 
 export function getTransferWallets(entry) {
+  const currentWalletLabel = formatTransferWalletLabel({
+    accountName: entry.accountName,
+    accountOwnerLabel: entry.accountOwnerLabel
+  });
+  const linkedWalletLabel = formatTransferWalletLabel({
+    accountName: entry.linkedTransfer?.accountName ?? "Unmatched",
+    accountOwnerLabel: entry.linkedTransfer?.accountOwnerLabel
+  });
+
   if (entry.transferDirection === "in") {
     return {
-      fromWalletName: entry.linkedTransfer?.accountName ?? "Unmatched",
-      toWalletName: entry.accountName
+      fromWalletName: linkedWalletLabel,
+      toWalletName: currentWalletLabel
     };
   }
 
   return {
-    fromWalletName: entry.accountName,
-    toWalletName: entry.linkedTransfer?.accountName ?? "Unmatched"
+    fromWalletName: currentWalletLabel,
+    toWalletName: linkedWalletLabel
   };
 }
 
@@ -246,7 +255,10 @@ export function getTransferMatchCandidates(entry, entries) {
         return false;
       }
 
-      if (candidate.accountName === entry.accountName) {
+      if (
+        (candidate.accountId && entry.accountId && candidate.accountId === entry.accountId)
+        || (!candidate.accountId && !entry.accountId && candidate.accountName === entry.accountName)
+      ) {
         return false;
       }
 
@@ -272,6 +284,10 @@ export function getTransferMatchCandidates(entry, entries) {
       return left.accountName.localeCompare(right.accountName);
     })
     .slice(0, 5);
+}
+
+function formatTransferWalletLabel({ accountName, accountOwnerLabel }) {
+  return accountOwnerLabel ? `${accountName} - ${accountOwnerLabel}` : accountName;
 }
 
 export function daysBetween(left, right) {

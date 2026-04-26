@@ -19,6 +19,74 @@ export async function loadEntriesForMonths(db: D1Database, months: string[]): Pr
   return loadEntriesForDateRange(db, monthStart, monthEnd);
 }
 
+export async function loadTransferMatchCandidates(
+  db: D1Database,
+  entryId: string
+): Promise<{ entry: EntryDto | null; candidates: EntryDto[] }> {
+  const entryRow = await db
+    .prepare(`
+      SELECT transaction_date
+      FROM transactions
+      WHERE household_id = ? AND id = ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, entryId)
+    .first<{ transaction_date: string }>();
+
+  if (!entryRow) {
+    return { entry: null, candidates: [] };
+  }
+
+  const rangeStart = shiftDate(entryRow.transaction_date, -31);
+  const rangeEndExclusive = shiftDate(entryRow.transaction_date, 32);
+  const entries = await loadEntriesForDateRange(db, rangeStart, rangeEndExclusive);
+  const entry = entries.find((candidate) => candidate.id === entryId) ?? null;
+  if (!entry) {
+    return { entry: null, candidates: [] };
+  }
+
+  const amountMinor = entry.totalAmountMinor ?? entry.amountMinor;
+  const candidates = entries
+    .filter((candidate) => {
+      if (candidate.id === entry.id) {
+        return false;
+      }
+
+      const candidateAmountMinor = candidate.totalAmountMinor ?? candidate.amountMinor;
+      if (candidateAmountMinor !== amountMinor) {
+        return false;
+      }
+
+      if (candidate.accountId && entry.accountId && candidate.accountId === entry.accountId) {
+        return false;
+      }
+
+      return true;
+    })
+    .sort((left, right) => {
+      const leftOpposite = left.transferDirection && entry.transferDirection
+        ? left.transferDirection !== entry.transferDirection
+        : false;
+      const rightOpposite = right.transferDirection && entry.transferDirection
+        ? right.transferDirection !== entry.transferDirection
+        : false;
+      if (leftOpposite !== rightOpposite) {
+        return leftOpposite ? -1 : 1;
+      }
+
+      const leftGap = Math.abs(daysBetween(entry.date, left.date));
+      const rightGap = Math.abs(daysBetween(entry.date, right.date));
+      if (leftGap !== rightGap) {
+        return leftGap - rightGap;
+      }
+
+      return `${left.accountName} ${left.accountOwnerLabel ?? ""}`
+        .localeCompare(`${right.accountName} ${right.accountOwnerLabel ?? ""}`);
+    })
+    .slice(0, 10);
+
+  return { entry, candidates };
+}
+
 async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextMonth: string): Promise<EntryDto[]> {
   const entries = await db
     .prepare(`
@@ -134,6 +202,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
         linkedTransfer = {
           transactionId: counterpart.id,
           accountName: counterpart.account_name,
+          accountOwnerLabel: counterpart.account_owner_label ?? undefined,
           amountMinor: counterpart.amount_minor,
           transactionDate: counterpart.transaction_date
         };
@@ -165,6 +234,18 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       splits: splitMap.get(row.id) ?? []
     };
   });
+}
+
+function daysBetween(left: string, right: string) {
+  const leftDate = new Date(`${left}T00:00:00Z`);
+  const rightDate = new Date(`${right}T00:00:00Z`);
+  return Math.round((rightDate.getTime() - leftDate.getTime()) / 86400000);
+}
+
+function shiftDate(value: string, days: number) {
+  const date = new Date(`${value}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
 }
 
 function getEntryBankCertificationStatus(row: {

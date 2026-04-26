@@ -361,9 +361,12 @@ export function EntryTransferTools({
   transferSettlementDrafts,
   linkingTransferEntryId,
   settlingTransferEntryId,
+  refreshingTransferCandidatesEntryId,
+  transferCandidatesError = "",
   onEnsureSettlementDraft,
   onTransferDialogEntryChange,
   onSettlementDraftChange,
+  onRefreshCandidates,
   onLinkCandidate,
   onSettleTransfer
 }) {
@@ -372,6 +375,7 @@ export function EntryTransferTools({
   }
 
   const isLinkedTransfer = Boolean(entry.linkedTransfer);
+  const isRefreshingCandidates = refreshingTransferCandidatesEntryId === entry.id;
 
   return (
     <div className="entry-edit-transfer-helper">
@@ -382,6 +386,7 @@ export function EntryTransferTools({
           if (open) {
             onEnsureSettlementDraft(entry);
             onTransferDialogEntryChange(entry.id);
+            void onRefreshCandidates?.(entry);
             return;
           }
           onTransferDialogEntryChange((current) => current === entry.id ? null : current);
@@ -429,16 +434,32 @@ export function EntryTransferTools({
               </section>
               <section className="transfer-match-section">
                 <h4>{isLinkedTransfer ? "Exact matches" : "Find matching side"}</h4>
-                <span className="transfer-match-label">
-                  {isLinkedTransfer ? "Potential exact matches" : "Potential rows with the same amount in another wallet"}
-                </span>
+                <div className="transfer-match-section-head">
+                  <span className="transfer-match-label">
+                    {isLinkedTransfer ? "Potential exact matches" : "Potential rows with the same amount in another wallet"}
+                  </span>
+                  <button
+                    type="button"
+                    className="subtle-action"
+                    disabled={isRefreshingCandidates}
+                    onClick={() => void onRefreshCandidates?.(entry)}
+                  >
+                    {isRefreshingCandidates ? "Checking..." : "Recheck matches"}
+                  </button>
+                </div>
                 <div className="transfer-match-stack">
+                  {transferCandidatesError ? (
+                    <p className="transfer-match-empty">{transferCandidatesError}</p>
+                  ) : null}
                   {transferCandidates.length ? transferCandidates.map((candidate) => {
                     const isCurrentLink = entry.linkedTransfer?.transactionId === candidate.id;
+                    const candidateWalletLabel = candidate.accountOwnerLabel
+                      ? `${candidate.accountName} - ${candidate.accountOwnerLabel}`
+                      : candidate.accountName;
                     return (
                       <div key={candidate.id} className="transfer-match-card">
                         <div>
-                          <strong>{candidate.accountName}</strong>
+                          <strong>{candidateWalletLabel}</strong>
                           <p>{formatDateOnly(candidate.date)} • {candidate.description}</p>
                         </div>
                         {isCurrentLink ? (
