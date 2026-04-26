@@ -558,7 +558,7 @@ export function EntriesPanel({
 
   async function handleAddEntryToSplits(entry, splitGroupId = null) {
     setCreatedSplitActionError("");
-    preserveEntryEditorInUrl(entry.id);
+    clearEditingEntrySearchParam();
     const result = await addEntryToSplits(entry, splitGroupId);
     if (result?.alreadyLinked) {
       await refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true });
@@ -566,15 +566,10 @@ export function EntriesPanel({
     }
 
     if (!result?.splitExpenseId) {
-      setSearchParams((current) => {
-        const next = new URLSearchParams(current);
-        next.delete("editing_entry");
-        return next;
-      }, { replace: true });
       return;
     }
 
-    setCreatedSplitAction({ entryId: entry.id, splitExpenseId: result.splitExpenseId });
+    setCreatedSplitAction(null);
     setIsConfirmingAddToSplits(false);
   }
 
