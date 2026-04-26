@@ -545,6 +545,17 @@ export function EntriesPanel({
   const isComposerSaveDisabled = isSavingEntryDraft
     || isQuickExpenseSaving
     || (shouldShowComposerSplitGroupSelect && !entryDraft.splitGroupId);
+  const composerSplitOptionsProps = {
+    addToSplits: entryDraft.addToSplits,
+    splitGroupId: entryDraft.splitGroupId,
+    splitGroupOptions: entrySplitGroupOptions,
+    showSplitGroupSelect: shouldShowComposerSplitGroupSelect,
+    onToggleAddToSplits: (checked) => updateEntryDraft({
+      addToSplits: checked,
+      splitGroupId: checked && singleSplitGroupValue ? singleSplitGroupValue : ""
+    }),
+    onSelectSplitGroup: (splitGroupId) => updateEntryDraft({ splitGroupId })
+  };
   const activeLinkedSplitExpenseId = createdSplitAction && createdSplitAction.entryId === activeEditingEntry?.id
     ? createdSplitAction.splitExpenseId
     : activeEditingEntry?.linkedSplitExpenseId;
@@ -574,9 +585,7 @@ export function EntriesPanel({
 
   useEffect(() => {
     setIsConfirmingAddToSplits(false);
-    setIsMobileSplitPickerOpen(false);
-    setIsMobileSplitSelectorOpen(false);
-    setMobileSplitGroupId("");
+    resetMobileSplitPickerState();
   }, [activeEditingEntry?.id]);
 
   useEffect(() => {
@@ -597,9 +606,7 @@ export function EntriesPanel({
     setDeletingCreatedSplitId("");
     setCreatedSplitActionError("");
     setIsConfirmingAddToSplits(false);
-    setIsMobileSplitPickerOpen(false);
-    setIsMobileSplitSelectorOpen(false);
-    setMobileSplitGroupId("");
+    resetMobileSplitPickerState();
     cancelEntryEdit();
   }
 
@@ -633,6 +640,10 @@ export function EntriesPanel({
 
     setCreatedSplitAction(null);
     setIsConfirmingAddToSplits(false);
+    resetMobileSplitPickerState();
+  }
+
+  function resetMobileSplitPickerState() {
     setIsMobileSplitPickerOpen(false);
     setIsMobileSplitSelectorOpen(false);
     setMobileSplitGroupId("");
@@ -790,19 +801,7 @@ export function EntriesPanel({
               onOwnerChange={updateEntryDraftOwner}
               onSplitPercentChange={updateEntryDraftSplit}
             />
-            {shouldShowComposerSplitOptions ? (
-              <EntryComposerSplitOptions
-                addToSplits={entryDraft.addToSplits}
-                splitGroupId={entryDraft.splitGroupId}
-                splitGroupOptions={entrySplitGroupOptions}
-                showSplitGroupSelect={shouldShowComposerSplitGroupSelect}
-                onToggleAddToSplits={(checked) => updateEntryDraft({
-                  addToSplits: checked,
-                  splitGroupId: checked && singleSplitGroupValue ? singleSplitGroupValue : ""
-                })}
-                onSelectSplitGroup={(splitGroupId) => updateEntryDraft({ splitGroupId })}
-              />
-            ) : null}
+            {shouldShowComposerSplitOptions ? <EntryComposerSplitOptions {...composerSplitOptionsProps} /> : null}
             {entrySubmitError ? <p className="entry-submit-error">{entrySubmitError}</p> : null}
             <div className="entry-inline-actions">
               <button
@@ -852,19 +851,7 @@ export function EntriesPanel({
             onOwnerChange={updateEntryDraftOwner}
             onSplitPercentChange={updateEntryDraftSplit}
           />
-          {shouldShowComposerSplitOptions ? (
-            <EntryComposerSplitOptions
-              addToSplits={entryDraft.addToSplits}
-              splitGroupId={entryDraft.splitGroupId}
-              splitGroupOptions={entrySplitGroupOptions}
-              showSplitGroupSelect={shouldShowComposerSplitGroupSelect}
-              onToggleAddToSplits={(checked) => updateEntryDraft({
-                addToSplits: checked,
-                splitGroupId: checked && singleSplitGroupValue ? singleSplitGroupValue : ""
-              })}
-              onSelectSplitGroup={(splitGroupId) => updateEntryDraft({ splitGroupId })}
-            />
-          ) : null}
+          {shouldShowComposerSplitOptions ? <EntryComposerSplitOptions {...composerSplitOptionsProps} /> : null}
         </EntryMobileSheet>,
         document.body
       ) : null}
