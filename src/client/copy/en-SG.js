@@ -129,7 +129,12 @@ export const messages = {
     doneEdit: "Done",
     cancelEdit: "Cancel",
     addToSplits: "Add to splits",
-    noSpendBreakdown: "No spend rows in this view."
+    noSpendBreakdown: "No spend rows in this view.",
+    noEntries: "No entries match this view.",
+    walletViewMismatchTitle: "This wallet is outside the current view.",
+    walletViewMismatchDetail: (walletLabel, ownerLabel, viewLabel) => `No entries match ${viewLabel}'s view. ${walletLabel} belongs to ${ownerLabel}, and there are no shared rows for this wallet this month.`,
+    walletViewMismatchHouseholdAction: "View household",
+    walletViewMismatchOwnerAction: (ownerLabel) => `View ${ownerLabel}`
   },
   splits: {
     viewing: (label) => `Viewing splits for ${label}`,

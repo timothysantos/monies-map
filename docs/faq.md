@@ -1217,6 +1217,11 @@ are checking a specific account for missing or uncategorized activity. Account
 choices include the owner in the label, such as "UOB One - Joyce", when the
 same account name could appear under different people.
 
+If you are on a person view and pick a wallet that belongs to the other person,
+Entries now keeps the broad wallet filter but, when that combination has no
+shared rows for the month, shows quick actions to switch to Household or the
+wallet owner's view instead of leaving a confusing blank result.
+
 ![Entries filters include refresh, wallet, category, people, and type controls](/faq/features/thumbs/entries-filters.png)
 
 Use the refresh button at the start of the Entries filter row to reload the
