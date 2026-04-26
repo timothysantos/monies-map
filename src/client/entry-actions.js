@@ -351,14 +351,34 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
       });
       const data = await response.json();
       if (!response.ok) {
-        setEntrySubmitError(data.error ?? "Failed to add entry to splits.");
-        return null;
+        const errorMessage = data.error ?? "Failed to add entry to splits.";
+        setEntrySubmitError(errorMessage);
+        return {
+          ok: false,
+          error: errorMessage,
+          alreadyLinked: errorMessage === "This entry is already linked to a split expense."
+        };
       }
 
+      setEntries((current) => current.map((currentEntry) => {
+        if (currentEntry.id !== entry.id) {
+          return currentEntry;
+        }
+
+        return normalizeEntryShape({
+          ...currentEntry,
+          ownershipType: "shared",
+          ownerName: undefined,
+          linkedSplitExpenseId: data.splitExpenseId
+        }, people, currentEntry);
+      }));
       setEditingEntryId(null);
       setEntrySnapshot(null);
       await onRefresh();
-      return data;
+      return {
+        ok: true,
+        ...data
+      };
     } finally {
       setAddingToSplitsEntryId(null);
     }

@@ -130,7 +130,23 @@ npm run db:migrate:remote
 
 ### What body should the shortcut send?
 
-Send JSON. These fields are the practical minimum:
+Send JSON.
+
+Required fields:
+
+- `date`
+- `description`
+- either `accountId` or `accountName`
+- either `amountMinor` or `amount`
+
+Important ownership rule:
+
+- if you omit `ownershipType`, the API defaults it to `direct`
+- `direct` entries require `ownerName`
+- so in practice, either send both `ownershipType: "direct"` and `ownerName`,
+  or send `ownershipType: "shared"` if the row should be shared
+
+Common payload:
 
 ```json
 {
@@ -148,6 +164,57 @@ Send JSON. These fields are the practical minimum:
 
 `amount` can be decimal text or number. `amountMinor` also works if the
 shortcut already uses cents.
+
+### Which shortcut payload fields are optional, and what are their defaults?
+
+The shortcut endpoint accepts these optional fields:
+
+- `categoryName`
+- `entryType`
+- `transferDirection`
+- `ownershipType`
+- `ownerName`
+- `note`
+- `splitBasisPoints`
+
+Defaults and behavior:
+
+- `categoryName`
+  - optional
+  - defaults to `Other`
+  - ignored for transfer entries, because transfer rows are forced to category
+    `Transfer`
+- `entryType`
+  - optional
+  - defaults to `expense`
+- `transferDirection`
+  - optional
+  - only used when `entryType` is `transfer`
+  - defaults to `out` for transfer entries
+- `ownershipType`
+  - optional
+  - defaults to `direct`
+- `ownerName`
+  - optional only when `ownershipType` is `shared`
+  - required when `ownershipType` is `direct`, including when you rely on the
+    default `direct`
+- `note`
+  - optional
+  - defaults to empty / no note
+- `splitBasisPoints`
+  - optional
+  - only used when `ownershipType` is `shared`
+  - defaults to `5000`, which means a 50/50 split between the two household
+    people
+
+Fields with no server default:
+
+- `date`
+- `description`
+- `accountId` or `accountName`
+- `amountMinor` or `amount`
+
+If any of those are missing, the shortcut request is rejected.
 
 ### How do I build the Apple Shortcut?
 
