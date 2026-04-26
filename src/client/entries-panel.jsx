@@ -165,9 +165,6 @@ export function EntriesPanel({
     }
 
     setEntriesPage(initialPage);
-    if (!entriesPageCacheRefs.cacheRef.current.has(entriesPageCacheKey)) {
-      entriesPageCacheRefs.cacheRef.current.set(entriesPageCacheKey, initialPage);
-    }
   }, [entriesPageCacheKey, entriesPageCacheRefs, entriesSourceView, selectedMonth]);
 
   useEffect(() => {
