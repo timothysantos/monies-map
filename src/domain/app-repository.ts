@@ -54,7 +54,7 @@ export {
   loadCategories,
   updateCategoryRecord
 } from "./app-repository-categories";
-export { loadEntries, loadEntriesForMonths } from "./app-repository-entries";
+export { loadEntries, loadEntriesForMonths, loadTransferMatchCandidates } from "./app-repository-entries";
 export { buildImportPreview } from "./app-repository-import-preview";
 export { loadImportBatches } from "./app-repository-import-history";
 export {

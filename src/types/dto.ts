@@ -150,6 +150,7 @@ export interface EntrySplitDto {
 export interface LinkedTransferDto {
   transactionId: string;
   accountName: string;
+  accountOwnerLabel?: string;
   amountMinor: number;
   transactionDate: string;
 }

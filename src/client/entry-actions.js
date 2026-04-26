@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   applySharedSplit,
   buildEntryDraft,
+  getTransferMatchCandidates,
   getVisibleSplitIndex,
   normalizeEntryShape
 } from "./entry-helpers";
@@ -22,6 +23,9 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
   const [settlingTransferEntryId, setSettlingTransferEntryId] = useState(null);
   const [transferSettlementDrafts, setTransferSettlementDrafts] = useState({});
   const [transferDialogEntryId, setTransferDialogEntryId] = useState(null);
+  const [refreshingTransferCandidatesEntryId, setRefreshingTransferCandidatesEntryId] = useState(null);
+  const [transferCandidateOverrides, setTransferCandidateOverrides] = useState({});
+  const [transferCandidateErrors, setTransferCandidateErrors] = useState({});
   const [addingToSplitsEntryId, setAddingToSplitsEntryId] = useState(null);
   const queuedComposerDraftRef = useRef(null);
   const activeEditingEntry = useMemo(
@@ -54,6 +58,9 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
     setSettlingTransferEntryId(null);
     setTransferSettlementDrafts({});
     setTransferDialogEntryId(null);
+    setRefreshingTransferCandidatesEntryId(null);
+    setTransferCandidateOverrides({});
+    setTransferCandidateErrors({});
     setAddingToSplitsEntryId(null);
   }, [view, accounts, categories, people]);
 
@@ -314,9 +321,56 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
       setEditingEntryId(null);
       setEntrySnapshot(null);
       await onRefresh();
+      setTransferCandidateOverrides((current) => {
+        if (!current[entry.id]) {
+          return current;
+        }
+        const next = { ...current };
+        delete next[entry.id];
+        return next;
+      });
     } finally {
       setLinkingTransferEntryId(null);
     }
+  }
+
+  async function refreshTransferCandidates(entry) {
+    setRefreshingTransferCandidatesEntryId(entry.id);
+    setTransferCandidateErrors((current) => {
+      if (!current[entry.id]) {
+        return current;
+      }
+      const next = { ...current };
+      delete next[entry.id];
+      return next;
+    });
+
+    try {
+      const response = await fetch(`/api/transfers/candidates?entryId=${encodeURIComponent(entry.id)}`, {
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        throw new Error(await buildRequestErrorMessage(response, "Failed to refresh transfer matches."));
+      }
+
+      const data = await response.json();
+      setTransferCandidateOverrides((current) => ({
+        ...current,
+        [entry.id]: Array.isArray(data.candidates) ? data.candidates : []
+      }));
+    } catch (error) {
+      setTransferCandidateErrors((current) => ({
+        ...current,
+        [entry.id]: error instanceof Error ? error.message : "Failed to refresh transfer matches."
+      }));
+    } finally {
+      setRefreshingTransferCandidatesEntryId((current) => current === entry.id ? null : current);
+    }
+  }
+
+  function getTransferCandidatesForEntry(entry) {
+    return transferCandidateOverrides[entry.id] ?? getTransferMatchCandidates(entry, entries);
   }
 
   function ensureTransferSettlementDraft(entry) {
@@ -474,6 +528,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
     settlingTransferEntryId,
     transferSettlementDrafts,
     transferDialogEntryId,
+    refreshingTransferCandidatesEntryId,
+    transferCandidateErrors,
     addingToSplitsEntryId,
     setTransferDialogEntryId,
     openEntryComposer,
@@ -486,6 +542,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
     finishEntryEdit,
     cancelEntryEdit,
     linkTransferCandidate,
+    refreshTransferCandidates,
+    getTransferCandidatesForEntry,
     ensureTransferSettlementDraft,
     updateTransferSettlementDraft,
     settleTransfer,

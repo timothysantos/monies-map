@@ -20,7 +20,7 @@ import {
   getEntryFormOptions,
   getEntryWalletFilterOptions
 } from "./entry-selectors";
-import { getTransferMatchCandidates, getVisibleSplitPercent } from "./entry-helpers";
+import { getVisibleSplitPercent } from "./entry-helpers";
 import { formatDateOnly, parseDraftMoneyInput } from "./formatters";
 import { buildRequestErrorMessage } from "./request-errors";
 import { deleteSplitExpense } from "./splits-api";
@@ -258,6 +258,8 @@ export function EntriesPanel({
     settlingTransferEntryId,
     transferSettlementDrafts,
     transferDialogEntryId,
+    refreshingTransferCandidatesEntryId,
+    transferCandidateErrors,
     addingToSplitsEntryId,
     setTransferDialogEntryId,
     openEntryComposer,
@@ -270,6 +272,8 @@ export function EntriesPanel({
     finishEntryEdit,
     cancelEntryEdit,
     linkTransferCandidate,
+    refreshTransferCandidates,
+    getTransferCandidatesForEntry,
     ensureTransferSettlementDraft,
     updateTransferSettlementDraft,
     settleTransfer,
@@ -938,16 +942,17 @@ export function EntriesPanel({
               <EntryTransferTools
                 entry={activeEditingEntry}
                 categoryOptions={categoryOptions}
-                transferCandidates={activeEditingEntry.entryType === "transfer"
-                  ? getTransferMatchCandidates(activeEditingEntry, entries)
-                  : []}
+                transferCandidates={activeEditingEntry.entryType === "transfer" ? getTransferCandidatesForEntry(activeEditingEntry) : []}
                 transferDialogEntryId={transferDialogEntryId}
                 transferSettlementDrafts={transferSettlementDrafts}
                 linkingTransferEntryId={linkingTransferEntryId}
                 settlingTransferEntryId={settlingTransferEntryId}
+                refreshingTransferCandidatesEntryId={refreshingTransferCandidatesEntryId}
+                transferCandidatesError={transferCandidateErrors[activeEditingEntry.id] ?? ""}
                 onEnsureSettlementDraft={ensureTransferSettlementDraft}
                 onTransferDialogEntryChange={setTransferDialogEntryId}
                 onSettlementDraftChange={updateTransferSettlementDraft}
+                onRefreshCandidates={refreshTransferCandidates}
                 onLinkCandidate={linkTransferCandidate}
                 onSettleTransfer={settleTransfer}
               />
@@ -986,6 +991,8 @@ export function EntriesPanel({
           transferSettlementDrafts={transferSettlementDrafts}
           linkingTransferEntryId={linkingTransferEntryId}
           settlingTransferEntryId={settlingTransferEntryId}
+          refreshingTransferCandidatesEntryId={refreshingTransferCandidatesEntryId}
+          transferCandidateErrors={transferCandidateErrors}
           onBeginEntryEdit={beginEntryEdit}
           onCategoryAppearanceChange={onCategoryAppearanceChange}
           onUpdateEntry={updateEntry}
@@ -994,6 +1001,8 @@ export function EntriesPanel({
           onEnsureTransferSettlementDraft={ensureTransferSettlementDraft}
           onTransferDialogEntryChange={setTransferDialogEntryId}
           onUpdateTransferSettlementDraft={updateTransferSettlementDraft}
+          onRefreshTransferCandidates={refreshTransferCandidates}
+          getTransferCandidatesForEntry={getTransferCandidatesForEntry}
           onLinkTransferCandidate={linkTransferCandidate}
           onSettleTransfer={settleTransfer}
           createdSplitAction={createdSplitAction}

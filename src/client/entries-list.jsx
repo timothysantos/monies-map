@@ -10,7 +10,6 @@ import {
   getAmountToneClass,
   getSignedAmountMinor,
   getSignedTotalAmountMinor,
-  getTransferMatchCandidates,
   getVisibleSplitPercent
 } from "./entry-helpers";
 import { formatDateOnly, money } from "./formatters";
@@ -45,6 +44,8 @@ export function EntriesDateGroups({
   transferSettlementDrafts,
   linkingTransferEntryId,
   settlingTransferEntryId,
+  refreshingTransferCandidatesEntryId,
+  transferCandidateErrors,
   onBeginEntryEdit,
   onCategoryAppearanceChange,
   onUpdateEntry,
@@ -53,6 +54,8 @@ export function EntriesDateGroups({
   onEnsureTransferSettlementDraft,
   onTransferDialogEntryChange,
   onUpdateTransferSettlementDraft,
+  onRefreshTransferCandidates,
+  getTransferCandidatesForEntry,
   onLinkTransferCandidate,
   onSettleTransfer,
   onAddEntryToSplits,
@@ -151,6 +154,8 @@ export function EntriesDateGroups({
                 transferSettlementDrafts={transferSettlementDrafts}
                 linkingTransferEntryId={linkingTransferEntryId}
                 settlingTransferEntryId={settlingTransferEntryId}
+                refreshingTransferCandidatesEntryId={refreshingTransferCandidatesEntryId}
+                transferCandidateErrors={transferCandidateErrors}
                 onBeginEntryEdit={onBeginEntryEdit}
                 onCategoryAppearanceChange={onCategoryAppearanceChange}
                 onUpdateEntry={onUpdateEntry}
@@ -159,6 +164,8 @@ export function EntriesDateGroups({
                 onEnsureTransferSettlementDraft={onEnsureTransferSettlementDraft}
                 onTransferDialogEntryChange={onTransferDialogEntryChange}
                 onUpdateTransferSettlementDraft={onUpdateTransferSettlementDraft}
+                onRefreshTransferCandidates={onRefreshTransferCandidates}
+                getTransferCandidatesForEntry={getTransferCandidatesForEntry}
                 onLinkTransferCandidate={onLinkTransferCandidate}
                 onSettleTransfer={onSettleTransfer}
                 onOpenSplitPicker={openSplitPicker}
@@ -255,6 +262,8 @@ function EntryRow({
   transferSettlementDrafts,
   linkingTransferEntryId,
   settlingTransferEntryId,
+  refreshingTransferCandidatesEntryId,
+  transferCandidateErrors,
   onBeginEntryEdit,
   onCategoryAppearanceChange,
   onUpdateEntry,
@@ -263,6 +272,8 @@ function EntryRow({
   onEnsureTransferSettlementDraft,
   onTransferDialogEntryChange,
   onUpdateTransferSettlementDraft,
+  onRefreshTransferCandidates,
+  getTransferCandidatesForEntry,
   onLinkTransferCandidate,
   onSettleTransfer,
   onOpenSplitPicker,
@@ -291,7 +302,7 @@ function EntryRow({
   const signedTotalAmountMinor = getSignedTotalAmountMinor(entry);
   const hasWeightedTotal = signedTotalAmountMinor != null && signedTotalAmountMinor !== signedAmountMinor;
   const transferCandidates = entry.entryType === "transfer"
-    ? getTransferMatchCandidates(entry, allEntries)
+    ? getTransferCandidatesForEntry(entry)
     : [];
   const bankState = getEntryBankState(entry);
   const linkedSplitExpenseId = createdSplitAction && createdSplitAction.entryId === entry.id
@@ -402,9 +413,12 @@ function EntryRow({
                 transferSettlementDrafts={transferSettlementDrafts}
                 linkingTransferEntryId={linkingTransferEntryId}
                 settlingTransferEntryId={settlingTransferEntryId}
+                refreshingTransferCandidatesEntryId={refreshingTransferCandidatesEntryId}
+                transferCandidatesError={transferCandidateErrors[entry.id] ?? ""}
                 onEnsureSettlementDraft={onEnsureTransferSettlementDraft}
                 onTransferDialogEntryChange={onTransferDialogEntryChange}
                 onSettlementDraftChange={onUpdateTransferSettlementDraft}
+                onRefreshCandidates={onRefreshTransferCandidates}
                 onLinkCandidate={onLinkTransferCandidate}
                 onSettleTransfer={onSettleTransfer}
               />
