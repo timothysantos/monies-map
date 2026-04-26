@@ -184,6 +184,10 @@ export interface EntryDto {
 export interface EntriesPageDto {
   viewId: string;
   label: string;
+  splitGroups: Array<{
+    id: string;
+    name: string;
+  }>;
   monthPage: {
     month: string;
     selectedPersonId: string;
