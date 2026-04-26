@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   applySharedSplit,
@@ -24,6 +24,18 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
   const [transferDialogEntryId, setTransferDialogEntryId] = useState(null);
   const [addingToSplitsEntryId, setAddingToSplitsEntryId] = useState(null);
   const queuedComposerDraftRef = useRef(null);
+  const activeEditingEntry = useMemo(
+    () => editingEntryId ? entries.find((entry) => entry.id === editingEntryId) ?? null : null,
+    [editingEntryId, entries]
+  );
+  const hasEditingEntryChanges = useMemo(() => {
+    if (!activeEditingEntry || !entrySnapshot) {
+      return false;
+    }
+
+    return JSON.stringify(buildComparableEntryState(activeEditingEntry))
+      !== JSON.stringify(buildComparableEntryState(entrySnapshot));
+  }, [activeEditingEntry, entrySnapshot]);
 
   useEffect(() => {
     const queuedComposerDraft = queuedComposerDraftRef.current;
@@ -419,6 +431,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
   return {
     entries,
     editingEntryId,
+    hasEditingEntryChanges,
     showEntryComposer,
     entryDraft,
     entrySubmitError,
@@ -446,6 +459,25 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
     updateEntry,
     updateEntrySplit,
     saveEntryCategory
+  };
+}
+
+function buildComparableEntryState(entry) {
+  return {
+    date: entry.date,
+    description: entry.description,
+    accountId: entry.accountId ?? null,
+    accountName: entry.accountName ?? "",
+    categoryName: entry.categoryName,
+    amountMinor: Number(entry.amountMinor ?? 0),
+    entryType: entry.entryType,
+    transferDirection: entry.transferDirection ?? null,
+    ownershipType: entry.ownershipType,
+    ownerName: entry.ownerName ?? null,
+    note: entry.note ?? "",
+    splitBasisPoints: entry.ownershipType === "shared"
+      ? Number(entry.splits?.[0]?.ratioBasisPoints ?? 5000)
+      : null
   };
 }
 

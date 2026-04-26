@@ -159,7 +159,7 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
   );
 }
 
-export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, categories = [], formError, isSubmitting, onChange, onClose, onSave, onViewLinkedEntry }) {
+export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, categories = [], formError, isSubmitting, isSaveDisabled = false, onChange, onClose, onSave, onViewLinkedEntry }) {
   return (
     <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
@@ -186,7 +186,7 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
               </>
             ) : null}
             <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
-            <button type="button" className="dialog-primary" disabled={isSubmitting} onClick={() => void onSave()}>
+            <button type="button" className="dialog-primary" disabled={isSubmitting || isSaveDisabled} onClick={() => void onSave()}>
               {isSubmitting ? messages.common.saving : messages.splits.saveExpense}
             </button>
           </div>
@@ -286,7 +286,7 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
   );
 }
 
-export function SplitSettlementDialog({ dialog, groupOptions, people, formError, isSubmitting, onChange, onClose, onSave, onViewLinkedEntry }) {
+export function SplitSettlementDialog({ dialog, groupOptions, people, formError, isSubmitting, isSaveDisabled = false, onChange, onClose, onSave, onViewLinkedEntry }) {
   return (
     <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
@@ -313,7 +313,7 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
               </>
             ) : null}
             <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
-            <button type="button" className="dialog-primary" disabled={isSubmitting} onClick={() => void onSave()}>
+            <button type="button" className="dialog-primary" disabled={isSubmitting || isSaveDisabled} onClick={() => void onSave()}>
               {isSubmitting ? messages.common.saving : messages.splits.saveSettlement}
             </button>
           </div>
