@@ -327,6 +327,7 @@ export interface MonthPlanRowDto {
   ownerName?: string;
   linkedEntryIds?: string[];
   linkedEntryCount?: number;
+  actualEntryIds?: string[];
   planMatchHints?: MonthPlanMatchHintDto[];
   isDerived?: boolean;
   sourceRowIds?: string[];
@@ -362,6 +363,7 @@ export interface MonthIncomeRowDto {
   note?: string;
   isDerived?: boolean;
   sourceRowIds?: string[];
+  actualEntryIds?: string[];
 }
 
 export interface ImportBatchDto {

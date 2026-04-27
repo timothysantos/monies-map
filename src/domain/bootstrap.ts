@@ -892,26 +892,28 @@ function deriveIncomeRowActuals(
 ) {
   return rows.map((row) => {
     const rowCategory = normalizeCategoryLabel(row.categoryName);
-    const actualMinor = entries.reduce((sum, entry) => {
+    const actualEntries = entries.filter((entry) => {
       if (entry.entryType !== "income") {
-        return sum;
+        return false;
       }
 
       if (personId !== "household" && row.ownerName && entry.ownerName && row.ownerName !== entry.ownerName) {
-        return sum;
+        return false;
       }
 
       const entryCategory = normalizeCategoryLabel(entry.categoryName);
       if (rowCategory && rowCategory !== "income" && entryCategory !== rowCategory) {
-        return sum;
+        return false;
       }
 
-      return sum + entry.amountMinor;
-    }, 0);
+      return true;
+    });
+    const actualMinor = actualEntries.reduce((sum, entry) => sum + entry.amountMinor, 0);
 
     return {
       ...row,
-      actualMinor
+      actualMinor,
+      actualEntryIds: actualEntries.map((entry) => entry.id)
     };
   });
 }
@@ -919,38 +921,54 @@ function deriveIncomeRowActuals(
 function derivePlanRowActuals(rows: MonthPlanRowDto[], entries: EntryDto[]) {
   const entriesById = new Map(entries.map((entry) => [entry.id, entry]));
   const rowsWithLinkedActuals = rows.map((row) => {
-    if (row.section !== "planned_items" || !row.linkedEntryIds?.length) {
+    if (row.section !== "planned_items") {
       return row;
     }
 
-    const actualMinor = row.linkedEntryIds.reduce((sum, entryId) => {
-      const entry = entriesById.get(entryId);
-      if (!entry || entry.entryType !== "expense") {
-        return sum;
-      }
+    if (!row.linkedEntryIds?.length) {
+      return {
+        ...row,
+        actualMinor: 0,
+        linkedEntryCount: 0,
+        actualEntryIds: []
+      };
+    }
+
+    const linkedEntries = row.linkedEntryIds
+      .map((entryId) => entriesById.get(entryId))
+      .filter((entry): entry is EntryDto => Boolean(entry) && entry.entryType === "expense");
+    const actualMinor = linkedEntries.reduce((sum, entry) => {
       return sum + entry.amountMinor;
     }, 0);
 
     return {
       ...row,
       actualMinor,
-      linkedEntryCount: row.linkedEntryIds.length
+      linkedEntryCount: row.linkedEntryIds.length,
+      actualEntryIds: linkedEntries.map((entry) => entry.id)
     };
   });
 
-  const plannedActualsByCategory = rowsWithLinkedActuals.reduce((map, row) => {
-    if (row.section !== "planned_items") {
+  const linkedExpenseIdsByCategory = rowsWithLinkedActuals.reduce((map, row) => {
+    if (row.section !== "planned_items" || !row.actualEntryIds?.length) {
       return map;
     }
 
-    const key = normalizeCategoryLabel(row.categoryName);
-    if (!key) {
-      return map;
+    for (const entryId of row.actualEntryIds) {
+      const entry = entriesById.get(entryId);
+      if (!entry || entry.entryType !== "expense") {
+        continue;
+      }
+      const key = normalizeCategoryLabel(entry.categoryName);
+      if (!key) {
+        continue;
+      }
+      const existing = map.get(key) ?? new Set<string>();
+      existing.add(entry.id);
+      map.set(key, existing);
     }
-
-    map.set(key, (map.get(key) ?? 0) + row.actualMinor);
     return map;
-  }, new Map<string, number>());
+  }, new Map<string, Set<string>>());
 
   return rowsWithLinkedActuals.map((row) => {
     if (row.section !== "budget_buckets") {
@@ -958,26 +976,37 @@ function derivePlanRowActuals(rows: MonthPlanRowDto[], entries: EntryDto[]) {
     }
 
     const rowCategory = normalizeCategoryLabel(row.categoryName);
-    const categoryActualMinor = entries.reduce((sum, entry) => {
+    const linkedExpenseIds = linkedExpenseIdsByCategory.get(rowCategory) ?? new Set<string>();
+    const actualEntries = entries.filter((entry) => {
       if (normalizeCategoryLabel(entry.categoryName) !== rowCategory) {
-        return sum;
+        return false;
       }
 
       if (entry.entryType === "expense") {
-        return sum + entry.amountMinor;
+        return !linkedExpenseIds.has(entry.id);
       }
 
       if (entry.entryType === "income" && entry.offsetsCategory) {
-        return sum - entry.amountMinor;
+        return true;
       }
 
+      return false;
+    });
+    const categoryActualMinor = actualEntries.reduce((sum, entry) => {
+      if (entry.entryType === "expense") {
+        return sum + entry.amountMinor;
+      }
+      if (entry.entryType === "income" && entry.offsetsCategory) {
+        return sum - entry.amountMinor;
+      }
       return sum;
     }, 0);
-    const actualMinor = Math.max(0, categoryActualMinor - (plannedActualsByCategory.get(rowCategory) ?? 0));
+    const actualMinor = Math.max(0, categoryActualMinor);
 
     return {
       ...row,
-      actualMinor
+      actualMinor,
+      actualEntryIds: actualEntries.map((entry) => entry.id)
     };
   });
 }
@@ -1107,6 +1136,7 @@ function normalizePlanRowForView(row: MonthPlanRowDto): MonthPlanRowDto {
     sourceRowIds: row.sourceRowIds ?? [row.id],
     sourcePlannedMinor: row.sourcePlannedMinor ?? row.plannedMinor,
     sourceNote: stripWeightedPlanNoteText(row.sourceNote ?? row.note),
+    actualEntryIds: row.actualEntryIds ?? [],
     linkedEntryIds: row.linkedEntryIds ?? [],
     linkedEntryCount: row.linkedEntryCount ?? row.linkedEntryIds?.length ?? 0,
     planMatchHints: row.planMatchHints ?? []
@@ -1135,6 +1165,7 @@ function combineHouseholdPlanRows(rows: MonthPlanRowDto[]): MonthPlanRowDto[] {
         sourceRowIds: row.sourceRowIds ?? [row.id],
         sourcePlannedMinor: row.sourcePlannedMinor ?? row.plannedMinor,
         sourceNote: row.sourceNote ?? row.note,
+        actualEntryIds: row.actualEntryIds ?? [],
         planMatchHints: row.planMatchHints ?? []
       });
       continue;
@@ -1154,6 +1185,7 @@ function combineHouseholdPlanRows(rows: MonthPlanRowDto[]): MonthPlanRowDto[] {
       sourceNote: undefined,
       linkedEntryIds: [...(existing.linkedEntryIds ?? []), ...(row.linkedEntryIds ?? [])],
       linkedEntryCount: (existing.linkedEntryCount ?? existing.linkedEntryIds?.length ?? 0) + (row.linkedEntryCount ?? row.linkedEntryIds?.length ?? 0),
+      actualEntryIds: [...(existing.actualEntryIds ?? []), ...(row.actualEntryIds ?? [])],
       planMatchHints: [...(existing.planMatchHints ?? []), ...(row.planMatchHints ?? [])]
     });
   }

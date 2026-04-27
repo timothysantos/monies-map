@@ -46,8 +46,8 @@ function findBudgetRow(monthPageData, label) {
 async function openBudgetRowEditor(page, label) {
   const row = page.locator("tr").filter({ hasText: label }).first();
   await expect(row).toBeVisible();
-  await row.click();
-  await expect(row.getByRole("button", { name: "Save" })).toBeVisible();
+  await row.getByText(label).first().click();
+  await expect(page.locator(".month-inline-action-row").first().getByRole("button", { name: "Save" })).toBeVisible();
   return row;
 }
 
@@ -78,18 +78,41 @@ test.describe("month page", () => {
 
     const publicTransportRow = page.locator("tr").filter({ hasText: "Public Transport" }).first();
     await expect(publicTransportRow.getByText("Delete")).toHaveCount(0);
+    await expect(page.locator(".month-inline-action-row")).toHaveCount(0);
 
-    await publicTransportRow.click();
-    await expect(publicTransportRow.getByRole("button", { name: "Save" })).toBeVisible();
-    await expect(publicTransportRow.getByRole("button", { name: "Cancel" })).toBeVisible();
-    await expect(publicTransportRow.getByText("Delete")).toBeVisible();
+    await publicTransportRow.getByText("Public Transport").first().click();
+    const actionRow = page.locator(".month-inline-action-row").first();
+    await expect(actionRow.getByRole("button", { name: "Save" })).toBeVisible();
+    await expect(actionRow.getByRole("button", { name: "Cancel" })).toBeVisible();
+    await expect(actionRow.getByText("Delete")).toBeVisible();
+    const actionButtons = actionRow.locator(".month-inline-edit-actions > button");
+    await expect(actionButtons).toHaveCount(3);
+    await expect(actionButtons.nth(0)).toContainText("Delete");
+    await expect(actionButtons.nth(1)).toContainText("Cancel");
+    await expect(actionButtons.nth(2)).toContainText("Save");
 
-    await publicTransportRow.getByRole("button", { name: "Cancel" }).click();
+    await actionRow.getByRole("button", { name: "Cancel" }).click();
     await expect(publicTransportRow.getByText("Delete")).toHaveCount(0);
+    await expect(page.locator(".month-inline-action-row")).toHaveCount(0);
 
     for (const [label, plannedMinor] of expectedPlannedValues.entries()) {
       const row = page.locator("tr").filter({ hasText: label }).first();
       await expect(row).toContainText(formatMoney(plannedMinor));
+    }
+  });
+
+  test("planned item actuals only appear when they are backed by linked current-month entries", async ({ page }) => {
+    const data = await loadMonthPageData(page);
+    const plannedRows = data.monthPage.planSections
+      .find((section) => section.key === "planned_items")
+      ?.rows ?? [];
+
+    const phantomActuals = plannedRows.filter((row) => row.actualMinor > 0 && (row.linkedEntryIds?.length ?? 0) === 0);
+    expect(phantomActuals).toEqual([]);
+
+    for (const row of plannedRows.filter((item) => item.linkedEntryIds?.length)) {
+      expect(row.actualEntryIds?.length ?? 0, `${row.label} should expose actual entry ids for drilldown`).toBeGreaterThan(0);
+      expect(row.actualMinor, `${row.label} should derive actual from linked entries`).toBeGreaterThan(0);
     }
   });
 
@@ -212,6 +235,70 @@ test.describe("month page", () => {
     await expect(sheet).toHaveCount(0);
 
     await context.close();
+  });
+
+  test("desktop actual drilldown opens only the entries that make up a planned item's actual total", async ({ page }) => {
+    const saveResult = await postJson(page, "/api/month-plan/save", {
+      rowId: `actual-drilldown-${Date.now()}`,
+      month: "2026-04",
+      sectionKey: "planned_items",
+      categoryName: "Entertainment",
+      label: "Actual drilldown item",
+      planDate: "2026-04-18",
+      accountName: "UOB One",
+      plannedMinor: 5000,
+      note: "Actual drilldown coverage.",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    const rowId = saveResult.row?.id ?? saveResult.id ?? saveResult.rowId;
+    expect(rowId).toBeTruthy();
+
+    const firstEntry = await postJson(page, "/api/entries/create", {
+      date: "2026-04-18",
+      description: "Actual drilldown dinner",
+      accountName: "UOB One",
+      categoryName: "Entertainment",
+      amountMinor: 1100,
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    const secondEntry = await postJson(page, "/api/entries/create", {
+      date: "2026-04-18",
+      description: "Actual drilldown dessert",
+      accountName: "UOB One",
+      categoryName: "Entertainment",
+      amountMinor: 400,
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    await postJson(page, "/api/entries/create", {
+      date: "2026-04-18",
+      description: "Actual drilldown unrelated",
+      accountName: "UOB One",
+      categoryName: "Entertainment",
+      amountMinor: 900,
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    await postJson(page, "/api/month-plan/links", {
+      rowId,
+      month: "2026-04",
+      transactionIds: [firstEntry.entryId, secondEntry.entryId]
+    });
+
+    await page.goto("/month?view=person-tim&month=2026-04&scope=direct_plus_shared");
+    const row = page.locator("tr").filter({ hasText: "Actual drilldown item" }).first();
+    await row.locator(".month-actual-drilldown").click();
+
+    await expect(page).toHaveURL(/\/entries\?/);
+    await expect(page).toHaveURL(/entry_id=/);
+    await expect(page.getByText("Actual drilldown dinner")).toBeVisible();
+    await expect(page.getByText("Actual drilldown dessert")).toBeVisible();
+    await expect(page.getByText("Actual drilldown unrelated")).toHaveCount(0);
   });
 
   test("new direct ledger expense updates the matching budget bucket actual in direct and direct+shared scopes", async ({ page }) => {
@@ -351,6 +438,51 @@ test.describe("month page", () => {
     await expect(dialog.locator(".planned-link-row")).toHaveCount(0);
   });
 
+  test("planned item matcher keeps already linked entries visible even when default filters would hide them", async ({ page }) => {
+    const saveResult = await postJson(page, "/api/month-plan/save", {
+      rowId: `linked-visible-${Date.now()}`,
+      month: "2026-04",
+      sectionKey: "planned_items",
+      categoryName: "Family & Personal",
+      label: "Linked visibility item",
+      planDate: "2026-04-01",
+      accountName: "UOB One",
+      plannedMinor: 26000,
+      note: "Regression coverage for saved links.",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    const rowId = saveResult.row?.id ?? saveResult.id ?? saveResult.rowId;
+    expect(rowId).toBeTruthy();
+
+    const linkedEntry = await postJson(page, "/api/entries/create", {
+      date: "2026-04-01",
+      description: "Linked visibility actual",
+      accountName: "Citi Rewards",
+      categoryName: "Subscriptions MO",
+      amountMinor: 23407,
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+
+    await postJson(page, "/api/month-plan/links", {
+      rowId,
+      month: "2026-04",
+      transactionIds: [linkedEntry.entryId]
+    });
+
+    await page.goto("/month?view=person-tim&month=2026-04&scope=direct_plus_shared");
+    const row = page.locator("tr").filter({ hasText: "Linked visibility item" }).first();
+    await row.getByRole("button", { name: "1 linked" }).click();
+
+    const dialog = page.locator(".planned-link-dialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator(".planned-link-row")).toHaveCount(1);
+    await expect(dialog).toContainText("Linked visibility actual");
+    await expect(dialog.getByText("Showing 1 of 1 candidate entries.")).toBeVisible();
+  });
+
   test("planned item match dialog stays usable with a dense same-category ledger list", async ({ page }) => {
     const rowId = `playwright-dense-plan-${Date.now()}`;
     await postJson(page, "/api/month-plan/save", {
@@ -448,5 +580,54 @@ test.describe("month page", () => {
 
     const monthData = await loadMonthPageData(page, { scope: "direct_plus_shared" });
     expect(findBudgetRow(monthData, "Groceries").actualMinor).toBe(1500);
+  });
+
+  test("mobile month edit sheet can open the contributing entries behind actual totals", async ({ browser }) => {
+    const context = await browser.newContext({ ...devices["iPhone 12 Pro"] });
+    const page = await context.newPage();
+    await page.goto("/");
+    await reseedDemo(page);
+
+    const saveResult = await postJson(page, "/api/month-plan/save", {
+      rowId: `mobile-actual-${Date.now()}`,
+      month: "2026-04",
+      sectionKey: "planned_items",
+      categoryName: "Entertainment",
+      label: "Mobile actual drilldown",
+      planDate: "2026-04-18",
+      accountName: "UOB One",
+      plannedMinor: 3000,
+      note: "Mobile actual drilldown coverage.",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    const rowId = saveResult.row?.id ?? saveResult.id ?? saveResult.rowId;
+    expect(rowId).toBeTruthy();
+
+    const entry = await postJson(page, "/api/entries/create", {
+      date: "2026-04-18",
+      description: "Mobile actual entry",
+      accountName: "UOB One",
+      categoryName: "Entertainment",
+      amountMinor: 1500,
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    await postJson(page, "/api/month-plan/links", {
+      rowId,
+      month: "2026-04",
+      transactionIds: [entry.entryId]
+    });
+
+    await page.goto("/month?view=person-tim&month=2026-04&scope=direct_plus_shared");
+    await page.locator("tr").filter({ hasText: "Mobile actual drilldown" }).first().click();
+    const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+    await expect(sheet).toBeVisible();
+    await sheet.locator(".month-actual-drilldown-mobile").click();
+
+    await expect(page).toHaveURL(/\/entries\?/);
+    await expect(page.getByText("Mobile actual entry")).toBeVisible();
+    await context.close();
   });
 });

@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { ChevronRight, SquarePen, X } from "lucide-react";
 
@@ -62,6 +63,7 @@ export function MonthPlanStack({
   onRemovePlanRow,
   onOpenNoteDialog,
   onOpenPlanLinkDialog,
+  onOpenEntriesForActual,
   onSortChange,
   onCategoryAppearanceChange
 }) {
@@ -92,6 +94,7 @@ export function MonthPlanStack({
         onCancelEdit={onCancelEdit}
         onRemoveIncomeRow={onRemoveIncomeRow}
         onOpenNoteDialog={onOpenNoteDialog}
+        onOpenEntriesForActual={onOpenEntriesForActual}
         onSortChange={onSortChange}
         onCategoryAppearanceChange={onCategoryAppearanceChange}
       />
@@ -123,6 +126,7 @@ export function MonthPlanStack({
           onRemovePlanRow={onRemovePlanRow}
           onOpenNoteDialog={onOpenNoteDialog}
           onOpenPlanLinkDialog={onOpenPlanLinkDialog}
+          onOpenEntriesForActual={onOpenEntriesForActual}
           onSortChange={onSortChange}
           onCategoryAppearanceChange={onCategoryAppearanceChange}
         />
@@ -150,6 +154,7 @@ function IncomePlanSection({
   onCancelEdit,
   onRemoveIncomeRow,
   onOpenNoteDialog,
+  onOpenEntriesForActual,
   onSortChange,
   onCategoryAppearanceChange
 }) {
@@ -215,86 +220,103 @@ function IncomePlanSection({
                 const rowOpenProps = !isEditing && canEditRow ? { onClick: handleRowOpen } : {};
 
                 return (
-                  <tr
-                    key={row.id}
-                    className={`${isEditing ? "is-editing" : ""} ${!canEditRow ? "is-readonly" : ""}`}
-                    onClick={canEditRow ? handleRowOpen : undefined}
-                  >
-                    <td {...rowOpenProps}>
-                      <div className="month-category-cell">
-                        <CategoryAppearancePopover
-                          category={getCategory(categories, row)}
-                          onChange={onCategoryAppearanceChange}
-                        />
+                  <Fragment key={row.id}>
+                    <tr
+                      className={`${isEditing ? "is-editing" : ""} ${!canEditRow ? "is-readonly" : ""}`}
+                      onClick={canEditRow ? handleRowOpen : undefined}
+                    >
+                      <td {...rowOpenProps}>
+                        <div className="month-category-cell">
+                          <CategoryAppearancePopover
+                            category={getCategory(categories, row)}
+                            onChange={onCategoryAppearanceChange}
+                          />
+                          {isEditing ? (
+                            <select
+                              className="table-edit-input"
+                              value={getCategorySelectValue(categories, row)}
+                              onChange={(event) => onIncomeRowChange(row.id, getCategoryPatch(categories, event.target.value))}
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              {categorySelectOptions.map((category) => (
+                                <option key={category.id} value={category.id}>{category.name}</option>
+                              ))}
+                            </select>
+                          ) : <span>{row.categoryName}</span>}
+                        </div>
+                      </td>
+                      <td {...rowOpenProps}>
                         {isEditing ? (
-                          <select
+                          <input
                             className="table-edit-input"
-                            value={getCategorySelectValue(categories, row)}
-                            onChange={(event) => onIncomeRowChange(row.id, getCategoryPatch(categories, event.target.value))}
+                            value={row.label}
+                            onChange={(event) => onIncomeRowChange(row.id, { label: event.target.value })}
                             onClick={(event) => event.stopPropagation()}
-                          >
-                            {categorySelectOptions.map((category) => (
-                              <option key={category.id} value={category.id}>{category.name}</option>
-                            ))}
-                          </select>
-                        ) : <span>{row.categoryName}</span>}
-                      </div>
-                    </td>
-                    <td {...rowOpenProps}>
-                      {isEditing ? (
-                        <input
-                          className="table-edit-input"
-                          value={row.label}
-                          onChange={(event) => onIncomeRowChange(row.id, { label: event.target.value })}
-                          onClick={(event) => event.stopPropagation()}
-                        />
-                      ) : row.label}
-                    </td>
-                    <td {...rowOpenProps}>
-                      {isEditing ? (
-                        <input
-                          className="table-edit-input table-edit-input-money"
-                          value={editingDrafts.plannedMinor ?? formatMinorInput(row.plannedMinor)}
-                          onChange={(event) => onEditingDraftChange({ plannedMinor: event.target.value })}
-                          onClick={(event) => event.stopPropagation()}
-                        />
-                      ) : money(row.plannedMinor)}
-                    </td>
-                    <td {...rowOpenProps}>{money(row.actualMinor)}</td>
-                    <td {...rowOpenProps} className={variance <= 0 ? "positive" : "negative"}>{money(variance)}</td>
-                    <td>
-                      <div className="table-note-actions">
+                          />
+                        ) : row.label}
+                      </td>
+                      <td {...rowOpenProps}>
+                        {isEditing ? (
+                          <input
+                            className="table-edit-input table-edit-input-money"
+                            value={editingDrafts.plannedMinor ?? formatMinorInput(row.plannedMinor)}
+                            onChange={(event) => onEditingDraftChange({ plannedMinor: event.target.value })}
+                            onClick={(event) => event.stopPropagation()}
+                          />
+                        ) : money(row.plannedMinor)}
+                      </td>
+                      <td>
                         <button
                           type="button"
-                          className="note-trigger"
+                          className="month-actual-drilldown"
+                          disabled={!row.actualEntryIds?.length}
                           onClick={(event) => {
                             event.stopPropagation();
-                            if (!isCombinedHouseholdView && !row.isDerived) {
-                              onOpenNoteDialog("income", row.id, null, row.note);
-                            }
+                            onOpenEntriesForActual({
+                              categoryName: row.categoryName,
+                              entryIds: row.actualEntryIds ?? []
+                            });
                           }}
                         >
-                          <span>{row.note || messages.common.emptyValue}</span>
-                          {!isCombinedHouseholdView && !row.isDerived ? <SquarePen size={14} /> : null}
+                          {money(row.actualMinor)}
                         </button>
-                        <RowEditActions
-                          isEditing={isEditing}
-                          onFinishEdit={onFinishEdit}
-                          onCancelEdit={onCancelEdit}
-                          deleteAction={incomeRows.length > 1 && canEditRow && !row.isDraft ? (
-                            <DeleteRowButton
-                              label={row.label || row.categoryName || "income row"}
-                              buttonClassName="month-inline-delete-button"
-                              triggerLabel={`Delete ${row.label || row.categoryName || "income row"}`}
-                              onConfirm={() => onRemoveIncomeRow(row.id)}
-                            >
-                              Delete
-                            </DeleteRowButton>
-                          ) : null}
-                        />
-                      </div>
-                    </td>
-                  </tr>
+                      </td>
+                      <td {...rowOpenProps} className={variance <= 0 ? "positive" : "negative"}>{money(variance)}</td>
+                      <td>
+                        <div className="table-note-actions">
+                          <button
+                            type="button"
+                            className="note-trigger"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              if (!isCombinedHouseholdView && !row.isDerived) {
+                                onOpenNoteDialog("income", row.id, null, row.note);
+                              }
+                            }}
+                          >
+                            <span>{row.note || messages.common.emptyValue}</span>
+                            {!isCombinedHouseholdView && !row.isDerived ? <SquarePen size={14} /> : null}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    <MonthInlineActionRow
+                      isEditing={isEditing}
+                      columnCount={6}
+                      onFinishEdit={onFinishEdit}
+                      onCancelEdit={onCancelEdit}
+                      deleteAction={incomeRows.length > 1 && canEditRow && !row.isDraft ? (
+                        <DeleteRowButton
+                          label={row.label || row.categoryName || "income row"}
+                          buttonClassName="month-inline-delete-button"
+                          triggerLabel={`Delete ${row.label || row.categoryName || "income row"}`}
+                          onConfirm={() => onRemoveIncomeRow(row.id)}
+                        >
+                          Delete
+                        </DeleteRowButton>
+                      ) : null}
+                    />
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -332,6 +354,7 @@ function PlanningSection({
   onRemovePlanRow,
   onOpenNoteDialog,
   onOpenPlanLinkDialog,
+  onOpenEntriesForActual,
   onSortChange,
   onCategoryAppearanceChange
 }) {
@@ -412,6 +435,7 @@ function PlanningSection({
                   onRemovePlanRow={onRemovePlanRow}
                   onOpenNoteDialog={onOpenNoteDialog}
                   onOpenPlanLinkDialog={onOpenPlanLinkDialog}
+                  onOpenEntriesForActual={onOpenEntriesForActual}
                   onCategoryAppearanceChange={onCategoryAppearanceChange}
                 />
               ))}
@@ -446,6 +470,7 @@ function PlanningRow({
   onRemovePlanRow,
   onOpenNoteDialog,
   onOpenPlanLinkDialog,
+  onOpenEntriesForActual,
   onCategoryAppearanceChange
 }) {
   const variance = row.plannedMinor - row.actualMinor;
@@ -463,191 +488,213 @@ function PlanningRow({
   const rowOpenProps = !isEditing && canOpenRow ? { onClick: handleRowOpen } : {};
 
   return (
-    <tr
-      className={`${isEditing ? "is-editing" : ""} ${!canOpenRow ? "is-readonly" : ""}`}
-      onClick={canOpenRow ? handleRowOpen : undefined}
-    >
-      <td {...rowOpenProps}>
-        <div className="month-category-cell">
-          <CategoryAppearancePopover
-            category={getCategory(categories, row)}
-            onChange={onCategoryAppearanceChange}
-          />
-          {isEditing ? (
-            <select
-              className="table-edit-input"
-              value={getCategorySelectValue(categories, row)}
-              onChange={(event) => {
-                if (isDraftBudgetBucket) {
-                  void onBudgetBucketCategoryChange(row.id, event.target.value);
-                  return;
-                }
-
-                onPlanRowChange(section.key, row.id, getCategoryPatch(categories, event.target.value));
-              }}
-              onClick={(event) => event.stopPropagation()}
-            >
-              {categorySelectOptions.map((category) => (
-                <option key={category.id} value={category.id}>{category.name}</option>
-              ))}
-            </select>
-          ) : <span>{row.categoryName}</span>}
-        </div>
-      </td>
-      {section.key === "planned_items" ? (
+    <Fragment key={row.id}>
+      <tr
+        className={`${isEditing ? "is-editing" : ""} ${!canOpenRow ? "is-readonly" : ""}`}
+        onClick={canOpenRow ? handleRowOpen : undefined}
+      >
         <td {...rowOpenProps}>
-          {isEditing ? (
-            <input
-              className="table-edit-input"
-              type="date"
-              value={getRowDateValue(row, view.monthPage.month)}
-              onChange={(event) => onPlanRowChange(section.key, row.id, { dayLabel: event.target.value, dayOfWeek: undefined })}
-              onClick={(event) => event.stopPropagation()}
+          <div className="month-category-cell">
+            <CategoryAppearancePopover
+              category={getCategory(categories, row)}
+              onChange={onCategoryAppearanceChange}
             />
-          ) : formatRowDateLabel(row, view.monthPage.month)}
-        </td>
-      ) : null}
-      <td {...rowOpenProps}>
-        {isEditing ? (
-          <input
-            className="table-edit-input"
-            value={editingSourceRow.label}
-            onChange={(event) => {
-              if (isDraftBudgetBucket) {
-                onBudgetBucketLabelChange(row.id, event.target.value);
-                return;
-              }
+            {isEditing ? (
+              <select
+                className="table-edit-input"
+                value={getCategorySelectValue(categories, row)}
+                onChange={(event) => {
+                  if (isDraftBudgetBucket) {
+                    void onBudgetBucketCategoryChange(row.id, event.target.value);
+                    return;
+                  }
 
-              onPlanRowChange(section.key, row.id, { label: event.target.value });
-            }}
-            onClick={(event) => event.stopPropagation()}
-          />
-        ) : row.label}
-      </td>
-      <td {...rowOpenProps}>
-        {isEditing ? (
-          <div className="month-planned-cell">
-            <input
-              className="table-edit-input table-edit-input-money"
-              value={editingDrafts.plannedMinor ?? formatMinorInput(editingSourceRow.plannedMinor)}
-              onChange={(event) => {
-                if (isDraftBudgetBucket) {
-                  onBudgetBucketPlannedMinorDraftChange(row.id, event.target.value);
-                  return;
-                }
-
-                onEditingDraftChange({ plannedMinor: event.target.value });
-              }}
-              onClick={(event) => event.stopPropagation()}
-            />
-            {isDraftBudgetBucket ? (
-              <LastPeriodBudgetHint actualMinor={row.lastPeriodActualMinor} month={row.lastPeriodMonth} />
-            ) : null}
-            {sharedEditHint ? <p className="month-shared-edit-hint">{sharedEditHint}</p> : null}
-          </div>
-        ) : money(row.plannedMinor)}
-      </td>
-      <td>
-        {section.key === "planned_items" ? (
-          <button
-            type="button"
-            className="planned-link-trigger"
-            onClick={(event) => {
-              event.stopPropagation();
-              if (canInlineEditRow) {
-                void onOpenPlanLinkDialog(row);
-              }
-            }}
-            disabled={!canInlineEditRow}
-          >
-            <strong>{money(row.actualMinor)}</strong>
-            <span>{row.linkedEntryCount ? `${row.linkedEntryCount} linked` : "Link entries"}</span>
-          </button>
-        ) : <span {...rowOpenProps}>{money(row.actualMinor)}</span>}
-      </td>
-      <td {...rowOpenProps} className={variance >= 0 ? "positive" : "negative"}>{money(variance)}</td>
-      {section.key === "planned_items" ? (
-        <td {...rowOpenProps}>
-          {isEditing ? (
-            <select
-              className="table-edit-input"
-              value={row.accountName ?? ""}
-              onChange={(event) => onPlanRowChange(section.key, row.id, { accountName: event.target.value })}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <option value="">{messages.common.emptyValue}</option>
-              {(accountSelectOptions ?? accounts.map((account) => ({ id: account.id, value: account.name, label: account.name }))).map((account) => (
-                <option key={account.id} value={account.value}>{account.label}</option>
-              ))}
-            </select>
-          ) : row.accountName ?? messages.common.emptyValue}
-        </td>
-      ) : null}
-      <td>
-        <div className="table-note-actions">
-          <button
-            type="button"
-            className="note-trigger"
-            onClick={(event) => {
-              event.stopPropagation();
-              if (canInlineEditRow) {
-                onOpenNoteDialog("plan", row.id, section.key, row.note);
-              }
-            }}
-          >
-            <span>{editingSourceRow.note ?? messages.common.emptyValue}</span>
-            {canInlineEditRow ? <SquarePen size={14} /> : null}
-          </button>
-          <RowEditActions
-            isEditing={isEditing}
-            onFinishEdit={onFinishEdit}
-            onCancelEdit={onCancelEdit}
-            deleteAction={canInlineEditRow && !row.isDraft ? (
-              <DeleteRowButton
-                label={row.label || row.categoryName || "planning row"}
-                buttonClassName="month-inline-delete-button"
-                triggerLabel={`Delete ${row.label || row.categoryName || "planning row"}`}
-                onConfirm={() => onRemovePlanRow(section.key, row.id)}
+                  onPlanRowChange(section.key, row.id, getCategoryPatch(categories, event.target.value));
+                }}
+                onClick={(event) => event.stopPropagation()}
               >
-                Delete
-              </DeleteRowButton>
+                {categorySelectOptions.map((category) => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+            ) : <span>{row.categoryName}</span>}
+          </div>
+        </td>
+        {section.key === "planned_items" ? (
+          <td {...rowOpenProps}>
+            {isEditing ? (
+              <input
+                className="table-edit-input"
+                type="date"
+                value={getRowDateValue(row, view.monthPage.month)}
+                onChange={(event) => onPlanRowChange(section.key, row.id, { dayLabel: event.target.value, dayOfWeek: undefined })}
+                onClick={(event) => event.stopPropagation()}
+              />
+            ) : formatRowDateLabel(row, view.monthPage.month)}
+          </td>
+        ) : null}
+        <td {...rowOpenProps}>
+          {isEditing ? (
+            <input
+              className="table-edit-input"
+              value={editingSourceRow.label}
+              onChange={(event) => {
+                if (isDraftBudgetBucket) {
+                  onBudgetBucketLabelChange(row.id, event.target.value);
+                  return;
+                }
+
+                onPlanRowChange(section.key, row.id, { label: event.target.value });
+              }}
+              onClick={(event) => event.stopPropagation()}
+            />
+          ) : row.label}
+        </td>
+        <td {...rowOpenProps}>
+          {isEditing ? (
+            <div className="month-planned-cell">
+              <input
+                className="table-edit-input table-edit-input-money"
+                value={editingDrafts.plannedMinor ?? formatMinorInput(editingSourceRow.plannedMinor)}
+                onChange={(event) => {
+                  if (isDraftBudgetBucket) {
+                    onBudgetBucketPlannedMinorDraftChange(row.id, event.target.value);
+                    return;
+                  }
+
+                  onEditingDraftChange({ plannedMinor: event.target.value });
+                }}
+                onClick={(event) => event.stopPropagation()}
+              />
+              {isDraftBudgetBucket ? (
+                <LastPeriodBudgetHint actualMinor={row.lastPeriodActualMinor} month={row.lastPeriodMonth} />
+              ) : null}
+              {sharedEditHint ? <p className="month-shared-edit-hint">{sharedEditHint}</p> : null}
+            </div>
+          ) : money(row.plannedMinor)}
+        </td>
+        <td>
+          <div className="month-actual-cell">
+            <button
+              type="button"
+              className="month-actual-drilldown"
+              disabled={!row.actualEntryIds?.length}
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpenEntriesForActual({
+                  categoryName: row.categoryName,
+                  entryIds: row.actualEntryIds ?? []
+                });
+              }}
+            >
+              {money(row.actualMinor)}
+            </button>
+            {section.key === "planned_items" ? (
+              <button
+                type="button"
+                className="planned-link-manage-trigger"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (canInlineEditRow) {
+                    void onOpenPlanLinkDialog(row);
+                  }
+                }}
+                disabled={!canInlineEditRow}
+              >
+                {row.linkedEntryCount ? `${row.linkedEntryCount} linked` : "Link entries"}
+              </button>
             ) : null}
-          />
-        </div>
-      </td>
-    </tr>
+          </div>
+        </td>
+        <td {...rowOpenProps} className={variance >= 0 ? "positive" : "negative"}>{money(variance)}</td>
+        {section.key === "planned_items" ? (
+          <td {...rowOpenProps}>
+            {isEditing ? (
+              <select
+                className="table-edit-input"
+                value={row.accountName ?? ""}
+                onChange={(event) => onPlanRowChange(section.key, row.id, { accountName: event.target.value })}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <option value="">{messages.common.emptyValue}</option>
+                {(accountSelectOptions ?? accounts.map((account) => ({ id: account.id, value: account.name, label: account.name }))).map((account) => (
+                  <option key={account.id} value={account.value}>{account.label}</option>
+                ))}
+              </select>
+            ) : row.accountName ?? messages.common.emptyValue}
+          </td>
+        ) : null}
+        <td>
+          <div className="table-note-actions">
+            <button
+              type="button"
+              className="note-trigger"
+              onClick={(event) => {
+                event.stopPropagation();
+                if (canInlineEditRow) {
+                  onOpenNoteDialog("plan", row.id, section.key, row.note);
+                }
+              }}
+            >
+              <span>{editingSourceRow.note ?? messages.common.emptyValue}</span>
+              {canInlineEditRow ? <SquarePen size={14} /> : null}
+            </button>
+          </div>
+        </td>
+      </tr>
+      <MonthInlineActionRow
+        isEditing={isEditing}
+        columnCount={section.key === "planned_items" ? 8 : 6}
+        onFinishEdit={onFinishEdit}
+        onCancelEdit={onCancelEdit}
+        deleteAction={canInlineEditRow && !row.isDraft ? (
+          <DeleteRowButton
+            label={row.label || row.categoryName || "planning row"}
+            buttonClassName="month-inline-delete-button"
+            triggerLabel={`Delete ${row.label || row.categoryName || "planning row"}`}
+            onConfirm={() => onRemovePlanRow(section.key, row.id)}
+          >
+            Delete
+          </DeleteRowButton>
+        ) : null}
+      />
+    </Fragment>
   );
 }
 
-function RowEditActions({ isEditing, onFinishEdit, onCancelEdit, deleteAction = null }) {
+function MonthInlineActionRow({ isEditing, columnCount, onFinishEdit, onCancelEdit, deleteAction = null }) {
   if (!isEditing) {
     return null;
   }
 
   return (
-    <div className="month-inline-edit-actions">
-      <button
-        type="button"
-        className="dialog-primary month-inline-save-button"
-        onClick={(event) => {
-          event.stopPropagation();
-          onFinishEdit();
-        }}
-      >
-        Save
-      </button>
-      <button
-        type="button"
-        className="subtle-cancel month-inline-cancel-button"
-        onClick={(event) => {
-          event.stopPropagation();
-          onCancelEdit();
-        }}
-      >
-        Cancel
-      </button>
-      {deleteAction}
-    </div>
+    <tr className="month-inline-action-row">
+      <td colSpan={columnCount}>
+        <div className="month-inline-edit-actions">
+          {deleteAction}
+          <button
+            type="button"
+            className="subtle-cancel month-inline-cancel-button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onCancelEdit();
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="dialog-primary month-inline-save-button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onFinishEdit();
+            }}
+          >
+            Save
+          </button>
+        </div>
+      </td>
+    </tr>
   );
 }
 

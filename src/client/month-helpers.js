@@ -38,7 +38,10 @@ export function buildMonthMetricCards({ planSections, incomeRows, currentMonthSu
       label: "Remaining budget",
       amountMinor: remainingBudgetMinor,
       tone: remainingBudgetMinor >= 0 ? "positive" : "negative",
-      detail: remainingBudgetMinor >= 0 ? "To allocate" : "Overplanned"
+      detail: remainingBudgetMinor >= 0 ? "To allocate" : "Overplanned",
+      detailPopover: remainingBudgetMinor >= 0
+        ? "Money is still unassigned. Add more planned rows to give the remaining budget a job."
+        : "Planned spend is higher than planned income for this month. Add planned income or reduce planned rows to fully fund the month."
     },
     {
       label: "Actual spend",

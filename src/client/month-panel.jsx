@@ -126,19 +126,20 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     const rowAccount = (planLinkDialogRow.accountName ?? "").trim().toLowerCase();
     const filterText = (planLinkDialog?.descriptionFilter ?? "").trim().toLowerCase();
     const candidates = allCandidates.filter((entry) => {
+      const isSelected = selectedIds.has(entry.id);
       const entryCategory = (entry.categoryName ?? "").trim().toLowerCase();
       const entryAccount = (entry.accountName ?? "").trim().toLowerCase();
       const description = (entry.description ?? "").trim().toLowerCase();
-      if (planLinkDialog?.filterLinkedOnly && !selectedIds.has(entry.id)) {
+      if (planLinkDialog?.filterLinkedOnly && !isSelected) {
         return false;
       }
-      if (planLinkDialog?.filterSameCategoryOnly && rowCategory && entryCategory !== rowCategory) {
+      if (!isSelected && planLinkDialog?.filterSameCategoryOnly && rowCategory && entryCategory !== rowCategory) {
         return false;
       }
-      if (planLinkDialog?.filterSameAccountOnly && rowAccount && entryAccount !== rowAccount) {
+      if (!isSelected && planLinkDialog?.filterSameAccountOnly && rowAccount && entryAccount !== rowAccount) {
         return false;
       }
-      if (planLinkDialog?.filterCurrentMonthOnly && entry.date.slice(0, 7) !== view.monthPage.month) {
+      if (!isSelected && planLinkDialog?.filterCurrentMonthOnly && entry.date.slice(0, 7) !== view.monthPage.month) {
         return false;
       }
       if (filterText && !description.includes(filterText)) {
@@ -727,11 +728,35 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     next.set("month", view.monthPage.month);
     next.set("entry_wallet", account.name);
     next.set("scope", view.monthPage.selectedScope);
+    next.set("entries_scope", view.monthPage.selectedScope);
 
     if (view.id !== "household") {
       next.set("entry_person", view.label);
     } else if (!account.isJoint && account.ownerLabel !== "Shared") {
       next.set("entry_person", account.ownerLabel);
+    }
+
+    navigate({
+      pathname: "/entries",
+      search: `?${next.toString()}`
+    });
+  }
+
+  function handleOpenEntriesForActual({ categoryName, entryIds = [] }) {
+    const next = new URLSearchParams();
+    next.set("view", view.id);
+    next.set("month", view.monthPage.month);
+    next.set("scope", view.monthPage.selectedScope);
+    next.set("entries_scope", view.monthPage.selectedScope);
+
+    if (view.id !== "household") {
+      next.set("entry_person", view.label);
+    }
+
+    if (entryIds.length) {
+      entryIds.forEach((entryId) => next.append("entry_id", entryId));
+    } else if (categoryName) {
+      next.set("entry_category", categoryName);
     }
 
     navigate({
@@ -1096,6 +1121,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         onRemovePlanRow={handleRemovePlanRow}
         onOpenNoteDialog={openNoteDialog}
         onOpenPlanLinkDialog={openPlanLinkDialog}
+        onOpenEntriesForActual={handleOpenEntriesForActual}
         onSortChange={handleSortChange}
         onCategoryAppearanceChange={onCategoryAppearanceChange}
       />
@@ -1179,6 +1205,25 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
                   month={mobileAddDialog.lastPeriodMonth}
                 />
               ) : null}
+            </label>
+            <label>
+              <span>{messages.month.table.actual}</span>
+              <button
+                type="button"
+                className="month-actual-drilldown month-actual-drilldown-mobile"
+                disabled={!mobileAddDialog.actualEntryIds?.length}
+                onClick={() => handleOpenEntriesForActual({
+                  categoryName: mobileAddDialog.categoryValue,
+                  entryIds: mobileAddDialog.actualEntryIds ?? []
+                })}
+              >
+                <strong>{money(mobileAddDialog.actualMinor ?? 0)}</strong>
+                <small>
+                  {mobileAddDialog.actualEntryIds?.length
+                    ? `View ${mobileAddDialog.actualEntryIds.length} contributing ${mobileAddDialog.actualEntryIds.length === 1 ? "entry" : "entries"}`
+                    : "No contributing entries yet"}
+                </small>
+              </button>
             </label>
             {mobileAddDialog.kind === "plan" && mobileAddDialog.sectionKey === "planned_items" ? (
               <label>

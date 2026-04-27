@@ -194,7 +194,23 @@ export function MetricCard({ card }) {
     <div className={`metric ${card.tone ? `metric-${card.tone}` : ""}`}>
       <span>{card.label}</span>
       <strong>{value}</strong>
-      {card.detail ? <p>{card.detail}</p> : null}
+      {card.detail ? (
+        card.detailPopover ? (
+          <Popover.Root>
+            <Popover.Trigger asChild>
+              <button type="button" className="metric-detail-trigger">
+                {card.detail}
+              </button>
+            </Popover.Trigger>
+            <Popover.Portal>
+              <Popover.Content className="metric-detail-popover" sideOffset={8} align="start">
+                <p>{card.detailPopover}</p>
+                <Popover.Arrow className="category-popover-arrow" />
+              </Popover.Content>
+            </Popover.Portal>
+          </Popover.Root>
+        ) : <p>{card.detail}</p>
+      ) : null}
     </div>
   );
 }
