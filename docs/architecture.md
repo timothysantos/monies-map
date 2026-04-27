@@ -372,11 +372,28 @@ amount, description, and date proximity. The app still requires explicit user
 confirmation; high-confidence automatic linking is intentionally deferred until
 the rules have enough review history.
 
+The planned-item matching dialog now favors lightweight narrowing before any
+global search workflow. It supports:
+
+- `Linked` to isolate the rows currently selected for that planned item
+- `Same category`
+- `Same account`
+- `This month only`
+- a local description substring filter over the ranked candidate list
+
+The dialog also reports how many candidate rows remain after the current
+filters, which matters when broad categories such as `Food & Drinks` can
+surface dozens of ledger rows in the same month.
+
 Budget buckets remain category-driven. A bucket such as `Food & Drinks` or
 `Transport` rolls up actual expense entries in that category, after subtracting
 actuals already assigned to planned items in the same category. This keeps
 commitments precise without requiring every flexible purchase to become a
 planned row.
+
+Category-offsetting income, such as reimbursements, also reduces a budget
+bucket's actual total when the entry is explicitly marked as offsetting that
+category. Internal transfers still stay out of budget-bucket actuals.
 
 Over-granular planning means too many unstable or ad hoc lines are promoted into
 month-specific planned rows. The result is high maintenance and low signal.
@@ -408,13 +425,17 @@ analytics.
 
 - defaults to the latest 12 available months
 - month-by-month planned versus actual table
-- income, planned expense, actual expense, savings target, and variance
+- planned income, actual income, planned expense, actual expense, savings
+  target, and variance
 - summary notes
 - readable high-level charting as support, not as the main truth
 - drill-down into a selected month
+- planned values come from person-owned month rows and planned income rows
 - actual income and expense values are derived from completed ledger entries
   when that month has entries, so stale monthly snapshots do not hide imported
   activity
+- household summary view is a rollup of person planning plus household actuals,
+  following the same ownership model as the month page
 
 ### Month page
 
@@ -428,17 +449,34 @@ analytics.
 - monthly notes
 - links from summary rows or charts to matching entries
 
+Month-page planning model:
+
+- person month pages are the primary planning surface
+- income rows, planned items, and budget buckets are person-owned planning rows
+- the same person-owned rows stay visible across `Direct ownership`, `Shared`,
+  and `Direct + Shared`
+- month-page scope changes actual aggregation only; it does not decide which
+  rows exist in the person plan
+- `Direct ownership` compares a person's rows against that person's direct
+  ledger activity only
+- `Shared` compares the same rows against that person's weighted share of shared
+  ledger activity only
+- `Direct + Shared` compares the same rows against direct activity plus that
+  person's weighted share of shared activity
+- household month view is a rollup of person-owned plans and household actuals,
+  intended primarily for overview and coordination instead of being the default
+  authoring surface
+
 Household month scopes:
 
-- `Combined`: union of person-owned and shared planning rows, merged by the
-  appropriate row identity for reporting
-- `Shared`: shared planning rows only
+- `Combined`: aggregate rollup of both people's month plans plus household
+  actuals
 
 Person month scopes:
 
-- `Direct ownership`: direct rows only for that person
-- `Shared`: shared rows allocated to that person by split ratio
-- `Direct + Shared`: direct rows plus that person's weighted share of shared rows
+- `Direct ownership`: same plan rows, direct actuals only
+- `Shared`: same plan rows, shared weighted actuals only
+- `Direct + Shared`: same plan rows, direct actuals plus shared weighted actuals
 
 ### Entries page
 

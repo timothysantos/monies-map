@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -7,6 +7,8 @@ import { getAccountSelectOptions } from "./account-display";
 import { CategoryAppearancePopover } from "./category-visuals";
 import { getCategoriesForSelect, getCategory, getCategoryPatch } from "./category-utils";
 import { messages } from "./copy/en-SG";
+import { entryMatchesScope } from "./entry-helpers";
+import { EntryMobileSheet } from "./entry-mobile-sheet";
 import {
   buildPlanLinkCandidates,
   buildMonthMetricCards,
@@ -15,7 +17,16 @@ import {
   getVisibleMonthAccounts
 } from "./month-helpers";
 import { MonthMetricRow, MonthNotesAndAccounts, MonthPanelHeader } from "./month-overview";
-import { MonthPlanStack } from "./month-plan-tables";
+import {
+  buildMobileMonthIncomeDialog,
+  buildMobileMonthPlanDialog,
+  canInlineEditMonthRow,
+  canInlineEditMonthPlanRow,
+  canOpenMonthMobileSheet,
+  getMonthPlanEditSource
+} from "./month-row-editing";
+import { LastPeriodBudgetHint, MonthPlanStack } from "./month-plan-tables";
+import { ResponsiveSelect } from "./responsive-select";
 import { getRowDateValue } from "./table-helpers";
 import {
   formatDateOnly,
@@ -43,6 +54,8 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   const [monthNoteDialog, setMonthNoteDialog] = useState(null);
   const [mobileAddDialog, setMobileAddDialog] = useState(null);
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [useMobileMonthSheet, setUseMobileMonthSheet] = useState(false);
+  const previousMonthActualCacheRef = useRef(new Map());
   const [tableSorts, setTableSorts] = useState({
     income: null,
     planned_items: null,
@@ -72,10 +85,75 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     setSectionOpen(MONTH_SECTION_STATE_CACHE.get(monthUiKey) ?? getDefaultMonthSectionOpen());
   }, [monthUiKey]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia(MOBILE_ADD_DIALOG_QUERY);
+    const update = () => setUseMobileMonthSheet(mediaQuery.matches);
+    update();
+    mediaQuery.addEventListener?.("change", update);
+    return () => mediaQuery.removeEventListener?.("change", update);
+  }, []);
+
   const currentMonthSummary = useMemo(
     () => view.summaryPage.months.find((month) => month.month === view.monthPage.month) ?? null,
     [view]
   );
+  const planLinkDialogRow = useMemo(
+    () => planLinkDialog ? getPlanRowById(planSections, planLinkDialog.rowId) : null,
+    [planLinkDialog, planSections]
+  );
+  const planLinkDialogView = useMemo(() => {
+    if (!planLinkDialogRow) {
+      return {
+        row: null,
+        allCandidates: [],
+        candidates: [],
+        selectedIds: new Set()
+      };
+    }
+
+    const allCandidates = buildPlanLinkCandidates({
+      row: planLinkDialogRow,
+      householdMonthEntries,
+      monthEntries: view.monthPage.entries,
+      monthKey: view.monthPage.month
+    });
+    const selectedIds = new Set(planLinkDialog?.draftEntryIds ?? []);
+    const rowCategory = (planLinkDialogRow.categoryName ?? "").trim().toLowerCase();
+    const rowAccount = (planLinkDialogRow.accountName ?? "").trim().toLowerCase();
+    const filterText = (planLinkDialog?.descriptionFilter ?? "").trim().toLowerCase();
+    const candidates = allCandidates.filter((entry) => {
+      const entryCategory = (entry.categoryName ?? "").trim().toLowerCase();
+      const entryAccount = (entry.accountName ?? "").trim().toLowerCase();
+      const description = (entry.description ?? "").trim().toLowerCase();
+      if (planLinkDialog?.filterLinkedOnly && !selectedIds.has(entry.id)) {
+        return false;
+      }
+      if (planLinkDialog?.filterSameCategoryOnly && rowCategory && entryCategory !== rowCategory) {
+        return false;
+      }
+      if (planLinkDialog?.filterSameAccountOnly && rowAccount && entryAccount !== rowAccount) {
+        return false;
+      }
+      if (planLinkDialog?.filterCurrentMonthOnly && entry.date.slice(0, 7) !== view.monthPage.month) {
+        return false;
+      }
+      if (filterText && !description.includes(filterText)) {
+        return false;
+      }
+      return true;
+    });
+
+    return {
+      row: planLinkDialogRow,
+      allCandidates,
+      candidates,
+      selectedIds
+    };
+  }, [householdMonthEntries, planLinkDialog, planLinkDialogRow, view.monthPage.entries, view.monthPage.month]);
 
   const monthMetricCards = useMemo(
     () => buildMonthMetricCards({ planSections, incomeRows, currentMonthSummary }),
@@ -88,6 +166,22 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   const visibleAccountOptions = useMemo(
     () => getAccountSelectOptions(visibleAccounts),
     [visibleAccounts]
+  );
+  const mobileCategoryOptions = useMemo(
+    () => categorySelectOptions.map((category) => ({
+      value: category.id,
+      label: category.name,
+      iconKey: category.iconKey,
+      colorHex: category.colorHex
+    })),
+    [categorySelectOptions]
+  );
+  const mobileAccountOptions = useMemo(
+    () => visibleAccountOptions.map((account) => ({
+      value: account.value,
+      label: account.label
+    })),
+    [visibleAccountOptions]
   );
 
   function handleRowChange(sectionKey, rowId, patch) {
@@ -111,6 +205,49 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       };
     }));
   }
+
+  const loadPreviousMonthCategoryActualMinor = useCallback(async (categoryName) => {
+    if (!categoryName) {
+      return {
+        month: getPreviousMonthKey(view.monthPage.month),
+        actualMinor: 0
+      };
+    }
+
+    const previousMonth = getPreviousMonthKey(view.monthPage.month);
+    const cacheKey = `${view.id}:${view.monthPage.selectedScope}:${previousMonth}`;
+    let monthPagePromise = previousMonthActualCacheRef.current.get(cacheKey);
+    if (!monthPagePromise) {
+      monthPagePromise = fetch(
+        `/api/month-page?view=${encodeURIComponent(view.id)}&month=${encodeURIComponent(previousMonth)}&scope=${encodeURIComponent(view.monthPage.selectedScope)}`,
+        { cache: "no-store" }
+      )
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error("Failed to load previous month defaults.");
+          }
+          return response.json();
+        })
+        .then((data) => data.monthPage);
+      previousMonthActualCacheRef.current.set(cacheKey, monthPagePromise);
+    }
+
+    const monthPage = await monthPagePromise;
+    const actualMinor = (monthPage?.entries ?? []).reduce((sum, entry) => {
+      if (entry.entryType !== "expense" || entry.categoryName !== categoryName) {
+        return sum;
+      }
+      if (!entryMatchesScope(entry, view.id, view.monthPage.selectedScope)) {
+        return sum;
+      }
+      return sum + entry.amountMinor;
+    }, 0);
+
+    return {
+      month: previousMonth,
+      actualMinor
+    };
+  }, [view.id, view.monthPage.month, view.monthPage.selectedScope]);
 
   async function persistMonthRow(sectionKey, row, nextPlannedMinor) {
     await fetch("/api/month-plan/save", {
@@ -136,10 +273,17 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   }
 
   function beginIncomeEdit(row) {
-    if (isCombinedHouseholdView || row.isDerived) {
+    const prefersMobileDialog = isMobileAddDialogPreferred();
+    if (!canInlineEditMonthRow({ isCombinedHouseholdView, row })) {
       return;
     }
     if (editingRowId === row.id) {
+      return;
+    }
+
+    if (prefersMobileDialog) {
+      setMobileAddDialog(buildMobileMonthIncomeDialog(row));
+      openMonthSection("income");
       return;
     }
 
@@ -151,17 +295,50 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   }
 
   function beginPlanEdit(sectionKey, row) {
-    if (isCombinedHouseholdView || row.isDerived) {
+    const prefersMobileDialog = isMobileAddDialogPreferred();
+    if (!canInlineEditMonthPlanRow({ isCombinedHouseholdView, row }) && !(prefersMobileDialog && canOpenMonthMobileSheet({ isCombinedHouseholdView, row }))) {
       return;
     }
     if (editingRowId === row.id) {
       return;
     }
 
+    if (prefersMobileDialog) {
+      setMobileAddDialog(buildMobileMonthPlanDialog({
+        monthKey: view.monthPage.month,
+        row,
+        sectionKey,
+        viewId: view.id,
+        viewLabel: view.label
+      }));
+      openMonthSection(sectionKey);
+      return;
+    }
+
+    if (row.isDerived) {
+      const sourceRow = getMonthPlanEditSource(row);
+      setPlanSections((current) => current.map((section) => (
+        section.key === sectionKey
+          ? {
+              ...section,
+              rows: section.rows.map((currentRow) => (
+                currentRow.id === row.id
+                  ? {
+                      ...currentRow,
+                      plannedMinor: sourceRow.plannedMinor,
+                      note: sourceRow.note
+                    }
+                  : currentRow
+              ))
+            }
+          : section
+      )));
+    }
+
     setEditingRowId(row.id);
     setEditingSnapshot({ kind: "plan", sectionKey, rowId: row.id, original: { ...row } });
     setEditingDrafts({
-      plannedMinor: formatMinorInput(row.plannedMinor)
+      plannedMinor: formatMinorInput(getMonthPlanEditSource(row).plannedMinor)
     });
   }
 
@@ -238,7 +415,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   }
 
   function isMobileAddDialogPreferred() {
-    return typeof window !== "undefined" && window.matchMedia(MOBILE_ADD_DIALOG_QUERY).matches;
+    return useMobileMonthSheet || (typeof window !== "undefined" && window.matchMedia(MOBILE_ADD_DIALOG_QUERY).matches);
   }
 
   function openMonthSection(sectionKey) {
@@ -264,13 +441,13 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       section: sectionKey,
       categoryName: defaultCategoryName,
       categoryId: categories.find((category) => category.name === defaultCategoryName)?.id,
-      label: sectionKey === "planned_items" ? "New item" : "New bucket",
+      label: sectionKey === "planned_items" ? "New item" : defaultCategoryName,
       dayLabel: sectionKey === "planned_items" ? `${view.monthPage.month}-01` : undefined,
       dayOfWeek: undefined,
       plannedMinor: 0,
       actualMinor: 0,
       accountName: sectionKey === "planned_items" ? "" : undefined,
-      note: sectionKey === "planned_items" ? messages.month.newPlannedItemNote : messages.month.newBudgetBucketNote,
+      note: sectionKey === "planned_items" ? messages.month.newPlannedItemNote : "",
       ownershipType,
       ownerName,
       splits: ownershipType === "shared"
@@ -289,8 +466,116 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
           }]
           : [],
       isDraft: true,
+      autoLabelFromCategory: sectionKey === "budget_buckets",
+      autoPlannedFromCategory: sectionKey === "budget_buckets",
+      lastPeriodActualMinor: sectionKey === "budget_buckets" ? 0 : undefined,
+      lastPeriodMonth: sectionKey === "budget_buckets" ? getPreviousMonthKey(view.monthPage.month) : undefined,
       ...patch
     };
+  }
+
+  async function applyBudgetBucketDefaultsToDraft({ rowId, categoryValue }) {
+    const categoryPatch = getCategoryPatch(categories, categoryValue);
+    const categoryName = categoryPatch.categoryName ?? "";
+    const { actualMinor, month } = await loadPreviousMonthCategoryActualMinor(categoryName);
+
+    let shouldSyncDraft = false;
+    setPlanSections((current) => current.map((section) => (
+      section.key !== "budget_buckets"
+        ? section
+        : {
+            ...section,
+            rows: section.rows.map((row) => {
+              if (row.id !== rowId || row.categoryName !== categoryName || !row.isDraft) {
+                return row;
+              }
+
+              shouldSyncDraft = Boolean(row.autoPlannedFromCategory);
+              return {
+                ...row,
+                lastPeriodActualMinor: actualMinor,
+                lastPeriodMonth: month,
+                plannedMinor: row.autoPlannedFromCategory ? actualMinor : row.plannedMinor
+              };
+            })
+          }
+    )));
+
+    if (shouldSyncDraft && editingRowId === rowId) {
+      setEditingDrafts((current) => ({
+        ...current,
+        plannedMinor: formatMinorInput(actualMinor)
+      }));
+    }
+  }
+
+  async function updateDraftBudgetBucketCategory(rowId, categoryValue) {
+    const categoryPatch = getCategoryPatch(categories, categoryValue);
+    const categoryName = categoryPatch.categoryName ?? "";
+
+    setPlanSections((current) => current.map((section) => (
+      section.key !== "budget_buckets"
+        ? section
+        : {
+            ...section,
+            rows: section.rows.map((row) => {
+              if (row.id !== rowId) {
+                return row;
+              }
+
+              return {
+                ...row,
+                ...categoryPatch,
+                label: row.autoLabelFromCategory ? categoryName : row.label,
+                lastPeriodActualMinor: row.lastPeriodActualMinor ?? 0
+              };
+            })
+          }
+    )));
+
+    await applyBudgetBucketDefaultsToDraft({ rowId, categoryValue });
+  }
+
+  function updateDraftBudgetBucketLabel(rowId, label) {
+    handleRowChange("budget_buckets", rowId, {
+      label,
+      autoLabelFromCategory: false
+    });
+  }
+
+  function updateDraftBudgetBucketPlannedMinor(rowId, plannedMinor) {
+    handleRowChange("budget_buckets", rowId, {
+      plannedMinor: parseDraftMoneyInput(plannedMinor),
+      autoPlannedFromCategory: false
+    });
+    setEditingDrafts((current) => ({
+      ...current,
+      plannedMinor
+    }));
+  }
+
+  async function applyBudgetBucketDefaultsToMobileDialog(categoryValue) {
+    const categoryPatch = getCategoryPatch(categories, categoryValue);
+    const categoryName = categoryPatch.categoryName ?? "";
+    const { actualMinor, month } = await loadPreviousMonthCategoryActualMinor(categoryName);
+
+    setMobileAddDialog((current) => {
+      if (!current || current.kind !== "plan" || current.sectionKey !== "budget_buckets") {
+        return current;
+      }
+
+      const nextCategoryName = getCategoryPatch(categories, current.categoryValue).categoryName ?? "";
+      if (nextCategoryName !== categoryName) {
+        return current;
+      }
+
+      return {
+        ...current,
+        lastPeriodActualMinor: actualMinor,
+        lastPeriodMonth: month,
+        plannedMinor: current.autoPlannedFromCategory ? formatMinorInput(actualMinor) : current.plannedMinor
+      };
+    });
   }
 
   function handleAddPlanRow(sectionKey) {
@@ -298,16 +583,25 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
 
     if (isMobileAddDialogPreferred()) {
       setMobileAddDialog({
+        mode: "create",
         kind: "plan",
         sectionKey,
         title: sectionKey === "planned_items" ? messages.month.addPlannedItem : messages.month.addBudgetBucket,
+        description: "Add the row without squeezing controls into the month table.",
         categoryValue: nextRow.categoryId ?? nextRow.categoryName,
         label: nextRow.label,
         plannedMinor: formatMinorInput(nextRow.plannedMinor),
         planDate: sectionKey === "planned_items" ? getRowDateValue(nextRow, view.monthPage.month) : "",
         accountName: nextRow.accountName ?? "",
-        note: nextRow.note ?? ""
+        note: sectionKey === "budget_buckets" ? "" : nextRow.note ?? "",
+        autoLabelFromCategory: sectionKey === "budget_buckets",
+        autoPlannedFromCategory: sectionKey === "budget_buckets",
+        lastPeriodActualMinor: sectionKey === "budget_buckets" ? 0 : undefined,
+        lastPeriodMonth: sectionKey === "budget_buckets" ? getPreviousMonthKey(view.monthPage.month) : undefined
       });
+      if (sectionKey === "budget_buckets") {
+        void applyBudgetBucketDefaultsToMobileDialog(nextRow.categoryId ?? nextRow.categoryName);
+      }
       openMonthSection(sectionKey);
       return;
     }
@@ -330,6 +624,9 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     setEditingDrafts({
       plannedMinor: "0.00"
     });
+    if (sectionKey === "budget_buckets") {
+      void applyBudgetBucketDefaultsToDraft({ rowId: nextRow.id, categoryValue: nextRow.categoryId ?? nextRow.categoryName });
+    }
   }
 
   async function handleRemovePlanRow(sectionKey, rowId) {
@@ -475,8 +772,10 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
 
     if (isMobileAddDialogPreferred()) {
       setMobileAddDialog({
+        mode: "create",
         kind: "income",
         title: messages.month.addIncomeSource,
+        description: "Add the row without squeezing controls into the month table.",
         categoryValue: nextRow.categoryId ?? nextRow.categoryName,
         label: nextRow.label,
         plannedMinor: formatMinorInput(nextRow.plannedMinor),
@@ -499,29 +798,68 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     });
   }
 
+  function handleMobileAddDialogCategoryChange(nextValue) {
+    setMobileAddDialog((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const categoryPatch = getCategoryPatch(categories, nextValue);
+      const categoryName = categoryPatch.categoryName ?? "";
+      return {
+        ...current,
+        categoryValue: nextValue,
+        label: current.kind === "plan" && current.sectionKey === "budget_buckets" && current.autoLabelFromCategory
+          ? categoryName
+          : current.label
+      };
+    });
+
+    if (mobileAddDialog?.kind === "plan" && mobileAddDialog.sectionKey === "budget_buckets") {
+      void applyBudgetBucketDefaultsToMobileDialog(nextValue);
+    }
+  }
+
   async function saveMobileAddDialog() {
     if (!mobileAddDialog) {
       return;
     }
 
     const plannedMinor = parseDraftMoneyInput(mobileAddDialog.plannedMinor);
+    const selectedCategoryName = getCategoryPatch(categories, mobileAddDialog.categoryValue).categoryName ?? "";
     const basePatch = {
       ...getCategoryPatch(categories, mobileAddDialog.categoryValue),
       label: mobileAddDialog.label.trim() || (mobileAddDialog.kind === "income"
         ? "Other income"
         : mobileAddDialog.sectionKey === "planned_items"
           ? "New item"
-          : "New bucket"),
+          : selectedCategoryName || "New bucket"),
       plannedMinor,
       note: mobileAddDialog.note.trim() || null
     };
 
     if (mobileAddDialog.kind === "income") {
-      await persistMonthRow("income", buildIncomeRow(basePatch), plannedMinor);
+      const incomeRow = mobileAddDialog.mode === "edit"
+        ? incomeRows.find((row) => row.id === mobileAddDialog.rowId)
+        : null;
+      await persistMonthRow("income", incomeRow ? {
+        ...incomeRow,
+        ...basePatch
+      } : buildIncomeRow(basePatch), plannedMinor);
       openMonthSection("income");
     } else {
       const sectionKey = mobileAddDialog.sectionKey;
-      await persistMonthRow(sectionKey, buildPlanRow(sectionKey, {
+      const planSection = planSections.find((section) => section.key === sectionKey);
+      const planRow = mobileAddDialog.mode === "edit"
+        ? planSection?.rows.find((row) => row.id === mobileAddDialog.rowId)
+        : null;
+      const editablePlanRow = planRow ? getMonthPlanEditSource(planRow) : null;
+      await persistMonthRow(sectionKey, editablePlanRow ? {
+        ...editablePlanRow,
+        ...basePatch,
+        dayLabel: sectionKey === "planned_items" ? mobileAddDialog.planDate : editablePlanRow.dayLabel,
+        accountName: sectionKey === "planned_items" ? mobileAddDialog.accountName : editablePlanRow.accountName
+      } : buildPlanRow(sectionKey, {
         ...basePatch,
         dayLabel: sectionKey === "planned_items" ? mobileAddDialog.planDate : undefined,
         accountName: sectionKey === "planned_items" ? mobileAddDialog.accountName : undefined
@@ -584,7 +922,12 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
 
     setPlanLinkDialog({
       rowId: row.id,
-      draftEntryIds: row.linkedEntryIds ?? []
+      draftEntryIds: row.linkedEntryIds ?? [],
+      filterLinkedOnly: false,
+      filterSameCategoryOnly: true,
+      filterSameAccountOnly: false,
+      filterCurrentMonthOnly: true,
+      descriptionFilter: ""
     });
   }
 
@@ -605,6 +948,38 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
 
     setPlanLinkDialog(null);
     await onRefresh();
+  }
+
+  function togglePlanLinkFilter(key) {
+    setPlanLinkDialog((current) => current ? {
+      ...current,
+      [key]: !current[key]
+    } : current);
+  }
+
+  function updatePlanLinkDescriptionFilter(value) {
+    setPlanLinkDialog((current) => current ? {
+      ...current,
+      descriptionFilter: value
+    } : current);
+  }
+
+  function togglePlanLinkEntry(entryId, checked) {
+    setPlanLinkDialog((current) => {
+      if (!current) {
+        return current;
+      }
+      const nextIds = new Set(current.draftEntryIds);
+      if (checked) {
+        nextIds.add(entryId);
+      } else {
+        nextIds.delete(entryId);
+      }
+      return {
+        ...current,
+        draftEntryIds: [...nextIds]
+      };
+    });
   }
 
   const monthKey = view.monthPage.month;
@@ -707,6 +1082,9 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         onToggleSection={toggleSection}
         onAddIncomeRow={handleAddIncomeRow}
         onAddPlanRow={handleAddPlanRow}
+        onBudgetBucketCategoryChange={updateDraftBudgetBucketCategory}
+        onBudgetBucketLabelChange={updateDraftBudgetBucketLabel}
+        onBudgetBucketPlannedMinorDraftChange={updateDraftBudgetBucketPlannedMinor}
         onBeginIncomeEdit={beginIncomeEdit}
         onBeginPlanEdit={beginPlanEdit}
         onIncomeRowChange={handleIncomeRowChange}
@@ -729,110 +1107,103 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         onOpenEntriesForAccount={handleOpenEntriesForAccount}
       />
 
-      <Dialog.Root open={Boolean(mobileAddDialog)} onOpenChange={(open) => { if (!open) setMobileAddDialog(null); }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content month-add-dialog">
-            <div className="note-dialog-head">
-              <div>
-                <Dialog.Title>{mobileAddDialog?.title}</Dialog.Title>
-                <Dialog.Description>Add the row without squeezing controls into the month table.</Dialog.Description>
+      {mobileAddDialog ? (
+        <EntryMobileSheet
+          title={mobileAddDialog.title}
+          description={mobileAddDialog.description ?? "Add the row without squeezing controls into the month table."}
+          saveLabel={messages.month.doneEdit}
+          onClose={() => setMobileAddDialog(null)}
+          onSave={() => void saveMobileAddDialog()}
+        >
+          <div className="month-add-dialog-grid">
+            {mobileAddDialog.sharedEditHint ? (
+              <p className="month-shared-edit-hint">{mobileAddDialog.sharedEditHint}</p>
+            ) : null}
+            <label>
+              <span>{messages.month.table.category}</span>
+              <div className="month-add-dialog-category">
+                <CategoryAppearancePopover
+                  category={getCategory(categories, {
+                    categoryId: mobileAddDialog.categoryValue,
+                    categoryName: mobileAddDialog.categoryValue
+                  })}
+                  onChange={onCategoryAppearanceChange}
+                />
+                <ResponsiveSelect
+                  className="table-edit-input"
+                  title={messages.month.table.category}
+                  value={mobileAddDialog.categoryValue ?? ""}
+                  options={mobileCategoryOptions}
+                  onValueChange={handleMobileAddDialogCategoryChange}
+                />
               </div>
-              <button
-                type="button"
-                className="icon-action subtle-cancel"
-                aria-label="Close add row form"
-                onClick={() => setMobileAddDialog(null)}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="month-add-dialog-grid">
+            </label>
+            {mobileAddDialog.kind === "plan" && mobileAddDialog.sectionKey === "planned_items" ? (
               <label>
-                <span>{messages.month.table.category}</span>
-                <div className="month-add-dialog-category">
-                  <CategoryAppearancePopover
-                    category={getCategory(categories, {
-                      categoryId: mobileAddDialog?.categoryValue,
-                      categoryName: mobileAddDialog?.categoryValue
-                    })}
-                    onChange={onCategoryAppearanceChange}
-                  />
-                  <select
-                    className="table-edit-input"
-                    value={mobileAddDialog?.categoryValue ?? ""}
-                    onChange={(event) => setMobileAddDialog((current) => current ? { ...current, categoryValue: event.target.value } : current)}
-                  >
-                    {categorySelectOptions.map((category) => (
-                      <option key={category.id} value={category.id}>{category.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </label>
-              {mobileAddDialog?.kind === "plan" && mobileAddDialog.sectionKey === "planned_items" ? (
-                <label>
-                  <span>{messages.month.table.day}</span>
-                  <input
-                    className="table-edit-input"
-                    type="date"
-                    value={mobileAddDialog.planDate ?? ""}
-                    onChange={(event) => setMobileAddDialog((current) => current ? { ...current, planDate: event.target.value } : current)}
-                  />
-                </label>
-              ) : null}
-              <label>
-                <span>{messages.month.table.item}</span>
+                <span>{messages.month.table.day}</span>
                 <input
                   className="table-edit-input"
-                  value={mobileAddDialog?.label ?? ""}
-                  onChange={(event) => setMobileAddDialog((current) => current ? { ...current, label: event.target.value } : current)}
+                  type="date"
+                  value={mobileAddDialog.planDate ?? ""}
+                  onChange={(event) => setMobileAddDialog((current) => current ? { ...current, planDate: event.target.value } : current)}
                 />
               </label>
-              <label>
-                <span>{messages.month.table.planned}</span>
-                <input
-                  className="table-edit-input"
-                  inputMode="decimal"
-                  value={mobileAddDialog?.plannedMinor ?? ""}
-                  onChange={(event) => setMobileAddDialog((current) => current ? { ...current, plannedMinor: event.target.value } : current)}
+            ) : null}
+            <label>
+              <span>{messages.month.table.item}</span>
+              <input
+                className="table-edit-input"
+                value={mobileAddDialog.label ?? ""}
+                onChange={(event) => setMobileAddDialog((current) => current ? {
+                  ...current,
+                  label: event.target.value,
+                  autoLabelFromCategory: false
+                } : current)}
+              />
+            </label>
+            <label>
+              <span>{messages.month.table.planned}</span>
+              <input
+                className="table-edit-input"
+                inputMode="decimal"
+                value={mobileAddDialog.plannedMinor ?? ""}
+                onChange={(event) => setMobileAddDialog((current) => current ? {
+                  ...current,
+                  plannedMinor: event.target.value,
+                  autoPlannedFromCategory: false
+                } : current)}
+              />
+              {mobileAddDialog.kind === "plan" && mobileAddDialog.sectionKey === "budget_buckets" ? (
+                <LastPeriodBudgetHint
+                  actualMinor={mobileAddDialog.lastPeriodActualMinor}
+                  month={mobileAddDialog.lastPeriodMonth}
                 />
-              </label>
-              {mobileAddDialog?.kind === "plan" && mobileAddDialog.sectionKey === "planned_items" ? (
-                <label>
-                  <span>{messages.month.table.account}</span>
-                  <select
-                    className="table-edit-input"
-                    value={mobileAddDialog.accountName ?? ""}
-                    onChange={(event) => setMobileAddDialog((current) => current ? { ...current, accountName: event.target.value } : current)}
-                  >
-                    <option value="">{messages.common.emptyValue}</option>
-                    {visibleAccountOptions.map((account) => (
-                      <option key={account.id} value={account.value}>{account.label}</option>
-                    ))}
-                  </select>
-                </label>
               ) : null}
-              <label className="month-add-dialog-note">
-                <span>{messages.month.table.note}</span>
-                <textarea
-                  className="table-edit-input table-edit-textarea"
-                  value={mobileAddDialog?.note ?? ""}
-                  onChange={(event) => setMobileAddDialog((current) => current ? { ...current, note: event.target.value } : current)}
-                  rows={3}
+            </label>
+            {mobileAddDialog.kind === "plan" && mobileAddDialog.sectionKey === "planned_items" ? (
+              <label>
+                <span>{messages.month.table.account}</span>
+                <ResponsiveSelect
+                  className="table-edit-input"
+                  title={messages.month.table.account}
+                  value={mobileAddDialog.accountName ?? ""}
+                  options={[{ value: "", label: messages.common.emptyValue }, ...mobileAccountOptions]}
+                  onValueChange={(nextValue) => setMobileAddDialog((current) => current ? { ...current, accountName: nextValue } : current)}
                 />
               </label>
-            </div>
-            <div className="note-dialog-actions">
-              <button type="button" className="subtle-cancel" onClick={() => setMobileAddDialog(null)}>
-                {messages.month.cancelEdit}
-              </button>
-              <button type="button" className="dialog-primary" onClick={() => void saveMobileAddDialog()}>
-                {messages.month.doneEdit}
-              </button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+            ) : null}
+            <label className="month-add-dialog-note">
+              <span>{messages.month.table.note}</span>
+              <textarea
+                className="table-edit-input table-edit-textarea"
+                value={mobileAddDialog.note ?? ""}
+                onChange={(event) => setMobileAddDialog((current) => current ? { ...current, note: event.target.value } : current)}
+                rows={3}
+              />
+            </label>
+          </div>
+        </EntryMobileSheet>
+      ) : null}
 
       <Dialog.Root open={Boolean(noteDialog)} onOpenChange={(open) => { if (!open) setNoteDialog(null); }}>
         <Dialog.Portal>
@@ -870,88 +1241,49 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         </Dialog.Portal>
       </Dialog.Root>
 
-      <Dialog.Root open={Boolean(planLinkDialog)} onOpenChange={(open) => { if (!open) setPlanLinkDialog(null); }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="note-dialog-overlay" />
-          <Dialog.Content className="note-dialog-content planned-link-dialog">
-            {(() => {
-              const row = planLinkDialog ? getPlanRowById(planSections, planLinkDialog.rowId) : null;
-              const candidates = buildPlanLinkCandidates({
-                row,
-                householdMonthEntries,
-                monthEntries: view.monthPage.entries,
-                monthKey: view.monthPage.month
-              });
-              const selectedIds = new Set(planLinkDialog?.draftEntryIds ?? []);
-              return (
-                <>
-                  <div className="note-dialog-head">
-                    <div>
-                      <Dialog.Title>Match planned item</Dialog.Title>
-                      <Dialog.Description>
-                        Link exact ledger entries to {row?.label ?? "this planned item"}. Budget buckets still use category totals.
-                      </Dialog.Description>
-                    </div>
-                    <button
-                      type="button"
-                      className="icon-action subtle-cancel"
-                      aria-label="Close planned item matching"
-                      onClick={() => setPlanLinkDialog(null)}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                  {candidates.length ? (
-                    <div className="planned-link-list">
-                      {candidates.map((entry) => (
-                        <label key={entry.id} className="planned-link-row">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.has(entry.id)}
-                            onChange={(event) => {
-                              setPlanLinkDialog((current) => {
-                                if (!current) {
-                                  return current;
-                                }
-                                const nextIds = new Set(current.draftEntryIds);
-                                if (event.target.checked) {
-                                  nextIds.add(entry.id);
-                                } else {
-                                  nextIds.delete(entry.id);
-                                }
-                                return {
-                                  ...current,
-                                  draftEntryIds: [...nextIds]
-                                };
-                              });
-                            }}
-                          />
-                          <span className="planned-link-row-main">
-                            <strong>{entry.description}</strong>
-                            <small>{formatDateOnly(entry.date)} • {entry.accountName} • {entry.categoryName}</small>
-                            {entry.matchReasons?.length ? <em>{entry.matchReasons.slice(0, 3).join(" · ")}</em> : null}
-                          </span>
-                          <span>{money(entry.amountMinor)}</span>
-                        </label>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="empty-copy">No expense entries are available in the selected month.</p>
-                  )}
-                  <div className="note-dialog-actions">
-                    <button type="button" className="subtle-cancel" onClick={() => setPlanLinkDialog(null)}>
-                      {messages.month.cancelEdit}
-                    </button>
-                    <button type="button" className="dialog-primary" onClick={() => void savePlanLinkDialog()}>
-                      Save matches
-                    </button>
-                  </div>
-                </>
-              );
-            })()}
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      {!useMobileMonthSheet ? (
+        <Dialog.Root open={Boolean(planLinkDialog)} onOpenChange={(open) => { if (!open) setPlanLinkDialog(null); }}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="note-dialog-overlay" />
+            <Dialog.Content className="note-dialog-content planned-link-dialog">
+              <MonthPlanLinkContent
+                planLinkDialog={planLinkDialog}
+                row={planLinkDialogView.row}
+                allCandidates={planLinkDialogView.allCandidates}
+                candidates={planLinkDialogView.candidates}
+                selectedIds={planLinkDialogView.selectedIds}
+                onClose={() => setPlanLinkDialog(null)}
+                onToggleFilter={togglePlanLinkFilter}
+                onDescriptionFilterChange={updatePlanLinkDescriptionFilter}
+                onToggleEntry={togglePlanLinkEntry}
+                onSave={() => void savePlanLinkDialog()}
+              />
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      ) : null}
+
+      {useMobileMonthSheet && planLinkDialog ? (
+        <EntryMobileSheet
+          title="Match planned item"
+          description={`Link exact ledger entries to ${planLinkDialogView.row?.label ?? "this planned item"}. Budget buckets still use category totals.`}
+          saveLabel="Save matches"
+          onClose={() => setPlanLinkDialog(null)}
+          onSave={() => void savePlanLinkDialog()}
+        >
+          <MonthPlanLinkContent
+            planLinkDialog={planLinkDialog}
+            row={planLinkDialogView.row}
+            allCandidates={planLinkDialogView.allCandidates}
+            candidates={planLinkDialogView.candidates}
+            selectedIds={planLinkDialogView.selectedIds}
+            onToggleFilter={togglePlanLinkFilter}
+            onDescriptionFilterChange={updatePlanLinkDescriptionFilter}
+            onToggleEntry={togglePlanLinkEntry}
+            isMobile
+          />
+        </EntryMobileSheet>
+      ) : null}
 
       <Dialog.Root open={Boolean(monthNoteDialog)} onOpenChange={(open) => { if (!open) setMonthNoteDialog(null); }}>
         <Dialog.Portal>
@@ -990,4 +1322,112 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       </Dialog.Root>
     </article>
   );
+}
+
+function MonthPlanLinkContent({
+  planLinkDialog,
+  row,
+  allCandidates,
+  candidates,
+  selectedIds,
+  onClose,
+  onToggleFilter,
+  onDescriptionFilterChange,
+  onToggleEntry,
+  onSave,
+  isMobile = false
+}) {
+  const filters = [
+    ["filterLinkedOnly", "Linked"],
+    ["filterSameCategoryOnly", "Same category"],
+    ["filterSameAccountOnly", "Same account"],
+    ["filterCurrentMonthOnly", "This month only"]
+  ];
+
+  return (
+    <>
+      {!isMobile ? (
+        <div className="note-dialog-head">
+          <div>
+            <Dialog.Title>Match planned item</Dialog.Title>
+            <Dialog.Description>
+              Link exact ledger entries to {row?.label ?? "this planned item"}. Budget buckets still use category totals.
+            </Dialog.Description>
+          </div>
+          <button
+            type="button"
+            className="icon-action subtle-cancel"
+            aria-label="Close planned item matching"
+            onClick={onClose}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      ) : null}
+      <div className="planned-link-filter-panel">
+        <div className="planned-link-filter-chips" aria-label="Match filters">
+          {filters.map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              className={`planned-link-filter-chip ${planLinkDialog?.[key] ? "is-active" : ""}`}
+              onClick={() => onToggleFilter(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="planned-link-filter-summary">
+          Showing {candidates.length} of {allCandidates.length} candidate entries.
+        </p>
+        <label className="planned-link-search">
+          <span>Description filter</span>
+          <input
+            type="text"
+            className="table-edit-input"
+            placeholder="Filter descriptions in this list"
+            value={planLinkDialog?.descriptionFilter ?? ""}
+            onChange={(event) => onDescriptionFilterChange(event.target.value)}
+          />
+        </label>
+      </div>
+      {candidates.length ? (
+        <div className="planned-link-list">
+          {candidates.map((entry) => (
+            <label key={entry.id} className="planned-link-row">
+              <input
+                type="checkbox"
+                checked={selectedIds.has(entry.id)}
+                onChange={(event) => onToggleEntry(entry.id, event.target.checked)}
+              />
+              <span className="planned-link-row-main">
+                <strong>{entry.description}</strong>
+                <small>{formatDateOnly(entry.date)} • {entry.accountName} • {entry.categoryName}</small>
+                {entry.matchReasons?.length ? <em>{entry.matchReasons.slice(0, 3).join(" · ")}</em> : null}
+              </span>
+              <span>{money(entry.amountMinor)}</span>
+            </label>
+          ))}
+        </div>
+      ) : (
+        <p className="empty-copy">No matching expense entries fit the current filters.</p>
+      )}
+      {!isMobile ? (
+        <div className="note-dialog-actions">
+          <button type="button" className="subtle-cancel" onClick={onClose}>
+            {messages.month.cancelEdit}
+          </button>
+          <button type="button" className="dialog-primary" onClick={onSave}>
+            Save matches
+          </button>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function getPreviousMonthKey(monthKey) {
+  const [year, month] = monthKey.split("-").map(Number);
+  const date = new Date(year, month - 2, 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }

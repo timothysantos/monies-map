@@ -305,9 +305,23 @@ matched explicitly to one or more ledger entries, because several planned items
 can share a category such as `Bills`. Budget buckets remain category-driven and
 roll up the remaining actual expense entries for that category.
 
+When a planned item has many possible ledger matches, the matching dialog does
+not run a full ledger search first. It starts with lightweight narrowing:
+`Linked`, `Same category`, `Same account`, `This month only`, and a description
+contains filter over the ranked candidate list. This keeps the flow faster than
+global search while still making long categories such as `Food & Drinks` easier
+to narrow down.
+
+On mobile, this planned-item matching flow uses the same bottom-sheet pattern as
+the other month add and edit forms instead of a centered modal.
+
 After a planned item is matched, the app remembers lightweight matching hints
 from the linked ledger entries so future months can suggest likely matches. It
 does not auto-link them yet; the user still confirms the matches.
+
+Budget buckets can also be reduced by category-offsetting income, such as a
+reimbursement, when that income row is explicitly marked as offsetting the same
+category. Transfers still do not count toward budget-bucket actuals.
 
 Monthly planning is person-based first. The primary person and partner can have
 different month plans, and the household month view should be derived by

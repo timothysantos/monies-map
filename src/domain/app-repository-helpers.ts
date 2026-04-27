@@ -250,21 +250,9 @@ export function buildSnapshotRowsForScope(rows: MonthPlanRowDto[], personScope: 
     return rows;
   }
 
-  return rows
-    .filter((row) => row.splits.some((split) => split.personId === personScope))
-    .map((row) => {
-      if (row.ownershipType === "direct") {
-        return row;
-      }
-
-      const split = row.splits.find((item) => item.personId === personScope);
-      const ratio = (split?.ratioBasisPoints ?? 0) / 10000;
-      return {
-        ...row,
-        plannedMinor: Math.round(row.plannedMinor * ratio),
-        sourceRowIds: row.sourceRowIds ?? [row.id]
-      };
-    });
+  return rows.filter((row) => (
+    row.personId === personScope || row.splits.some((split) => split.personId === personScope)
+  ));
 }
 
 export function sumVisibleExpenseMinor(entries: EntryDto[], personScope: string) {
