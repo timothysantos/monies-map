@@ -28,13 +28,19 @@ export function getEntryFormOptions({ accounts, categories, people }) {
 export function getActiveEntryFilterCount(entryFilters) {
   return ["category", "person", "type"].reduce(
     (count, key) => count + (entryFilters[key] ? 1 : 0),
-    entryFilters.wallets?.length ? 1 : 0
+    (entryFilters.wallets?.length ? 1 : 0) + (entryFilters.entryIds?.length ? 1 : 0)
   );
 }
 
 export function getFilteredEntries({ entries, entryFilters, selectedScope, viewId }) {
   return entries.filter((entry) => {
     if (!entryMatchesScope(entry, viewId, selectedScope)) {
+      return false;
+    }
+    if (
+      entryFilters.entryIds?.length
+      && !entryFilters.entryIds.includes(entry.id)
+    ) {
       return false;
     }
     if (

@@ -380,6 +380,7 @@ function buildGenericMonthArtifacts(seed: MonthDetailSeed) {
       dayOfWeek: undefined,
       plannedMinor: fixedPlanned.savingsTim,
       actualMinor: fixedActual.savingsTim,
+      linkedEntryIds: fixedActual.savingsTim > 0 ? [`txn-${monthPrefix}-tim-savings`] : [],
       note: "Regular monthly savings allocation.",
       ownershipType: "direct",
       ownerName: "Tim",
@@ -394,6 +395,7 @@ function buildGenericMonthArtifacts(seed: MonthDetailSeed) {
       dayOfWeek: undefined,
       plannedMinor: fixedPlanned.savingsJoyce,
       actualMinor: fixedActual.savingsJoyce,
+      linkedEntryIds: fixedActual.savingsJoyce > 0 ? [`txn-${monthPrefix}-joyce-savings`] : [],
       note: "Regular monthly savings allocation.",
       ownershipType: "direct",
       ownerName: "Joyce",
@@ -408,6 +410,7 @@ function buildGenericMonthArtifacts(seed: MonthDetailSeed) {
       dayOfWeek: undefined,
       plannedMinor: fixedPlanned.family,
       actualMinor: fixedActual.family,
+      linkedEntryIds: fixedActual.family > 0 ? [`txn-${monthPrefix}-family`] : [],
       note: "Shared family allocation.",
       ownershipType: "shared",
       splits: [
@@ -424,6 +427,7 @@ function buildGenericMonthArtifacts(seed: MonthDetailSeed) {
       dayOfWeek: undefined,
       plannedMinor: fixedPlanned.houseLoan,
       actualMinor: fixedActual.houseLoan,
+      linkedEntryIds: fixedActual.houseLoan > 0 ? [`txn-${monthPrefix}-house-loan`] : [],
       note: "Recurring shared housing payment.",
       ownershipType: "shared",
       splits: [
@@ -440,6 +444,7 @@ function buildGenericMonthArtifacts(seed: MonthDetailSeed) {
       dayOfWeek: undefined,
       plannedMinor: fixedPlanned.tax,
       actualMinor: fixedActual.tax,
+      linkedEntryIds: fixedActual.tax > 0 ? [`txn-${monthPrefix}-tax`] : [],
       note: "Recurring tax allocation.",
       ownershipType: "direct",
       ownerName: "Tim",
@@ -454,6 +459,7 @@ function buildGenericMonthArtifacts(seed: MonthDetailSeed) {
       dayOfWeek: undefined,
       plannedMinor: fixedPlanned.subscriptions,
       actualMinor: fixedActual.subscriptions,
+      linkedEntryIds: fixedActual.subscriptions > 0 ? [`txn-${monthPrefix}-subscriptions`] : [],
       note: "Grouped recurring household subscriptions.",
       ownershipType: "shared",
       splits: [
@@ -530,6 +536,73 @@ function buildGenericMonthArtifacts(seed: MonthDetailSeed) {
   ];
 
   const entries: EntryDto[] = [
+    {
+      id: `txn-${monthPrefix}-tim-savings`,
+      date: `${monthPrefix}-01`,
+      description: "Savings allocation",
+      accountName: "UOB Savings",
+      categoryName: "Savings",
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim",
+      amountMinor: fixedActual.savingsTim,
+      offsetsCategory: false,
+      note: "Planned-item match for Tim's savings allocation.",
+      splits: planRows.find((row) => row.id === `plan-${monthPrefix}-tim-savings`)!.splits
+    },
+    {
+      id: `txn-${monthPrefix}-joyce-savings`,
+      date: `${monthPrefix}-01`,
+      description: "Savings allocation",
+      accountName: "UOB Lady's",
+      categoryName: "Savings",
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Joyce",
+      amountMinor: fixedActual.savingsJoyce,
+      offsetsCategory: false,
+      note: "Planned-item match for Joyce's savings allocation.",
+      splits: planRows.find((row) => row.id === `plan-${monthPrefix}-joyce-savings`)!.splits
+    },
+    {
+      id: `txn-${monthPrefix}-family`,
+      date: `${monthPrefix}-02`,
+      description: "Family support",
+      accountName: "UOB Savings",
+      categoryName: "Family & Personal",
+      entryType: "expense",
+      ownershipType: "shared",
+      amountMinor: fixedActual.family,
+      offsetsCategory: false,
+      note: "Booked against the family support planned item.",
+      splits: planRows.find((row) => row.id === `plan-${monthPrefix}-family`)!.splits
+    },
+    {
+      id: `txn-${monthPrefix}-house-loan`,
+      date: `${monthPrefix}-02`,
+      description: "House loan",
+      accountName: "UOB One",
+      categoryName: "Loans",
+      entryType: "expense",
+      ownershipType: "shared",
+      amountMinor: fixedActual.houseLoan,
+      offsetsCategory: false,
+      note: "Booked against the recurring house loan planned item.",
+      splits: planRows.find((row) => row.id === `plan-${monthPrefix}-house-loan`)!.splits
+    },
+    {
+      id: `txn-${monthPrefix}-subscriptions`,
+      date: `${monthPrefix}-15`,
+      description: "Shared subscriptions",
+      accountName: "Citi Rewards",
+      categoryName: "Subscriptions MO",
+      entryType: "expense",
+      ownershipType: "shared",
+      amountMinor: fixedActual.subscriptions,
+      offsetsCategory: false,
+      note: "Booked against the grouped household subscriptions planned item.",
+      splits: planRows.find((row) => row.id === `plan-${monthPrefix}-subscriptions`)!.splits
+    },
     {
       id: `txn-${monthPrefix}-food`,
       date: `${monthPrefix}-03`,
@@ -612,6 +685,7 @@ const octoberMonthPlanRows: MonthPlanRowDto[] = [
     dayOfWeek: "Wed",
     plannedMinor: 180000,
     actualMinor: 180000,
+    linkedEntryIds: ["txn-oct-savings-1"],
     note: "Regular monthly savings allocation.",
     ownershipType: "direct",
     ownerName: "Tim",
@@ -640,6 +714,7 @@ const octoberMonthPlanRows: MonthPlanRowDto[] = [
     dayOfWeek: "Wed",
     plannedMinor: 26000,
     actualMinor: 23407,
+    linkedEntryIds: ["txn-oct-family-1"],
     note: "Shared family support allocation.",
     ownershipType: "shared",
     splits: [
@@ -656,6 +731,7 @@ const octoberMonthPlanRows: MonthPlanRowDto[] = [
     dayOfWeek: "Wed",
     plannedMinor: 47000,
     actualMinor: 33429,
+    linkedEntryIds: ["txn-oct-parents-insurance-1"],
     ownershipType: "direct",
     ownerName: "Joyce",
     splits: [{ personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 10000, amountMinor: 33429 }]
@@ -669,6 +745,7 @@ const octoberMonthPlanRows: MonthPlanRowDto[] = [
     dayOfWeek: "Wed",
     plannedMinor: 2700,
     actualMinor: 2669,
+    linkedEntryIds: ["txn-oct-cursor-1"],
     ownershipType: "direct",
     ownerName: "Tim",
     splits: [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor: 2669 }]
@@ -682,6 +759,7 @@ const octoberMonthPlanRows: MonthPlanRowDto[] = [
     dayOfWeek: "Thu",
     plannedMinor: 2033,
     actualMinor: 2033,
+    linkedEntryIds: ["txn-oct-m1-1"],
     accountName: "Citi Rewards",
     note: "Shared home internet allocation.",
     ownershipType: "shared",
@@ -716,6 +794,7 @@ const octoberMonthPlanRows: MonthPlanRowDto[] = [
     dayOfWeek: "Thu",
     plannedMinor: 74700,
     actualMinor: 74700,
+    linkedEntryIds: ["txn-oct-church-1"],
     note: "Recurring giving allocation.",
     ownershipType: "shared",
     splits: [
@@ -732,6 +811,7 @@ const octoberMonthPlanRows: MonthPlanRowDto[] = [
     dayOfWeek: "Thu",
     plannedMinor: 45000,
     actualMinor: 45000,
+    linkedEntryIds: ["txn-oct-house-loan-1"],
     ownershipType: "shared",
     splits: [
       { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 22500 },
@@ -761,6 +841,7 @@ const octoberMonthPlanRows: MonthPlanRowDto[] = [
     dayOfWeek: "Sat",
     plannedMinor: 7500,
     actualMinor: 3939,
+    linkedEntryIds: ["txn-oct-keppel-1"],
     accountName: "Citi Rewards",
     note: "Utilities tracked below the original estimate this month.",
     ownershipType: "shared",
@@ -778,6 +859,7 @@ const octoberMonthPlanRows: MonthPlanRowDto[] = [
     dayOfWeek: "Mon",
     plannedMinor: 28470,
     actualMinor: 28470,
+    linkedEntryIds: ["txn-oct-tax-1"],
     accountName: "UOB Savings",
     ownershipType: "direct",
     ownerName: "Tim",
@@ -825,6 +907,7 @@ const octoberMonthPlanRows: MonthPlanRowDto[] = [
     dayOfWeek: "Tue",
     plannedMinor: 2500,
     actualMinor: 3302,
+    linkedEntryIds: ["txn-oct-sp-1"],
     accountName: "UOB One",
     note: "Electricity landed slightly above the estimate this month.",
     ownershipType: "shared",
@@ -842,6 +925,7 @@ const octoberMonthPlanRows: MonthPlanRowDto[] = [
     dayOfWeek: "Sun",
     plannedMinor: 1150,
     actualMinor: 1150,
+    linkedEntryIds: ["txn-oct-vivify-1"],
     accountName: "Citi Rewards",
     ownershipType: "shared",
     splits: [
@@ -858,6 +942,7 @@ const octoberMonthPlanRows: MonthPlanRowDto[] = [
     dayOfWeek: "Tue",
     plannedMinor: 201,
     actualMinor: 201,
+    linkedEntryIds: ["txn-oct-icloud-1"],
     accountName: "Citi Rewards",
     note: "Shared cloud storage subscription.",
     ownershipType: "shared",
@@ -954,6 +1039,7 @@ const octoberMonthPlanRows: MonthPlanRowDto[] = [
     label: "Tennis lesson",
     plannedMinor: 12400,
     actualMinor: 8300,
+    linkedEntryIds: ["txn-oct-tennis-1"],
     ownershipType: "direct",
     ownerName: "Tim",
     splits: [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor: 8300 }]
@@ -1070,6 +1156,20 @@ const octoberMonthPlanRows: MonthPlanRowDto[] = [
 
 const octoberMonthEntries: EntryDto[] = [
   {
+    id: "txn-oct-savings-1",
+    date: "2025-10-01",
+    description: "Savings allocation",
+    accountName: "UOB Savings",
+    categoryName: "Savings",
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim",
+    amountMinor: 180000,
+    offsetsCategory: false,
+    note: "Booked against the monthly savings planned item.",
+    splits: [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor: 180000 }]
+  },
+  {
     id: "txn-oct-food-1",
     date: "2025-10-03",
     description: "October food spend",
@@ -1144,6 +1244,34 @@ const octoberMonthEntries: EntryDto[] = [
     splits: [{ personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 10000, amountMinor: 33429 }]
   },
   {
+    id: "txn-oct-cursor-1",
+    date: "2025-10-13",
+    description: "Cursor AI",
+    accountName: "Citi Rewards",
+    categoryName: "Subscriptions MO",
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim",
+    amountMinor: 2669,
+    offsetsCategory: false,
+    splits: [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor: 2669 }]
+  },
+  {
+    id: "txn-oct-m1-1",
+    date: "2025-10-13",
+    description: "M1home",
+    accountName: "Citi Rewards",
+    categoryName: "Bills",
+    entryType: "expense",
+    ownershipType: "shared",
+    amountMinor: 2033,
+    offsetsCategory: false,
+    splits: [
+      { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 1017 },
+      { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 5000, amountMinor: 1016 }
+    ]
+  },
+  {
     id: "txn-oct-tax-1",
     date: "2025-10-14",
     description: "Tax payment",
@@ -1157,6 +1285,36 @@ const octoberMonthEntries: EntryDto[] = [
     splits: [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor: 28470 }]
   },
   {
+    id: "txn-oct-church-1",
+    date: "2025-10-16",
+    description: "Tithes + offering",
+    accountName: "UOB One",
+    categoryName: "Church",
+    entryType: "expense",
+    ownershipType: "shared",
+    amountMinor: 74700,
+    offsetsCategory: false,
+    splits: [
+      { personId: "person-tim", personName: "Tim", ratioBasisPoints: 6000, amountMinor: 44820 },
+      { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 4000, amountMinor: 29880 }
+    ]
+  },
+  {
+    id: "txn-oct-house-loan-1",
+    date: "2025-10-17",
+    description: "House loan",
+    accountName: "UOB One",
+    categoryName: "Loans",
+    entryType: "expense",
+    ownershipType: "shared",
+    amountMinor: 45000,
+    offsetsCategory: false,
+    splits: [
+      { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 22500 },
+      { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 5000, amountMinor: 22500 }
+    ]
+  },
+  {
     id: "txn-oct-tennis-1",
     date: "2025-10-19",
     description: "Tennis lesson",
@@ -1168,6 +1326,66 @@ const octoberMonthEntries: EntryDto[] = [
     amountMinor: 8300,
     offsetsCategory: false,
     splits: [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor: 8300 }]
+  },
+  {
+    id: "txn-oct-keppel-1",
+    date: "2025-10-20",
+    description: "Keppel",
+    accountName: "Citi Rewards",
+    categoryName: "Bills",
+    entryType: "expense",
+    ownershipType: "shared",
+    amountMinor: 3939,
+    offsetsCategory: false,
+    splits: [
+      { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 1970 },
+      { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 5000, amountMinor: 1969 }
+    ]
+  },
+  {
+    id: "txn-oct-sp-1",
+    date: "2025-10-21",
+    description: "SP Bill",
+    accountName: "UOB One",
+    categoryName: "Bills",
+    entryType: "expense",
+    ownershipType: "shared",
+    amountMinor: 3302,
+    offsetsCategory: false,
+    splits: [
+      { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 1651 },
+      { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 5000, amountMinor: 1651 }
+    ]
+  },
+  {
+    id: "txn-oct-vivify-1",
+    date: "2025-10-26",
+    description: "Vivify",
+    accountName: "Citi Rewards",
+    categoryName: "Bills",
+    entryType: "expense",
+    ownershipType: "shared",
+    amountMinor: 1150,
+    offsetsCategory: false,
+    splits: [
+      { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 575 },
+      { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 5000, amountMinor: 575 }
+    ]
+  },
+  {
+    id: "txn-oct-icloud-1",
+    date: "2025-10-28",
+    description: "iCloud",
+    accountName: "Citi Rewards",
+    categoryName: "Subscriptions MO",
+    entryType: "expense",
+    ownershipType: "shared",
+    amountMinor: 201,
+    offsetsCategory: false,
+    splits: [
+      { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 101 },
+      { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 5000, amountMinor: 100 }
+    ]
   },
   {
     id: "txn-oct-transfer-out",

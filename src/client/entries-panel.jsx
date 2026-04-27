@@ -295,6 +295,7 @@ export function EntriesPanel({
   const walletFilters = getWalletFilterValues(searchParams);
   const walletFilterKey = walletFilters.join("\u0000");
   const entryFilters = {
+    entryIds: searchParams.getAll("entry_id"),
     wallets: walletFilters,
     category: searchParams.get("entry_category") ?? "",
     person: searchParams.get("entry_person") ?? defaultEntryPerson,
@@ -726,6 +727,7 @@ export function EntriesPanel({
   function resetEntryFilters() {
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
+      next.delete("entry_id");
       next.delete("entry_wallet");
       next.delete("entry_category");
       next.delete("entry_person");

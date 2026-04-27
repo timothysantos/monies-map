@@ -1949,6 +1949,7 @@ function sanitizeTabParams(params, tabId) {
       "shared",
       "editing_entry",
       "entries_scope",
+      "entry_id",
       "entry_wallet",
       "entry_category",
       "entry_person",

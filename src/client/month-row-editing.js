@@ -66,7 +66,9 @@ export function buildMobileMonthIncomeDialog(row) {
     categoryValue: row.categoryId ?? row.categoryName,
     label: row.label ?? "",
     plannedMinor: formatMinorInput(row.plannedMinor),
-    note: row.note ?? ""
+    note: row.note ?? "",
+    actualMinor: row.actualMinor ?? 0,
+    actualEntryIds: row.actualEntryIds ?? []
   };
 }
 
@@ -85,6 +87,8 @@ export function buildMobileMonthPlanDialog({ monthKey, row, sectionKey, viewId, 
     planDate: sectionKey === "planned_items" ? getRowDateValue(sourceRow, monthKey) : "",
     accountName: sectionKey === "planned_items" ? (sourceRow.accountName ?? "") : "",
     note: sourceRow.note ?? "",
+    actualMinor: row.actualMinor ?? 0,
+    actualEntryIds: row.actualEntryIds ?? [],
     autoLabelFromCategory: false,
     autoPlannedFromCategory: false,
     lastPeriodActualMinor: sectionKey === "budget_buckets" ? row.lastPeriodActualMinor ?? 0 : undefined,

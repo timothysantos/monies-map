@@ -27,6 +27,7 @@ import {
   slugify,
   sumVisibleExpenseMinor
 } from "./app-repository-helpers";
+import { getCurrentMonthKey } from "../lib/month";
 import { backfillSplitBatches } from "./app-repository-split-batches";
 import { ensureDefaultCategoryMatchRules, recordCategoryMatchSuggestion } from "./app-repository-category-match-rules";
 import { recordAuditEvent } from "./app-repository-audit";
@@ -139,6 +140,16 @@ const IMPORT_COMMIT_STATEMENT_CHUNK_SIZE = 90;
 const OLD_SHOPPING_COLOR_HEX = "#D4B35D";
 const SHOPPING_COLOR_HEX = "#D86B73";
 
+function resolveSeededDemoTransactionDate(entryId: string, date: string) {
+  if (!entryId.startsWith("txn-oct-")) {
+    return date;
+  }
+
+  const currentMonthKey = getCurrentMonthKey();
+  const [year, month] = currentMonthKey.split("-").map(Number);
+  return shiftPlanDate(date, year, month) ?? date;
+}
+
 export async function ensureSeedData(db: D1Database, settings: DemoSettings) {
   await ensureDemoSchema(db);
   const existing = await db
@@ -161,18 +172,25 @@ export async function ensureSeedData(db: D1Database, settings: DemoSettings) {
     .bind(DEFAULT_HOUSEHOLD_ID)
     .first<{ count: number }>();
 
-  if (
+  const alreadySeeded =
     (existing?.count ?? 0) > 0 &&
     (categoryCount?.count ?? 0) > 0 &&
     (snapshotCount?.count ?? 0) > 0 &&
-    (incomeRowCount?.count ?? 0) > 0
-  ) {
+    (incomeRowCount?.count ?? 0) > 0;
+
+  if (alreadySeeded) {
     await ensureDefaultCategoryPalette(db);
     await ensureDefaultCategoryMatchRules(db);
-    return;
+  } else {
+    await reseedDemoData(db, settings);
   }
 
-  await reseedDemoData(db, settings);
+  const demoBackfillChanged = await backfillDemoPlannedItemSeedData(db);
+  if (demoBackfillChanged) {
+    for (const month of demoMonths) {
+      await recalculateMonthlySnapshots(db, month);
+    }
+  }
 }
 
 export async function ensureDemoSchema(db: D1Database) {
@@ -1090,7 +1108,7 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
         defaultHousehold.id,
         findSeedAccountId(entry.accountName),
         transferGroupIdByTransactionId.get(entry.id) ?? null,
-        entry.date,
+        resolveSeededDemoTransactionDate(entry.id, entry.date),
         entry.description,
         entry.amountMinor,
         "SGD",
@@ -1127,6 +1145,109 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
   for (const month of demoMonths) {
     await recalculateMonthlySnapshots(db, month);
   }
+}
+
+async function backfillDemoPlannedItemSeedData(db: D1Database) {
+  let changed = false;
+
+  for (const entry of demoMonthEntries) {
+    const existingTransaction = await db
+      .prepare("SELECT id, transaction_date FROM transactions WHERE id = ?")
+      .bind(entry.id)
+      .first<{ id: string; transaction_date: string }>();
+    const seededDate = resolveSeededDemoTransactionDate(entry.id, entry.date);
+    if (!existingTransaction) {
+      const directOwnerId = entry.ownerName ? SEED_PERSON_IDS_BY_NAME.get(entry.ownerName) ?? null : null;
+      await db
+        .prepare(`
+          INSERT INTO transactions (
+            id, household_id, account_id, transfer_group_id, transaction_date,
+            description, amount_minor, currency, entry_type, transfer_direction,
+            category_id, ownership_type, owner_person_id, offsets_category, note
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `)
+        .bind(
+          entry.id,
+          defaultHousehold.id,
+          findSeedAccountId(entry.accountName),
+          null,
+          seededDate,
+          entry.description,
+          entry.amountMinor,
+          "SGD",
+          entry.entryType,
+          entry.transferDirection ?? null,
+          findSeedCategoryId(entry.categoryName),
+          entry.ownershipType,
+          directOwnerId,
+          entry.offsetsCategory ? 1 : 0,
+          entry.note ?? null
+        )
+        .run();
+
+      for (const split of entry.splits) {
+        await db
+          .prepare(`
+            INSERT INTO transaction_splits (
+              id, transaction_id, person_id, ratio_basis_points, amount_minor
+            ) VALUES (?, ?, ?, ?, ?)
+          `)
+          .bind(
+            `${entry.id}-${split.personId}`,
+            entry.id,
+            split.personId,
+            split.ratioBasisPoints,
+            split.amountMinor
+          )
+          .run();
+      }
+
+      changed = true;
+    } else if (existingTransaction.transaction_date !== seededDate) {
+      await db
+        .prepare("UPDATE transactions SET transaction_date = ? WHERE id = ?")
+        .bind(seededDate, entry.id)
+        .run();
+      changed = true;
+    }
+  }
+
+  for (const row of demoMonthPlanRows) {
+    for (const entryId of row.linkedEntryIds ?? []) {
+      const existingLink = await db
+        .prepare(`
+          SELECT id
+          FROM monthly_plan_entry_links
+          WHERE monthly_plan_row_id = ? AND transaction_id = ?
+        `)
+        .bind(row.id, entryId)
+        .first<{ id: string }>();
+      if (existingLink) {
+        continue;
+      }
+
+      const transactionExists = await db
+        .prepare("SELECT id FROM transactions WHERE id = ?")
+        .bind(entryId)
+        .first<{ id: string }>();
+      if (!transactionExists) {
+        continue;
+      }
+
+      await db
+        .prepare(`
+          INSERT INTO monthly_plan_entry_links (
+            id, monthly_plan_row_id, transaction_id
+          ) VALUES (?, ?, ?)
+        `)
+        .bind(`${row.id}-${entryId}`, row.id, entryId)
+        .run();
+
+      changed = true;
+    }
+  }
+
+  return changed;
 }
 
 async function seedDemoSplitData(db: D1Database) {
