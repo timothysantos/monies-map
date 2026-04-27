@@ -130,7 +130,8 @@ export interface SummaryDonutMonthDto {
 
 export interface SummaryMonthDto {
   month: string;
-  incomeMinor: number;
+  plannedIncomeMinor: number;
+  actualIncomeMinor: number;
   estimatedExpensesMinor: number;
   realExpensesMinor: number;
   savingsGoalMinor: number;
@@ -329,6 +330,8 @@ export interface MonthPlanRowDto {
   planMatchHints?: MonthPlanMatchHintDto[];
   isDerived?: boolean;
   sourceRowIds?: string[];
+  sourcePlannedMinor?: number;
+  sourceNote?: string;
   splits: EntrySplitDto[];
 }
 

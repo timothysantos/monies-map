@@ -227,7 +227,8 @@ function buildSummaryMonth(
 ): SummaryMonthDto {
   return {
     month: seed.month,
-    incomeMinor,
+    plannedIncomeMinor: incomeMinor,
+    actualIncomeMinor: incomeMinor,
     estimatedExpensesMinor,
     realExpensesMinor,
     savingsGoalMinor,

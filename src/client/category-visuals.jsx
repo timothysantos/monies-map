@@ -1,11 +1,11 @@
-import { lazy, Suspense } from "react";
-import * as Popover from "@radix-ui/react-popover";
+import { lazy, Suspense, useMemo, useState } from "react";
 
+import { CategoryEditDialog } from "./category-edit-dialog";
+import { slugify } from "./category-utils";
 import { getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { money } from "./formatters";
 import { CategoryGlyph } from "./ui-components";
-import { COLOR_OPTIONS, ICON_OPTIONS } from "./ui-options";
 
 const LazySpendingMixRecharts = lazy(() => import("./spending-mix-recharts.jsx"));
 
@@ -66,77 +66,73 @@ function SpendingMixChartFallback({ total, totalLabel, compact, resolvedHeight }
 }
 
 export function CategoryAppearancePopover({ category, onChange }) {
+  const [dialog, setDialog] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const categoryDialog = useMemo(() => {
+    if (!dialog || !category || dialog.categoryId !== category.id) {
+      return dialog;
+    }
+    return {
+      ...dialog,
+      name: dialog.name,
+      slug: dialog.slug,
+      iconKey: dialog.iconKey,
+      colorHex: dialog.colorHex
+    };
+  }, [category, dialog]);
+
   if (!category) {
     return <span className="category-icon category-icon-static" />;
   }
 
+  async function handleSave() {
+    if (!categoryDialog) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await onChange(category.id, {
+        name: categoryDialog.name.trim(),
+        slug: (categoryDialog.slug || slugify(categoryDialog.name)).trim(),
+        iconKey: categoryDialog.iconKey,
+        colorHex: categoryDialog.colorHex
+      });
+      setDialog(null);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
-    <Popover.Root>
-      <Popover.Trigger asChild>
-        <button
-          type="button"
-          className="category-icon category-icon-button"
-          style={{ "--category-color": category.colorHex }}
-          aria-label={`Edit ${category.name} icon and color`}
-        >
-          <CategoryGlyph iconKey={category.iconKey} />
-        </button>
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content className="category-popover" sideOffset={10} align="start">
-          <div className="category-popover-head">
-            <strong>{category.name}</strong>
-            <span>Icon and color</span>
-          </div>
-
-          <div className="category-popover-section">
-            <label className="category-popover-label" htmlFor={`category-name-${category.id}`}>Name</label>
-            <input
-              id={`category-name-${category.id}`}
-              className="category-name-input"
-              type="text"
-              value={category.name}
-              onChange={(event) => onChange(category.id, { name: event.target.value })}
-            />
-          </div>
-
-          <div className="category-popover-section">
-            <span className="category-popover-label">Icon</span>
-            <div className="icon-grid">
-              {ICON_OPTIONS.map((option) => (
-                <button
-                  key={option.key}
-                  type="button"
-                  className={`icon-choice ${category.iconKey === option.key ? "is-active" : ""}`}
-                  onClick={() => onChange(category.id, { iconKey: option.key })}
-                  aria-label={option.label}
-                  title={option.label}
-                >
-                  <option.Icon size={16} strokeWidth={2.2} />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="category-popover-section">
-            <span className="category-popover-label">Color</span>
-            <div className="color-grid">
-              {COLOR_OPTIONS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`color-choice ${category.colorHex === color ? "is-active" : ""}`}
-                  style={{ "--swatch-color": color }}
-                  onClick={() => onChange(category.id, { colorHex: color })}
-                  aria-label={color}
-                  title={color}
-                />
-              ))}
-            </div>
-          </div>
-          <Popover.Arrow className="category-popover-arrow" />
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
+    <>
+      <button
+        type="button"
+        className="category-icon category-icon-button"
+        style={{ "--category-color": category.colorHex }}
+        aria-label={`Edit ${category.name}`}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setDialog({
+            mode: "edit",
+            categoryId: category.id,
+            name: category.name,
+            slug: category.slug ?? slugify(category.name),
+            iconKey: category.iconKey,
+            colorHex: category.colorHex
+          });
+        }}
+      >
+        <CategoryGlyph iconKey={category.iconKey} />
+      </button>
+      <CategoryEditDialog
+        dialog={categoryDialog}
+        isSubmitting={isSubmitting}
+        onChange={setDialog}
+        onClose={() => setDialog(null)}
+        onSave={handleSave}
+      />
+    </>
   );
 }

@@ -1,10 +1,18 @@
-import { Check, ChevronRight, SquarePen, X } from "lucide-react";
+import * as Popover from "@radix-ui/react-popover";
+import { ChevronRight, SquarePen, X } from "lucide-react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { getCategoriesForSelect, getCategory, getCategoryPatch, getCategorySelectValue } from "./category-utils";
 import { messages } from "./copy/en-SG";
-import { formatMinorInput, money } from "./formatters";
+import { formatMinorInput, formatMonthLabel, money } from "./formatters";
 import { getMonthSectionTotals } from "./month-helpers";
+import {
+  canInlineEditMonthPlanRow,
+  canInlineEditMonthRow,
+  canOpenMonthMobileSheet,
+  getMonthPlanEditSource,
+  getMonthPlanSharedEditHint
+} from "./month-row-editing";
 import { formatRowDateLabel, getRowDateValue, sortRows } from "./table-helpers";
 import { DeleteRowButton, SortableHeader } from "./ui-components";
 
@@ -12,6 +20,15 @@ const SECTION_ORDER = {
   budget_buckets: 0,
   planned_items: 1
 };
+const MOBILE_MONTH_EDIT_QUERY = "(max-width: 760px), (max-width: 1024px) and (orientation: portrait)";
+
+function useMonthMobileEditViewport() {
+  return typeof window !== "undefined" && window.matchMedia(MOBILE_MONTH_EDIT_QUERY).matches;
+}
+
+function shouldIgnoreRowOpenTarget(target) {
+  return target instanceof Element && Boolean(target.closest("button, input, select, textarea, a, [role='button']"));
+}
 
 // Table rendering stays separate from persistence so MonthPanel keeps the write flow in one place.
 export function MonthPlanStack({
@@ -31,6 +48,9 @@ export function MonthPlanStack({
   onToggleSection,
   onAddIncomeRow,
   onAddPlanRow,
+  onBudgetBucketCategoryChange,
+  onBudgetBucketLabelChange,
+  onBudgetBucketPlannedMinorDraftChange,
   onBeginIncomeEdit,
   onBeginPlanEdit,
   onIncomeRowChange,
@@ -92,6 +112,9 @@ export function MonthPlanStack({
           monthKey={monthKey}
           onToggleSection={onToggleSection}
           onAddPlanRow={onAddPlanRow}
+          onBudgetBucketCategoryChange={onBudgetBucketCategoryChange}
+          onBudgetBucketLabelChange={onBudgetBucketLabelChange}
+          onBudgetBucketPlannedMinorDraftChange={onBudgetBucketPlannedMinorDraftChange}
           onBeginPlanEdit={onBeginPlanEdit}
           onPlanRowChange={onPlanRowChange}
           onEditingDraftChange={onEditingDraftChange}
@@ -183,14 +206,21 @@ function IncomePlanSection({
                 const isEditing = editingRowId === row.id;
                 const canEditRow = !isCombinedHouseholdView && !row.isDerived;
                 const variance = row.plannedMinor - row.actualMinor;
+                const handleRowOpen = (event) => {
+                  if (!canEditRow || shouldIgnoreRowOpenTarget(event.target)) {
+                    return;
+                  }
+                  onBeginIncomeEdit(row);
+                };
+                const rowOpenProps = !isEditing && canEditRow ? { onClick: handleRowOpen } : {};
 
                 return (
                   <tr
                     key={row.id}
                     className={`${isEditing ? "is-editing" : ""} ${!canEditRow ? "is-readonly" : ""}`}
-                    onClick={canEditRow ? () => onBeginIncomeEdit(row) : undefined}
+                    onClick={canEditRow ? handleRowOpen : undefined}
                   >
-                    <td>
+                    <td {...rowOpenProps}>
                       <div className="month-category-cell">
                         <CategoryAppearancePopover
                           category={getCategory(categories, row)}
@@ -210,7 +240,7 @@ function IncomePlanSection({
                         ) : <span>{row.categoryName}</span>}
                       </div>
                     </td>
-                    <td>
+                    <td {...rowOpenProps}>
                       {isEditing ? (
                         <input
                           className="table-edit-input"
@@ -220,7 +250,7 @@ function IncomePlanSection({
                         />
                       ) : row.label}
                     </td>
-                    <td>
+                    <td {...rowOpenProps}>
                       {isEditing ? (
                         <input
                           className="table-edit-input table-edit-input-money"
@@ -230,8 +260,8 @@ function IncomePlanSection({
                         />
                       ) : money(row.plannedMinor)}
                     </td>
-                    <td>{money(row.actualMinor)}</td>
-                    <td className={variance <= 0 ? "positive" : "negative"}>{money(variance)}</td>
+                    <td {...rowOpenProps}>{money(row.actualMinor)}</td>
+                    <td {...rowOpenProps} className={variance <= 0 ? "positive" : "negative"}>{money(variance)}</td>
                     <td>
                       <div className="table-note-actions">
                         <button
@@ -251,13 +281,17 @@ function IncomePlanSection({
                           isEditing={isEditing}
                           onFinishEdit={onFinishEdit}
                           onCancelEdit={onCancelEdit}
+                          deleteAction={incomeRows.length > 1 && canEditRow && !row.isDraft ? (
+                            <DeleteRowButton
+                              label={row.label || row.categoryName || "income row"}
+                              buttonClassName="month-inline-delete-button"
+                              triggerLabel={`Delete ${row.label || row.categoryName || "income row"}`}
+                              onConfirm={() => onRemoveIncomeRow(row.id)}
+                            >
+                              Delete
+                            </DeleteRowButton>
+                          ) : null}
                         />
-                        {incomeRows.length > 1 && canEditRow ? (
-                          <DeleteRowButton
-                            label={row.label || row.categoryName || "income row"}
-                            onConfirm={() => onRemoveIncomeRow(row.id)}
-                          />
-                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -287,6 +321,9 @@ function PlanningSection({
   monthKey,
   onToggleSection,
   onAddPlanRow,
+  onBudgetBucketCategoryChange,
+  onBudgetBucketLabelChange,
+  onBudgetBucketPlannedMinorDraftChange,
   onBeginPlanEdit,
   onPlanRowChange,
   onEditingDraftChange,
@@ -364,6 +401,9 @@ function PlanningSection({
                   isEditing={editingRowId === row.id}
                   editingDrafts={editingDrafts}
                   isCombinedHouseholdView={isCombinedHouseholdView}
+                  onBudgetBucketCategoryChange={onBudgetBucketCategoryChange}
+                  onBudgetBucketLabelChange={onBudgetBucketLabelChange}
+                  onBudgetBucketPlannedMinorDraftChange={onBudgetBucketPlannedMinorDraftChange}
                   onBeginPlanEdit={onBeginPlanEdit}
                   onPlanRowChange={onPlanRowChange}
                   onEditingDraftChange={onEditingDraftChange}
@@ -395,6 +435,9 @@ function PlanningRow({
   isEditing,
   editingDrafts,
   isCombinedHouseholdView,
+  onBudgetBucketCategoryChange,
+  onBudgetBucketLabelChange,
+  onBudgetBucketPlannedMinorDraftChange,
   onBeginPlanEdit,
   onPlanRowChange,
   onEditingDraftChange,
@@ -406,14 +449,25 @@ function PlanningRow({
   onCategoryAppearanceChange
 }) {
   const variance = row.plannedMinor - row.actualMinor;
-  const canEditRow = !isCombinedHouseholdView && !row.isDerived;
+  const canInlineEditRow = canInlineEditMonthPlanRow({ isCombinedHouseholdView, row });
+  const canOpenRow = canInlineEditRow || (useMonthMobileEditViewport() && canOpenMonthMobileSheet({ isCombinedHouseholdView, row }));
+  const isDraftBudgetBucket = section.key === "budget_buckets" && row.isDraft;
+  const editingSourceRow = isEditing ? getMonthPlanEditSource(row) : row;
+  const sharedEditHint = isEditing ? getMonthPlanSharedEditHint({ row, viewId: view.id, viewLabel: view.label }) : "";
+  const handleRowOpen = (event) => {
+    if (!canOpenRow || shouldIgnoreRowOpenTarget(event.target)) {
+      return;
+    }
+    onBeginPlanEdit(section.key, row);
+  };
+  const rowOpenProps = !isEditing && canOpenRow ? { onClick: handleRowOpen } : {};
 
   return (
     <tr
-      className={`${isEditing ? "is-editing" : ""} ${!canEditRow ? "is-readonly" : ""}`}
-      onClick={canEditRow ? () => onBeginPlanEdit(section.key, row) : undefined}
+      className={`${isEditing ? "is-editing" : ""} ${!canOpenRow ? "is-readonly" : ""}`}
+      onClick={canOpenRow ? handleRowOpen : undefined}
     >
-      <td>
+      <td {...rowOpenProps}>
         <div className="month-category-cell">
           <CategoryAppearancePopover
             category={getCategory(categories, row)}
@@ -423,7 +477,14 @@ function PlanningRow({
             <select
               className="table-edit-input"
               value={getCategorySelectValue(categories, row)}
-              onChange={(event) => onPlanRowChange(section.key, row.id, getCategoryPatch(categories, event.target.value))}
+              onChange={(event) => {
+                if (isDraftBudgetBucket) {
+                  void onBudgetBucketCategoryChange(row.id, event.target.value);
+                  return;
+                }
+
+                onPlanRowChange(section.key, row.id, getCategoryPatch(categories, event.target.value));
+              }}
               onClick={(event) => event.stopPropagation()}
             >
               {categorySelectOptions.map((category) => (
@@ -434,7 +495,7 @@ function PlanningRow({
         </div>
       </td>
       {section.key === "planned_items" ? (
-        <td>
+        <td {...rowOpenProps}>
           {isEditing ? (
             <input
               className="table-edit-input"
@@ -446,24 +507,44 @@ function PlanningRow({
           ) : formatRowDateLabel(row, view.monthPage.month)}
         </td>
       ) : null}
-      <td>
+      <td {...rowOpenProps}>
         {isEditing ? (
           <input
             className="table-edit-input"
-            value={row.label}
-            onChange={(event) => onPlanRowChange(section.key, row.id, { label: event.target.value })}
+            value={editingSourceRow.label}
+            onChange={(event) => {
+              if (isDraftBudgetBucket) {
+                onBudgetBucketLabelChange(row.id, event.target.value);
+                return;
+              }
+
+              onPlanRowChange(section.key, row.id, { label: event.target.value });
+            }}
             onClick={(event) => event.stopPropagation()}
           />
         ) : row.label}
       </td>
-      <td>
+      <td {...rowOpenProps}>
         {isEditing ? (
-          <input
-            className="table-edit-input table-edit-input-money"
-            value={editingDrafts.plannedMinor ?? formatMinorInput(row.plannedMinor)}
-            onChange={(event) => onEditingDraftChange({ plannedMinor: event.target.value })}
-            onClick={(event) => event.stopPropagation()}
-          />
+          <div className="month-planned-cell">
+            <input
+              className="table-edit-input table-edit-input-money"
+              value={editingDrafts.plannedMinor ?? formatMinorInput(editingSourceRow.plannedMinor)}
+              onChange={(event) => {
+                if (isDraftBudgetBucket) {
+                  onBudgetBucketPlannedMinorDraftChange(row.id, event.target.value);
+                  return;
+                }
+
+                onEditingDraftChange({ plannedMinor: event.target.value });
+              }}
+              onClick={(event) => event.stopPropagation()}
+            />
+            {isDraftBudgetBucket ? (
+              <LastPeriodBudgetHint actualMinor={row.lastPeriodActualMinor} month={row.lastPeriodMonth} />
+            ) : null}
+            {sharedEditHint ? <p className="month-shared-edit-hint">{sharedEditHint}</p> : null}
+          </div>
         ) : money(row.plannedMinor)}
       </td>
       <td>
@@ -473,20 +554,20 @@ function PlanningRow({
             className="planned-link-trigger"
             onClick={(event) => {
               event.stopPropagation();
-              if (canEditRow) {
+              if (canInlineEditRow) {
                 void onOpenPlanLinkDialog(row);
               }
             }}
-            disabled={!canEditRow}
+            disabled={!canInlineEditRow}
           >
             <strong>{money(row.actualMinor)}</strong>
             <span>{row.linkedEntryCount ? `${row.linkedEntryCount} linked` : "Link entries"}</span>
           </button>
-        ) : money(row.actualMinor)}
+        ) : <span {...rowOpenProps}>{money(row.actualMinor)}</span>}
       </td>
-      <td className={variance >= 0 ? "positive" : "negative"}>{money(variance)}</td>
+      <td {...rowOpenProps} className={variance >= 0 ? "positive" : "negative"}>{money(variance)}</td>
       {section.key === "planned_items" ? (
-        <td>
+        <td {...rowOpenProps}>
           {isEditing ? (
             <select
               className="table-edit-input"
@@ -509,61 +590,64 @@ function PlanningRow({
             className="note-trigger"
             onClick={(event) => {
               event.stopPropagation();
-              if (!isCombinedHouseholdView && !row.isDerived) {
+              if (canInlineEditRow) {
                 onOpenNoteDialog("plan", row.id, section.key, row.note);
               }
             }}
           >
-            <span>{row.note ?? messages.common.emptyValue}</span>
-            {canEditRow ? <SquarePen size={14} /> : null}
+            <span>{editingSourceRow.note ?? messages.common.emptyValue}</span>
+            {canInlineEditRow ? <SquarePen size={14} /> : null}
           </button>
           <RowEditActions
             isEditing={isEditing}
             onFinishEdit={onFinishEdit}
             onCancelEdit={onCancelEdit}
+            deleteAction={canInlineEditRow && !row.isDraft ? (
+              <DeleteRowButton
+                label={row.label || row.categoryName || "planning row"}
+                buttonClassName="month-inline-delete-button"
+                triggerLabel={`Delete ${row.label || row.categoryName || "planning row"}`}
+                onConfirm={() => onRemovePlanRow(section.key, row.id)}
+              >
+                Delete
+              </DeleteRowButton>
+            ) : null}
           />
-          {canEditRow ? (
-            <DeleteRowButton
-              label={row.label || row.categoryName || "planning row"}
-              onConfirm={() => onRemovePlanRow(section.key, row.id)}
-            />
-          ) : null}
         </div>
       </td>
     </tr>
   );
 }
 
-function RowEditActions({ isEditing, onFinishEdit, onCancelEdit }) {
+function RowEditActions({ isEditing, onFinishEdit, onCancelEdit, deleteAction = null }) {
   if (!isEditing) {
     return null;
   }
 
   return (
-    <>
+    <div className="month-inline-edit-actions">
       <button
         type="button"
-        className="icon-action"
-        aria-label="Done editing"
+        className="dialog-primary month-inline-save-button"
         onClick={(event) => {
           event.stopPropagation();
           onFinishEdit();
         }}
       >
-        <Check size={16} />
+        Save
       </button>
       <button
         type="button"
-        className="icon-action subtle-cancel"
-        aria-label="Cancel editing"
+        className="subtle-cancel month-inline-cancel-button"
         onClick={(event) => {
           event.stopPropagation();
           onCancelEdit();
         }}
       >
-        <X size={16} />
+        Cancel
       </button>
-    </>
+      {deleteAction}
+    </div>
   );
 }
 
@@ -600,5 +684,51 @@ function PlanningTotalsFooter({ section }) {
         <td>{messages.common.emptyValue}</td>
       </tr>
     </tfoot>
+  );
+}
+
+export function LastPeriodBudgetHint({ actualMinor, month }) {
+  if (!month || typeof actualMinor !== "number") {
+    return null;
+  }
+
+  const isNarrowViewport = typeof window !== "undefined" && window.innerWidth <= 760;
+
+  return (
+    <div className="month-budget-default-hint">
+      <Popover.Root>
+        <Popover.Trigger asChild>
+          <button
+            type="button"
+            className="month-budget-default-trigger"
+            aria-label={`Last month's total ${money(actualMinor)}. More about this default`}
+          >
+            <span className="month-budget-default-text">Last month&apos;s total: {money(actualMinor)}</span>
+          </button>
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content
+            className="month-budget-default-popover"
+            side={isNarrowViewport ? "top" : "bottom"}
+            align={isNarrowViewport ? "center" : "start"}
+            sideOffset={isNarrowViewport ? 12 : 8}
+            collisionPadding={16}
+          >
+            <div className="month-budget-default-head">
+              <strong>Budget default</strong>
+              <Popover.Close asChild>
+                <button type="button" className="icon-action subtle-cancel" aria-label="Close budget default help">
+                  <X size={14} />
+                </button>
+              </Popover.Close>
+            </div>
+            <p>
+              Default amount was set to the chosen category&apos;s total expense from {formatMonthLabel(month)}.
+            </p>
+            <Popover.Arrow className="category-popover-arrow" />
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+    </div>
   );
 }

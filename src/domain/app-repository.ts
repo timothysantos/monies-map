@@ -1063,7 +1063,7 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
           year,
           monthNumber,
           personScope,
-          month.incomeMinor,
+          month.plannedIncomeMinor,
           month.estimatedExpensesMinor,
           month.realExpensesMinor,
           month.savingsGoalMinor,
@@ -1584,6 +1584,7 @@ export async function updateEntryRecord(
     transferDirection?: "in" | "out";
     ownershipType: "direct" | "shared";
     ownerName?: string;
+    offsetsCategory?: boolean;
     note?: string;
     splitBasisPoints?: number;
   }
@@ -1693,6 +1694,7 @@ export async function updateEntryRecord(
         category_id = ?,
         ownership_type = ?,
         owner_person_id = ?,
+        offsets_category = ?,
         note = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND household_id = ?
@@ -1708,6 +1710,7 @@ export async function updateEntryRecord(
       category.id,
       input.ownershipType,
       ownerPersonId,
+      input.offsetsCategory ? 1 : 0,
       input.note ?? null,
       input.entryId,
       DEFAULT_HOUSEHOLD_ID
@@ -1928,6 +1931,7 @@ export async function createEntryRecord(
     transferDirection?: "in" | "out";
     ownershipType: "direct" | "shared";
     ownerName?: string;
+    offsetsCategory?: boolean;
     note?: string;
     splitBasisPoints?: number;
   }
@@ -1954,7 +1958,7 @@ export async function createEntryRecord(
         id, household_id, account_id, transaction_date,
         description, amount_minor, currency, entry_type, transfer_direction,
         category_id, ownership_type, owner_person_id, offsets_category, note
-      ) VALUES (?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, ?, 0, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, ?, ?, ?)
     `)
     .bind(
       entryId,
@@ -1968,6 +1972,7 @@ export async function createEntryRecord(
       categoryId,
       input.ownershipType,
       ownerPersonId,
+      input.offsetsCategory ? 1 : 0,
       input.note ?? null
     )
     .run();

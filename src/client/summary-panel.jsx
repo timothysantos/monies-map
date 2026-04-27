@@ -197,6 +197,7 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
             {[...view.summaryPage.months]
               .sort((left, right) => right.month.localeCompare(left.month))
               .map((month, index) => {
+                const incomeVarianceMinor = month.actualIncomeMinor - month.plannedIncomeMinor;
                 const spendVarianceMinor = month.estimatedExpensesMinor - month.realExpensesMinor;
                 const savingsVarianceMinor = month.realizedSavingsMinor - month.savingsGoalMinor;
                 return (
@@ -219,7 +220,7 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
                             >
                               {formatMonthLabel(month.month)}
                             </button>
-                            <p>{messages.summary.incomeLabel(money(month.incomeMinor))}</p>
+                            <p>{messages.summary.incomeLabel(money(month.plannedIncomeMinor), money(month.actualIncomeMinor))}</p>
                           </div>
                         </div>
                         <span className={spendVarianceMinor >= 0 ? "positive" : "negative"}>
@@ -251,6 +252,14 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
                             </tr>
                           </thead>
                           <tbody>
+                            <tr>
+                              <td>{messages.summary.table.income}</td>
+                              <td>{money(month.plannedIncomeMinor)}</td>
+                              <td>{money(month.actualIncomeMinor)}</td>
+                              <td className={incomeVarianceMinor >= 0 ? "positive" : "negative"}>
+                                {money(incomeVarianceMinor)}
+                              </td>
+                            </tr>
                             <tr>
                               <td>{messages.summary.table.expectedExpenses}</td>
                               <td>{money(month.estimatedExpensesMinor)}</td>

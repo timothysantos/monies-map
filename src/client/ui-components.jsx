@@ -105,7 +105,16 @@ export function FilterMultiSelect({
   );
 }
 
-export function DeleteRowButton({ label, onConfirm, triggerLabel, confirmLabel = "Confirm", destructive = true, prompt }) {
+export function DeleteRowButton({
+  label,
+  onConfirm,
+  triggerLabel,
+  confirmLabel = "Confirm",
+  destructive = true,
+  prompt,
+  buttonClassName = "",
+  children = null
+}) {
   const [open, setOpen] = useState(false);
   const [isWorking, setIsWorking] = useState(false);
   const [error, setError] = useState("");
@@ -139,12 +148,12 @@ export function DeleteRowButton({ label, onConfirm, triggerLabel, confirmLabel =
       <Popover.Trigger asChild>
         <button
           type="button"
-          className={destructive ? "subtle-remove" : "icon-action"}
+          className={destructive ? `subtle-remove ${buttonClassName}`.trim() : `icon-action ${buttonClassName}`.trim()}
           aria-label={triggerLabel ?? `Delete ${label}`}
           disabled={isWorking}
           onClick={(event) => event.stopPropagation()}
         >
-          {destructive ? <span aria-hidden="true">&times;</span> : <X size={16} />}
+          {children ?? (destructive ? <span aria-hidden="true">&times;</span> : <X size={16} />)}
         </button>
       </Popover.Trigger>
       <Popover.Portal>

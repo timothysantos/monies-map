@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { createPortal } from "react-dom";
 import { ResponsiveSelect } from "./responsive-select";
 
 export function EntryMobileSheet({
@@ -13,7 +14,7 @@ export function EntryMobileSheet({
   onSave,
   children
 }) {
-  return (
+  const sheet = (
     <>
       <button
         type="button"
@@ -50,6 +51,12 @@ export function EntryMobileSheet({
       </section>
     </>
   );
+
+  if (typeof document === "undefined") {
+    return sheet;
+  }
+
+  return createPortal(sheet, document.body);
 }
 
 export function EntryMobileEditExpenseFooter({

@@ -481,6 +481,7 @@ export default {
         transferDirection?: "in" | "out";
         ownershipType?: "direct" | "shared";
         ownerName?: string;
+        offsetsCategory?: boolean;
         note?: string;
         splitBasisPoints?: number;
       }>();
@@ -503,6 +504,7 @@ export default {
           transferDirection: body.transferDirection,
           ownershipType: body.ownershipType,
           ownerName: body.ownerName,
+          offsetsCategory: body.offsetsCategory,
           note: body.note,
           splitBasisPoints: body.splitBasisPoints
         }))
@@ -544,6 +546,7 @@ export default {
         transferDirection?: "in" | "out";
         ownershipType?: "direct" | "shared";
         ownerName?: string;
+        offsetsCategory?: boolean;
         note?: string;
         splitBasisPoints?: number;
       }>();
@@ -574,6 +577,7 @@ export default {
             transferDirection: body.transferDirection,
             ownershipType: body.ownershipType,
             ownerName: body.ownerName,
+            offsetsCategory: body.offsetsCategory,
             note: body.note,
             splitBasisPoints: body.splitBasisPoints
           }))
@@ -618,6 +622,7 @@ export default {
         transferDirection?: "in" | "out";
         ownershipType?: "direct" | "shared";
         ownerName?: string;
+        offsetsCategory?: boolean;
         note?: string;
         splitBasisPoints?: number;
         view?: string;
@@ -645,6 +650,7 @@ export default {
           transferDirection: body.transferDirection,
           ownershipType: body.ownershipType ?? "direct",
           ownerName: body.ownerName,
+          offsetsCategory: body.offsetsCategory,
           note: body.note,
           splitBasisPoints: body.splitBasisPoints
         });

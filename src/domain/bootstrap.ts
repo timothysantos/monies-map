@@ -100,6 +100,7 @@ export async function buildBootstrapDto(
     summaryStartMonth,
     summaryEndMonth ?? effectiveSelectedMonth
   );
+  const plannedSummaryMonthsByView = await loadPlannedSummaryMonthsForViews(db, viewIds, summaryRangeMonths);
   const summaryEntries = await loadEntriesForMonths(db, summaryRangeMonths);
   const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
   const viewerPersonId = await resolveLoginIdentityPersonId(db, viewerEmail);
@@ -107,9 +108,9 @@ export async function buildBootstrapDto(
     ? await findSuggestedLoginPersonId(db)
     : undefined;
   const views: ContextViewDto[] = [
-    buildContextView("household", "Household", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, [], [], [], [], categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
-    buildContextView(primaryPersonId, personNameById[primaryPersonId] ?? "Primary", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, [], [], [], [], categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
-    buildContextView(partnerPersonId, personNameById[partnerPersonId] ?? "Partner", selectedScope, summaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, [], [], [], [], categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById)
+    buildContextView("household", "Household", selectedScope, summaryMonthsByView, plannedSummaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, [], [], [], [], categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
+    buildContextView(primaryPersonId, personNameById[primaryPersonId] ?? "Primary", selectedScope, summaryMonthsByView, plannedSummaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, [], [], [], [], categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
+    buildContextView(partnerPersonId, personNameById[partnerPersonId] ?? "Partner", selectedScope, summaryMonthsByView, plannedSummaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, [], [], [], [], categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById)
   ];
 
   return {
@@ -203,6 +204,7 @@ export async function buildSummaryPageDto(
     loadSummaryMonths(db, viewId),
     loadEntriesForMonths(db, summaryRangeMonths)
   ]);
+  const plannedSummaryMonthsByView = await loadPlannedSummaryMonthsForViews(db, [viewId], summaryRangeMonths);
   const adjustedSummaryEntries = adjustEntriesForView(summaryEntries, viewId);
   const visibleSummaryEntries = filterEntriesForView(adjustedSummaryEntries, viewId, selectedScope);
 
@@ -213,6 +215,7 @@ export async function buildSummaryPageDto(
       viewId,
       visibleSummaryEntries,
       { [viewId]: summaryMonths },
+      plannedSummaryMonthsByView,
       categories,
       accountsForSummary(viewId, accounts),
       effectiveSelectedMonth,
@@ -239,12 +242,16 @@ export async function buildMonthPageDto(
     loadMonthIncomeRows(db, viewId, effectiveSelectedMonth),
     loadSummaryMonths(db, viewId)
   ]);
+  const plannedSummaryMonthsByView = await loadPlannedSummaryMonthsForViews(db, [viewId], [effectiveSelectedMonth]);
   const adjustedMonthEntries = adjustEntriesForView(monthEntries, viewId);
   const visibleEntries = filterEntriesForView(adjustedMonthEntries, viewId, viewId === "household" ? "direct_plus_shared" : selectedScope);
   const currentSnapshotMonth = summaryMonths.find((month) => month.month === effectiveSelectedMonth) ?? null;
-  const currentSummaryMonth = currentSnapshotMonth
-    ? applyActualsFromEntries(currentSnapshotMonth, visibleEntries, effectiveSelectedMonth)
-    : buildDerivedSummaryMonth(effectiveSelectedMonth, visibleEntries);
+  const currentPlannedSummaryMonth = (plannedSummaryMonthsByView[viewId] ?? []).find((month) => month.month === effectiveSelectedMonth) ?? null;
+  const currentSummaryMonth = applyActualsFromEntries(
+    currentSnapshotMonth ?? currentPlannedSummaryMonth ?? buildEmptySummaryMonth(effectiveSelectedMonth),
+    visibleEntries,
+    effectiveSelectedMonth
+  );
 
   return {
     viewId,
@@ -371,6 +378,7 @@ function buildContextView(
   label: string,
   selectedScope: PersonScope,
   summaryMonthsByView: Record<string, SummaryMonthDto[]>,
+  plannedSummaryMonthsByView: Record<string, SummaryMonthDto[]>,
   incomeRowsByView: Record<string, MonthIncomeRowDto[]>,
   summaryEntries: EntryDto[],
   monthEntries: EntryDto[],
@@ -391,14 +399,28 @@ function buildContextView(
   const visibleEntries = filterEntriesForView(adjustedMonthEntries, id, selectedScope);
   const visibleSummaryEntries = filterEntriesForView(adjustedSummaryEntries, id, selectedScope);
   const currentSnapshotMonth = (summaryMonthsByView[id] ?? []).find((month) => month.month === selectedMonth) ?? null;
-  const currentSummaryMonth = currentSnapshotMonth
-    ? applyActualsFromEntries(currentSnapshotMonth, visibleEntries, selectedMonth)
-    : buildDerivedSummaryMonth(selectedMonth, visibleEntries);
+  const currentPlannedSummaryMonth = (plannedSummaryMonthsByView[id] ?? []).find((month) => month.month === selectedMonth) ?? null;
+  const currentSummaryMonth = applyActualsFromEntries(
+    currentSnapshotMonth ?? currentPlannedSummaryMonth ?? buildEmptySummaryMonth(selectedMonth),
+    visibleEntries,
+    selectedMonth
+  );
 
   return {
     id,
     label,
-    summaryPage: buildSummaryPage(id, visibleSummaryEntries, summaryMonthsByView, categories, accountsForSummary(id, accounts), selectedMonth, summaryRangeMonths, trackedMonths, personNameById),
+    summaryPage: buildSummaryPage(
+      id,
+      visibleSummaryEntries,
+      summaryMonthsByView,
+      plannedSummaryMonthsByView,
+      categories,
+      accountsForSummary(id, accounts),
+      selectedMonth,
+      summaryRangeMonths,
+      trackedMonths,
+      personNameById
+    ),
     monthPage: buildMonthPage(
       id,
       selectedScope,
@@ -417,6 +439,7 @@ function buildSummaryPage(
   personId: string,
   visibleEntries: EntryDto[],
   summaryMonthsByView: Record<string, SummaryMonthDto[]>,
+  plannedSummaryMonthsByView: Record<string, SummaryMonthDto[]>,
   categories: CategoryDto[],
   accountPills: SummaryAccountPillDto[],
   selectedMonth: string,
@@ -425,26 +448,38 @@ function buildSummaryPage(
   personNameById: Record<string, string>
 ) {
   const snapshotMonths = buildSummaryMonthsForView(personId, summaryMonthsByView);
+  const plannedFallbackMonths = plannedSummaryMonthsByView[personId] ?? [];
   const summaryMonthByKey = new Map(snapshotMonths.map((month) => [month.month, month]));
-  const availableMonths = Array.from(new Set([...trackedMonths, ...snapshotMonths.map((month) => month.month)])).sort();
+  const plannedFallbackMonthByKey = new Map(plannedFallbackMonths.map((month) => [month.month, month]));
+  const availableMonths = Array.from(
+    new Set([
+      ...trackedMonths,
+      ...snapshotMonths.map((month) => month.month),
+      ...plannedFallbackMonths.map((month) => month.month)
+    ])
+  ).sort();
   const rangeMonths = summaryRangeMonths.length
     ? summaryRangeMonths.filter((month) => availableMonths.includes(month))
     : buildSummaryRange(availableMonths, undefined, selectedMonth);
   const months = rangeMonths.map((month) => {
-    const snapshot = summaryMonthByKey.get(month);
-    return snapshot
-      ? applyActualsFromEntries(snapshot, visibleEntries, month)
-      : buildDerivedSummaryMonth(month, visibleEntries);
+    const base = summaryMonthByKey.get(month) ?? plannedFallbackMonthByKey.get(month) ?? buildEmptySummaryMonth(month);
+    return applyActualsFromEntries(base, visibleEntries, month);
   });
   const plannedTotalMinor = sumMinor(months, "estimatedExpensesMinor");
   const actualTotalMinor = sumMinor(months, "realExpensesMinor");
-  const incomeTotalMinor = sumMinor(months, "incomeMinor");
+  const plannedIncomeTotalMinor = sumMinor(months, "plannedIncomeMinor");
+  const actualIncomeTotalMinor = sumMinor(months, "actualIncomeMinor");
   const targetSavingsMinor = sumMinor(months, "savingsGoalMinor");
   const realizedSavingsMinor = sumMinor(months, "realizedSavingsMinor");
   const metricCards: MetricCardDto[] = [
     {
-      label: "Income",
-      amountMinor: incomeTotalMinor,
+      label: "Planned income",
+      amountMinor: plannedIncomeTotalMinor,
+      tone: "positive"
+    },
+    {
+      label: "Actual income",
+      amountMinor: actualIncomeTotalMinor,
       tone: "positive"
     },
     {
@@ -484,7 +519,7 @@ function buildSummaryPage(
             "Planned rows are meant for recurring or intentional commitments. Budget buckets are the flexible layer for categories that should stay broad."
           ]
         : [
-            `This view is filtered to ${personNameById[personId] ?? personId}. Shared rows are weighted to this person's split share.`,
+            `This view is filtered to ${personNameById[personId] ?? personId}. Shared actuals are weighted to this person's split share.`,
             "The planning model stays the same: intention first, transactions second."
           ]
   };
@@ -492,7 +527,7 @@ function buildSummaryPage(
 
 function buildDerivedSummaryMonth(month: string, visibleEntries: EntryDto[]): SummaryMonthDto {
   const monthEntries = visibleEntries.filter((entry) => entry.date.slice(0, 7) === month);
-  const incomeMinor = monthEntries
+  const actualIncomeMinor = monthEntries
     .filter((entry) => entry.entryType === "income")
     .reduce((sum, entry) => sum + entry.amountMinor, 0);
   const realExpensesMinor = monthEntries
@@ -501,13 +536,29 @@ function buildDerivedSummaryMonth(month: string, visibleEntries: EntryDto[]): Su
 
   return {
     month,
-    incomeMinor,
+    plannedIncomeMinor: 0,
+    actualIncomeMinor,
     estimatedExpensesMinor: 0,
     realExpensesMinor,
     savingsGoalMinor: 0,
-    realizedSavingsMinor: incomeMinor - realExpensesMinor,
-    estimatedDiffMinor: incomeMinor,
-    realDiffMinor: incomeMinor - realExpensesMinor,
+    realizedSavingsMinor: actualIncomeMinor - realExpensesMinor,
+    estimatedDiffMinor: 0,
+    realDiffMinor: actualIncomeMinor - realExpensesMinor,
+    note: "Month derived from tracked activity."
+  };
+}
+
+function buildEmptySummaryMonth(month: string): SummaryMonthDto {
+  return {
+    month,
+    plannedIncomeMinor: 0,
+    actualIncomeMinor: 0,
+    estimatedExpensesMinor: 0,
+    realExpensesMinor: 0,
+    savingsGoalMinor: 0,
+    realizedSavingsMinor: 0,
+    estimatedDiffMinor: 0,
+    realDiffMinor: 0,
     note: "Month derived from tracked activity."
   };
 }
@@ -518,18 +569,59 @@ function applyActualsFromEntries(
   month: string
 ): SummaryMonthDto {
   const derived = buildDerivedSummaryMonth(month, visibleEntries);
-  const hasLedgerActivity = visibleEntries.some((entry) => entry.date.slice(0, 7) === month);
-  if (!hasLedgerActivity) {
-    return snapshot;
-  }
 
   return {
     ...snapshot,
-    incomeMinor: derived.incomeMinor,
+    actualIncomeMinor: derived.actualIncomeMinor,
     realExpensesMinor: derived.realExpensesMinor,
-    realizedSavingsMinor: derived.incomeMinor - derived.realExpensesMinor,
-    realDiffMinor: derived.incomeMinor - derived.realExpensesMinor
+    realizedSavingsMinor: derived.actualIncomeMinor - derived.realExpensesMinor,
+    realDiffMinor: derived.actualIncomeMinor - derived.realExpensesMinor
   };
+}
+
+async function loadPlannedSummaryMonthsForViews(
+  db: D1Database,
+  viewIds: string[],
+  months: string[]
+): Promise<Record<string, SummaryMonthDto[]>> {
+  const uniqueViewIds = [...new Set(viewIds)].filter(Boolean);
+  const uniqueMonths = [...new Set(months)].filter(Boolean).sort();
+  const monthPlanRowsByMonth = new Map(
+    await Promise.all(uniqueMonths.map(async (month) => [month, await loadMonthPlanRows(db, month)]))
+  );
+  const result = Object.fromEntries(uniqueViewIds.map((viewId) => [viewId, [] as SummaryMonthDto[]]));
+
+  for (const viewId of uniqueViewIds) {
+    for (const month of uniqueMonths) {
+      const monthPlanRows = monthPlanRowsByMonth.get(month) ?? [];
+      const incomeRows = await loadMonthIncomeRows(db, viewId, month);
+      const visibleRows = buildPlanRowsForView(monthPlanRows, viewId);
+      if (!visibleRows.length && !incomeRows.length) {
+        continue;
+      }
+
+      const plannedIncomeMinor = incomeRows.reduce((sum, row) => sum + row.plannedMinor, 0);
+      const estimatedExpensesMinor = visibleRows.reduce((sum, row) => sum + row.plannedMinor, 0);
+      const savingsGoalMinor = visibleRows
+        .filter((row) => row.label === "Savings")
+        .reduce((sum, row) => sum + row.plannedMinor, 0);
+
+      result[viewId].push({
+        month,
+        plannedIncomeMinor,
+        actualIncomeMinor: 0,
+        estimatedExpensesMinor,
+        realExpensesMinor: 0,
+        savingsGoalMinor,
+        realizedSavingsMinor: 0,
+        estimatedDiffMinor: plannedIncomeMinor - estimatedExpensesMinor,
+        realDiffMinor: 0,
+        note: "Month derived from current planning rows."
+      });
+    }
+  }
+
+  return result;
 }
 
 function buildSplitsPage(
@@ -724,12 +816,10 @@ function buildMonthPage(
   const effectiveScope = selectedPersonId === "household" ? "direct_plus_shared" : selectedScope;
   const visibleEntries = filterEntriesForView(monthEntries, selectedPersonId, effectiveScope);
   const visiblePlanRows = derivePlanRowActuals(
-    buildPlanRowsForView(monthPlanRows, selectedPersonId, effectiveScope),
+    buildPlanRowsForView(monthPlanRows, selectedPersonId),
     visibleEntries
   );
-  const visibleIncomeRows = effectiveScope === "shared"
-    ? []
-    : deriveIncomeRowActuals(incomeRows, visibleEntries, selectedPersonId);
+  const visibleIncomeRows = deriveIncomeRowActuals(incomeRows, visibleEntries, selectedPersonId);
   const plannedExpenseMinor = visiblePlanRows.reduce((sum, row) => sum + row.plannedMinor, 0);
   const actualExpenseMinor = currentSummaryMonth?.realExpensesMinor
     ?? visibleEntries.reduce((sum, entry) => entry.entryType === "expense" ? sum + entry.amountMinor : sum, 0);
@@ -869,13 +959,19 @@ function derivePlanRowActuals(rows: MonthPlanRowDto[], entries: EntryDto[]) {
 
     const rowCategory = normalizeCategoryLabel(row.categoryName);
     const categoryActualMinor = entries.reduce((sum, entry) => {
-      if (entry.entryType !== "expense") {
+      if (normalizeCategoryLabel(entry.categoryName) !== rowCategory) {
         return sum;
       }
 
-      return normalizeCategoryLabel(entry.categoryName) === rowCategory
-        ? sum + entry.amountMinor
-        : sum;
+      if (entry.entryType === "expense") {
+        return sum + entry.amountMinor;
+      }
+
+      if (entry.entryType === "income" && entry.offsetsCategory) {
+        return sum - entry.amountMinor;
+      }
+
+      return sum;
     }, 0);
     const actualMinor = Math.max(0, categoryActualMinor - (plannedActualsByCategory.get(rowCategory) ?? 0));
 
@@ -930,16 +1026,14 @@ function buildSummaryDonutMonths(
   }));
 }
 
-function buildPlanRowsForView(rows: MonthPlanRowDto[], personId: string, scope: PersonScope): MonthPlanRowDto[] {
-  const visibleRows = rows
-    .filter((row) => rowMatchesView(row.ownershipType, row.splits, personId, scope))
-    .map((row) => adjustPlanRowForView(row, personId));
-
-  if (personId === "household" && scope === "direct_plus_shared") {
-    return combineHouseholdPlanRows(visibleRows);
+function buildPlanRowsForView(rows: MonthPlanRowDto[], personId: string): MonthPlanRowDto[] {
+  if (personId === "household") {
+    return combineHouseholdPlanRows(rows.map((row) => normalizePlanRowForView(row)));
   }
 
-  return visibleRows;
+  return rows
+    .filter((row) => row.personId === personId || row.splits.some((split) => split.personId === personId))
+    .map((row) => normalizePlanRowForView(row));
 }
 
 function filterEntriesForView(entries: EntryDto[], personId: string, scope: PersonScope): EntryDto[] {
@@ -1005,38 +1099,14 @@ function rowMatchesView(
   return splits.some((split) => split.personId === personId);
 }
 
-function adjustPlanRowForView(row: MonthPlanRowDto, personId: string): MonthPlanRowDto {
-  if (personId === "household" || row.ownershipType === "direct") {
-    return {
-      ...row,
-      isDerived: row.isDerived ?? false,
-      sourceRowIds: row.sourceRowIds ?? [row.id],
-      linkedEntryIds: row.linkedEntryIds ?? [],
-      linkedEntryCount: row.linkedEntryCount ?? row.linkedEntryIds?.length ?? 0,
-      planMatchHints: row.planMatchHints ?? []
-    };
-  }
-
-  const matchingSplit = row.splits.find((split) => split.personId === personId);
-  if (!matchingSplit) {
-    return {
-      ...row,
-      isDerived: row.isDerived ?? false,
-      sourceRowIds: row.sourceRowIds ?? [row.id],
-      linkedEntryIds: row.linkedEntryIds ?? [],
-      linkedEntryCount: row.linkedEntryCount ?? row.linkedEntryIds?.length ?? 0,
-      planMatchHints: row.planMatchHints ?? []
-    };
-  }
-
-  const ratio = matchingSplit.ratioBasisPoints / 10000;
+function normalizePlanRowForView(row: MonthPlanRowDto): MonthPlanRowDto {
   return {
     ...row,
-    plannedMinor: Math.round(row.plannedMinor * ratio),
-    actualMinor: matchingSplit.amountMinor,
-    note: `${row.note ?? "Shared row"} • weighted to ${matchingSplit.personName}'s share`,
-    isDerived: true,
+    note: stripWeightedPlanNoteText(row.note),
+    isDerived: row.isDerived ?? false,
     sourceRowIds: row.sourceRowIds ?? [row.id],
+    sourcePlannedMinor: row.sourcePlannedMinor ?? row.plannedMinor,
+    sourceNote: stripWeightedPlanNoteText(row.sourceNote ?? row.note),
     linkedEntryIds: row.linkedEntryIds ?? [],
     linkedEntryCount: row.linkedEntryCount ?? row.linkedEntryIds?.length ?? 0,
     planMatchHints: row.planMatchHints ?? []
@@ -1063,6 +1133,8 @@ function combineHouseholdPlanRows(rows: MonthPlanRowDto[]): MonthPlanRowDto[] {
         ownerName: undefined,
         isDerived: false,
         sourceRowIds: row.sourceRowIds ?? [row.id],
+        sourcePlannedMinor: row.sourcePlannedMinor ?? row.plannedMinor,
+        sourceNote: row.sourceNote ?? row.note,
         planMatchHints: row.planMatchHints ?? []
       });
       continue;
@@ -1078,6 +1150,8 @@ function combineHouseholdPlanRows(rows: MonthPlanRowDto[]): MonthPlanRowDto[] {
       splits: [...existing.splits, ...row.splits],
       isDerived: true,
       sourceRowIds: [...(existing.sourceRowIds ?? [existing.id]), ...(row.sourceRowIds ?? [row.id])],
+      sourcePlannedMinor: undefined,
+      sourceNote: undefined,
       linkedEntryIds: [...(existing.linkedEntryIds ?? []), ...(row.linkedEntryIds ?? [])],
       linkedEntryCount: (existing.linkedEntryCount ?? existing.linkedEntryIds?.length ?? 0) + (row.linkedEntryCount ?? row.linkedEntryIds?.length ?? 0),
       planMatchHints: [...(existing.planMatchHints ?? []), ...(row.planMatchHints ?? [])]
@@ -1090,6 +1164,13 @@ function combineHouseholdPlanRows(rows: MonthPlanRowDto[]): MonthPlanRowDto[] {
 function mergeNotes(left?: string, right?: string) {
   const unique = new Set([left, right].filter(Boolean));
   return unique.size ? [...unique].join(" | ") : undefined;
+}
+
+function stripWeightedPlanNoteText(note?: string) {
+  return (note ?? "")
+    .replace(/\s*• weighted to .*? share/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim() || undefined;
 }
 
 function splitExpenseMatchesView(expense: SplitExpenseDto, viewId: string) {
@@ -1312,7 +1393,7 @@ function buildDonutChart(entries: EntryDto[], categories: CategoryDto[]): DonutC
 
 function sumMinor(months: SummaryMonthDto[], key: keyof Pick<
   SummaryMonthDto,
-  "incomeMinor" | "estimatedExpensesMinor" | "realExpensesMinor" | "savingsGoalMinor" | "realizedSavingsMinor"
+  "plannedIncomeMinor" | "actualIncomeMinor" | "estimatedExpensesMinor" | "realExpensesMinor" | "savingsGoalMinor" | "realizedSavingsMinor"
 >) {
   return months.reduce((sum, month) => sum + month[key], 0);
 }

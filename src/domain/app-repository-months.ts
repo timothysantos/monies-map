@@ -34,7 +34,8 @@ export async function loadSummaryMonths(db: D1Database, personScope: string): Pr
   return result.results
     .map((row) => ({
       month: `${row.year}-${String(row.month).padStart(2, "0")}`,
-      incomeMinor: row.total_income_minor,
+      plannedIncomeMinor: row.total_income_minor,
+      actualIncomeMinor: row.total_income_minor,
       estimatedExpensesMinor: row.estimated_expense_minor,
       realExpensesMinor: row.total_expense_minor,
       savingsGoalMinor: row.savings_goal_minor,
@@ -81,7 +82,8 @@ export async function loadSummaryMonthsForScopes(
     monthsByScope[row.person_scope] ??= [];
     monthsByScope[row.person_scope].push({
       month: `${row.year}-${String(row.month).padStart(2, "0")}`,
-      incomeMinor: row.total_income_minor,
+      plannedIncomeMinor: row.total_income_minor,
+      actualIncomeMinor: row.total_income_minor,
       estimatedExpensesMinor: row.estimated_expense_minor,
       realExpensesMinor: row.total_expense_minor,
       savingsGoalMinor: row.savings_goal_minor,
