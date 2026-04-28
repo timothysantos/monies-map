@@ -122,7 +122,7 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
               } : current)}
             />
           </label>
-          <label className="split-dialog-field">
+          <label className="split-dialog-field split-dialog-field-percent">
             <span>{messages.splits.expenseSplit}</span>
             <input
               className="table-edit-input table-edit-input-money"
@@ -136,10 +136,10 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
               }, "percent") : current)}
               onBlur={() => onChange((current) => current ? updateSplitExpenseDraft(current, {
                 splitPercentInput: String(Number(current.splitBasisPoints ?? 5000) / 100)
-              }, "percent") : current)}
+              }, "percent", { commit: true }) : current)}
             />
           </label>
-          <label className="split-dialog-field">
+          <label className="split-dialog-field split-dialog-field-exact-amount">
             <span>{messages.splits.expenseExactAmount(dialog?.sharePersonName ?? "First person")}</span>
             <input
               className="table-edit-input table-edit-input-money"
@@ -153,7 +153,7 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
               }, "amount") : current)}
               onBlur={() => onChange((current) => current ? updateSplitExpenseDraft(current, {
                 splitAmountInput: minorToDecimalString(current.splitAmountMinor ?? 0)
-              }, "amount") : current)}
+              }, "amount", { commit: true }) : current)}
             />
           </label>
         </div>

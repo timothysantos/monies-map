@@ -46,15 +46,34 @@ export function buildSplitShareState({
   };
 }
 
-export function syncSplitShareState(draft, patch = {}, modeOverride) {
+export function syncSplitShareState(draft, patch = {}, modeOverride, options = {}) {
   const nextDraft = { ...draft, ...patch };
+  const shouldCommit = options.commit === true;
+  const nextMode = modeOverride ?? nextDraft.splitValueMode;
+
+  if (!shouldCommit) {
+    if (Object.prototype.hasOwnProperty.call(patch, "splitPercentInput") && patch.splitPercentInput === "") {
+      return {
+        ...nextDraft,
+        splitValueMode: nextMode
+      };
+    }
+
+    if (Object.prototype.hasOwnProperty.call(patch, "splitAmountInput") && patch.splitAmountInput === "") {
+      return {
+        ...nextDraft,
+        splitValueMode: nextMode
+      };
+    }
+  }
+
   return {
     ...nextDraft,
     ...buildSplitShareState({
       totalAmountMinor: nextDraft.amountMinor,
       splitBasisPoints: nextDraft.splitBasisPoints,
       splitAmountMinor: nextDraft.splitAmountMinor,
-      splitValueMode: modeOverride ?? nextDraft.splitValueMode
+      splitValueMode: nextMode
     })
   };
 }

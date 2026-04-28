@@ -1313,6 +1313,42 @@ export function App() {
     });
   }, [detailAvailableYears, isDetailMonthTab, selectedMonth]);
 
+  const stickyScopeConfig = pageView
+    ? selectedTabId === "month"
+      ? {
+          selectedKey: pageView.monthPage.selectedScope,
+          paramKey: "scope",
+          label: "Month view controls"
+        }
+      : selectedTabId === "entries"
+        ? {
+            selectedKey: selectedEntriesScope,
+            paramKey: "entries_scope",
+            label: "Entries view controls"
+          }
+        : null
+    : null;
+  const mobileScopeLabels = {
+    direct: "Direct",
+    shared: "Shared",
+    direct_plus_shared: "Direct+Shared"
+  };
+  const mobileContextScopes = stickyScopeConfig ? pageView?.monthPage.scopes ?? [] : [];
+  const selectedMobileScope = stickyScopeConfig
+    ? mobileContextScopes.find((scope) => scope.key === stickyScopeConfig.selectedKey) ?? null
+    : null;
+  const mobileContextSummary = selectedMobileScope
+    ? `${pageView?.label ?? ""} · ${mobileScopeLabels[selectedMobileScope.key] ?? selectedMobileScope.label}`
+    : pageView?.label ?? "";
+  const showMobileContextSticky = Boolean(stickyScopeConfig);
+  const showMobileContextScopeSection = Boolean(stickyScopeConfig) && mobileContextScopes.length > 1;
+
+  useEffect(() => {
+    if (!showMobileContextSticky && mobileContextOpen) {
+      setMobileContextOpen(false);
+    }
+  }, [mobileContextOpen, showMobileContextSticky]);
+
   if (bootstrapError) {
     return (
       <main className="shell">
@@ -1361,40 +1397,6 @@ export function App() {
       ) : null}
     </span>
   );
-  const stickyScopeConfig = selectedTabId === "month"
-    ? {
-        selectedKey: pageView.monthPage.selectedScope,
-        paramKey: "scope",
-        label: "Month view controls"
-      }
-    : selectedTabId === "entries"
-      ? {
-          selectedKey: selectedEntriesScope,
-          paramKey: "entries_scope",
-          label: "Entries view controls"
-        }
-      : null;
-  const mobileScopeLabels = {
-    direct: "Direct",
-    shared: "Shared",
-    direct_plus_shared: "Direct+Shared"
-  };
-  const mobileContextScopes = stickyScopeConfig ? pageView.monthPage.scopes ?? [] : [];
-  const selectedMobileScope = stickyScopeConfig
-    ? mobileContextScopes.find((scope) => scope.key === stickyScopeConfig.selectedKey) ?? null
-    : null;
-  const mobileContextSummary = selectedMobileScope
-    ? `${pageView.label} · ${mobileScopeLabels[selectedMobileScope.key] ?? selectedMobileScope.label}`
-    : pageView.label;
-  const showMobileContextSticky = Boolean(stickyScopeConfig);
-  const showMobileContextScopeSection = Boolean(stickyScopeConfig) && mobileContextScopes.length > 1;
-
-  useEffect(() => {
-    if (!showMobileContextSticky && mobileContextOpen) {
-      setMobileContextOpen(false);
-    }
-  }, [mobileContextOpen, showMobileContextSticky]);
-
   function handleViewChange(nextViewId) {
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
