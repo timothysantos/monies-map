@@ -16,6 +16,7 @@ export function SplitsBreakdownSection({
   onToggleBreakdown,
   onAddExpense,
   summaryToolbar = null,
+  isRefreshingDerived = false,
   readOnly = false
 }) {
   return (
@@ -48,6 +49,12 @@ export function SplitsBreakdownSection({
           </div>
         ) : null}
       </section>
+      {isRefreshingDerived ? (
+        <div className="split-derived-refreshing" role="status" aria-live="polite">
+          <span className="app-spinner" aria-hidden="true" />
+          <span>Group balances and shared totals are updating.</span>
+        </div>
+      ) : null}
 
       {showBreakdown ? (
         <section className="split-donut-panel">

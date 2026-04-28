@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
@@ -15,6 +15,13 @@ import {
   saveSplitExpense,
   saveSplitSettlement
 } from "./splits-api";
+import {
+  applyOptimisticSplitMatch,
+  buildOptimisticExpenseActivityItem,
+  buildOptimisticSettlementActivityItem,
+  removeOptimisticSplitActivity,
+  upsertOptimisticSplitActivity
+} from "./splits-optimistic";
 import { SplitArchiveDialog } from "./splits-archive-dialog";
 import { SplitDeleteDialog, SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./splits-dialogs";
 import { SplitsMainSection } from "./splits-main-section";
@@ -28,21 +35,29 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [archiveDialog, setArchiveDialog] = useState(null);
   const [groupDialog, setGroupDialog] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshingDerived, setIsRefreshingDerived] = useState(false);
+  const [optimisticSplitsPage, setOptimisticSplitsPage] = useState(null);
   const [dismissedMatchIds, setDismissedMatchIds] = useState([]);
+  const refreshGenerationRef = useRef(0);
+  const latestSplitsPageRef = useRef(view.splitsPage);
   const defaultGroupId = view.splitsPage.groups.find((group) => group.isDefault)?.id ?? "split-group-none";
   const selectedGroupParam = searchParams.get("split_group");
   const selectedGroupId = selectedGroupParam ?? defaultGroupId;
   const selectedMode = searchParams.get("split_mode") ?? "entries";
   const isHouseholdView = view.id === "household";
+  const displayView = useMemo(
+    () => (optimisticSplitsPage ? { ...view, splitsPage: optimisticSplitsPage } : view),
+    [optimisticSplitsPage, view]
+  );
   const splitModel = useMemo(
     () => buildSplitsPanelModel({
-      view,
+      view: displayView,
       categories,
       selectedGroupId,
       dismissedMatchIds,
       archiveBatchId: archiveDialog?.batchId
     }),
-    [archiveDialog?.batchId, categories, dismissedMatchIds, selectedGroupId, view]
+    [archiveDialog?.batchId, categories, dismissedMatchIds, displayView, selectedGroupId]
   );
   const {
     activeGroup,
@@ -92,6 +107,10 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   } = useSplitEditState({ categoryOptions, people });
 
   useEffect(() => {
+    latestSplitsPageRef.current = view.splitsPage;
+  }, [view.splitsPage]);
+
+  useEffect(() => {
     if (selectedGroupParam || selectedMode === "matches" || selectedGroupId === defaultGroupId) {
       return;
     }
@@ -114,6 +133,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   useEffect(() => {
     setDismissedMatchIds([]);
     setShowBreakdown(false);
+    setOptimisticSplitsPage(null);
+    setIsRefreshingDerived(false);
+    refreshGenerationRef.current += 1;
     resetForViewChange();
     setArchiveDialog(null);
   }, [resetForViewChange, view.id, view.splitsPage.month]);
@@ -185,6 +207,29 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setArchiveDialog({ batchId });
   }
 
+  function applyOptimisticSplitsPage(updatePage) {
+    setOptimisticSplitsPage((currentPage) => updatePage(currentPage ?? latestSplitsPageRef.current));
+  }
+
+  function refreshAfterSplitMutation(options) {
+    const refreshGeneration = refreshGenerationRef.current + 1;
+    refreshGenerationRef.current = refreshGeneration;
+    setIsRefreshingDerived(true);
+
+    void onRefresh(options)
+      .then(() => {
+        if (refreshGenerationRef.current === refreshGeneration) {
+          setOptimisticSplitsPage(null);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (refreshGenerationRef.current === refreshGeneration) {
+          setIsRefreshingDerived(false);
+        }
+      });
+  }
+
   async function saveGroup() {
     if (!groupDialog?.name?.trim()) {
       setFormError("Group name is required.");
@@ -206,6 +251,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   }
 
   async function saveExpense() {
+    const draft = expenseDialog;
     const validationError = validateSplitExpenseDraft(expenseDialog);
     if (validationError) {
       setFormError(validationError);
@@ -215,9 +261,23 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setFormError("");
     setIsSubmitting(true);
     try {
-      await saveSplitExpense(expenseDialog);
-      await onRefresh({ refreshShell: true, broadcast: true });
+      const response = await saveSplitExpense(draft);
+      applyOptimisticSplitsPage((currentPage) => {
+        const existingItem = currentPage.activity.find((item) => item.kind === "expense" && item.id === (draft?.id ?? response.splitExpenseId));
+        return {
+          ...currentPage,
+          activity: upsertOptimisticSplitActivity(currentPage.activity, buildOptimisticExpenseActivityItem({
+            draft,
+            splitExpenseId: response.splitExpenseId,
+            viewId: view.id,
+            people,
+            groupOptions,
+            existingItem
+          }))
+        };
+      });
       closeExpenseDialog();
+      refreshAfterSplitMutation({ refreshShell: true, broadcast: true });
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -226,6 +286,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   }
 
   async function saveSettlement() {
+    const draft = settlementDialog;
     const validationError = validateSplitSettlementDraft(settlementDialog);
     if (validationError) {
       setFormError(validationError);
@@ -235,9 +296,23 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setFormError("");
     setIsSubmitting(true);
     try {
-      await saveSplitSettlement(settlementDialog);
-      await onRefresh({ refreshShell: true, broadcast: true });
+      const response = await saveSplitSettlement(draft);
+      applyOptimisticSplitsPage((currentPage) => {
+        const existingItem = currentPage.activity.find((item) => item.kind === "settlement" && item.id === (draft?.id ?? response.settlementId));
+        return {
+          ...currentPage,
+          activity: upsertOptimisticSplitActivity(currentPage.activity, buildOptimisticSettlementActivityItem({
+            draft,
+            settlementId: response.settlementId,
+            viewId: view.id,
+            people,
+            groupOptions,
+            existingItem
+          }))
+        };
+      });
       closeSettlementDialog();
+      refreshAfterSplitMutation({ refreshShell: true, broadcast: true });
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -249,7 +324,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setIsSubmitting(true);
     try {
       await linkSplitMatch(match);
-      await onRefresh({ refreshShell: true, broadcast: true });
+      applyOptimisticSplitsPage((currentPage) => applyOptimisticSplitMatch(currentPage, match));
+      refreshAfterSplitMutation({ refreshShell: true, broadcast: true });
     } finally {
       setIsSubmitting(false);
     }
@@ -260,6 +336,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       return;
     }
 
+    const draft = inlineSplitDraft;
     const validationError = inlineSplitDraft.kind === "expense"
       ? validateSplitExpenseDraft(inlineSplitDraft)
       : validateSplitSettlementDraft(inlineSplitDraft);
@@ -271,13 +348,41 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setInlineSplitError("");
     setIsSubmitting(true);
     try {
-      if (inlineSplitDraft.kind === "expense") {
-        await saveSplitExpense(inlineSplitDraft);
+      if (draft.kind === "expense") {
+        const response = await saveSplitExpense(draft);
+        applyOptimisticSplitsPage((currentPage) => {
+          const existingItem = currentPage.activity.find((item) => item.kind === "expense" && item.id === (draft.id ?? response.splitExpenseId));
+          return {
+            ...currentPage,
+            activity: upsertOptimisticSplitActivity(currentPage.activity, buildOptimisticExpenseActivityItem({
+              draft,
+              splitExpenseId: response.splitExpenseId,
+              viewId: view.id,
+              people,
+              groupOptions,
+              existingItem
+            }))
+          };
+        });
       } else {
-        await saveSplitSettlement(inlineSplitDraft);
+        const response = await saveSplitSettlement(draft);
+        applyOptimisticSplitsPage((currentPage) => {
+          const existingItem = currentPage.activity.find((item) => item.kind === "settlement" && item.id === (draft.id ?? response.settlementId));
+          return {
+            ...currentPage,
+            activity: upsertOptimisticSplitActivity(currentPage.activity, buildOptimisticSettlementActivityItem({
+              draft,
+              settlementId: response.settlementId,
+              viewId: view.id,
+              people,
+              groupOptions,
+              existingItem
+            }))
+          };
+        });
       }
-      await onRefresh({ refreshShell: true, broadcast: true });
       clearInlineSplitDraft();
+      refreshAfterSplitMutation({ refreshShell: true, broadcast: true });
     } catch (error) {
       setInlineSplitError(error.message);
     } finally {
@@ -324,13 +429,18 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       } else {
         await deleteSplitSettlement(deleteTarget.id);
       }
-      await onRefresh({ refreshShell: true, broadcast: true });
+      applyOptimisticSplitsPage((currentPage) => ({
+        ...currentPage,
+        activity: removeOptimisticSplitActivity(currentPage.activity, deleteTarget),
+        matches: currentPage.matches.filter((item) => item.splitRecordId !== deleteTarget.id)
+      }));
       setDeleteTarget(null);
       if (`${inlineSplitDraft?.kind}:${inlineSplitDraft?.id}` === deletedSplitKey) {
         clearInlineSplitSnapshot();
         setInlineSplitError("");
         setInlineSplitDraft(null);
       }
+      refreshAfterSplitMutation({ refreshShell: true, broadcast: true });
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -373,6 +483,12 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         <div>
           <h2>{messages.tabs.splits}</h2>
           <p className="panel-context">{messages.splits.viewing(view.label)}</p>
+          {isRefreshingDerived ? (
+            <div className="split-refresh-status" role="status" aria-live="polite">
+              <span className="app-spinner" aria-hidden="true" />
+              <span>{messages.common.loadingLatest}</span>
+            </div>
+          ) : null}
         </div>
         {renderSplitActions("split-head-actions split-header-toolbar")}
       </div>
@@ -422,6 +538,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onSaveInlineSplit={saveInlineSplit}
         onRequestDeleteSplit={requestDeleteSplit}
         onViewLinkedEntry={openLinkedEntry}
+        isRefreshingDerived={isRefreshingDerived}
       />
 
       <SplitArchiveDialog

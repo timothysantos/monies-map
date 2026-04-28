@@ -108,6 +108,7 @@ export function SplitActivityGroups({
           const theme = getCategoryTheme(categories, { categoryName: item.categoryName ?? "Other" }, index);
           const isEditable = !archived && !readOnly;
           const isEditing = isEditable && editingDraft && splitItemKey(item) === `${editingDraft.kind}:${editingDraft.id}`;
+          const isPendingDerived = item.isPendingDerived === true;
           const showDirectionLabel = Boolean(item.viewerDirectionLabel) && !readOnly;
           const openEditor = () => {
             if (isEditable) {
@@ -226,7 +227,13 @@ export function SplitActivityGroups({
                 ) : null}
                 <span className="split-activity-amount-line">
                   <span>{money(item.viewerAmountMinor ?? item.totalAmountMinor)}</span>
-                  <span className="share-row-meta">{item.matched ? messages.splits.linked : messages.splits.manual}</span>
+                  <span className="share-row-meta">
+                    {isPendingDerived
+                      ? messages.common.loadingLatest
+                      : item.matched
+                        ? messages.splits.linked
+                        : messages.splits.manual}
+                  </span>
                 </span>
               </div>
             </>
@@ -237,7 +244,7 @@ export function SplitActivityGroups({
               <button
                 key={splitItemKey(item)}
                 type="button"
-                className="split-activity-card"
+                className={`split-activity-card ${isPendingDerived ? "is-pending" : ""}`}
                 onClick={openEditor}
               >
                 {cardContent}
@@ -246,7 +253,7 @@ export function SplitActivityGroups({
           }
 
           return (
-            <article key={splitItemKey(item)} className="split-activity-card">
+            <article key={splitItemKey(item)} className={`split-activity-card ${isPendingDerived ? "is-pending" : ""}`}>
               {cardContent}
             </article>
           );

@@ -41,7 +41,8 @@ export function SplitsMainSection({
   onCancelInlineSplit,
   onSaveInlineSplit,
   onRequestDeleteSplit,
-  onEditLinkedEntry,
+  onViewLinkedEntry,
+  isRefreshingDerived = false,
   readOnly = false
 }) {
   const groupsNav = (
@@ -88,6 +89,7 @@ export function SplitsMainSection({
         onAddExpense={onAddExpense}
         summaryToolbar={summaryToolbar}
         readOnly={readOnly}
+        isRefreshingDerived={isRefreshingDerived}
       />
 
       {selectedMode === "matches" ? (
@@ -117,7 +119,7 @@ export function SplitsMainSection({
           onCancelInlineSplit={onCancelInlineSplit}
           onSaveInlineSplit={onSaveInlineSplit}
           onRequestDeleteSplit={onRequestDeleteSplit}
-          onEditLinkedEntry={onEditLinkedEntry}
+          onViewLinkedEntry={onViewLinkedEntry}
           readOnly={readOnly}
         />
       )}
