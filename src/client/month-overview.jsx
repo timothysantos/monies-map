@@ -185,11 +185,14 @@ export function MonthPanelHeader({
   );
 }
 
-export function MonthMetricRow({ cards }) {
+export function MonthMetricRow({ cards, isRefreshing = false }) {
   return (
-    <div className="metric-row metric-row-month">
-      {cards.map((card) => <MetricCard key={card.label} card={card} />)}
-    </div>
+    <>
+      {isRefreshing ? <p className="month-refresh-hint">Updating totals and actuals...</p> : null}
+      <div className="metric-row metric-row-month">
+        {cards.map((card) => <MetricCard key={card.label} card={card} />)}
+      </div>
+    </>
   );
 }
 

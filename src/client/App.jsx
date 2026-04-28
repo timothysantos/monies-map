@@ -802,6 +802,22 @@ export function App() {
     }
   }, [beginBootstrapLoad, clearBootstrapCache, clearEntriesPageCache, clearRoutePageCache, fetchRoutePageData, refreshBootstrap, routePageRequest]);
 
+  const refreshCurrentMonthPage = useCallback(async () => {
+    const request = buildRoutePageRequest({
+      tabId: "month",
+      viewId: selectedViewId,
+      month: selectedMonth,
+      scope: selectedScope
+    });
+    if (!request) {
+      return null;
+    }
+
+    const data = await fetchRoutePageData(request, { bypassCache: true });
+    setRoutePageData(data);
+    return data;
+  }, [fetchRoutePageData, selectedMonth, selectedScope, selectedViewId]);
+
   const invalidatePageAndShellCaches = useCallback(() => {
     clearRoutePageCache();
     clearBootstrapCache();
@@ -2134,7 +2150,7 @@ export function App() {
                   categories={categories}
                   householdMonthEntries={householdMonthEntries}
                   onCategoryAppearanceChange={handleCategoryAppearanceChange}
-                  onRefresh={() => refreshRoutePage()}
+                  onRefresh={refreshCurrentMonthPage}
                 />
               )}
             />
