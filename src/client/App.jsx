@@ -71,6 +71,20 @@ const PAGE_PREFETCH_DELAY_MS = 1200;
 const PAGE_PREFETCH_SPACING_MS = 1500;
 const PAGE_PREFETCH_STAGE_DELAY_MS = 5000;
 const APP_DOCUMENT_TITLE = "Monie's Map";
+const LOADING_STATUS_POLL_MS = 500;
+
+function createLoadingStatus(overrides = {}) {
+  const now = Date.now();
+  return {
+    label: "Starting app",
+    detail: "Preparing dashboard shell",
+    percent: 5,
+    startedAt: now,
+    updatedAt: now,
+    issue: "",
+    ...overrides
+  };
+}
 
 function preloadRouteModule(routeId) {
   const loader = routeModuleLoaders[routeId];
@@ -228,6 +242,8 @@ export function App() {
   const [bootstrap, setBootstrap] = useState(null);
   const [bootstrapError, setBootstrapError] = useState("");
   const [bootstrapLoadCount, setBootstrapLoadCount] = useState(0);
+  const [loadingStatus, setLoadingStatus] = useState(() => createLoadingStatus());
+  const [loadingElapsedSeconds, setLoadingElapsedSeconds] = useState(0);
   const [categoryOverrides, setCategoryOverrides] = useState({});
   const [rangePickerStartYear, setRangePickerStartYear] = useState(null);
   const [rangePickerEndYear, setRangePickerEndYear] = useState(null);
@@ -323,6 +339,37 @@ export function App() {
   );
   const routePageCacheKey = routePageRequest ? `${routePageRequest.path}?${routePageRequest.params.toString()}` : "";
 
+  const updateLoadingStatus = useCallback((patch) => {
+    setLoadingStatus((current) => ({
+      ...current,
+      ...patch,
+      updatedAt: Date.now()
+    }));
+  }, []);
+
+  const startLoadingStatus = useCallback((patch) => {
+    setLoadingStatus((current) => createLoadingStatus({
+      issue: current.issue,
+      ...patch
+    }));
+  }, []);
+
+  const reportLoadingIssue = useCallback((source, detail) => {
+    const normalizedDetail = typeof detail === "string"
+      ? detail
+      : detail instanceof Error
+        ? detail.message
+        : String(detail ?? "").trim();
+    const summary = normalizedDetail
+      .replace(/\s+/g, " ")
+      .replace(/^Uncaught\s+/i, "")
+      .slice(0, 220);
+    if (!summary) {
+      return;
+    }
+    updateLoadingStatus({ issue: `${source}: ${summary}` });
+  }, [updateLoadingStatus]);
+
   const beginBootstrapLoad = useCallback(() => {
     let didFinish = false;
     setBootstrapLoadCount((count) => count + 1);
@@ -336,6 +383,64 @@ export function App() {
       setBootstrapLoadCount((count) => Math.max(0, count - 1));
     };
   }, []);
+
+  useEffect(() => {
+    if (!isBootstrapLoading) {
+      setLoadingElapsedSeconds(0);
+      return undefined;
+    }
+
+    setLoadingElapsedSeconds(Math.max(0, Math.floor((Date.now() - loadingStatus.startedAt) / 1000)));
+    const timer = window.setInterval(() => {
+      setLoadingElapsedSeconds(Math.max(0, Math.floor((Date.now() - loadingStatus.startedAt) / 1000)));
+    }, LOADING_STATUS_POLL_MS);
+
+    return () => window.clearInterval(timer);
+  }, [isBootstrapLoading, loadingStatus.startedAt]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const originalConsoleError = console.error;
+    const handleWindowError = (event) => {
+      reportLoadingIssue("Runtime error", event.message ?? event.error?.message ?? "Unknown error");
+    };
+    const handleUnhandledRejection = (event) => {
+      reportLoadingIssue("Unhandled promise", event.reason);
+    };
+
+    console.error = (...args) => {
+      const detail = args
+        .map((item) => {
+          if (item instanceof Error) {
+            return item.message;
+          }
+          if (typeof item === "string") {
+            return item;
+          }
+          try {
+            return JSON.stringify(item);
+          } catch {
+            return String(item);
+          }
+        })
+        .filter(Boolean)
+        .join(" ");
+      reportLoadingIssue("Console error", detail);
+      originalConsoleError.apply(console, args);
+    };
+
+    window.addEventListener("error", handleWindowError);
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+
+    return () => {
+      console.error = originalConsoleError;
+      window.removeEventListener("error", handleWindowError);
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+    };
+  }, [reportLoadingIssue]);
 
   const clearBootstrapCache = useCallback(() => {
     bootstrapCacheVersionRef.current += 1;
@@ -412,10 +517,20 @@ export function App() {
     }
 
     if (!bypassCache && bootstrapCacheRef.current.has(cacheKey)) {
+      updateLoadingStatus({
+        label: "Using cached dashboard",
+        detail: "Loaded a saved shell while the latest data catches up",
+        percent: 18
+      });
       return bootstrapCacheRef.current.get(cacheKey);
     }
 
     if (!bypassCache && bootstrapInflightRef.current.has(cacheKey)) {
+      updateLoadingStatus({
+        label: "Waiting for dashboard data",
+        detail: "Joining an in-flight bootstrap request",
+        percent: 28
+      });
       const data = await bootstrapInflightRef.current.get(cacheKey);
       if (signal?.aborted) {
         throw new DOMException("Bootstrap request aborted.", "AbortError");
@@ -423,8 +538,18 @@ export function App() {
       return data;
     }
 
+    updateLoadingStatus({
+      label: "Requesting dashboard data",
+      detail: `/api/bootstrap?${cacheKey}`,
+      percent: 35
+    });
     const request = fetch(`/api/bootstrap?${cacheKey}`, { cache: "no-store" })
       .then(async (response) => {
+        updateLoadingStatus({
+          label: "Reading dashboard response",
+          detail: "Server responded. Parsing bootstrap payload",
+          percent: 55
+        });
         const responseText = await response.text();
         let data = null;
 
@@ -444,6 +569,11 @@ export function App() {
           throw new Error(buildBootstrapErrorMessage(response.status, data?.message ?? responseText));
         }
 
+        updateLoadingStatus({
+          label: "Preparing dashboard shell",
+          detail: "Caching bootstrap payload and building the first view",
+          percent: 72
+        });
         if (bootstrapCacheVersionRef.current === cacheVersion) {
           bootstrapCacheRef.current.set(cacheKey, data);
           writePersistedBootstrap(cacheKey, data);
@@ -459,8 +589,13 @@ export function App() {
     if (signal?.aborted || bootstrapCacheVersionRef.current !== cacheVersion) {
       throw new DOMException("Bootstrap request aborted.", "AbortError");
     }
+    updateLoadingStatus({
+      label: "Dashboard shell ready",
+      detail: "Applying bootstrap data",
+      percent: 82
+    });
     return data;
-  }, []);
+  }, [updateLoadingStatus]);
 
   const loadBootstrap = useCallback(async (signal, { bypassCache = false } = {}) => {
     const data = await fetchBootstrapData(bootstrapParams, { bypassCache, signal });
@@ -473,7 +608,13 @@ export function App() {
   const handleBootstrapFailure = useCallback((error) => {
     setBootstrap(null);
     setBootstrapError(describeBootstrapError(error));
-  }, []);
+    reportLoadingIssue("Load failed", error);
+    updateLoadingStatus({
+      label: "Dashboard load failed",
+      detail: "Bootstrap request did not complete",
+      percent: 100
+    });
+  }, [reportLoadingIssue, updateLoadingStatus]);
 
   const refreshBootstrap = useCallback(async ({ broadcast = false } = {}) => {
     clearBootstrapCache();
@@ -515,10 +656,20 @@ export function App() {
     }
 
     if (!bypassCache && routePageCacheRef.current.has(cacheKey)) {
+      updateLoadingStatus({
+        label: "Using cached page data",
+        detail: request.path,
+        percent: 84
+      });
       return routePageCacheRef.current.get(cacheKey);
     }
 
     if (!bypassCache && routePageInflightRef.current.has(cacheKey)) {
+      updateLoadingStatus({
+        label: "Waiting for page data",
+        detail: request.path,
+        percent: 86
+      });
       const data = await routePageInflightRef.current.get(cacheKey);
       if (signal?.aborted) {
         throw new DOMException("Page request aborted.", "AbortError");
@@ -528,8 +679,18 @@ export function App() {
 
     const query = request.params.toString();
     const requestUrl = query ? `${request.path}?${query}` : request.path;
+    updateLoadingStatus({
+      label: "Loading current page",
+      detail: requestUrl,
+      percent: 88
+    });
     const pageRequest = fetch(requestUrl, { cache: "no-store" })
       .then(async (response) => {
+        updateLoadingStatus({
+          label: "Reading page response",
+          detail: request.path,
+          percent: 92
+        });
         const responseText = await response.text();
         let data = null;
 
@@ -563,8 +724,13 @@ export function App() {
     if (signal?.aborted || routePageCacheVersionRef.current !== cacheVersion) {
       throw new DOMException("Page request aborted.", "AbortError");
     }
+    updateLoadingStatus({
+      label: "Current page ready",
+      detail: request.path,
+      percent: 96
+    });
     return data;
-  }, []);
+  }, [updateLoadingStatus]);
 
   const refreshRoutePage = useCallback(async ({ broadcast = false, refreshShell = false } = {}) => {
     clearRoutePageCache();
@@ -619,10 +785,20 @@ export function App() {
 
   useEffect(() => {
     const controller = new AbortController();
+    startLoadingStatus({
+      label: "Preparing dashboard shell",
+      detail: "Checking for cached data before requesting the latest snapshot",
+      percent: 10
+    });
     if (!bootstrapCacheRef.current.has(bootstrapCacheKey)) {
       const persistedBootstrap = readPersistedBootstrap(bootstrapCacheKey);
       if (persistedBootstrap) {
         bootstrapCacheRef.current.set(bootstrapCacheKey, persistedBootstrap);
+        updateLoadingStatus({
+          label: "Using cached dashboard",
+          detail: "Rendering the last saved shell while refreshing in the background",
+          percent: 16
+        });
       }
     }
 
@@ -720,6 +896,13 @@ export function App() {
 
     const controller = new AbortController();
     const hasCachedPage = routePageCacheRef.current.has(routePageCacheKey);
+    if (!hasCachedPage) {
+      updateLoadingStatus({
+        label: "Preparing current page",
+        detail: routePageRequest.path,
+        percent: 84
+      });
+    }
     const finishBootstrapLoad = hasCachedPage ? null : beginBootstrapLoad();
 
     void fetchRoutePageData(routePageRequest, { signal: controller.signal })
@@ -736,6 +919,7 @@ export function App() {
         }
 
         setRoutePageData(null);
+        reportLoadingIssue("Page load failed", error);
       })
       .finally(() => finishBootstrapLoad?.());
 
@@ -743,7 +927,7 @@ export function App() {
       controller.abort();
       finishBootstrapLoad?.();
     };
-  }, [beginBootstrapLoad, fetchRoutePageData, hasBootstrap, routePageCacheKey, routePageRequest]);
+  }, [beginBootstrapLoad, fetchRoutePageData, hasBootstrap, reportLoadingIssue, routePageCacheKey, routePageRequest, updateLoadingStatus]);
 
   const view = useMemo(
     () => bootstrap?.views.find((item) => item.id === selectedViewId) ?? null,
@@ -1124,6 +1308,7 @@ export function App() {
         <section className="panel">
           <p>{messages.common.bootstrapErrorTitle}</p>
           <p>{bootstrapError}</p>
+          {loadingStatus.issue ? <p className="app-loading-issue-inline">{loadingStatus.issue}</p> : null}
         </section>
       </main>
     );
@@ -1133,7 +1318,7 @@ export function App() {
     return (
       <main className="shell">
         <EnvironmentBanner environment={appEnvironment} />
-        <AppLoadingPanel />
+        <AppLoadingPanel status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />
       </main>
     );
   }
@@ -1702,7 +1887,7 @@ export function App() {
       ) : null}
 
       <section className="grid app-route-grid" aria-busy={isBootstrapLoading ? "true" : "false"}>
-        <Suspense fallback={<RouteChunkLoadingFallback />}>
+        <Suspense fallback={<RouteChunkLoadingFallback status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />}>
           <Routes>
             <Route path="/" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
             <Route path="/entries/by-id/:entryId" element={<EntryDeepLinkRoute />} />
@@ -1798,7 +1983,7 @@ export function App() {
             <Route path="*" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
           </Routes>
         </Suspense>
-        {isBootstrapLoading ? <AppLoadingOverlay /> : null}
+        {isBootstrapLoading ? <AppLoadingOverlay status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} /> : null}
       </section>
 
       {loginRegistrationDraft ? (
@@ -1892,29 +2077,51 @@ function isPlaceholderPersonName(name) {
   return ["primary", "partner"].includes(String(name ?? "").trim().toLowerCase());
 }
 
-function AppLoadingPanel() {
-  return (
-    <section className="panel app-loading-panel" role="status" aria-live="polite">
-      <span className="app-spinner" aria-hidden="true" />
-      <p>{messages.common.loading}</p>
-    </section>
-  );
-}
+function AppLoadingStatusText({ status, elapsedSeconds, compact = false }) {
+  const percentText = typeof status?.percent === "number" ? `${Math.max(0, Math.min(100, Math.round(status.percent)))}%` : null;
+  const elapsedText = elapsedSeconds > 0 ? `${elapsedSeconds}s` : null;
+  const meta = [percentText, elapsedText].filter(Boolean).join(" · ");
 
-function AppLoadingOverlay() {
   return (
-    <div className="app-loading-overlay" role="status" aria-live="polite">
-      <span className="app-spinner" aria-hidden="true" />
-      <span>{messages.common.loadingLatest}</span>
+    <div className={`app-loading-status ${compact ? "is-compact" : ""}`}>
+      <small>{[status?.detail, meta].filter(Boolean).join(" · ")}</small>
+      {status?.issue ? <small className="is-error">{status.issue}</small> : null}
     </div>
   );
 }
 
-function RouteChunkLoadingFallback() {
+function AppLoadingPanel({ status, elapsedSeconds }) {
+  return (
+    <section className="panel app-loading-panel" role="status" aria-live="polite">
+      <div className="app-loading-main">
+        <span className="app-spinner" aria-hidden="true" />
+        <p>{messages.common.loading}</p>
+      </div>
+      <AppLoadingStatusText status={status} elapsedSeconds={elapsedSeconds} />
+    </section>
+  );
+}
+
+function AppLoadingOverlay({ status, elapsedSeconds }) {
+  return (
+    <div className="app-loading-overlay" role="status" aria-live="polite">
+      <div className="app-loading-overlay-main">
+        <span className="app-spinner" aria-hidden="true" />
+        <span>{messages.common.loadingLatest}</span>
+      </div>
+      <AppLoadingStatusText status={status} elapsedSeconds={elapsedSeconds} compact />
+    </div>
+  );
+}
+
+function RouteChunkLoadingFallback({ status, elapsedSeconds }) {
   return (
     <section className="panel app-loading-panel route-loading-panel" role="status" aria-live="polite">
-      <span className="app-spinner" aria-hidden="true" />
-      <p>{messages.common.loading}</p>
+      <div className="app-loading-main">
+        <span className="app-spinner" aria-hidden="true" />
+        <p>{messages.common.loading}</p>
+      </div>
+      <AppLoadingStatusText status={status} elapsedSeconds={elapsedSeconds} />
     </section>
   );
 }
