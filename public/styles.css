@@ -7903,6 +7903,10 @@ th {
     margin-top: 18px;
   }
 
+  .mobile-context-dialog-section:last-child {
+    margin-bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  }
+
   .mobile-context-dialog-section-title {
     font-size: 0.82rem;
     color: var(--muted);
