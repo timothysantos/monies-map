@@ -227,6 +227,17 @@ function clearPersistedBootstrap() {
   } catch {}
 }
 
+function broadcastBootstrapRefresh(syncChannelRef) {
+  const payload = { type: "bootstrap-refresh", ts: Date.now() };
+  try {
+    syncChannelRef.current?.postMessage(payload);
+  } catch {}
+
+  try {
+    window.localStorage.setItem(BOOTSTRAP_SYNC_STORAGE_KEY, JSON.stringify(payload));
+  } catch {}
+}
+
 function canUseBootstrapRouteForTab(tabId, {
   bootstrapMonth,
   bootstrapScope,
@@ -677,15 +688,7 @@ export function App() {
         return data;
       }
 
-      const payload = { type: "bootstrap-refresh", ts: Date.now() };
-      try {
-        syncChannelRef.current?.postMessage(payload);
-      } catch {}
-
-      try {
-        window.localStorage.setItem(BOOTSTRAP_SYNC_STORAGE_KEY, JSON.stringify(payload));
-      } catch {}
-
+      broadcastBootstrapRefresh(syncChannelRef);
       return data;
     } finally {
       finishBootstrapLoad();
@@ -826,6 +829,31 @@ export function App() {
       refreshBootstrapInBackground().catch(() => null)
     ]);
     setRoutePageData(data);
+    return data;
+  }, [fetchRoutePageData, refreshBootstrapInBackground, selectedMonth, selectedScope, selectedViewId]);
+
+  const refreshCurrentImportsPage = useCallback(async ({ broadcast = false, refreshShell = false } = {}) => {
+    const request = buildRoutePageRequest({
+      tabId: "imports",
+      viewId: selectedViewId,
+      month: selectedMonth,
+      scope: selectedScope
+    });
+    if (!request) {
+      return null;
+    }
+
+    const tasks = [fetchRoutePageData(request, { bypassCache: true })];
+    if (refreshShell) {
+      tasks.push(refreshBootstrapInBackground().catch(() => null));
+    }
+    const [data] = await Promise.all(tasks);
+    setRoutePageData(data);
+
+    if (broadcast) {
+      broadcastBootstrapRefresh(syncChannelRef);
+    }
+
     return data;
   }, [fetchRoutePageData, refreshBootstrapInBackground, selectedMonth, selectedScope, selectedViewId]);
 
@@ -2200,7 +2228,7 @@ export function App() {
                   accounts={bootstrap.accounts}
                   categories={categories}
                   people={bootstrap.household.people}
-                  onRefresh={(options) => refreshRoutePage(options)}
+                  onRefresh={(options) => refreshCurrentImportsPage(options)}
                 />
               )}
             />
