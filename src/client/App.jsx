@@ -1443,15 +1443,16 @@ export function App() {
     shared: "Shared",
     direct_plus_shared: "Direct+Shared"
   };
+  const selectedViewSupportsScope = selectedViewId !== "household";
   const mobileContextScopes = stickyScopeConfig ? pageView?.monthPage.scopes ?? [] : [];
   const selectedMobileScope = stickyScopeConfig
     ? mobileContextScopes.find((scope) => scope.key === stickyScopeConfig.selectedKey) ?? null
     : null;
-  const mobileContextSummary = selectedMobileScope
+  const mobileContextSummary = selectedViewSupportsScope && selectedMobileScope
     ? `${pageView?.label ?? ""} · ${mobileScopeLabels[selectedMobileScope.key] ?? selectedMobileScope.label}`
     : pageView?.label ?? "";
   const showMobileContextSticky = Boolean(stickyScopeConfig);
-  const showMobileContextScopeSection = Boolean(stickyScopeConfig) && mobileContextScopes.length > 1;
+  const showMobileContextScopeSection = Boolean(stickyScopeConfig) && selectedViewSupportsScope && mobileContextScopes.length > 1;
 
   useEffect(() => {
     if (!showMobileContextSticky && mobileContextOpen) {
@@ -2005,8 +2006,14 @@ export function App() {
                 <button type="button" className="mobile-context-trigger" aria-label={stickyScopeConfig.label}>
                   <span className="mobile-context-trigger-copy">
                     <span className="mobile-context-trigger-label">{mobileContextSummary}</span>
-                    <span className="mobile-context-trigger-divider" aria-hidden="true">|</span>
-                    <span className="mobile-context-trigger-hint">View and scope</span>
+                    {showMobileContextScopeSection ? (
+                      <>
+                        <span className="mobile-context-trigger-divider" aria-hidden="true">|</span>
+                        <span className="mobile-context-trigger-hint">View and scope</span>
+                      </>
+                    ) : (
+                      <span className="mobile-context-trigger-hint">View</span>
+                    )}
                   </span>
                   <span className="mobile-context-trigger-caret" aria-hidden="true">▾</span>
                 </button>
