@@ -11,22 +11,25 @@ async function reseedDemo(page) {
   let lastText = "";
   let lastOk = false;
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const response = await page.request.post("/api/demo/reseed");
-    lastOk = response.ok();
-    lastText = await response.text();
-    if (lastOk) {
-      return;
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    try {
+      const response = await page.request.post("/api/demo/reseed");
+      lastOk = response.ok();
+      lastText = await response.text();
+      if (lastOk) {
+        return;
+      }
+    } catch (error) {
+      lastOk = false;
+      lastText = String(error?.message ?? error);
     }
-    if (
-      !lastText.includes("worker restarted mid-request")
-      && !lastText.includes("UNIQUE constraint failed: households.id")
-    ) {
-      break;
+
+    if (attempt < 9) {
+      await new Promise((resolve) => setTimeout(resolve, 750));
     }
   }
 
-  expect(lastOk, lastText).toBeTruthy();
+  throw new Error(lastText || "Failed to reseed demo data.");
 }
 
 async function loadMonthPageData(page, { view = "person-tim", month = "2026-04", scope = "direct_plus_shared" } = {}) {

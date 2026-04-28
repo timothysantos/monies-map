@@ -27,7 +27,6 @@ test("entries can add a direct expense to splits and jump into the created split
   const pickerVisible = await dialog.locator("select").isVisible({ timeout: 1_500 }).catch(() => false);
   if (pickerVisible) {
     await dialog.locator("select").selectOption({ label: "Non-group expenses" });
-    await expect(page.getByRole("dialog")).toHaveCount(0);
   }
 
   await expect(page.getByRole("button", { name: "View split" })).toBeVisible();

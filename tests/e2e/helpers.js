@@ -4,22 +4,25 @@ export async function reseedDemo(page) {
   let lastText = "";
   let lastOk = false;
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const response = await page.request.post("/api/demo/reseed");
-    lastOk = response.ok();
-    lastText = await response.text();
-    if (lastOk) {
-      return;
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    try {
+      const response = await page.request.post("/api/demo/reseed");
+      lastOk = response.ok();
+      lastText = await response.text();
+      if (lastOk) {
+        return;
+      }
+    } catch (error) {
+      lastOk = false;
+      lastText = String(error?.message ?? error);
     }
-    if (
-      !lastText.includes("worker restarted mid-request")
-      && !lastText.includes("UNIQUE constraint failed: households.id")
-    ) {
-      break;
+
+    if (attempt < 9) {
+      await new Promise((resolve) => setTimeout(resolve, 750));
     }
   }
 
-  expect(lastOk, lastText).toBeTruthy();
+  throw new Error(lastText || "Failed to reseed demo data.");
 }
 
 export async function postJson(page, path, body) {
@@ -56,6 +59,29 @@ export async function loadSplitsPage(page, { view = "person-tim", month = "2025-
 
 export async function loadEntriesPage(page, { view = "person-tim", month = "2026-04" } = {}) {
   const response = await page.request.get(`/api/entries-page?view=${view}&month=${month}`);
+  expect(response.ok(), await response.text()).toBeTruthy();
+  return response.json();
+}
+
+export async function loadMonthPage(page, { view = "person-tim", month = "2026-04", scope = "direct_plus_shared" } = {}) {
+  const response = await page.request.get(`/api/month-page?view=${view}&month=${month}&scope=${scope}`);
+  expect(response.ok(), await response.text()).toBeTruthy();
+  return response.json();
+}
+
+export async function loadSummaryPage(
+  page,
+  {
+    view = "person-tim",
+    month = "2026-04",
+    scope = "direct_plus_shared",
+    summaryStart = "2025-06",
+    summaryEnd = "2026-04"
+  } = {}
+) {
+  const response = await page.request.get(
+    `/api/summary-page?view=${view}&month=${month}&scope=${scope}&summary_start=${summaryStart}&summary_end=${summaryEnd}`
+  );
   expect(response.ok(), await response.text()).toBeTruthy();
   return response.json();
 }
