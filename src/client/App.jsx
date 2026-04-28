@@ -857,7 +857,23 @@ export function App() {
     return data;
   }, [fetchRoutePageData, refreshBootstrapInBackground, selectedMonth, selectedScope, selectedViewId]);
 
-  const refreshCurrentSplitsPage = useCallback(async ({ broadcast = false, refreshShell = false } = {}) => {
+  const clearRoutePageCacheByPredicate = useCallback((predicate) => {
+    queryClient.cancelQueries({ predicate });
+    queryClient.removeQueries({ predicate });
+  }, [queryClient]);
+
+  const clearEntriesPageCacheByPredicate = useCallback((predicate) => {
+    queryClient.cancelQueries({ predicate });
+    queryClient.removeQueries({ predicate });
+  }, [queryClient]);
+
+  const refreshCurrentSplitsPage = useCallback(async ({
+    broadcast = false,
+    refreshShell = false,
+    invalidateEntries = false,
+    invalidateMonth = false,
+    invalidateSummary = false
+  } = {}) => {
     const request = buildRoutePageRequest({
       tabId: "splits",
       viewId: selectedViewId,
@@ -866,6 +882,29 @@ export function App() {
     });
     if (!request) {
       return null;
+    }
+
+    if (invalidateEntries) {
+      clearEntriesPageCacheByPredicate((query) => (
+        query.queryKey?.[0] === "entries-page"
+        && query.queryKey?.[1]?.month === selectedMonth
+      ));
+    }
+
+    if (invalidateMonth) {
+      clearRoutePageCacheByPredicate((query) => (
+        query.queryKey?.[0] === "route-page"
+        && query.queryKey?.[1]?.path === "/api/month-page"
+        && query.queryKey?.[1]?.params?.month === selectedMonth
+      ));
+    }
+
+    if (invalidateSummary) {
+      clearRoutePageCacheByPredicate((query) => (
+        query.queryKey?.[0] === "route-page"
+        && query.queryKey?.[1]?.path === "/api/summary-page"
+        && query.queryKey?.[1]?.params?.month === selectedMonth
+      ));
     }
 
     const tasks = [fetchRoutePageData(request, { bypassCache: true })];
@@ -880,7 +919,15 @@ export function App() {
     }
 
     return data;
-  }, [fetchRoutePageData, refreshBootstrapInBackground, selectedMonth, selectedScope, selectedViewId]);
+  }, [
+    clearEntriesPageCacheByPredicate,
+    clearRoutePageCacheByPredicate,
+    fetchRoutePageData,
+    refreshBootstrapInBackground,
+    selectedMonth,
+    selectedScope,
+    selectedViewId
+  ]);
 
   const syncBootstrapAfterMutation = useCallback(async () => {
     await refreshBootstrapInBackground();

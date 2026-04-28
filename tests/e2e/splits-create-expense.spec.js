@@ -9,6 +9,7 @@ test("creating a split expense shows the row immediately and persists it", async
   await page.goto("/");
   await reseedDemo(page);
   await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
+  await expect(page.getByRole("heading", { name: "Splits" })).toBeVisible();
 
   await page.locator("article.panel-splits").getByRole("button", { name: "+ Add expense" }).click();
   const dialog = page.getByRole("dialog");

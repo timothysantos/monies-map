@@ -240,7 +240,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setIsSubmitting(true);
     try {
       const data = await createSplitGroup(groupDialog);
-      await onRefresh();
+      await onRefresh({ refreshShell: true, broadcast: true });
       setGroupDialog(null);
       updateSplitView({ groupId: data.groupId, mode: "entries" });
     } catch (error) {
@@ -277,7 +277,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         };
       });
       closeExpenseDialog();
-      refreshAfterSplitMutation({ refreshShell: true, broadcast: true });
+      refreshAfterSplitMutation();
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -312,7 +312,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         };
       });
       closeSettlementDialog();
-      refreshAfterSplitMutation({ refreshShell: true, broadcast: true });
+      refreshAfterSplitMutation();
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -325,7 +325,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     try {
       await linkSplitMatch(match);
       applyOptimisticSplitsPage((currentPage) => applyOptimisticSplitMatch(currentPage, match));
-      refreshAfterSplitMutation({ refreshShell: true, broadcast: true });
+      refreshAfterSplitMutation(match.kind === "expense"
+        ? { invalidateEntries: true, invalidateMonth: true, invalidateSummary: true }
+        : undefined);
     } finally {
       setIsSubmitting(false);
     }
@@ -382,7 +384,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         });
       }
       clearInlineSplitDraft();
-      refreshAfterSplitMutation({ refreshShell: true, broadcast: true });
+      refreshAfterSplitMutation();
     } catch (error) {
       setInlineSplitError(error.message);
     } finally {
@@ -440,7 +442,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         setInlineSplitError("");
         setInlineSplitDraft(null);
       }
-      refreshAfterSplitMutation({ refreshShell: true, broadcast: true });
+      refreshAfterSplitMutation();
     } catch (error) {
       setFormError(error.message);
     } finally {
