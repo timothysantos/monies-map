@@ -330,12 +330,12 @@ export function App() {
   ]);
   const bootstrapParams = useMemo(
     () => buildBootstrapParams({
-      month: bootstrapMonth,
-      scope: bootstrapScope,
-      summaryStart: bootstrapSummaryStart,
-      summaryEnd: bootstrapSummaryEnd
+      month: selectedMonth,
+      scope: selectedScope,
+      summaryStart: selectedSummaryStart,
+      summaryEnd: selectedSummaryEnd
     }),
-    [bootstrapMonth, bootstrapScope, bootstrapSummaryEnd, bootstrapSummaryStart]
+    [selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart]
   );
   const bootstrapCacheKey = bootstrapParams.toString();
   const routePageRequest = useMemo(
@@ -1257,9 +1257,16 @@ export function App() {
     }
 
     const summaryMonths = pageView.summaryPage.availableMonths;
+    const hasExplicitSummaryRange = Boolean(selectedSummaryStart || selectedSummaryEnd);
+    const focus = searchParams.get("summary_focus");
+    const hasInvalidFocus = Boolean(focus && focus !== SUMMARY_FOCUS_OVERALL && !summaryMonths.includes(focus));
     const startIsValid = selectedSummaryStart && summaryMonths.includes(selectedSummaryStart);
     const endIsValid = selectedSummaryEnd && summaryMonths.includes(selectedSummaryEnd);
-    if (startIsValid && endIsValid && selectedSummaryStart <= selectedSummaryEnd) {
+    if (!hasExplicitSummaryRange && !hasInvalidFocus) {
+      return;
+    }
+
+    if (startIsValid && endIsValid && selectedSummaryStart <= selectedSummaryEnd && !hasInvalidFocus) {
       return;
     }
 
@@ -1270,13 +1277,13 @@ export function App() {
       const next = new URLSearchParams(current);
       next.set("summary_start", startMonth);
       next.set("summary_end", resolvedEndMonth);
-      const focus = next.get("summary_focus");
-      if (focus && focus !== SUMMARY_FOCUS_OVERALL && !summaryMonths.includes(focus)) {
+      const nextFocus = next.get("summary_focus");
+      if (nextFocus && nextFocus !== SUMMARY_FOCUS_OVERALL && !summaryMonths.includes(nextFocus)) {
         next.delete("summary_focus");
       }
       return next;
     }, { replace: true });
-  }, [isDetailMonthTab, pageView, selectedSummaryEnd, selectedSummaryStart, setSearchParams]);
+  }, [isDetailMonthTab, pageView, searchParams, selectedSummaryEnd, selectedSummaryStart, setSearchParams]);
 
   useEffect(() => {
     if (isDetailMonthTab || !pageView) {

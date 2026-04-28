@@ -589,12 +589,20 @@ async function loadPlannedSummaryMonthsForViews(
   const monthPlanRowsByMonth = new Map(
     await Promise.all(uniqueMonths.map(async (month) => [month, await loadMonthPlanRows(db, month)]))
   );
+  const incomeRowsByViewMonth = new Map(
+    await Promise.all(
+      uniqueViewIds.flatMap((viewId) => uniqueMonths.map(async (month) => ([
+        `${viewId}:${month}`,
+        await loadMonthIncomeRows(db, viewId, month)
+      ])))
+    )
+  );
   const result = Object.fromEntries(uniqueViewIds.map((viewId) => [viewId, [] as SummaryMonthDto[]]));
 
   for (const viewId of uniqueViewIds) {
     for (const month of uniqueMonths) {
       const monthPlanRows = monthPlanRowsByMonth.get(month) ?? [];
-      const incomeRows = await loadMonthIncomeRows(db, viewId, month);
+      const incomeRows = incomeRowsByViewMonth.get(`${viewId}:${month}`) ?? [];
       const visibleRows = buildPlanRowsForView(monthPlanRows, viewId);
       if (!visibleRows.length && !incomeRows.length) {
         continue;
