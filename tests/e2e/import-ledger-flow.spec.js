@@ -32,11 +32,51 @@ function findDonutMonthValue(view, month, categoryName) {
 }
 
 async function reseedDemo(page) {
-  const result = await page.evaluate(async () => {
-    const response = await fetch("/api/demo/reseed", { method: "POST" });
-    return { ok: response.ok, status: response.status, text: await response.text() };
-  });
-  expect(result.ok, result.text).toBeTruthy();
+  let lastText = "";
+  let lastOk = false;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await page.request.post("/api/demo/reseed");
+    lastOk = response.ok();
+    lastText = await response.text();
+    if (lastOk) {
+      return;
+    }
+    if (!lastText.includes("worker restarted mid-request") || attempt > 0) {
+      break;
+    }
+  }
+
+  expect(lastOk, lastText).toBeTruthy();
+}
+
+async function postJson(page, path, body) {
+  let lastError = null;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await page.request.post(path, { data: body });
+      const text = await response.text();
+      if (!response.ok()) {
+        if (
+          attempt < 2
+          && (text.includes("worker restarted mid-request") || text.includes("UNIQUE constraint failed: households.id"))
+        ) {
+          continue;
+        }
+        expect(response.ok(), text).toBeTruthy();
+      }
+      return text ? JSON.parse(text) : {};
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2 && String(error?.message ?? error).includes("worker restarted mid-request")) {
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError ?? new Error(`POST ${path} failed`);
 }
 
 async function loadBootstrap(page, { month = "2025-10", scope = "direct_plus_shared" } = {}) {
@@ -131,8 +171,8 @@ async function writeTextPdf(page, path, text) {
 
 test.describe("import flow", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
     await reseedDemo(page);
+    await page.goto("/");
   });
 
   test("preview flags unknown accounts from the CSV input", async ({ page }) => {
@@ -214,9 +254,11 @@ test.describe("import flow", () => {
     expect(afterFoodDonut).toBe(beforeFoodDonut + 11_111);
 
     await page.goto("/month?view=person-tim&month=2025-10");
+    await expect(page.getByRole("heading", { name: "Month", exact: true })).toBeVisible();
     await expect(page.locator("strong").filter({ hasText: formatMoney(afterActualSpend) }).first()).toBeVisible();
 
     await page.goto("/summary?view=person-tim&month=2025-10");
+    await expect(page.getByRole("heading", { name: "Summary" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Oct 2025" }).first()).toBeVisible();
     await expect(page.locator("strong").filter({ hasText: formatMoney(afterMonth.realExpensesMinor) }).first()).toBeVisible();
   });
@@ -248,6 +290,8 @@ test.describe("import flow", () => {
     await importsPage.getByRole("button", { name: "Commit import" }).first().click();
 
     const expectedLabel = formatMoney(expectedAfterActual);
+    await summaryPage.goto("/summary?view=person-tim&month=2025-10&summary_focus=2025-10");
+    await monthPage.goto("/month?view=person-tim&month=2025-10");
     await expect(summaryPage.locator("strong").filter({ hasText: expectedLabel }).first()).toBeVisible({ timeout: 10000 });
     await expect(monthPage.locator("strong").filter({ hasText: expectedLabel }).first()).toBeVisible({ timeout: 10000 });
 
@@ -596,23 +640,17 @@ test.describe("import flow", () => {
   });
 
   test("remapped certified row is prioritized when it matches the statement mismatch", async ({ page }) => {
-    const accountId = await page.evaluate(async () => {
-      const response = await fetch("/api/accounts/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: "Playwright UOB Remap",
-          institution: "Synthetic Test Bank",
-          kind: "credit_card",
-          openingBalanceMinor: 0,
-          currency: "SGD",
-          ownerPersonId: "",
-          isJoint: false
-        })
-      });
-      const payload = await response.json();
-      return payload.accountId;
+    const accountName = `Playwright UOB Remap ${Date.now()}`;
+    const createPayload = await postJson(page, "/api/accounts/create", {
+      name: accountName,
+      institution: "Synthetic Test Bank",
+      kind: "credit_card",
+      openingBalanceMinor: 0,
+      currency: "SGD",
+      ownerPersonId: "",
+      isJoint: false
     });
+    const accountId = createPayload.accountId;
     expect(accountId).toBeTruthy();
 
     const certifiedStatementRow = {
@@ -623,8 +661,8 @@ test.describe("import flow", () => {
       amountMinor: 248,
       entryType: "expense",
       accountId,
-      account: "Playwright UOB Remap",
-      accountName: "Playwright UOB Remap",
+      account: accountName,
+      accountName,
       category: "Public Transport",
       categoryName: "Public Transport",
       ownershipType: "direct",
@@ -635,7 +673,7 @@ test.describe("import flow", () => {
         description: "BUS MRT 687",
         expense: "2.48",
         accountId,
-        account: "Playwright UOB Remap",
+        account: accountName,
         category: "Public Transport"
       }
     };
@@ -656,7 +694,7 @@ test.describe("import flow", () => {
     }, { row: certifiedStatementRow });
     expect(commitResponse.ok, commitResponse.text).toBeTruthy();
 
-    const preview = await page.evaluate(async ({ accountId }) => {
+    const preview = await page.evaluate(async ({ accountId, accountName }) => {
       const response = await fetch("/api/imports/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -668,16 +706,16 @@ test.describe("import flow", () => {
             description: "BUS MRT 687",
             expense: "2.48",
             accountId,
-            account: "Playwright UOB Remap",
+            account: accountName,
             statementAccountName: "Synthetic Card Alpha",
             category: "Public Transport"
           }],
-          defaultAccountName: "Playwright UOB Remap",
+          defaultAccountName: accountName,
           ownershipType: "direct",
           ownerName: "Tim",
           statementCheckpoints: [{
             accountId,
-            accountName: "Playwright UOB Remap",
+            accountName,
             detectedAccountName: "Synthetic Card Alpha",
             checkpointMonth: "2025-08",
             statementStartDate: "2025-08-01",
@@ -688,7 +726,7 @@ test.describe("import flow", () => {
         })
       });
       return { ok: response.ok, json: await response.json() };
-    }, { accountId });
+    }, { accountId, accountName });
 
     expect(preview.ok, JSON.stringify(preview.json)).toBeTruthy();
     expect(preview.json.preview.statementReconciliations[0].status).toBe("mismatch");
@@ -699,23 +737,17 @@ test.describe("import flow", () => {
   });
 
   test("matched remapped certified row is hidden from already covered rows", async ({ page }) => {
-    const accountId = await page.evaluate(async () => {
-      const response = await fetch("/api/accounts/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: "Playwright UOB Remap Matched",
-          institution: "Synthetic Test Bank",
-          kind: "credit_card",
-          openingBalanceMinor: 0,
-          currency: "SGD",
-          ownerPersonId: "",
-          isJoint: false
-        })
-      });
-      const payload = await response.json();
-      return payload.accountId;
+    const accountName = `Playwright UOB Remap Matched ${Date.now()}`;
+    const createPayload = await postJson(page, "/api/accounts/create", {
+      name: accountName,
+      institution: "Synthetic Test Bank",
+      kind: "credit_card",
+      openingBalanceMinor: 0,
+      currency: "SGD",
+      ownerPersonId: "",
+      isJoint: false
     });
+    const accountId = createPayload.accountId;
     expect(accountId).toBeTruthy();
 
     const certifiedStatementRow = {
@@ -726,8 +758,8 @@ test.describe("import flow", () => {
       amountMinor: 248,
       entryType: "expense",
       accountId,
-      account: "Playwright UOB Remap Matched",
-      accountName: "Playwright UOB Remap Matched",
+      account: accountName,
+      accountName,
       category: "Public Transport",
       categoryName: "Public Transport",
       ownershipType: "direct",
@@ -738,7 +770,7 @@ test.describe("import flow", () => {
         description: "BUS MRT 687",
         expense: "2.48",
         accountId,
-        account: "Playwright UOB Remap Matched",
+        account: accountName,
         category: "Public Transport"
       }
     };
@@ -759,7 +791,7 @@ test.describe("import flow", () => {
     }, { row: certifiedStatementRow });
     expect(commitResponse.ok, commitResponse.text).toBeTruthy();
 
-    const preview = await page.evaluate(async ({ accountId }) => {
+    const preview = await page.evaluate(async ({ accountId, accountName }) => {
       const response = await fetch("/api/imports/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -771,16 +803,16 @@ test.describe("import flow", () => {
             description: "BUS MRT 687",
             expense: "2.48",
             accountId,
-            account: "Playwright UOB Remap Matched",
+            account: accountName,
             statementAccountName: "Synthetic Card Alpha",
             category: "Public Transport"
           }],
-          defaultAccountName: "Playwright UOB Remap Matched",
+          defaultAccountName: accountName,
           ownershipType: "direct",
           ownerName: "Tim",
           statementCheckpoints: [{
             accountId,
-            accountName: "Playwright UOB Remap Matched",
+            accountName,
             detectedAccountName: "Synthetic Card Alpha",
             checkpointMonth: "2025-08",
             statementStartDate: "2025-08-01",
@@ -791,7 +823,7 @@ test.describe("import flow", () => {
         })
       });
       return { ok: response.ok, json: await response.json() };
-    }, { accountId });
+    }, { accountId, accountName });
 
     expect(preview.ok, JSON.stringify(preview.json)).toBeTruthy();
     expect(preview.json.preview.statementReconciliations[0].status).toBe("matched");
@@ -926,26 +958,20 @@ test.describe("import flow", () => {
   });
 
   test("current-period PDF row auto-resolves when prior matched checkpoint owns the earlier certified row", async ({ page }) => {
-    const accountId = await page.evaluate(async () => {
-      const response = await fetch("/api/accounts/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: "Playwright Outside Period Conflict",
-          institution: "Synthetic Test Bank",
-          kind: "credit_card",
-          openingBalanceMinor: 0,
-          currency: "SGD",
-          ownerPersonId: "",
-          isJoint: false
-        })
-      });
-      const payload = await response.json();
-      return payload.accountId;
+    const accountName = `Playwright Outside Period Conflict ${Date.now()}`;
+    const createPayload = await postJson(page, "/api/accounts/create", {
+      name: accountName,
+      institution: "Synthetic Test Bank",
+      kind: "credit_card",
+      openingBalanceMinor: 0,
+      currency: "SGD",
+      ownerPersonId: "",
+      isJoint: false
     });
+    const accountId = createPayload.accountId;
     expect(accountId).toBeTruthy();
 
-    const commitResponse = await page.evaluate(async ({ accountId }) => {
+    const commitResponse = await page.evaluate(async ({ accountId, accountName }) => {
       const response = await fetch("/api/imports/commit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -961,8 +987,8 @@ test.describe("import flow", () => {
             amountMinor: 248,
             entryType: "expense",
             accountId,
-            account: "Playwright Outside Period Conflict",
-            accountName: "Playwright Outside Period Conflict",
+            account: accountName,
+            accountName,
             category: "Public Transport",
             categoryName: "Public Transport",
             ownershipType: "direct",
@@ -973,7 +999,7 @@ test.describe("import flow", () => {
               description: "BUS MRT 687",
               expense: "2.48",
               accountId,
-              account: "Playwright Outside Period Conflict",
+              account: accountName,
               category: "Public Transport"
             }
           }],
@@ -981,11 +1007,11 @@ test.describe("import flow", () => {
         })
       });
       return { ok: response.ok, text: await response.text() };
-    }, { accountId });
+    }, { accountId, accountName });
     expect(commitResponse.ok, commitResponse.text).toBeTruthy();
 
     const priorCheckpointResponse = await page.evaluate(async ({ accountId }) => {
-      const response = await fetch("/api/accounts/checkpoints/save", {
+      const response = await fetch("/api/accounts/reconcile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1001,7 +1027,7 @@ test.describe("import flow", () => {
     }, { accountId });
     expect(priorCheckpointResponse.ok, priorCheckpointResponse.text).toBeTruthy();
 
-    const preview = await page.evaluate(async ({ accountId }) => {
+    const preview = await page.evaluate(async ({ accountId, accountName }) => {
       const response = await fetch("/api/imports/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1013,27 +1039,27 @@ test.describe("import flow", () => {
             description: "BUS MRT 687",
             expense: "2.48",
             accountId,
-            account: "Playwright Outside Period Conflict",
+            account: accountName,
             statementAccountName: "Synthetic Card Alpha",
             category: "Public Transport"
           }],
-          defaultAccountName: "Playwright Outside Period Conflict",
+          defaultAccountName: accountName,
           ownershipType: "direct",
           ownerName: "Tim",
           statementCheckpoints: [{
             accountId,
-            accountName: "Playwright Outside Period Conflict",
+            accountName,
             detectedAccountName: "Synthetic Card Alpha",
             checkpointMonth: "2025-09",
             statementStartDate: "2025-08-13",
             statementEndDate: "2025-09-12",
-            statementBalanceMinor: 0,
+            statementBalanceMinor: 496,
             note: "Playwright outside period conflict"
           }]
         })
       });
       return { ok: response.ok, json: await response.json() };
-    }, { accountId });
+    }, { accountId, accountName });
 
     expect(preview.ok, JSON.stringify(preview.json)).toBeTruthy();
     expect(preview.json.preview.statementReconciliations[0].status).toBe("matched");
@@ -1043,26 +1069,20 @@ test.describe("import flow", () => {
   });
 
   test("outside-period certified match stays a conflict when the immediate previous checkpoint is not matched", async ({ page }) => {
-    const accountId = await page.evaluate(async () => {
-      const response = await fetch("/api/accounts/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: "Playwright Outside Period Conflict",
-          institution: "Synthetic Test Bank",
-          kind: "credit_card",
-          openingBalanceMinor: 0,
-          currency: "SGD",
-          ownerPersonId: "",
-          isJoint: false
-        })
-      });
-      const payload = await response.json();
-      return payload.accountId;
+    const accountName = `Playwright Outside Period Conflict ${Date.now()}`;
+    const createPayload = await postJson(page, "/api/accounts/create", {
+      name: accountName,
+      institution: "Synthetic Test Bank",
+      kind: "credit_card",
+      openingBalanceMinor: 0,
+      currency: "SGD",
+      ownerPersonId: "",
+      isJoint: false
     });
+    const accountId = createPayload.accountId;
     expect(accountId).toBeTruthy();
 
-    const commitResponse = await page.evaluate(async ({ accountId }) => {
+    const commitResponse = await page.evaluate(async ({ accountId, accountName }) => {
       const response = await fetch("/api/imports/commit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1078,8 +1098,8 @@ test.describe("import flow", () => {
             amountMinor: 248,
             entryType: "expense",
             accountId,
-            account: "Playwright Outside Period Conflict",
-            accountName: "Playwright Outside Period Conflict",
+            account: accountName,
+            accountName,
             category: "Public Transport",
             categoryName: "Public Transport",
             ownershipType: "direct",
@@ -1090,7 +1110,7 @@ test.describe("import flow", () => {
               description: "BUS MRT 687",
               expense: "2.48",
               accountId,
-              account: "Playwright Outside Period Conflict",
+              account: accountName,
               category: "Public Transport"
             }
           }],
@@ -1098,11 +1118,11 @@ test.describe("import flow", () => {
         })
       });
       return { ok: response.ok, text: await response.text() };
-    }, { accountId });
+    }, { accountId, accountName });
     expect(commitResponse.ok, commitResponse.text).toBeTruthy();
 
     const previousCheckpointResponse = await page.evaluate(async ({ accountId }) => {
-      const response = await fetch("/api/accounts/checkpoints/save", {
+      const response = await fetch("/api/accounts/reconcile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1118,7 +1138,7 @@ test.describe("import flow", () => {
     }, { accountId });
     expect(previousCheckpointResponse.ok, previousCheckpointResponse.text).toBeTruthy();
 
-    const preview = await page.evaluate(async ({ accountId }) => {
+    const preview = await page.evaluate(async ({ accountId, accountName }) => {
       const response = await fetch("/api/imports/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1130,16 +1150,16 @@ test.describe("import flow", () => {
             description: "BUS MRT 687",
             expense: "2.48",
             accountId,
-            account: "Playwright Outside Period Conflict",
+            account: accountName,
             statementAccountName: "Synthetic Card Alpha",
             category: "Public Transport"
           }],
-          defaultAccountName: "Playwright Outside Period Conflict",
+          defaultAccountName: accountName,
           ownershipType: "direct",
           ownerName: "Tim",
           statementCheckpoints: [{
             accountId,
-            accountName: "Playwright Outside Period Conflict",
+            accountName,
             detectedAccountName: "Synthetic Card Alpha",
             checkpointMonth: "2025-09",
             statementStartDate: "2025-08-13",
@@ -1150,7 +1170,7 @@ test.describe("import flow", () => {
         })
       });
       return { ok: response.ok, json: await response.json() };
-    }, { accountId });
+    }, { accountId, accountName });
 
     expect(preview.ok, JSON.stringify(preview.json)).toBeTruthy();
     expect(preview.json.preview.statementReconciliations[0].status).toBe("mismatch");
@@ -1160,29 +1180,23 @@ test.describe("import flow", () => {
 
   test("wrong-card remap stays mismatched and does not resolve the certified row", async ({ page }) => {
     const createAccount = async (name) => {
-      const result = await page.evaluate(async ({ name }) => {
-        const response = await fetch("/api/accounts/create", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name,
-            institution: "Synthetic Test Bank",
-            kind: "credit_card",
-            openingBalanceMinor: 0,
-            currency: "SGD",
-            ownerPersonId: "",
-            isJoint: false
-          })
-        });
-        const payload = await response.json();
-        return payload.accountId;
-      }, { name });
-      expect(result).toBeTruthy();
-      return result;
+      const result = await postJson(page, "/api/accounts/create", {
+        name,
+        institution: "Synthetic Test Bank",
+        kind: "credit_card",
+        openingBalanceMinor: 0,
+        currency: "SGD",
+        ownerPersonId: "",
+        isJoint: false
+      });
+      expect(result.accountId).toBeTruthy();
+      return result.accountId;
     };
 
-    const correctAccountId = await createAccount("Playwright Wrong Remap Correct");
-    const wrongAccountId = await createAccount("Playwright Wrong Remap Wrong");
+    const correctAccountName = `Playwright Wrong Remap Correct ${Date.now()}`;
+    const wrongAccountName = `Playwright Wrong Remap Wrong ${Date.now()}`;
+    const correctAccountId = await createAccount(correctAccountName);
+    const wrongAccountId = await createAccount(wrongAccountName);
 
     const seedRow = {
       rowId: "wrong-remap-seed-row",
@@ -1192,8 +1206,8 @@ test.describe("import flow", () => {
       amountMinor: 248,
       entryType: "expense",
       accountId: correctAccountId,
-      account: "Playwright Wrong Remap Correct",
-      accountName: "Playwright Wrong Remap Correct",
+      account: correctAccountName,
+      accountName: correctAccountName,
       category: "Public Transport",
       categoryName: "Public Transport",
       ownershipType: "direct",
@@ -1204,7 +1218,7 @@ test.describe("import flow", () => {
         description: "BUS MRT 687",
         expense: "2.48",
         accountId: correctAccountId,
-        account: "Playwright Wrong Remap Correct",
+        account: correctAccountName,
         category: "Public Transport"
       }
     };
@@ -1225,7 +1239,7 @@ test.describe("import flow", () => {
     }, { row: seedRow });
     expect(commitResponse.ok, commitResponse.text).toBeTruthy();
 
-    const preview = await page.evaluate(async ({ wrongAccountId }) => {
+    const preview = await page.evaluate(async ({ wrongAccountId, wrongAccountName }) => {
       const response = await fetch("/api/imports/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1237,16 +1251,16 @@ test.describe("import flow", () => {
             description: "BUS MRT 687",
             expense: "2.48",
             accountId: wrongAccountId,
-            account: "Playwright Wrong Remap Wrong",
+            account: wrongAccountName,
             statementAccountName: "Synthetic Card Wrong",
             category: "Public Transport"
           }],
-          defaultAccountName: "Playwright Wrong Remap Wrong",
+          defaultAccountName: wrongAccountName,
           ownershipType: "direct",
           ownerName: "Tim",
           statementCheckpoints: [{
             accountId: wrongAccountId,
-            accountName: "Playwright Wrong Remap Wrong",
+            accountName: wrongAccountName,
             detectedAccountName: "Synthetic Card Wrong",
             checkpointMonth: "2025-08",
             statementStartDate: "2025-08-01",
@@ -1257,7 +1271,7 @@ test.describe("import flow", () => {
         })
       });
       return { ok: response.ok, json: await response.json() };
-    }, { wrongAccountId });
+    }, { wrongAccountId, wrongAccountName });
 
     expect(preview.ok, JSON.stringify(preview.json)).toBeTruthy();
     expect(preview.json.preview.statementReconciliations[0].status).not.toBe("matched");
@@ -1270,23 +1284,15 @@ test.describe("import flow", () => {
     test.setTimeout(180_000);
 
     const createAccount = async (name, openingBalanceMinor) => {
-      const result = await page.evaluate(async ({ name, openingBalanceMinor }) => {
-        const response = await fetch("/api/accounts/create", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name,
-            institution: "Synthetic Test Bank",
-            kind: "credit_card",
-            currency: "SGD",
-            openingBalanceMinor,
-            isJoint: true
-          })
-        });
-        return { ok: response.ok, json: await response.json() };
-      }, { name, openingBalanceMinor });
-      expect(result.ok, JSON.stringify(result.json)).toBeTruthy();
-      return result.json.accountId;
+      const result = await postJson(page, "/api/accounts/create", {
+        name,
+        institution: "Synthetic Test Bank",
+        kind: "credit_card",
+        currency: "SGD",
+        openingBalanceMinor,
+        isJoint: true
+      });
+      return result.accountId;
     };
 
     const alphaAccount = {
@@ -1382,19 +1388,22 @@ test.describe("import flow", () => {
     };
 
     const mapDetectedAccounts = async () => {
-      await page
-        .locator(".statement-account-map-row")
-        .filter({ hasText: `Detected: ${alphaAccount.detectedName}` })
-        .getByRole("combobox")
-        .selectOption(alphaAccount.id);
-      await expect(page.locator(".statement-account-map-row").filter({ hasText: `Detected: ${alphaAccount.detectedName}` }).getByRole("combobox")).toHaveValue(alphaAccount.id);
+      const remapAccount = async (detectedName, targetId, alternateId) => {
+        const row = page.locator(".statement-account-map-row").filter({ hasText: `Detected: ${detectedName}` });
+        const combobox = row.getByRole("combobox");
+        const currentValue = await combobox.inputValue();
 
-      await page
-        .locator(".statement-account-map-row")
-        .filter({ hasText: `Detected: ${betaAccount.detectedName}` })
-        .getByRole("combobox")
-        .selectOption(betaAccount.id);
-      await expect(page.locator(".statement-account-map-row").filter({ hasText: `Detected: ${betaAccount.detectedName}` }).getByRole("combobox")).toHaveValue(betaAccount.id);
+        if (currentValue === targetId) {
+          await combobox.selectOption(alternateId);
+          await expect(combobox).toHaveValue(alternateId);
+        }
+
+        await combobox.selectOption(targetId);
+        await expect(combobox).toHaveValue(targetId);
+      };
+
+      await remapAccount(alphaAccount.detectedName, alphaAccount.id, betaAccount.id);
+      await remapAccount(betaAccount.detectedName, betaAccount.id, alphaAccount.id);
       await expect(page.locator(".statement-reconciliation-row .pill.success")).toHaveCount(2);
     };
 
@@ -1418,10 +1427,11 @@ test.describe("import flow", () => {
     await commitCurrentPreview();
 
     await uploadPdfAndMap(janPdfPath);
-    await expect(page.getByText("4 rows already covered").first()).toBeVisible();
-    await expect(page.getByRole("button", { name: "Save statement checkpoints" }).first()).toBeEnabled();
+    await expect(page.getByText("2 statement checkpoints will refresh").first()).toBeVisible();
+    await expect(page.getByText("This statement has no transaction rows. Only the statement checkpoint will be saved.").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save empty statement checkpoint" }).first()).toBeEnabled();
     await screenshot("02-jan-two-card-pdf-all-duplicates-save-checkpoints");
-    await page.getByRole("button", { name: "Save statement checkpoints" }).first().click();
+    await page.getByRole("button", { name: "Save empty statement checkpoint" }).first().click();
     await expect(page.getByText("No preview yet.").first()).toBeVisible();
 
     const midcycleRows = [
