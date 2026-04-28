@@ -93,9 +93,9 @@ returns:
 - `openUrl`
 
 `openUrl` deep-links back into Entries with the created row already opened in
-the editor. It now uses a stable route of the form `/entries/by-id/:entryId`,
-and the app resolves the month and account context itself before redirecting to
-the normal Entries page.
+the editor. It now opens `/entries` directly with the created row plus the
+month, view, and wallet context already in the URL, so the shortcut avoids a
+separate lookup redirect before the normal Entries page can render.
 
 ### Security model for the shortcut endpoint
 
@@ -284,7 +284,7 @@ Expected response shape:
   "ok": true,
   "entryId": "txn-...",
   "created": true,
-  "openUrl": "https://monies-map.timsantos-accts.workers.dev/entries/by-id/txn-..."
+  "openUrl": "https://monies-map.timsantos-accts.workers.dev/entries?editing_entry=txn-...&month=2026-04&view=household"
 }
 ```
 

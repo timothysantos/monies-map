@@ -1,5 +1,6 @@
 import {
   buildBootstrapDto,
+  buildEntriesBootstrapDto,
   buildEntriesPageDto,
   buildImportsPageDto,
   buildMonthPageDto,
@@ -90,6 +91,18 @@ export default {
           (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared",
           url.searchParams.get("summary_start") ?? undefined,
           url.searchParams.get("summary_end") ?? undefined,
+          getAuthenticatedEmail(request),
+          getAppEnvironment(env, url)
+        )
+      );
+    }
+
+    if (url.pathname === "/api/entries-shell") {
+      return apiPageResponse("Entries shell", request, url, () =>
+        buildEntriesBootstrapDto(
+          env.DB,
+          url.searchParams.get("view") ?? "household",
+          url.searchParams.get("month") ?? getCurrentMonthKey(),
           getAuthenticatedEmail(request),
           getAppEnvironment(env, url)
         )
@@ -655,7 +668,11 @@ export default {
           splitBasisPoints: body.splitBasisPoints
         });
         const openUrl = buildShortcutEntryOpenUrl(request, {
-          entryId: created.entryId
+          entryId: created.entryId,
+          date: body.date,
+          viewId: body.view,
+          accountId: body.accountId,
+          accountName: body.accountName
         });
 
         return json({
@@ -1552,9 +1569,23 @@ function buildShortcutEntryOpenUrl(
   request: Request,
   input: {
     entryId: string;
+    date?: string;
+    viewId?: string;
+    accountId?: string;
+    accountName?: string;
   }
 ) {
-  const url = new URL(`/entries/by-id/${encodeURIComponent(input.entryId)}`, request.url);
+  const url = new URL("/entries", request.url);
+  url.searchParams.set("editing_entry", input.entryId);
+  if (input.date?.slice(0, 7)) {
+    url.searchParams.set("month", input.date.slice(0, 7));
+  }
+  url.searchParams.set("view", input.viewId || "household");
+  if (input.accountId) {
+    url.searchParams.set("entry_wallet", input.accountId);
+  } else if (input.accountName) {
+    url.searchParams.set("entry_wallet", input.accountName);
+  }
   return url.toString();
 }
 
