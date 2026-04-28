@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -22,6 +23,7 @@ import {
 } from "./entry-selectors";
 import { getVisibleSplitPercent } from "./entry-helpers";
 import { formatDateOnly, parseDraftMoneyInput } from "./formatters";
+import { queryKeys } from "./query-keys";
 import { buildRequestErrorMessage } from "./request-errors";
 import { deleteSplitExpense } from "./splits-api";
 
@@ -46,9 +48,9 @@ export function EntriesPanel({
   categories,
   people,
   onCategoryAppearanceChange,
-  onInvalidateBootstrapCache,
-  entriesPageCache
+  onInvalidateBootstrapCache
 }) {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showExpenseBreakdown, setShowExpenseBreakdown] = useState(false);
@@ -67,17 +69,10 @@ export function EntriesPanel({
   const [isMobileSplitPickerOpen, setIsMobileSplitPickerOpen] = useState(false);
   const [isMobileSplitSelectorOpen, setIsMobileSplitSelectorOpen] = useState(false);
   const [mobileSplitGroupId, setMobileSplitGroupId] = useState("");
-  const fallbackEntriesPageCacheRef = useRef(new Map());
-  const fallbackEntriesPageInflightRef = useRef(new Map());
-  const fallbackEntriesPageCacheVersionRef = useRef(0);
+  const entriesQueryEpochRef = useRef(0);
   const entriesPagePrefetchTimerRef = useRef(null);
   const handledQuickExpenseKeyRef = useRef("");
   const pendingQuickExpenseDraftRef = useRef(null);
-  const entriesPageCacheRefs = useMemo(() => entriesPageCache ?? {
-    cacheRef: fallbackEntriesPageCacheRef,
-    inflightRef: fallbackEntriesPageInflightRef,
-    versionRef: fallbackEntriesPageCacheVersionRef
-  }, [entriesPageCache]);
   const entriesPageParams = useMemo(
     () => buildEntriesPageParams({
       viewId: entriesSourceView.id,
@@ -99,56 +94,49 @@ export function EntriesPanel({
   );
 
   const clearEntriesPageCache = useCallback(() => {
-    if (entriesPageCache?.clear) {
-      entriesPageCache.clear();
-      return;
-    }
-    entriesPageCacheRefs.versionRef.current += 1;
-    entriesPageCacheRefs.cacheRef.current.clear();
-    entriesPageCacheRefs.inflightRef.current.clear();
-  }, [entriesPageCache, entriesPageCacheRefs]);
+    entriesQueryEpochRef.current += 1;
+    queryClient.cancelQueries({ queryKey: ["entries-page"] });
+    queryClient.removeQueries({ queryKey: ["entries-page"] });
+  }, [queryClient]);
 
   const fetchEntriesPage = useCallback(async (params, { bypassCache = false, signal } = {}) => {
-    const cacheKey = params.toString();
-    const cacheVersion = entriesPageCacheRefs.versionRef.current;
+    const queryKey = queryKeys.entriesPage(params);
     if (signal?.aborted) {
       throw new DOMException("Entries page request aborted.", "AbortError");
     }
 
-    if (!bypassCache && entriesPageCacheRefs.cacheRef.current.has(cacheKey)) {
-      return entriesPageCacheRefs.cacheRef.current.get(cacheKey);
-    }
-
-    if (!bypassCache && entriesPageCacheRefs.inflightRef.current.has(cacheKey)) {
-      const data = await entriesPageCacheRefs.inflightRef.current.get(cacheKey);
-      if (signal?.aborted) {
-        throw new DOMException("Entries page request aborted.", "AbortError");
+    if (!bypassCache) {
+      const cachedData = queryClient.getQueryData(queryKey);
+      if (cachedData) {
+        return cachedData;
       }
-      return data;
     }
 
-    const request = fetch(`/api/entries-page?${cacheKey}`, { cache: "no-store" })
-      .then(async (response) => {
+    const fetcher = async () => {
+      const response = await fetch(`/api/entries-page?${params.toString()}`, { cache: "no-store" });
         if (!response.ok) {
           throw new Error(await buildRequestErrorMessage(response, "Entries page failed."));
         }
-        const data = await response.json();
-        if (entriesPageCacheRefs.versionRef.current === cacheVersion) {
-          entriesPageCacheRefs.cacheRef.current.set(cacheKey, data);
-        }
-        return data;
-      })
-      .finally(() => {
-        entriesPageCacheRefs.inflightRef.current.delete(cacheKey);
-      });
+        return response.json();
+      };
 
-    entriesPageCacheRefs.inflightRef.current.set(cacheKey, request);
-    const data = await request;
-    if (signal?.aborted || entriesPageCacheRefs.versionRef.current !== cacheVersion) {
+    const data = bypassCache
+      ? await queryClient.fetchQuery({
+          queryKey,
+          queryFn: fetcher,
+          staleTime: 0
+        })
+      : await queryClient.ensureQueryData({
+          queryKey,
+          queryFn: fetcher,
+          revalidateIfStale: true
+        });
+
+    if (signal?.aborted) {
       throw new DOMException("Entries page request aborted.", "AbortError");
     }
     return data;
-  }, [entriesPageCacheRefs]);
+  }, [queryClient]);
 
   const refreshEntriesPage = useCallback(async ({ bypassCache = false, invalidateBootstrap = false } = {}) => {
     if (bypassCache) {
@@ -174,11 +162,11 @@ export function EntriesPanel({
     }
 
     setEntriesPage(initialPage);
-  }, [entriesPageCacheKey, entriesPageCacheRefs, entriesSourceView, selectedMonth]);
+  }, [entriesPageCacheKey, entriesSourceView, selectedMonth]);
 
   useEffect(() => {
     const controller = new AbortController();
-    const hasCachedPage = entriesPageCacheRefs.cacheRef.current.has(entriesPageCacheKey);
+    const hasCachedPage = Boolean(queryClient.getQueryData(queryKeys.entriesPage(entriesPageParams)));
     setIsEntriesPageLoading(!hasCachedPage);
 
     void fetchEntriesPage(entriesPageParams, { signal: controller.signal })
@@ -199,7 +187,7 @@ export function EntriesPanel({
     return () => {
       controller.abort();
     };
-  }, [entriesPageCacheKey, entriesPageParams, fetchEntriesPage]);
+  }, [entriesPageCacheKey, entriesPageParams, fetchEntriesPage, queryClient]);
 
   useEffect(() => {
     if (
@@ -212,7 +200,7 @@ export function EntriesPanel({
     }
 
     let isCancelled = false;
-    const entriesPageVersion = entriesPageCacheRefs.versionRef.current;
+    const entriesQueryEpoch = entriesQueryEpochRef.current;
 
     entriesPagePrefetchTimerRef.current = window.setTimeout(() => {
       const currentIndex = availableMonths.indexOf(selectedMonth);
@@ -222,7 +210,7 @@ export function EntriesPanel({
 
       void (async () => {
         for (const offset of [-1, 1]) {
-          if (isCancelled || entriesPageCacheRefs.versionRef.current !== entriesPageVersion) {
+          if (isCancelled || entriesQueryEpochRef.current !== entriesQueryEpoch) {
             return;
           }
           const adjacentMonth = availableMonths[currentIndex + offset];
@@ -244,7 +232,7 @@ export function EntriesPanel({
         entriesPagePrefetchTimerRef.current = null;
       }
     };
-  }, [availableMonths, entriesPageCacheRefs, entriesSourceView.id, fetchEntriesPage, selectedMonth]);
+  }, [availableMonths, entriesSourceView.id, fetchEntriesPage, selectedMonth]);
 
   const {
     entries,

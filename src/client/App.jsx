@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
@@ -25,6 +26,7 @@ import {
   describeBootstrapError
 } from "./request-errors";
 import { installMobileFocusVisibility } from "./mobile-focus-visibility";
+import { queryKeys } from "./query-keys";
 import { formatMonthLabel } from "./formatters";
 import { getCurrentMonthKey } from "../lib/month";
 
@@ -250,6 +252,7 @@ function canUseBootstrapRouteForTab(tabId, {
 }
 
 export function App() {
+  const queryClient = useQueryClient();
   const [bootstrap, setBootstrap] = useState(null);
   const [bootstrapError, setBootstrapError] = useState("");
   const [bootstrapLoadCount, setBootstrapLoadCount] = useState(0);
@@ -263,16 +266,8 @@ export function App() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const syncChannelRef = useRef(null);
-  const bootstrapCacheRef = useRef(new Map());
-  const bootstrapInflightRef = useRef(new Map());
-  const bootstrapCacheVersionRef = useRef(0);
-  const routePageCacheRef = useRef(new Map());
-  const routePageInflightRef = useRef(new Map());
-  const routePageCacheVersionRef = useRef(0);
+  const queryEpochRef = useRef(0);
   const routePagePrefetchTimerRef = useRef(null);
-  const entriesPageCacheRef = useRef(new Map());
-  const entriesPageInflightRef = useRef(new Map());
-  const entriesPageCacheVersionRef = useRef(0);
   const appEnvironment = bootstrap?.appEnvironment ?? getClientAppEnvironment();
   const explicitViewId = searchParams.get("view");
   const selectedViewId = explicitViewId ?? "household";
@@ -349,7 +344,6 @@ export function App() {
     }),
     [canUseBootstrapRoutePage, selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart, selectedTabId, selectedViewId]
   );
-  const routePageCacheKey = routePageRequest ? `${routePageRequest.path}?${routePageRequest.params.toString()}` : "";
 
   const updateLoadingStatus = useCallback((patch) => {
     setLoadingStatus((current) => ({
@@ -454,100 +448,92 @@ export function App() {
     };
   }, [reportLoadingIssue]);
 
-  const clearBootstrapCache = useCallback(() => {
-    bootstrapCacheVersionRef.current += 1;
-    bootstrapCacheRef.current.clear();
-    bootstrapInflightRef.current.clear();
-    clearPersistedBootstrap();
+  const bumpQueryEpoch = useCallback(() => {
+    queryEpochRef.current += 1;
   }, []);
+
+  const clearBootstrapCache = useCallback(() => {
+    bumpQueryEpoch();
+    queryClient.cancelQueries({ queryKey: ["bootstrap"] });
+    queryClient.removeQueries({ queryKey: ["bootstrap"] });
+    clearPersistedBootstrap();
+  }, [bumpQueryEpoch, queryClient]);
 
   const clearRoutePageCache = useCallback(() => {
-    routePageCacheVersionRef.current += 1;
-    routePageCacheRef.current.clear();
-    routePageInflightRef.current.clear();
-  }, []);
+    bumpQueryEpoch();
+    queryClient.cancelQueries({ queryKey: ["route-page"] });
+    queryClient.removeQueries({ queryKey: ["route-page"] });
+  }, [bumpQueryEpoch, queryClient]);
 
   const clearEntriesPageCache = useCallback(() => {
-    entriesPageCacheVersionRef.current += 1;
-    entriesPageCacheRef.current.clear();
-    entriesPageInflightRef.current.clear();
-  }, []);
-  const entriesPageCacheStore = useMemo(() => ({
-    cacheRef: entriesPageCacheRef,
-    inflightRef: entriesPageInflightRef,
-    versionRef: entriesPageCacheVersionRef,
-    clear: clearEntriesPageCache
-  }), [clearEntriesPageCache]);
+    bumpQueryEpoch();
+    queryClient.cancelQueries({ queryKey: ["entries-page"] });
+    queryClient.removeQueries({ queryKey: ["entries-page"] });
+  }, [bumpQueryEpoch, queryClient]);
 
   const fetchEntriesPageData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
-    const cacheKey = params.toString();
-    const cacheVersion = entriesPageCacheVersionRef.current;
+    const queryKey = queryKeys.entriesPage(params);
+    const queryState = queryClient.getQueryState(queryKey);
     if (signal?.aborted) {
       throw new DOMException("Entries page request aborted.", "AbortError");
     }
 
-    if (!bypassCache && entriesPageCacheRef.current.has(cacheKey)) {
-      return entriesPageCacheRef.current.get(cacheKey);
-    }
-
-    if (!bypassCache && entriesPageInflightRef.current.has(cacheKey)) {
-      const data = await entriesPageInflightRef.current.get(cacheKey);
-      if (signal?.aborted) {
-        throw new DOMException("Entries page request aborted.", "AbortError");
+    if (!bypassCache) {
+      const cachedData = queryClient.getQueryData(queryKey);
+      if (cachedData) {
+        return cachedData;
       }
-      return data;
     }
 
-    const request = fetch(`/api/entries-page?${cacheKey}`, { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(await buildRequestErrorMessage(response, "Entries page failed."));
-        }
-        const data = await response.json();
-        if (entriesPageCacheVersionRef.current === cacheVersion) {
-          entriesPageCacheRef.current.set(cacheKey, data);
-        }
-        return data;
-      })
-      .finally(() => {
-        entriesPageInflightRef.current.delete(cacheKey);
-      });
+    const fetcher = async () => {
+      const response = await fetch(`/api/entries-page?${params.toString()}`, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(await buildRequestErrorMessage(response, "Entries page failed."));
+      }
+      return response.json();
+    };
 
-    entriesPageInflightRef.current.set(cacheKey, request);
-    const data = await request;
-    if (signal?.aborted || entriesPageCacheVersionRef.current !== cacheVersion) {
+    const data = bypassCache
+      ? await queryClient.fetchQuery({
+          queryKey,
+          queryFn: fetcher,
+          staleTime: 0
+        })
+      : await queryClient.ensureQueryData({
+          queryKey,
+          queryFn: fetcher,
+          revalidateIfStale: true
+        });
+
+    if (signal?.aborted) {
       throw new DOMException("Entries page request aborted.", "AbortError");
     }
     return data;
-  }, []);
+  }, [queryClient]);
 
   const fetchBootstrapData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
     const cacheKey = params.toString();
-    const cacheVersion = bootstrapCacheVersionRef.current;
+    const queryKey = queryKeys.bootstrap(params);
+    const queryState = queryClient.getQueryState(queryKey);
     if (signal?.aborted) {
       throw new DOMException("Bootstrap request aborted.", "AbortError");
     }
 
-    if (!bypassCache && bootstrapCacheRef.current.has(cacheKey)) {
+    if (!bypassCache && queryClient.getQueryData(queryKey)) {
       updateLoadingStatus({
         label: "Using cached dashboard",
         detail: "Cached shell...",
         percent: 18
       });
-      return bootstrapCacheRef.current.get(cacheKey);
+      return queryClient.getQueryData(queryKey);
     }
 
-    if (!bypassCache && bootstrapInflightRef.current.has(cacheKey)) {
+    if (!bypassCache && queryState?.fetchStatus === "fetching") {
       updateLoadingStatus({
         label: "Waiting for dashboard data",
         detail: "Waiting for latest shell...",
         percent: 28
       });
-      const data = await bootstrapInflightRef.current.get(cacheKey);
-      if (signal?.aborted) {
-        throw new DOMException("Bootstrap request aborted.", "AbortError");
-      }
-      return data;
     }
 
     updateLoadingStatus({
@@ -555,8 +541,9 @@ export function App() {
       detail: "Loading dashboard...",
       percent: 35
     });
-    const request = fetch(`/api/bootstrap?${cacheKey}`, { cache: "no-store" })
-      .then(async (response) => {
+
+    const fetcher = async () => {
+      const response = await fetch(`/api/bootstrap?${cacheKey}`, { cache: "no-store" });
         updateLoadingStatus({
           label: "Reading dashboard response",
           detail: "Parsing dashboard...",
@@ -586,19 +573,23 @@ export function App() {
           detail: "Building dashboard...",
           percent: 72
         });
-        if (bootstrapCacheVersionRef.current === cacheVersion) {
-          bootstrapCacheRef.current.set(cacheKey, data);
-          writePersistedBootstrap(cacheKey, data);
-        }
+        writePersistedBootstrap(cacheKey, data);
         return data;
-      })
-      .finally(() => {
-        bootstrapInflightRef.current.delete(cacheKey);
-      });
+      };
 
-    bootstrapInflightRef.current.set(cacheKey, request);
-    const data = await request;
-    if (signal?.aborted || bootstrapCacheVersionRef.current !== cacheVersion) {
+    const data = bypassCache
+      ? await queryClient.fetchQuery({
+          queryKey,
+          queryFn: fetcher,
+          staleTime: 0
+        })
+      : await queryClient.ensureQueryData({
+          queryKey,
+          queryFn: fetcher,
+          revalidateIfStale: true
+        });
+
+    if (signal?.aborted) {
       throw new DOMException("Bootstrap request aborted.", "AbortError");
     }
     updateLoadingStatus({
@@ -607,7 +598,7 @@ export function App() {
       percent: 82
     });
     return data;
-  }, [updateLoadingStatus]);
+  }, [queryClient, updateLoadingStatus]);
 
   const fetchEntriesShellData = useCallback(async (params, { signal } = {}) => {
     if (signal?.aborted) {
@@ -706,32 +697,27 @@ export function App() {
       return null;
     }
 
-    const cacheKey = `${request.path}?${request.params.toString()}`;
-    const cacheVersion = routePageCacheVersionRef.current;
+    const queryKey = queryKeys.routePage(request);
+    const queryState = queryClient.getQueryState(queryKey);
     if (signal?.aborted) {
       throw new DOMException("Page request aborted.", "AbortError");
     }
 
-    if (!bypassCache && routePageCacheRef.current.has(cacheKey)) {
+    if (!bypassCache && queryClient.getQueryData(queryKey)) {
       updateLoadingStatus({
         label: "Using cached page data",
         detail: "Cached page...",
         percent: 84
       });
-      return routePageCacheRef.current.get(cacheKey);
+      return queryClient.getQueryData(queryKey);
     }
 
-    if (!bypassCache && routePageInflightRef.current.has(cacheKey)) {
+    if (!bypassCache && queryState?.fetchStatus === "fetching") {
       updateLoadingStatus({
         label: "Waiting for page data",
         detail: "Waiting for page...",
         percent: 86
       });
-      const data = await routePageInflightRef.current.get(cacheKey);
-      if (signal?.aborted) {
-        throw new DOMException("Page request aborted.", "AbortError");
-      }
-      return data;
     }
 
     const query = request.params.toString();
@@ -741,8 +727,8 @@ export function App() {
       detail: "Loading page...",
       percent: 88
     });
-    const pageRequest = fetch(requestUrl, { cache: "no-store" })
-      .then(async (response) => {
+    const fetcher = async () => {
+      const response = await fetch(requestUrl, { cache: "no-store" });
         updateLoadingStatus({
           label: "Reading page response",
           detail: "Parsing page...",
@@ -767,18 +753,22 @@ export function App() {
           throw new Error(buildBootstrapErrorMessage(response.status, data?.message ?? responseText));
         }
 
-        if (routePageCacheVersionRef.current === cacheVersion) {
-          routePageCacheRef.current.set(cacheKey, data);
-        }
         return data;
-      })
-      .finally(() => {
-        routePageInflightRef.current.delete(cacheKey);
-      });
+      };
 
-    routePageInflightRef.current.set(cacheKey, pageRequest);
-    const data = await pageRequest;
-    if (signal?.aborted || routePageCacheVersionRef.current !== cacheVersion) {
+    const data = bypassCache
+      ? await queryClient.fetchQuery({
+          queryKey,
+          queryFn: fetcher,
+          staleTime: 0
+        })
+      : await queryClient.ensureQueryData({
+          queryKey,
+          queryFn: fetcher,
+          revalidateIfStale: true
+        });
+
+    if (signal?.aborted) {
       throw new DOMException("Page request aborted.", "AbortError");
     }
     updateLoadingStatus({
@@ -787,7 +777,7 @@ export function App() {
       percent: 96
     });
     return data;
-  }, [updateLoadingStatus]);
+  }, [queryClient, updateLoadingStatus]);
 
   const refreshRoutePage = useCallback(async ({ broadcast = false, refreshShell = false } = {}) => {
     clearRoutePageCache();
@@ -823,22 +813,24 @@ export function App() {
       return;
     }
 
-    const cacheKey = `${request.path}?${request.params.toString()}`;
-    if (routePageCacheRef.current.has(cacheKey) || routePageInflightRef.current.has(cacheKey)) {
+    const queryKey = queryKeys.routePage(request);
+    const queryState = queryClient.getQueryState(queryKey);
+    if (queryClient.getQueryData(queryKey) || queryState?.fetchStatus === "fetching") {
       return;
     }
 
     await fetchRoutePageData(request).catch(() => {});
-  }, [fetchRoutePageData]);
+  }, [fetchRoutePageData, queryClient]);
 
   const prefetchEntriesPage = useCallback(async (params) => {
-    const cacheKey = params.toString();
-    if (entriesPageCacheRef.current.has(cacheKey) || entriesPageInflightRef.current.has(cacheKey)) {
+    const queryKey = queryKeys.entriesPage(params);
+    const queryState = queryClient.getQueryState(queryKey);
+    if (queryClient.getQueryData(queryKey) || queryState?.fetchStatus === "fetching") {
       return;
     }
 
     await fetchEntriesPageData(params).catch(() => {});
-  }, [fetchEntriesPageData]);
+  }, [fetchEntriesPageData, queryClient]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -851,10 +843,11 @@ export function App() {
       detail: "Checking cache...",
       percent: 10
     });
-    if (!bootstrapCacheRef.current.has(bootstrapCacheKey)) {
+    const bootstrapQueryKey = queryKeys.bootstrap(bootstrapParams);
+    if (!queryClient.getQueryData(bootstrapQueryKey)) {
       const persistedBootstrap = readPersistedBootstrap(bootstrapCacheKey);
       if (persistedBootstrap) {
-        bootstrapCacheRef.current.set(bootstrapCacheKey, persistedBootstrap);
+        queryClient.setQueryData(bootstrapQueryKey, persistedBootstrap);
         updateLoadingStatus({
           label: "Using cached dashboard",
           detail: "Cached shell...",
@@ -863,7 +856,7 @@ export function App() {
       }
     }
 
-    const hasCachedBootstrap = bootstrapCacheRef.current.has(bootstrapCacheKey);
+    const hasCachedBootstrap = Boolean(queryClient.getQueryData(bootstrapQueryKey));
     const shouldUseEntriesShell = !hasCachedBootstrap && selectedTabId === "entries";
     const finishBootstrapLoad = hasCachedBootstrap ? null : beginBootstrapLoad();
 
@@ -953,9 +946,11 @@ export function App() {
     fetchEntriesShellData,
     handleBootstrapFailure,
     loadBootstrap,
+    queryClient,
     selectedMonth,
     selectedTabId,
-    selectedViewId
+    selectedViewId,
+    updateLoadingStatus
   ]);
 
   useEffect(() => {
@@ -1010,7 +1005,7 @@ export function App() {
     }
 
     const controller = new AbortController();
-    const hasCachedPage = routePageCacheRef.current.has(routePageCacheKey);
+    const hasCachedPage = Boolean(queryClient.getQueryData(queryKeys.routePage(routePageRequest)));
     if (!hasCachedPage) {
       updateLoadingStatus({
         label: "Preparing current page",
@@ -1042,7 +1037,7 @@ export function App() {
       controller.abort();
       finishBootstrapLoad?.();
     };
-  }, [beginBootstrapLoad, fetchRoutePageData, hasBootstrap, reportLoadingIssue, routePageCacheKey, routePageRequest, updateLoadingStatus]);
+  }, [beginBootstrapLoad, fetchRoutePageData, hasBootstrap, queryClient, reportLoadingIssue, routePageRequest, updateLoadingStatus]);
 
   const view = useMemo(
     () => bootstrap?.views.find((item) => item.id === selectedViewId) ?? null,
@@ -1125,13 +1120,9 @@ export function App() {
     }
 
     let isCancelled = false;
-    const bootstrapVersion = bootstrapCacheVersionRef.current;
-    const routePageVersion = routePageCacheVersionRef.current;
-    const entriesPageVersion = entriesPageCacheVersionRef.current;
+    const queryEpoch = queryEpochRef.current;
     const isStable = () => !isCancelled
-      && bootstrapCacheVersionRef.current === bootstrapVersion
-      && routePageCacheVersionRef.current === routePageVersion
-      && entriesPageCacheVersionRef.current === entriesPageVersion
+      && queryEpochRef.current === queryEpoch
       && document.visibilityState === "visible";
     const runPrefetchTasks = async (tasks) => {
       const seenKeys = new Set();
@@ -2160,7 +2151,6 @@ export function App() {
                   people={bootstrap.household.people}
                   onCategoryAppearanceChange={handleCategoryAppearanceChange}
                   onInvalidateBootstrapCache={invalidatePageAndShellCaches}
-                  entriesPageCache={entriesPageCacheStore}
                 />
               )}
             />
