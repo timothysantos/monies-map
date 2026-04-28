@@ -1,12 +1,17 @@
+import { buildSplitShareState } from "./split-share-state";
+
 function todayIsoDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
 // These builders mirror dialog state, not storage rows, so edit forms can stay dumb.
 export function buildExpenseDraft(item, categoryOptions, people) {
-  const splitPercent = item.totalAmountMinor
-    ? Math.round(((item.viewerAmountMinor ?? item.totalAmountMinor / 2) / item.totalAmountMinor) * 100)
-    : 50;
+  const shareState = buildSplitShareState({
+    totalAmountMinor: item.totalAmountMinor,
+    splitBasisPoints: item.editableSplitBasisPoints ?? 5000,
+    splitAmountMinor: item.editableSplitAmountMinor ?? Math.round(item.totalAmountMinor / 2),
+    splitValueMode: "percent"
+  });
 
   return {
     kind: "expense",
@@ -19,7 +24,8 @@ export function buildExpenseDraft(item, categoryOptions, people) {
     payerPersonName: item.paidByPersonName ?? people[0]?.name ?? "",
     amountMinor: item.totalAmountMinor,
     note: item.note ?? "",
-    splitBasisPoints: splitPercent * 100
+    sharePersonName: item.editableSplitPersonName ?? people[0]?.name ?? "",
+    ...shareState
   };
 }
 
@@ -55,6 +61,12 @@ export function buildLinkedEntryDraft(entry) {
 }
 
 export function buildNewExpenseDraft({ activeGroup, categoryOptions, people, view }) {
+  const shareState = buildSplitShareState({
+    totalAmountMinor: 0,
+    splitBasisPoints: 5000,
+    splitValueMode: "percent"
+  });
+
   return {
     groupId: activeGroup?.id ?? "split-group-none",
     date: todayIsoDate(),
@@ -65,7 +77,8 @@ export function buildNewExpenseDraft({ activeGroup, categoryOptions, people, vie
       : people[0]?.name) ?? "",
     amountMinor: 0,
     note: "",
-    splitBasisPoints: 5000
+    sharePersonName: people[0]?.name ?? "",
+    ...shareState
   };
 }
 

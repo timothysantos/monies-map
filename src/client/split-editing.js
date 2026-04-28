@@ -6,6 +6,7 @@ import {
   buildNewSettlementDraft,
   buildSettlementDraft
 } from "./splits-drafts";
+import { syncSplitShareState } from "./split-share-state";
 
 export function useSplitEditState({ categoryOptions, people }) {
   const [expenseDialog, setExpenseDialog] = useState(null);
@@ -153,6 +154,14 @@ export function validateSplitExpenseDraft(draft) {
     return "Expense description, date, payer, and category are required.";
   }
 
+  if (Number(draft.amountMinor ?? 0) <= 0) {
+    return "Expense amount must be greater than zero.";
+  }
+
+  if (Number(draft.splitAmountMinor ?? 0) < 0 || Number(draft.splitAmountMinor ?? 0) > Number(draft.amountMinor ?? 0)) {
+    return "Exact split amount must be between zero and the full expense amount.";
+  }
+
   return "";
 }
 
@@ -180,7 +189,10 @@ function buildComparableSplitDraft(draft) {
       payerPersonName: draft.payerPersonName,
       amountMinor: Number(draft.amountMinor ?? 0),
       note: draft.note ?? "",
-      splitBasisPoints: Number(draft.splitBasisPoints ?? 5000)
+      sharePersonName: draft.sharePersonName ?? "",
+      splitBasisPoints: Number(draft.splitBasisPoints ?? 5000),
+      splitAmountMinor: Number(draft.splitAmountMinor ?? 0),
+      splitValueMode: draft.splitValueMode ?? "percent"
     };
   }
 
@@ -194,4 +206,12 @@ function buildComparableSplitDraft(draft) {
     amountMinor: Number(draft.amountMinor ?? 0),
     note: draft.note ?? ""
   };
+}
+
+export function updateSplitExpenseDraft(current, patch = {}, modeOverride) {
+  if (!current) {
+    return current;
+  }
+
+  return syncSplitShareState(current, patch, modeOverride);
 }

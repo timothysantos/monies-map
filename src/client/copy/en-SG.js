@@ -171,6 +171,7 @@ export const messages = {
     expensePaidBy: "Paid by",
     expenseAmount: "Amount",
     expenseSplit: "Split %",
+    expenseExactAmount: (personName) => `${personName} amount`,
     expenseNote: "Note",
     saveExpense: "Save expense",
     createSettlement: "Record settlement",

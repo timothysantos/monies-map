@@ -33,7 +33,8 @@ export function saveSplitExpense(draft) {
       payerPersonName: draft.payerPersonName,
       amountMinor: Number(draft.amountMinor ?? 0),
       note: draft.note,
-      splitBasisPoints: Number(draft.splitBasisPoints ?? 5000)
+      splitBasisPoints: Number(draft.splitBasisPoints ?? 5000),
+      splitAmountMinor: Number(draft.splitAmountMinor ?? 0)
     },
     "Failed to create split expense."
   );

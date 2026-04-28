@@ -5,6 +5,7 @@ import { getCategory } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { decimalStringToMinor, minorToDecimalString } from "./formatters";
 import { ResponsiveSelect } from "./responsive-select";
+import { updateSplitExpenseDraft } from "./split-editing";
 import { CategoryGlyph } from "./ui-components";
 
 // SplitsPanel owns the draft state; these dialogs keep the long JSX out of the panel body.
@@ -111,11 +112,10 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
               min="0"
               step="0.01"
               value={dialog?.amountInput ?? minorToDecimalString(dialog?.amountMinor ?? 0)}
-              onChange={(event) => onChange((current) => current ? {
-                ...current,
+              onChange={(event) => onChange((current) => current ? updateSplitExpenseDraft(current, {
                 amountInput: event.target.value,
                 amountMinor: decimalStringToMinor(event.target.value)
-              } : current)}
+              }) : current)}
               onBlur={() => onChange((current) => current ? {
                 ...current,
                 amountInput: minorToDecimalString(current.amountMinor ?? 0)
@@ -130,15 +130,30 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
               min="0"
               max="100"
               value={dialog?.splitPercentInput ?? String(Number(dialog?.splitBasisPoints ?? 5000) / 100)}
-              onChange={(event) => onChange((current) => current ? {
-                ...current,
+              onChange={(event) => onChange((current) => current ? updateSplitExpenseDraft(current, {
                 splitPercentInput: event.target.value,
                 splitBasisPoints: Math.round(Number(event.target.value || 0) * 100)
-              } : current)}
-              onBlur={() => onChange((current) => current ? {
-                ...current,
+              }, "percent") : current)}
+              onBlur={() => onChange((current) => current ? updateSplitExpenseDraft(current, {
                 splitPercentInput: String(Number(current.splitBasisPoints ?? 5000) / 100)
-              } : current)}
+              }, "percent") : current)}
+            />
+          </label>
+          <label className="split-dialog-field">
+            <span>{messages.splits.expenseExactAmount(dialog?.sharePersonName ?? "First person")}</span>
+            <input
+              className="table-edit-input table-edit-input-money"
+              type="number"
+              min="0"
+              step="0.01"
+              value={dialog?.splitAmountInput ?? minorToDecimalString(dialog?.splitAmountMinor ?? 0)}
+              onChange={(event) => onChange((current) => current ? updateSplitExpenseDraft(current, {
+                splitAmountInput: event.target.value,
+                splitAmountMinor: decimalStringToMinor(event.target.value)
+              }, "amount") : current)}
+              onBlur={() => onChange((current) => current ? updateSplitExpenseDraft(current, {
+                splitAmountInput: minorToDecimalString(current.splitAmountMinor ?? 0)
+              }, "amount") : current)}
             />
           </label>
         </div>
