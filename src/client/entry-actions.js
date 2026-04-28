@@ -9,6 +9,37 @@ import {
 } from "./entry-helpers";
 import { buildRequestErrorMessage } from "./request-errors";
 
+function mergeEntriesById(currentEntries, serverEntries, editingEntryId) {
+  const currentById = new Map(currentEntries.map((entry) => [entry.id, entry]));
+  const serverIds = new Set(serverEntries.map((entry) => entry.id));
+  const localTransientEntries = currentEntries.filter((entry) => entry.isPendingDerived && !serverIds.has(entry.id));
+
+  return [
+    ...localTransientEntries,
+    ...serverEntries.map((serverEntry) => {
+      const currentEntry = currentById.get(serverEntry.id);
+      if (!currentEntry) {
+        return serverEntry;
+      }
+
+      if (serverEntry.id === editingEntryId) {
+        return {
+          ...currentEntry,
+          linkedTransfer: serverEntry.linkedTransfer,
+          linkedSplitExpenseId: serverEntry.linkedSplitExpenseId,
+          isPendingDerived: false
+        };
+      }
+
+      return {
+        ...currentEntry,
+        ...serverEntry,
+        isPendingDerived: false
+      };
+    })
+  ];
+}
+
 // Owns the local edit/draft state and server mutations for the entries page.
 // The panel still owns filters and derived lists so this hook stays about edits.
 export function useEntryActions({ view, accounts, categories, people, onRefresh }) {
@@ -28,6 +59,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
   const [transferCandidateErrors, setTransferCandidateErrors] = useState({});
   const [addingToSplitsEntryId, setAddingToSplitsEntryId] = useState(null);
   const queuedComposerDraftRef = useRef(null);
+  const viewIdentityKey = `${view.id}:${view.monthPage.month}:${view.monthPage.selectedScope}`;
   const activeEditingEntry = useMemo(
     () => editingEntryId ? entries.find((entry) => entry.id === editingEntryId) ?? null : null,
     [editingEntryId, entries]
@@ -62,7 +94,15 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
     setTransferCandidateOverrides({});
     setTransferCandidateErrors({});
     setAddingToSplitsEntryId(null);
-  }, [view, accounts, categories, people]);
+  }, [accounts, categories, people, viewIdentityKey]);
+
+  useEffect(() => {
+    setEntries((current) => mergeEntriesById(current, view.monthPage.entries, editingEntryId));
+  }, [editingEntryId, view.monthPage.entries]);
+
+  function refreshEntriesInBackground() {
+    void onRefresh();
+  }
 
   function openEntryComposer(initialPatch) {
     if (initialPatch) {
@@ -167,6 +207,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
       }
 
       let splitAddError = "";
+      let createdSplitExpenseId = null;
       if (entryDraft.addToSplits && entryDraft.entryType === "expense") {
         const splitResponse = await fetch("/api/splits/expenses/from-entry", {
           method: "POST",
@@ -184,12 +225,23 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
         if (!splitResponse.ok) {
           const splitData = await splitResponse.json().catch(() => ({}));
           splitAddError = splitData.error ?? "Entry was created, but adding it to splits failed.";
+        } else {
+          const splitData = await splitResponse.json().catch(() => ({}));
+          createdSplitExpenseId = splitData.splitExpenseId ?? null;
         }
       }
 
+      const optimisticEntry = normalizeEntryShape({
+        ...entryDraft,
+        id: data.entryId,
+        linkedTransfer: undefined,
+        linkedSplitExpenseId: createdSplitExpenseId,
+        isPendingDerived: true
+      }, people, entryDraft);
+      setEntries((current) => [optimisticEntry, ...current]);
       queuedComposerDraftRef.current = null;
       closeEntryComposer();
-      await onRefresh();
+      refreshEntriesInBackground();
       return {
         saved: true,
         splitAddError
@@ -247,9 +299,17 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
       return false;
     }
 
+    setEntries((current) => current.map((entry) => (
+      entry.id === currentEntry.id
+        ? {
+            ...currentEntry,
+            isPendingDerived: true
+          }
+        : entry
+    )));
     setEditingEntryId(null);
     setEntrySnapshot(null);
-    await onRefresh();
+    refreshEntriesInBackground();
     return true;
   }
 
@@ -280,7 +340,16 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
       ? { ...current, categoryName }
       : current
     );
-    await onRefresh();
+    setEntries((current) => current.map((entry) => (
+      entry.id === entryId
+        ? {
+            ...entry,
+            categoryName,
+            isPendingDerived: true
+          }
+        : entry
+    )));
+    refreshEntriesInBackground();
   }
 
   function cancelEntryEdit() {
@@ -318,9 +387,14 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
       }
 
       setTransferDialogEntryId(null);
+      setEntries((current) => current.map((currentEntry) => (
+        currentEntry.id === entry.id || currentEntry.id === candidate.id
+          ? { ...currentEntry, isPendingDerived: true }
+          : currentEntry
+      )));
       setEditingEntryId(null);
       setEntrySnapshot(null);
-      await onRefresh();
+      refreshEntriesInBackground();
       setTransferCandidateOverrides((current) => {
         if (!current[entry.id]) {
           return current;
@@ -426,9 +500,14 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
       }
 
       setTransferDialogEntryId(null);
+      setEntries((current) => current.map((currentEntry) => (
+        currentEntry.id === entry.id
+          ? { ...currentEntry, isPendingDerived: true }
+          : currentEntry
+      )));
       setEditingEntryId(null);
       setEntrySnapshot(null);
-      await onRefresh();
+      refreshEntriesInBackground();
     } finally {
       setSettlingTransferEntryId(null);
     }

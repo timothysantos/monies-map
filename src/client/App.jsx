@@ -692,6 +692,14 @@ export function App() {
     }
   }, [beginBootstrapLoad, clearBootstrapCache, clearRoutePageCache, loadBootstrap]);
 
+  const refreshBootstrapInBackground = useCallback(async () => {
+    clearBootstrapCache();
+    const data = await fetchBootstrapData(bootstrapParams, { bypassCache: true });
+    setBootstrapError("");
+    setBootstrap(data);
+    return data;
+  }, [bootstrapParams, clearBootstrapCache, fetchBootstrapData]);
+
   const fetchRoutePageData = useCallback(async (request, { bypassCache = false, signal } = {}) => {
     if (!request) {
       return null;
@@ -813,16 +821,17 @@ export function App() {
       return null;
     }
 
-    const data = await fetchRoutePageData(request, { bypassCache: true });
+    const [data] = await Promise.all([
+      fetchRoutePageData(request, { bypassCache: true }),
+      refreshBootstrapInBackground().catch(() => null)
+    ]);
     setRoutePageData(data);
     return data;
-  }, [fetchRoutePageData, selectedMonth, selectedScope, selectedViewId]);
+  }, [fetchRoutePageData, refreshBootstrapInBackground, selectedMonth, selectedScope, selectedViewId]);
 
-  const invalidatePageAndShellCaches = useCallback(() => {
-    clearRoutePageCache();
-    clearBootstrapCache();
-    clearEntriesPageCache();
-  }, [clearBootstrapCache, clearEntriesPageCache, clearRoutePageCache]);
+  const syncBootstrapAfterMutation = useCallback(async () => {
+    await refreshBootstrapInBackground();
+  }, [refreshBootstrapInBackground]);
 
   const prefetchRoutePage = useCallback(async (request) => {
     if (!request) {
@@ -2166,7 +2175,7 @@ export function App() {
                   categories={categories}
                   people={bootstrap.household.people}
                   onCategoryAppearanceChange={handleCategoryAppearanceChange}
-                  onInvalidateBootstrapCache={invalidatePageAndShellCaches}
+                  onInvalidateBootstrapCache={syncBootstrapAfterMutation}
                 />
               )}
             />

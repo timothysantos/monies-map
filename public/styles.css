@@ -6125,6 +6125,10 @@ button.split-activity-card:hover {
   cursor: pointer;
 }
 
+.entry-row-main.is-pending {
+  opacity: 0.84;
+}
+
 .entry-row-category,
 .entry-row-category-label,
 .entry-row-description,
@@ -6239,6 +6243,12 @@ button.split-activity-card:hover {
 
 .entry-chip-split {
   background: rgba(18, 56, 47, 0.05);
+}
+
+.entry-chip-pending {
+  border-color: rgba(177, 94, 47, 0.18);
+  background: rgba(255, 247, 240, 0.96);
+  color: var(--accent-strong);
 }
 
 .entry-chip-bank-state.is-manual-provisional {

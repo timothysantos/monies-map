@@ -327,7 +327,7 @@ function EntryRow({
     <div className={`entry-row ${isEditing ? "is-editing" : ""} ${renderInlineEditor && isEditing ? "is-inline-editing" : ""}`} id={entry.id}>
       {!isEditing || !renderInlineEditor ? (
         <div
-          className="entry-row-main"
+          className={`entry-row-main ${entry.isPendingDerived ? "is-pending" : ""}`}
           role="button"
           tabIndex={0}
           onClick={(event) => {
@@ -368,6 +368,7 @@ function EntryRow({
               {hasWeightedTotal ? <p>({money(signedTotalAmountMinor)} total)</p> : null}
             </div>
             <div className="entry-pills">
+              {entry.isPendingDerived ? <span className="entry-chip entry-chip-pending">Updating</span> : null}
               {transferLabel ? <span className="entry-chip entry-chip-transfer">{transferLabel}</span> : null}
               <span
                 className={`entry-chip entry-chip-bank-state ${bankState.className} entry-status-dot`}
