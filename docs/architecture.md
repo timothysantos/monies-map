@@ -366,6 +366,20 @@ server-confirmed state.
   The latest successful server truth wins, and stale responses must be ignored
   or superseded.
 
+#### Splits
+
+- Creating, editing, or deleting a split expense or settlement should preserve
+  the current group context and keep inline editors or dialogs alive until the
+  mutation succeeds or fails.
+- Split rows can appear immediately with row-level pending affordances for
+  fields the user directly changed, but cross-page ownership interpretations,
+  month actuals, and summary totals should remain server-confirmed.
+- Match review, archive browsing, and open-group selection are local UI state
+  and must not reset just because the Splits route payload revalidated.
+- Moving from Splits to Entries or Month while shared totals are still
+  reconciling must remain safe. The newest successful server truth wins, and
+  older split-route refreshes must not clobber newer entry or month updates.
+
 #### Summary
 
 - Summary cards and charts should stay visible during background refreshes.
@@ -395,6 +409,101 @@ The UI should distinguish between:
 
 The app should prefer precise pending indicators on the affected row, metric, or
 chart over page-wide loading states for small edits.
+
+### Splits invalidation matrix
+
+Split mutations are more interconnected than ordinary page-local edits. The app
+should treat the Splits route payload as the primary source of split workspace
+truth, then invalidate Month, Entries, Summary, and bootstrap shell state only
+when the split action changes how those screens interpret ledger ownership or
+shared actuals.
+
+#### Query ownership
+
+- `route-page(/api/splits-page)` owns split groups, current activity,
+  settlements, match review candidates, archive batches, and donut data.
+- `route-page(/api/entries-page)` or `entries-page` owns ledger-row presentation
+  such as linked split badges, entry filters, and per-month totals.
+- `month-page` owns month actuals and scoped comparisons that can change when a
+  split action reclassifies a ledger row as shared or changes linked split
+  matching.
+- `summary-page` owns higher-level spend and actual rollups that may shift after
+  split-linked entry changes.
+- `bootstrap` owns shared shell DTOs such as household balances, view shell
+  labels, and fallback route data. It should refresh quietly after split
+  mutations that materially change cross-page household totals.
+
+#### Mutation classes
+
+- `split-only`: changes the split workspace without changing any ledger-row
+  ownership or cross-page actuals. Example: creating a new split group.
+- `shared-derived`: changes split records in a way that can affect Month or
+  Summary interpretations, even if the visible ledger row itself did not change.
+  Example: editing a linked split expense amount, payer, or settlement.
+- `ledger-coupled`: changes split records and ledger interpretation together.
+  Example: promoting an entry into Splits, linking a match, or changing the
+  linked entry from the split editor.
+
+#### Invalidation rules by action
+
+- `create split group`
+  - optimistic: the new group pill and active selection
+  - pending: none beyond the new group shell
+  - invalidate: Splits route only
+  - preserve: current match-review state and any still-open add flow
+- `create or edit split expense`
+  - optimistic: the edited split row fields inside the current group
+  - pending: group balances, donut totals, any linked-entry actuals or summary
+    totals
+  - invalidate: Splits route always; Entries, Month, Summary, and quiet
+    bootstrap sync when the expense is linked to a ledger row or changes shared
+    spend interpretation
+  - preserve: inline editor or dialog state until success, then group context
+- `delete split expense`
+  - optimistic: remove the split row locally
+  - pending: group balances, linked-entry badges, affected month actuals
+  - invalidate: Splits route always; Entries, Month, Summary, and quiet
+    bootstrap sync when the deleted record had a linked ledger row or otherwise
+    affected shared household totals
+  - preserve: current group, archive open state, and surrounding editor context
+- `create or edit settlement`
+  - optimistic: the settlement row and current-batch ordering
+  - pending: group owed or owing balances, archive batch rollups, any summary
+    or month totals derived from settlement-linked rows
+  - invalidate: Splits route always; Month, Summary, and quiet bootstrap sync
+    when the settlement changes cross-page shared balances; Entries only when a
+    linked ledger row exists
+  - preserve: current archive or match review context
+- `delete settlement`
+  - optimistic: remove the settlement row locally
+  - pending: group balances and batch-open or batch-closed status
+  - invalidate: Splits route always; Month, Summary, and quiet bootstrap sync
+    when the deleted settlement affected shared balance interpretation; Entries
+    only when a linked ledger row exists
+  - preserve: current group and archive view
+- `link split match`
+  - optimistic: mark the reviewed match as pending or resolved
+  - pending: linked-entry badges, group balances, month actuals, summary totals
+  - invalidate: Splits route, Entries, Month, Summary, and quiet bootstrap sync
+  - preserve: review-matches surface and dismissed-match state for unrelated
+    rows
+- `promote entry to splits` or `edit linked entry from Splits`
+  - optimistic: the entry's split-linked badge and the new split row shell
+  - pending: ownership-weighted actuals, group balances, month totals, summary
+    totals
+  - invalidate: Splits route, Entries, Month, Summary, and quiet bootstrap sync
+  - preserve: the current entry editor or split editor until the user finishes
+
+#### Resulting implementation rules
+
+- Splits should get the same targeted background refresh treatment as Month and
+  Entries: refresh the current Splits route quietly instead of forcing a shell
+  reload after each mutation.
+- Cross-page invalidation should be explicit per mutation class instead of
+  treating every split save as equivalent.
+- Local editor state should reset only when the route context truly changes,
+  such as switching view, switching the active split group intentionally, or
+  closing the editor on success.
 - PDF statement commit requires both balance reconciliation and account identity
   confidence. If the mapped account has no prior checkpoint history or ledger
   activity, the detected statement account name must match the mapped ledger
