@@ -266,20 +266,23 @@ function IncomePlanSection({
                         ) : money(row.plannedMinor)}
                       </td>
                       <td>
-                        <button
-                          type="button"
-                          className="month-actual-drilldown"
-                          disabled={!row.actualEntryIds?.length}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onOpenEntriesForActual({
-                              categoryName: row.categoryName,
-                              entryIds: row.actualEntryIds ?? []
-                            });
-                          }}
-                        >
-                          {money(row.actualMinor)}
-                        </button>
+                        <div className="month-actual-cell">
+                          <button
+                            type="button"
+                            className={`month-actual-drilldown ${row.isPendingDerived ? "is-pending" : ""}`}
+                            disabled={!row.actualEntryIds?.length}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onOpenEntriesForActual({
+                                categoryName: row.categoryName,
+                                entryIds: row.actualEntryIds ?? []
+                              });
+                            }}
+                          >
+                            {money(row.actualMinor)}
+                          </button>
+                          {row.isPendingDerived ? <span className="month-row-pending-hint">Updating...</span> : null}
+                        </div>
                       </td>
                       <td {...rowOpenProps} className={variance <= 0 ? "positive" : "negative"}>{money(variance)}</td>
                       <td>
@@ -577,7 +580,7 @@ function PlanningRow({
           <div className="month-actual-cell">
             <button
               type="button"
-              className="month-actual-drilldown"
+              className={`month-actual-drilldown ${row.isPendingDerived ? "is-pending" : ""}`}
               disabled={!row.actualEntryIds?.length}
               onClick={(event) => {
                 event.stopPropagation();
@@ -589,6 +592,7 @@ function PlanningRow({
             >
               {money(row.actualMinor)}
             </button>
+            {row.isPendingDerived ? <span className="month-row-pending-hint">Updating...</span> : null}
             {section.key === "planned_items" ? (
               <button
                 type="button"
