@@ -2000,6 +2000,7 @@ export function App() {
                 <button type="button" className="mobile-context-trigger" aria-label={stickyScopeConfig.label}>
                   <span className="mobile-context-trigger-copy">
                     <span className="mobile-context-trigger-label">{mobileContextSummary}</span>
+                    <span className="mobile-context-trigger-divider" aria-hidden="true">|</span>
                     <span className="mobile-context-trigger-hint">View and scope</span>
                   </span>
                   <span className="mobile-context-trigger-caret" aria-hidden="true">▾</span>
@@ -2025,7 +2026,7 @@ export function App() {
 
                   <section className="mobile-context-dialog-section" aria-label="View">
                     <strong className="mobile-context-dialog-section-title">View</strong>
-                    <div className="pill-row mobile-context-pill-row">
+                    <div className="pill-row mobile-context-pill-row mobile-context-view-row">
                       {selectedTabId !== "splits"
                         ? (
                             <button
