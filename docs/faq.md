@@ -72,6 +72,32 @@ data. At statement close, the PDF statement is the stronger proof. It can
 confirm rows, save a statement checkpoint, and explain whether the app balance
 matches the bank.
 
+## How should saves and refreshes feel during repeated editing?
+
+The app is moving toward a more precise save model for row-heavy screens such as
+Month and Entries.
+
+The intended behavior is:
+
+1. when you save a new or edited row, that row should appear updated
+   immediately
+2. if the save affects server-derived values such as `actual`, top-level
+   totals, charts, or summary cards, only those derived values should show a
+   lightweight pending state
+3. add/edit forms should stay open, or reset into an `add another` draft when
+   repeated entry is the expected workflow
+4. related screens such as Summary or Month can refresh in the background
+   without forcing a full page reset
+
+In practice, that means the app should distinguish between:
+
+- `saving` the row itself
+- `updating` the server-derived values tied to that row
+- `refreshing` other affected views in the background
+
+The goal is to avoid shell-wide reloads for small edits while still making it
+clear that totals, actuals, or charts are catching up to the newest saved data.
+
 ## Can an Apple Shortcut create an entry directly?
 
 Yes, but it should use the dedicated shortcut endpoint, not the normal browser

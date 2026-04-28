@@ -258,6 +258,143 @@ That distinction matters because the system needs to answer questions like:
   reviews, and adjustments. Open exceptions are audit-visible blockers to fully
   trusting a balance; resolving one records an audit event but does not mutate
   ledger amounts by itself.
+
+## Client state model
+
+The frontend now needs an explicit split between server-backed state and local
+UI state. The app has grown beyond a single bootstrap payload plus manual
+refresh hooks, and the repeated-entry editing flows are now sensitive to broad
+page resets.
+
+### State classes
+
+- `server state` is canonical API-backed data that can be refetched,
+  invalidated, and shared across pages. Examples include bootstrap shell data,
+  route-page payloads, entries-page payloads, month plan rows, summary totals,
+  charts, imports preview state, and account health.
+- `local UI state` is ephemeral interaction state owned by the current screen
+  or component. Examples include open dialogs, add-another forms, inline edit
+  drafts, selected tabs, scroll position, accordion state, sort state, and
+  transient filter text.
+- `optimistic state` is a temporary user-visible projection layered on top of
+  server state for direct edits. It should only cover the fields the user
+  actually changed, such as a new month-plan row or an updated ledger label.
+- `pending derived state` covers values that depend on broader server
+  recomputation. Examples include budget-bucket actuals, top-level totals,
+  charts, summary cards, and cross-page aggregates after a mutation.
+
+### Technology direction
+
+- TanStack Query is the target server-state layer for the React client.
+- React component state remains the default home for local UI state.
+- Do not introduce Redux or Zustand as the first answer to server-backed refresh
+  issues. They do not replace query invalidation, optimistic mutations,
+  background reconciliation, or stale-result protection.
+- A separate UI-state store may still be justified later for genuinely shared
+  interaction state, but it should be additive to TanStack Query instead of a
+  replacement for it.
+
+### Query ownership rules
+
+- Queries own fetched API payloads and derived loading/error state.
+- Components should not copy query data into local state just to make it
+  editable unless the copied structure is a true draft model.
+- Local UI state must survive routine query refreshes. A refetch should not
+  close forms, clear drafts, or collapse sections unless the user action or
+  route change explicitly requires it.
+- Mutations should invalidate the smallest practical set of related queries
+  instead of manually clearing broad shell caches and reloading whole page
+  payloads.
+
+### Query key model
+
+The app should converge on explicit query keys that mirror the server DTO
+boundaries:
+
+- `bootstrap`, keyed by view, month, summary range, and environment-sensitive
+  shell parameters
+- `route-page`, keyed by tab plus the query parameters that change that tab's
+  payload
+- `entries-page`, keyed by month, view, scope, filters, account, and open-row
+  context when relevant
+- smaller supporting queries, such as prior-month actual lookups or import
+  previews, keyed by the smallest stable request shape
+
+Query keys must be centralized in a small shared factory so Month, Entries,
+Summary, Imports, and shell prefetching all invalidate the same keys
+consistently.
+
+### Mutation model
+
+Every mutation should define four things up front:
+
+- `what appears immediately`
+- `what remains pending`
+- `what invalidates in the background`
+- `what local UI state must survive`
+
+The default pattern for save-heavy screens is:
+
+1. apply an optimistic row-level patch for fields the user directly edited
+2. keep the surrounding form or sheet alive unless the user chose to close it
+3. mark server-derived fields as pending
+4. invalidate related queries in the background
+5. reconcile to the newest server truth when refetch completes
+
+Older background responses must never overwrite newer optimistic or
+server-confirmed state.
+
+### Screen-specific mutation expectations
+
+#### Month
+
+- Creating or editing a budget bucket, planned item, or income row should show
+  the row immediately.
+- The add/edit UI should stay open or reset into an `add another` draft instead
+  of being cleared by a full route refresh.
+- `actual`, month totals, and linked metrics may remain pending while server
+  recomputation runs.
+- Cross-page consumers such as Summary should refresh in the background without
+  forcing a shell-wide loading state.
+
+#### Entries
+
+- Entry creates, edits, and deletes should update the visible row immediately.
+- Entry-derived month actuals, charts, and summary totals may show a lightweight
+  refreshing state until recomputation settles.
+- Moving between Entries and Month during active recomputation must be safe.
+  The latest successful server truth wins, and stale responses must be ignored
+  or superseded.
+
+#### Summary
+
+- Summary cards and charts should stay visible during background refreshes.
+- Mutations elsewhere may invalidate Summary queries, but they should not blank
+  the whole page or block continued editing on other screens.
+
+#### Imports
+
+- Bulk import stages remain explicit and can keep stronger loading affordances
+  than row-level edits.
+- Once an import commits, only the affected Month, Entries, Summary, account
+  health, and reconciliation queries should invalidate.
+
+#### Settings and lower-frequency screens
+
+- Settings saves should still use targeted invalidation.
+- Avoid shell-wide reloads when a narrower query refresh is enough.
+
+### Loading language
+
+The UI should distinguish between:
+
+- `saving`: the user edit is being committed
+- `updating`: server-derived values such as actuals or totals are reconciling
+- `refreshing`: a query is revalidating in the background while stale data stays
+  visible
+
+The app should prefer precise pending indicators on the affected row, metric, or
+chart over page-wide loading states for small edits.
 - PDF statement commit requires both balance reconciliation and account identity
   confidence. If the mapped account has no prior checkpoint history or ledger
   activity, the detected statement account name must match the mapped ledger
