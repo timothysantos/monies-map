@@ -1515,12 +1515,16 @@ export function App() {
       if (selectedTabId === "entries") {
         if (nextViewId === "household") {
           next.delete("entry_person");
+          next.set("entries_scope", "direct_plus_shared");
         } else {
           const person = bootstrap.household.people.find((item) => item.id === nextViewId);
           if (person) {
             next.set("entry_person", person.name);
           }
         }
+      }
+      if (selectedTabId === "month" && nextViewId === "household") {
+        next.set("scope", "direct_plus_shared");
       }
       return next;
     });

@@ -5,6 +5,7 @@ const shouldStartWebServer = !process.env.PLAYWRIGHT_USE_EXISTING_SERVER;
 export default defineConfig({
   testDir: "./tests/e2e",
   timeout: 120_000,
+  workers: 1,
   expect: {
     timeout: 10_000
   },
