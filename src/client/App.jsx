@@ -86,6 +86,17 @@ function createLoadingStatus(overrides = {}) {
   };
 }
 
+function ellipsizeText(value, maxLength = 52) {
+  const normalized = String(value ?? "").replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return "";
+  }
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  return `${normalized.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+}
+
 function preloadRouteModule(routeId) {
   const loader = routeModuleLoaders[routeId];
   if (!loader) {
@@ -519,7 +530,7 @@ export function App() {
     if (!bypassCache && bootstrapCacheRef.current.has(cacheKey)) {
       updateLoadingStatus({
         label: "Using cached dashboard",
-        detail: "Loaded a saved shell while the latest data catches up",
+        detail: "Cached shell...",
         percent: 18
       });
       return bootstrapCacheRef.current.get(cacheKey);
@@ -528,7 +539,7 @@ export function App() {
     if (!bypassCache && bootstrapInflightRef.current.has(cacheKey)) {
       updateLoadingStatus({
         label: "Waiting for dashboard data",
-        detail: "Joining an in-flight bootstrap request",
+        detail: "Waiting for latest shell...",
         percent: 28
       });
       const data = await bootstrapInflightRef.current.get(cacheKey);
@@ -540,14 +551,14 @@ export function App() {
 
     updateLoadingStatus({
       label: "Requesting dashboard data",
-      detail: `/api/bootstrap?${cacheKey}`,
+      detail: "Loading dashboard...",
       percent: 35
     });
     const request = fetch(`/api/bootstrap?${cacheKey}`, { cache: "no-store" })
       .then(async (response) => {
         updateLoadingStatus({
           label: "Reading dashboard response",
-          detail: "Server responded. Parsing bootstrap payload",
+          detail: "Parsing dashboard...",
           percent: 55
         });
         const responseText = await response.text();
@@ -571,7 +582,7 @@ export function App() {
 
         updateLoadingStatus({
           label: "Preparing dashboard shell",
-          detail: "Caching bootstrap payload and building the first view",
+          detail: "Building dashboard...",
           percent: 72
         });
         if (bootstrapCacheVersionRef.current === cacheVersion) {
@@ -591,7 +602,7 @@ export function App() {
     }
     updateLoadingStatus({
       label: "Dashboard shell ready",
-      detail: "Applying bootstrap data",
+      detail: "Applying latest data...",
       percent: 82
     });
     return data;
@@ -658,7 +669,7 @@ export function App() {
     if (!bypassCache && routePageCacheRef.current.has(cacheKey)) {
       updateLoadingStatus({
         label: "Using cached page data",
-        detail: request.path,
+        detail: "Cached page...",
         percent: 84
       });
       return routePageCacheRef.current.get(cacheKey);
@@ -667,7 +678,7 @@ export function App() {
     if (!bypassCache && routePageInflightRef.current.has(cacheKey)) {
       updateLoadingStatus({
         label: "Waiting for page data",
-        detail: request.path,
+        detail: "Waiting for page...",
         percent: 86
       });
       const data = await routePageInflightRef.current.get(cacheKey);
@@ -681,14 +692,14 @@ export function App() {
     const requestUrl = query ? `${request.path}?${query}` : request.path;
     updateLoadingStatus({
       label: "Loading current page",
-      detail: requestUrl,
+      detail: "Loading page...",
       percent: 88
     });
     const pageRequest = fetch(requestUrl, { cache: "no-store" })
       .then(async (response) => {
         updateLoadingStatus({
           label: "Reading page response",
-          detail: request.path,
+          detail: "Parsing page...",
           percent: 92
         });
         const responseText = await response.text();
@@ -726,7 +737,7 @@ export function App() {
     }
     updateLoadingStatus({
       label: "Current page ready",
-      detail: request.path,
+      detail: "Applying page...",
       percent: 96
     });
     return data;
@@ -787,7 +798,7 @@ export function App() {
     const controller = new AbortController();
     startLoadingStatus({
       label: "Preparing dashboard shell",
-      detail: "Checking for cached data before requesting the latest snapshot",
+      detail: "Checking cache...",
       percent: 10
     });
     if (!bootstrapCacheRef.current.has(bootstrapCacheKey)) {
@@ -796,7 +807,7 @@ export function App() {
         bootstrapCacheRef.current.set(bootstrapCacheKey, persistedBootstrap);
         updateLoadingStatus({
           label: "Using cached dashboard",
-          detail: "Rendering the last saved shell while refreshing in the background",
+          detail: "Cached shell...",
           percent: 16
         });
       }
@@ -899,7 +910,7 @@ export function App() {
     if (!hasCachedPage) {
       updateLoadingStatus({
         label: "Preparing current page",
-        detail: routePageRequest.path,
+        detail: "Preparing page...",
         percent: 84
       });
     }
@@ -2080,12 +2091,13 @@ function isPlaceholderPersonName(name) {
 function AppLoadingStatusText({ status, elapsedSeconds, compact = false }) {
   const percentText = typeof status?.percent === "number" ? `${Math.max(0, Math.min(100, Math.round(status.percent)))}%` : null;
   const elapsedText = elapsedSeconds > 0 ? `${elapsedSeconds}s` : null;
-  const meta = [percentText, elapsedText].filter(Boolean).join(" · ");
+  const detailText = ellipsizeText(status?.detail ?? "");
+  const meta = [percentText, detailText, elapsedText].filter(Boolean).join(" · ");
 
   return (
     <div className={`app-loading-status ${compact ? "is-compact" : ""}`}>
-      <small>{[status?.detail, meta].filter(Boolean).join(" · ")}</small>
-      {status?.issue ? <small className="is-error">{status.issue}</small> : null}
+      <small title={status?.detail ?? ""}>{meta}</small>
+      {status?.issue ? <small className="is-error" title={status.issue}>{ellipsizeText(status.issue, compact ? 64 : 84)}</small> : null}
     </div>
   );
 }
