@@ -7467,6 +7467,10 @@ th {
     min-width: 0;
   }
 
+  .split-dialog-inline .split-dialog-field-exact-amount {
+    grid-column: 2;
+  }
+
   .split-inline-editor-card {
     padding: 12px;
   }

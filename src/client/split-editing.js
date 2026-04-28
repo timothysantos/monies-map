@@ -208,10 +208,10 @@ function buildComparableSplitDraft(draft) {
   };
 }
 
-export function updateSplitExpenseDraft(current, patch = {}, modeOverride) {
+export function updateSplitExpenseDraft(current, patch = {}, modeOverride, options = {}) {
   if (!current) {
     return current;
   }
 
-  return syncSplitShareState(current, patch, modeOverride);
+  return syncSplitShareState(current, patch, modeOverride, options);
 }
