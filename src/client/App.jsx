@@ -255,6 +255,7 @@ export function App() {
   const [bootstrapLoadCount, setBootstrapLoadCount] = useState(0);
   const [loadingStatus, setLoadingStatus] = useState(() => createLoadingStatus());
   const [loadingElapsedSeconds, setLoadingElapsedSeconds] = useState(0);
+  const [mobileContextOpen, setMobileContextOpen] = useState(false);
   const [categoryOverrides, setCategoryOverrides] = useState({});
   const [rangePickerStartYear, setRangePickerStartYear] = useState(null);
   const [rangePickerEndYear, setRangePickerEndYear] = useState(null);
@@ -1364,13 +1365,13 @@ export function App() {
     ? {
         selectedKey: pageView.monthPage.selectedScope,
         paramKey: "scope",
-        label: "Month view scope"
+        label: "Month view controls"
       }
     : selectedTabId === "entries"
       ? {
           selectedKey: selectedEntriesScope,
           paramKey: "entries_scope",
-          label: "Entries view scope"
+          label: "Entries view controls"
         }
       : null;
   const mobileScopeLabels = {
@@ -1378,6 +1379,21 @@ export function App() {
     shared: "Shared",
     direct_plus_shared: "Direct+Shared"
   };
+  const mobileContextScopes = stickyScopeConfig ? pageView.monthPage.scopes ?? [] : [];
+  const selectedMobileScope = stickyScopeConfig
+    ? mobileContextScopes.find((scope) => scope.key === stickyScopeConfig.selectedKey) ?? null
+    : null;
+  const mobileContextSummary = selectedMobileScope
+    ? `${pageView.label} · ${mobileScopeLabels[selectedMobileScope.key] ?? selectedMobileScope.label}`
+    : pageView.label;
+  const showMobileContextSticky = Boolean(stickyScopeConfig);
+  const showMobileContextScopeSection = Boolean(stickyScopeConfig) && mobileContextScopes.length > 1;
+
+  useEffect(() => {
+    if (!showMobileContextSticky && mobileContextOpen) {
+      setMobileContextOpen(false);
+    }
+  }, [mobileContextOpen, showMobileContextSticky]);
 
   function handleViewChange(nextViewId) {
     setSearchParams((current) => {
@@ -1393,6 +1409,18 @@ export function App() {
           }
         }
       }
+      return next;
+    });
+  }
+
+  function handleStickyScopeChange(nextScopeKey) {
+    if (!stickyScopeConfig) {
+      return;
+    }
+
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set(stickyScopeConfig.paramKey, nextScopeKey);
       return next;
     });
   }
@@ -1619,7 +1647,7 @@ export function App() {
     <main className="shell">
       <EnvironmentBanner environment={appEnvironment} />
       <section className="control-bar">
-        <div className="context-block">
+        <div className={`context-block ${showMobileContextSticky ? "has-mobile-sticky-context" : ""}`}>
           <div className="pill-row">
             {selectedTabId !== "splits"
               ? (
@@ -1852,27 +1880,89 @@ export function App() {
         </div>
       </section>
 
-      {stickyScopeConfig && pageView.monthPage.scopes.length > 1 ? (
-        <section className="mobile-scope-sticky-wrap" aria-label={stickyScopeConfig.label}>
-          <div className="mobile-scope-sticky-bar">
-            <div className="scope-toggle pill-row scope-toggle-row mobile-scope-sticky">
-              {pageView.monthPage.scopes.map((scope) => (
-                <button
-                  key={scope.key}
-                  className={`pill scope-button ${scope.key === stickyScopeConfig.selectedKey ? "is-active" : ""}`}
-                  type="button"
-                  onClick={() => {
-                    setSearchParams((current) => {
-                      const next = new URLSearchParams(current);
-                      next.set(stickyScopeConfig.paramKey, scope.key);
-                      return next;
-                    });
-                  }}
-                >
-                  {mobileScopeLabels[scope.key] ?? scope.label}
+      {showMobileContextSticky ? (
+        <section className="mobile-context-sticky-wrap" aria-label={stickyScopeConfig.label}>
+          <div className="mobile-context-sticky-bar">
+            <Dialog.Root open={mobileContextOpen} onOpenChange={setMobileContextOpen}>
+              <Dialog.Trigger asChild>
+                <button type="button" className="mobile-context-trigger" aria-label={stickyScopeConfig.label}>
+                  <span className="mobile-context-trigger-copy">
+                    <span className="mobile-context-trigger-label">{mobileContextSummary}</span>
+                    <span className="mobile-context-trigger-hint">View and scope</span>
+                  </span>
+                  <span className="mobile-context-trigger-caret" aria-hidden="true">▾</span>
                 </button>
-              ))}
-            </div>
+              </Dialog.Trigger>
+              <Dialog.Portal>
+                <Dialog.Overlay className="note-dialog-overlay" />
+                <Dialog.Content
+                  className="note-dialog-content split-dialog-content mobile-context-dialog"
+                  onOpenAutoFocus={(event) => event.preventDefault()}
+                >
+                  <div className="note-dialog-head mobile-context-dialog-head">
+                    <div>
+                      <Dialog.Title>View and scope</Dialog.Title>
+                      <Dialog.Description>
+                        Change the active household view without scrolling back to the top.
+                      </Dialog.Description>
+                    </div>
+                    <Dialog.Close asChild>
+                      <button type="button" className="subtle-action mobile-context-dialog-close">Done</button>
+                    </Dialog.Close>
+                  </div>
+
+                  <section className="mobile-context-dialog-section" aria-label="View">
+                    <strong className="mobile-context-dialog-section-title">View</strong>
+                    <div className="pill-row mobile-context-pill-row">
+                      {selectedTabId !== "splits"
+                        ? (
+                            <button
+                              className={`pill ${selectedViewId === "household" ? "is-active" : ""}`}
+                              type="button"
+                              onClick={() => handleViewChange("household")}
+                            >
+                              {messages.views.household}
+                            </button>
+                          )
+                        : (
+                            <span className="pill pill-disabled" aria-disabled="true">
+                              {messages.views.household}
+                            </span>
+                          )}
+                      {bootstrap.household.people.map((person) => (
+                        <button
+                          key={person.id}
+                          className={`pill ${selectedViewId === person.id ? "is-active" : ""}`}
+                          type="button"
+                          onClick={() => handleViewChange(person.id)}
+                          title={person.name}
+                        >
+                          {person.name}
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+
+                  {showMobileContextScopeSection ? (
+                    <section className="mobile-context-dialog-section" aria-label="Scope">
+                      <strong className="mobile-context-dialog-section-title">Scope</strong>
+                      <div className="scope-toggle pill-row scope-toggle-row mobile-context-pill-row">
+                        {mobileContextScopes.map((scope) => (
+                          <button
+                            key={scope.key}
+                            className={`pill scope-button ${scope.key === stickyScopeConfig.selectedKey ? "is-active" : ""}`}
+                            type="button"
+                            onClick={() => handleStickyScopeChange(scope.key)}
+                          >
+                            {scope.label}
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+                  ) : null}
+                </Dialog.Content>
+              </Dialog.Portal>
+            </Dialog.Root>
             <div className="mobile-month-jump" aria-label="Month navigation">
               <button
                 className="period-button mobile-month-jump-button"

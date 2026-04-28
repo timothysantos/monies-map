@@ -659,12 +659,12 @@ h3 {
   box-shadow: none;
 }
 
-.mobile-scope-sticky-wrap,
-.mobile-scope-sticky {
+.mobile-context-sticky-wrap,
+.mobile-context-sticky {
   display: none;
 }
 
-.mobile-scope-sticky-bar,
+.mobile-context-sticky-bar,
 .mobile-month-jump {
   display: none;
 }
@@ -7781,7 +7781,11 @@ th {
     max-width: none;
   }
 
-  .mobile-scope-sticky-wrap {
+  .context-block.has-mobile-sticky-context {
+    display: none;
+  }
+
+  .mobile-context-sticky-wrap {
     position: fixed;
     left: 16px;
     right: 16px;
@@ -7790,24 +7794,58 @@ th {
     display: block;
   }
 
-  .mobile-scope-sticky-bar {
+  .mobile-context-sticky-bar {
+    display: flex;
+    align-items: center;
+    justify-content: stretch;
+    gap: 10px;
+  }
+
+  .mobile-context-trigger {
+    flex: 1 1 auto;
+    min-width: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-  }
-
-  .mobile-scope-sticky.scope-toggle-row {
-    position: static;
-    width: min(324px, calc(100vw - 116px));
-    flex: 0 1 min(324px, calc(100vw - 116px));
-    grid-template-columns: 0.9fr 0.95fr 1.25fr;
-    padding: 5px;
+    padding: 10px 14px;
     border: 1px solid var(--line);
     border-radius: 16px;
     background: rgba(255, 255, 255, 0.96);
     box-shadow: 0 10px 26px rgba(27, 24, 21, 0.12);
     backdrop-filter: blur(10px);
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .mobile-context-trigger-copy {
+    display: grid;
+    min-width: 0;
+    gap: 1px;
+  }
+
+  .mobile-context-trigger-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.84rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .mobile-context-trigger-hint {
+    color: var(--muted);
+    font-size: 0.7rem;
+    line-height: 1.2;
+  }
+
+  .mobile-context-trigger-caret {
+    color: var(--accent-strong);
+    font-size: 0.92rem;
+    flex: 0 0 auto;
   }
 
   .mobile-month-jump {
@@ -7825,6 +7863,49 @@ th {
     border-radius: 14px;
   }
 
+  .mobile-context-dialog {
+    padding-bottom: 18px;
+  }
+
+  .mobile-context-dialog-head {
+    margin-bottom: 18px;
+  }
+
+  .mobile-context-dialog-close {
+    flex: 0 0 auto;
+  }
+
+  .mobile-context-dialog-section {
+    display: grid;
+    gap: 10px;
+  }
+
+  .mobile-context-dialog-section + .mobile-context-dialog-section {
+    margin-top: 18px;
+  }
+
+  .mobile-context-dialog-section-title {
+    font-size: 0.82rem;
+    color: var(--muted);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .mobile-context-pill-row {
+    width: 100%;
+    max-width: none;
+  }
+
+  .mobile-context-pill-row.scope-toggle-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .mobile-context-pill-row .pill {
+    width: 100%;
+    min-width: 0;
+  }
+
   .scope-button {
     width: 100%;
     min-width: 0;
@@ -7832,11 +7913,6 @@ th {
     font-size: 0.72rem;
     line-height: 1.15;
     letter-spacing: -0.01em;
-  }
-
-  .mobile-scope-sticky .scope-button.is-active {
-    padding-left: 18px;
-    padding-right: 18px;
   }
 
   .metric-row-summary,

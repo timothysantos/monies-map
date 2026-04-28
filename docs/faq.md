@@ -1251,6 +1251,12 @@ has not changed. On Entries, the same pills reuse the loaded household month
 rows and apply the person as a local filter. Switching between people should
 feel like changing a filter, not like reloading the whole page.
 
+On mobile Month and Entries, the sticky control above the bottom navigation now
+collapses that context into a compact summary button, such as `Tim • Shared`,
+with previous and next month buttons beside it. Tapping the summary opens a
+bottom sheet where you can switch the household/person view first and then
+adjust scope when that view supports multiple scope options.
+
 Within one browser session, returning to a tab should reuse cached page data
 when no import, edit, rollback, or manual refresh has invalidated it. This keeps
 tab switching fast while still letting mutation flows clear the cache before
