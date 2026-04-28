@@ -216,7 +216,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setIsSubmitting(true);
     try {
       await saveSplitExpense(expenseDialog);
-      await onRefresh();
+      await onRefresh({ refreshShell: true, broadcast: true });
       closeExpenseDialog();
     } catch (error) {
       setFormError(error.message);
@@ -236,7 +236,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setIsSubmitting(true);
     try {
       await saveSplitSettlement(settlementDialog);
-      await onRefresh();
+      await onRefresh({ refreshShell: true, broadcast: true });
       closeSettlementDialog();
     } catch (error) {
       setFormError(error.message);
@@ -249,7 +249,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setIsSubmitting(true);
     try {
       await linkSplitMatch(match);
-      await onRefresh();
+      await onRefresh({ refreshShell: true, broadcast: true });
     } finally {
       setIsSubmitting(false);
     }
@@ -276,7 +276,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       } else {
         await saveSplitSettlement(inlineSplitDraft);
       }
-      await onRefresh();
+      await onRefresh({ refreshShell: true, broadcast: true });
       clearInlineSplitDraft();
     } catch (error) {
       setInlineSplitError(error.message);
@@ -324,7 +324,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       } else {
         await deleteSplitSettlement(deleteTarget.id);
       }
-      await onRefresh();
+      await onRefresh({ refreshShell: true, broadcast: true });
       setDeleteTarget(null);
       if (`${inlineSplitDraft?.kind}:${inlineSplitDraft?.id}` === deletedSplitKey) {
         clearInlineSplitSnapshot();

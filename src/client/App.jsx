@@ -857,6 +857,31 @@ export function App() {
     return data;
   }, [fetchRoutePageData, refreshBootstrapInBackground, selectedMonth, selectedScope, selectedViewId]);
 
+  const refreshCurrentSplitsPage = useCallback(async ({ broadcast = false, refreshShell = false } = {}) => {
+    const request = buildRoutePageRequest({
+      tabId: "splits",
+      viewId: selectedViewId,
+      month: selectedMonth,
+      scope: selectedScope
+    });
+    if (!request) {
+      return null;
+    }
+
+    const tasks = [fetchRoutePageData(request, { bypassCache: true })];
+    if (refreshShell) {
+      tasks.push(refreshBootstrapInBackground().catch(() => null));
+    }
+    const [data] = await Promise.all(tasks);
+    setRoutePageData(data);
+
+    if (broadcast) {
+      broadcastBootstrapRefresh(syncChannelRef);
+    }
+
+    return data;
+  }, [fetchRoutePageData, refreshBootstrapInBackground, selectedMonth, selectedScope, selectedViewId]);
+
   const syncBootstrapAfterMutation = useCallback(async () => {
     await refreshBootstrapInBackground();
   }, [refreshBootstrapInBackground]);
@@ -2214,7 +2239,7 @@ export function App() {
                   view={pageView}
                   categories={categories}
                   people={bootstrap.household.people}
-                  onRefresh={() => refreshRoutePage({ refreshShell: true, broadcast: true })}
+                  onRefresh={(options) => refreshCurrentSplitsPage(options)}
                 />
               )}
             />
