@@ -12,7 +12,7 @@ test("recording a settlement closes the open batch and archives it", async ({ pa
   const archiveTrigger = page.locator(".split-archive-trigger");
   await expect(archiveTrigger).toContainText("No settled batches yet");
 
-  await page.getByRole("button", { name: "Settle up" }).click();
+  await page.locator("article.panel-splits .panel-head .split-settle-header").click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Note").fill(note);
   await dialog.getByRole("button", { name: "Save settlement" }).click();
