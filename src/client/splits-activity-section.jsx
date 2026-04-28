@@ -20,7 +20,7 @@ export function SplitsActivitySection({
   onCancelInlineSplit,
   onSaveInlineSplit,
   onRequestDeleteSplit,
-  onEditLinkedEntry,
+  onViewLinkedEntry,
   readOnly = false
 }) {
   return (
@@ -53,7 +53,7 @@ export function SplitsActivitySection({
             onRequestDelete={onRequestDeleteSplit}
             onEditExpense={onEditExpense}
             onEditSettlement={onEditSettlement}
-            onEditLinkedEntry={onEditLinkedEntry}
+            onViewLinkedEntry={onViewLinkedEntry}
             readOnly={readOnly}
           />
         ) : null}
