@@ -6,6 +6,7 @@ test("deleting an existing split expense removes it from the current group and p
   await page.goto("/");
   await reseedDemo(page);
   await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
+  await expect(page.getByRole("heading", { name: "Splits" })).toBeVisible();
 
   await page.locator(".split-activity-card").filter({ hasText: "October groceries" }).first().click();
   await page.locator(".split-inline-editor-card").first().getByRole("button", { name: "Delete" }).click();

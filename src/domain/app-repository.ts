@@ -1304,6 +1304,19 @@ async function seedDemoSplitData(db: D1Database) {
 
   const importedTransactionSeeds = [
     {
+      id: "txn-import-split-okaeri-linked",
+      importId: "import-2025-10-citi",
+      accountName: "Citi Rewards",
+      date: "2025-10-03",
+      description: "October dining imported from Citi",
+      categoryName: "Food & Drinks",
+      entryType: "expense",
+      ownershipType: "shared",
+      amountMinor: 71319,
+      splitBasisPoints: 5000,
+      note: "Imported dining charge already linked to the archived split batch."
+    },
+    {
       id: "txn-import-split-pantry-match",
       importId: "import-2025-10-citi",
       accountName: "Citi Rewards",
@@ -1393,7 +1406,8 @@ async function seedDemoSplitData(db: D1Database) {
       description: "October dining",
       categoryName: "Food & Drinks",
       totalAmountMinor: 71319,
-      note: "Manual split record before CSV was imported."
+      note: "Manual split record before CSV was imported.",
+      linkedTransactionId: "txn-import-split-okaeri-linked"
     },
     {
       id: "split-expense-baby-river-family",

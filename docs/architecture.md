@@ -435,56 +435,54 @@ shared actuals.
 
 #### Mutation classes
 
+- `shell-coupled`: changes split workspace metadata that the shell itself owns.
+  Example: creating a new split group.
 - `split-only`: changes the split workspace without changing any ledger-row
-  ownership or cross-page actuals. Example: creating a new split group.
-- `shared-derived`: changes split records in a way that can affect Month or
-  Summary interpretations, even if the visible ledger row itself did not change.
-  Example: editing a linked split expense amount, payer, or settlement.
+  ownership or cross-page actuals. Example: creating, editing, or deleting a
+  split expense or settlement row.
 - `ledger-coupled`: changes split records and ledger interpretation together.
-  Example: promoting an entry into Splits, linking a match, or changing the
-  linked entry from the split editor.
+  Example: promoting an entry into Splits or linking an expense match that
+  converts a direct imported row into a shared ledger row.
 
 #### Invalidation rules by action
 
 - `create split group`
   - optimistic: the new group pill and active selection
   - pending: none beyond the new group shell
-  - invalidate: Splits route only
+  - invalidate: Splits route plus quiet bootstrap refresh so other surfaces get
+    the new group metadata
   - preserve: current match-review state and any still-open add flow
 - `create or edit split expense`
   - optimistic: the edited split row fields inside the current group
-  - pending: group balances, donut totals, any linked-entry actuals or summary
-    totals
-  - invalidate: Splits route always; Entries, Month, Summary, and quiet
-    bootstrap sync when the expense is linked to a ledger row or changes shared
-    spend interpretation
+  - pending: group balances and donut totals inside Splits
+  - invalidate: Splits route only
   - preserve: inline editor or dialog state until success, then group context
 - `delete split expense`
   - optimistic: remove the split row locally
-  - pending: group balances, linked-entry badges, affected month actuals
-  - invalidate: Splits route always; Entries, Month, Summary, and quiet
-    bootstrap sync when the deleted record had a linked ledger row or otherwise
-    affected shared household totals
+  - pending: group balances and activity ordering
+  - invalidate: Splits route only
   - preserve: current group, archive open state, and surrounding editor context
 - `create or edit settlement`
   - optimistic: the settlement row and current-batch ordering
-  - pending: group owed or owing balances, archive batch rollups, any summary
-    or month totals derived from settlement-linked rows
-  - invalidate: Splits route always; Month, Summary, and quiet bootstrap sync
-    when the settlement changes cross-page shared balances; Entries only when a
-    linked ledger row exists
+  - pending: group owed or owing balances plus archive batch rollups
+  - invalidate: Splits route only
   - preserve: current archive or match review context
 - `delete settlement`
   - optimistic: remove the settlement row locally
   - pending: group balances and batch-open or batch-closed status
-  - invalidate: Splits route always; Month, Summary, and quiet bootstrap sync
-    when the deleted settlement affected shared balance interpretation; Entries
-    only when a linked ledger row exists
+  - invalidate: Splits route only
   - preserve: current group and archive view
-- `link split match`
+- `link split expense match`
   - optimistic: mark the reviewed match as pending or resolved
-  - pending: linked-entry badges, group balances, month actuals, summary totals
-  - invalidate: Splits route, Entries, Month, Summary, and quiet bootstrap sync
+  - pending: linked-entry badges, group balances, month actuals, and summary
+    totals while the shared ledger interpretation settles
+  - invalidate: Splits route, Entries, Month, and Summary
+  - preserve: review-matches surface and dismissed-match state for unrelated
+    rows
+- `link split settlement match`
+  - optimistic: mark the reviewed settlement match as resolved
+  - pending: linked-entry navigation state inside Splits only
+  - invalidate: Splits route only
   - preserve: review-matches surface and dismissed-match state for unrelated
     rows
 - `promote entry to splits` or `edit linked entry from Splits`
@@ -500,7 +498,11 @@ shared actuals.
   Entries: refresh the current Splits route quietly instead of forcing a shell
   reload after each mutation.
 - Cross-page invalidation should be explicit per mutation class instead of
-  treating every split save as equivalent.
+  treating every split save as equivalent. In the current implementation,
+  ordinary split row CRUD is splits-only, split group creation refreshes
+  bootstrap metadata too, expense match-linking invalidates Entries, Month, and
+  Summary caches, and settlement match-linking stays local to the Splits
+  workspace.
 - Local editor state should reset only when the route context truly changes,
   such as switching view, switching the active split group intentionally, or
   closing the editor on success.

@@ -9,6 +9,8 @@ import {
 test("review matches links a split expense into entries and hides already-linked fixtures from review", async ({ page }) => {
   await page.goto("/");
   await reseedDemo(page);
+  await page.goto("/entries?view=person-tim&month=2025-10");
+  await expect(page.getByRole("heading", { name: "Entries" })).toBeVisible();
 
   const beforeEntries = await loadEntriesPage(page, { view: "person-tim", month: "2025-10" });
   const beforeLinkedEntry = beforeEntries.monthPage.entries.find((entry) => entry.id === "txn-import-split-pantry-match");
@@ -44,6 +46,21 @@ test("review matches links a split expense into entries and hides already-linked
   expect(linkedEntry).toBeTruthy();
   expect(linkedEntry?.ownershipType).toBe("shared");
   expect(linkedEntry?.linkedSplitExpenseId).toBe("split-expense-nongroup-pantry-match");
+
+  await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
+  const pantryCard = page.locator(".split-activity-card").filter({ hasText: "Tracked in splits before the imported grocery charge was reviewed." }).first();
+  await pantryCard.click();
+
+  const inlineEditor = page.locator(".split-inline-editor-card").first();
+  await expect(inlineEditor.getByRole("button", { name: "View entry" })).toBeVisible();
+  await inlineEditor.getByRole("button", { name: "View entry" }).click();
+
+  await expect(page).toHaveURL(/\/entries\?/);
+  await expect(page).toHaveURL(/editing_entry=txn-import-split-pantry-match/);
+  await expect(page.locator(".entry-inline-editor")).toBeVisible();
+  await expect(page.getByLabel("Description")).toHaveValue(pantryMatch?.transactionDescription ?? "");
+  await expect(page.locator(".entry-chip-shared").first()).toContainText("Shared");
+  await expect(page.getByRole("button", { name: "View split" })).toBeVisible();
 });
 
 test("review matches links a settlement and the linked entry can be opened from splits history", async ({ page }) => {
@@ -77,4 +94,27 @@ test("review matches links a settlement and the linked entry can be opened from 
   await expect(page).toHaveURL(/editing_entry=txn-import-split-settlement-match/);
   await expect(page.locator(".entry-inline-editor")).toBeVisible();
   await expect(page.getByLabel("Description")).toHaveValue(settlementMatch?.transactionDescription ?? "");
+});
+
+test("archived linked split history can still open the linked entry", async ({ page }) => {
+  await page.goto("/");
+  await reseedDemo(page);
+
+  await page.goto("/splits?view=household&month=2025-10");
+  await expect(page.getByRole("heading", { name: "Splits" })).toBeVisible();
+  await page.getByRole("button", { name: /Okaeri/ }).click();
+  await page.locator(".split-archive-trigger").click();
+
+  const archiveDialog = page.getByRole("dialog");
+  await expect(archiveDialog).toContainText("Archived batches");
+  await archiveDialog.getByRole("button", { name: /fully settled up with Tim/i }).click();
+
+  await expect(archiveDialog).toContainText("October dining");
+  const archivedDiningCard = archiveDialog.locator(".split-activity-card").filter({ hasText: "October dining" }).first();
+  await archivedDiningCard.getByRole("button", { name: "View entry" }).click();
+
+  await expect(page).toHaveURL(/\/entries\?/);
+  await expect(page).toHaveURL(/editing_entry=txn-import-split-okaeri-linked/);
+  await expect(page.locator(".entry-inline-editor")).toBeVisible();
+  await expect(page.getByLabel("Description")).toHaveValue("October dining imported from Citi");
 });
