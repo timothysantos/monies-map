@@ -609,6 +609,51 @@ export function App() {
     return data;
   }, [updateLoadingStatus]);
 
+  const fetchEntriesShellData = useCallback(async (params, { signal } = {}) => {
+    if (signal?.aborted) {
+      throw new DOMException("Entries shell request aborted.", "AbortError");
+    }
+
+    updateLoadingStatus({
+      label: "Opening entry view",
+      detail: "Loading entries...",
+      percent: 22
+    });
+    const response = await fetch(`/api/entries-shell?${params.toString()}`, {
+      cache: "no-store",
+      signal
+    });
+    updateLoadingStatus({
+      label: "Preparing entry view",
+      detail: "Opening editor...",
+      percent: 48
+    });
+    const responseText = await response.text();
+    let data = null;
+
+    if (responseText) {
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        if (!response.ok) {
+          throw new Error(buildBootstrapErrorMessage(response.status, responseText));
+        }
+
+        throw new Error("Entries shell returned invalid JSON.");
+      }
+    }
+
+    if (!response.ok) {
+      throw new Error(buildBootstrapErrorMessage(response.status, data?.message ?? responseText));
+    }
+
+    if (signal?.aborted) {
+      throw new DOMException("Entries shell request aborted.", "AbortError");
+    }
+
+    return data;
+  }, [updateLoadingStatus]);
+
   const loadBootstrap = useCallback(async (signal, { bypassCache = false } = {}) => {
     const data = await fetchBootstrapData(bootstrapParams, { bypassCache, signal });
 
@@ -797,6 +842,10 @@ export function App() {
 
   useEffect(() => {
     const controller = new AbortController();
+    const entriesShellParams = buildEntriesShellParams({
+      viewId: selectedViewId,
+      month: selectedMonth
+    });
     startLoadingStatus({
       label: "Preparing dashboard shell",
       detail: "Checking cache...",
@@ -815,11 +864,33 @@ export function App() {
     }
 
     const hasCachedBootstrap = bootstrapCacheRef.current.has(bootstrapCacheKey);
+    const shouldUseEntriesShell = !hasCachedBootstrap && selectedTabId === "entries";
     const finishBootstrapLoad = hasCachedBootstrap ? null : beginBootstrapLoad();
 
-    void loadBootstrap(controller.signal)
-      .then(async () => {
-        if (!hasCachedBootstrap) {
+    void (async () => {
+      try {
+        if (shouldUseEntriesShell) {
+          const shellData = await fetchEntriesShellData(entriesShellParams, {
+            signal: controller.signal
+          });
+          if (!controller.signal.aborted) {
+            setBootstrapError("");
+            setBootstrap(shellData);
+          }
+
+          const fullData = await fetchBootstrapData(bootstrapParams, {
+            bypassCache: true,
+            signal: controller.signal
+          });
+          if (!controller.signal.aborted) {
+            setBootstrapError("");
+            setBootstrap(fullData);
+          }
+          return;
+        }
+
+        await loadBootstrap(controller.signal);
+        if (!hasCachedBootstrap || controller.signal.aborted) {
           return;
         }
 
@@ -837,23 +908,55 @@ export function App() {
             return;
           }
         }
-      })
-      .catch((error) => {
+      } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
+        }
+
+        if (shouldUseEntriesShell) {
+          try {
+            const fallbackData = await fetchBootstrapData(bootstrapParams, {
+              bypassCache: true,
+              signal: controller.signal
+            });
+            if (!controller.signal.aborted) {
+              setBootstrapError("");
+              setBootstrap(fallbackData);
+            }
+            return;
+          } catch (fallbackError) {
+            if (fallbackError instanceof DOMException && fallbackError.name === "AbortError") {
+              return;
+            }
+            handleBootstrapFailure(fallbackError);
+            return;
+          }
         }
 
         if (!hasCachedBootstrap) {
           handleBootstrapFailure(error);
         }
-      })
-      .finally(() => finishBootstrapLoad?.());
+      } finally {
+        finishBootstrapLoad?.();
+      }
+    })();
 
     return () => {
       controller.abort();
       finishBootstrapLoad?.();
     };
-  }, [beginBootstrapLoad, bootstrapCacheKey, bootstrapParams, fetchBootstrapData, handleBootstrapFailure, loadBootstrap]);
+  }, [
+    beginBootstrapLoad,
+    bootstrapCacheKey,
+    bootstrapParams,
+    fetchBootstrapData,
+    fetchEntriesShellData,
+    handleBootstrapFailure,
+    loadBootstrap,
+    selectedMonth,
+    selectedTabId,
+    selectedViewId
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -2249,6 +2352,13 @@ function buildBootstrapParams({ month, scope, summaryStart, summaryEnd }) {
     params.set("summary_end", summaryEnd);
   }
   return params;
+}
+
+function buildEntriesShellParams({ viewId, month }) {
+  return new URLSearchParams({
+    view: viewId,
+    month
+  });
 }
 
 function sanitizeTabParams(params, tabId) {

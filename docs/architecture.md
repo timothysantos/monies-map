@@ -219,9 +219,11 @@ That distinction matters because the system needs to answer questions like:
   The quick-entry URL still opens the composer only. A dedicated Worker route,
   `POST /api/shortcuts/entries/create`, creates the entry server-side and
   returns a deep link back into the created ledger row. The returned `openUrl`
-  uses `/entries/by-id/:entryId`, and the app resolves month/account context
-  through `GET /api/entries/locate` before redirecting into the normal Entries
-  route. The shortcut endpoint is protected with a shared secret header, a
+  now points straight at `/entries` with the created row and month/account
+  context already encoded in the query string, so shortcut opens do not need a
+  second context-lookup redirect first. The app also serves a lightweight
+  Entries-first shell on cold `/entries` loads, then hydrates the full dashboard
+  bootstrap in the background. The shortcut endpoint is protected with a shared secret header, a
   timestamp freshness check, and a one-time nonce stored in
   `shortcut_request_nonces` for replay protection.
 - the Entries UI exposes the certification state explicitly: manual rows show

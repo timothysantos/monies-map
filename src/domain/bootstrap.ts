@@ -145,6 +145,78 @@ export async function buildBootstrapDto(
   };
 }
 
+export async function buildEntriesBootstrapDto(
+  db: D1Database,
+  selectedViewId = "household",
+  selectedMonth = getCurrentMonthKey(),
+  viewerEmail?: string,
+  appEnvironment?: AppBootstrapDto["appEnvironment"]
+): Promise<AppBootstrapDto> {
+  const demo = await ensureAppData(db);
+  const [household, accounts, categories, trackedMonths, splitGroups] = await Promise.all([
+    loadHousehold(db),
+    loadAccounts(db),
+    loadCategories(db),
+    loadTrackedMonths(db),
+    loadSplitGroups(db)
+  ]);
+  const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
+    ? selectedMonth
+    : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
+  const availableMonths = trackedMonths.length ? trackedMonths : [effectiveSelectedMonth];
+  const monthEntries = await loadEntries(db, effectiveSelectedMonth);
+  const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
+  const viewIds = ["household", ...household.people.map((person) => person.id)];
+  const viewId = selectedViewId === "household" || household.people.some((person) => person.id === selectedViewId)
+    ? selectedViewId
+    : "household";
+  const viewerPersonId = await resolveLoginIdentityPersonId(db, viewerEmail);
+  const suggestedPersonId = viewerEmail && !viewerPersonId
+    ? await findSuggestedLoginPersonId(db)
+    : undefined;
+  const views = viewIds.map((id) =>
+    buildEntriesContextView(
+      id,
+      personNameById[id] ?? "Household",
+      adjustEntriesForView(monthEntries, id),
+      splitGroups,
+      effectiveSelectedMonth,
+      availableMonths
+    )
+  );
+
+  return {
+    appEnvironment,
+    household,
+    accounts,
+    categories,
+    views,
+    selectedViewId: viewId,
+    viewerPersonId,
+    viewerIdentity: viewerEmail ? {
+      email: viewerEmail,
+      personId: viewerPersonId
+    } : undefined,
+    viewerRegistration: viewerEmail && suggestedPersonId ? {
+      email: viewerEmail,
+      suggestedPersonId
+    } : undefined,
+    importsPage: {
+      recentImports: [],
+      rollbackPolicy:
+        "Every transaction is tied to an import batch so the last import can be removed without touching older data."
+    },
+    settingsPage: {
+      demo,
+      categoryMatchRules: [],
+      categoryMatchRuleSuggestions: [],
+      unresolvedTransfers: [],
+      reconciliationExceptions: [],
+      recentAuditEvents: []
+    }
+  };
+}
+
 export async function buildEntriesPageDto(
   db: D1Database,
   selectedViewId = "household",
@@ -435,6 +507,76 @@ function buildContextView(
   };
 }
 
+function buildEntriesContextView(
+  id: string,
+  label: string,
+  entries: EntryDto[],
+  splitGroups: SplitGroupDto[],
+  selectedMonth: string,
+  availableMonths: string[]
+): ContextViewDto {
+  return {
+    id,
+    label,
+    summaryPage: {
+      metricCards: [],
+      availableMonths,
+      rangeStartMonth: selectedMonth,
+      rangeEndMonth: selectedMonth,
+      rangeMonths: [selectedMonth],
+      months: [buildEmptySummaryMonth(selectedMonth)],
+      categoryShareChart: [],
+      categoryShareByMonth: [],
+      accountPills: [],
+      notes: []
+    },
+    monthPage: {
+      month: selectedMonth,
+      selectedPersonId: id,
+      selectedScope: "direct_plus_shared",
+      scopes: buildPersonScopes(id),
+      metricCards: [],
+      monthNote: "",
+      incomeRows: [],
+      planSections: [],
+      categoryShareChart: [],
+      entries
+    },
+    splitsPage: {
+      month: selectedMonth,
+      groups: buildEntriesSplitShellGroups(splitGroups),
+      activity: [],
+      matches: [],
+      donutChart: []
+    }
+  };
+}
+
+function buildEntriesSplitShellGroups(splitGroups: SplitGroupDto[]): SplitGroupPillDto[] {
+  return [
+    {
+      id: "split-group-none",
+      name: "Non-group expenses",
+      iconKey: "receipt",
+      balanceMinor: 0,
+      summaryText: "",
+      entryCount: 0,
+      pendingMatchCount: 0,
+      isDefault: false
+    },
+    ...splitGroups.map((group) => ({
+      id: group.id,
+      name: group.name,
+      iconKey: group.iconKey,
+      balanceMinor: 0,
+      summaryText: "",
+      entryCount: 0,
+      pendingMatchCount: 0,
+      isDefault: false
+    }))
+  ];
+}
+
 function buildSummaryPage(
   personId: string,
   visibleEntries: EntryDto[],
@@ -587,14 +729,14 @@ async function loadPlannedSummaryMonthsForViews(
   const uniqueViewIds = [...new Set(viewIds)].filter(Boolean);
   const uniqueMonths = [...new Set(months)].filter(Boolean).sort();
   const monthPlanRowsByMonth = new Map(
-    await Promise.all(uniqueMonths.map(async (month) => [month, await loadMonthPlanRows(db, month)]))
+    await Promise.all(uniqueMonths.map(async (month) => [month, await loadMonthPlanRows(db, month)] as const))
   );
   const incomeRowsByViewMonth = new Map(
     await Promise.all(
       uniqueViewIds.flatMap((viewId) => uniqueMonths.map(async (month) => ([
         `${viewId}:${month}`,
         await loadMonthIncomeRows(db, viewId, month)
-      ])))
+      ] as const)))
     )
   );
   const result = Object.fromEntries(uniqueViewIds.map((viewId) => [viewId, [] as SummaryMonthDto[]]));
