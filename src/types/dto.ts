@@ -242,6 +242,9 @@ export interface SplitActivityDto {
   toPersonName?: string;
   totalAmountMinor: number;
   viewerAmountMinor?: number;
+  editableSplitPersonName?: string;
+  editableSplitBasisPoints?: number;
+  editableSplitAmountMinor?: number;
   viewerDirectionLabel: string;
   note?: string;
   linkedTransactionId?: string;

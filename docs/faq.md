@@ -43,6 +43,8 @@ The core questions behind the app are:
 - entries view
 - splits view with group pills, manual split expenses, settle-up records, and a
   matches review mode
+- split expense editing can be driven either by split percentage or by an exact
+  per-person dollar amount
 - manual single-entry creation from the entries view
 - imports view with CSV, XLS, PDF preview, duplicate review, rollback history,
   and statement checkpoint saving

@@ -1304,6 +1304,7 @@ function buildSplitActivity(
 
   for (const expense of expenses) {
     const viewerShare = viewerExpenseAmountForChart(expense, viewId);
+    const editableShare = canonicalEditableExpenseShare(expense, personNameById);
     activity.push({
       id: expense.id,
       kind: "expense",
@@ -1319,6 +1320,9 @@ function buildSplitActivity(
       paidByPersonName: expense.payerPersonName,
       totalAmountMinor: expense.totalAmountMinor,
       viewerAmountMinor: viewerShare,
+      editableSplitPersonName: editableShare?.personName,
+      editableSplitBasisPoints: editableShare?.ratioBasisPoints,
+      editableSplitAmountMinor: editableShare?.amountMinor,
       viewerDirectionLabel: formatExpenseDirectionLabel(expense, viewId, personNameById),
       note: expense.note,
       linkedTransactionId: expense.linkedTransactionId,
@@ -1359,6 +1363,11 @@ function viewerExpenseAmountForChart(expense: SplitExpenseDto, viewId: string) {
   }
 
   return expense.shares.find((share) => share.personId === viewId)?.amountMinor ?? 0;
+}
+
+function canonicalEditableExpenseShare(expense: SplitExpenseDto, personNameById: Record<string, string>) {
+  const [primaryPersonId] = getOrderedPersonIds(personNameById);
+  return expense.shares.find((share) => share.personId === primaryPersonId) ?? expense.shares[0];
 }
 
 function formatExpenseDirectionLabel(expense: SplitExpenseDto, viewId: string, personNameById: Record<string, string>) {

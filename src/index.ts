@@ -756,6 +756,7 @@ export default {
         amountMinor?: number;
         note?: string;
         splitBasisPoints?: number;
+        splitAmountMinor?: number;
       }>();
 
       if (!body.date || !body.description || !body.categoryName || !body.payerPersonName || typeof body.amountMinor !== "number") {
@@ -773,7 +774,8 @@ export default {
             payerPersonName: body.payerPersonName,
             amountMinor: body.amountMinor,
             note: body.note,
-            splitBasisPoints: body.splitBasisPoints
+            splitBasisPoints: body.splitBasisPoints,
+            splitAmountMinor: body.splitAmountMinor
           }))
         });
       } catch (error) {
@@ -846,6 +848,7 @@ export default {
         amountMinor?: number;
         note?: string;
         splitBasisPoints?: number;
+        splitAmountMinor?: number;
       }>();
 
       if (!body.splitExpenseId || !body.date || !body.description || !body.categoryName || !body.payerPersonName || typeof body.amountMinor !== "number") {
@@ -864,7 +867,8 @@ export default {
             payerPersonName: body.payerPersonName,
             amountMinor: body.amountMinor,
             note: body.note,
-            splitBasisPoints: body.splitBasisPoints
+            splitBasisPoints: body.splitBasisPoints,
+            splitAmountMinor: body.splitAmountMinor
           }))
         });
       } catch (error) {

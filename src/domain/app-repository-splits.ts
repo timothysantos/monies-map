@@ -335,6 +335,7 @@ export async function createSplitExpenseRecord(
     amountMinor: number;
     note?: string;
     splitBasisPoints?: number;
+    splitAmountMinor?: number;
   }
 ) {
   const { categoryId, payerPersonId, sharePeople } = await resolveSplitExpenseRefs(
@@ -348,10 +349,7 @@ export async function createSplitExpenseRecord(
     groupId: input.groupId || null,
     date: input.date
   });
-  const firstBasisPoints = Math.max(0, Math.min(10000, input.splitBasisPoints ?? 5000));
-  const secondBasisPoints = 10000 - firstBasisPoints;
-  const firstAmount = Math.round(input.amountMinor * (firstBasisPoints / 10000));
-  const secondAmount = input.amountMinor - firstAmount;
+  const { firstBasisPoints, secondBasisPoints, firstAmount, secondAmount } = buildSplitShareAmounts(input.amountMinor, input.splitBasisPoints, input.splitAmountMinor);
   const shares = [
     { personId: sharePeople[0].id, ratioBasisPoints: firstBasisPoints, amountMinor: firstAmount },
     { personId: sharePeople[1].id, ratioBasisPoints: secondBasisPoints, amountMinor: secondAmount }
@@ -512,6 +510,7 @@ export async function updateSplitExpenseRecord(
     amountMinor: number;
     note?: string;
     splitBasisPoints?: number;
+    splitAmountMinor?: number;
   }
 ) {
   const { categoryId, payerPersonId, sharePeople } = await resolveSplitExpenseRefs(
@@ -522,12 +521,12 @@ export async function updateSplitExpenseRecord(
 
   const existing = await db
     .prepare(`
-      SELECT split_group_id, split_batch_id
+      SELECT split_group_id, split_batch_id, linked_transaction_id
       FROM split_expenses
       WHERE id = ? AND household_id = ?
     `)
     .bind(input.splitExpenseId, DEFAULT_HOUSEHOLD_ID)
-    .first<{ split_group_id: string | null; split_batch_id: string | null }>();
+    .first<{ split_group_id: string | null; split_batch_id: string | null; linked_transaction_id: string | null }>();
   if (!existing) {
     throw new Error("Split expense not found.");
   }
@@ -558,10 +557,7 @@ export async function updateSplitExpenseRecord(
     )
     .run();
 
-  const firstBasisPoints = Math.max(0, Math.min(10000, input.splitBasisPoints ?? 5000));
-  const secondBasisPoints = 10000 - firstBasisPoints;
-  const firstAmount = Math.round(input.amountMinor * (firstBasisPoints / 10000));
-  const secondAmount = input.amountMinor - firstAmount;
+  const { firstBasisPoints, secondBasisPoints, firstAmount, secondAmount } = buildSplitShareAmounts(input.amountMinor, input.splitBasisPoints, input.splitAmountMinor);
 
   await db.prepare("DELETE FROM split_expense_shares WHERE split_expense_id = ?").bind(input.splitExpenseId).run();
   await db
@@ -584,7 +580,71 @@ export async function updateSplitExpenseRecord(
     )
     .run();
 
+  if (existing.linked_transaction_id) {
+    await syncLinkedTransactionToSplitExpense(db, {
+      transactionId: existing.linked_transaction_id,
+      splitBasisPoints: firstBasisPoints
+    });
+  }
+
   return { splitExpenseId: input.splitExpenseId };
+}
+
+function buildSplitShareAmounts(amountMinor: number, splitBasisPoints = 5000, splitAmountMinor?: number) {
+  const safeAmountMinor = Math.max(0, Number(amountMinor ?? 0));
+  const hasExactAmount = typeof splitAmountMinor === "number" && Number.isFinite(splitAmountMinor);
+  const firstAmount = hasExactAmount
+    ? Math.min(safeAmountMinor, Math.max(0, Math.round(splitAmountMinor)))
+    : Math.round(safeAmountMinor * (Math.max(0, Math.min(10000, splitBasisPoints)) / 10000));
+  const secondAmount = safeAmountMinor - firstAmount;
+  const firstBasisPoints = safeAmountMinor > 0
+    ? Math.max(0, Math.min(10000, Math.round((firstAmount / safeAmountMinor) * 10000)))
+    : 0;
+
+  return {
+    firstBasisPoints,
+    secondBasisPoints: 10000 - firstBasisPoints,
+    firstAmount,
+    secondAmount
+  };
+}
+
+async function syncLinkedTransactionToSplitExpense(
+  db: D1Database,
+  input: { transactionId: string; splitBasisPoints: number }
+) {
+  const transaction = await db
+    .prepare(`
+      SELECT amount_minor
+      FROM transactions
+      WHERE household_id = ?
+        AND id = ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.transactionId)
+    .first<{ amount_minor: number }>();
+
+  if (!transaction) {
+    throw new Error("Linked transaction not found.");
+  }
+
+  await db
+    .prepare(`
+      UPDATE transactions
+      SET ownership_type = 'shared',
+          owner_person_id = NULL,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE household_id = ?
+        AND id = ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.transactionId)
+    .run();
+
+  await syncTransactionSplits(db, {
+    transactionId: input.transactionId,
+    ownershipType: "shared",
+    amountMinor: transaction.amount_minor,
+    splitBasisPoints: input.splitBasisPoints
+  });
 }
 
 export async function updateSplitSettlementRecord(
@@ -693,6 +753,22 @@ export async function linkSplitExpenseMatch(
     .prepare("UPDATE split_expenses SET linked_transaction_id = ? WHERE id = ? AND household_id = ?")
     .bind(input.transactionId, input.splitExpenseId, DEFAULT_HOUSEHOLD_ID)
     .run();
+
+  const primaryShare = await db
+    .prepare(`
+      SELECT ratio_basis_points
+      FROM split_expense_shares
+      WHERE split_expense_id = ?
+      ORDER BY created_at
+      LIMIT 1
+    `)
+    .bind(input.splitExpenseId)
+    .first<{ ratio_basis_points: number }>();
+
+  await syncLinkedTransactionToSplitExpense(db, {
+    transactionId: input.transactionId,
+    splitBasisPoints: primaryShare?.ratio_basis_points ?? 5000
+  });
 
   return { ok: true };
 }
