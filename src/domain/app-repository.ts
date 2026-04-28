@@ -1302,6 +1302,87 @@ async function seedDemoSplitData(db: D1Database) {
       .run();
   }
 
+  const importedTransactionSeeds = [
+    {
+      id: "txn-import-split-pantry-match",
+      importId: "import-2025-10-citi",
+      accountName: "Citi Rewards",
+      date: "2025-10-18",
+      description: "Pantry restock imported from Citi",
+      categoryName: "Groceries",
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Joyce",
+      amountMinor: 18640,
+      note: "Imported card row awaiting a split match."
+    },
+    {
+      id: "txn-import-split-baby-river-linked",
+      importId: "import-2025-10-uob",
+      accountName: "UOB Lady's",
+      date: "2025-10-12",
+      description: "Baby River family support import",
+      categoryName: "Family & Personal",
+      entryType: "expense",
+      ownershipType: "shared",
+      amountMinor: 23407,
+      splitBasisPoints: 5000,
+      note: "Imported row already linked to the split expense."
+    },
+    {
+      id: "txn-import-split-settlement-match",
+      importId: "import-2025-10-uob",
+      accountName: "UOB Savings",
+      date: "2025-10-18",
+      description: "Joyce paynow settle up",
+      categoryName: "Transfer",
+      entryType: "transfer",
+      transferDirection: "in",
+      ownershipType: "direct",
+      ownerName: "Tim",
+      amountMinor: 4580,
+      note: "Imported transfer waiting to be linked to a split settlement."
+    }
+  ];
+
+  for (const transaction of importedTransactionSeeds) {
+    const directOwnerId = transaction.ownerName ? SEED_PERSON_IDS_BY_NAME.get(transaction.ownerName) ?? null : null;
+    await db
+      .prepare(`
+        INSERT INTO transactions (
+          id, household_id, import_id, account_id, transaction_date,
+          description, amount_minor, currency, entry_type, transfer_direction,
+          category_id, ownership_type, owner_person_id, offsets_category, note
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .bind(
+        transaction.id,
+        DEFAULT_HOUSEHOLD_ID,
+        transaction.importId,
+        findSeedAccountId(transaction.accountName),
+        transaction.date,
+        transaction.description,
+        transaction.amountMinor,
+        "SGD",
+        transaction.entryType,
+        transaction.transferDirection ?? null,
+        findSeedCategoryId(transaction.categoryName),
+        transaction.ownershipType,
+        directOwnerId,
+        0,
+        transaction.note ?? null
+      )
+      .run();
+
+    await syncTransactionSplits(db, {
+      transactionId: transaction.id,
+      ownershipType: transaction.ownershipType,
+      amountMinor: transaction.amountMinor,
+      ownerName: transaction.ownershipType === "direct" ? transaction.ownerName : undefined,
+      splitBasisPoints: transaction.ownershipType === "shared" ? transaction.splitBasisPoints : undefined
+    });
+  }
+
   const expenseSeeds = [
     {
       id: "split-expense-okaeri-dining",
@@ -1323,7 +1404,8 @@ async function seedDemoSplitData(db: D1Database) {
       description: "Family support",
       categoryName: "Family & Personal",
       totalAmountMinor: 23407,
-      note: "Family spending tracked outside the bank import flow."
+      note: "Family spending tracked outside the bank import flow.",
+      linkedTransactionId: "txn-import-split-baby-river-linked"
     },
     {
       id: "split-expense-nongroup-groceries",
@@ -1335,6 +1417,17 @@ async function seedDemoSplitData(db: D1Database) {
       categoryName: "Groceries",
       totalAmountMinor: 24251,
       note: "Shared expense tracked without a named group."
+    },
+    {
+      id: "split-expense-nongroup-pantry-match",
+      groupId: null,
+      batchId: "split-batch-none-open",
+      payerPersonId: DEMO_PARTNER_PERSON_ID,
+      date: "2025-10-18",
+      description: "Pantry restock",
+      categoryName: "Groceries",
+      totalAmountMinor: 18640,
+      note: "Tracked in splits before the imported grocery charge was reviewed."
     }
   ];
 
@@ -1343,8 +1436,8 @@ async function seedDemoSplitData(db: D1Database) {
       .prepare(`
         INSERT INTO split_expenses (
           id, household_id, split_group_id, split_batch_id, payer_person_id, expense_date,
-          description, category_id, total_amount_minor, note
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          description, category_id, total_amount_minor, note, linked_transaction_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         expense.id,
@@ -1356,7 +1449,8 @@ async function seedDemoSplitData(db: D1Database) {
         expense.description,
         findSeedCategoryId(expense.categoryName),
         expense.totalAmountMinor,
-        expense.note
+        expense.note,
+        expense.linkedTransactionId ?? null
       )
       .run();
 
@@ -1385,25 +1479,50 @@ async function seedDemoSplitData(db: D1Database) {
     }
   }
 
-  await db
-    .prepare(`
-      INSERT INTO split_settlements (
-        id, household_id, split_group_id, split_batch_id, from_person_id, to_person_id,
-        settlement_date, amount_minor, note
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `)
-    .bind(
-      "split-settlement-okaeri",
-      DEFAULT_HOUSEHOLD_ID,
-      "split-group-okaeri",
-      "split-batch-okaeri-closed",
-      DEMO_PARTNER_PERSON_ID,
-      DEMO_PRIMARY_PERSON_ID,
-      "2025-10-22",
-      93150,
-      "Manual settle-up recorded before bank transfer was linked."
-    )
-    .run();
+  const settlementSeeds = [
+    {
+      id: "split-settlement-okaeri",
+      groupId: "split-group-okaeri",
+      batchId: "split-batch-okaeri-closed",
+      fromPersonId: DEMO_PARTNER_PERSON_ID,
+      toPersonId: DEMO_PRIMARY_PERSON_ID,
+      date: "2025-10-22",
+      amountMinor: 93150,
+      note: "Manual settle-up recorded before bank transfer was linked."
+    },
+    {
+      id: "split-settlement-nongroup-transfer-match",
+      groupId: null,
+      batchId: "split-batch-none-open",
+      fromPersonId: DEMO_PARTNER_PERSON_ID,
+      toPersonId: DEMO_PRIMARY_PERSON_ID,
+      date: "2025-10-18",
+      amountMinor: 4580,
+      note: "Cash float settle-up waiting for the imported transfer row."
+    }
+  ];
+
+  for (const settlement of settlementSeeds) {
+    await db
+      .prepare(`
+        INSERT INTO split_settlements (
+          id, household_id, split_group_id, split_batch_id, from_person_id, to_person_id,
+          settlement_date, amount_minor, note
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .bind(
+        settlement.id,
+        DEFAULT_HOUSEHOLD_ID,
+        settlement.groupId,
+        settlement.batchId,
+        settlement.fromPersonId,
+        settlement.toPersonId,
+        settlement.date,
+        settlement.amountMinor,
+        settlement.note
+      )
+      .run();
+  }
 }
 
 export async function duplicateMonthPlan(db: D1Database, sourceMonth: string) {
