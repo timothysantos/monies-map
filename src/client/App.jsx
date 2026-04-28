@@ -1426,7 +1426,7 @@ export function App() {
   const stickyScopeConfig = pageView
     ? selectedTabId === "month"
       ? {
-          selectedKey: pageView.monthPage.selectedScope,
+          selectedKey: selectedScope,
           paramKey: "scope",
           label: "Month view controls"
         }
@@ -1523,6 +1523,10 @@ export function App() {
       }
       return next;
     });
+
+    if (nextViewId === "household") {
+      setMobileContextOpen(false);
+    }
   }
 
   function handleStickyScopeChange(nextScopeKey) {
@@ -1535,6 +1539,7 @@ export function App() {
       next.set(stickyScopeConfig.paramKey, nextScopeKey);
       return next;
     });
+    setMobileContextOpen(false);
   }
 
   function handleMonthChange(direction) {
