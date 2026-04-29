@@ -658,7 +658,7 @@ function PlanningRow({
                 }
               }}
             >
-              <span>{editingSourceRow.note ?? messages.common.emptyValue}</span>
+              <span>{editableRow.note ?? messages.common.emptyValue}</span>
               {canInlineEditRow ? <SquarePen size={14} /> : null}
             </button>
           </div>
