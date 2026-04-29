@@ -7,6 +7,8 @@ import { getAmountToneClass } from "./entry-helpers";
 import { money } from "./formatters";
 import { CategoryGlyph, FilterMultiSelect, FilterSelect } from "./ui-components";
 
+// The strip shows the same filtered dataset in four different accounting views:
+// spend, income, net, and total outflow.
 export function EntriesTotalsStrip({
   showExpenseBreakdown,
   entryTotals,

@@ -27,6 +27,8 @@ function scrollInlineEditorIntoView(element) {
   window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
 }
 
+// This renderer is intentionally "dumb": it receives already-grouped entries
+// and mostly maps them into row UI.
 export function EntriesDateGroups({
   groupedEntries,
   allEntries,
@@ -285,26 +287,12 @@ function EntryRow({
   renderInlineEditor = true
 }) {
   const inlineEditorRef = useRef(null);
-  const ownerLabel = entry.ownershipType === "shared" ? "Shared" : entry.ownerName ?? messages.common.emptyValue;
-  const splitPercent = getVisibleSplitPercent(entry, viewId);
   const category = getCategory(categories, entry);
-  const transferLabel = entry.entryType === "transfer"
-    ? `${entry.linkedTransfer ? "Matched transfer" : "Transfer"} ${entry.transferDirection === "in" ? "in" : "out"}`
-    : null;
-  const transferDetail = entry.linkedTransfer
-    ? `${entry.transferDirection === "out" ? "To" : "From"} ${entry.linkedTransfer.accountName}`
-    : entry.accountName;
-  const accountDetail = [
-    entry.linkedTransfer ? entry.accountName : null,
-    entry.accountOwnerLabel
-  ].filter(Boolean).join(" - ");
-  const signedAmountMinor = getSignedAmountMinor(entry);
-  const signedTotalAmountMinor = getSignedTotalAmountMinor(entry);
-  const hasWeightedTotal = signedTotalAmountMinor != null && signedTotalAmountMinor !== signedAmountMinor;
   const transferCandidates = entry.entryType === "transfer"
     ? getTransferCandidatesForEntry(entry)
     : [];
   const bankState = getEntryBankState(entry);
+  const display = buildEntryRowDisplay(entry, viewId);
   const linkedSplitExpenseId = createdSplitAction && createdSplitAction.entryId === entry.id
     ? createdSplitAction.splitExpenseId
     : entry.linkedSplitExpenseId;
@@ -359,25 +347,25 @@ function EntryRow({
             <p>{entry.note || messages.common.emptyValue}</p>
           </div>
           <div className="entry-row-transfer">
-            <strong>{transferDetail}</strong>
-            <p>{accountDetail || messages.common.emptyValue}</p>
+            <strong>{display.transferDetail}</strong>
+            <p>{display.accountDetail || messages.common.emptyValue}</p>
           </div>
           <div className="entry-row-right">
             <div className="entry-row-amount">
-              <strong className={getAmountToneClass(signedAmountMinor)}>{money(signedAmountMinor)}</strong>
-              {hasWeightedTotal ? <p>({money(signedTotalAmountMinor)} total)</p> : null}
+              <strong className={getAmountToneClass(display.signedAmountMinor)}>{money(display.signedAmountMinor)}</strong>
+              {display.hasWeightedTotal ? <p>({money(display.signedTotalAmountMinor)} total)</p> : null}
             </div>
             <div className="entry-pills">
               {entry.isPendingDerived ? <span className="entry-chip entry-chip-pending">Updating</span> : null}
-              {transferLabel ? <span className="entry-chip entry-chip-transfer">{transferLabel}</span> : null}
+              {display.transferLabel ? <span className="entry-chip entry-chip-transfer">{display.transferLabel}</span> : null}
               <span
                 className={`entry-chip entry-chip-bank-state ${bankState.className} entry-status-dot`}
                 aria-label={bankState.label}
                 title={bankState.label}
               />
-              <span className={`entry-chip ${entry.ownershipType === "shared" ? "entry-chip-shared" : "entry-chip-owner"}`}>{ownerLabel}</span>
-              {entry.ownershipType === "shared" && splitPercent != null ? (
-                <span className="entry-chip entry-chip-split">{splitPercent}%</span>
+              <span className={`entry-chip ${entry.ownershipType === "shared" ? "entry-chip-shared" : "entry-chip-owner"}`}>{display.ownerLabel}</span>
+              {entry.ownershipType === "shared" && display.splitPercent != null ? (
+                <span className="entry-chip entry-chip-split">{display.splitPercent}%</span>
               ) : null}
             </div>
           </div>
@@ -392,7 +380,7 @@ function EntryRow({
             categoryOptions={categoryOptions}
             accountOptions={accountOptions}
             ownerOptions={ownerOptions}
-            splitPercentValue={entry.ownershipType === "shared" ? splitPercent : null}
+            splitPercentValue={entry.ownershipType === "shared" ? display.splitPercent : null}
             lockTransferCategory
             onChange={(patch) => onUpdateEntry(entry.id, patch)}
             onQuickSaveCategory={(categoryName) => onSaveEntryCategory(entry.id, categoryName)}
@@ -478,6 +466,30 @@ function EntryRow({
   );
 }
 
+function buildEntryRowDisplay(entry, viewId) {
+  const splitPercent = getVisibleSplitPercent(entry, viewId);
+  const signedAmountMinor = getSignedAmountMinor(entry);
+  const signedTotalAmountMinor = getSignedTotalAmountMinor(entry);
+
+  return {
+    ownerLabel: entry.ownershipType === "shared" ? "Shared" : entry.ownerName ?? messages.common.emptyValue,
+    splitPercent,
+    transferLabel: entry.entryType === "transfer"
+      ? `${entry.linkedTransfer ? "Matched transfer" : "Transfer"} ${entry.transferDirection === "in" ? "in" : "out"}`
+      : null,
+    transferDetail: entry.linkedTransfer
+      ? `${entry.transferDirection === "out" ? "To" : "From"} ${entry.linkedTransfer.accountName}`
+      : entry.accountName,
+    accountDetail: [
+      entry.linkedTransfer ? entry.accountName : null,
+      entry.accountOwnerLabel
+    ].filter(Boolean).join(" - "),
+    signedAmountMinor,
+    signedTotalAmountMinor,
+    hasWeightedTotal: signedTotalAmountMinor != null && signedTotalAmountMinor !== signedAmountMinor
+  };
+}
+
 function shouldIgnoreRowEditClick(target, currentTarget) {
   if (!(target instanceof Element) || !(currentTarget instanceof Element)) {
     return false;
@@ -489,6 +501,10 @@ function shouldIgnoreRowEditClick(target, currentTarget) {
   return Boolean(interactiveAncestor && interactiveAncestor !== currentTarget);
 }
 
+// Bank state tells the user how "final" the row is:
+// - statement certified: locked to a confirmed bank statement
+// - import provisional: imported but not yet certified by a statement
+// - manual provisional: typed by hand and still waiting for bank confirmation
 function getEntryBankState(entry) {
   if (entry.bankCertificationStatus === "statement_certified") {
     return {

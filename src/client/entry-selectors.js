@@ -2,6 +2,9 @@ import { getAccountSelectOptions } from "./account-display";
 import { getCategoryNameOptions } from "./category-utils";
 import { entryMatchesScope, groupEntriesByDate, uniqueValues } from "./entry-helpers";
 
+// These selectors keep the Entries panel declarative. The component asks for
+// "what should I render?" while the filtering and aggregation rules stay here.
+
 export function getEntryFilterOptions(entries) {
   return {
     wallets: uniqueValues(entries.map((entry) => entry.accountName)),
@@ -31,6 +34,7 @@ export function getActiveEntryFilterCount(entryFilters) {
 
 export function getFilteredEntries({ entries, entryFilters, selectedScope, viewId }) {
   return entries.filter((entry) => {
+    // Scope is the first gate because it is the page-level visibility rule.
     if (!entryMatchesScope(entry, viewId, selectedScope)) {
       return false;
     }
@@ -58,6 +62,8 @@ export function getFilteredEntries({ entries, entryFilters, selectedScope, viewI
 
 export function getEntryTotals(entries) {
   return entries.reduce((totals, entry) => {
+    // Entries keeps income/expense/transfer math separate so the page can show
+    // both net cash flow and total money moved out.
     if (entry.entryType === "income") {
       totals.incomeMinor += entry.amountMinor;
     } else if (entry.entryType === "expense") {
@@ -104,6 +110,8 @@ export function getEntryDerivedData({ entries, entryFilters, selectedScope, view
     filteredEntries,
     groupedEntries,
     entryTotals,
+    // "Outflow" includes transfers out, while "net" ignores transfer pairs and
+    // only compares income against expenses.
     entryOutflowMinor: entryTotals.spendMinor + entryTotals.transferOutMinor,
     entryNetMinor: entryTotals.incomeMinor - entryTotals.spendMinor,
     expenseBreakdown: getExpenseBreakdown(filteredEntries)
