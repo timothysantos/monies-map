@@ -2365,6 +2365,12 @@ export function App() {
                       </div>
                     </section>
                   ) : null}
+
+                  {selectedTabId === "entries" ? (
+                    <section className="mobile-context-dialog-section mobile-context-dialog-filters-slot" aria-label="Filters">
+                      <div id="entries-mobile-context-filters" />
+                    </section>
+                  ) : null}
                 </Dialog.Content>
               </Dialog.Portal>
             </Dialog.Root>
@@ -2430,6 +2436,8 @@ export function App() {
                   view={pageView}
                   entriesSourceView={householdView}
                   selectedMonth={selectedMonth}
+                  mobileContextOpen={mobileContextOpen}
+                  onCloseMobileContext={() => setMobileContextOpen(false)}
                   externalRefreshToken={entriesExternalRefreshToken}
                   availableMonths={availableMonths}
                   accounts={bootstrap.accounts}

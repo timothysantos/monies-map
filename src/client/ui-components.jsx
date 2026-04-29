@@ -1,25 +1,33 @@
+import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
-import { Receipt, X } from "lucide-react";
-import { useState } from "react";
+import { Check, ChevronDown, Receipt, X } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { money } from "./formatters";
+import { ResponsiveSelect } from "./responsive-select";
 import { ICON_REGISTRY } from "./ui-options";
 
 export function FilterSelect({ label, value, options, emptyLabel, onChange }) {
+  const normalizedOptions = [
+    { value: "", label: emptyLabel },
+    ...options.map((option) => (
+      typeof option === "string"
+        ? { value: option, label: option }
+        : option
+    ))
+  ];
+
   return (
     <label className="entries-filter">
       <span className="entries-filter-label">{label}</span>
-      <select className="table-edit-input" value={value} onChange={(event) => onChange(event.target.value)}>
-        <option value="">{emptyLabel}</option>
-        {options.map((option) => {
-          const optionValue = typeof option === "string" ? option : option.value;
-          const optionLabel = typeof option === "string" ? option : option.label;
-          return (
-            <option key={optionValue} value={optionValue}>{optionLabel}</option>
-          );
-        })}
-      </select>
+      <ResponsiveSelect
+        className="table-edit-input"
+        value={value}
+        options={normalizedOptions}
+        title={label}
+        onValueChange={onChange}
+      />
     </label>
   );
 }
@@ -32,6 +40,7 @@ export function FilterMultiSelect({
   onChange,
   selectionLabel
 }) {
+  const [useMobilePicker, setUseMobilePicker] = useState(false);
   const [open, setOpen] = useState(false);
   const selectedValues = Array.isArray(values) ? values : [];
   const normalizedOptions = options.map((option) => (
@@ -49,6 +58,89 @@ export function FilterMultiSelect({
       ? selectedValues.filter((value) => value !== nextValue)
       : [...selectedValues, nextValue];
     onChange(nextValues);
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 760px)");
+    const update = () => setUseMobilePicker(mediaQuery.matches);
+    update();
+    mediaQuery.addEventListener?.("change", update);
+    return () => mediaQuery.removeEventListener?.("change", update);
+  }, []);
+
+  if (useMobilePicker) {
+    return (
+      <label className="entries-filter">
+        <span className="entries-filter-label">{label}</span>
+        <button
+          type="button"
+          className="table-edit-input responsive-select-trigger entries-filter-multiselect-trigger"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          onClick={() => setOpen(true)}
+        >
+          <span className="responsive-select-value entries-filter-multiselect-value">{triggerLabel}</span>
+          <ChevronDown size={18} />
+        </button>
+        <Dialog.Root open={open} onOpenChange={setOpen}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="note-dialog-overlay" />
+            <Dialog.Content className="note-dialog-content mobile-select-dialog" onOpenAutoFocus={(event) => event.preventDefault()}>
+              <div className="note-dialog-head mobile-select-head">
+                <Dialog.Title>{label}</Dialog.Title>
+                <button
+                  type="button"
+                  className="icon-action subtle-cancel mobile-select-close"
+                  aria-label={`Close ${label.toLowerCase()}`}
+                  onClick={() => setOpen(false)}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="mobile-select-options">
+                {normalizedOptions.map((option) => {
+                  const checked = selectedValues.includes(option.value);
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`mobile-select-option ${checked ? "is-selected" : ""}`}
+                      aria-pressed={checked}
+                      onClick={() => toggleValue(option.value)}
+                    >
+                      <span className="mobile-select-option-main">
+                        <span>{option.label}</span>
+                      </span>
+                      {checked ? <Check size={18} /> : null}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="entries-filter-multiselect-actions mobile-select-actions">
+                <button
+                  type="button"
+                  className="subtle-action"
+                  onClick={() => onChange([])}
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  className="subtle-action"
+                  onClick={() => setOpen(false)}
+                >
+                  Done
+                </button>
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      </label>
+    );
   }
 
   return (

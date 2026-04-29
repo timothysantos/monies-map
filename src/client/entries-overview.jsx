@@ -98,11 +98,11 @@ export function EntriesFilterStack({
   entryFilters,
   wallets,
   entryCategoryOptions,
-  peopleFilterOptions,
   onToggleMobileFilters,
   onChangeFilter,
   onResetFilters,
-  onRefresh
+  onRefresh,
+  onDone
 }) {
   return (
     <section className={`entries-filter-stack ${showMobileFilters ? "is-open" : ""}`}>
@@ -141,13 +141,6 @@ export function EntriesFilterStack({
           onChange={(value) => onChangeFilter("category", value)}
         />
         <FilterSelect
-          label={messages.entries.person}
-          value={entryFilters.person}
-          options={peopleFilterOptions}
-          emptyLabel={messages.entries.allPeople}
-          onChange={(value) => onChangeFilter("person", value)}
-        />
-        <FilterSelect
           label={messages.entries.type}
           value={entryFilters.type}
           options={["expense", "income", "transfer"]}
@@ -158,8 +151,12 @@ export function EntriesFilterStack({
           <button type="button" className="subtle-action" onClick={onResetFilters}>
             {messages.entries.resetFilters}
           </button>
-          <button type="button" className="subtle-action entries-filter-hide" onClick={onToggleMobileFilters}>
-            Hide
+          <button
+            type="button"
+            className="subtle-action entries-filter-hide"
+            onClick={onDone ?? onToggleMobileFilters}
+          >
+            {onDone ? "Done" : "Hide"}
           </button>
         </div>
       </section>
