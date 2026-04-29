@@ -1,6 +1,7 @@
-import { getAccountSelectOptions } from "./account-display";
-import { getCategoryNameOptions } from "./category-utils";
 import { entryMatchesScope, groupEntriesByDate, uniqueValues } from "./entry-helpers";
+import { moniesClient } from "./monies-client-service";
+
+const { accounts: accountService, categories: categoryService } = moniesClient;
 
 // These selectors keep the Entries panel declarative. The component asks for
 // "what should I render?" while the filtering and aggregation rules stay here.
@@ -13,14 +14,14 @@ export function getEntryFilterOptions(entries) {
 }
 
 export function getEntryWalletFilterOptions(accounts) {
-  return getAccountSelectOptions(accounts.filter((account) => account.isActive !== false), { valueKey: "id" })
+  return accountService.getSelectOptions(accounts.filter((account) => account.isActive !== false), { valueKey: "id" })
     .filter((option) => option.value);
 }
 
 export function getEntryFormOptions({ accounts, categories, people }) {
   return {
-    categoryOptions: getCategoryNameOptions(categories),
-    accountOptions: getAccountSelectOptions(accounts.filter((account) => account.isActive !== false), { valueKey: "id" }),
+    categoryOptions: categoryService.getNameOptions(categories),
+    accountOptions: accountService.getSelectOptions(accounts.filter((account) => account.isActive !== false), { valueKey: "id" }),
     ownerOptions: [...people.map((person) => person.name), "Shared"]
   };
 }

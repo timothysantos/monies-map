@@ -1,11 +1,12 @@
 import { ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
 
 import { SpendingMixChart } from "./category-visuals";
-import { getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { getAmountToneClass } from "./entry-helpers";
-import { money } from "./formatters";
+import { moniesClient } from "./monies-client-service";
 import { CategoryGlyph, FilterMultiSelect, FilterSelect } from "./ui-components";
+
+const { categories: categoryService, format: formatService } = moniesClient;
 
 // The strip shows the same filtered dataset in four different accounting views:
 // spend, income, net, and total outflow.
@@ -30,19 +31,19 @@ export function EntriesTotalsStrip({
       </button>
       <span className="entries-totals-item">
         <span className="entries-totals-label">{messages.entries.totalSpend}</span>
-        <strong className={getAmountToneClass(-entryTotals.spendMinor)}>{money(entryTotals.spendMinor)}</strong>
+        <strong className={getAmountToneClass(-entryTotals.spendMinor)}>{formatService.money(entryTotals.spendMinor)}</strong>
       </span>
       <span className="entries-totals-item">
         <span className="entries-totals-label">{messages.entries.totalIncome}</span>
-        <strong className={getAmountToneClass(entryTotals.incomeMinor)}>{money(entryTotals.incomeMinor)}</strong>
+        <strong className={getAmountToneClass(entryTotals.incomeMinor)}>{formatService.money(entryTotals.incomeMinor)}</strong>
       </span>
       <span className="entries-totals-item">
         <span className="entries-totals-label">{messages.entries.totalDifference}</span>
-        <strong className={getAmountToneClass(entryNetMinor)}>{money(entryNetMinor)}</strong>
+        <strong className={getAmountToneClass(entryNetMinor)}>{formatService.money(entryNetMinor)}</strong>
       </span>
       <span className="entries-totals-item">
         <span className="entries-totals-label">{messages.entries.totalOutflow}</span>
-        <strong className={getAmountToneClass(-entryOutflowMinor)}>{money(entryOutflowMinor)}</strong>
+        <strong className={getAmountToneClass(-entryOutflowMinor)}>{formatService.money(entryOutflowMinor)}</strong>
       </span>
       <div className="entries-totals-spacer" />
       <button type="button" className="subtle-action is-primary entries-add-inline" onClick={onAddEntry}>
@@ -72,7 +73,7 @@ export function EntriesBreakdownPanel({ expenseBreakdown, categories }) {
       </div>
       <div className="entries-breakdown-list category-list">
         {expenseBreakdown.map((item, index) => {
-          const theme = getCategoryTheme(categories, item, index);
+          const theme = categoryService.getTheme(categories, item, index);
           return (
             <div key={item.key} className="category-row">
               <div className="category-key">
@@ -81,7 +82,7 @@ export function EntriesBreakdownPanel({ expenseBreakdown, categories }) {
                 </span>
                 <div>
                   <strong>{item.label}</strong>
-                  <p>{money(item.valueMinor)} • {item.entryCount} {item.entryCount === 1 ? "entry" : "entries"}</p>
+                  <p>{formatService.money(item.valueMinor)} • {item.entryCount} {item.entryCount === 1 ? "entry" : "entries"}</p>
                 </div>
               </div>
             </div>

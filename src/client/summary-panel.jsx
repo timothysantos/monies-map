@@ -8,25 +8,22 @@ import {
 } from "react-router-dom";
 
 import {
-  describeAccountHealth,
-  formatAccountDisplayName
-} from "./account-display";
-import {
   CategoryAppearancePopover,
   SpendingMixChart
 } from "./category-visuals";
-import { getCategory } from "./category-utils";
 import { messages } from "./copy/en-SG";
-import {
-  formatMonthLabel,
-  money
-} from "./formatters";
+import { moniesClient } from "./monies-client-service";
 import {
   BarLine,
   MetricCard
 } from "./ui-components";
 
 const SUMMARY_FOCUS_OVERALL = "overall";
+const {
+  accounts: accountService,
+  categories: categoryService,
+  format: formatService
+} = moniesClient;
 
 // Read alongside docs/import-summary-code-glossary.md.
 // This panel has three main blocks:
@@ -191,7 +188,7 @@ function SummarySpendingMixSection({
                 className={`summary-focus-button ${focusState.selectedFocusMonth === month ? "is-active" : ""}`}
                 onClick={() => onFocusChange(month)}
               >
-                {formatMonthLabel(month)}
+                {formatService.formatMonthLabel(month)}
               </button>
             ))}
           </div>
@@ -204,7 +201,7 @@ function SummarySpendingMixSection({
 
           <div className="share-list">
             {focusState.donutData.map((item) => {
-              const category = getCategory(categories, item);
+              const category = categoryService.get(categories, item);
               const categoryName = category?.name ?? item.label;
               return (
                 <div key={item.key} className="share-row">
@@ -219,7 +216,7 @@ function SummarySpendingMixSection({
                       onClick={() => onOpenEntriesForCategory(categoryName)}
                     >
                       <strong>{categoryName}</strong>
-                      <p>{money(item.valueMinor)}</p>
+                      <p>{formatService.money(item.valueMinor)}</p>
                       <span className="share-row-meta">
                         {formatTransactionCount(item.entryCount)}
                       </span>
@@ -282,13 +279,16 @@ function SummaryMonthPlanCard({ month, monthPlanReview, isInitiallyOpen, onOpenM
                   onOpenMonth(month.month);
                 }}
               >
-                {formatMonthLabel(month.month)}
+                {formatService.formatMonthLabel(month.month)}
               </button>
-              <p>{messages.summary.incomeLabel(money(month.plannedIncomeMinor), money(month.actualIncomeMinor))}</p>
+              <p>{messages.summary.incomeLabel(
+                formatService.money(month.plannedIncomeMinor),
+                formatService.money(month.actualIncomeMinor)
+              )}</p>
             </div>
           </div>
           <span className={monthPlanReview.spendVarianceMinor >= 0 ? "positive" : "negative"}>
-            {money(monthPlanReview.spendVarianceMinor)}
+            {formatService.money(monthPlanReview.spendVarianceMinor)}
           </span>
         </div>
       </summary>
@@ -320,28 +320,28 @@ function SummaryMonthPlanCard({ month, monthPlanReview, isInitiallyOpen, onOpenM
             <tbody>
               <tr>
                 <td>{messages.summary.table.income}</td>
-                <td>{money(month.plannedIncomeMinor)}</td>
-                <td>{money(month.actualIncomeMinor)}</td>
+                <td>{formatService.money(month.plannedIncomeMinor)}</td>
+                <td>{formatService.money(month.actualIncomeMinor)}</td>
                 <td className={monthPlanReview.incomeVarianceMinor >= 0 ? "positive" : "negative"}>
-                  {money(monthPlanReview.incomeVarianceMinor)}
+                  {formatService.money(monthPlanReview.incomeVarianceMinor)}
                 </td>
               </tr>
               <tr>
                 <td>{messages.summary.table.expectedExpenses}</td>
-                <td>{money(month.estimatedExpensesMinor)}</td>
-                <td>{money(month.realExpensesMinor)}</td>
+                <td>{formatService.money(month.estimatedExpensesMinor)}</td>
+                <td>{formatService.money(month.realExpensesMinor)}</td>
                 <td className={monthPlanReview.spendVarianceMinor >= 0 ? "positive" : "negative"}>
-                  {money(monthPlanReview.spendVarianceMinor)}
+                  {formatService.money(monthPlanReview.spendVarianceMinor)}
                 </td>
               </tr>
               <tr>
                 <td>{messages.summary.table.expectedSavings}</td>
-                <td>{money(month.savingsGoalMinor)}</td>
+                <td>{formatService.money(month.savingsGoalMinor)}</td>
                 <td className={month.realizedSavingsMinor >= 0 ? "positive" : "negative"}>
-                  {money(month.realizedSavingsMinor)}
+                  {formatService.money(month.realizedSavingsMinor)}
                 </td>
                 <td className={monthPlanReview.savingsVarianceMinor >= 0 ? "positive" : "negative"}>
-                  {money(monthPlanReview.savingsVarianceMinor)}
+                  {formatService.money(monthPlanReview.savingsVarianceMinor)}
                 </td>
               </tr>
               <tr className="summary-context-row">
@@ -383,9 +383,9 @@ function SummaryAccountsSection({ accountPills, onOpenEntriesForAccount }) {
             className={`summary-account-pill ${account.reconciliationStatus ? `is-${account.reconciliationStatus}` : ""}`}
             onClick={() => onOpenEntriesForAccount(account.accountId)}
           >
-            <span className="summary-account-pill-name">{formatAccountDisplayName(account)}</span>
-            <span className="summary-account-pill-amount">{money(account.balanceMinor)}</span>
-            <span className="summary-account-pill-meta">{describeAccountHealth(account)}</span>
+            <span className="summary-account-pill-name">{accountService.formatDisplayName(account)}</span>
+            <span className="summary-account-pill-amount">{formatService.money(account.balanceMinor)}</span>
+            <span className="summary-account-pill-meta">{accountService.describeHealth(account)}</span>
           </button>
         ))}
       </div>

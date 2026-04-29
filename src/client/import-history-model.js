@@ -1,5 +1,7 @@
 import { RECENT_IMPORTS_PAGE_SIZE } from "./import-history";
-import { getAccountSelectOptions } from "./account-display";
+import { moniesClient } from "./monies-client-service";
+
+const { accounts: accountService } = moniesClient;
 
 export function buildRecentImportModel(recentImports, recentImportPage) {
   const pageCount = Math.max(1, Math.ceil(recentImports.length / RECENT_IMPORTS_PAGE_SIZE));
@@ -18,7 +20,7 @@ export function buildRecentImportModel(recentImports, recentImportPage) {
 
 export function getRecentImportAccountOptions(recentImports, accounts = []) {
   const accountLabels = new Set();
-  for (const option of getAccountSelectOptions(accounts)) {
+  for (const option of accountService.getSelectOptions(accounts)) {
     accountLabels.add(option.label);
   }
 
