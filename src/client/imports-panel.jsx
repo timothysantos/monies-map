@@ -33,23 +33,35 @@ import {
   statementRowsToCsv
 } from "../lib/statement-import";
 
+const DEFAULT_SOURCE_LABEL = "Imported CSV";
+const DEFAULT_STATEMENT_IMPORT_META = { sourceType: "csv", parserKey: "generic_csv" };
+const DEFAULT_UNKNOWN_CATEGORY_MODE = "other";
+
+// Read alongside docs/import-summary-code-glossary.md.
+// This component is intentionally the import workflow "orchestrator":
+// - stage 1 collects source rows and default import ownership/account choices
+// - stage 2 maps CSV columns into the app's import schema
+// - stage 3 reviews the server-built preview before commit
 export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, people, onRefresh }) {
-  // Keep import flow state centralized while the UI is being split up: CSV paste,
-  // PDF/XLS parsing, preview, checkpoints, and commit all share this payload.
-  const [sourceLabel, setSourceLabel] = useState("Imported CSV");
+  // Draft metadata chosen by the user before preview.
+  const [sourceLabel, setSourceLabel] = useState(DEFAULT_SOURCE_LABEL);
   const [importNote, setImportNote] = useState("");
   const [csvText, setCsvText] = useState("");
   const [defaultAccountName, setDefaultAccountName] = useState(accounts[0]?.name ?? "");
   const [ownershipType, setOwnershipType] = useState("direct");
   const [ownerName, setOwnerName] = useState(people[0]?.name ?? "");
   const [splitPercent, setSplitPercent] = useState("50");
-  const [unknownCategoryMode, setUnknownCategoryMode] = useState("other");
+  const [unknownCategoryMode, setUnknownCategoryMode] = useState(DEFAULT_UNKNOWN_CATEGORY_MODE);
   const [columnMappings, setColumnMappings] = useState({});
+
+  // Preview payload returned by the server after duplicate detection and matching.
   const [preview, setPreview] = useState(null);
   const [previewRows, setPreviewRows] = useState([]);
   const [previewError, setPreviewError] = useState("");
   const [statementCheckpoints, setStatementCheckpoints] = useState([]);
-  const [statementImportMeta, setStatementImportMeta] = useState({ sourceType: "csv", parserKey: "generic_csv" });
+  const [statementImportMeta, setStatementImportMeta] = useState(DEFAULT_STATEMENT_IMPORT_META);
+
+  // UI-only workflow state: upload progress, modal dialogs, and navigation aids.
   const [uploadStatus, setUploadStatus] = useState(null);
   const [isParsingStatement, setIsParsingStatement] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -256,7 +268,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   function handleCsvTextChange(nextText) {
     setCsvText(nextText);
     setStatementCheckpoints([]);
-    setStatementImportMeta({ sourceType: "csv", parserKey: "generic_csv" });
+    setStatementImportMeta(DEFAULT_STATEMENT_IMPORT_META);
     setUploadStatus(null);
   }
 
@@ -269,20 +281,20 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }
 
   function resetImportForm() {
-    setSourceLabel("Imported CSV");
+    setSourceLabel(DEFAULT_SOURCE_LABEL);
     setImportNote("");
     setCsvText("");
     setDefaultAccountName(accounts[0]?.name ?? "");
     setOwnershipType("direct");
     setOwnerName(people[0]?.name ?? "");
     setSplitPercent("50");
-    setUnknownCategoryMode("other");
+    setUnknownCategoryMode(DEFAULT_UNKNOWN_CATEGORY_MODE);
     setColumnMappings({});
     setPreview(null);
     setPreviewRows([]);
     setPreviewError("");
     setStatementCheckpoints([]);
-    setStatementImportMeta({ sourceType: "csv", parserKey: "generic_csv" });
+    setStatementImportMeta(DEFAULT_STATEMENT_IMPORT_META);
     setUploadStatus(null);
     setIsParsingStatement(false);
     setIsDragActive(false);
@@ -305,6 +317,60 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     event.target.value = "";
   }
 
+  async function previewParsedImport({
+    parsed,
+    sourceType,
+    nextStatementCheckpoints,
+    nextDefaultAccountName,
+    successMessage
+  }) {
+    setSourceLabel(parsed.sourceLabel);
+    setStatementCheckpoints(nextStatementCheckpoints);
+    setStatementImportMeta({ sourceType, parserKey: parsed.parserKey });
+    setCsvText(statementRowsToCsv(parsed.rows));
+
+    if (nextDefaultAccountName) {
+      setDefaultAccountName(nextDefaultAccountName);
+    }
+
+    setUploadStatus({ tone: "active", message: messages.imports.uploadPreviewing(parsed.rows.length) });
+    await previewImportRows({
+      rows: parsed.rows,
+      nextSourceLabel: parsed.sourceLabel,
+      nextDefaultAccountName: nextDefaultAccountName || defaultAccountName,
+      nextStatementCheckpoints
+    });
+    setUploadStatus({ tone: "success", message: successMessage });
+  }
+
+  function markPreviewRefreshStarted(message) {
+    setUploadStatus({ tone: "active", message });
+    setIsSubmitting(true);
+  }
+
+  function refreshPreviewFromRows({
+    rows,
+    nextStatementCheckpoints = statementCheckpoints,
+    activeMessage,
+    successMessage
+  }) {
+    markPreviewRefreshStarted(activeMessage);
+
+    return previewImportRows({
+      rows,
+      nextStatementCheckpoints
+    })
+      .then(() => {
+        setUploadStatus({ tone: "success", message: successMessage });
+      })
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : "Import preview failed.";
+        setPreviewError(message);
+        setUploadStatus({ tone: "error", message });
+      })
+      .finally(() => setIsSubmitting(false));
+  }
+
   async function processImportFile(file) {
     setPreviewError("");
     setUploadStatus({ tone: "active", message: messages.imports.uploadReading(file.name) });
@@ -320,24 +386,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         const parsed = parseStatementText(text, file.name);
         const parsedCheckpoints = withDetectedStatementAccounts(parsed.checkpoints);
 
-        setSourceLabel(parsed.sourceLabel);
-        setStatementCheckpoints(parsedCheckpoints);
-        setStatementImportMeta({ sourceType: "pdf", parserKey: parsed.parserKey });
-        setCsvText(statementRowsToCsv(parsed.rows));
-        if (parsed.checkpoints[0]?.accountName) {
-          setDefaultAccountName(parsed.checkpoints[0].accountName);
-        }
-
-        setUploadStatus({ tone: "active", message: messages.imports.uploadPreviewing(parsed.rows.length) });
-        await previewImportRows({
-          rows: parsed.rows,
-          nextSourceLabel: parsed.sourceLabel,
+        await previewParsedImport({
+          parsed,
+          sourceType: "pdf",
+          nextStatementCheckpoints: parsedCheckpoints,
           nextDefaultAccountName: parsed.checkpoints[0]?.accountName ?? defaultAccountName,
-          nextStatementCheckpoints: parsedCheckpoints
-        });
-        setUploadStatus({
-          tone: "success",
-          message: parsed.checkpoints.length > 1
+          successMessage: parsed.checkpoints.length > 1
             ? messages.imports.uploadStatementReady(parsed.rows.length, parsed.checkpoints.length)
             : messages.imports.uploadReady(parsed.rows.length)
         });
@@ -349,22 +403,13 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
         const parsed = parseCurrentTransactionSpreadsheet(await file.arrayBuffer(), file.name);
 
-        setSourceLabel(parsed.sourceLabel);
-        setStatementCheckpoints([]);
-        setStatementImportMeta({ sourceType: "csv", parserKey: parsed.parserKey });
-        setCsvText(statementRowsToCsv(parsed.rows));
-        if (parsed.rows[0]?.account) {
-          setDefaultAccountName(parsed.rows[0].account);
-        }
-
-        setUploadStatus({ tone: "active", message: messages.imports.uploadPreviewing(parsed.rows.length) });
-        await previewImportRows({
-          rows: parsed.rows,
-          nextSourceLabel: parsed.sourceLabel,
+        await previewParsedImport({
+          parsed,
+          sourceType: "csv",
+          nextStatementCheckpoints: [],
           nextDefaultAccountName: parsed.rows[0]?.account ?? defaultAccountName,
-          nextStatementCheckpoints: []
+          successMessage: messages.imports.uploadReady(parsed.rows.length)
         });
-        setUploadStatus({ tone: "success", message: messages.imports.uploadReady(parsed.rows.length) });
         return;
       }
 
@@ -379,22 +424,13 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
         const parsed = parseCitibankActivityCsv(nextText, file.name, activityContext);
 
-        setSourceLabel(parsed.sourceLabel);
-        setStatementCheckpoints([]);
-        setStatementImportMeta({ sourceType: "csv", parserKey: parsed.parserKey });
-        setCsvText(statementRowsToCsv(parsed.rows));
-        if (parsed.rows[0]?.account) {
-          setDefaultAccountName(parsed.rows[0].account);
-        }
-
-        setUploadStatus({ tone: "active", message: messages.imports.uploadPreviewing(parsed.rows.length) });
-        await previewImportRows({
-          rows: parsed.rows,
-          nextSourceLabel: parsed.sourceLabel,
+        await previewParsedImport({
+          parsed,
+          sourceType: "csv",
+          nextStatementCheckpoints: [],
           nextDefaultAccountName: parsed.rows[0]?.account ?? defaultAccountName,
-          nextStatementCheckpoints: []
+          successMessage: messages.imports.uploadReady(parsed.rows.length)
         });
-        setUploadStatus({ tone: "success", message: messages.imports.uploadReady(parsed.rows.length) });
         return;
       }
 
@@ -403,29 +439,20 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
         const parsed = parseOcbcActivityCsv(nextText, file.name, activityContext);
 
-        setSourceLabel(parsed.sourceLabel);
-        setStatementCheckpoints([]);
-        setStatementImportMeta({ sourceType: "csv", parserKey: parsed.parserKey });
-        setCsvText(statementRowsToCsv(parsed.rows));
-        if (parsed.rows[0]?.account) {
-          setDefaultAccountName(parsed.rows[0].account);
-        }
-
-        setUploadStatus({ tone: "active", message: messages.imports.uploadPreviewing(parsed.rows.length) });
-        await previewImportRows({
-          rows: parsed.rows,
-          nextSourceLabel: parsed.sourceLabel,
+        await previewParsedImport({
+          parsed,
+          sourceType: "csv",
+          nextStatementCheckpoints: [],
           nextDefaultAccountName: parsed.rows[0]?.account ?? defaultAccountName,
-          nextStatementCheckpoints: []
+          successMessage: messages.imports.uploadReady(parsed.rows.length)
         });
-        setUploadStatus({ tone: "success", message: messages.imports.uploadReady(parsed.rows.length) });
         return;
       }
 
       setDismissedOverlapIds([]);
       setCsvText(nextText);
       setStatementCheckpoints([]);
-      setStatementImportMeta({ sourceType: "csv", parserKey: "generic_csv" });
+      setStatementImportMeta(DEFAULT_STATEMENT_IMPORT_META);
       setUploadStatus({ tone: "success", message: messages.imports.uploadCsvReady(file.name) });
     } catch (error) {
       setPreview(null);
@@ -444,6 +471,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     nextDefaultAccountName = defaultAccountName,
     nextStatementCheckpoints = statementCheckpoints
   }) {
+    // All source formats eventually converge here so the server only has one
+    // preview path to reason about.
     setPreviewError("");
     try {
       const data = await previewImportBatch({
@@ -504,6 +533,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }
 
   async function handleCommit() {
+    // `needs_review` and `skipped` rows stay out of the commit payload. They
+    // still matter during preview because they affect statement reconciliation.
     const rowsToCommit = previewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review");
     if (!rowsToCommit.length && !statementCheckpoints.length) {
       return;
@@ -541,6 +572,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }
 
   function updatePreviewRow(rowId, patch) {
+    // Edits to duplicate-sensitive fields invalidate prior match decisions, so
+    // the row goes back to a neutral "included until re-previewed" state.
     const duplicateKeyFields = ["date", "description", "amountMinor", "entryType", "transferDirection", "accountId", "accountName"];
     const shouldClearDuplicateMatches = duplicateKeyFields.some((field) => Object.prototype.hasOwnProperty.call(patch, field));
     setPreviewRows((current) => current.map((row) => (
@@ -573,19 +606,17 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     ));
     setPreviewRows(nextRows);
     if (statementCheckpoints.length) {
-      setUploadStatus({ tone: "active", message: messages.imports.statementReconciliationRefreshing });
-      void previewImportRows({ rows: nextRows.map(buildRawImportRowFromPreviewRow) })
-        .then(() => {
-          setUploadStatus({ tone: "success", message: messages.imports.statementReconciliationRefreshed });
-        })
-        .catch((error) => {
-          setPreviewError(error instanceof Error ? error.message : "Import preview failed.");
-          setUploadStatus({ tone: "error", message: error instanceof Error ? error.message : "Import preview failed." });
-        });
+      void refreshPreviewFromRows({
+        rows: nextRows.map(buildRawImportRowFromPreviewRow),
+        activeMessage: messages.imports.statementReconciliationRefreshing,
+        successMessage: messages.imports.statementReconciliationRefreshed
+      });
     }
   }
 
   function getPreviewAccountOwnerPatch(accountName, row, accountId) {
+    // Direct-account imports carry a single owner. Joint/shared imports keep
+    // their existing ownership semantics and do not auto-rewrite owner names.
     if (row.ownershipType !== "direct") {
       return {};
     }
@@ -610,6 +641,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       return;
     }
 
+    // Statement account labels are parser hints. This remap replaces that hint
+    // with a real app account across both preview rows and checkpoints.
     const nextRows = previewRows.map((row) => (
       getPreviewRowStatementAccountName(row) === fromAccountName
         ? {
@@ -628,20 +661,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     ));
     setPreviewRows(nextRows);
     setStatementCheckpoints(nextCheckpoints);
-    setUploadStatus({ tone: "active", message: messages.imports.accountMappingRefreshing });
-    setIsSubmitting(true);
-    void previewImportRows({
+    void refreshPreviewFromRows({
       rows: nextRows.map(buildRawImportRowFromPreviewRow),
-      nextStatementCheckpoints: nextCheckpoints
-    })
-      .then(() => {
-        setUploadStatus({ tone: "success", message: messages.imports.accountMappingRefreshed });
-      })
-      .catch((error) => {
-        setPreviewError(error instanceof Error ? error.message : "Import preview failed.");
-        setUploadStatus({ tone: "error", message: error instanceof Error ? error.message : "Import preview failed." });
-      })
-      .finally(() => setIsSubmitting(false));
+      nextStatementCheckpoints: nextCheckpoints,
+      activeMessage: messages.imports.accountMappingRefreshing,
+      successMessage: messages.imports.accountMappingRefreshed
+    });
   }
 
   async function applyStatementAccountMapping(fromAccountName, nextAccount) {
@@ -664,19 +689,15 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
     setPreviewRows(nextRows);
     setStatementCheckpoints(nextCheckpoints);
-    setUploadStatus({ tone: "active", message: messages.imports.accountMappingRefreshing });
-    setIsSubmitting(true);
     try {
-      await previewImportRows({
+      await refreshPreviewFromRows({
         rows: nextRows.map(buildRawImportRowFromPreviewRow),
-        nextStatementCheckpoints: nextCheckpoints
+        nextStatementCheckpoints: nextCheckpoints,
+        activeMessage: messages.imports.accountMappingRefreshing,
+        successMessage: messages.imports.accountMappingRefreshed
       });
-      setUploadStatus({ tone: "success", message: messages.imports.accountMappingRefreshed });
-    } catch (error) {
-      setPreviewError(error instanceof Error ? error.message : "Import preview failed.");
-      setUploadStatus({ tone: "error", message: error instanceof Error ? error.message : "Import preview failed." });
-    } finally {
-      setIsSubmitting(false);
+    } catch {
+      // refreshPreviewFromRows already translated the failure into UI state.
     }
   }
 
@@ -762,17 +783,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       return;
     }
 
-    setUploadStatus({ tone: "active", message: messages.imports.statementReconciliationRefreshing });
-    setIsSubmitting(true);
-    void previewImportRows({ rows: previewRows.map(buildRawImportRowFromPreviewRow) })
-      .then(() => {
-        setUploadStatus({ tone: "success", message: messages.imports.statementReconciliationRefreshed });
-      })
-      .catch((error) => {
-        setPreviewError(error instanceof Error ? error.message : "Import preview failed.");
-        setUploadStatus({ tone: "error", message: error instanceof Error ? error.message : "Import preview failed." });
-      })
-      .finally(() => setIsSubmitting(false));
+    void refreshPreviewFromRows({
+      rows: previewRows.map(buildRawImportRowFromPreviewRow),
+      activeMessage: messages.imports.statementReconciliationRefreshing,
+      successMessage: messages.imports.statementReconciliationRefreshed
+    });
   }
 
   return (
@@ -796,6 +811,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           ) : null}
         </div>
 
+        {/* Stage 1: get raw source rows into the draft. */}
         <ImportSelectFileStage
           currentStage={currentStage}
           sourceLabel={sourceLabel}
@@ -825,6 +841,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           rollbackPolicy={importsPage.rollbackPolicy}
         />
 
+        {/* Stage 2: map source columns into the app's import schema. */}
         {readyForMapping ? (
           <ImportMappingStage
             mappingSectionRef={mappingSectionRef}
@@ -846,6 +863,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           />
         ) : null}
 
+        {/* Stage 3: review the normalized preview and commit only safe rows. */}
         <div ref={previewSectionRef} className={`import-stage-card ${currentStage === 3 ? "is-current" : ""}`}>
           <div className="import-stage-head">
             <div className="section-head">
