@@ -98,6 +98,7 @@ export function EntriesFilterStack({
   entryFilters,
   wallets,
   entryCategoryOptions,
+  hideToggle = false,
   onToggleMobileFilters,
   onChangeFilter,
   onResetFilters,
@@ -106,10 +107,12 @@ export function EntriesFilterStack({
 }) {
   return (
     <section className={`entries-filter-stack ${showMobileFilters ? "is-open" : ""}`}>
-      <button type="button" className="entries-filter-toggle" onClick={onToggleMobileFilters}>
-        <span>{activeEntryFilterCount ? `Filters · ${activeEntryFilterCount}` : "Filters"}</span>
-        <span>{showMobileFilters ? "Hide" : "Show"}</span>
-      </button>
+      {!hideToggle ? (
+        <button type="button" className="entries-filter-toggle" onClick={onToggleMobileFilters}>
+          <span>{activeEntryFilterCount ? `Filters · ${activeEntryFilterCount}` : "Filters"}</span>
+          <span>{showMobileFilters ? "Hide" : "Show"}</span>
+        </button>
+      ) : null}
       <section className="entries-filter-bar">
         <button
           type="button"
