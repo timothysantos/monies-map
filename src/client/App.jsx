@@ -18,6 +18,15 @@ import {
   useParams,
   useSearchParams
 } from "react-router-dom";
+import {
+  APP_SYNC_CHANNEL,
+  APP_SYNC_EVENT_TYPES,
+  APP_SYNC_STORAGE_KEY,
+  broadcastBootstrapRefresh,
+  buildSplitMutationSyncEvent,
+  isMonthWithinRange,
+  publishAppSyncEvent
+} from "./app-sync";
 import { slugify } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import {
@@ -50,8 +59,6 @@ const SplitsPanel = lazy(() => routeModuleLoaders.splits().then((module) => ({ d
 const SummaryPanel = lazy(() => routeModuleLoaders.summary().then((module) => ({ default: module.SummaryPanel })));
 
 const SUMMARY_FOCUS_OVERALL = "overall";
-const BOOTSTRAP_SYNC_CHANNEL = "monies-map-bootstrap-sync";
-const BOOTSTRAP_SYNC_STORAGE_KEY = "monies-map-bootstrap-sync";
 // Bump this when bootstrap payload usage changes so deployed clients do not
 // hydrate from an incompatible persisted shell.
 const BOOTSTRAP_PERSISTED_CACHE_KEY = "monies-map-bootstrap-cache-v2";
@@ -227,17 +234,6 @@ function clearPersistedBootstrap() {
   } catch {}
 }
 
-function broadcastBootstrapRefresh(syncChannelRef) {
-  const payload = { type: "bootstrap-refresh", ts: Date.now() };
-  try {
-    syncChannelRef.current?.postMessage(payload);
-  } catch {}
-
-  try {
-    window.localStorage.setItem(BOOTSTRAP_SYNC_STORAGE_KEY, JSON.stringify(payload));
-  } catch {}
-}
-
 function canUseBootstrapRouteForTab(tabId, {
   bootstrapMonth,
   bootstrapScope,
@@ -289,6 +285,7 @@ export function App() {
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
   const isBootstrapLoading = bootstrapLoadCount > 0;
   const [routePageData, setRoutePageData] = useState(null);
+  const [entriesExternalRefreshToken, setEntriesExternalRefreshToken] = useState(0);
   const [loginRegistrationDraft, setLoginRegistrationDraft] = useState(null);
   const [loginRegistrationError, setLoginRegistrationError] = useState("");
   const [isRegisteringLogin, setIsRegisteringLogin] = useState(false);
@@ -867,6 +864,88 @@ export function App() {
     queryClient.removeQueries({ predicate });
   }, [queryClient]);
 
+  const clearSplitMutationCaches = useCallback(({
+    month,
+    invalidateEntries = false,
+    invalidateMonth = false,
+    invalidateSummary = false,
+    refreshShell = false
+  }) => {
+    clearRoutePageCacheByPredicate((query) => (
+      query.queryKey?.[0] === "route-page"
+      && query.queryKey?.[1]?.path === "/api/splits-page"
+      && query.queryKey?.[1]?.params?.month === month
+    ));
+
+    if (invalidateEntries) {
+      clearEntriesPageCacheByPredicate((query) => (
+        query.queryKey?.[0] === "entries-page"
+        && query.queryKey?.[1]?.month === month
+      ));
+    }
+
+    if (invalidateMonth) {
+      clearRoutePageCacheByPredicate((query) => (
+        query.queryKey?.[0] === "route-page"
+        && query.queryKey?.[1]?.path === "/api/month-page"
+        && query.queryKey?.[1]?.params?.month === month
+      ));
+    }
+
+    if (invalidateSummary) {
+      clearRoutePageCacheByPredicate((query) => (
+        query.queryKey?.[0] === "route-page"
+        && query.queryKey?.[1]?.path === "/api/summary-page"
+        && isMonthWithinRange(
+          month,
+          query.queryKey?.[1]?.params?.summary_start,
+          query.queryKey?.[1]?.params?.summary_end
+        )
+      ));
+    }
+
+    if (refreshShell || invalidateEntries || invalidateMonth || invalidateSummary) {
+      clearBootstrapCache();
+    }
+  }, [
+    clearBootstrapCache,
+    clearEntriesPageCacheByPredicate,
+    clearRoutePageCacheByPredicate
+  ]);
+
+  const refreshActiveRoutePageInBackground = useCallback(async (request) => {
+    if (!request) {
+      return null;
+    }
+
+    const data = await fetchRoutePageData(request, { bypassCache: true });
+    setRoutePageData(data);
+    return data;
+  }, [fetchRoutePageData]);
+
+  const broadcastSplitMutation = useCallback(({
+    month,
+    invalidateEntries = false,
+    invalidateMonth = false,
+    invalidateSummary = false,
+    refreshShell = false
+  }) => {
+    clearSplitMutationCaches({
+      month,
+      invalidateEntries,
+      invalidateMonth,
+      invalidateSummary,
+      refreshShell
+    });
+    publishAppSyncEvent(syncChannelRef, buildSplitMutationSyncEvent({
+      month,
+      invalidateEntries,
+      invalidateMonth,
+      invalidateSummary,
+      refreshShell
+    }));
+  }, [clearSplitMutationCaches]);
+
   const refreshCurrentSplitsPage = useCallback(async ({
     broadcast = false,
     refreshShell = false,
@@ -884,49 +963,102 @@ export function App() {
       return null;
     }
 
-    if (invalidateEntries) {
-      clearEntriesPageCacheByPredicate((query) => (
-        query.queryKey?.[0] === "entries-page"
-        && query.queryKey?.[1]?.month === selectedMonth
-      ));
-    }
-
-    if (invalidateMonth) {
-      clearRoutePageCacheByPredicate((query) => (
-        query.queryKey?.[0] === "route-page"
-        && query.queryKey?.[1]?.path === "/api/month-page"
-        && query.queryKey?.[1]?.params?.month === selectedMonth
-      ));
-    }
-
-    if (invalidateSummary) {
-      clearRoutePageCacheByPredicate((query) => (
-        query.queryKey?.[0] === "route-page"
-        && query.queryKey?.[1]?.path === "/api/summary-page"
-        && query.queryKey?.[1]?.params?.month === selectedMonth
-      ));
-    }
+    clearSplitMutationCaches({
+      month: selectedMonth,
+      invalidateEntries,
+      invalidateMonth,
+      invalidateSummary,
+      refreshShell
+    });
 
     const tasks = [fetchRoutePageData(request, { bypassCache: true })];
-    if (refreshShell) {
+    if (refreshShell || invalidateEntries || invalidateMonth || invalidateSummary) {
       tasks.push(refreshBootstrapInBackground().catch(() => null));
     }
     const [data] = await Promise.all(tasks);
     setRoutePageData(data);
 
     if (broadcast) {
-      broadcastBootstrapRefresh(syncChannelRef);
+      if (refreshShell && !invalidateEntries && !invalidateMonth && !invalidateSummary) {
+        broadcastBootstrapRefresh(syncChannelRef);
+      } else {
+        publishAppSyncEvent(syncChannelRef, buildSplitMutationSyncEvent({
+          month: selectedMonth,
+          invalidateEntries,
+          invalidateMonth,
+          invalidateSummary,
+          refreshShell
+        }));
+      }
     }
 
     return data;
   }, [
-    clearEntriesPageCacheByPredicate,
-    clearRoutePageCacheByPredicate,
+    clearSplitMutationCaches,
     fetchRoutePageData,
     refreshBootstrapInBackground,
     selectedMonth,
     selectedScope,
     selectedViewId
+  ]);
+
+  const handleRemoteSplitMutation = useCallback(async ({
+    month,
+    invalidateEntries = false,
+    invalidateMonth = false,
+    invalidateSummary = false,
+    refreshShell = false
+  }) => {
+    clearSplitMutationCaches({
+      month,
+      invalidateEntries,
+      invalidateMonth,
+      invalidateSummary,
+      refreshShell
+    });
+
+    const tasks = [];
+    if (selectedTabId === "entries" && invalidateEntries && selectedMonth === month) {
+      setEntriesExternalRefreshToken((current) => current + 1);
+    }
+
+    if (selectedTabId === "splits" && selectedMonth === month) {
+      tasks.push(refreshActiveRoutePageInBackground(routePageRequest).catch(() => null));
+    } else if (selectedTabId === "month" && invalidateMonth && selectedMonth === month) {
+      if (canUseBootstrapRoutePage) {
+        tasks.push(refreshBootstrapInBackground().catch(() => null));
+      } else {
+        tasks.push(refreshActiveRoutePageInBackground(routePageRequest).catch(() => null));
+      }
+    } else if (
+      selectedTabId === "summary"
+      && invalidateSummary
+      && isMonthWithinRange(
+        month,
+        selectedSummaryStart ?? bootstrapSummaryStart,
+        selectedSummaryEnd ?? bootstrapSummaryEnd
+      )
+    ) {
+      if (canUseBootstrapRoutePage) {
+        tasks.push(refreshBootstrapInBackground().catch(() => null));
+      } else {
+        tasks.push(refreshActiveRoutePageInBackground(routePageRequest).catch(() => null));
+      }
+    }
+
+    await Promise.all(tasks);
+  }, [
+    bootstrapSummaryEnd,
+    bootstrapSummaryStart,
+    canUseBootstrapRoutePage,
+    clearSplitMutationCaches,
+    refreshActiveRoutePageInBackground,
+    refreshBootstrapInBackground,
+    routePageRequest,
+    selectedMonth,
+    selectedSummaryEnd,
+    selectedSummaryStart,
+    selectedTabId
   ]);
 
   const syncBootstrapAfterMutation = useCallback(async () => {
@@ -1085,28 +1217,49 @@ export function App() {
 
     let channel = null;
     if ("BroadcastChannel" in window) {
-      channel = new window.BroadcastChannel(BOOTSTRAP_SYNC_CHANNEL);
+      channel = new window.BroadcastChannel(APP_SYNC_CHANNEL);
       syncChannelRef.current = channel;
       channel.onmessage = (event) => {
-        if (event.data?.type === "bootstrap-refresh") {
+        if (event.data?.type === APP_SYNC_EVENT_TYPES.bootstrapRefresh) {
           clearBootstrapCache();
           clearRoutePageCache();
           const finishBootstrapLoad = beginBootstrapLoad();
           void loadBootstrap()
             .catch(handleBootstrapFailure)
             .finally(finishBootstrapLoad);
+          return;
+        }
+
+        if (event.data?.type === APP_SYNC_EVENT_TYPES.splitMutation) {
+          void handleRemoteSplitMutation(event.data);
         }
       };
     }
 
     const handleStorage = (event) => {
-      if (event.key === BOOTSTRAP_SYNC_STORAGE_KEY && event.newValue) {
+      if (event.key !== APP_SYNC_STORAGE_KEY || !event.newValue) {
+        return;
+      }
+
+      let payload = null;
+      try {
+        payload = JSON.parse(event.newValue);
+      } catch {
+        return;
+      }
+
+      if (payload?.type === APP_SYNC_EVENT_TYPES.bootstrapRefresh) {
         clearBootstrapCache();
         clearRoutePageCache();
         const finishBootstrapLoad = beginBootstrapLoad();
         void loadBootstrap()
           .catch(handleBootstrapFailure)
           .finally(finishBootstrapLoad);
+        return;
+      }
+
+      if (payload?.type === APP_SYNC_EVENT_TYPES.splitMutation) {
+        void handleRemoteSplitMutation(payload);
       }
     };
 
@@ -1119,7 +1272,14 @@ export function App() {
         syncChannelRef.current = null;
       }
     };
-  }, [beginBootstrapLoad, clearBootstrapCache, clearRoutePageCache, handleBootstrapFailure, loadBootstrap]);
+  }, [
+    beginBootstrapLoad,
+    clearBootstrapCache,
+    clearRoutePageCache,
+    handleBootstrapFailure,
+    handleRemoteSplitMutation,
+    loadBootstrap
+  ]);
 
   const hasBootstrap = Boolean(bootstrap);
 
@@ -2270,12 +2430,14 @@ export function App() {
                   view={pageView}
                   entriesSourceView={householdView}
                   selectedMonth={selectedMonth}
+                  externalRefreshToken={entriesExternalRefreshToken}
                   availableMonths={availableMonths}
                   accounts={bootstrap.accounts}
                   categories={categories}
                   people={bootstrap.household.people}
                   onCategoryAppearanceChange={handleCategoryAppearanceChange}
                   onInvalidateBootstrapCache={syncBootstrapAfterMutation}
+                  onBroadcastSplitMutation={broadcastSplitMutation}
                 />
               )}
             />

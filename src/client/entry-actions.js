@@ -42,7 +42,7 @@ function mergeEntriesById(currentEntries, serverEntries, editingEntryId) {
 
 // Owns the local edit/draft state and server mutations for the entries page.
 // The panel still owns filters and derived lists so this hook stays about edits.
-export function useEntryActions({ view, accounts, categories, people, onRefresh }) {
+export function useEntryActions({ view, accounts, categories, people, onRefresh, onSplitMutation }) {
   const [entries, setEntries] = useState(view.monthPage.entries);
   const [editingEntryId, setEditingEntryId] = useState(null);
   const [entrySnapshot, setEntrySnapshot] = useState(null);
@@ -241,6 +241,14 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
       setEntries((current) => [optimisticEntry, ...current]);
       queuedComposerDraftRef.current = null;
       closeEntryComposer();
+      if (createdSplitExpenseId) {
+        onSplitMutation?.({
+          month: view.monthPage.month,
+          invalidateEntries: true,
+          invalidateMonth: true,
+          invalidateSummary: true
+        });
+      }
       refreshEntriesInBackground();
       return {
         saved: true,
@@ -556,6 +564,12 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh 
       if (nextLinkedEntry) {
         setEntrySnapshot(nextLinkedEntry);
       }
+      onSplitMutation?.({
+        month: view.monthPage.month,
+        invalidateEntries: true,
+        invalidateMonth: true,
+        invalidateSummary: true
+      });
       return {
         ok: true,
         ...data
