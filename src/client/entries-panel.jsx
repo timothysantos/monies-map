@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -32,6 +33,13 @@ const QUICK_EXPENSE_DRAFT_STORAGE_KEY = "monies.quickExpenseDraft";
 const QUICK_EXPENSE_DRAFT_STORAGE_TTL_MS = 15 * 60 * 1000;
 const NON_GROUP_SPLIT_VALUE = "__split_group_none__";
 
+// Entries page glossary:
+// - "entries source view": the person/household view that owns the server payload for this page.
+// - "entry view": the active view after local optimistic edits are merged into the server payload.
+// - "scope": which ownership slice of the view is visible (direct, shared, or both).
+// - "quick expense": a draft launched from an external shortcut/URL that should open the composer.
+// - "split group": the shared-expense bucket an expense can be attached to from the Entries page.
+// - "linked entry": an entry id carried in the URL so mobile edit state survives route changes.
 function waitFor(ms) {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
@@ -60,8 +68,6 @@ export function EntriesPanel({
   const [showExpenseBreakdown, setShowExpenseBreakdown] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [useMobileEntrySheet, setUseMobileEntrySheet] = useState(false);
-  const [entriesPage, setEntriesPage] = useState(() => buildInitialEntriesPage(view));
-  const [isEntriesPageLoading, setIsEntriesPageLoading] = useState(false);
   const [isQuickExpenseSaving, setIsQuickExpenseSaving] = useState(false);
   const [isConfirmingAddToSplits, setIsConfirmingAddToSplits] = useState(false);
   const [quickExpensePendingKey, setQuickExpensePendingKey] = useState("");
@@ -73,18 +79,21 @@ export function EntriesPanel({
   const [isMobileSplitPickerOpen, setIsMobileSplitPickerOpen] = useState(false);
   const [isMobileSplitSelectorOpen, setIsMobileSplitSelectorOpen] = useState(false);
   const [mobileSplitGroupId, setMobileSplitGroupId] = useState("");
-  const entriesQueryEpochRef = useRef(0);
-  const entriesPagePrefetchTimerRef = useRef(null);
   const handledQuickExpenseKeyRef = useRef("");
   const pendingQuickExpenseDraftRef = useRef(null);
-  const entriesPageParams = useMemo(
-    () => buildEntriesPageParams({
-      viewId: entriesSourceView.id,
-      month: selectedMonth
-    }),
-    [entriesSourceView.id, selectedMonth]
-  );
-  const entriesPageCacheKey = entriesPageParams.toString();
+  const {
+    entriesPage,
+    isEntriesPageLoading,
+    refreshEntriesPage
+  } = useEntriesPageData({
+    queryClient,
+    view,
+    entriesSourceView,
+    selectedMonth,
+    availableMonths,
+    externalRefreshToken,
+    onInvalidateBootstrapCache
+  });
   const entryView = useMemo(
     () => ({
       ...view,
@@ -96,155 +105,6 @@ export function EntriesPanel({
     }),
     [entriesPage, view]
   );
-
-  const clearEntriesPageCache = useCallback(() => {
-    entriesQueryEpochRef.current += 1;
-    queryClient.cancelQueries({ queryKey: ["entries-page"] });
-    queryClient.removeQueries({ queryKey: ["entries-page"] });
-  }, [queryClient]);
-
-  const fetchEntriesPage = useCallback(async (params, { bypassCache = false, signal } = {}) => {
-    const queryKey = queryKeys.entriesPage(params);
-    if (signal?.aborted) {
-      throw new DOMException("Entries page request aborted.", "AbortError");
-    }
-
-    if (!bypassCache) {
-      const cachedData = queryClient.getQueryData(queryKey);
-      if (cachedData) {
-        return cachedData;
-      }
-    }
-
-    const fetcher = async () => {
-      const response = await fetch(`/api/entries-page?${params.toString()}`, { cache: "no-store" });
-        if (!response.ok) {
-          throw new Error(await buildRequestErrorMessage(response, "Entries page failed."));
-        }
-        return response.json();
-      };
-
-    const data = bypassCache
-      ? await queryClient.fetchQuery({
-          queryKey,
-          queryFn: fetcher,
-          staleTime: 0
-        })
-      : await queryClient.ensureQueryData({
-          queryKey,
-          queryFn: fetcher,
-          revalidateIfStale: true
-        });
-
-    if (signal?.aborted) {
-      throw new DOMException("Entries page request aborted.", "AbortError");
-    }
-    return data;
-  }, [queryClient]);
-
-  const refreshEntriesPage = useCallback(async ({ bypassCache = false, invalidateBootstrap = false } = {}) => {
-    if (bypassCache) {
-      clearEntriesPageCache();
-    }
-    if (invalidateBootstrap) {
-      onInvalidateBootstrapCache?.();
-    }
-    setIsEntriesPageLoading(true);
-    try {
-      const data = await fetchEntriesPage(entriesPageParams, { bypassCache });
-      setEntriesPage(data);
-      return data;
-    } finally {
-      setIsEntriesPageLoading(false);
-    }
-  }, [clearEntriesPageCache, entriesPageParams, fetchEntriesPage, onInvalidateBootstrapCache]);
-
-  useEffect(() => {
-    const initialPage = buildInitialEntriesPage(entriesSourceView);
-    if (initialPage.monthPage.month !== selectedMonth) {
-      return;
-    }
-
-    setEntriesPage(initialPage);
-  }, [entriesPageCacheKey, entriesSourceView, selectedMonth]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const hasCachedPage = Boolean(queryClient.getQueryData(queryKeys.entriesPage(entriesPageParams)));
-    setIsEntriesPageLoading(!hasCachedPage);
-
-    void fetchEntriesPage(entriesPageParams, { signal: controller.signal })
-      .then(async (data) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        setEntriesPage(data);
-        setIsEntriesPageLoading(false);
-      })
-      .catch((error) => {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
-        setIsEntriesPageLoading(false);
-      });
-
-    return () => {
-      controller.abort();
-    };
-  }, [entriesPageCacheKey, entriesPageParams, fetchEntriesPage, queryClient]);
-
-  useEffect(() => {
-    if (!externalRefreshToken) {
-      return;
-    }
-
-    void refreshEntriesPage({ bypassCache: true });
-  }, [externalRefreshToken, refreshEntriesPage]);
-
-  useEffect(() => {
-    if (
-      !availableMonths.length
-      || typeof window === "undefined"
-      || window.navigator?.connection?.saveData
-      || window.matchMedia?.("(pointer: coarse)")?.matches
-    ) {
-      return undefined;
-    }
-
-    let isCancelled = false;
-    const entriesQueryEpoch = entriesQueryEpochRef.current;
-
-    entriesPagePrefetchTimerRef.current = window.setTimeout(() => {
-      const currentIndex = availableMonths.indexOf(selectedMonth);
-      if (currentIndex === -1) {
-        return;
-      }
-
-      void (async () => {
-        for (const offset of [-1, 1]) {
-          if (isCancelled || entriesQueryEpochRef.current !== entriesQueryEpoch) {
-            return;
-          }
-          const adjacentMonth = availableMonths[currentIndex + offset];
-          if (!adjacentMonth) {
-            continue;
-          }
-          await fetchEntriesPage(buildEntriesPageParams({ viewId: entriesSourceView.id, month: adjacentMonth })).catch(() => {});
-          if (!isCancelled) {
-            await waitFor(ENTRIES_PAGE_PREFETCH_SPACING_MS);
-          }
-        }
-      })();
-    }, ENTRIES_PAGE_PREFETCH_DELAY_MS);
-
-    return () => {
-      isCancelled = true;
-      if (entriesPagePrefetchTimerRef.current) {
-        window.clearTimeout(entriesPagePrefetchTimerRef.current);
-        entriesPagePrefetchTimerRef.current = null;
-      }
-    };
-  }, [availableMonths, entriesSourceView.id, fetchEntriesPage, selectedMonth]);
 
   const {
     entries,
@@ -291,27 +151,14 @@ export function EntriesPanel({
   });
   const openEntryComposerRef = useRef(openEntryComposer);
   const entryComposerEditorRef = useRef(null);
-  const searchParamsKey = searchParams.toString();
-  const selectedScope = searchParams.get("entries_scope") ?? entryView.monthPage.selectedScope;
   const defaultEntryPerson = entryView.id !== "household" ? entryView.label : "";
-  const walletFilters = useMemo(
-    () => getWalletFilterValues(searchParams),
-    [searchParamsKey]
-  );
-  const walletFilterKey = walletFilters.join("\u0000");
-  const entryIdFilters = useMemo(
-    () => searchParams.getAll("entry_id"),
-    [searchParamsKey]
-  );
-  const entryIdFilterKey = entryIdFilters.join("\u0000");
-  const categoryFilter = searchParams.get("entry_category") ?? "";
-  const typeFilter = searchParams.get("entry_type") ?? "";
-  const entryFilters = useMemo(() => ({
-    entryIds: entryIdFilters,
-    wallets: walletFilters,
-    category: categoryFilter,
-    type: typeFilter
-  }), [categoryFilter, entryIdFilterKey, typeFilter, walletFilterKey, walletFilters]);
+  const {
+    searchParamsKey,
+    selectedScope,
+    walletFilters,
+    walletFilterKey,
+    entryFilters
+  } = useEntriesSearchFilters(searchParams, entryView.monthPage.selectedScope);
 
   useEffect(() => {
     openEntryComposerRef.current = openEntryComposer;
@@ -1103,6 +950,220 @@ function EntriesEmptyState({ suggestion, onSwitchView }) {
       </div>
     </section>
   );
+}
+
+function useEntriesPageData({
+  queryClient,
+  view,
+  entriesSourceView,
+  selectedMonth,
+  availableMonths,
+  externalRefreshToken,
+  onInvalidateBootstrapCache
+}) {
+  const [entriesPage, setEntriesPage] = useState(() => buildInitialEntriesPage(view));
+  const [isEntriesPageLoading, setIsEntriesPageLoading] = useState(false);
+  const entriesQueryEpochRef = useRef(0);
+  const entriesPagePrefetchTimerRef = useRef(null);
+  const entriesPageParams = useMemo(
+    () => buildEntriesPageParams({
+      viewId: entriesSourceView.id,
+      month: selectedMonth
+    }),
+    [entriesSourceView.id, selectedMonth]
+  );
+  const entriesPageCacheKey = entriesPageParams.toString();
+
+  const clearEntriesPageCache = useCallback(() => {
+    entriesQueryEpochRef.current += 1;
+    queryClient.cancelQueries({ queryKey: ["entries-page"] });
+    queryClient.removeQueries({ queryKey: ["entries-page"] });
+  }, [queryClient]);
+
+  // This is the single network boundary for the panel. Everything else reads
+  // from local state or react-query cache.
+  const fetchEntriesPage = useCallback(async (params, { bypassCache = false, signal } = {}) => {
+    const queryKey = queryKeys.entriesPage(params);
+    if (signal?.aborted) {
+      throw new DOMException("Entries page request aborted.", "AbortError");
+    }
+
+    if (!bypassCache) {
+      const cachedData = queryClient.getQueryData(queryKey);
+      if (cachedData) {
+        return cachedData;
+      }
+    }
+
+    const fetcher = async () => {
+      const response = await fetch(`/api/entries-page?${params.toString()}`, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(await buildRequestErrorMessage(response, "Entries page failed."));
+      }
+      return response.json();
+    };
+
+    const data = bypassCache
+      ? await queryClient.fetchQuery({
+          queryKey,
+          queryFn: fetcher,
+          staleTime: 0
+        })
+      : await queryClient.ensureQueryData({
+          queryKey,
+          queryFn: fetcher,
+          revalidateIfStale: true
+        });
+
+    if (signal?.aborted) {
+      throw new DOMException("Entries page request aborted.", "AbortError");
+    }
+    return data;
+  }, [queryClient]);
+
+  const refreshEntriesPage = useCallback(async ({ bypassCache = false, invalidateBootstrap = false } = {}) => {
+    if (bypassCache) {
+      clearEntriesPageCache();
+    }
+    if (invalidateBootstrap) {
+      onInvalidateBootstrapCache?.();
+    }
+    setIsEntriesPageLoading(true);
+    try {
+      const data = await fetchEntriesPage(entriesPageParams, { bypassCache });
+      setEntriesPage(data);
+      return data;
+    } finally {
+      setIsEntriesPageLoading(false);
+    }
+  }, [clearEntriesPageCache, entriesPageParams, fetchEntriesPage, onInvalidateBootstrapCache]);
+
+  useEffect(() => {
+    const initialPage = buildInitialEntriesPage(entriesSourceView);
+    if (initialPage.monthPage.month !== selectedMonth) {
+      return;
+    }
+
+    setEntriesPage(initialPage);
+  }, [entriesPageCacheKey, entriesSourceView, selectedMonth]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const hasCachedPage = Boolean(queryClient.getQueryData(queryKeys.entriesPage(entriesPageParams)));
+    setIsEntriesPageLoading(!hasCachedPage);
+
+    void fetchEntriesPage(entriesPageParams, { signal: controller.signal })
+      .then((data) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setEntriesPage(data);
+        setIsEntriesPageLoading(false);
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+        setIsEntriesPageLoading(false);
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [entriesPageCacheKey, entriesPageParams, fetchEntriesPage, queryClient]);
+
+  useEffect(() => {
+    if (!externalRefreshToken) {
+      return;
+    }
+
+    void refreshEntriesPage({ bypassCache: true });
+  }, [externalRefreshToken, refreshEntriesPage]);
+
+  // Prefetch adjacent months on desktop so moving month-to-month feels instant.
+  useEffect(() => {
+    if (
+      !availableMonths.length
+      || typeof window === "undefined"
+      || window.navigator?.connection?.saveData
+      || window.matchMedia?.("(pointer: coarse)")?.matches
+    ) {
+      return undefined;
+    }
+
+    let isCancelled = false;
+    const entriesQueryEpoch = entriesQueryEpochRef.current;
+
+    entriesPagePrefetchTimerRef.current = window.setTimeout(() => {
+      const currentIndex = availableMonths.indexOf(selectedMonth);
+      if (currentIndex === -1) {
+        return;
+      }
+
+      void (async () => {
+        for (const offset of [-1, 1]) {
+          if (isCancelled || entriesQueryEpochRef.current !== entriesQueryEpoch) {
+            return;
+          }
+
+          const adjacentMonth = availableMonths[currentIndex + offset];
+          if (!adjacentMonth) {
+            continue;
+          }
+
+          await fetchEntriesPage(buildEntriesPageParams({ viewId: entriesSourceView.id, month: adjacentMonth })).catch(() => {});
+          if (!isCancelled) {
+            await waitFor(ENTRIES_PAGE_PREFETCH_SPACING_MS);
+          }
+        }
+      })();
+    }, ENTRIES_PAGE_PREFETCH_DELAY_MS);
+
+    return () => {
+      isCancelled = true;
+      if (entriesPagePrefetchTimerRef.current) {
+        window.clearTimeout(entriesPagePrefetchTimerRef.current);
+        entriesPagePrefetchTimerRef.current = null;
+      }
+    };
+  }, [availableMonths, entriesSourceView.id, fetchEntriesPage, selectedMonth]);
+
+  return {
+    entriesPage,
+    isEntriesPageLoading,
+    refreshEntriesPage
+  };
+}
+
+function useEntriesSearchFilters(searchParams, defaultScope) {
+  const searchParamsKey = searchParams.toString();
+  const selectedScope = searchParams.get("entries_scope") ?? defaultScope;
+  const walletFilters = useMemo(
+    () => getWalletFilterValues(searchParams),
+    [searchParamsKey, searchParams]
+  );
+  const walletFilterKey = walletFilters.join("\u0000");
+  const entryIdFilters = useMemo(
+    () => searchParams.getAll("entry_id"),
+    [searchParamsKey, searchParams]
+  );
+  const entryIdFilterKey = entryIdFilters.join("\u0000");
+  const categoryFilter = searchParams.get("entry_category") ?? "";
+  const typeFilter = searchParams.get("entry_type") ?? "";
+  const entryFilters = useMemo(() => ({
+    entryIds: entryIdFilters,
+    wallets: walletFilters,
+    category: categoryFilter,
+    type: typeFilter
+  }), [categoryFilter, entryIdFilterKey, typeFilter, walletFilterKey, walletFilters]);
+
+  return {
+    searchParamsKey,
+    selectedScope,
+    walletFilters,
+    walletFilterKey,
+    entryFilters
+  };
 }
 
 const QUICK_EXPENSE_PARAMS = [
