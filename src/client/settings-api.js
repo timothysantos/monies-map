@@ -1,5 +1,7 @@
-import { buildCheckpointExportHref, getContentDispositionFilename } from "./formatters";
+import { moniesClient } from "./monies-client-service";
 import { buildRequestErrorMessage } from "./request-errors";
+
+const { format: formatService } = moniesClient;
 
 async function postJson(endpoint, body, fallbackError) {
   const response = await fetch(endpoint, {
@@ -225,7 +227,7 @@ export function resolveReconciliationException({ exceptionId, resolutionNote }) 
 }
 
 export async function fetchCheckpointExport({ accountId, checkpointMonth }) {
-  const response = await fetch(buildCheckpointExportHref(accountId, checkpointMonth), {
+  const response = await fetch(formatService.buildCheckpointExportHref(accountId, checkpointMonth), {
     credentials: "same-origin"
   });
 
@@ -235,7 +237,7 @@ export async function fetchCheckpointExport({ accountId, checkpointMonth }) {
 
   return {
     blob: await response.blob(),
-    filename: getContentDispositionFilename(response.headers.get("Content-Disposition"))
+    filename: formatService.getContentDispositionFilename(response.headers.get("Content-Disposition"))
       ?? `checkpoint-${accountId}-${checkpointMonth}.csv`
   };
 }

@@ -3,7 +3,7 @@ import { LogOut } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
-import { extractPdfText, selectParsedStatementForCompare } from "./import-helpers";
+import { moniesClient } from "./monies-client-service";
 import {
   archiveSettingsAccount,
   compareAccountCheckpointStatement,
@@ -37,20 +37,12 @@ import {
 } from "./settings-sections";
 import { DeleteRowButton } from "./ui-components";
 import { FALLBACK_THEME } from "./ui-options";
-import {
-  formatCheckpointCoverage,
-  formatCheckpointHistoryBalanceLine,
-  formatCheckpointStatementInputMinor,
-  formatMinorInput,
-  formatMonthLabel,
-  money,
-  parseDraftMoneyInput
-} from "./formatters";
 import { inspectCsv } from "../lib/csv";
 import { getCurrentMonthKey } from "../lib/month";
 import { parseStatementText } from "../lib/statement-import";
 
 const DEFAULT_MONTH_KEY = getCurrentMonthKey();
+const { format: formatService, imports: importService } = moniesClient;
 
 export function SettingsPanel({
   settingsPage,
@@ -223,7 +215,7 @@ export function SettingsPanel({
       institution: account.institution,
       kind: account.kind,
       currency: account.currency,
-      openingBalance: formatMinorInput(account.openingBalanceMinor ?? 0),
+      openingBalance: formatService.formatMinorInput(account.openingBalanceMinor ?? 0),
       ownerPersonId: account.ownerPersonId ?? "",
       isJoint: account.isJoint
     });
@@ -237,7 +229,7 @@ export function SettingsPanel({
       checkpointMonth: account.latestCheckpointMonth ?? "",
       statementStartDate: account.latestCheckpointStartDate ?? "",
       statementEndDate: account.latestCheckpointEndDate ?? "",
-      statementBalance: formatCheckpointStatementInputMinor(
+      statementBalance: formatService.formatCheckpointStatementInputMinor(
         account.latestCheckpointBalanceMinor ?? account.balanceMinor ?? 0,
         account.kind
       ),
@@ -362,7 +354,7 @@ export function SettingsPanel({
         institution: accountDialog.institution,
         kind: accountDialog.kind,
         currency: accountDialog.currency,
-        openingBalanceMinor: parseDraftMoneyInput(accountDialog.openingBalance ?? "0"),
+        openingBalanceMinor: formatService.parseDraftMoneyInput(accountDialog.openingBalance ?? "0"),
         ownerPersonId: accountDialog.ownerPersonId,
         isJoint: accountDialog.isJoint
       });
@@ -397,7 +389,7 @@ export function SettingsPanel({
         checkpointMonth: reconciliationDialog.checkpointMonth,
         statementStartDate: reconciliationDialog.statementStartDate,
         statementEndDate: reconciliationDialog.statementEndDate,
-        statementBalanceMinor: parseDraftMoneyInput(reconciliationDialog.statementBalance ?? "0"),
+        statementBalanceMinor: formatService.parseDraftMoneyInput(reconciliationDialog.statementBalance ?? "0"),
         note: reconciliationDialog.note
       });
       setReconciliationDialog(null);
@@ -470,8 +462,8 @@ export function SettingsPanel({
       let uploadedStatementStartDate;
       let uploadedStatementEndDate;
       if (/\.pdf$/i.test(file.name) || file.type === "application/pdf") {
-        const parsed = parseStatementText(await extractPdfText(file), file.name);
-        const selectedStatement = selectParsedStatementForCompare(parsed, target);
+        const parsed = parseStatementText(await importService.extractPdfText(file), file.name);
+        const selectedStatement = importService.selectParsedStatementForCompare(parsed, target);
         rows = selectedStatement.rows;
         uploadedStatementStartDate = selectedStatement.checkpoint?.statementStartDate;
         uploadedStatementEndDate = selectedStatement.checkpoint?.statementEndDate;
@@ -504,7 +496,7 @@ export function SettingsPanel({
       checkpointMonth: item.month,
       statementStartDate: item.statementStartDate ?? "",
       statementEndDate: item.statementEndDate ?? "",
-      statementBalance: formatCheckpointStatementInputMinor(item.statementBalanceMinor, current.accountKind),
+      statementBalance: formatService.formatCheckpointStatementInputMinor(item.statementBalanceMinor, current.accountKind),
       note: item.note ?? ""
     } : current);
   }
@@ -925,18 +917,18 @@ export function SettingsPanel({
         onCompareCheckpoint={openStatementComparePanelFromDialog}
         renderCheckpointDeleteAction={(item) => (
           <DeleteRowButton
-            label={formatMonthLabel(item.month)}
+            label={formatService.formatMonthLabel(item.month)}
             triggerLabel={messages.settings.checkpointDelete}
             confirmLabel={messages.settings.checkpointDelete}
             destructive={false}
-            prompt={messages.settings.checkpointDeleteDetail(formatMonthLabel(item.month))}
+            prompt={messages.settings.checkpointDeleteDetail(formatService.formatMonthLabel(item.month))}
             onConfirm={() => handleDeleteCheckpoint(item)}
           />
         )}
-        formatCheckpointMonth={(item) => formatMonthLabel(item.month)}
-        formatCheckpointCoverage={formatCheckpointCoverage}
-        formatCheckpointBalanceLine={(item) => formatCheckpointHistoryBalanceLine(item, reconciliationDialog?.accountKind)}
-        formatCheckpointDelta={(item) => (item.deltaMinor === 0 ? "Matched" : `Delta ${money(Math.abs(item.deltaMinor))}`)}
+        formatCheckpointMonth={(item) => formatService.formatMonthLabel(item.month)}
+        formatCheckpointCoverage={formatService.formatCheckpointCoverage}
+        formatCheckpointBalanceLine={(item) => formatService.formatCheckpointHistoryBalanceLine(item, reconciliationDialog?.accountKind)}
+        formatCheckpointDelta={(item) => (item.deltaMinor === 0 ? "Matched" : `Delta ${formatService.money(Math.abs(item.deltaMinor))}`)}
       />
 
     </article>

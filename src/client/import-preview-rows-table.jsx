@@ -1,10 +1,14 @@
 import { Fragment, useEffect, useRef } from "react";
 import * as Popover from "@radix-ui/react-popover";
-import { getAccountSelectOptions } from "./account-display";
-import { getCategoriesForSelect } from "./category-utils";
 import { messages } from "./copy/en-SG";
-import { getAmountToneClass } from "./entry-helpers";
-import { formatDateOnly, formatMinorInput, parseMoneyInput } from "./formatters";
+import { moniesClient } from "./monies-client-service";
+
+const {
+  accounts: accountService,
+  categories: categoryService,
+  entries: entryService,
+  format: formatService
+} = moniesClient;
 
 // Preview rows are edited here, while ImportsPanel owns the canonical payload and commit callback.
 export function ImportPreviewRowsTable({
@@ -26,8 +30,8 @@ export function ImportPreviewRowsTable({
   onUpdatePreviewRowCommitStatus,
   getPreviewAccountOwnerPatch
 }) {
-  const accountOptions = getAccountSelectOptions(accounts, { valueKey: "id" });
-  const categorySelectOptions = getCategoriesForSelect(categories);
+  const accountOptions = accountService.getSelectOptions(accounts, { valueKey: "id" });
+  const categorySelectOptions = categoryService.listForSelect(categories);
   const visibleRows = previewRows.filter((row) => !row.isStatementMatchResolved && !row.isCertifiedConflict);
   const activeRows = visibleRows.filter((row) => row.commitStatus !== "skipped");
   const skippedRows = visibleRows.filter((row) => row.commitStatus === "skipped");
@@ -181,11 +185,13 @@ function PreviewRowsTable({
                   <td>
                     <input className="table-edit-input import-description-input" value={row.description} onChange={(event) => onUpdatePreviewRow(row.rowId, { description: event.target.value })} disabled={isSkippedTable} />
                   </td>
-                  <td className={getAmountToneClass(row.entryType === "expense" || row.transferDirection === "out" ? -row.amountMinor : row.amountMinor)}>
+                  <td className={entryService.getAmountToneClass(row.entryType === "expense" || row.transferDirection === "out" ? -row.amountMinor : row.amountMinor)}>
                     <input
                       className="table-edit-input import-amount-input"
-                      value={formatMinorInput(row.amountMinor)}
-                      onChange={(event) => onUpdatePreviewRow(row.rowId, { amountMinor: parseMoneyInput(event.target.value, row.amountMinor) })}
+                      value={formatService.formatMinorInput(row.amountMinor)}
+                      onChange={(event) => onUpdatePreviewRow(row.rowId, {
+                        amountMinor: formatService.parseMoneyInput(event.target.value, row.amountMinor)
+                      })}
                       disabled={isSkippedTable}
                     />
                   </td>
@@ -309,7 +315,11 @@ function PreviewRowsTable({
 }
 
 function formatDuplicateMatch(match) {
-  return messages.common.triplet(formatImportPreviewDate(match.date), match.accountName ?? messages.common.emptyValue, formatMinorInput(match.amountMinor));
+  return messages.common.triplet(
+    formatImportPreviewDate(match.date),
+    match.accountName ?? messages.common.emptyValue,
+    formatService.formatMinorInput(match.amountMinor)
+  );
 }
 
 function formatImportPreviewDate(value) {
@@ -317,7 +327,7 @@ function formatImportPreviewDate(value) {
   if (year && month && day) {
     return `${day}/${month}/${year}`;
   }
-  return formatDateOnly(value);
+  return formatService.formatDateOnly(value);
 }
 
 export function DuplicateMatchPopover({ row, match }) {
@@ -369,7 +379,7 @@ function DuplicateMatchCard({ label, date, description, accountName, amountMinor
     <div className="duplicate-match-card">
       <span>{label}</span>
       <strong>{description || messages.common.emptyValue}</strong>
-      <p>{messages.common.triplet(date, accountName ?? messages.common.emptyValue, formatMinorInput(amountMinor))}</p>
+      <p>{messages.common.triplet(date, accountName ?? messages.common.emptyValue, formatService.formatMinorInput(amountMinor))}</p>
     </div>
   );
 }

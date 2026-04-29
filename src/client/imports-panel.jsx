@@ -9,20 +9,10 @@ import { buildImportPreviewModel, hasImportDraft } from "./import-preview-model"
 import { ImportPreviewReview } from "./import-preview-review";
 import { ImportPreviewRowsTable } from "./import-preview-rows-table";
 import { ImportSelectFileStage } from "./import-select-file-stage";
+import { moniesClient } from "./monies-client-service";
 import { SettingsAccountDialog } from "./settings-dialogs";
 import { saveSettingsAccount } from "./settings-api";
-import {
-  buildMappedImportRows,
-  buildRawImportRowFromPreviewRow,
-  extractPdfText,
-  getImportDirectOwnerForAccount,
-  inferImportMapping
-} from "./import-helpers";
 import { inspectCsv } from "../lib/csv";
-import {
-  formatMinorInput,
-  parseDraftMoneyInput
-} from "./formatters";
 import {
   canParseCitibankActivityCsv,
   canRecognizeOcbcActivityCsv,
@@ -36,6 +26,7 @@ import {
 const DEFAULT_SOURCE_LABEL = "Imported CSV";
 const DEFAULT_STATEMENT_IMPORT_META = { sourceType: "csv", parserKey: "generic_csv" };
 const DEFAULT_UNKNOWN_CATEGORY_MODE = "other";
+const { format: formatService, imports: importService } = moniesClient;
 
 // Read alongside docs/import-summary-code-glossary.md.
 // This component is intentionally the import workflow "orchestrator":
@@ -83,7 +74,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const csvInspection = useMemo(() => inspectCsv(csvText), [csvText]);
   const headerSignature = csvInspection.headers.join("|");
   const defaultAccountDirectOwnerName = useMemo(
-    () => getImportDirectOwnerForAccount(accounts, people, defaultAccountName, undefined),
+    () => importService.getDirectOwnerForAccount(accounts, people, defaultAccountName, undefined),
     [accounts, defaultAccountName, people]
   );
   const defaultAccount = useMemo(
@@ -140,7 +131,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setColumnMappings((current) => {
       const next = {};
       for (const header of csvInspection.headers) {
-        next[header] = current[header] ?? inferImportMapping(header);
+        next[header] = current[header] ?? importService.inferMapping(header);
       }
       return next;
     });
@@ -163,7 +154,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   );
 
   const mappedRows = useMemo(
-    () => buildMappedImportRows(csvInspection.rows, columnMappings),
+    () => importService.buildMappedRows(csvInspection.rows, columnMappings),
     [columnMappings, csvInspection.rows]
   );
 
@@ -274,7 +265,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
   function handleDefaultAccountChange(nextAccountName) {
     setDefaultAccountName(nextAccountName);
-    const nextOwnerName = getImportDirectOwnerForAccount(accounts, people, nextAccountName, undefined);
+    const nextOwnerName = importService.getDirectOwnerForAccount(accounts, people, nextAccountName, undefined);
     if (ownershipType === "direct" && nextOwnerName) {
       setOwnerName(nextOwnerName);
     }
@@ -381,7 +372,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       if (/\.pdf$/i.test(file.name) || file.type === "application/pdf") {
         setDismissedOverlapIds([]);
         setUploadStatus({ tone: "active", message: messages.imports.uploadExtracting(file.name) });
-        const text = await extractPdfText(file);
+        const text = await importService.extractPdfText(file);
         setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
         const parsed = parseStatementText(text, file.name);
         const parsedCheckpoints = withDetectedStatementAccounts(parsed.checkpoints);
@@ -607,7 +598,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setPreviewRows(nextRows);
     if (statementCheckpoints.length) {
       void refreshPreviewFromRows({
-        rows: nextRows.map(buildRawImportRowFromPreviewRow),
+        rows: nextRows.map(importService.buildRawRowFromPreviewRow),
         activeMessage: messages.imports.statementReconciliationRefreshing,
         successMessage: messages.imports.statementReconciliationRefreshed
       });
@@ -621,7 +612,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       return {};
     }
 
-    const nextOwnerName = getImportDirectOwnerForAccount(accounts, people, accountName, row.ownerName ?? ownerName, accountId);
+    const nextOwnerName = importService.getDirectOwnerForAccount(accounts, people, accountName, row.ownerName ?? ownerName, accountId);
     return nextOwnerName ? { ownerName: nextOwnerName } : {};
   }
 
@@ -662,7 +653,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setPreviewRows(nextRows);
     setStatementCheckpoints(nextCheckpoints);
     void refreshPreviewFromRows({
-      rows: nextRows.map(buildRawImportRowFromPreviewRow),
+      rows: nextRows.map(importService.buildRawRowFromPreviewRow),
       nextStatementCheckpoints: nextCheckpoints,
       activeMessage: messages.imports.accountMappingRefreshing,
       successMessage: messages.imports.accountMappingRefreshed
@@ -691,7 +682,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setStatementCheckpoints(nextCheckpoints);
     try {
       await refreshPreviewFromRows({
-        rows: nextRows.map(buildRawImportRowFromPreviewRow),
+        rows: nextRows.map(importService.buildRawRowFromPreviewRow),
         nextStatementCheckpoints: nextCheckpoints,
         activeMessage: messages.imports.accountMappingRefreshing,
         successMessage: messages.imports.accountMappingRefreshed
@@ -719,7 +710,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       institution: inferStatementInstitution(statementAccountName, statementImportMeta.parserKey),
       kind,
       currency: "SGD",
-      openingBalance: formatMinorInput(openingBalanceMinor),
+      openingBalance: formatService.formatMinorInput(openingBalanceMinor),
       ownerPersonId: viewId === "household" ? "" : viewId,
       isJoint: viewId === "household"
     });
@@ -752,7 +743,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         institution: accountDialog.institution,
         kind: accountDialog.kind,
         currency: accountDialog.currency,
-        openingBalanceMinor: parseDraftMoneyInput(accountDialog.openingBalance ?? "0"),
+        openingBalanceMinor: formatService.parseDraftMoneyInput(accountDialog.openingBalance ?? "0"),
         ownerPersonId: accountDialog.ownerPersonId,
         isJoint: accountDialog.isJoint
       });
@@ -784,7 +775,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
 
     void refreshPreviewFromRows({
-      rows: previewRows.map(buildRawImportRowFromPreviewRow),
+      rows: previewRows.map(importService.buildRawRowFromPreviewRow),
       activeMessage: messages.imports.statementReconciliationRefreshing,
       successMessage: messages.imports.statementReconciliationRefreshed
     });

@@ -1,10 +1,11 @@
 import { ChevronRight, SquarePen } from "lucide-react";
 
-import { describeAccountHealth } from "./account-display";
 import { messages } from "./copy/en-SG";
+import { moniesClient } from "./monies-client-service";
 import { StatementCompareResultView } from "./statement-compare";
 import { DeleteRowButton } from "./ui-components";
-import { formatDate, formatDateOnly, formatMonthLabel, money } from "./formatters";
+
+const { accounts: accountService, format: formatService } = moniesClient;
 
 // Account settings stay presentational here; SettingsPanel owns API calls and refresh sequencing.
 export function SettingsAccountsSection({
@@ -63,13 +64,13 @@ export function SettingsAccountsSection({
                   <div className="settings-account-main">
                     <strong>{account.name}</strong>
                     <p>{messages.common.triplet(account.institution, account.kind, account.ownerLabel)}</p>
-                    <p>{`Balance ${money(account.balanceMinor ?? 0)} • Opening ${money(account.openingBalanceMinor ?? 0)}`}</p>
+                    <p>{`Balance ${formatService.money(account.balanceMinor ?? 0)} • Opening ${formatService.money(account.openingBalanceMinor ?? 0)}`}</p>
                     <p className={`settings-account-health ${account.reconciliationStatus ? `is-${account.reconciliationStatus}` : ""}`}>
-                      {describeAccountHealth(account)}
+                      {accountService.describeHealth(account)}
                     </p>
                     <p className="settings-account-meta">
                       {account.latestImportAt
-                        ? messages.settings.accountHealthLastImport(formatDate(account.latestImportAt))
+                        ? messages.settings.accountHealthLastImport(formatService.formatDate(account.latestImportAt))
                         : messages.settings.accountHealthNoImports}
                       {account.unresolvedTransferCount ? ` • ${messages.settings.accountHealthUnresolvedTransfers(account.unresolvedTransferCount)}` : ""}
                     </p>
@@ -106,13 +107,19 @@ export function SettingsAccountsSection({
             <div className="settings-statement-compare-inline">
               <div className="settings-statement-compare-head">
                 <div>
-                  <strong>{messages.settings.statementComparePanelTitle(statementComparePanel.accountName, formatMonthLabel(statementComparePanel.checkpointMonth))}</strong>
+                  <strong>{messages.settings.statementComparePanelTitle(
+                    statementComparePanel.accountName,
+                    formatService.formatMonthLabel(statementComparePanel.checkpointMonth)
+                  )}</strong>
                   <p>{messages.settings.statementComparePanelDetail}</p>
                   {statementComparePanel.deltaMinor != null ? (
-                    <p className="settings-account-health is-mismatch">{messages.settings.statementCompareDelta(money(Math.abs(statementComparePanel.deltaMinor)))}</p>
+                    <p className="settings-account-health is-mismatch">{messages.settings.statementCompareDelta(formatService.money(Math.abs(statementComparePanel.deltaMinor)))}</p>
                   ) : null}
                   {statementComparePanel.statementStartDate && statementComparePanel.statementEndDate ? (
-                    <p>{messages.settings.statementCompareCheckpointPeriod(formatDateOnly(statementComparePanel.statementStartDate), formatDateOnly(statementComparePanel.statementEndDate))}</p>
+                    <p>{messages.settings.statementCompareCheckpointPeriod(
+                      formatService.formatDateOnly(statementComparePanel.statementStartDate),
+                      formatService.formatDateOnly(statementComparePanel.statementEndDate)
+                    )}</p>
                   ) : null}
                 </div>
                 <button type="button" className="subtle-cancel" onClick={onCloseStatementCompare}>
