@@ -3,9 +3,8 @@ import * as Popover from "@radix-ui/react-popover";
 import { ChevronRight, SquarePen, X } from "lucide-react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
-import { getCategoriesForSelect, getCategory, getCategoryPatch, getCategorySelectValue } from "./category-utils";
 import { messages } from "./copy/en-SG";
-import { formatMinorInput, formatMonthLabel, money } from "./formatters";
+import { moniesClient } from "./monies-client-service";
 import { getMonthSectionTotals } from "./month-helpers";
 import {
   canInlineEditMonthPlanRow,
@@ -16,6 +15,8 @@ import {
 } from "./month-row-editing";
 import { formatRowDateLabel, getRowDateValue, sortRows } from "./table-helpers";
 import { DeleteRowButton, SortableHeader } from "./ui-components";
+
+const { categories: categoryService, format: formatService } = moniesClient;
 
 const SECTION_ORDER = {
   budget_buckets: 0,
@@ -50,7 +51,7 @@ function shouldIgnoreRowOpenTarget(target) {
 export function MonthPlanStack({
   view,
   categories,
-  categorySelectOptions = getCategoriesForSelect(categories),
+  categorySelectOptions = categoryService.listForSelect(categories),
   accounts,
   accountSelectOptions,
   incomeRows,
@@ -243,14 +244,14 @@ function IncomePlanSection({
                       <td {...rowOpenProps}>
                         <div className="month-category-cell">
                           <CategoryAppearancePopover
-                            category={getCategory(categories, row)}
+                            category={categoryService.get(categories, row)}
                             onChange={onCategoryAppearanceChange}
                           />
                           {isEditing ? (
                             <select
                               className="table-edit-input"
-                              value={getCategorySelectValue(categories, row)}
-                              onChange={(event) => onIncomeRowChange(row.id, getCategoryPatch(categories, event.target.value))}
+                              value={categoryService.getSelectValue(categories, row)}
+                              onChange={(event) => onIncomeRowChange(row.id, categoryService.buildPatch(categories, event.target.value))}
                               onClick={(event) => event.stopPropagation()}
                             >
                               {categorySelectOptions.map((category) => (
@@ -274,11 +275,11 @@ function IncomePlanSection({
                         {isEditing ? (
                           <input
                             className="table-edit-input table-edit-input-money"
-                            value={editingDrafts.plannedMinor ?? formatMinorInput(row.plannedMinor)}
+                            value={editingDrafts.plannedMinor ?? formatService.formatMinorInput(row.plannedMinor)}
                             onChange={(event) => onEditingDraftChange({ plannedMinor: event.target.value })}
                             onClick={(event) => event.stopPropagation()}
                           />
-                        ) : money(row.plannedMinor)}
+                        ) : formatService.money(row.plannedMinor)}
                       </td>
                       <td>
                         <div className="month-actual-cell">
@@ -294,12 +295,12 @@ function IncomePlanSection({
                               });
                             }}
                           >
-                            {money(row.actualMinor)}
+                            {formatService.money(row.actualMinor)}
                           </button>
                           {row.isPendingDerived ? <span className="month-row-pending-hint">Updating...</span> : null}
                         </div>
                       </td>
-                      <td {...rowOpenProps} className={variance <= 0 ? "positive" : "negative"}>{money(variance)}</td>
+                      <td {...rowOpenProps} className={variance <= 0 ? "positive" : "negative"}>{formatService.money(variance)}</td>
                       <td>
                         <div className="table-note-actions">
                           <button
@@ -517,20 +518,20 @@ function PlanningRow({
         <td {...rowOpenProps}>
           <div className="month-category-cell">
             <CategoryAppearancePopover
-              category={getCategory(categories, row)}
+              category={categoryService.get(categories, row)}
               onChange={onCategoryAppearanceChange}
             />
             {isEditing ? (
               <select
                 className="table-edit-input"
-                value={getCategorySelectValue(categories, row)}
+                value={categoryService.getSelectValue(categories, row)}
                 onChange={(event) => {
                   if (isDraftBudgetBucket) {
                     void onBudgetBucketCategoryChange(row.id, event.target.value);
                     return;
                   }
 
-                  onPlanRowChange(section.key, row.id, getCategoryPatch(categories, event.target.value));
+                  onPlanRowChange(section.key, row.id, categoryService.buildPatch(categories, event.target.value));
                 }}
                 onClick={(event) => event.stopPropagation()}
               >
@@ -576,7 +577,7 @@ function PlanningRow({
             <div className="month-planned-cell">
               <input
                 className="table-edit-input table-edit-input-money"
-                value={editingDrafts.plannedMinor ?? formatMinorInput(editableRow.plannedMinor)}
+                value={editingDrafts.plannedMinor ?? formatService.formatMinorInput(editableRow.plannedMinor)}
                 onChange={(event) => {
                   if (isDraftBudgetBucket) {
                     onBudgetBucketPlannedMinorDraftChange(row.id, event.target.value);
@@ -592,7 +593,7 @@ function PlanningRow({
               ) : null}
               {sharedEditHint ? <p className="month-shared-edit-hint">{sharedEditHint}</p> : null}
             </div>
-          ) : money(row.plannedMinor)}
+          ) : formatService.money(row.plannedMinor)}
         </td>
         <td>
           <div className="month-actual-cell">
@@ -608,7 +609,7 @@ function PlanningRow({
                 });
               }}
             >
-              {money(row.actualMinor)}
+              {formatService.money(row.actualMinor)}
             </button>
             {row.isPendingDerived ? <span className="month-row-pending-hint">Updating...</span> : null}
             {isPlannedItemsSection(section.key) ? (
@@ -628,7 +629,7 @@ function PlanningRow({
             ) : null}
           </div>
         </td>
-        <td {...rowOpenProps} className={variance >= 0 ? "positive" : "negative"}>{money(variance)}</td>
+        <td {...rowOpenProps} className={variance >= 0 ? "positive" : "negative"}>{formatService.money(variance)}</td>
         {isPlannedItemsSection(section.key) ? (
           <td {...rowOpenProps}>
             {isEditing ? (
@@ -728,9 +729,9 @@ function IncomeTotalsFooter({ rows }) {
       <tr className="table-total-row">
         <td>{messages.month.table.total}</td>
         <td>{messages.common.emptyValue}</td>
-        <td>{money(totals.plannedMinor)}</td>
-        <td>{money(totals.actualMinor)}</td>
-        <td className={totals.varianceMinor >= 0 ? "positive" : "negative"}>{money(totals.varianceMinor)}</td>
+        <td>{formatService.money(totals.plannedMinor)}</td>
+        <td>{formatService.money(totals.actualMinor)}</td>
+        <td className={totals.varianceMinor >= 0 ? "positive" : "negative"}>{formatService.money(totals.varianceMinor)}</td>
         <td>{messages.common.emptyValue}</td>
       </tr>
     </tfoot>
@@ -746,9 +747,9 @@ function PlanningTotalsFooter({ section }) {
         <td>{messages.month.table.total}</td>
         {section.key === "planned_items" ? <td>{messages.common.emptyValue}</td> : null}
         <td>{messages.common.emptyValue}</td>
-        <td>{money(totals.plannedMinor)}</td>
-        <td>{money(totals.actualMinor)}</td>
-        <td className={totals.varianceMinor >= 0 ? "positive" : "negative"}>{money(totals.varianceMinor)}</td>
+        <td>{formatService.money(totals.plannedMinor)}</td>
+        <td>{formatService.money(totals.actualMinor)}</td>
+        <td className={totals.varianceMinor >= 0 ? "positive" : "negative"}>{formatService.money(totals.varianceMinor)}</td>
         {section.key === "planned_items" ? <td>{messages.common.emptyValue}</td> : null}
         <td>{messages.common.emptyValue}</td>
       </tr>
@@ -770,9 +771,9 @@ export function LastPeriodBudgetHint({ actualMinor, month }) {
           <button
             type="button"
             className="month-budget-default-trigger"
-            aria-label={`Last month's total ${money(actualMinor)}. More about this default`}
+            aria-label={`Last month's total ${formatService.money(actualMinor)}. More about this default`}
           >
-            <span className="month-budget-default-text">Last month&apos;s total: {money(actualMinor)}</span>
+            <span className="month-budget-default-text">Last month&apos;s total: {formatService.money(actualMinor)}</span>
           </button>
         </Popover.Trigger>
         <Popover.Portal>
@@ -792,7 +793,7 @@ export function LastPeriodBudgetHint({ actualMinor, month }) {
               </Popover.Close>
             </div>
             <p>
-              Default amount was set to the chosen category&apos;s total expense from {formatMonthLabel(month)}.
+              Default amount was set to the chosen category&apos;s total expense from {formatService.formatMonthLabel(month)}.
             </p>
             <Popover.Arrow className="category-popover-arrow" />
           </Popover.Content>

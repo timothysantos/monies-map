@@ -3,7 +3,6 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Check, X } from "lucide-react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
-import { getCategory } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { EntryEditorFields, EntryTransferTools } from "./entry-editor";
 import {
@@ -12,7 +11,9 @@ import {
   getSignedTotalAmountMinor,
   getVisibleSplitPercent
 } from "./entry-helpers";
-import { formatDateOnly, money } from "./formatters";
+import { moniesClient } from "./monies-client-service";
+
+const { categories: categoryService, format: formatService } = moniesClient;
 
 const NON_GROUP_SPLIT_VALUE = "__split_group_none__";
 
@@ -133,8 +134,8 @@ export function EntriesDateGroups({
       {groupedEntries.map((group) => (
         <section key={group.date} className="entries-date-group">
           <div className="entries-date-head">
-            <strong>{formatDateOnly(group.date)}</strong>
-            <span>{messages.entries.dateNet}: {money(group.netMinor)}</span>
+            <strong>{formatService.formatDateOnly(group.date)}</strong>
+            <span>{messages.entries.dateNet}: {formatService.money(group.netMinor)}</span>
           </div>
 
           <div className="entries-rows">
@@ -287,7 +288,7 @@ function EntryRow({
   renderInlineEditor = true
 }) {
   const inlineEditorRef = useRef(null);
-  const category = getCategory(categories, entry);
+  const category = categoryService.get(categories, entry);
   const transferCandidates = entry.entryType === "transfer"
     ? getTransferCandidatesForEntry(entry)
     : [];
@@ -352,8 +353,8 @@ function EntryRow({
           </div>
           <div className="entry-row-right">
             <div className="entry-row-amount">
-              <strong className={getAmountToneClass(display.signedAmountMinor)}>{money(display.signedAmountMinor)}</strong>
-              {display.hasWeightedTotal ? <p>({money(display.signedTotalAmountMinor)} total)</p> : null}
+              <strong className={getAmountToneClass(display.signedAmountMinor)}>{formatService.money(display.signedAmountMinor)}</strong>
+              {display.hasWeightedTotal ? <p>({formatService.money(display.signedTotalAmountMinor)} total)</p> : null}
             </div>
             <div className="entry-pills">
               {entry.isPendingDerived ? <span className="entry-chip entry-chip-pending">Updating</span> : null}
@@ -510,7 +511,7 @@ function getEntryBankState(entry) {
     return {
       label: entry.bankCertificationLabel ?? "Statement certified",
       title: entry.statementCertifiedAt
-        ? `Bank facts certified ${formatDateOnly(entry.statementCertifiedAt.slice(0, 10))}`
+        ? `Bank facts certified ${formatService.formatDateOnly(entry.statementCertifiedAt.slice(0, 10))}`
         : "Bank facts are locked by a saved statement.",
       className: "is-statement-certified"
     };

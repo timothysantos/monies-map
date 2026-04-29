@@ -3,10 +3,11 @@ import * as Popover from "@radix-ui/react-popover";
 import { SquarePen } from "lucide-react";
 import { useState } from "react";
 
-import { describeAccountHealth, formatAccountDisplayName } from "./account-display";
 import { messages } from "./copy/en-SG";
-import { formatMonthLabel, money } from "./formatters";
+import { moniesClient } from "./monies-client-service";
 import { MetricCard } from "./ui-components";
+
+const { accounts: accountService, format: formatService } = moniesClient;
 
 export function MonthPanelHeader({
   view,
@@ -32,7 +33,7 @@ export function MonthPanelHeader({
       <div>
         <h2 className="month-title">{messages.tabs.month}</h2>
         <span id="month-label" className="month-label">
-          <span className="month-label-period">{formatMonthLabel(view.monthPage.month)}</span>
+          <span className="month-label-period">{formatService.formatMonthLabel(view.monthPage.month)}</span>
           <span className="month-label-separator">•</span>
           <span className="month-label-view">{view.label}</span>
         </span>
@@ -232,9 +233,9 @@ export function MonthNotesAndAccounts({
               className={`summary-account-pill ${account.reconciliationStatus ? `is-${account.reconciliationStatus}` : ""}`}
               onClick={() => onOpenEntriesForAccount(account)}
             >
-              <span className="summary-account-pill-name">{formatAccountDisplayName(account)}</span>
-              <span className="summary-account-pill-amount">{money(account.balanceMinor ?? 0)}</span>
-              <span className="summary-account-pill-meta">{describeAccountHealth(account)}</span>
+              <span className="summary-account-pill-name">{accountService.formatDisplayName(account)}</span>
+              <span className="summary-account-pill-amount">{formatService.money(account.balanceMinor ?? 0)}</span>
+              <span className="summary-account-pill-meta">{accountService.describeHealth(account)}</span>
             </button>
           ))}
         </div>

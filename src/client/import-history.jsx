@@ -1,10 +1,11 @@
 import * as Popover from "@radix-ui/react-popover";
 import { ChevronRight } from "lucide-react";
 import { messages } from "./copy/en-SG";
-import { formatDate, formatDateOnly } from "./formatters";
+import { moniesClient } from "./monies-client-service";
 import { DeleteRowButton } from "./ui-components";
 
 export const RECENT_IMPORTS_PAGE_SIZE = 25;
+const { format: formatService } = moniesClient;
 
 // Recent history is read-only except rollback; pagination only changes which batches are visible.
 export function ImportRecentHistorySection({
@@ -74,7 +75,7 @@ export function ImportRecentHistorySection({
           ) : null}
           {recentImportGroups.map((group) => (
             <section key={group.date} className="import-history-group">
-              <div className="import-history-date">{formatDateOnly(group.date)}</div>
+              <div className="import-history-date">{formatService.formatDateOnly(group.date)}</div>
               <div className="import-history-list">
                 {group.items.map((item) => (
                   <div key={item.id} className="import-card import-card-compact">
@@ -83,12 +84,15 @@ export function ImportRecentHistorySection({
                       <span className="import-history-inline">
                         {messages.common.triplet(
                           getImportBatchKindLabel(item),
-                          formatDate(item.importedAt),
+                          formatService.formatDate(item.importedAt),
                           messages.imports.transactionCount(item.transactionCount)
                         )}
                       </span>
                       {item.startDate && item.endDate ? (
-                        <span className="import-history-inline">{messages.imports.importCoverage(formatDateOnly(item.startDate), formatDateOnly(item.endDate))}</span>
+                        <span className="import-history-inline">{messages.imports.importCoverage(
+                          formatService.formatDateOnly(item.startDate),
+                          formatService.formatDateOnly(item.endDate)
+                        )}</span>
                       ) : null}
                       {item.accountNames.length ? <span className="import-history-inline">{item.accountNames.join(", ")}</span> : null}
                       {item.statementCertificateCount ? (
@@ -203,12 +207,15 @@ function ImportOverlapPopover({ item }) {
                   <p>
                     {messages.common.triplet(
                       getImportBatchKindLabel(overlap),
-                      formatDate(overlap.importedAt),
+                      formatService.formatDate(overlap.importedAt),
                       messages.imports.transactionCount(overlap.transactionCount)
                     )}
                   </p>
                   {overlap.startDate && overlap.endDate ? (
-                    <p>{messages.imports.importCoverage(formatDateOnly(overlap.startDate), formatDateOnly(overlap.endDate))}</p>
+                    <p>{messages.imports.importCoverage(
+                      formatService.formatDateOnly(overlap.startDate),
+                      formatService.formatDateOnly(overlap.endDate)
+                    )}</p>
                   ) : null}
                   {overlap.accountNames.length ? <p>{overlap.accountNames.join(", ")}</p> : null}
                 </div>

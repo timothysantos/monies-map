@@ -1,13 +1,12 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 
 import { CategoryEditDialog } from "./category-edit-dialog";
-import { slugify } from "./category-utils";
-import { getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
-import { money } from "./formatters";
+import { moniesClient } from "./monies-client-service";
 import { CategoryGlyph } from "./ui-components";
 
 const LazySpendingMixRecharts = lazy(() => import("./spending-mix-recharts.jsx"));
+const { categories: categoryService, format: formatService } = moniesClient;
 
 export function SpendingMixChart({
   data,
@@ -28,7 +27,7 @@ export function SpendingMixChart({
   const resolvedOuterRadius = isNarrowViewport ? Math.min(outerRadius, compact ? 84 : 98) : outerRadius;
   const chartData = data.map((item, index) => ({
     ...item,
-    ...getCategoryTheme(categories, item, index)
+    ...categoryService.getTheme(categories, item, index)
   }));
 
   return (
@@ -59,7 +58,7 @@ function SpendingMixChartFallback({ total, totalLabel, compact, resolvedHeight }
       <span className="chart-spinner" />
       <div className={`donut-center recharts-donut-center ${compact ? "is-compact" : ""}`}>
         <span>{totalLabel}</span>
-        <strong>{money(total)}</strong>
+        <strong>{formatService.money(total)}</strong>
       </div>
     </div>
   );
@@ -94,7 +93,7 @@ export function CategoryAppearancePopover({ category, onChange }) {
     try {
       await onChange(category.id, {
         name: categoryDialog.name.trim(),
-        slug: (categoryDialog.slug || slugify(categoryDialog.name)).trim(),
+        slug: (categoryDialog.slug || categoryService.slugify(categoryDialog.name)).trim(),
         iconKey: categoryDialog.iconKey,
         colorHex: categoryDialog.colorHex
       });

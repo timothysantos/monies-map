@@ -2,10 +2,11 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { ChevronRight, SquarePen, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { formatAuditAction } from "./account-display";
 import { messages } from "./copy/en-SG";
-import { formatDate, formatDateOnly, formatMonthLabel, money } from "./formatters";
+import { moniesClient } from "./monies-client-service";
 import { CategoryGlyph, DeleteRowButton } from "./ui-components";
+
+const { accounts: accountService, format: formatService } = moniesClient;
 
 function groupCategoryMatchRules(rules, categories) {
   const categoriesByName = new Map(categories.map((category) => [category.name, category]));
@@ -497,7 +498,7 @@ function formatExceptionMeta(item) {
   return messages.common.triplet(
     messages.settings.exceptionKindLabels[item.kind] ?? item.kind,
     item.accountName ?? messages.settings.exceptionNoAccount,
-    item.checkpointMonth ? formatMonthLabel(item.checkpointMonth) : formatDateOnly(item.createdAt)
+    item.checkpointMonth ? formatService.formatMonthLabel(item.checkpointMonth) : formatService.formatDateOnly(item.createdAt)
   );
 }
 
@@ -539,9 +540,13 @@ export function SettingsTransfersSection({
                 <div key={item.entryId} className="settings-account-row settings-transfer-row">
                   <div className="settings-account-main settings-transfer-main">
                     <strong>{item.description}</strong>
-                    <p>{messages.common.triplet(formatDateOnly(item.date), item.accountName, item.transferDirection === "in" ? "Transfer in" : "Transfer out")}</p>
+                    <p>{messages.common.triplet(
+                      formatService.formatDateOnly(item.date),
+                      item.accountName,
+                      item.transferDirection === "in" ? "Transfer in" : "Transfer out"
+                    )}</p>
                   </div>
-                  <strong className="settings-transfer-amount">{money(item.transferDirection === "out" ? -item.amountMinor : item.amountMinor)}</strong>
+                  <strong className="settings-transfer-amount">{formatService.money(item.transferDirection === "out" ? -item.amountMinor : item.amountMinor)}</strong>
                   <div className="settings-account-actions">
                     <button type="button" className="subtle-action" disabled={isSubmitting} onClick={() => onDismissTransfer(item.entryId)}>
                       {messages.settings.clearTransfer}
@@ -588,15 +593,15 @@ export function SettingsActivitySection({ activityGroups, isOpen, onToggle }) {
         <div className="settings-activity-groups">
           {activityGroups.length ? activityGroups.map((group) => (
             <section key={group.date} className="settings-activity-group">
-              <div className="settings-activity-date">{formatDateOnly(group.date)}</div>
+              <div className="settings-activity-date">{formatService.formatDateOnly(group.date)}</div>
               <div className="settings-activity-list">
                 {group.events.map((event) => (
                   <div key={event.id} className="settings-account-row settings-activity-row">
                     <div className="settings-account-main">
-                      <strong>{formatAuditAction(event.action)}</strong>
+                      <strong>{accountService.formatAuditAction(event.action)}</strong>
                       <p>{event.detail}</p>
                     </div>
-                    <p className="settings-account-meta">{formatDate(event.createdAt)}</p>
+                    <p className="settings-account-meta">{formatService.formatDate(event.createdAt)}</p>
                   </div>
                 ))}
               </div>
@@ -648,7 +653,7 @@ export function SettingsDemoSection({
             </div>
             <div className="settings-demo-meta-item">
               <span>{messages.settings.seededAt}</span>
-              <strong>{formatDate(demo.lastSeededAt)}</strong>
+              <strong>{formatService.formatDate(demo.lastSeededAt)}</strong>
             </div>
           </div>
         </div>

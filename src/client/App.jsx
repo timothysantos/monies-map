@@ -27,9 +27,9 @@ import {
   isMonthWithinRange,
   publishAppSyncEvent
 } from "./app-sync";
-import { slugify } from "./category-utils";
 import { messages } from "./copy/en-SG";
 import { EntriesFilterStack } from "./entries-overview";
+import { moniesClient } from "./monies-client-service";
 import {
   buildBootstrapErrorMessage,
   buildRequestErrorMessage,
@@ -37,7 +37,6 @@ import {
 } from "./request-errors";
 import { installMobileFocusVisibility } from "./mobile-focus-visibility";
 import { queryKeys } from "./query-keys";
-import { formatMonthLabel } from "./formatters";
 import { getCurrentMonthKey } from "../lib/month";
 
 const routeModuleLoaders = {
@@ -65,6 +64,7 @@ const SUMMARY_FOCUS_OVERALL = "overall";
 const BOOTSTRAP_PERSISTED_CACHE_KEY = "monies-map-bootstrap-cache-v2";
 const MONTH_PICKER_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DEFAULT_MONTH_KEY = getCurrentMonthKey();
+const { categories: categoryService, format: formatService } = moniesClient;
 
 const routeTabs = [
   { id: "summary", path: "/summary", label: messages.tabs.summary },
@@ -1768,8 +1768,8 @@ export function App() {
 
   const periodMode = isDetailMonthTab ? messages.period.month : messages.period.year;
   const periodLabel = isDetailMonthTab
-    ? formatMonthLabel(selectedMonth)
-    : `${formatMonthLabel(pageView.summaryPage.rangeStartMonth)} - ${formatMonthLabel(pageView.summaryPage.rangeEndMonth)}`;
+    ? formatService.formatMonthLabel(selectedMonth)
+    : `${formatService.formatMonthLabel(pageView.summaryPage.rangeStartMonth)} - ${formatService.formatMonthLabel(pageView.summaryPage.rangeEndMonth)}`;
   const pendingCategorySuggestionCount = bootstrap.settingsPage?.categoryMatchRuleSuggestions?.length ?? 0;
   const buildTabTarget = (tab) => {
     const params = new URLSearchParams(searchParams);
@@ -1938,7 +1938,7 @@ export function App() {
   async function handleCategoryAppearanceChange(categoryId, nextAppearance) {
     const normalizedAppearance = { ...nextAppearance };
     if (typeof nextAppearance.name === "string") {
-      normalizedAppearance.slug = slugify(nextAppearance.name);
+      normalizedAppearance.slug = categoryService.slugify(nextAppearance.name);
     }
 
     setCategoryOverrides((current) => ({
@@ -2188,7 +2188,7 @@ export function App() {
                   <Popover.Root>
                     <Popover.Trigger asChild>
                       <button type="button" className="period-range-segment">
-                        {formatMonthLabel(pageView.summaryPage.rangeStartMonth)}
+                        {formatService.formatMonthLabel(pageView.summaryPage.rangeStartMonth)}
                       </button>
                     </Popover.Trigger>
                     <Popover.Portal>
@@ -2235,7 +2235,7 @@ export function App() {
                   <Popover.Root>
                     <Popover.Trigger asChild>
                       <button type="button" className="period-range-segment">
-                        {formatMonthLabel(pageView.summaryPage.rangeEndMonth)}
+                        {formatService.formatMonthLabel(pageView.summaryPage.rangeEndMonth)}
                       </button>
                     </Popover.Trigger>
                     <Popover.Portal>
