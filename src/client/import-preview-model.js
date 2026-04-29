@@ -1,5 +1,10 @@
 import { messages } from "./copy/en-SG";
 
+// Read alongside docs/import-summary-code-glossary.md.
+// This model translates raw preview payloads into UI concepts:
+// - what still needs user action
+// - whether commit is safe
+// - which helper sections the preview page should render
 export function buildImportPreviewModel({
   accounts,
   preview,
@@ -13,16 +18,13 @@ export function buildImportPreviewModel({
 }) {
   const certifiedConflictRows = previewRows.filter((row) => row.isCertifiedConflict);
   const knownAccountNames = new Set(accounts.map((account) => account.name));
-  const accountNameCounts = accounts.reduce((counts, account) => {
-    counts.set(account.name, (counts.get(account.name) ?? 0) + 1);
-    return counts;
-  }, new Map());
-  const detectedPreviewAccountNames = Array.from(new Set(
-    statementImportMeta.sourceType === "pdf" && statementCheckpoints.length
-      ? statementCheckpoints.map((checkpoint) => checkpoint.detectedAccountName ?? checkpoint.accountName).filter(Boolean)
-      : previewRows.map((row) => row.statementAccountName ?? row.accountName).filter(Boolean)
-  )).sort();
-  const checkpointByDetectedName = new Map(statementCheckpoints.map((checkpoint) => [checkpoint.detectedAccountName ?? checkpoint.accountName, checkpoint]));
+  const accountNameCounts = buildAccountNameCounts(accounts);
+  const detectedPreviewAccountNames = getDetectedPreviewAccountNames({
+    previewRows,
+    statementCheckpoints,
+    statementImportMeta
+  });
+  const checkpointByDetectedName = buildCheckpointMap(statementCheckpoints);
   const unknownPreviewAccountNames = detectedPreviewAccountNames.filter((accountName) => {
     const checkpoint = checkpointByDetectedName.get(accountName);
     if (checkpoint?.accountId) {
@@ -56,22 +58,24 @@ export function buildImportPreviewModel({
   const hasUnmappedAccounts = includedPreviewRows.some((row) => !row.accountId && (!row.accountName || (accountNameCounts.get(row.accountName) ?? 0) !== 1));
   const hasBlockingCategoryPolicy = unknownCategoryMode === "block" && Boolean(preview?.unknownCategories?.length);
   const hasCommitPayload = includedPreviewRows.length > 0 || statementCheckpoints.length > 0;
+  const hasStatementReconciliationMismatch = statementReconciliations.some((item) => item.status !== "matched");
+  const isCommitDisabled = isSubmitting
+    || isParsingStatement
+    || !hasCommitPayload
+    || hasUnmappedAccounts
+    || (hasCheckpointOnlyCommit && !hasMatchedCheckpointOnlyCommit)
+    || hasBlockingCategoryPolicy
+    || hasDuplicateCheckpointAccounts
+    || needsReviewPreviewRowCount > 0;
 
   return {
     detectedPreviewAccountNames,
     duplicateCheckpointAccounts,
     hasBlockingCategoryPolicy,
     hasDuplicateCheckpointAccounts,
-    hasStatementReconciliationMismatch: statementReconciliations.some((item) => item.status !== "matched"),
+    hasStatementReconciliationMismatch,
     hasUnmappedAccounts,
-    isCommitDisabled: isSubmitting
-      || isParsingStatement
-      || !hasCommitPayload
-      || hasUnmappedAccounts
-      || (hasCheckpointOnlyCommit && !hasMatchedCheckpointOnlyCommit)
-      || hasBlockingCategoryPolicy
-      || hasDuplicateCheckpointAccounts
-      || needsReviewPreviewRowCount > 0,
+    isCommitDisabled,
     certifiedConflictRows,
     knownAccountNames,
     needsReviewPreviewRowCount,
@@ -94,6 +98,27 @@ export function buildImportPreviewModel({
     unknownPreviewAccountNames,
     visibleOverlapImports
   };
+}
+
+function buildAccountNameCounts(accounts) {
+  return accounts.reduce((counts, account) => {
+    counts.set(account.name, (counts.get(account.name) ?? 0) + 1);
+    return counts;
+  }, new Map());
+}
+
+function getDetectedPreviewAccountNames({ previewRows, statementCheckpoints, statementImportMeta }) {
+  const accountNames = statementImportMeta.sourceType === "pdf" && statementCheckpoints.length
+    ? statementCheckpoints.map((checkpoint) => checkpoint.detectedAccountName ?? checkpoint.accountName)
+    : previewRows.map((row) => row.statementAccountName ?? row.accountName);
+
+  return Array.from(new Set(accountNames.filter(Boolean))).sort();
+}
+
+function buildCheckpointMap(statementCheckpoints) {
+  return new Map(
+    statementCheckpoints.map((checkpoint) => [checkpoint.detectedAccountName ?? checkpoint.accountName, checkpoint])
+  );
 }
 
 function getDuplicateCheckpointAccounts(statementCheckpoints) {
