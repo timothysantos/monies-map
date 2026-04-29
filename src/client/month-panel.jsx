@@ -38,6 +38,17 @@ import {
 const MONTH_SECTION_STATE_CACHE = new Map();
 const MOBILE_ADD_DIALOG_QUERY = "(max-width: 760px), (max-width: 1024px) and (orientation: portrait)";
 
+// This panel owns the "editable month workspace":
+// - local draft rows so the UI responds immediately
+// - background refreshes so derived totals settle after saves
+// - route-level dialogs such as notes, plan links, and mobile editors
+//
+// Important month-page terms:
+// - "draft" rows exist only in the browser until the first save succeeds.
+// - "pending derived" rows were saved, but totals/actuals still need the server
+//   to recompute the downstream month and summary views.
+// - "derived" plan rows are weighted or rolled-up rows shown in a scope view;
+//   the editor often needs to map back to the source row values first.
 function mergeMonthRowsById(currentRows, serverRows) {
   const currentById = new Map(currentRows.map((row) => [row.id, row]));
   const serverIds = new Set(serverRows.map((row) => row.id));
@@ -143,16 +154,18 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     return () => mediaQuery.removeEventListener?.("change", update);
   }, []);
 
-  const currentMonthSummary = useMemo(
+  // Summary cards borrow the selected month's rollup from the already-loaded
+  // summary payload instead of refetching anything here.
+  const selectedMonthSummary = useMemo(
     () => view.summaryPage.months.find((month) => month.month === view.monthPage.month) ?? null,
     [view]
   );
-  const planLinkDialogRow = useMemo(
+  const planLinkTargetRow = useMemo(
     () => planLinkDialog ? getPlanRowById(planSections, planLinkDialog.rowId) : null,
     [planLinkDialog, planSections]
   );
-  const planLinkDialogView = useMemo(() => {
-    if (!planLinkDialogRow) {
+  const planLinkPickerModel = useMemo(() => {
+    if (!planLinkTargetRow) {
       return {
         row: null,
         allCandidates: [],
@@ -162,14 +175,14 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     }
 
     const allCandidates = buildPlanLinkCandidates({
-      row: planLinkDialogRow,
+      row: planLinkTargetRow,
       householdMonthEntries,
       monthEntries: view.monthPage.entries,
       monthKey: view.monthPage.month
     });
     const selectedIds = new Set(planLinkDialog?.draftEntryIds ?? []);
-    const rowCategory = (planLinkDialogRow.categoryName ?? "").trim().toLowerCase();
-    const rowAccount = (planLinkDialogRow.accountName ?? "").trim().toLowerCase();
+    const rowCategory = (planLinkTargetRow.categoryName ?? "").trim().toLowerCase();
+    const rowAccount = (planLinkTargetRow.accountName ?? "").trim().toLowerCase();
     const filterText = (planLinkDialog?.descriptionFilter ?? "").trim().toLowerCase();
     const candidates = allCandidates.filter((entry) => {
       const isSelected = selectedIds.has(entry.id);
@@ -195,16 +208,16 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     });
 
     return {
-      row: planLinkDialogRow,
+      row: planLinkTargetRow,
       allCandidates,
       candidates,
       selectedIds
     };
-  }, [householdMonthEntries, planLinkDialog, planLinkDialogRow, view.monthPage.entries, view.monthPage.month]);
+  }, [householdMonthEntries, planLinkDialog, planLinkTargetRow, view.monthPage.entries, view.monthPage.month]);
 
   const monthMetricCards = useMemo(
-    () => buildMonthMetricCards({ planSections, incomeRows, currentMonthSummary }),
-    [currentMonthSummary, incomeRows, planSections]
+    () => buildMonthMetricCards({ planSections, incomeRows, currentMonthSummary: selectedMonthSummary }),
+    [selectedMonthSummary, incomeRows, planSections]
   );
   const visibleAccounts = useMemo(
     () => getVisibleMonthAccounts(accounts, view.id),
@@ -243,7 +256,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     });
   }
 
-  function handleRowChange(sectionKey, rowId, patch) {
+  function updatePlanRow(sectionKey, rowId, patch) {
     setPlanSections((current) => current.map((section) => {
       if (section.key !== sectionKey) {
         return section;
@@ -265,7 +278,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     }));
   }
 
-  function replaceIncomeRow(nextRow, { prepend = false } = {}) {
+  function upsertIncomeRow(nextRow, { prepend = false } = {}) {
     setIncomeRows((current) => {
       const existingIndex = current.findIndex((row) => row.id === nextRow.id);
       if (existingIndex === -1) {
@@ -276,7 +289,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     });
   }
 
-  function replacePlanRow(sectionKey, nextRow, { prepend = false } = {}) {
+  function upsertPlanRow(sectionKey, nextRow, { prepend = false } = {}) {
     setPlanSections((current) => current.map((section) => {
       if (section.key !== sectionKey) {
         return section;
@@ -341,6 +354,8 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   }, [view.id, view.monthPage.month, view.monthPage.selectedScope]);
 
   async function persistMonthRow(sectionKey, row, nextPlannedMinor) {
+    // The save API expects the canonical plan-row shape, even when the UI is
+    // editing a temporary draft row or a derived table projection.
     await fetch("/api/month-plan/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -445,7 +460,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       if (currentSnapshot.kind === "income") {
         handleIncomeRowChange(currentSnapshot.rowId, { plannedMinor: nextPlannedMinor });
       } else {
-        handleRowChange(currentSnapshot.sectionKey, currentSnapshot.rowId, { plannedMinor: nextPlannedMinor });
+        updatePlanRow(currentSnapshot.sectionKey, currentSnapshot.rowId, { plannedMinor: nextPlannedMinor });
       }
     }
 
@@ -456,7 +471,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
           ...row,
           plannedMinor: typeof nextPlannedMinor === "number" ? nextPlannedMinor : row.plannedMinor
         }, nextPlannedMinor);
-        replaceIncomeRow({
+        upsertIncomeRow({
           ...row,
           plannedMinor: typeof nextPlannedMinor === "number" ? nextPlannedMinor : row.plannedMinor,
           isDraft: false,
@@ -471,7 +486,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
           ...row,
           plannedMinor: typeof nextPlannedMinor === "number" ? nextPlannedMinor : row.plannedMinor
         }, nextPlannedMinor);
-        replacePlanRow(currentSnapshot.sectionKey, {
+        upsertPlanRow(currentSnapshot.sectionKey, {
           ...row,
           plannedMinor: typeof nextPlannedMinor === "number" ? nextPlannedMinor : row.plannedMinor,
           isDraft: false,
@@ -676,14 +691,14 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   }
 
   function updateDraftBudgetBucketLabel(rowId, label) {
-    handleRowChange("budget_buckets", rowId, {
+    updatePlanRow("budget_buckets", rowId, {
       label,
       autoLabelFromCategory: false
     });
   }
 
   function updateDraftBudgetBucketPlannedMinor(rowId, plannedMinor) {
-    handleRowChange("budget_buckets", rowId, {
+    updatePlanRow("budget_buckets", rowId, {
       plannedMinor: parseDraftMoneyInput(plannedMinor),
       autoPlannedFromCategory: false
     });
@@ -818,7 +833,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         await persistMonthRow("income", { ...row, note: noteDialog.draft });
       }
     } else {
-      handleRowChange(noteDialog.sectionKey, noteDialog.rowId, { note: noteDialog.draft });
+      updatePlanRow(noteDialog.sectionKey, noteDialog.rowId, { note: noteDialog.draft });
       const section = planSections.find((item) => item.key === noteDialog.sectionKey);
       const row = section?.rows.find((item) => item.id === noteDialog.rowId);
       if (row) {
@@ -991,7 +1006,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         ...basePatch
       } : buildIncomeRow(basePatch);
       await persistMonthRow("income", nextIncomeRow, plannedMinor);
-      replaceIncomeRow({
+      upsertIncomeRow({
         ...nextIncomeRow,
         isDraft: false,
         isPendingDerived: true
@@ -1021,7 +1036,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         accountName: sectionKey === "planned_items" ? currentDialog.accountName : undefined
       });
       await persistMonthRow(sectionKey, nextPlanRow, plannedMinor);
-      replacePlanRow(sectionKey, {
+      upsertPlanRow(sectionKey, {
         ...nextPlanRow,
         isDraft: false,
         isPendingDerived: true
@@ -1269,7 +1284,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         onBeginIncomeEdit={beginIncomeEdit}
         onBeginPlanEdit={beginPlanEdit}
         onIncomeRowChange={handleIncomeRowChange}
-        onPlanRowChange={handleRowChange}
+        onPlanRowChange={updatePlanRow}
         onEditingDraftChange={(patch) => setEditingDrafts((current) => ({ ...current, ...patch }))}
         onFinishEdit={finishEdit}
         onCancelEdit={cancelEdit}
@@ -1449,10 +1464,10 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
             <Dialog.Content className="note-dialog-content planned-link-dialog">
               <MonthPlanLinkContent
                 planLinkDialog={planLinkDialog}
-                row={planLinkDialogView.row}
-                allCandidates={planLinkDialogView.allCandidates}
-                candidates={planLinkDialogView.candidates}
-                selectedIds={planLinkDialogView.selectedIds}
+                row={planLinkPickerModel.row}
+                allCandidates={planLinkPickerModel.allCandidates}
+                candidates={planLinkPickerModel.candidates}
+                selectedIds={planLinkPickerModel.selectedIds}
                 onClose={() => setPlanLinkDialog(null)}
                 onToggleFilter={togglePlanLinkFilter}
                 onDescriptionFilterChange={updatePlanLinkDescriptionFilter}
@@ -1467,17 +1482,17 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       {useMobileMonthSheet && planLinkDialog ? (
         <EntryMobileSheet
           title="Match planned item"
-          description={`Link exact ledger entries to ${planLinkDialogView.row?.label ?? "this planned item"}. Budget buckets still use category totals.`}
+          description={`Link exact ledger entries to ${planLinkPickerModel.row?.label ?? "this planned item"}. Budget buckets still use category totals.`}
           saveLabel="Save matches"
           onClose={() => setPlanLinkDialog(null)}
           onSave={() => void savePlanLinkDialog()}
         >
           <MonthPlanLinkContent
             planLinkDialog={planLinkDialog}
-            row={planLinkDialogView.row}
-            allCandidates={planLinkDialogView.allCandidates}
-            candidates={planLinkDialogView.candidates}
-            selectedIds={planLinkDialogView.selectedIds}
+            row={planLinkPickerModel.row}
+            allCandidates={planLinkPickerModel.allCandidates}
+            candidates={planLinkPickerModel.candidates}
+            selectedIds={planLinkPickerModel.selectedIds}
             onToggleFilter={togglePlanLinkFilter}
             onDescriptionFilterChange={updatePlanLinkDescriptionFilter}
             onToggleEntry={togglePlanLinkEntry}

@@ -2,11 +2,17 @@ import { messages } from "./copy/en-SG";
 import { formatMinorInput } from "./formatters";
 import { getRowDateValue } from "./table-helpers";
 
-const WEIGHTED_NOTE_TEXT_PATTERN = /\s*• weighted to .*? share/g;
+// Month plan rows use a few terms that are easy to forget when skimming:
+// - "derived" rows are rollups shown in the current view, not the source row
+//   that should be edited directly.
+// - "shared" edits may show one person's weighted share in the table even
+//   though the editor needs the full shared amount underneath.
+// - "mobile dialog" is the fallback editor when the table would be too cramped.
+const DERIVED_SHARE_NOTE_PATTERN = /\s*• weighted to .*? share/g;
 
 export function stripDerivedMonthRowNote(note) {
   return (note ?? "")
-    .replace(WEIGHTED_NOTE_TEXT_PATTERN, "")
+    .replace(DERIVED_SHARE_NOTE_PATTERN, "")
     .replace(/\s{2,}/g, " ")
     .trim();
 }
@@ -34,6 +40,8 @@ export function canOpenMonthMobileSheet({ isCombinedHouseholdView, row }) {
 }
 
 export function getMonthPlanEditSource(row) {
+  // Derived rows may show weighted values in the table. The editor should
+  // instead open against the original full-value row when that data exists.
   return {
     ...row,
     plannedMinor: row.sourcePlannedMinor ?? row.plannedMinor,
