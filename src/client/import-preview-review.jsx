@@ -14,7 +14,13 @@ import {
   parseMoneyInput
 } from "./formatters";
 
-// Preview review surfaces the import guardrails while ImportsPanel keeps ownership of the mutable draft.
+// Preview review surfaces the import guardrails while ImportsPanel keeps
+// ownership of the mutable draft. The order below mirrors how a human usually
+// reviews a risky import:
+// 1. Can the app map statement accounts?
+// 2. Are categories or overlaps blocking us?
+// 3. Do statement balances reconcile?
+// 4. Are any rows protected because of statement-certified history?
 export function ImportPreviewReview({
   preview,
   previewRows,
@@ -50,6 +56,7 @@ export function ImportPreviewReview({
 
   return (
     <>
+      {/* Statement imports can discover account names that do not yet map cleanly into app accounts. */}
       {showStatementAccountMapping ? (
         <StatementAccountMapping
           accounts={accounts}
@@ -63,6 +70,7 @@ export function ImportPreviewReview({
         />
       ) : null}
 
+      {/* Unknown categories are informational unless policy says they block commit. */}
       {preview.unknownCategories?.length ? (
         <UnknownCategories
           categoryNames={preview.unknownCategories}
@@ -70,6 +78,7 @@ export function ImportPreviewReview({
         />
       ) : null}
 
+      {/* These pills give a fast count of what the larger preview table will contain. */}
       <PreviewGuardrailPills
         preview={preview}
         previewDuplicateRowCount={previewDuplicateRowCount}
@@ -79,10 +88,12 @@ export function ImportPreviewReview({
         statementCertificationRowCount={statementCertificationRowCount}
       />
 
+      {/* The exception register is the short list of why this preview needs attention. */}
       {preview.exceptionSummary?.length ? (
         <ExceptionRegister exceptions={preview.exceptionSummary} />
       ) : null}
 
+      {/* Overlap imports explain why some rows may already be covered by previous work. */}
       {visibleOverlapImports.length ? (
         <OverlapImports
           imports={visibleOverlapImports}
@@ -97,6 +108,7 @@ export function ImportPreviewReview({
         />
       ) : null}
 
+      {/* Statement balance checks only appear when the source provided checkpoints. */}
       {statementReconciliations.length ? (
         <StatementBalanceCheck
           reconciliations={statementReconciliations}
@@ -106,10 +118,12 @@ export function ImportPreviewReview({
         />
       ) : null}
 
+      {/* Certified conflicts are the rows we should least casually overwrite. */}
       {certifiedConflictRows.length ? (
         <CertifiedConflictRows rows={certifiedConflictRows} />
       ) : null}
 
+      {/* Draft checkpoints remain editable until commit. */}
       {statementCheckpoints.length ? (
         <StatementCheckpointDrafts
           accounts={accounts}
@@ -193,6 +207,8 @@ function StatementAccountMapping({
   onRemapPreviewAccount,
   onCreateStatementAccount
 }) {
+  // Account names in statements are not reliable foreign keys. We treat the
+  // detected label as a hint, then let the user anchor it to a concrete account.
   const accountOptions = getAccountSelectOptions(accounts, { valueKey: "id" });
   const accountOptionsByName = accounts.reduce((optionsByName, account) => {
     const current = optionsByName.get(account.name) ?? [];
