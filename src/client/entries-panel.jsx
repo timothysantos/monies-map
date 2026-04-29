@@ -43,12 +43,14 @@ export function EntriesPanel({
   view,
   entriesSourceView = view,
   selectedMonth,
+  externalRefreshToken = 0,
   availableMonths,
   accounts,
   categories,
   people,
   onCategoryAppearanceChange,
-  onInvalidateBootstrapCache
+  onInvalidateBootstrapCache,
+  onBroadcastSplitMutation
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -190,6 +192,14 @@ export function EntriesPanel({
   }, [entriesPageCacheKey, entriesPageParams, fetchEntriesPage, queryClient]);
 
   useEffect(() => {
+    if (!externalRefreshToken) {
+      return;
+    }
+
+    void refreshEntriesPage({ bypassCache: true });
+  }, [externalRefreshToken, refreshEntriesPage]);
+
+  useEffect(() => {
     if (
       !availableMonths.length
       || typeof window === "undefined"
@@ -274,7 +284,8 @@ export function EntriesPanel({
     accounts,
     categories,
     people,
-    onRefresh: () => refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true })
+    onRefresh: () => refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true }),
+    onSplitMutation: onBroadcastSplitMutation
   });
   const openEntryComposerRef = useRef(openEntryComposer);
   const entryComposerEditorRef = useRef(null);
@@ -672,6 +683,10 @@ export function EntriesPanel({
       setCreatedSplitAction((current) => (
         current?.splitExpenseId === splitExpenseId ? null : current
       ));
+      onBroadcastSplitMutation?.({
+        month: selectedMonth,
+        invalidateEntries: true
+      });
       await refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true });
     } catch (error) {
       setCreatedSplitActionError(error instanceof Error ? error.message : "Failed to delete split expense.");

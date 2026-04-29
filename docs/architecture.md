@@ -455,12 +455,15 @@ shared actuals.
 - `create or edit split expense`
   - optimistic: the edited split row fields inside the current group
   - pending: group balances and donut totals inside Splits
-  - invalidate: Splits route only
+  - invalidate: Splits route only for manual rows; linked expense edits also
+    invalidate Entries, Month, Summary, and quiet bootstrap state because the
+    ledger's shared split weights change with them
   - preserve: inline editor or dialog state until success, then group context
 - `delete split expense`
   - optimistic: remove the split row locally
   - pending: group balances and activity ordering
-  - invalidate: Splits route only
+  - invalidate: Splits route only for manual rows; linked rows also invalidate
+    Entries so linked-split badges and deep links disappear in other views
   - preserve: current group, archive open state, and surrounding editor context
 - `create or edit settlement`
   - optimistic: the settlement row and current-batch ordering
@@ -503,6 +506,12 @@ shared actuals.
   bootstrap metadata too, expense match-linking invalidates Entries, Month, and
   Summary caches, and settlement match-linking stays local to the Splits
   workspace.
+- Split mutation sync now uses a targeted cross-tab app event instead of
+  treating every remote refresh as a full bootstrap reload. BroadcastChannel is
+  used when available with localStorage as a fallback; the payload carries the
+  affected month plus the exact Entries, Month, Summary, or shell invalidation
+  flags so other open windows can quietly refresh only the surfaces that are
+  actually stale.
 - Local editor state should reset only when the route context truly changes,
   such as switching view, switching the active split group intentionally, or
   closing the editor on success.

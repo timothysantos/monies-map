@@ -230,6 +230,17 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       });
   }
 
+  function buildLinkedExpenseRefreshOptions(linkedTransactionId, overrides = {}) {
+    const affectsLinkedEntry = Boolean(linkedTransactionId);
+    return {
+      broadcast: true,
+      invalidateEntries: affectsLinkedEntry,
+      invalidateMonth: affectsLinkedEntry,
+      invalidateSummary: affectsLinkedEntry,
+      ...overrides
+    };
+  }
+
   async function saveGroup() {
     if (!groupDialog?.name?.trim()) {
       setFormError("Group name is required.");
@@ -277,7 +288,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         };
       });
       closeExpenseDialog();
-      refreshAfterSplitMutation();
+      refreshAfterSplitMutation(buildLinkedExpenseRefreshOptions(draft?.linkedTransactionId));
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -312,7 +323,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         };
       });
       closeSettlementDialog();
-      refreshAfterSplitMutation();
+      refreshAfterSplitMutation({ broadcast: true });
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -326,8 +337,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       await linkSplitMatch(match);
       applyOptimisticSplitsPage((currentPage) => applyOptimisticSplitMatch(currentPage, match));
       refreshAfterSplitMutation(match.kind === "expense"
-        ? { invalidateEntries: true, invalidateMonth: true, invalidateSummary: true }
-        : undefined);
+        ? { broadcast: true, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true }
+        : { broadcast: true });
     } finally {
       setIsSubmitting(false);
     }
@@ -384,7 +395,11 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         });
       }
       clearInlineSplitDraft();
-      refreshAfterSplitMutation();
+      refreshAfterSplitMutation(
+        draft.kind === "expense"
+          ? buildLinkedExpenseRefreshOptions(draft.linkedTransactionId)
+          : { broadcast: true }
+      );
     } catch (error) {
       setInlineSplitError(error.message);
     } finally {
@@ -442,7 +457,10 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         setInlineSplitError("");
         setInlineSplitDraft(null);
       }
-      refreshAfterSplitMutation();
+      refreshAfterSplitMutation({
+        broadcast: true,
+        invalidateEntries: deleteTarget.kind === "expense" && Boolean(deleteTarget.linkedTransactionId)
+      });
     } catch (error) {
       setFormError(error.message);
     } finally {
