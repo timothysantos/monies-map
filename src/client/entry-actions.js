@@ -9,6 +9,12 @@ import {
 } from "./entry-helpers";
 import { buildRequestErrorMessage } from "./request-errors";
 
+// This hook is the Entries page "write side".
+// It owns draft/edit state, optimistic updates, and the mutation calls that
+// eventually rehydrate from the canonical server payload.
+
+// Merge the latest server snapshot into the locally edited list without
+// clobbering the row the user is actively changing in the editor.
 function mergeEntriesById(currentEntries, serverEntries, editingEntryId) {
   const currentById = new Map(currentEntries.map((entry) => [entry.id, entry]));
   const serverIds = new Set(serverEntries.map((entry) => entry.id));
@@ -76,6 +82,9 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   useEffect(() => {
     const queuedComposerDraft = queuedComposerDraftRef.current;
     queuedComposerDraftRef.current = null;
+
+    // A view/month/scope change means the local editor state is no longer
+    // trustworthy, so the hook resets to the fresh server-backed baseline.
     setEntries(view.monthPage.entries);
     setEditingEntryId(null);
     setEntrySnapshot(null);
@@ -104,6 +113,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     void onRefresh();
   }
 
+  // The composer can be launched directly from the page or seeded by a
+  // quick-expense shortcut. In both cases it rebuilds from the current view.
   function openEntryComposer(initialPatch) {
     if (initialPatch) {
       queuedComposerDraftRef.current = initialPatch;
@@ -184,20 +195,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          date: entryDraft.date,
-          description: entryDraft.description,
-          accountId: entryDraft.accountId,
-          accountName: entryDraft.accountName,
-          categoryName: entryDraft.categoryName,
-          amountMinor: entryDraft.amountMinor,
-          entryType: entryDraft.entryType,
-          transferDirection: entryDraft.transferDirection,
-          ownershipType: entryDraft.ownershipType,
-          ownerName: entryDraft.ownerName,
-          note: entryDraft.note ?? "",
-          splitBasisPoints: primarySplit?.ratioBasisPoints
-        })
+        body: JSON.stringify(buildPersistedEntryPayload(entryDraft, primarySplit))
       });
 
       const data = await response.json();
@@ -208,6 +206,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
 
       let splitAddError = "";
       let createdSplitExpenseId = null;
+      // "Add to splits" is a second workflow layered on top of entry creation.
+      // The row itself is valid even if the split-expense creation fails.
       if (entryDraft.addToSplits && entryDraft.entryType === "expense") {
         const splitResponse = await fetch("/api/splits/expenses/from-entry", {
           method: "POST",
@@ -288,18 +288,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       },
       body: JSON.stringify({
         entryId: currentEntry.id,
-        date: currentEntry.date,
-        description: currentEntry.description,
-        accountId: currentEntry.accountId,
-        accountName: currentEntry.accountName,
-        categoryName: currentEntry.categoryName,
-        amountMinor: currentEntry.amountMinor,
-        entryType: currentEntry.entryType,
-        transferDirection: currentEntry.transferDirection,
-        ownershipType: currentEntry.ownershipType,
-        ownerName: currentEntry.ownerName,
-        note: currentEntry.note ?? "",
-        splitBasisPoints: primarySplit?.ratioBasisPoints
+        ...buildPersistedEntryPayload(currentEntry, primarySplit)
       })
     });
 
@@ -374,6 +363,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   }
 
   async function linkTransferCandidate(entry, candidate) {
+    // The API stores transfers directionally as from -> to, but the editor can
+    // be opened from either side of the pair.
     const fromEntryId = entry.transferDirection === "in" ? candidate.id : entry.id;
     const toEntryId = entry.transferDirection === "in" ? entry.id : candidate.id;
     setLinkingTransferEntryId(entry.id);
@@ -456,6 +447,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   }
 
   function ensureTransferSettlementDraft(entry) {
+    // Settlement reclassifies an already-linked transfer into real categories,
+    // so we lazily seed draft choices the first time the dialog opens.
     setTransferSettlementDrafts((current) => {
       if (current[entry.id]) {
         return current;
@@ -553,6 +546,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
           return currentEntry;
         }
 
+        // Splits are always shared expenses, so linking an entry promotes the
+        // row into shared ownership even if it started as a direct expense.
         nextLinkedEntry = normalizeEntryShape({
           ...currentEntry,
           ownershipType: "shared",
@@ -647,6 +642,26 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   };
 }
 
+function buildPersistedEntryPayload(entry, primarySplit) {
+  return {
+    date: entry.date,
+    description: entry.description,
+    accountId: entry.accountId,
+    accountName: entry.accountName,
+    categoryName: entry.categoryName,
+    amountMinor: entry.amountMinor,
+    entryType: entry.entryType,
+    transferDirection: entry.transferDirection,
+    ownershipType: entry.ownershipType,
+    ownerName: entry.ownerName,
+    note: entry.note ?? "",
+    splitBasisPoints: primarySplit?.ratioBasisPoints
+  };
+}
+
+// Only compare fields the user can edit from the Entries UI. Server-derived
+// fields such as linked transfers or provisional flags should not make the row
+// look dirty.
 function buildComparableEntryState(entry) {
   return {
     date: entry.date,
