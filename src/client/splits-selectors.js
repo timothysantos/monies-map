@@ -5,6 +5,10 @@ import {
   groupSplitActivityByDate
 } from "./split-helpers";
 
+// Splits page terminology:
+// - a "group" is a named shared-expense bucket such as a trip or household pot.
+// - "activity" is the timeline of expenses and settlements for one group.
+// - "matches" are unresolved links between split records and imported ledger rows.
 export function buildSplitsPanelModel({
   view,
   categories,
@@ -14,41 +18,38 @@ export function buildSplitsPanelModel({
 }) {
   const groups = view.splitsPage.groups;
   const groupOptions = [{ id: "split-group-none", name: messages.splits.nonGroup }, ...groups.filter((group) => group.id !== "split-group-none")];
-  const defaultGroupId = groups.find((group) => group.isDefault)?.id ?? "split-group-none";
   const activeGroup = groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null;
   const activeGroupId = activeGroup?.id ?? "split-group-none";
-  const visibleActivity = view.splitsPage.activity.filter((item) => item.groupId === activeGroupId);
-  const currentActivity = visibleActivity.filter((item) => !item.isArchived);
-  const archivedActivity = visibleActivity.filter((item) => item.isArchived);
-  const groupedCurrentActivity = groupSplitActivityByDate(currentActivity);
-  const archivedBatches = groupSplitActivityByBatch(archivedActivity);
+  const activeGroupActivity = view.splitsPage.activity.filter((item) => item.groupId === activeGroupId);
+  const currentGroupActivity = activeGroupActivity.filter((item) => !item.isArchived);
+  const archivedGroupActivity = activeGroupActivity.filter((item) => item.isArchived);
+  const groupedCurrentActivity = groupSplitActivityByDate(currentGroupActivity);
+  const archivedBatches = groupSplitActivityByBatch(archivedGroupActivity);
   const selectedArchivedBatch = archiveBatchId
     ? archivedBatches.find((batch) => batch.batchId === archiveBatchId) ?? null
     : null;
-  const visibleMatches = view.splitsPage.matches.filter((item) => !dismissedMatchIds.includes(item.id));
-  const pendingMatches = view.splitsPage.matches.filter((item) => !dismissedMatchIds.includes(item.id));
+  const unresolvedMatches = view.splitsPage.matches.filter((item) => !dismissedMatchIds.includes(item.id));
   const groupBalanceMinor = activeGroup?.balanceMinor ?? 0;
 
   return {
     activeGroup,
     archivedBatches,
     categoryOptions: getCategoryOptions(categories),
-    defaultGroupId,
     donutRows: buildDonutRows(view.splitsPage.donutChart, categories),
-    expenseMatchCount: pendingMatches.filter((item) => item.kind === "expense").length,
+    expenseMatchCount: unresolvedMatches.filter((item) => item.kind === "expense").length,
     groupBalanceMinor,
     groupedCurrentActivity,
     groups,
     groupOptions,
     groupSummaryLabel: view.id === "household" ? "" : getGroupSummaryLabel(groupBalanceMinor),
     linkedEntriesById: new Map(view.monthPage.entries.map((entry) => [entry.id, entry])),
-    pendingMatchCount: pendingMatches.length,
+    pendingMatchCount: unresolvedMatches.length,
     selectedArchivedBatch,
-    settlementMatchCount: pendingMatches.filter((item) => item.kind === "settlement").length,
-    totalExpenseMinor: currentActivity
+    settlementMatchCount: unresolvedMatches.filter((item) => item.kind === "settlement").length,
+    totalExpenseMinor: currentGroupActivity
       .filter((item) => item.kind === "expense")
       .reduce((sum, item) => sum + item.totalAmountMinor, 0),
-    visibleMatches
+    visibleMatches: unresolvedMatches
   };
 }
 
