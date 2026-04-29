@@ -1,36 +1,35 @@
 import { useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 
-import { getAccountSelectOptions } from "./account-display";
-import { getCategoriesForSelect } from "./category-utils";
 import { messages } from "./copy/en-SG";
-import { getAmountToneClass } from "./entry-helpers";
-import {
-  formatDateOnly,
-  formatMinorInput,
-  money,
-  parseMoneyInput
-} from "./formatters";
+import { moniesClient } from "./monies-client-service";
+
+const {
+  accounts: accountService,
+  categories: categoryService,
+  entries: entryService,
+  format: formatService
+} = moniesClient;
 
 export function StatementCompareResultView({ result, deltaMinor, accounts, categories, people, onEntryAdded, onRowsMatched }) {
   const directionMismatches = result.possibleMatches.filter((candidate) => candidate.amountDirectionMismatch);
   const duplicateStatementGroups = result.duplicateStatementGroups ?? [];
   const duplicateLedgerGroups = result.duplicateLedgerGroups ?? [];
-  const categorySelectOptions = getCategoriesForSelect(categories);
+  const categorySelectOptions = categoryService.listForSelect(categories);
   return (
     <section className="settings-statement-compare">
       <strong>{messages.settings.statementCompareSummary(result)}</strong>
       {deltaMinor != null ? (
-        <p className="settings-account-health is-mismatch">{messages.settings.statementCompareDelta(money(Math.abs(deltaMinor)))}</p>
+        <p className="settings-account-health is-mismatch">{messages.settings.statementCompareDelta(formatService.money(Math.abs(deltaMinor)))}</p>
       ) : null}
       <div className="settings-statement-compare-periods">
         <p>{messages.settings.statementCompareCheckpointPeriod(
-          result.statementStartDate ? formatDateOnly(result.statementStartDate) : messages.common.emptyValue,
-          formatDateOnly(result.statementEndDate)
+          result.statementStartDate ? formatService.formatDateOnly(result.statementStartDate) : messages.common.emptyValue,
+          formatService.formatDateOnly(result.statementEndDate)
         )}</p>
         <p>{messages.settings.statementCompareUploadedPeriod(
-          result.uploadedStatementStartDate ? formatDateOnly(result.uploadedStatementStartDate) : messages.common.emptyValue,
-          result.uploadedStatementEndDate ? formatDateOnly(result.uploadedStatementEndDate) : messages.common.emptyValue
+          result.uploadedStatementStartDate ? formatService.formatDateOnly(result.uploadedStatementStartDate) : messages.common.emptyValue,
+          result.uploadedStatementEndDate ? formatService.formatDateOnly(result.uploadedStatementEndDate) : messages.common.emptyValue
         )}</p>
       </div>
       {result.possibleMatches.length ? (
@@ -237,8 +236,8 @@ function StatementCompareDisplayRow({ row, label }) {
   return (
     <div className="settings-statement-row">
       {label ? <span className="settings-statement-row-label">{label}</span> : null}
-      <span>{formatDateOnly(row.date)}</span>
-      <strong className={getAmountToneClass(row.signedAmountMinor)}>{money(row.signedAmountMinor)}</strong>
+      <span>{formatService.formatDateOnly(row.date)}</span>
+      <strong className={entryService.getAmountToneClass(row.signedAmountMinor)}>{formatService.money(row.signedAmountMinor)}</strong>
       <p>{row.description}</p>
     </div>
   );
@@ -246,7 +245,7 @@ function StatementCompareDisplayRow({ row, label }) {
 
 function StatementCompareMissingRow({ row, result, accounts, categories, categorySelectOptions, people, onEntryAdded }) {
   const account = accounts.find((item) => item.name === result.accountName);
-  const accountOptions = getAccountSelectOptions(accounts);
+  const accountOptions = accountService.getSelectOptions(accounts);
   const preferredOwnerName = people.find((person) => person.name === account?.ownerLabel)?.name ?? people[0]?.name ?? "";
   const defaultCategoryName = row.entryType === "transfer"
     ? "Transfer"
@@ -314,8 +313,8 @@ function StatementCompareMissingRow({ row, result, accounts, categories, categor
 
   return (
     <div className="settings-statement-row settings-statement-row-action">
-      <span>{formatDateOnly(row.date)}</span>
-      <strong className={getAmountToneClass(row.signedAmountMinor)}>{money(row.signedAmountMinor)}</strong>
+      <span>{formatService.formatDateOnly(row.date)}</span>
+      <strong className={entryService.getAmountToneClass(row.signedAmountMinor)}>{formatService.money(row.signedAmountMinor)}</strong>
       <p>{row.description}</p>
       <Popover.Root open={open} onOpenChange={setOpen}>
         <Popover.Trigger asChild>
@@ -343,7 +342,13 @@ function StatementCompareMissingRow({ row, result, accounts, categories, categor
               </label>
               <label className="table-edit-field">
                 <span>{messages.imports.table.amount}</span>
-                <input className="table-edit-input" value={formatMinorInput(draft.amountMinor)} onChange={(event) => updateDraft({ amountMinor: parseMoneyInput(event.target.value, draft.amountMinor) })} />
+                <input
+                  className="table-edit-input"
+                  value={formatService.formatMinorInput(draft.amountMinor)}
+                  onChange={(event) => updateDraft({
+                    amountMinor: formatService.parseMoneyInput(event.target.value, draft.amountMinor)
+                  })}
+                />
               </label>
               <label className="table-edit-field">
                 <span>{messages.imports.table.type}</span>

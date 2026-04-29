@@ -2,17 +2,13 @@ import * as Popover from "@radix-ui/react-popover";
 import { useRef, useState } from "react";
 import { Info } from "lucide-react";
 import { DuplicateMatchPopover } from "./import-preview-rows-table";
-import { getAccountSelectOptions } from "./account-display";
 import { messages } from "./copy/en-SG";
-import {
-  formatDate,
-  formatDateOnly,
-  formatMinorInput,
-  formatMonthLabel,
-  formatStatementReconciliationLine,
-  money,
-  parseMoneyInput
-} from "./formatters";
+import { moniesClient } from "./monies-client-service";
+
+const {
+  accounts: accountService,
+  format: formatService
+} = moniesClient;
 
 // Preview review surfaces the import guardrails while ImportsPanel keeps
 // ownership of the mutable draft. The order below mirrors how a human usually
@@ -156,9 +152,17 @@ function CertifiedConflictRows({ rows }) {
           return (
             <div key={row.rowId} className="import-card import-card-compact">
               <div className="import-history-main">
-                <strong>{messages.imports.certifiedConflictRow(formatDateOnly(row.date), row.description, formatMinorInput(row.amountMinor))}</strong>
+                <strong>{messages.imports.certifiedConflictRow(
+                  formatService.formatDateOnly(row.date),
+                  row.description,
+                  formatService.formatMinorInput(row.amountMinor)
+                )}</strong>
                 <span className="import-history-inline">
-                  {messages.common.triplet(row.accountName ?? messages.common.emptyValue, row.entryType, formatMinorInput(row.amountMinor))}
+                  {messages.common.triplet(
+                    row.accountName ?? messages.common.emptyValue,
+                    row.entryType,
+                    formatService.formatMinorInput(row.amountMinor)
+                  )}
                 </span>
                 <p className="lede compact">{row.commitStatusReason}</p>
                 {match ? (
@@ -209,7 +213,7 @@ function StatementAccountMapping({
 }) {
   // Account names in statements are not reliable foreign keys. We treat the
   // detected label as a hint, then let the user anchor it to a concrete account.
-  const accountOptions = getAccountSelectOptions(accounts, { valueKey: "id" });
+  const accountOptions = accountService.getSelectOptions(accounts, { valueKey: "id" });
   const accountOptionsByName = accounts.reduce((optionsByName, account) => {
     const current = optionsByName.get(account.name) ?? [];
     current.push(account);
@@ -275,7 +279,11 @@ function getPreviewRowStatementAccountName(row) {
 }
 
 function formatDuplicateMatch(match) {
-  return messages.common.triplet(formatDateOnly(match.date), match.accountName ?? messages.common.emptyValue, formatMinorInput(match.amountMinor));
+  return messages.common.triplet(
+    formatService.formatDateOnly(match.date),
+    match.accountName ?? messages.common.emptyValue,
+    formatService.formatMinorInput(match.amountMinor)
+  );
 }
 
 function UnknownCategories({ categoryNames, unknownCategoryMode }) {
@@ -298,7 +306,10 @@ function PreviewGuardrailPills({ preview, previewDuplicateRowCount, statementCer
   return (
     <div className="import-summary-strip" aria-label={messages.imports.previewGuardrailsLabel}>
       {preview.startDate && preview.endDate ? (
-        <span className="import-summary-item">{messages.imports.previewCoverage(formatDateOnly(preview.startDate), formatDateOnly(preview.endDate))}</span>
+        <span className="import-summary-item">{messages.imports.previewCoverage(
+          formatService.formatDateOnly(preview.startDate),
+          formatService.formatDateOnly(preview.endDate)
+        )}</span>
       ) : null}
       {previewDuplicateRowCount ? (
         <span className="import-summary-item is-warning">{messages.imports.duplicateCandidates(previewDuplicateRowCount)}</span>
@@ -362,13 +373,16 @@ function OverlapImports({
               <strong>{item.sourceLabel}</strong>
               <span className="import-history-inline">
                 {messages.common.triplet(
-                  item.importedAt ? formatDate(item.importedAt) : messages.common.emptyValue,
+                  item.importedAt ? formatService.formatDate(item.importedAt) : messages.common.emptyValue,
                   messages.imports.transactionCount(item.transactionCount),
                   item.sourceType ? item.sourceType.toUpperCase() : messages.common.emptyValue
                 )}
               </span>
               {item.startDate && item.endDate ? (
-                <span className="import-history-inline">{messages.imports.importCoverage(formatDateOnly(item.startDate), formatDateOnly(item.endDate))}</span>
+                <span className="import-history-inline">{messages.imports.importCoverage(
+                  formatService.formatDateOnly(item.startDate),
+                  formatService.formatDateOnly(item.endDate)
+                )}</span>
               ) : null}
               {item.accountNames.length ? <span className="import-history-inline">{item.accountNames.join(", ")}</span> : null}
               {item.overlapEntries?.length ? (
@@ -387,7 +401,7 @@ function OverlapImports({
                   <div className="import-overlap-entry-list" aria-label={messages.imports.previewOverlapEntriesLabel}>
                     {item.overlapEntries.map((entry) => (
                       <div key={entry.id} className="import-overlap-entry-row">
-                        <span className="import-overlap-entry-date">{formatDateOnly(entry.date)}</span>
+                        <span className="import-overlap-entry-date">{formatService.formatDateOnly(entry.date)}</span>
                         <span className="import-overlap-entry-description">{entry.description}</span>
                         <span className="import-overlap-entry-account">{entry.accountName}</span>
                         <strong className="import-overlap-entry-amount">{formatOverlapEntryAmount(entry)}</strong>
@@ -423,7 +437,7 @@ function getOverlapMismatchHint(imports, statementReconciliations) {
     return "";
   }
 
-  return messages.imports.previewOverlapMismatchExplained(money(Math.abs(mismatch.deltaMinor)));
+  return messages.imports.previewOverlapMismatchExplained(formatService.money(Math.abs(mismatch.deltaMinor)));
 }
 
 function getOverlapEntrySignedMinor(entry) {
@@ -489,10 +503,10 @@ function OverlapScopeInfo() {
 
 function formatOverlapEntryAmount(entry) {
   if (entry.entryType === "transfer" && entry.transferDirection) {
-    return `${entry.transferDirection === "in" ? "Transfer in" : "Transfer out"} ${money(Math.abs(entry.amountMinor))}`;
+    return `${entry.transferDirection === "in" ? "Transfer in" : "Transfer out"} ${formatService.money(Math.abs(entry.amountMinor))}`;
   }
 
-  return money(entry.amountMinor);
+  return formatService.money(entry.amountMinor);
 }
 
 function StatementBalanceCheck({ reconciliations, hasMismatch, isSubmitting, onRefreshStatementReconciliation }) {
@@ -515,18 +529,24 @@ function StatementBalanceCheck({ reconciliations, hasMismatch, isSubmitting, onR
         {reconciliations.map((item) => (
           <div key={`${item.accountName}-${item.checkpointMonth}`} className="import-card import-card-compact statement-reconciliation-row">
             <div className="import-history-main">
-              <strong>{messages.imports.statementReconciliationAccount(item.accountName, formatMonthLabel(item.checkpointMonth))}</strong>
+              <strong>{messages.imports.statementReconciliationAccount(
+                item.accountName,
+                formatService.formatMonthLabel(item.checkpointMonth)
+              )}</strong>
               {item.statementStartDate && item.statementEndDate ? (
-                <span className="import-history-inline">{messages.imports.importCoverage(formatDateOnly(item.statementStartDate), formatDateOnly(item.statementEndDate))}</span>
+                <span className="import-history-inline">{messages.imports.importCoverage(
+                  formatService.formatDateOnly(item.statementStartDate),
+                  formatService.formatDateOnly(item.statementEndDate)
+                )}</span>
               ) : null}
-              <span className="import-history-inline">{formatStatementReconciliationLine(item)}</span>
+              <span className="import-history-inline">{formatService.formatStatementReconciliationLine(item)}</span>
             </div>
             <div className="import-meta import-meta-compact">
               <span className={`pill ${item.status === "matched" ? "success" : "warning"}`}>
                 {messages.imports.statementReconciliationStatus[item.status]}
               </span>
               {item.deltaMinor != null && item.deltaMinor !== 0 ? (
-                <p>{messages.imports.statementReconciliationDelta(money(Math.abs(item.deltaMinor)))}</p>
+                <p>{messages.imports.statementReconciliationDelta(formatService.money(Math.abs(item.deltaMinor)))}</p>
               ) : null}
             </div>
           </div>
@@ -544,7 +564,7 @@ function StatementCheckpointDrafts({
   duplicateCheckpointAccounts,
   onUpdateStatementCheckpoint
 }) {
-  const accountOptions = getAccountSelectOptions(accounts, { valueKey: "id" });
+  const accountOptions = accountService.getSelectOptions(accounts, { valueKey: "id" });
 
   return (
     <div className="import-warning import-warning-review">
@@ -591,7 +611,13 @@ function StatementCheckpointDrafts({
             </label>
             <label className="entries-filter">
               <span className="entries-filter-label">{messages.imports.statementCheckpointBalance}</span>
-              <input className="table-edit-input" value={formatMinorInput(checkpoint.statementBalanceMinor)} onChange={(event) => onUpdateStatementCheckpoint(index, { statementBalanceMinor: parseMoneyInput(event.target.value, checkpoint.statementBalanceMinor) })} />
+              <input
+                className="table-edit-input"
+                value={formatService.formatMinorInput(checkpoint.statementBalanceMinor)}
+                onChange={(event) => onUpdateStatementCheckpoint(index, {
+                  statementBalanceMinor: formatService.parseMoneyInput(event.target.value, checkpoint.statementBalanceMinor)
+                })}
+              />
             </label>
             <label className="entries-filter">
               <span className="entries-filter-label">{messages.imports.statementCheckpointNote}</span>

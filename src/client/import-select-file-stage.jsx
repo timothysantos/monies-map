@@ -1,5 +1,7 @@
-import { getAccountSelectOptions } from "./account-display";
 import { messages } from "./copy/en-SG";
+import { moniesClient } from "./monies-client-service";
+
+const { accounts: accountService } = moniesClient;
 
 // Stage 1 collects source defaults and hands file/paste events back to ImportsPanel.
 export function ImportSelectFileStage({
@@ -31,7 +33,7 @@ export function ImportSelectFileStage({
   rollbackPolicy
 }) {
   const stageClassName = currentStage === 1 ? "is-current" : currentStage > 1 ? "is-complete" : "";
-  const accountOptions = getAccountSelectOptions(accounts);
+  const accountOptions = accountService.getSelectOptions(accounts);
 
   return (
     <div className={`import-stage-card ${stageClassName}`}>
