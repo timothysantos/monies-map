@@ -5,15 +5,13 @@ import { Check, X } from "lucide-react";
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
 import { EntryEditorFields, EntryTransferTools } from "./entry-editor";
-import {
-  getAmountToneClass,
-  getSignedAmountMinor,
-  getSignedTotalAmountMinor,
-  getVisibleSplitPercent
-} from "./entry-helpers";
 import { moniesClient } from "./monies-client-service";
 
-const { categories: categoryService, format: formatService } = moniesClient;
+const {
+  categories: categoryService,
+  entries: entryService,
+  format: formatService
+} = moniesClient;
 
 const NON_GROUP_SPLIT_VALUE = "__split_group_none__";
 
@@ -353,7 +351,7 @@ function EntryRow({
           </div>
           <div className="entry-row-right">
             <div className="entry-row-amount">
-              <strong className={getAmountToneClass(display.signedAmountMinor)}>{formatService.money(display.signedAmountMinor)}</strong>
+              <strong className={entryService.getAmountToneClass(display.signedAmountMinor)}>{formatService.money(display.signedAmountMinor)}</strong>
               {display.hasWeightedTotal ? <p>({formatService.money(display.signedTotalAmountMinor)} total)</p> : null}
             </div>
             <div className="entry-pills">
@@ -468,9 +466,9 @@ function EntryRow({
 }
 
 function buildEntryRowDisplay(entry, viewId) {
-  const splitPercent = getVisibleSplitPercent(entry, viewId);
-  const signedAmountMinor = getSignedAmountMinor(entry);
-  const signedTotalAmountMinor = getSignedTotalAmountMinor(entry);
+  const splitPercent = entryService.getVisibleSplitPercent(entry, viewId);
+  const signedAmountMinor = entryService.getSignedAmountMinor(entry);
+  const signedTotalAmountMinor = entryService.getSignedTotalAmountMinor(entry);
 
   return {
     ownerLabel: entry.ownershipType === "shared" ? "Shared" : entry.ownerName ?? messages.common.emptyValue,

@@ -1,7 +1,9 @@
 import * as Dialog from "@radix-ui/react-dialog";
 
 import { messages } from "./copy/en-SG";
-import { decimalStringToMinor, minorToDecimalString } from "./formatters";
+import { moniesClient } from "./monies-client-service";
+
+const { format: formatService } = moniesClient;
 
 export function SplitLinkedEntryDialog({ dialog, people, categoryOptions, formError, isSubmitting, onChange, onClose, onSave }) {
   return (
@@ -41,7 +43,17 @@ export function SplitLinkedEntryDialog({ dialog, people, categoryOptions, formEr
             <div className="split-dialog-inline">
               <label className="split-dialog-field">
                 <span>{messages.entries.editAmount}</span>
-                <input className="table-edit-input table-edit-input-money" type="number" min="0" step="0.01" value={minorToDecimalString(dialog?.amountMinor ?? 0)} onChange={(event) => onChange((current) => current ? { ...current, amountMinor: decimalStringToMinor(event.target.value) } : current)} />
+                <input
+                  className="table-edit-input table-edit-input-money"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formatService.minorToDecimalString(dialog?.amountMinor ?? 0)}
+                  onChange={(event) => onChange((current) => current ? {
+                    ...current,
+                    amountMinor: formatService.decimalStringToMinor(event.target.value)
+                  } : current)}
+                />
               </label>
               <label className="split-dialog-field">
                 <span>{messages.entries.editOwner}</span>

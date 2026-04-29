@@ -1,9 +1,10 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { ArrowRightLeft } from "lucide-react";
 
-import { formatDateOnly } from "./formatters";
+import { moniesClient } from "./monies-client-service";
 import { SplitActivityGroups } from "./splits-activity";
-import { formatArchiveDate, getArchivedBatchSummary } from "./split-helpers";
+
+const { format: formatService, splits: splitService } = moniesClient;
 
 export function SplitArchiveDialog({
   archiveDialog,
@@ -27,7 +28,7 @@ export function SplitArchiveDialog({
             <Dialog.Title>{selectedArchivedBatch ? selectedArchivedBatch.label : "Archived batches"}</Dialog.Title>
             <Dialog.Description>
               {selectedArchivedBatch
-                ? (selectedArchivedBatch.closedAt ? `Settled ${formatDateOnly(selectedArchivedBatch.closedAt)}` : "Settled batch")
+                ? (selectedArchivedBatch.closedAt ? `Settled ${formatService.formatDateOnly(selectedArchivedBatch.closedAt)}` : "Settled batch")
                 : "Closed settle-up batches stay here as muted history."}
             </Dialog.Description>
           </div>
@@ -50,10 +51,10 @@ export function SplitArchiveDialog({
           ) : (
             <div className="split-archive-dialog-body split-archive-list-dialog">
               {archivedBatches.map((batch) => {
-                const summary = getArchivedBatchSummary(batch, viewId);
+                const summary = splitService.getArchivedBatchSummary(batch, viewId);
                 return (
                   <button key={batch.batchId} type="button" className="split-archive-row" onClick={() => onOpenBatch(batch.batchId)}>
-                    <span className="split-archive-row-date">{formatArchiveDate(batch.closedAt)}</span>
+                    <span className="split-archive-row-date">{splitService.formatArchiveDate(batch.closedAt)}</span>
                     <span className="split-archive-row-icon category-icon category-icon-static" style={{ "--category-color": "#c58b62" }}>
                       <ArrowRightLeft size={16} />
                     </span>

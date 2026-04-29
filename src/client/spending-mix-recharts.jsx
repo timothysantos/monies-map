@@ -1,7 +1,9 @@
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 
-import { money } from "./formatters";
+import { moniesClient } from "./monies-client-service";
 import { getIconComponent } from "./ui-components";
+
+const { format: formatService } = moniesClient;
 
 export default function SpendingMixRecharts({
   chartData,
@@ -38,7 +40,7 @@ export default function SpendingMixRecharts({
       </ResponsiveContainer>
       <div className={`donut-center recharts-donut-center ${compact ? "is-compact" : ""}`}>
         <span>{totalLabel}</span>
-        <strong>{money(total)}</strong>
+        <strong>{formatService.money(total)}</strong>
       </div>
     </div>
   );

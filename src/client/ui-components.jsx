@@ -4,9 +4,11 @@ import { Check, ChevronDown, Receipt, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { messages } from "./copy/en-SG";
-import { money } from "./formatters";
+import { moniesClient } from "./monies-client-service";
 import { ResponsiveSelect } from "./responsive-select";
 import { ICON_REGISTRY } from "./ui-options";
+
+const { format: formatService } = moniesClient;
 
 export function FilterSelect({ label, value, options, emptyLabel, onChange }) {
   const normalizedOptions = [
@@ -287,7 +289,7 @@ export function DeleteRowButton({
 }
 
 export function MetricCard({ card }) {
-  const value = card.amountMinor == null ? card.value : money(card.amountMinor);
+  const value = card.amountMinor == null ? card.value : formatService.money(card.amountMinor);
   return (
     <div className={`metric ${card.tone ? `metric-${card.tone}` : ""}`}>
       <span>{card.label}</span>
@@ -338,7 +340,7 @@ export function BarLine({ label, valueMinor, maxMinor, tone }) {
       <div className="plan-bar-track">
         <span className={`plan-bar-fill ${tone}`} style={{ width: `${percent}%` }} />
       </div>
-      <strong>{money(valueMinor)}</strong>
+      <strong>{formatService.money(valueMinor)}</strong>
     </div>
   );
 }

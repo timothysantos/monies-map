@@ -1,9 +1,10 @@
-import { getCategoryNameOptions, getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
-import {
-  groupSplitActivityByBatch,
-  groupSplitActivityByDate
-} from "./split-helpers";
+import { moniesClient } from "./monies-client-service";
+
+const {
+  categories: categoryService,
+  splits: splitService
+} = moniesClient;
 
 // Splits page terminology:
 // - a "group" is a named shared-expense bucket such as a trip or household pot.
@@ -23,8 +24,8 @@ export function buildSplitsPanelModel({
   const activeGroupActivity = view.splitsPage.activity.filter((item) => item.groupId === activeGroupId);
   const currentGroupActivity = activeGroupActivity.filter((item) => !item.isArchived);
   const archivedGroupActivity = activeGroupActivity.filter((item) => item.isArchived);
-  const groupedCurrentActivity = groupSplitActivityByDate(currentGroupActivity);
-  const archivedBatches = groupSplitActivityByBatch(archivedGroupActivity);
+  const groupedCurrentActivity = splitService.groupActivityByDate(currentGroupActivity);
+  const archivedBatches = splitService.groupActivityByBatch(archivedGroupActivity);
   const selectedArchivedBatch = archiveBatchId
     ? archivedBatches.find((batch) => batch.batchId === archiveBatchId) ?? null
     : null;
@@ -54,13 +55,13 @@ export function buildSplitsPanelModel({
 }
 
 function getCategoryOptions(categories) {
-  return getCategoryNameOptions(categories);
+  return categoryService.getNameOptions(categories);
 }
 
 function buildDonutRows(donutChart, categories) {
   return donutChart.map((item, index) => ({
     ...item,
-    theme: getCategoryTheme(categories, { categoryName: item.label }, index)
+    theme: categoryService.getTheme(categories, { categoryName: item.label }, index)
   }));
 }
 

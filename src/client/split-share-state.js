@@ -1,4 +1,6 @@
-import { minorToDecimalString } from "./formatters";
+import { moniesClient } from "./monies-client-service";
+
+const { format: formatService } = moniesClient;
 
 function clampBasisPoints(value) {
   return Math.max(0, Math.min(10000, Math.round(Number(value ?? 0))));
@@ -30,7 +32,7 @@ export function buildSplitShareState({
       splitBasisPoints: nextBasisPoints,
       splitPercentInput: String(nextBasisPoints / 100),
       splitAmountMinor: nextAmountMinor,
-      splitAmountInput: minorToDecimalString(nextAmountMinor)
+      splitAmountInput: formatService.minorToDecimalString(nextAmountMinor)
     };
   }
 
@@ -42,7 +44,7 @@ export function buildSplitShareState({
     splitBasisPoints: nextBasisPoints,
     splitPercentInput: String(nextBasisPoints / 100),
     splitAmountMinor: nextAmountMinor,
-    splitAmountInput: minorToDecimalString(nextAmountMinor)
+    splitAmountInput: formatService.minorToDecimalString(nextAmountMinor)
   };
 }
 

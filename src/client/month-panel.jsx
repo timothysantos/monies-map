@@ -3,19 +3,10 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { getAccountSelectOptions } from "./account-display";
 import { CategoryAppearancePopover } from "./category-visuals";
-import { getCategoriesForSelect, getCategory, getCategoryPatch } from "./category-utils";
 import { messages } from "./copy/en-SG";
-import { entryMatchesScope } from "./entry-helpers";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
-import {
-  buildPlanLinkCandidates,
-  buildMonthMetricCards,
-  getDefaultMonthSectionOpen,
-  getPlanRowById,
-  getVisibleMonthAccounts
-} from "./month-helpers";
+import { moniesClient } from "./monies-client-service";
 import { MonthMetricRow, MonthNotesAndAccounts, MonthPanelHeader } from "./month-overview";
 import {
   buildMobileMonthIncomeDialog,
@@ -28,15 +19,16 @@ import {
 import { LastPeriodBudgetHint, MonthPlanStack } from "./month-plan-tables";
 import { ResponsiveSelect } from "./responsive-select";
 import { getRowDateValue } from "./table-helpers";
-import {
-  formatDateOnly,
-  formatMinorInput,
-  money,
-  parseDraftMoneyInput
-} from "./formatters";
 
 const MONTH_SECTION_STATE_CACHE = new Map();
 const MOBILE_ADD_DIALOG_QUERY = "(max-width: 760px), (max-width: 1024px) and (orientation: portrait)";
+const {
+  accounts: accountService,
+  categories: categoryService,
+  entries: entryService,
+  format: formatService,
+  months: monthService
+} = moniesClient;
 
 // This panel owns the "editable month workspace":
 // - local draft rows so the UI responds immediately
@@ -93,7 +85,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   const [editingSnapshot, setEditingSnapshot] = useState(null);
   const [editingDrafts, setEditingDrafts] = useState({});
   const [incomeRows, setIncomeRows] = useState(view.monthPage.incomeRows);
-  const [sectionOpen, setSectionOpen] = useState(() => MONTH_SECTION_STATE_CACHE.get(monthUiKey) ?? getDefaultMonthSectionOpen());
+  const [sectionOpen, setSectionOpen] = useState(() => MONTH_SECTION_STATE_CACHE.get(monthUiKey) ?? monthService.getDefaultSectionOpen());
   const [noteDialog, setNoteDialog] = useState(null);
   const [planLinkDialog, setPlanLinkDialog] = useState(null);
   const [resetMonthText, setResetMonthText] = useState("");
@@ -109,7 +101,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     planned_items: null,
     budget_buckets: null
   });
-  const categorySelectOptions = useMemo(() => getCategoriesForSelect(categories), [categories]);
+  const categorySelectOptions = useMemo(() => categoryService.listForSelect(categories), [categories]);
   const isCombinedHouseholdView = view.id === "household" && view.monthPage.selectedScope === "direct_plus_shared";
 
   useEffect(() => {
@@ -139,7 +131,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   }, [view.monthPage.incomeRows]);
 
   useEffect(() => {
-    setSectionOpen(MONTH_SECTION_STATE_CACHE.get(monthUiKey) ?? getDefaultMonthSectionOpen());
+    setSectionOpen(MONTH_SECTION_STATE_CACHE.get(monthUiKey) ?? monthService.getDefaultSectionOpen());
   }, [monthUiKey]);
 
   useEffect(() => {
@@ -161,7 +153,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     [view]
   );
   const planLinkTargetRow = useMemo(
-    () => planLinkDialog ? getPlanRowById(planSections, planLinkDialog.rowId) : null,
+    () => planLinkDialog ? monthService.getPlanRowById(planSections, planLinkDialog.rowId) : null,
     [planLinkDialog, planSections]
   );
   const planLinkPickerModel = useMemo(() => {
@@ -174,7 +166,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       };
     }
 
-    const allCandidates = buildPlanLinkCandidates({
+    const allCandidates = monthService.buildPlanLinkCandidates({
       row: planLinkTargetRow,
       householdMonthEntries,
       monthEntries: view.monthPage.entries,
@@ -216,15 +208,15 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   }, [householdMonthEntries, planLinkDialog, planLinkTargetRow, view.monthPage.entries, view.monthPage.month]);
 
   const monthMetricCards = useMemo(
-    () => buildMonthMetricCards({ planSections, incomeRows, currentMonthSummary: selectedMonthSummary }),
+    () => monthService.buildMetricCards({ planSections, incomeRows, currentMonthSummary: selectedMonthSummary }),
     [selectedMonthSummary, incomeRows, planSections]
   );
   const visibleAccounts = useMemo(
-    () => getVisibleMonthAccounts(accounts, view.id),
+    () => monthService.getVisibleAccounts(accounts, view.id),
     [accounts, view.id]
   );
   const visibleAccountOptions = useMemo(
-    () => getAccountSelectOptions(visibleAccounts),
+    () => accountService.getSelectOptions(visibleAccounts),
     [visibleAccounts]
   );
   const mobileCategoryOptions = useMemo(
@@ -341,7 +333,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       if (entry.entryType !== "expense" || entry.categoryName !== categoryName) {
         return sum;
       }
-      if (!entryMatchesScope(entry, view.id, view.monthPage.selectedScope)) {
+      if (!entryService.entryMatchesScope(entry, view.id, view.monthPage.selectedScope)) {
         return sum;
       }
       return sum + entry.amountMinor;
@@ -396,7 +388,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     setEditingRowId(row.id);
     setEditingSnapshot({ kind: "income", rowId: row.id, original: { ...row } });
     setEditingDrafts({
-      plannedMinor: formatMinorInput(row.plannedMinor)
+      plannedMinor: formatService.formatMinorInput(row.plannedMinor)
     });
   }
 
@@ -444,7 +436,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     setEditingRowId(row.id);
     setEditingSnapshot({ kind: "plan", sectionKey, rowId: row.id, original: { ...row } });
     setEditingDrafts({
-      plannedMinor: formatMinorInput(getMonthPlanEditSource(row).plannedMinor)
+      plannedMinor: formatService.formatMinorInput(getMonthPlanEditSource(row).plannedMinor)
     });
   }
 
@@ -456,7 +448,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     const currentSnapshot = editingSnapshot;
     let nextPlannedMinor;
     if (currentSnapshot && Object.prototype.hasOwnProperty.call(editingDrafts, "plannedMinor")) {
-      nextPlannedMinor = parseDraftMoneyInput(editingDrafts.plannedMinor);
+      nextPlannedMinor = formatService.parseDraftMoneyInput(editingDrafts.plannedMinor);
       if (currentSnapshot.kind === "income") {
         handleIncomeRowChange(currentSnapshot.rowId, { plannedMinor: nextPlannedMinor });
       } else {
@@ -602,7 +594,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       description: "Add the row without squeezing controls into the month table.",
       categoryValue: nextRow.categoryId ?? nextRow.categoryName,
       label: nextRow.label,
-      plannedMinor: formatMinorInput(nextRow.plannedMinor),
+      plannedMinor: formatService.formatMinorInput(nextRow.plannedMinor),
       note: nextRow.note ?? ""
     };
   }
@@ -617,7 +609,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       description: "Add the row without squeezing controls into the month table.",
       categoryValue: nextRow.categoryId ?? nextRow.categoryName,
       label: nextRow.label,
-      plannedMinor: formatMinorInput(nextRow.plannedMinor),
+      plannedMinor: formatService.formatMinorInput(nextRow.plannedMinor),
       planDate: sectionKey === "planned_items" ? getRowDateValue(nextRow, view.monthPage.month) : "",
       accountName: sectionKey === "planned_items" ? nextRow.accountName ?? "" : "",
       note: sectionKey === "budget_buckets" ? "" : nextRow.note ?? "",
@@ -629,7 +621,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   }
 
   async function applyBudgetBucketDefaultsToDraft({ rowId, categoryValue }) {
-    const categoryPatch = getCategoryPatch(categories, categoryValue);
+    const categoryPatch = categoryService.buildPatch(categories, categoryValue);
     const categoryName = categoryPatch.categoryName ?? "";
     const { actualMinor, month } = await loadPreviousMonthCategoryActualMinor(categoryName);
 
@@ -658,13 +650,13 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     if (shouldSyncDraft && editingRowId === rowId) {
       setEditingDrafts((current) => ({
         ...current,
-        plannedMinor: formatMinorInput(actualMinor)
+        plannedMinor: formatService.formatMinorInput(actualMinor)
       }));
     }
   }
 
   async function updateDraftBudgetBucketCategory(rowId, categoryValue) {
-    const categoryPatch = getCategoryPatch(categories, categoryValue);
+    const categoryPatch = categoryService.buildPatch(categories, categoryValue);
     const categoryName = categoryPatch.categoryName ?? "";
 
     setPlanSections((current) => current.map((section) => (
@@ -699,7 +691,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
 
   function updateDraftBudgetBucketPlannedMinor(rowId, plannedMinor) {
     updatePlanRow("budget_buckets", rowId, {
-      plannedMinor: parseDraftMoneyInput(plannedMinor),
+      plannedMinor: formatService.parseDraftMoneyInput(plannedMinor),
       autoPlannedFromCategory: false
     });
     setEditingDrafts((current) => ({
@@ -709,7 +701,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   }
 
   async function applyBudgetBucketDefaultsToMobileDialog(categoryValue) {
-    const categoryPatch = getCategoryPatch(categories, categoryValue);
+    const categoryPatch = categoryService.buildPatch(categories, categoryValue);
     const categoryName = categoryPatch.categoryName ?? "";
     const { actualMinor, month } = await loadPreviousMonthCategoryActualMinor(categoryName);
 
@@ -718,7 +710,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         return current;
       }
 
-      const nextCategoryName = getCategoryPatch(categories, current.categoryValue).categoryName ?? "";
+      const nextCategoryName = categoryService.buildPatch(categories, current.categoryValue).categoryName ?? "";
       if (nextCategoryName !== categoryName) {
         return current;
       }
@@ -727,7 +719,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         ...current,
         lastPeriodActualMinor: actualMinor,
         lastPeriodMonth: month,
-        plannedMinor: current.autoPlannedFromCategory ? formatMinorInput(actualMinor) : current.plannedMinor
+        plannedMinor: current.autoPlannedFromCategory ? formatService.formatMinorInput(actualMinor) : current.plannedMinor
       };
     });
   }
@@ -962,7 +954,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         return current;
       }
 
-      const categoryPatch = getCategoryPatch(categories, nextValue);
+      const categoryPatch = categoryService.buildPatch(categories, nextValue);
       const categoryName = categoryPatch.categoryName ?? "";
       return {
         ...current,
@@ -984,10 +976,10 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     }
 
     const currentDialog = mobileAddDialog;
-    const plannedMinor = parseDraftMoneyInput(mobileAddDialog.plannedMinor);
-    const selectedCategoryName = getCategoryPatch(categories, mobileAddDialog.categoryValue).categoryName ?? "";
+    const plannedMinor = formatService.parseDraftMoneyInput(mobileAddDialog.plannedMinor);
+    const selectedCategoryName = categoryService.buildPatch(categories, mobileAddDialog.categoryValue).categoryName ?? "";
     const basePatch = {
-      ...getCategoryPatch(categories, mobileAddDialog.categoryValue),
+      ...categoryService.buildPatch(categories, mobileAddDialog.categoryValue),
       label: mobileAddDialog.label.trim() || (mobileAddDialog.kind === "income"
         ? "Other income"
         : mobileAddDialog.sectionKey === "planned_items"
@@ -1266,7 +1258,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         categories={categories}
         categorySelectOptions={categorySelectOptions}
         accounts={accounts}
-        accountSelectOptions={getAccountSelectOptions(accounts)}
+        accountSelectOptions={accountService.getSelectOptions(accounts)}
         incomeRows={incomeRows}
         planSections={planSections}
         sectionOpen={sectionOpen}
@@ -1320,7 +1312,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
               <span>{messages.month.table.category}</span>
               <div className="month-add-dialog-category">
                 <CategoryAppearancePopover
-                  category={getCategory(categories, {
+                  category={categoryService.get(categories, {
                     categoryId: mobileAddDialog.categoryValue,
                     categoryName: mobileAddDialog.categoryValue
                   })}
@@ -1388,7 +1380,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
                   entryIds: mobileAddDialog.actualEntryIds ?? []
                 })}
               >
-                <strong>{money(mobileAddDialog.actualMinor ?? 0)}</strong>
+                <strong>{formatService.money(mobileAddDialog.actualMinor ?? 0)}</strong>
                 <small>
                   {mobileAddDialog.actualEntryIds?.length
                     ? `View ${mobileAddDialog.actualEntryIds.length} contributing ${mobileAddDialog.actualEntryIds.length === 1 ? "entry" : "entries"}`
@@ -1618,10 +1610,10 @@ function MonthPlanLinkContent({
               />
               <span className="planned-link-row-main">
                 <strong>{entry.description}</strong>
-                <small>{formatDateOnly(entry.date)} • {entry.accountName} • {entry.categoryName}</small>
+                <small>{formatService.formatDateOnly(entry.date)} • {entry.accountName} • {entry.categoryName}</small>
                 {entry.matchReasons?.length ? <em>{entry.matchReasons.slice(0, 3).join(" · ")}</em> : null}
               </span>
-              <span>{money(entry.amountMinor)}</span>
+              <span>{formatService.money(entry.amountMinor)}</span>
             </label>
           ))}
         </div>

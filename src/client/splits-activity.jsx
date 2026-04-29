@@ -1,11 +1,12 @@
 import { useEffect, useRef } from "react";
 import { Check, X } from "lucide-react";
 
-import { getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
-import { formatDateOnly, money } from "./formatters";
+import { moniesClient } from "./monies-client-service";
 import { SplitExpenseFields, SplitSettlementFields } from "./splits-dialogs";
 import { CategoryGlyph } from "./ui-components";
+
+const { categories: categoryService, format: formatService } = moniesClient;
 
 function splitItemKey(item) {
   return `${item.kind}:${item.id}`;
@@ -100,12 +101,12 @@ export function SplitActivityGroups({
   return groups.map((group) => (
     <section key={`${archived ? "archived" : "current"}-${group.date}`} className={`split-date-group ${archived ? "is-archived" : ""}`}>
       <header className="split-date-header">
-        <strong>{formatDateOnly(group.date)}</strong>
+        <strong>{formatService.formatDateOnly(group.date)}</strong>
         <span>{group.items.length} {messages.splits.entries}</span>
       </header>
       <div className="split-date-items">
         {group.items.map((item, index) => {
-          const theme = getCategoryTheme(categories, { categoryName: item.categoryName ?? "Other" }, index);
+          const theme = categoryService.getTheme(categories, { categoryName: item.categoryName ?? "Other" }, index);
           const isEditable = !archived && !readOnly;
           const isEditing = isEditable && editingDraft && splitItemKey(item) === `${editingDraft.kind}:${editingDraft.id}`;
           const isPendingDerived = item.isPendingDerived === true;
@@ -190,7 +191,7 @@ export function SplitActivityGroups({
               </div>
               <div className="split-activity-copy">
                 <strong>{item.description}</strong>
-                <p>{item.kind === "expense" ? `${item.paidByPersonName} paid ${money(item.totalAmountMinor)}` : `${item.fromPersonName} paid ${item.toPersonName}`}</p>
+                <p>{item.kind === "expense" ? `${item.paidByPersonName} paid ${formatService.money(item.totalAmountMinor)}` : `${item.fromPersonName} paid ${item.toPersonName}`}</p>
                 {item.note ? <span className="share-row-meta">{item.note}</span> : null}
                 {archived && !readOnly ? (
                   <div className="split-card-actions">
@@ -226,7 +227,7 @@ export function SplitActivityGroups({
                   </strong>
                 ) : null}
                 <span className="split-activity-amount-line">
-                  <span>{money(item.viewerAmountMinor ?? item.totalAmountMinor)}</span>
+                  <span>{formatService.money(item.viewerAmountMinor ?? item.totalAmountMinor)}</span>
                   <span className="share-row-meta">
                     {isPendingDerived
                       ? messages.common.loadingLatest

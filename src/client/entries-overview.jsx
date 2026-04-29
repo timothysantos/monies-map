@@ -2,11 +2,10 @@ import { ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
 
 import { SpendingMixChart } from "./category-visuals";
 import { messages } from "./copy/en-SG";
-import { getAmountToneClass } from "./entry-helpers";
 import { moniesClient } from "./monies-client-service";
 import { CategoryGlyph, FilterMultiSelect, FilterSelect } from "./ui-components";
 
-const { categories: categoryService, format: formatService } = moniesClient;
+const { categories: categoryService, entries: entryService, format: formatService } = moniesClient;
 
 // The strip shows the same filtered dataset in four different accounting views:
 // spend, income, net, and total outflow.
@@ -31,19 +30,19 @@ export function EntriesTotalsStrip({
       </button>
       <span className="entries-totals-item">
         <span className="entries-totals-label">{messages.entries.totalSpend}</span>
-        <strong className={getAmountToneClass(-entryTotals.spendMinor)}>{formatService.money(entryTotals.spendMinor)}</strong>
+        <strong className={entryService.getAmountToneClass(-entryTotals.spendMinor)}>{formatService.money(entryTotals.spendMinor)}</strong>
       </span>
       <span className="entries-totals-item">
         <span className="entries-totals-label">{messages.entries.totalIncome}</span>
-        <strong className={getAmountToneClass(entryTotals.incomeMinor)}>{formatService.money(entryTotals.incomeMinor)}</strong>
+        <strong className={entryService.getAmountToneClass(entryTotals.incomeMinor)}>{formatService.money(entryTotals.incomeMinor)}</strong>
       </span>
       <span className="entries-totals-item">
         <span className="entries-totals-label">{messages.entries.totalDifference}</span>
-        <strong className={getAmountToneClass(entryNetMinor)}>{formatService.money(entryNetMinor)}</strong>
+        <strong className={entryService.getAmountToneClass(entryNetMinor)}>{formatService.money(entryNetMinor)}</strong>
       </span>
       <span className="entries-totals-item">
         <span className="entries-totals-label">{messages.entries.totalOutflow}</span>
-        <strong className={getAmountToneClass(-entryOutflowMinor)}>{formatService.money(entryOutflowMinor)}</strong>
+        <strong className={entryService.getAmountToneClass(-entryOutflowMinor)}>{formatService.money(entryOutflowMinor)}</strong>
       </span>
       <div className="entries-totals-spacer" />
       <button type="button" className="subtle-action is-primary entries-add-inline" onClick={onAddEntry}>

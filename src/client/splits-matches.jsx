@@ -1,5 +1,7 @@
 import { messages } from "./copy/en-SG";
-import { formatDate, money } from "./formatters";
+import { moniesClient } from "./monies-client-service";
+
+const { format: formatService } = moniesClient;
 
 export function SplitMatchesList({ matches, pendingMatchCount, onDismissMatch, onConfirmMatch }) {
   return (
@@ -15,7 +17,11 @@ export function SplitMatchesList({ matches, pendingMatchCount, onDismissMatch, o
           <div key={match.id} className="split-match-card">
             <div>
               <strong>{match.reviewLabel}</strong>
-              <p>{messages.common.triplet(formatDate(match.transactionDate), money(match.amountMinor), match.confidenceLabel)}</p>
+              <p>{messages.common.triplet(
+                formatService.formatDate(match.transactionDate),
+                formatService.money(match.amountMinor),
+                match.confidenceLabel
+              )}</p>
               <p>{match.transactionDescription}</p>
             </div>
             <div className="split-match-actions">

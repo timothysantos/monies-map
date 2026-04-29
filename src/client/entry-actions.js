@@ -1,13 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  applySharedSplit,
-  buildEntryDraft,
-  getTransferMatchCandidates,
-  getVisibleSplitIndex,
-  normalizeEntryShape
-} from "./entry-helpers";
+import { moniesClient } from "./monies-client-service";
 import { buildRequestErrorMessage } from "./request-errors";
+
+const { entries: entryService } = moniesClient;
 
 // This hook is the Entries page "write side".
 // It owns draft/edit state, optimistic updates, and the mutation calls that
@@ -53,7 +49,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   const [editingEntryId, setEditingEntryId] = useState(null);
   const [entrySnapshot, setEntrySnapshot] = useState(null);
   const [showEntryComposer, setShowEntryComposer] = useState(false);
-  const [entryDraft, setEntryDraft] = useState(() => buildEntryDraft(view, accounts, categories, people));
+  const [entryDraft, setEntryDraft] = useState(() => entryService.buildDraft(view, accounts, categories, people));
   const [entrySubmitError, setEntrySubmitError] = useState("");
   const [isSavingEntryDraft, setIsSavingEntryDraft] = useState(false);
   const [linkingTransferEntryId, setLinkingTransferEntryId] = useState(null);
@@ -89,8 +85,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     setEditingEntryId(null);
     setEntrySnapshot(null);
     setShowEntryComposer(Boolean(queuedComposerDraft));
-    setEntryDraft(normalizeEntryShape(
-      mergeEntryDraftPatch(buildEntryDraft(view, accounts, categories, people), queuedComposerDraft),
+    setEntryDraft(entryService.normalize(
+      mergeEntryDraftPatch(entryService.buildDraft(view, accounts, categories, people), queuedComposerDraft),
       people
     ));
     setEntrySubmitError("");
@@ -124,8 +120,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
         setEditingEntryId(null);
         setEntrySnapshot(null);
         setEntrySubmitError("");
-        setEntryDraft(normalizeEntryShape(
-          mergeEntryDraftPatch(buildEntryDraft(view, accounts, categories, people), initialPatch),
+        setEntryDraft(entryService.normalize(
+          mergeEntryDraftPatch(entryService.buildDraft(view, accounts, categories, people), initialPatch),
           people
         ));
         setShowEntryComposer(true);
@@ -138,8 +134,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     setEditingEntryId(null);
     setEntrySnapshot(null);
     setEntrySubmitError("");
-    setEntryDraft(normalizeEntryShape(
-      mergeEntryDraftPatch(buildEntryDraft(view, accounts, categories, people), initialPatch),
+    setEntryDraft(entryService.normalize(
+      mergeEntryDraftPatch(entryService.buildDraft(view, accounts, categories, people), initialPatch),
       people
     ));
     setShowEntryComposer(true);
@@ -147,7 +143,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
 
   function closeEntryComposer() {
     setShowEntryComposer(false);
-    setEntryDraft(buildEntryDraft(view, accounts, categories, people));
+    setEntryDraft(entryService.buildDraft(view, accounts, categories, people));
     setEntrySubmitError("");
   }
 
@@ -161,7 +157,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
         nextDraft.splitGroupId = "";
       }
 
-      return normalizeEntryShape(nextDraft, people);
+      return entryService.normalize(nextDraft, people);
     });
   }
 
@@ -176,7 +172,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
 
   function updateEntryDraftSplit(percentage) {
     updateEntryDraft({
-      splits: applySharedSplit(entryDraft, people, percentage),
+      splits: entryService.applySharedSplit(entryDraft, people, percentage),
       viewerSplitRatioBasisPoints: view.id === "household" ? undefined : Math.round(percentage * 100)
     });
   }
@@ -231,7 +227,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
         }
       }
 
-      const optimisticEntry = normalizeEntryShape({
+      const optimisticEntry = entryService.normalize({
         ...entryDraft,
         id: data.entryId,
         linkedTransfer: undefined,
@@ -443,7 +439,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   }
 
   function getTransferCandidatesForEntry(entry) {
-    return transferCandidateOverrides[entry.id] ?? getTransferMatchCandidates(entry, entries);
+    return transferCandidateOverrides[entry.id] ?? entryService.getTransferMatchCandidates(entry, entries);
   }
 
   function ensureTransferSettlementDraft(entry) {
@@ -548,7 +544,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
 
         // Splits are always shared expenses, so linking an entry promotes the
         // row into shared ownership even if it started as a direct expense.
-        nextLinkedEntry = normalizeEntryShape({
+        nextLinkedEntry = entryService.normalize({
           ...currentEntry,
           ownershipType: "shared",
           ownerName: undefined,
@@ -580,7 +576,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
         return entry;
       }
 
-      return normalizeEntryShape({ ...entry, ...patch }, people, entry);
+      return entryService.normalize({ ...entry, ...patch }, people, entry);
     }));
   }
 
@@ -590,8 +586,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
         return entry;
       }
 
-      const nextSplits = applySharedSplit(entry, people, percentage, view.id);
-      const primaryIndex = getVisibleSplitIndex(entry, view.id);
+      const nextSplits = entryService.applySharedSplit(entry, people, percentage, view.id);
+      const primaryIndex = entryService.getVisibleSplitIndex(entry, view.id);
       const totalAmountMinor = entry.totalAmountMinor ?? entry.amountMinor;
 
       return {

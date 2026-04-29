@@ -5,7 +5,6 @@ import { ChevronRight, SquarePen, X } from "lucide-react";
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
-import { getMonthSectionTotals } from "./month-helpers";
 import {
   canInlineEditMonthPlanRow,
   canInlineEditMonthRow,
@@ -16,7 +15,7 @@ import {
 import { formatRowDateLabel, getRowDateValue, sortRows } from "./table-helpers";
 import { DeleteRowButton, SortableHeader } from "./ui-components";
 
-const { categories: categoryService, format: formatService } = moniesClient;
+const { categories: categoryService, format: formatService, months: monthService } = moniesClient;
 
 const SECTION_ORDER = {
   budget_buckets: 0,
@@ -722,7 +721,7 @@ function MonthInlineActionRow({ isEditing, columnCount, onFinishEdit, onCancelEd
 }
 
 function IncomeTotalsFooter({ rows }) {
-  const totals = getMonthSectionTotals(rows);
+  const totals = monthService.getSectionTotals(rows);
 
   return (
     <tfoot>
@@ -739,7 +738,7 @@ function IncomeTotalsFooter({ rows }) {
 }
 
 function PlanningTotalsFooter({ section }) {
-  const totals = getMonthSectionTotals(section.rows);
+  const totals = monthService.getSectionTotals(section.rows);
 
   return (
     <tfoot>
