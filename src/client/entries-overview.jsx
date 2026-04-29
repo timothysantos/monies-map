@@ -99,30 +99,35 @@ export function EntriesFilterStack({
   wallets,
   entryCategoryOptions,
   hideToggle = false,
+  hideRefresh = false,
   onToggleMobileFilters,
   onChangeFilter,
   onResetFilters,
   onRefresh,
   onDone
 }) {
+  const isOpen = hideToggle ? true : showMobileFilters;
+
   return (
-    <section className={`entries-filter-stack ${showMobileFilters ? "is-open" : ""}`}>
+    <section className={`entries-filter-stack ${isOpen ? "is-open" : ""}`}>
       {!hideToggle ? (
         <button type="button" className="entries-filter-toggle" onClick={onToggleMobileFilters}>
           <span>{activeEntryFilterCount ? `Filters · ${activeEntryFilterCount}` : "Filters"}</span>
-          <span>{showMobileFilters ? "Hide" : "Show"}</span>
+          <span>{isOpen ? "Hide" : "Show"}</span>
         </button>
       ) : null}
       <section className="entries-filter-bar">
-        <button
-          type="button"
-          className="icon-action entries-filter-refresh"
-          onClick={() => void onRefresh?.()}
-          aria-label={messages.common.refresh}
-          title={messages.common.refresh}
-        >
-          <RefreshCw size={18} />
-        </button>
+        {!hideRefresh ? (
+          <button
+            type="button"
+            className="icon-action entries-filter-refresh"
+            onClick={() => void onRefresh?.()}
+            aria-label={messages.common.refresh}
+            title={messages.common.refresh}
+          >
+            <RefreshCw size={18} />
+          </button>
+        ) : null}
         <FilterMultiSelect
           label={messages.entries.wallet}
           values={entryFilters.wallets}

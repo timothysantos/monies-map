@@ -81,7 +81,10 @@ export function FilterMultiSelect({
           className="table-edit-input responsive-select-trigger entries-filter-multiselect-trigger"
           aria-haspopup="dialog"
           aria-expanded={open}
-          onClick={() => setOpen(true)}
+          onClick={(event) => {
+            event.currentTarget.blur();
+            setOpen(true);
+          }}
         >
           <span className="responsive-select-value entries-filter-multiselect-value">{triggerLabel}</span>
           <ChevronDown size={18} />
@@ -92,6 +95,9 @@ export function FilterMultiSelect({
             <Dialog.Content className="note-dialog-content mobile-select-dialog" onOpenAutoFocus={(event) => event.preventDefault()}>
               <div className="note-dialog-head mobile-select-head">
                 <Dialog.Title>{label}</Dialog.Title>
+                <Dialog.Description className="sr-only">
+                  Choose one or more values for {label.toLowerCase()}.
+                </Dialog.Description>
                 <button
                   type="button"
                   className="icon-action subtle-cancel mobile-select-close"
