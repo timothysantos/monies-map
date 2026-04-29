@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -43,6 +43,8 @@ export function EntriesPanel({
   view,
   entriesSourceView = view,
   selectedMonth,
+  mobileContextOpen = false,
+  onCloseMobileContext,
   externalRefreshToken = 0,
   availableMonths,
   accounts,
@@ -297,7 +299,6 @@ export function EntriesPanel({
     entryIds: searchParams.getAll("entry_id"),
     wallets: walletFilters,
     category: searchParams.get("entry_category") ?? "",
-    person: searchParams.get("entry_person") ?? defaultEntryPerson,
     type: searchParams.get("entry_type") ?? ""
   };
 
@@ -334,11 +335,18 @@ export function EntriesPanel({
     setShowMobileFilters(false);
   }, [entryView]);
 
+  useLayoutEffect(() => {
+    if (!useMobileEntrySheet) {
+      return;
+    }
+    setShowMobileFilters(mobileContextOpen);
+  }, [mobileContextOpen, useMobileEntrySheet]);
+
   const wallets = useMemo(
     () => getEntryWalletFilterOptions(accounts),
     [accounts]
   );
-  const { entryCategoryOptions, peopleFilterOptions } = useMemo(
+  const { entryCategoryOptions } = useMemo(
     () => getEntryFilterOptions(entries),
     [entries]
   );
@@ -350,9 +358,8 @@ export function EntriesPanel({
       !walletValues.includes(wallet) && !entries.some((entry) => entry.accountName === wallet)
     ));
     const categoryIsStale = category && !entryCategoryOptions.includes(category);
-    const personIsStale = person && !peopleFilterOptions.includes(person);
 
-    if (!staleWalletFilters.length && !categoryIsStale && !personIsStale) {
+    if (!staleWalletFilters.length && !categoryIsStale && !person) {
       return;
     }
 
@@ -367,12 +374,12 @@ export function EntriesPanel({
       if (categoryIsStale) {
         next.delete("entry_category");
       }
-      if (personIsStale) {
+      if (person) {
         next.delete("entry_person");
       }
       return next;
     }, { replace: true });
-  }, [entries, entryCategoryOptions, peopleFilterOptions, searchParams, setSearchParams, walletFilterKey, wallets]);
+  }, [entries, entryCategoryOptions, searchParams, setSearchParams, walletFilterKey, wallets]);
   const { categoryOptions, accountOptions, ownerOptions } = useMemo(
     () => getEntryFormOptions({ accounts, categories, people }),
     [accounts, categories, people]
@@ -733,7 +740,6 @@ export function EntriesPanel({
       next.delete("entry_id");
       next.delete("entry_wallet");
       next.delete("entry_category");
-      next.delete("entry_person");
       next.delete("entry_type");
       return next;
     });
@@ -743,17 +749,26 @@ export function EntriesPanel({
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       next.set("view", viewId);
-      if (viewId === "household") {
-        next.delete("entry_person");
-      } else {
-        const person = people.find((item) => item.id === viewId);
-        if (person) {
-          next.set("entry_person", person.name);
-        }
-      }
+      next.delete("entry_person");
       return next;
     });
   }
+
+  const mobileContextFilterPortalTarget = typeof document !== "undefined"
+    ? document.getElementById("entries-mobile-context-filters")
+    : null;
+  const filterStackProps = {
+    showMobileFilters,
+    activeEntryFilterCount,
+    entryFilters,
+    wallets,
+    entryCategoryOptions,
+    onToggleMobileFilters: () => setShowMobileFilters((current) => !current),
+    onChangeFilter: updateEntryFilter,
+    onResetFilters: resetEntryFilters,
+    onRefresh: () => refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true }),
+    onDone: useMobileEntrySheet ? onCloseMobileContext : undefined
+  };
 
   return (
     <article className="panel entries-panel-root">
@@ -804,18 +819,11 @@ export function EntriesPanel({
         <EntriesBreakdownPanel expenseBreakdown={expenseBreakdown} categories={categories} />
       ) : null}
 
-      <EntriesFilterStack
-        showMobileFilters={showMobileFilters}
-        activeEntryFilterCount={activeEntryFilterCount}
-        entryFilters={entryFilters}
-        wallets={wallets}
-        entryCategoryOptions={entryCategoryOptions}
-        peopleFilterOptions={peopleFilterOptions}
-        onToggleMobileFilters={() => setShowMobileFilters((current) => !current)}
-        onChangeFilter={updateEntryFilter}
-        onResetFilters={resetEntryFilters}
-        onRefresh={() => refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true })}
-      />
+      {!useMobileEntrySheet ? <EntriesFilterStack {...filterStackProps} /> : null}
+
+      {useMobileEntrySheet && mobileContextFilterPortalTarget
+        ? createPortal(<EntriesFilterStack {...filterStackProps} />, mobileContextFilterPortalTarget)
+        : null}
 
       {isEntriesPageLoading ? (
         <div className="app-loading-overlay entries-page-loading" role="status" aria-live="polite">

@@ -5,10 +5,7 @@ import { entryMatchesScope, groupEntriesByDate, uniqueValues } from "./entry-hel
 export function getEntryFilterOptions(entries) {
   return {
     wallets: uniqueValues(entries.map((entry) => entry.accountName)),
-    entryCategoryOptions: uniqueValues(entries.map((entry) => entry.categoryName)),
-    peopleFilterOptions: uniqueValues(entries.flatMap((entry) => (
-      entry.ownershipType === "shared" ? ["Shared"] : [entry.ownerName ?? ""]
-    )))
+    entryCategoryOptions: uniqueValues(entries.map((entry) => entry.categoryName))
   };
 }
 
@@ -26,7 +23,7 @@ export function getEntryFormOptions({ accounts, categories, people }) {
 }
 
 export function getActiveEntryFilterCount(entryFilters) {
-  return ["category", "person", "type"].reduce(
+  return ["category", "type"].reduce(
     (count, key) => count + (entryFilters[key] ? 1 : 0),
     (entryFilters.wallets?.length ? 1 : 0) + (entryFilters.entryIds?.length ? 1 : 0)
   );
@@ -54,12 +51,6 @@ export function getFilteredEntries({ entries, entryFilters, selectedScope, viewI
     }
     if (entryFilters.type && entry.entryType !== entryFilters.type) {
       return false;
-    }
-    if (entryFilters.person) {
-      if (entryFilters.person === "Shared") {
-        return entry.ownershipType === "shared";
-      }
-      return entry.ownerName === entryFilters.person || entry.splits.some((split) => split.personName === entryFilters.person);
     }
     return true;
   });
