@@ -22,6 +22,8 @@ That distinction matters because the system needs to answer questions like:
 ## Documentation rule
 
 - Keep this file updated alongside meaningful architecture or product changes.
+- Keep [`DOMAIN.md`](../DOMAIN.md) updated alongside domain-model and canonical
+  naming changes.
 - Keep [`AGENTS.md`](../AGENTS.md) aligned
   with implementation conventions and coding expectations.
 - Keep [`docs/faq.md`](faq.md)

@@ -7,6 +7,8 @@ team conventions evolve.
 ## Living guidance
 
 - Keep this file updated as the app progresses.
+- Keep [`DOMAIN.md`](/Users/tim/22m/ai-projects/monies_map/DOMAIN.md)
+  updated alongside domain-model and naming changes.
 - Keep [`docs/architecture.md`](/Users/tim/22m/ai-projects/monies_map/docs/architecture.md)
   updated alongside meaningful product and technical changes.
 - Keep [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
@@ -45,6 +47,10 @@ team conventions evolve.
 
 ## Domain guidance
 
+- Treat [`DOMAIN.md`](/Users/tim/22m/ai-projects/monies_map/DOMAIN.md) as the
+  canonical vocabulary for product and data-model terms.
+- Cross-reference `DOMAIN.md` before introducing new entity names, and prefer
+  extending existing terms over adding synonyms.
 - Treat transactions, splits, imports, notes, and transfer links as first-class
   concepts.
 - Keep import batches traceable so a bad import can be reviewed or removed
