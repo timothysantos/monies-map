@@ -763,6 +763,7 @@ export function EntriesPanel({
     entryFilters,
     wallets,
     entryCategoryOptions,
+    hideToggle: useMobileEntrySheet,
     onToggleMobileFilters: () => setShowMobileFilters((current) => !current),
     onChangeFilter: updateEntryFilter,
     onResetFilters: resetEntryFilters,
