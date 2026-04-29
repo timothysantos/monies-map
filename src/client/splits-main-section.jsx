@@ -45,6 +45,11 @@ export function SplitsMainSection({
   isRefreshingDerived = false,
   readOnly = false
 }) {
+  // The group nav is rendered twice on desktop:
+  // - inline inside the normal document flow
+  // - as a floating portal when no inline editor is open
+  //
+  // That keeps group switching nearby without covering the inline edit card.
   const groupsNav = (
     <SplitsGroupsNav
       groups={groups}
@@ -92,6 +97,7 @@ export function SplitsMainSection({
         isRefreshingDerived={isRefreshingDerived}
       />
 
+      {/* "matches" is a review mode; "entries" is the normal activity timeline. */}
       {selectedMode === "matches" ? (
         <SplitMatchesList
           matches={visibleMatches}

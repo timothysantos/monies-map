@@ -111,6 +111,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   }, [view.splitsPage]);
 
   useEffect(() => {
+    // Keep the URL explicit once the default group is known so refreshes and
+    // deep links reopen the same split workspace.
     if (selectedGroupParam || selectedMode === "matches" || selectedGroupId === defaultGroupId) {
       return;
     }
@@ -212,6 +214,10 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   }
 
   function refreshAfterSplitMutation(options) {
+    // Split saves update the local activity list immediately, then ask the
+    // server to recompute any downstream data that depends on ledger ownership
+    // or linked entries. The generation guard prevents older refreshes from
+    // clobbering newer optimistic edits.
     const refreshGeneration = refreshGenerationRef.current + 1;
     refreshGenerationRef.current = refreshGeneration;
     setIsRefreshingDerived(true);
@@ -231,12 +237,14 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   }
 
   function buildLinkedExpenseRefreshOptions(linkedTransactionId, overrides = {}) {
-    const affectsLinkedEntry = Boolean(linkedTransactionId);
+    // Only expense rows can reinterpret an imported transaction. Settlements
+    // stay inside the splits layer and do not require entries/month refreshes.
+    const affectsLinkedLedgerEntry = Boolean(linkedTransactionId);
     return {
       broadcast: true,
-      invalidateEntries: affectsLinkedEntry,
-      invalidateMonth: affectsLinkedEntry,
-      invalidateSummary: affectsLinkedEntry,
+      invalidateEntries: affectsLinkedLedgerEntry,
+      invalidateMonth: affectsLinkedLedgerEntry,
+      invalidateSummary: affectsLinkedLedgerEntry,
       ...overrides
     };
   }
@@ -274,6 +282,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     try {
       const response = await saveSplitExpense(draft);
       applyOptimisticSplitsPage((currentPage) => {
+        // Keep the timeline snappy by inserting/updating the optimistic card
+        // immediately. The later refresh fills in canonical balances and any
+        // ledger-coupled recalculations.
         const existingItem = currentPage.activity.find((item) => item.kind === "expense" && item.id === (draft?.id ?? response.splitExpenseId));
         return {
           ...currentPage,
@@ -335,6 +346,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setIsSubmitting(true);
     try {
       await linkSplitMatch(match);
+      // Matching changes both the split record and, for expenses, the way the
+      // linked ledger row should appear elsewhere in the app.
       applyOptimisticSplitsPage((currentPage) => applyOptimisticSplitMatch(currentPage, match));
       refreshAfterSplitMutation(match.kind === "expense"
         ? { broadcast: true, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true }
@@ -551,7 +564,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onChangeInlineSplitDraft={setInlineSplitDraft}
         onCancelInlineSplit={() => {
           setInlineSplitDraft(null);
-          setInlineSplitDraftSnapshot(null);
+          clearInlineSplitSnapshot();
           setInlineSplitError("");
         }}
         hasInlineSplitChanges={hasInlineSplitChanges}
