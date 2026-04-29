@@ -4,12 +4,16 @@ import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
-import { getCategory, getCategoryTheme } from "./category-utils";
 import { messages } from "./copy/en-SG";
-import { getTransferWallets } from "./entry-helpers";
+import { moniesClient } from "./monies-client-service";
 import { ResponsiveSelect } from "./responsive-select";
 import { CategoryGlyph } from "./ui-components";
-import { formatDateOnly, formatEditableMinorInput, money, parseMoneyInput } from "./formatters";
+
+const {
+  categories: categoryService,
+  entries: entryService,
+  format: formatService
+} = moniesClient;
 
 // Shared field layout for creating and editing entries. Callers keep ownership of
 // persistence so row editing and draft creation can each preserve their own flow.
@@ -33,8 +37,8 @@ export function EntryEditorFields({
   const [categorySaveError, setCategorySaveError] = useState("");
   const [useMobileCategorySaveDialog, setUseMobileCategorySaveDialog] = useState(false);
   const displayCategoryName = lockTransferCategory && entry.entryType === "transfer" ? "Transfer" : entry.categoryName;
-  const category = getCategory(categories, { categoryName: displayCategoryName });
-  const categoryTheme = getCategoryTheme(
+  const category = categoryService.get(categories, { categoryName: displayCategoryName });
+  const categoryTheme = categoryService.getTheme(
     categories,
     { categoryName: displayCategoryName },
     0
@@ -258,7 +262,7 @@ export function EntryEditorFields({
             className={`table-edit-input table-edit-input-money ${amountToneClass}`}
             type="text"
             inputMode="decimal"
-            value={entry.amountInput ?? formatEditableMinorInput(entry.amountMinor)}
+            value={entry.amountInput ?? formatService.formatEditableMinorInput(entry.amountMinor)}
             onChange={(event) => {
               const nextValue = event.target.value;
               if (!nextValue.trim()) {
@@ -267,10 +271,10 @@ export function EntryEditorFields({
               }
               onChange({
                 amountInput: nextValue,
-                amountMinor: Math.max(0, parseMoneyInput(nextValue, entry.amountMinor))
+                amountMinor: Math.max(0, formatService.parseMoneyInput(nextValue, entry.amountMinor))
               });
             }}
-            onBlur={() => onChange({ amountInput: formatEditableMinorInput(entry.amountMinor) })}
+            onBlur={() => onChange({ amountInput: formatService.formatEditableMinorInput(entry.amountMinor) })}
           />
         </label>
         <label>
@@ -434,11 +438,11 @@ export function EntryTransferTools({
                 <div className="transfer-wallet-grid">
                   <div>
                     <span className="transfer-match-label">From wallet</span>
-                    <strong>{getTransferWallets(entry).fromWalletName}</strong>
+                    <strong>{entryService.getTransferWallets(entry).fromWalletName}</strong>
                   </div>
                   <div>
                     <span className="transfer-match-label">To wallet</span>
-                    <strong>{getTransferWallets(entry).toWalletName}</strong>
+                    <strong>{entryService.getTransferWallets(entry).toWalletName}</strong>
                   </div>
                 </div>
               </section>
@@ -447,11 +451,11 @@ export function EntryTransferTools({
                 <div className="transfer-match-card transfer-match-card-static">
                   <div className="transfer-match-card-body">
                     <strong>{entryWalletLabel}</strong>
-                    <p>{formatDateOnly(entry.date)} • {entry.description}</p>
+                    <p>{formatService.formatDateOnly(entry.date)} • {entry.description}</p>
                     <div className="transfer-match-detail-grid">
                       <span>
                         <span className="transfer-match-label">Amount</span>
-                        <strong>{money(entrySignedAmountMinor)}</strong>
+                        <strong>{formatService.money(entrySignedAmountMinor)}</strong>
                       </span>
                       <span>
                         <span className="transfer-match-label">Direction</span>
@@ -502,12 +506,12 @@ export function EntryTransferTools({
                         >
                           <div className="transfer-match-card-body">
                             <strong>{candidateWalletLabel}</strong>
-                            <p>{formatDateOnly(candidate.date)} • {candidate.description}</p>
+                            <p>{formatService.formatDateOnly(candidate.date)} • {candidate.description}</p>
                             {isExpanded ? (
                               <div className="transfer-match-detail-grid">
                                 <span>
                                   <span className="transfer-match-label">Amount</span>
-                                  <strong>{money(candidateSignedAmountMinor)}</strong>
+                                  <strong>{formatService.money(candidateSignedAmountMinor)}</strong>
                                 </span>
                                 <span>
                                   <span className="transfer-match-label">Direction</span>

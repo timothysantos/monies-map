@@ -2,9 +2,11 @@ import { useEffect, useMemo } from "react";
 import { Check, X } from "lucide-react";
 
 import { EntryEditorFields } from "./entry-editor";
-import { getVisibleSplitPercent } from "./entry-helpers";
+import { moniesClient } from "./monies-client-service";
 import { ResponsiveSelect } from "./responsive-select";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
+
+const { entries: entryService } = moniesClient;
 
 export function useEntryComposerSplitOptions({
   showEntryComposer,
@@ -227,7 +229,7 @@ function EntryComposerContent({
         categoryOptions={categoryOptions}
         accountOptions={accountOptions}
         ownerOptions={ownerOptions}
-        splitPercentValue={entry.ownershipType === "shared" ? getVisibleSplitPercent(entry, viewId) ?? 50 : null}
+        splitPercentValue={entry.ownershipType === "shared" ? entryService.getVisibleSplitPercent(entry, viewId) ?? 50 : null}
         onChange={onChange}
         onCategoryAppearanceChange={onCategoryAppearanceChange}
         onOwnerChange={onOwnerChange}

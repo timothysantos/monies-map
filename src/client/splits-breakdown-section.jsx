@@ -2,8 +2,10 @@ import { ChevronRight } from "lucide-react";
 
 import { SpendingMixChart } from "./category-visuals";
 import { messages } from "./copy/en-SG";
-import { money } from "./formatters";
+import { moniesClient } from "./monies-client-service";
 import { CategoryGlyph } from "./ui-components";
+
+const { format: formatService } = moniesClient;
 
 export function SplitsBreakdownSection({
   showBreakdown,
@@ -32,9 +34,9 @@ export function SplitsBreakdownSection({
         </button>
         <div className="entries-summary-metrics">
           {!readOnly ? (
-            <span>{groupSummaryLabel} <strong className={groupBalanceMinor >= 0 ? "tone-positive" : "tone-negative"}>{money(Math.abs(groupBalanceMinor))}</strong></span>
+            <span>{groupSummaryLabel} <strong className={groupBalanceMinor >= 0 ? "tone-positive" : "tone-negative"}>{formatService.money(Math.abs(groupBalanceMinor))}</strong></span>
           ) : null}
-          <span>{messages.entries.totalSpend} <strong>{money(totalExpenseMinor)}</strong></span>
+          <span>{messages.entries.totalSpend} <strong>{formatService.money(totalExpenseMinor)}</strong></span>
         </div>
         {summaryToolbar}
         {!readOnly ? (
@@ -80,7 +82,7 @@ export function SplitsBreakdownSection({
                       </span>
                       <div>
                         <strong>{item.label}</strong>
-                        <p>{messages.common.triplet(money(item.valueMinor), `${item.entryCount} ${item.entryCount === 1 ? "entry" : "entries"}`, `${((item.valueMinor / Math.max(totalExpenseMinor, 1)) * 100).toFixed(1)}%`)}</p>
+                        <p>{messages.common.triplet(formatService.money(item.valueMinor), `${item.entryCount} ${item.entryCount === 1 ? "entry" : "entries"}`, `${((item.valueMinor / Math.max(totalExpenseMinor, 1)) * 100).toFixed(1)}%`)}</p>
                       </div>
                     </div>
                   </div>

@@ -1,15 +1,18 @@
-import { entryMatchesScope, groupEntriesByDate, uniqueValues } from "./entry-helpers";
 import { moniesClient } from "./monies-client-service";
 
-const { accounts: accountService, categories: categoryService } = moniesClient;
+const {
+  accounts: accountService,
+  categories: categoryService,
+  entries: entryService
+} = moniesClient;
 
 // These selectors keep the Entries panel declarative. The component asks for
 // "what should I render?" while the filtering and aggregation rules stay here.
 
 export function getEntryFilterOptions(entries) {
   return {
-    wallets: uniqueValues(entries.map((entry) => entry.accountName)),
-    entryCategoryOptions: uniqueValues(entries.map((entry) => entry.categoryName))
+    wallets: entryService.uniqueValues(entries.map((entry) => entry.accountName)),
+    entryCategoryOptions: entryService.uniqueValues(entries.map((entry) => entry.categoryName))
   };
 }
 
@@ -36,7 +39,7 @@ export function getActiveEntryFilterCount(entryFilters) {
 export function getFilteredEntries({ entries, entryFilters, selectedScope, viewId }) {
   return entries.filter((entry) => {
     // Scope is the first gate because it is the page-level visibility rule.
-    if (!entryMatchesScope(entry, viewId, selectedScope)) {
+    if (!entryService.entryMatchesScope(entry, viewId, selectedScope)) {
       return false;
     }
     if (
@@ -104,7 +107,7 @@ export function getExpenseBreakdown(entries) {
 
 export function getEntryDerivedData({ entries, entryFilters, selectedScope, viewId }) {
   const filteredEntries = getFilteredEntries({ entries, entryFilters, selectedScope, viewId });
-  const groupedEntries = groupEntriesByDate(filteredEntries);
+  const groupedEntries = entryService.groupByDate(filteredEntries);
   const entryTotals = getEntryTotals(filteredEntries);
 
   return {

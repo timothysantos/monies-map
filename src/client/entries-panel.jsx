@@ -21,8 +21,7 @@ import {
   getEntryFormOptions,
   getEntryWalletFilterOptions
 } from "./entry-selectors";
-import { getVisibleSplitPercent } from "./entry-helpers";
-import { formatDateOnly, parseDraftMoneyInput } from "./formatters";
+import { moniesClient } from "./monies-client-service";
 import { queryKeys } from "./query-keys";
 import { buildRequestErrorMessage } from "./request-errors";
 import { deleteSplitExpense } from "./splits-api";
@@ -32,6 +31,7 @@ const ENTRIES_PAGE_PREFETCH_SPACING_MS = 650;
 const QUICK_EXPENSE_DRAFT_STORAGE_KEY = "monies.quickExpenseDraft";
 const QUICK_EXPENSE_DRAFT_STORAGE_TTL_MS = 15 * 60 * 1000;
 const NON_GROUP_SPLIT_VALUE = "__split_group_none__";
+const { entries: entryService, format: formatService } = moniesClient;
 
 // Entries page glossary:
 // - "entries source view": the person/household view that owns the server payload for this page.
@@ -846,7 +846,7 @@ export function EntriesPanel({
             categoryOptions={categoryOptions}
             accountOptions={accountOptions}
             ownerOptions={ownerOptions}
-            splitPercentValue={activeEditingEntry.ownershipType === "shared" ? getVisibleSplitPercent(activeEditingEntry, entryView.id) ?? null : null}
+            splitPercentValue={activeEditingEntry.ownershipType === "shared" ? entryService.getVisibleSplitPercent(activeEditingEntry, entryView.id) ?? null : null}
             lockTransferCategory
             onChange={(patch) => updateEntry(activeEditingEntry.id, patch)}
             onQuickSaveCategory={(categoryName) => saveEntryCategory(activeEditingEntry.id, categoryName)}
@@ -1274,7 +1274,7 @@ function buildQuickExpenseDraftPatch({ searchParams, accountOptions, categoryOpt
     ?? fallbackOwnerName
     ?? "";
   const isShared = ["1", "true", "yes", "shared"].includes(String(searchParams.get("shared") ?? "").trim().toLowerCase());
-  const amountMinor = Math.abs(parseDraftMoneyInput(rawAmount ?? "0"));
+  const amountMinor = Math.abs(formatService.parseDraftMoneyInput(rawAmount ?? "0"));
   const description = isQuickExpensePlaceholder(rawDescription) ? "" : rawDescription ?? "";
   const date = normalizeQuickExpenseDate(searchParams.get("date")) || new Date().toISOString().slice(0, 10);
 
@@ -1443,7 +1443,7 @@ function getEntryBankState(entry) {
     return {
       label: entry.bankCertificationLabel ?? "Statement certified",
       title: entry.statementCertifiedAt
-        ? `Bank facts certified ${formatDateOnly(entry.statementCertifiedAt.slice(0, 10))}`
+        ? `Bank facts certified ${formatService.formatDateOnly(entry.statementCertifiedAt.slice(0, 10))}`
         : "Bank facts are locked by a saved statement.",
       className: "is-statement-certified"
     };

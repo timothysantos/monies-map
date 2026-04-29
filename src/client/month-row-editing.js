@@ -1,6 +1,8 @@
 import { messages } from "./copy/en-SG";
-import { formatMinorInput } from "./formatters";
+import { moniesClient } from "./monies-client-service";
 import { getRowDateValue } from "./table-helpers";
+
+const { format: formatService } = moniesClient;
 
 // Month plan rows use a few terms that are easy to forget when skimming:
 // - "derived" rows are rollups shown in the current view, not the source row
@@ -73,7 +75,7 @@ export function buildMobileMonthIncomeDialog(row) {
     description: "Edit this month row without squeezing controls into the table.",
     categoryValue: row.categoryId ?? row.categoryName,
     label: row.label ?? "",
-    plannedMinor: formatMinorInput(row.plannedMinor),
+    plannedMinor: formatService.formatMinorInput(row.plannedMinor),
     note: row.note ?? "",
     actualMinor: row.actualMinor ?? 0,
     actualEntryIds: row.actualEntryIds ?? []
@@ -91,7 +93,7 @@ export function buildMobileMonthPlanDialog({ monthKey, row, sectionKey, viewId, 
     description: "Edit this month row without squeezing controls into the table.",
     categoryValue: sourceRow.categoryId ?? sourceRow.categoryName,
     label: sourceRow.label ?? "",
-    plannedMinor: formatMinorInput(sourceRow.plannedMinor),
+    plannedMinor: formatService.formatMinorInput(sourceRow.plannedMinor),
     planDate: sectionKey === "planned_items" ? getRowDateValue(sourceRow, monthKey) : "",
     accountName: sectionKey === "planned_items" ? (sourceRow.accountName ?? "") : "",
     note: sourceRow.note ?? "",
