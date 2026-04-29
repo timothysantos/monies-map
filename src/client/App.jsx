@@ -29,6 +29,7 @@ import {
 } from "./app-sync";
 import { slugify } from "./category-utils";
 import { messages } from "./copy/en-SG";
+import { EntriesFilterStack } from "./entries-overview";
 import {
   buildBootstrapErrorMessage,
   buildRequestErrorMessage,
@@ -266,6 +267,13 @@ export function App() {
   const [loadingStatus, setLoadingStatus] = useState(() => createLoadingStatus());
   const [loadingElapsedSeconds, setLoadingElapsedSeconds] = useState(0);
   const [mobileContextOpen, setMobileContextOpen] = useState(false);
+  const [entriesMobileFilterProps, setEntriesMobileFilterProps] = useState(null);
+  const closeMobileContext = useCallback(() => {
+    setMobileContextOpen(false);
+  }, []);
+  const handleEntriesMobileFilterStateChange = useCallback((nextProps) => {
+    setEntriesMobileFilterProps((current) => areEntriesMobileFilterPropsEqual(current, nextProps) ? current : nextProps);
+  }, []);
   const [categoryOverrides, setCategoryOverrides] = useState({});
   const [rangePickerStartYear, setRangePickerStartYear] = useState(null);
   const [rangePickerEndYear, setRangePickerEndYear] = useState(null);
@@ -2283,7 +2291,14 @@ export function App() {
           <div className="mobile-context-sticky-bar">
             <Dialog.Root open={mobileContextOpen} onOpenChange={setMobileContextOpen}>
               <Dialog.Trigger asChild>
-                <button type="button" className="mobile-context-trigger" aria-label={stickyScopeConfig.label}>
+                <button
+                  type="button"
+                  className="mobile-context-trigger"
+                  aria-label={stickyScopeConfig.label}
+                  onClick={(event) => {
+                    event.currentTarget.blur();
+                  }}
+                >
                   <span className="mobile-context-trigger-copy">
                     <span className="mobile-context-trigger-label">{mobileContextSummary}</span>
                     {showMobileContextScopeSection ? (
@@ -2366,9 +2381,9 @@ export function App() {
                     </section>
                   ) : null}
 
-                  {selectedTabId === "entries" ? (
+                  {selectedTabId === "entries" && entriesMobileFilterProps ? (
                     <section className="mobile-context-dialog-section mobile-context-dialog-filters-slot" aria-label="Filters">
-                      <div id="entries-mobile-context-filters" />
+                      <EntriesFilterStack {...entriesMobileFilterProps} />
                     </section>
                   ) : null}
                 </Dialog.Content>
@@ -2437,7 +2452,8 @@ export function App() {
                   entriesSourceView={householdView}
                   selectedMonth={selectedMonth}
                   mobileContextOpen={mobileContextOpen}
-                  onCloseMobileContext={() => setMobileContextOpen(false)}
+                  onCloseMobileContext={closeMobileContext}
+                  onMobileFilterStateChange={handleEntriesMobileFilterStateChange}
                   externalRefreshToken={entriesExternalRefreshToken}
                   availableMonths={availableMonths}
                   accounts={bootstrap.accounts}
@@ -2604,6 +2620,54 @@ function AppLoadingStatusText({ status, elapsedSeconds, compact = false }) {
       {status?.issue ? <small className="is-error" title={status.issue}>{ellipsizeText(status.issue, compact ? 64 : 84)}</small> : null}
     </div>
   );
+}
+
+function areEntriesMobileFilterPropsEqual(current, next) {
+  if (current === next) {
+    return true;
+  }
+  if (!current || !next) {
+    return current === next;
+  }
+  return (
+    current.showMobileFilters === next.showMobileFilters
+    && current.activeEntryFilterCount === next.activeEntryFilterCount
+    && current.hideToggle === next.hideToggle
+    && current.hideRefresh === next.hideRefresh
+    && current.onToggleMobileFilters === next.onToggleMobileFilters
+    && current.onChangeFilter === next.onChangeFilter
+    && current.onResetFilters === next.onResetFilters
+    && current.onRefresh === next.onRefresh
+    && current.onDone === next.onDone
+    && current.wallets === next.wallets
+    && current.entryCategoryOptions === next.entryCategoryOptions
+    && areEntryFilterValuesEqual(current.entryFilters, next.entryFilters)
+  );
+}
+
+function areEntryFilterValuesEqual(current, next) {
+  if (current === next) {
+    return true;
+  }
+  if (!current || !next) {
+    return current === next;
+  }
+  return (
+    current.category === next.category
+    && current.type === next.type
+    && areStringArraysEqual(current.entryIds, next.entryIds)
+    && areStringArraysEqual(current.wallets, next.wallets)
+  );
+}
+
+function areStringArraysEqual(current, next) {
+  if (current === next) {
+    return true;
+  }
+  if (!Array.isArray(current) || !Array.isArray(next) || current.length !== next.length) {
+    return false;
+  }
+  return current.every((value, index) => value === next[index]);
 }
 
 function AppLoadingPanel({ status, elapsedSeconds }) {

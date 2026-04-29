@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
@@ -45,6 +44,7 @@ export function EntriesPanel({
   selectedMonth,
   mobileContextOpen = false,
   onCloseMobileContext,
+  onMobileFilterStateChange,
   externalRefreshToken = 0,
   availableMonths,
   accounts,
@@ -291,16 +291,27 @@ export function EntriesPanel({
   });
   const openEntryComposerRef = useRef(openEntryComposer);
   const entryComposerEditorRef = useRef(null);
+  const searchParamsKey = searchParams.toString();
   const selectedScope = searchParams.get("entries_scope") ?? entryView.monthPage.selectedScope;
   const defaultEntryPerson = entryView.id !== "household" ? entryView.label : "";
-  const walletFilters = getWalletFilterValues(searchParams);
+  const walletFilters = useMemo(
+    () => getWalletFilterValues(searchParams),
+    [searchParamsKey]
+  );
   const walletFilterKey = walletFilters.join("\u0000");
-  const entryFilters = {
-    entryIds: searchParams.getAll("entry_id"),
+  const entryIdFilters = useMemo(
+    () => searchParams.getAll("entry_id"),
+    [searchParamsKey]
+  );
+  const entryIdFilterKey = entryIdFilters.join("\u0000");
+  const categoryFilter = searchParams.get("entry_category") ?? "";
+  const typeFilter = searchParams.get("entry_type") ?? "";
+  const entryFilters = useMemo(() => ({
+    entryIds: entryIdFilters,
     wallets: walletFilters,
-    category: searchParams.get("entry_category") ?? "",
-    type: searchParams.get("entry_type") ?? ""
-  };
+    category: categoryFilter,
+    type: typeFilter
+  }), [categoryFilter, entryIdFilterKey, typeFilter, walletFilterKey, walletFilters]);
 
   useEffect(() => {
     openEntryComposerRef.current = openEntryComposer;
@@ -716,7 +727,7 @@ export function EntriesPanel({
     });
   }
 
-  function updateEntryFilter(key, value) {
+  const updateEntryFilter = useCallback((key, value) => {
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       const paramKey = `entry_${key}`;
@@ -732,9 +743,9 @@ export function EntriesPanel({
       }
       return next;
     });
-  }
+  }, [setSearchParams]);
 
-  function resetEntryFilters() {
+  const resetEntryFilters = useCallback(() => {
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       next.delete("entry_id");
@@ -743,7 +754,7 @@ export function EntriesPanel({
       next.delete("entry_type");
       return next;
     });
-  }
+  }, [setSearchParams]);
 
   function applySuggestedView(viewId) {
     setSearchParams((current) => {
@@ -754,22 +765,60 @@ export function EntriesPanel({
     });
   }
 
-  const mobileContextFilterPortalTarget = typeof document !== "undefined"
-    ? document.getElementById("entries-mobile-context-filters")
-    : null;
-  const filterStackProps = {
+  const toggleMobileFilters = useCallback(() => {
+    setShowMobileFilters((current) => !current);
+  }, []);
+
+  const refreshEntriesFilters = useCallback(() => (
+    refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true })
+  ), [refreshEntriesPage]);
+
+  const filterStackProps = useMemo(() => ({
     showMobileFilters,
     activeEntryFilterCount,
     entryFilters,
     wallets,
     entryCategoryOptions,
     hideToggle: useMobileEntrySheet,
-    onToggleMobileFilters: () => setShowMobileFilters((current) => !current),
+    hideRefresh: useMobileEntrySheet,
+    onToggleMobileFilters: toggleMobileFilters,
     onChangeFilter: updateEntryFilter,
     onResetFilters: resetEntryFilters,
-    onRefresh: () => refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true }),
+    onRefresh: refreshEntriesFilters,
     onDone: useMobileEntrySheet ? onCloseMobileContext : undefined
-  };
+  }), [
+    activeEntryFilterCount,
+    entryCategoryOptions,
+    entryFilters,
+    onCloseMobileContext,
+    refreshEntriesFilters,
+    resetEntryFilters,
+    showMobileFilters,
+    toggleMobileFilters,
+    updateEntryFilter,
+    useMobileEntrySheet,
+    wallets
+  ]);
+
+  useEffect(() => {
+    if (!onMobileFilterStateChange) {
+      return undefined;
+    }
+
+    if (!useMobileEntrySheet) {
+      onMobileFilterStateChange(null);
+      return undefined;
+    }
+
+    onMobileFilterStateChange(filterStackProps);
+  }, [filterStackProps, onMobileFilterStateChange, useMobileEntrySheet]);
+
+  useEffect(() => {
+    if (!onMobileFilterStateChange) {
+      return undefined;
+    }
+    return () => onMobileFilterStateChange(null);
+  }, [onMobileFilterStateChange]);
 
   return (
     <article className="panel entries-panel-root">
@@ -821,10 +870,6 @@ export function EntriesPanel({
       ) : null}
 
       {!useMobileEntrySheet ? <EntriesFilterStack {...filterStackProps} /> : null}
-
-      {useMobileEntrySheet && mobileContextFilterPortalTarget
-        ? createPortal(<EntriesFilterStack {...filterStackProps} />, mobileContextFilterPortalTarget)
-        : null}
 
       {isEntriesPageLoading ? (
         <div className="app-loading-overlay entries-page-loading" role="status" aria-live="polite">
