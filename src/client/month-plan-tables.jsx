@@ -23,6 +23,14 @@ const SECTION_ORDER = {
 };
 const MOBILE_MONTH_EDIT_QUERY = "(max-width: 760px), (max-width: 1024px) and (orientation: portrait)";
 
+function isPlannedItemsSection(sectionKey) {
+  return sectionKey === "planned_items";
+}
+
+function isBudgetBucketsSection(sectionKey) {
+  return sectionKey === "budget_buckets";
+}
+
 function useMonthMobileEditViewport() {
   return typeof window !== "undefined" && window.matchMedia(MOBILE_MONTH_EDIT_QUERY).matches;
 }
@@ -31,7 +39,14 @@ function shouldIgnoreRowOpenTarget(target) {
   return target instanceof Element && Boolean(target.closest("button, input, select, textarea, a, [role='button']"));
 }
 
-// Table rendering stays separate from persistence so MonthPanel keeps the write flow in one place.
+// Table rendering stays separate from persistence so MonthPanel keeps the write
+// flow in one place.
+//
+// Month-table terms:
+// - "income" rows are planned incoming money for the month.
+// - "planned_items" are one-off planned rows that can link to exact entries.
+// - "budget_buckets" are category budgets that usually compare against grouped
+//   category totals instead of one specific ledger row.
 export function MonthPlanStack({
   view,
   categories,
@@ -479,8 +494,11 @@ function PlanningRow({
   const variance = row.plannedMinor - row.actualMinor;
   const canInlineEditRow = canInlineEditMonthPlanRow({ isCombinedHouseholdView, row });
   const canOpenRow = canInlineEditRow || (useMonthMobileEditViewport() && canOpenMonthMobileSheet({ isCombinedHouseholdView, row }));
-  const isDraftBudgetBucket = section.key === "budget_buckets" && row.isDraft;
-  const editingSourceRow = isEditing ? getMonthPlanEditSource(row) : row;
+  const isDraftBudgetBucket = isBudgetBucketsSection(section.key) && row.isDraft;
+  // A derived row may show a scoped share in the table. When editing, switch to
+  // the source row values so the user edits the underlying plan, not the
+  // weighted projection.
+  const editableRow = isEditing ? getMonthPlanEditSource(row) : row;
   const sharedEditHint = isEditing ? getMonthPlanSharedEditHint({ row, viewId: view.id, viewLabel: view.label }) : "";
   const handleRowOpen = (event) => {
     if (!canOpenRow || shouldIgnoreRowOpenTarget(event.target)) {
@@ -523,7 +541,7 @@ function PlanningRow({
             ) : <span>{row.categoryName}</span>}
           </div>
         </td>
-        {section.key === "planned_items" ? (
+        {isPlannedItemsSection(section.key) ? (
           <td {...rowOpenProps}>
             {isEditing ? (
               <input
@@ -540,7 +558,7 @@ function PlanningRow({
           {isEditing ? (
             <input
               className="table-edit-input"
-              value={editingSourceRow.label}
+              value={editableRow.label}
               onChange={(event) => {
                 if (isDraftBudgetBucket) {
                   onBudgetBucketLabelChange(row.id, event.target.value);
@@ -558,7 +576,7 @@ function PlanningRow({
             <div className="month-planned-cell">
               <input
                 className="table-edit-input table-edit-input-money"
-                value={editingDrafts.plannedMinor ?? formatMinorInput(editingSourceRow.plannedMinor)}
+                value={editingDrafts.plannedMinor ?? formatMinorInput(editableRow.plannedMinor)}
                 onChange={(event) => {
                   if (isDraftBudgetBucket) {
                     onBudgetBucketPlannedMinorDraftChange(row.id, event.target.value);
@@ -593,7 +611,7 @@ function PlanningRow({
               {money(row.actualMinor)}
             </button>
             {row.isPendingDerived ? <span className="month-row-pending-hint">Updating...</span> : null}
-            {section.key === "planned_items" ? (
+            {isPlannedItemsSection(section.key) ? (
               <button
                 type="button"
                 className="planned-link-manage-trigger"
@@ -611,7 +629,7 @@ function PlanningRow({
           </div>
         </td>
         <td {...rowOpenProps} className={variance >= 0 ? "positive" : "negative"}>{money(variance)}</td>
-        {section.key === "planned_items" ? (
+        {isPlannedItemsSection(section.key) ? (
           <td {...rowOpenProps}>
             {isEditing ? (
               <select
