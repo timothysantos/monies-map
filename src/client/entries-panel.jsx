@@ -221,6 +221,8 @@ export function EntriesPanel({
       return;
     }
 
+    // Filters live in the URL, so this effect prunes values that stopped
+    // making sense after the month/view payload changed.
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       if (staleWalletFilters.length) {
@@ -253,6 +255,8 @@ export function EntriesPanel({
     }
     handledQuickExpenseKeyRef.current = quickExpenseKey;
 
+    // Shortcut URLs are translated once into a normal entry draft, then the
+    // special query params are cleared so refreshes do not reopen the composer.
     const quickExpenseDraft = buildQuickExpenseDraftPatch({
       searchParams,
       accountOptions,
@@ -277,6 +281,8 @@ export function EntriesPanel({
       return;
     }
 
+    // Mobile edit sheets preserve their target row in the URL so route changes
+    // or panel switches can reopen the same entry.
     setPendingLinkedEntryId(linkedEntryId);
   }, [pendingLinkedEntryId, searchParams]);
 
@@ -297,6 +303,8 @@ export function EntriesPanel({
       return;
     }
 
+    // Session storage is only a safety net for reloads in the middle of a
+    // quick-expense flow. Normal entry creation does not depend on it.
     pendingQuickExpenseDraftRef.current = storedDraft.draft;
     setQuickExpenseWarning(storedDraft.warning ?? "");
     setQuickExpensePendingKey(storedDraft.key);
@@ -312,6 +320,8 @@ export function EntriesPanel({
       return undefined;
     }
 
+    // Wait until the correct month payload is loaded before opening the
+    // composer so account/category options match the visible page context.
     const draftPatch = pendingQuickExpenseDraftRef.current;
     pendingQuickExpenseDraftRef.current = null;
     setQuickExpensePendingKey("");
@@ -329,6 +339,8 @@ export function EntriesPanel({
       return;
     }
 
+    // Opening a linked entry overrides any pending quick-expense draft because
+    // the user explicitly navigated to an existing row to edit it.
     pendingQuickExpenseDraftRef.current = null;
     setQuickExpensePendingKey("");
     setQuickExpenseWarning("");
@@ -443,6 +455,8 @@ export function EntriesPanel({
       return;
     }
 
+    // When there is exactly one eligible split group we pick it automatically.
+    // Otherwise we keep the draft selection aligned with the latest group list.
     if (singleSplitGroupValue && entryDraft.splitGroupId !== singleSplitGroupValue) {
       updateEntryDraft({ splitGroupId: singleSplitGroupValue });
       return;
@@ -657,6 +671,8 @@ export function EntriesPanel({
       return undefined;
     }
 
+    // On mobile the parent context owns the filter controls, so this effect
+    // exports the current filter-stack props upward.
     onMobileFilterStateChange(filterStackProps);
   }, [filterStackProps, onMobileFilterStateChange, useMobileEntrySheet]);
 
