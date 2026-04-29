@@ -813,6 +813,11 @@ Frontend direction:
 - React + Vite for the app shell and UI state
 - React Router should own page-level navigation so dashboard sections have stable URLs
 - UI labels and helper copy should be sourced from locale modules instead of being hardcoded across components
+- client utility access should flow through `src/client/monies-client-service.js`.
+  Leaf helpers such as formatters, category matching, import mapping, month
+  helpers, entry math, and split presentation remain implementation details
+  behind that deep module so components do not need to know which small file
+  owns a given rule.
 - Worker API remains the source of bootstrap, route-page, mutation, and import
   endpoints
 - charting should prefer a maintained library over hand-built geometry once the
