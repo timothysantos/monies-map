@@ -411,6 +411,19 @@ export function normalizeDateString(value: string) {
   return parsed.toISOString().slice(0, 10);
 }
 
+export function extractTransactionDateHint(value?: string) {
+  if (!value) {
+    return undefined;
+  }
+
+  const explicitMatch = value.match(/\b(?:txn|transaction)\s+date\s*:?\s*([0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4})\b/i);
+  if (explicitMatch?.[1]) {
+    return normalizeDateString(explicitMatch[1]);
+  }
+
+  return undefined;
+}
+
 export function buildImportRowHash(row: ImportPreviewRowDto) {
   return `${row.date}|${row.description}|${row.amountMinor}|${row.accountId ?? row.accountName ?? ""}|${row.entryType}`;
 }
@@ -483,7 +496,16 @@ function compareCompactDescriptionSimilarity(left: string, right: string) {
 }
 
 export function normalizeDescriptionForMatch(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const canonicalized = value
+    .toLowerCase()
+    .replace(/\bcs\s+fresh\b/g, "cold storage")
+    .replace(/\bcoldstorage\b/g, "cold storage")
+    .replace(/\bcs\b/g, "cold storage");
+
+  return canonicalized
+    .replace(/\b(singapore|sg|applepay|apple\s+pay)\b/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 export function normalizePlanMatchHint(value: string) {

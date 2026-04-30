@@ -3037,10 +3037,10 @@ export async function commitImportBatch(
         throw new Error(`Unknown owner: ${row.ownerName ?? "Unassigned"}`);
       }
 
-      const certificationTarget = isOfficialStatementImport && row.reconciliationTargetTransactionId
+      const reconciliationTarget = row.reconciliationTargetTransactionId
         ? await db
           .prepare(`
-            SELECT id, transaction_date
+            SELECT id, transaction_date, import_id
             FROM transactions
             WHERE household_id = ?
               AND id = ?
@@ -3048,11 +3048,11 @@ export async function commitImportBatch(
               AND bank_certification_status = 'provisional'
           `)
           .bind(DEFAULT_HOUSEHOLD_ID, row.reconciliationTargetTransactionId, accountId)
-          .first<{ id: string; transaction_date: string }>()
+          .first<{ id: string; transaction_date: string; import_id: string | null }>()
         : null;
 
-      if (isOfficialStatementImport && row.reconciliationTargetTransactionId && !certificationTarget) {
-        throw new Error("Statement certification target is no longer available. Refresh the import preview and try again.");
+      if (row.reconciliationTargetTransactionId && !reconciliationTarget) {
+        throw new Error("Reconciliation target is no longer available. Refresh the import preview and try again.");
       }
 
       statements.push(
@@ -3072,7 +3072,48 @@ export async function commitImportBatch(
           )
       );
 
-      if (certificationTarget) {
+      if (reconciliationTarget && !isOfficialStatementImport) {
+        if (reconciliationTarget.import_id) {
+          throw new Error("Current-activity reconciliation target is no longer manual. Refresh the import preview and try again.");
+        }
+
+        statements.push(
+          db
+            .prepare(`
+              UPDATE transactions
+              SET import_id = ?,
+                import_row_id = ?,
+                transaction_date = ?,
+                description = ?,
+                amount_minor = ?,
+                entry_type = ?,
+                transfer_direction = ?,
+                updated_at = CURRENT_TIMESTAMP
+              WHERE household_id = ?
+                AND id = ?
+                AND account_id = ?
+                AND import_id IS NULL
+                AND bank_certification_status = 'provisional'
+            `)
+            .bind(
+              importId,
+              rowId,
+              row.date,
+              row.description,
+              row.amountMinor,
+              row.entryType,
+              row.transferDirection ?? null,
+              DEFAULT_HOUSEHOLD_ID,
+              reconciliationTarget.id,
+              accountId
+            )
+        );
+        monthsToRecalculate.add(reconciliationTarget.transaction_date.slice(0, 7));
+        monthsToRecalculate.add(row.date.slice(0, 7));
+        continue;
+      }
+
+      if (reconciliationTarget) {
         statements.push(
           db
             .prepare(`
@@ -3101,11 +3142,11 @@ export async function commitImportBatch(
               importId,
               rowId,
               DEFAULT_HOUSEHOLD_ID,
-              certificationTarget.id,
+              reconciliationTarget.id,
               accountId
             )
         );
-        monthsToRecalculate.add(certificationTarget.transaction_date.slice(0, 7));
+        monthsToRecalculate.add(reconciliationTarget.transaction_date.slice(0, 7));
         monthsToRecalculate.add(row.date.slice(0, 7));
         continue;
       }

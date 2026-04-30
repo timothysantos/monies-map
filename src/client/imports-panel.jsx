@@ -45,7 +45,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [unknownCategoryMode, setUnknownCategoryMode] = useState(DEFAULT_UNKNOWN_CATEGORY_MODE);
   const [columnMappings, setColumnMappings] = useState({});
 
-  // Preview payload returned by the server after duplicate detection and matching.
+  // Preview payload returned by the server after entry reconciliation, category
+  // matching, and account resolution.
   const [preview, setPreview] = useState(null);
   const [previewRows, setPreviewRows] = useState([]);
   const [previewError, setPreviewError] = useState("");
@@ -215,7 +216,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     commitLabel,
     knownAccountNames,
     previewReconciliationRowCount,
-    statementCertificationRowCount,
+    reconciledExistingRowCount,
     skippedPreviewRowCount,
     needsReviewPreviewRowCount,
     showStatementAccountMapping,
@@ -895,7 +896,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             visibleOverlapImports={visibleOverlapImports}
             previewReconciliationRowCount={previewReconciliationRowCount}
             certifiedConflictRows={certifiedConflictRows}
-            statementCertificationRowCount={statementCertificationRowCount}
+            reconciledExistingRowCount={reconciledExistingRowCount}
+            statementImportSourceType={statementImportMeta.sourceType}
             skippedPreviewRowCount={skippedPreviewRowCount}
             needsReviewPreviewRowCount={needsReviewPreviewRowCount}
             statementReconciliations={statementReconciliations}
@@ -921,7 +923,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               people={people}
               knownAccountNames={knownAccountNames}
               statementCheckpointCount={statementCheckpoints.length}
-              statementCertificationRowCount={statementCertificationRowCount}
+              reconciledExistingRowCount={reconciledExistingRowCount}
+              statementImportSourceType={statementImportMeta.sourceType}
               hasAlreadyCoveredCheckpointRefresh={hasAlreadyCoveredCheckpointRefresh}
               hasEmptyStatementCheckpointOnly={hasEmptyStatementCheckpointOnly}
               isCommitDisabled={isCommitDisabled}
@@ -1028,11 +1031,11 @@ function getPreviewRowStatementAccountName(row) {
 
 function getPreviewCommitStatusReason(commitStatus, matchKind) {
   if (commitStatus === "skipped" && matchKind === "exact") {
-    return "Exact duplicate already exists in the ledger.";
+    return "An exact reconciliation match already exists in the ledger.";
   }
 
   if (commitStatus === "skipped" && matchKind === "probable") {
-    return "Probable duplicate already exists in the ledger.";
+    return "A probable reconciliation match already exists in the ledger.";
   }
 
   if (commitStatus === "skipped") {
@@ -1040,7 +1043,7 @@ function getPreviewCommitStatusReason(commitStatus, matchKind) {
   }
 
   if (commitStatus === "needs_review") {
-    return "Possible duplicate needs a user decision before commit.";
+    return "A possible reconciliation match needs a user decision before commit.";
   }
 
   return undefined;

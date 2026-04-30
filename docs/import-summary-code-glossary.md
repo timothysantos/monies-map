@@ -25,7 +25,12 @@ the UI blocks where they are used.
 - `mapped row`: A CSV row after the user maps source columns into the app's
   expected import fields such as date, description, and amount.
 - `preview row`: The normalized row returned by the server preview API after
-  duplicate detection, category matching, and account resolution have run.
+  entry reconciliation, category matching, and account resolution have run.
+- `entry reconciliation`: The row-level matching workflow that decides whether
+  a new source observation should create a ledger entry, promote an existing
+  provisional entry, or certify an already-matched entry.
+- `reconciliation match`: A preview-time candidate showing that a source row
+  may belong to an existing ledger entry.
 - `statement import`: A PDF-based bank statement import. These imports can carry
   statement balances and reconciliation checkpoints.
 - `checkpoint`: A statement balance snapshot for one detected account. A
@@ -34,7 +39,8 @@ the UI blocks where they are used.
 - `statement reconciliation`: The comparison between a statement checkpoint and
   the ledger balance implied by the rows that will be committed.
 - `overlap import`: An earlier import batch that touches the same account/date
-  period and may explain why the current preview is showing duplicates or
+  period and may explain why the current preview is showing reconciliation
+  matches or
   already-covered rows.
 - `certified conflict`: A preview row that collides with a ledger row already
   treated as statement-certified history. These rows require extra protection.
@@ -42,6 +48,17 @@ the UI blocks where they are used.
   user still wants to save statement checkpoints or reconciliation data.
 - `needs review`: A preview row that the system cannot safely auto-commit
   because it still needs a user decision.
+
+## Client implementation boundary
+
+- `moniesClient`: The deep module service exported by
+  [`src/client/monies-client-service.js`](/Users/tim/22m/ai-projects/monies_map/src/client/monies-client-service.js).
+  Import-page components should prefer this surface over reaching directly into
+  leaf helper modules.
+- `import helpers`: Low-level mapping, PDF extraction, and preview-row shaping
+  helpers that stay behind `moniesClient.imports`.
+- `format helpers`: Shared formatting and money/date parsing helpers that stay
+  behind `moniesClient.format`.
 
 ## Import page block map
 

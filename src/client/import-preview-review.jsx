@@ -29,7 +29,8 @@ export function ImportPreviewReview({
   visibleOverlapImports,
   previewReconciliationRowCount,
   certifiedConflictRows,
-  statementCertificationRowCount,
+  reconciledExistingRowCount,
+  statementImportSourceType,
   skippedPreviewRowCount,
   needsReviewPreviewRowCount,
   statementReconciliations,
@@ -81,7 +82,8 @@ export function ImportPreviewReview({
         skippedPreviewRowCount={skippedPreviewRowCount}
         needsReviewPreviewRowCount={needsReviewPreviewRowCount}
         visibleOverlapImports={visibleOverlapImports}
-        statementCertificationRowCount={statementCertificationRowCount}
+        reconciledExistingRowCount={reconciledExistingRowCount}
+        statementImportSourceType={statementImportSourceType}
       />
 
       {/* The exception register is the short list of why this preview needs attention. */}
@@ -302,7 +304,15 @@ function UnknownCategories({ categoryNames, unknownCategoryMode }) {
   );
 }
 
-function PreviewGuardrailPills({ preview, previewReconciliationRowCount, statementCertificationRowCount, skippedPreviewRowCount, needsReviewPreviewRowCount, visibleOverlapImports }) {
+function PreviewGuardrailPills({
+  preview,
+  previewReconciliationRowCount,
+  reconciledExistingRowCount,
+  statementImportSourceType,
+  skippedPreviewRowCount,
+  needsReviewPreviewRowCount,
+  visibleOverlapImports
+}) {
   return (
     <div className="import-summary-strip" aria-label={messages.imports.previewGuardrailsLabel}>
       {preview.startDate && preview.endDate ? (
@@ -314,8 +324,10 @@ function PreviewGuardrailPills({ preview, previewReconciliationRowCount, stateme
       {previewReconciliationRowCount ? (
         <span className="import-summary-item is-warning">{messages.imports.reconciliationCandidates(previewReconciliationRowCount)}</span>
       ) : null}
-      {statementCertificationRowCount ? (
-        <span className="import-summary-item is-success">{messages.imports.statementCertifiedRows(statementCertificationRowCount)}</span>
+      {reconciledExistingRowCount ? (
+        <span className="import-summary-item is-success">
+          {messages.imports.reconciledExistingRows(reconciledExistingRowCount, statementImportSourceType)}
+        </span>
       ) : null}
       {skippedPreviewRowCount ? (
         <span className="import-summary-item">{messages.imports.willSkipRows(skippedPreviewRowCount)}</span>
