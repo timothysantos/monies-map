@@ -149,6 +149,7 @@ export async function buildImportPreview(
       rawRow
     };
     const requestedCommitStatus = getRequestedCommitStatus(rawRow);
+    const requestedReconciliationTargetTransactionId = getRequestedReconciliationTargetTransactionId(rawRow);
     const previewRowHash = buildImportRowHash(previewRow);
     const previewRowDateCandidates = getPreviewRowDateCandidates(previewRow);
     const nearMatches = existingTransactions.results
@@ -208,6 +209,11 @@ export async function buildImportPreview(
     previewRow.commitStatus = requestedCommitStatus ?? getDefaultCommitStatus(strongestMatch);
     previewRow.commitStatusReason = getCommitStatusReason(previewRow.commitStatus, strongestMatch);
     applySourceAuthorityToPreviewRow(previewRow, input.sourceType);
+    applyRequestedReconciliationTargetToPreviewRow(
+      previewRow,
+      input.sourceType,
+      requestedReconciliationTargetTransactionId
+    );
     previewRows.push(previewRow);
 
   }
@@ -885,6 +891,41 @@ function normalizeAccountIdentityName(value?: string) {
 function getRequestedCommitStatus(rawRow: Record<string, string>) {
   const value = rawRow.commitStatus ?? rawRow.previewCommitStatus;
   return value === "included" || value === "skipped" || value === "needs_review" ? value : undefined;
+}
+
+function getRequestedReconciliationTargetTransactionId(rawRow: Record<string, string>) {
+  const value = rawRow.previewReconciliationTargetTransactionId ?? rawRow.reconciliationTargetTransactionId;
+  return value?.trim() || undefined;
+}
+
+function applyRequestedReconciliationTargetToPreviewRow(
+  previewRow: ImportPreviewRowDto,
+  sourceType: "csv" | "pdf" | "manual" | undefined,
+  requestedTransactionId?: string
+) {
+  if (!requestedTransactionId) {
+    return;
+  }
+
+  const availableMatches = [
+    ...(previewRow.reconciliationMatches ?? []),
+    ...(previewRow.reconciliationMatch ? [previewRow.reconciliationMatch] : [])
+  ];
+  const requestedMatch = availableMatches.find((match) => match.existingTransactionId === requestedTransactionId);
+  if (!requestedMatch?.existingTransactionId) {
+    return;
+  }
+
+  previewRow.reconciliationMatch = requestedMatch;
+  previewRow.reconciliationMatchCount = availableMatches.length;
+  previewRow.reconciliationTargetTransactionId = requestedMatch.existingTransactionId;
+  previewRow.reconciliationMatches = undefined;
+  previewRow.commitStatus = "included";
+  previewRow.commitStatusReason = sourceType === "pdf"
+    ? "Official statement will certify the selected existing ledger row while preserving user edits."
+    : requestedMatch.existingSourceType === "manual"
+      ? "This import will promote the selected manual ledger row while preserving user edits and split links."
+      : "This import will reconcile against the selected existing ledger row instead of creating a new one.";
 }
 
 function getDuplicateMatchKind(isExactDuplicate: boolean, dayDistance: number, descriptionSimilarity: number) {

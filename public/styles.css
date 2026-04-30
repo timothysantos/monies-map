@@ -6042,6 +6042,14 @@ button.split-activity-card:hover {
   white-space: normal;
 }
 
+.duplicate-match-highlight {
+  padding: 0 0.08em;
+  border-radius: 0.2em;
+  background: rgba(182, 53, 36, 0.14);
+  color: #b63524;
+  font-weight: 800;
+}
+
 .duplicate-match-card p {
   margin: 0;
   color: var(--muted);

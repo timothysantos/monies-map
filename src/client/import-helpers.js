@@ -131,6 +131,7 @@ export function buildRawImportRowFromPreviewRow(row) {
     category: row.categoryName ?? "",
     note: row.note ?? "",
     type: row.entryType,
+    ...(row.reconciliationTargetTransactionId ? { previewReconciliationTargetTransactionId: row.reconciliationTargetTransactionId } : {}),
     ...(row.commitStatusExplicit && row.commitStatus ? { commitStatus: row.commitStatus } : {})
   };
 }

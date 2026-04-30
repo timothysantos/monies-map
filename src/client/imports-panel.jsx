@@ -591,7 +591,30 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         ? {
           ...row,
           commitStatus,
+          reconciliationTargetTransactionId: commitStatus === "included" ? row.reconciliationTargetTransactionId : undefined,
           commitStatusReason: getPreviewCommitStatusReason(commitStatus, row.reconciliationMatches?.[0]?.matchKind ?? row.reconciliationMatch?.matchKind),
+          commitStatusExplicit: true
+        }
+        : row
+    ));
+    setPreviewRows(nextRows);
+    if (statementCheckpoints.length) {
+      void refreshPreviewFromRows({
+        rows: nextRows.map(importService.buildRawRowFromPreviewRow),
+        activeMessage: messages.imports.statementReconciliationRefreshing,
+        successMessage: messages.imports.statementReconciliationRefreshed
+      });
+    }
+  }
+
+  function promotePreviewRowReconciliationTarget(rowId, targetTransactionId) {
+    const nextRows = previewRows.map((row) => (
+      row.rowId === rowId
+        ? {
+          ...row,
+          reconciliationTargetTransactionId: targetTransactionId,
+          commitStatus: "included",
+          commitStatusReason: "This import will promote the selected existing ledger row instead of creating a new one.",
           commitStatusExplicit: true
         }
         : row
@@ -934,6 +957,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               onCommit={handleCommit}
               onUpdatePreviewRow={updatePreviewRow}
               onUpdatePreviewRowCommitStatus={updatePreviewRowCommitStatus}
+              onPromotePreviewRowReconciliationTarget={promotePreviewRowReconciliationTarget}
               getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
             />
           ) : (
