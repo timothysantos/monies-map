@@ -27,7 +27,7 @@ export function ImportPreviewReview({
   unknownCategoryMode,
   showStatementAccountMapping,
   visibleOverlapImports,
-  previewDuplicateRowCount,
+  previewReconciliationRowCount,
   certifiedConflictRows,
   statementCertificationRowCount,
   skippedPreviewRowCount,
@@ -77,7 +77,7 @@ export function ImportPreviewReview({
       {/* These pills give a fast count of what the larger preview table will contain. */}
       <PreviewGuardrailPills
         preview={preview}
-        previewDuplicateRowCount={previewDuplicateRowCount}
+        previewReconciliationRowCount={previewReconciliationRowCount}
         skippedPreviewRowCount={skippedPreviewRowCount}
         needsReviewPreviewRowCount={needsReviewPreviewRowCount}
         visibleOverlapImports={visibleOverlapImports}
@@ -131,10 +131,10 @@ export function ImportPreviewReview({
         />
       ) : null}
 
-      {previewDuplicateRowCount ? (
+      {previewReconciliationRowCount ? (
         <div className="import-warning import-warning-attention">
-          <strong>{messages.imports.duplicateMatchesTitle}</strong>
-          <p className="lede compact">{messages.imports.duplicateMatchesDetail}</p>
+          <strong>{messages.imports.reconciliationMatchesTitle}</strong>
+          <p className="lede compact">{messages.imports.reconciliationMatchesDetail}</p>
         </div>
       ) : null}
     </>
@@ -148,7 +148,7 @@ function CertifiedConflictRows({ rows }) {
       <p className="lede compact">{messages.imports.certifiedConflictDetail}</p>
       <div className="stack">
         {rows.map((row) => {
-          const match = row.comparisonMatch;
+          const match = row.reconciliationMatch;
           return (
             <div key={row.rowId} className="import-card import-card-compact">
               <div className="import-history-main">
@@ -302,7 +302,7 @@ function UnknownCategories({ categoryNames, unknownCategoryMode }) {
   );
 }
 
-function PreviewGuardrailPills({ preview, previewDuplicateRowCount, statementCertificationRowCount, skippedPreviewRowCount, needsReviewPreviewRowCount, visibleOverlapImports }) {
+function PreviewGuardrailPills({ preview, previewReconciliationRowCount, statementCertificationRowCount, skippedPreviewRowCount, needsReviewPreviewRowCount, visibleOverlapImports }) {
   return (
     <div className="import-summary-strip" aria-label={messages.imports.previewGuardrailsLabel}>
       {preview.startDate && preview.endDate ? (
@@ -311,8 +311,8 @@ function PreviewGuardrailPills({ preview, previewDuplicateRowCount, statementCer
           formatService.formatDateOnly(preview.endDate)
         )}</span>
       ) : null}
-      {previewDuplicateRowCount ? (
-        <span className="import-summary-item is-warning">{messages.imports.duplicateCandidates(previewDuplicateRowCount)}</span>
+      {previewReconciliationRowCount ? (
+        <span className="import-summary-item is-warning">{messages.imports.reconciliationCandidates(previewReconciliationRowCount)}</span>
       ) : null}
       {statementCertificationRowCount ? (
         <span className="import-summary-item is-success">{messages.imports.statementCertifiedRows(statementCertificationRowCount)}</span>

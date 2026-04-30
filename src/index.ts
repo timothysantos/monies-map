@@ -1302,7 +1302,7 @@ export default {
           commitStatus?: "included" | "skipped" | "needs_review";
           note?: string;
           rawRow: Record<string, string>;
-          comparisonMatch?: {
+          reconciliationMatch?: {
             existingImportId?: string;
             existingTransactionId?: string;
             existingAccountId?: string;
@@ -1314,8 +1314,8 @@ export default {
             accountName?: string;
             matchKind: "exact" | "probable" | "near";
           };
-          comparisonMatchCount?: number;
-          statementCertificationTargetTransactionId?: string;
+          reconciliationMatchCount?: number;
+          reconciliationTargetTransactionId?: string;
           isStatementMatchResolved?: boolean;
           isCertifiedConflict?: boolean;
         }[];
@@ -1348,7 +1348,7 @@ export default {
           commitStatus?: "included" | "skipped" | "needs_review";
           note?: string;
           rawRow: Record<string, string>;
-          comparisonMatch?: {
+          reconciliationMatch?: {
             existingImportId?: string;
             existingTransactionId?: string;
             existingAccountId?: string;
@@ -1360,8 +1360,8 @@ export default {
             accountName?: string;
             matchKind: "exact" | "probable" | "near";
           };
-          comparisonMatchCount?: number;
-          statementCertificationTargetTransactionId?: string;
+          reconciliationMatchCount?: number;
+          reconciliationTargetTransactionId?: string;
           isStatementMatchResolved?: boolean;
           isCertifiedConflict?: boolean;
         }[];

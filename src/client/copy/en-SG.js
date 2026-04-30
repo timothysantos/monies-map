@@ -260,7 +260,7 @@ export const messages = {
     previewRows: "Preview rows",
     previewReady: "Preview ready. For PDF statements, matched mid-cycle rows will be certified automatically before commit.",
     largeImportNotice: (count) => `Large import: ${count} rows will be committed in protected chunks. If Cloudflare still rejects the request, split the CSV into smaller batches.`,
-    duplicateCandidates: (count) => `${count} ledger match${count === 1 ? "" : "es"} need a decision`,
+    reconciliationCandidates: (count) => `${count} entry reconciliation match${count === 1 ? "" : "es"} need a decision`,
     statementCertifiedRows: (count) => `${count} mid-cycle row${count === 1 ? "" : "s"} will be certified by the statement`,
     overlappingImports: (count) => `${count} prior import${count === 1 ? "" : "s"} in this account period`,
     exceptionRegisterTitle: "Exceptions to resolve",
@@ -271,7 +271,7 @@ export const messages = {
       review_rows: (count) => `${count} row decision${count === 1 ? "" : "s"}`,
       statement_mismatch: (count) => `${count} statement mismatch${count === 1 ? "" : "es"}`,
       account_identity: (count) => `${count} account identity proof${count === 1 ? "" : "s"}`,
-      ledger_match: (count) => `${count} ledger match exception${count === 1 ? "" : "s"}`,
+      entry_reconciliation: (count) => `${count} entry reconciliation exception${count === 1 ? "" : "s"}`,
       prior_import_context: (count) => `${count} prior import context item${count === 1 ? "" : "s"}`
     },
     previewGuardrailsLabel: "Import preview checks",
@@ -327,8 +327,8 @@ export const messages = {
       unknown_account: "Needs account",
       identity_unconfirmed: "Needs account proof"
     },
-    duplicateMatchesTitle: "Ledger matches needing decision",
-    duplicateMatchesDetail: "These rows could not be certified automatically. Review only these exceptions before commit.",
+    reconciliationMatchesTitle: "Entry reconciliation matches needing decision",
+    reconciliationMatchesDetail: "These rows could not be reconciled automatically. Review only these exceptions before commit.",
     certifiedConflictTitle: (count) => count === 1 ? "Certified row conflict" : `Certified row conflicts (${count})`,
     certifiedConflictDetail: "These rows are already certified somewhere in the ledger, but they do not safely reconcile this statement checkpoint. They are blocking accounting conflicts, not rows to include again.",
     certifiedConflictRow: (date, description, amount) => `${date} • ${description} • ${amount}`,

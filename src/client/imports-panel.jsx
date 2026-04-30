@@ -214,7 +214,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     isCommitDisabled,
     commitLabel,
     knownAccountNames,
-    previewDuplicateRowCount,
+    previewReconciliationRowCount,
     statementCertificationRowCount,
     skippedPreviewRowCount,
     needsReviewPreviewRowCount,
@@ -563,22 +563,22 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }
 
   function updatePreviewRow(rowId, patch) {
-    // Edits to duplicate-sensitive fields invalidate prior match decisions, so
+    // Edits to reconciliation-sensitive fields invalidate prior match decisions, so
     // the row goes back to a neutral "included until re-previewed" state.
-    const duplicateKeyFields = ["date", "description", "amountMinor", "entryType", "transferDirection", "accountId", "accountName"];
-    const shouldClearDuplicateMatches = duplicateKeyFields.some((field) => Object.prototype.hasOwnProperty.call(patch, field));
+    const reconciliationKeyFields = ["date", "description", "amountMinor", "entryType", "transferDirection", "accountId", "accountName"];
+    const shouldClearReconciliationMatches = reconciliationKeyFields.some((field) => Object.prototype.hasOwnProperty.call(patch, field));
     setPreviewRows((current) => current.map((row) => (
       row.rowId === rowId
         ? {
           ...row,
           ...patch,
-          duplicateMatches: shouldClearDuplicateMatches ? undefined : row.duplicateMatches,
-          comparisonMatch: shouldClearDuplicateMatches ? undefined : row.comparisonMatch,
-          comparisonMatchCount: shouldClearDuplicateMatches ? undefined : row.comparisonMatchCount,
-          statementCertificationTargetTransactionId: shouldClearDuplicateMatches ? undefined : row.statementCertificationTargetTransactionId,
-          commitStatus: shouldClearDuplicateMatches ? "included" : (patch.commitStatus ?? row.commitStatus),
-          commitStatusReason: shouldClearDuplicateMatches ? undefined : row.commitStatusReason,
-          commitStatusExplicit: shouldClearDuplicateMatches ? false : row.commitStatusExplicit
+          reconciliationMatches: shouldClearReconciliationMatches ? undefined : row.reconciliationMatches,
+          reconciliationMatch: shouldClearReconciliationMatches ? undefined : row.reconciliationMatch,
+          reconciliationMatchCount: shouldClearReconciliationMatches ? undefined : row.reconciliationMatchCount,
+          reconciliationTargetTransactionId: shouldClearReconciliationMatches ? undefined : row.reconciliationTargetTransactionId,
+          commitStatus: shouldClearReconciliationMatches ? "included" : (patch.commitStatus ?? row.commitStatus),
+          commitStatusReason: shouldClearReconciliationMatches ? undefined : row.commitStatusReason,
+          commitStatusExplicit: shouldClearReconciliationMatches ? false : row.commitStatusExplicit
         }
         : row
     )));
@@ -590,7 +590,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         ? {
           ...row,
           commitStatus,
-          commitStatusReason: getPreviewCommitStatusReason(commitStatus, row.duplicateMatches?.[0]?.matchKind ?? row.comparisonMatch?.matchKind),
+          commitStatusReason: getPreviewCommitStatusReason(commitStatus, row.reconciliationMatches?.[0]?.matchKind ?? row.reconciliationMatch?.matchKind),
           commitStatusExplicit: true
         }
         : row
@@ -893,7 +893,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             unknownCategoryMode={unknownCategoryMode}
             showStatementAccountMapping={showStatementAccountMapping}
             visibleOverlapImports={visibleOverlapImports}
-            previewDuplicateRowCount={previewDuplicateRowCount}
+            previewReconciliationRowCount={previewReconciliationRowCount}
             certifiedConflictRows={certifiedConflictRows}
             statementCertificationRowCount={statementCertificationRowCount}
             skippedPreviewRowCount={skippedPreviewRowCount}

@@ -3037,7 +3037,7 @@ export async function commitImportBatch(
         throw new Error(`Unknown owner: ${row.ownerName ?? "Unassigned"}`);
       }
 
-      const certificationTarget = isOfficialStatementImport && row.statementCertificationTargetTransactionId
+      const certificationTarget = isOfficialStatementImport && row.reconciliationTargetTransactionId
         ? await db
           .prepare(`
             SELECT id, transaction_date
@@ -3047,11 +3047,11 @@ export async function commitImportBatch(
               AND account_id = ?
               AND bank_certification_status = 'provisional'
           `)
-          .bind(DEFAULT_HOUSEHOLD_ID, row.statementCertificationTargetTransactionId, accountId)
+          .bind(DEFAULT_HOUSEHOLD_ID, row.reconciliationTargetTransactionId, accountId)
           .first<{ id: string; transaction_date: string }>()
         : null;
 
-      if (isOfficialStatementImport && row.statementCertificationTargetTransactionId && !certificationTarget) {
+      if (isOfficialStatementImport && row.reconciliationTargetTransactionId && !certificationTarget) {
         throw new Error("Statement certification target is no longer available. Refresh the import preview and try again.");
       }
 
@@ -3381,8 +3381,8 @@ async function saveStatementReconciliationCertificates(
           statementStartDate,
           statementEndDate,
           controlRows.length,
-          committedRows.filter((row) => !row.statementCertificationTargetTransactionId).length,
-          committedRows.filter((row) => row.statementCertificationTargetTransactionId).length,
+          committedRows.filter((row) => !row.reconciliationTargetTransactionId).length,
+          committedRows.filter((row) => row.reconciliationTargetTransactionId).length,
           controlRows.filter((row) => row.commitStatus === "skipped").length,
           needsReviewRowCount,
           totals.debitTotalMinor,

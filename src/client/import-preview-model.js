@@ -42,8 +42,8 @@ export function buildImportPreviewModel({
   const duplicateCheckpointAccounts = getDuplicateCheckpointAccounts(statementCheckpoints);
   const visibleOverlapImports = (preview?.overlapImports ?? []).filter((item) => !dismissedOverlapIds.includes(item.id));
   const visiblePreviewRows = previewRows.filter((row) => !row.isStatementMatchResolved && !row.isCertifiedConflict);
-  const previewDuplicateRowCount = visiblePreviewRows.filter((row) => row.duplicateMatches?.length).length;
-  const statementCertificationRowCount = previewRows.filter((row) => row.statementCertificationTargetTransactionId).length;
+  const previewReconciliationRowCount = visiblePreviewRows.filter((row) => row.reconciliationMatches?.length).length;
+  const statementCertificationRowCount = previewRows.filter((row) => row.reconciliationTargetTransactionId).length;
   const skippedPreviewRowCount = visiblePreviewRows.filter((row) => row.commitStatus === "skipped").length;
   const needsReviewPreviewRowCount = visiblePreviewRows.filter((row) => row.commitStatus === "needs_review").length;
   const includedPreviewRows = visiblePreviewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review");
@@ -81,7 +81,7 @@ export function buildImportPreviewModel({
     needsReviewPreviewRowCount,
     hasAlreadyCoveredCheckpointRefresh,
     hasEmptyStatementCheckpointOnly,
-    previewDuplicateRowCount,
+    previewReconciliationRowCount,
     statementCertificationRowCount,
     skippedPreviewRowCount,
     commitLabel: hasAlreadyCoveredCheckpointRefresh
