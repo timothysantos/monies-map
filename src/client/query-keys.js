@@ -1,16 +1,33 @@
+/**
+ * @module QueryKeyManager
+ * @purpose Deterministic React Query key generation.
+ * @logic Sorts params alphabetically to ensure consistent cache IDs.
+ * @prevents Duplicate fetches caused by object key reordering.
+ */
+
+
 function normalizeRecord(value) {
+  // 1. Guard clause: If the value is null/undefined, return an empty object
   if (!value) {
     return {};
   }
 
+  // 2. Handle URLSearchParams (e.g., ?name=tim&age=25)
   if (value instanceof URLSearchParams) {
-    return Object.fromEntries([...value.entries()].sort(([left], [right]) => left.localeCompare(right)));
+    return Object.fromEntries(
+      [...value.entries()] // Convert iterator to an array of [key, value] pairs
+      .sort(([left], [right]) => left.localeCompare(right)) // Sort by key name
+    );
   }
 
+  // 3. Handle Standard Objects
   return Object.fromEntries(
-    Object.entries(value)
-      .filter(([, entryValue]) => entryValue !== undefined)
-      .sort(([left], [right]) => left.localeCompare(right))
+    Object.entries(value) // Convert {b: 2, a: 1} into [['b', 2], ['a', 1]]
+      // Filter out 'undefined' values so they don't affect the cache key
+      .filter(([, entryValue]) => entryValue !== undefined) 
+      // .sort(): Alphabetize the keys (e.g., 'a' comes before 'b')
+      // .localeCompare(): A robust way to compare strings (handles accents/casing)
+      .sort(([left], [right]) => left.localeCompare(right)) 
   );
 }
 
