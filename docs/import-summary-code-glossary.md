@@ -31,6 +31,9 @@ the UI blocks where they are used.
   provisional entry, or certify an already-matched entry.
 - `reconciliation match`: A preview-time candidate showing that a source row
   may belong to an existing ledger entry.
+- `bank certification status`: The trust state of a ledger entry's bank-facing
+  facts. The UI states are `Manual provisional`, `Import provisional`, and
+  `Statement certified`.
 - `statement import`: A PDF-based bank statement import. These imports can carry
   statement balances and reconciliation checkpoints.
 - `checkpoint`: A statement balance snapshot for one detected account. A

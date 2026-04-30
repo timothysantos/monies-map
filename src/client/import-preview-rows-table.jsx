@@ -77,6 +77,7 @@ export function ImportPreviewRowsTable({
           categorySelectOptions={categorySelectOptions}
           people={people}
           knownAccountNames={knownAccountNames}
+          statementImportSourceType={statementImportSourceType}
           onUpdatePreviewRow={onUpdatePreviewRow}
           onUpdatePreviewRowCommitStatus={onUpdatePreviewRowCommitStatus}
           getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
@@ -95,15 +96,16 @@ export function ImportPreviewRowsTable({
           <summary>{messages.imports.skippedRowsTitle(skippedRows.length)}</summary>
           <PreviewRowsTable
             rows={skippedRows}
-            accounts={accounts}
-            accountOptions={accountOptions}
-            categorySelectOptions={categorySelectOptions}
-            people={people}
-            knownAccountNames={knownAccountNames}
-            onUpdatePreviewRow={onUpdatePreviewRow}
-            onUpdatePreviewRowCommitStatus={onUpdatePreviewRowCommitStatus}
-            getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
-            isSkippedTable
+          accounts={accounts}
+          accountOptions={accountOptions}
+          categorySelectOptions={categorySelectOptions}
+          people={people}
+          knownAccountNames={knownAccountNames}
+          statementImportSourceType={statementImportSourceType}
+          onUpdatePreviewRow={onUpdatePreviewRow}
+          onUpdatePreviewRowCommitStatus={onUpdatePreviewRowCommitStatus}
+          getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
+          isSkippedTable
           />
         </details>
       ) : null}
@@ -121,6 +123,7 @@ function PreviewRowsTable({
   categorySelectOptions,
   people,
   knownAccountNames,
+  statementImportSourceType,
   onUpdatePreviewRow,
   onUpdatePreviewRowCommitStatus,
   getPreviewAccountOwnerPatch,
@@ -297,7 +300,7 @@ function PreviewRowsTable({
                               <small className="duplicate-row-detail">
                                 {messages.imports.duplicateRowDetail(formatDuplicateMatch(duplicateMatch))}
                               </small>
-                              <DuplicateMatchPopover row={row} match={duplicateMatch} />
+                              <DuplicateMatchPopover row={row} match={duplicateMatch} statementImportSourceType={statementImportSourceType} />
                             </div>
                           ) : null}
                           {row.commitStatusReason ? (
@@ -333,8 +336,10 @@ function formatImportPreviewDate(value) {
   return formatService.formatDateOnly(value);
 }
 
-export function DuplicateMatchPopover({ row, match }) {
+export function DuplicateMatchPopover({ row, match, statementImportSourceType = "csv" }) {
   const ledgerHref = match.existingTransactionId ? buildDuplicateLedgerEntryHref(match) : "";
+  const incomingCertificationLabel = getIncomingBankCertificationLabel(statementImportSourceType);
+  const ledgerCertificationLabel = getExistingBankCertificationLabel(match);
   return (
     <Popover.Root>
       <Popover.Trigger asChild>
@@ -355,6 +360,7 @@ export function DuplicateMatchPopover({ row, match }) {
               description={row.description}
               accountName={row.accountName}
               amountMinor={row.amountMinor}
+              bankCertificationLabel={incomingCertificationLabel}
             />
             <span className="duplicate-match-arrow" aria-hidden="true">{"->"}</span>
             <DuplicateMatchCard
@@ -363,6 +369,7 @@ export function DuplicateMatchPopover({ row, match }) {
               description={match.description}
               accountName={match.accountName}
               amountMinor={match.amountMinor}
+              bankCertificationLabel={ledgerCertificationLabel}
             />
           </div>
           {ledgerHref ? (
@@ -377,14 +384,35 @@ export function DuplicateMatchPopover({ row, match }) {
   );
 }
 
-function DuplicateMatchCard({ label, date, description, accountName, amountMinor }) {
+function DuplicateMatchCard({ label, date, description, accountName, amountMinor, bankCertificationLabel }) {
   return (
     <div className="duplicate-match-card">
       <span>{label}</span>
       <strong>{description || messages.common.emptyValue}</strong>
       <p>{messages.common.triplet(date, accountName ?? messages.common.emptyValue, formatService.formatMinorInput(amountMinor))}</p>
+      <small>{messages.imports.bankCertificationStatusLine(bankCertificationLabel)}</small>
     </div>
   );
+}
+
+function getIncomingBankCertificationLabel(sourceType) {
+  if (sourceType === "pdf") {
+    return messages.imports.bankCertificationStatusIncomingStatement;
+  }
+
+  if (sourceType === "manual") {
+    return "Manual provisional";
+  }
+
+  return "Import provisional";
+}
+
+function getExistingBankCertificationLabel(match) {
+  if (match.existingBankCertificationStatus === "statement_certified") {
+    return "Statement certified";
+  }
+
+  return match.existingSourceType === "manual" ? "Manual provisional" : "Import provisional";
 }
 
 function buildDuplicateLedgerEntryHref(match) {

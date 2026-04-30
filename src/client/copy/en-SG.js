@@ -343,6 +343,8 @@ export const messages = {
     duplicateMatchPopoverDetail: "Compare the incoming row with the existing ledger row before deciding.",
     duplicateMatchIncomingLabel: "Incoming row",
     duplicateMatchLedgerLabel: "Ledger row",
+    bankCertificationStatusLine: (label) => `Bank certification status: ${label}`,
+    bankCertificationStatusIncomingStatement: "Statement certified on commit",
     openLedgerEntry: "Open ledger entry",
     needsReview: "Needs review",
     willImportRows: (count) => `${count} row${count === 1 ? "" : "s"} will import`,

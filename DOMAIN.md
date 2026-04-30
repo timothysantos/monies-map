@@ -35,6 +35,9 @@ copy, or docs:
   input.
 - Use `statement checkpoint` as the product term for an account balance anchor.
   The storage table is `account_balance_checkpoints`.
+- Use `bank certification status` for the trust state of a ledger entry's
+  bank-facing facts across manual capture, working imports, and final statement
+  proof.
 
 ## Core Entities
 
@@ -262,6 +265,34 @@ Important distinctions:
   needs a matched pair of entries linked by a transfer group.
 - Shared ownership on a ledger entry is not the same thing as a split expense
   record in the split workspace.
+
+### Bank Certification Status
+
+The trust state of a ledger entry's bank-facing facts. This status explains
+whether the row is still provisional working data or has been proven by a final
+statement.
+
+Canonical term:
+- `bank certification status`
+
+UI states:
+- `Manual provisional`
+- `Import provisional`
+- `Statement certified`
+
+Storage states:
+- `provisional`
+- `statement_certified`
+
+Important distinctions:
+- `Manual provisional` means the row is provisional and has no import batch.
+- `Import provisional` means the row is provisional and came from a working
+  import such as CSV or XLS.
+- `Statement certified` means a supported final statement is the authority for
+  the row's posted bank facts.
+- The UI shows three states, but storage only needs two raw values because
+  `Manual provisional` versus `Import provisional` is derived from whether the
+  provisional row has an `import batch`.
 
 ### Entry Split
 
