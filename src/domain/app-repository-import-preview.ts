@@ -4,9 +4,11 @@ import {
   compareDescriptionSimilarity,
   computeCheckpointLedgerBalanceMinor,
   daysBetween,
+  extractTransactionDateHint,
   getMonthEndDate,
   getSignedLedgerAmountMinor,
   normalizeAccountOpeningBalanceMinor,
+  normalizeDateString,
   normalizeImportRow,
   normalizeStatementBalanceInputMinor,
   normalizeStatementDate
@@ -148,6 +150,7 @@ export async function buildImportPreview(
     };
     const requestedCommitStatus = getRequestedCommitStatus(rawRow);
     const previewRowHash = buildImportRowHash(previewRow);
+    const previewRowDateCandidates = getPreviewRowDateCandidates(previewRow);
     const nearMatches = existingTransactions.results
       .map((candidate) => {
         const sameAmount = Number(candidate.amount_minor) === Number(previewRow.amountMinor);
@@ -162,7 +165,7 @@ export async function buildImportPreview(
           return undefined;
         }
 
-        const dayDistance = Math.abs(daysBetween(previewRow.date, candidate.transaction_date));
+        const dayDistance = getClosestDayDistance(previewRowDateCandidates, candidate.transaction_date);
         const descriptionSimilarity = compareDescriptionSimilarity(previewRow.description, candidate.description);
         const isExactDuplicate = candidate.normalized_hash === previewRowHash;
         if (!isExactDuplicate && (dayDistance > 3 || descriptionSimilarity < 0.55)) {
@@ -204,7 +207,7 @@ export async function buildImportPreview(
     const strongestMatch = previewRow.reconciliationMatches[0]?.matchKind;
     previewRow.commitStatus = requestedCommitStatus ?? getDefaultCommitStatus(strongestMatch);
     previewRow.commitStatusReason = getCommitStatusReason(previewRow.commitStatus, strongestMatch);
-    applyStatementAuthorityToPreviewRow(previewRow, input.sourceType);
+    applySourceAuthorityToPreviewRow(previewRow, input.sourceType);
     previewRows.push(previewRow);
 
   }
@@ -295,14 +298,36 @@ function buildImportPreviewExceptionSummary(input: {
   ].filter((item) => item.count > 0);
 }
 
-function applyStatementAuthorityToPreviewRow(
+function getPreviewRowDateCandidates(previewRow: ImportPreviewRowDto) {
+  return Array.from(new Set(
+    [
+      previewRow.date,
+      extractTransactionDateHint(previewRow.note),
+      extractTransactionDateHint(previewRow.rawRow?.note),
+      extractTransactionDateHint(previewRow.rawRow?.notes),
+      extractTransactionDateHint(previewRow.rawRow?.remarks),
+      previewRow.rawRow?.transactionDate,
+      previewRow.rawRow?.["transaction date"]
+    ]
+      .map((value) => typeof value === "string" ? normalizeDateString(value) ?? normalizeStatementDate(value) : undefined)
+      .filter((value): value is string => Boolean(value))
+  ));
+}
+
+function getClosestDayDistance(candidates: string[], targetDate: string) {
+  if (!candidates.length) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  return candidates.reduce((closest, candidateDate) => (
+    Math.min(closest, Math.abs(daysBetween(candidateDate, targetDate)))
+  ), Number.POSITIVE_INFINITY);
+}
+
+function applySourceAuthorityToPreviewRow(
   previewRow: ImportPreviewRowDto,
   sourceType?: "csv" | "pdf" | "manual"
 ) {
-  if (sourceType !== "pdf") {
-    return;
-  }
-
   const strongestMatch = previewRow.reconciliationMatches?.[0];
   if (!strongestMatch?.existingTransactionId) {
     return;
@@ -310,6 +335,18 @@ function applyStatementAuthorityToPreviewRow(
 
   previewRow.reconciliationMatch = strongestMatch;
   previewRow.reconciliationMatchCount = previewRow.reconciliationMatches?.length ?? 0;
+
+  if (sourceType === "csv" && canPromoteManualReconciliationMatch(previewRow, strongestMatch)) {
+    previewRow.commitStatus = "included";
+    previewRow.commitStatusReason = "Current-activity import will promote the existing manual ledger row while preserving user edits and split links.";
+    previewRow.reconciliationTargetTransactionId = strongestMatch.existingTransactionId;
+    previewRow.reconciliationMatches = undefined;
+    return;
+  }
+
+  if (sourceType !== "pdf") {
+    return;
+  }
 
   const isAlreadyStatementCertified = strongestMatch.existingSourceType === "pdf"
     || strongestMatch.existingBankCertificationStatus === "statement_certified";
@@ -325,6 +362,16 @@ function applyStatementAuthorityToPreviewRow(
   previewRow.commitStatusReason = "Official statement will certify the existing mid-cycle ledger row while preserving user edits.";
   previewRow.reconciliationTargetTransactionId = strongestMatch.existingTransactionId;
   previewRow.reconciliationMatches = undefined;
+}
+
+function canPromoteManualReconciliationMatch(
+  previewRow: ImportPreviewRowDto,
+  strongestMatch: NonNullable<ImportPreviewRowDto["reconciliationMatch"]>
+) {
+  return strongestMatch.existingSourceType === "manual"
+    && strongestMatch.existingBankCertificationStatus === "provisional"
+    && (previewRow.reconciliationMatchCount ?? 0) === 1
+    && strongestMatch.matchKind !== "near";
 }
 
 function getDirectOwnerNameForAccount(account?: AccountDto, fallbackOwnerName?: string) {
@@ -465,9 +512,9 @@ function autoIncludeDuplicateMatchesExplainedByStatementBalance(input: {
     const confirmableDuplicateRows = getStatementConfirmableDuplicateRowsForAccount(input.previewRows, account.id, statementEndDate);
     const confirmableDuplicateTotalMinor = sumSignedPreviewRows(confirmableDuplicateRows);
 
-    // Duplicate matches are intentionally cautious because bank posting dates
+    // Reconciliation matches are intentionally cautious because bank posting dates
     // can differ across mid-cycle exports and final statements. If adding the
-    // app-skipped or still-unresolved duplicate rows removes the exact
+    // app-skipped or still-unresolved matched rows removes the exact
     // account-level statement delta, the statement has confirmed those rows
     // belong in this import. User-excluded rows keep their explicit decision.
     if (deltaMinor !== 0 && confirmableDuplicateRows.length > 0 && deltaMinor + confirmableDuplicateTotalMinor === 0) {
@@ -878,15 +925,15 @@ function getDefaultCommitStatus(matchKind?: "exact" | "probable" | "near") {
 
 function getCommitStatusReason(commitStatus: "included" | "skipped" | "needs_review", matchKind?: "exact" | "probable" | "near") {
   if (commitStatus === "skipped" && matchKind === "exact") {
-    return "Exact duplicate already exists in the ledger.";
+    return "An exact reconciliation match already exists in the ledger.";
   }
 
   if (commitStatus === "skipped" && matchKind === "probable") {
-    return "Probable duplicate already exists in the ledger.";
+    return "A probable reconciliation match already exists in the ledger.";
   }
 
   if (commitStatus === "needs_review") {
-    return "Possible duplicate needs a user decision before commit.";
+    return "A possible reconciliation match needs a user decision before commit.";
   }
 
   return undefined;

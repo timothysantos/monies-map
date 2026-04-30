@@ -18,7 +18,8 @@ export function ImportPreviewRowsTable({
   people,
   knownAccountNames,
   statementCheckpointCount = 0,
-  statementCertificationRowCount = 0,
+  reconciledExistingRowCount = 0,
+  statementImportSourceType = "csv",
   hasAlreadyCoveredCheckpointRefresh = false,
   hasEmptyStatementCheckpointOnly = false,
   isCommitDisabled,
@@ -36,7 +37,7 @@ export function ImportPreviewRowsTable({
   const activeRows = visibleRows.filter((row) => row.commitStatus !== "skipped");
   const skippedRows = visibleRows.filter((row) => row.commitStatus === "skipped");
   const includedCount = visibleRows.filter((row) => row.commitStatus === "included" || !row.commitStatus).length;
-  const newImportCount = includedCount - statementCertificationRowCount;
+  const newImportCount = includedCount - reconciledExistingRowCount;
   const needsReviewCount = visibleRows.filter((row) => row.commitStatus === "needs_review").length;
   const hasPreviewRows = visibleRows.length > 0 || statementCheckpointCount > 0;
   const skippedRowsRef = useRef(null);
@@ -56,8 +57,10 @@ export function ImportPreviewRowsTable({
         {newImportCount || !statementCheckpointCount ? (
           <span className="import-summary-item is-success">{messages.imports.willImportRows(newImportCount)}</span>
         ) : null}
-        {statementCertificationRowCount ? (
-          <span className="import-summary-item is-success">{messages.imports.willCertifyRows(statementCertificationRowCount)}</span>
+        {reconciledExistingRowCount ? (
+          <span className="import-summary-item is-success">
+            {messages.imports.willReconcileExistingRows(reconciledExistingRowCount, statementImportSourceType)}
+          </span>
         ) : null}
         {statementCheckpointCount ? (
           <span className="import-summary-item is-success">{messages.imports.willSaveStatementCheckpoints(statementCheckpointCount)}</span>

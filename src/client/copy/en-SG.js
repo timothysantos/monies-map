@@ -258,10 +258,12 @@ export const messages = {
     categoryFallbackBlocked: "Unknown categories must be mapped or cleaned before this import can be committed.",
     previewEmpty: "No preview yet.",
     previewRows: "Preview rows",
-    previewReady: "Preview ready. For PDF statements, matched mid-cycle rows will be certified automatically before commit.",
+    previewReady: "Preview ready. Matching rows can be reconciled in place before commit instead of creating duplicate ledger entries.",
     largeImportNotice: (count) => `Large import: ${count} rows will be committed in protected chunks. If Cloudflare still rejects the request, split the CSV into smaller batches.`,
     reconciliationCandidates: (count) => `${count} entry reconciliation match${count === 1 ? "" : "es"} need a decision`,
-    statementCertifiedRows: (count) => `${count} mid-cycle row${count === 1 ? "" : "s"} will be certified by the statement`,
+    reconciledExistingRows: (count, sourceType) => sourceType === "pdf"
+      ? `${count} provisional row${count === 1 ? "" : "s"} will be certified by the statement`
+      : `${count} manual row${count === 1 ? "" : "s"} will be promoted in place by this import`,
     overlappingImports: (count) => `${count} prior import${count === 1 ? "" : "s"} in this account period`,
     exceptionRegisterTitle: "Exceptions to resolve",
     exceptionRegisterDetail: "The app will handle matched statement rows automatically. These are the remaining controls that need attention before the period can close.",
@@ -344,7 +346,9 @@ export const messages = {
     openLedgerEntry: "Open ledger entry",
     needsReview: "Needs review",
     willImportRows: (count) => `${count} row${count === 1 ? "" : "s"} will import`,
-    willCertifyRows: (count) => `${count} existing row${count === 1 ? "" : "s"} will be certified by the statement`,
+    willReconcileExistingRows: (count, sourceType) => sourceType === "pdf"
+      ? `${count} existing row${count === 1 ? "" : "s"} will be certified by the statement`
+      : `${count} existing row${count === 1 ? "" : "s"} will be promoted in place`,
     willSaveStatementCheckpoints: (count) => `${count} statement checkpoint${count === 1 ? "" : "s"} will refresh`,
     willSkipRows: (count) => `${count} row${count === 1 ? "" : "s"} already covered`,
     needsReviewRows: (count) => `${count} row${count === 1 ? "" : "s"} need review`,
