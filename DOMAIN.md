@@ -9,6 +9,9 @@ copy, or docs:
 - only use aliases when referring to an existing table, field, DTO, or route
 - prefer extending an existing entity before inventing a near-duplicate concept
 - update this file in the same change if the domain model meaningfully evolves
+- consult [`design.md`](/Users/tim/22m/ai-projects/monies_map/design.md) when a
+  change depends on client implementation boundaries such as the deep module
+  service
 
 ## Naming Rules
 
@@ -20,6 +23,10 @@ copy, or docs:
   lives in `transactions`.
 - Use `import batch` for one import operation and `import row` for one raw row
   inside that batch.
+- Use `entry reconciliation` for the app task of deciding whether multiple
+  source observations belong to one existing ledger entry or should create a
+  new one. In accounting terms, this is the transaction-matching part of `bank
+  reconciliation`.
 - Use `transfer` for money moved between tracked accounts. Do not model it as
   fake income or fake expense.
 - Use `split workspace` for the separate shared-expense settle-up layer.
@@ -184,6 +191,34 @@ Relationships:
 - may be assigned to one `account`
 - may map to one committed `ledger entry`
 
+Important distinctions:
+- Multiple import rows across time can refer to the same real-world card or
+  bank event. Later sources should usually enrich or certify the existing
+  `ledger entry`, not create a second one.
+- A manual provisional entry, a mid-cycle activity row, and a final statement
+  row can all be separate source observations of one underlying ledger fact.
+
+### Entry Reconciliation
+
+The app workflow that matches source observations against existing ledger
+entries so one economic event stays represented by one ledger entry across
+manual capture, mid-cycle activity imports, and final statement imports.
+
+Canonical term:
+- `entry reconciliation`
+
+Accounting analogue:
+- `bank reconciliation` at the account level
+- `transaction matching` at the row level
+
+Important distinctions:
+- Entry reconciliation is broader than duplicate detection. It decides whether a
+  later source should create a new ledger entry, promote an existing provisional
+  one, or certify an already-matched entry.
+- Entry reconciliation is not limited to PDF statements. The same system should
+  govern manual entries, CSV/XLS activity imports, and statement imports with a
+  source-authority ladder.
+
 ### Ledger Entry
 
 A normalized money movement row in the household ledger. This is the main
@@ -220,6 +255,9 @@ Relationships:
 
 Important distinctions:
 - A ledger entry is not the same thing as an import row.
+- A ledger entry should represent one economic event even when that event is
+  observed through multiple source paths such as manual entry, current-activity
+  import, and final statement import.
 - A transfer ledger entry is still one ledger entry; a full transfer usually
   needs a matched pair of entries linked by a transfer group.
 - Shared ownership on a ledger entry is not the same thing as a split expense
@@ -507,6 +545,8 @@ Use these terms consistently in future work:
   `account_balance_checkpoints`.
 - Say `import batch`, not just `import`, when the batch boundary matters.
 - Say `import row`, not `raw transaction`, for source rows before normalization.
+- Say `entry reconciliation`, not only `duplicate detection`, when the task is
+  to decide whether two source rows refer to the same economic event.
 - Say `transfer group` for the link record and `transfer entry` for each ledger
   row inside the pair.
 - Say `split expense` for the Splitwise-style record and `shared ledger entry`
@@ -522,6 +562,8 @@ These boundaries are important enough to preserve explicitly:
 
 - Source data vs normalized data:
   `import row` -> `ledger entry`
+- Matching workflow vs proof workflow:
+  `entry reconciliation` != `statement reconciliation certificate`
 - Ledger ownership vs split workspace:
   `entry split` != `split expense share`
 - Transfer linkage vs transfer facts:

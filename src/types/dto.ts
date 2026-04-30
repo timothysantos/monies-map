@@ -431,10 +431,10 @@ export interface ImportPreviewRowDto {
   splitBasisPoints: number;
   note?: string;
   rawRow: Record<string, string>;
-  duplicateMatches?: DuplicateCandidateDto[];
-  comparisonMatch?: DuplicateCandidateDto;
-  comparisonMatchCount?: number;
-  statementCertificationTargetTransactionId?: string;
+  reconciliationMatches?: ReconciliationCandidateDto[];
+  reconciliationMatch?: ReconciliationCandidateDto;
+  reconciliationMatchCount?: number;
+  reconciliationTargetTransactionId?: string;
   isStatementMatchResolved?: boolean;
   isCertifiedConflict?: boolean;
 }
@@ -446,19 +446,19 @@ export interface ImportPreviewDto {
   previewRows: ImportPreviewRowDto[];
   unknownAccounts: string[];
   unknownCategories: string[];
-  duplicateCandidateCount: number;
+  reconciliationCandidateCount: number;
   overlappingImportCount: number;
   overlapImports: ImportOverlapDto[];
   startDate?: string;
   endDate?: string;
   accountNames: string[];
-  duplicateCandidates: DuplicateCandidateDto[];
+  reconciliationCandidates: ReconciliationCandidateDto[];
   statementReconciliations: ImportPreviewStatementReconciliationDto[];
   exceptionSummary: ImportPreviewExceptionDto[];
 }
 
 export interface ImportPreviewExceptionDto {
-  kind: "unknown_account" | "unknown_category" | "review_rows" | "statement_mismatch" | "account_identity" | "ledger_match" | "prior_import_context";
+  kind: "unknown_account" | "unknown_category" | "review_rows" | "statement_mismatch" | "account_identity" | "entry_reconciliation" | "prior_import_context";
   count: number;
   tone: "blocking" | "review" | "context";
 }
@@ -528,7 +528,7 @@ export interface StatementCompareDto {
   duplicateLedgerGroups: StatementCompareDuplicateGroupDto[];
 }
 
-export interface DuplicateCandidateDto {
+export interface ReconciliationCandidateDto {
   existingImportId?: string;
   existingTransactionId?: string;
   existingAccountId?: string;

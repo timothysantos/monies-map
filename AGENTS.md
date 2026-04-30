@@ -9,6 +9,8 @@ team conventions evolve.
 - Keep this file updated as the app progresses.
 - Keep [`DOMAIN.md`](/Users/tim/22m/ai-projects/monies_map/DOMAIN.md)
   updated alongside domain-model and naming changes.
+- Keep [`design.md`](/Users/tim/22m/ai-projects/monies_map/design.md)
+  updated alongside meaningful client-side boundary and helper-service changes.
 - Keep [`docs/architecture.md`](/Users/tim/22m/ai-projects/monies_map/docs/architecture.md)
   updated alongside meaningful product and technical changes.
 - Keep [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
@@ -73,6 +75,8 @@ team conventions evolve.
 - Update this file when team conventions change.
 - Update [`docs/architecture.md`](/Users/tim/22m/ai-projects/monies_map/docs/architecture.md)
   when product behavior, data flow, or technical direction changes.
+- Update [`design.md`](/Users/tim/22m/ai-projects/monies_map/design.md) when
+  implementation boundaries such as the client deep module service evolve.
 - Update [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
   when user-facing behavior, setup steps, or feature scope changes.
 - Add narrower docs under `docs/` when a subsystem grows beyond what belongs in

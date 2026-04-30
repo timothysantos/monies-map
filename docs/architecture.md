@@ -100,7 +100,25 @@ That distinction matters because the system needs to answer questions like:
   `category_match_rule_suggestions` instead of silently creating rules. Settings
   shows a badge when suggestions exist, deep-links to Category matching, and lets
   the user add, edit, or ignore each suggestion.
-- duplicates are detected by date, amount, description, and statement id
+- duplicate prevention should model one economic event flowing through multiple
+  evidence sources, not only row-vs-row import collisions
+- the app should treat this as one `entry reconciliation` system. Manual
+  entries, mid-cycle CSV/XLS activity rows, and PDF statement rows all enter
+  the same matching pipeline; the difference is source authority, not whether a
+  separate duplicate feature runs
+- a manual provisional row, a mid-cycle CSV/XLS activity row, and a final PDF
+  statement row can all describe the same underlying card event
+- when a later source matches an existing provisional row closely enough, the
+  app should promote the existing ledger entry in place and attach the newer
+  source trace instead of creating a second transaction
+- promotion must preserve user-maintained fields such as category, note,
+  ownership, split percentages, and links into the split workspace
+- matching should score account, signed amount, transaction date, posted date,
+  normalized merchant tokens, and source hints such as `txn date` notes from
+  card exports rather than relying only on raw description equality
+- merchant aliases such as `CS` -> `Cold Storage` should feed reconciliation
+  matching as an evidence layer, separate from the ledger entry's display
+  description
 
 ### 2. Review
 
@@ -238,8 +256,22 @@ That distinction matters because the system needs to answer questions like:
   in place: the bank-facing facts are updated from the statement and the row is
   marked statement-certified, while user-maintained fields such as category,
   note, ownership, splits, and links remain attached to the same transaction.
+- mid-cycle current-activity imports should follow the same promotion rule one
+  step earlier: if a CSV/XLS row matches a manual provisional row, commit should
+  update that manual row in place to `import_provisional` instead of inserting a
+  second ledger entry. This keeps later statement certification attached to the
+  same row and preserves any split record the user already created from the
+  manual entry.
 - official PDF statement rows that already match statement-certified ledger rows
   are treated as already certified rather than as duplicate conflicts.
+- reconciliation should prefer a source-authority ladder:
+  manual provisional -> import provisional -> statement certified.
+  Each stronger source should usually enrich the same entry unless the evidence
+  clearly indicates a genuinely separate transaction.
+- in accounting terms, the account-level control remains bank reconciliation.
+  `Entry reconciliation` is the product term for the row-level transaction
+  matching that keeps the ledger aligned with source evidence before and during
+  that bank reconciliation process.
 - saving matched PDF statement checkpoints also writes compact reconciliation
   certificates. A certificate records the account, statement period, row count,
   debit and credit totals, net movement, statement balance, projected ledger
@@ -817,7 +849,8 @@ Frontend direction:
   Leaf helpers such as formatters, category matching, import mapping, month
   helpers, entry math, and split presentation remain implementation details
   behind that deep module so components do not need to know which small file
-  owns a given rule.
+  owns a given rule. Treat this as the client deep module service described in
+  [`design.md`](/Users/tim/22m/ai-projects/monies_map/design.md).
 - Worker API remains the source of bootstrap, route-page, mutation, and import
   endpoints
 - charting should prefer a maintained library over hand-built geometry once the

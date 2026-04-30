@@ -695,6 +695,9 @@ like a bank-sync checkpoint for the account and statement period: the statement
 certifies posted date, description, amount, direction, and ending balance after
 the parser has reconciled the statement structure.
 
+In product terms, this whole matching workflow is `entry reconciliation`. In
+accounting terms, it is the transaction-matching part of bank reconciliation.
+
 Mid-cycle CSV or XLS exports and manual quick entries are still useful for
 keeping the working ledger current, but they are provisional until the official
 statement arrives. When a PDF statement row matches a provisional mid-cycle or

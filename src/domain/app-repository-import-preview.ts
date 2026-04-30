@@ -189,7 +189,7 @@ export async function buildImportPreview(
       ))
       .slice(0, 3);
 
-    previewRow.duplicateMatches = nearMatches.map(({ candidate, matchKind }) => ({
+    previewRow.reconciliationMatches = nearMatches.map(({ candidate, matchKind }) => ({
       ...(candidate.import_id ? { existingImportId: candidate.import_id } : {}),
       existingTransactionId: candidate.transaction_id,
       existingAccountId: candidate.account_id,
@@ -201,7 +201,7 @@ export async function buildImportPreview(
       accountName: candidate.account_name,
       matchKind
     }));
-    const strongestMatch = previewRow.duplicateMatches[0]?.matchKind;
+    const strongestMatch = previewRow.reconciliationMatches[0]?.matchKind;
     previewRow.commitStatus = requestedCommitStatus ?? getDefaultCommitStatus(strongestMatch);
     previewRow.commitStatusReason = getCommitStatusReason(previewRow.commitStatus, strongestMatch);
     applyStatementAuthorityToPreviewRow(previewRow, input.sourceType);
@@ -233,8 +233,8 @@ export async function buildImportPreview(
     previewRows,
     statementCheckpoints: input.statementCheckpoints ?? []
   });
-  const visibleDuplicateRows = previewRows.filter((row) => row.duplicateMatches?.length);
-  const duplicateCandidates = visibleDuplicateRows.flatMap((row) => row.duplicateMatches ?? []).slice(0, 8);
+  const visibleReconciliationRows = previewRows.filter((row) => row.reconciliationMatches?.length);
+  const reconciliationCandidates = visibleReconciliationRows.flatMap((row) => row.reconciliationMatches ?? []).slice(0, 8);
   const statementReconciliations = buildImportPreviewStatementReconciliations({
     accounts,
     existingRows: existingTransactions.results,
@@ -247,7 +247,7 @@ export async function buildImportPreview(
   const exceptionSummary = buildImportPreviewExceptionSummary({
     unknownAccountCount: unknownAccounts.size,
     unknownCategoryCount: unknownCategories.size,
-    duplicateCandidateCount: visibleDuplicateRows.length,
+    reconciliationCandidateCount: visibleReconciliationRows.length,
     overlappingImportCount: overlapImports.length,
     previewRows,
     statementReconciliations
@@ -260,13 +260,13 @@ export async function buildImportPreview(
     previewRows,
     unknownAccounts: Array.from(unknownAccounts).sort(),
     unknownCategories: Array.from(unknownCategories).sort(),
-    duplicateCandidateCount: visibleDuplicateRows.length,
+    reconciliationCandidateCount: visibleReconciliationRows.length,
     overlappingImportCount: overlapImports.length,
     overlapImports,
     startDate: previewRows.length ? previewRows.map((row) => row.date).sort()[0] : undefined,
     endDate: previewRows.length ? previewRows.map((row) => row.date).sort().at(-1) : undefined,
     accountNames: Array.from(new Set(previewRows.map((row) => row.accountName).filter((accountName): accountName is string => Boolean(accountName)))).sort(),
-    duplicateCandidates,
+    reconciliationCandidates,
     statementReconciliations,
     exceptionSummary
   };
@@ -275,7 +275,7 @@ export async function buildImportPreview(
 function buildImportPreviewExceptionSummary(input: {
   unknownAccountCount: number;
   unknownCategoryCount: number;
-  duplicateCandidateCount: number;
+  reconciliationCandidateCount: number;
   overlappingImportCount: number;
   previewRows: ImportPreviewRowDto[];
   statementReconciliations: ImportPreviewDto["statementReconciliations"];
@@ -290,7 +290,7 @@ function buildImportPreviewExceptionSummary(input: {
     { kind: "statement_mismatch" as const, count: statementMismatchCount, tone: "blocking" as const },
     { kind: "account_identity" as const, count: identityUnconfirmedCount, tone: "blocking" as const },
     { kind: "review_rows" as const, count: needsReviewCount, tone: "review" as const },
-    { kind: "ledger_match" as const, count: input.duplicateCandidateCount, tone: "review" as const },
+    { kind: "entry_reconciliation" as const, count: input.reconciliationCandidateCount, tone: "review" as const },
     { kind: "prior_import_context" as const, count: input.overlappingImportCount, tone: "context" as const }
   ].filter((item) => item.count > 0);
 }
@@ -303,13 +303,13 @@ function applyStatementAuthorityToPreviewRow(
     return;
   }
 
-  const strongestMatch = previewRow.duplicateMatches?.[0];
+  const strongestMatch = previewRow.reconciliationMatches?.[0];
   if (!strongestMatch?.existingTransactionId) {
     return;
   }
 
-  previewRow.comparisonMatch = strongestMatch;
-  previewRow.comparisonMatchCount = previewRow.duplicateMatches?.length ?? 0;
+  previewRow.reconciliationMatch = strongestMatch;
+  previewRow.reconciliationMatchCount = previewRow.reconciliationMatches?.length ?? 0;
 
   const isAlreadyStatementCertified = strongestMatch.existingSourceType === "pdf"
     || strongestMatch.existingBankCertificationStatus === "statement_certified";
@@ -317,14 +317,14 @@ function applyStatementAuthorityToPreviewRow(
   if (isAlreadyStatementCertified) {
     previewRow.commitStatus = "skipped";
     previewRow.commitStatusReason = "Official statement row is already certified in the ledger.";
-    previewRow.duplicateMatches = undefined;
+    previewRow.reconciliationMatches = undefined;
     return;
   }
 
   previewRow.commitStatus = "included";
   previewRow.commitStatusReason = "Official statement will certify the existing mid-cycle ledger row while preserving user edits.";
-  previewRow.statementCertificationTargetTransactionId = strongestMatch.existingTransactionId;
-  previewRow.duplicateMatches = undefined;
+  previewRow.reconciliationTargetTransactionId = strongestMatch.existingTransactionId;
+  previewRow.reconciliationMatches = undefined;
 }
 
 function getDirectOwnerNameForAccount(account?: AccountDto, fallbackOwnerName?: string) {
@@ -392,7 +392,7 @@ function buildProjectedLedgerRows(
 ) {
   const certificationTargetIds = new Set(
     previewRows
-      .map((row) => row.statementCertificationTargetTransactionId)
+      .map((row) => row.reconciliationTargetTransactionId)
       .filter((id): id is string => Boolean(id))
   );
   return [
@@ -405,7 +405,7 @@ function getStatementConfirmableDuplicateRowsForAccount(previewRows: ImportPrevi
   return previewRows.filter((row) => (
     row.accountId === accountId
     && row.date <= statementEndDate
-    && Boolean(row.duplicateMatches?.length)
+    && Boolean(row.reconciliationMatches?.length)
     && (
       row.commitStatus === "needs_review"
       || (row.commitStatus === "skipped" && !getRequestedCommitStatus(row.rawRow))
@@ -474,7 +474,7 @@ function autoIncludeDuplicateMatchesExplainedByStatementBalance(input: {
       for (const row of confirmableDuplicateRows) {
         row.commitStatus = "included";
         row.commitStatusReason = "Statement certification check confirmed this row belongs in the import.";
-        row.duplicateMatches = undefined;
+        row.reconciliationMatches = undefined;
       }
     }
   }
@@ -535,14 +535,14 @@ function autoIncludeCurrentPeriodStatementRowsReplacingPriorCertifiedMatches(inp
         transfer_direction: row.transferDirection ?? null,
         amount_minor: row.amountMinor
       });
-      const matchedLedgerDate = row.comparisonMatch?.date;
+      const matchedLedgerDate = row.reconciliationMatch?.date;
       return (
         row.accountId === account.id
         && row.date >= (statementStartDate ?? "0000-00-00")
         && row.date <= statementEndDate
         && row.commitStatus === "skipped"
-        && Boolean(row.comparisonMatch?.existingTransactionId)
-        && (row.comparisonMatchCount ?? 0) === 1
+        && Boolean(row.reconciliationMatch?.existingTransactionId)
+        && (row.reconciliationMatchCount ?? 0) === 1
         && Boolean(matchedLedgerDate)
         && isDateWithinCheckpoint(matchedLedgerDate!, previousCheckpoint)
         && !isDateWithinRange(matchedLedgerDate!, statementStartDate, statementEndDate)
@@ -557,8 +557,8 @@ function autoIncludeCurrentPeriodStatementRowsReplacingPriorCertifiedMatches(inp
     const row = promotableRows[0];
     row.commitStatus = "included";
     row.commitStatusReason = "Official statement row belongs to this statement period and will import. The prior certified match belongs to the previous matched statement.";
-    row.statementCertificationTargetTransactionId = undefined;
-    row.duplicateMatches = undefined;
+    row.reconciliationTargetTransactionId = undefined;
+    row.reconciliationMatches = undefined;
     row.isCertifiedConflict = false;
     row.isStatementMatchResolved = false;
   }
@@ -611,8 +611,8 @@ function prioritizeCertifiedRowsExplainingStatementMismatch(input: {
       row.accountId === account.id
       && row.date <= statementEndDate
       && row.commitStatus === "skipped"
-      && Boolean(row.comparisonMatch?.existingTransactionId)
-      && (row.comparisonMatchCount ?? 0) === 1
+      && Boolean(row.reconciliationMatch?.existingTransactionId)
+      && (row.reconciliationMatchCount ?? 0) === 1
       && Math.abs(getSignedLedgerAmountMinor({
         entry_type: row.entryType,
         transfer_direction: row.transferDirection ?? null,
@@ -683,7 +683,7 @@ function markResolvedCertifiedRowsForMatchedStatements(
         row.accountId === checkpoint.accountId
         && row.date <= checkpoint.statementEndDate!
         && row.commitStatus === "skipped"
-        && Boolean(row.comparisonMatch?.existingTransactionId)
+        && Boolean(row.reconciliationMatch?.existingTransactionId)
       ) {
         row.isStatementMatchResolved = true;
       }
@@ -708,14 +708,14 @@ function markCertifiedConflictRows(
     }
 
     const checkpoint = row.accountId ? checkpointsByAccountId.get(row.accountId) : undefined;
-    const hasCertifiedComparison = row.commitStatus === "skipped" && Boolean(row.comparisonMatch?.existingTransactionId);
+    const hasCertifiedComparison = row.commitStatus === "skipped" && Boolean(row.reconciliationMatch?.existingTransactionId);
     row.isCertifiedConflict = Boolean(hasCertifiedComparison && checkpoint && checkpoint.status !== "matched");
 
     if (!row.isCertifiedConflict || !checkpoint) {
       continue;
     }
 
-    const ledgerMatchDate = row.comparisonMatch?.date;
+    const ledgerMatchDate = row.reconciliationMatch?.date;
     const isOutsidePeriod = Boolean(
       ledgerMatchDate
       && (
