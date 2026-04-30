@@ -29,6 +29,7 @@ export function ImportPreviewRowsTable({
   onCommit,
   onUpdatePreviewRow,
   onUpdatePreviewRowCommitStatus,
+  onPromotePreviewRowReconciliationTarget,
   getPreviewAccountOwnerPatch
 }) {
   const accountOptions = accountService.getSelectOptions(accounts, { valueKey: "id" });
@@ -80,6 +81,7 @@ export function ImportPreviewRowsTable({
           statementImportSourceType={statementImportSourceType}
           onUpdatePreviewRow={onUpdatePreviewRow}
           onUpdatePreviewRowCommitStatus={onUpdatePreviewRowCommitStatus}
+          onPromotePreviewRowReconciliationTarget={onPromotePreviewRowReconciliationTarget}
           getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
         />
       ) : (
@@ -102,10 +104,11 @@ export function ImportPreviewRowsTable({
           people={people}
           knownAccountNames={knownAccountNames}
           statementImportSourceType={statementImportSourceType}
-          onUpdatePreviewRow={onUpdatePreviewRow}
-          onUpdatePreviewRowCommitStatus={onUpdatePreviewRowCommitStatus}
-          getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
-          isSkippedTable
+            onUpdatePreviewRow={onUpdatePreviewRow}
+            onUpdatePreviewRowCommitStatus={onUpdatePreviewRowCommitStatus}
+            onPromotePreviewRowReconciliationTarget={onPromotePreviewRowReconciliationTarget}
+            getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
+            isSkippedTable
           />
         </details>
       ) : null}
@@ -126,6 +129,7 @@ function PreviewRowsTable({
   statementImportSourceType,
   onUpdatePreviewRow,
   onUpdatePreviewRowCommitStatus,
+  onPromotePreviewRowReconciliationTarget,
   getPreviewAccountOwnerPatch,
   isSkippedTable = false
 }) {
@@ -150,6 +154,7 @@ function PreviewRowsTable({
         <tbody>
           {rows.map((row) => {
             const duplicateMatch = row.reconciliationMatches?.[0] ?? row.reconciliationMatch;
+            const canPromoteExistingRow = canPromoteExistingRowMatch(row, duplicateMatch);
             const showReviewDetails = Boolean(duplicateMatch || row.commitStatus === "needs_review" || row.commitStatusReason);
             return (
               <Fragment key={row.rowId}>
@@ -157,9 +162,18 @@ function PreviewRowsTable({
                   <td>{row.rowIndex}</td>
                   <td>
                     <div className="import-row-actions">
+                      {row.commitStatus === "needs_review" && canPromoteExistingRow ? (
+                        <button
+                          type="button"
+                          className="subtle-action"
+                          onClick={() => onPromotePreviewRowReconciliationTarget(row.rowId, duplicateMatch.existingTransactionId)}
+                        >
+                          {messages.imports.promoteExistingPreviewRow}
+                        </button>
+                      ) : null}
                       {row.commitStatus === "needs_review" ? (
                         <button type="button" className="subtle-action" onClick={() => onUpdatePreviewRowCommitStatus(row.rowId, "included")}>
-                          {messages.imports.importPreviewRow}
+                          {canPromoteExistingRow ? messages.imports.importAsNewPreviewRow : messages.imports.importPreviewRow}
                         </button>
                       ) : null}
                       {isSkippedTable ? (
@@ -358,6 +372,7 @@ export function DuplicateMatchPopover({ row, match, statementImportSourceType = 
               label={messages.imports.duplicateMatchIncomingLabel}
               date={row.date}
               description={row.description}
+              comparisonDescription={match.description}
               accountName={row.accountName}
               amountMinor={row.amountMinor}
               bankCertificationLabel={incomingCertificationLabel}
@@ -367,6 +382,7 @@ export function DuplicateMatchPopover({ row, match, statementImportSourceType = 
               label={messages.imports.duplicateMatchLedgerLabel}
               date={match.date}
               description={match.description}
+              comparisonDescription={row.description}
               accountName={match.accountName}
               amountMinor={match.amountMinor}
               bankCertificationLabel={ledgerCertificationLabel}
@@ -384,11 +400,11 @@ export function DuplicateMatchPopover({ row, match, statementImportSourceType = 
   );
 }
 
-function DuplicateMatchCard({ label, date, description, accountName, amountMinor, bankCertificationLabel }) {
+function DuplicateMatchCard({ label, date, description, comparisonDescription, accountName, amountMinor, bankCertificationLabel }) {
   return (
     <div className="duplicate-match-card">
       <span>{label}</span>
-      <strong>{description || messages.common.emptyValue}</strong>
+      <strong>{renderHighlightedDescription(description, comparisonDescription)}</strong>
       <p>{messages.common.triplet(date, accountName ?? messages.common.emptyValue, formatService.formatMinorInput(amountMinor))}</p>
       <small>{messages.imports.bankCertificationStatusLine(bankCertificationLabel)}</small>
     </div>
@@ -427,6 +443,54 @@ function buildDuplicateLedgerEntryHref(match) {
     params.set("entry_wallet", match.accountName);
   }
   return `/entries?${params.toString()}`;
+}
+
+function canPromoteExistingRowMatch(row, match) {
+  return Boolean(
+    row.commitStatus === "needs_review"
+    && match?.existingTransactionId
+    && match?.existingSourceType === "manual"
+    && match?.existingBankCertificationStatus === "provisional"
+    && (row.reconciliationMatchCount ?? row.reconciliationMatches?.length ?? 0) === 1
+  );
+}
+
+function renderHighlightedDescription(description, otherDescription) {
+  const text = description || messages.common.emptyValue;
+  const otherTokenSet = buildNormalizedHighlightTokenSet(otherDescription ?? "");
+  if (!otherTokenSet.size) {
+    return text;
+  }
+
+  const parts = text.split(/([A-Za-z0-9]+)/g);
+  return parts.map((part, index) => {
+    if (!part) {
+      return null;
+    }
+
+    const normalizedTokens = normalizeTextForHighlight(part);
+    const isShared = normalizedTokens.some((token) => otherTokenSet.has(token));
+    return isShared
+      ? <mark key={`${part}-${index}`} className="duplicate-match-highlight">{part}</mark>
+      : <Fragment key={`${part}-${index}`}>{part}</Fragment>;
+  });
+}
+
+function buildNormalizedHighlightTokenSet(value) {
+  return new Set(normalizeTextForHighlight(value));
+}
+
+function normalizeTextForHighlight(value) {
+  return value
+    .toLowerCase()
+    .replace(/\bcs\s+fresh\b/g, "cold storage")
+    .replace(/\bcoldstorage\b/g, "cold storage")
+    .replace(/\bcs\b/g, "cold storage")
+    .replace(/\b(singapore|sg|applepay|apple\s+pay)\b/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
 }
 
 function formatDuplicateMatchKind(matchKind) {

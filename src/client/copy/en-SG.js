@@ -361,6 +361,8 @@ export const messages = {
     restorePreviewRow: "Include row",
     restoreExactCoveredRowConfirm: "This row is marked as an exact already-covered match. Including it again can create a duplicate ledger entry. Continue?",
     importPreviewRow: "Include row",
+    promoteExistingPreviewRow: "Promote existing row",
+    importAsNewPreviewRow: "Import as new row",
     skippedRowsTitle: (count) => `Already covered rows (${count})`,
     statementCheckpointsTitle: (count) => count === 1 ? "Statement checkpoint" : "Statement checkpoints",
     statementCheckpointsDetail: (count) => count === 1
