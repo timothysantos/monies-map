@@ -2,6 +2,7 @@ import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import {
   buildImportRowHash,
   compareDescriptionSimilarity,
+  countSharedTokens,
   computeCheckpointLedgerBalanceMinor,
   daysBetween,
   extractTransactionDateHint,
@@ -167,7 +168,14 @@ export async function buildImportPreview(
         }
 
         const dayDistance = getClosestDayDistance(previewRowDateCandidates, candidate.transaction_date);
-        const descriptionSimilarity = compareDescriptionSimilarity(previewRow.description, candidate.description);
+        const sharedTokenCount = countSharedTokens(previewRow.description, candidate.description);
+        const descriptionSimilarity = boostDescriptionSimilarityForManualPromotionCandidate({
+          baseSimilarity: compareDescriptionSimilarity(previewRow.description, candidate.description),
+          candidateSourceType: candidate.source_type,
+          candidateBankCertificationStatus: candidate.bank_certification_status,
+          dayDistance,
+          sharedTokenCount
+        });
         const isExactDuplicate = candidate.normalized_hash === previewRowHash;
         if (!isExactDuplicate && (dayDistance > 3 || descriptionSimilarity < 0.55)) {
           return undefined;
@@ -328,6 +336,25 @@ function getClosestDayDistance(candidates: string[], targetDate: string) {
   return candidates.reduce((closest, candidateDate) => (
     Math.min(closest, Math.abs(daysBetween(candidateDate, targetDate)))
   ), Number.POSITIVE_INFINITY);
+}
+
+function boostDescriptionSimilarityForManualPromotionCandidate(input: {
+  baseSimilarity: number;
+  candidateSourceType: "csv" | "pdf" | "manual";
+  candidateBankCertificationStatus: "provisional" | "statement_certified";
+  dayDistance: number;
+  sharedTokenCount: number;
+}) {
+  if (
+    input.candidateSourceType === "manual"
+    && input.candidateBankCertificationStatus === "provisional"
+    && input.dayDistance === 0
+    && input.sharedTokenCount >= 1
+  ) {
+    return Math.max(input.baseSimilarity, 0.7);
+  }
+
+  return input.baseSimilarity;
 }
 
 function applySourceAuthorityToPreviewRow(
