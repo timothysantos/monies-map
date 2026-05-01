@@ -841,6 +841,10 @@ A provisional row is useful working data that has not yet been proven by a final
 statement. Manual quick-entry rows show as `Manual provisional`; mid-cycle CSV
 and XLS exports show as `Import provisional`. They help with planning during the
 month, but the final PDF statement gets the last word on posted bank facts.
+When a later bank source promotes a manual provisional row, Entries switches the
+row's main date to the bank-posted date so sorting and balance comparisons stay
+aligned with the bank statement. The earlier manual date is kept only as
+background reference metadata.
 
 ### Statement-certified row
 

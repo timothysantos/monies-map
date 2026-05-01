@@ -341,6 +341,10 @@ export async function ensureDemoSchema(db: D1Database) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN bank_certification_status TEXT NOT NULL DEFAULT 'provisional'").run();
   }
 
+  if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "original_transaction_date")) {
+    await db.prepare("ALTER TABLE transactions ADD COLUMN original_transaction_date TEXT").run();
+  }
+
   if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "statement_certified_import_id")) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN statement_certified_import_id TEXT").run();
   }
@@ -3040,7 +3044,7 @@ export async function commitImportBatch(
       const reconciliationTarget = row.reconciliationTargetTransactionId
         ? await db
           .prepare(`
-            SELECT id, transaction_date, import_id
+            SELECT id, transaction_date, import_id, original_transaction_date
             FROM transactions
             WHERE household_id = ?
               AND id = ?
@@ -3048,7 +3052,7 @@ export async function commitImportBatch(
               AND bank_certification_status = 'provisional'
           `)
           .bind(DEFAULT_HOUSEHOLD_ID, row.reconciliationTargetTransactionId, accountId)
-          .first<{ id: string; transaction_date: string; import_id: string | null }>()
+          .first<{ id: string; transaction_date: string; import_id: string | null; original_transaction_date: string | null }>()
         : null;
 
       if (row.reconciliationTargetTransactionId && !reconciliationTarget) {
@@ -3077,6 +3081,9 @@ export async function commitImportBatch(
           throw new Error("Current-activity reconciliation target is no longer manual. Refresh the import preview and try again.");
         }
 
+        const promotedOriginalTransactionDate = reconciliationTarget.original_transaction_date
+          ?? (reconciliationTarget.transaction_date !== row.date ? reconciliationTarget.transaction_date : null);
+
         statements.push(
           db
             .prepare(`
@@ -3084,6 +3091,7 @@ export async function commitImportBatch(
               SET import_id = ?,
                 import_row_id = ?,
                 transaction_date = ?,
+                original_transaction_date = ?,
                 description = ?,
                 amount_minor = ?,
                 entry_type = ?,
@@ -3099,6 +3107,7 @@ export async function commitImportBatch(
               importId,
               rowId,
               row.date,
+              promotedOriginalTransactionDate,
               row.description,
               row.amountMinor,
               row.entryType,
@@ -3114,11 +3123,17 @@ export async function commitImportBatch(
       }
 
       if (reconciliationTarget) {
+        const promotedOriginalTransactionDate = reconciliationTarget.original_transaction_date
+          ?? (reconciliationTarget.import_id === null && reconciliationTarget.transaction_date !== row.date
+            ? reconciliationTarget.transaction_date
+            : null);
+
         statements.push(
           db
             .prepare(`
               UPDATE transactions
               SET transaction_date = ?,
+                original_transaction_date = ?,
                 description = ?,
                 amount_minor = ?,
                 entry_type = ?,
@@ -3135,6 +3150,7 @@ export async function commitImportBatch(
             `)
             .bind(
               row.date,
+              promotedOriginalTransactionDate,
               row.description,
               row.amountMinor,
               row.entryType,

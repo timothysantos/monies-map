@@ -261,6 +261,11 @@ Important distinctions:
 - A ledger entry should represent one economic event even when that event is
   observed through multiple source paths such as manual entry, current-activity
   import, and final statement import.
+- During entry reconciliation, `transaction_date` should follow the latest
+  trusted bank-posted date so ledger sorting, balance math, and statement
+  comparison use the same official date. If a manual provisional row is
+  promoted, preserve the earlier user-entered date separately as
+  `original_transaction_date`.
 - A transfer ledger entry is still one ledger entry; a full transfer usually
   needs a matched pair of entries linked by a transfer group.
 - Shared ownership on a ledger entry is not the same thing as a split expense

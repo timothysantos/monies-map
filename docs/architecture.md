@@ -113,6 +113,10 @@ That distinction matters because the system needs to answer questions like:
   source trace instead of creating a second transaction
 - promotion must preserve user-maintained fields such as category, note,
   ownership, split percentages, and links into the split workspace
+- promotion also moves the ledger row's primary `transaction_date` onto the
+  incoming bank-posted date so the ledger remains statement-aligned; if the row
+  began as a manual provisional capture, the earlier user-entered date is kept
+  separately as reference metadata instead of remaining the balance-driving date
 - matching should score account, signed amount, transaction date, posted date,
   normalized merchant tokens, and source hints such as `txn date` notes from
   card exports rather than relying only on raw description equality
