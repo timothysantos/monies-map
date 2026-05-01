@@ -205,6 +205,7 @@ test.describe("import flow", () => {
 
     await expect(page.getByText("Unknown accounts need mapping before commit.")).toBeVisible();
     await expect(page.getByText("Detected: Imaginary Wallet")).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Detected: Imaginary Wallet" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Commit import" }).first()).toBeDisabled();
   });
 

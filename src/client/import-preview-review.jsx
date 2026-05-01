@@ -21,6 +21,7 @@ export function ImportPreviewReview({
   preview,
   previewRows,
   accounts,
+  accountMappingAccountNames,
   knownAccountNames,
   detectedPreviewAccountNames,
   unknownPreviewAccountNames,
@@ -57,6 +58,7 @@ export function ImportPreviewReview({
       {showStatementAccountMapping ? (
         <StatementAccountMapping
           accounts={accounts}
+          accountMappingAccountNames={accountMappingAccountNames}
           knownAccountNames={knownAccountNames}
           detectedPreviewAccountNames={detectedPreviewAccountNames}
           unknownPreviewAccountNames={unknownPreviewAccountNames}
@@ -205,6 +207,7 @@ function ExceptionRegister({ exceptions }) {
 
 function StatementAccountMapping({
   accounts,
+  accountMappingAccountNames,
   knownAccountNames,
   detectedPreviewAccountNames,
   unknownPreviewAccountNames,
@@ -251,7 +254,7 @@ function StatementAccountMapping({
       <strong>{unknownPreviewAccountNames.length ? messages.imports.unknownAccounts : messages.imports.accountMappingTitle}</strong>
       <p className="lede compact">{messages.imports.accountMappingDetail}</p>
       <div className="statement-account-map-grid">
-        {detectedPreviewAccountNames.map((accountName) => (
+        {accountMappingAccountNames.map((accountName) => (
           <div key={accountName} className="statement-account-map-row">
             <label className="entries-filter">
               <span className="entries-filter-label">{messages.imports.detectedAccount(accountName)}</span>
