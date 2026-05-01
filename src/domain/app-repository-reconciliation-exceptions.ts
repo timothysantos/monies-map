@@ -13,7 +13,7 @@ export async function loadReconciliationExceptions(db: D1Database): Promise<Reco
         reconciliation_exceptions.account_id,
         accounts.account_name,
         reconciliation_exceptions.transaction_id,
-        transactions.transaction_date,
+        COALESCE(transactions.post_date, transactions.transaction_date) AS transaction_date,
         transactions.description AS transaction_description,
         reconciliation_exceptions.checkpoint_month,
         reconciliation_exceptions.kind,

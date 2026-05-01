@@ -53,7 +53,7 @@ export async function buildImportPreview(
         transactions.id AS transaction_id,
         transactions.account_id,
         transactions.transaction_date,
-        transactions.original_transaction_date,
+        transactions.post_date,
         transactions.description,
         transactions.note,
         transactions.amount_minor,
@@ -77,7 +77,7 @@ export async function buildImportPreview(
       transaction_id: string;
       account_id: string;
       transaction_date: string;
-      original_transaction_date: string | null;
+      post_date: string | null;
       description: string;
       note: string | null;
       amount_minor: number;
@@ -159,7 +159,6 @@ export async function buildImportPreview(
     };
     const requestedCommitStatus = getRequestedCommitStatus(rawRow);
     const requestedReconciliationTargetTransactionId = getRequestedReconciliationTargetTransactionId(rawRow);
-    const previewRowHash = buildImportRowHash(previewRow);
     const previewRowDateContext = getPreviewRowDateContext(previewRow);
     const nearMatches = existingTransactions.results
       .map((candidate) => {
@@ -178,9 +177,7 @@ export async function buildImportPreview(
         const candidateDateContext = getExistingTransactionDateContext(candidate);
         const dayDistance = getDuplicateCandidateDayDistance({
           previewRow: previewRowDateContext,
-          candidate: candidateDateContext,
-          candidateSourceType: candidate.source_type,
-          candidateBankCertificationStatus: candidate.bank_certification_status
+          candidate: candidateDateContext
         });
         const maxDayDistance = getDuplicateCandidateMaxDayDistance(previewRow.amountMinor);
 
@@ -193,6 +190,7 @@ export async function buildImportPreview(
         }
 
         const sharedTokenCount = countSharedTokens(previewRow.description, candidate.description);
+        const tokenSimilarity = getTokenSimilarity(previewRow.description, candidate.description);
         const descriptionSimilarity = boostDescriptionSimilarityForManualPromotionCandidate({
           baseSimilarity: compareDescriptionSimilarity(previewRow.description, candidate.description),
           candidateSourceType: candidate.source_type,
@@ -200,8 +198,12 @@ export async function buildImportPreview(
           dayDistance,
           sharedTokenCount
         });
-        const isExactDuplicate = candidate.normalized_hash === previewRowHash;
-        if (!isExactDuplicate && descriptionSimilarity < 0.55) {
+        const matchKind = getDuplicateMatchKind({
+          dayDistance,
+          descriptionSimilarity,
+          tokenSimilarity
+        });
+        if (!matchKind) {
           return undefined;
         }
 
@@ -209,7 +211,7 @@ export async function buildImportPreview(
           candidate,
           dayDistance,
           descriptionSimilarity,
-          matchKind: getDuplicateMatchKind(isExactDuplicate, dayDistance, descriptionSimilarity)
+          matchKind
         };
       })
       .filter((match): match is {
@@ -354,46 +356,44 @@ function getPreviewRowDateCandidates(previewRow: ImportPreviewRowDto) {
 
 function getPreviewRowDateContext(previewRow: ImportPreviewRowDto) {
   const originalDateCandidates = getPreviewRowDateCandidates(previewRow).filter((date) => date !== previewRow.date);
+  const eventDateHint = originalDateCandidates[0];
   return {
     postedDate: previewRow.date,
-    originalDate: originalDateCandidates[0]
+    eventDate: eventDateHint ?? previewRow.date,
+    hasEventDateHint: Boolean(eventDateHint)
   };
 }
 
 function getExistingTransactionDateContext(candidate: {
   transaction_date: string;
-  original_transaction_date: string | null;
+  post_date: string | null;
   note: string | null;
 }) {
+  const noteEventDateHint = extractTransactionDateHint(candidate.note ?? undefined);
+  const postedDate = candidate.post_date ?? candidate.transaction_date;
   return {
-    postedDate: candidate.transaction_date,
-    originalDate: candidate.original_transaction_date
-      ?? extractTransactionDateHint(candidate.note ?? undefined)
+    postedDate,
+    eventDate: candidate.transaction_date,
+    hasEventDateHint: candidate.post_date == null
+      || candidate.transaction_date !== postedDate
+      || Boolean(noteEventDateHint)
   };
 }
 
 function getDuplicateCandidateDayDistance(input: {
   previewRow: {
     postedDate: string;
-    originalDate?: string;
+    eventDate: string;
+    hasEventDateHint: boolean;
   };
   candidate: {
     postedDate: string;
-    originalDate?: string;
+    eventDate: string;
+    hasEventDateHint: boolean;
   };
-  candidateSourceType: "csv" | "pdf" | "manual";
-  candidateBankCertificationStatus: "provisional" | "statement_certified";
 }) {
-  if (
-    input.candidateSourceType === "manual"
-    && input.candidateBankCertificationStatus === "provisional"
-    && input.previewRow.originalDate
-  ) {
-    return Math.abs(daysBetween(input.previewRow.originalDate, input.candidate.postedDate));
-  }
-
-  if (input.previewRow.originalDate && input.candidate.originalDate) {
-    return Math.abs(daysBetween(input.previewRow.originalDate, input.candidate.originalDate));
+  if (input.previewRow.hasEventDateHint && input.candidate.hasEventDateHint) {
+    return Math.abs(daysBetween(input.previewRow.eventDate, input.candidate.eventDate));
   }
 
   return Math.abs(daysBetween(input.previewRow.postedDate, input.candidate.postedDate));
@@ -1016,25 +1016,47 @@ function applyRequestedReconciliationTargetToPreviewRow(
       : "This import will reconcile against the selected existing ledger row instead of creating a new one.";
 }
 
-function getDuplicateMatchKind(isExactDuplicate: boolean, dayDistance: number, descriptionSimilarity: number) {
-  if (isExactDuplicate) {
+function getDuplicateMatchKind(input: {
+  dayDistance: number;
+  descriptionSimilarity: number;
+  tokenSimilarity: number;
+}) {
+  if (input.dayDistance === 0 && input.descriptionSimilarity >= 0.8) {
     return "exact" as const;
   }
 
-  if (dayDistance <= 3 && descriptionSimilarity >= 0.85) {
+  if (input.dayDistance <= 2 && input.descriptionSimilarity >= 0.6) {
     return "probable" as const;
   }
 
-  return "near" as const;
+  if (input.dayDistance <= 7 && input.tokenSimilarity >= 0.5) {
+    return "near" as const;
+  }
+
+  return undefined;
 }
 
 function getDuplicateCandidateMaxDayDistance(amountMinor: number) {
-  // Exact-date manual promotion hints still win because those candidates remain
-  // at dayDistance 0. The stricter 2-day window only filters out slow,
-  // low-value lookalikes from prior weeks.
+  // High-velocity low-value rows need a much tighter window so recurring
+  // fares, coffee, or canteen charges are not treated as the same event.
   return Math.abs(amountMinor) < LOW_VALUE_DUPLICATE_WINDOW_THRESHOLD_MINOR
     ? LOW_VALUE_DUPLICATE_MAX_DAY_DISTANCE
     : STANDARD_DUPLICATE_MAX_DAY_DISTANCE;
+}
+
+function getTokenSimilarity(left: string, right: string) {
+  const sharedTokenCount = countSharedTokens(left, right);
+  const leftTokenCount = normalizeDescriptionTokenCount(left);
+  const rightTokenCount = normalizeDescriptionTokenCount(right);
+  if (!leftTokenCount || !rightTokenCount) {
+    return 0;
+  }
+
+  return sharedTokenCount / Math.max(leftTokenCount, rightTokenCount);
+}
+
+function normalizeDescriptionTokenCount(value: string) {
+  return new Set(value.toLowerCase().replace(/[^a-z0-9]+/gi, " ").split(" ").filter(Boolean)).size;
 }
 
 function getDuplicateMatchRank(matchKind: "exact" | "probable" | "near") {

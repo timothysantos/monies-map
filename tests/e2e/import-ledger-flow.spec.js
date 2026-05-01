@@ -452,7 +452,7 @@ test.describe("import flow", () => {
     expect(Number.isFinite(afterAccount?.latestCheckpointDeltaMinor)).toBeTruthy();
   });
 
-  test("statement balance can certify a near-match provisional row", async ({ page }) => {
+  test("statement balance can certify a near-match provisional row when amount clears the velocity rule", async ({ page }) => {
     const bootstrap = await loadBootstrap(page, { month: "2025-08" });
     const account = bootstrap.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
@@ -462,7 +462,7 @@ test.describe("import flow", () => {
       rowIndex: 1,
       date: "2025-08-11",
       description: "BUS MRT 123",
-      amountMinor: 248,
+      amountMinor: 648,
       entryType: "expense",
       accountId: account.id,
       accountName: account.name,
@@ -473,7 +473,7 @@ test.describe("import flow", () => {
       rawRow: {
         date: "2025-08-11",
         description: "BUS MRT 123",
-        expense: "2.48",
+        expense: "6.48",
         accountId: account.id,
         account: account.name,
         category: "Public Transport"
@@ -499,7 +499,7 @@ test.describe("import flow", () => {
     const statementRow = {
       date: "2025-08-14",
       description: "BUS MRT 687",
-      expense: "2.48",
+      expense: "6.48",
       accountId: account.id,
       account: account.name,
       category: "Public Transport"
@@ -569,12 +569,83 @@ test.describe("import flow", () => {
     expect(resolvedPreview.json.preview.statementReconciliations[0].status).toBe("matched");
   });
 
-  test("promoting a manual provisional row swaps to the bank date and preserves the manual date", async ({ page }) => {
-    // Test Goal: Verify the 'Accounting Foundation' correctly aligns dates.
-    // 1. User enters manual expense on Aug 11.
-    // 2. CSV import contains same expense on Aug 14.
-    // 3. Promoting should move the 'Display Date' to Aug 14 (Bank Reality)
-    //    while keeping Aug 11 in the metadata (User Reality).
+  test("low-value near matches beyond two days stay out of the reconciliation lane", async ({ page }) => {
+    const bootstrap = await loadBootstrap(page, { month: "2025-08" });
+    const account = bootstrap.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    expect(account).toBeTruthy();
+
+    const existingRow = {
+      rowId: "velocity-lane-existing",
+      rowIndex: 1,
+      date: "2025-08-11",
+      description: "BUS MRT 123",
+      amountMinor: 248,
+      entryType: "expense",
+      accountId: account.id,
+      accountName: account.name,
+      categoryName: "Public Transport",
+      ownershipType: "direct",
+      ownerName: "Tim",
+      splitBasisPoints: 10000,
+      rawRow: {
+        date: "2025-08-11",
+        description: "BUS MRT 123",
+        expense: "2.48",
+        accountId: account.id,
+        account: account.name,
+        category: "Public Transport"
+      }
+    };
+
+    const existingCommit = await page.evaluate(async ({ row }) => {
+      const response = await fetch("/api/imports/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Playwright velocity existing transit",
+          sourceType: "csv",
+          parserKey: "uob_current_xls",
+          rows: [row],
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { row: existingRow });
+    expect(existingCommit.ok, existingCommit.text).toBeTruthy();
+
+    const preview = await page.evaluate(async ({ accountId, accountName }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Playwright velocity PDF",
+          sourceType: "pdf",
+          rows: [{
+            date: "2025-08-14",
+            description: "BUS MRT 687",
+            expense: "2.48",
+            accountId,
+            account: accountName,
+            category: "Public Transport"
+          }],
+          defaultAccountName: accountName,
+          ownershipType: "direct",
+          ownerName: "Tim",
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId: account.id, accountName: account.name });
+
+    expect(preview.ok, JSON.stringify(preview.json)).toBeTruthy();
+    expect(preview.json.preview.previewRows[0].statementCertificationTargetTransactionId).toBeFalsy();
+    expect(preview.json.preview.previewRows[0].reconciliationTargetTransactionId).toBeFalsy();
+    expect(preview.json.preview.duplicateCandidateCount).toBe(0);
+  });
+
+  test("promoting a manual provisional row keeps the event date and stores the bank post date separately", async ({ page }) => {
+    // The ledger should keep the user-entered event date in place while the
+    // import fills in the bank-cleared postDate lane.
     const bootstrap = await loadBootstrap(page, { month: "2025-08" });
     const account = bootstrap.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
@@ -643,8 +714,8 @@ test.describe("import flow", () => {
     const afterCsv = await loadEntriesPage(page, { month: "2025-08" });
     const csvPromotedEntry = afterCsv.monthPage.entries.find((entry) => entry.id === createdEntry.json.entryId);
     expect(csvPromotedEntry, JSON.stringify(afterCsv.monthPage.entries)).toBeTruthy();
-    expect(csvPromotedEntry.date).toBe("2025-08-14");
-    expect(csvPromotedEntry.originalDate).toBe("2025-08-11");
+    expect(csvPromotedEntry.date).toBe("2025-08-11");
+    expect(csvPromotedEntry.postDate).toBe("2025-08-14");
     expect(csvPromotedEntry.bankCertificationStatus).toBe("import_provisional");
 
     const statementPreview = await page.evaluate(async ({ accountId, accountName }) => {
@@ -692,8 +763,8 @@ test.describe("import flow", () => {
     const afterStatement = await loadEntriesPage(page, { month: "2025-08" });
     const certifiedEntry = afterStatement.monthPage.entries.find((entry) => entry.id === createdEntry.json.entryId);
     expect(certifiedEntry, JSON.stringify(afterStatement.monthPage.entries)).toBeTruthy();
-    expect(certifiedEntry.date).toBe("2025-08-17");
-    expect(certifiedEntry.originalDate).toBe("2025-08-11");
+    expect(certifiedEntry.date).toBe("2025-08-11");
+    expect(certifiedEntry.postDate).toBe("2025-08-17");
     expect(certifiedEntry.bankCertificationStatus).toBe("statement_certified");
   });
 

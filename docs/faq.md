@@ -842,9 +842,9 @@ statement. Manual quick-entry rows show as `Manual provisional`; mid-cycle CSV
 and XLS exports show as `Import provisional`. They help with planning during the
 month, but the final PDF statement gets the last word on posted bank facts.
 When a later bank source promotes a manual provisional row, Entries switches the
-row's main date to the bank-posted date so sorting and balance comparisons stay
-aligned with the bank statement. The earlier manual date is kept only as
-background reference metadata.
+row's main date stays on the original event date and the bank-cleared date is
+stored in `post_date`. Sorting, monthly plans, and split views stay
+event-first; balance checkpoints and statement comparison use `post_date`.
 
 ### Statement-certified row
 
@@ -1205,19 +1205,26 @@ account and date range.
 - Overlap warnings are date-range warnings; they do not remove rows by
   themselves.
 - Marking an overlap as reviewed only hides the warning.
-- Exact and near matches use amount, account, date proximity, and description
-  similarity.
+- Exact and near matches use amount, account, lane-specific date proximity, and
+  description similarity.
 
 Description similarity is token-based. The app lowercases descriptions, replaces
 punctuation and symbols with spaces, then compares normalized words. It also
 checks compact text with spaces removed, so bank text like `M1LTDRECURRING` can
 still match a manual description like `M1 LTD RECURRING`.
 
-Import duplicate matching requires the same amount, the same mapped account, a
-date within 3 days, and description similarity of at least `0.55`. Exact import
-hashes and strong probable matches are skipped by default. Probable matches need
-date proximity and similarity of at least `0.85`. Weaker matches above the
-minimum are shown as near matches and need a user decision before commit.
+Import duplicate matching isolates one date lane first. If both rows have event
+date hints, it compares event date to event date. Otherwise it compares posted
+date to posted date. The match tiers are:
+
+- exact: same account, same absolute amount, `dayDistance === 0`, and
+  description similarity `>= 0.8`
+- probable: same absolute amount, `dayDistance <= 2`, and description
+  similarity `>= 0.6`
+- near: same absolute amount, `dayDistance <= 7`, and token similarity `>= 0.5`
+
+Low-value rows below `500` minor units use the `Velocity Rule`: if the lane
+distance is more than 2 days, the row is not treated as a duplicate candidate.
 
 A normalized import hash is the strict fingerprint for one reviewed import row.
 It is built from the normalized date, description, amount, mapped account, and

@@ -113,11 +113,12 @@ That distinction matters because the system needs to answer questions like:
   source trace instead of creating a second transaction
 - promotion must preserve user-maintained fields such as category, note,
   ownership, split percentages, and links into the split workspace
-- promotion also moves the ledger row's primary `transaction_date` onto the
-  incoming bank-posted date so the ledger remains statement-aligned; if the row
-  began as a manual provisional capture, the earlier user-entered date is kept
-  separately as reference metadata instead of remaining the balance-driving date
-- matching should score account, signed amount, transaction date, posted date,
+- promotion updates only `post_date`; it must not rewrite the ledger row's
+  `transaction_date`, because planning, splits, and month summaries stay pinned
+  to the event date
+- matching should isolate one date lane before scoring: event-to-event when
+  both rows have intent metadata, otherwise posted-to-posted
+- matching should score account, signed amount, lane-specific date proximity,
   normalized merchant tokens, and source hints such as `txn date` notes from
   card exports rather than relying only on raw description equality
 - merchant aliases such as `CS` -> `Cold Storage` should feed reconciliation

@@ -159,7 +159,7 @@ export interface LinkedTransferDto {
 export interface EntryDto {
   id: string;
   date: string;
-  originalDate?: string;
+  postDate?: string;
   description: string;
   accountId?: string;
   accountName: string;

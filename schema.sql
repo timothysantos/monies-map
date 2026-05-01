@@ -214,7 +214,6 @@ CREATE TABLE IF NOT EXISTS transactions (
   account_id TEXT NOT NULL,
   transfer_group_id TEXT,
   transaction_date TEXT NOT NULL,
-  original_transaction_date TEXT,
   posted_date TEXT,
   description TEXT NOT NULL,
   original_description TEXT,
