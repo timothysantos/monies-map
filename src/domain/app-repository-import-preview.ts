@@ -9,6 +9,7 @@ import {
   getMonthEndDate,
   getSignedLedgerAmountMinor,
   normalizeAccountOpeningBalanceMinor,
+  normalizeDescriptionForMatch,
   normalizeDateString,
   normalizeImportRow,
   normalizeStatementBalanceInputMinor,
@@ -160,92 +161,35 @@ export async function buildImportPreview(
     const requestedCommitStatus = getRequestedCommitStatus(rawRow);
     const requestedReconciliationTargetTransactionId = getRequestedReconciliationTargetTransactionId(rawRow);
     const previewRowDateContext = getPreviewRowDateContext(previewRow);
-    const nearMatches = existingTransactions.results
-      .map((candidate) => {
-        if (!isImportPreviewCandidateEligibleForSource(candidate, input.sourceType)) {
-          return undefined;
-        }
+    const exactDuplicateMatch = findExactDuplicateSuppressionMatch({
+      previewRow,
+      previewRowDateContext,
+      existingRows: existingTransactions.results
+    });
+    const reconciliationMatches = exactDuplicateMatch
+      ? []
+      : findReconciliationMatches({
+        previewRow,
+        previewRowDateContext,
+        existingRows: existingTransactions.results,
+        incomingSourceType: input.sourceType
+      });
 
-        const sameAmount = Number(candidate.amount_minor) === Number(previewRow.amountMinor);
-        if (!sameAmount) {
-          return undefined;
-        }
+    // Exact duplicate suppression is the raw identity lane. It must run before
+    // promotion and reconciliation guards so overlapping bank files can auto-skip
+    // rows that are already in the ledger, even when those rows are otherwise
+    // isolated from reconciliation.
+    if (exactDuplicateMatch) {
+      previewRow.reconciliationMatch = exactDuplicateMatch;
+      previewRow.reconciliationMatchCount = 1;
+    } else {
+      previewRow.reconciliationMatches = reconciliationMatches;
+    }
 
-        const sameAccount = previewRow.accountId
-          ? candidate.account_id === previewRow.accountId
-          : !previewRow.accountName || candidate.account_name === previewRow.accountName;
-        if (!sameAccount) {
-          return undefined;
-        }
-
-        const candidateDateContext = getExistingTransactionDateContext(candidate);
-        const dayDistance = getDuplicateCandidateDayDistance({
-          previewRow: previewRowDateContext,
-          candidate: candidateDateContext
-        });
-        const maxDayDistance = getDuplicateCandidateMaxDayDistance(previewRow.amountMinor);
-
-        // The velocity rule rejects low-value matches that are too far apart in
-        // time. This prevents commuter false positives where weekly BUS/MRT or
-        // coffee charges share the same amount and similar merchant text but
-        // are actually separate real-world events.
-        if (dayDistance > maxDayDistance) {
-          return undefined;
-        }
-
-        const sharedTokenCount = countSharedTokens(previewRow.description, candidate.description);
-        const tokenSimilarity = getTokenSimilarity(previewRow.description, candidate.description);
-        const descriptionSimilarity = boostDescriptionSimilarityForManualPromotionCandidate({
-          baseSimilarity: compareDescriptionSimilarity(previewRow.description, candidate.description),
-          candidateSourceType: candidate.source_type,
-          candidateBankCertificationStatus: candidate.bank_certification_status,
-          dayDistance,
-          sharedTokenCount
-        });
-        const matchKind = getDuplicateMatchKind({
-          dayDistance,
-          descriptionSimilarity,
-          tokenSimilarity
-        });
-        if (!matchKind) {
-          return undefined;
-        }
-
-        return {
-          candidate,
-          dayDistance,
-          descriptionSimilarity,
-          matchKind
-        };
-      })
-      .filter((match): match is {
-        candidate: typeof existingTransactions.results[number];
-        dayDistance: number;
-        descriptionSimilarity: number;
-        matchKind: "exact" | "probable" | "near";
-      } => Boolean(match))
-      .sort((left, right) => (
-        getDuplicateMatchRank(left.matchKind) - getDuplicateMatchRank(right.matchKind)
-        || left.dayDistance - right.dayDistance
-        || right.descriptionSimilarity - left.descriptionSimilarity
-      ))
-      .slice(0, 3);
-
-    previewRow.reconciliationMatches = nearMatches.map(({ candidate, matchKind }) => ({
-      ...(candidate.import_id ? { existingImportId: candidate.import_id } : {}),
-      existingTransactionId: candidate.transaction_id,
-      existingAccountId: candidate.account_id,
-      existingSourceType: candidate.source_type,
-      existingBankCertificationStatus: candidate.bank_certification_status,
-      date: candidate.transaction_date,
-      description: candidate.description,
-      amountMinor: Number(candidate.amount_minor),
-      accountName: candidate.account_name,
-      matchKind
-    }));
-    const strongestMatch = previewRow.reconciliationMatches[0]?.matchKind;
+    const strongestMatch = previewRow.reconciliationMatches?.[0]?.matchKind ?? previewRow.reconciliationMatch?.matchKind;
     previewRow.commitStatus = requestedCommitStatus ?? getDefaultCommitStatus(strongestMatch);
     previewRow.commitStatusReason = getCommitStatusReason(previewRow.commitStatus, strongestMatch);
+    applyExactDuplicateSuppressionReason(previewRow, input.sourceType);
     applySourceAuthorityToPreviewRow(previewRow, input.sourceType);
     applyRequestedReconciliationTargetToPreviewRow(
       previewRow,
@@ -403,6 +347,192 @@ function getDuplicateCandidateDayDistance(input: {
   return Math.abs(daysBetween(input.previewRow.postedDate, input.candidate.postedDate));
 }
 
+function findExactDuplicateSuppressionMatch(input: {
+  previewRow: ImportPreviewRowDto;
+  previewRowDateContext: ReturnType<typeof getPreviewRowDateContext>;
+  existingRows: Array<{
+    import_id: string | null;
+    source_type: "csv" | "pdf" | "manual";
+    transaction_id: string;
+    account_id: string;
+    transaction_date: string;
+    post_date: string | null;
+    description: string;
+    amount_minor: number;
+    bank_certification_status: "provisional" | "statement_certified";
+    account_name: string;
+    normalized_hash: string | null;
+  }>;
+}) {
+  const previewRowHash = buildImportRowHash(input.previewRow);
+
+  const exactMatches = input.existingRows
+    .map((candidate) => {
+      if (!isSameAmountAndAccountCandidate(input.previewRow, candidate)) {
+        return undefined;
+      }
+
+      const candidateDateContext = getExistingTransactionDateContext(candidate);
+      const dayDistance = getDuplicateCandidateDayDistance({
+        previewRow: input.previewRowDateContext,
+        candidate: candidateDateContext
+      });
+      const hasMatchingHash = Boolean(candidate.normalized_hash) && candidate.normalized_hash === previewRowHash;
+      const hasPerfectDescriptionMatch = dayDistance === 0
+        && normalizeDescriptionForMatch(candidate.description) === normalizeDescriptionForMatch(input.previewRow.description);
+
+      if (!hasMatchingHash && !hasPerfectDescriptionMatch) {
+        return undefined;
+      }
+
+      return {
+        candidate,
+        dayDistance,
+        usedHashMatch: hasMatchingHash
+      };
+    })
+    .filter((match): match is {
+      candidate: typeof input.existingRows[number];
+      dayDistance: number;
+      usedHashMatch: boolean;
+    } => Boolean(match))
+    .sort((left, right) => (
+      Number(right.usedHashMatch) - Number(left.usedHashMatch)
+      || left.dayDistance - right.dayDistance
+    ));
+
+  return exactMatches[0] ? mapCandidateToReconciliationMatch(exactMatches[0].candidate, "exact") : undefined;
+}
+
+function findReconciliationMatches(input: {
+  previewRow: ImportPreviewRowDto;
+  previewRowDateContext: ReturnType<typeof getPreviewRowDateContext>;
+  existingRows: Array<{
+    import_id: string | null;
+    source_type: "csv" | "pdf" | "manual";
+    transaction_id: string;
+    account_id: string;
+    transaction_date: string;
+    post_date: string | null;
+    description: string;
+    note: string | null;
+    amount_minor: number;
+    bank_certification_status: "provisional" | "statement_certified";
+    account_name: string;
+  }>;
+  incomingSourceType?: "csv" | "pdf" | "manual";
+}) {
+  return input.existingRows
+    .map((candidate) => {
+      if (!isImportPreviewCandidateEligibleForSource(candidate, input.incomingSourceType)) {
+        return undefined;
+      }
+
+      if (!isSameAmountAndAccountCandidate(input.previewRow, candidate)) {
+        return undefined;
+      }
+
+      const candidateDateContext = getExistingTransactionDateContext(candidate);
+      const dayDistance = getDuplicateCandidateDayDistance({
+        previewRow: input.previewRowDateContext,
+        candidate: candidateDateContext
+      });
+      const maxDayDistance = getDuplicateCandidateMaxDayDistance(input.previewRow.amountMinor);
+
+      // The velocity rule rejects low-value matches that are too far apart in
+      // time. This prevents commuter false positives where weekly BUS/MRT or
+      // coffee charges share the same amount and similar merchant text but
+      // are actually separate real-world events.
+      if (dayDistance > maxDayDistance) {
+        return undefined;
+      }
+
+      const sharedTokenCount = countSharedTokens(input.previewRow.description, candidate.description);
+      const tokenSimilarity = getTokenSimilarity(input.previewRow.description, candidate.description);
+      const descriptionSimilarity = boostDescriptionSimilarityForManualPromotionCandidate({
+        baseSimilarity: compareDescriptionSimilarity(input.previewRow.description, candidate.description),
+        candidateSourceType: candidate.source_type,
+        candidateBankCertificationStatus: candidate.bank_certification_status,
+        dayDistance,
+        sharedTokenCount
+      });
+      const matchKind = getDuplicateMatchKind({
+        dayDistance,
+        descriptionSimilarity,
+        tokenSimilarity
+      });
+      if (!matchKind) {
+        return undefined;
+      }
+
+      return {
+        candidate,
+        dayDistance,
+        descriptionSimilarity,
+        matchKind
+      };
+    })
+    .filter((match): match is {
+      candidate: typeof input.existingRows[number];
+      dayDistance: number;
+      descriptionSimilarity: number;
+      matchKind: "exact" | "probable" | "near";
+    } => Boolean(match))
+    .sort((left, right) => (
+      getDuplicateMatchRank(left.matchKind) - getDuplicateMatchRank(right.matchKind)
+      || left.dayDistance - right.dayDistance
+      || right.descriptionSimilarity - left.descriptionSimilarity
+    ))
+    .slice(0, 3)
+    .map(({ candidate, matchKind }) => mapCandidateToReconciliationMatch(candidate, matchKind));
+}
+
+function isSameAmountAndAccountCandidate(
+  previewRow: ImportPreviewRowDto,
+  candidate: {
+    account_id: string;
+    account_name: string;
+    amount_minor: number;
+  }
+) {
+  const sameAmount = Number(candidate.amount_minor) === Number(previewRow.amountMinor);
+  if (!sameAmount) {
+    return false;
+  }
+
+  return previewRow.accountId
+    ? candidate.account_id === previewRow.accountId
+    : !previewRow.accountName || candidate.account_name === previewRow.accountName;
+}
+
+function mapCandidateToReconciliationMatch(
+  candidate: {
+    import_id: string | null;
+    source_type: "csv" | "pdf" | "manual";
+    transaction_id: string;
+    account_id: string;
+    transaction_date: string;
+    description: string;
+    amount_minor: number;
+    bank_certification_status: "provisional" | "statement_certified";
+    account_name: string;
+  },
+  matchKind: "exact" | "probable" | "near"
+) {
+  return {
+    ...(candidate.import_id ? { existingImportId: candidate.import_id } : {}),
+    existingTransactionId: candidate.transaction_id,
+    existingAccountId: candidate.account_id,
+    existingSourceType: candidate.source_type,
+    existingBankCertificationStatus: candidate.bank_certification_status,
+    date: candidate.transaction_date,
+    description: candidate.description,
+    amountMinor: Number(candidate.amount_minor),
+    accountName: candidate.account_name,
+    matchKind
+  };
+}
+
 function boostDescriptionSimilarityForManualPromotionCandidate(input: {
   baseSimilarity: number;
   candidateSourceType: "csv" | "pdf" | "manual";
@@ -487,6 +617,23 @@ function applySourceAuthorityToPreviewRow(
   previewRow.commitStatusReason = "Official statement will certify the existing mid-cycle ledger row while preserving user edits.";
   previewRow.reconciliationTargetTransactionId = strongestMatch.existingTransactionId;
   previewRow.reconciliationMatches = undefined;
+}
+
+function applyExactDuplicateSuppressionReason(
+  previewRow: ImportPreviewRowDto,
+  sourceType?: "csv" | "pdf" | "manual"
+) {
+  if (
+    sourceType === "pdf"
+    && previewRow.commitStatus === "skipped"
+    && previewRow.reconciliationMatch?.matchKind === "exact"
+    && (
+      previewRow.reconciliationMatch.existingSourceType === "pdf"
+      || previewRow.reconciliationMatch.existingBankCertificationStatus === "statement_certified"
+    )
+  ) {
+    previewRow.commitStatusReason = "Official statement row is already certified in the ledger.";
+  }
 }
 
 function canPromoteManualReconciliationMatch(
