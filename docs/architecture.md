@@ -124,6 +124,24 @@ That distinction matters because the system needs to answer questions like:
   matching as an evidence layer, separate from the ledger entry's display
   description
 
+### Matching Philosophy
+
+- entry reconciliation should model one economic event across multiple sources,
+  but it should not collapse every similar small recurring charge into the same
+  ledger event
+- identical recurring small-value transactions such as transit fares, coffee,
+  or canteen purchases should be treated as unique events by default unless
+  they happen close together in time
+- this is the `Velocity Rule`: the candidate matching window scales with
+  `amount_minor`
+- low-value rows with `abs(amount_minor) < 500` require `day_distance <= 2`
+  before they can be suggested as duplicate or promotion candidates
+- higher-value rows keep a wider `day_distance <= 7` search window so delayed
+  bank posting can still reconcile to the same ledger entry
+- manual promotion boosts still matter inside that window. Exact-date matches
+  supported by source hints remain the strongest promotion candidates because
+  their `day_distance` is `0`
+
 ### 2. Review
 
 - app flags unknown merchants or categories
@@ -602,6 +620,10 @@ shared actuals.
   rejected Cloudflare request should be retried as smaller batches
 - duplicate heuristics now distinguish exact ledger matches from near matches
   using amount, account, date proximity, and description token overlap
+- the `Velocity Rule` narrows duplicate candidate windows for low-value rows to
+  avoid commuter false positives, so weekly BUS/MRT or coffee transactions are
+  not flagged as near matches just because they reused the same fare amount and
+  merchant text
 - `audit_events` keep a lightweight history of balance-affecting actions such as
   imports, opening-balance edits, checkpoints, entry edits, and transfer relinks
 - account dialogs expose editable/deletable checkpoint history so
