@@ -256,6 +256,15 @@ Relationships:
 - may link to one `split settlement`
 - may be referenced by reconciliation records
 
+### Transaction Date & Reconciliation
+The system enforces a "Single Source of Truth" for dates to ensure the ledger remains a reliable accounting tool:
+
+* **Primary Date (`transaction_date`):** This is the "Accounting Date." It must always follow the latest trusted bank-posted date. This ensures that ledger sorting, running balances, and statement comparisons match the official bank record 1:1.
+* **Reference Date (`original_transaction_date`):** This is the "Event Date." It captures the user's manual entry date or a source hint (like a `txn date` from a CSV). This exists to bridge the psychological gap between when a user swiped their card and when the bank settled the funds.
+
+**Why this matters:**
+Without this alignment, the app's balance would "drift" from the bank's reality, making it impossible for a user to reconcile their app against a PDF statement without doing mental math on 3-day pending gaps.
+
 Important distinctions:
 - A ledger entry is not the same thing as an import row.
 - A ledger entry should represent one economic event even when that event is

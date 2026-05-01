@@ -3081,6 +3081,12 @@ export async function commitImportBatch(
           throw new Error("Current-activity reconciliation target is no longer manual. Refresh the import preview and try again.");
         }
 
+        // This line is the "Bridge Builder." It’s responsible for catching that first manual date 
+        // before the bank date takes over.
+        //
+        // If the target row was already promoted, we stick with its existing original date.
+        // Otherwise, if the manual date is different from the incoming bank date, 
+        // we capture the manual date now before it's overwritten by the bank date.
         const promotedOriginalTransactionDate = reconciliationTarget.original_transaction_date
           ?? (reconciliationTarget.transaction_date !== row.date ? reconciliationTarget.transaction_date : null);
 
@@ -3123,6 +3129,10 @@ export async function commitImportBatch(
       }
 
       if (reconciliationTarget) {
+        // It handles cases where an incoming row might already have a date hint that differs from its own posted date.
+        // For new rows, we only store an 'original_transaction_date' if the 
+        // source (like a CSV note) explicitly provides a different transaction date 
+        // than the bank's reported posted date.
         const promotedOriginalTransactionDate = reconciliationTarget.original_transaction_date
           ?? (reconciliationTarget.import_id === null && reconciliationTarget.transaction_date !== row.date
             ? reconciliationTarget.transaction_date
