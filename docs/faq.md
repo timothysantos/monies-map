@@ -1213,9 +1213,16 @@ punctuation and symbols with spaces, then compares normalized words. It also
 checks compact text with spaces removed, so bank text like `M1LTDRECURRING` can
 still match a manual description like `M1 LTD RECURRING`.
 
-Import duplicate matching isolates one date lane first. If both rows have event
-date hints, it compares event date to event date. Otherwise it compares posted
-date to posted date. The match tiers are:
+Import duplicate matching now runs in two lanes. First, exact duplicate
+suppression checks for the same mapped account, the same amount, and either the
+same normalized import hash or a perfect normalized description match with
+`dayDistance === 0`. Those rows are auto-skipped before any reconciliation
+status guard runs.
+
+If a row is not an exact duplicate, the app then isolates one date lane for the
+promotion and reconciliation step. If both rows have event date hints, it
+compares event date to event date. Otherwise it compares posted date to posted
+date. The match tiers are:
 
 - exact: same account, same absolute amount, `dayDistance === 0`, and
   description similarity `>= 0.8`
@@ -1228,10 +1235,11 @@ distance is more than 2 days, the row is not treated as a duplicate candidate.
 
 A normalized import hash is the strict fingerprint for one reviewed import row.
 It is built from the normalized date, description, amount, mapped account, and
-entry type. If all of those fields match an existing imported ledger row, the app
-can call it an exact match. If the date is different, such as an April Netflix
-row compared with a January Netflix row, it should not be the same normalized
-hash; at most it should be evaluated by the looser duplicate checks below.
+entry type. If all of those fields match an existing imported ledger row, the
+app can suppress the incoming row as an exact duplicate immediately. If the
+date is different, such as an April Netflix row compared with a January
+Netflix row, it should not be the same normalized hash; at most it should be
+evaluated by the looser reconciliation checks below.
 
 Statement comparison is slightly more flexible because the statement is used as
 evidence. A same-date statement row can match with description similarity of
@@ -1255,6 +1263,12 @@ warnings. With the statement-certification model, matching provisional mid-cycle
 rows are promoted in place: the statement owns the bank facts, while user
 annotations stay attached to the existing transaction. Rows you explicitly
 skipped stay skipped until you restore them.
+
+Status guards only apply in that second lane. `statement_certified` ledger rows
+cannot be chosen as reconciliation targets, and non-PDF mid-cycle imports
+cannot reconcile against existing imported provisional rows. Exact duplicate
+suppression still sees those rows so overlapping bank files can auto-skip
+already-covered activity.
 
 When a PDF statement has no new rows because every row was already imported from
 mid-cycle activity files, the import action changes to "Save statement

@@ -106,6 +106,10 @@ That distinction matters because the system needs to answer questions like:
   entries, mid-cycle CSV/XLS activity rows, and PDF statement rows all enter
   the same matching pipeline; the difference is source authority, not whether a
   separate duplicate feature runs
+- the matching pipeline has two ordered lanes. First, `exact duplicate
+  suppression` auto-skips identical incoming bank rows before any source guard
+  runs. Second, `promotion and reconciliation` evaluates non-identical rows with
+  status isolation and similarity heuristics
 - a manual provisional row, a mid-cycle CSV/XLS activity row, and a final PDF
   statement row can all describe the same underlying card event
 - when a later source matches an existing provisional row closely enough, the
@@ -118,6 +122,9 @@ That distinction matters because the system needs to answer questions like:
   to the event date
 - matching should isolate one date lane before scoring: event-to-event when
   both rows have intent metadata, otherwise posted-to-posted
+- exact duplicate suppression is stricter than promotion scoring. It requires
+  the same amount, the same mapped account, and either the same normalized
+  import hash or a perfect normalized description match with zero date distance
 - matching should score account, signed amount, lane-specific date proximity,
   normalized merchant tokens, and source hints such as `txn date` notes from
   card exports rather than relying only on raw description equality
@@ -146,6 +153,10 @@ That distinction matters because the system needs to answer questions like:
   an original transaction date, compare original-to-original; otherwise compare
   posted-to-posted, so low-value commuter rows do not slip through on a false
   original-to-posted 2-day overlap
+- reconciliation-only source guards remain explicit: `statement_certified`
+  ledger rows are locked, and non-PDF mid-cycle imports cannot reconcile
+  against existing `import provisional` rows. Those guards do not apply to the
+  earlier exact-duplicate suppression lane.
 
 ### 2. Review
 
