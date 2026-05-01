@@ -513,7 +513,7 @@ function buildPreviewLedgerRows(previewRows: ImportPreviewRowDto[]) {
     ))
     .map((row) => ({
       account_id: row.accountId!,
-      transaction_date: row.date,
+      cleared_date: row.date,
       entry_type: row.entryType,
       transfer_direction: row.transferDirection ?? null,
       amount_minor: row.amountMinor
@@ -524,6 +524,7 @@ function buildProjectedLedgerRows(
   existingRows: {
     transaction_id?: string;
     account_id: string;
+    cleared_date?: string;
     transaction_date: string;
     entry_type: "expense" | "income" | "transfer";
     transfer_direction: "in" | "out" | null;
@@ -537,7 +538,12 @@ function buildProjectedLedgerRows(
       .filter((id): id is string => Boolean(id))
   );
   return [
-    ...existingRows.filter((row) => !row.transaction_id || !certificationTargetIds.has(row.transaction_id)),
+    ...existingRows
+      .filter((row) => !row.transaction_id || !certificationTargetIds.has(row.transaction_id))
+      .map((row) => ({
+        ...row,
+        cleared_date: row.cleared_date ?? row.transaction_date
+      })),
     ...buildPreviewLedgerRows(previewRows)
   ];
 }
