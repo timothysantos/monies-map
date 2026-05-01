@@ -19,6 +19,7 @@ export function buildImportPreviewModel({
   const certifiedConflictRows = previewRows.filter((row) => row.isCertifiedConflict);
   const knownAccountNames = new Set(accounts.map((account) => account.name));
   const accountNameCounts = buildAccountNameCounts(accounts);
+  const visiblePreviewRows = previewRows.filter((row) => !row.isStatementMatchResolved && !row.isCertifiedConflict);
   const detectedPreviewAccountNames = getDetectedPreviewAccountNames({
     previewRows,
     statementCheckpoints,
@@ -39,9 +40,18 @@ export function buildImportPreviewModel({
     }
     return (accountNameCounts.get(checkpoint?.accountName ?? accountName) ?? 0) > 1;
   });
+  const unmappedPreviewAccountNames = Array.from(new Set(
+    visiblePreviewRows
+      .filter((row) => !row.accountId && Boolean(row.accountName))
+      .map((row) => row.statementAccountName ?? row.accountName)
+      .filter(Boolean)
+  )).sort();
+  const accountMappingAccountNames = Array.from(new Set([
+    ...detectedPreviewAccountNames,
+    ...unmappedPreviewAccountNames
+  ])).sort();
   const duplicateCheckpointAccounts = getDuplicateCheckpointAccounts(statementCheckpoints);
   const visibleOverlapImports = (preview?.overlapImports ?? []).filter((item) => !dismissedOverlapIds.includes(item.id));
-  const visiblePreviewRows = previewRows.filter((row) => !row.isStatementMatchResolved && !row.isCertifiedConflict);
   const previewReconciliationRowCount = visiblePreviewRows.filter((row) => row.reconciliationMatches?.length).length;
   const reconciledExistingRowCount = previewRows.filter((row) => row.reconciliationTargetTransactionId).length;
   const skippedPreviewRowCount = visiblePreviewRows.filter((row) => row.commitStatus === "skipped").length;
@@ -69,6 +79,7 @@ export function buildImportPreviewModel({
     || needsReviewPreviewRowCount > 0;
 
   return {
+    accountMappingAccountNames,
     detectedPreviewAccountNames,
     duplicateCheckpointAccounts,
     hasBlockingCategoryPolicy,
@@ -91,7 +102,7 @@ export function buildImportPreviewModel({
         : hasCheckpointOnlyCommit
           ? messages.imports.saveStatementCheckpoints
           : messages.imports.commit,
-    showStatementAccountMapping: preview && detectedPreviewAccountNames.length > 0 && (
+    showStatementAccountMapping: preview && accountMappingAccountNames.length > 0 && (
       statementImportMeta.sourceType === "pdf" || unknownPreviewAccountNames.length > 0 || ambiguousPreviewAccountNames.length > 0
     ),
     statementReconciliations,

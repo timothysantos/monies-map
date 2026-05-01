@@ -204,6 +204,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     [filteredRecentImports, recentImportPage]
   );
   const {
+    accountMappingAccountNames,
     detectedPreviewAccountNames,
     certifiedConflictRows,
     duplicateCheckpointAccounts,
@@ -942,6 +943,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             preview={preview}
             previewRows={previewRows}
             accounts={accounts}
+            accountMappingAccountNames={accountMappingAccountNames}
             knownAccountNames={knownAccountNames}
             detectedPreviewAccountNames={detectedPreviewAccountNames}
             unknownPreviewAccountNames={unknownPreviewAccountNames}
