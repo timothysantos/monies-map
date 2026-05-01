@@ -268,24 +268,27 @@ Relationships:
 - may be referenced by reconciliation records
 
 ### Transaction Date & Reconciliation
-The system enforces a "Single Source of Truth" for dates to ensure the ledger remains a reliable accounting tool:
+The system uses an event-first date model so planning and split workflows do
+not drift when the bank clears later:
 
-* **Primary Date (`transaction_date`):** This is the "Accounting Date." It must always follow the latest trusted bank-posted date. This ensures that ledger sorting, running balances, and statement comparisons match the official bank record 1:1.
-* **Reference Date (`original_transaction_date`):** This is the "Event Date." It captures the user's manual entry date or a source hint (like a `txn date` from a CSV). This exists to bridge the psychological gap between when a user swiped their card and when the bank settled the funds.
+* **Event Date (`transaction_date`):** The immutable date the economic event
+  happened. This drives ledger sorting, monthly planning, summary grouping, and
+  split workspace calculations.
+* **Posted Date (`post_date`):** The bank-cleared date used for statement
+  verification, balance checkpoints, and other reconciliation-only workflows.
 
 **Why this matters:**
-Without this alignment, the app's balance would "drift" from the bank's reality, making it impossible for a user to reconcile their app against a PDF statement without doing mental math on 3-day pending gaps.
+An April 30 expense must stay in April for budgets and split math even if the
+bank posts it on May 3. Reconciliation still needs the May 3 date, but it must
+not push the event into a different planning month.
 
 Important distinctions:
 - A ledger entry is not the same thing as an import row.
 - A ledger entry should represent one economic event even when that event is
   observed through multiple source paths such as manual entry, current-activity
   import, and final statement import.
-- During entry reconciliation, `transaction_date` should follow the latest
-  trusted bank-posted date so ledger sorting, balance math, and statement
-  comparison use the same official date. If a manual provisional row is
-  promoted, preserve the earlier user-entered date separately as
-  `original_transaction_date`.
+- During entry reconciliation, later bank sources should fill or update
+  `post_date` without rewriting `transaction_date`.
 - A transfer ledger entry is still one ledger entry; a full transfer usually
   needs a matched pair of entries linked by a transfer group.
 - Shared ownership on a ledger entry is not the same thing as a split expense
