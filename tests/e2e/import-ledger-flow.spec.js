@@ -922,6 +922,101 @@ test.describe("import flow", () => {
     expect(certifiedEntry.bankCertificationStatus).toBe("statement_certified");
   });
 
+  test("statement preview excludes rows whose post date lands after the statement end", async ({ page }) => {
+    const accountName = `Playwright UOB Post Date ${Date.now()}`;
+    const createPayload = await postJson(page, "/api/accounts/create", {
+      name: accountName,
+      institution: "Synthetic Test Bank",
+      kind: "credit_card",
+      openingBalanceMinor: 0,
+      currency: "SGD",
+      ownerPersonId: "",
+      isJoint: false
+    });
+    const accountId = createPayload.accountId;
+    expect(accountId).toBeTruthy();
+
+    const csvPreview = await page.evaluate(async ({ accountId, accountName }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Post-date spillover CSV",
+          sourceType: "csv",
+          defaultAccountName: accountName,
+          ownershipType: "direct",
+          ownerName: "Tim",
+          rows: [{
+            date: "2026-04-13",
+            description: "HONG KONG ZHAI DIMI S Singapore SG",
+            expense: "11.40",
+            note: "txn date: 2026-04-11",
+            accountId,
+            account: accountName,
+            category: "Other"
+          }]
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId, accountName });
+    expect(csvPreview.ok, JSON.stringify(csvPreview.json)).toBeTruthy();
+
+    const csvCommit = await page.evaluate(async ({ previewRows }) => {
+      const response = await fetch("/api/imports/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Post-date spillover CSV commit",
+          sourceType: "csv",
+          parserKey: "generic_csv",
+          rows: previewRows,
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { previewRows: csvPreview.json.preview.previewRows });
+    expect(csvCommit.ok, csvCommit.text).toBeTruthy();
+
+    const statementPreview = await page.evaluate(async ({ accountId, accountName }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Post-date spillover PDF",
+          sourceType: "pdf",
+          rows: [{
+            date: "2026-04-13",
+            description: "HONG KONG ZHAI DIMI S Singapore SG",
+            expense: "11.40",
+            note: "txn date: 2026-04-11",
+            accountId,
+            account: accountName,
+            category: "Other"
+          }],
+          defaultAccountName: accountName,
+          ownershipType: "direct",
+          ownerName: "Tim",
+          statementCheckpoints: [{
+            accountId,
+            accountName,
+            checkpointMonth: "2026-04",
+            statementStartDate: "2026-03-13",
+            statementEndDate: "2026-04-12",
+            statementBalanceMinor: 0,
+            note: "Post-date spillover statement"
+          }]
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId, accountName });
+
+    expect(statementPreview.ok, JSON.stringify(statementPreview.json)).toBeTruthy();
+    expect(statementPreview.json.preview.previewRows[0].commitStatus).toBe("skipped");
+    expect(statementPreview.json.preview.statementReconciliations[0].status).toBe("matched");
+    expect(statementPreview.json.preview.statementReconciliations[0].projectedLedgerBalanceMinor).toBe(0);
+    expect(statementPreview.json.preview.statementReconciliations[0].deltaMinor).toBe(0);
+  });
+
   test("already certified statement rows retain ledger comparison details", async ({ page }) => {
     const accountId = await page.evaluate(async () => {
       const response = await fetch("/api/accounts/create", {
