@@ -218,9 +218,18 @@ Important distinctions:
 - Entry reconciliation is broader than duplicate detection. It decides whether a
   later source should create a new ledger entry, promote an existing provisional
   one, or certify an already-matched entry.
+- Entry reconciliation now starts with a stricter `exact duplicate suppression`
+  lane before it evaluates the guarded `promotion and reconciliation` lane.
 - Entry reconciliation is not limited to PDF statements. The same system should
   govern manual entries, CSV/XLS activity imports, and statement imports with a
   source-authority ladder.
+- `Exact duplicate suppression` is a raw identity check. If the incoming row has
+  the same amount, the same mapped account, and either the same normalized
+  import hash or a perfect normalized description match on the same date, the
+  preview auto-skips it as already covered.
+- `Promotion and reconciliation` is the status-guarded lane. It handles manual
+  row promotion and statement certification after duplicate suppression has
+  already removed truly identical bank rows.
 - The `Velocity Rule` prevents commuter false positives by scaling duplicate
   candidate windows with `amount_minor`. Low-value rows with
   `abs(amount_minor) < 500` need `day_distance <= 2`, while higher-value rows
@@ -322,13 +331,17 @@ Important distinctions:
   `Manual provisional` versus `Import provisional` is derived from whether the
   provisional row has an `import batch`.
 - Entry reconciliation uses a status-based match isolation guard. No incoming
-  bank row can reconcile against an existing `statement_certified` ledger entry.
+  bank row can reconcile against an existing `statement_certified` ledger entry
+  in the promotion/reconciliation lane.
 - Mid-cycle imports such as CSV or XLS can only reconcile against
   `Manual provisional` ledger entries.
 - To prevent cross-bank false positives on high-velocity recurring charges,
   mid-cycle imports only match pending manual entries. However, official PDF
   statement imports can match against mid-cycle provisional entries to elevate
   them to certified status.
+- Those status guards do not block exact duplicate suppression. Repeated bank
+  files should still auto-skip a row that is already present in the ledger,
+  even if that ledger row is import provisional or statement certified.
 
 ### Entry Split
 

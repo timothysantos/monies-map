@@ -44,17 +44,23 @@ The canonical import-preview matcher lives in
 
 Rules:
 
-- apply certification-status eligibility checks before date-distance or
-  description-similarity scoring
+- run exact duplicate suppression before any certification-status or
+  source-isolation guard
+- exact duplicate suppression should auto-skip rows that share the same amount,
+  mapped account, and either the same normalized import hash or a perfect
+  normalized description match on the same day
+- apply certification-status eligibility checks only inside the promotion and
+  reconciliation lane, before date-distance or description-similarity scoring
 - treat `statement_certified` ledger entries as locked and never eligible for a
-  new incoming bank-row match
+  new incoming bank-row reconciliation match
 - allow mid-cycle sources such as CSV/XLS to reconcile only against manual
   provisional ledger rows
 - allow official PDF statements to reconcile against both manual provisional and
   import provisional rows so month-end statement imports can promote existing
   working rows instead of duplicating them
-- keep the status guard separate from ranking heuristics so source authority is
-  explicit and easy to audit
+- keep exact duplicate suppression separate from status-guarded reconciliation
+  so overlapping files auto-skip cleanly while recurring-charge heuristics stay
+  isolated to the promotion lane
 
 Why:
 
@@ -62,3 +68,6 @@ Why:
   mid-cycle imports only match pending manual entries. However, official PDF
   statement imports can match against mid-cycle provisional entries to elevate
   them to certified status.
+- Repeated overlapping bank exports should still auto-skip truly identical
+  rows, even when those rows would be excluded from reconciliation by the
+  promotion-lane source guards.
