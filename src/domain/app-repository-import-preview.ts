@@ -707,6 +707,7 @@ function buildProjectedLedgerRows(
     account_id: string;
     cleared_date?: string;
     transaction_date: string;
+    post_date?: string | null;
     entry_type: "expense" | "income" | "transfer";
     transfer_direction: "in" | "out" | null;
     amount_minor: number;
@@ -723,7 +724,7 @@ function buildProjectedLedgerRows(
       .filter((row) => !row.transaction_id || !certificationTargetIds.has(row.transaction_id))
       .map((row) => ({
         ...row,
-        cleared_date: row.cleared_date ?? row.transaction_date
+        cleared_date: row.cleared_date ?? row.post_date ?? row.transaction_date
       })),
     ...buildPreviewLedgerRows(previewRows)
   ];
@@ -756,6 +757,7 @@ function autoIncludeDuplicateMatchesExplainedByStatementBalance(input: {
   existingRows: {
     account_id: string;
     transaction_date: string;
+    post_date?: string | null;
     entry_type: "expense" | "income" | "transfer";
     transfer_direction: "in" | "out" | null;
     amount_minor: number;
@@ -813,6 +815,7 @@ function autoIncludeCurrentPeriodStatementRowsReplacingPriorCertifiedMatches(inp
   existingRows: {
     account_id: string;
     transaction_date: string;
+    post_date?: string | null;
     entry_type: "expense" | "income" | "transfer";
     transfer_direction: "in" | "out" | null;
     amount_minor: number;
@@ -897,6 +900,7 @@ function prioritizeCertifiedRowsExplainingStatementMismatch(input: {
   existingRows: {
     account_id: string;
     transaction_date: string;
+    post_date?: string | null;
     entry_type: "expense" | "income" | "transfer";
     transfer_direction: "in" | "out" | null;
     amount_minor: number;
@@ -1063,6 +1067,7 @@ function buildImportPreviewStatementReconciliations(input: {
   existingRows: {
     account_id: string;
     transaction_date: string;
+    post_date?: string | null;
     entry_type: "expense" | "income" | "transfer";
     transfer_direction: "in" | "out" | null;
     amount_minor: number;
