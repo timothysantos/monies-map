@@ -228,6 +228,10 @@ Important distinctions:
 - Under that rule, identical recurring small-value transactions such as
   BUS/MRT fares or coffee should be treated as separate economic events by
   default unless they occur close together in time.
+- Date evidence should stay lane-aware. Compare original transaction dates to
+  other original transaction dates when both exist; otherwise compare posted
+  dates, so imported commuter rows do not become false matches through a mixed
+  original-versus-posted comparison.
 
 ### Ledger Entry
 

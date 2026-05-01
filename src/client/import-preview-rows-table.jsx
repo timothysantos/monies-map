@@ -28,6 +28,7 @@ export function ImportPreviewRowsTable({
   jumpToSkippedRowsRequestKey = 0,
   onCommit,
   onUpdatePreviewRow,
+  onUpdatePreviewRowAccount,
   onUpdatePreviewRowCommitStatus,
   onPromotePreviewRowReconciliationTarget,
   getPreviewAccountOwnerPatch
@@ -80,6 +81,7 @@ export function ImportPreviewRowsTable({
           knownAccountNames={knownAccountNames}
           statementImportSourceType={statementImportSourceType}
           onUpdatePreviewRow={onUpdatePreviewRow}
+          onUpdatePreviewRowAccount={onUpdatePreviewRowAccount}
           onUpdatePreviewRowCommitStatus={onUpdatePreviewRowCommitStatus}
           onPromotePreviewRowReconciliationTarget={onPromotePreviewRowReconciliationTarget}
           getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
@@ -105,6 +107,7 @@ export function ImportPreviewRowsTable({
           knownAccountNames={knownAccountNames}
           statementImportSourceType={statementImportSourceType}
             onUpdatePreviewRow={onUpdatePreviewRow}
+            onUpdatePreviewRowAccount={onUpdatePreviewRowAccount}
             onUpdatePreviewRowCommitStatus={onUpdatePreviewRowCommitStatus}
             onPromotePreviewRowReconciliationTarget={onPromotePreviewRowReconciliationTarget}
             getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
@@ -128,6 +131,7 @@ function PreviewRowsTable({
   knownAccountNames,
   statementImportSourceType,
   onUpdatePreviewRow,
+  onUpdatePreviewRowAccount,
   onUpdatePreviewRowCommitStatus,
   onPromotePreviewRowReconciliationTarget,
   getPreviewAccountOwnerPatch,
@@ -230,7 +234,7 @@ function PreviewRowsTable({
                         const nextAccountId = event.target.value || undefined;
                         const nextAccount = accounts.find((account) => account.id === nextAccountId);
                         const nextAccountName = nextAccount?.name ?? (!nextAccountId ? undefined : row.accountName);
-                        onUpdatePreviewRow(row.rowId, {
+                        onUpdatePreviewRowAccount(row.rowId, {
                           accountId: nextAccount?.id,
                           accountName: nextAccountName,
                           ...getPreviewAccountOwnerPatch(nextAccountName, row, nextAccount?.id)

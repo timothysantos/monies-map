@@ -141,6 +141,10 @@ That distinction matters because the system needs to answer questions like:
 - manual promotion boosts still matter inside that window. Exact-date matches
   supported by source hints remain the strongest promotion candidates because
   their `day_distance` is `0`
+- duplicate detection should compare like-for-like dates. When both rows have
+  an original transaction date, compare original-to-original; otherwise compare
+  posted-to-posted, so low-value commuter rows do not slip through on a false
+  original-to-posted 2-day overlap
 
 ### 2. Review
 

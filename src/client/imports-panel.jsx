@@ -585,6 +585,37 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     )));
   }
 
+  function updatePreviewRowAccount(rowId, patch) {
+    let nextRows = [];
+    setPreviewRows((current) => {
+      nextRows = current.map((row) => (
+        row.rowId === rowId
+          ? {
+            ...row,
+            ...patch,
+            reconciliationMatches: undefined,
+            reconciliationMatch: undefined,
+            reconciliationMatchCount: undefined,
+            reconciliationTargetTransactionId: undefined,
+            commitStatus: "included",
+            commitStatusReason: undefined,
+            commitStatusExplicit: false
+          }
+          : row
+      ));
+      return nextRows;
+    });
+
+    // Account changes alter the backend candidate set, so a local clear is not
+    // enough. Re-run preview immediately to avoid leaving stale near-match
+    // badges on rows that should disappear after remapping.
+    void refreshPreviewFromRows({
+      rows: nextRows.map(importService.buildRawRowFromPreviewRow),
+      activeMessage: messages.imports.accountMappingRefreshing,
+      successMessage: messages.imports.accountMappingRefreshed
+    });
+  }
+
   function updatePreviewRowCommitStatus(rowId, commitStatus) {
     const nextRows = previewRows.map((row) => (
       row.rowId === rowId
@@ -956,6 +987,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               jumpToSkippedRowsRequestKey={jumpToSkippedRowsRequestKey}
               onCommit={handleCommit}
               onUpdatePreviewRow={updatePreviewRow}
+              onUpdatePreviewRowAccount={updatePreviewRowAccount}
               onUpdatePreviewRowCommitStatus={updatePreviewRowCommitStatus}
               onPromotePreviewRowReconciliationTarget={promotePreviewRowReconciliationTarget}
               getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}

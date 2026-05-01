@@ -53,7 +53,9 @@ export async function buildImportPreview(
         transactions.id AS transaction_id,
         transactions.account_id,
         transactions.transaction_date,
+        transactions.original_transaction_date,
         transactions.description,
+        transactions.note,
         transactions.amount_minor,
         transactions.entry_type,
         transactions.transfer_direction,
@@ -75,7 +77,9 @@ export async function buildImportPreview(
       transaction_id: string;
       account_id: string;
       transaction_date: string;
+      original_transaction_date: string | null;
       description: string;
+      note: string | null;
       amount_minor: number;
       entry_type: "expense" | "income" | "transfer";
       transfer_direction: "in" | "out" | null;
@@ -156,7 +160,7 @@ export async function buildImportPreview(
     const requestedCommitStatus = getRequestedCommitStatus(rawRow);
     const requestedReconciliationTargetTransactionId = getRequestedReconciliationTargetTransactionId(rawRow);
     const previewRowHash = buildImportRowHash(previewRow);
-    const previewRowDateCandidates = getPreviewRowDateCandidates(previewRow);
+    const previewRowDateContext = getPreviewRowDateContext(previewRow);
     const nearMatches = existingTransactions.results
       .map((candidate) => {
         const sameAmount = Number(candidate.amount_minor) === Number(previewRow.amountMinor);
@@ -171,7 +175,13 @@ export async function buildImportPreview(
           return undefined;
         }
 
-        const dayDistance = getClosestDayDistance(previewRowDateCandidates, candidate.transaction_date);
+        const candidateDateContext = getExistingTransactionDateContext(candidate);
+        const dayDistance = getDuplicateCandidateDayDistance({
+          previewRow: previewRowDateContext,
+          candidate: candidateDateContext,
+          candidateSourceType: candidate.source_type,
+          candidateBankCertificationStatus: candidate.bank_certification_status
+        });
         const maxDayDistance = getDuplicateCandidateMaxDayDistance(previewRow.amountMinor);
 
         // The velocity rule rejects low-value matches that are too far apart in
@@ -342,14 +352,51 @@ function getPreviewRowDateCandidates(previewRow: ImportPreviewRowDto) {
   ));
 }
 
-function getClosestDayDistance(candidates: string[], targetDate: string) {
-  if (!candidates.length) {
-    return Number.POSITIVE_INFINITY;
+function getPreviewRowDateContext(previewRow: ImportPreviewRowDto) {
+  const originalDateCandidates = getPreviewRowDateCandidates(previewRow).filter((date) => date !== previewRow.date);
+  return {
+    postedDate: previewRow.date,
+    originalDate: originalDateCandidates[0]
+  };
+}
+
+function getExistingTransactionDateContext(candidate: {
+  transaction_date: string;
+  original_transaction_date: string | null;
+  note: string | null;
+}) {
+  return {
+    postedDate: candidate.transaction_date,
+    originalDate: candidate.original_transaction_date
+      ?? extractTransactionDateHint(candidate.note ?? undefined)
+  };
+}
+
+function getDuplicateCandidateDayDistance(input: {
+  previewRow: {
+    postedDate: string;
+    originalDate?: string;
+  };
+  candidate: {
+    postedDate: string;
+    originalDate?: string;
+  };
+  candidateSourceType: "csv" | "pdf" | "manual";
+  candidateBankCertificationStatus: "provisional" | "statement_certified";
+}) {
+  if (
+    input.candidateSourceType === "manual"
+    && input.candidateBankCertificationStatus === "provisional"
+    && input.previewRow.originalDate
+  ) {
+    return Math.abs(daysBetween(input.previewRow.originalDate, input.candidate.postedDate));
   }
 
-  return candidates.reduce((closest, candidateDate) => (
-    Math.min(closest, Math.abs(daysBetween(candidateDate, targetDate)))
-  ), Number.POSITIVE_INFINITY);
+  if (input.previewRow.originalDate && input.candidate.originalDate) {
+    return Math.abs(daysBetween(input.previewRow.originalDate, input.candidate.originalDate));
+  }
+
+  return Math.abs(daysBetween(input.previewRow.postedDate, input.candidate.postedDate));
 }
 
 function boostDescriptionSimilarityForManualPromotionCandidate(input: {

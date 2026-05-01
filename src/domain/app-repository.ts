@@ -15,6 +15,7 @@ import {
   buildPlanDate,
   buildSnapshotRowsForScope,
   computeCheckpointLedgerBalanceMinor,
+  extractTransactionDateHint,
   getSignedLedgerAmountMinor,
   getMonthEndDate,
   inferMonthKeyFromPlanRow,
@@ -3177,15 +3178,21 @@ export async function commitImportBatch(
         continue;
       }
 
+      const importedOriginalTransactionDate = extractTransactionDateHint(row.note ?? undefined);
+      const storedOriginalTransactionDate = importedOriginalTransactionDate && importedOriginalTransactionDate !== row.date
+        ? importedOriginalTransactionDate
+        : null;
+
       statements.push(
         db
           .prepare(`
             INSERT INTO transactions (
               id, household_id, import_id, import_row_id, account_id, transaction_date,
+              original_transaction_date,
               description, amount_minor, currency, entry_type, transfer_direction,
               category_id, ownership_type, owner_person_id, offsets_category, note,
               bank_certification_status, statement_certified_import_id, statement_certified_import_row_id, statement_certified_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
           `)
           .bind(
             transactionId,
@@ -3194,6 +3201,7 @@ export async function commitImportBatch(
             rowId,
             accountId,
             row.date,
+            storedOriginalTransactionDate,
             row.description,
             row.amountMinor,
             row.entryType,
