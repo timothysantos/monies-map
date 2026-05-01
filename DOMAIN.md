@@ -321,6 +321,14 @@ Important distinctions:
 - The UI shows three states, but storage only needs two raw values because
   `Manual provisional` versus `Import provisional` is derived from whether the
   provisional row has an `import batch`.
+- Entry reconciliation uses a status-based match isolation guard. No incoming
+  bank row can reconcile against an existing `statement_certified` ledger entry.
+- Mid-cycle imports such as CSV or XLS can only reconcile against
+  `Manual provisional` ledger entries.
+- To prevent cross-bank false positives on high-velocity recurring charges,
+  mid-cycle imports only match pending manual entries. However, official PDF
+  statement imports can match against mid-cycle provisional entries to elevate
+  them to certified status.
 
 ### Entry Split
 
