@@ -36,3 +36,29 @@ How this relates to other docs:
 - [`docs/architecture.md`](/Users/tim/22m/ai-projects/monies_map/docs/architecture.md)
   defines system-wide structure and data flow
 - this file defines a practical implementation boundary for client-side code
+
+## Import Preview Matcher Boundary
+
+The canonical import-preview matcher lives in
+[`src/domain/app-repository-import-preview.ts`](/Users/tim/22m/ai-projects/monies_map/src/domain/app-repository-import-preview.ts).
+
+Rules:
+
+- apply certification-status eligibility checks before date-distance or
+  description-similarity scoring
+- treat `statement_certified` ledger entries as locked and never eligible for a
+  new incoming bank-row match
+- allow mid-cycle sources such as CSV/XLS to reconcile only against manual
+  provisional ledger rows
+- allow official PDF statements to reconcile against both manual provisional and
+  import provisional rows so month-end statement imports can promote existing
+  working rows instead of duplicating them
+- keep the status guard separate from ranking heuristics so source authority is
+  explicit and easy to audit
+
+Why:
+
+- To prevent cross-bank false positives on high-velocity recurring charges,
+  mid-cycle imports only match pending manual entries. However, official PDF
+  statement imports can match against mid-cycle provisional entries to elevate
+  them to certified status.

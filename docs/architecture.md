@@ -289,6 +289,14 @@ That distinction matters because the system needs to answer questions like:
   second ledger entry. This keeps later statement certification attached to the
   same row and preserves any split record the user already created from the
   manual entry.
+- entry reconciliation now applies a status-based match isolation guard before
+  scoring duplicate candidates. Existing `statement_certified` rows are locked
+  out of future matching, and `import_provisional` rows are only eligible when
+  the incoming source is an official PDF statement.
+- to prevent cross-bank false positives on high-velocity recurring charges,
+  mid-cycle imports only match pending manual entries. However, official PDF
+  statement imports can match against mid-cycle provisional entries to elevate
+  them to certified status.
 - official PDF statement rows that already match statement-certified ledger rows
   are treated as already certified rather than as duplicate conflicts.
 - reconciliation should prefer a source-authority ladder:
