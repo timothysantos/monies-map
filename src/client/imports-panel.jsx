@@ -4,6 +4,7 @@ import { messages } from "./copy/en-SG";
 import { commitImportBatch, previewImportBatch, rollbackImportBatch } from "./import-api";
 import { ImportRecentHistorySection } from "./import-history";
 import { buildRecentImportModel, filterRecentImportsByAccount, getRecentImportAccountOptions } from "./import-history-model";
+import { getStatementPreviewAutoRefreshKey, shouldAutoRefreshStatementPreview } from "./import-preview-auto-refresh";
 import { ImportMappingStage } from "./import-mapping-stage";
 import { buildImportPreviewModel, hasImportDraft } from "./import-preview-model";
 import { ImportPreviewReview } from "./import-preview-review";
@@ -71,6 +72,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const previewSectionRef = useRef(null);
   const hasAutoScrolledMappingRef = useRef(false);
   const hasAutoScrolledPreviewRef = useRef(false);
+  const lastPreviewHydratedAtRef = useRef(0);
+  const lastStatementPreviewAutoRefreshRef = useRef({ key: "", at: 0 });
 
   const csvInspection = useMemo(() => inspectCsv(csvText), [csvText]);
   const headerSignature = csvInspection.headers.join("|");
@@ -225,6 +228,14 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     unknownPreviewAccountNames,
     visibleOverlapImports
   } = importPreviewModel;
+  const statementPreviewAutoRefreshKey = useMemo(
+    () => getStatementPreviewAutoRefreshKey({
+      sourceType: statementImportMeta.sourceType,
+      statementCheckpoints,
+      previewRows
+    }),
+    [previewRows, statementCheckpoints, statementImportMeta.sourceType]
+  );
 
   useEffect(() => {
     setRecentImportPage((current) => Math.min(Math.max(current, 1), recentImportModel.pageCount));
@@ -337,7 +348,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }
 
   function markPreviewRefreshStarted(message) {
-    setUploadStatus({ tone: "active", message });
+    if (message) {
+      setUploadStatus({ tone: "active", message });
+    }
     setIsSubmitting(true);
   }
 
@@ -345,16 +358,19 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     rows,
     nextStatementCheckpoints = statementCheckpoints,
     activeMessage,
-    successMessage
+    successMessage,
+    silent = false
   }) {
-    markPreviewRefreshStarted(activeMessage);
+    markPreviewRefreshStarted(silent ? undefined : activeMessage);
 
     return previewImportRows({
       rows,
       nextStatementCheckpoints
     })
       .then(() => {
-        setUploadStatus({ tone: "success", message: successMessage });
+        if (!silent && successMessage) {
+          setUploadStatus({ tone: "success", message: successMessage });
+        }
       })
       .catch((error) => {
         const message = error instanceof Error ? error.message : "Import preview failed.";
@@ -481,12 +497,51 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       setDismissedOverlapIds((current) => current.filter((id) => data.preview?.overlapImports?.some((item) => item.id === id)));
       setPreview(data.preview);
       setPreviewRows(data.preview?.previewRows ?? []);
+      lastPreviewHydratedAtRef.current = Date.now();
     } catch (error) {
       setPreview(null);
       setPreviewRows([]);
       throw error;
     }
   }
+
+  useEffect(() => {
+    function handleStatementPreviewAutoRefresh() {
+      const now = Date.now();
+      if (!shouldAutoRefreshStatementPreview({
+        hasPreview: Boolean(preview),
+        autoRefreshKey: statementPreviewAutoRefreshKey,
+        isSubmitting,
+        isParsingStatement,
+        isDocumentVisible: typeof document === "undefined" || document.visibilityState === "visible",
+        now,
+        lastPreviewHydratedAt: lastPreviewHydratedAtRef.current,
+        lastAutoRefreshAt: lastStatementPreviewAutoRefreshRef.current.at,
+        lastAutoRefreshKey: lastStatementPreviewAutoRefreshRef.current.key
+      })) {
+        return;
+      }
+
+      // Statement previews can stay open while the local backend or account
+      // metadata changes underneath them. Re-run the current draft when the tab
+      // comes back into view so stale mismatch badges do not linger.
+      lastStatementPreviewAutoRefreshRef.current = {
+        key: statementPreviewAutoRefreshKey,
+        at: now
+      };
+      void refreshPreviewFromRows({
+        rows: previewRows.map(importService.buildRawRowFromPreviewRow),
+        silent: true
+      });
+    }
+
+    window.addEventListener("focus", handleStatementPreviewAutoRefresh);
+    document.addEventListener("visibilitychange", handleStatementPreviewAutoRefresh);
+    return () => {
+      window.removeEventListener("focus", handleStatementPreviewAutoRefresh);
+      document.removeEventListener("visibilitychange", handleStatementPreviewAutoRefresh);
+    };
+  }, [isParsingStatement, isSubmitting, preview, previewRows, statementPreviewAutoRefreshKey, statementCheckpoints]);
 
   async function handlePreview() {
     if (!readyForPreview) {
