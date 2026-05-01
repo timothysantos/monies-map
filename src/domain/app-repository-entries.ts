@@ -87,6 +87,8 @@ export async function loadTransferMatchCandidates(
   return { entry, candidates };
 }
 
+// We select original_transaction_date so the UI can explain 'date drift' 
+// to the user (e.g., "Spent on 24th, Posted on 27th").
 async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextMonth: string): Promise<EntryDto[]> {
   const entries = await db
     .prepare(`
@@ -213,7 +215,9 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
 
     return {
       id: row.id,
+      // This is the 'Official' date used for sorting and balance matching
       date: row.transaction_date,
+      // This is the 'Memory' date used for UI tooltips or audit details
       originalDate: row.original_transaction_date ?? undefined,
       description: row.description,
       accountId: row.account_id,

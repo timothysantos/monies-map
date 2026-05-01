@@ -570,6 +570,11 @@ test.describe("import flow", () => {
   });
 
   test("promoting a manual provisional row swaps to the bank date and preserves the manual date", async ({ page }) => {
+    // Test Goal: Verify the 'Accounting Foundation' correctly aligns dates.
+    // 1. User enters manual expense on Aug 11.
+    // 2. CSV import contains same expense on Aug 14.
+    // 3. Promoting should move the 'Display Date' to Aug 14 (Bank Reality)
+    //    while keeping Aug 11 in the metadata (User Reality).
     const bootstrap = await loadBootstrap(page, { month: "2025-08" });
     const account = bootstrap.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
