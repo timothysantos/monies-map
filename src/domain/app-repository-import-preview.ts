@@ -25,6 +25,10 @@ import type {
   StatementCheckpointDraftDto
 } from "../types/dto";
 
+const LOW_VALUE_DUPLICATE_WINDOW_THRESHOLD_MINOR = 500;
+const LOW_VALUE_DUPLICATE_MAX_DAY_DISTANCE = 2;
+const STANDARD_DUPLICATE_MAX_DAY_DISTANCE = 7;
+
 export async function buildImportPreview(
   db: D1Database,
   input: {
@@ -168,6 +172,16 @@ export async function buildImportPreview(
         }
 
         const dayDistance = getClosestDayDistance(previewRowDateCandidates, candidate.transaction_date);
+        const maxDayDistance = getDuplicateCandidateMaxDayDistance(previewRow.amountMinor);
+
+        // The velocity rule rejects low-value matches that are too far apart in
+        // time. This prevents commuter false positives where weekly BUS/MRT or
+        // coffee charges share the same amount and similar merchant text but
+        // are actually separate real-world events.
+        if (dayDistance > maxDayDistance) {
+          return undefined;
+        }
+
         const sharedTokenCount = countSharedTokens(previewRow.description, candidate.description);
         const descriptionSimilarity = boostDescriptionSimilarityForManualPromotionCandidate({
           baseSimilarity: compareDescriptionSimilarity(previewRow.description, candidate.description),
@@ -177,7 +191,7 @@ export async function buildImportPreview(
           sharedTokenCount
         });
         const isExactDuplicate = candidate.normalized_hash === previewRowHash;
-        if (!isExactDuplicate && (dayDistance > 3 || descriptionSimilarity < 0.55)) {
+        if (!isExactDuplicate && descriptionSimilarity < 0.55) {
           return undefined;
         }
 
@@ -965,6 +979,15 @@ function getDuplicateMatchKind(isExactDuplicate: boolean, dayDistance: number, d
   }
 
   return "near" as const;
+}
+
+function getDuplicateCandidateMaxDayDistance(amountMinor: number) {
+  // Exact-date manual promotion hints still win because those candidates remain
+  // at dayDistance 0. The stricter 2-day window only filters out slow,
+  // low-value lookalikes from prior weeks.
+  return Math.abs(amountMinor) < LOW_VALUE_DUPLICATE_WINDOW_THRESHOLD_MINOR
+    ? LOW_VALUE_DUPLICATE_MAX_DAY_DISTANCE
+    : STANDARD_DUPLICATE_MAX_DAY_DISTANCE;
 }
 
 function getDuplicateMatchRank(matchKind: "exact" | "probable" | "near") {

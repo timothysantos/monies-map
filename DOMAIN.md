@@ -221,6 +221,13 @@ Important distinctions:
 - Entry reconciliation is not limited to PDF statements. The same system should
   govern manual entries, CSV/XLS activity imports, and statement imports with a
   source-authority ladder.
+- The `Velocity Rule` prevents commuter false positives by scaling duplicate
+  candidate windows with `amount_minor`. Low-value rows with
+  `abs(amount_minor) < 500` need `day_distance <= 2`, while higher-value rows
+  can use `day_distance <= 7` to tolerate delayed posting.
+- Under that rule, identical recurring small-value transactions such as
+  BUS/MRT fares or coffee should be treated as separate economic events by
+  default unless they occur close together in time.
 
 ### Ledger Entry
 
