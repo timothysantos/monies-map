@@ -424,7 +424,7 @@ function findReconciliationMatches(input: {
 }) {
   return input.existingRows
     .map((candidate) => {
-      if (!isImportPreviewCandidateEligibleForSource(candidate, input.incomingSourceType)) {
+      if (!isReconciliationCandidateEligibleForSource(candidate, input.incomingSourceType)) {
         return undefined;
       }
 
@@ -552,7 +552,7 @@ function boostDescriptionSimilarityForManualPromotionCandidate(input: {
   return input.baseSimilarity;
 }
 
-function isImportPreviewCandidateEligibleForSource(
+function isReconciliationCandidateEligibleForSource(
   candidate: {
     import_id: string | null;
     source_type: "csv" | "pdf" | "manual";
@@ -560,6 +560,9 @@ function isImportPreviewCandidateEligibleForSource(
   },
   incomingSourceType?: "csv" | "pdf" | "manual"
 ) {
+  // These guards belong only to the promotion/reconciliation lane. Exact
+  // duplicate suppression is allowed to see the full ledger so repeated bank
+  // files can auto-skip rows before any source-isolation policy applies.
   const isLockedStatementEntry = candidate.bank_certification_status === "statement_certified";
   if (isLockedStatementEntry) {
     return false;
