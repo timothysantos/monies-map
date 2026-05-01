@@ -162,6 +162,10 @@ export async function buildImportPreview(
     const previewRowDateContext = getPreviewRowDateContext(previewRow);
     const nearMatches = existingTransactions.results
       .map((candidate) => {
+        if (!isImportPreviewCandidateEligibleForSource(candidate, input.sourceType)) {
+          return undefined;
+        }
+
         const sameAmount = Number(candidate.amount_minor) === Number(previewRow.amountMinor);
         if (!sameAmount) {
           return undefined;
@@ -416,6 +420,33 @@ function boostDescriptionSimilarityForManualPromotionCandidate(input: {
   }
 
   return input.baseSimilarity;
+}
+
+function isImportPreviewCandidateEligibleForSource(
+  candidate: {
+    import_id: string | null;
+    source_type: "csv" | "pdf" | "manual";
+    bank_certification_status: "provisional" | "statement_certified";
+  },
+  incomingSourceType?: "csv" | "pdf" | "manual"
+) {
+  const isLockedStatementEntry = candidate.bank_certification_status === "statement_certified";
+  if (isLockedStatementEntry) {
+    return false;
+  }
+
+  const isRestrictedMidCycleMatch = candidate.bank_certification_status === "provisional"
+    && candidate.import_id != null
+    && incomingSourceType !== "pdf";
+
+  // Only final PDF statements are allowed to reconcile against an imported
+  // provisional row. Mid-cycle sources stay isolated so a new CSV/XLS charge
+  // cannot latch onto an older bank-imported row that merely looks similar.
+  if (isRestrictedMidCycleMatch) {
+    return false;
+  }
+
+  return true;
 }
 
 function applySourceAuthorityToPreviewRow(
