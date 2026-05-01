@@ -87,15 +87,15 @@ export async function loadTransferMatchCandidates(
   return { entry, candidates };
 }
 
-// We select original_transaction_date so the UI can explain 'date drift' 
-// to the user (e.g., "Spent on 24th, Posted on 27th").
+// The ledger stays event-first. We still project post_date so the UI can show
+// when the bank cleared a row without moving it out of its planning month.
 async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextMonth: string): Promise<EntryDto[]> {
   const entries = await db
     .prepare(`
       SELECT
         transactions.id,
         transactions.transaction_date,
-        transactions.original_transaction_date,
+        transactions.post_date,
         transactions.description,
         transactions.entry_type,
         transactions.transfer_direction,
@@ -137,7 +137,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
     .all<{
       id: string;
       transaction_date: string;
-      original_transaction_date: string | null;
+      post_date: string | null;
       description: string;
       entry_type: "expense" | "income" | "transfer";
       transfer_direction: "in" | "out" | null;
@@ -215,10 +215,10 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
 
     return {
       id: row.id,
-      // This is the 'Official' date used for sorting and balance matching
+      // Event date drives sorting, planning, and split attribution.
       date: row.transaction_date,
-      // This is the 'Memory' date used for UI tooltips or audit details
-      originalDate: row.original_transaction_date ?? undefined,
+      // postDate is bank clearance evidence for reconciliation UI.
+      postDate: row.post_date ?? undefined,
       description: row.description,
       accountId: row.account_id,
       accountName: row.account_name,

@@ -53,7 +53,7 @@ export async function buildImportPreview(
         transactions.id AS transaction_id,
         transactions.account_id,
         transactions.transaction_date,
-        transactions.original_transaction_date,
+        transactions.post_date,
         transactions.description,
         transactions.note,
         transactions.amount_minor,
@@ -77,7 +77,7 @@ export async function buildImportPreview(
       transaction_id: string;
       account_id: string;
       transaction_date: string;
-      original_transaction_date: string | null;
+      post_date: string | null;
       description: string;
       note: string | null;
       amount_minor: number;
@@ -362,13 +362,12 @@ function getPreviewRowDateContext(previewRow: ImportPreviewRowDto) {
 
 function getExistingTransactionDateContext(candidate: {
   transaction_date: string;
-  original_transaction_date: string | null;
+  post_date: string | null;
   note: string | null;
 }) {
   return {
-    postedDate: candidate.transaction_date,
-    originalDate: candidate.original_transaction_date
-      ?? extractTransactionDateHint(candidate.note ?? undefined)
+    postedDate: candidate.post_date ?? candidate.transaction_date,
+    originalDate: extractTransactionDateHint(candidate.note ?? undefined)
   };
 }
 
