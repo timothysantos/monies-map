@@ -688,6 +688,35 @@ test.describe("import flow", () => {
     }, { row: existingImportedRow });
     expect(seedCommit.ok, seedCommit.text).toBeTruthy();
 
+    const exactCsvPreview = await page.evaluate(async ({ accountId, accountName }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Exact overlapping mid-cycle CSV",
+          sourceType: "csv",
+          defaultAccountName: accountName,
+          ownershipType: "direct",
+          ownerName: "Tim",
+          rows: [{
+            date: "2025-03-12",
+            description: "MA MUM",
+            expense: "2.80",
+            accountId,
+            account: accountName,
+            category: "Food & Drinks"
+          }]
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId: account.id, accountName: account.name });
+    expect(exactCsvPreview.ok, JSON.stringify(exactCsvPreview.json)).toBeTruthy();
+    expect(exactCsvPreview.json.preview.previewRows[0].commitStatus).toBe("skipped");
+    expect(exactCsvPreview.json.preview.previewRows[0].commitStatusReason).toContain("exact");
+    expect(exactCsvPreview.json.preview.previewRows[0].reconciliationTargetTransactionId).toBeFalsy();
+    expect(exactCsvPreview.json.preview.previewRows[0].reconciliationMatch?.matchKind).toBe("exact");
+    expect(exactCsvPreview.json.preview.previewRows[0].reconciliationMatches).toBeUndefined();
+
     const csvPreview = await page.evaluate(async ({ accountId, accountName }) => {
       const response = await fetch("/api/imports/preview", {
         method: "POST",
@@ -711,8 +740,36 @@ test.describe("import flow", () => {
       return { ok: response.ok, json: await response.json() };
     }, { accountId: account.id, accountName: account.name });
     expect(csvPreview.ok, JSON.stringify(csvPreview.json)).toBeTruthy();
+    expect(csvPreview.json.preview.previewRows[0].commitStatus).toBe("included");
     expect(csvPreview.json.preview.previewRows[0].reconciliationTargetTransactionId).toBeFalsy();
     expect(csvPreview.json.preview.previewRows[0].reconciliationMatches ?? []).toHaveLength(0);
+
+    const pdfPreview = await page.evaluate(async ({ accountId, accountName }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Month-end PDF",
+          sourceType: "pdf",
+          defaultAccountName: accountName,
+          ownershipType: "direct",
+          ownerName: "Tim",
+          rows: [{
+            date: "2025-03-14",
+            description: "MA MUM",
+            expense: "2.80",
+            accountId,
+            account: accountName,
+            category: "Food & Drinks"
+          }],
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId: account.id, accountName: account.name });
+    expect(pdfPreview.ok, JSON.stringify(pdfPreview.json)).toBeTruthy();
+    expect(pdfPreview.json.preview.previewRows[0].reconciliationTargetTransactionId).toBeTruthy();
+    expect(pdfPreview.json.preview.previewRows[0].commitStatus).toBe("included");
 
     const csvCommit = await page.evaluate(async ({ previewRows }) => {
       const response = await fetch("/api/imports/commit", {
@@ -738,33 +795,6 @@ test.describe("import flow", () => {
     ));
     expect(maMumEntries).toHaveLength(2);
     expect(maMumEntries.every((entry) => entry.bankCertificationStatus === "import_provisional")).toBeTruthy();
-
-    const pdfPreview = await page.evaluate(async ({ accountId, accountName }) => {
-      const response = await fetch("/api/imports/preview", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sourceLabel: "Month-end PDF",
-          sourceType: "pdf",
-          defaultAccountName: accountName,
-          ownershipType: "direct",
-          ownerName: "Tim",
-          rows: [{
-            date: "2025-03-12",
-            description: "MA MUM",
-            expense: "2.80",
-            accountId,
-            account: accountName,
-            category: "Food & Drinks"
-          }],
-          statementCheckpoints: []
-        })
-      });
-      return { ok: response.ok, json: await response.json() };
-    }, { accountId: account.id, accountName: account.name });
-    expect(pdfPreview.ok, JSON.stringify(pdfPreview.json)).toBeTruthy();
-    expect(pdfPreview.json.preview.previewRows[0].reconciliationTargetTransactionId).toBeTruthy();
-    expect(pdfPreview.json.preview.previewRows[0].commitStatus).toBe("included");
   });
 
   test("promoting a manual provisional row keeps the event date and stores the bank post date separately", async ({ page }) => {
@@ -973,9 +1003,9 @@ test.describe("import flow", () => {
     expect(preview.ok, JSON.stringify(preview.json)).toBeTruthy();
     expect(preview.json.preview.previewRows[0].commitStatus).toBe("skipped");
     expect(preview.json.preview.previewRows[0].commitStatusReason).toContain("already certified");
-    expect(preview.json.preview.previewRows[0].comparisonMatch).toBeTruthy();
-    expect(preview.json.preview.previewRows[0].comparisonMatch.matchKind).toBe("exact");
-    expect(preview.json.preview.previewRows[0].duplicateMatches).toBeUndefined();
+    expect(preview.json.preview.previewRows[0].reconciliationMatch).toBeTruthy();
+    expect(preview.json.preview.previewRows[0].reconciliationMatch.matchKind).toBe("exact");
+    expect(preview.json.preview.previewRows[0].reconciliationMatches).toBeUndefined();
   });
 
   test("remapped certified row is prioritized when it matches the statement mismatch", async ({ page }) => {
