@@ -643,6 +643,129 @@ test.describe("import flow", () => {
     expect(preview.json.preview.duplicateCandidateCount).toBe(0);
   });
 
+  test("mid-cycle imports do not match imported provisional rows, but PDFs still can promote them", async ({ page }) => {
+    const bootstrap = await loadBootstrap(page, { month: "2025-03" });
+    const account = bootstrap.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    expect(account).toBeTruthy();
+
+    const existingImportedRow = {
+      rowId: "mid-cycle-seed-row",
+      rowIndex: 1,
+      date: "2025-03-12",
+      description: "MA MUM",
+      amountMinor: 280,
+      entryType: "expense",
+      accountId: account.id,
+      accountName: account.name,
+      categoryName: "Food & Drinks",
+      ownershipType: "direct",
+      ownerName: "Tim",
+      splitBasisPoints: 10000,
+      rawRow: {
+        date: "2025-03-12",
+        description: "MA MUM",
+        expense: "2.80",
+        accountId: account.id,
+        account: account.name,
+        category: "Food & Drinks"
+      }
+    };
+
+    const seedCommit = await page.evaluate(async ({ row }) => {
+      const response = await fetch("/api/imports/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Mid-cycle seed CSV",
+          sourceType: "csv",
+          parserKey: "generic_csv",
+          rows: [row],
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { row: existingImportedRow });
+    expect(seedCommit.ok, seedCommit.text).toBeTruthy();
+
+    const csvPreview = await page.evaluate(async ({ accountId, accountName }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Later mid-cycle CSV",
+          sourceType: "csv",
+          defaultAccountName: accountName,
+          ownershipType: "direct",
+          ownerName: "Tim",
+          rows: [{
+            date: "2025-03-14",
+            description: "MA MUM",
+            expense: "2.80",
+            accountId,
+            account: accountName,
+            category: "Food & Drinks"
+          }]
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId: account.id, accountName: account.name });
+    expect(csvPreview.ok, JSON.stringify(csvPreview.json)).toBeTruthy();
+    expect(csvPreview.json.preview.previewRows[0].reconciliationTargetTransactionId).toBeFalsy();
+    expect(csvPreview.json.preview.previewRows[0].reconciliationMatches ?? []).toHaveLength(0);
+
+    const csvCommit = await page.evaluate(async ({ previewRows }) => {
+      const response = await fetch("/api/imports/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Later mid-cycle CSV commit",
+          sourceType: "csv",
+          parserKey: "generic_csv",
+          rows: previewRows,
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { previewRows: csvPreview.json.preview.previewRows });
+    expect(csvCommit.ok, csvCommit.text).toBeTruthy();
+
+    const afterCsv = await loadEntriesPage(page, { month: "2025-03" });
+    const maMumEntries = afterCsv.monthPage.entries.filter((entry) => (
+      entry.accountName === account.name
+      && entry.description === "MA MUM"
+      && entry.amountMinor === 280
+    ));
+    expect(maMumEntries).toHaveLength(2);
+    expect(maMumEntries.every((entry) => entry.bankCertificationStatus === "import_provisional")).toBeTruthy();
+
+    const pdfPreview = await page.evaluate(async ({ accountId, accountName }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Month-end PDF",
+          sourceType: "pdf",
+          defaultAccountName: accountName,
+          ownershipType: "direct",
+          ownerName: "Tim",
+          rows: [{
+            date: "2025-03-12",
+            description: "MA MUM",
+            expense: "2.80",
+            accountId,
+            account: accountName,
+            category: "Food & Drinks"
+          }],
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId: account.id, accountName: account.name });
+    expect(pdfPreview.ok, JSON.stringify(pdfPreview.json)).toBeTruthy();
+    expect(pdfPreview.json.preview.previewRows[0].reconciliationTargetTransactionId).toBeTruthy();
+    expect(pdfPreview.json.preview.previewRows[0].commitStatus).toBe("included");
+  });
+
   test("promoting a manual provisional row keeps the event date and stores the bank post date separately", async ({ page }) => {
     // The ledger should keep the user-entered event date in place while the
     // import fills in the bank-cleared postDate lane.
@@ -681,7 +804,7 @@ test.describe("import flow", () => {
           ownershipType: "direct",
           ownerName: "Tim",
           rows: [{
-            date: "2025-08-14",
+            date: "2025-08-13",
             description: "DATE ALIGNMENT TEST",
             expense: "2.48",
             accountId,
@@ -715,7 +838,7 @@ test.describe("import flow", () => {
     const csvPromotedEntry = afterCsv.monthPage.entries.find((entry) => entry.id === createdEntry.json.entryId);
     expect(csvPromotedEntry, JSON.stringify(afterCsv.monthPage.entries)).toBeTruthy();
     expect(csvPromotedEntry.date).toBe("2025-08-11");
-    expect(csvPromotedEntry.postDate).toBe("2025-08-14");
+    expect(csvPromotedEntry.postDate).toBe("2025-08-13");
     expect(csvPromotedEntry.bankCertificationStatus).toBe("import_provisional");
 
     const statementPreview = await page.evaluate(async ({ accountId, accountName }) => {
@@ -729,7 +852,7 @@ test.describe("import flow", () => {
           ownershipType: "direct",
           ownerName: "Tim",
           rows: [{
-            date: "2025-08-17",
+            date: "2025-08-15",
             description: "DATE ALIGNMENT TEST",
             expense: "2.48",
             accountId,
@@ -764,7 +887,7 @@ test.describe("import flow", () => {
     const certifiedEntry = afterStatement.monthPage.entries.find((entry) => entry.id === createdEntry.json.entryId);
     expect(certifiedEntry, JSON.stringify(afterStatement.monthPage.entries)).toBeTruthy();
     expect(certifiedEntry.date).toBe("2025-08-11");
-    expect(certifiedEntry.postDate).toBe("2025-08-17");
+    expect(certifiedEntry.postDate).toBe("2025-08-15");
     expect(certifiedEntry.bankCertificationStatus).toBe("statement_certified");
   });
 
