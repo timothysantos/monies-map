@@ -93,6 +93,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       SELECT
         transactions.id,
         transactions.transaction_date,
+        transactions.original_transaction_date,
         transactions.description,
         transactions.entry_type,
         transactions.transfer_direction,
@@ -134,6 +135,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
     .all<{
       id: string;
       transaction_date: string;
+      original_transaction_date: string | null;
       description: string;
       entry_type: "expense" | "income" | "transfer";
       transfer_direction: "in" | "out" | null;
@@ -212,6 +214,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
     return {
       id: row.id,
       date: row.transaction_date,
+      originalDate: row.original_transaction_date ?? undefined,
       description: row.description,
       accountId: row.account_id,
       accountName: row.account_name,

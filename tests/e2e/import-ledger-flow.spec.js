@@ -95,6 +95,16 @@ async function loadBootstrap(page, { month = "2025-10", scope = "direct_plus_sha
   }, { month, scope });
 }
 
+async function loadEntriesPage(page, { view = "person-tim", month = "2025-10" } = {}) {
+  return page.evaluate(async ({ view, month }) => {
+    const response = await fetch(`/api/entries-page?view=${view}&month=${month}`);
+    if (!response.ok) {
+      throw new Error(`Entries page failed: ${response.status}`);
+    }
+    return response.json();
+  }, { view, month });
+}
+
 function formatMoney(minor) {
   return currencyFormatter.format(minor / 100);
 }
@@ -557,6 +567,129 @@ test.describe("import flow", () => {
     expect(resolvedPreview.json.preview.previewRows[0].duplicateMatches).toBeUndefined();
     expect(resolvedPreview.json.preview.duplicateCandidateCount).toBe(0);
     expect(resolvedPreview.json.preview.statementReconciliations[0].status).toBe("matched");
+  });
+
+  test("promoting a manual provisional row swaps to the bank date and preserves the manual date", async ({ page }) => {
+    const bootstrap = await loadBootstrap(page, { month: "2025-08" });
+    const account = bootstrap.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    expect(account).toBeTruthy();
+
+    const createdEntry = await page.evaluate(async ({ accountId, accountName }) => {
+      const response = await fetch("/api/entries/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: "2025-08-11",
+          description: "DATE ALIGNMENT TEST",
+          accountId,
+          accountName,
+          categoryName: "Public Transport",
+          amountMinor: 248,
+          entryType: "expense",
+          ownershipType: "direct",
+          ownerName: "Tim"
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId: account.id, accountName: account.name });
+    expect(createdEntry.ok, JSON.stringify(createdEntry.json)).toBeTruthy();
+
+    const csvPreview = await page.evaluate(async ({ accountId, accountName }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Date alignment CSV preview",
+          sourceType: "csv",
+          defaultAccountName: accountName,
+          ownershipType: "direct",
+          ownerName: "Tim",
+          rows: [{
+            date: "2025-08-14",
+            description: "DATE ALIGNMENT TEST",
+            expense: "2.48",
+            accountId,
+            account: accountName,
+            category: "Public Transport"
+          }]
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId: account.id, accountName: account.name });
+    expect(csvPreview.ok, JSON.stringify(csvPreview.json)).toBeTruthy();
+    expect(csvPreview.json.preview.previewRows[0].reconciliationTargetTransactionId).toBe(createdEntry.json.entryId);
+
+    const csvCommit = await page.evaluate(async ({ previewRows }) => {
+      const response = await fetch("/api/imports/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Date alignment CSV commit",
+          sourceType: "csv",
+          parserKey: "generic_csv",
+          rows: previewRows,
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { previewRows: csvPreview.json.preview.previewRows });
+    expect(csvCommit.ok, csvCommit.text).toBeTruthy();
+
+    const afterCsv = await loadEntriesPage(page, { month: "2025-08" });
+    const csvPromotedEntry = afterCsv.monthPage.entries.find((entry) => entry.id === createdEntry.json.entryId);
+    expect(csvPromotedEntry, JSON.stringify(afterCsv.monthPage.entries)).toBeTruthy();
+    expect(csvPromotedEntry.date).toBe("2025-08-14");
+    expect(csvPromotedEntry.originalDate).toBe("2025-08-11");
+    expect(csvPromotedEntry.bankCertificationStatus).toBe("import_provisional");
+
+    const statementPreview = await page.evaluate(async ({ accountId, accountName }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Date alignment PDF preview",
+          sourceType: "pdf",
+          defaultAccountName: accountName,
+          ownershipType: "direct",
+          ownerName: "Tim",
+          rows: [{
+            date: "2025-08-17",
+            description: "DATE ALIGNMENT TEST",
+            expense: "2.48",
+            accountId,
+            account: accountName,
+            category: "Public Transport"
+          }],
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId: account.id, accountName: account.name });
+    expect(statementPreview.ok, JSON.stringify(statementPreview.json)).toBeTruthy();
+    expect(statementPreview.json.preview.previewRows[0].reconciliationTargetTransactionId).toBe(createdEntry.json.entryId);
+
+    const statementCommit = await page.evaluate(async ({ previewRows }) => {
+      const response = await fetch("/api/imports/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Date alignment PDF commit",
+          sourceType: "pdf",
+          parserKey: "uob_pdf",
+          rows: previewRows,
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { previewRows: statementPreview.json.preview.previewRows });
+    expect(statementCommit.ok, statementCommit.text).toBeTruthy();
+
+    const afterStatement = await loadEntriesPage(page, { month: "2025-08" });
+    const certifiedEntry = afterStatement.monthPage.entries.find((entry) => entry.id === createdEntry.json.entryId);
+    expect(certifiedEntry, JSON.stringify(afterStatement.monthPage.entries)).toBeTruthy();
+    expect(certifiedEntry.date).toBe("2025-08-17");
+    expect(certifiedEntry.originalDate).toBe("2025-08-11");
+    expect(certifiedEntry.bankCertificationStatus).toBe("statement_certified");
   });
 
   test("already certified statement rows retain ledger comparison details", async ({ page }) => {
