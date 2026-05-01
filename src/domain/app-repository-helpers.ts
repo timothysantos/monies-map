@@ -58,7 +58,7 @@ export function computeCheckpointLedgerBalanceMinor(input: {
   };
   rows: {
     account_id: string;
-    transaction_date: string;
+    cleared_date: string;
     entry_type: "expense" | "income" | "transfer";
     transfer_direction: "in" | "out" | null;
     amount_minor: number;
@@ -68,7 +68,7 @@ export function computeCheckpointLedgerBalanceMinor(input: {
   let balanceMinor = input.openingBalanceMinor;
 
   for (const row of input.rows) {
-    if (row.account_id !== input.checkpoint.account_id || row.transaction_date > statementEndDate) {
+    if (row.account_id !== input.checkpoint.account_id || row.cleared_date > statementEndDate) {
       continue;
     }
 

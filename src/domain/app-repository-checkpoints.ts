@@ -189,7 +189,7 @@ export async function buildAccountCheckpointLedgerCsv(
         LEFT JOIN imports ON imports.id = transactions.import_id
         WHERE transactions.household_id = ?
           AND transactions.account_id = ?
-          AND transactions.transaction_date < ?
+          AND COALESCE(transactions.post_date, transactions.transaction_date) < ?
           AND (transactions.import_id IS NULL OR imports.status = 'completed')
       `)
       .bind(DEFAULT_HOUSEHOLD_ID, input.accountId, statementStartDate)
@@ -210,7 +210,7 @@ export async function buildAccountCheckpointLedgerCsv(
     .prepare(`
       SELECT
         transactions.id,
-        transactions.transaction_date,
+        COALESCE(transactions.post_date, transactions.transaction_date) AS cleared_date,
         transactions.description,
         transactions.amount_minor,
         transactions.currency,
@@ -229,15 +229,15 @@ export async function buildAccountCheckpointLedgerCsv(
       LEFT JOIN imports ON imports.id = transactions.import_id
       WHERE transactions.household_id = ?
         AND transactions.account_id = ?
-        AND transactions.transaction_date <= ?
-        AND (? IS NULL OR transactions.transaction_date >= ?)
+        AND COALESCE(transactions.post_date, transactions.transaction_date) <= ?
+        AND (? IS NULL OR COALESCE(transactions.post_date, transactions.transaction_date) >= ?)
         AND (transactions.import_id IS NULL OR imports.status = 'completed')
-      ORDER BY transactions.transaction_date, transactions.created_at
+      ORDER BY COALESCE(transactions.post_date, transactions.transaction_date), transactions.created_at
     `)
     .bind(DEFAULT_HOUSEHOLD_ID, input.accountId, statementEndDate, statementStartDate, statementStartDate)
     .all<{
       id: string;
-      transaction_date: string;
+      cleared_date: string;
       description: string;
       amount_minor: number;
       currency: string;
@@ -323,7 +323,7 @@ export async function buildAccountCheckpointLedgerCsv(
         checkpoint.account_name,
         checkpoint.institution_name,
         checkpoint.owner_name ?? "",
-        row.transaction_date,
+        row.cleared_date,
         row.entry_type,
         row.transfer_direction ?? "",
         row.description,
@@ -426,7 +426,7 @@ export async function compareAccountCheckpointStatementRows(
     .prepare(`
       SELECT
         transactions.id,
-        transactions.transaction_date,
+        COALESCE(transactions.post_date, transactions.transaction_date) AS cleared_date,
         transactions.description,
         transactions.amount_minor,
         transactions.entry_type,
@@ -438,15 +438,15 @@ export async function compareAccountCheckpointStatementRows(
       LEFT JOIN imports ON imports.id = transactions.import_id
       WHERE transactions.household_id = ?
         AND transactions.account_id = ?
-        AND transactions.transaction_date <= ?
-        AND transactions.transaction_date >= ?
+        AND COALESCE(transactions.post_date, transactions.transaction_date) <= ?
+        AND COALESCE(transactions.post_date, transactions.transaction_date) >= ?
         AND (transactions.import_id IS NULL OR imports.status = 'completed')
-      ORDER BY transactions.transaction_date, transactions.created_at
+      ORDER BY COALESCE(transactions.post_date, transactions.transaction_date), transactions.created_at
     `)
     .bind(DEFAULT_HOUSEHOLD_ID, input.accountId, statementEndDate, statementStartDate)
     .all<{
       id: string;
-      transaction_date: string;
+      cleared_date: string;
       description: string;
       amount_minor: number;
       entry_type: "expense" | "income" | "transfer";
@@ -459,7 +459,7 @@ export async function compareAccountCheckpointStatementRows(
     const amountMinor = Number(row.amount_minor);
     return {
       id: row.id,
-      date: row.transaction_date,
+      date: row.cleared_date,
       description: row.description,
       amountMinor,
       signedAmountMinor: getSignedLedgerAmountMinor(row),

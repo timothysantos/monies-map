@@ -70,6 +70,7 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
       SELECT
         transactions.account_id,
         transactions.transaction_date,
+        COALESCE(transactions.post_date, transactions.transaction_date) AS cleared_date,
         transactions.amount_minor,
         transactions.entry_type,
         transactions.transfer_direction,
@@ -84,6 +85,7 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
     .all<{
       account_id: string;
       transaction_date: string;
+      cleared_date: string;
       amount_minor: number;
       entry_type: "expense" | "income" | "transfer";
       transfer_direction: "in" | "out" | null;
