@@ -345,6 +345,11 @@ export async function ensureDemoSchema(db: D1Database) {
 
   const hasLegacyOriginalTransactionDate = transactionColumns.results.some((column) => column.name === "original_transaction_date");
   const hasPostDate = transactionColumns.results.some((column) => column.name === "post_date");
+  // Migration safety:
+  // - legacy-only databases rename the old column in place, which preserves the
+  //   stored values without a copy step
+  // - mixed schemas copy any stranded legacy values into post_date
+  // - brand new schemas just add post_date
   if (transactionColumns.results.length > 0 && !hasPostDate && hasLegacyOriginalTransactionDate) {
     await db.prepare("ALTER TABLE transactions RENAME COLUMN original_transaction_date TO post_date").run();
   } else if (transactionColumns.results.length > 0 && !hasPostDate) {
@@ -3375,14 +3380,19 @@ async function saveStatementReconciliationCertificates(
 ) {
   const ledgerRows = await db
     .prepare(`
-      SELECT account_id, transaction_date, entry_type, transfer_direction, amount_minor
+      SELECT
+        account_id,
+        COALESCE(post_date, transaction_date) AS cleared_date,
+        entry_type,
+        transfer_direction,
+        amount_minor
       FROM transactions
       WHERE household_id = ?
     `)
     .bind(DEFAULT_HOUSEHOLD_ID)
     .all<{
       account_id: string;
-      transaction_date: string;
+      cleared_date: string;
       entry_type: "expense" | "income" | "transfer";
       transfer_direction: "in" | "out" | null;
       amount_minor: number;
