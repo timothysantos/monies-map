@@ -797,6 +797,79 @@ test.describe("import flow", () => {
     expect(maMumEntries.every((entry) => entry.bankCertificationStatus === "import_provisional")).toBeTruthy();
   });
 
+  test("compact Citi PDF merchant text can still promote the spaced mid-cycle CSV row", async ({ page }) => {
+    const bootstrap = await loadBootstrap(page, { month: "2025-03" });
+    const account = bootstrap.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    expect(account).toBeTruthy();
+
+    const existingImportedRow = {
+      rowId: "compact-citi-seed-row",
+      rowIndex: 1,
+      date: "2025-03-31",
+      description: "SHOPEE SINGAPORE MP",
+      amountMinor: 690,
+      entryType: "expense",
+      accountId: account.id,
+      accountName: account.name,
+      categoryName: "Shopping",
+      ownershipType: "direct",
+      ownerName: "Tim",
+      splitBasisPoints: 10000,
+      rawRow: {
+        date: "2025-03-31",
+        description: "SHOPEE SINGAPORE MP",
+        expense: "6.90",
+        accountId: account.id,
+        account: account.name,
+        category: "Shopping"
+      }
+    };
+
+    const seedCommit = await page.evaluate(async ({ row }) => {
+      const response = await fetch("/api/imports/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Compact Citi seed CSV",
+          sourceType: "csv",
+          parserKey: "generic_csv",
+          rows: [row],
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { row: existingImportedRow });
+    expect(seedCommit.ok, seedCommit.text).toBeTruthy();
+
+    const pdfPreview = await page.evaluate(async ({ accountId, accountName }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Compact Citi PDF",
+          sourceType: "pdf",
+          defaultAccountName: accountName,
+          ownershipType: "direct",
+          ownerName: "Tim",
+          rows: [{
+            date: "2025-03-31",
+            description: "SHOPEESINGAPOREMP",
+            expense: "6.90",
+            accountId,
+            account: accountName,
+            category: "Shopping"
+          }],
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId: account.id, accountName: account.name });
+
+    expect(pdfPreview.ok, JSON.stringify(pdfPreview.json)).toBeTruthy();
+    expect(pdfPreview.json.preview.previewRows[0].reconciliationTargetTransactionId).toBeTruthy();
+    expect(pdfPreview.json.preview.previewRows[0].commitStatus).toBe("included");
+  });
+
   test("promoting a manual provisional row keeps the event date and stores the bank post date separately", async ({ page }) => {
     // The ledger should keep the user-entered event date in place while the
     // import fills in the bank-cleared postDate lane.

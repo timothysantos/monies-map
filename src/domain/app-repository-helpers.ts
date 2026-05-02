@@ -476,8 +476,8 @@ export function compareDescriptionSimilarity(left: string, right: string) {
 }
 
 function compareCompactDescriptionSimilarity(left: string, right: string) {
-  const leftCompact = normalizeDescriptionForMatch(left).replaceAll(" ", "");
-  const rightCompact = normalizeDescriptionForMatch(right).replaceAll(" ", "");
+  const leftCompact = normalizeDescriptionForCompactMatch(left);
+  const rightCompact = normalizeDescriptionForCompactMatch(right);
   if (!leftCompact || !rightCompact) {
     return 0;
   }
@@ -493,6 +493,14 @@ function compareCompactDescriptionSimilarity(left: string, right: string) {
   }
 
   return 0;
+}
+
+function normalizeDescriptionForCompactMatch(value: string) {
+  return normalizeDescriptionForMatch(value)
+    .replaceAll(" ", "")
+    .replaceAll("singapore", "")
+    .replace(/sgp$/g, "")
+    .replace(/sg$/g, "");
 }
 
 export function normalizeDescriptionForMatch(value: string) {

@@ -381,8 +381,10 @@ function findExactDuplicateSuppressionMatch(input: {
       const hasMatchingHash = Boolean(candidate.normalized_hash) && candidate.normalized_hash === previewRowHash;
       const hasPerfectDescriptionMatch = dayDistance === 0
         && normalizeDescriptionForMatch(candidate.description) === normalizeDescriptionForMatch(input.previewRow.description);
+      const hasCompactDescriptionMatch = dayDistance === 0
+        && compareDescriptionSimilarity(candidate.description, input.previewRow.description) >= 0.9;
 
-      if (!hasMatchingHash && !hasPerfectDescriptionMatch) {
+      if (!hasMatchingHash && !hasPerfectDescriptionMatch && !hasCompactDescriptionMatch) {
         return undefined;
       }
 
