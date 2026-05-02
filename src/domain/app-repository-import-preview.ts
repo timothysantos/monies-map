@@ -515,6 +515,7 @@ function mapCandidateToReconciliationMatch(
     transaction_id: string;
     account_id: string;
     transaction_date: string;
+    post_date: string | null;
     description: string;
     amount_minor: number;
     bank_certification_status: "provisional" | "statement_certified";
@@ -529,6 +530,7 @@ function mapCandidateToReconciliationMatch(
     existingSourceType: candidate.source_type,
     existingBankCertificationStatus: candidate.bank_certification_status,
     date: candidate.transaction_date,
+    ...(candidate.post_date ? { postedDate: candidate.post_date } : {}),
     description: candidate.description,
     amountMinor: Number(candidate.amount_minor),
     accountName: candidate.account_name,
@@ -843,10 +845,6 @@ function autoIncludeCurrentPeriodStatementRowsReplacingPriorCertifiedMatches(inp
     }
 
     const previousCheckpoint = getImmediatePreviousMatchedCheckpoint(account, checkpoint.checkpointMonth);
-    if (!previousCheckpoint) {
-      continue;
-    }
-
     const statementStartDate = normalizeStatementDate(checkpoint.statementStartDate) ?? undefined;
     const statementEndDate = normalizeStatementDate(checkpoint.statementEndDate) ?? getMonthEndDate(checkpoint.checkpointMonth);
     const statementBalanceMinor = normalizeStatementBalanceInputMinor(Math.round(Number(checkpoint.statementBalanceMinor ?? 0)), account.kind);
@@ -872,6 +870,21 @@ function autoIncludeCurrentPeriodStatementRowsReplacingPriorCertifiedMatches(inp
         amount_minor: row.amountMinor
       });
       const matchedLedgerDate = row.reconciliationMatch?.date;
+      const matchedLedgerPostedDate = row.reconciliationMatch?.postedDate ?? matchedLedgerDate;
+      const belongsToPreviousMatchedStatement = Boolean(
+        previousCheckpoint
+        && matchedLedgerDate
+        && isDateWithinCheckpoint(matchedLedgerDate, previousCheckpoint)
+        && !isDateWithinRange(matchedLedgerDate, statementStartDate, statementEndDate)
+      );
+      const certifiedBankDateBelongsToCurrentStatement = Boolean(
+        row.reconciliationMatch?.existingSourceType === "pdf"
+        && row.reconciliationMatch?.existingBankCertificationStatus === "statement_certified"
+        && matchedLedgerDate
+        && matchedLedgerPostedDate
+        && matchedLedgerDate < (statementStartDate ?? "9999-12-31")
+        && isDateWithinRange(matchedLedgerPostedDate, statementStartDate, statementEndDate)
+      );
       return (
         row.accountId === account.id
         && row.date >= (statementStartDate ?? "0000-00-00")
@@ -879,9 +892,7 @@ function autoIncludeCurrentPeriodStatementRowsReplacingPriorCertifiedMatches(inp
         && row.commitStatus === "skipped"
         && Boolean(row.reconciliationMatch?.existingTransactionId)
         && (row.reconciliationMatchCount ?? 0) === 1
-        && Boolean(matchedLedgerDate)
-        && isDateWithinCheckpoint(matchedLedgerDate!, previousCheckpoint)
-        && !isDateWithinRange(matchedLedgerDate!, statementStartDate, statementEndDate)
+        && (belongsToPreviousMatchedStatement || certifiedBankDateBelongsToCurrentStatement)
         && deltaMinor + signedMinor === 0
       );
     });
@@ -892,7 +903,9 @@ function autoIncludeCurrentPeriodStatementRowsReplacingPriorCertifiedMatches(inp
 
     const row = promotableRows[0];
     row.commitStatus = "included";
-    row.commitStatusReason = "Official statement row belongs to this statement period and will import. The prior certified match belongs to the previous matched statement.";
+    row.commitStatusReason = row.reconciliationMatch?.existingSourceType === "pdf"
+      ? "Official statement row belongs to this statement period and will import. The earlier certified ledger row preserved an older event date, but its bank-cleared date belongs to this statement."
+      : "Official statement row belongs to this statement period and will import. The prior certified match belongs to the previous matched statement.";
     row.reconciliationTargetTransactionId = undefined;
     row.reconciliationMatches = undefined;
     row.isCertifiedConflict = false;

@@ -174,7 +174,7 @@ function CertifiedConflictRows({ rows }) {
                     <small className="duplicate-row-detail">
                       {messages.imports.duplicateRowDetail(formatDuplicateMatch(match))}
                     </small>
-                    <DuplicateMatchPopover row={row} match={match} />
+                    <DuplicateMatchPopover row={row} match={match} statementImportSourceType="pdf" />
                   </div>
                 ) : null}
               </div>
