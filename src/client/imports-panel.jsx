@@ -680,6 +680,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           commitStatus,
           reconciliationTargetTransactionId: commitStatus === "included" ? row.reconciliationTargetTransactionId : undefined,
           commitStatusReason: getPreviewCommitStatusReason(commitStatus, row.reconciliationMatches?.[0]?.matchKind ?? row.reconciliationMatch?.matchKind),
+          isCertifiedConflict: commitStatus === "included" ? false : row.isCertifiedConflict,
+          isStatementMatchResolved: false,
           commitStatusExplicit: true
         }
         : row
@@ -1021,6 +1023,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             onRemapPreviewAccount={remapPreviewAccount}
             onCreateStatementAccount={openCreateStatementAccountDialog}
             onDismissOverlap={(importId) => setDismissedOverlapIds((current) => [...new Set([...current, importId])])}
+            onUpdatePreviewRowCommitStatus={updatePreviewRowCommitStatus}
             onJumpToSkippedRows={() => setJumpToSkippedRowsRequestKey((current) => current + 1)}
             onRefreshStatementReconciliation={handleRefreshStatementReconciliation}
             onUpdateStatementCheckpoint={updateStatementCheckpoint}

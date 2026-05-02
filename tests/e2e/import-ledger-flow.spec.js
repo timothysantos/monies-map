@@ -1812,6 +1812,123 @@ test.describe("import flow", () => {
     expect(preview.json.preview.previewRows[0].commitStatusReason).toContain("outside this statement period");
   });
 
+  test("user can explicitly include a certified PDF duplicate and keep it included on refresh", async ({ page }) => {
+    const accountName = `Playwright Explicit Conflict Include ${Date.now()}`;
+    const createPayload = await postJson(page, "/api/accounts/create", {
+      name: accountName,
+      institution: "Synthetic Test Bank",
+      kind: "credit_card",
+      openingBalanceMinor: 0,
+      currency: "SGD",
+      ownerPersonId: "",
+      isJoint: false
+    });
+    const accountId = createPayload.accountId;
+    expect(accountId).toBeTruthy();
+
+    const commitResponse = await page.evaluate(async ({ accountId, accountName }) => {
+      const response = await fetch("/api/imports/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Explicit conflict include seed",
+          sourceType: "pdf",
+          parserKey: "uob_pdf",
+          rows: [{
+            rowId: "explicit-conflict-seed-row",
+            rowIndex: 1,
+            date: "2025-04-01",
+            description: "HelloRide SINGAPORE",
+            amountMinor: 2990,
+            entryType: "income",
+            accountId,
+            account: accountName,
+            accountName,
+            category: "Other - Income",
+            categoryName: "Other - Income",
+            ownershipType: "direct",
+            ownerName: "Tim",
+            splitBasisPoints: 10000,
+            rawRow: {
+              date: "2025-04-01",
+              description: "HelloRide SINGAPORE",
+              expense: "",
+              income: "29.90",
+              accountId,
+              account: accountName,
+              category: "Other - Income"
+            }
+          }],
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { accountId, accountName });
+    expect(commitResponse.ok, commitResponse.text).toBeTruthy();
+
+    const conflictPreview = await page.evaluate(async ({ accountId, accountName }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Explicit conflict include preview",
+          sourceType: "pdf",
+          rows: [{
+            date: "2025-04-01",
+            description: "HelloRide SINGAPORE",
+            expense: "",
+            income: "29.90",
+            accountId,
+            account: accountName,
+            statementAccountName: accountName,
+            category: "Other - Income"
+          }],
+          defaultAccountName: accountName,
+          ownershipType: "direct",
+          ownerName: "Tim",
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId, accountName });
+
+    expect(conflictPreview.ok, JSON.stringify(conflictPreview.json)).toBeTruthy();
+    expect(conflictPreview.json.preview.previewRows[0].commitStatus).toBe("skipped");
+    expect(conflictPreview.json.preview.previewRows[0].reconciliationMatch?.existingTransactionId).toBeTruthy();
+
+    const includedPreview = await page.evaluate(async ({ accountId, accountName }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Explicit conflict include preview",
+          sourceType: "pdf",
+          rows: [{
+            date: "2025-04-01",
+            description: "HelloRide SINGAPORE",
+            expense: "",
+            income: "29.90",
+            accountId,
+            account: accountName,
+            statementAccountName: accountName,
+            category: "Other - Income",
+            commitStatus: "included"
+          }],
+          defaultAccountName: accountName,
+          ownershipType: "direct",
+          ownerName: "Tim",
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId, accountName });
+
+    expect(includedPreview.ok, JSON.stringify(includedPreview.json)).toBeTruthy();
+    expect(includedPreview.json.preview.previewRows[0].commitStatus).toBe("included");
+    expect(includedPreview.json.preview.previewRows[0].isCertifiedConflict).not.toBe(true);
+    expect(includedPreview.json.preview.previewRows[0].commitStatusExplicit).toBe(true);
+  });
+
   test("wrong-card remap stays mismatched and does not resolve the certified row", async ({ page }) => {
     const createAccount = async (name) => {
       const result = await postJson(page, "/api/accounts/create", {
