@@ -870,6 +870,103 @@ test.describe("import flow", () => {
     expect(pdfPreview.json.preview.previewRows[0].commitStatus).toBe("included");
   });
 
+  test("certified PDF hash does not suppress a later statement row when the bank-cleared dates differ", async ({ page }) => {
+    const bootstrap = await loadBootstrap(page, { month: "2025-05" });
+    const account = bootstrap.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    expect(account).toBeTruthy();
+
+    const manualEntry = await page.evaluate(async ({ accountId, accountName }) => {
+      const response = await fetch("/api/entries/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: "2025-04-01",
+          description: "HelloRide SINGAPORE",
+          accountId,
+          accountName,
+          categoryName: "Other - Income",
+          amountMinor: 2990,
+          entryType: "income",
+          ownershipType: "direct",
+          ownerName: "Tim"
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId: account.id, accountName: account.name });
+    expect(manualEntry.ok, JSON.stringify(manualEntry.json)).toBeTruthy();
+
+    const certifyCommit = await page.evaluate(async ({ accountId, accountName, entryId }) => {
+      const response = await fetch("/api/imports/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Earlier official PDF commit",
+          sourceType: "pdf",
+          parserKey: "uob_credit_card_pdf",
+          statementCheckpoints: [],
+          rows: [{
+            rowId: "preview-1",
+            rowIndex: 1,
+            date: "2025-04-02",
+            description: "HelloRide SINGAPORE",
+            amountMinor: 2990,
+            entryType: "income",
+            accountId,
+            accountName,
+            categoryName: "Other - Income",
+            ownershipType: "direct",
+            ownerName: "Tim",
+            splitBasisPoints: 10000,
+            rawRow: {
+              date: "2025-04-02",
+              description: "HelloRide SINGAPORE",
+              expense: "",
+              income: "29.90",
+              accountId,
+              account: accountName,
+              category: "Other - Income",
+              type: "income"
+            },
+            reconciliationTargetTransactionId: entryId
+          }]
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { accountId: account.id, accountName: account.name, entryId: manualEntry.json.entryId });
+    expect(certifyCommit.ok, certifyCommit.text).toBeTruthy();
+
+    const laterPreview = await page.evaluate(async ({ accountId, accountName }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Later official PDF",
+          sourceType: "pdf",
+          defaultAccountName: accountName,
+          ownershipType: "direct",
+          ownerName: "Tim",
+          statementCheckpoints: [],
+          rows: [{
+            date: "2025-05-19",
+            description: "HelloRide SINGAPORE",
+            expense: "",
+            income: "29.90",
+            accountId,
+            account: accountName,
+            category: "Other - Income",
+            type: "income"
+          }]
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId: account.id, accountName: account.name });
+
+    expect(laterPreview.ok, JSON.stringify(laterPreview.json)).toBeTruthy();
+    expect(laterPreview.json.preview.previewRows[0].commitStatus).toBe("included");
+    expect(laterPreview.json.preview.previewRows[0].reconciliationMatch).toBeFalsy();
+    expect(laterPreview.json.preview.previewRows[0].reconciliationMatches ?? []).toHaveLength(0);
+  });
+
   test("promoting a manual provisional row keeps the event date and stores the bank post date separately", async ({ page }) => {
     // The ledger should keep the user-entered event date in place while the
     // import fills in the bank-cleared postDate lane.
