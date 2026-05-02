@@ -418,6 +418,7 @@ export interface ImportPreviewRowDto {
   rowIndex: number;
   commitStatus?: "included" | "skipped" | "needs_review";
   commitStatusReason?: string;
+  commitStatusExplicit?: boolean;
   date: string;
   description: string;
   amountMinor: number;

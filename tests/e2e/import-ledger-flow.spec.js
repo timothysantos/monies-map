@@ -1956,6 +1956,11 @@ test.describe("import flow", () => {
     await expect(page.locator("details.import-skipped-rows").locator(`input[value="${lateStatementOnlyRow.description}"]`)).toBeVisible();
     await screenshot("08-user-skipped-late-row-alpha-check-fails");
 
+    await page.getByRole("button", { name: "Refresh check" }).click();
+    await expect(page.locator(".statement-reconciliation-row").filter({ hasText: alphaAccount.name }).locator(".pill.warning")).toBeVisible();
+    await expect(page.locator(".statement-reconciliation-row").filter({ hasText: betaAccount.name }).locator(".pill.success")).toBeVisible();
+    await expect(page.locator("details.import-skipped-rows").locator(`input[value="${lateStatementOnlyRow.description}"]`)).toBeVisible();
+
     await page.locator("details.import-skipped-rows").locator(`input[value="${lateStatementOnlyRow.description}"]`).locator("xpath=ancestor::tr[1]").getByRole("button", { name: "Include row" }).click();
     await expect(page.locator(".statement-reconciliation-row .pill.success")).toHaveCount(2);
     await expect(page.locator(`input[value="${lateStatementOnlyRow.description}"]`)).toBeVisible();
