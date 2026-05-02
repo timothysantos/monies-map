@@ -188,6 +188,7 @@ export async function buildImportPreview(
 
     const strongestMatch = previewRow.reconciliationMatches?.[0]?.matchKind ?? previewRow.reconciliationMatch?.matchKind;
     previewRow.commitStatus = requestedCommitStatus ?? getDefaultCommitStatus(strongestMatch);
+    previewRow.commitStatusExplicit = Boolean(requestedCommitStatus);
     previewRow.commitStatusReason = getCommitStatusReason(previewRow.commitStatus, strongestMatch);
     applyExactDuplicateSuppressionReason(previewRow, input.sourceType);
     applySourceAuthorityToPreviewRow(previewRow, input.sourceType);
@@ -586,13 +587,15 @@ function applySourceAuthorityToPreviewRow(
   previewRow: ImportPreviewRowDto,
   sourceType?: "csv" | "pdf" | "manual"
 ) {
-  const strongestMatch = previewRow.reconciliationMatches?.[0];
+  const strongestMatch = previewRow.reconciliationMatches?.[0] ?? previewRow.reconciliationMatch;
   if (!strongestMatch?.existingTransactionId) {
     return;
   }
 
   previewRow.reconciliationMatch = strongestMatch;
-  previewRow.reconciliationMatchCount = previewRow.reconciliationMatches?.length ?? 0;
+  previewRow.reconciliationMatchCount = previewRow.reconciliationMatchCount
+    ?? previewRow.reconciliationMatches?.length
+    ?? 1;
 
   if (sourceType === "csv" && canPromoteManualReconciliationMatch(previewRow, strongestMatch)) {
     previewRow.commitStatus = "included";
