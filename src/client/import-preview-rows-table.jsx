@@ -35,7 +35,9 @@ export function ImportPreviewRowsTable({
 }) {
   const accountOptions = accountService.getSelectOptions(accounts, { valueKey: "id" });
   const categorySelectOptions = categoryService.listForSelect(categories);
-  const visibleRows = previewRows.filter((row) => !row.isStatementMatchResolved && !row.isCertifiedConflict);
+  const visibleRows = previewRows.filter((row) => (
+    !row.isStatementMatchResolved && !(row.isCertifiedConflict && row.commitStatus === "skipped")
+  ));
   const activeRows = visibleRows.filter((row) => row.commitStatus !== "skipped");
   const skippedRows = visibleRows.filter((row) => row.commitStatus === "skipped");
   const includedCount = visibleRows.filter((row) => row.commitStatus === "included" || !row.commitStatus).length;

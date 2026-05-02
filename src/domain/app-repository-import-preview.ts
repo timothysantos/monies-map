@@ -623,6 +623,13 @@ function applySourceAuthorityToPreviewRow(
     || strongestMatch.existingBankCertificationStatus === "statement_certified";
 
   if (isAlreadyStatementCertified) {
+    if (previewRow.commitStatusExplicit && previewRow.commitStatus === "included") {
+      previewRow.commitStatusReason = "Official statement row will import even though a certified ledger row already exists. Review the ledger match before committing.";
+      previewRow.reconciliationTargetTransactionId = undefined;
+      previewRow.reconciliationMatches = undefined;
+      return;
+    }
+
     previewRow.commitStatus = "skipped";
     previewRow.commitStatusReason = "Official statement row is already certified in the ledger.";
     previewRow.reconciliationMatches = undefined;

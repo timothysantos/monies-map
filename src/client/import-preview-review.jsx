@@ -44,6 +44,7 @@ export function ImportPreviewReview({
   onRemapPreviewAccount,
   onCreateStatementAccount,
   onDismissOverlap,
+  onUpdatePreviewRowCommitStatus,
   onJumpToSkippedRows,
   onRefreshStatementReconciliation,
   onUpdateStatementCheckpoint
@@ -120,7 +121,10 @@ export function ImportPreviewReview({
 
       {/* Certified conflicts are the rows we should least casually overwrite. */}
       {certifiedConflictRows.length ? (
-        <CertifiedConflictRows rows={certifiedConflictRows} />
+        <CertifiedConflictRows
+          rows={certifiedConflictRows}
+          onUpdatePreviewRowCommitStatus={onUpdatePreviewRowCommitStatus}
+        />
       ) : null}
 
       {/* Draft checkpoints remain editable until commit. */}
@@ -145,7 +149,7 @@ export function ImportPreviewReview({
   );
 }
 
-function CertifiedConflictRows({ rows }) {
+function CertifiedConflictRows({ rows, onUpdatePreviewRowCommitStatus }) {
   return (
     <div className="import-warning import-warning-attention">
       <strong>{messages.imports.certifiedConflictTitle(rows.length)}</strong>
@@ -177,6 +181,23 @@ function CertifiedConflictRows({ rows }) {
                     <DuplicateMatchPopover row={row} match={match} statementImportSourceType="pdf" />
                   </div>
                 ) : null}
+                <div className="import-row-actions">
+                  <button
+                    type="button"
+                    className="subtle-action"
+                    onClick={() => {
+                      if (
+                        match?.matchKind === "exact"
+                        && !window.confirm(messages.imports.restoreExactCoveredRowConfirm)
+                      ) {
+                        return;
+                      }
+                      onUpdatePreviewRowCommitStatus(row.rowId, "included");
+                    }}
+                  >
+                    {messages.imports.restorePreviewRow}
+                  </button>
+                </div>
               </div>
             </div>
           );

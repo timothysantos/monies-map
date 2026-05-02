@@ -16,10 +16,12 @@ export function buildImportPreviewModel({
   isSubmitting,
   isParsingStatement
 }) {
-  const certifiedConflictRows = previewRows.filter((row) => row.isCertifiedConflict);
+  const certifiedConflictRows = previewRows.filter((row) => row.isCertifiedConflict && row.commitStatus === "skipped");
   const knownAccountNames = new Set(accounts.map((account) => account.name));
   const accountNameCounts = buildAccountNameCounts(accounts);
-  const visiblePreviewRows = previewRows.filter((row) => !row.isStatementMatchResolved && !row.isCertifiedConflict);
+  const visiblePreviewRows = previewRows.filter((row) => (
+    !row.isStatementMatchResolved && !(row.isCertifiedConflict && row.commitStatus === "skipped")
+  ));
   const detectedPreviewAccountNames = getDetectedPreviewAccountNames({
     previewRows,
     statementCheckpoints,
