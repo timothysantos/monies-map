@@ -378,7 +378,13 @@ function findExactDuplicateSuppressionMatch(input: {
         previewRow: input.previewRowDateContext,
         candidate: candidateDateContext
       });
-      const hasMatchingHash = Boolean(candidate.normalized_hash) && candidate.normalized_hash === previewRowHash;
+      const hasMatchingHash = Boolean(candidate.normalized_hash)
+        && candidate.normalized_hash === previewRowHash
+        && (
+          candidate.source_type !== "pdf"
+          || candidate.bank_certification_status !== "statement_certified"
+          || dayDistance === 0
+        );
       const hasPerfectDescriptionMatch = dayDistance === 0
         && normalizeDescriptionForMatch(candidate.description) === normalizeDescriptionForMatch(input.previewRow.description);
       const hasCompactDescriptionMatch = dayDistance === 0
@@ -845,6 +851,10 @@ function autoIncludeCurrentPeriodStatementRowsReplacingPriorCertifiedMatches(inp
     }
 
     const previousCheckpoint = getImmediatePreviousMatchedCheckpoint(account, checkpoint.checkpointMonth);
+    if (!previousCheckpoint) {
+      continue;
+    }
+
     const statementStartDate = normalizeStatementDate(checkpoint.statementStartDate) ?? undefined;
     const statementEndDate = normalizeStatementDate(checkpoint.statementEndDate) ?? getMonthEndDate(checkpoint.checkpointMonth);
     const statementBalanceMinor = normalizeStatementBalanceInputMinor(Math.round(Number(checkpoint.statementBalanceMinor ?? 0)), account.kind);
@@ -870,21 +880,6 @@ function autoIncludeCurrentPeriodStatementRowsReplacingPriorCertifiedMatches(inp
         amount_minor: row.amountMinor
       });
       const matchedLedgerDate = row.reconciliationMatch?.date;
-      const matchedLedgerPostedDate = row.reconciliationMatch?.postedDate ?? matchedLedgerDate;
-      const belongsToPreviousMatchedStatement = Boolean(
-        previousCheckpoint
-        && matchedLedgerDate
-        && isDateWithinCheckpoint(matchedLedgerDate, previousCheckpoint)
-        && !isDateWithinRange(matchedLedgerDate, statementStartDate, statementEndDate)
-      );
-      const certifiedBankDateBelongsToCurrentStatement = Boolean(
-        row.reconciliationMatch?.existingSourceType === "pdf"
-        && row.reconciliationMatch?.existingBankCertificationStatus === "statement_certified"
-        && matchedLedgerDate
-        && matchedLedgerPostedDate
-        && matchedLedgerDate < (statementStartDate ?? "9999-12-31")
-        && isDateWithinRange(matchedLedgerPostedDate, statementStartDate, statementEndDate)
-      );
       return (
         row.accountId === account.id
         && row.date >= (statementStartDate ?? "0000-00-00")
@@ -892,7 +887,9 @@ function autoIncludeCurrentPeriodStatementRowsReplacingPriorCertifiedMatches(inp
         && row.commitStatus === "skipped"
         && Boolean(row.reconciliationMatch?.existingTransactionId)
         && (row.reconciliationMatchCount ?? 0) === 1
-        && (belongsToPreviousMatchedStatement || certifiedBankDateBelongsToCurrentStatement)
+        && Boolean(matchedLedgerDate)
+        && isDateWithinCheckpoint(matchedLedgerDate!, previousCheckpoint)
+        && !isDateWithinRange(matchedLedgerDate!, statementStartDate, statementEndDate)
         && deltaMinor + signedMinor === 0
       );
     });
@@ -903,9 +900,7 @@ function autoIncludeCurrentPeriodStatementRowsReplacingPriorCertifiedMatches(inp
 
     const row = promotableRows[0];
     row.commitStatus = "included";
-    row.commitStatusReason = row.reconciliationMatch?.existingSourceType === "pdf"
-      ? "Official statement row belongs to this statement period and will import. The earlier certified ledger row preserved an older event date, but its bank-cleared date belongs to this statement."
-      : "Official statement row belongs to this statement period and will import. The prior certified match belongs to the previous matched statement.";
+    row.commitStatusReason = "Official statement row belongs to this statement period and will import. The prior certified match belongs to the previous matched statement.";
     row.reconciliationTargetTransactionId = undefined;
     row.reconciliationMatches = undefined;
     row.isCertifiedConflict = false;
