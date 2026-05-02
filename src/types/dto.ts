@@ -537,6 +537,7 @@ export interface ReconciliationCandidateDto {
   existingSourceType?: "csv" | "pdf" | "manual";
   existingBankCertificationStatus?: "provisional" | "statement_certified";
   date: string;
+  postedDate?: string;
   description: string;
   amountMinor: number;
   accountName?: string;
