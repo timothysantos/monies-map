@@ -31,6 +31,7 @@ import {
   deleteCategoryMatchRule,
   deleteAccountCheckpointRecord,
   deleteCategoryRecord,
+  deleteEntryRecord,
   ignoreCategoryMatchRuleSuggestion,
   deleteMonthPlan,
   deleteMonthPlanRow,
@@ -522,6 +523,25 @@ export default {
           splitBasisPoints: body.splitBasisPoints
         }))
       });
+    }
+
+    if (url.pathname === "/api/entries/delete" && request.method === "POST") {
+      const body = await request.json<{ entryId?: string }>();
+
+      if (!body.entryId) {
+        return json({ ok: false, error: "Missing entry id" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await deleteEntryRecord(env.DB, {
+            entryId: body.entryId
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to delete entry" }, 400);
+      }
     }
 
     if (url.pathname === "/api/entries/update-classification" && request.method === "POST") {

@@ -52,6 +52,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   const [entryDraft, setEntryDraft] = useState(() => entryService.buildDraft(view, accounts, categories, people));
   const [entrySubmitError, setEntrySubmitError] = useState("");
   const [isSavingEntryDraft, setIsSavingEntryDraft] = useState(false);
+  const [savingEntryId, setSavingEntryId] = useState(null);
+  const [deletingEntryId, setDeletingEntryId] = useState(null);
   const [linkingTransferEntryId, setLinkingTransferEntryId] = useState(null);
   const [settlingTransferEntryId, setSettlingTransferEntryId] = useState(null);
   const [transferSettlementDrafts, setTransferSettlementDrafts] = useState({});
@@ -91,6 +93,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     ));
     setEntrySubmitError("");
     setIsSavingEntryDraft(false);
+    setSavingEntryId(null);
+    setDeletingEntryId(null);
     setLinkingTransferEntryId(null);
     setSettlingTransferEntryId(null);
     setTransferSettlementDrafts({});
@@ -175,6 +179,72 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       splits: entryService.applySharedSplit(entryDraft, people, percentage),
       viewerSplitRatioBasisPoints: view.id === "household" ? undefined : Math.round(percentage * 100)
     });
+  }
+
+  async function persistExistingEntry(entryId, { closeEditor } = {}) {
+    if (!entryId) {
+      return { ok: false };
+    }
+
+    const currentEntry = entries.find((entry) => entry.id === entryId);
+    if (!currentEntry) {
+      setEditingEntryId(null);
+      setEntrySnapshot(null);
+      return { ok: false };
+    }
+
+    const primarySplit = currentEntry.ownershipType === "shared" ? currentEntry.splits[0] : undefined;
+
+    setEntrySubmitError("");
+    setSavingEntryId(entryId);
+    try {
+      const response = await fetch("/api/entries/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          entryId: currentEntry.id,
+          ...buildPersistedEntryPayload(currentEntry, primarySplit)
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const errorMessage = data.error ?? "Failed to save entry.";
+        setEntrySubmitError(errorMessage);
+        return {
+          ok: false,
+          error: errorMessage
+        };
+      }
+
+      const savedEntrySnapshot = {
+        ...currentEntry,
+        splits: currentEntry.splits.map((split) => ({ ...split }))
+      };
+      setEntries((current) => current.map((entry) => (
+        entry.id === currentEntry.id
+          ? {
+              ...savedEntrySnapshot,
+              isPendingDerived: true
+            }
+          : entry
+      )));
+      if (closeEditor) {
+        setEditingEntryId(null);
+        setEntrySnapshot(null);
+      } else {
+        setEntrySnapshot(savedEntrySnapshot);
+      }
+      refreshEntriesInBackground();
+      return {
+        ok: true,
+        entry: savedEntrySnapshot
+      };
+    } finally {
+      setSavingEntryId((current) => current === entryId ? null : current);
+    }
   }
 
   async function saveEntryDraft() {
@@ -268,42 +338,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   }
 
   async function finishEntryEdit() {
-    const currentEntry = entries.find((entry) => entry.id === editingEntryId);
-    if (!currentEntry) {
-      setEditingEntryId(null);
-      setEntrySnapshot(null);
-      return false;
-    }
-
-    const primarySplit = currentEntry.ownershipType === "shared" ? currentEntry.splits[0] : undefined;
-
-    const response = await fetch("/api/entries/update", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        entryId: currentEntry.id,
-        ...buildPersistedEntryPayload(currentEntry, primarySplit)
-      })
-    });
-
-    if (!response.ok) {
-      return false;
-    }
-
-    setEntries((current) => current.map((entry) => (
-      entry.id === currentEntry.id
-        ? {
-            ...currentEntry,
-            isPendingDerived: true
-          }
-        : entry
-    )));
-    setEditingEntryId(null);
-    setEntrySnapshot(null);
-    refreshEntriesInBackground();
-    return true;
+    const result = await persistExistingEntry(editingEntryId, { closeEditor: true });
+    return result.ok;
   }
 
   async function saveEntryCategory(entryId, categoryName) {
@@ -515,6 +551,18 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     setAddingToSplitsEntryId(entry.id);
 
     try {
+      const shouldPersistEditingChanges =
+        editingEntryId === entry.id
+        && entrySnapshot
+        && JSON.stringify(buildComparableEntryState(entry))
+          !== JSON.stringify(buildComparableEntryState(entrySnapshot));
+      if (shouldPersistEditingChanges) {
+        const saveResult = await persistExistingEntry(entry.id, { closeEditor: false });
+        if (!saveResult.ok) {
+          return saveResult;
+        }
+      }
+
       const response = await fetch("/api/splits/expenses/from-entry", {
         method: "POST",
         headers: {
@@ -548,7 +596,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
           ...currentEntry,
           ownershipType: "shared",
           ownerName: undefined,
-          linkedSplitExpenseId: data.splitExpenseId
+          linkedSplitExpenseId: data.splitExpenseId,
+          isPendingDerived: true
         }, people, currentEntry);
         return nextLinkedEntry;
       }));
@@ -561,6 +610,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
         invalidateMonth: true,
         invalidateSummary: true
       });
+      refreshEntriesInBackground();
       return {
         ok: true,
         ...data
@@ -600,6 +650,54 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     }));
   }
 
+  async function deleteEntry(entry) {
+    if (!entry?.id || deletingEntryId) {
+      return { ok: false };
+    }
+
+    setEntrySubmitError("");
+    setDeletingEntryId(entry.id);
+    try {
+      const response = await fetch("/api/entries/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          entryId: entry.id
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const errorMessage = data.error ?? "Failed to delete entry.";
+        setEntrySubmitError(errorMessage);
+        return {
+          ok: false,
+          error: errorMessage
+        };
+      }
+
+      setEntries((current) => current.filter((currentEntry) => currentEntry.id !== entry.id));
+      if (editingEntryId === entry.id) {
+        setEditingEntryId(null);
+        setEntrySnapshot(null);
+      }
+      onSplitMutation?.({
+        month: view.monthPage.month,
+        invalidateEntries: true,
+        invalidateMonth: true,
+        invalidateSummary: true
+      });
+      refreshEntriesInBackground();
+      return {
+        ok: true,
+        ...data
+      };
+    } finally {
+      setDeletingEntryId((current) => current === entry.id ? null : current);
+    }
+  }
+
   return {
     entries,
     editingEntryId,
@@ -608,6 +706,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     entryDraft,
     entrySubmitError,
     isSavingEntryDraft,
+    savingEntryId,
+    deletingEntryId,
     linkingTransferEntryId,
     settlingTransferEntryId,
     transferSettlementDrafts,
@@ -632,6 +732,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     updateTransferSettlementDraft,
     settleTransfer,
     addEntryToSplits,
+    deleteEntry,
     updateEntry,
     updateEntrySplit,
     saveEntryCategory
