@@ -124,7 +124,7 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
             />
           </label>
           <label className="split-dialog-field split-dialog-field-percent">
-            <span>{messages.splits.expenseSplit}</span>
+            <span>{messages.splits.expenseSplit(dialog?.sharePersonName ?? "First person")}</span>
             <input
               className="table-edit-input table-edit-input-money"
               type="number"
