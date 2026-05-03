@@ -1512,7 +1512,12 @@ function viewerExpenseAmountForChart(expense: SplitExpenseDto, viewId: string) {
     return expense.totalAmountMinor;
   }
 
-  return expense.shares.find((share) => share.personId === viewId)?.amountMinor ?? 0;
+  const viewerShare = expense.shares.find((share) => share.personId === viewId)?.amountMinor ?? 0;
+  if (expense.payerPersonId === viewId) {
+    return expense.totalAmountMinor - viewerShare;
+  }
+
+  return viewerShare;
 }
 
 function canonicalEditableExpenseShare(expense: SplitExpenseDto, personNameById: Record<string, string>) {

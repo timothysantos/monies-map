@@ -42,12 +42,14 @@ function viewerExpenseAmount(viewId, shares, totalAmountMinor) {
     return totalAmountMinor;
   }
 
-  if (viewId === shares.primary.personId) {
-    return shares.primary.amountMinor;
-  }
+  const viewerShareMinor = viewId === shares.primary.personId
+    ? shares.primary.amountMinor
+    : viewId === shares.secondary.personId
+      ? shares.secondary.amountMinor
+      : 0;
 
-  if (viewId === shares.secondary.personId) {
-    return shares.secondary.amountMinor;
+  if (viewId === shares.primary.personId || viewId === shares.secondary.personId) {
+    return viewerShareMinor;
   }
 
   return 0;
@@ -92,6 +94,11 @@ export function buildOptimisticExpenseActivityItem({
   const shares = buildExpenseShares(draft, people);
   const payer = resolvePayer(draft, people);
   const totalAmountMinor = Math.max(0, Number(draft?.amountMinor ?? 0));
+  const viewerAmountMinor = viewId === "household"
+    ? totalAmountMinor
+    : payer.personId === viewId
+      ? totalAmountMinor - viewerExpenseAmount(viewId, shares, totalAmountMinor)
+      : viewerExpenseAmount(viewId, shares, totalAmountMinor);
 
   return {
     id: splitExpenseId ?? draft?.id ?? `optimistic-split-expense-${Date.now()}`,
@@ -107,7 +114,7 @@ export function buildOptimisticExpenseActivityItem({
     categoryName: draft?.categoryName ?? existingItem?.categoryName ?? "Other",
     paidByPersonName: payer.personName,
     totalAmountMinor,
-    viewerAmountMinor: viewerExpenseAmount(viewId, shares, totalAmountMinor),
+    viewerAmountMinor,
     editableSplitPersonName: shares.primary.personName,
     editableSplitBasisPoints: shares.primary.ratioBasisPoints,
     editableSplitAmountMinor: shares.primary.amountMinor,
