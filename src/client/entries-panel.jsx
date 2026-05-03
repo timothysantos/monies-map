@@ -69,7 +69,6 @@ export function EntriesPanel({
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [useMobileEntrySheet, setUseMobileEntrySheet] = useState(false);
   const [isQuickExpenseSaving, setIsQuickExpenseSaving] = useState(false);
-  const [isConfirmingAddToSplits, setIsConfirmingAddToSplits] = useState(false);
   const [quickExpensePendingKey, setQuickExpensePendingKey] = useState("");
   const [quickExpenseWarning, setQuickExpenseWarning] = useState("");
   const [pendingLinkedEntryId, setPendingLinkedEntryId] = useState(() => searchParams.get("editing_entry") ?? "");
@@ -114,6 +113,8 @@ export function EntriesPanel({
     entryDraft,
     entrySubmitError,
     isSavingEntryDraft,
+    savingEntryId,
+    deletingEntryId,
     linkingTransferEntryId,
     settlingTransferEntryId,
     transferSettlementDrafts,
@@ -138,6 +139,7 @@ export function EntriesPanel({
     updateTransferSettlementDraft,
     settleTransfer,
     addEntryToSplits,
+    deleteEntry,
     updateEntry,
     updateEntrySplit,
     saveEntryCategory
@@ -444,11 +446,9 @@ export function EntriesPanel({
     : activeEditingEntry?.linkedSplitExpenseId;
   const mobileEditExpenseFooterMode = activeLinkedSplitExpenseId
     ? "linked"
-    : isConfirmingAddToSplits
-      ? "confirm"
-      : isMobileSplitPickerOpen
-        ? "picker"
-        : "default";
+    : isMobileSplitPickerOpen
+      ? "picker"
+      : "default";
 
   useEffect(() => {
     if (!shouldShowComposerSplitOptions || !entryDraft.addToSplits) {
@@ -476,7 +476,6 @@ export function EntriesPanel({
   ]);
 
   useEffect(() => {
-    setIsConfirmingAddToSplits(false);
     resetMobileSplitPickerState();
   }, [activeEditingEntry?.id]);
 
@@ -497,7 +496,6 @@ export function EntriesPanel({
     setCreatedSplitAction(null);
     setDeletingCreatedSplitId("");
     setCreatedSplitActionError("");
-    setIsConfirmingAddToSplits(false);
     resetMobileSplitPickerState();
     cancelEntryEdit();
   }
@@ -519,7 +517,7 @@ export function EntriesPanel({
 
   async function handleAddEntryToSplits(entry, splitGroupId = null) {
     setCreatedSplitActionError("");
-    clearEditingEntrySearchParam();
+    preserveEntryEditorInUrl(entry.id);
     const result = await addEntryToSplits(entry, splitGroupId);
     if (result?.alreadyLinked) {
       await refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true });
@@ -530,8 +528,11 @@ export function EntriesPanel({
       return;
     }
 
-    setCreatedSplitAction(null);
-    setIsConfirmingAddToSplits(false);
+    setCreatedSplitAction({
+      entryId: entry.id,
+      splitExpenseId: result.splitExpenseId,
+      splitGroupId: splitGroupId ?? "split-group-none"
+    });
     resetMobileSplitPickerState();
   }
 
@@ -574,7 +575,22 @@ export function EntriesPanel({
     }
   }
 
+  async function handleDeleteEntry(entry) {
+    preserveEntryEditorInUrl(entry.id);
+    const result = await deleteEntry(entry);
+    if (result?.ok) {
+      clearEditingEntrySearchParam();
+      setCreatedSplitAction(null);
+      setDeletingCreatedSplitId("");
+      setCreatedSplitActionError("");
+      resetMobileSplitPickerState();
+    }
+  }
+
   function openCreatedSplit(entryId, splitExpenseId) {
+    const activeCreatedSplitAction = createdSplitAction && createdSplitAction.entryId === entryId
+      ? createdSplitAction
+      : null;
     setCreatedSplitAction(null);
     navigate({
       pathname: "/splits",
@@ -583,6 +599,9 @@ export function EntriesPanel({
         next.delete("editing_entry");
         next.set("editing_split_expense", splitExpenseId);
         next.set("split_mode", "entries");
+        if (activeCreatedSplitAction?.splitGroupId) {
+          next.set("split_group", activeCreatedSplitAction.splitGroupId);
+        }
         return next.toString();
       })()
     });
@@ -792,26 +811,44 @@ export function EntriesPanel({
           title="Edit entry"
           description="Update the row in a bottom sheet instead of editing inline."
           errorMessage={entrySubmitError || createdSplitActionError}
-          saveLabel="Save"
-          isSaveDisabled={!hasEditingEntryChanges}
+          saveLabel={savingEntryId === activeEditingEntry.id ? messages.common.saving : "Save"}
+          isSaveDisabled={Boolean(savingEntryId) || Boolean(deletingEntryId) || !hasEditingEntryChanges}
+          secondaryAction={activeEditingEntry.entryType !== "expense"
+            ? (
+                <button
+                  type="button"
+                  className="subtle-action entry-mobile-sheet-secondary"
+                  disabled={deletingEntryId === activeEditingEntry.id || savingEntryId === activeEditingEntry.id}
+                  onClick={() => void handleDeleteEntry(activeEditingEntry)}
+                >
+                  {deletingEntryId === activeEditingEntry.id ? messages.common.working : "Delete entry"}
+                </button>
+              )
+            : null}
           footerContent={activeEditingEntry.entryType === "expense"
             ? (
                 <EntryMobileEditExpenseFooter
                   mode={mobileEditExpenseFooterMode}
                   addToSplitsLabel={messages.entries.addToSplits}
+                  deleteEntryLabel={deletingEntryId === activeEditingEntry.id ? messages.common.working : "Delete entry"}
                   deleteLabel={deletingCreatedSplitId === activeLinkedSplitExpenseId ? messages.common.working : "Delete split"}
-                  isWorking={addingToSplitsEntryId === activeEditingEntry.id || deletingCreatedSplitId === activeLinkedSplitExpenseId}
-                  isSaveDisabled={!hasEditingEntryChanges}
+                  saveLabel={savingEntryId === activeEditingEntry.id ? messages.common.saving : "Save"}
+                  isWorking={
+                    addingToSplitsEntryId === activeEditingEntry.id
+                    || deletingCreatedSplitId === activeLinkedSplitExpenseId
+                    || deletingEntryId === activeEditingEntry.id
+                    || savingEntryId === activeEditingEntry.id
+                  }
+                  isSaveDisabled={Boolean(savingEntryId) || Boolean(deletingEntryId) || !hasEditingEntryChanges}
                   splitGroupId={mobileSplitGroupId}
                   splitGroupOptions={splitGroupOptions}
                   isSplitSelectorOpen={isMobileSplitSelectorOpen}
                   onViewSplit={() => openCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
                   onDeleteSplit={() => void handleDeleteCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
+                  onDeleteEntry={() => void handleDeleteEntry(activeEditingEntry)}
                   onCancel={closeEntryEditSheet}
                   onSave={() => void finishEntryEditAndClearLink()}
-                  onOpenAddToSplitsConfirm={() => setIsConfirmingAddToSplits(true)}
-                  onDismissAddToSplitsConfirm={() => setIsConfirmingAddToSplits(false)}
-                  onConfirmAddToSplits={() => {
+                  onOpenAddToSplits={() => {
                     if (singleSplitGroupValue) {
                       void handleAddEntryToSplits(
                         activeEditingEntry,
@@ -820,7 +857,6 @@ export function EntriesPanel({
                       return;
                     }
 
-                    setIsConfirmingAddToSplits(false);
                     setIsMobileSplitPickerOpen(true);
                     setIsMobileSplitSelectorOpen(true);
                   }}
@@ -909,6 +945,8 @@ export function EntriesPanel({
           viewId={entryView.id}
           editingEntryId={editingEntryId}
           addingToSplitsEntryId={addingToSplitsEntryId}
+          savingEntryId={savingEntryId}
+          deletingEntryId={deletingEntryId}
           transferDialogEntryId={transferDialogEntryId}
           transferSettlementDrafts={transferSettlementDrafts}
           linkingTransferEntryId={linkingTransferEntryId}
@@ -932,6 +970,7 @@ export function EntriesPanel({
           onAddEntryToSplits={handleAddEntryToSplits}
           onViewCreatedSplit={openCreatedSplit}
           onDeleteCreatedSplit={handleDeleteCreatedSplit}
+          onDeleteEntry={handleDeleteEntry}
           onFinishEntryEdit={finishEntryEditAndClearLink}
           onCancelEntryEdit={closeEntryEditSheet}
           hasEditingChanges={hasEditingEntryChanges}

@@ -62,7 +62,9 @@ export function EntryMobileSheet({
 export function EntryMobileEditExpenseFooter({
   mode,
   addToSplitsLabel,
+  deleteEntryLabel,
   deleteLabel,
+  saveLabel = "Save",
   isWorking = false,
   isSaveDisabled = false,
   splitGroupId = "",
@@ -70,11 +72,10 @@ export function EntryMobileEditExpenseFooter({
   isSplitSelectorOpen = false,
   onViewSplit,
   onDeleteSplit,
+  onDeleteEntry,
   onCancel,
   onSave,
-  onOpenAddToSplitsConfirm,
-  onDismissAddToSplitsConfirm,
-  onConfirmAddToSplits,
+  onOpenAddToSplits,
   onSplitSelectorOpenChange,
   onSelectSplitGroup,
   onCancelSplitPicker
@@ -82,6 +83,14 @@ export function EntryMobileEditExpenseFooter({
   if (mode === "linked") {
     return (
       <div className="entry-inline-actions entry-mobile-sheet-actions entry-mobile-sheet-linked-actions">
+        <button
+          type="button"
+          className="subtle-action entry-mobile-sheet-secondary"
+          disabled={isWorking}
+          onClick={onDeleteEntry}
+        >
+          {deleteEntryLabel}
+        </button>
         <button
           type="button"
           className="subtle-action entry-mobile-sheet-secondary"
@@ -100,33 +109,7 @@ export function EntryMobileEditExpenseFooter({
         </button>
         <span className="entry-mobile-sheet-action-divider" aria-hidden="true">|</span>
         <button type="button" className="subtle-cancel" onClick={onCancel}>Cancel</button>
-        <button type="button" className="dialog-primary" disabled={isSaveDisabled} onClick={onSave}>Save</button>
-      </div>
-    );
-  }
-
-  if (mode === "confirm") {
-    return (
-      <div className="entry-mobile-sheet-confirm-actions">
-        <span className="entry-mobile-sheet-confirm-copy">Add this entry to Splits?</span>
-        <div className="entry-mobile-sheet-confirm-buttons">
-          <button
-            type="button"
-            className="subtle-cancel"
-            disabled={isWorking}
-            onClick={onDismissAddToSplitsConfirm}
-          >
-            Not now
-          </button>
-          <button
-            type="button"
-            className="dialog-primary"
-            disabled={isWorking}
-            onClick={onConfirmAddToSplits}
-          >
-            Yes, add it
-          </button>
-        </div>
+        <button type="button" className="dialog-primary" disabled={isSaveDisabled} onClick={onSave}>{saveLabel}</button>
       </div>
     );
   }
@@ -165,13 +148,21 @@ export function EntryMobileEditExpenseFooter({
         type="button"
         className="subtle-action entry-mobile-sheet-secondary"
         disabled={isWorking}
-        onClick={onOpenAddToSplitsConfirm}
+        onClick={onOpenAddToSplits}
       >
         {addToSplitsLabel}
       </button>
+      <button
+        type="button"
+        className="subtle-action entry-mobile-sheet-secondary"
+        disabled={isWorking}
+        onClick={onDeleteEntry}
+      >
+        {deleteEntryLabel}
+      </button>
       <span className="entry-mobile-sheet-action-divider" aria-hidden="true">|</span>
       <button type="button" className="subtle-cancel" onClick={onCancel}>Cancel</button>
-      <button type="button" className="dialog-primary" disabled={isSaveDisabled} onClick={onSave}>Save</button>
+      <button type="button" className="dialog-primary" disabled={isSaveDisabled} onClick={onSave}>{saveLabel}</button>
     </div>
   );
 }

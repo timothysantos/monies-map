@@ -2281,6 +2281,88 @@ export async function createEntryRecord(
   return { entryId, created: true };
 }
 
+export async function deleteEntryRecord(
+  db: D1Database,
+  input: {
+    entryId: string;
+  }
+) {
+  const transaction = await db
+    .prepare(`
+      SELECT
+        id,
+        transaction_date,
+        description,
+        transfer_group_id
+      FROM transactions
+      WHERE household_id = ?
+        AND id = ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
+    .first<{
+      id: string;
+      transaction_date: string;
+      description: string;
+      transfer_group_id: string | null;
+    }>();
+
+  if (!transaction) {
+    throw new Error("Entry not found.");
+  }
+
+  if (transaction.transfer_group_id) {
+    await db
+      .prepare(`
+        UPDATE transactions
+        SET transfer_group_id = NULL,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE household_id = ?
+          AND transfer_group_id = ?
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, transaction.transfer_group_id)
+      .run();
+    await db
+      .prepare("DELETE FROM transfer_groups WHERE household_id = ? AND id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, transaction.transfer_group_id)
+      .run();
+  }
+
+  await db
+    .prepare("DELETE FROM monthly_plan_entry_links WHERE transaction_id = ?")
+    .bind(input.entryId)
+    .run();
+  await db
+    .prepare("DELETE FROM transaction_splits WHERE transaction_id = ?")
+    .bind(input.entryId)
+    .run();
+  await db
+    .prepare("UPDATE split_expenses SET linked_transaction_id = NULL WHERE linked_transaction_id = ?")
+    .bind(input.entryId)
+    .run();
+  await db
+    .prepare("UPDATE split_settlements SET linked_transaction_id = NULL WHERE linked_transaction_id = ?")
+    .bind(input.entryId)
+    .run();
+  await db
+    .prepare("DELETE FROM transactions WHERE household_id = ? AND id = ?")
+    .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
+    .run();
+
+  await recalculateMonthlySnapshots(db, transaction.transaction_date.slice(0, 7));
+
+  await recordAuditEvent(db, {
+    entityType: "transaction",
+    entityId: input.entryId,
+    action: "entry_deleted",
+    detail: `Deleted entry ${transaction.description} on ${transaction.transaction_date}.`
+  });
+
+  return {
+    entryId: input.entryId,
+    deleted: true
+  };
+}
+
 export async function locateEntryDeepLinkContext(
   db: D1Database,
   entryId: string

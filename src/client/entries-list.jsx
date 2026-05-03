@@ -39,6 +39,8 @@ export function EntriesDateGroups({
   viewId,
   editingEntryId,
   addingToSplitsEntryId,
+  savingEntryId,
+  deletingEntryId,
   createdSplitAction = null,
   deletingCreatedSplitId = "",
   transferDialogEntryId,
@@ -62,6 +64,7 @@ export function EntriesDateGroups({
   onAddEntryToSplits,
   onViewCreatedSplit,
   onDeleteCreatedSplit,
+  onDeleteEntry,
   onFinishEntryEdit,
   onCancelEntryEdit,
   hasEditingChanges = false,
@@ -149,6 +152,8 @@ export function EntriesDateGroups({
                 viewId={viewId}
                 isEditing={editingEntryId === entry.id}
                 addingToSplitsEntryId={addingToSplitsEntryId}
+                savingEntryId={savingEntryId}
+                deletingEntryId={deletingEntryId}
                 createdSplitAction={createdSplitAction}
                 deletingCreatedSplitId={deletingCreatedSplitId}
                 transferDialogEntryId={transferDialogEntryId}
@@ -172,6 +177,7 @@ export function EntriesDateGroups({
                 onOpenSplitPicker={openSplitPicker}
                 onViewCreatedSplit={onViewCreatedSplit}
                 onDeleteCreatedSplit={onDeleteCreatedSplit}
+                onDeleteEntry={onDeleteEntry}
                 onFinishEntryEdit={onFinishEntryEdit}
                 onCancelEntryEdit={onCancelEntryEdit}
                 hasEditingChanges={hasEditingChanges}
@@ -194,6 +200,13 @@ export function EntriesDateGroups({
 
 function EntrySplitGroupPickerDialog({ entry, splitGroupOptions, isSubmitting, onClose, onSelectGroup }) {
   const selectRef = useRef(null);
+  const [selectedGroupId, setSelectedGroupId] = useState("");
+
+  useEffect(() => {
+    if (!entry) {
+      setSelectedGroupId("");
+    }
+  }, [entry]);
 
   return (
     <Dialog.Root open={Boolean(entry)} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -221,10 +234,12 @@ function EntrySplitGroupPickerDialog({ entry, splitGroupOptions, isSubmitting, o
             <span>Split group</span>
             <select
               ref={selectRef}
-              value=""
+              value={selectedGroupId}
               disabled={isSubmitting}
               onChange={(event) => {
-                void onSelectGroup(event.target.value);
+                const nextValue = event.target.value;
+                setSelectedGroupId(nextValue);
+                void onSelectGroup(nextValue);
               }}
             >
               <option value="" disabled>Choose split group</option>
@@ -257,6 +272,8 @@ function EntryRow({
   viewId,
   isEditing,
   addingToSplitsEntryId,
+  savingEntryId,
+  deletingEntryId,
   createdSplitAction,
   deletingCreatedSplitId,
   transferDialogEntryId,
@@ -280,6 +297,7 @@ function EntryRow({
   onOpenSplitPicker,
   onViewCreatedSplit,
   onDeleteCreatedSplit,
+  onDeleteEntry,
   onFinishEntryEdit,
   onCancelEntryEdit,
   hasEditingChanges = false,
@@ -295,6 +313,9 @@ function EntryRow({
   const linkedSplitExpenseId = createdSplitAction && createdSplitAction.entryId === entry.id
     ? createdSplitAction.splitExpenseId
     : entry.linkedSplitExpenseId;
+  const isSavingEntry = savingEntryId === entry.id;
+  const isDeletingEntry = deletingEntryId === entry.id;
+  const isAddingToSplits = addingToSplitsEntryId === entry.id;
 
   useEffect(() => {
     if (!renderInlineEditor || !isEditing) {
@@ -438,23 +459,63 @@ function EntryRow({
                 >
                   {deletingCreatedSplitId === linkedSplitExpenseId ? messages.common.working : "Delete split"}
                 </button>
+                <button
+                  type="button"
+                  className="subtle-action"
+                  disabled={isDeletingEntry}
+                  onClick={() => void onDeleteEntry?.(entry)}
+                >
+                  {isDeletingEntry ? messages.common.working : "Delete entry"}
+                </button>
                 <span className="entry-inline-actions-divider" aria-hidden="true">|</span>
               </>
             ) : entry.entryType === "expense" ? (
+              <>
+                <button
+                  type="button"
+                  className="subtle-action"
+                  disabled={isAddingToSplits || isSavingEntry || isDeletingEntry}
+                  onClick={() => onOpenSplitPicker(entry)}
+                >
+                  {isAddingToSplits || isSavingEntry ? messages.common.working : messages.entries.addToSplits}
+                </button>
+                <button
+                  type="button"
+                  className="subtle-action"
+                  disabled={isDeletingEntry}
+                  onClick={() => void onDeleteEntry?.(entry)}
+                >
+                  {isDeletingEntry ? messages.common.working : "Delete entry"}
+                </button>
+              </>
+            ) : null}
+            {!linkedSplitExpenseId && entry.entryType !== "expense" ? (
               <button
                 type="button"
                 className="subtle-action"
-                disabled={addingToSplitsEntryId === entry.id}
-                onClick={() => onOpenSplitPicker(entry)}
+                disabled={isDeletingEntry}
+                onClick={() => void onDeleteEntry?.(entry)}
               >
-                {messages.entries.addToSplits}
+                {isDeletingEntry ? messages.common.working : "Delete entry"}
               </button>
             ) : null}
-            <button type="button" className="inline-action-button inline-save-action" aria-label="Done editing entry" disabled={!hasEditingChanges} onClick={onFinishEntryEdit}>
-              <Check size={16} />
-              <span className="desktop-action-label">Save</span>
+            <button
+              type="button"
+              className="inline-action-button inline-save-action"
+              aria-label="Done editing entry"
+              disabled={!hasEditingChanges || isSavingEntry || isDeletingEntry}
+              onClick={onFinishEntryEdit}
+            >
+              {isSavingEntry ? <span className="app-spinner" aria-hidden="true" /> : <Check size={16} />}
+              <span className="desktop-action-label">{isSavingEntry ? messages.common.saving : "Save"}</span>
             </button>
-            <button type="button" className="inline-action-button inline-cancel-action" aria-label="Cancel editing entry" onClick={onCancelEntryEdit}>
+            <button
+              type="button"
+              className="inline-action-button inline-cancel-action"
+              aria-label="Cancel editing entry"
+              disabled={isSavingEntry || isDeletingEntry || isAddingToSplits}
+              onClick={onCancelEntryEdit}
+            >
               <X size={16} />
               <span className="desktop-action-label">Cancel</span>
             </button>
