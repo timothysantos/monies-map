@@ -117,7 +117,7 @@ export function applySharedSplit(entry, people, percentage, viewId = "household"
   const totalAmountMinor = entry.totalAmountMinor ?? entry.amountMinor;
   const basisPoints = Math.max(0, Math.min(10000, Math.round(Number(percentage || 0) * 100)));
   const complement = 10000 - basisPoints;
-  const primaryAmount = Math.round((totalAmountMinor * basisPoints) / 10000);
+  const primaryAmount = Math.floor((totalAmountMinor * basisPoints) / 10000);
   const secondaryAmount = totalAmountMinor - primaryAmount;
   return [
     {

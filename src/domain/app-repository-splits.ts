@@ -7,6 +7,7 @@ import {
 } from "./app-repository-helpers";
 import { closeSplitBatch, getOrCreateActiveSplitBatch } from "./app-repository-split-batches";
 import { syncTransactionSplits } from "./app-repository-split-sync";
+import { splitAmountMinorWithRoundedRemainder } from "./split-allocation";
 import { getCurrentMonthKey } from "../lib/month";
 import type {
   SplitExpenseDto,
@@ -592,10 +593,11 @@ export async function updateSplitExpenseRecord(
 
 function buildSplitShareAmounts(amountMinor: number, splitBasisPoints = 5000, splitAmountMinor?: number) {
   const safeAmountMinor = Math.max(0, Number(amountMinor ?? 0));
+  const safeBasisPoints = Math.max(0, Math.min(10000, splitBasisPoints));
   const hasExactAmount = typeof splitAmountMinor === "number" && Number.isFinite(splitAmountMinor);
   const firstAmount = hasExactAmount
     ? Math.min(safeAmountMinor, Math.max(0, Math.round(splitAmountMinor)))
-    : Math.round(safeAmountMinor * (Math.max(0, Math.min(10000, splitBasisPoints)) / 10000));
+    : splitAmountMinorWithRoundedRemainder(safeAmountMinor, safeBasisPoints).firstAmount;
   const secondAmount = safeAmountMinor - firstAmount;
   const firstBasisPoints = safeAmountMinor > 0
     ? Math.max(0, Math.min(10000, Math.round((firstAmount / safeAmountMinor) * 10000)))

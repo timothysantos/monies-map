@@ -1,5 +1,6 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { resolvePersonId } from "./app-repository-lookups";
+import { splitAmountMinorWithRoundedRemainder } from "./split-allocation";
 
 export async function syncMonthlyPlanRowSplits(
   db: D1Database,
@@ -44,8 +45,7 @@ export async function syncMonthlyPlanRowSplits(
 
   const firstBasisPoints = Math.max(0, Math.min(10000, input.splitBasisPoints ?? 5000));
   const secondBasisPoints = 10000 - firstBasisPoints;
-  const firstAmount = Math.round((input.plannedMinor * firstBasisPoints) / 10000);
-  const secondAmount = input.plannedMinor - firstAmount;
+  const { firstAmount, secondAmount } = splitAmountMinorWithRoundedRemainder(input.plannedMinor, firstBasisPoints);
 
   await db
     .prepare(`
@@ -111,8 +111,7 @@ export async function syncTransactionSplits(
 
   const firstBasisPoints = Math.max(0, Math.min(10000, input.splitBasisPoints ?? 5000));
   const secondBasisPoints = 10000 - firstBasisPoints;
-  const firstAmount = Math.round((input.amountMinor * firstBasisPoints) / 10000);
-  const secondAmount = input.amountMinor - firstAmount;
+  const { firstAmount, secondAmount } = splitAmountMinorWithRoundedRemainder(input.amountMinor, firstBasisPoints);
 
   await db
     .prepare(`

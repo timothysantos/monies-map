@@ -62,6 +62,7 @@ export function EntriesDateGroups({
   onLinkTransferCandidate,
   onSettleTransfer,
   onAddEntryToSplits,
+  onRefreshSplitGroups,
   onViewCreatedSplit,
   onDeleteCreatedSplit,
   onDeleteEntry,
@@ -70,7 +71,6 @@ export function EntriesDateGroups({
   hasEditingChanges = false,
   renderInlineEditor = true
 }) {
-  const [splitPickerEntry, setSplitPickerEntry] = useState(null);
   const splitGroupOptions = useMemo(
     () => splitGroups.map((group) => ({
       value: group.id === "split-group-none" ? NON_GROUP_SPLIT_VALUE : group.id,
@@ -78,23 +78,39 @@ export function EntriesDateGroups({
     })),
     [splitGroups]
   );
-  const singleSplitGroupValue = splitGroupOptions.length === 1
-    ? splitGroupOptions[0].value
-    : null;
+  const [splitPickerEntry, setSplitPickerEntry] = useState(null);
+  const [splitPickerOptions, setSplitPickerOptions] = useState(splitGroupOptions);
 
   async function handleAddEntryToSplits(entry, splitGroupId) {
     await onAddEntryToSplits(entry, splitGroupId === NON_GROUP_SPLIT_VALUE ? null : splitGroupId);
     setSplitPickerEntry(null);
+    setSplitPickerOptions(splitGroupOptions);
   }
 
-  function openSplitPicker(entry) {
-    if (singleSplitGroupValue) {
-      void handleAddEntryToSplits(entry, singleSplitGroupValue);
+  async function openSplitPicker(entry) {
+    const latestGroups = await onRefreshSplitGroups?.() ?? splitGroups;
+    const latestOptions = latestGroups.map((group) => ({
+      value: group.id === "split-group-none" ? NON_GROUP_SPLIT_VALUE : group.id,
+      label: group.name
+    }));
+    const latestSingleSplitGroupValue = latestOptions.length === 1
+      ? latestOptions[0].value
+      : null;
+
+    if (latestSingleSplitGroupValue) {
+      await handleAddEntryToSplits(entry, latestSingleSplitGroupValue);
       return;
     }
 
+    setSplitPickerOptions(latestOptions);
     setSplitPickerEntry(entry);
   }
+
+  useEffect(() => {
+    if (!splitPickerEntry) {
+      setSplitPickerOptions(splitGroupOptions);
+    }
+  }, [splitGroupOptions, splitPickerEntry]);
 
   useEffect(() => {
     if (!renderInlineEditor || !editingEntryId) {
@@ -189,7 +205,7 @@ export function EntriesDateGroups({
       ))}
       <EntrySplitGroupPickerDialog
         entry={splitPickerEntry}
-        splitGroupOptions={splitGroupOptions}
+        splitGroupOptions={splitPickerOptions}
         isSubmitting={Boolean(splitPickerEntry && addingToSplitsEntryId === splitPickerEntry.id)}
         onClose={() => setSplitPickerEntry(null)}
         onSelectGroup={(splitGroupId) => splitPickerEntry ? handleAddEntryToSplits(splitPickerEntry, splitGroupId) : undefined}
@@ -475,7 +491,7 @@ function EntryRow({
                   type="button"
                   className="subtle-action"
                   disabled={isAddingToSplits || isSavingEntry || isDeletingEntry}
-                  onClick={() => onOpenSplitPicker(entry)}
+                  onClick={() => void onOpenSplitPicker(entry)}
                 >
                   {isAddingToSplits || isSavingEntry ? messages.common.working : messages.entries.addToSplits}
                 </button>
