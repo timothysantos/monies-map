@@ -536,6 +536,11 @@ export function EntriesPanel({
     resetMobileSplitPickerState();
   }
 
+  async function refreshLatestSplitGroups() {
+    const latestEntriesPage = await refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true });
+    return latestEntriesPage?.splitGroups ?? entriesPage.splitGroups;
+  }
+
   function resetMobileSplitPickerState() {
     setIsMobileSplitPickerOpen(false);
     setIsMobileSplitSelectorOpen(false);
@@ -849,16 +854,27 @@ export function EntriesPanel({
                   onCancel={closeEntryEditSheet}
                   onSave={() => void finishEntryEditAndClearLink()}
                   onOpenAddToSplits={() => {
-                    if (singleSplitGroupValue) {
-                      void handleAddEntryToSplits(
-                        activeEditingEntry,
-                        singleSplitGroupValue === NON_GROUP_SPLIT_VALUE ? null : singleSplitGroupValue
-                      );
-                      return;
-                    }
+                    void (async () => {
+                      const latestSplitGroups = await refreshLatestSplitGroups();
+                      const latestOptions = latestSplitGroups.map((group) => ({
+                        value: group.id === "split-group-none" ? NON_GROUP_SPLIT_VALUE : group.id,
+                        label: group.name
+                      }));
+                      const latestSingleSplitGroupValue = latestOptions.length === 1
+                        ? latestOptions[0].value
+                        : null;
 
-                    setIsMobileSplitPickerOpen(true);
-                    setIsMobileSplitSelectorOpen(true);
+                      if (latestSingleSplitGroupValue) {
+                        await handleAddEntryToSplits(
+                          activeEditingEntry,
+                          latestSingleSplitGroupValue === NON_GROUP_SPLIT_VALUE ? null : latestSingleSplitGroupValue
+                        );
+                        return;
+                      }
+
+                      setIsMobileSplitPickerOpen(true);
+                      setIsMobileSplitSelectorOpen(true);
+                    })();
                   }}
                   onSplitSelectorOpenChange={(open) => {
                     setIsMobileSplitSelectorOpen(open);
@@ -968,6 +984,7 @@ export function EntriesPanel({
           createdSplitAction={createdSplitAction}
           deletingCreatedSplitId={deletingCreatedSplitId}
           onAddEntryToSplits={handleAddEntryToSplits}
+          onRefreshSplitGroups={refreshLatestSplitGroups}
           onViewCreatedSplit={openCreatedSplit}
           onDeleteCreatedSplit={handleDeleteCreatedSplit}
           onDeleteEntry={handleDeleteEntry}
