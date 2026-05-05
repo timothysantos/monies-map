@@ -4,6 +4,11 @@ This note exists to make the summary and import page code easier to read.
 It explains the domain terms that appear in the client code and maps them to
 the UI blocks where they are used.
 
+This file is a subordinate code-reading glossary, not a second canonical domain
+vocabulary. `DOMAIN.md` remains the source of truth for product and data-model
+terms. Keep this file limited to page-local reading aids and links back to the
+canonical terms.
+
 ## Summary page terms
 
 - `summary range`: The first and last month currently included in the summary
