@@ -967,7 +967,8 @@ function buildMonthPage(
   const visibleEntries = filterEntriesForView(monthEntries, selectedPersonId, effectiveScope);
   const visiblePlanRows = derivePlanRowActuals(
     buildPlanRowsForView(monthPlanRows, selectedPersonId),
-    visibleEntries
+    visibleEntries,
+    selectedPersonId
   );
   const visibleIncomeRows = deriveIncomeRowActuals(incomeRows, visibleEntries, selectedPersonId);
   const plannedExpenseMinor = visiblePlanRows.reduce((sum, row) => sum + row.plannedMinor, 0);
@@ -1068,7 +1069,7 @@ function deriveIncomeRowActuals(
   });
 }
 
-function derivePlanRowActuals(rows: MonthPlanRowDto[], entries: EntryDto[]) {
+function derivePlanRowActuals(rows: MonthPlanRowDto[], entries: EntryDto[], viewerPersonId: string) {
   const entriesById = new Map(entries.map((entry) => [entry.id, entry]));
   const rowsWithLinkedActuals = rows.map((row) => {
     if (row.section !== "planned_items") {
@@ -1088,7 +1089,7 @@ function derivePlanRowActuals(rows: MonthPlanRowDto[], entries: EntryDto[]) {
       .map((entryId) => entriesById.get(entryId))
       .filter((entry): entry is EntryDto => Boolean(entry) && entry.entryType === "expense");
     const actualMinor = linkedEntries.reduce((sum, entry) => {
-      return sum + entry.amountMinor;
+      return sum + getVisibleLinkedEntryAmountMinor(entry, viewerPersonId);
     }, 0);
 
     return {
@@ -1159,6 +1160,15 @@ function derivePlanRowActuals(rows: MonthPlanRowDto[], entries: EntryDto[]) {
       actualEntryIds: actualEntries.map((entry) => entry.id)
     };
   });
+}
+
+function getVisibleLinkedEntryAmountMinor(entry: EntryDto, viewerPersonId: string) {
+  if (viewerPersonId === "household" || entry.ownershipType !== "shared") {
+    return entry.amountMinor;
+  }
+
+  const matchingSplit = entry.splits.find((split) => split.personId === viewerPersonId);
+  return matchingSplit?.amountMinor ?? entry.amountMinor;
 }
 
 function normalizeCategoryLabel(value?: string) {

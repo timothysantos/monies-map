@@ -554,6 +554,58 @@ test.describe("month page", () => {
     expect(findBudgetRow(afterLink, "Entertainment").actualMinor).toBe(beforeBucketActualMinor - 1500);
   });
 
+  test("linked shared planned items use the viewer split amount instead of the household total", async ({ page }) => {
+    const rowId = `playwright-shared-plan-${Date.now()}`;
+    await postJson(page, "/api/month-plan/save", {
+      rowId,
+      month: "2026-04",
+      sectionKey: "planned_items",
+      categoryName: "Family & Personal",
+      label: "Playwright shared family spend",
+      planDate: "2026-04-20",
+      accountName: "UOB One",
+      plannedMinor: 4000,
+      note: "Shared linked actuals should stay view-weighted.",
+      ownershipType: "shared",
+      splitBasisPoints: 2500
+    });
+
+    const linkedEntry = await postJson(page, "/api/entries/create", {
+      date: "2026-04-20",
+      description: "Playwright shared family charge",
+      accountName: "UOB One",
+      categoryName: "Family & Personal",
+      amountMinor: 2000,
+      entryType: "expense",
+      ownershipType: "shared",
+      splitBasisPoints: 2500
+    });
+
+    await postJson(page, "/api/month-plan/links", {
+      rowId,
+      month: "2026-04",
+      transactionIds: [linkedEntry.entryId]
+    });
+
+    const householdData = await loadMonthPageData(page, { view: "household" });
+    const householdRow = householdData.monthPage.planSections
+      .find((section) => section.key === "planned_items")
+      .rows.find((row) => row.id === rowId);
+    expect(householdRow.actualMinor).toBe(2000);
+
+    const timData = await loadMonthPageData(page, { view: "person-tim" });
+    const timRow = timData.monthPage.planSections
+      .find((section) => section.key === "planned_items")
+      .rows.find((row) => row.id === rowId);
+    expect(timRow.actualMinor).toBe(500);
+
+    const joyceData = await loadMonthPageData(page, { view: "person-joyce" });
+    const joyceRow = joyceData.monthPage.planSections
+      .find((section) => section.key === "planned_items")
+      .rows.find((row) => row.id === rowId);
+    expect(joyceRow.actualMinor).toBe(1500);
+  });
+
   test("planned item match dialog supports lightweight filters and description filtering", async ({ page }) => {
     const rowId = `playwright-filter-plan-${Date.now()}`;
     await postJson(page, "/api/month-plan/save", {
