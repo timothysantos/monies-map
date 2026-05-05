@@ -141,6 +141,19 @@ The backend should remain explicit about boundaries:
 The existing domain richness is an asset. The redesign should not flatten the
 domain model just to simplify the client.
 
+### Savings model
+
+The app should treat `savings target` as a first-class monthly planning input.
+
+Rules:
+
+- `savings target` is explicit monthly intent
+- `savings target` is not inferred from a row label such as `Savings`
+- `savings target` does not need to match a ledger entry
+- `realized savings` is a derived outcome from actual ledger activity
+- optional planned savings movements may still exist as matchable `month plan
+  rows`, but those are not the same concept as the top-level `savings target`
+
 ## Documentation Standard
 
 When changing architecture:

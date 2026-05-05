@@ -31,6 +31,9 @@ copy, or docs:
   fake income or fake expense.
 - Use `split workspace` for the separate shared-expense settle-up layer.
 - Use `month plan row` for a planned line item in the monthly planning model.
+- Use `savings target` for the explicit monthly amount the user intends to save.
+  It is a first-class monthly planning field, not something inferred from a
+  row label and not something that must match a ledger entry.
 - Use `month snapshot` for a generated monthly rollup, never for editable plan
   input.
 - Use `statement checkpoint` as the product term for an account balance anchor.
@@ -107,6 +110,34 @@ Relationships:
 - has many `statement checkpoints`
 - has many statement reconciliation records
 - may be referenced by many `month plan rows` and `month plan match hints`
+
+### Savings Target
+
+An explicit monthly planning field representing how much the user intends to
+save in that month.
+
+Canonical term:
+- `savings target`
+
+Important distinctions:
+- A savings target is an intent, not a ledger fact.
+- A savings target does not need to match a ledger entry.
+- A savings target is not the same thing as a planned savings transfer or
+  planned investment movement.
+- A savings target should not be inferred from a free-text row label such as
+  `Savings`.
+- `Realized savings` is the outcome measure calculated from actual ledger
+  activity.
+
+Recommended relationship:
+- `savings target` is a first-class month-level planning input
+- `realized savings` is a derived month-level outcome
+- `savings variance` is `realized savings - savings target`
+
+Optional related concept:
+- a `planned savings allocation` may exist as one or more `month plan rows`
+  when the user wants to track a specific savings movement, but that is not the
+  same domain concept as the top-level `savings target`
 
 ### Statement Checkpoint
 
