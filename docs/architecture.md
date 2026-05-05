@@ -14,6 +14,7 @@ system.
 - [`design.md`](../design.md): implementation boundaries and deep-module rules
 - `docs/architecture.md`: target architecture, migration strategy, and staged
   delivery plan
+- [`docs/scenario-catalog.md`](./scenario-catalog.md): Stage 1 TDD scenario map
 - [`docs/import-summary-code-glossary.md`](./import-summary-code-glossary.md):
   page-local reading glossary, not a second domain source
 
@@ -192,6 +193,9 @@ Exit criteria:
 - each cross-page workflow has at least one acceptance scenario
 - new work can start from scenarios instead of from component internals
 
+Artifact:
+- [`docs/scenario-catalog.md`](./scenario-catalog.md)
+
 ### Stage 2: Define the target slice boundaries
 
 Goal:
@@ -323,7 +327,4 @@ This plan does not aim to:
 
 Before implementation, the next useful planning documents are:
 
-- a slice inventory of current files to target slices
-- a scenario catalog by page and cross-page flow
-- a target query map for TanStack Query
 - a migration order that reduces risk and preserves working behavior
