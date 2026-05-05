@@ -4,38 +4,49 @@ This file captures design-level implementation boundaries that are more
 specific than the domain glossary and more tactical than the architecture
 overview.
 
-## Client Deep Module Service
+## Client Deep Module Strategy
 
-The canonical client deep module service is
-[`src/client/monies-client-service.js`](/Users/tim/22m/ai-projects/monies_map/src/client/monies-client-service.js).
+The current canonical client deep module service is
+[`src/client/monies-client-service.js`](/Users/tim/22m/ai-projects/monies_map/src/client/monies-client-service.js),
+but the long-term target is not one giant helper barrel. The target is a small
+set of feature-level deep modules with narrow public APIs.
 
 Purpose:
 
-- expose one stable utility surface for client components
-- hide leaf helper layout behind a single import boundary
+- expose stable utility and workflow surfaces for client components
+- hide leaf helper layout behind a small number of intentional import boundaries
 - keep feature code from reaching into many low-level helper files directly
+- let each vertical slice own its own query keys, selectors, formatters, and
+  workflow helpers without leaking them app-wide
 
 Rules:
 
-- client components should prefer `moniesClient` over importing leaf helper
-  modules directly
-- when a helper is broadly reusable across client features, add it behind
-  `moniesClient` instead of creating new ad hoc cross-component imports
-- keep `moniesClient` organized by domain slices such as `accounts`,
-  `categories`, `entries`, `format`, `imports`, `months`, and `splits`
-- do not put network mutations or route state in `moniesClient`; it is a
-  helper-service boundary, not an API transport layer
-- when refactoring client logic, preserve the rule that components should not
-  need to know which leaf helper file owns a small formatting or transformation
-  rule
+- client components should prefer slice-level deep modules over direct imports
+  from many leaf helpers
+- new shared helpers should not be promoted globally by default; first ask
+  whether they belong inside one slice deep module
+- the target slices are `summary`, `months`, `entries`, `imports`, `splits`,
+  and `settings`
+- each slice deep module may expose a small surface such as:
+  - query option builders
+  - selectors and derived-view helpers
+  - display formatting tied to that slice
+  - mutation orchestration helpers
+- do not put raw transport details or route wiring directly into display
+  components
+- do not create cross-slice helper tangles. If two slices need the same logic,
+  either move it into a truly shared domain/helper module or duplicate the
+  simplest form until the right abstraction is clear
+- a deep module should be easy to use and hard to misuse. Its public API should
+  be shorter than the internal work it hides
 
 How this relates to other docs:
 
 - [`DOMAIN.md`](/Users/tim/22m/ai-projects/monies_map/DOMAIN.md) defines the
   business vocabulary
 - [`docs/architecture.md`](/Users/tim/22m/ai-projects/monies_map/docs/architecture.md)
-  defines system-wide structure and data flow
-- this file defines a practical implementation boundary for client-side code
+  defines system-wide structure, staged refactor order, and data flow
+- this file defines practical implementation boundaries for client-side code
 
 ## Import Preview Matcher Boundary
 
