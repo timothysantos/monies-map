@@ -15,6 +15,7 @@ system.
 - `docs/architecture.md`: target architecture, migration strategy, and staged
   delivery plan
 - [`docs/scenario-catalog.md`](./scenario-catalog.md): Stage 1 TDD scenario map
+- [`docs/slice-inventory.md`](./slice-inventory.md): Stage 2 slice ownership map
 - [`docs/import-summary-code-glossary.md`](./import-summary-code-glossary.md):
   page-local reading glossary, not a second domain source
 
@@ -216,6 +217,9 @@ Exit criteria:
 - each existing client file has an intended future home
 - shared modules are justified, not accidental
 - slice boundaries are readable without opening many files
+
+Artifact:
+- [`docs/slice-inventory.md`](./slice-inventory.md)
 
 ### Stage 3: Replace bootstrap-heavy loading with TanStack query slices
 
