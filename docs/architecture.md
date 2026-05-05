@@ -18,6 +18,7 @@ system.
 - [`docs/slice-inventory.md`](./slice-inventory.md): Stage 2 slice ownership map
 - [`docs/query-map.md`](./query-map.md): Stage 3 query and cache map
 - [`docs/responsive-behavior.md`](./responsive-behavior.md): responsive UX and form-factor contract
+- [`docs/interaction-guidelines.md`](./interaction-guidelines.md): button, CTA, and dismissal semantics
 - [`docs/import-summary-code-glossary.md`](./import-summary-code-glossary.md):
   page-local reading glossary, not a second domain source
 
