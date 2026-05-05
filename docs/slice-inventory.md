@@ -357,6 +357,54 @@ These are shared for now but should stay small:
 - `src/client/table-helpers.js` — `Bridge`
 - `src/client/category-utils.js` — `Shared`
 
+## Responsive Ownership Notes
+
+These notes cut across the slice map and record which components are truly
+shared versus which are responsive bridges that may need splitting later.
+
+### Shared responsive primitives
+
+- `src/client/responsive-select.jsx`
+- `src/client/ui-components.jsx`
+- `src/client/category-visuals.jsx`
+- `src/client/mobile-focus-visibility.js`
+
+These should remain shared as long as they stay presentation-oriented.
+
+### Responsive bridge components
+
+- `src/client/entry-mobile-sheet.jsx`
+  - Shared mobile shell today.
+  - Candidate split if month and entries workflows keep diverging.
+- `src/client/entry-editor.jsx`
+  - Already contains desktop/mobile category-editing differences.
+  - Keep one domain contract underneath, but do not force one identical layout.
+- `src/client/App.jsx`
+  - Owns sticky mobile context behavior and desktop-visible shell controls.
+  - Keep the shell responsive logic centralized rather than redistributing it to
+    slice leaf components.
+
+### Slice-level responsive contracts
+
+- `Month`
+  - desktop: inline editing and dialog-style matching
+  - mobile: bottom-sheet add/edit and sheet-based matching
+- `Entries`
+  - desktop: visible filters and inline editing
+  - mobile: sticky context dialog and mobile sheet flows
+- `Summary`
+  - mostly shared information architecture; route drill-down contracts must stay
+    identical across form factors
+- `Imports`
+  - same stage flow across form factors, but avoid hidden hover-dependent
+    review affordances
+- `Splits`
+  - same domain workflow, but touch-friendly dialogs and actions must stay
+    reachable on mobile
+- `Settings`
+  - same capabilities on both form factors, with more compact disclosure on
+    mobile
+
 ## Shared Query And Utility Layer
 
 These files should remain shared, but their APIs should get narrower.

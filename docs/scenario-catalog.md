@@ -23,12 +23,21 @@ Each scenario uses this shape:
 4. Expected visible result
 5. Expected persisted or queried result
 6. Primary test level
+7. Form factor
 
 Suggested test levels:
 
 - `Domain`: pure logic, selectors, calculations, parsing, matching
 - `Integration`: API, repository, DTO, or page-data contract tests
 - `E2E`: browser workflow tests for end-to-end user behavior
+
+Form-factor labels:
+
+- `Both`: same workflow contract on desktop and mobile
+- `Desktop`: desktop-specific workflow contract
+- `Mobile`: mobile-specific workflow contract
+- `Split`: same domain goal, but intentionally different workflow containers on
+  desktop and mobile
 
 ## Coverage Status
 
@@ -46,6 +55,7 @@ Current weak coverage:
 - `Summary`
 - `Settings`
 - cross-page flows that start outside imports or splits
+- savings-target definition and reporting behavior
 
 ## Summary Scenarios
 
@@ -59,6 +69,21 @@ Current weak coverage:
 5. Expected persisted or queried result: the summary query returns range months,
    metric cards, category-share data, month summaries, and account health data
 6. Primary test level: `Integration`, then one `E2E` smoke test
+7. Form factor: `Both`
+
+### S1a. Summary savings target and realized savings use distinct semantics
+
+1. User intent: understand the difference between savings intent and savings
+   outcome
+2. Starting state: summary data exists for one or more months
+3. Action: review summary metrics and intent-vs-outcome values
+4. Expected visible result: savings target is shown as explicit plan intent,
+   while realized savings is shown as actual outcome
+5. Expected persisted or queried result: savings target comes from explicit
+   month planning data, while realized savings is derived from actual income and
+   actual expenses
+6. Primary test level: `Domain` and `Integration`
+7. Form factor: `Both`
 
 ### S2. Change spending-mix focus month
 
@@ -70,6 +95,7 @@ Current weak coverage:
 5. Expected persisted or queried result: no mutation; the UI derives the next
    focused view from summary page data
 6. Primary test level: `Domain`, with one `E2E` route-state test
+7. Form factor: `Both`
 
 ### S3. Drill from category share to entries
 
@@ -82,6 +108,7 @@ Current weak coverage:
 5. Expected persisted or queried result: entries-page query reflects the route
    contract for view, scope, month, and category
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### S3a. Category card drill-down preserves route context
 
@@ -96,6 +123,7 @@ Current weak coverage:
    and scope as the originating summary screen, rather than falling back to a
    default
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### S4. Drill from account pill to entries
 
@@ -106,6 +134,7 @@ Current weak coverage:
 5. Expected persisted or queried result: entries-page query reflects the
    selected account
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### S5. Open a month from intent-vs-outcome
 
@@ -116,6 +145,7 @@ Current weak coverage:
 5. Expected persisted or queried result: month-page query loads the selected
    month
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### S6. Edit a summary month note
 
@@ -127,6 +157,7 @@ Current weak coverage:
 5. Expected persisted or queried result: month note is saved for the month and
    current view scope
 6. Primary test level: `Integration`, then `E2E`
+7. Form factor: `Both`
 
 ## Month Scenarios
 
@@ -140,6 +171,19 @@ Current weak coverage:
 5. Expected persisted or queried result: month-page query returns month-level
    plan sections, income rows, entries, and account context
 6. Primary test level: `Integration`, plus `E2E` smoke
+7. Form factor: `Both`
+
+### M1a. Month savings target is explicit monthly intent
+
+1. User intent: understand how the month defines the savings goal
+2. Starting state: month page loads for a selected month
+3. Action: review month metrics and planning context
+4. Expected visible result: savings target is presented as an explicit monthly
+   planning value, not merely as income minus spend
+5. Expected persisted or queried result: month data distinguishes savings target
+   from realized savings and from any optional planned savings allocation rows
+6. Primary test level: `Domain` and `Integration`
+7. Form factor: `Both`
 
 ### M2. Switch scope without corrupting planned values
 
@@ -151,6 +195,7 @@ Current weak coverage:
 5. Expected persisted or queried result: no write; view-specific query shape
    remains consistent
 6. Primary test level: `Integration` and `E2E`
+7. Form factor: `Both`
 
 ### M3. Edit a budget bucket amount
 
@@ -162,6 +207,7 @@ Current weak coverage:
 5. Expected persisted or queried result: month plan row persists and dependent
    month and summary aggregates recompute
 6. Primary test level: `E2E`, supported by `Integration`
+7. Form factor: `Desktop`
 
 ### M4. Cancel inline editing safely
 
@@ -172,6 +218,7 @@ Current weak coverage:
    remain unchanged
 5. Expected persisted or queried result: no mutation occurs
 6. Primary test level: `E2E`
+7. Form factor: `Desktop`
 
 ### M5. Planned-item actuals only count linked entries
 
@@ -183,6 +230,7 @@ Current weak coverage:
 5. Expected persisted or queried result: actuals derive only from linked entry
    ids
 6. Primary test level: `Domain` and `Integration`
+7. Form factor: `Both`
 
 ### M6. Link planned rows to ledger entries
 
@@ -194,6 +242,7 @@ Current weak coverage:
 5. Expected persisted or queried result: plan-entry links are stored and month
    actuals recompute
 6. Primary test level: `Integration`, then `E2E`
+7. Form factor: `Split`
 
 ### M7. Edit month note
 
@@ -204,6 +253,7 @@ Current weak coverage:
 5. Expected persisted or queried result: month note persists for the current
    scope
 6. Primary test level: `Integration`, then `E2E`
+7. Form factor: `Both`
 
 ### M8. Add or delete month rows
 
@@ -214,6 +264,34 @@ Current weak coverage:
 5. Expected persisted or queried result: row writes are persisted and derived
    month data refreshes
 6. Primary test level: `E2E`
+7. Form factor: `Split`
+
+### M9. Mobile month editing uses bottom-sheet workflow
+
+1. User intent: edit month rows on a phone-sized screen without relying on
+   cramped inline table controls
+2. Starting state: month page is open on mobile
+3. Action: open add or edit flow for a month row
+4. Expected visible result: a mobile sheet opens, category editing remains
+   reachable, and save/cancel actions are touch-friendly
+5. Expected persisted or queried result: saved changes persist identically to
+   the desktop month flow
+6. Primary test level: `E2E`
+7. Form factor: `Mobile`
+
+### M10. Mobile month actual drilldown remains reachable from the edit sheet
+
+1. User intent: inspect the entries behind actual totals while staying inside
+   the mobile month flow
+2. Starting state: month page is open on mobile and a row with actual entries
+   is editable
+3. Action: open the edit sheet and trigger actual drilldown
+4. Expected visible result: the contributing entries can be opened from the
+   mobile sheet flow
+5. Expected persisted or queried result: no write; the correct entry ids remain
+   the drilldown target
+6. Primary test level: `E2E`
+7. Form factor: `Mobile`
 
 ## Entries Scenarios
 
@@ -227,6 +305,7 @@ Current weak coverage:
 5. Expected persisted or queried result: entries-page query returns filtered
    month entries and breakdown data
 6. Primary test level: `Integration`, plus `E2E` smoke
+7. Form factor: `Both`
 
 ### E2. Switch person view and scope from shell controls
 
@@ -238,6 +317,7 @@ Current weak coverage:
 5. Expected persisted or queried result: entries-page query reloads with the
    new route parameters
 6. Primary test level: `E2E`
+7. Form factor: `Split`
 
 ### E3. Create a manual entry
 
@@ -248,6 +328,7 @@ Current weak coverage:
 5. Expected persisted or queried result: a ledger entry is created and later
    flows can use it
 6. Primary test level: `E2E`, supported by `Integration`
+7. Form factor: `Split`
 
 ### E4. Edit an entry
 
@@ -258,6 +339,7 @@ Current weak coverage:
 5. Expected persisted or queried result: entry update persists and downstream
    aggregates refresh if affected
 6. Primary test level: `E2E`
+7. Form factor: `Split`
 
 ### E4a. Finish editing while the active filter would exclude the saved row
 
@@ -274,6 +356,7 @@ Current weak coverage:
    category, and the filtered entries query no longer includes it after the
    save completes
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### E5. Delete an entry
 
@@ -284,6 +367,7 @@ Current weak coverage:
 5. Expected persisted or queried result: entry no longer exists in entries-page
    data
 6. Primary test level: `E2E`
+7. Form factor: `Split`
 
 ### E6. Add an entry to splits
 
@@ -295,6 +379,7 @@ Current weak coverage:
 5. Expected persisted or queried result: linked split expense exists and
    references the ledger entry
 6. Primary test level: `E2E`
+7. Form factor: `Split`
 
 ### E7. Delete a split created from entries
 
@@ -306,6 +391,7 @@ Current weak coverage:
 5. Expected persisted or queried result: split expense link is removed and
    dependent views refresh
 6. Primary test level: `E2E`
+7. Form factor: `Split`
 
 ### E8. Link transfer candidates and settle transfers
 
@@ -316,6 +402,20 @@ Current weak coverage:
 5. Expected persisted or queried result: transfer groups or settlement fields
    update
 6. Primary test level: `Integration`, then `E2E`
+7. Form factor: `Split`
+
+### E9. Mobile context dialog switches view and scope cleanly
+
+1. User intent: change who and what ownership slice is shown on a phone-sized
+   screen
+2. Starting state: Entries is open on mobile
+3. Action: open the sticky context dialog and switch view or scope
+4. Expected visible result: the dialog reflects the valid controls for the
+   current view and the entries list updates after selection
+5. Expected persisted or queried result: entries-page query reloads with the new
+   route parameters
+6. Primary test level: `E2E`
+7. Form factor: `Mobile`
 
 ## Imports Scenarios
 
@@ -329,6 +429,7 @@ Current weak coverage:
 5. Expected persisted or queried result: no commit yet; draft state exists only
    in the client until preview/commit
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### I2. Map columns for a generic CSV
 
@@ -340,6 +441,7 @@ Current weak coverage:
 5. Expected persisted or queried result: preview request receives normalized
    mapped rows
 6. Primary test level: `Domain` and `E2E`
+7. Form factor: `Both`
 
 ### I3. Preview blocks unknown accounts before commit
 
@@ -352,6 +454,7 @@ Current weak coverage:
 5. Expected persisted or queried result: preview response includes detected and
    unresolved account names
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### I4. Auto-map known expense and income headers
 
@@ -362,6 +465,7 @@ Current weak coverage:
 5. Expected persisted or queried result: mapped rows normalize into the preview
    request correctly
 6. Primary test level: `Domain` and `E2E`
+7. Form factor: `Both`
 
 ### I5. Review preview guardrails
 
@@ -373,6 +477,7 @@ Current weak coverage:
 5. Expected persisted or queried result: preview response exposes commit-status
    decisions and reconciliation metadata
 6. Primary test level: `Integration`, then `E2E`
+7. Form factor: `Both`
 
 ### I6. Commit a generic import
 
@@ -384,6 +489,7 @@ Current weak coverage:
 5. Expected persisted or queried result: import batch, import rows, and ledger
    entries are written
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### I7. Reconcile provisional rows instead of duplicating them
 
@@ -395,6 +501,7 @@ Current weak coverage:
 5. Expected persisted or queried result: existing ledger entries are promoted or
    certified in place, preserving user-maintained fields
 6. Primary test level: `Domain`, `Integration`, and targeted `E2E`
+7. Form factor: `Both`
 
 ### I8. Save statement checkpoints and reconciliation evidence
 
@@ -406,6 +513,7 @@ Current weak coverage:
 5. Expected persisted or queried result: statement checkpoints and related
    reconciliation records are saved
 6. Primary test level: `Integration`, then `E2E`
+7. Form factor: `Both`
 
 ### I9. Auto-refresh a stale statement preview safely
 
@@ -417,6 +525,7 @@ Current weak coverage:
 5. Expected persisted or queried result: no commit; preview request reruns for
    the same draft key
 6. Primary test level: `Domain`
+7. Form factor: `Both`
 
 ### I10. Review and rollback recent imports
 
@@ -429,6 +538,7 @@ Current weak coverage:
 5. Expected persisted or queried result: targeted import effects are removed
    without damaging unrelated data
 6. Primary test level: `Integration`, then `E2E`
+7. Form factor: `Both`
 
 ## Splits Scenarios
 
@@ -442,6 +552,7 @@ Current weak coverage:
 5. Expected persisted or queried result: splits-page query returns activity,
    groups, match queue, and archive metadata
 6. Primary test level: `Integration`, plus `E2E` smoke
+7. Form factor: `Both`
 
 ### SP2. Create a split expense
 
@@ -452,6 +563,7 @@ Current weak coverage:
 5. Expected persisted or queried result: split expense persists and reloads from
    splits-page data
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### SP3. Edit a split expense
 
@@ -462,6 +574,7 @@ Current weak coverage:
 5. Expected persisted or queried result: saved value reloads from splits-page
    data
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### SP4. Delete a split expense
 
@@ -472,6 +585,7 @@ Current weak coverage:
 5. Expected persisted or queried result: split expense no longer exists in
    splits-page data
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### SP5. Record a settlement and archive a closed batch
 
@@ -483,6 +597,7 @@ Current weak coverage:
 5. Expected persisted or queried result: settlement persists and closed batch is
    archived
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### SP6. Review match queue and link a split expense to an entry
 
@@ -494,6 +609,7 @@ Current weak coverage:
 5. Expected persisted or queried result: split record stores linked transaction
    id and entry ownership updates as needed
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### SP7. Review match queue and link a settlement to an entry
 
@@ -505,6 +621,7 @@ Current weak coverage:
 5. Expected persisted or queried result: settlement record stores linked
    transaction id
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### SP8. Open linked entry from live or archived split history
 
@@ -515,6 +632,7 @@ Current weak coverage:
 5. Expected persisted or queried result: no mutation; route carries linked entry
    context
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### SP9. Cross-tab refresh keeps split views in sync
 
@@ -526,6 +644,7 @@ Current weak coverage:
 5. Expected persisted or queried result: app-sync and refresh logic invalidate
    affected data
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### SP10. Viewer amount reflects borrowed or lent semantics correctly
 
@@ -537,6 +656,7 @@ Current weak coverage:
 5. Expected persisted or queried result: view model derives viewer amount from
    the same underlying split shares
 6. Primary test level: `Domain` and `Integration`
+7. Form factor: `Both`
 
 ## Settings Scenarios
 
@@ -551,6 +671,7 @@ Current weak coverage:
 5. Expected persisted or queried result: settings-page query returns household
    reference data, activity, and reconciliation context
 6. Primary test level: `Integration`, plus one `E2E` smoke test
+7. Form factor: `Both`
 
 ### ST2. Create or edit a person
 
@@ -562,6 +683,7 @@ Current weak coverage:
 5. Expected persisted or queried result: person record persists and later page
    data uses the new name
 6. Primary test level: `Integration`, then `E2E`
+7. Form factor: `Both`
 
 ### ST3. Create, edit, or archive an account
 
@@ -573,6 +695,7 @@ Current weak coverage:
 5. Expected persisted or queried result: account record persists with the new
    status and metadata
 6. Primary test level: `Integration`, then `E2E`
+7. Form factor: `Both`
 
 ### ST4. Create or edit a category
 
@@ -584,6 +707,7 @@ Current weak coverage:
 5. Expected persisted or queried result: category persists and later imports or
    edits can reference it
 6. Primary test level: `Integration`, then `E2E`
+7. Form factor: `Both`
 
 ### ST5. Manage category match rules and suggestions
 
@@ -594,6 +718,7 @@ Current weak coverage:
 5. Expected persisted or queried result: category rule or suggestion status is
    saved
 6. Primary test level: `Integration`, then `E2E`
+7. Form factor: `Both`
 
 ### ST6. Manage statement checkpoints and reconciliation review
 
@@ -604,6 +729,7 @@ Current weak coverage:
 4. Expected visible result: checkpoint history and trust indicators update
 5. Expected persisted or queried result: checkpoint or exception records persist
 6. Primary test level: `Integration`, then targeted `E2E`
+7. Form factor: `Both`
 
 ### ST7. Review and dismiss unresolved transfers
 
@@ -613,6 +739,7 @@ Current weak coverage:
 4. Expected visible result: unresolved transfer list shrinks
 5. Expected persisted or queried result: dismissal state persists
 6. Primary test level: `Integration`, then `E2E`
+7. Form factor: `Both`
 
 ### ST8. Run demo and local environment controls safely
 
@@ -626,6 +753,7 @@ Current weak coverage:
 5. Expected persisted or queried result: demo-state action completes and the UI
    refreshes from authoritative data
 6. Primary test level: `Integration`, then `E2E`
+7. Form factor: `Both`
 
 ## Cross-Page Scenarios
 
@@ -639,6 +767,7 @@ Current weak coverage:
 5. Expected persisted or queried result: entries-page query now includes the new
    ledger entries
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### X2. Import changes Month actuals
 
@@ -649,6 +778,7 @@ Current weak coverage:
 5. Expected persisted or queried result: month-page aggregates recompute from
    imported entries
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### X3. Import changes Summary range metrics
 
@@ -659,6 +789,7 @@ Current weak coverage:
    update
 5. Expected persisted or queried result: summary-page aggregates recompute
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### X4. Month plan edit changes Summary
 
@@ -669,6 +800,7 @@ Current weak coverage:
 5. Expected persisted or queried result: month plan row persists and summary
    query reflects the new planned values
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### X5. Entries edit changes Month and Summary
 
@@ -680,6 +812,7 @@ Current weak coverage:
 5. Expected persisted or queried result: entry persists and dependent aggregates
    recompute
 6. Primary test level: `Integration`, then `E2E`
+7. Form factor: `Both`
 
 ### X6. Entries to Splits changes both views
 
@@ -692,6 +825,7 @@ Current weak coverage:
 5. Expected persisted or queried result: linked split expense persists and entry
    ownership/linking refreshes
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### X7. Split match changes Entries
 
@@ -704,6 +838,7 @@ Current weak coverage:
 5. Expected persisted or queried result: linked split and linked entry ids are
    saved
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### X8. Settings reference-data change affects later workflows
 
@@ -716,6 +851,7 @@ Current weak coverage:
 5. Expected persisted or queried result: updated reference data flows through
    later page-data queries or imports
 6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ## Immediate Test Backlog
 
@@ -725,8 +861,10 @@ tests yet:
 - Summary page smoke and drill-down flows
 - summary category-card drill-down with preserved view and scope
 - summary month note editing
+- explicit savings-target semantics in month and summary views
 - month note editing
 - month plan link picker workflows
+- explicit desktop/mobile scenario tagging beyond the current month-page tests
 - filtered entries recategorization where the saved row should not disappear
   mid-edit
 - entry editing effects on month and summary aggregates
