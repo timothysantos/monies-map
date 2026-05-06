@@ -2,6 +2,11 @@
 
 This document is the Stage 1 TDD scenario map for Monies Map.
 
+Read it alongside
+[`docs/existing-behavior-guardrails.md`](./existing-behavior-guardrails.md)
+when a scenario exists mainly to preserve a hard-won behavior from the current
+app.
+
 Its purpose is to define the user-visible workflows that should drive tests and
 refactors. It is not a list of buttons. It is a list of meaningful scenarios on
 each page and across pages.

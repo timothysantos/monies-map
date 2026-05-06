@@ -17,6 +17,7 @@ system.
 - [`docs/scenario-catalog.md`](./scenario-catalog.md): Stage 1 TDD scenario map
 - [`docs/slice-inventory.md`](./slice-inventory.md): Stage 2 slice ownership map
 - [`docs/query-map.md`](./query-map.md): Stage 3 query and cache map
+- [`docs/existing-behavior-guardrails.md`](./existing-behavior-guardrails.md): current-app behaviors that must survive refactors
 - [`docs/responsive-behavior.md`](./responsive-behavior.md): responsive UX and form-factor contract
 - [`docs/interaction-guidelines.md`](./interaction-guidelines.md): button, CTA, and dismissal semantics
 - [`docs/import-summary-code-glossary.md`](./import-summary-code-glossary.md):
@@ -243,6 +244,8 @@ Goal:
 - move from broad bootstrap hydration to minimal, screen-owned data fetching
 
 Actions:
+- inventory current refresh, prefetch, quick-entry, and cross-tab behaviors
+  before replacing them
 - define query contracts for summary, month, entries, imports, splits, and
   settings
 - separate aggregates from row-level queries
@@ -257,6 +260,7 @@ Exit criteria:
 
 Artifact:
 - [`docs/query-map.md`](./query-map.md)
+- [`docs/existing-behavior-guardrails.md`](./existing-behavior-guardrails.md)
 
 ### Stage 4: Refactor into deep modules inside each slice
 

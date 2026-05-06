@@ -2,6 +2,10 @@
 
 This document is the Stage 3 TanStack Query and API-shape plan for Monies Map.
 
+Read it alongside
+[`docs/existing-behavior-guardrails.md`](./existing-behavior-guardrails.md),
+which captures current product behaviors that this query design must preserve.
+
 Its goals are:
 
 - replace bootstrap-heavy loading with smaller slice-owned requests
