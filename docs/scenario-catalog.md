@@ -102,6 +102,22 @@ Current weak coverage:
 6. Primary test level: `Domain`, with one `E2E` route-state test
 7. Form factor: `Both`
 
+### S2a. Summary head metrics respect the selected scope
+
+1. User intent: trust that the summary header metrics change with the active
+   scope
+2. Starting state: Summary is open for a person view, a shared view, and the
+   combined household view
+3. Action: compare the summary head metrics across `direct`, `shared`, and
+   `direct_plus_shared`
+4. Expected visible result: direct and shared scopes show the correct scope-
+   weighted totals, while household combines the full household totals
+5. Expected persisted or queried result: summary header metrics use the
+   correct scope-aware query results rather than reusing a single unweighted
+   aggregate
+6. Primary test level: `Integration`, then `E2E`
+7. Form factor: `Both`
+
 ### S3. Drill from category share to entries
 
 1. User intent: inspect the ledger entries behind one category slice
@@ -219,6 +235,20 @@ Current weak coverage:
 5. Expected persisted or queried result: month-page query returns month-level
    plan sections, income rows, entries, and account context
 6. Primary test level: `Integration`, plus `E2E` smoke
+7. Form factor: `Both`
+
+### M1b. Month panel metrics respect shared weighting by scope
+
+1. User intent: trust that the month header metrics reflect the active scope
+   correctly
+2. Starting state: Month is open for a person view and for the combined
+   household view
+3. Action: compare month metrics in `direct`, `shared`, and `direct_plus_shared`
+4. Expected visible result: person scopes show scope-weighted totals, while the
+   household scope shows the full household totals
+5. Expected persisted or queried result: month-page metric cards are derived
+   from scope-aware query data rather than from one generic total
+6. Primary test level: `Integration`, then `E2E`
 7. Form factor: `Both`
 
 ### M1a. Month savings target is explicit monthly intent
@@ -353,6 +383,21 @@ Current weak coverage:
 5. Expected persisted or queried result: entries-page query returns filtered
    month entries and breakdown data
 6. Primary test level: `Integration`, plus `E2E` smoke
+7. Form factor: `Both`
+
+### E1a. Entries totals strip respects shared percentage by scope
+
+1. User intent: trust that Entries totals reflect the same scope weighting as
+   the rest of the app
+2. Starting state: Entries is open for person and household views with rows
+   that include shared ownership
+3. Action: compare the totals strip in `direct`, `shared`, and
+   `direct_plus_shared`
+4. Expected visible result: the totals strip shows scope-weighted values for
+   person scopes and full household totals for the combined household view
+5. Expected persisted or queried result: the totals strip derives from the same
+   scope-aware entry set used by the list and breakdown
+6. Primary test level: `E2E`
 7. Form factor: `Both`
 
 ### E2. Switch person view and scope from shell controls
