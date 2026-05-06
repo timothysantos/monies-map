@@ -162,6 +162,10 @@ Mobile contract:
 - editing uses sheet-based surfaces where needed
 - view/scope and filter access remains reachable via sticky context controls
 - destructive and secondary actions remain reachable without precision hover
+- search should live inside the filter/context sheet rather than in a cramped
+  always-visible toolbar
+- changing view, scope, or filters inside the mobile sheet should not auto-close
+  the sheet; dismissal should be an explicit user action
 
 Invariant:
 
@@ -172,6 +176,12 @@ Special rule:
 
 - the filtered-entry recategorization flow must remain stable on both desktop
   and mobile; the row may leave the filtered list only after save settles
+- the Entries search contract is the same on desktop and mobile, but the
+  container differs:
+  - desktop: visible in the filter bar
+  - mobile: placed near the top of the filter sheet
+  - both: search should not reset view, scope, or existing filters unless the
+    user explicitly clears them
 
 ## Imports
 

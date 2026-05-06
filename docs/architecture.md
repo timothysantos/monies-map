@@ -205,6 +205,8 @@ Actions:
   - domain/unit
   - integration/API
   - end-to-end
+- include desktop/mobile interaction contracts when the same feature uses
+  different containers, such as inline filter bars versus mobile filter sheets
 
 Exit criteria:
 - each page has a scenario list
