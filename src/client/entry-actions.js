@@ -746,7 +746,9 @@ function buildPersistedEntryPayload(entry, primarySplit) {
     accountId: entry.accountId,
     accountName: entry.accountName,
     categoryName: entry.categoryName,
-    amountMinor: entry.amountMinor,
+    amountMinor: entry.ownershipType === "shared"
+      ? (entry.totalAmountMinor ?? entry.amountMinor)
+      : entry.amountMinor,
     entryType: entry.entryType,
     transferDirection: entry.transferDirection,
     ownershipType: entry.ownershipType,

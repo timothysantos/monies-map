@@ -2,6 +2,13 @@ import { expect, test } from "@playwright/test";
 
 import { loadEntriesPage, loadSplitsPage, postJson, reseedDemo } from "./helpers";
 
+function formatMoney(minor) {
+  return new Intl.NumberFormat("en-SG", {
+    style: "currency",
+    currency: "SGD"
+  }).format(minor / 100);
+}
+
 async function selectSplitGroupIfPrompted(page, label = "Non-group expenses") {
   const dialog = page.getByRole("dialog", { name: "Add to splits" });
   const pickerVisible = await dialog.waitFor({ state: "visible", timeout: 1_500 }).then(() => true).catch(() => false);
@@ -122,4 +129,49 @@ test("equal split amounts keep the rounded cent on the remainder share", async (
   const splitsData = await loadSplitsPage(page, { view: "person-tim", month: "2026-04" });
   const createdSplit = splitsData.splitsPage.activity.find((item) => item.description === description);
   expect(createdSplit?.viewerAmountMinor).toBe(7000);
+});
+
+test("entries totals strip follows the current person's shared percentage", async ({ page }) => {
+  const description = `Playwright shared totals ${Date.now()}`;
+
+  await page.goto("/");
+  await reseedDemo(page);
+
+  await postJson(page, "/api/entries/create", {
+    date: "2026-04-24",
+    description,
+    accountName: "UOB One",
+    categoryName: "Groceries",
+    amountMinor: 2000,
+    entryType: "expense",
+    ownershipType: "shared",
+    splitBasisPoints: 2500
+  });
+
+  await page.goto("/entries?view=person-tim&month=2026-04");
+  await page.locator(".entry-row").filter({ hasText: description }).first().click();
+
+  const totalsStrip = page.locator(".entries-totals-strip");
+  await expect(totalsStrip.locator(".entries-totals-item").nth(0)).toContainText(formatMoney(500));
+  await expect(totalsStrip.locator(".entries-totals-item").nth(2)).toContainText(`-${formatMoney(500)}`);
+  await expect(totalsStrip.locator(".entries-totals-item").nth(3)).toContainText(formatMoney(500));
+
+  await page.getByLabel("Split %").fill("40");
+  await page.getByRole("button", { name: "Done editing entry" }).click();
+  await expect(totalsStrip.locator(".entries-totals-item").nth(0)).toContainText(formatMoney(800));
+
+  await page.reload();
+  await expect(page.locator(".entries-totals-strip .entries-totals-item").nth(0)).toContainText(formatMoney(800));
+
+  const timData = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
+  const timEntry = timData.monthPage.entries.find((item) => item.description === description);
+  expect(timEntry?.amountMinor).toBe(800);
+  expect(timEntry?.totalAmountMinor).toBe(2000);
+  expect(timEntry?.viewerSplitRatioBasisPoints).toBe(4000);
+
+  const joyceData = await loadEntriesPage(page, { view: "person-joyce", month: "2026-04" });
+  const joyceEntry = joyceData.monthPage.entries.find((item) => item.description === description);
+  expect(joyceEntry?.amountMinor).toBe(1200);
+  expect(joyceEntry?.totalAmountMinor).toBe(2000);
+  expect(joyceEntry?.viewerSplitRatioBasisPoints).toBe(6000);
 });

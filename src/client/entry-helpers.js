@@ -89,13 +89,20 @@ export function normalizeEntryShape(entry, people, previousEntry = entry) {
   // Shared entries keep the visible person's ratio stable when the draft changes.
   const ratioPercent = getVisibleSplitPercent(previousEntry, "household")
     ?? Math.round((previousEntry.splits?.[0]?.ratioBasisPoints ?? 5000) / 100);
+  const shouldPreserveSharedTotal = (
+    typeof previousEntry?.totalAmountMinor === "number"
+    && nextAmountMinor === previousAmountMinor
+  );
+  const sharedTotalAmountMinor = shouldPreserveSharedTotal
+    ? previousEntry.totalAmountMinor
+    : nextEntry.amountMinor;
   const sharedSplits = applySharedSplit({
     ...nextEntry,
-    totalAmountMinor: nextEntry.amountMinor,
+    totalAmountMinor: sharedTotalAmountMinor,
     splits: previousEntry.splits
   }, people, ratioPercent, "household");
   nextEntry.ownerName = undefined;
-  nextEntry.totalAmountMinor = nextEntry.amountMinor;
+  nextEntry.totalAmountMinor = sharedTotalAmountMinor;
   nextEntry.viewerSplitRatioBasisPoints = undefined;
   nextEntry.splits = sharedSplits;
   return nextEntry;
@@ -178,6 +185,15 @@ export function getVisibleSplitPercent(entry, viewId) {
   }
 
   return entry.splits[splitIndex]?.ratioBasisPoints / 100;
+}
+
+export function getVisibleAmountMinor(entry, viewId) {
+  if (viewId === "household" || entry.ownershipType !== "shared") {
+    return entry.amountMinor;
+  }
+
+  const matchingSplit = entry.splits.find((split) => split.personId === viewId);
+  return matchingSplit?.amountMinor ?? entry.amountMinor;
 }
 
 export function groupEntriesByDate(entries) {
