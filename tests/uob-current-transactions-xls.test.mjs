@@ -49,3 +49,21 @@ test("parses a later tiny UOB One current-transaction XLS from the same source",
     type: "income"
   });
 });
+
+test("parses UOB credit-card current-transaction XLS files via the original workbook stream path", () => {
+  const oneCard = parseCurrentTransactionSpreadsheet(
+    readWorkbookFixture("CC_TXN_History_06052026211223-onecard-tim-06-may.xls"),
+    "CC_TXN_History_06052026211223-onecard-tim-06-may.xls"
+  );
+  const ladyCard = parseCurrentTransactionSpreadsheet(
+    readWorkbookFixture("CC_TXN_History_06052026211316-ladys-tim-06-may.xls"),
+    "CC_TXN_History_06052026211316-ladys-tim-06-may.xls"
+  );
+
+  assert.equal(oneCard.parserKey, "uob_credit_card_current_transactions_xls");
+  assert.equal(ladyCard.parserKey, "uob_credit_card_current_transactions_xls");
+  assert.ok(oneCard.rows.length > 0);
+  assert.ok(ladyCard.rows.length > 0);
+  assert.equal(oneCard.rows[0].account, "UOB One Card");
+  assert.equal(ladyCard.rows[0].account, "UOB Lady's Card");
+});

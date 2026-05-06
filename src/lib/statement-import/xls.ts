@@ -15,6 +15,24 @@ import {
 
 export function parseCurrentTransactionSpreadsheet(data: ArrayBuffer, fileName?: string): ParsedStatementImport {
   const cells = parseBiff8XlsCells(data);
+  const fallbackCells = cells.length ? cells : parseBiff8XlsCells(data, { preferMiniStream: true });
+  const rowsByIndex = buildRowsByIndex(fallbackCells);
+  const parsed = parseUobCurrentTransactionRows(rowsByIndex, fileName);
+  if (parsed) {
+    return parsed;
+  }
+
+  if (cells.length) {
+    const fallbackParsed = parseUobCurrentTransactionRows(buildRowsByIndex(parseBiff8XlsCells(data, { preferMiniStream: true })), fileName);
+    if (fallbackParsed) {
+      return fallbackParsed;
+    }
+  }
+
+  throw new Error("Unsupported XLS transaction history. Could not find the UOB transaction history header row.");
+}
+
+function buildRowsByIndex(cells: SpreadsheetCell[]) {
   const rowsByIndex = new Map<number, Map<number, string | number>>();
   for (const cell of cells) {
     if (!rowsByIndex.has(cell.row)) {
@@ -29,7 +47,13 @@ export function parseCurrentTransactionSpreadsheet(data: ArrayBuffer, fileName?:
       rowIndex,
       values
     }));
+  return flattenedRows;
+}
 
+function parseUobCurrentTransactionRows(
+  flattenedRows: Array<{ rowIndex: number; values: Map<number, string | number> }>,
+  fileName?: string
+) {
   const accountType = cellString(flattenedRows.find((row) => /^Account Type:$/i.test(cellString(row.values.get(0))))?.values.get(1));
   const accountName = normalizeUobSpreadsheetAccountName(accountType);
   const period = cellString(flattenedRows.find((row) => /^Statement Period:$/i.test(cellString(row.values.get(0))))?.values.get(1));
@@ -54,9 +78,7 @@ export function parseCurrentTransactionSpreadsheet(data: ArrayBuffer, fileName?:
     return parseUobCreditCardTransactionRows(flattenedRows, cardHeaderRow.rowIndex, accountName, period, fileName);
   }
 
-  if (!bankHeaderRow && !cardHeaderRow) {
-    throw new Error("Unsupported XLS transaction history. Could not find the UOB transaction history header row.");
-  }
+  return null;
 }
 
 function parseUobBankTransactionRows(
@@ -192,9 +214,9 @@ function parseUobCardHistoryDescription(value: string) {
   };
 }
 
-function parseBiff8XlsCells(data: ArrayBuffer): SpreadsheetCell[] {
+function parseBiff8XlsCells(data: ArrayBuffer, options?: { preferMiniStream?: boolean }): SpreadsheetCell[] {
   const bytes = new Uint8Array(data);
-  const workbook = readCompoundDocumentWorkbook(bytes);
+  const workbook = readCompoundDocumentWorkbook(bytes, options);
   const sharedStrings: string[] = [];
   const cells: SpreadsheetCell[] = [];
   let offset = 0;
@@ -245,7 +267,7 @@ function parseBiff8XlsCells(data: ArrayBuffer): SpreadsheetCell[] {
   return cells;
 }
 
-function readCompoundDocumentWorkbook(bytes: Uint8Array) {
+function readCompoundDocumentWorkbook(bytes: Uint8Array, options?: { preferMiniStream?: boolean }) {
   if (bytes.length < 512 || bytes[0] !== 0xd0 || bytes[1] !== 0xcf || bytes[2] !== 0x11 || bytes[3] !== 0xe0) {
     throw new Error("Unsupported XLS file. Expected an old Excel binary workbook.");
   }
@@ -302,7 +324,8 @@ function readCompoundDocumentWorkbook(bytes: Uint8Array) {
     throw new Error("Unsupported XLS file. Could not find the workbook stream.");
   }
 
-  if (workbookSize < miniStreamCutoffSize) {
+  const shouldUseMiniStream = options?.preferMiniStream ?? workbookSize < miniStreamCutoffSize;
+  if (shouldUseMiniStream) {
     if (rootEntryStartSector < 0 || rootEntrySize <= 0) {
       throw new Error("Unsupported XLS file. Could not find the mini-stream root entry.");
     }
