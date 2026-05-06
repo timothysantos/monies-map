@@ -1062,6 +1062,15 @@ If a shared dining row is split 55/45, the primary person should see the 55%
 subtotal and the partner should see the 45% subtotal. The full shared
 transaction can still be shown alongside it for context.
 
+Important current limitation:
+
+- shared month-plan allocation still exists in storage and calculations
+- but it is not currently an actively supported first-class user-controlled
+  Month UI feature
+- the combined Household month view is read-only
+- users do not currently get a dedicated control to manage shared month-plan
+  split ratios directly
+
 ## Why do notes matter so much?
 
 The app should not treat notes as decoration. Notes explain why a month is

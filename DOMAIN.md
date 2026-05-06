@@ -561,6 +561,13 @@ Storage:
 Relationships:
 - belongs to one `month plan row`
 - belongs to one `person`
+- Shared month plan allocation still exists internally in storage and
+  calculations, but it is not currently an actively supported first-class
+  user-controlled Month UI feature.
+- If this model was introduced earlier, the current product no longer exposes a
+  clear dedicated control for users to manage those split ratios directly.
+- Treat shared month plan allocation as retained internal behavior for now, not
+  as a prominent product-facing workflow.
 
 ### Plan-Entry Link
 
