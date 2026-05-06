@@ -250,6 +250,36 @@ Source anchors:
 - `src/lib/statement-import/xls.ts`
 - `tests/fixtures/uob-current-transactions/`
 
+## Rule 7b: Preserve The Original Parse Path Before Adding A Fallback
+
+Current behavior and lesson:
+
+- the original workbook-stream parse path is still the default for UOB XLS
+- the OLE mini-stream reader exists as a fallback for smaller files that need
+  it
+- a fallback should not silently replace the original path for every file of the
+  same nominal format
+
+Why it matters:
+
+- some related exports share a bank family but not the same low-level workbook
+  layout
+- forcing one structural workaround across the entire family can break files
+  that previously worked
+
+Design implication:
+
+- when a parser has an established canonical path, keep that path first
+- add a fallback only when the fallback is needed for a clearly identified
+  subtype or structural variant
+- regression tests should include at least one case for the original path and
+  one for the fallback path when both exist
+
+Source anchors:
+
+- `src/lib/statement-import/xls.ts`
+- `tests/uob-current-transactions-xls.test.mjs`
+
 ## Rule 8: URL State Sometimes Represents Workflow State, Not Just Filters
 
 Current behavior:
