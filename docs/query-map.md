@@ -63,6 +63,26 @@ Edits to entries, month rows, imports, splits, and settings should invalidate
 only the affected slices, but they must still settle promptly so the app does
 not regress in freshness.
 
+### 4a. Active workflows outrank freshness bursts
+
+If the user is in the middle of an interactive workflow, freshness must not
+destroy that workflow.
+
+Examples:
+
+- mobile quick entry launched from URL
+- mobile entry edit sheet
+- open import preview draft
+- open month add/edit sheet
+
+Rules:
+
+- invalidation may mark data stale immediately
+- visible refetch must be gated when it would clobber an active draft or close
+  an active workflow container
+- the app should reconcile freshness after the workflow is saved, cancelled, or
+  explicitly dismissed
+
 ### 5. Prefetch is allowed, but only for likely next navigation
 
 Use prefetch for the next likely screen, not as a replacement for route-owned
@@ -516,6 +536,8 @@ Special rule:
 
 - filtered editing must preserve the active edit session until save settles,
   even if the saved row falls out of the query result afterward
+- quick-entry and mobile-sheet flows must preserve the active draft even if
+  same-tab or cross-tab invalidation fires underneath them
 
 ## Imports freshness
 
@@ -554,6 +576,83 @@ Also invalidate:
   - category rule changes that affect imports later
 
 Do not burst everything after every settings save.
+
+## Workflow Locks
+
+To prevent repeats of past auto-refresh regressions, the TanStack design should
+model workflow locks explicitly.
+
+Workflow lock means:
+
+- a query may become stale
+- invalidation may be recorded immediately
+- but visible refetch or destructive state replacement is deferred until the
+  lock clears
+
+Examples of lock-worthy workflows:
+
+- quick entry opened from URL or external shortcut
+- active mobile entry edit sheet
+- active month add/edit sheet
+- active import preview draft under user review
+
+### Lock behavior
+
+- allow background invalidation bookkeeping
+- allow non-destructive cache writes that do not overwrite the active draft
+- block destructive refetch application that would close, reset, or replace the
+  active editor surface
+- once the lock clears, refetch or reconcile the stale queries promptly
+
+### Lock scope
+
+Locks should be as narrow as possible.
+
+Good:
+
+- lock `entriesPage` replacement while entry draft is open
+- still allow unrelated reference-data queries to update
+
+Bad:
+
+- freezing the whole app because one mobile sheet is open
+
+## Same-Tab And Cross-Tab Freshness
+
+The app should distinguish:
+
+- same-tab return after a mutation
+- cross-tab invalidation from a separate tab
+- passive stale marking versus active visible refetch
+
+### Same-tab return
+
+Preferred behavior:
+
+- invalidate immediately after mutation
+- refetch in background where safe
+- when the user returns to the originating page, show fresh or settling data
+  without a jarring reset
+
+### Cross-tab invalidation
+
+Preferred behavior:
+
+- broadcast invalidation metadata promptly
+- if the target tab has no protected workflow open, allow background refetch or
+  refetch on focus
+- if the target tab has a protected workflow open, keep it intact and delay
+  destructive refresh until the workflow ends
+
+### Mobile caution
+
+Mobile quick-entry and sheet-based editing must be treated as especially
+fragile:
+
+- they are easier to disrupt with route-param cleanup, focus events, and full
+  page replacement
+- therefore mobile editing flows should default to stronger workflow-lock
+  behavior than passive desktop read states
 
 ## Bootstrap Reduction Plan
 
