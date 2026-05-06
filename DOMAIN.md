@@ -379,6 +379,17 @@ Important distinctions:
 An allocation of one shared ledger entry across participating people. This is
 the household-ledger ownership split model.
 
+Important distinction:
+
+- `shared` is an `ownership type`, not a virtual third person
+- a shared ledger entry is a real ledger state, not just a flag that says the
+  row appears in the split workspace
+- in storage, shared entries use `ownership_type = 'shared'`
+- shared entries do not need a synthetic `person` row called `shared`
+- when an entry is shared, `entry splits` allocate that one shared ledger entry
+  across real people
+- a shared ledger entry may exist without a linked `split expense`
+
 Canonical term:
 - `entry split`
 
@@ -388,6 +399,12 @@ Storage alias:
 Relationships:
 - belongs to one `ledger entry`
 - belongs to one `person`
+
+Related but separate concepts:
+
+- `shared ledger entry`
+- `split expense`
+- `split expense share`
 
 ### Transfer Group
 
@@ -662,6 +679,8 @@ Use these terms consistently in future work:
   row inside the pair.
 - Say `split expense` for the Splitwise-style record and `shared ledger entry`
   for a shared row in the ledger. They are related but not interchangeable.
+- Say `shared ownership` when you mean the ledger-entry ownership state.
+- Do not describe `shared` as a person or virtual household user.
 - Say `month plan row`, not `budget row`, unless you specifically mean the
   `budget_buckets` section.
 - Say `month snapshot`, not `monthly plan summary`, for generated dashboard
@@ -677,6 +696,8 @@ These boundaries are important enough to preserve explicitly:
   `entry reconciliation` != `statement reconciliation certificate`
 - Ledger ownership vs split workspace:
   `entry split` != `split expense share`
+- Ownership type vs person identity:
+  `shared ownership` != a third `person`
 - Transfer linkage vs transfer facts:
   `transfer group` links transfer entries but does not replace them
 - Planning vs actuals:

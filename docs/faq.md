@@ -949,6 +949,24 @@ It is intentionally separate from `Entries`:
 - `Splits` is where manual shared expenses, named groups, settle-up records,
   and shared-expense matching live
 
+That does not mean every shared ledger row must live in `Splits`.
+
+Current model:
+
+- an entry in `Entries` can have direct ownership or shared ownership
+- `Shared` in the owner control is a real ledger ownership state
+- `Shared` is not a third person or virtual household user
+- a shared entry may have per-person `transaction splits`
+- a shared entry may also remain only a shared ledger row, without a linked
+  split-workspace record
+
+So:
+
+- `shared ledger entry` means the ledger row belongs to the household/shared
+  bucket
+- `split expense` means the row is also being tracked in the separate
+  shared-expense workspace
+
 That separation keeps the CSV import flow focused on ledger review instead of
 mixing bank cleanup with Splitwise-style matching decisions.
 
