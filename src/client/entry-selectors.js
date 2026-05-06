@@ -66,16 +66,18 @@ export function getFilteredEntries({ entries, entryFilters, selectedScope, viewI
 
 export function getEntryTotals(entries) {
   return entries.reduce((totals, entry) => {
+    const visibleAmountMinor = entry.visibleAmountMinor ?? entry.amountMinor;
+
     // Entries keeps income/expense/transfer math separate so the page can show
     // both net cash flow and total money moved out.
     if (entry.entryType === "income") {
-      totals.incomeMinor += entry.amountMinor;
+      totals.incomeMinor += visibleAmountMinor;
     } else if (entry.entryType === "expense") {
-      totals.spendMinor += entry.amountMinor;
+      totals.spendMinor += visibleAmountMinor;
     } else if (entry.entryType === "transfer" && entry.transferDirection === "out") {
-      totals.transferOutMinor += entry.amountMinor;
+      totals.transferOutMinor += visibleAmountMinor;
     } else if (entry.entryType === "transfer" && entry.transferDirection === "in") {
-      totals.transferInMinor += entry.amountMinor;
+      totals.transferInMinor += visibleAmountMinor;
     }
 
     return totals;
@@ -96,7 +98,7 @@ export function getExpenseBreakdown(entries) {
       valueMinor: 0,
       entryCount: 0
     };
-    current.valueMinor += entry.amountMinor;
+    current.valueMinor += entry.visibleAmountMinor ?? entry.amountMinor;
     current.entryCount += 1;
     grouped.set(key, current);
   }
@@ -107,8 +109,15 @@ export function getExpenseBreakdown(entries) {
 
 export function getEntryDerivedData({ entries, entryFilters, selectedScope, viewId }) {
   const filteredEntries = getFilteredEntries({ entries, entryFilters, selectedScope, viewId });
-  const groupedEntries = entryService.groupByDate(filteredEntries);
-  const entryTotals = getEntryTotals(filteredEntries);
+  const aggregateEntries = filteredEntries.map((entry) => ({
+    ...entry,
+    visibleAmountMinor: entryService.getVisibleAmountMinor(entry, viewId)
+  }));
+  const groupedEntries = entryService.groupByDate(aggregateEntries.map((entry) => ({
+    ...entry,
+    amountMinor: entry.visibleAmountMinor
+  })));
+  const entryTotals = getEntryTotals(aggregateEntries);
 
   return {
     filteredEntries,
@@ -118,6 +127,6 @@ export function getEntryDerivedData({ entries, entryFilters, selectedScope, view
     // only compares income against expenses.
     entryOutflowMinor: entryTotals.spendMinor + entryTotals.transferOutMinor,
     entryNetMinor: entryTotals.incomeMinor - entryTotals.spendMinor,
-    expenseBreakdown: getExpenseBreakdown(filteredEntries)
+    expenseBreakdown: getExpenseBreakdown(aggregateEntries)
   };
 }
