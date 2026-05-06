@@ -589,6 +589,22 @@ Current weak coverage:
 6. Primary test level: `Domain` and `E2E`
 7. Form factor: `Both`
 
+### I4a. Similar exports from the same bank remain importable across small file-format variants
+
+1. User intent: import the next export from the same bank/account without
+   unpredictable parser rejection
+2. Starting state: the app already supports a bank/export family such as UOB
+   current-transaction XLS
+3. Action: upload a later export from the same source where the workbook
+   container or low-level spreadsheet structure differs slightly
+4. Expected visible result: the import still reaches mapping or preview instead
+   of failing with a misleading unsupported-format error
+5. Expected persisted or queried result: the importer recognizes equivalent
+   source structure variants, and fixture-backed parser coverage catches the
+   regression before release
+6. Primary test level: `Domain` and `Integration`
+7. Form factor: `Both`
+
 ### I5. Review preview guardrails
 
 1. User intent: understand what will import, skip, reconcile, or block
