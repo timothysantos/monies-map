@@ -24,8 +24,11 @@ export function EntryEditorFields({
   accountOptions,
   ownerOptions,
   splitPercentValue,
+  amountMinorValue,
+  amountInputValue,
   lockTransferCategory = false,
   onChange,
+  onAmountChange,
   onQuickSaveCategory,
   onCategoryAppearanceChange,
   onOwnerChange,
@@ -51,6 +54,10 @@ export function EntryEditorFields({
     : entry.entryType === "expense"
       ? "entry-edit-tone-negative"
       : "entry-edit-tone-transfer";
+  const resolvedAmountMinor = typeof amountMinorValue === "number" ? amountMinorValue : entry.amountMinor;
+  const resolvedAmountInput = amountInputValue
+    ?? entry.amountInput
+    ?? formatService.formatEditableMinorInput(resolvedAmountMinor);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -262,19 +269,42 @@ export function EntryEditorFields({
             className={`table-edit-input table-edit-input-money ${amountToneClass}`}
             type="text"
             inputMode="decimal"
-            value={entry.amountInput ?? formatService.formatEditableMinorInput(entry.amountMinor)}
+            value={resolvedAmountInput}
             onChange={(event) => {
               const nextValue = event.target.value;
               if (!nextValue.trim()) {
-                onChange({ amountInput: "", amountMinor: 0 });
+                if (onAmountChange) {
+                  onAmountChange({ amountInput: "", amountMinor: 0 });
+                } else {
+                  onChange({ amountInput: "", amountMinor: 0 });
+                }
                 return;
               }
-              onChange({
-                amountInput: nextValue,
-                amountMinor: Math.max(0, formatService.parseMoneyInput(nextValue, entry.amountMinor))
-              });
+              const nextAmountMinor = Math.max(0, formatService.parseMoneyInput(nextValue, resolvedAmountMinor));
+              if (onAmountChange) {
+                onAmountChange({
+                  amountInput: nextValue,
+                  amountMinor: nextAmountMinor
+                });
+              } else {
+                onChange({
+                  amountInput: nextValue,
+                  amountMinor: nextAmountMinor
+                });
+              }
             }}
-            onBlur={() => onChange({ amountInput: formatService.formatEditableMinorInput(entry.amountMinor) })}
+            onBlur={(event) => {
+              const blurAmountMinor = Math.max(0, formatService.parseMoneyInput(event.target.value, resolvedAmountMinor));
+              const formattedAmountInput = formatService.formatEditableMinorInput(blurAmountMinor);
+              if (onAmountChange) {
+                onAmountChange({
+                  amountInput: formattedAmountInput,
+                  amountMinor: blurAmountMinor
+                });
+              } else {
+                onChange({ amountInput: formattedAmountInput });
+              }
+            }}
           />
         </label>
         <label>

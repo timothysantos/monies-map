@@ -1308,6 +1308,13 @@ The Entries page keeps `Spend` as category expense only. It also shows
 `Outflow`, which includes expenses plus transfer-outs, so transfers are visible
 without being mixed into category spending.
 
+In a person view, a collapsed shared entry row now shows the full ledger amount
+first and the current viewer's weighted share in parentheses. When you expand
+that shared row to edit it, the `Amount` field uses the full ledger amount and
+the `Split %` field remains the basis for each person's share. You do not need
+to reverse-calculate a half share or other weighted amount just to correct the
+entry total.
+
 The account filter on Entries lists every active account, even when an account
 has no rows in the selected month. This keeps the filter predictable when you
 are checking a specific account for missing or uncategorized activity. Account
