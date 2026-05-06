@@ -141,6 +141,7 @@ export function EntriesPanel({
     addEntryToSplits,
     deleteEntry,
     updateEntry,
+    updateEntryAmount,
     updateEntrySplit,
     saveEntryCategory
   } = useEntryActions({
@@ -899,8 +900,11 @@ export function EntriesPanel({
             accountOptions={accountOptions}
             ownerOptions={ownerOptions}
             splitPercentValue={activeEditingEntry.ownershipType === "shared" ? entryService.getVisibleSplitPercent(activeEditingEntry, entryView.id) ?? null : null}
+            amountMinorValue={entryService.getTotalAmountMinor(activeEditingEntry)}
+            amountInputValue={activeEditingEntry.amountInput}
             lockTransferCategory
             onChange={(patch) => updateEntry(activeEditingEntry.id, patch)}
+            onAmountChange={(patch) => updateEntryAmount(activeEditingEntry.id, patch)}
             onQuickSaveCategory={(categoryName) => saveEntryCategory(activeEditingEntry.id, categoryName)}
             onCategoryAppearanceChange={onCategoryAppearanceChange}
             onOwnerChange={(nextValue) => {
@@ -972,6 +976,7 @@ export function EntriesPanel({
           onBeginEntryEdit={beginEntryEdit}
           onCategoryAppearanceChange={onCategoryAppearanceChange}
           onUpdateEntry={updateEntry}
+          onUpdateEntryAmount={updateEntryAmount}
           onUpdateEntrySplit={updateEntrySplit}
           onSaveEntryCategory={saveEntryCategory}
           onEnsureTransferSettlementDraft={ensureTransferSettlementDraft}

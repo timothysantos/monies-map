@@ -32,6 +32,7 @@ export const moniesClient = Object.freeze({
     entryMatchesScope: entryHelpers.entryMatchesScope,
     getAmountToneClass: entryHelpers.getAmountToneClass,
     getSignedAmountMinor: entryHelpers.getSignedAmountMinor,
+    getTotalAmountMinor: entryHelpers.getTotalAmountMinor,
     getSignedTotalAmountMinor: entryHelpers.getSignedTotalAmountMinor,
     getTransferMatchCandidates: entryHelpers.getTransferMatchCandidates,
     getTransferWallets: entryHelpers.getTransferWallets,

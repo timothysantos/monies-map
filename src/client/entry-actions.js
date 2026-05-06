@@ -630,6 +630,34 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     }));
   }
 
+  function updateEntryAmount(entryId, { amountMinor, amountInput }) {
+    setEntries((current) => current.map((entry) => {
+      if (entry.id !== entryId) {
+        return entry;
+      }
+
+      if (view.id === "household" || entry.ownershipType !== "shared" || entry.splits.length < 2) {
+        return entryService.normalize({ ...entry, amountMinor, amountInput }, people, entry);
+      }
+
+      const splitPercent = entryService.getVisibleSplitPercent(entry, view.id) ?? 50;
+      const nextSplits = entryService.applySharedSplit({
+        ...entry,
+        totalAmountMinor: amountMinor
+      }, people, splitPercent, view.id);
+      const primaryIndex = entryService.getVisibleSplitIndex(entry, view.id);
+
+      return {
+        ...entry,
+        amountMinor: nextSplits[primaryIndex]?.amountMinor ?? amountMinor,
+        amountInput,
+        totalAmountMinor: amountMinor,
+        viewerSplitRatioBasisPoints: nextSplits[primaryIndex]?.ratioBasisPoints ?? entry.viewerSplitRatioBasisPoints,
+        splits: nextSplits
+      };
+    }));
+  }
+
   function updateEntrySplit(entryId, percentage) {
     setEntries((current) => current.map((entry) => {
       if (entry.id !== entryId || entry.ownershipType !== "shared" || entry.splits.length < 2) {
@@ -638,7 +666,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
 
       const nextSplits = entryService.applySharedSplit(entry, people, percentage, view.id);
       const primaryIndex = entryService.getVisibleSplitIndex(entry, view.id);
-      const totalAmountMinor = entry.totalAmountMinor ?? entry.amountMinor;
+      const totalAmountMinor = entryService.getTotalAmountMinor(entry);
 
       return {
         ...entry,
@@ -734,6 +762,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     addEntryToSplits,
     deleteEntry,
     updateEntry,
+    updateEntryAmount,
     updateEntrySplit,
     saveEntryCategory
   };
@@ -747,7 +776,7 @@ function buildPersistedEntryPayload(entry, primarySplit) {
     accountName: entry.accountName,
     categoryName: entry.categoryName,
     amountMinor: entry.ownershipType === "shared"
-      ? (entry.totalAmountMinor ?? entry.amountMinor)
+      ? entryService.getTotalAmountMinor(entry)
       : entry.amountMinor,
     entryType: entry.entryType,
     transferDirection: entry.transferDirection,
@@ -768,7 +797,11 @@ function buildComparableEntryState(entry) {
     accountId: entry.accountId ?? null,
     accountName: entry.accountName ?? "",
     categoryName: entry.categoryName,
-    amountMinor: Number(entry.amountMinor ?? 0),
+    amountMinor: Number(
+      entry.ownershipType === "shared"
+        ? entryService.getTotalAmountMinor(entry)
+        : (entry.amountMinor ?? 0)
+    ),
     entryType: entry.entryType,
     transferDirection: entry.transferDirection ?? null,
     ownershipType: entry.ownershipType,

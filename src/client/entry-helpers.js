@@ -221,16 +221,29 @@ export function getSignedAmountMinor(entry) {
   return -entry.amountMinor;
 }
 
+export function getTotalAmountMinor(entry) {
+  if (typeof entry.totalAmountMinor === "number") {
+    return entry.totalAmountMinor;
+  }
+
+  if (entry.ownershipType === "shared" && entry.splits?.length) {
+    return entry.splits.reduce((sum, split) => sum + Number(split.amountMinor ?? 0), 0);
+  }
+
+  return entry.amountMinor;
+}
+
 export function getSignedTotalAmountMinor(entry) {
-  if (typeof entry.totalAmountMinor !== "number") {
+  const totalAmountMinor = getTotalAmountMinor(entry);
+  if (typeof totalAmountMinor !== "number") {
     return null;
   }
 
   if (entry.entryType === "income" || (entry.entryType === "transfer" && entry.transferDirection === "in")) {
-    return entry.totalAmountMinor;
+    return totalAmountMinor;
   }
 
-  return -entry.totalAmountMinor;
+  return -totalAmountMinor;
 }
 
 export function getTransferWallets(entry) {

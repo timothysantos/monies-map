@@ -175,3 +175,31 @@ test("entries totals strip follows the current person's shared percentage", asyn
   expect(joyceEntry?.totalAmountMinor).toBe(2000);
   expect(joyceEntry?.viewerSplitRatioBasisPoints).toBe(6000);
 });
+
+test("shared entry rows show full amount collapsed and expanded in person view", async ({ page }) => {
+  const description = `Playwright shared editor amount ${Date.now()}`;
+
+  await page.goto("/");
+  await reseedDemo(page);
+
+  await postJson(page, "/api/entries/create", {
+    date: "2026-04-24",
+    description,
+    accountName: "UOB One",
+    categoryName: "Groceries",
+    amountMinor: 4700,
+    entryType: "expense",
+    ownershipType: "shared",
+    splitBasisPoints: 5000
+  });
+
+  await page.goto("/entries?view=person-tim&month=2026-04");
+  const row = page.locator(".entry-row").filter({ hasText: description }).first();
+  await expect(row.locator(".entry-row-amount")).toContainText(formatMoney(-4700));
+  await expect(row.locator(".entry-row-amount")).toContainText(formatMoney(-2350));
+
+  await row.click();
+  const amountInput = page.getByRole("textbox", { name: "Amount" });
+  await expect(amountInput).toHaveValue("47");
+  await expect(page.getByLabel("Split %")).toHaveValue("50");
+});

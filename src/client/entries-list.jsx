@@ -52,6 +52,7 @@ export function EntriesDateGroups({
   onBeginEntryEdit,
   onCategoryAppearanceChange,
   onUpdateEntry,
+  onUpdateEntryAmount,
   onUpdateEntrySplit,
   onSaveEntryCategory,
   onEnsureTransferSettlementDraft,
@@ -181,6 +182,7 @@ export function EntriesDateGroups({
                 onBeginEntryEdit={onBeginEntryEdit}
                 onCategoryAppearanceChange={onCategoryAppearanceChange}
                 onUpdateEntry={onUpdateEntry}
+                onUpdateEntryAmount={onUpdateEntryAmount}
                 onUpdateEntrySplit={onUpdateEntrySplit}
                 onSaveEntryCategory={onSaveEntryCategory}
                 onEnsureTransferSettlementDraft={onEnsureTransferSettlementDraft}
@@ -326,6 +328,7 @@ function EntryRow({
     : [];
   const bankState = getEntryBankState(entry);
   const display = buildEntryRowDisplay(entry, viewId);
+  const editableAmountMinor = entryService.getTotalAmountMinor(entry);
   const linkedSplitExpenseId = createdSplitAction && createdSplitAction.entryId === entry.id
     ? createdSplitAction.splitExpenseId
     : entry.linkedSplitExpenseId;
@@ -388,8 +391,8 @@ function EntryRow({
           </div>
           <div className="entry-row-right">
             <div className="entry-row-amount">
-              <strong className={entryService.getAmountToneClass(display.signedAmountMinor)}>{formatService.money(display.signedAmountMinor)}</strong>
-              {display.hasWeightedTotal ? <p>({formatService.money(display.signedTotalAmountMinor)} total)</p> : null}
+              <strong className={entryService.getAmountToneClass(display.primarySignedAmountMinor)}>{formatService.money(display.primarySignedAmountMinor)}</strong>
+              {display.secondarySignedAmountMinor != null ? <p>({formatService.money(display.secondarySignedAmountMinor)})</p> : null}
             </div>
             <div className="entry-pills">
               {entry.isPendingDerived ? <span className="entry-chip entry-chip-pending">Updating</span> : null}
@@ -417,8 +420,11 @@ function EntryRow({
             accountOptions={accountOptions}
             ownerOptions={ownerOptions}
             splitPercentValue={entry.ownershipType === "shared" ? display.splitPercent : null}
+            amountMinorValue={editableAmountMinor}
+            amountInputValue={entry.amountInput}
             lockTransferCategory
             onChange={(patch) => onUpdateEntry(entry.id, patch)}
+            onAmountChange={(patch) => onUpdateEntryAmount(entry.id, patch)}
             onQuickSaveCategory={(categoryName) => onSaveEntryCategory(entry.id, categoryName)}
             onCategoryAppearanceChange={onCategoryAppearanceChange}
             onOwnerChange={(nextValue) => {
@@ -546,6 +552,7 @@ function buildEntryRowDisplay(entry, viewId) {
   const splitPercent = entryService.getVisibleSplitPercent(entry, viewId);
   const signedAmountMinor = entryService.getSignedAmountMinor(entry);
   const signedTotalAmountMinor = entryService.getSignedTotalAmountMinor(entry);
+  const hasWeightedTotal = signedTotalAmountMinor != null && signedTotalAmountMinor !== signedAmountMinor;
 
   return {
     ownerLabel: entry.ownershipType === "shared" ? "Shared" : entry.ownerName ?? messages.common.emptyValue,
@@ -560,9 +567,8 @@ function buildEntryRowDisplay(entry, viewId) {
       entry.linkedTransfer ? entry.accountName : null,
       entry.accountOwnerLabel
     ].filter(Boolean).join(" - "),
-    signedAmountMinor,
-    signedTotalAmountMinor,
-    hasWeightedTotal: signedTotalAmountMinor != null && signedTotalAmountMinor !== signedAmountMinor
+    primarySignedAmountMinor: hasWeightedTotal ? signedTotalAmountMinor : signedAmountMinor,
+    secondarySignedAmountMinor: hasWeightedTotal ? signedAmountMinor : null
   };
 }
 
