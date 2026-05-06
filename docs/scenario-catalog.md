@@ -367,6 +367,21 @@ Current weak coverage:
 6. Primary test level: `E2E`
 7. Form factor: `Split`
 
+### E2a. Filter-sheet view or scope changes do not auto-close mobile controls
+
+1. User intent: adjust several Entries context and filter controls in one visit
+   to the mobile sheet
+2. Starting state: Entries is open on mobile and the view/scope/filter sheet is
+   open
+3. Action: change view or scope, then continue adjusting wallet, category,
+   type, or search controls
+4. Expected visible result: the sheet remains open until the user explicitly
+   dismisses it; changing scope alone does not auto-close the sheet
+5. Expected persisted or queried result: route and query state update as
+   intended, but the workflow container remains stable
+6. Primary test level: `E2E`
+7. Form factor: `Mobile`
+
 ### E3. Create a manual entry
 
 1. User intent: capture a ledger entry before or without an import
@@ -377,6 +392,20 @@ Current weak coverage:
    flows can use it
 6. Primary test level: `E2E`, supported by `Integration`
 7. Form factor: `Split`
+
+### E3b. Search entries within the current view, month, and filter context
+
+1. User intent: find a matching entry quickly without losing current month,
+   view, scope, or filter context
+2. Starting state: Entries is open with a selected month and optional filters
+3. Action: enter a basic search term such as merchant, note, or amount text
+4. Expected visible result: the entry list narrows within the current route
+   context, and clearing search restores the prior filtered set
+5. Expected persisted or queried result: search is treated as part of Entries
+   filter state and does not silently reset month, view, scope, wallet,
+   category, or type filters
+6. Primary test level: `E2E`, supported by `Integration`
+7. Form factor: `Both`
 
 ### E3a. Quick entry from URL survives without unsafe auto-refresh
 
@@ -478,6 +507,21 @@ Current weak coverage:
    current view and the entries list updates after selection
 5. Expected persisted or queried result: entries-page query reloads with the new
    route parameters
+6. Primary test level: `E2E`
+7. Form factor: `Mobile`
+
+### E9a. Mobile filter-sheet dismissal is separate from search submission
+
+1. User intent: search and filter entries on mobile without confusing the sheet
+   dismiss action with the search action
+2. Starting state: Entries mobile filter sheet is open with a search field
+3. Action: type into search, submit search from the keyboard, then dismiss the
+   sheet
+4. Expected visible result: search applies without closing the sheet unless the
+   user intentionally dismisses it; the dismiss action clearly means `Close`
+   rather than `Search` or `Done`
+5. Expected persisted or queried result: search state updates the Entries
+   filter/query context, while sheet dismissal only affects the UI container
 6. Primary test level: `E2E`
 7. Form factor: `Mobile`
 

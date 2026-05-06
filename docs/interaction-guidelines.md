@@ -129,6 +129,8 @@ This distinction should be explicit.
 ### Use `Close` when
 
 - the surface is informational or read-only
+- the surface applies changes live and the user is only dismissing the current
+  control surface
 - no editable draft is being abandoned
 - the user is merely dismissing a view
 
@@ -149,6 +151,57 @@ Examples:
   unsaved draft
 - desktop inline `Save` should correspond to mobile sheet `Save`
 - a destructive desktop action should remain visually destructive on mobile
+
+## Filter And Search Surface Semantics
+
+Filter bars and filter sheets need their own rule because they mix navigation,
+live filtering, and optional text input.
+
+### Live filters
+
+If a filter surface applies changes immediately as the user taps or selects,
+then the footer or header dismiss action should be `Close`, not `Done`.
+
+Examples:
+
+- switching Entries scope
+- changing wallet/category/type filters
+- opening or dismissing a mobile filter sheet
+
+Rules:
+
+- live filter changes should not auto-close the containing sheet unless the
+  user selected a navigation destination
+- a dismiss action on a live filter surface means "hide this panel", not "apply
+  changes"
+- do not label that dismiss action `Done` if there is no pending staged change
+
+### Staged filters
+
+If a filter surface intentionally stages changes and only applies them after a
+  confirmation step, then use an explicit commit action such as `Apply`.
+
+Rules:
+
+- use `Apply` for staged filter changes
+- keep `Cancel` for abandoning staged, unsaved changes
+- avoid mixing staged and live controls in the same sheet unless the split is
+  visually obvious
+
+### Search inside filter surfaces
+
+Search is not the same action as dismissing the sheet.
+
+Preferred rule:
+
+- desktop Entries search lives directly in the filter bar
+- mobile Entries search lives inside the filter sheet near the top of the
+  filter controls
+- the keyboard action can be `Search`
+- the sheet dismiss action remains `Close`
+
+This avoids the collision where a single `Done` label tries to mean both
+"dismiss the sheet" and "run the search".
 
 ## Button Inventory Model
 
