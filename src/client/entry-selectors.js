@@ -67,6 +67,7 @@ export function getFilteredEntries({ entries, entryFilters, selectedScope, viewI
 export function getEntryTotals(entries) {
   return entries.reduce((totals, entry) => {
     const visibleAmountMinor = entry.visibleAmountMinor ?? entry.amountMinor;
+    const grossAmountMinor = entry.grossAmountMinor ?? entry.totalAmountMinor ?? entry.amountMinor;
 
     // Entries keeps income/expense/transfer math separate so the page can show
     // both net cash flow and total money moved out.
@@ -74,6 +75,7 @@ export function getEntryTotals(entries) {
       totals.incomeMinor += visibleAmountMinor;
     } else if (entry.entryType === "expense") {
       totals.spendMinor += visibleAmountMinor;
+      totals.grossSpendMinor += grossAmountMinor;
     } else if (entry.entryType === "transfer" && entry.transferDirection === "out") {
       totals.transferOutMinor += visibleAmountMinor;
     } else if (entry.entryType === "transfer" && entry.transferDirection === "in") {
@@ -81,7 +83,7 @@ export function getEntryTotals(entries) {
     }
 
     return totals;
-  }, { incomeMinor: 0, spendMinor: 0, transferInMinor: 0, transferOutMinor: 0 });
+  }, { incomeMinor: 0, spendMinor: 0, grossSpendMinor: 0, transferInMinor: 0, transferOutMinor: 0 });
 }
 
 export function getExpenseBreakdown(entries) {
@@ -111,7 +113,8 @@ export function getEntryDerivedData({ entries, entryFilters, selectedScope, view
   const filteredEntries = getFilteredEntries({ entries, entryFilters, selectedScope, viewId });
   const aggregateEntries = filteredEntries.map((entry) => ({
     ...entry,
-    visibleAmountMinor: entryService.getVisibleAmountMinor(entry, viewId)
+    visibleAmountMinor: entryService.getVisibleAmountMinor(entry, viewId),
+    grossAmountMinor: entryService.getTotalAmountMinor(entry)
   }));
   const groupedEntries = entryService.groupByDate(aggregateEntries.map((entry) => ({
     ...entry,

@@ -5213,6 +5213,11 @@ button.split-activity-card:hover {
   font-weight: 600;
 }
 
+.entries-totals-secondary {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
 .entries-fab {
   position: fixed;
   right: 22px;
