@@ -251,8 +251,12 @@ function readCompoundDocumentWorkbook(bytes: Uint8Array) {
   }
 
   const sectorSize = 2 ** readUInt16(bytes, 30);
+  const miniSectorSize = 2 ** readUInt16(bytes, 32);
   const fatSectorCount = readUInt32(bytes, 44);
   const firstDirectorySector = readInt32(bytes, 48);
+  const miniStreamCutoffSize = readUInt32(bytes, 56);
+  const firstMiniFatSector = readInt32(bytes, 60);
+  const miniFatSectorCount = readUInt32(bytes, 64);
   const difatSectors: number[] = [];
   for (let offset = 76; offset < 512; offset += 4) {
     const sector = readInt32(bytes, offset);
@@ -272,12 +276,20 @@ function readCompoundDocumentWorkbook(bytes: Uint8Array) {
   const directory = readCompoundSectorChain(bytes, fat, firstDirectorySector, sectorSize);
   let workbookStartSector = -1;
   let workbookSize = 0;
+  let rootEntryStartSector = -1;
+  let rootEntrySize = 0;
   for (let offset = 0; offset + 128 <= directory.length; offset += 128) {
     const nameLength = readUInt16(directory, offset + 64);
     if (!nameLength) {
       continue;
     }
     const name = decodeUtf16Le(directory.slice(offset, offset + nameLength - 2));
+    const entryType = directory[offset + 66];
+    if (name === "Root Entry" && entryType === 5) {
+      rootEntryStartSector = readInt32(directory, offset + 116);
+      rootEntrySize = readUInt32(directory, offset + 120);
+      continue;
+    }
     if (name !== "Workbook" && name !== "Book") {
       continue;
     }
@@ -290,7 +302,36 @@ function readCompoundDocumentWorkbook(bytes: Uint8Array) {
     throw new Error("Unsupported XLS file. Could not find the workbook stream.");
   }
 
+  if (workbookSize < miniStreamCutoffSize) {
+    if (rootEntryStartSector < 0 || rootEntrySize <= 0) {
+      throw new Error("Unsupported XLS file. Could not find the mini-stream root entry.");
+    }
+    const rootMiniStream = readCompoundSectorChain(bytes, fat, rootEntryStartSector, sectorSize).slice(0, rootEntrySize);
+    const miniFat = readMiniFat(bytes, fat, firstMiniFatSector, miniFatSectorCount, sectorSize);
+    return readMiniSectorChain(rootMiniStream, miniFat, workbookStartSector, miniSectorSize).slice(0, workbookSize);
+  }
+
   return readCompoundSectorChain(bytes, fat, workbookStartSector, sectorSize).slice(0, workbookSize);
+}
+
+function readMiniFat(
+  bytes: Uint8Array,
+  fat: number[],
+  firstMiniFatSector: number,
+  miniFatSectorCount: number,
+  sectorSize: number
+) {
+  if (firstMiniFatSector < 0 || miniFatSectorCount <= 0) {
+    return [];
+  }
+
+  const miniFatStream = readCompoundSectorChain(bytes, fat, firstMiniFatSector, sectorSize);
+  const miniFat: number[] = [];
+  const maxEntries = Math.min(miniFatSectorCount * (sectorSize / 4), Math.floor(miniFatStream.length / 4));
+  for (let index = 0; index < maxEntries; index += 1) {
+    miniFat.push(readInt32(miniFatStream, index * 4));
+  }
+  return miniFat;
 }
 
 function readCompoundSectorChain(bytes: Uint8Array, fat: number[], firstSector: number, sectorSize: number) {
@@ -302,6 +343,23 @@ function readCompoundSectorChain(bytes: Uint8Array, fat: number[], firstSector: 
     const offset = compoundSectorOffset(sector, sectorSize);
     chunks.push(bytes.slice(offset, offset + sectorSize));
     sector = fat[sector];
+    if (sector === -2) {
+      break;
+    }
+  }
+
+  return concatBytes(chunks);
+}
+
+function readMiniSectorChain(rootMiniStream: Uint8Array, miniFat: number[], firstSector: number, miniSectorSize: number) {
+  const chunks: Uint8Array[] = [];
+  const seen = new Set<number>();
+  let sector = firstSector;
+  while (sector >= 0 && sector < miniFat.length && !seen.has(sector)) {
+    seen.add(sector);
+    const offset = sector * miniSectorSize;
+    chunks.push(rootMiniStream.slice(offset, offset + miniSectorSize));
+    sector = miniFat[sector];
     if (sector === -2) {
       break;
     }
@@ -362,10 +420,13 @@ function readBiffString(cursor: BiffContinuationCursor) {
 }
 
 class BiffContinuationCursor {
+  private readonly parts: Uint8Array[];
   private partIndex = 0;
   private offset = 0;
 
-  constructor(private readonly parts: Uint8Array[]) {}
+  constructor(parts: Uint8Array[]) {
+    this.parts = parts;
+  }
 
   isDone() {
     return this.partIndex >= this.parts.length;
