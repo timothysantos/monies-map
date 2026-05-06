@@ -152,16 +152,19 @@ test("entries totals strip follows the current person's shared percentage", asyn
   await page.locator(".entry-row").filter({ hasText: description }).first().click();
 
   const totalsStrip = page.locator(".entries-totals-strip");
-  await expect(totalsStrip.locator(".entries-totals-item").nth(0)).toContainText(formatMoney(500));
+  await expect(totalsStrip.locator(".entries-totals-item").nth(0)).toContainText(formatMoney(2000));
+  await expect(totalsStrip.locator(".entries-totals-item").nth(0)).toContainText(`(${formatMoney(500)})`);
   await expect(totalsStrip.locator(".entries-totals-item").nth(2)).toContainText(`-${formatMoney(500)}`);
   await expect(totalsStrip.locator(".entries-totals-item").nth(3)).toContainText(formatMoney(500));
 
   await page.getByLabel("Split %").fill("40");
   await page.getByRole("button", { name: "Done editing entry" }).click();
-  await expect(totalsStrip.locator(".entries-totals-item").nth(0)).toContainText(formatMoney(800));
+  await expect(totalsStrip.locator(".entries-totals-item").nth(0)).toContainText(formatMoney(2000));
+  await expect(totalsStrip.locator(".entries-totals-item").nth(0)).toContainText(`(${formatMoney(800)})`);
 
   await page.reload();
-  await expect(page.locator(".entries-totals-strip .entries-totals-item").nth(0)).toContainText(formatMoney(800));
+  await expect(page.locator(".entries-totals-strip .entries-totals-item").nth(0)).toContainText(formatMoney(2000));
+  await expect(page.locator(".entries-totals-strip .entries-totals-item").nth(0)).toContainText(`(${formatMoney(800)})`);
 
   const timData = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
   const timEntry = timData.monthPage.entries.find((item) => item.description === description);

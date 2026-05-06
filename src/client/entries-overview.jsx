@@ -30,7 +30,10 @@ export function EntriesTotalsStrip({
       </button>
       <span className="entries-totals-item">
         <span className="entries-totals-label">{messages.entries.totalSpend}</span>
-        <strong className={entryService.getAmountToneClass(-entryTotals.spendMinor)}>{formatService.money(entryTotals.spendMinor)}</strong>
+        <strong className={entryService.getAmountToneClass(-entryTotals.grossSpendMinor)}>{formatService.money(entryTotals.grossSpendMinor)}</strong>
+        {entryTotals.grossSpendMinor !== entryTotals.spendMinor ? (
+          <span className="entries-totals-secondary">({formatService.money(entryTotals.spendMinor)})</span>
+        ) : null}
       </span>
       <span className="entries-totals-item">
         <span className="entries-totals-label">{messages.entries.totalIncome}</span>
