@@ -218,6 +218,38 @@ Source anchors:
 - `src/client/import-preview-auto-refresh.js`
 - `tests/e2e/import-preview-auto-refresh.spec.js`
 
+## Rule 7a: Import Parsers Must Tolerate Structural Variants From The Same Source
+
+Current behavior and lesson:
+
+- files that look human-identical can differ structurally underneath
+- one concrete example is UOB current-transaction XLS exports stored in the OLE
+  mini-stream instead of the main workbook stream
+- header-matching alone is not enough if the workbook reader fails before the
+  parser even sees the rows
+
+Why it matters:
+
+- brittle importers create repeated production regressions for normal bank
+  export changes
+- this problem applies across banks and export types, not only to UOB
+
+Design implication:
+
+- treat bank/source recognition as a deep parser concern, not as a thin string
+  match
+- keep real fixture coverage for each supported importer, including small
+  structural variants from the same source
+- prefer parser error messages that distinguish:
+  - unsupported format
+  - unreadable workbook/container
+  - recognized format with unexpected header/layout variation
+
+Source anchors:
+
+- `src/lib/statement-import/xls.ts`
+- `tests/fixtures/uob-current-transactions/`
+
 ## Rule 8: URL State Sometimes Represents Workflow State, Not Just Filters
 
 Current behavior:
