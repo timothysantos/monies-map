@@ -159,6 +159,49 @@ Current weak coverage:
 6. Primary test level: `Integration`, then `E2E`
 7. Form factor: `Both`
 
+### S7. Summary reflects month edits when returning from a drilldown
+
+1. User intent: trust that a summary drilldown remains current after editing the
+   underlying month data
+2. Starting state: Summary is open, and the user drills into a month from
+   intent-vs-outcome
+3. Action: edit month budget or note, then return to Summary in the same tab
+4. Expected visible result: the corresponding summary month card and affected
+   metrics reflect the saved change without requiring a full manual reload
+5. Expected persisted or queried result: summary queries invalidate or refetch
+   after the month mutation and settle to the new values
+6. Primary test level: `E2E`
+7. Form factor: `Both`
+
+### S8. Summary reflects entry edits when returning from a drilldown
+
+1. User intent: trust that a summary category or account drilldown remains
+   current after editing underlying entries
+2. Starting state: Summary is open, and the user drills into Entries from a
+   category share or account pill
+3. Action: edit or recategorize entries, then return to Summary in the same tab
+4. Expected visible result: the relevant summary cards, donut shares, and
+   account pills reflect the saved changes after background settlement
+5. Expected persisted or queried result: entries mutations invalidate affected
+   summary queries and account-pill queries
+6. Primary test level: `E2E`
+7. Form factor: `Both`
+
+### S9. Summary tab refreshes after related changes in another tab
+
+1. User intent: trust that an already-open Summary tab does not stay stale after
+   related work in another tab
+2. Starting state: Summary is open in one tab while Month, Entries, Imports, or
+   Settings is edited in another tab
+3. Action: complete a save in the other tab, then focus the existing Summary tab
+4. Expected visible result: Summary refreshes or reconciles promptly on return
+   and shows the updated metrics, month cards, or account pills
+5. Expected persisted or queried result: cross-tab invalidation reaches the
+   Summary queries, but refresh is still subordinate to any in-progress local
+   workflow
+6. Primary test level: `E2E`
+7. Form factor: `Both`
+
 ## Month Scenarios
 
 ### M1. Review one month by view and scope
@@ -330,6 +373,22 @@ Current weak coverage:
 6. Primary test level: `E2E`, supported by `Integration`
 7. Form factor: `Split`
 
+### E3a. Quick entry from URL survives without unsafe auto-refresh
+
+1. User intent: open a quick-entry flow from a URL or external shortcut and
+   complete it without the editor being disrupted
+2. Starting state: Entries opens with quick-entry route params, especially on
+   mobile where the composer may use a sheet
+3. Action: launch quick entry, begin editing, and remain on the screen while
+   background invalidation, tab sync, or focus events occur
+4. Expected visible result: the quick-entry editor remains stable and is not
+   auto-closed, reset, or silently replaced by a background refresh
+5. Expected persisted or queried result: active query refreshes are deferred,
+   paused, or applied as non-destructive background updates until the quick
+   entry is saved or dismissed
+6. Primary test level: `E2E`
+7. Form factor: `Split`
+
 ### E4. Edit an entry
 
 1. User intent: correct category, owner, note, amount, account, or type
@@ -414,6 +473,20 @@ Current weak coverage:
    current view and the entries list updates after selection
 5. Expected persisted or queried result: entries-page query reloads with the new
    route parameters
+6. Primary test level: `E2E`
+7. Form factor: `Mobile`
+
+### E10. Open mobile entry sheet is a protected workflow during refresh
+
+1. User intent: finish a mobile entry edit without losing state when other data
+   changes
+2. Starting state: Entries mobile sheet is open with an active draft or edit
+3. Action: a same-tab invalidation, cross-tab invalidation, focus event, or
+   explicit background refresh occurs while the sheet is open
+4. Expected visible result: the mobile sheet stays open and the active draft is
+   preserved until the user saves or cancels
+5. Expected persisted or queried result: TanStack invalidation may mark the page
+   stale, but visible refetch must not clobber the in-progress draft
 6. Primary test level: `E2E`
 7. Form factor: `Mobile`
 
@@ -697,6 +770,22 @@ Current weak coverage:
 6. Primary test level: `Integration`, then `E2E`
 7. Form factor: `Both`
 
+### ST3a. New or edited account refreshes Summary account pills
+
+1. User intent: trust that account changes in Settings are reflected in Summary
+   without lingering stale pills
+2. Starting state: Settings and Summary are both available, and account pills
+   are already visible in Summary
+3. Action: create, edit, or archive an account in Settings, then return to or
+   refocus Summary
+4. Expected visible result: Summary account pills reflect the account change
+   promptly and do not continue showing stale labels or values indefinitely
+5. Expected persisted or queried result: account reference-data invalidation
+   reaches the shell or summary-account-pills query without forcing unrelated
+   page reloads
+6. Primary test level: `E2E`
+7. Form factor: `Both`
+
 ### ST4. Create or edit a category
 
 1. User intent: maintain the household taxonomy
@@ -814,6 +903,35 @@ Current weak coverage:
 6. Primary test level: `Integration`, then `E2E`
 7. Form factor: `Both`
 
+### X5a. Same-tab return uses settled fresh data, not destructive reload
+
+1. User intent: move between drilldown pages and return to a previously open
+   screen without losing the sense of continuity
+2. Starting state: the user navigates from Summary or Month into Entries, then
+   performs a save
+3. Action: return to the originating screen in the same tab
+4. Expected visible result: the originating screen shows updated data quickly,
+   while preserving safe local UI state and avoiding jarring reload behavior
+5. Expected persisted or queried result: the affected TanStack queries are
+   invalidated and refetched or reconciled with placeholder data where
+   appropriate
+6. Primary test level: `E2E`
+7. Form factor: `Both`
+
+### X5b. Cross-tab return does not clobber active mobile workflows
+
+1. User intent: benefit from cross-tab freshness without losing in-progress
+   mobile editing flows
+2. Starting state: one tab performs a mutation while another tab is on a mobile
+   editing surface such as quick entry or an entry edit sheet
+3. Action: the mutation broadcasts invalidation to the other tab
+4. Expected visible result: the passive tab is marked stale or refresh-ready,
+   but the active mobile workflow remains intact until it is saved or dismissed
+5. Expected persisted or queried result: invalidation reaches TanStack query
+   state, but visible refetch is gated by workflow locks
+6. Primary test level: `E2E`
+7. Form factor: `Mobile`
+
 ### X6. Entries to Splits changes both views
 
 1. User intent: create a shared-expense record from a ledger entry and see it
@@ -865,6 +983,8 @@ tests yet:
 - month note editing
 - month plan link picker workflows
 - explicit desktop/mobile scenario tagging beyond the current month-page tests
+- same-tab and cross-tab summary freshness after month or entry drilldowns
+- workflow-lock protection for mobile quick entry and entry edit sheets
 - filtered entries recategorization where the saved row should not disappear
   mid-edit
 - entry editing effects on month and summary aggregates
