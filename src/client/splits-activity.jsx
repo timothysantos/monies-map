@@ -111,6 +111,9 @@ export function SplitActivityGroups({
           const isEditing = isEditable && editingDraft && splitItemKey(item) === `${editingDraft.kind}:${editingDraft.id}`;
           const isPendingDerived = item.isPendingDerived === true;
           const showDirectionLabel = Boolean(item.viewerDirectionLabel) && !readOnly;
+          const amountToneClass = showDirectionLabel
+            ? (item.viewerDirectionLabel.includes("borrowed") || item.viewerDirectionLabel.includes("owe") ? "negative" : "positive")
+            : "";
           const openEditor = () => {
             if (isEditable) {
               item.kind === "expense" ? onEditExpense(item) : onEditSettlement(item);
@@ -227,7 +230,7 @@ export function SplitActivityGroups({
                   </strong>
                 ) : null}
                 <span className="split-activity-amount-line">
-                  <span>{formatService.money(item.viewerAmountMinor ?? item.totalAmountMinor)}</span>
+                  <span className={amountToneClass}>{formatService.money(item.viewerAmountMinor ?? item.totalAmountMinor)}</span>
                   <span className="share-row-meta">
                     {isPendingDerived
                       ? messages.common.loadingLatest
