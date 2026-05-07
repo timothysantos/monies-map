@@ -287,6 +287,22 @@ Current weak coverage:
 6. Primary test level: `E2E`, supported by `Integration`
 7. Form factor: `Desktop`
 
+### M3a. Replace a budget amount by typing without select-all
+
+1. User intent: update a planned amount quickly without fighting the formatted
+   value
+2. Starting state: an editable month budget amount field shows a formatted
+   value such as `123.00`
+3. Action: focus the field, type a new amount, and use backspace or overwrite
+   keys without manually selecting the whole value first
+4. Expected visible result: the field accepts the new digits predictably, the
+   user does not need to select-all to replace the amount, and blur formatting
+   still normalizes the field afterward
+5. Expected persisted or queried result: the updated minor amount is saved and
+   downstream month and summary totals recompute
+6. Primary test level: `E2E`
+7. Form factor: `Both`
+
 ### M4. Cancel inline editing safely
 
 1. User intent: inspect or start editing a row without committing a change
@@ -479,6 +495,21 @@ Current weak coverage:
    aggregates refresh if affected
 6. Primary test level: `E2E`
 7. Form factor: `Split`
+
+### E4b. Replace an entry amount by typing without select-all
+
+1. User intent: correct an entry amount without wrestling with the formatted
+   field
+2. Starting state: an editable entry amount field shows a formatted value such
+   as `12.34`
+3. Action: focus the amount field, type a new value, and backspace or overwrite
+   characters without manually selecting the whole field first
+4. Expected visible result: the field accepts replacement typing naturally and
+   keeps the draft editable, then normalizes on blur
+5. Expected persisted or queried result: the updated amount minor value is
+   saved and downstream entry, month, and summary totals recompute
+6. Primary test level: `E2E`
+7. Form factor: `Both`
 
 ### E4a. Finish editing while the active filter would exclude the saved row
 
@@ -787,6 +818,21 @@ Current weak coverage:
 6. Primary test level: `E2E`
 7. Form factor: `Both`
 
+### SP3a. Replace split amount fields by typing without select-all
+
+1. User intent: adjust the split amount or percentage directly from the editor
+   without fighting the formatted input
+2. Starting state: split amount or percentage field shows a formatted numeric
+   value
+3. Action: focus the field, type a new value, and backspace or overwrite the
+   existing digits without manually selecting the whole field first
+4. Expected visible result: the field accepts replacement typing naturally and
+   keeps the draft editable, then normalizes on blur
+5. Expected persisted or queried result: the edited split amount or ratio saves
+   and the split view recomputes the derived shares
+6. Primary test level: `E2E`
+7. Form factor: `Both`
+
 ### SP4. Delete a split expense
 
 1. User intent: remove a wrong split record
@@ -842,6 +888,21 @@ Current weak coverage:
 4. Expected visible result: Entries opens with the linked entry editor visible
 5. Expected persisted or queried result: no mutation; route carries linked entry
    context
+6. Primary test level: `E2E`
+7. Form factor: `Both`
+
+### SP8a. Split workspace amount editing follows the same typing contract as entries
+
+1. User intent: edit split amounts with the same keyboard behavior that the
+   rest of the app uses for money fields
+2. Starting state: a split workspace amount field is visible in live or
+   archived history
+3. Action: focus the field, type a replacement amount, and use backspace or
+   overwrite keys without selecting the whole value first
+4. Expected visible result: amount editing feels consistent with entries and
+   month budgets, and the field stays usable while the user types
+5. Expected persisted or queried result: the updated amount is saved and the
+   split-derived shares recompute from the new value
 6. Primary test level: `E2E`
 7. Form factor: `Both`
 
@@ -1040,6 +1101,20 @@ Current weak coverage:
 5. Expected persisted or queried result: entry persists and dependent aggregates
    recompute
 6. Primary test level: `Integration`, then `E2E`
+7. Form factor: `Both`
+
+### X5c. Money fields stay editable without select-all across core workflows
+
+1. User intent: edit money values naturally in the most common numeric fields
+2. Starting state: an entry amount, month budget amount, split amount, or
+   import reconciliation amount field contains a formatted value
+3. Action: focus the field, type a replacement value, and use backspace or
+   overwrite keys without manually selecting the whole field first
+4. Expected visible result: the field remains easy to edit by keyboard, does
+   not require select-all for a simple replacement, and normalizes after blur
+5. Expected persisted or queried result: the updated minor values save
+   correctly and downstream aggregates or previews recompute
+6. Primary test level: `E2E`
 7. Form factor: `Both`
 
 ### X5a. Same-tab return uses settled fresh data, not destructive reload
