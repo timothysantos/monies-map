@@ -13,6 +13,7 @@ export function EntriesTotalsStrip({
   showExpenseBreakdown,
   entryTotals,
   entryOutflowMinor,
+  entryGrossOutflowMinor,
   entryNetMinor,
   onToggleExpenseBreakdown,
   onAddEntry
@@ -44,8 +45,18 @@ export function EntriesTotalsStrip({
         <strong className={entryService.getAmountToneClass(entryNetMinor)}>{formatService.money(entryNetMinor)}</strong>
       </span>
       <span className="entries-totals-item">
+        <span className="entries-totals-label">{messages.entries.totalTransfersOut}</span>
+        <strong className={entryService.getAmountToneClass(-entryTotals.grossTransferOutMinor)}>{formatService.money(entryTotals.grossTransferOutMinor)}</strong>
+        {entryTotals.grossTransferOutMinor !== entryTotals.transferOutMinor ? (
+          <span className="entries-totals-secondary">({formatService.money(entryTotals.transferOutMinor)})</span>
+        ) : null}
+      </span>
+      <span className="entries-totals-item">
         <span className="entries-totals-label">{messages.entries.totalOutflow}</span>
-        <strong className={entryService.getAmountToneClass(-entryOutflowMinor)}>{formatService.money(entryOutflowMinor)}</strong>
+        <strong className={entryService.getAmountToneClass(-entryGrossOutflowMinor)}>{formatService.money(entryGrossOutflowMinor)}</strong>
+        {entryGrossOutflowMinor !== entryOutflowMinor ? (
+          <span className="entries-totals-secondary">({formatService.money(entryOutflowMinor)})</span>
+        ) : null}
       </span>
       <div className="entries-totals-spacer" />
       <button type="button" className="subtle-action is-primary entries-add-inline" onClick={onAddEntry}>

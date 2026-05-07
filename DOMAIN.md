@@ -406,6 +406,34 @@ Related but separate concepts:
 - `split expense`
 - `split expense share`
 
+### Entries Totals Strip
+
+The compact metrics row at the top of the Entries page. These labels are page
+summary terms and should keep stable meanings across UI copy, docs, and
+scenario tests.
+
+Canonical terms:
+- `entries totals strip`
+- `spend`
+- `transfer-out total`
+- `outflow`
+
+Definitions:
+- `spend` means the gross total of expense-category rows only. It excludes
+  transfer entries.
+- `transfer-out total` means the gross sum of ledger entries where
+  `entry_type = 'transfer'` and the transfer direction is out of the current
+  account.
+- `outflow` means `spend + transfer-out total` for the current filtered view.
+  It exists so transfer-outs are visible without mixing them into category
+  spending.
+
+Person-view rule:
+- when a person view weights shared entries to that person's ownership share,
+  the Entries totals strip may show both the gross ledger amount and the
+  weighted visible amount in parentheses, but the definition of each metric
+  stays the same.
+
 ### Transfer Group
 
 A linkage record that pairs related transfer ledger entries across accounts.

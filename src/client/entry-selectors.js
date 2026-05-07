@@ -78,12 +78,20 @@ export function getEntryTotals(entries) {
       totals.grossSpendMinor += grossAmountMinor;
     } else if (entry.entryType === "transfer" && entry.transferDirection === "out") {
       totals.transferOutMinor += visibleAmountMinor;
+      totals.grossTransferOutMinor += grossAmountMinor;
     } else if (entry.entryType === "transfer" && entry.transferDirection === "in") {
       totals.transferInMinor += visibleAmountMinor;
     }
 
     return totals;
-  }, { incomeMinor: 0, spendMinor: 0, grossSpendMinor: 0, transferInMinor: 0, transferOutMinor: 0 });
+  }, {
+    incomeMinor: 0,
+    spendMinor: 0,
+    grossSpendMinor: 0,
+    transferInMinor: 0,
+    transferOutMinor: 0,
+    grossTransferOutMinor: 0
+  });
 }
 
 export function getExpenseBreakdown(entries) {
@@ -129,6 +137,7 @@ export function getEntryDerivedData({ entries, entryFilters, selectedScope, view
     // "Outflow" includes transfers out, while "net" ignores transfer pairs and
     // only compares income against expenses.
     entryOutflowMinor: entryTotals.spendMinor + entryTotals.transferOutMinor,
+    entryGrossOutflowMinor: entryTotals.grossSpendMinor + entryTotals.grossTransferOutMinor,
     entryNetMinor: entryTotals.incomeMinor - entryTotals.spendMinor,
     expenseBreakdown: getExpenseBreakdown(aggregateEntries)
   };

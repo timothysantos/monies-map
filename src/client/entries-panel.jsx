@@ -401,6 +401,7 @@ export function EntriesPanel({
     groupedEntries,
     entryTotals,
     entryOutflowMinor,
+    entryGrossOutflowMinor,
     entryNetMinor,
     expenseBreakdown
   } = useMemo(
@@ -739,6 +740,7 @@ export function EntriesPanel({
         showExpenseBreakdown={showExpenseBreakdown}
         entryTotals={entryTotals}
         entryOutflowMinor={entryOutflowMinor}
+        entryGrossOutflowMinor={entryGrossOutflowMinor}
         entryNetMinor={entryNetMinor}
         onToggleExpenseBreakdown={() => setShowExpenseBreakdown((current) => !current)}
         onAddEntry={openEntryComposer}

@@ -110,6 +110,7 @@ export const messages = {
     allTypes: "All types",
     totalsLabel: "Entry totals",
     totalSpend: "Spend",
+    totalTransfersOut: "Transfers",
     totalOutflow: "Outflow",
     totalIncome: "Income",
     totalDifference: "Difference",
