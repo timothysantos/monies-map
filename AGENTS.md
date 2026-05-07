@@ -19,6 +19,9 @@ team conventions evolve.
   updated alongside meaningful client-side boundary and helper-service changes.
 - Keep [`docs/architecture.md`](/Users/tim/22m/ai-projects/monies_map/docs/architecture.md)
   updated alongside meaningful product and technical changes.
+- Keep [`docs/code-spec.md`](/Users/tim/22m/ai-projects/monies_map/docs/code-spec.md)
+  updated alongside meaningful implementation-shape, query-budget, and
+  code-readability rule changes.
 - Keep [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
   updated alongside user-facing product, setup, and workflow changes.
 - When implementation and documentation diverge, update the documentation in the
@@ -103,6 +106,9 @@ team conventions evolve.
 - Update [`docs/architecture.md`](/Users/tim/22m/ai-projects/monies_map/docs/architecture.md)
   when product behavior, data flow, technical direction, or staged refactor
   plan changes.
+- Update [`docs/code-spec.md`](/Users/tim/22m/ai-projects/monies_map/docs/code-spec.md)
+  when code-shape rules, query budgets, invalidation contracts, or
+  implementation-reading guidance changes.
 - Update [`design.md`](/Users/tim/22m/ai-projects/monies_map/design.md) when
   implementation boundaries such as the client deep module service evolve.
 - Update [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)

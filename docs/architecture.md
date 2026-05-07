@@ -17,6 +17,8 @@ system.
 - [`docs/scenario-catalog.md`](./scenario-catalog.md): Stage 1 TDD scenario map
 - [`docs/slice-inventory.md`](./slice-inventory.md): Stage 2 slice ownership map
 - [`docs/query-map.md`](./query-map.md): Stage 3 query and cache map
+- [`docs/code-spec.md`](./code-spec.md): compact implementation spec, query
+  budgets, invalidation contract, and code-shape rules
 - [`docs/existing-behavior-guardrails.md`](./existing-behavior-guardrails.md): current-app behaviors that must survive refactors
 - [`docs/responsive-behavior.md`](./responsive-behavior.md): responsive UX and form-factor contract
 - [`docs/interaction-guidelines.md`](./interaction-guidelines.md): button, CTA, and dismissal semantics
@@ -162,6 +164,8 @@ When changing architecture:
 - update `AGENTS.md` if the rule must be followed every prompt
 - update `DOMAIN.md` if the vocabulary changes
 - update `design.md` if client boundaries or deep-module rules change
+- update `docs/code-spec.md` if implementation rules, query budgets, or code
+  shape constraints change
 - update this file if the target structure, delivery stages, or technical
   direction changes
 
@@ -274,6 +278,10 @@ Actions:
 - move low-level helper graphs behind those boundaries
 - keep public APIs short and intention-revealing
 - reduce direct component imports from many helper files
+- start with the slice that has the clearest scenario coverage and the fewest
+  hidden cross-slice dependencies
+- keep Stage 3 as the foundation for this stage; do not start deep-module
+  refactors before the query map is in place
 
 Exit criteria:
 - page components read as orchestration and rendering, not helper plumbing
