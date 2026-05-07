@@ -1305,17 +1305,21 @@ statement balance evidence without adding duplicate ledger rows.
 ## How do Entries filters and refresh work?
 
 The Entries page keeps `Spend` as category expense only. It also shows
-`Outflow`, which includes expenses plus transfer-outs, so transfers are visible
-without being mixed into category spending.
+`Transfers`, which is the gross total of transfer-out rows, and `Outflow`,
+which equals `Spend + Transfers`, so transfers are visible without being mixed
+into category spending. In person views, the weighted amount still appears in
+parentheses so you can see the share-adjusted value without losing the gross
+ledger total.
 
 In a person view, a collapsed shared entry row now shows the full ledger amount
 first and the current viewer's weighted share in parentheses. The Entries total
-strip follows the same rule for `Spend`: it shows the gross expense total first
-and, when shared weighting changes that number for the current person view,
-shows the weighted spend in parentheses. When you expand a shared row to edit
-it, the `Amount` field uses the full ledger amount and the `Split %` field
-remains the basis for each person's share. You do not need to reverse-calculate
-a half share or other weighted amount just to correct the entry total.
+strip follows the same rule for `Spend`, `Transfers`, and `Outflow`: it shows
+the gross total first and the weighted visible amount in parentheses when
+shared weighting changes that number for the current person view. When you
+expand a shared row to edit it, the `Amount` field uses the full ledger amount
+and the `Split %` field remains the basis for each person's share. You do not
+need to reverse-calculate a half share or other weighted amount just to
+correct the entry total.
 
 The account filter on Entries lists every active account, even when an account
 has no rows in the selected month. This keeps the filter predictable when you

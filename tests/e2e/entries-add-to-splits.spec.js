@@ -133,6 +133,7 @@ test("equal split amounts keep the rounded cent on the remainder share", async (
 
 test("entries totals strip follows the current person's shared percentage", async ({ page }) => {
   const description = `Playwright shared totals ${Date.now()}`;
+  const transferDescription = `Playwright shared transfer ${Date.now()}`;
 
   await page.goto("/");
   await reseedDemo(page);
@@ -147,6 +148,17 @@ test("entries totals strip follows the current person's shared percentage", asyn
     ownershipType: "shared",
     splitBasisPoints: 2500
   });
+  await postJson(page, "/api/entries/create", {
+    date: "2026-04-24",
+    description: transferDescription,
+    accountName: "UOB One",
+    categoryName: "Transfer",
+    amountMinor: 1000,
+    entryType: "transfer",
+    transferDirection: "out",
+    ownershipType: "shared",
+    splitBasisPoints: 2500
+  });
 
   await page.goto("/entries?view=person-tim&month=2026-04");
   await page.locator(".entry-row").filter({ hasText: description }).first().click();
@@ -155,16 +167,27 @@ test("entries totals strip follows the current person's shared percentage", asyn
   await expect(totalsStrip.locator(".entries-totals-item").nth(0)).toContainText(formatMoney(2000));
   await expect(totalsStrip.locator(".entries-totals-item").nth(0)).toContainText(`(${formatMoney(500)})`);
   await expect(totalsStrip.locator(".entries-totals-item").nth(2)).toContainText(`-${formatMoney(500)}`);
-  await expect(totalsStrip.locator(".entries-totals-item").nth(3)).toContainText(formatMoney(500));
+  await expect(totalsStrip.locator(".entries-totals-item").nth(3)).toContainText(formatMoney(1000));
+  await expect(totalsStrip.locator(".entries-totals-item").nth(3)).toContainText(`(${formatMoney(250)})`);
+  await expect(totalsStrip.locator(".entries-totals-item").nth(4)).toContainText(formatMoney(3000));
+  await expect(totalsStrip.locator(".entries-totals-item").nth(4)).toContainText(`(${formatMoney(750)})`);
 
   await page.getByLabel("Split %").fill("40");
   await page.getByRole("button", { name: "Done editing entry" }).click();
   await expect(totalsStrip.locator(".entries-totals-item").nth(0)).toContainText(formatMoney(2000));
   await expect(totalsStrip.locator(".entries-totals-item").nth(0)).toContainText(`(${formatMoney(800)})`);
+  await expect(totalsStrip.locator(".entries-totals-item").nth(3)).toContainText(formatMoney(1000));
+  await expect(totalsStrip.locator(".entries-totals-item").nth(3)).toContainText(`(${formatMoney(250)})`);
+  await expect(totalsStrip.locator(".entries-totals-item").nth(4)).toContainText(formatMoney(3000));
+  await expect(totalsStrip.locator(".entries-totals-item").nth(4)).toContainText(`(${formatMoney(1050)})`);
 
   await page.reload();
   await expect(page.locator(".entries-totals-strip .entries-totals-item").nth(0)).toContainText(formatMoney(2000));
   await expect(page.locator(".entries-totals-strip .entries-totals-item").nth(0)).toContainText(`(${formatMoney(800)})`);
+  await expect(page.locator(".entries-totals-strip .entries-totals-item").nth(3)).toContainText(formatMoney(1000));
+  await expect(page.locator(".entries-totals-strip .entries-totals-item").nth(3)).toContainText(`(${formatMoney(250)})`);
+  await expect(page.locator(".entries-totals-strip .entries-totals-item").nth(4)).toContainText(formatMoney(3000));
+  await expect(page.locator(".entries-totals-strip .entries-totals-item").nth(4)).toContainText(`(${formatMoney(1050)})`);
 
   const timData = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
   const timEntry = timData.monthPage.entries.find((item) => item.description === description);

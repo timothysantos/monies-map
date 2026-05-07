@@ -393,8 +393,9 @@ Current weak coverage:
    that include shared ownership
 3. Action: compare the totals strip in `direct`, `shared`, and
    `direct_plus_shared`
-4. Expected visible result: the totals strip shows scope-weighted values for
-   person scopes and full household totals for the combined household view
+4. Expected visible result: the totals strip shows gross totals first, with the
+   weighted visible amount in parentheses for person scopes, and full household
+   totals for the combined household view
 5. Expected persisted or queried result: the totals strip derives from the same
    scope-aware entry set used by the list and breakdown
 6. Primary test level: `E2E`
