@@ -3567,6 +3567,14 @@ button.split-activity-card:hover {
   color: var(--text);
 }
 
+.panel-splits .split-date-group .split-activity-amount-line .positive {
+  color: var(--positive);
+}
+
+.panel-splits .split-date-group .split-activity-amount-line .negative {
+  color: var(--negative);
+}
+
 .panel-splits .subtle-action,
 .panel-splits .dialog-primary {
   display: inline-flex;

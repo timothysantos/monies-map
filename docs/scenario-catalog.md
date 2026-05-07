@@ -836,10 +836,11 @@ Current weak coverage:
 2. Starting state: the same split expense is viewed by different people
 3. Action: load the split activity as each person
 4. Expected visible result: borrower and lender labels differ, but amount math
-   remains consistent
+   remains consistent and the amount uses expense red for `you borrowed` and
+   income green for `you lent`
 5. Expected persisted or queried result: view model derives viewer amount from
    the same underlying split shares
-6. Primary test level: `Domain` and `Integration`
+6. Primary test level: `Domain`, `Integration`, and `E2E`
 7. Form factor: `Both`
 
 ## Settings Scenarios
