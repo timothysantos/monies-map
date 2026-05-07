@@ -520,6 +520,33 @@ Current weak coverage:
 6. Primary test level: `E2E`
 7. Form factor: `Split`
 
+### E6a. Add to splits opens group selection when more than one split group exists
+
+1. User intent: choose which split group should receive the shared expense
+2. Starting state: Entries has at least two existing split groups available for
+   the current month and view
+3. Action: click `Add to splits` on an eligible entry
+4. Expected visible result: the split-group selection dialog appears instead of
+   silently picking a group
+5. Expected persisted or queried result: no split expense is created until the
+   user chooses a group and confirms
+6. Primary test level: `E2E`
+7. Form factor: `Split`
+
+### E6b. Add to splits first saves pending entry edits
+
+1. User intent: keep editing the entry, then promote it to splits without
+   losing the pending edits
+2. Starting state: an entry has unsaved changes in description, note, category,
+   amount, or similar editable fields
+3. Action: click `Add to splits`
+4. Expected visible result: the control behaves like a save-first action for the
+   dirty entry, then continues into the split workflow
+5. Expected persisted or queried result: the entry edits are persisted before
+   the split-expense workflow is created or opened
+6. Primary test level: `E2E`
+7. Form factor: `Split`
+
 ### E7. Delete a split created from entries
 
 1. User intent: reverse an accidental `Add to splits` action
