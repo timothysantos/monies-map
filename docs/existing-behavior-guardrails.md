@@ -139,6 +139,35 @@ Source anchors:
 - `src/client/App.jsx`
 - `docs/faq.md`
 
+## Rule 4a: Broad Route Queries Can Trigger Worker Instability
+
+Current behavior and lesson:
+
+- the app still leans heavily on `bootstrap`
+- `src/index.ts` already logs API pages slower than `750ms`
+- broad slow requests increase the chance of worker restart, upstream throttle,
+  or temporary blanket request failure
+- E2E helpers already defend against "worker restarted mid-request"
+
+Why it matters:
+
+- this feels to the user like random `503` failures across the app
+- retrying the same broad request pattern can keep the app unhealthy longer
+
+Design implication:
+
+- treat worker-safe query budgets as an architecture concern, not just a nice-
+  to-have optimization
+- split broad route payloads before adding more retries
+- prefer smaller independent requests over one request that hydrates many
+  screens
+
+Source anchors:
+
+- `src/index.ts`
+- `src/client/App.jsx`
+- `tests/e2e/helpers.js`
+
 ## Rule 5: Persisted Shell Cache Is Allowed, But Writes Must Burst It
 
 Current behavior:

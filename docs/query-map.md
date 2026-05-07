@@ -4,7 +4,9 @@ This document is the Stage 3 TanStack Query and API-shape plan for Monies Map.
 
 Read it alongside
 [`docs/existing-behavior-guardrails.md`](./existing-behavior-guardrails.md),
-which captures current product behaviors that this query design must preserve.
+which captures current product behaviors that this query design must preserve,
+and [`docs/code-spec.md`](./code-spec.md), which captures the compact
+implementation budgets, invalidation shape, and code-size rules.
 
 Its goals are:
 
@@ -37,6 +39,10 @@ The current bootstrap path builds too much at once:
 
 This is too expensive for first paint, too broad for precise invalidation, and
 too large to be the default fetch for every important screen.
+
+For implementation, treat visible route queries that drift past the current
+`750ms` slow-log threshold as a design problem unless the workflow is
+deliberately heavy, such as import preview.
 
 ## Stage 3 Principles
 
