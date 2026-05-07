@@ -19,6 +19,8 @@ system.
 - [`docs/query-map.md`](./query-map.md): Stage 3 query and cache map
 - [`docs/code-spec.md`](./code-spec.md): compact implementation spec, query
   budgets, invalidation contract, and code-shape rules
+- [`docs/implementation-order.md`](./implementation-order.md): Stage 4
+  execution order, test priority, and slice migration sequence
 - [`docs/existing-behavior-guardrails.md`](./existing-behavior-guardrails.md): current-app behaviors that must survive refactors
 - [`docs/responsive-behavior.md`](./responsive-behavior.md): responsive UX and form-factor contract
 - [`docs/interaction-guidelines.md`](./interaction-guidelines.md): button, CTA, and dismissal semantics
@@ -287,6 +289,9 @@ Exit criteria:
 - page components read as orchestration and rendering, not helper plumbing
 - a new contributor can follow one slice without reading the whole app
 - helper sprawl is reduced measurably
+
+Artifact:
+- [`docs/implementation-order.md`](./implementation-order.md)
 
 ### Stage 5: Tighten backend boundaries to match the slices
 
