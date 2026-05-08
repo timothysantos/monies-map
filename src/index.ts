@@ -1,7 +1,9 @@
 import {
   buildAppShellDto,
+  buildEntriesBootstrapDto
+} from "./domain/bootstrap-dto";
+import {
   buildBootstrapDto,
-  buildEntriesBootstrapDto,
   buildEntriesPageDto,
   buildImportsPageDto,
   buildMonthPageDto,
