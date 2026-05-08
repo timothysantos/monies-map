@@ -1,6 +1,9 @@
 # Query Map
 
 This document is the Stage 3 TanStack Query and API-shape plan for Monies Map.
+Read it together with [`docs/tanstack-query-language.md`](./tanstack-query-language.md),
+which defines the query vocabulary, ownership rules, and invalidation language
+used by the app.
 
 Read it alongside
 [`docs/existing-behavior-guardrails.md`](./existing-behavior-guardrails.md),
