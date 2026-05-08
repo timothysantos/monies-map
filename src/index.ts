@@ -1,4 +1,5 @@
 import {
+  buildAppShellDto,
   buildBootstrapDto,
   buildEntriesBootstrapDto,
   buildEntriesPageDto,
@@ -92,6 +93,16 @@ export default {
           (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared",
           url.searchParams.get("summary_start") ?? undefined,
           url.searchParams.get("summary_end") ?? undefined,
+          getAuthenticatedEmail(request),
+          getAppEnvironment(env, url)
+        )
+      );
+    }
+
+    if (url.pathname === "/api/app-shell") {
+      return apiPageResponse("App shell", request, url, () =>
+        buildAppShellDto(
+          env.DB,
           getAuthenticatedEmail(request),
           getAppEnvironment(env, url)
         )

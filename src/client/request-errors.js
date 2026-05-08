@@ -1,13 +1,13 @@
-export function buildBootstrapErrorMessage(status, detail) {
+export function buildAppShellErrorMessage(status, detail) {
   const normalizedDetail = String(detail ?? "").replace(/\s+/g, " ").trim();
   if (!normalizedDetail) {
-    return `Bootstrap request failed with status ${status}.`;
+    return `App shell request failed with status ${status}.`;
   }
   if (/^<!doctype html\b/i.test(normalizedDetail) || /^<html\b/i.test(normalizedDetail)) {
-    return `Bootstrap request failed with status ${status}. The server returned an HTML error page instead of JSON.`;
+    return `App shell request failed with status ${status}. The server returned an HTML error page instead of JSON.`;
   }
 
-  return `Bootstrap request failed with status ${status}. ${normalizedDetail.slice(0, 240)}`;
+  return `App shell request failed with status ${status}. ${normalizedDetail.slice(0, 240)}`;
 }
 
 export async function buildRequestErrorMessage(response, fallbackMessage) {
@@ -32,10 +32,10 @@ export async function buildRequestErrorMessage(response, fallbackMessage) {
   return `${fallbackMessage} ${normalizedDetail.slice(0, 240)}`;
 }
 
-export function describeBootstrapError(error) {
+export function describeAppShellError(error) {
   if (error instanceof Error && error.message) {
     return error.message;
   }
 
-  return "The dashboard could not load bootstrap data.";
+  return "The dashboard could not load app shell data.";
 }

@@ -43,8 +43,8 @@ function normalizeRouteRequest(request) {
 }
 
 export const queryKeys = {
-  bootstrap(params) {
-    return ["bootstrap", normalizeRecord(params)];
+  appShell(params) {
+    return ["app-shell", normalizeRecord(params)];
   },
   routePage(request) {
     return ["route-page", normalizeRouteRequest(request)];

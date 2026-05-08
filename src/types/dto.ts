@@ -629,6 +629,25 @@ export interface SettingsPageDto {
   recentAuditEvents: AuditEventDto[];
 }
 
+export interface AppShellDto {
+  appEnvironment?: "demo" | "local" | "production";
+  household: HouseholdDto;
+  accounts: AccountDto[];
+  categories: CategoryDto[];
+  availableViewIds: string[];
+  selectedViewId: string;
+  trackedMonths: string[];
+  viewerPersonId?: string;
+  viewerIdentity?: {
+    email: string;
+    personId?: string;
+  };
+  viewerRegistration?: {
+    email: string;
+    suggestedPersonId: string;
+  };
+}
+
 export interface AppBootstrapDto {
   appEnvironment?: "demo" | "local" | "production";
   household: HouseholdDto;
