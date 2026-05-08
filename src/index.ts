@@ -1,9 +1,8 @@
 import {
   buildAppShellDto,
-  buildEntriesBootstrapDto
+  buildEntriesShellDto
 } from "./domain/bootstrap-dto";
 import {
-  buildBootstrapDto,
   buildEntriesPageDto,
   buildImportsPageDto,
   buildMonthPageDto,
@@ -87,20 +86,6 @@ export default {
       return json({ ok: true, service: "monies-map" });
     }
 
-    if (url.pathname === "/api/bootstrap") {
-      return apiPageResponse("Bootstrap", request, url, () =>
-        buildBootstrapDto(
-          env.DB,
-          url.searchParams.get("month") ?? getCurrentMonthKey(),
-          (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared",
-          url.searchParams.get("summary_start") ?? undefined,
-          url.searchParams.get("summary_end") ?? undefined,
-          getAuthenticatedEmail(request),
-          getAppEnvironment(env, url)
-        )
-      );
-    }
-
     if (url.pathname === "/api/app-shell") {
       return apiPageResponse("App shell", request, url, () =>
         buildAppShellDto(
@@ -113,7 +98,7 @@ export default {
 
     if (url.pathname === "/api/entries-shell") {
       return apiPageResponse("Entries shell", request, url, () =>
-        buildEntriesBootstrapDto(
+        buildEntriesShellDto(
           env.DB,
           url.searchParams.get("view") ?? "household",
           url.searchParams.get("month") ?? getCurrentMonthKey(),

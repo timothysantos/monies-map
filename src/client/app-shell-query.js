@@ -1,6 +1,8 @@
 export const APPSHELL_PERSISTED_CACHE_KEY = "monies-map-appShell-cache-v2";
 
 export function buildAppShellParams({ month, scope, summaryStart, summaryEnd }) {
+  // Encode the shell query identity from the route state that actually
+  // affects the shell payload.
   const params = new URLSearchParams({
     month,
     scope
@@ -15,6 +17,8 @@ export function buildAppShellParams({ month, scope, summaryStart, summaryEnd }) 
 }
 
 export function buildEntriesShellParams({ viewId, month }) {
+  // Encode the entries shell identity without dragging in unrelated route
+  // state.
   return new URLSearchParams({
     view: viewId,
     month
@@ -22,6 +26,8 @@ export function buildEntriesShellParams({ viewId, month }) {
 }
 
 export function readPersistedAppShell(cacheKey) {
+  // Restore the last shell payload only when the cache key still matches the
+  // current route-derived request.
   if (typeof window === "undefined") {
     return null;
   }
@@ -44,6 +50,8 @@ export function readPersistedAppShell(cacheKey) {
 }
 
 export function writePersistedAppShell(cacheKey, data) {
+  // Persist the latest shell payload so a reload can reuse stable reference
+  // data immediately.
   if (typeof window === "undefined") {
     return;
   }
@@ -58,6 +66,8 @@ export function writePersistedAppShell(cacheKey, data) {
 }
 
 export function clearPersistedAppShell() {
+  // Remove the persisted shell payload when mutation invalidation makes it
+  // stale.
   if (typeof window === "undefined") {
     return;
   }
