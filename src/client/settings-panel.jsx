@@ -178,8 +178,8 @@ export function SettingsPanel({
     setDemoActionError("");
     try {
       await runDemoAction("/api/demo/empty", "Empty-state reset failed.");
-      const refreshedBootstrap = await onRefresh();
-      if (refreshedBootstrap?.accounts?.length) {
+      const refreshedAppShell = await onRefresh();
+      if (refreshedAppShell?.accounts?.length) {
         throw new Error(messages.settings.emptyStateStillHasAccounts);
       }
       setEmptyStateText("");

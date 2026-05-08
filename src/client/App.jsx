@@ -22,7 +22,7 @@ import {
   APP_SYNC_CHANNEL,
   APP_SYNC_EVENT_TYPES,
   APP_SYNC_STORAGE_KEY,
-  broadcastBootstrapRefresh,
+  broadcastAppShellRefresh,
   buildSplitMutationSyncEvent,
   isMonthWithinRange,
   publishAppSyncEvent
@@ -31,9 +31,9 @@ import { messages } from "./copy/en-SG";
 import { EntriesFilterStack } from "./entries-overview";
 import { moniesClient } from "./monies-client-service";
 import {
-  buildBootstrapErrorMessage,
+  buildAppShellErrorMessage,
   buildRequestErrorMessage,
-  describeBootstrapError
+  describeAppShellError
 } from "./request-errors";
 import { installMobileFocusVisibility } from "./mobile-focus-visibility";
 import { queryKeys } from "./query-keys";
@@ -59,9 +59,9 @@ const SplitsPanel = lazy(() => routeModuleLoaders.splits().then((module) => ({ d
 const SummaryPanel = lazy(() => routeModuleLoaders.summary().then((module) => ({ default: module.SummaryPanel })));
 
 const SUMMARY_FOCUS_OVERALL = "overall";
-// Bump this when bootstrap payload usage changes so deployed clients do not
+// Bump this when appShell payload usage changes so deployed clients do not
 // hydrate from an incompatible persisted shell.
-const BOOTSTRAP_PERSISTED_CACHE_KEY = "monies-map-bootstrap-cache-v2";
+const APPSHELL_PERSISTED_CACHE_KEY = "monies-map-appShell-cache-v2";
 const MONTH_PICKER_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DEFAULT_MONTH_KEY = getCurrentMonthKey();
 const { categories: categoryService, format: formatService } = moniesClient;
@@ -189,13 +189,13 @@ function getInactivePersonViewLabel(name) {
   return `${firstName.slice(0, 9)}...`;
 }
 
-function readPersistedBootstrap(cacheKey) {
+function readPersistedAppShell(cacheKey) {
   if (typeof window === "undefined") {
     return null;
   }
 
   try {
-    const rawCache = window.localStorage.getItem(BOOTSTRAP_PERSISTED_CACHE_KEY);
+    const rawCache = window.localStorage.getItem(APPSHELL_PERSISTED_CACHE_KEY);
     if (!rawCache) {
       return null;
     }
@@ -211,13 +211,13 @@ function readPersistedBootstrap(cacheKey) {
   }
 }
 
-function writePersistedBootstrap(cacheKey, data) {
+function writePersistedAppShell(cacheKey, data) {
   if (typeof window === "undefined") {
     return;
   }
 
   try {
-    window.localStorage.setItem(BOOTSTRAP_PERSISTED_CACHE_KEY, JSON.stringify({
+    window.localStorage.setItem(APPSHELL_PERSISTED_CACHE_KEY, JSON.stringify({
       cacheKey,
       data,
       storedAt: Date.now()
@@ -225,35 +225,35 @@ function writePersistedBootstrap(cacheKey, data) {
   } catch {}
 }
 
-function clearPersistedBootstrap() {
+function clearPersistedAppShell() {
   if (typeof window === "undefined") {
     return;
   }
 
   try {
-    window.localStorage.removeItem(BOOTSTRAP_PERSISTED_CACHE_KEY);
+    window.localStorage.removeItem(APPSHELL_PERSISTED_CACHE_KEY);
   } catch {}
 }
 
-function canUseBootstrapRouteForTab(tabId, {
-  bootstrapMonth,
-  bootstrapScope,
-  bootstrapSummaryEnd,
-  bootstrapSummaryStart,
+function canUseAppShellRouteForTab(tabId, {
+  appShellMonth,
+  appShellScope,
+  appShellSummaryEnd,
+  appShellSummaryStart,
   selectedMonth,
   selectedScope,
   selectedSummaryEnd,
   selectedSummaryStart
 }) {
   if (tabId === "summary") {
-    const effectiveSummaryStart = selectedSummaryStart ?? bootstrapSummaryStart;
-    const effectiveSummaryEnd = selectedSummaryEnd ?? bootstrapSummaryEnd;
-    return effectiveSummaryStart === bootstrapSummaryStart
-      && effectiveSummaryEnd === bootstrapSummaryEnd;
+    const effectiveSummaryStart = selectedSummaryStart ?? appShellSummaryStart;
+    const effectiveSummaryEnd = selectedSummaryEnd ?? appShellSummaryEnd;
+    return effectiveSummaryStart === appShellSummaryStart
+      && effectiveSummaryEnd === appShellSummaryEnd;
   }
 
   if (tabId === "month") {
-    return selectedMonth === bootstrapMonth && selectedScope === bootstrapScope;
+    return selectedMonth === appShellMonth && selectedScope === appShellScope;
   }
 
   return false;
@@ -261,9 +261,9 @@ function canUseBootstrapRouteForTab(tabId, {
 
 export function App() {
   const queryClient = useQueryClient();
-  const [bootstrap, setBootstrap] = useState(null);
-  const [bootstrapError, setBootstrapError] = useState("");
-  const [bootstrapLoadCount, setBootstrapLoadCount] = useState(0);
+  const [appShell, setAppShell] = useState(null);
+  const [appShellError, setAppShellError] = useState("");
+  const [appShellLoadCount, setAppShellLoadCount] = useState(0);
   const [loadingStatus, setLoadingStatus] = useState(() => createLoadingStatus());
   const [loadingElapsedSeconds, setLoadingElapsedSeconds] = useState(0);
   const [mobileContextOpen, setMobileContextOpen] = useState(false);
@@ -283,7 +283,7 @@ export function App() {
   const syncChannelRef = useRef(null);
   const queryEpochRef = useRef(0);
   const routePagePrefetchTimerRef = useRef(null);
-  const appEnvironment = bootstrap?.appEnvironment ?? getClientAppEnvironment();
+  const appEnvironment = appShell?.appEnvironment ?? getClientAppEnvironment();
   const explicitViewId = searchParams.get("view");
   const selectedViewId = explicitViewId ?? "household";
   const selectedTabId = getSelectedTabId(location.pathname);
@@ -291,7 +291,7 @@ export function App() {
   const selectedScope = searchParams.get("scope") ?? "direct_plus_shared";
   const selectedSummaryStart = searchParams.get("summary_start") ?? undefined;
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
-  const isBootstrapLoading = bootstrapLoadCount > 0;
+  const isAppShellLoading = appShellLoadCount > 0;
   const [routePageData, setRoutePageData] = useState(null);
   const [entriesExternalRefreshToken, setEntriesExternalRefreshToken] = useState(0);
   const [loginRegistrationDraft, setLoginRegistrationDraft] = useState(null);
@@ -300,11 +300,10 @@ export function App() {
   const [loginIdentityError, setLoginIdentityError] = useState("");
   const [isUnregisteringLogin, setIsUnregisteringLogin] = useState(false);
   const [suppressedLoginRegistrationEmail, setSuppressedLoginRegistrationEmail] = useState("");
-  const bootstrapShellView = bootstrap?.views[0] ?? null;
-  const bootstrapMonth = bootstrapShellView?.monthPage?.month ?? selectedMonth;
-  const bootstrapSummaryStart = bootstrapShellView?.summaryPage?.rangeStartMonth ?? selectedSummaryStart;
-  const bootstrapSummaryEnd = bootstrapShellView?.summaryPage?.rangeEndMonth ?? selectedSummaryEnd;
-  const bootstrapScope = bootstrapShellView?.monthPage?.selectedScope ?? selectedScope;
+  const appShellMonth = selectedMonth;
+  const appShellSummaryStart = selectedSummaryStart;
+  const appShellSummaryEnd = selectedSummaryEnd;
+  const appShellScope = selectedScope;
 
   useEffect(() => installMobileFocusVisibility(), []);
 
@@ -312,35 +311,9 @@ export function App() {
     document.title = getDocumentTitle(appEnvironment);
   }, [appEnvironment]);
 
-  const canUseBootstrapRoutePage = useMemo(() => {
-    if (!bootstrapShellView) {
-      return false;
-    }
-
-    return canUseBootstrapRouteForTab(selectedTabId, {
-      bootstrapMonth,
-      bootstrapScope,
-      bootstrapSummaryEnd,
-      bootstrapSummaryStart,
-      selectedMonth,
-      selectedScope,
-      selectedSummaryEnd,
-      selectedSummaryStart
-    });
-  }, [
-    bootstrapMonth,
-    bootstrapScope,
-    bootstrapShellView,
-    bootstrapSummaryEnd,
-    bootstrapSummaryStart,
-    selectedMonth,
-    selectedScope,
-    selectedSummaryEnd,
-    selectedSummaryStart,
-    selectedTabId
-  ]);
-  const bootstrapParams = useMemo(
-    () => buildBootstrapParams({
+  const canUseAppShellRoutePage = false;
+  const appShellParams = useMemo(
+    () => buildAppShellParams({
       month: selectedMonth,
       scope: selectedScope,
       summaryStart: selectedSummaryStart,
@@ -348,9 +321,9 @@ export function App() {
     }),
     [selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart]
   );
-  const bootstrapCacheKey = bootstrapParams.toString();
+  const appShellCacheKey = appShellParams.toString();
   const routePageRequest = useMemo(
-    () => canUseBootstrapRoutePage ? null : buildRoutePageRequest({
+    () => canUseAppShellRoutePage ? null : buildRoutePageRequest({
       tabId: selectedTabId,
       viewId: selectedViewId,
       month: selectedMonth,
@@ -358,7 +331,7 @@ export function App() {
       summaryStart: selectedSummaryStart,
       summaryEnd: selectedSummaryEnd
     }),
-    [canUseBootstrapRoutePage, selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart, selectedTabId, selectedViewId]
+    [canUseAppShellRoutePage, selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart, selectedTabId, selectedViewId]
   );
 
   const updateLoadingStatus = useCallback((patch) => {
@@ -392,9 +365,9 @@ export function App() {
     updateLoadingStatus({ issue: `${source}: ${summary}` });
   }, [updateLoadingStatus]);
 
-  const beginBootstrapLoad = useCallback(() => {
+  const beginAppShellLoad = useCallback(() => {
     let didFinish = false;
-    setBootstrapLoadCount((count) => count + 1);
+    setAppShellLoadCount((count) => count + 1);
 
     return () => {
       if (didFinish) {
@@ -402,12 +375,12 @@ export function App() {
       }
 
       didFinish = true;
-      setBootstrapLoadCount((count) => Math.max(0, count - 1));
+      setAppShellLoadCount((count) => Math.max(0, count - 1));
     };
   }, []);
 
   useEffect(() => {
-    if (!isBootstrapLoading) {
+    if (!isAppShellLoading) {
       setLoadingElapsedSeconds(0);
       return undefined;
     }
@@ -418,7 +391,7 @@ export function App() {
     }, LOADING_STATUS_POLL_MS);
 
     return () => window.clearInterval(timer);
-  }, [isBootstrapLoading, loadingStatus.startedAt]);
+  }, [isAppShellLoading, loadingStatus.startedAt]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -468,11 +441,11 @@ export function App() {
     queryEpochRef.current += 1;
   }, []);
 
-  const clearBootstrapCache = useCallback(() => {
+  const clearAppShellCache = useCallback(() => {
     bumpQueryEpoch();
-    queryClient.cancelQueries({ queryKey: ["bootstrap"] });
-    queryClient.removeQueries({ queryKey: ["bootstrap"] });
-    clearPersistedBootstrap();
+    queryClient.cancelQueries({ queryKey: queryKeys.appShell() });
+    queryClient.removeQueries({ queryKey: queryKeys.appShell() });
+    clearPersistedAppShell();
   }, [bumpQueryEpoch, queryClient]);
 
   const clearRoutePageCache = useCallback(() => {
@@ -527,12 +500,12 @@ export function App() {
     return data;
   }, [queryClient]);
 
-  const fetchBootstrapData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
+  const fetchAppShellData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
     const cacheKey = params.toString();
-    const queryKey = queryKeys.bootstrap(params);
+    const queryKey = queryKeys.appShell(params);
     const queryState = queryClient.getQueryState(queryKey);
     if (signal?.aborted) {
-      throw new DOMException("Bootstrap request aborted.", "AbortError");
+      throw new DOMException("App shell request aborted.", "AbortError");
     }
 
     if (!bypassCache && queryClient.getQueryData(queryKey)) {
@@ -559,7 +532,7 @@ export function App() {
     });
 
     const fetcher = async () => {
-      const response = await fetch(`/api/bootstrap?${cacheKey}`, { cache: "no-store" });
+      const response = await fetch(`/api/app-shell?${cacheKey}`, { cache: "no-store" });
         updateLoadingStatus({
           label: "Reading dashboard response",
           detail: "Parsing dashboard...",
@@ -573,15 +546,15 @@ export function App() {
             data = JSON.parse(responseText);
           } catch {
             if (!response.ok) {
-              throw new Error(buildBootstrapErrorMessage(response.status, responseText));
+              throw new Error(buildAppShellErrorMessage(response.status, responseText));
             }
 
-            throw new Error("Bootstrap returned invalid JSON.");
+            throw new Error("App shell returned invalid JSON.");
           }
         }
 
         if (!response.ok) {
-          throw new Error(buildBootstrapErrorMessage(response.status, data?.message ?? responseText));
+          throw new Error(buildAppShellErrorMessage(response.status, data?.message ?? responseText));
         }
 
         updateLoadingStatus({
@@ -589,7 +562,7 @@ export function App() {
           detail: "Building dashboard...",
           percent: 72
         });
-        writePersistedBootstrap(cacheKey, data);
+        writePersistedAppShell(cacheKey, data);
         return data;
       };
 
@@ -606,7 +579,7 @@ export function App() {
         });
 
     if (signal?.aborted) {
-      throw new DOMException("Bootstrap request aborted.", "AbortError");
+      throw new DOMException("App shell request aborted.", "AbortError");
     }
     updateLoadingStatus({
       label: "Dashboard shell ready",
@@ -643,7 +616,7 @@ export function App() {
         data = JSON.parse(responseText);
       } catch {
         if (!response.ok) {
-          throw new Error(buildBootstrapErrorMessage(response.status, responseText));
+          throw new Error(buildAppShellErrorMessage(response.status, responseText));
         }
 
         throw new Error("Entries shell returned invalid JSON.");
@@ -651,7 +624,7 @@ export function App() {
     }
 
     if (!response.ok) {
-      throw new Error(buildBootstrapErrorMessage(response.status, data?.message ?? responseText));
+      throw new Error(buildAppShellErrorMessage(response.status, data?.message ?? responseText));
     }
 
     if (signal?.aborted) {
@@ -661,52 +634,52 @@ export function App() {
     return data;
   }, [updateLoadingStatus]);
 
-  const loadBootstrap = useCallback(async (signal, { bypassCache = false } = {}) => {
-    const data = await fetchBootstrapData(bootstrapParams, { bypassCache, signal });
+  const loadAppShell = useCallback(async (signal, { bypassCache = false } = {}) => {
+    const data = await fetchAppShellData(appShellParams, { bypassCache, signal });
 
-    setBootstrapError("");
-    setBootstrap(data);
+    setAppShellError("");
+    setAppShell(data);
     return data;
-  }, [bootstrapParams, fetchBootstrapData]);
+  }, [appShellParams, fetchAppShellData]);
 
-  const handleBootstrapFailure = useCallback((error) => {
-    setBootstrap(null);
-    setBootstrapError(describeBootstrapError(error));
+  const handleAppShellFailure = useCallback((error) => {
+    setAppShell(null);
+    setAppShellError(describeAppShellError(error));
     reportLoadingIssue("Load failed", error);
     updateLoadingStatus({
       label: "Dashboard load failed",
-      detail: "Bootstrap request did not complete",
+      detail: "App shell request did not complete",
       percent: 100
     });
   }, [reportLoadingIssue, updateLoadingStatus]);
 
-  const refreshBootstrap = useCallback(async ({ broadcast = false } = {}) => {
-    clearBootstrapCache();
+  const refreshAppShell = useCallback(async ({ broadcast = false } = {}) => {
+    clearAppShellCache();
     clearRoutePageCache();
     setRoutePageData(null);
-    const finishBootstrapLoad = beginBootstrapLoad();
+    const finishAppShellLoad = beginAppShellLoad();
 
     try {
-      const data = await loadBootstrap(undefined, { bypassCache: true });
+      const data = await loadAppShell(undefined, { bypassCache: true });
 
       if (!broadcast) {
         return data;
       }
 
-      broadcastBootstrapRefresh(syncChannelRef);
+      broadcastAppShellRefresh(syncChannelRef);
       return data;
     } finally {
-      finishBootstrapLoad();
+      finishAppShellLoad();
     }
-  }, [beginBootstrapLoad, clearBootstrapCache, clearRoutePageCache, loadBootstrap]);
+  }, [beginAppShellLoad, clearAppShellCache, clearRoutePageCache, loadAppShell]);
 
-  const refreshBootstrapInBackground = useCallback(async () => {
-    clearBootstrapCache();
-    const data = await fetchBootstrapData(bootstrapParams, { bypassCache: true });
-    setBootstrapError("");
-    setBootstrap(data);
+  const refreshAppShellInBackground = useCallback(async () => {
+    clearAppShellCache();
+    const data = await fetchAppShellData(appShellParams, { bypassCache: true });
+    setAppShellError("");
+    setAppShell(data);
     return data;
-  }, [bootstrapParams, clearBootstrapCache, fetchBootstrapData]);
+  }, [appShellParams, clearAppShellCache, fetchAppShellData]);
 
   const fetchRoutePageData = useCallback(async (request, { bypassCache = false, signal } = {}) => {
     if (!request) {
@@ -758,7 +731,7 @@ export function App() {
             data = JSON.parse(responseText);
           } catch {
             if (!response.ok) {
-              throw new Error(buildBootstrapErrorMessage(response.status, responseText));
+              throw new Error(buildAppShellErrorMessage(response.status, responseText));
             }
 
             throw new Error("Page request returned invalid JSON.");
@@ -766,7 +739,7 @@ export function App() {
         }
 
         if (!response.ok) {
-          throw new Error(buildBootstrapErrorMessage(response.status, data?.message ?? responseText));
+          throw new Error(buildAppShellErrorMessage(response.status, data?.message ?? responseText));
         }
 
         return data;
@@ -797,26 +770,26 @@ export function App() {
 
   const refreshRoutePage = useCallback(async ({ broadcast = false, refreshShell = false } = {}) => {
     clearRoutePageCache();
-    clearBootstrapCache();
+    clearAppShellCache();
     clearEntriesPageCache();
 
     if (!routePageRequest) {
-      return refreshBootstrap({ broadcast });
+      return refreshAppShell({ broadcast });
     }
 
     if (refreshShell) {
-      await refreshBootstrap({ broadcast });
+      await refreshAppShell({ broadcast });
     }
 
-    const finishBootstrapLoad = beginBootstrapLoad();
+    const finishAppShellLoad = beginAppShellLoad();
     try {
       const data = await fetchRoutePageData(routePageRequest, { bypassCache: true });
       setRoutePageData(data);
       return data;
     } finally {
-      finishBootstrapLoad();
+      finishAppShellLoad();
     }
-  }, [beginBootstrapLoad, clearBootstrapCache, clearEntriesPageCache, clearRoutePageCache, fetchRoutePageData, refreshBootstrap, routePageRequest]);
+  }, [beginAppShellLoad, clearAppShellCache, clearEntriesPageCache, clearRoutePageCache, fetchRoutePageData, refreshAppShell, routePageRequest]);
 
   const refreshCurrentMonthPage = useCallback(async () => {
     const request = buildRoutePageRequest({
@@ -831,11 +804,11 @@ export function App() {
 
     const [data] = await Promise.all([
       fetchRoutePageData(request, { bypassCache: true }),
-      refreshBootstrapInBackground().catch(() => null)
+      refreshAppShellInBackground().catch(() => null)
     ]);
     setRoutePageData(data);
     return data;
-  }, [fetchRoutePageData, refreshBootstrapInBackground, selectedMonth, selectedScope, selectedViewId]);
+  }, [fetchRoutePageData, refreshAppShellInBackground, selectedMonth, selectedScope, selectedViewId]);
 
   const refreshCurrentImportsPage = useCallback(async ({ broadcast = false, refreshShell = false } = {}) => {
     const request = buildRoutePageRequest({
@@ -850,17 +823,17 @@ export function App() {
 
     const tasks = [fetchRoutePageData(request, { bypassCache: true })];
     if (refreshShell) {
-      tasks.push(refreshBootstrapInBackground().catch(() => null));
+      tasks.push(refreshAppShellInBackground().catch(() => null));
     }
     const [data] = await Promise.all(tasks);
     setRoutePageData(data);
 
     if (broadcast) {
-      broadcastBootstrapRefresh(syncChannelRef);
+      broadcastAppShellRefresh(syncChannelRef);
     }
 
     return data;
-  }, [fetchRoutePageData, refreshBootstrapInBackground, selectedMonth, selectedScope, selectedViewId]);
+  }, [fetchRoutePageData, refreshAppShellInBackground, selectedMonth, selectedScope, selectedViewId]);
 
   const clearRoutePageCacheByPredicate = useCallback((predicate) => {
     queryClient.cancelQueries({ predicate });
@@ -913,10 +886,10 @@ export function App() {
     }
 
     if (refreshShell || invalidateEntries || invalidateMonth || invalidateSummary) {
-      clearBootstrapCache();
+      clearAppShellCache();
     }
   }, [
-    clearBootstrapCache,
+    clearAppShellCache,
     clearEntriesPageCacheByPredicate,
     clearRoutePageCacheByPredicate
   ]);
@@ -981,14 +954,14 @@ export function App() {
 
     const tasks = [fetchRoutePageData(request, { bypassCache: true })];
     if (refreshShell || invalidateEntries || invalidateMonth || invalidateSummary) {
-      tasks.push(refreshBootstrapInBackground().catch(() => null));
+      tasks.push(refreshAppShellInBackground().catch(() => null));
     }
     const [data] = await Promise.all(tasks);
     setRoutePageData(data);
 
     if (broadcast) {
       if (refreshShell && !invalidateEntries && !invalidateMonth && !invalidateSummary) {
-        broadcastBootstrapRefresh(syncChannelRef);
+        broadcastAppShellRefresh(syncChannelRef);
       } else {
         publishAppSyncEvent(syncChannelRef, buildSplitMutationSyncEvent({
           month: selectedMonth,
@@ -1004,7 +977,7 @@ export function App() {
   }, [
     clearSplitMutationCaches,
     fetchRoutePageData,
-    refreshBootstrapInBackground,
+    refreshAppShellInBackground,
     selectedMonth,
     selectedScope,
     selectedViewId
@@ -1033,8 +1006,8 @@ export function App() {
     if (selectedTabId === "splits" && selectedMonth === month) {
       tasks.push(refreshActiveRoutePageInBackground(routePageRequest).catch(() => null));
     } else if (selectedTabId === "month" && invalidateMonth && selectedMonth === month) {
-      if (canUseBootstrapRoutePage) {
-        tasks.push(refreshBootstrapInBackground().catch(() => null));
+      if (canUseAppShellRoutePage) {
+        tasks.push(refreshAppShellInBackground().catch(() => null));
       } else {
         tasks.push(refreshActiveRoutePageInBackground(routePageRequest).catch(() => null));
       }
@@ -1043,12 +1016,12 @@ export function App() {
       && invalidateSummary
       && isMonthWithinRange(
         month,
-        selectedSummaryStart ?? bootstrapSummaryStart,
-        selectedSummaryEnd ?? bootstrapSummaryEnd
+        selectedSummaryStart ?? appShellSummaryStart,
+        selectedSummaryEnd ?? appShellSummaryEnd
       )
     ) {
-      if (canUseBootstrapRoutePage) {
-        tasks.push(refreshBootstrapInBackground().catch(() => null));
+      if (canUseAppShellRoutePage) {
+        tasks.push(refreshAppShellInBackground().catch(() => null));
       } else {
         tasks.push(refreshActiveRoutePageInBackground(routePageRequest).catch(() => null));
       }
@@ -1056,12 +1029,12 @@ export function App() {
 
     await Promise.all(tasks);
   }, [
-    bootstrapSummaryEnd,
-    bootstrapSummaryStart,
-    canUseBootstrapRoutePage,
+    appShellSummaryEnd,
+    appShellSummaryStart,
+    canUseAppShellRoutePage,
     clearSplitMutationCaches,
     refreshActiveRoutePageInBackground,
-    refreshBootstrapInBackground,
+    refreshAppShellInBackground,
     routePageRequest,
     selectedMonth,
     selectedSummaryEnd,
@@ -1069,9 +1042,9 @@ export function App() {
     selectedTabId
   ]);
 
-  const syncBootstrapAfterMutation = useCallback(async () => {
-    await refreshBootstrapInBackground();
-  }, [refreshBootstrapInBackground]);
+  const syncAppShellAfterMutation = useCallback(async () => {
+    await refreshAppShellInBackground();
+  }, [refreshAppShellInBackground]);
 
   const prefetchRoutePage = useCallback(async (request) => {
     if (!request) {
@@ -1108,11 +1081,11 @@ export function App() {
       detail: "Checking cache...",
       percent: 10
     });
-    const bootstrapQueryKey = queryKeys.bootstrap(bootstrapParams);
-    if (!queryClient.getQueryData(bootstrapQueryKey)) {
-      const persistedBootstrap = readPersistedBootstrap(bootstrapCacheKey);
-      if (persistedBootstrap) {
-        queryClient.setQueryData(bootstrapQueryKey, persistedBootstrap);
+    const appShellQueryKey = queryKeys.appShell(appShellParams);
+    if (!queryClient.getQueryData(appShellQueryKey)) {
+      const persistedAppShell = readPersistedAppShell(appShellCacheKey);
+      if (persistedAppShell) {
+        queryClient.setQueryData(appShellQueryKey, persistedAppShell);
         updateLoadingStatus({
           label: "Using cached dashboard",
           detail: "Cached shell...",
@@ -1121,9 +1094,9 @@ export function App() {
       }
     }
 
-    const hasCachedBootstrap = Boolean(queryClient.getQueryData(bootstrapQueryKey));
-    const shouldUseEntriesShell = !hasCachedBootstrap && selectedTabId === "entries";
-    const finishBootstrapLoad = hasCachedBootstrap ? null : beginBootstrapLoad();
+    const hasCachedAppShell = Boolean(queryClient.getQueryData(appShellQueryKey));
+    const shouldUseEntriesShell = !hasCachedAppShell && selectedTabId === "entries";
+    const finishAppShellLoad = hasCachedAppShell ? null : beginAppShellLoad();
 
     void (async () => {
       try {
@@ -1132,34 +1105,34 @@ export function App() {
             signal: controller.signal
           });
           if (!controller.signal.aborted) {
-            setBootstrapError("");
-            setBootstrap(shellData);
+            setAppShellError("");
+            setAppShell(shellData);
           }
 
-          const fullData = await fetchBootstrapData(bootstrapParams, {
+          const fullData = await fetchAppShellData(appShellParams, {
             bypassCache: true,
             signal: controller.signal
           });
           if (!controller.signal.aborted) {
-            setBootstrapError("");
-            setBootstrap(fullData);
+            setAppShellError("");
+            setAppShell(fullData);
           }
           return;
         }
 
-        await loadBootstrap(controller.signal);
-        if (!hasCachedBootstrap || controller.signal.aborted) {
+        await loadAppShell(controller.signal);
+        if (!hasCachedAppShell || controller.signal.aborted) {
           return;
         }
 
         try {
-          const data = await fetchBootstrapData(bootstrapParams, {
+          const data = await fetchAppShellData(appShellParams, {
             bypassCache: true,
             signal: controller.signal
           });
           if (!controller.signal.aborted) {
-            setBootstrapError("");
-            setBootstrap(data);
+            setAppShellError("");
+            setAppShell(data);
           }
         } catch (error) {
           if (error instanceof DOMException && error.name === "AbortError") {
@@ -1173,44 +1146,44 @@ export function App() {
 
         if (shouldUseEntriesShell) {
           try {
-            const fallbackData = await fetchBootstrapData(bootstrapParams, {
+            const fallbackData = await fetchAppShellData(appShellParams, {
               bypassCache: true,
               signal: controller.signal
             });
             if (!controller.signal.aborted) {
-              setBootstrapError("");
-              setBootstrap(fallbackData);
+              setAppShellError("");
+              setAppShell(fallbackData);
             }
             return;
           } catch (fallbackError) {
             if (fallbackError instanceof DOMException && fallbackError.name === "AbortError") {
               return;
             }
-            handleBootstrapFailure(fallbackError);
+            handleAppShellFailure(fallbackError);
             return;
           }
         }
 
-        if (!hasCachedBootstrap) {
-          handleBootstrapFailure(error);
+        if (!hasCachedAppShell) {
+          handleAppShellFailure(error);
         }
       } finally {
-        finishBootstrapLoad?.();
+        finishAppShellLoad?.();
       }
     })();
 
     return () => {
       controller.abort();
-      finishBootstrapLoad?.();
+      finishAppShellLoad?.();
     };
   }, [
-    beginBootstrapLoad,
-    bootstrapCacheKey,
-    bootstrapParams,
-    fetchBootstrapData,
+    beginAppShellLoad,
+    appShellCacheKey,
+    appShellParams,
+    fetchAppShellData,
     fetchEntriesShellData,
-    handleBootstrapFailure,
-    loadBootstrap,
+    handleAppShellFailure,
+    loadAppShell,
     queryClient,
     selectedMonth,
     selectedTabId,
@@ -1228,13 +1201,13 @@ export function App() {
       channel = new window.BroadcastChannel(APP_SYNC_CHANNEL);
       syncChannelRef.current = channel;
       channel.onmessage = (event) => {
-        if (event.data?.type === APP_SYNC_EVENT_TYPES.bootstrapRefresh) {
-          clearBootstrapCache();
+        if (event.data?.type === APP_SYNC_EVENT_TYPES.appShellRefresh) {
+          clearAppShellCache();
           clearRoutePageCache();
-          const finishBootstrapLoad = beginBootstrapLoad();
-          void loadBootstrap()
-            .catch(handleBootstrapFailure)
-            .finally(finishBootstrapLoad);
+          const finishAppShellLoad = beginAppShellLoad();
+          void loadAppShell()
+            .catch(handleAppShellFailure)
+            .finally(finishAppShellLoad);
           return;
         }
 
@@ -1256,13 +1229,13 @@ export function App() {
         return;
       }
 
-      if (payload?.type === APP_SYNC_EVENT_TYPES.bootstrapRefresh) {
-        clearBootstrapCache();
+      if (payload?.type === APP_SYNC_EVENT_TYPES.appShellRefresh) {
+        clearAppShellCache();
         clearRoutePageCache();
-        const finishBootstrapLoad = beginBootstrapLoad();
-        void loadBootstrap()
-          .catch(handleBootstrapFailure)
-          .finally(finishBootstrapLoad);
+          const finishAppShellLoad = beginAppShellLoad();
+          void loadAppShell()
+            .catch(handleAppShellFailure)
+            .finally(finishAppShellLoad);
         return;
       }
 
@@ -1281,18 +1254,18 @@ export function App() {
       }
     };
   }, [
-    beginBootstrapLoad,
-    clearBootstrapCache,
+    beginAppShellLoad,
+    clearAppShellCache,
     clearRoutePageCache,
-    handleBootstrapFailure,
+    handleAppShellFailure,
     handleRemoteSplitMutation,
-    loadBootstrap
+    loadAppShell
   ]);
 
-  const hasBootstrap = Boolean(bootstrap);
+  const hasAppShell = Boolean(appShell);
 
   useEffect(() => {
-    if (!hasBootstrap || !routePageRequest) {
+    if (!hasAppShell || !routePageRequest) {
       setRoutePageData(null);
       return undefined;
     }
@@ -1306,7 +1279,7 @@ export function App() {
         percent: 84
       });
     }
-    const finishBootstrapLoad = hasCachedPage ? null : beginBootstrapLoad();
+    const finishAppShellLoad = hasCachedPage ? null : beginAppShellLoad();
 
     void fetchRoutePageData(routePageRequest, { signal: controller.signal })
       .then(async (data) => {
@@ -1324,42 +1297,36 @@ export function App() {
         setRoutePageData(null);
         reportLoadingIssue("Page load failed", error);
       })
-      .finally(() => finishBootstrapLoad?.());
+      .finally(() => finishAppShellLoad?.());
 
     return () => {
       controller.abort();
-      finishBootstrapLoad?.();
+      finishAppShellLoad?.();
     };
-  }, [beginBootstrapLoad, fetchRoutePageData, hasBootstrap, queryClient, reportLoadingIssue, routePageRequest, updateLoadingStatus]);
+  }, [beginAppShellLoad, fetchRoutePageData, hasAppShell, queryClient, reportLoadingIssue, routePageRequest, updateLoadingStatus]);
 
-  const view = useMemo(
-    () => bootstrap?.views.find((item) => item.id === selectedViewId) ?? null,
-    [bootstrap, selectedViewId]
+  const pageView = useMemo(
+    () => buildPageViewFromRouteData(selectedTabId, routePageData, selectedViewId, appShell),
+    [appShell, routePageData, selectedTabId, selectedViewId]
   );
-  const activeView = useMemo(
-    () => mergeRoutePageIntoView(view, routePageData, selectedTabId),
-    [routePageData, selectedTabId, view]
-  );
-  const pageView = activeView ?? view;
-  const householdView = bootstrap?.views.find((item) => item.id === "household") ?? pageView;
-  const defaultSplitsViewId = bootstrap?.viewerPersonId
-    ?? bootstrap?.household?.people?.[0]?.id
-    ?? bootstrap?.selectedViewId
+  const defaultSplitsViewId = appShell?.viewerPersonId
+    ?? appShell?.household?.people?.[0]?.id
+    ?? appShell?.selectedViewId
     ?? "household";
-  const selectedEntriesScope = searchParams.get("entries_scope") ?? pageView?.monthPage.selectedScope ?? "direct_plus_shared";
+  const selectedEntriesScope = searchParams.get("entries_scope") ?? pageView?.monthPage?.selectedScope ?? "direct_plus_shared";
   const householdMonthEntries = useMemo(
     () => selectedTabId === "month" && Array.isArray(routePageData?.householdMonthEntries)
       ? routePageData.householdMonthEntries
-      : bootstrap?.views.find((item) => item.id === "household")?.monthPage.entries ?? [],
-    [bootstrap, routePageData, selectedTabId]
+      : [],
+    [routePageData, selectedTabId]
   );
   const categories = useMemo(
-    () => bootstrap?.categories.map((category) => ({ ...category, ...(categoryOverrides[category.id] ?? {}) })) ?? [],
-    [bootstrap, categoryOverrides]
+    () => appShell?.categories.map((category) => ({ ...category, ...(categoryOverrides[category.id] ?? {}) })) ?? [],
+    [appShell, categoryOverrides]
   );
   const availableMonths = useMemo(
-    () => bootstrap?.views[0]?.summaryPage.availableMonths.slice().sort() ?? [],
-    [bootstrap]
+    () => pageView?.summaryPage?.availableMonths?.slice().sort() ?? appShell?.trackedMonths ?? [],
+    [appShell, pageView]
   );
   const isDetailMonthTab = selectedTabId === "month" || selectedTabId === "entries" || selectedTabId === "splits";
   const isSplitsTab = selectedTabId === "splits";
@@ -1382,19 +1349,19 @@ export function App() {
     [availableMonths, isDetailMonthTab, monthPickerYear]
   );
   const summaryAvailableYears = useMemo(
-    () => !isDetailMonthTab && pageView
+    () => !isDetailMonthTab && pageView?.summaryPage?.availableMonths
       ? [...new Set(pageView.summaryPage.availableMonths.map((month) => Number(month.slice(0, 4))))].sort((left, right) => left - right)
       : [],
     [isDetailMonthTab, pageView]
   );
   const summaryAvailableMonthsForPickerYear = useMemo(
-    () => !isDetailMonthTab && pageView && rangePickerStartYear != null
+    () => !isDetailMonthTab && pageView?.summaryPage?.availableMonths && rangePickerStartYear != null
       ? pageView.summaryPage.availableMonths.filter((month) => Number(month.slice(0, 4)) === rangePickerStartYear)
       : [],
     [isDetailMonthTab, rangePickerStartYear, pageView]
   );
   const summaryAvailableMonthsForEndPickerYear = useMemo(
-    () => !isDetailMonthTab && pageView && rangePickerEndYear != null
+    () => !isDetailMonthTab && pageView?.summaryPage?.availableMonths && rangePickerEndYear != null
       ? pageView.summaryPage.availableMonths.filter((month) => Number(month.slice(0, 4)) === rangePickerEndYear)
       : [],
     [isDetailMonthTab, rangePickerEndYear, pageView]
@@ -1402,9 +1369,9 @@ export function App() {
 
   useEffect(() => {
     if (
-      !bootstrap
-      || bootstrapError
-      || isBootstrapLoading
+      !appShell
+      || appShellError
+      || isAppShellLoading
       || typeof window === "undefined"
       || window.navigator?.connection?.saveData
       || window.matchMedia?.("(pointer: coarse)")?.matches
@@ -1459,7 +1426,7 @@ export function App() {
             }
           }
         }
-      } else if (selectedTabId === "summary" && pageView?.summaryPage.availableMonths.length) {
+      } else if (selectedTabId === "summary" && pageView?.summaryPage?.availableMonths?.length) {
         const summaryMonths = pageView.summaryPage.availableMonths;
         const startIndex = summaryMonths.indexOf(pageView.summaryPage.rangeStartMonth);
         const endIndex = summaryMonths.indexOf(pageView.summaryPage.rangeEndMonth);
@@ -1530,9 +1497,9 @@ export function App() {
     };
   }, [
     availableMonths,
-    bootstrap,
-    bootstrapError,
-    isBootstrapLoading,
+    appShell,
+    appShellError,
+    isAppShellLoading,
     pageView,
     prefetchEntriesPage,
     prefetchRoutePage,
@@ -1543,7 +1510,7 @@ export function App() {
   ]);
 
   useEffect(() => {
-    if (!bootstrap || bootstrapError || typeof window === "undefined" || window.navigator?.connection?.saveData) {
+    if (!appShell || appShellError || typeof window === "undefined" || window.navigator?.connection?.saveData) {
       return undefined;
     }
 
@@ -1558,13 +1525,13 @@ export function App() {
 
     return () => cancelIdleTask(idleHandle);
   }, [
-    bootstrap,
-    bootstrapError,
+    appShell,
+    appShellError,
     selectedTabId
   ]);
 
   useEffect(() => {
-    if (!bootstrap) {
+    if (!appShell) {
       return;
     }
 
@@ -1583,47 +1550,47 @@ export function App() {
       }
     }
 
-    const matchesKnownView = bootstrap.views.some((item) => item.id === selectedViewId);
+    const matchesKnownView = appShell.availableViewIds.includes(selectedViewId);
     if (matchesKnownView) {
       return;
     }
 
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
-      next.set("view", bootstrap.selectedViewId);
+      next.set("view", appShell.selectedViewId);
       return next;
     }, { replace: true });
-  }, [bootstrap, defaultSplitsViewId, explicitViewId, selectedTabId, selectedViewId, setSearchParams]);
+  }, [appShell, defaultSplitsViewId, explicitViewId, selectedTabId, selectedViewId, setSearchParams]);
 
   useEffect(() => {
-    if (!bootstrap?.viewerRegistration) {
+    if (!appShell?.viewerRegistration) {
       setLoginRegistrationDraft(null);
       setLoginRegistrationError("");
       return;
     }
 
-    if (bootstrap.viewerRegistration.email === suppressedLoginRegistrationEmail) {
+    if (appShell.viewerRegistration.email === suppressedLoginRegistrationEmail) {
       setLoginRegistrationDraft(null);
       setLoginRegistrationError("");
       return;
     }
 
     setLoginRegistrationDraft((current) => {
-      if (current?.email === bootstrap.viewerRegistration.email) {
+      if (current?.email === appShell.viewerRegistration.email) {
         return current;
       }
-      const suggestedPerson = bootstrap.household.people.find((person) => person.id === bootstrap.viewerRegistration.suggestedPersonId)
-        ?? bootstrap.household.people[0];
+      const suggestedPerson = appShell.household.people.find((person) => person.id === appShell.viewerRegistration.suggestedPersonId)
+        ?? appShell.household.people[0];
       return {
-        email: bootstrap.viewerRegistration.email,
+        email: appShell.viewerRegistration.email,
         personId: suggestedPerson?.id ?? "",
         name: isPlaceholderPersonName(suggestedPerson?.name) ? "" : suggestedPerson?.name ?? ""
       };
     });
-  }, [bootstrap, suppressedLoginRegistrationEmail]);
+  }, [appShell, suppressedLoginRegistrationEmail]);
 
   useEffect(() => {
-    if (!bootstrap || !availableMonths.length) {
+    if (!appShell || !availableMonths.length) {
       return;
     }
 
@@ -1636,10 +1603,10 @@ export function App() {
       next.set("month", availableMonths[availableMonths.length - 1]);
       return next;
     }, { replace: true });
-  }, [availableMonths, bootstrap, selectedMonth, setSearchParams]);
+  }, [availableMonths, appShell, selectedMonth, setSearchParams]);
 
   useEffect(() => {
-    if (isDetailMonthTab || !pageView?.summaryPage.availableMonths.length) {
+    if (isDetailMonthTab || !pageView?.summaryPage?.availableMonths?.length) {
       return;
     }
 
@@ -1728,7 +1695,7 @@ export function App() {
     direct_plus_shared: "Direct+Shared"
   };
   const selectedViewSupportsScope = selectedViewId !== "household";
-  const mobileContextScopes = stickyScopeConfig ? pageView?.monthPage.scopes ?? [] : [];
+  const mobileContextScopes = stickyScopeConfig ? pageView?.monthPage?.scopes ?? [] : [];
   const selectedMobileScope = stickyScopeConfig
     ? mobileContextScopes.find((scope) => scope.key === stickyScopeConfig.selectedKey) ?? null
     : null;
@@ -1744,20 +1711,20 @@ export function App() {
     }
   }, [mobileContextOpen, showMobileContextSticky]);
 
-  if (bootstrapError) {
+  if (appShellError) {
     return (
       <main className="shell">
         <EnvironmentBanner environment={appEnvironment} />
         <section className="panel">
-          <p>{messages.common.bootstrapErrorTitle}</p>
-          <p>{bootstrapError}</p>
+          <p>{messages.common.appShellErrorTitle}</p>
+          <p>{appShellError}</p>
           {loadingStatus.issue ? <p className="app-loading-issue-inline">{loadingStatus.issue}</p> : null}
         </section>
       </main>
     );
   }
 
-  if (!bootstrap || !view) {
+  if (!appShell || !pageView) {
     return (
       <main className="shell">
         <EnvironmentBanner environment={appEnvironment} />
@@ -1770,7 +1737,7 @@ export function App() {
   const periodLabel = isDetailMonthTab
     ? formatService.formatMonthLabel(selectedMonth)
     : `${formatService.formatMonthLabel(pageView.summaryPage.rangeStartMonth)} - ${formatService.formatMonthLabel(pageView.summaryPage.rangeEndMonth)}`;
-  const pendingCategorySuggestionCount = bootstrap.settingsPage?.categoryMatchRuleSuggestions?.length ?? 0;
+  const pendingCategorySuggestionCount = appShell.settingsPage?.categoryMatchRuleSuggestions?.length ?? 0;
   const buildTabTarget = (tab) => {
     const params = new URLSearchParams(searchParams);
     sanitizeTabParams(params, tab.id);
@@ -1801,7 +1768,7 @@ export function App() {
           next.delete("entry_person");
           next.set("entries_scope", "direct_plus_shared");
         } else {
-          const person = bootstrap.household.people.find((item) => item.id === nextViewId);
+          const person = appShell.household.people.find((item) => item.id === nextViewId);
           if (person) {
             next.set("entry_person", person.name);
           }
@@ -1965,7 +1932,7 @@ export function App() {
     if (!response.ok) {
       throw new Error("Category appearance could not be saved.");
     }
-    clearBootstrapCache();
+    clearAppShellCache();
   }
 
   async function handleRegisterLogin(event) {
@@ -1995,10 +1962,10 @@ export function App() {
       setLoginRegistrationDraft(null);
       setLoginIdentityError("");
       setSuppressedLoginRegistrationEmail("");
-      clearBootstrapCache();
+      clearAppShellCache();
       clearRoutePageCache();
       clearEntriesPageCache();
-      await refreshBootstrap({ broadcast: true });
+      await refreshAppShell({ broadcast: true });
       if (selectedTabId === "splits") {
         setSearchParams((current) => {
           const next = new URLSearchParams(current);
@@ -2014,8 +1981,8 @@ export function App() {
   }
 
   async function handleUnregisterLogin() {
-    const viewerEmail = bootstrap.viewerIdentity?.email;
-    const viewerPersonId = bootstrap.viewerIdentity?.personId;
+    const viewerEmail = appShell.viewerIdentity?.email;
+    const viewerPersonId = appShell.viewerIdentity?.personId;
     setLoginIdentityError("");
     setIsUnregisteringLogin(true);
     try {
@@ -2024,13 +1991,13 @@ export function App() {
       if (!response.ok || data.ok === false) {
         throw new Error(data.error ?? "Login could not be unregistered.");
       }
-      clearBootstrapCache();
+      clearAppShellCache();
       clearRoutePageCache();
       clearEntriesPageCache();
       if (viewerEmail) {
         setSuppressedLoginRegistrationEmail(viewerEmail);
       }
-      await refreshBootstrap({ broadcast: true });
+      await refreshAppShell({ broadcast: true });
       if (selectedTabId === "splits" && viewerPersonId && selectedViewId === viewerPersonId) {
         setSearchParams((current) => {
           const next = new URLSearchParams(current);
@@ -2070,7 +2037,7 @@ export function App() {
                     {messages.views.household}
                   </span>
                 )}
-            {bootstrap.household.people.map((person) => (
+            {appShell.household.people.map((person) => (
               <button
                 key={person.id}
                 className={`pill ${selectedViewId === person.id ? "is-active" : ""}`}
@@ -2349,7 +2316,7 @@ export function App() {
                               {messages.views.household}
                             </span>
                           )}
-                      {bootstrap.household.people.map((person) => (
+                      {appShell.household.people.map((person) => (
                         <button
                           key={person.id}
                           className={`pill ${selectedViewId === person.id ? "is-active" : ""}`}
@@ -2413,7 +2380,7 @@ export function App() {
         </section>
       ) : null}
 
-      <section className="grid app-route-grid" aria-busy={isBootstrapLoading ? "true" : "false"}>
+      <section className="grid app-route-grid" aria-busy={isAppShellLoading ? "true" : "false"}>
         <Suspense fallback={<RouteChunkLoadingFallback status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />}>
           <Routes>
             <Route path="/" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
@@ -2435,8 +2402,8 @@ export function App() {
               element={(
                 <MonthPanel
                   view={pageView}
-                  accounts={bootstrap.accounts}
-                  people={bootstrap.household.people}
+                  accounts={appShell.accounts}
+                  people={appShell.household.people}
                   categories={categories}
                   householdMonthEntries={householdMonthEntries}
                   onCategoryAppearanceChange={handleCategoryAppearanceChange}
@@ -2449,18 +2416,18 @@ export function App() {
               element={(
                 <EntriesPanel
                   view={pageView}
-                  entriesSourceView={householdView}
+                  entriesSourceView={pageView}
                   selectedMonth={selectedMonth}
                   mobileContextOpen={mobileContextOpen}
                   onCloseMobileContext={closeMobileContext}
                   onMobileFilterStateChange={handleEntriesMobileFilterStateChange}
                   externalRefreshToken={entriesExternalRefreshToken}
                   availableMonths={availableMonths}
-                  accounts={bootstrap.accounts}
+                  accounts={appShell.accounts}
                   categories={categories}
-                  people={bootstrap.household.people}
+                  people={appShell.household.people}
                   onCategoryAppearanceChange={handleCategoryAppearanceChange}
-                  onInvalidateBootstrapCache={syncBootstrapAfterMutation}
+                  onInvalidateAppShellCache={syncAppShellAfterMutation}
                   onBroadcastSplitMutation={broadcastSplitMutation}
                 />
               )}
@@ -2471,7 +2438,7 @@ export function App() {
                 <SplitsPanel
                   view={pageView}
                   categories={categories}
-                  people={bootstrap.household.people}
+                  people={appShell.household.people}
                   onRefresh={(options) => refreshCurrentSplitsPage(options)}
                 />
               )}
@@ -2480,12 +2447,12 @@ export function App() {
               path="/imports"
               element={(
                 <ImportsPanel
-                  importsPage={routePageData?.importsPage ?? bootstrap.importsPage}
+                  importsPage={routePageData?.importsPage ?? appShell.importsPage}
                   viewId={pageView.id}
                   viewLabel={pageView.label}
-                  accounts={bootstrap.accounts}
+                  accounts={appShell.accounts}
                   categories={categories}
-                  people={bootstrap.household.people}
+                  people={appShell.household.people}
                   onRefresh={(options) => refreshCurrentImportsPage(options)}
                 />
               )}
@@ -2494,19 +2461,19 @@ export function App() {
               path="/settings"
               element={(
                 <SettingsPanel
-                  settingsPage={routePageData?.settingsPage ?? bootstrap.settingsPage}
-                  accounts={bootstrap.accounts}
+                  settingsPage={routePageData?.settingsPage ?? appShell.settingsPage}
+                  accounts={appShell.accounts}
                   categories={categories}
-                  people={bootstrap.household.people}
+                  people={appShell.household.people}
                   viewId={pageView.id}
                   viewLabel={pageView.label}
                   appEnvironment={appEnvironment}
-                  viewerIdentity={bootstrap.viewerIdentity}
+                  viewerIdentity={appShell.viewerIdentity}
                   loginIdentityError={loginIdentityError}
                   isUnregisteringLogin={isUnregisteringLogin}
                   onUnregisterLogin={handleUnregisterLogin}
                   onLogout={handleLogout}
-                  onRefresh={() => refreshBootstrap({ broadcast: true })}
+                  onRefresh={() => refreshAppShell({ broadcast: true })}
                 />
               )}
             />
@@ -2514,7 +2481,7 @@ export function App() {
             <Route path="*" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
           </Routes>
         </Suspense>
-        {isBootstrapLoading ? <AppLoadingOverlay status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} /> : null}
+        {isAppShellLoading ? <AppLoadingOverlay status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} /> : null}
       </section>
 
       {loginRegistrationDraft ? (
@@ -2538,7 +2505,7 @@ export function App() {
                       className="table-edit-input"
                       value={loginRegistrationDraft.personId}
                       onChange={(event) => {
-                        const person = bootstrap.household.people.find((item) => item.id === event.target.value);
+                        const person = appShell.household.people.find((item) => item.id === event.target.value);
                         setLoginRegistrationDraft((current) => current ? {
                           ...current,
                           personId: event.target.value,
@@ -2546,7 +2513,7 @@ export function App() {
                         } : current);
                       }}
                     >
-                      {bootstrap.household.people.map((person) => (
+                      {appShell.household.people.map((person) => (
                         <option key={person.id} value={person.id}>{person.name}</option>
                       ))}
                     </select>
@@ -2706,7 +2673,7 @@ function RouteChunkLoadingFallback({ status, elapsedSeconds }) {
   );
 }
 
-function buildBootstrapParams({ month, scope, summaryStart, summaryEnd }) {
+function buildAppShellParams({ month, scope, summaryStart, summaryEnd }) {
   const params = new URLSearchParams({
     month,
     scope
@@ -2889,30 +2856,39 @@ function EntryDeepLinkRoute() {
   );
 }
 
-function mergeRoutePageIntoView(view, pageData, tabId) {
-  if (!view || !pageData) {
-    return view;
+function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appShell) {
+  if (!pageData) {
+    return null;
   }
 
-  if ((tabId === "summary" || tabId === "month" || tabId === "splits") && pageData.viewId !== view.id) {
-    return view;
-  }
+  const fallbackLabel = selectedViewId === "household"
+    ? "Household"
+    : appShell?.household?.people?.find((person) => person.id === selectedViewId)?.name ?? "Household";
+  const baseView = {
+    id: pageData.viewId ?? selectedViewId ?? appShell?.selectedViewId ?? "household",
+    label: pageData.label ?? fallbackLabel
+  };
 
   if (tabId === "summary" && pageData.summaryPage) {
     return {
-      ...view,
-      label: pageData.label ?? view.label,
+      ...baseView,
       summaryPage: pageData.summaryPage
     };
   }
 
   if (tabId === "month" && pageData.monthPage) {
     return {
-      ...view,
-      label: pageData.label ?? view.label,
-      summaryPage: {
-        ...view.summaryPage,
-        ...(pageData.summaryPage ?? {})
+      ...baseView,
+      summaryPage: pageData.summaryPage ?? { months: [] },
+      monthPage: pageData.monthPage
+    };
+  }
+
+  if (tabId === "entries" && pageData.monthPage) {
+    return {
+      ...baseView,
+      splitsPage: {
+        groups: pageData.splitGroups ?? []
       },
       monthPage: pageData.monthPage
     };
@@ -2920,11 +2896,14 @@ function mergeRoutePageIntoView(view, pageData, tabId) {
 
   if (tabId === "splits" && pageData.splitsPage) {
     return {
-      ...view,
-      label: pageData.label ?? view.label,
+      ...baseView,
       splitsPage: pageData.splitsPage
     };
   }
 
-  return view;
+  if (tabId === "imports" || tabId === "settings") {
+    return baseView;
+  }
+
+  return baseView;
 }
