@@ -224,6 +224,12 @@ These are defaults, not excuses for clever golfing.
 - keep one main responsibility per file when practical
 - prefer one exported slice entry point over many wide helpers
 - keep public APIs small and intention-revealing
+- target `200-500` lines per handwritten module
+- treat `800+` line handwritten modules as mandatory extraction work, not a
+  normal steady-state shape
+- if `App.jsx`, `bootstrap.ts`, or a slice module grows large during migration,
+  move page logic into slice deep modules instead of letting the file keep
+  accumulating responsibilities
 
 Good function split:
 
@@ -235,6 +241,14 @@ Bad function split:
 
 - giant one-file page helper with fetch, normalize, totals, filters, and UI
   branching mixed together
+
+Refactor rule:
+
+- old compatibility code and new replacement code should not both remain once
+  the replacement passes the slice tests
+- large legacy files are migration targets, not permission to keep adding more
+  responsibilities to the same file
+- split the file by slice boundary first, then by helper depth inside the slice
 
 ## Comment Rules
 
