@@ -31,6 +31,8 @@ team conventions evolve.
 - Keep [`docs/known-coupling-targets.md`](/Users/tim/22m/ai-projects/monies_map/docs/known-coupling-targets.md)
   updated alongside audit findings that should turn into explicit tests or
   contract checks.
+- Keep [`docs/implementation-prompt-template.md`](/Users/tim/22m/ai-projects/monies_map/docs/implementation-prompt-template.md)
+  updated alongside prompt-shape guidance for slice work and bug fixes.
 - Keep [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
   updated alongside user-facing product, setup, and workflow changes.
 - When implementation and documentation diverge, update the documentation in the
@@ -127,6 +129,8 @@ team conventions evolve.
 - Update [`docs/known-coupling-targets.md`](/Users/tim/22m/ai-projects/monies_map/docs/known-coupling-targets.md)
   when a refactor audit finds a user-visible coupling or contract risk that
   needs to stay on the test plan.
+- Update [`docs/implementation-prompt-template.md`](/Users/tim/22m/ai-projects/monies_map/docs/implementation-prompt-template.md)
+  when the recommended prompt shape or required doc list changes.
 - Update [`design.md`](/Users/tim/22m/ai-projects/monies_map/design.md) when
   implementation boundaries such as the client deep module service evolve.
 - Update [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)

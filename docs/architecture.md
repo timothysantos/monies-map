@@ -25,6 +25,8 @@ system.
   reusable pre-change audit checklist and stop conditions
 - [`docs/known-coupling-targets.md`](./known-coupling-targets.md): audit
   findings that should become explicit tests or contract checks
+- [`docs/implementation-prompt-template.md`](./implementation-prompt-template.md):
+  exact prompt shape for slice work and bug fixes
 - [`docs/existing-behavior-guardrails.md`](./existing-behavior-guardrails.md): current-app behaviors that must survive refactors
 - [`docs/responsive-behavior.md`](./responsive-behavior.md): responsive UX and form-factor contract
 - [`docs/interaction-guidelines.md`](./interaction-guidelines.md): button, CTA, and dismissal semantics
@@ -301,6 +303,7 @@ Before implementation work, also use:
 
 - [`docs/preimplementation-checklist.md`](./preimplementation-checklist.md)
 - [`docs/known-coupling-targets.md`](./known-coupling-targets.md)
+- [`docs/implementation-prompt-template.md`](./implementation-prompt-template.md)
 
 ### Stage 5: Tighten backend boundaries to match the slices
 
