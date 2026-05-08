@@ -59,7 +59,7 @@ export function EntriesPanel({
   categories,
   people,
   onCategoryAppearanceChange,
-  onInvalidateBootstrapCache,
+  onInvalidateAppShellCache,
   onBroadcastSplitMutation
 }) {
   const queryClient = useQueryClient();
@@ -91,7 +91,7 @@ export function EntriesPanel({
     selectedMonth,
     availableMonths,
     externalRefreshToken,
-    onInvalidateBootstrapCache
+    onInvalidateAppShellCache
   });
   const entryView = useMemo(
     () => ({
@@ -149,7 +149,7 @@ export function EntriesPanel({
     accounts,
     categories,
     people,
-    onRefresh: () => refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true }),
+    onRefresh: () => refreshEntriesPage({ bypassCache: true, invalidateAppShell: true }),
     onSplitMutation: onBroadcastSplitMutation
   });
   const openEntryComposerRef = useRef(openEntryComposer);
@@ -522,7 +522,7 @@ export function EntriesPanel({
     preserveEntryEditorInUrl(entry.id);
     const result = await addEntryToSplits(entry, splitGroupId);
     if (result?.alreadyLinked) {
-      await refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true });
+      await refreshEntriesPage({ bypassCache: true, invalidateAppShell: true });
       return;
     }
 
@@ -539,7 +539,7 @@ export function EntriesPanel({
   }
 
   async function refreshLatestSplitGroups() {
-    const latestEntriesPage = await refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true });
+    const latestEntriesPage = await refreshEntriesPage({ bypassCache: true, invalidateAppShell: true });
     return latestEntriesPage?.splitGroups ?? entriesPage.splitGroups;
   }
 
@@ -574,7 +574,7 @@ export function EntriesPanel({
         month: selectedMonth,
         invalidateEntries: true
       });
-      await refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true });
+      await refreshEntriesPage({ bypassCache: true, invalidateAppShell: true });
     } catch (error) {
       setCreatedSplitActionError(error instanceof Error ? error.message : "Failed to delete split expense.");
     } finally {
@@ -657,7 +657,7 @@ export function EntriesPanel({
   }, []);
 
   const refreshEntriesFilters = useCallback(() => (
-    refreshEntriesPage({ bypassCache: true, invalidateBootstrap: true })
+    refreshEntriesPage({ bypassCache: true, invalidateAppShell: true })
   ), [refreshEntriesPage]);
 
   const filterStackProps = useMemo(() => ({
@@ -1038,7 +1038,7 @@ function useEntriesPageData({
   selectedMonth,
   availableMonths,
   externalRefreshToken,
-  onInvalidateBootstrapCache
+  onInvalidateAppShellCache
 }) {
   const [entriesPage, setEntriesPage] = useState(() => buildInitialEntriesPage(view));
   const [isEntriesPageLoading, setIsEntriesPageLoading] = useState(false);
@@ -1100,12 +1100,12 @@ function useEntriesPageData({
     return data;
   }, [queryClient]);
 
-  const refreshEntriesPage = useCallback(async ({ bypassCache = false, invalidateBootstrap = false } = {}) => {
+  const refreshEntriesPage = useCallback(async ({ bypassCache = false, invalidateAppShell = false } = {}) => {
     if (bypassCache) {
       clearEntriesPageCache();
     }
-    if (invalidateBootstrap) {
-      onInvalidateBootstrapCache?.();
+    if (invalidateAppShell) {
+      onInvalidateAppShellCache?.();
     }
     setIsEntriesPageLoading(true);
     try {
@@ -1115,7 +1115,7 @@ function useEntriesPageData({
     } finally {
       setIsEntriesPageLoading(false);
     }
-  }, [clearEntriesPageCache, entriesPageParams, fetchEntriesPage, onInvalidateBootstrapCache]);
+  }, [clearEntriesPageCache, entriesPageParams, fetchEntriesPage, onInvalidateAppShellCache]);
 
   useEffect(() => {
     const initialPage = buildInitialEntriesPage(entriesSourceView);
