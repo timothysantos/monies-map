@@ -33,6 +33,9 @@ team conventions evolve.
   contract checks.
 - Keep [`docs/implementation-prompt-template.md`](/Users/tim/22m/ai-projects/monies_map/docs/implementation-prompt-template.md)
   updated alongside prompt-shape guidance for slice work and bug fixes.
+- Keep [`docs/refactor-decisions.md`](/Users/tim/22m/ai-projects/monies_map/docs/refactor-decisions.md)
+  updated alongside decisions about shell shape, shared helpers, mobile
+  workflow boundaries, money editing, bootstrap migration, and invalidation.
 - Keep [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
   updated alongside user-facing product, setup, and workflow changes.
 - When implementation and documentation diverge, update the documentation in the
@@ -131,6 +134,9 @@ team conventions evolve.
   needs to stay on the test plan.
 - Update [`docs/implementation-prompt-template.md`](/Users/tim/22m/ai-projects/monies_map/docs/implementation-prompt-template.md)
   when the recommended prompt shape or required doc list changes.
+- Update [`docs/refactor-decisions.md`](/Users/tim/22m/ai-projects/monies_map/docs/refactor-decisions.md)
+  when a decision about App shell shape, shared helpers, mobile workflow
+  shape, money editing, bootstrap dependence, or invalidation changes.
 - Update [`design.md`](/Users/tim/22m/ai-projects/monies_map/design.md) when
   implementation boundaries such as the client deep module service evolve.
 - Update [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
