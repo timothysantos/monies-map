@@ -65,7 +65,7 @@ export function invalidateAppDataCache() {
   appDataReadyPromise = null;
 }
 
-async function loadAppShellContext(
+export async function loadAppShellContext(
   db: D1Database,
   viewerEmail?: string,
   appEnvironment?: AppBootstrapDto["appEnvironment"]
@@ -99,14 +99,6 @@ async function loadAppShellContext(
       suggestedPersonId
     } : undefined
   };
-}
-
-export async function buildAppShellDto(
-  db: D1Database,
-  viewerEmail?: string,
-  appEnvironment?: AppBootstrapDto["appEnvironment"]
-): Promise<AppShellDto> {
-  return loadAppShellContext(db, viewerEmail, appEnvironment);
 }
 
 export async function buildBootstrapDto(
@@ -169,78 +161,6 @@ export async function buildBootstrapDto(
       demo,
       categoryMatchRules: [],
       categoryMatchRuleSuggestions,
-      unresolvedTransfers: [],
-      reconciliationExceptions: [],
-      recentAuditEvents: []
-    }
-  };
-}
-
-export async function buildEntriesBootstrapDto(
-  db: D1Database,
-  selectedViewId = "household",
-  selectedMonth = getCurrentMonthKey(),
-  viewerEmail?: string,
-  appEnvironment?: AppBootstrapDto["appEnvironment"]
-): Promise<AppBootstrapDto> {
-  const demo = await ensureAppData(db);
-  const [household, accounts, categories, trackedMonths, splitGroups] = await Promise.all([
-    loadHousehold(db),
-    loadAccounts(db),
-    loadCategories(db),
-    loadTrackedMonths(db),
-    loadSplitGroups(db)
-  ]);
-  const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
-    ? selectedMonth
-    : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
-  const availableMonths = trackedMonths.length ? trackedMonths : [effectiveSelectedMonth];
-  const monthEntries = await loadEntries(db, effectiveSelectedMonth);
-  const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
-  const viewIds = ["household", ...household.people.map((person) => person.id)];
-  const viewId = selectedViewId === "household" || household.people.some((person) => person.id === selectedViewId)
-    ? selectedViewId
-    : "household";
-  const viewerPersonId = await resolveLoginIdentityPersonId(db, viewerEmail);
-  const suggestedPersonId = viewerEmail && !viewerPersonId
-    ? await findSuggestedLoginPersonId(db)
-    : undefined;
-  const views = viewIds.map((id) =>
-    buildEntriesContextView(
-      id,
-      personNameById[id] ?? "Household",
-      adjustEntriesForView(monthEntries, id),
-      splitGroups,
-      effectiveSelectedMonth,
-      availableMonths
-    )
-  );
-
-  return {
-    appEnvironment,
-    household,
-    accounts,
-    categories,
-    views,
-    selectedViewId: viewId,
-    viewerPersonId,
-    viewerIdentity: viewerEmail ? {
-      email: viewerEmail,
-      personId: viewerPersonId
-    } : undefined,
-    viewerRegistration: viewerEmail && suggestedPersonId ? {
-      email: viewerEmail,
-      suggestedPersonId
-    } : undefined,
-    importsPage: {
-      recentImports: [],
-      rollbackPolicy:
-        "Every transaction is tied to an import batch so the last import can be removed without touching older data."
-    },
-    settingsPage: {
-      demo,
-      categoryMatchRules: [],
-      categoryMatchRuleSuggestions: [],
       unresolvedTransfers: [],
       reconciliationExceptions: [],
       recentAuditEvents: []
@@ -430,7 +350,7 @@ export async function buildSettingsPageDto(db: D1Database): Promise<{ settingsPa
   };
 }
 
-async function ensureAppData(db: D1Database) {
+export async function ensureAppData(db: D1Database) {
   appDataReadyPromise ??= initializeAppData(db);
   try {
     return await appDataReadyPromise;
@@ -538,7 +458,7 @@ function buildContextView(
   };
 }
 
-function buildEntriesContextView(
+export function buildEntriesContextView(
   id: string,
   label: string,
   entries: EntryDto[],
@@ -1057,7 +977,7 @@ function buildMonthPage(
   };
 }
 
-function buildPersonScopes(selectedPersonId: string): Array<{ key: PersonScope; label: string }> {
+export function buildPersonScopes(selectedPersonId: string): Array<{ key: PersonScope; label: string }> {
   return selectedPersonId === "household"
     ? [{ key: "direct_plus_shared", label: "Combined" }]
     : [
@@ -1272,7 +1192,7 @@ function filterEntriesForView(entries: EntryDto[], personId: string, scope: Pers
   return entries.filter((entry) => rowMatchesView(entry.ownershipType, entry.splits, personId, scope));
 }
 
-function adjustEntriesForView(entries: EntryDto[], personId: string): EntryDto[] {
+export function adjustEntriesForView(entries: EntryDto[], personId: string): EntryDto[] {
   return entries.map((entry) => adjustEntryForView(entry, personId));
 }
 
