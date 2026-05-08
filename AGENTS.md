@@ -36,6 +36,9 @@ team conventions evolve.
 - Keep [`docs/refactor-decisions.md`](/Users/tim/22m/ai-projects/monies_map/docs/refactor-decisions.md)
   updated alongside decisions about shell shape, shared helpers, mobile
   workflow boundaries, money editing, bootstrap migration, and invalidation.
+- Keep [`docs/first-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/first-slice-prompt.md)
+  updated alongside the actual first implementation prompt for the shell and
+  query foundation slice.
 - Keep [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
   updated alongside user-facing product, setup, and workflow changes.
 - When implementation and documentation diverge, update the documentation in the
@@ -137,6 +140,9 @@ team conventions evolve.
 - Update [`docs/refactor-decisions.md`](/Users/tim/22m/ai-projects/monies_map/docs/refactor-decisions.md)
   when a decision about App shell shape, shared helpers, mobile workflow
   shape, money editing, bootstrap dependence, or invalidation changes.
+- Update [`docs/first-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/first-slice-prompt.md)
+  when the first slice prompt itself changes or when the first slice target
+  scenarios or coupling rows change.
 - Update [`design.md`](/Users/tim/22m/ai-projects/monies_map/design.md) when
   implementation boundaries such as the client deep module service evolve.
 - Update [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
