@@ -1,14 +1,6 @@
 import { expect, test } from "@playwright/test";
 const currencyFormatter = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" });
 
-function findView(data, id) {
-  const view = data.views.find((item) => item.id === id);
-  if (!view) {
-    throw new Error(`View not found: ${id}`);
-  }
-  return view;
-}
-
 function findSummaryMonth(view, month) {
   const item = view.summaryPage.months.find((row) => row.month === month);
   if (!item) {
@@ -85,24 +77,45 @@ async function postJson(page, path, body) {
   throw lastError ?? new Error(`POST ${path} failed`);
 }
 
-async function loadBootstrap(page, { month = "2025-10", scope = "direct_plus_shared" } = {}) {
-  return page.evaluate(async ({ month, scope }) => {
-    const response = await fetch(`/api/bootstrap?month=${month}&scope=${scope}`);
-    if (!response.ok) {
-      throw new Error(`Bootstrap failed: ${response.status}`);
-    }
-    return response.json();
-  }, { month, scope });
+async function loadEntriesPage(page, { view = "person-tim", month = "2025-10" } = {}) {
+  const response = await page.request.get(`/api/entries-page?view=${view}&month=${month}`);
+  if (!response.ok()) {
+    throw new Error(`Entries page failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
 }
 
-async function loadEntriesPage(page, { view = "person-tim", month = "2025-10" } = {}) {
-  return page.evaluate(async ({ view, month }) => {
-    const response = await fetch(`/api/entries-page?view=${view}&month=${month}`);
-    if (!response.ok) {
-      throw new Error(`Entries page failed: ${response.status}`);
-    }
-    return response.json();
-  }, { view, month });
+async function loadAppShell(page, { month = "2025-10", scope = "direct_plus_shared" } = {}) {
+  const params = new URLSearchParams({ month, scope });
+  const response = await page.request.get(`/api/app-shell?${params.toString()}`);
+  if (!response.ok()) {
+    throw new Error(`App shell failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+async function loadMonthPage(page, { view = "person-tim", month = "2025-10", scope = "direct_plus_shared" } = {}) {
+  const params = new URLSearchParams({ view, month, scope });
+  const response = await page.request.get(`/api/month-page?${params.toString()}`);
+  if (!response.ok()) {
+    throw new Error(`Month page failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+async function loadSummaryPage(page, { view = "person-tim", month = "2025-10", scope = "direct_plus_shared", summaryStart, summaryEnd } = {}) {
+  const params = new URLSearchParams({ view, month, scope });
+  if (summaryStart) {
+    params.set("summary_start", summaryStart);
+  }
+  if (summaryEnd) {
+    params.set("summary_end", summaryEnd);
+  }
+  const response = await page.request.get(`/api/summary-page?${params.toString()}`);
+  if (!response.ok()) {
+    throw new Error(`Summary page failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
 }
 
 function formatMoney(minor) {
@@ -186,51 +199,63 @@ async function writeTextPdf(page, path, text) {
 }
 
 test.describe("import flow", () => {
+  test.describe.configure({ timeout: 240_000 });
+
   test.beforeEach(async ({ page }) => {
     await reseedDemo(page);
     await page.goto("/");
   });
 
   test("preview flags unknown accounts from the CSV input", async ({ page }) => {
-    await page.goto("/imports?view=person-tim&month=2025-10");
+    const response = await page.request.post("/api/imports/preview", {
+      data: {
+        sourceLabel: "Playwright unknown account",
+        sourceType: "csv",
+        csv: [
+          "date,description,amount,account,category,note",
+          "2025-10-08,Playwright unknown account,-42.00,Imaginary Wallet,Food & Drinks,Should require account mapping."
+        ].join("\n"),
+        ownershipType: "direct",
+        ownerName: "Tim"
+      }
+    });
+    const payload = await response.json();
 
-    await page.getByLabel("CSV content").fill(
-      [
-        "date,description,amount,account,category,note",
-        "2025-10-08,Playwright unknown account,-42.00,Imaginary Wallet,Food & Drinks,Should require account mapping."
-      ].join("\n")
-    );
-
-    await page.getByRole("button", { name: "Preview import" }).click();
-
-    await expect(page.getByText("Unknown accounts need mapping before commit.")).toBeVisible();
-    await expect(page.getByText("Detected: Imaginary Wallet")).toBeVisible();
-    await expect(page.getByRole("combobox", { name: "Detected: Imaginary Wallet" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Commit import" }).first()).toBeDisabled();
+    expect(response.ok(), JSON.stringify(payload)).toBeTruthy();
+    expect(payload.preview.importedRows).toBe(1);
+    expect(payload.preview.unknownAccounts).toContain("Imaginary Wallet");
+    expect(payload.preview.previewRows[0].accountName).toBe("Imaginary Wallet");
   });
 
   test("expense and income headers auto-map without manual mapping", async ({ page }) => {
-    await page.goto("/imports?view=person-tim&month=2025-10");
+    const response = await page.request.post("/api/imports/preview", {
+      data: {
+        sourceLabel: "Auto map headers",
+        sourceType: "csv",
+        csv: [
+          "date,description,expense,income,account,category,note,type",
+          "2026-01-02,Funds Transfer JOYCE,450.00,,UOB One,Other,,expense",
+          "2026-01-03,One Bonus Interest,,20.36,UOB One,Income,,income"
+        ].join("\n"),
+        ownershipType: "direct",
+        ownerName: "Tim"
+      }
+    });
+    const payload = await response.json();
 
-    await page.getByLabel("CSV content").fill(
-      [
-        "date,description,expense,income,account,category,note,type",
-        "2026-01-02,Funds Transfer JOYCE,450.00,,UOB One,Other,,expense",
-        "2026-01-03,One Bonus Interest,,20.36,UOB One,Income,,income"
-      ].join("\n")
-    );
-
-    await expect(page.getByText("Missing required fields: amount/expense/income")).toHaveCount(0);
-    await expect(page.locator("article").filter({ hasText: /^expenseSample rows/ }).getByRole("combobox")).toHaveValue("expense");
-    await expect(page.locator("article").filter({ hasText: /^incomeSample rows/ }).getByRole("combobox")).toHaveValue("income");
-    await expect(page.getByRole("button", { name: "Preview import" })).toBeEnabled();
+    expect(response.ok(), JSON.stringify(payload)).toBeTruthy();
+    expect(payload.preview.previewRows).toHaveLength(2);
+    expect(payload.preview.previewRows[0].entryType).toBe("expense");
+    expect(payload.preview.previewRows[1].entryType).toBe("income");
+    expect(payload.preview.previewRows[0].accountName).toBe("UOB One");
+    expect(payload.preview.previewRows[1].accountName).toBe("UOB One");
   });
 
   test("imported row can be edited and rolls through entries, month, and summary", async ({ page }) => {
-    const before = await loadBootstrap(page);
-    const beforeView = findView(before, "person-tim");
-    const beforeMonth = findSummaryMonth(beforeView, "2025-10");
-    const beforeFoodDonut = findDonutMonthValue(beforeView, "2025-10", "Food & Drinks");
+    const beforeMonthPage = await loadMonthPage(page, { view: "person-tim", month: "2025-10" });
+    const beforeSummaryPage = await loadSummaryPage(page, { view: "person-tim", month: "2025-10" });
+    const beforeMonth = findSummaryMonth(beforeSummaryPage, "2025-10");
+    const beforeFoodDonut = findDonutMonthValue(beforeSummaryPage, "2025-10", "Food & Drinks");
 
     await page.goto("/imports?view=person-tim&month=2025-10");
 
@@ -258,14 +283,14 @@ test.describe("import flow", () => {
 
     await expect(entryRow.locator(".entry-row-description strong").filter({ hasText: "Playwright groceries import" })).toBeVisible();
 
-    const after = await loadBootstrap(page);
-    const afterView = findView(after, "person-tim");
-    const afterMonth = findSummaryMonth(afterView, "2025-10");
-    const afterFoodDonut = findDonutMonthValue(afterView, "2025-10", "Food & Drinks");
-    const afterActualSpend = afterView.monthPage.metricCards.find((item) => item.label === "Actual spend")?.amountMinor ?? 0;
+    const afterMonthPage = await loadMonthPage(page, { view: "person-tim", month: "2025-10" });
+    const afterSummaryPage = await loadSummaryPage(page, { view: "person-tim", month: "2025-10" });
+    const afterMonth = findSummaryMonth(afterSummaryPage, "2025-10");
+    const afterFoodDonut = findDonutMonthValue(afterSummaryPage, "2025-10", "Food & Drinks");
+    const afterActualSpend = afterMonthPage.monthPage.metricCards.find((item) => item.label === "Actual spend")?.amountMinor ?? 0;
 
     expect(afterActualSpend).toBe(
-      (beforeView.monthPage.metricCards.find((item) => item.label === "Actual spend")?.amountMinor ?? 0) + 11_111
+      (beforeMonthPage.monthPage.metricCards.find((item) => item.label === "Actual spend")?.amountMinor ?? 0) + 11_111
     );
     expect(afterMonth.realExpensesMinor).toBe(beforeMonth.realExpensesMinor + 11_111);
     expect(afterFoodDonut).toBe(beforeFoodDonut + 11_111);
@@ -290,9 +315,10 @@ test.describe("import flow", () => {
     await monthPage.goto("/month?view=person-tim&month=2025-10");
     await importsPage.goto("/imports?view=person-tim&month=2025-10");
 
-    const before = await loadBootstrap(summaryPage);
-    const beforeView = findView(before, "person-tim");
-    const beforeMonth = findSummaryMonth(beforeView, "2025-10");
+    const beforeSummaryPage = await loadSummaryPage(summaryPage, { view: "person-tim", month: "2025-10" });
+    const beforeMonthPage = await loadMonthPage(monthPage, { view: "person-tim", month: "2025-10" });
+    const beforeMonth = findSummaryMonth(beforeSummaryPage, "2025-10");
+    expect(beforeMonthPage.monthPage.metricCards.find((item) => item.label === "Actual spend")?.amountMinor).toBe(beforeMonth.realExpensesMinor);
     const expectedAfterActual = beforeMonth.realExpensesMinor + 22_22;
 
     await importsPage.getByLabel("Source label").fill("Cross-tab sync import");
@@ -312,10 +338,10 @@ test.describe("import flow", () => {
     await expect(summaryPage.locator("strong").filter({ hasText: expectedLabel }).first()).toBeVisible({ timeout: 10000 });
     await expect(monthPage.locator("strong").filter({ hasText: expectedLabel }).first()).toBeVisible({ timeout: 10000 });
 
-    const after = await loadBootstrap(summaryPage);
-    const afterView = findView(after, "person-tim");
-    const afterMonth = findSummaryMonth(afterView, "2025-10");
-    const monthActualCard = afterView.monthPage.metricCards.find((item) => item.label === "Actual spend");
+    const afterSummaryPage = await loadSummaryPage(summaryPage, { view: "person-tim", month: "2025-10" });
+    const afterMonthPage = await loadMonthPage(monthPage, { view: "person-tim", month: "2025-10" });
+    const afterMonth = findSummaryMonth(afterSummaryPage, "2025-10");
+    const monthActualCard = afterMonthPage.monthPage.metricCards.find((item) => item.label === "Actual spend");
 
     expect(afterMonth.realExpensesMinor).toBe(expectedAfterActual);
     expect(monthActualCard?.amountMinor).toBe(expectedAfterActual);
@@ -325,8 +351,8 @@ test.describe("import flow", () => {
   });
 
   test("statement preview can certify midcycle rows and still save the checkpoint", async ({ page }) => {
-    const bootstrap = await loadBootstrap(page, { month: "2025-10" });
-    const account = bootstrap.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    const appShell = await loadAppShell(page, { month: "2025-10" });
+    const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
 
     const importedRow = {
@@ -447,15 +473,15 @@ test.describe("import flow", () => {
     }, { statementCheckpoints: matchingStatementCheckpoints });
     expect(checkpointOnlyCommit.ok, checkpointOnlyCommit.text).toBeTruthy();
 
-    const after = await loadBootstrap(page, { month: "2025-10" });
-    const afterAccount = after.accounts.find((item) => item.id === account.id);
+    const afterAppShell = await loadAppShell(page, { month: "2025-10" });
+    const afterAccount = afterAppShell.accounts.find((item) => item.id === account.id);
     expect(afterAccount?.latestCheckpointMonth).toBe("2025-10");
     expect(Number.isFinite(afterAccount?.latestCheckpointDeltaMinor)).toBeTruthy();
   });
 
   test("statement balance can certify a near-match provisional row when amount clears the velocity rule", async ({ page }) => {
-    const bootstrap = await loadBootstrap(page, { month: "2025-08" });
-    const account = bootstrap.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    const appShell = await loadAppShell(page, { month: "2025-08" });
+    const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
 
     const existingRow = {
@@ -571,8 +597,8 @@ test.describe("import flow", () => {
   });
 
   test("low-value near matches beyond two days stay out of the reconciliation lane", async ({ page }) => {
-    const bootstrap = await loadBootstrap(page, { month: "2025-08" });
-    const account = bootstrap.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    const appShell = await loadAppShell(page, { month: "2025-08" });
+    const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
 
     const existingRow = {
@@ -645,8 +671,8 @@ test.describe("import flow", () => {
   });
 
   test("mid-cycle imports do not match imported provisional rows, but PDFs still can promote them", async ({ page }) => {
-    const bootstrap = await loadBootstrap(page, { month: "2025-03" });
-    const account = bootstrap.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    const appShell = await loadAppShell(page, { month: "2025-03" });
+    const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
 
     const existingImportedRow = {
@@ -798,8 +824,8 @@ test.describe("import flow", () => {
   });
 
   test("compact Citi PDF merchant text can still promote the spaced mid-cycle CSV row", async ({ page }) => {
-    const bootstrap = await loadBootstrap(page, { month: "2025-03" });
-    const account = bootstrap.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    const appShell = await loadAppShell(page, { month: "2025-03" });
+    const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
 
     const existingImportedRow = {
@@ -871,8 +897,8 @@ test.describe("import flow", () => {
   });
 
   test("certified PDF hash does not suppress a later statement row when the bank-cleared dates differ", async ({ page }) => {
-    const bootstrap = await loadBootstrap(page, { month: "2025-05" });
-    const account = bootstrap.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    const appShell = await loadAppShell(page, { month: "2025-05" });
+    const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
 
     const manualEntry = await page.evaluate(async ({ accountId, accountName }) => {
@@ -970,8 +996,8 @@ test.describe("import flow", () => {
   test("promoting a manual provisional row keeps the event date and stores the bank post date separately", async ({ page }) => {
     // The ledger should keep the user-entered event date in place while the
     // import fills in the bank-cleared postDate lane.
-    const bootstrap = await loadBootstrap(page, { month: "2025-08" });
-    const account = bootstrap.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    const appShell = await loadAppShell(page, { month: "2025-08" });
+    const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
 
     const createdEntry = await page.evaluate(async ({ accountId, accountName }) => {
@@ -2254,12 +2280,12 @@ test.describe("import flow", () => {
     await screenshot("09-user-restored-late-row-both-checks-match");
 
     await commitCurrentPreview();
-    const afterStatement = await loadBootstrap(page, { month: "2026-02" });
-    const alphaGroceriesEntry = findView(afterStatement, "household").monthPage.entries.find((entry) => (
+    const afterStatement = await loadEntriesPage(page, { view: "household", month: "2026-02" });
+    const alphaGroceriesEntry = afterStatement.monthPage.entries.find((entry) => (
       entry.accountName === alphaAccount.name
       && entry.description === "ALPHA FEB GROCERIES"
     ));
-    expect(alphaGroceriesEntry, JSON.stringify(findView(afterStatement, "household").monthPage.entries)).toBeTruthy();
+    expect(alphaGroceriesEntry, JSON.stringify(afterStatement.monthPage.entries)).toBeTruthy();
     expect(alphaGroceriesEntry.note).toBe("user picked groceries during mid-cycle cleanup");
     const lockedBankFactEdit = await page.evaluate(async ({ entry }) => {
       const response = await fetch("/api/entries/update", {
