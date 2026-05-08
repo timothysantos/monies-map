@@ -51,6 +51,8 @@ Constraints:
 - do not widen bootstrap dependence
 - do not widen invalidation beyond the documented contract
 - keep mobile workflow locks intact
+- commit in small readable batches as the slice progresses
+- keep that commit style for future slices as well
 
 Deliverables:
 - tests for the target scenarios and coupling rows

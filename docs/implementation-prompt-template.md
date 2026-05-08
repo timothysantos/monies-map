@@ -42,6 +42,9 @@ Constraints:
 - update or add tests first
 - do not widen bootstrap dependence
 - do not widen invalidation beyond the documented contract
+- commit the work in small readable batches as the slice progresses
+- keep that commit rhythm for later slices unless a slice is explicitly
+  reserved for one atomic change
 
 Deliverables:
 - code changes for the target slice only
