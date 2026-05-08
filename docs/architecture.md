@@ -21,6 +21,8 @@ system.
   budgets, invalidation contract, and code-shape rules
 - [`docs/implementation-order.md`](./implementation-order.md): Stage 4
   execution order, test priority, and slice migration sequence
+- [`docs/preimplementation-checklist.md`](./preimplementation-checklist.md):
+  reusable pre-change audit checklist and stop conditions
 - [`docs/existing-behavior-guardrails.md`](./existing-behavior-guardrails.md): current-app behaviors that must survive refactors
 - [`docs/responsive-behavior.md`](./responsive-behavior.md): responsive UX and form-factor contract
 - [`docs/interaction-guidelines.md`](./interaction-guidelines.md): button, CTA, and dismissal semantics
@@ -292,6 +294,10 @@ Exit criteria:
 
 Artifact:
 - [`docs/implementation-order.md`](./implementation-order.md)
+
+Before implementation work, also use:
+
+- [`docs/preimplementation-checklist.md`](./preimplementation-checklist.md)
 
 ### Stage 5: Tighten backend boundaries to match the slices
 
