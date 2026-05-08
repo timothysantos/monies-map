@@ -28,6 +28,19 @@ import {
   publishAppSyncEvent
 } from "./app-sync";
 import { messages } from "./copy/en-SG";
+import {
+  buildAppShellParams,
+  buildEntriesShellParams,
+  clearPersistedAppShell,
+  readPersistedAppShell,
+  writePersistedAppShell
+} from "./app-shell-query";
+import {
+  buildPageViewFromRouteData,
+  buildRoutePageRequest,
+  getSelectedTabId,
+  sanitizeTabParams
+} from "./app-routing";
 import { EntriesFilterStack } from "./entries-overview";
 import { moniesClient } from "./monies-client-service";
 import {
@@ -59,9 +72,6 @@ const SplitsPanel = lazy(() => routeModuleLoaders.splits().then((module) => ({ d
 const SummaryPanel = lazy(() => routeModuleLoaders.summary().then((module) => ({ default: module.SummaryPanel })));
 
 const SUMMARY_FOCUS_OVERALL = "overall";
-// Bump this when appShell payload usage changes so deployed clients do not
-// hydrate from an incompatible persisted shell.
-const APPSHELL_PERSISTED_CACHE_KEY = "monies-map-appShell-cache-v2";
 const MONTH_PICKER_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DEFAULT_MONTH_KEY = getCurrentMonthKey();
 const { categories: categoryService, format: formatService } = moniesClient;
@@ -187,76 +197,6 @@ function getInactivePersonViewLabel(name) {
     return firstName;
   }
   return `${firstName.slice(0, 9)}...`;
-}
-
-function readPersistedAppShell(cacheKey) {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const rawCache = window.localStorage.getItem(APPSHELL_PERSISTED_CACHE_KEY);
-    if (!rawCache) {
-      return null;
-    }
-
-    const parsedCache = JSON.parse(rawCache);
-    if (parsedCache?.cacheKey !== cacheKey || !parsedCache?.data) {
-      return null;
-    }
-
-    return parsedCache.data;
-  } catch {
-    return null;
-  }
-}
-
-function writePersistedAppShell(cacheKey, data) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(APPSHELL_PERSISTED_CACHE_KEY, JSON.stringify({
-      cacheKey,
-      data,
-      storedAt: Date.now()
-    }));
-  } catch {}
-}
-
-function clearPersistedAppShell() {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    window.localStorage.removeItem(APPSHELL_PERSISTED_CACHE_KEY);
-  } catch {}
-}
-
-function canUseAppShellRouteForTab(tabId, {
-  appShellMonth,
-  appShellScope,
-  appShellSummaryEnd,
-  appShellSummaryStart,
-  selectedMonth,
-  selectedScope,
-  selectedSummaryEnd,
-  selectedSummaryStart
-}) {
-  if (tabId === "summary") {
-    const effectiveSummaryStart = selectedSummaryStart ?? appShellSummaryStart;
-    const effectiveSummaryEnd = selectedSummaryEnd ?? appShellSummaryEnd;
-    return effectiveSummaryStart === appShellSummaryStart
-      && effectiveSummaryEnd === appShellSummaryEnd;
-  }
-
-  if (tabId === "month") {
-    return selectedMonth === appShellMonth && selectedScope === appShellScope;
-  }
-
-  return false;
 }
 
 export function App() {
@@ -2673,121 +2613,11 @@ function RouteChunkLoadingFallback({ status, elapsedSeconds }) {
   );
 }
 
-function buildAppShellParams({ month, scope, summaryStart, summaryEnd }) {
-  const params = new URLSearchParams({
-    month,
-    scope
-  });
-  if (summaryStart) {
-    params.set("summary_start", summaryStart);
-  }
-  if (summaryEnd) {
-    params.set("summary_end", summaryEnd);
-  }
-  return params;
-}
-
-function buildEntriesShellParams({ viewId, month }) {
-  return new URLSearchParams({
-    view: viewId,
-    month
-  });
-}
-
-function sanitizeTabParams(params, tabId) {
-  if (tabId !== "entries") {
-    [
-      "action",
-      "amount",
-      "merchant",
-      "description",
-      "date",
-      "account",
-      "account_id",
-      "category",
-      "note",
-      "owner",
-      "shared",
-      "editing_entry",
-      "entries_scope",
-      "entry_id",
-      "entry_wallet",
-      "entry_category",
-      "entry_person",
-      "entry_type"
-    ].forEach((key) => params.delete(key));
-  }
-
-  if (tabId !== "splits") {
-    [
-      "split_group",
-      "split_mode",
-      "editing_split_expense"
-    ].forEach((key) => params.delete(key));
-  }
-}
-
 function buildEntriesPageParams({ viewId, month }) {
   return new URLSearchParams({
     view: viewId,
     month
   });
-}
-
-function getSelectedTabId(pathname) {
-  if (pathname.startsWith("/entries")) {
-    return "entries";
-  }
-
-  return routeTabs.find((tab) => tab.path === pathname)?.id ?? "summary";
-}
-
-function buildRoutePageRequest({ tabId, viewId, month, scope, summaryStart, summaryEnd }) {
-  if (tabId === "summary") {
-    const params = new URLSearchParams({
-      view: viewId,
-      month,
-      scope
-    });
-    if (summaryStart) {
-      params.set("summary_start", summaryStart);
-    }
-    if (summaryEnd) {
-      params.set("summary_end", summaryEnd);
-    }
-    return { path: "/api/summary-page", params };
-  }
-
-  if (tabId === "month") {
-    return {
-      path: "/api/month-page",
-      params: new URLSearchParams({
-        view: viewId,
-        month,
-        scope
-      })
-    };
-  }
-
-  if (tabId === "splits") {
-    return {
-      path: "/api/splits-page",
-      params: new URLSearchParams({
-        view: viewId,
-        month
-      })
-    };
-  }
-
-  if (tabId === "imports") {
-    return { path: "/api/imports-page", params: new URLSearchParams() };
-  }
-
-  if (tabId === "settings") {
-    return { path: "/api/settings-page", params: new URLSearchParams() };
-  }
-
-  return null;
 }
 
 function EntryDeepLinkRoute() {
@@ -2854,56 +2684,4 @@ function EntryDeepLinkRoute() {
       </div>
     </section>
   );
-}
-
-function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appShell) {
-  if (!pageData) {
-    return null;
-  }
-
-  const fallbackLabel = selectedViewId === "household"
-    ? "Household"
-    : appShell?.household?.people?.find((person) => person.id === selectedViewId)?.name ?? "Household";
-  const baseView = {
-    id: pageData.viewId ?? selectedViewId ?? appShell?.selectedViewId ?? "household",
-    label: pageData.label ?? fallbackLabel
-  };
-
-  if (tabId === "summary" && pageData.summaryPage) {
-    return {
-      ...baseView,
-      summaryPage: pageData.summaryPage
-    };
-  }
-
-  if (tabId === "month" && pageData.monthPage) {
-    return {
-      ...baseView,
-      summaryPage: pageData.summaryPage ?? { months: [] },
-      monthPage: pageData.monthPage
-    };
-  }
-
-  if (tabId === "entries" && pageData.monthPage) {
-    return {
-      ...baseView,
-      splitsPage: {
-        groups: pageData.splitGroups ?? []
-      },
-      monthPage: pageData.monthPage
-    };
-  }
-
-  if (tabId === "splits" && pageData.splitsPage) {
-    return {
-      ...baseView,
-      splitsPage: pageData.splitsPage
-    };
-  }
-
-  if (tabId === "imports" || tabId === "settings") {
-    return baseView;
-  }
-
-  return baseView;
 }
