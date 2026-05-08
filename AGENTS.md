@@ -25,6 +25,9 @@ team conventions evolve.
 - Keep [`docs/implementation-order.md`](/Users/tim/22m/ai-projects/monies_map/docs/implementation-order.md)
   updated alongside meaningful refactor sequencing and slice migration order
   changes.
+- Keep [`docs/preimplementation-checklist.md`](/Users/tim/22m/ai-projects/monies_map/docs/preimplementation-checklist.md)
+  updated alongside the reusable pre-change audit checklist and its stop
+  conditions.
 - Keep [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
   updated alongside user-facing product, setup, and workflow changes.
 - When implementation and documentation diverge, update the documentation in the
@@ -115,6 +118,9 @@ team conventions evolve.
 - Update [`docs/implementation-order.md`](/Users/tim/22m/ai-projects/monies_map/docs/implementation-order.md)
   when the refactor execution order, per-slice migration strategy, or testing
   order changes.
+- Update [`docs/preimplementation-checklist.md`](/Users/tim/22m/ai-projects/monies_map/docs/preimplementation-checklist.md)
+  when the reusable audit checklist, hidden-coupling checks, or stop
+  conditions change.
 - Update [`design.md`](/Users/tim/22m/ai-projects/monies_map/design.md) when
   implementation boundaries such as the client deep module service evolve.
 - Update [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
