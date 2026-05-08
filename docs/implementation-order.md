@@ -55,6 +55,7 @@ Stage 4 should produce four things:
 - narrow invalidation behavior
 - deep modules with small public APIs
 - scenario coverage that grows with each migrated slice
+- small readable commits as the work proceeds, not one large refactor dump
 
 It should not try to:
 
@@ -104,6 +105,12 @@ coverage from `docs/scenario-catalog.md`.
 ## Slice Order
 
 Use this slice order unless implementation discovers a blocker.
+
+Commit rule for every slice:
+
+- commit in small readable batches as each slice progresses
+- keep the commits easy to review and easy to revert
+- carry this discipline forward to future slices, not just the first one
 
 ### 1. App shell and query infrastructure
 
@@ -266,6 +273,9 @@ For each slice, use this pattern:
 5. connect invalidation and workflow-lock behavior
 6. verify same-tab and cross-tab freshness
 7. then widen scenario coverage
+
+Do not force a single end-of-slice commit. Prefer several small commits that
+each preserve a readable step in the migration.
 
 Do not:
 

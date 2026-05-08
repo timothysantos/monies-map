@@ -39,6 +39,9 @@ team conventions evolve.
 - Keep [`docs/first-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/first-slice-prompt.md)
   updated alongside the actual first implementation prompt for the shell and
   query foundation slice.
+- Refactor work should be committed in small readable batches as it proceeds.
+  Use that practice for the first slice and keep it for later slices unless a
+  slice is explicitly being held back for one atomic change.
 - Keep [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
   updated alongside user-facing product, setup, and workflow changes.
 - When implementation and documentation diverge, update the documentation in the
