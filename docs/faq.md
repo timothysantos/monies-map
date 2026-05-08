@@ -1100,11 +1100,11 @@ The current setup runs as two local processes during development:
 Local development shows a thin sticky green `local` banner at the top of the
 page so it is visually distinct from deployed environments.
 
-If the app sits on `Loading...` and the browser console shows `/api/bootstrap`
-returning `500` plus a JSON parse error, the usual local cause is that Vite is
-still running while the Worker API failed to start. This repo expects Node 22
-for local scripts, so run `nvm use` from the repo root and restart
-`npm run dev`.
+If the app sits on `Loading...` and the browser console shows `/api/app-shell`
+or one of the page routes returning `500` plus a JSON parse error, the usual
+local cause is that Vite is still running while the Worker API failed to
+start. This repo expects Node 22 for local scripts, so run `nvm use` from the
+repo root and restart `npm run dev`.
 
 ## Where is the production app deployed?
 

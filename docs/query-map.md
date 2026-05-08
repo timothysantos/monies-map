@@ -18,27 +18,18 @@ Its goals are:
 
 ## Current Problem
 
-Today `GET /api/bootstrap` is carrying too much responsibility.
+The old broad bootstrap path has been removed. The remaining risk is any route
+that tries to pull too much data in one request instead of using the shell plus
+its route-owned page query.
 
-Observed example:
-
-- `GET /api/bootstrap?month=2026-04&scope=direct_plus_shared`
-- duration: `1271ms`
-
-The current bootstrap path builds too much at once:
+The shell should stay narrow:
 
 - household metadata
 - accounts
 - categories
 - tracked months
-- selected-month entries
-- selected-month plan rows
-- summary rows across views and scopes
-- income rows across views
-- placeholder imports and settings payloads
 
-This is too expensive for first paint, too broad for precise invalidation, and
-too large to be the default fetch for every important screen.
+Each active screen should fetch its own page DTO after the shell is ready.
 
 For implementation, treat visible route queries that drift past the current
 `750ms` slow-log threshold as a design problem unless the workflow is
@@ -60,10 +51,10 @@ or settings page data.
 
 Strict cutover rule:
 
-- once the shell-only path is in place and tested, the old broad bootstrap path
-  must not remain as a hidden fallback in the same slice
-- if a later slice needs a temporary compatibility branch, that branch must be
-  deleted before the slice is complete
+- once the replacement path is in place and tested, the old path must not
+  remain as a hidden fallback in the same slice
+- temporary compatibility branches are not allowed to survive the slice that
+  introduced them
 
 ### 2. Each screen owns its own query
 

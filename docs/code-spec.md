@@ -36,9 +36,9 @@ Prompting rule for implementation:
 
 The current app already shows the main risk:
 
-- `GET /api/bootstrap` is broad and can be slow
+- broad first-load requests can still be slow if they pull too much data
 - `src/index.ts` logs API pages as slow at `750ms`
-- `src/client/App.jsx` still depends heavily on bootstrap
+- `src/client/App.jsx` still owns the shell and route orchestration
 - E2E tests already defend against "worker restarted mid-request"
 
 The likely failure mode is:
