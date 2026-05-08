@@ -377,10 +377,12 @@ export function App() {
     };
   }, [reportLoadingIssue]);
 
+  // Bump the local query epoch so stale responses cannot overwrite the latest shell or page state.
   const bumpQueryEpoch = useCallback(() => {
     queryEpochRef.current += 1;
   }, []);
 
+  // Clear the shell cache and persisted shell payload when shell-relevant data changes.
   const clearAppShellCache = useCallback(() => {
     bumpQueryEpoch();
     queryClient.cancelQueries({ queryKey: queryKeys.appShell() });
@@ -388,18 +390,21 @@ export function App() {
     clearPersistedAppShell();
   }, [bumpQueryEpoch, queryClient]);
 
+  // Clear the route-page cache so the next navigation or refresh rebuilds the active screen from fresh server data.
   const clearRoutePageCache = useCallback(() => {
     bumpQueryEpoch();
     queryClient.cancelQueries({ queryKey: ["route-page"] });
     queryClient.removeQueries({ queryKey: ["route-page"] });
   }, [bumpQueryEpoch, queryClient]);
 
+  // Clear the entries-page cache when entry mutations should be reflected in the dedicated entries workflow.
   const clearEntriesPageCache = useCallback(() => {
     bumpQueryEpoch();
     queryClient.cancelQueries({ queryKey: ["entries-page"] });
     queryClient.removeQueries({ queryKey: ["entries-page"] });
   }, [bumpQueryEpoch, queryClient]);
 
+  // Fetch the entries page with exact caching semantics so the dedicated entries workflow can reuse data without rebuilding the shell.
   const fetchEntriesPageData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
     const queryKey = queryKeys.entriesPage(params);
     const queryState = queryClient.getQueryState(queryKey);
@@ -440,6 +445,7 @@ export function App() {
     return data;
   }, [queryClient]);
 
+  // Fetch the app shell payload and persist it so the next render can reuse global metadata immediately.
   const fetchAppShellData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
     const cacheKey = params.toString();
     const queryKey = queryKeys.appShell(params);
@@ -529,6 +535,7 @@ export function App() {
     return data;
   }, [queryClient, updateLoadingStatus]);
 
+  // Fetch the entries shell payload used by the dedicated entries workflow.
   const fetchEntriesShellData = useCallback(async (params, { signal } = {}) => {
     if (signal?.aborted) {
       throw new DOMException("Entries shell request aborted.", "AbortError");
@@ -574,6 +581,7 @@ export function App() {
     return data;
   }, [updateLoadingStatus]);
 
+  // Hydrate the client shell state from the app-shell query and clear any previous shell error before rendering.
   const loadAppShell = useCallback(async (signal, { bypassCache = false } = {}) => {
     const data = await fetchAppShellData(appShellParams, { bypassCache, signal });
 
@@ -582,6 +590,7 @@ export function App() {
     return data;
   }, [appShellParams, fetchAppShellData]);
 
+  // Normalize shell fetch failures into the app-shell error banner and the loading status tracker.
   const handleAppShellFailure = useCallback((error) => {
     setAppShell(null);
     setAppShellError(describeAppShellError(error));
@@ -593,6 +602,7 @@ export function App() {
     });
   }, [reportLoadingIssue, updateLoadingStatus]);
 
+  // Reload the shell from the network and optionally broadcast the refresh to other tabs once the new payload is ready.
   const refreshAppShell = useCallback(async ({ broadcast = false } = {}) => {
     clearAppShellCache();
     clearRoutePageCache();
@@ -613,6 +623,7 @@ export function App() {
     }
   }, [beginAppShellLoad, clearAppShellCache, clearRoutePageCache, loadAppShell]);
 
+  // Refresh the shell in the background without surfacing a full loading state to the user.
   const refreshAppShellInBackground = useCallback(async () => {
     clearAppShellCache();
     const data = await fetchAppShellData(appShellParams, { bypassCache: true });
@@ -621,6 +632,7 @@ export function App() {
     return data;
   }, [appShellParams, clearAppShellCache, fetchAppShellData]);
 
+  // Fetch the active route page and shape it into the current screen payload.
   const fetchRoutePageData = useCallback(async (request, { bypassCache = false, signal } = {}) => {
     if (!request) {
       return null;
@@ -708,6 +720,7 @@ export function App() {
     return data;
   }, [queryClient, updateLoadingStatus]);
 
+  // Refresh the active route page, and optionally refresh shell state when the mutation affected shared metadata.
   const refreshRoutePage = useCallback(async ({ broadcast = false, refreshShell = false } = {}) => {
     clearRoutePageCache();
     clearAppShellCache();
@@ -731,6 +744,7 @@ export function App() {
     }
   }, [beginAppShellLoad, clearAppShellCache, clearEntriesPageCache, clearRoutePageCache, fetchRoutePageData, refreshAppShell, routePageRequest]);
 
+  // Refresh the month page that shares the current route state, then refresh the shell in the background so summary and month stay aligned.
   const refreshCurrentMonthPage = useCallback(async () => {
     const request = buildRoutePageRequest({
       tabId: "month",
@@ -750,6 +764,7 @@ export function App() {
     return data;
   }, [fetchRoutePageData, refreshAppShellInBackground, selectedMonth, selectedScope, selectedViewId]);
 
+  // Refresh the imports page and optionally rebroadcast shell freshness when import mutations change shared reference data.
   const refreshCurrentImportsPage = useCallback(async ({ broadcast = false, refreshShell = false } = {}) => {
     const request = buildRoutePageRequest({
       tabId: "imports",
@@ -775,16 +790,22 @@ export function App() {
     return data;
   }, [fetchRoutePageData, refreshAppShellInBackground, selectedMonth, selectedScope, selectedViewId]);
 
+  // Clear route-page cache entries that match a targeted invalidation
+  // predicate.
   const clearRoutePageCacheByPredicate = useCallback((predicate) => {
     queryClient.cancelQueries({ predicate });
     queryClient.removeQueries({ predicate });
   }, [queryClient]);
 
+  // Clear entries-page cache entries that match a targeted invalidation
+  // predicate.
   const clearEntriesPageCacheByPredicate = useCallback((predicate) => {
     queryClient.cancelQueries({ predicate });
     queryClient.removeQueries({ predicate });
   }, [queryClient]);
 
+  // Invalidate the exact caches affected by a split mutation before any
+  // refresh or broadcast happens.
   const clearSplitMutationCaches = useCallback(({
     month,
     invalidateEntries = false,
@@ -834,6 +855,8 @@ export function App() {
     clearRoutePageCacheByPredicate
   ]);
 
+  // Refresh the current route page in the background without switching tabs or
+  // interrupting the visible workflow.
   const refreshActiveRoutePageInBackground = useCallback(async (request) => {
     if (!request) {
       return null;
@@ -844,6 +867,8 @@ export function App() {
     return data;
   }, [fetchRoutePageData]);
 
+  // Broadcast split invalidation details to other tabs after the local cache
+  // has already been cleared.
   const broadcastSplitMutation = useCallback(({
     month,
     invalidateEntries = false,
@@ -867,6 +892,8 @@ export function App() {
     }));
   }, [clearSplitMutationCaches]);
 
+  // Refresh the splits page and optionally refresh shell state when the split
+  // mutation changed shared metadata.
   const refreshCurrentSplitsPage = useCallback(async ({
     broadcast = false,
     refreshShell = false,
@@ -923,6 +950,8 @@ export function App() {
     selectedViewId
   ]);
 
+  // Apply a remote split mutation to the current tab without assuming the
+  // local user is in the same workflow.
   const handleRemoteSplitMutation = useCallback(async ({
     month,
     invalidateEntries = false,
@@ -982,10 +1011,14 @@ export function App() {
     selectedTabId
   ]);
 
+  // Refresh the shell after a mutation that needs global metadata to stay in
+  // sync.
   const syncAppShellAfterMutation = useCallback(async () => {
     await refreshAppShellInBackground();
   }, [refreshAppShellInBackground]);
 
+  // Prefetch the next likely route page without replacing the current active
+  // page state.
   const prefetchRoutePage = useCallback(async (request) => {
     if (!request) {
       return;
@@ -1000,6 +1033,8 @@ export function App() {
     await fetchRoutePageData(request).catch(() => {});
   }, [fetchRoutePageData, queryClient]);
 
+  // Prefetch the entries page using the same exact key that the entries route
+  // will later consume.
   const prefetchEntriesPage = useCallback(async (params) => {
     const queryKey = queryKeys.entriesPage(params);
     const queryState = queryClient.getQueryState(queryKey);
@@ -1249,6 +1284,7 @@ export function App() {
     () => buildPageViewFromRouteData(selectedTabId, routePageData, selectedViewId, appShell),
     [appShell, routePageData, selectedTabId, selectedViewId]
   );
+  const summaryPage = pageView?.summaryPage ?? null;
   const defaultSplitsViewId = appShell?.viewerPersonId
     ?? appShell?.household?.people?.[0]?.id
     ?? appShell?.selectedViewId
@@ -1366,10 +1402,10 @@ export function App() {
             }
           }
         }
-      } else if (selectedTabId === "summary" && pageView?.summaryPage?.availableMonths?.length) {
-        const summaryMonths = pageView.summaryPage.availableMonths;
-        const startIndex = summaryMonths.indexOf(pageView.summaryPage.rangeStartMonth);
-        const endIndex = summaryMonths.indexOf(pageView.summaryPage.rangeEndMonth);
+      } else if (selectedTabId === "summary" && summaryPage?.availableMonths?.length) {
+        const summaryMonths = summaryPage.availableMonths;
+        const startIndex = summaryMonths.indexOf(summaryPage.rangeStartMonth);
+        const endIndex = summaryMonths.indexOf(summaryPage.rangeEndMonth);
         if (startIndex !== -1 && endIndex !== -1) {
           for (const offset of [-1, 1]) {
             const nextStartIndex = startIndex + offset;
@@ -1546,11 +1582,11 @@ export function App() {
   }, [availableMonths, appShell, selectedMonth, setSearchParams]);
 
   useEffect(() => {
-    if (isDetailMonthTab || !pageView?.summaryPage?.availableMonths?.length) {
+    if (isDetailMonthTab || !summaryPage?.availableMonths?.length) {
       return;
     }
 
-    const summaryMonths = pageView.summaryPage.availableMonths;
+    const summaryMonths = summaryPage.availableMonths;
     const hasExplicitSummaryRange = Boolean(selectedSummaryStart || selectedSummaryEnd);
     const focus = searchParams.get("summary_focus");
     const hasInvalidFocus = Boolean(focus && focus !== SUMMARY_FOCUS_OVERALL && !summaryMonths.includes(focus));
@@ -1577,15 +1613,15 @@ export function App() {
       }
       return next;
     }, { replace: true });
-  }, [isDetailMonthTab, pageView, searchParams, selectedSummaryEnd, selectedSummaryStart, setSearchParams]);
+  }, [isDetailMonthTab, searchParams, selectedSummaryEnd, selectedSummaryStart, setSearchParams, summaryPage]);
 
   useEffect(() => {
-    if (isDetailMonthTab || !pageView) {
+    if (isDetailMonthTab || !summaryPage) {
       return;
     }
 
-    const nextStartYear = Number(pageView.summaryPage.rangeStartMonth.slice(0, 4));
-    const nextEndYear = Number(pageView.summaryPage.rangeEndMonth.slice(0, 4));
+    const nextStartYear = Number(summaryPage.rangeStartMonth.slice(0, 4));
+    const nextEndYear = Number(summaryPage.rangeEndMonth.slice(0, 4));
     setRangePickerStartYear((current) => {
       if (current != null && summaryAvailableYears.includes(current)) {
         return current;
@@ -1598,7 +1634,7 @@ export function App() {
       }
       return nextEndYear;
     });
-  }, [isDetailMonthTab, pageView, summaryAvailableYears]);
+  }, [isDetailMonthTab, summaryAvailableYears, summaryPage]);
 
   useEffect(() => {
     if (!isDetailMonthTab || !detailAvailableYears.length) {
@@ -1676,7 +1712,9 @@ export function App() {
   const periodMode = isDetailMonthTab ? messages.period.month : messages.period.year;
   const periodLabel = isDetailMonthTab
     ? formatService.formatMonthLabel(selectedMonth)
-    : `${formatService.formatMonthLabel(pageView.summaryPage.rangeStartMonth)} - ${formatService.formatMonthLabel(pageView.summaryPage.rangeEndMonth)}`;
+    : summaryPage
+      ? `${formatService.formatMonthLabel(summaryPage.rangeStartMonth)} - ${formatService.formatMonthLabel(summaryPage.rangeEndMonth)}`
+      : pageView.label;
   const pendingCategorySuggestionCount = appShell.settingsPage?.categoryMatchRuleSuggestions?.length ?? 0;
   const buildTabTarget = (tab) => {
     const params = new URLSearchParams(searchParams);
@@ -1758,10 +1796,14 @@ export function App() {
       return;
     }
 
-    const rangeMonths = pageView.summaryPage.rangeMonths;
-    const availableSummaryMonths = pageView.summaryPage.availableMonths;
-    const startIndex = availableSummaryMonths.indexOf(pageView.summaryPage.rangeStartMonth);
-    const endIndex = availableSummaryMonths.indexOf(pageView.summaryPage.rangeEndMonth);
+    if (!summaryPage) {
+      return;
+    }
+
+    const rangeMonths = summaryPage.rangeMonths;
+    const availableSummaryMonths = summaryPage.availableMonths;
+    const startIndex = availableSummaryMonths.indexOf(summaryPage.rangeStartMonth);
+    const endIndex = availableSummaryMonths.indexOf(summaryPage.rangeEndMonth);
     if (startIndex === -1 || endIndex === -1) {
       return;
     }
@@ -1797,11 +1839,11 @@ export function App() {
   }
 
   function handleSummaryStartMonthSelect(startMonth) {
-    if (isDetailMonthTab) {
+    if (isDetailMonthTab || !summaryPage) {
       return;
     }
 
-    const endMonth = pageView.summaryPage.rangeEndMonth;
+    const endMonth = summaryPage.rangeEndMonth;
     if (startMonth > endMonth) {
       return;
     }
@@ -1811,7 +1853,7 @@ export function App() {
       next.set("summary_start", startMonth);
       next.set("summary_end", endMonth);
       const focus = next.get("summary_focus");
-      const nextRangeMonths = pageView.summaryPage.availableMonths.filter((month) => month >= startMonth && month <= endMonth);
+      const nextRangeMonths = summaryPage.availableMonths.filter((month) => month >= startMonth && month <= endMonth);
       if (focus && focus !== SUMMARY_FOCUS_OVERALL && !nextRangeMonths.includes(focus)) {
         next.delete("summary_focus");
       }
@@ -1820,11 +1862,11 @@ export function App() {
   }
 
   function handleSummaryEndMonthSelect(endMonth) {
-    if (isDetailMonthTab) {
+    if (isDetailMonthTab || !summaryPage) {
       return;
     }
 
-    const startMonth = pageView.summaryPage.rangeStartMonth;
+    const startMonth = summaryPage.rangeStartMonth;
     if (endMonth < startMonth) {
       return;
     }
@@ -1834,7 +1876,7 @@ export function App() {
       next.set("summary_start", startMonth);
       next.set("summary_end", endMonth);
       const focus = next.get("summary_focus");
-      const nextRangeMonths = pageView.summaryPage.availableMonths.filter((month) => month >= startMonth && month <= endMonth);
+      const nextRangeMonths = summaryPage.availableMonths.filter((month) => month >= startMonth && month <= endMonth);
       if (focus && focus !== SUMMARY_FOCUS_OVERALL && !nextRangeMonths.includes(focus)) {
         next.delete("summary_focus");
       }
@@ -2090,7 +2132,7 @@ export function App() {
                     </Popover.Portal>
                   </Popover.Root>
                 </strong>
-              ) : (
+              ) : summaryPage ? (
                 <strong className="period-range-value">
                   <Popover.Root>
                     <Popover.Trigger asChild>
@@ -2186,6 +2228,8 @@ export function App() {
                     </Popover.Portal>
                   </Popover.Root>
                 </strong>
+              ) : (
+                <strong className="period-range-value">{periodLabel}</strong>
               )}
             </div>
             <button className="period-button" type="button" aria-label={messages.period.nextAriaLabel} onClick={() => handleMonthChange(1)} disabled={isSplitsTab}>›</button>

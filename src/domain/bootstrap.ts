@@ -20,14 +20,12 @@ import {
   loadReconciliationExceptions,
   findSuggestedLoginPersonId,
   loadMonthIncomeRows,
-  loadMonthIncomeRowsForViews,
   loadMonthPlanRows,
   resolveLoginIdentityPersonId,
   loadTrackedMonths,
   loadUnresolvedTransfers,
   seedEmptyStateReferenceData,
   loadSummaryMonths,
-  loadSummaryMonthsForScopes
 } from "./app-repository";
 import type {
   AccountDto,
@@ -70,6 +68,8 @@ export async function loadAppShellContext(
   viewerEmail?: string,
   appEnvironment?: AppBootstrapDto["appEnvironment"]
 ): Promise<AppShellDto> {
+  // Load the global shell metadata without pulling any route-specific page
+  // payloads into the shell response.
   const [household, accounts, categories, trackedMonths] = await Promise.all([
     loadHousehold(db),
     loadAccounts(db),
@@ -98,73 +98,6 @@ export async function loadAppShellContext(
       email: viewerEmail,
       suggestedPersonId
     } : undefined
-  };
-}
-
-export async function buildBootstrapDto(
-  db: D1Database,
-  selectedMonth = getCurrentMonthKey(),
-  selectedScope: PersonScope = "direct_plus_shared",
-  summaryStartMonth?: string,
-  summaryEndMonth?: string,
-  viewerEmail?: string,
-  appEnvironment?: AppBootstrapDto["appEnvironment"]
-): Promise<AppBootstrapDto> {
-  const demo = await ensureAppData(db);
-  const shellContext = await loadAppShellContext(db, viewerEmail, appEnvironment);
-  const { household, accounts, categories, trackedMonths } = shellContext;
-  const categoryMatchRuleSuggestions = await loadCategoryMatchRuleSuggestions(db);
-  const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
-    ? selectedMonth
-    : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
-  const [monthEntries, monthPlanRows] = await Promise.all([
-    loadEntries(db, effectiveSelectedMonth),
-    loadMonthPlanRows(db, effectiveSelectedMonth)
-  ]);
-  const primaryPersonId = household.people[0]?.id ?? "person-primary";
-  const partnerPersonId = household.people[1]?.id ?? "person-partner";
-  const viewIds = ["household", primaryPersonId, partnerPersonId];
-  const [summaryMonthsByView, incomeRowsByView] = await Promise.all([
-    loadSummaryMonthsForScopes(db, viewIds),
-    loadMonthIncomeRowsForViews(db, viewIds, effectiveSelectedMonth)
-  ]);
-  const summaryRangeMonths = buildSummaryRange(
-    trackedMonths,
-    summaryStartMonth,
-    summaryEndMonth ?? effectiveSelectedMonth
-  );
-  const plannedSummaryMonthsByView = await loadPlannedSummaryMonthsForViews(db, viewIds, summaryRangeMonths);
-  const summaryEntries = await loadEntriesForMonths(db, summaryRangeMonths);
-  const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
-  const views: ContextViewDto[] = [
-    buildContextView("household", "Household", selectedScope, summaryMonthsByView, plannedSummaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, [], [], [], [], categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
-    buildContextView(primaryPersonId, personNameById[primaryPersonId] ?? "Primary", selectedScope, summaryMonthsByView, plannedSummaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, [], [], [], [], categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
-    buildContextView(partnerPersonId, personNameById[partnerPersonId] ?? "Partner", selectedScope, summaryMonthsByView, plannedSummaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, [], [], [], [], categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById)
-  ];
-
-  return {
-    appEnvironment,
-    household,
-    accounts,
-    categories,
-    views,
-    selectedViewId: shellContext.selectedViewId,
-    viewerPersonId: shellContext.viewerPersonId,
-    viewerIdentity: shellContext.viewerIdentity,
-    viewerRegistration: shellContext.viewerRegistration,
-    importsPage: {
-      recentImports: [],
-      rollbackPolicy:
-        "Every transaction is tied to an import batch so the last import can be removed without touching older data."
-    },
-    settingsPage: {
-      demo,
-      categoryMatchRules: [],
-      categoryMatchRuleSuggestions,
-      unresolvedTransfers: [],
-      reconciliationExceptions: [],
-      recentAuditEvents: []
-    }
   };
 }
 
@@ -393,68 +326,6 @@ async function loadPageShell(db: D1Database, selectedViewId: string) {
     viewId,
     label,
     personNameById
-  };
-}
-
-function buildContextView(
-  id: string,
-  label: string,
-  selectedScope: PersonScope,
-  summaryMonthsByView: Record<string, SummaryMonthDto[]>,
-  plannedSummaryMonthsByView: Record<string, SummaryMonthDto[]>,
-  incomeRowsByView: Record<string, MonthIncomeRowDto[]>,
-  summaryEntries: EntryDto[],
-  monthEntries: EntryDto[],
-  monthPlanRows: MonthPlanRowDto[],
-  splitGroups: SplitGroupDto[],
-  splitExpenses: SplitExpenseDto[],
-  splitSettlements: SplitSettlementDto[],
-  splitMatches: SplitMatchCandidateDto[],
-  categories: CategoryDto[],
-  accounts: AccountDto[],
-  selectedMonth: string,
-  summaryRangeMonths: string[],
-  trackedMonths: string[],
-  personNameById: Record<string, string>
-): ContextViewDto {
-  const adjustedMonthEntries = adjustEntriesForView(monthEntries, id);
-  const adjustedSummaryEntries = adjustEntriesForView(summaryEntries, id);
-  const visibleEntries = filterEntriesForView(adjustedMonthEntries, id, selectedScope);
-  const visibleSummaryEntries = filterEntriesForView(adjustedSummaryEntries, id, selectedScope);
-  const currentSnapshotMonth = (summaryMonthsByView[id] ?? []).find((month) => month.month === selectedMonth) ?? null;
-  const currentPlannedSummaryMonth = (plannedSummaryMonthsByView[id] ?? []).find((month) => month.month === selectedMonth) ?? null;
-  const currentSummaryMonth = applyActualsFromEntries(
-    currentSnapshotMonth ?? currentPlannedSummaryMonth ?? buildEmptySummaryMonth(selectedMonth),
-    visibleEntries,
-    selectedMonth
-  );
-
-  return {
-    id,
-    label,
-    summaryPage: buildSummaryPage(
-      id,
-      visibleSummaryEntries,
-      summaryMonthsByView,
-      plannedSummaryMonthsByView,
-      categories,
-      accountsForSummary(id, accounts),
-      selectedMonth,
-      summaryRangeMonths,
-      trackedMonths,
-      personNameById
-    ),
-    monthPage: buildMonthPage(
-      id,
-      selectedScope,
-      incomeRowsByView[id] ?? [],
-      adjustedMonthEntries,
-      monthPlanRows,
-      categories,
-      selectedMonth,
-      currentSummaryMonth
-    ),
-    splitsPage: buildSplitsPage(id, splitGroups, splitExpenses, splitSettlements, splitMatches, categories, selectedMonth, personNameById)
   };
 }
 

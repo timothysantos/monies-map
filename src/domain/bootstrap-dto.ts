@@ -20,6 +20,7 @@ import type {
   AppShellDto,
 } from "../types/dto";
 
+// Build the cached app shell payload that the client loads on first paint.
 export async function buildAppShellDto(
   db: D1Database,
   viewerEmail?: string,
@@ -28,7 +29,8 @@ export async function buildAppShellDto(
   return loadAppShellContext(db, viewerEmail, appEnvironment);
 }
 
-export async function buildEntriesBootstrapDto(
+// Build the dedicated entries shell payload for the entries workflow.
+export async function buildEntriesShellDto(
   db: D1Database,
   selectedViewId = "household",
   selectedMonth = getCurrentMonthKey(),

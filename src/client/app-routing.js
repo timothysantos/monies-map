@@ -1,4 +1,6 @@
 export function sanitizeTabParams(params, tabId) {
+  // Drop parameters that are irrelevant to the active tab so the route and
+  // query cache stay canonical.
   if (tabId !== "entries") {
     [
       "action",
@@ -32,6 +34,7 @@ export function sanitizeTabParams(params, tabId) {
 }
 
 export function getSelectedTabId(pathname) {
+  // Translate the current browser pathname to the app's tab identity.
   if (pathname.startsWith("/entries")) {
     return "entries";
   }
@@ -60,6 +63,8 @@ export function getSelectedTabId(pathname) {
 }
 
 export function buildRoutePageRequest({ tabId, viewId, month, scope, summaryStart, summaryEnd }) {
+  // Convert the active tab into the exact page endpoint and query params the
+  // server expects for that screen.
   if (tabId === "summary") {
     const params = new URLSearchParams({
       view: viewId,
@@ -108,6 +113,7 @@ export function buildRoutePageRequest({ tabId, viewId, month, scope, summaryStar
 }
 
 export function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appShell) {
+  // Shape the route-page response into the minimal view object the UI needs.
   if (!pageData) {
     return null;
   }
