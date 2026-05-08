@@ -28,6 +28,9 @@ team conventions evolve.
 - Keep [`docs/preimplementation-checklist.md`](/Users/tim/22m/ai-projects/monies_map/docs/preimplementation-checklist.md)
   updated alongside the reusable pre-change audit checklist and its stop
   conditions.
+- Keep [`docs/known-coupling-targets.md`](/Users/tim/22m/ai-projects/monies_map/docs/known-coupling-targets.md)
+  updated alongside audit findings that should turn into explicit tests or
+  contract checks.
 - Keep [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
   updated alongside user-facing product, setup, and workflow changes.
 - When implementation and documentation diverge, update the documentation in the
@@ -121,6 +124,9 @@ team conventions evolve.
 - Update [`docs/preimplementation-checklist.md`](/Users/tim/22m/ai-projects/monies_map/docs/preimplementation-checklist.md)
   when the reusable audit checklist, hidden-coupling checks, or stop
   conditions change.
+- Update [`docs/known-coupling-targets.md`](/Users/tim/22m/ai-projects/monies_map/docs/known-coupling-targets.md)
+  when a refactor audit finds a user-visible coupling or contract risk that
+  needs to stay on the test plan.
 - Update [`design.md`](/Users/tim/22m/ai-projects/monies_map/design.md) when
   implementation boundaries such as the client deep module service evolve.
 - Update [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
