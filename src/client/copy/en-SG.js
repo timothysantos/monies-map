@@ -5,7 +5,7 @@ export const messages = {
     refresh: "Refresh",
     saving: "Saving...",
     working: "Working...",
-    bootstrapErrorTitle: "Dashboard data could not load.",
+    appShellErrorTitle: "Dashboard data could not load.",
     emptyValue: "—",
     viewingDot: (label) => `Viewing • ${label}`,
     contextWithView: (left, right) => `${left} • ${right}`,

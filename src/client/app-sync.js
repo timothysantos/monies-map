@@ -2,7 +2,7 @@ export const APP_SYNC_CHANNEL = "monies-map-app-sync";
 export const APP_SYNC_STORAGE_KEY = "monies-map-app-sync";
 
 export const APP_SYNC_EVENT_TYPES = {
-  bootstrapRefresh: "bootstrap-refresh",
+  appShellRefresh: "app-shell-refresh",
   splitMutation: "split-mutation"
 };
 
@@ -16,9 +16,9 @@ export function publishAppSyncEvent(syncChannelRef, payload) {
   } catch {}
 }
 
-export function broadcastBootstrapRefresh(syncChannelRef) {
+export function broadcastAppShellRefresh(syncChannelRef) {
   publishAppSyncEvent(syncChannelRef, {
-    type: APP_SYNC_EVENT_TYPES.bootstrapRefresh,
+    type: APP_SYNC_EVENT_TYPES.appShellRefresh,
     ts: Date.now()
   });
 }

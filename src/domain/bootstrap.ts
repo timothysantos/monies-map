@@ -31,6 +31,7 @@ import {
 } from "./app-repository";
 import type {
   AccountDto,
+  AppShellDto,
   AppBootstrapDto,
   CategoryDto,
   ContextViewDto,
@@ -64,6 +65,50 @@ export function invalidateAppDataCache() {
   appDataReadyPromise = null;
 }
 
+async function loadAppShellContext(
+  db: D1Database,
+  viewerEmail?: string,
+  appEnvironment?: AppBootstrapDto["appEnvironment"]
+): Promise<AppShellDto> {
+  const [household, accounts, categories, trackedMonths] = await Promise.all([
+    loadHousehold(db),
+    loadAccounts(db),
+    loadCategories(db),
+    loadTrackedMonths(db)
+  ]);
+  const viewerPersonId = await resolveLoginIdentityPersonId(db, viewerEmail);
+  const suggestedPersonId = viewerEmail && !viewerPersonId
+    ? await findSuggestedLoginPersonId(db)
+    : undefined;
+
+  return {
+    appEnvironment,
+    household,
+    accounts,
+    categories,
+    availableViewIds: ["household", ...household.people.map((person) => person.id)],
+    selectedViewId: "household",
+    trackedMonths,
+    viewerPersonId,
+    viewerIdentity: viewerEmail ? {
+      email: viewerEmail,
+      personId: viewerPersonId
+    } : undefined,
+    viewerRegistration: viewerEmail && suggestedPersonId ? {
+      email: viewerEmail,
+      suggestedPersonId
+    } : undefined
+  };
+}
+
+export async function buildAppShellDto(
+  db: D1Database,
+  viewerEmail?: string,
+  appEnvironment?: AppBootstrapDto["appEnvironment"]
+): Promise<AppShellDto> {
+  return loadAppShellContext(db, viewerEmail, appEnvironment);
+}
+
 export async function buildBootstrapDto(
   db: D1Database,
   selectedMonth = getCurrentMonthKey(),
@@ -74,13 +119,9 @@ export async function buildBootstrapDto(
   appEnvironment?: AppBootstrapDto["appEnvironment"]
 ): Promise<AppBootstrapDto> {
   const demo = await ensureAppData(db);
-  const [household, accounts, categories, categoryMatchRuleSuggestions, trackedMonths] = await Promise.all([
-    loadHousehold(db),
-    loadAccounts(db),
-    loadCategories(db),
-    loadCategoryMatchRuleSuggestions(db),
-    loadTrackedMonths(db)
-  ]);
+  const shellContext = await loadAppShellContext(db, viewerEmail, appEnvironment);
+  const { household, accounts, categories, trackedMonths } = shellContext;
+  const categoryMatchRuleSuggestions = await loadCategoryMatchRuleSuggestions(db);
   const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
     ? selectedMonth
     : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
@@ -103,10 +144,6 @@ export async function buildBootstrapDto(
   const plannedSummaryMonthsByView = await loadPlannedSummaryMonthsForViews(db, viewIds, summaryRangeMonths);
   const summaryEntries = await loadEntriesForMonths(db, summaryRangeMonths);
   const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
-  const viewerPersonId = await resolveLoginIdentityPersonId(db, viewerEmail);
-  const suggestedPersonId = viewerEmail && !viewerPersonId
-    ? await findSuggestedLoginPersonId(db)
-    : undefined;
   const views: ContextViewDto[] = [
     buildContextView("household", "Household", selectedScope, summaryMonthsByView, plannedSummaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, [], [], [], [], categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
     buildContextView(primaryPersonId, personNameById[primaryPersonId] ?? "Primary", selectedScope, summaryMonthsByView, plannedSummaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, [], [], [], [], categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
@@ -119,16 +156,10 @@ export async function buildBootstrapDto(
     accounts,
     categories,
     views,
-    selectedViewId: "household",
-    viewerPersonId,
-    viewerIdentity: viewerEmail ? {
-      email: viewerEmail,
-      personId: viewerPersonId
-    } : undefined,
-    viewerRegistration: viewerEmail && suggestedPersonId ? {
-      email: viewerEmail,
-      suggestedPersonId
-    } : undefined,
+    selectedViewId: shellContext.selectedViewId,
+    viewerPersonId: shellContext.viewerPersonId,
+    viewerIdentity: shellContext.viewerIdentity,
+    viewerRegistration: shellContext.viewerRegistration,
     importsPage: {
       recentImports: [],
       rollbackPolicy:
