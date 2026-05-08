@@ -282,6 +282,8 @@ Do not:
 - migrate all helpers first without tests
 - rewrite all components before query ownership is clear
 - keep bootstrap as a hidden fallback dependency once a slice is migrated
+- leave old and new paths alive at the end of a slice; cut over or fail fast in
+  the same slice
 
 ## First Practical Milestone
 

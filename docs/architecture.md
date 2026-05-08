@@ -47,6 +47,8 @@ state flow. The main problems are:
 - data flow is not obvious from screen to query to domain logic to storage
 - feature code is not consistently organized as vertical slices
 - the current client bootstrap is carrying too much responsibility
+- slice migrations must cut over cleanly instead of preserving old and new
+  paths side by side
 - deep modules are present in intent but not yet enforced as the dominant shape
 - tests exist, but the development process is not yet consistently TDD-first at
   the scenario level
@@ -261,6 +263,8 @@ Artifact:
 
 Goal:
 - move from broad bootstrap hydration to minimal, screen-owned data fetching
+- remove the old path in the same slice once the replacement passes the slice
+  tests
 
 Actions:
 - inventory current refresh, prefetch, quick-entry, and cross-tab behaviors
@@ -271,6 +275,8 @@ Actions:
 - separate month list queries from month detail queries
 - keep invalidation narrow and predictable
 - remove hidden data dependencies on one giant bootstrap payload
+- do not leave a compatibility path alive after the slice owns its new query
+  boundary
 
 Exit criteria:
 - each screen can describe which query powers it

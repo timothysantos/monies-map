@@ -14,7 +14,7 @@ Use it together with:
 
 | Risk area | What should be tested | Primary slice | Test level |
 | --- | --- | --- | --- |
-| `src/client/App.jsx` bootstrap coupling | Shell state, route fallback, cache reset, and cross-tab restore stay coherent while bootstrap is being retired | `app shell` then `summary`, `month`, `entries` | `Integration` and `E2E` |
+| `src/client/App.jsx` app-shell coupling | Shell state, route fallback, cache reset, and cross-tab restore stay coherent while the shell is being retired | `app shell` then `summary`, `month`, `entries` | `Integration` and `E2E` |
 | `src/client/query-mutations.js` broad invalidation | Mutation invalidation hits only the affected queries and does not fan out to broad buckets unless the docs allow it | `entries`, `month`, `summary`, `imports`, `settings` | `Integration` |
 | `src/client/splits-dialogs.jsx` amount focus/select behavior | Amount inputs do not force select-all just to replace a value; focus should not create a keyboard trap | `splits` | `E2E` |
 | `src/client/entry-editor.jsx` amount typing contract | Editable amount fields preserve typed draft state and normalize on blur without requiring select-all | `entries` | `E2E` |

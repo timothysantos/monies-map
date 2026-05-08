@@ -58,6 +58,13 @@ Bootstrap should answer only:
 Bootstrap should stop returning full summary, month, entries, imports, splits,
 or settings page data.
 
+Strict cutover rule:
+
+- once the shell-only path is in place and tested, the old broad bootstrap path
+  must not remain as a hidden fallback in the same slice
+- if a later slice needs a temporary compatibility branch, that branch must be
+  deleted before the slice is complete
+
 ### 2. Each screen owns its own query
 
 Each slice should own the requests needed to render its screen and only that
