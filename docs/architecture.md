@@ -27,6 +27,9 @@ system.
   findings that should become explicit tests or contract checks
 - [`docs/implementation-prompt-template.md`](./implementation-prompt-template.md):
   exact prompt shape for slice work and bug fixes
+- [`docs/refactor-decisions.md`](./refactor-decisions.md): intended answers to
+  the remaining shell, helper, mobile, money-editing, bootstrap, and
+  invalidation shape questions
 - [`docs/existing-behavior-guardrails.md`](./existing-behavior-guardrails.md): current-app behaviors that must survive refactors
 - [`docs/responsive-behavior.md`](./responsive-behavior.md): responsive UX and form-factor contract
 - [`docs/interaction-guidelines.md`](./interaction-guidelines.md): button, CTA, and dismissal semantics
@@ -304,6 +307,7 @@ Before implementation work, also use:
 - [`docs/preimplementation-checklist.md`](./preimplementation-checklist.md)
 - [`docs/known-coupling-targets.md`](./known-coupling-targets.md)
 - [`docs/implementation-prompt-template.md`](./implementation-prompt-template.md)
+- [`docs/refactor-decisions.md`](./refactor-decisions.md)
 
 ### Stage 5: Tighten backend boundaries to match the slices
 
