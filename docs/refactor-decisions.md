@@ -134,6 +134,8 @@ Migration rule:
 - if a page still needs bootstrap during migration, the fallback must be narrow
   and obvious in the code, and it must be deleted in the same slice once the
   replacement passes the slice tests.
+- legacy routes and links are temporary migration debt, not a safety layer.
+- delete legacy routes once the replacement path is proven in the same slice.
 
 Exit signal:
 
