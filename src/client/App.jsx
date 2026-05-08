@@ -52,6 +52,8 @@ import { installMobileFocusVisibility } from "./mobile-focus-visibility";
 import { queryKeys } from "./query-keys";
 import { getCurrentMonthKey } from "../lib/month";
 
+// Lazy route loaders keep the initial shell small while still splitting each
+// feature panel into its own bundle.
 const routeModuleLoaders = {
   entries: () => import("./entries-panel.jsx"),
   faq: () => import("./faq-panel.jsx"),
@@ -61,6 +63,8 @@ const routeModuleLoaders = {
   splits: () => import("./splits-panel.jsx"),
   summary: () => import("./summary-panel.jsx")
 };
+// Track preloaded route bundles so the app does not request the same chunk
+// repeatedly during idle warmup.
 const routeModulePreloads = new Map();
 
 const EntriesPanel = lazy(() => routeModuleLoaders.entries().then((module) => ({ default: module.EntriesPanel })));
@@ -71,11 +75,13 @@ const SettingsPanel = lazy(() => routeModuleLoaders.settings().then((module) => 
 const SplitsPanel = lazy(() => routeModuleLoaders.splits().then((module) => ({ default: module.SplitsPanel })));
 const SummaryPanel = lazy(() => routeModuleLoaders.summary().then((module) => ({ default: module.SummaryPanel })));
 
+// Shared UI constants used by the month and summary pickers.
 const SUMMARY_FOCUS_OVERALL = "overall";
 const MONTH_PICKER_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DEFAULT_MONTH_KEY = getCurrentMonthKey();
 const { categories: categoryService, format: formatService } = moniesClient;
 
+// Canonical route registry for the top navigation and route-based prefetching.
 const routeTabs = [
   { id: "summary", path: "/summary", label: messages.tabs.summary },
   { id: "month", path: "/month", label: messages.tabs.month },
@@ -85,8 +91,11 @@ const routeTabs = [
   { id: "settings", path: "/settings", label: messages.tabs.settings },
   { id: "faq", path: "/faq", label: messages.tabs.faq }
 ];
+// Split the tabs so the primary shell keeps the highest-frequency routes in view.
 const primaryRouteTabs = routeTabs.slice(0, 4);
 const secondaryRouteTabs = routeTabs.slice(4);
+// Prefetch timing is intentionally staggered so warmup does not compete with
+// the visible render path.
 const PAGE_PREFETCH_DELAY_MS = 1200;
 const PAGE_PREFETCH_SPACING_MS = 1500;
 const PAGE_PREFETCH_STAGE_DELAY_MS = 5000;
@@ -200,14 +209,22 @@ function getInactivePersonViewLabel(name) {
 }
 
 export function App() {
+  // App-level caches and shell data live here so the rest of the UI can stay
+  // as close to pure rendering as possible.
   const queryClient = useQueryClient();
   const [appShell, setAppShell] = useState(null);
   const [appShellError, setAppShellError] = useState("");
   const [appShellLoadCount, setAppShellLoadCount] = useState(0);
+  // Loading state is separate from shell state so we can render useful
+  // progress feedback while data is still streaming in.
   const [loadingStatus, setLoadingStatus] = useState(() => createLoadingStatus());
   const [loadingElapsedSeconds, setLoadingElapsedSeconds] = useState(0);
+  // Mobile context state keeps the inline view/scope controls from fighting
+  // the main route state.
   const [mobileContextOpen, setMobileContextOpen] = useState(false);
   const [entriesMobileFilterProps, setEntriesMobileFilterProps] = useState(null);
+  // The entries filter stack mirrors route state but should only update when
+  // the effective filter props actually change.
   const closeMobileContext = useCallback(() => {
     setMobileContextOpen(false);
   }, []);
@@ -223,6 +240,8 @@ export function App() {
   const syncChannelRef = useRef(null);
   const queryEpochRef = useRef(0);
   const routePagePrefetchTimerRef = useRef(null);
+  // Route identity is derived from the browser location and the current query
+  // string, then used as the source of truth for page fetching.
   const appEnvironment = appShell?.appEnvironment ?? getClientAppEnvironment();
   const explicitViewId = searchParams.get("view");
   const selectedViewId = explicitViewId ?? "household";
@@ -240,18 +259,27 @@ export function App() {
   const [loginIdentityError, setLoginIdentityError] = useState("");
   const [isUnregisteringLogin, setIsUnregisteringLogin] = useState(false);
   const [suppressedLoginRegistrationEmail, setSuppressedLoginRegistrationEmail] = useState("");
+  // These aliases make the app-shell month and summary range explicit when
+  // passing state into downstream helpers.
   const appShellMonth = selectedMonth;
   const appShellSummaryStart = selectedSummaryStart;
   const appShellSummaryEnd = selectedSummaryEnd;
   const appShellScope = selectedScope;
 
+  // Install the mobile focus helper once so dialogs and popovers remain
+  // keyboard-friendly on small screens.
   useEffect(() => installMobileFocusVisibility(), []);
 
+  // Keep the document title aligned with the current environment.
   useEffect(() => {
     document.title = getDocumentTitle(appEnvironment);
   }, [appEnvironment]);
 
+  // The strict cutover uses explicit route-page fetching, so the app-shell
+  // page shortcut stays disabled.
   const canUseAppShellRoutePage = false;
+  // Build the shell query key once per route state change so caches stay
+  // canonical and stable.
   const appShellParams = useMemo(
     () => buildAppShellParams({
       month: selectedMonth,
@@ -262,6 +290,8 @@ export function App() {
     [selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart]
   );
   const appShellCacheKey = appShellParams.toString();
+  // Route-page requests are derived from the current tab and route params so
+  // every screen loads the smallest possible server payload.
   const routePageRequest = useMemo(
     () => canUseAppShellRoutePage ? null : buildRoutePageRequest({
       tabId: selectedTabId,
@@ -282,6 +312,7 @@ export function App() {
     }));
   }, []);
 
+  // Reset loading progress while preserving any previously reported issue.
   const startLoadingStatus = useCallback((patch) => {
     setLoadingStatus((current) => createLoadingStatus({
       issue: current.issue,
@@ -305,6 +336,8 @@ export function App() {
     updateLoadingStatus({ issue: `${source}: ${summary}` });
   }, [updateLoadingStatus]);
 
+  // Incrementing this counter invalidates in-flight responses from older
+  // requests so the latest route state always wins.
   const beginAppShellLoad = useCallback(() => {
     let didFinish = false;
     setAppShellLoadCount((count) => count + 1);
@@ -319,6 +352,8 @@ export function App() {
     };
   }, []);
 
+  // Update the on-screen timer while the shell is loading so the user can see
+  // that the app is still working.
   useEffect(() => {
     if (!isAppShellLoading) {
       setLoadingElapsedSeconds(0);
@@ -333,6 +368,8 @@ export function App() {
     return () => window.clearInterval(timer);
   }, [isAppShellLoading, loadingStatus.startedAt]);
 
+  // Normalize runtime errors into the loading panel so startup failures are
+  // visible instead of failing silently.
   useEffect(() => {
     if (typeof window === "undefined") {
       return undefined;
@@ -377,12 +414,14 @@ export function App() {
     };
   }, [reportLoadingIssue]);
 
-  // Bump the local query epoch so stale responses cannot overwrite the latest shell or page state.
+  // Bump the local query epoch so stale responses cannot overwrite the latest
+  // shell or page state.
   const bumpQueryEpoch = useCallback(() => {
     queryEpochRef.current += 1;
   }, []);
 
-  // Clear the shell cache and persisted shell payload when shell-relevant data changes.
+  // Clear the shell cache and persisted shell payload when shell-relevant data
+  // changes.
   const clearAppShellCache = useCallback(() => {
     bumpQueryEpoch();
     queryClient.cancelQueries({ queryKey: queryKeys.appShell() });
@@ -390,21 +429,24 @@ export function App() {
     clearPersistedAppShell();
   }, [bumpQueryEpoch, queryClient]);
 
-  // Clear the route-page cache so the next navigation or refresh rebuilds the active screen from fresh server data.
+  // Clear the route-page cache so the next navigation or refresh rebuilds the
+  // active screen from fresh server data.
   const clearRoutePageCache = useCallback(() => {
     bumpQueryEpoch();
     queryClient.cancelQueries({ queryKey: ["route-page"] });
     queryClient.removeQueries({ queryKey: ["route-page"] });
   }, [bumpQueryEpoch, queryClient]);
 
-  // Clear the entries-page cache when entry mutations should be reflected in the dedicated entries workflow.
+  // Clear the entries-page cache when entry mutations should be reflected in
+  // the dedicated entries workflow.
   const clearEntriesPageCache = useCallback(() => {
     bumpQueryEpoch();
     queryClient.cancelQueries({ queryKey: ["entries-page"] });
     queryClient.removeQueries({ queryKey: ["entries-page"] });
   }, [bumpQueryEpoch, queryClient]);
 
-  // Fetch the entries page with exact caching semantics so the dedicated entries workflow can reuse data without rebuilding the shell.
+  // Fetch the entries page with exact caching semantics so the dedicated
+  // entries workflow can reuse data without rebuilding the shell.
   const fetchEntriesPageData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
     const queryKey = queryKeys.entriesPage(params);
     const queryState = queryClient.getQueryState(queryKey);
@@ -445,7 +487,8 @@ export function App() {
     return data;
   }, [queryClient]);
 
-  // Fetch the app shell payload and persist it so the next render can reuse global metadata immediately.
+  // Fetch the app shell payload and persist it so the next render can reuse
+  // global metadata immediately.
   const fetchAppShellData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
     const cacheKey = params.toString();
     const queryKey = queryKeys.appShell(params);
@@ -477,40 +520,42 @@ export function App() {
       percent: 35
     });
 
+    // The app-shell fetcher uses a manual parse step so non-JSON error bodies
+    // can still surface a useful message.
     const fetcher = async () => {
       const response = await fetch(`/api/app-shell?${cacheKey}`, { cache: "no-store" });
-        updateLoadingStatus({
-          label: "Reading dashboard response",
-          detail: "Parsing dashboard...",
-          percent: 55
-        });
-        const responseText = await response.text();
-        let data = null;
+      updateLoadingStatus({
+        label: "Reading dashboard response",
+        detail: "Parsing dashboard...",
+        percent: 55
+      });
+      const responseText = await response.text();
+      let data = null;
 
-        if (responseText) {
-          try {
-            data = JSON.parse(responseText);
-          } catch {
-            if (!response.ok) {
-              throw new Error(buildAppShellErrorMessage(response.status, responseText));
-            }
-
-            throw new Error("App shell returned invalid JSON.");
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          if (!response.ok) {
+            throw new Error(buildAppShellErrorMessage(response.status, responseText));
           }
-        }
 
-        if (!response.ok) {
-          throw new Error(buildAppShellErrorMessage(response.status, data?.message ?? responseText));
+          throw new Error("App shell returned invalid JSON.");
         }
+      }
 
-        updateLoadingStatus({
-          label: "Preparing dashboard shell",
-          detail: "Building dashboard...",
-          percent: 72
-        });
-        writePersistedAppShell(cacheKey, data);
-        return data;
-      };
+      if (!response.ok) {
+        throw new Error(buildAppShellErrorMessage(response.status, data?.message ?? responseText));
+      }
+
+      updateLoadingStatus({
+        label: "Preparing dashboard shell",
+        detail: "Building dashboard...",
+        percent: 72
+      });
+      writePersistedAppShell(cacheKey, data);
+      return data;
+    };
 
     const data = bypassCache
       ? await queryClient.fetchQuery({
@@ -581,7 +626,8 @@ export function App() {
     return data;
   }, [updateLoadingStatus]);
 
-  // Hydrate the client shell state from the app-shell query and clear any previous shell error before rendering.
+  // Hydrate the client shell state from the app-shell query and clear any
+  // previous shell error before rendering.
   const loadAppShell = useCallback(async (signal, { bypassCache = false } = {}) => {
     const data = await fetchAppShellData(appShellParams, { bypassCache, signal });
 
@@ -590,7 +636,8 @@ export function App() {
     return data;
   }, [appShellParams, fetchAppShellData]);
 
-  // Normalize shell fetch failures into the app-shell error banner and the loading status tracker.
+  // Normalize shell fetch failures into the app-shell error banner and the
+  // loading status tracker.
   const handleAppShellFailure = useCallback((error) => {
     setAppShell(null);
     setAppShellError(describeAppShellError(error));
@@ -602,7 +649,8 @@ export function App() {
     });
   }, [reportLoadingIssue, updateLoadingStatus]);
 
-  // Reload the shell from the network and optionally broadcast the refresh to other tabs once the new payload is ready.
+  // Reload the shell from the network and optionally broadcast the refresh to
+  // other tabs once the new payload is ready.
   const refreshAppShell = useCallback(async ({ broadcast = false } = {}) => {
     clearAppShellCache();
     clearRoutePageCache();
@@ -623,7 +671,8 @@ export function App() {
     }
   }, [beginAppShellLoad, clearAppShellCache, clearRoutePageCache, loadAppShell]);
 
-  // Refresh the shell in the background without surfacing a full loading state to the user.
+  // Refresh the shell in the background without surfacing a full loading state
+  // to the user.
   const refreshAppShellInBackground = useCallback(async () => {
     clearAppShellCache();
     const data = await fetchAppShellData(appShellParams, { bypassCache: true });
@@ -668,34 +717,36 @@ export function App() {
       detail: "Loading page...",
       percent: 88
     });
+    // Route-page responses are parsed manually for the same reason as the
+    // shell fetch: server errors still need to surface useful context.
     const fetcher = async () => {
       const response = await fetch(requestUrl, { cache: "no-store" });
-        updateLoadingStatus({
-          label: "Reading page response",
-          detail: "Parsing page...",
-          percent: 92
-        });
-        const responseText = await response.text();
-        let data = null;
+      updateLoadingStatus({
+        label: "Reading page response",
+        detail: "Parsing page...",
+        percent: 92
+      });
+      const responseText = await response.text();
+      let data = null;
 
-        if (responseText) {
-          try {
-            data = JSON.parse(responseText);
-          } catch {
-            if (!response.ok) {
-              throw new Error(buildAppShellErrorMessage(response.status, responseText));
-            }
-
-            throw new Error("Page request returned invalid JSON.");
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          if (!response.ok) {
+            throw new Error(buildAppShellErrorMessage(response.status, responseText));
           }
-        }
 
-        if (!response.ok) {
-          throw new Error(buildAppShellErrorMessage(response.status, data?.message ?? responseText));
+          throw new Error("Page request returned invalid JSON.");
         }
+      }
 
-        return data;
-      };
+      if (!response.ok) {
+        throw new Error(buildAppShellErrorMessage(response.status, data?.message ?? responseText));
+      }
+
+      return data;
+    };
 
     const data = bypassCache
       ? await queryClient.fetchQuery({
@@ -720,7 +771,8 @@ export function App() {
     return data;
   }, [queryClient, updateLoadingStatus]);
 
-  // Refresh the active route page, and optionally refresh shell state when the mutation affected shared metadata.
+  // Refresh the active route page, and optionally refresh shell state when the
+  // mutation affected shared metadata.
   const refreshRoutePage = useCallback(async ({ broadcast = false, refreshShell = false } = {}) => {
     clearRoutePageCache();
     clearAppShellCache();
@@ -744,7 +796,8 @@ export function App() {
     }
   }, [beginAppShellLoad, clearAppShellCache, clearEntriesPageCache, clearRoutePageCache, fetchRoutePageData, refreshAppShell, routePageRequest]);
 
-  // Refresh the month page that shares the current route state, then refresh the shell in the background so summary and month stay aligned.
+  // Refresh the month page that shares the current route state, then refresh
+  // the shell in the background so summary and month stay aligned.
   const refreshCurrentMonthPage = useCallback(async () => {
     const request = buildRoutePageRequest({
       tabId: "month",
@@ -764,7 +817,8 @@ export function App() {
     return data;
   }, [fetchRoutePageData, refreshAppShellInBackground, selectedMonth, selectedScope, selectedViewId]);
 
-  // Refresh the imports page and optionally rebroadcast shell freshness when import mutations change shared reference data.
+  // Refresh the imports page and optionally rebroadcast shell freshness when
+  // import mutations change shared reference data.
   const refreshCurrentImportsPage = useCallback(async ({ broadcast = false, refreshShell = false } = {}) => {
     const request = buildRoutePageRequest({
       tabId: "imports",
@@ -1045,8 +1099,13 @@ export function App() {
     await fetchEntriesPageData(params).catch(() => {});
   }, [fetchEntriesPageData, queryClient]);
 
+  // Bootstrap the shell from persisted cache first, then replace it with fresh
+  // server data and an optional entries-shell warm start when the entries tab is
+  // the active route.
   useEffect(() => {
     const controller = new AbortController();
+    // Entries mode can reuse a narrower shell first so the editor feels faster
+    // before the full shell arrives.
     const entriesShellParams = buildEntriesShellParams({
       viewId: selectedViewId,
       month: selectedMonth
@@ -1095,6 +1154,8 @@ export function App() {
           return;
         }
 
+        // Fall back to the normal shell fetch for every non-entries route and
+        // for the second, full shell pass after the entries warm start.
         await loadAppShell(controller.signal);
         if (!hasCachedAppShell || controller.signal.aborted) {
           return;
@@ -1120,6 +1181,8 @@ export function App() {
         }
 
         if (shouldUseEntriesShell) {
+          // If the entries warm start fails, recover by retrying the full shell
+          // so the app still reaches a usable state.
           try {
             const fallbackData = await fetchAppShellData(appShellParams, {
               bypassCache: true,
@@ -1166,6 +1229,8 @@ export function App() {
     updateLoadingStatus
   ]);
 
+  // Listen for cross-tab shell refreshes and split mutations so every open tab
+  // converges on the same canonical state.
   useEffect(() => {
     if (typeof window === "undefined") {
       return undefined;
@@ -1237,8 +1302,12 @@ export function App() {
     loadAppShell
   ]);
 
+  // Route-page loading only starts once the shell exists, because the route
+  // view needs shell metadata to shape the active panel.
   const hasAppShell = Boolean(appShell);
 
+  // Fetch the current route page after the shell is ready, then keep the
+  // visible panel in sync with the latest route-specific DTO.
   useEffect(() => {
     if (!hasAppShell || !routePageRequest) {
       setRoutePageData(null);
@@ -1280,15 +1349,20 @@ export function App() {
     };
   }, [beginAppShellLoad, fetchRoutePageData, hasAppShell, queryClient, reportLoadingIssue, routePageRequest, updateLoadingStatus]);
 
+  // Convert the route DTO into the minimal UI view model for the active panel.
   const pageView = useMemo(
     () => buildPageViewFromRouteData(selectedTabId, routePageData, selectedViewId, appShell),
     [appShell, routePageData, selectedTabId, selectedViewId]
   );
+  // Summary-dependent helpers reuse the same optional page slice so the
+  // summary-specific code stays isolated from detail tabs.
   const summaryPage = pageView?.summaryPage ?? null;
   const defaultSplitsViewId = appShell?.viewerPersonId
     ?? appShell?.household?.people?.[0]?.id
     ?? appShell?.selectedViewId
     ?? "household";
+  // Entries scope falls back to the month view scope when the route has not
+  // overridden it yet.
   const selectedEntriesScope = searchParams.get("entries_scope") ?? pageView?.monthPage?.selectedScope ?? "direct_plus_shared";
   const householdMonthEntries = useMemo(
     () => selectedTabId === "month" && Array.isArray(routePageData?.householdMonthEntries)
@@ -1300,42 +1374,54 @@ export function App() {
     () => appShell?.categories.map((category) => ({ ...category, ...(categoryOverrides[category.id] ?? {}) })) ?? [],
     [appShell, categoryOverrides]
   );
+  // Use the summary page's month list when present, otherwise fall back to the
+  // shell's tracked months for detail tabs and route-neutral navigation.
   const availableMonths = useMemo(
     () => pageView?.summaryPage?.availableMonths?.slice().sort() ?? appShell?.trackedMonths ?? [],
     [appShell, pageView]
   );
   const isDetailMonthTab = selectedTabId === "month" || selectedTabId === "entries" || selectedTabId === "splits";
   const isSplitsTab = selectedTabId === "splits";
+  // Detail tabs use the current month index to decide whether the navigation
+  // arrows should remain enabled.
   const currentDetailMonthIndex = useMemo(
     () => isDetailMonthTab ? availableMonths.indexOf(selectedMonth) : -1,
     [availableMonths, isDetailMonthTab, selectedMonth]
   );
   const canMoveToPreviousDetailMonth = currentDetailMonthIndex > 0;
   const canMoveToNextDetailMonth = currentDetailMonthIndex !== -1 && currentDetailMonthIndex < availableMonths.length - 1;
+  // The month picker groups available months by year so the user can jump
+  // quickly across the imported ledger timeline.
   const detailAvailableYears = useMemo(
     () => isDetailMonthTab
       ? [...new Set(availableMonths.map((month) => Number(month.slice(0, 4))))].sort((left, right) => left - right)
       : [],
     [availableMonths, isDetailMonthTab]
   );
+  // Filter the current route's month list down to the selected year for the
+  // detail month picker.
   const detailAvailableMonthsForPickerYear = useMemo(
     () => isDetailMonthTab && monthPickerYear != null
       ? availableMonths.filter((month) => Number(month.slice(0, 4)) === monthPickerYear)
       : [],
     [availableMonths, isDetailMonthTab, monthPickerYear]
   );
+  // The summary range picker uses the same month list but renders year buckets
+  // separately for start and end selection.
   const summaryAvailableYears = useMemo(
     () => !isDetailMonthTab && pageView?.summaryPage?.availableMonths
       ? [...new Set(pageView.summaryPage.availableMonths.map((month) => Number(month.slice(0, 4))))].sort((left, right) => left - right)
       : [],
     [isDetailMonthTab, pageView]
   );
+  // Filter the summary picker months for the active start-year bucket.
   const summaryAvailableMonthsForPickerYear = useMemo(
     () => !isDetailMonthTab && pageView?.summaryPage?.availableMonths && rangePickerStartYear != null
       ? pageView.summaryPage.availableMonths.filter((month) => Number(month.slice(0, 4)) === rangePickerStartYear)
       : [],
     [isDetailMonthTab, rangePickerStartYear, pageView]
   );
+  // Filter the summary picker months for the active end-year bucket.
   const summaryAvailableMonthsForEndPickerYear = useMemo(
     () => !isDetailMonthTab && pageView?.summaryPage?.availableMonths && rangePickerEndYear != null
       ? pageView.summaryPage.availableMonths.filter((month) => Number(month.slice(0, 4)) === rangePickerEndYear)
@@ -1343,6 +1429,8 @@ export function App() {
     [isDetailMonthTab, rangePickerEndYear, pageView]
   );
 
+  // Prefetch adjacent routes once the shell is stable so fast navigation feels
+  // instant without violating the current route's source of truth.
   useEffect(() => {
     if (
       !appShell
@@ -1380,7 +1468,10 @@ export function App() {
     };
 
     routePagePrefetchTimerRef.current = window.setTimeout(() => {
+      // High-priority tasks are the next months or summary windows the user is
+      // most likely to visit immediately.
       const highPriorityTasks = [];
+      // Low-priority tasks warm the rest of the route set and the entries page.
       const lowPriorityTasks = [];
 
       if (selectedTabId === "month") {
@@ -1485,6 +1576,8 @@ export function App() {
     selectedViewId
   ]);
 
+  // Idle-time route module warming keeps tab switches fast without blocking
+  // the active screen.
   useEffect(() => {
     if (!appShell || appShellError || typeof window === "undefined" || window.navigator?.connection?.saveData) {
       return undefined;
@@ -1506,6 +1599,8 @@ export function App() {
     selectedTabId
   ]);
 
+  // Keep the splits view pinned to a sensible default person when no explicit
+  // selection is available in the URL.
   useEffect(() => {
     if (!appShell) {
       return;
@@ -1538,6 +1633,8 @@ export function App() {
     }, { replace: true });
   }, [appShell, defaultSplitsViewId, explicitViewId, selectedTabId, selectedViewId, setSearchParams]);
 
+  // Keep the selected month valid when route state points at a month that no
+  // longer exists in the loaded data.
   useEffect(() => {
     if (!appShell?.viewerRegistration) {
       setLoginRegistrationDraft(null);
@@ -1565,6 +1662,7 @@ export function App() {
     });
   }, [appShell, suppressedLoginRegistrationEmail]);
 
+  // Normalize summary range parameters so the picker and the URL stay in sync.
   useEffect(() => {
     if (!appShell || !availableMonths.length) {
       return;
@@ -1581,6 +1679,8 @@ export function App() {
     }, { replace: true });
   }, [availableMonths, appShell, selectedMonth, setSearchParams]);
 
+  // Initialize the summary range picker year buckets from the active summary
+  // window.
   useEffect(() => {
     if (isDetailMonthTab || !summaryPage?.availableMonths?.length) {
       return;
@@ -1615,6 +1715,7 @@ export function App() {
     }, { replace: true });
   }, [isDetailMonthTab, searchParams, selectedSummaryEnd, selectedSummaryStart, setSearchParams, summaryPage]);
 
+  // Initialize the detail month picker year bucket from the active month.
   useEffect(() => {
     if (isDetailMonthTab || !summaryPage) {
       return;
@@ -1650,6 +1751,8 @@ export function App() {
     });
   }, [detailAvailableYears, isDetailMonthTab, selectedMonth]);
 
+  // Derive the mobile sticky control config from the current tab and its scope
+  // semantics.
   const stickyScopeConfig = pageView
     ? selectedTabId === "month"
       ? {
@@ -1665,12 +1768,15 @@ export function App() {
           }
         : null
     : null;
+  // Small labels are easier to scan inside the mobile sheet than the full
+  // scope names.
   const mobileScopeLabels = {
     direct: "Direct",
     shared: "Shared",
     direct_plus_shared: "Direct+Shared"
   };
   const selectedViewSupportsScope = selectedViewId !== "household";
+  // The sticky sheet only needs month scopes when the route exposes them.
   const mobileContextScopes = stickyScopeConfig ? pageView?.monthPage?.scopes ?? [] : [];
   const selectedMobileScope = stickyScopeConfig
     ? mobileContextScopes.find((scope) => scope.key === stickyScopeConfig.selectedKey) ?? null
@@ -1681,12 +1787,15 @@ export function App() {
   const showMobileContextSticky = Boolean(stickyScopeConfig);
   const showMobileContextScopeSection = Boolean(stickyScopeConfig) && selectedViewSupportsScope && mobileContextScopes.length > 1;
 
+  // Collapse the mobile sheet when the sticky context is no longer relevant.
   useEffect(() => {
     if (!showMobileContextSticky && mobileContextOpen) {
       setMobileContextOpen(false);
     }
   }, [mobileContextOpen, showMobileContextSticky]);
 
+  // Render the explicit error state before any route chrome if the shell load
+  // failed.
   if (appShellError) {
     return (
       <main className="shell">
@@ -1700,6 +1809,8 @@ export function App() {
     );
   }
 
+  // Render the loading state while either the shell or the active page is
+  // still being resolved.
   if (!appShell || !pageView) {
     return (
       <main className="shell">
@@ -1709,14 +1820,19 @@ export function App() {
     );
   }
 
+  // The top chrome reflects the active period semantics of the current route.
   const periodMode = isDetailMonthTab ? messages.period.month : messages.period.year;
   const periodLabel = isDetailMonthTab
     ? formatService.formatMonthLabel(selectedMonth)
     : summaryPage
       ? `${formatService.formatMonthLabel(summaryPage.rangeStartMonth)} - ${formatService.formatMonthLabel(summaryPage.rangeEndMonth)}`
       : pageView.label;
+  // Settings badge state comes from the shell so every route sees the same
+  // suggestion count.
   const pendingCategorySuggestionCount = appShell.settingsPage?.categoryMatchRuleSuggestions?.length ?? 0;
   const buildTabTarget = (tab) => {
+    // Each nav link preserves the relevant route query while stripping
+    // parameters that belong to another tab.
     const params = new URLSearchParams(searchParams);
     sanitizeTabParams(params, tab.id);
     if (tab.id === "settings" && pendingCategorySuggestionCount) {
@@ -1737,6 +1853,8 @@ export function App() {
       ) : null}
     </span>
   );
+  // Route-driven view changes need to keep the month and entries tabs
+  // internally consistent when the active household member changes.
   function handleViewChange(nextViewId) {
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
@@ -1763,6 +1881,8 @@ export function App() {
     }
   }
 
+  // The mobile scope toggle only changes the current route parameter.
+  // The sticky scope control only updates the current route query string.
   function handleStickyScopeChange(nextScopeKey) {
     if (!stickyScopeConfig) {
       return;
@@ -1776,6 +1896,8 @@ export function App() {
     setMobileContextOpen(false);
   }
 
+  // Month navigation either moves the single-month detail view or shifts the
+  // summary range by one bucket.
   function handleMonthChange(direction) {
     if (isDetailMonthTab) {
       const currentIndex = availableMonths.indexOf(selectedMonth);
@@ -1826,6 +1948,7 @@ export function App() {
     });
   }
 
+  // Month picker selections rewrite the route to the chosen month.
   function handleDetailMonthSelect(month) {
     if (!isDetailMonthTab || !availableMonths.includes(month)) {
       return;
@@ -1838,6 +1961,8 @@ export function App() {
     });
   }
 
+  // The summary range start picker keeps the end month fixed and clamps the
+  // focus into the new interval.
   function handleSummaryStartMonthSelect(startMonth) {
     if (isDetailMonthTab || !summaryPage) {
       return;
@@ -1861,6 +1986,8 @@ export function App() {
     });
   }
 
+  // The summary range end picker mirrors the start picker but updates the
+  // right edge of the range.
   function handleSummaryEndMonthSelect(endMonth) {
     if (isDetailMonthTab || !summaryPage) {
       return;
@@ -1884,6 +2011,8 @@ export function App() {
     });
   }
 
+  // Category appearance updates are optimistic in the UI but still persisted to
+  // the server immediately.
   async function handleCategoryAppearanceChange(categoryId, nextAppearance) {
     const normalizedAppearance = { ...nextAppearance };
     if (typeof nextAppearance.name === "string") {
@@ -1917,6 +2046,8 @@ export function App() {
     clearAppShellCache();
   }
 
+  // Login registration links the current email to a household member and then
+  // refreshes shell state so the new identity is visible everywhere.
   async function handleRegisterLogin(event) {
     event.preventDefault();
     if (!loginRegistrationDraft?.personId) {
@@ -1962,6 +2093,8 @@ export function App() {
     }
   }
 
+  // Unregistering the login clears the local identity and rehydrates the shell
+  // so the app falls back to the anonymous household view.
   async function handleUnregisterLogin() {
     const viewerEmail = appShell.viewerIdentity?.email;
     const viewerPersonId = appShell.viewerIdentity?.personId;
@@ -1994,13 +2127,18 @@ export function App() {
     }
   }
 
+  // Logout is delegated to the Cloudflare Access endpoint rather than the app
+  // shell because it is an auth boundary, not an in-app state change.
   function handleLogout() {
     window.location.href = "/cdn-cgi/access/logout";
   }
 
+  // Render the shell chrome, the active route panel, and the login setup modal
+  // in one place so the top-level orchestration stays explicit.
   return (
     <main className="shell">
       <EnvironmentBanner environment={appEnvironment} />
+      {/* Top chrome keeps the route tabs, view pills, and period controls in one visible block. */}
       <section className="control-bar">
         <div className={`context-block ${showMobileContextSticky ? "has-mobile-sticky-context" : ""}`}>
           <div className="pill-row">
@@ -2237,6 +2375,7 @@ export function App() {
         </div>
       </section>
 
+      {/* The mobile sticky sheet mirrors the desktop chrome without forcing the user to scroll back to the top. */}
       {showMobileContextSticky ? (
         <section className="mobile-context-sticky-wrap" aria-label={stickyScopeConfig.label}>
           <div className="mobile-context-sticky-bar">
@@ -2364,6 +2503,7 @@ export function App() {
         </section>
       ) : null}
 
+      {/* The routed panel area is the actual screen body; every tab renders through this slot. */}
       <section className="grid app-route-grid" aria-busy={isAppShellLoading ? "true" : "false"}>
         <Suspense fallback={<RouteChunkLoadingFallback status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />}>
           <Routes>
@@ -2468,6 +2608,7 @@ export function App() {
         {isAppShellLoading ? <AppLoadingOverlay status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} /> : null}
       </section>
 
+      {/* Login registration is modal because it must interrupt the flow only when the shell has no stable identity mapping. */}
       {loginRegistrationDraft ? (
         <Dialog.Root open>
           <Dialog.Portal>
