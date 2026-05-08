@@ -23,6 +23,8 @@ system.
   execution order, test priority, and slice migration sequence
 - [`docs/preimplementation-checklist.md`](./preimplementation-checklist.md):
   reusable pre-change audit checklist and stop conditions
+- [`docs/known-coupling-targets.md`](./known-coupling-targets.md): audit
+  findings that should become explicit tests or contract checks
 - [`docs/existing-behavior-guardrails.md`](./existing-behavior-guardrails.md): current-app behaviors that must survive refactors
 - [`docs/responsive-behavior.md`](./responsive-behavior.md): responsive UX and form-factor contract
 - [`docs/interaction-guidelines.md`](./interaction-guidelines.md): button, CTA, and dismissal semantics
@@ -298,6 +300,7 @@ Artifact:
 Before implementation work, also use:
 
 - [`docs/preimplementation-checklist.md`](./preimplementation-checklist.md)
+- [`docs/known-coupling-targets.md`](./known-coupling-targets.md)
 
 ### Stage 5: Tighten backend boundaries to match the slices
 
