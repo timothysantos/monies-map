@@ -48,6 +48,8 @@ Constraints:
 - preserve docs/existing-behavior-guardrails.md
 - keep the slice narrow and do not refactor unrelated slices
 - update or add tests before moving implementation logic
+- do not keep the old path alive once the new path is verified in the same
+  slice
 - do not widen bootstrap dependence
 - do not widen invalidation beyond the documented contract
 - keep mobile workflow locks intact

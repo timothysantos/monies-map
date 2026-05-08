@@ -19,9 +19,11 @@ Current intended shape:
 
 - `App.jsx` remains the route shell, top-level composition layer, and
   migration bridge.
-- `App.jsx` should own route selection, shell-level loading, cross-tab
-  coordination, and compatibility fallbacks only while bootstrap migration is
-  still in flight.
+- `App.jsx` should own route selection, shell-level loading, and cross-tab
+  coordination.
+- if a slice introduces a replacement path, the old path must be removed in
+  the same slice once the new path passes the slice tests; compatibility
+  fallbacks are not allowed to linger as hidden debt.
 - Slice-specific query orchestration, data shaping, and invalidation should move
   out of `App.jsx` as each slice gets its own query boundary.
 
@@ -118,8 +120,11 @@ Exit signal:
 Current intended rule:
 
 - bootstrap is compatibility only, not the target architecture.
-- any bootstrap dependency that survives a slice move should be treated as
-  temporary and explicitly documented.
+- slice work should cut over to the new path in the same change whenever
+  possible instead of keeping both old and new paths alive.
+- any bootstrap dependency that survives a slice move is a bug unless the same
+  slice explicitly documents why the old path must remain and removes it before
+  the slice is considered complete.
 
 Migration rule:
 
@@ -127,7 +132,8 @@ Migration rule:
 - after a slice has a query boundary, that slice should own its route data and
   invalidation.
 - if a page still needs bootstrap during migration, the fallback must be narrow
-  and obvious in the code.
+  and obvious in the code, and it must be deleted in the same slice once the
+  replacement passes the slice tests.
 
 Exit signal:
 

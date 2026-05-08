@@ -40,6 +40,8 @@ Constraints:
 - keep code within the code-spec rules
 - preserve the current behavior guardrails
 - update or add tests first
+- do not keep the old path alive once the new path is verified in the same
+  slice
 - do not widen bootstrap dependence
 - do not widen invalidation beyond the documented contract
 - commit the work in small readable batches as the slice progresses

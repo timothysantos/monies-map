@@ -172,9 +172,9 @@ Source anchors:
 
 Current behavior:
 
-- the app can render a persisted bootstrap payload immediately on refresh
+- the app can render a persisted app-shell payload immediately on refresh
 - it then refreshes in the background
-- writes that change app data clear the stored bootstrap copy
+- writes that change app data clear the stored app-shell copy
 
 Why it matters:
 

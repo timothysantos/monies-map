@@ -51,6 +51,7 @@ The likely failure mode is:
 This refactor should reduce that risk by:
 
 - replacing broad bootstrap hydration with smaller slice-owned requests
+- removing old paths in the same slice once a replacement passes tests
 - avoiding eager prefetch storms
 - keeping warmup cancellable and low priority
 - invalidating narrowly instead of reloading the world after each write
@@ -117,6 +118,7 @@ Each slice must not own:
 
 - another slice's hidden query dependencies
 - broad bootstrap reads as a shortcut
+- compatibility fallbacks that outlive the slice that introduced them
 - global refresh side effects that ignore workflow locks
 
 ## Invalidation Contract
@@ -209,7 +211,7 @@ list when relevant:
 - manual refresh during an open workflow does not lose the draft
 - rapid route changes cancel or ignore stale warmup work
 - two quick saves do not let the older refresh overwrite the newer state
-- slow query or restart does not break persisted shell fallback
+- slow query or restart does not break persisted app-shell cache
 - import parser accepts structural variants from the same bank source
 
 ## Code Shape Rules
@@ -250,6 +252,17 @@ Comment rules:
 - keep comments short and local
 - add a short contract comment above dense selectors or mutation orchestration
 - do not narrate every line
+
+## Refactor Cutover Rule
+
+When a slice migrates to a new query, route, or workflow boundary:
+
+- the new path should replace the old path in the same change whenever
+  possible
+- if the old path must exist temporarily, it must be deleted before the slice
+  is declared complete
+- do not leave hidden compatibility branches behind for future slices to
+  discover later
 
 ## Documentation Output Rule
 
