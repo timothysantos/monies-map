@@ -434,17 +434,25 @@ function SummaryMonthNoteDialog({ monthNoteDialog, onClose, onChangeDraft, onSav
 }
 
 function buildSummaryFocusState(summaryPage, summaryFocusParam) {
-  const latestRangeMonth = summaryPage.rangeMonths.at(-1) ?? "";
+  // Summary can hydrate before the full range slice lands, so default to
+  // empty collections instead of assuming every summary field is present.
+  const safeSummaryPage = summaryPage ?? {
+    rangeMonths: [],
+    categoryShareByMonth: [],
+    categoryShareChart: [],
+    months: []
+  };
+  const latestRangeMonth = safeSummaryPage.rangeMonths.at(-1) ?? "";
   const selectedFocusMonth = summaryFocusParam === SUMMARY_FOCUS_OVERALL
     ? ""
-    : (summaryFocusParam && summaryPage.rangeMonths.includes(summaryFocusParam)
+    : (summaryFocusParam && safeSummaryPage.rangeMonths.includes(summaryFocusParam)
       ? summaryFocusParam
       : latestRangeMonth);
-  const selectedDonutMonth = summaryPage.categoryShareByMonth.find((month) => month.month === selectedFocusMonth) ?? null;
-  const donutData = selectedDonutMonth?.data ?? summaryPage.categoryShareChart;
+  const selectedDonutMonth = safeSummaryPage.categoryShareByMonth.find((month) => month.month === selectedFocusMonth) ?? null;
+  const donutData = selectedDonutMonth?.data ?? safeSummaryPage.categoryShareChart;
   const totalSpendMinor = selectedDonutMonth
-    ? summaryPage.months.find((month) => month.month === selectedDonutMonth.month)?.realExpensesMinor ?? 0
-    : summaryPage.months.reduce((sum, month) => sum + month.realExpensesMinor, 0);
+    ? safeSummaryPage.months.find((month) => month.month === selectedDonutMonth.month)?.realExpensesMinor ?? 0
+    : safeSummaryPage.months.reduce((sum, month) => sum + month.realExpensesMinor, 0);
 
   return {
     selectedFocusMonth,
