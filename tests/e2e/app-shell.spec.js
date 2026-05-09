@@ -102,6 +102,17 @@ test("route transitions keep the previous screen visible until the next page set
   await expect(page.getByRole("heading", { name: "Entries" })).toBeVisible({ timeout: 10_000 });
 });
 
+test("month to summary keeps summary stable after the month route resolves", async ({ page }) => {
+  await reseedDemo(page);
+  await page.goto("/month?view=person-tim&month=2026-04");
+  await expect(page.getByRole("heading", { name: "Month" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Summary", exact: true }).click();
+
+  await expect(page.getByRole("heading", { name: "Month" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Summary" })).toBeVisible({ timeout: 10_000 });
+});
+
 test("every top-level tab renders without crashing", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", (error) => {
