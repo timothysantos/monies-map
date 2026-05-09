@@ -80,11 +80,11 @@ function mergeMonthPlanSections(currentSections, serverSections) {
 export function MonthPanel({ view, accounts, people, categories, householdMonthEntries, onCategoryAppearanceChange, onRefresh }) {
   const navigate = useNavigate();
   const monthUiKey = `${view.id}:${view.monthPage.month}:${view.monthPage.selectedScope}`;
-  const [planSections, setPlanSections] = useState(view.monthPage.planSections);
+  const [planSections, setPlanSections] = useState(view.monthPage.planSections ?? []);
   const [editingRowId, setEditingRowId] = useState(null);
   const [editingSnapshot, setEditingSnapshot] = useState(null);
   const [editingDrafts, setEditingDrafts] = useState({});
-  const [incomeRows, setIncomeRows] = useState(view.monthPage.incomeRows);
+  const [incomeRows, setIncomeRows] = useState(view.monthPage.incomeRows ?? []);
   const [sectionOpen, setSectionOpen] = useState(() => MONTH_SECTION_STATE_CACHE.get(monthUiKey) ?? monthService.getDefaultSectionOpen());
   const [noteDialog, setNoteDialog] = useState(null);
   const [planLinkDialog, setPlanLinkDialog] = useState(null);
@@ -105,7 +105,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   const isCombinedHouseholdView = view.id === "household" && view.monthPage.selectedScope === "direct_plus_shared";
 
   useEffect(() => {
-    setPlanSections(view.monthPage.planSections);
+    setPlanSections(view.monthPage.planSections ?? []);
     setEditingRowId(null);
     setEditingSnapshot(null);
     setEditingDrafts({});
@@ -118,16 +118,16 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       planned_items: null,
       budget_buckets: null
     });
-    setIncomeRows(view.monthPage.incomeRows);
+    setIncomeRows(view.monthPage.incomeRows ?? []);
     setIsMonthDataRefreshing(false);
   }, [monthUiKey]);
 
   useEffect(() => {
-    setPlanSections((current) => mergeMonthPlanSections(current, view.monthPage.planSections));
+    setPlanSections((current) => mergeMonthPlanSections(current ?? [], view.monthPage.planSections ?? []));
   }, [view.monthPage.planSections]);
 
   useEffect(() => {
-    setIncomeRows((current) => mergeMonthRowsById(current, view.monthPage.incomeRows));
+    setIncomeRows((current) => mergeMonthRowsById(current ?? [], view.monthPage.incomeRows ?? []));
   }, [view.monthPage.incomeRows]);
 
   useEffect(() => {
@@ -149,7 +149,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   // Summary cards borrow the selected month's rollup from the already-loaded
   // summary payload instead of refetching anything here.
   const selectedMonthSummary = useMemo(
-    () => view.summaryPage.months.find((month) => month.month === view.monthPage.month) ?? null,
+    () => view.summaryPage?.months?.find((month) => month.month === view.monthPage.month) ?? null,
     [view]
   );
   const planLinkTargetRow = useMemo(
@@ -235,10 +235,14 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     })),
     [visibleAccountOptions]
   );
+  // Month panels can mount before the route payload fully settles, so keep
+  // the initial derived-state checks tolerant of missing arrays.
+  const safePlanSections = planSections ?? [];
+  const safeIncomeRows = incomeRows ?? [];
   const hasPendingDerivedMonthData = useMemo(
-    () => incomeRows.some((row) => row.isPendingDerived)
-      || planSections.some((section) => section.rows.some((row) => row.isPendingDerived)),
-    [incomeRows, planSections]
+    () => safeIncomeRows.some((row) => row.isPendingDerived)
+      || safePlanSections.some((section) => (section.rows ?? []).some((row) => row.isPendingDerived)),
+    [safeIncomeRows, safePlanSections]
   );
 
   function refreshMonthDataInBackground() {

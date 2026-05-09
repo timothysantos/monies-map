@@ -28,6 +28,13 @@ import { SplitsMainSection } from "./splits-main-section";
 import { buildSplitsPanelModel } from "./splits-selectors";
 
 export function SplitsPanel({ view, categories, people, onRefresh }) {
+  const splitsPage = view.splitsPage ?? {
+    groups: [],
+    activity: [],
+    matches: [],
+    donutChart: [],
+    month: view.monthPage?.month ?? ""
+  };
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showBreakdown, setShowBreakdown] = useState(false);
@@ -39,15 +46,15 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [optimisticSplitsPage, setOptimisticSplitsPage] = useState(null);
   const [dismissedMatchIds, setDismissedMatchIds] = useState([]);
   const refreshGenerationRef = useRef(0);
-  const latestSplitsPageRef = useRef(view.splitsPage);
-  const defaultGroupId = view.splitsPage.groups.find((group) => group.isDefault)?.id ?? "split-group-none";
+  const latestSplitsPageRef = useRef(splitsPage);
+  const defaultGroupId = splitsPage.groups.find((group) => group.isDefault)?.id ?? "split-group-none";
   const selectedGroupParam = searchParams.get("split_group");
   const selectedGroupId = selectedGroupParam ?? defaultGroupId;
   const selectedMode = searchParams.get("split_mode") ?? "entries";
   const isHouseholdView = view.id === "household";
   const displayView = useMemo(
-    () => (optimisticSplitsPage ? { ...view, splitsPage: optimisticSplitsPage } : view),
-    [optimisticSplitsPage, view]
+    () => (optimisticSplitsPage ? { ...view, splitsPage: optimisticSplitsPage } : { ...view, splitsPage }),
+    [optimisticSplitsPage, splitsPage, view]
   );
   const splitModel = useMemo(
     () => buildSplitsPanelModel({
@@ -107,8 +114,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   } = useSplitEditState({ categoryOptions, people });
 
   useEffect(() => {
-    latestSplitsPageRef.current = view.splitsPage;
-  }, [view.splitsPage]);
+    latestSplitsPageRef.current = splitsPage;
+  }, [splitsPage]);
 
   useEffect(() => {
     // Keep the URL explicit once the default group is known so refreshes and
@@ -140,7 +147,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     refreshGenerationRef.current += 1;
     resetForViewChange();
     setArchiveDialog(null);
-  }, [resetForViewChange, view.id, view.splitsPage.month]);
+  }, [resetForViewChange, splitsPage.month, view.id]);
 
   useEffect(() => {
     if (!useMobileSplitSheet) {
@@ -156,7 +163,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       return;
     }
 
-    const targetExpense = view.splitsPage.activity.find((item) => (
+    const targetExpense = splitsPage.activity.find((item) => (
       item.kind === "expense" && item.id === targetSplitExpenseId && !item.isArchived
     ));
     if (!targetExpense) {
@@ -185,7 +192,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     selectedGroupId,
     selectedMode,
     setSearchParams,
-    view.splitsPage.activity
+    splitsPage.activity
   ]);
 
   function updateSplitView(patch) {
@@ -427,7 +434,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
 
     const params = new URLSearchParams({
       view: view.id,
-      month: view.splitsPage.month,
+      month: splitsPage.month,
       editing_entry: item.linkedTransactionId
     });
     navigate({
@@ -536,7 +543,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         groupBalanceMinor={groupBalanceMinor}
         groupSummaryLabel={groupSummaryLabel}
         donutRows={donutRows}
-        donutChart={view.splitsPage.donutChart}
+        donutChart={splitsPage.donutChart}
         categories={categories}
         groupOptions={groupOptions}
         people={people}

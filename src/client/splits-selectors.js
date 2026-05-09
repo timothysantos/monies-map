@@ -17,11 +17,20 @@ export function buildSplitsPanelModel({
   dismissedMatchIds,
   archiveBatchId
 }) {
-  const groups = view.splitsPage.groups;
+  // Splits can render before the route slice finishes hydrating, so the
+  // selectors stay defensive and fall back to empty collections.
+  const monthEntries = view.monthPage?.entries ?? [];
+  const splitsPage = view.splitsPage ?? {
+    groups: [],
+    activity: [],
+    matches: [],
+    donutChart: []
+  };
+  const groups = splitsPage.groups;
   const groupOptions = [{ id: "split-group-none", name: messages.splits.nonGroup }, ...groups.filter((group) => group.id !== "split-group-none")];
   const activeGroup = groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null;
   const activeGroupId = activeGroup?.id ?? "split-group-none";
-  const activeGroupActivity = view.splitsPage.activity.filter((item) => item.groupId === activeGroupId);
+  const activeGroupActivity = splitsPage.activity.filter((item) => item.groupId === activeGroupId);
   const currentGroupActivity = activeGroupActivity.filter((item) => !item.isArchived);
   const archivedGroupActivity = activeGroupActivity.filter((item) => item.isArchived);
   const groupedCurrentActivity = splitService.groupActivityByDate(currentGroupActivity);
@@ -29,21 +38,21 @@ export function buildSplitsPanelModel({
   const selectedArchivedBatch = archiveBatchId
     ? archivedBatches.find((batch) => batch.batchId === archiveBatchId) ?? null
     : null;
-  const unresolvedMatches = view.splitsPage.matches.filter((item) => !dismissedMatchIds.includes(item.id));
+  const unresolvedMatches = splitsPage.matches.filter((item) => !dismissedMatchIds.includes(item.id));
   const groupBalanceMinor = activeGroup?.balanceMinor ?? 0;
 
   return {
     activeGroup,
     archivedBatches,
     categoryOptions: getCategoryOptions(categories),
-    donutRows: buildDonutRows(view.splitsPage.donutChart, categories),
+    donutRows: buildDonutRows(splitsPage.donutChart, categories),
     expenseMatchCount: unresolvedMatches.filter((item) => item.kind === "expense").length,
     groupBalanceMinor,
     groupedCurrentActivity,
     groups,
     groupOptions,
     groupSummaryLabel: view.id === "household" ? "" : getGroupSummaryLabel(groupBalanceMinor),
-    linkedEntriesById: new Map(view.monthPage.entries.map((entry) => [entry.id, entry])),
+    linkedEntriesById: new Map(monthEntries.map((entry) => [entry.id, entry])),
     pendingMatchCount: unresolvedMatches.length,
     selectedArchivedBatch,
     settlementMatchCount: unresolvedMatches.filter((item) => item.kind === "settlement").length,

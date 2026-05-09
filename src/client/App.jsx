@@ -252,8 +252,6 @@ export function App() {
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
   const isAppShellLoading = appShellLoadCount > 0;
   const [routePageData, setRoutePageData] = useState(null);
-  const [visiblePageView, setVisiblePageView] = useState(null);
-  const [visibleTabId, setVisibleTabId] = useState(null);
   const [entriesExternalRefreshToken, setEntriesExternalRefreshToken] = useState(0);
   const [loginRegistrationDraft, setLoginRegistrationDraft] = useState(null);
   const [loginRegistrationError, setLoginRegistrationError] = useState("");
@@ -1346,23 +1344,26 @@ export function App() {
     };
   }, [beginAppShellLoad, fetchRoutePageData, queryClient, reportLoadingIssue, routePageRequest, updateLoadingStatus]);
 
-  // Keep the last settled page view visible until the next route finishes
-  // hydrating so navigation does not blank the active screen.
+  // Keep only the last settled route snapshot in refs so hydration can fall
+  // back to the previous screen without introducing a second render source of
+  // truth.
   const currentPageView = useMemo(
     () => buildPageViewFromRouteData(selectedTabId, routePageData, selectedViewId, appShell),
     [appShell, routePageData, selectedTabId, selectedViewId]
   );
+  const lastSettledPageViewRef = useRef(null);
+  const lastSettledTabIdRef = useRef(null);
   useEffect(() => {
     if (currentPageView) {
-      setVisiblePageView(currentPageView);
-      setVisibleTabId(selectedTabId);
+      lastSettledPageViewRef.current = currentPageView;
+      lastSettledTabIdRef.current = selectedTabId;
     }
   }, [currentPageView, selectedTabId]);
 
-  // Convert the current route DTO into the active UI view model, falling back
-  // to the last settled screen while the next request is still pending.
-  const pageView = currentPageView ?? visiblePageView;
-  const renderedTabId = currentPageView ? selectedTabId : visibleTabId;
+  // Derive the active render state directly from the current route, falling
+  // back to the last settled route only while the next page hydrates.
+  const pageView = currentPageView ?? lastSettledPageViewRef.current;
+  const renderedTabId = currentPageView ? selectedTabId : lastSettledTabIdRef.current ?? selectedTabId;
   // Summary-dependent helpers reuse the same optional page slice so the
   // summary-specific code stays isolated from detail tabs.
   const summaryPage = pageView?.summaryPage ?? null;
@@ -1503,7 +1504,7 @@ export function App() {
     if (renderedTabId === "imports") {
       return (
         <ImportsPanel
-          importsPage={routePageData?.importsPage ?? appShell.importsPage}
+          importsPage={pageView.importsPage}
           viewId={pageView.id}
           viewLabel={pageView.label}
           accounts={appShell.accounts}
@@ -1517,7 +1518,7 @@ export function App() {
     if (renderedTabId === "settings") {
       return (
         <SettingsPanel
-          settingsPage={routePageData?.settingsPage ?? appShell.settingsPage}
+          settingsPage={pageView.settingsPage}
           accounts={appShell.accounts}
           categories={categories}
           people={appShell.household.people}
@@ -1969,8 +1970,8 @@ export function App() {
   const periodMode = isDetailMonthTab ? messages.period.month : messages.period.year;
   const periodLabel = isDetailMonthTab
     ? formatService.formatMonthLabel(selectedMonth)
-    : summaryPage
-      ? `${formatService.formatMonthLabel(summaryPage.rangeStartMonth)} - ${formatService.formatMonthLabel(summaryPage.rangeEndMonth)}`
+    : pageView?.summaryPage?.rangeStartMonth && pageView?.summaryPage?.rangeEndMonth
+      ? `${formatService.formatMonthLabel(pageView.summaryPage.rangeStartMonth)} - ${formatService.formatMonthLabel(pageView.summaryPage.rangeEndMonth)}`
       : pageView.label;
   // Settings badge state comes from the shell so every route sees the same
   // suggestion count.
@@ -2415,7 +2416,7 @@ export function App() {
                     </Popover.Portal>
                   </Popover.Root>
                 </strong>
-              ) : summaryPage ? (
+              ) : summaryPage?.rangeStartMonth && summaryPage?.rangeEndMonth ? (
                 <strong className="period-range-value">
                   <Popover.Root>
                     <Popover.Trigger asChild>

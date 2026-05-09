@@ -87,6 +87,16 @@ export function SettingsPanel({
   const [statementCompareStatus, setStatementCompareStatus] = useState(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  // Settings shows demo and reconciliation sections that expect a shaped
+  // page slice, so hydrate a safe local fallback before the route settles.
+  const safeSettingsPage = settingsPage ?? {
+    demo: { emptyState: false, lastSeededAt: new Date().toISOString() },
+    categoryMatchRules: [],
+    categoryMatchRuleSuggestions: [],
+    unresolvedTransfers: [],
+    reconciliationExceptions: [],
+    recentAuditEvents: []
+  };
   const visibleAccounts = useMemo(() => {
     const scopedAccounts = viewId === "household"
       ? accounts
@@ -106,7 +116,7 @@ export function SettingsPanel({
   );
   const recentActivityGroups = useMemo(() => {
     const grouped = new Map();
-    for (const event of settingsPage.recentAuditEvents) {
+    for (const event of safeSettingsPage.recentAuditEvents) {
       const key = event.createdAt.slice(0, 10);
       if (!grouped.has(key)) {
         grouped.set(key, []);
@@ -114,7 +124,7 @@ export function SettingsPanel({
       grouped.get(key).push(event);
     }
     return Array.from(grouped.entries()).map(([date, events]) => ({ date, events }));
-  }, [settingsPage.recentAuditEvents]);
+  }, [safeSettingsPage.recentAuditEvents]);
   const checkpointHistoryYears = useMemo(() => (
     Array.from(new Set((reconciliationDialog?.history ?? []).map((item) => item.month.slice(0, 4)).filter(Boolean)))
       .sort((left, right) => right.localeCompare(left))
@@ -638,10 +648,10 @@ export function SettingsPanel({
   }
 
   async function handleDismissAllUnresolvedTransfers() {
-    if (!settingsPage.unresolvedTransfers.length) {
+    if (!safeSettingsPage.unresolvedTransfers.length) {
       return;
     }
-    if (!window.confirm(`Clear all ${settingsPage.unresolvedTransfers.length} unresolved transfer reviews? This will only hide them from this review list.`)) {
+    if (!window.confirm(`Clear all ${safeSettingsPage.unresolvedTransfers.length} unresolved transfer reviews? This will only hide them from this review list.`)) {
       return;
     }
 
@@ -800,9 +810,9 @@ export function SettingsPanel({
 
       <SettingsCategoryMatchRulesSection
         id="settings-category-rules"
-        rules={settingsPage.categoryMatchRules ?? []}
+        rules={safeSettingsPage.categoryMatchRules ?? []}
         categories={categories}
-        suggestions={settingsPage.categoryMatchRuleSuggestions ?? []}
+        suggestions={safeSettingsPage.categoryMatchRuleSuggestions ?? []}
         isOpen={settingsSectionsOpen.categoryRules}
         onToggle={() => toggleSettingsSection("categoryRules")}
         onCreateRule={openCreateCategoryRuleDialog}
@@ -815,7 +825,7 @@ export function SettingsPanel({
 
       <SettingsTrustSection
         accounts={visibleAccounts}
-        exceptions={settingsPage.reconciliationExceptions ?? []}
+        exceptions={safeSettingsPage.reconciliationExceptions ?? []}
         isOpen={settingsSectionsOpen.trust}
         isSubmitting={isSubmitting}
         onToggle={() => toggleSettingsSection("trust")}
@@ -824,7 +834,7 @@ export function SettingsPanel({
       />
 
       <SettingsTransfersSection
-        transfers={settingsPage.unresolvedTransfers}
+        transfers={safeSettingsPage.unresolvedTransfers}
         isOpen={settingsSectionsOpen.transfers}
         isSubmitting={isSubmitting}
         onToggle={() => toggleSettingsSection("transfers")}
@@ -841,7 +851,7 @@ export function SettingsPanel({
 
       {canUseDemoControls ? (
         <SettingsDemoSection
-          demo={settingsPage.demo}
+          demo={safeSettingsPage.demo}
           error={demoActionError}
           emptyStateDialogOpen={emptyStateDialogOpen}
           emptyStateText={emptyStateText}
