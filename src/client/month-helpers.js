@@ -14,14 +14,16 @@ export function getDefaultMonthSectionOpen() {
 }
 
 export function buildMonthMetricCards({ planSections, incomeRows, currentMonthSummary }) {
-  const flatPlanRows = planSections.flatMap((section) => section.rows);
+  // Route hydration can momentarily deliver partial month slices, so the
+  // metric cards must tolerate missing arrays without throwing.
+  const flatPlanRows = (planSections ?? []).flatMap((section) => section.rows ?? []);
   const plannedSpendMinor = flatPlanRows.reduce((sum, row) => sum + row.plannedMinor, 0);
   const actualSpendMinor = currentMonthSummary?.realExpensesMinor
     ?? flatPlanRows.reduce((sum, row) => sum + row.actualMinor, 0);
   const savingsTargetMinor = flatPlanRows
     .filter((row) => row.label === "Savings")
     .reduce((sum, row) => sum + row.plannedMinor, 0);
-  const plannedIncomeMinor = incomeRows.reduce((sum, row) => sum + row.plannedMinor, 0);
+  const plannedIncomeMinor = (incomeRows ?? []).reduce((sum, row) => sum + row.plannedMinor, 0);
   const remainingBudgetMinor = plannedIncomeMinor - plannedSpendMinor;
   const spendGapMinor = plannedSpendMinor - actualSpendMinor;
 

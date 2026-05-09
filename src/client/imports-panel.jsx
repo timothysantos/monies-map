@@ -35,6 +35,12 @@ const { format: formatService, imports: importService } = moniesClient;
 // - stage 2 maps CSV columns into the app's import schema
 // - stage 3 reviews the server-built preview before commit
 export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, people, onRefresh }) {
+  // Imports can mount while the route payload is still hydrating, so keep a
+  // minimal local shape instead of assuming the page slice is already present.
+  const safeImportsPage = importsPage ?? {
+    recentImports: [],
+    rollbackPolicy: ""
+  };
   // Draft metadata chosen by the user before preview.
   const [sourceLabel, setSourceLabel] = useState(DEFAULT_SOURCE_LABEL);
   const [importNote, setImportNote] = useState("");
@@ -195,12 +201,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     sourceLabel
   });
   const recentImportAccountOptions = useMemo(
-    () => getRecentImportAccountOptions(importsPage.recentImports, accounts),
-    [accounts, importsPage.recentImports]
+    () => getRecentImportAccountOptions(safeImportsPage.recentImports, accounts),
+    [accounts, safeImportsPage.recentImports]
   );
   const filteredRecentImports = useMemo(
-    () => filterRecentImportsByAccount(importsPage.recentImports, recentImportAccountFilter),
-    [importsPage.recentImports, recentImportAccountFilter]
+    () => filterRecentImportsByAccount(safeImportsPage.recentImports, recentImportAccountFilter),
+    [recentImportAccountFilter, safeImportsPage.recentImports]
   );
   const recentImportModel = useMemo(
     () => buildRecentImportModel(filteredRecentImports, recentImportPage),
@@ -942,7 +948,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           onDragLeaveImportFile={handleDragLeaveImportFile}
           onDropImportFile={handleDropImportFile}
           uploadStatus={uploadStatus}
-          rollbackPolicy={importsPage.rollbackPolicy}
+          rollbackPolicy={safeImportsPage.rollbackPolicy}
         />
 
         {/* Stage 2: map source columns into the app's import schema. */}

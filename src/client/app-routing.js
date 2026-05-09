@@ -144,9 +144,11 @@ export function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appS
   }
 
   if (tabId === "month" && pageData.monthPage) {
+    // Month should only expose the month payload here; the summary slice can
+    // exist separately, but it must not be synthesized into a second source.
     return {
       ...baseView,
-      summaryPage: pageData.summaryPage ?? { months: [] },
+      summaryPage: pageData.summaryPage ?? null,
       monthPage: pageData.monthPage
     };
   }
@@ -162,14 +164,21 @@ export function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appS
   }
 
   if (tabId === "splits" && pageData.splitsPage) {
+    // Splits keeps the linked month slice alongside its own data so row
+    // matching can work without widening the page-view contract.
     return {
       ...baseView,
+      monthPage: pageData.monthPage ?? null,
       splitsPage: pageData.splitsPage
     };
   }
 
   if (tabId === "imports" || tabId === "settings" || tabId === "faq") {
-    return baseView;
+    return {
+      ...baseView,
+      ...(tabId === "imports" ? { importsPage: pageData.importsPage } : null),
+      ...(tabId === "settings" ? { settingsPage: pageData.settingsPage } : null)
+    };
   }
 
   return null;

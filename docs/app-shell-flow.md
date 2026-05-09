@@ -39,7 +39,7 @@ flowchart TD
 | Shell request | `src/client/App.jsx`, `src/index.ts`, `src/domain/bootstrap-dto.ts`, `src/domain/bootstrap.ts` | `GET /api/app-shell` | `AppShellDto` with household, accounts, categories, tracked months, and viewer identity fields |
 | Route request build | `src/client/app-routing.js` | none | Exact route page endpoint and query params for the current tab |
 | Page request | `src/client/App.jsx`, `src/index.ts`, `src/domain/bootstrap.ts` | `GET /api/summary-page`, `GET /api/month-page`, `GET /api/entries-page`, `GET /api/splits-page`, `GET /api/imports-page`, or `GET /api/settings-page` | Page-specific DTO for the active screen |
-| Continuity bridge | `src/client/App.jsx` | none | Keep the last settled screen visible while the next route hydrates |
+| Continuity bridge | `src/client/App.jsx` | none | Keep the last settled screen visible while the next route hydrates without turning that snapshot into a competing source of truth |
 | View shaping | `src/client/App.jsx` | none | Minimal view object for the current panel |
 | Mutation refresh | `src/client/App.jsx`, `src/client/query-keys.js`, `src/client/app-sync.js` | mutation endpoint plus sync event | Exact cache invalidation and optional shell refresh broadcast |
 
@@ -51,6 +51,8 @@ flowchart TD
 - `src/domain/bootstrap.ts` owns the lower-level data loading and page DTO
   builders.
 - `src/domain/bootstrap-dto.ts` owns the shell DTO constructors.
+- the last settled screen is retained only as a hydration fallback; the active
+  route still comes from TanStack and the browser location.
 - The removed legacy bootstrap route is intentionally not part of this flow.
 
 ## Route Affordance

@@ -36,6 +36,8 @@ Read and follow:
 
 Target slice:
 - route transition, page hydration, route affordance, and DDD boundary tightening
+- retain the last settled screen only as a hydration fallback, not as a second
+  source of truth for route selection
 
 Target scenarios:
 - S7 Summary reflects month edits when returning from a drilldown
@@ -106,6 +108,8 @@ Implementation rules:
   normal navigation state
 - split route hydration from visible-page replacement so stale data cannot
   clobber an active screen
+- keep the retained settled screen in a ref-backed hydration fallback, while
+  TanStack and the browser location remain the route source of truth
 - keep query invalidation exact and route-scoped
 - move DDD boundary decisions into docs if the code proves the existing
   boundary assumptions wrong
