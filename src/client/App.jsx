@@ -252,6 +252,8 @@ export function App() {
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
   const isAppShellLoading = appShellLoadCount > 0;
   const [routePageData, setRoutePageData] = useState(null);
+  const [visiblePageView, setVisiblePageView] = useState(null);
+  const [visibleTabId, setVisibleTabId] = useState(null);
   const [entriesExternalRefreshToken, setEntriesExternalRefreshToken] = useState(0);
   const [loginRegistrationDraft, setLoginRegistrationDraft] = useState(null);
   const [loginRegistrationError, setLoginRegistrationError] = useState("");
@@ -1302,15 +1304,10 @@ export function App() {
     loadAppShell
   ]);
 
-  // Route-page loading only starts once the shell exists, because the route
-  // view needs shell metadata to shape the active panel.
-  const hasAppShell = Boolean(appShell);
-
-  // Fetch the current route page after the shell is ready, then keep the
-  // visible panel in sync with the latest route-specific DTO.
+  // Route-page loading starts as soon as the route is known so shell and page
+  // requests can overlap when the page does not need shell-derived inputs.
   useEffect(() => {
-    if (!hasAppShell || !routePageRequest) {
-      setRoutePageData(null);
+    if (!routePageRequest) {
       return undefined;
     }
 
@@ -1347,13 +1344,25 @@ export function App() {
       controller.abort();
       finishAppShellLoad?.();
     };
-  }, [beginAppShellLoad, fetchRoutePageData, hasAppShell, queryClient, reportLoadingIssue, routePageRequest, updateLoadingStatus]);
+  }, [beginAppShellLoad, fetchRoutePageData, queryClient, reportLoadingIssue, routePageRequest, updateLoadingStatus]);
 
-  // Convert the route DTO into the minimal UI view model for the active panel.
-  const pageView = useMemo(
+  // Keep the last settled page view visible until the next route finishes
+  // hydrating so navigation does not blank the active screen.
+  const currentPageView = useMemo(
     () => buildPageViewFromRouteData(selectedTabId, routePageData, selectedViewId, appShell),
     [appShell, routePageData, selectedTabId, selectedViewId]
   );
+  useEffect(() => {
+    if (currentPageView) {
+      setVisiblePageView(currentPageView);
+      setVisibleTabId(selectedTabId);
+    }
+  }, [currentPageView, selectedTabId]);
+
+  // Convert the current route DTO into the active UI view model, falling back
+  // to the last settled screen while the next request is still pending.
+  const pageView = currentPageView ?? visiblePageView;
+  const renderedTabId = currentPageView ? selectedTabId : visibleTabId;
   // Summary-dependent helpers reuse the same optional page slice so the
   // summary-specific code stays isolated from detail tabs.
   const summaryPage = pageView?.summaryPage ?? null;
@@ -1380,8 +1389,8 @@ export function App() {
     () => pageView?.summaryPage?.availableMonths?.slice().sort() ?? appShell?.trackedMonths ?? [],
     [appShell, pageView]
   );
-  const isDetailMonthTab = selectedTabId === "month" || selectedTabId === "entries" || selectedTabId === "splits";
-  const isSplitsTab = selectedTabId === "splits";
+  const isDetailMonthTab = renderedTabId === "month" || renderedTabId === "entries" || renderedTabId === "splits";
+  const isSplitsTab = renderedTabId === "splits";
   // Detail tabs use the current month index to decide whether the navigation
   // arrows should remain enabled.
   const currentDetailMonthIndex = useMemo(
@@ -1428,6 +1437,142 @@ export function App() {
       : [],
     [isDetailMonthTab, rangePickerEndYear, pageView]
   );
+  const renderedRouteElement = useMemo(() => {
+    if (!pageView) {
+      return null;
+    }
+
+    if (renderedTabId === "summary") {
+      return (
+        <SummaryPanel
+          view={pageView}
+          selectedMonth={selectedMonth}
+          categories={categories}
+          onCategoryAppearanceChange={handleCategoryAppearanceChange}
+          onRefresh={() => refreshRoutePage()}
+        />
+      );
+    }
+
+    if (renderedTabId === "month") {
+      return (
+        <MonthPanel
+          view={pageView}
+          accounts={appShell.accounts}
+          people={appShell.household.people}
+          categories={categories}
+          householdMonthEntries={householdMonthEntries}
+          onCategoryAppearanceChange={handleCategoryAppearanceChange}
+          onRefresh={refreshCurrentMonthPage}
+        />
+      );
+    }
+
+    if (renderedTabId === "entries") {
+      return (
+        <EntriesPanel
+          view={pageView}
+          entriesSourceView={pageView}
+          selectedMonth={selectedMonth}
+          mobileContextOpen={mobileContextOpen}
+          onCloseMobileContext={closeMobileContext}
+          onMobileFilterStateChange={handleEntriesMobileFilterStateChange}
+          externalRefreshToken={entriesExternalRefreshToken}
+          availableMonths={availableMonths}
+          accounts={appShell.accounts}
+          categories={categories}
+          people={appShell.household.people}
+          onCategoryAppearanceChange={handleCategoryAppearanceChange}
+          onInvalidateAppShellCache={syncAppShellAfterMutation}
+          onBroadcastSplitMutation={broadcastSplitMutation}
+        />
+      );
+    }
+
+    if (renderedTabId === "splits") {
+      return (
+        <SplitsPanel
+          view={pageView}
+          categories={categories}
+          people={appShell.household.people}
+          onRefresh={(options) => refreshCurrentSplitsPage(options)}
+        />
+      );
+    }
+
+    if (renderedTabId === "imports") {
+      return (
+        <ImportsPanel
+          importsPage={routePageData?.importsPage ?? appShell.importsPage}
+          viewId={pageView.id}
+          viewLabel={pageView.label}
+          accounts={appShell.accounts}
+          categories={categories}
+          people={appShell.household.people}
+          onRefresh={(options) => refreshCurrentImportsPage(options)}
+        />
+      );
+    }
+
+    if (renderedTabId === "settings") {
+      return (
+        <SettingsPanel
+          settingsPage={routePageData?.settingsPage ?? appShell.settingsPage}
+          accounts={appShell.accounts}
+          categories={categories}
+          people={appShell.household.people}
+          viewId={pageView.id}
+          viewLabel={pageView.label}
+          appEnvironment={appEnvironment}
+          viewerIdentity={appShell.viewerIdentity}
+          loginIdentityError={loginIdentityError}
+          isUnregisteringLogin={isUnregisteringLogin}
+          onUnregisterLogin={handleUnregisterLogin}
+          onLogout={handleLogout}
+          onRefresh={() => refreshAppShell({ broadcast: true })}
+        />
+      );
+    }
+
+    if (renderedTabId === "faq") {
+      return <FaqPanel viewLabel={pageView.label} categories={categories} />;
+    }
+
+    return null;
+  }, [
+    appEnvironment,
+    appShell?.accounts,
+    appShell?.household?.people,
+    appShell?.importsPage,
+    appShell?.settingsPage,
+    appShell?.viewerIdentity,
+    availableMonths,
+    broadcastSplitMutation,
+    categories,
+    closeMobileContext,
+    entriesExternalRefreshToken,
+    handleCategoryAppearanceChange,
+    handleEntriesMobileFilterStateChange,
+    handleLogout,
+    handleUnregisterLogin,
+    householdMonthEntries,
+    isUnregisteringLogin,
+    loginIdentityError,
+    mobileContextOpen,
+    pageView,
+    refreshAppShell,
+    refreshCurrentImportsPage,
+    refreshCurrentMonthPage,
+    refreshCurrentSplitsPage,
+    refreshRoutePage,
+    renderedTabId,
+    routePageData,
+    selectedMonth,
+    syncAppShellAfterMutation
+  ]);
+  const routeBody = pageView
+    ? renderedRouteElement
+    : <RouteChunkLoadingFallback status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />;
 
   // Prefetch adjacent routes once the shell is stable so fast navigation feels
   // instant without violating the current route's source of truth.
@@ -1754,13 +1899,13 @@ export function App() {
   // Derive the mobile sticky control config from the current tab and its scope
   // semantics.
   const stickyScopeConfig = pageView
-    ? selectedTabId === "month"
+    ? renderedTabId === "month"
       ? {
           selectedKey: selectedScope,
           paramKey: "scope",
           label: "Month view controls"
         }
-      : selectedTabId === "entries"
+      : renderedTabId === "entries"
         ? {
             selectedKey: selectedEntriesScope,
             paramKey: "entries_scope",
@@ -2424,7 +2569,7 @@ export function App() {
                   <section className="mobile-context-dialog-section" aria-label="View">
                     <strong className="mobile-context-dialog-section-title">View</strong>
                     <div className="pill-row mobile-context-pill-row mobile-context-view-row">
-                      {selectedTabId !== "splits"
+                      {renderedTabId !== "splits"
                         ? (
                             <button
                               className={`pill ${selectedViewId === "household" ? "is-active" : ""}`}
@@ -2471,7 +2616,7 @@ export function App() {
                     </section>
                   ) : null}
 
-                  {selectedTabId === "entries" && entriesMobileFilterProps ? (
+                  {renderedTabId === "entries" && entriesMobileFilterProps ? (
                     <section className="mobile-context-dialog-section mobile-context-dialog-filters-slot" aria-label="Filters">
                       <EntriesFilterStack {...entriesMobileFilterProps} />
                     </section>
@@ -2505,106 +2650,9 @@ export function App() {
 
       {/* The routed panel area is the actual screen body; every tab renders through this slot. */}
       <section className="grid app-route-grid" aria-busy={isAppShellLoading ? "true" : "false"}>
-        <Suspense fallback={<RouteChunkLoadingFallback status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />}>
-          <Routes>
-            <Route path="/" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
-            <Route path="/entries/by-id/:entryId" element={<EntryDeepLinkRoute />} />
-            <Route
-              path="/summary"
-              element={(
-                <SummaryPanel
-                  view={pageView}
-                  selectedMonth={selectedMonth}
-                  categories={categories}
-                  onCategoryAppearanceChange={handleCategoryAppearanceChange}
-                  onRefresh={() => refreshRoutePage()}
-                />
-              )}
-            />
-            <Route
-              path="/month"
-              element={(
-                <MonthPanel
-                  view={pageView}
-                  accounts={appShell.accounts}
-                  people={appShell.household.people}
-                  categories={categories}
-                  householdMonthEntries={householdMonthEntries}
-                  onCategoryAppearanceChange={handleCategoryAppearanceChange}
-                  onRefresh={refreshCurrentMonthPage}
-                />
-              )}
-            />
-            <Route
-              path="/entries"
-              element={(
-                <EntriesPanel
-                  view={pageView}
-                  entriesSourceView={pageView}
-                  selectedMonth={selectedMonth}
-                  mobileContextOpen={mobileContextOpen}
-                  onCloseMobileContext={closeMobileContext}
-                  onMobileFilterStateChange={handleEntriesMobileFilterStateChange}
-                  externalRefreshToken={entriesExternalRefreshToken}
-                  availableMonths={availableMonths}
-                  accounts={appShell.accounts}
-                  categories={categories}
-                  people={appShell.household.people}
-                  onCategoryAppearanceChange={handleCategoryAppearanceChange}
-                  onInvalidateAppShellCache={syncAppShellAfterMutation}
-                  onBroadcastSplitMutation={broadcastSplitMutation}
-                />
-              )}
-            />
-            <Route
-              path="/splits"
-              element={(
-                <SplitsPanel
-                  view={pageView}
-                  categories={categories}
-                  people={appShell.household.people}
-                  onRefresh={(options) => refreshCurrentSplitsPage(options)}
-                />
-              )}
-            />
-            <Route
-              path="/imports"
-              element={(
-                <ImportsPanel
-                  importsPage={routePageData?.importsPage ?? appShell.importsPage}
-                  viewId={pageView.id}
-                  viewLabel={pageView.label}
-                  accounts={appShell.accounts}
-                  categories={categories}
-                  people={appShell.household.people}
-                  onRefresh={(options) => refreshCurrentImportsPage(options)}
-                />
-              )}
-            />
-            <Route
-              path="/settings"
-              element={(
-                <SettingsPanel
-                  settingsPage={routePageData?.settingsPage ?? appShell.settingsPage}
-                  accounts={appShell.accounts}
-                  categories={categories}
-                  people={appShell.household.people}
-                  viewId={pageView.id}
-                  viewLabel={pageView.label}
-                  appEnvironment={appEnvironment}
-                  viewerIdentity={appShell.viewerIdentity}
-                  loginIdentityError={loginIdentityError}
-                  isUnregisteringLogin={isUnregisteringLogin}
-                  onUnregisterLogin={handleUnregisterLogin}
-                  onLogout={handleLogout}
-                  onRefresh={() => refreshAppShell({ broadcast: true })}
-                />
-              )}
-            />
-            <Route path="/faq" element={<FaqPanel viewLabel={pageView.label} categories={categories} />} />
-            <Route path="*" element={<Navigate to={{ pathname: "/summary", search: location.search }} replace />} />
-          </Routes>
-        </Suspense>
+        {/* Route panels can hydrate lazily, so the fallback stays inside the
+            routed region instead of replacing the whole shell. */}
+        {routeBody}
         {isAppShellLoading ? <AppLoadingOverlay status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} /> : null}
       </section>
 
@@ -2665,7 +2713,7 @@ export function App() {
         </Dialog.Root>
       ) : null}
 
-      {selectedTabId === "entries" && typeof document !== "undefined"
+      {renderedTabId === "entries" && typeof document !== "undefined"
         ? createPortal(
             <button type="button" className="entries-fab" onClick={() => {
               const trigger = document.querySelector("[data-entries-fab-trigger='true']");
@@ -2679,7 +2727,7 @@ export function App() {
           )
         : null}
 
-      {selectedTabId === "splits" && pageView.id !== "household" && typeof document !== "undefined"
+      {renderedTabId === "splits" && pageView.id !== "household" && typeof document !== "undefined"
         ? createPortal(
             <button type="button" className="entries-fab splits-fab" onClick={() => {
               const trigger = document.querySelector("[data-splits-fab-trigger='true']");
@@ -2788,12 +2836,12 @@ function AppLoadingOverlay({ status, elapsedSeconds }) {
 
 function RouteChunkLoadingFallback({ status, elapsedSeconds }) {
   return (
-    <section className="panel app-loading-panel route-loading-panel" role="status" aria-live="polite">
+    <section className="route-loading-panel" role="status" aria-live="polite">
       <div className="app-loading-main">
         <span className="app-spinner" aria-hidden="true" />
-        <p>{messages.common.loading}</p>
+        <p>{messages.common.loadingLatest}</p>
       </div>
-      <AppLoadingStatusText status={status} elapsedSeconds={elapsedSeconds} />
+      <AppLoadingStatusText status={status} elapsedSeconds={elapsedSeconds} compact />
     </section>
   );
 }

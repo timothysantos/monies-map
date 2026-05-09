@@ -761,10 +761,11 @@ Rules:
 
 For each route:
 
-1. load the shell query
-2. load the active page query
-3. render usable content
-4. then warm adjacent queries in the background
+1. start the shell query
+2. start the active page query as early as it is safe to do so
+3. keep the previous settled screen visible while the next route hydrates
+4. render usable content
+5. then warm adjacent queries in the background
 
 Examples:
 
@@ -860,6 +861,16 @@ To keep navigation feeling instant without hiding freshness problems:
   - unrelated months after a large route jump
 
 This keeps transitions smooth while still letting real data settle quickly.
+
+Route affordance rule:
+
+- the route affordance is the small pending-region loader or marker that keeps
+  the shell stable while the next page settles
+- it should feel like a "chapter loading" strip inside the book, not a new
+  blank book
+- if the affordance would cover the entire app, it is too broad for the target
+  slice
+- if the affordance is only a small pending region, it is the correct shape
 
 ## Refresh And Tab-Change Rules
 

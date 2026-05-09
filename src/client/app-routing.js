@@ -91,6 +91,16 @@ export function buildRoutePageRequest({ tabId, viewId, month, scope, summaryStar
     };
   }
 
+  if (tabId === "entries") {
+    return {
+      path: "/api/entries-page",
+      params: new URLSearchParams({
+        view: viewId,
+        month
+      })
+    };
+  }
+
   if (tabId === "splits") {
     return {
       path: "/api/splits-page",
@@ -158,5 +168,9 @@ export function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appS
     };
   }
 
-  return baseView;
+  if (tabId === "imports" || tabId === "settings" || tabId === "faq") {
+    return baseView;
+  }
+
+  return null;
 }

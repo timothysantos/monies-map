@@ -18,3 +18,19 @@ test("app shell request stays shell-only", async ({ page }) => {
   expect(shell.importsPage).toBeUndefined();
   expect(shell.settingsPage).toBeUndefined();
 });
+
+test("route transitions keep the previous screen visible until the next page settles", async ({ page }) => {
+  await reseedDemo(page);
+  await page.goto("/summary?view=person-tim&month=2026-04&summary_start=2025-06&summary_end=2026-04");
+  await expect(page.getByRole("heading", { name: "Summary" })).toBeVisible();
+
+  await page.route("**/api/entries-page**", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    await route.continue();
+  });
+
+  await page.getByRole("link", { name: "Entries" }).click();
+
+  await expect(page.getByRole("heading", { name: "Summary" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Entries" })).toBeVisible({ timeout: 10_000 });
+});
