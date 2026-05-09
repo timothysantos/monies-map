@@ -442,17 +442,21 @@ function buildSummaryFocusState(summaryPage, summaryFocusParam) {
     categoryShareChart: [],
     months: []
   };
-  const latestRangeMonth = safeSummaryPage.rangeMonths.at(-1) ?? "";
+  const rangeMonths = safeSummaryPage.rangeMonths ?? [];
+  const categoryShareByMonth = safeSummaryPage.categoryShareByMonth ?? [];
+  const categoryShareChart = safeSummaryPage.categoryShareChart ?? [];
+  const months = safeSummaryPage.months ?? [];
+  const latestRangeMonth = rangeMonths.at(-1) ?? "";
   const selectedFocusMonth = summaryFocusParam === SUMMARY_FOCUS_OVERALL
     ? ""
-    : (summaryFocusParam && safeSummaryPage.rangeMonths.includes(summaryFocusParam)
+    : (summaryFocusParam && rangeMonths.includes(summaryFocusParam)
       ? summaryFocusParam
       : latestRangeMonth);
-  const selectedDonutMonth = safeSummaryPage.categoryShareByMonth.find((month) => month.month === selectedFocusMonth) ?? null;
-  const donutData = selectedDonutMonth?.data ?? safeSummaryPage.categoryShareChart;
+  const selectedDonutMonth = categoryShareByMonth.find((month) => month.month === selectedFocusMonth) ?? null;
+  const donutData = selectedDonutMonth?.data ?? categoryShareChart;
   const totalSpendMinor = selectedDonutMonth
-    ? safeSummaryPage.months.find((month) => month.month === selectedDonutMonth.month)?.realExpensesMinor ?? 0
-    : safeSummaryPage.months.reduce((sum, month) => sum + month.realExpensesMinor, 0);
+    ? months.find((month) => month.month === selectedDonutMonth.month)?.realExpensesMinor ?? 0
+    : months.reduce((sum, month) => sum + month.realExpensesMinor, 0);
 
   return {
     selectedFocusMonth,
