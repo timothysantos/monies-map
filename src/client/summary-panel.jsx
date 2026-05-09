@@ -35,9 +35,19 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
   const navigate = useNavigate();
   const location = useLocation();
   const [monthNoteDialog, setMonthNoteDialog] = useState(null);
+  // Summary can mount while the route payload is still hydrating, so keep a
+  // fully shaped local summary slice instead of reading nested fields directly.
+  const safeSummaryPage = view.summaryPage ?? {
+    metricCards: [],
+    rangeMonths: [],
+    categoryShareByMonth: [],
+    categoryShareChart: [],
+    months: [],
+    accountPills: []
+  };
 
   const summaryFocusParam = searchParams.get("summary_focus");
-  const focusState = buildSummaryFocusState(view.summaryPage, summaryFocusParam);
+  const focusState = buildSummaryFocusState(safeSummaryPage, summaryFocusParam);
 
   function navigateToEntries(nextFilters) {
     const next = new URLSearchParams(location.search);
@@ -116,7 +126,7 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
           <span className="panel-context">{messages.common.viewingDot(view.label)}</span>
         </div>
         <div className="metric-row metric-row-summary summary-head-metrics">
-          {view.summaryPage.metricCards.map((card) => (
+          {safeSummaryPage.metricCards.map((card) => (
             <MetricCard key={card.label} card={card} />
           ))}
         </div>
@@ -124,7 +134,7 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
 
       <div className="summary-top-grid">
         <SummarySpendingMixSection
-          rangeMonths={view.summaryPage.rangeMonths}
+          rangeMonths={safeSummaryPage.rangeMonths}
           focusState={focusState}
           categories={categories}
           onCategoryAppearanceChange={onCategoryAppearanceChange}
@@ -134,14 +144,14 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
         />
 
         <SummaryIntentVsOutcomeSection
-          months={view.summaryPage.months}
+          months={safeSummaryPage.months}
           onOpenMonth={handleOpenMonth}
           onEditNote={(month, note) => setMonthNoteDialog({ month, draft: note ?? "" })}
         />
       </div>
 
       <SummaryAccountsSection
-        accountPills={view.summaryPage.accountPills}
+        accountPills={safeSummaryPage.accountPills}
         onOpenEntriesForAccount={handleOpenEntriesForAccount}
       />
 
