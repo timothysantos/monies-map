@@ -115,6 +115,8 @@ function createLoadingStatus(overrides = {}) {
   };
 }
 
+// Trim long route labels and status text so loading chrome stays readable
+// without expanding into the whole shell.
 function ellipsizeText(value, maxLength = 52) {
   const normalized = String(value ?? "").replace(/\s+/g, " ").trim();
   if (!normalized) {
@@ -126,6 +128,8 @@ function ellipsizeText(value, maxLength = 52) {
   return `${normalized.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
 }
 
+// Warm route bundles ahead of time so navigation stays fast without changing
+// which route data is actually rendered.
 function preloadRouteModule(routeId) {
   const loader = routeModuleLoaders[routeId];
   if (!loader) {
@@ -138,6 +142,8 @@ function preloadRouteModule(routeId) {
   }
 }
 
+// Schedule a small idle task so speculative work never competes with the
+// visible render path.
 function scheduleIdleTask(callback, timeout = 1000) {
   if (typeof window === "undefined") {
     return undefined;
@@ -148,6 +154,7 @@ function scheduleIdleTask(callback, timeout = 1000) {
   return { type: "timeout", id: window.setTimeout(callback, timeout) };
 }
 
+// Cancel idle work when route or shell state changes before the task runs.
 function cancelIdleTask(handle) {
   if (!handle || typeof window === "undefined") {
     return;
@@ -159,12 +166,16 @@ function cancelIdleTask(handle) {
   window.clearTimeout(handle.id);
 }
 
+// Wrap `setTimeout` in a promise so route work can be staged with explicit
+// pauses during warmup and prefetching.
 function waitFor(ms) {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
   });
 }
 
+// Detect the current runtime so the shell can label local/demo builds without
+// relying on environment variables inside the client bundle.
 function getClientAppEnvironment() {
   if (typeof window === "undefined") {
     return "production";
@@ -180,6 +191,8 @@ function getClientAppEnvironment() {
   return "production";
 }
 
+// Show a small environment badge only when the app is running locally or in
+// the demo environment.
 function EnvironmentBanner({ environment }) {
   if (environment !== "demo" && environment !== "local") {
     return null;
@@ -192,6 +205,7 @@ function EnvironmentBanner({ environment }) {
   );
 }
 
+// Keep the browser title aligned with the active environment.
 function getDocumentTitle(environment) {
   if (environment === "demo" || environment === "local") {
     return `${APP_DOCUMENT_TITLE} - ${environment}`;
@@ -199,6 +213,7 @@ function getDocumentTitle(environment) {
   return APP_DOCUMENT_TITLE;
 }
 
+// Shorten inactive person pills so the shell chrome stays compact.
 function getInactivePersonViewLabel(name) {
   const trimmedName = name.trim();
   const firstName = trimmedName.split(/\s+/)[0] ?? trimmedName;
@@ -209,22 +224,22 @@ function getInactivePersonViewLabel(name) {
 }
 
 export function App() {
-  // App-level caches and shell data live here so the rest of the UI can stay
-  // as close to pure rendering as possible.
+  // App-level shell state and caches live here; everything below derives the
+  // active route from that data instead of maintaining a second store.
   const queryClient = useQueryClient();
   const [appShell, setAppShell] = useState(null);
   const [appShellError, setAppShellError] = useState("");
   const [appShellLoadCount, setAppShellLoadCount] = useState(0);
-  // Loading state is separate from shell state so we can render useful
-  // progress feedback while data is still streaming in.
+  // Loading state is separate from shell state so route and shell fetches can
+  // report progress without mutating the active payloads.
   const [loadingStatus, setLoadingStatus] = useState(() => createLoadingStatus());
   const [loadingElapsedSeconds, setLoadingElapsedSeconds] = useState(0);
-  // Mobile context state keeps the inline view/scope controls from fighting
-  // the main route state.
+  // Mobile context state only controls the sheet chrome around the current
+  // route, not the route payload itself.
   const [mobileContextOpen, setMobileContextOpen] = useState(false);
   const [entriesMobileFilterProps, setEntriesMobileFilterProps] = useState(null);
-  // The entries filter stack mirrors route state but should only update when
-  // the effective filter props actually change.
+  // The entries filter stack mirrors route state but only updates when the
+  // effective filter props actually change.
   const closeMobileContext = useCallback(() => {
     setMobileContextOpen(false);
   }, []);
@@ -240,8 +255,8 @@ export function App() {
   const syncChannelRef = useRef(null);
   const queryEpochRef = useRef(0);
   const routePagePrefetchTimerRef = useRef(null);
-  // Route identity is derived from the browser location and the current query
-  // string, then used as the source of truth for page fetching.
+  // Route identity is derived from the browser location and query string, and
+  // that route drives which page payload we fetch next.
   const appEnvironment = appShell?.appEnvironment ?? getClientAppEnvironment();
   const explicitViewId = searchParams.get("view");
   const selectedViewId = explicitViewId ?? "household";
@@ -259,8 +274,8 @@ export function App() {
   const [loginIdentityError, setLoginIdentityError] = useState("");
   const [isUnregisteringLogin, setIsUnregisteringLogin] = useState(false);
   const [suppressedLoginRegistrationEmail, setSuppressedLoginRegistrationEmail] = useState("");
-  // These aliases make the app-shell month and summary range explicit when
-  // passing state into downstream helpers.
+  // These aliases make the current route inputs explicit before they flow into
+  // shell and page fetch helpers.
   const appShellMonth = selectedMonth;
   const appShellSummaryStart = selectedSummaryStart;
   const appShellSummaryEnd = selectedSummaryEnd;
@@ -2745,10 +2760,14 @@ export function App() {
   );
 }
 
+// Detect placeholder household names that should be replaced with the real
+// person name during login setup.
 function isPlaceholderPersonName(name) {
   return ["primary", "partner"].includes(String(name ?? "").trim().toLowerCase());
 }
 
+// Compact the loading copy and status line so the startup panel stays readable
+// while the shell is still assembling.
 function AppLoadingStatusText({ status, elapsedSeconds, compact = false }) {
   const percentText = typeof status?.percent === "number" ? `${Math.max(0, Math.min(100, Math.round(status.percent)))}%` : null;
   const elapsedText = elapsedSeconds > 0 ? `${elapsedSeconds}s` : null;
@@ -2763,6 +2782,8 @@ function AppLoadingStatusText({ status, elapsedSeconds, compact = false }) {
   );
 }
 
+// Compare the mobile entries filter props deeply enough to avoid rerender
+// loops while still updating when the filter stack actually changes.
 function areEntriesMobileFilterPropsEqual(current, next) {
   if (current === next) {
     return true;
@@ -2786,6 +2807,8 @@ function areEntriesMobileFilterPropsEqual(current, next) {
   );
 }
 
+// Compare the active entry filter values so the mobile stack can stay in sync
+// without treating every new array reference as a real change.
 function areEntryFilterValuesEqual(current, next) {
   if (current === next) {
     return true;
@@ -2801,6 +2824,7 @@ function areEntryFilterValuesEqual(current, next) {
   );
 }
 
+// Compare string arrays by value for the filter helpers above.
 function areStringArraysEqual(current, next) {
   if (current === next) {
     return true;
@@ -2811,6 +2835,7 @@ function areStringArraysEqual(current, next) {
   return current.every((value, index) => value === next[index]);
 }
 
+// Full-screen startup state used before the shell or route payload is ready.
 function AppLoadingPanel({ status, elapsedSeconds }) {
   return (
     <section className="panel app-loading-panel" role="status" aria-live="polite">
@@ -2823,6 +2848,8 @@ function AppLoadingPanel({ status, elapsedSeconds }) {
   );
 }
 
+// Overlay status used while a route fetch is still hydrating the current
+// screen.
 function AppLoadingOverlay({ status, elapsedSeconds }) {
   return (
     <div className="app-loading-overlay" role="status" aria-live="polite">
@@ -2835,6 +2862,7 @@ function AppLoadingOverlay({ status, elapsedSeconds }) {
   );
 }
 
+// In-panel fallback for route hydration, separate from the full startup state.
 function RouteChunkLoadingFallback({ status, elapsedSeconds }) {
   return (
     <section className="route-loading-panel" role="status" aria-live="polite">
@@ -2847,6 +2875,8 @@ function RouteChunkLoadingFallback({ status, elapsedSeconds }) {
   );
 }
 
+// Build the query string used by the deep-link route that jumps directly to
+// the Entries page.
 function buildEntriesPageParams({ viewId, month }) {
   return new URLSearchParams({
     view: viewId,
@@ -2854,6 +2884,8 @@ function buildEntriesPageParams({ viewId, month }) {
   });
 }
 
+// Resolve an entry deep link by looking up the owning month and redirecting to
+// the correct Entries route with the matching edit context.
 function EntryDeepLinkRoute() {
   const { entryId = "" } = useParams();
   const navigate = useNavigate();
