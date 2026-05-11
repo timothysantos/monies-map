@@ -36,6 +36,7 @@ export function getStatementPreviewAutoRefreshKey({
 export function shouldAutoRefreshStatementPreview({
   hasPreview,
   autoRefreshKey,
+  isWorkflowLocked = false,
   isSubmitting,
   isParsingStatement,
   isDocumentVisible,
@@ -47,6 +48,7 @@ export function shouldAutoRefreshStatementPreview({
   if (
     !hasPreview
     || !autoRefreshKey
+    || isWorkflowLocked
     || isSubmitting
     || isParsingStatement
     || !isDocumentVisible
