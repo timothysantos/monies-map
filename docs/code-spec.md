@@ -227,7 +227,7 @@ These are defaults, not excuses for clever golfing.
 - target `200-500` lines per handwritten module
 - treat `800+` line handwritten modules as mandatory extraction work, not a
   normal steady-state shape
-- if `App.jsx`, `app-shell.ts`, or a slice module grows large during migration,
+- if `App.jsx`, `app-shell.ts`, or a page module grows large during migration,
   move page logic into slice deep modules instead of letting the file keep
   accumulating responsibilities
 

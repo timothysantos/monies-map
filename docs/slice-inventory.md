@@ -455,6 +455,8 @@ to the same vertical language.
 - `src/domain/app-shell.ts` — `Bridge`
   - Important for app shell and current loading strategy.
   - Future direction: reduce shell-orchestration responsibility as slice queries grow.
+- `src/domain/pages/*-page.ts` — `Bridge`
+  - Keep route DTO builders owned by the route they serve.
 
 ### Summary and month aligned
 
