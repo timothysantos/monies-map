@@ -37,7 +37,8 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
   const [monthNoteDialog, setMonthNoteDialog] = useState(null);
   // Summary can mount while the route payload is still hydrating, so keep a
   // fully shaped local summary slice instead of reading nested fields directly.
-  const safeSummaryPage = view.summaryPage ?? {
+  const safeSummaryPage = {
+    ...view.summaryPage,
     metricCards: [],
     rangeMonths: [],
     categoryShareByMonth: [],
