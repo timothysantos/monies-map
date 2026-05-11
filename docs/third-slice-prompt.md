@@ -82,8 +82,11 @@ Constraints:
 - do not widen app shell or route-context responsibilities to solve imports
   problems
 - do not let workflow snapshots become competing route state
+- do not let workflow snapshots become hidden app-shell state
+- do not let workflow snapshots silently fork query truth
 - do not let imports workflow state leak into app-shell ownership
 - do not let parser logic become a universal accounting engine
+- do not redesign accounting semantics, transfer semantics, or budgeting rules
 - do not let route refreshes become workflow resets
 - keep import preview as a deep workflow module with explicit refresh rules
 - commit in small readable batches as the slice progresses
@@ -160,12 +163,16 @@ Query-backed server data managed by TanStack Query.
 Examples:
 
 - imports history
-- parsed previews
+- query-backed preview responses
 - duplicate detection results
 - reconciliation visibility
 - downstream ledger effects after commit or rollback
 
 TanStack Query remains the source of truth.
+
+If a preview artifact is local-first, draft-oriented, or not yet persisted into
+the query-backed response path, treat that artifact as workflow state instead
+of server state.
 
 ### Workflow state
 
@@ -202,6 +209,16 @@ Examples:
 - focused input
 
 UI state must never become authoritative business state.
+
+## Core Architectural Win
+
+The measurable payoff for this slice is not just "imports are cleaner."
+
+The win is:
+
+- commit and rollback invalidation stay correct without shell reloads
+- preview refresh stays precise without destructive workflow resets
+- imports workflow continuity survives route movement and background freshness
 
 ## Why This Prompt
 
