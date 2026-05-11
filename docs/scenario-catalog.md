@@ -906,6 +906,30 @@ Current weak coverage:
 6. Primary test level: `E2E`
 7. Form factor: `Both`
 
+### SP8b. Link a previously manual split to an entry later
+
+1. User intent: keep a manual split first, then link it to the ledger entry
+   once the bank row becomes available
+2. Starting state: a manual split exists without a linked ledger entry, and a
+   matching bank row is available in the current account or review context
+3. Action: open the link surface, search or filter for the bank row, choose the
+   match, and confirm the link
+4. Expected visible result: the split now shows linked-entry evidence and the
+   match surface closes without losing context
+5. Expected persisted or queried result: the manual split stores the linked
+   ledger transaction id and the linked entry refreshes downstream views
+6. Primary test level: `E2E`
+7. Form factor: `Split`
+
+Notes:
+
+- mobile should use the same bottom-sheet style used by the other mobile split
+  and match flows
+- desktop can use the existing popover or dialog pattern used by other review
+  surfaces
+- search and filters should reuse the same matching vocabulary already used in
+  split match review and import preview review
+
 ### SP9. Cross-tab refresh keeps split views in sync
 
 1. User intent: trust that another open tab reflects split changes quickly
