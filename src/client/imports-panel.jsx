@@ -7,7 +7,7 @@ import { buildRecentImportModel, filterRecentImportsByAccount, getRecentImportAc
 import { buildImportWorkflowModel } from "./import-workflow-model";
 import { getStatementPreviewAutoRefreshKey, shouldAutoRefreshStatementPreview } from "./import-preview-auto-refresh";
 import { ImportMappingStage } from "./import-mapping-stage";
-import { buildImportPreviewModel, hasImportDraft } from "./import-preview-model";
+import { buildImportPreviewModel } from "./import-preview-model";
 import { ImportPreviewReview } from "./import-preview-review";
 import { ImportPreviewRowsTable } from "./import-preview-rows-table";
 import { ImportSelectFileStage } from "./import-select-file-stage";
@@ -228,16 +228,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       uploadStatus
     ]
   );
-  const importDraftExists = importWorkflowModel.hasDraft || hasImportDraft({
-    preview,
-    previewRows,
-    csvText,
-    importNote,
-    statementCheckpoints,
-    uploadStatus,
-    previewError,
-    sourceLabel
-  });
+  const importDraftExists = importWorkflowModel.hasDraft;
   const recentImportAccountOptions = useMemo(
     () => getRecentImportAccountOptions(safeImportsPage.recentImports, accounts),
     [accounts, safeImportsPage.recentImports]
@@ -557,7 +548,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     function handleStatementPreviewAutoRefresh() {
       const now = Date.now();
       if (!shouldAutoRefreshStatementPreview({
-        hasPreview: Boolean(preview),
+        hasPreview: importWorkflowModel.hasReviewablePreview,
         autoRefreshKey: statementPreviewAutoRefreshKey,
         isWorkflowLocked: importWorkflowModel.isWorkflowLocked,
         isSubmitting,
@@ -590,7 +581,14 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       window.removeEventListener("focus", handleStatementPreviewAutoRefresh);
       document.removeEventListener("visibilitychange", handleStatementPreviewAutoRefresh);
     };
-  }, [importWorkflowModel.isWorkflowLocked, isParsingStatement, isSubmitting, preview, previewRows, statementPreviewAutoRefreshKey, statementCheckpoints]);
+  }, [
+    importWorkflowModel.hasReviewablePreview,
+    importWorkflowModel.isWorkflowLocked,
+    isParsingStatement,
+    isSubmitting,
+    previewRows,
+    statementPreviewAutoRefreshKey
+  ]);
 
   async function handlePreview() {
     if (!readyForPreview) {

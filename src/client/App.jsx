@@ -50,7 +50,7 @@ import {
 } from "./request-errors";
 import { installMobileFocusVisibility } from "./mobile-focus-visibility";
 import { queryKeys } from "./query-keys";
-import { invalidateImportsPageQueries } from "./query-mutations";
+import { invalidateImportMutationQueries } from "./query-mutations";
 import { getCurrentMonthKey } from "../lib/month";
 
 // Lazy route loaders keep the initial shell small while still splitting each
@@ -835,7 +835,11 @@ export function App() {
 
   // Refresh the imports page and optionally rebroadcast shell freshness when
   // import mutations change shared reference data.
-  const refreshCurrentImportsPage = useCallback(async ({ broadcast = false, invalidateImports = false, refreshShell = false } = {}) => {
+  const refreshCurrentImportsPage = useCallback(async ({
+    broadcast = false,
+    invalidateImports = false,
+    refreshShell = false
+  } = {}) => {
     const request = buildRoutePageRequest({
       tabId: "imports",
       viewId: selectedViewId,
@@ -848,7 +852,7 @@ export function App() {
 
     const tasks = [fetchRoutePageData(request, { bypassCache: true })];
     if (invalidateImports) {
-      tasks.push(invalidateImportsPageQueries(queryClient));
+      tasks.push(invalidateImportMutationQueries(queryClient, {}));
     }
     if (refreshShell) {
       tasks.push(refreshAppShellInBackground().catch(() => null));

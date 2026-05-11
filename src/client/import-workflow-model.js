@@ -17,6 +17,12 @@ export function buildImportWorkflowModel({
   currentPreviewSignature,
   hydratedPreviewSignature
 }) {
+  const isPreviewDirty = Boolean(preview) && currentPreviewSignature !== hydratedPreviewSignature;
+  const isWorkflowLocked = Boolean(preview) && isPreviewDirty;
+  const isPreviewRefreshSafe = Boolean(preview)
+    && !isWorkflowLocked
+    && !isSubmitting
+    && !isParsingStatement;
   const hasDraft = Boolean(
     preview
     || previewRows.length
@@ -27,17 +33,13 @@ export function buildImportWorkflowModel({
     || previewError
     || sourceLabel !== sourceLabelDefault
   );
-  const isPreviewDirty = Boolean(preview) && currentPreviewSignature !== hydratedPreviewSignature;
-  const isWorkflowLocked = Boolean(preview) && isPreviewDirty;
-  const isPreviewRefreshSafe = Boolean(preview)
-    && !isWorkflowLocked
-    && !isSubmitting
-    && !isParsingStatement;
+  const hasReviewablePreview = Boolean(preview && previewRows.length);
 
   return {
     hasDraft,
     isPreviewDirty,
     isPreviewRefreshSafe,
-    isWorkflowLocked
+    isWorkflowLocked,
+    hasReviewablePreview
   };
 }
