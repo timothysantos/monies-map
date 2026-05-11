@@ -30,7 +30,7 @@ import {
 import type {
   AccountDto,
   AppShellDto,
-  AppBootstrapDto,
+  EntriesShellDto,
   CategoryDto,
   ContextViewDto,
   DonutChartDatumDto,
@@ -66,7 +66,7 @@ export function invalidateAppDataCache() {
 export async function loadAppShellContext(
   db: D1Database,
   viewerEmail?: string,
-  appEnvironment?: AppBootstrapDto["appEnvironment"]
+  appEnvironment?: EntriesShellDto["appEnvironment"]
 ): Promise<AppShellDto> {
   // Load the global shell metadata without pulling any route-specific page
   // payloads into the shell response.

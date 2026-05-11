@@ -121,7 +121,7 @@ flowchart TD
   A["Browser route or mutation in src/client/App.jsx"] --> B["Build canonical key in src/client/query-keys.js"]
   B --> C["Read or seed cache in src/client/query-client.js"]
   C --> D["Fetch shell or route DTO from src/index.ts"]
-  D --> E["Build DTO in src/domain/bootstrap-dto.ts or src/domain/bootstrap.ts"]
+  D --> E["Build DTO in src/domain/app-shell-dto.ts or src/domain/app-shell.ts"]
   E --> F["Load data from src/domain/app-repository.ts"]
   F --> G["Return shell DTO or route page DTO"]
   G --> H["Hydrate TanStack Query cache"]
@@ -162,4 +162,3 @@ flowchart TD
 - Route fetches that depend on unrelated UI state.
 - Long-lived derived state that can be recalculated from the route and the
   server response.
-

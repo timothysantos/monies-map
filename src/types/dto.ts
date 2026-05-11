@@ -648,7 +648,7 @@ export interface AppShellDto {
   };
 }
 
-export interface AppBootstrapDto {
+export interface EntriesShellDto {
   appEnvironment?: "demo" | "local" | "production";
   household: HouseholdDto;
   accounts: AccountDto[];
