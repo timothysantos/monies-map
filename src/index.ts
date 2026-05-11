@@ -3,14 +3,14 @@ import {
   buildEntriesShellDto
 } from "./domain/app-shell-dto";
 import {
-  buildEntriesPageDto,
-  buildImportsPageDto,
-  buildMonthPageDto,
-  buildSettingsPageDto,
-  buildSplitsPageDto,
-  buildSummaryPageDto,
   invalidateAppDataCache
 } from "./domain/app-shell";
+import { buildEntriesPageDto } from "./domain/pages/entries-page";
+import { buildImportsPageDto } from "./domain/pages/imports-page";
+import { buildMonthPageDto } from "./domain/pages/month-page";
+import { buildSettingsPageDto } from "./domain/pages/settings-page";
+import { buildSplitsPageDto } from "./domain/pages/splits-page";
+import { buildSummaryPageDto } from "./domain/pages/summary-page";
 import { enterEmptyState, reseedDemoSettings } from "./domain/demo-settings";
 import {
   archiveAccountRecord,
