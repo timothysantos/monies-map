@@ -5,6 +5,7 @@ and domain-boundary work is in place.
 
 This slice is intentionally focused:
 
+- deliberate imports-system rewrite onto the new architecture
 - imports page query boundary
 - import preview workflow boundary
 - import commit and rollback invalidation
@@ -13,6 +14,7 @@ This slice is intentionally focused:
 - documentation updates only where imports assumptions prove wrong
 
 It is not a broad rewrite of entries, month, summary, or settings.
+It is also not a redesign of the accounting domain.
 
 ```text
 Implement the imports query and workflow slice.
@@ -79,6 +81,10 @@ Constraints:
 - do not move parser recognition logic into thin UI helpers
 - do not widen app shell or route-context responsibilities to solve imports
   problems
+- do not let workflow snapshots become competing route state
+- do not let imports workflow state leak into app-shell ownership
+- do not let parser logic become a universal accounting engine
+- do not let route refreshes become workflow resets
 - keep import preview as a deep workflow module with explicit refresh rules
 - commit in small readable batches as the slice progresses
 - keep code comments above every important block, hook, branch, and helper in
@@ -87,6 +93,15 @@ Constraints:
 - update docs only if a documented imports assumption proves wrong
 
 Implementation rules:
+- preserve explicit state ownership between:
+  - browser route state
+  - query-backed server state
+  - imports workflow state
+  - transient UI state
+- keep browser location as the source of truth for route state
+- keep TanStack Query as the source of truth for server-backed state
+- keep app shell as global metadata only
+- keep route DTO ownership route-owned
 - keep imports page lightweight: recent import history, rollback policy, and
   import-related reference metadata only
 - keep preview results out of importsPage and inside importPreview
@@ -95,6 +110,12 @@ Implementation rules:
   commit-status decisions in preview responses
 - preserve active draft state while preview refresh logic decides whether a
   rerun is safe
+- preserve workflow state across:
+  - invalidation
+  - background refreshes
+  - route transitions
+  - query replacement
+  - commit/rollback refreshes
 - keep commit/rollback downstream invalidation exact for:
   - importsPage
   - affected entriesPage keys
@@ -115,6 +136,73 @@ Deliverables:
 - doc updates only if a documented imports assumption proves wrong
 ```
 
+## Ownership Model
+
+Use these definitions during the slice so state does not drift across layers.
+
+### Route state
+
+Derived from browser location.
+
+Examples:
+
+- active tab
+- active route
+- active month
+- active person view
+
+The browser URL remains the source of truth.
+
+### Server state
+
+Query-backed server data managed by TanStack Query.
+
+Examples:
+
+- imports history
+- parsed previews
+- duplicate detection results
+- reconciliation visibility
+- downstream ledger effects after commit or rollback
+
+TanStack Query remains the source of truth.
+
+### Workflow state
+
+Long-lived imports workflow continuity.
+
+Examples:
+
+- uploaded file
+- parser progress
+- row mappings
+- duplicate decisions
+- staged fixes
+- draft review selections
+- preview scroll state
+- mobile sheet or dialog state
+
+Workflow state is not route state and is not server state. It must survive:
+
+- invalidation
+- background refreshes
+- route transitions
+- query replacement
+- commit/rollback refreshes
+
+### UI state
+
+Purely local or transient rendering state.
+
+Examples:
+
+- hover state
+- modal visibility
+- expanded rows
+- focused input
+
+UI state must never become authoritative business state.
+
 ## Why This Prompt
 
 - It follows the same level of specificity as the second-slice prompt.
@@ -123,6 +211,8 @@ Deliverables:
   and parser guardrails.
 - It keeps imports from turning into a backdoor rewrite of app shell, route
   context, or unrelated feature slices.
+- It makes the imports rewrite explicit while still constraining the rewrite to
+  workflow ownership and query boundaries instead of accounting-domain redesign.
 
 ## Why This Is Next
 
