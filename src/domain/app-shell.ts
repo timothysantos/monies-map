@@ -59,6 +59,9 @@ import type {
 
 let appDataReadyPromise: Promise<DemoSettings> | null = null;
 
+// This module owns shell orchestration and shell-shared DTO builders.
+// Route-specific fragments belong in `src/domain/page-shared.ts` or the
+// relevant page module, not here.
 export function invalidateAppDataCache() {
   appDataReadyPromise = null;
 }
