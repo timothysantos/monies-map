@@ -203,6 +203,11 @@ Preferred rule:
 This avoids the collision where a single `Done` label tries to mean both
 "dismiss the sheet" and "run the search".
 
+The same principle applies to split-linking surfaces. If the user is linking a
+manual split to a later bank row, the surface should expose search and filters
+without conflating them with dismissal. Reuse the existing matching vocabulary
+from split review and import preview rather than inventing a new one.
+
 ## Button Inventory Model
 
 When reviewing or refactoring a surface, classify every visible action as one
