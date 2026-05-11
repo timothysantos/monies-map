@@ -80,6 +80,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const hasAutoScrolledPreviewRef = useRef(false);
   const lastPreviewHydratedAtRef = useRef(0);
   const lastStatementPreviewAutoRefreshRef = useRef({ key: "", at: 0 });
+  const lastStatementPreviewSnapshotRef = useRef("");
 
   const csvInspection = useMemo(() => inspectCsv(csvText), [csvText]);
   const headerSignature = csvInspection.headers.join("|");
@@ -504,6 +505,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       setPreview(data.preview);
       setPreviewRows(data.preview?.previewRows ?? []);
       lastPreviewHydratedAtRef.current = Date.now();
+      lastStatementPreviewSnapshotRef.current = buildStatementPreviewSnapshot(
+        data.preview?.previewRows ?? [],
+        nextStatementCheckpoints
+      );
     } catch (error) {
       setPreview(null);
       setPreviewRows([]);
@@ -514,9 +519,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   useEffect(() => {
     function handleStatementPreviewAutoRefresh() {
       const now = Date.now();
+      const currentSnapshot = buildStatementPreviewSnapshot(previewRows, statementCheckpoints);
       if (!shouldAutoRefreshStatementPreview({
         hasPreview: Boolean(preview),
         autoRefreshKey: statementPreviewAutoRefreshKey,
+        isWorkflowLocked: Boolean(preview) && currentSnapshot !== lastStatementPreviewSnapshotRef.current,
         isSubmitting,
         isParsingStatement,
         isDocumentVisible: typeof document === "undefined" || document.visibilityState === "visible",
@@ -607,7 +614,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         rows: rowsToCommit
       });
       resetImportForm();
-      await onRefresh({ refreshShell: true, broadcast: true });
+      await onRefresh({ broadcast: true, invalidateImports: true });
     } catch (error) {
       setPreviewError(error instanceof Error ? error.message : messages.imports.commitFailed);
     } finally {
@@ -619,7 +626,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsSubmitting(true);
     try {
       await rollbackImportBatch(importId);
-      await onRefresh({ refreshShell: true, broadcast: true });
+      await onRefresh({ broadcast: true, invalidateImports: true });
     } finally {
       setIsSubmitting(false);
     }
@@ -1169,4 +1176,29 @@ function getPreviewCommitStatusReason(commitStatus, matchKind) {
   }
 
   return undefined;
+}
+
+function buildStatementPreviewSnapshot(previewRows, statementCheckpoints) {
+  return JSON.stringify({
+    checkpoints: statementCheckpoints.map((checkpoint) => ([
+      checkpoint.accountId ?? "",
+      checkpoint.accountName ?? "",
+      checkpoint.detectedAccountName ?? "",
+      checkpoint.checkpointMonth ?? "",
+      checkpoint.statementStartDate ?? "",
+      checkpoint.statementEndDate ?? "",
+      Number(checkpoint.statementBalanceMinor ?? 0)
+    ])),
+    rows: previewRows.map((row) => ([
+      row.rowId,
+      row.commitStatus,
+      row.reconciliationTargetTransactionId ?? "",
+      row.accountId ?? "",
+      row.accountName ?? "",
+      row.statementAccountName ?? "",
+      row.date,
+      row.description,
+      Number(row.amountMinor ?? 0)
+    ]))
+  });
 }
