@@ -12,9 +12,9 @@ import type { EntriesPageDto } from "../../types/dto";
 import {
   loadRoutePageContext,
   resolveEffectiveMonth,
-  resolvePageLabel,
   resolvePageViewId
-} from "../page-shared";
+} from "../route-context";
+import { resolvePageLabel } from "../page-labels";
 
 // Build the route-owned Entries page DTO without pulling shell-only shape into
 // the page module.

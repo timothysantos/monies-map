@@ -14,7 +14,7 @@ import type { PersonScope, SummaryPageDto } from "../../types/dto";
 import {
   loadRoutePageContext,
   resolveEffectiveMonth
-} from "../page-shared";
+} from "../route-context";
 
 // Build the route-owned Summary page DTO from the shell seed and the summary
 // range requested by the active route.

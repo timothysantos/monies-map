@@ -50,13 +50,14 @@ flowchart TD
   shell-derived inputs to begin safely.
 - `src/domain/app-shell.ts` owns shell orchestration and shell-shared DTO
   builders. Keep route-specific fragments out of this file.
-- `src/domain/page-shared.ts` owns shared route-fragment helpers such as
-  month fallback and person-view resolution.
-- keep `src/domain/page-shared.ts` limited to route-page/domain fragments;
+- `src/domain/route-context.ts` owns shared route interpretation and context
+  resolution helpers such as month fallback and person-view resolution.
+- `src/domain/page-labels.ts` owns shared route labels.
+- keep `src/domain/route-context.ts` limited to route-page/domain fragments;
   do not turn it into a generic helper drawer
 - if a rule belongs primarily to one route, keep it inside that route module
 - cross-route financial business rules belong in dedicated domain modules,
-  not in `src/domain/page-shared.ts`
+  not in `src/domain/route-context.ts`
 - keep route interpretation and context resolution here; do not let
   authorization, reconciliation, split calculations, account visibility, or
   budgeting logic leak into this layer

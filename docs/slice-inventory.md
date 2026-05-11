@@ -124,12 +124,14 @@ composition, routing, or environment setup.
 
 ## Shared Domain Fragments
 
-These files hold reusable route-context and DTO-fragment logic that multiple
-page modules need.
+These files hold reusable route-context and label logic that multiple page
+modules need.
 
-- `src/domain/page-shared.ts` — `Shared`
+- `src/domain/route-context.ts` — `Shared`
   - Keep month fallback, person-view resolution, and shared route-context
     helpers here.
+- `src/domain/page-labels.ts` — `Shared`
+  - Keep route label shaping here.
 - `src/domain/app-shell.ts` — `Shared`
   - Keep shell orchestration and shell-shared DTO builders here.
 
