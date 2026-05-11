@@ -39,6 +39,12 @@ team conventions evolve.
 - Keep [`docs/first-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/first-slice-prompt.md)
   updated alongside the actual first implementation prompt for the shell and
   query foundation slice.
+- Keep [`docs/second-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/second-slice-prompt.md)
+  updated alongside the actual second implementation prompt for route
+  transition and domain-boundary work.
+- Keep [`docs/third-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/third-slice-prompt.md)
+  updated alongside the actual third implementation prompt for the imports
+  query and workflow slice.
 - Refactor work should be committed in small readable batches as it proceeds.
   Use that practice for the first slice and keep it for later slices unless a
   slice is explicitly being held back for one atomic change.
@@ -145,6 +151,12 @@ team conventions evolve.
   shape, money editing, bootstrap dependence, or invalidation changes.
 - Update [`docs/first-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/first-slice-prompt.md)
   when the first slice prompt itself changes or when the first slice target
+  scenarios or coupling rows change.
+- Update [`docs/second-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/second-slice-prompt.md)
+  when the second slice prompt itself changes or when the route-transition
+  target scenarios or coupling rows change.
+- Update [`docs/third-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/third-slice-prompt.md)
+  when the third slice prompt itself changes or when the imports target
   scenarios or coupling rows change.
 - Update [`design.md`](/Users/tim/22m/ai-projects/monies_map/design.md) when
   implementation boundaries such as the client deep module service evolve.
