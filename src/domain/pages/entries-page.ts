@@ -3,13 +3,18 @@ import {
   adjustEntriesForView,
   buildEntriesContextView,
   buildPersonScopes,
-  loadPageShell
 } from "../app-shell";
 import {
   loadEntries,
   loadSplitGroups
 } from "../app-repository";
 import type { EntriesPageDto } from "../../types/dto";
+import {
+  loadRoutePageContext,
+  resolveEffectiveMonth,
+  resolvePageLabel,
+  resolvePageViewId
+} from "../page-shared";
 
 // Build the route-owned Entries page DTO without pulling shell-only shape into
 // the page module.
@@ -18,17 +23,13 @@ export async function buildEntriesPageDto(
   selectedViewId = "household",
   selectedMonth = getCurrentMonthKey()
 ): Promise<EntriesPageDto> {
-  const { household, trackedMonths } = await loadPageShell(db, selectedViewId);
-  const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
-    ? selectedMonth
-    : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
+  const { household, trackedMonths } = await loadRoutePageContext(db, selectedViewId);
+  const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
   const monthEntries = await loadEntries(db, effectiveSelectedMonth);
   const splitGroups = await loadSplitGroups(db);
   const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
-  const viewId = selectedViewId === "household" || household.people.some((person) => person.id === selectedViewId)
-    ? selectedViewId
-    : "household";
-  const label = viewId === "household" ? "Household" : personNameById[viewId] ?? "Household";
+  const viewId = resolvePageViewId(selectedViewId, household.people);
+  const label = resolvePageLabel(viewId, personNameById);
 
   return {
     viewId,

@@ -50,6 +50,8 @@ flowchart TD
   shell-derived inputs to begin safely.
 - `src/domain/app-shell.ts` owns shell orchestration and shared page-building
   helpers.
+- `src/domain/page-shared.ts` owns shared route-fragment helpers such as
+  month fallback and person-view resolution.
 - `src/domain/pages/*.ts` owns the route-specific DTO builders.
 - `src/domain/app-shell-dto.ts` owns the shell DTO constructors.
 - the last settled screen is retained only as a hydration fallback; the active
