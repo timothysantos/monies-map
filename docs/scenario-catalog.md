@@ -464,7 +464,8 @@ Current weak coverage:
 
 1. User intent: capture a ledger entry before or without an import
 2. Starting state: entries page is open
-3. Action: open the composer, enter entry details, save
+3. Action: click the `+ Add entry` primary button in the Entries toolbar, enter
+   entry details, then click `Save` in the composer footer
 4. Expected visible result: the new entry appears in the list
 5. Expected persisted or queried result: a ledger entry is created and later
    flows can use it
@@ -505,7 +506,8 @@ Current weak coverage:
 
 1. User intent: correct category, owner, note, amount, account, or type
 2. Starting state: an editable entry exists
-3. Action: open inline editor or mobile editor, make changes, save
+3. Action: open the entry row inline editor or mobile editor, make changes,
+   then click the editor's `Save` primary button
 4. Expected visible result: the entry row and any visible totals update
 5. Expected persisted or queried result: entry update persists and downstream
    aggregates refresh if affected
@@ -559,7 +561,9 @@ Current weak coverage:
 
 1. User intent: convert a direct expense into a shared split expense
 2. Starting state: a direct expense exists on Entries
-3. Action: choose `Add to splits`, optionally pick a split group, save
+3. Action: click the `Add to splits` secondary button in the entry editor,
+   optionally pick a split group from the split-group picker dialog, then click
+   the dialog's `Save` primary button
 4. Expected visible result: entry becomes shared, split actions appear, and the
    created split can be opened
 5. Expected persisted or queried result: linked split expense exists and
@@ -572,7 +576,7 @@ Current weak coverage:
 1. User intent: choose which split group should receive the shared expense
 2. Starting state: Entries has at least two existing split groups available for
    the current month and view
-3. Action: click `Add to splits` on an eligible entry
+3. Action: click the `Add to splits` secondary button on an eligible entry
 4. Expected visible result: the split-group selection dialog appears instead of
    silently picking a group
 5. Expected persisted or queried result: no split expense is created until the
@@ -586,7 +590,8 @@ Current weak coverage:
    losing the pending edits
 2. Starting state: an entry has unsaved changes in description, note, category,
    amount, or similar editable fields
-3. Action: click `Add to splits`
+3. Action: click the `Add to splits` secondary button while the entry editor is
+   dirty
 4. Expected visible result: the control behaves like a save-first action for the
    dirty entry, then continues into the split workflow
 5. Expected persisted or queried result: the entry edits are persisted before
@@ -876,7 +881,8 @@ Current weak coverage:
 
 1. User intent: connect a split record to its real ledger evidence
 2. Starting state: split match candidates exist
-3. Action: open matches mode and confirm a match
+3. Action: click the `Matches` navigation tab, select a candidate row, and
+   click the `Match` primary button
 4. Expected visible result: match disappears from queue and linked split actions
    become available
 5. Expected persisted or queried result: split record stores linked transaction
@@ -928,8 +934,9 @@ Current weak coverage:
    once the bank row becomes available
 2. Starting state: a manual split exists without a linked ledger entry, and a
    matching bank row is available in the current account or review context
-3. Action: open the link surface, search or filter for the bank row, choose the
-   match, and confirm the link
+3. Action: open the split `Link entry` surface, use its search field and filter
+   controls, choose the bank row, and click the `Save linked entry` primary
+   button
 4. Expected visible result: the split now shows linked-entry evidence and the
    match surface closes without losing context
 5. Expected persisted or queried result: the manual split stores the linked
