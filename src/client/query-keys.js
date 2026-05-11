@@ -52,6 +52,9 @@ export const queryKeys = {
   entriesPage(params) {
     return ["entries-page", normalizeRecord(params)];
   },
+  importsPage() {
+    return ["imports-page"];
+  },
   monthPage({ viewId, month, scope }) {
     return ["month-page", normalizeRecord({ viewId, month, scope })];
   },

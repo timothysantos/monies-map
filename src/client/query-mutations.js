@@ -17,6 +17,10 @@ export async function invalidateEntriesPageQueries(queryClient, params) {
   await cancelAndInvalidate(queryClient, queryKeys.entriesPage(params));
 }
 
+export async function invalidateImportsPageQueries(queryClient) {
+  await cancelAndInvalidate(queryClient, queryKeys.importsPage());
+}
+
 export async function invalidateMonthQueries(queryClient, {
   entriesParams,
   month,
@@ -56,6 +60,34 @@ export async function invalidateEntriesMutationQueries(queryClient, {
 
   if (monthKey && viewId) {
     tasks.push(cancelAndInvalidate(queryClient, queryKeys.monthPage({ viewId, month: monthKey, scope })));
+  }
+
+  if (summaryRange && viewId) {
+    tasks.push(cancelAndInvalidate(queryClient, queryKeys.summaryPage({
+      viewId,
+      startMonth: summaryRange.startMonth,
+      endMonth: summaryRange.endMonth
+    })));
+  }
+
+  await Promise.all(tasks);
+}
+
+export async function invalidateImportMutationQueries(queryClient, {
+  entriesParams,
+  monthKeys = [],
+  scope,
+  summaryRange,
+  viewId
+}) {
+  const tasks = [cancelAndInvalidate(queryClient, queryKeys.importsPage())];
+
+  if (entriesParams) {
+    tasks.push(cancelAndInvalidate(queryClient, queryKeys.entriesPage(entriesParams)));
+  }
+
+  for (const month of monthKeys) {
+    tasks.push(cancelAndInvalidate(queryClient, queryKeys.monthPage({ viewId, month, scope })));
   }
 
   if (summaryRange && viewId) {
