@@ -54,7 +54,7 @@ Target coupling rows:
 - src/client/query-mutations.js broad invalidation
 - src/client/monies-client-service.js helper facade boundaries
 - mobile sheets versus desktop editors
-- bootstrap dependencies that still leak across slice boundaries
+- app-shell dependencies that still leak across slice boundaries
 
 Target query contract:
 - appShell
@@ -79,7 +79,7 @@ Constraints:
 - update or add tests before moving implementation logic
 - do not keep the old path alive once the new path is verified in the same
   slice
-- do not widen bootstrap dependence
+- do not widen app-shell dependence
 - do not widen invalidation beyond the documented contract
 - keep mobile workflow locks intact
 - keep the previous screen visible when route hydration is pending, unless auth

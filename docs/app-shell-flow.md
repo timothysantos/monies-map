@@ -53,7 +53,8 @@ flowchart TD
 - `src/domain/bootstrap-dto.ts` owns the shell DTO constructors.
 - the last settled screen is retained only as a hydration fallback; the active
   route still comes from TanStack and the browser location.
-- The removed legacy bootstrap route is intentionally not part of this flow.
+- The removed legacy all-in-one bootstrap route is intentionally not part of
+  this flow.
 
 ## Route Affordance
 

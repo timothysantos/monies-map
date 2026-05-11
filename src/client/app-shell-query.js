@@ -1,4 +1,4 @@
-export const APPSHELL_PERSISTED_CACHE_KEY = "monies-map-appShell-cache-v2";
+export const APP_SHELL_PERSISTED_CACHE_KEY = "monies-map-appShell-cache-v2";
 
 export function buildAppShellParams({ month, scope, summaryStart, summaryEnd }) {
   // Encode the shell query identity from the route state that actually
@@ -33,7 +33,7 @@ export function readPersistedAppShell(cacheKey) {
   }
 
   try {
-    const rawCache = window.localStorage.getItem(APPSHELL_PERSISTED_CACHE_KEY);
+    const rawCache = window.localStorage.getItem(APP_SHELL_PERSISTED_CACHE_KEY);
     if (!rawCache) {
       return null;
     }
@@ -57,7 +57,7 @@ export function writePersistedAppShell(cacheKey, data) {
   }
 
   try {
-    window.localStorage.setItem(APPSHELL_PERSISTED_CACHE_KEY, JSON.stringify({
+    window.localStorage.setItem(APP_SHELL_PERSISTED_CACHE_KEY, JSON.stringify({
       cacheKey,
       data,
       storedAt: Date.now()
@@ -73,6 +73,6 @@ export function clearPersistedAppShell() {
   }
 
   try {
-    window.localStorage.removeItem(APPSHELL_PERSISTED_CACHE_KEY);
+    window.localStorage.removeItem(APP_SHELL_PERSISTED_CACHE_KEY);
   } catch {}
 }
