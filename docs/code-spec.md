@@ -241,6 +241,9 @@ These are defaults, not excuses for clever golfing.
 - if logic belongs primarily to one route, keep it in that route module
 - cross-route financial business rules belong in dedicated domain modules, not
   in `page-shared.ts`
+- keep `page-shared.ts` focused on route interpretation and context resolution,
+  not authorization, reconciliation, split calculations, account visibility, or
+  budgeting logic
 
 Good function split:
 

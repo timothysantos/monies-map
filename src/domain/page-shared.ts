@@ -5,6 +5,7 @@ import { loadPageShell } from "./app-shell";
 // If logic belongs primarily to one route, keep it in that route module.
 // Cross-route financial business rules belong in dedicated domain modules, not
 // here.
+// Keep this focused on route interpretation and context resolution only.
 
 // Shared page fragments keep route modules from re-implementing shell view
 // selection and month-selection rules in slightly different ways.
