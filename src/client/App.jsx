@@ -1114,9 +1114,9 @@ export function App() {
     await fetchEntriesPageData(params).catch(() => {});
   }, [fetchEntriesPageData, queryClient]);
 
-  // Bootstrap the shell from persisted cache first, then replace it with fresh
-  // server data and an optional entries-shell warm start when the entries tab is
-  // the active route.
+  // Hydrate the shell from persisted cache first, then replace it with fresh
+  // server data and an optional entries-shell warm start when the entries tab
+  // is the active route.
   useEffect(() => {
     const controller = new AbortController();
     // Entries mode can reuse a narrower shell first so the editor feels faster

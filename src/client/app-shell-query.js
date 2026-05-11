@@ -1,4 +1,4 @@
-export const APP_SHELL_PERSISTED_CACHE_KEY = "monies-map-appShell-cache-v2";
+export const APP_SHELL_PERSISTED_CACHE_KEY = "monies-map-app-shell-cache-v3";
 
 export function buildAppShellParams({ month, scope, summaryStart, summaryEnd }) {
   // Encode the shell query identity from the route state that actually
