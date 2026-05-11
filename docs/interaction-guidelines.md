@@ -33,6 +33,11 @@ Each interactive surface should make clear:
 - what is destructive
 - what is merely supportive or navigational
 
+When writing scenarios or implementation prompts, name the button text, the
+surface where it lives, and the intended button class. If a surface mixes a
+staged apply action with dismissal, those are separate controls and should be
+called out separately.
+
 ## Action Hierarchy
 
 ### Primary action

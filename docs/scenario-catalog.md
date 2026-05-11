@@ -18,6 +18,22 @@ Use this document before implementation work to decide:
 - what state changes must be observable
 - which cross-page effects must remain intact during refactors
 
+Scenario specificity rule:
+
+- name the exact control the user interacts with
+- say where it is located on the page or in the sheet/dialog
+- classify the control type when relevant:
+  - primary button
+  - secondary button
+  - subtle/text button
+  - danger button
+  - dismiss button
+  - navigation action
+- if the surface uses staged controls, name the commit action separately from
+  the dismiss action
+- if a scenario involves a button, say whether it should behave as the main
+  action, supporting action, or dismissal
+
 ## How To Read This
 
 Each scenario uses this shape:
