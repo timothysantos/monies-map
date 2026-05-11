@@ -1878,7 +1878,9 @@ export function App() {
 
   // Initialize the detail month picker year bucket from the active month.
   useEffect(() => {
-    if (isDetailMonthTab || !summaryPage) {
+    // Summary can briefly hydrate without a fully bounded range, so this
+    // effect only runs when both boundary months are actually present.
+    if (isDetailMonthTab || !summaryPage?.rangeStartMonth || !summaryPage?.rangeEndMonth) {
       return;
     }
 
