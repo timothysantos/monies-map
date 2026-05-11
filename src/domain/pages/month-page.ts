@@ -4,7 +4,6 @@ import {
   applyActualsFromEntries,
   buildMonthPage,
   buildEmptySummaryMonth,
-  loadPageShell,
   loadPlannedSummaryMonthsForViews
 } from "../app-shell";
 import {
@@ -14,6 +13,10 @@ import {
   loadSummaryMonths
 } from "../app-repository";
 import type { EntryDto, MonthPageDto, PersonScope, SummaryMonthDto } from "../../types/dto";
+import {
+  loadRoutePageContext,
+  resolveEffectiveMonth
+} from "../page-shared";
 
 // Build the route-owned Month page DTO from the current month route.
 export async function buildMonthPageDto(
@@ -22,10 +25,8 @@ export async function buildMonthPageDto(
   selectedMonth = getCurrentMonthKey(),
   selectedScope: PersonScope = "direct_plus_shared"
 ): Promise<{ viewId: string; label: string; summaryPage: Pick<{ months: SummaryMonthDto[] }, "months">; monthPage: MonthPageDto; householdMonthEntries: EntryDto[] }> {
-  const { categories, trackedMonths, viewId, label } = await loadPageShell(db, selectedViewId);
-  const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
-    ? selectedMonth
-    : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
+  const { categories, trackedMonths, viewId, label } = await loadRoutePageContext(db, selectedViewId);
+  const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
   const [monthEntries, monthPlanRows, incomeRows, summaryMonths] = await Promise.all([
     loadEntries(db, effectiveSelectedMonth),
     loadMonthPlanRows(db, effectiveSelectedMonth),

@@ -4,7 +4,6 @@ import {
   adjustEntriesForView,
   buildSummaryPage,
   buildSummaryRange,
-  loadPageShell,
   loadPlannedSummaryMonthsForViews
 } from "../app-shell";
 import {
@@ -12,6 +11,10 @@ import {
   loadSummaryMonths
 } from "../app-repository";
 import type { PersonScope, SummaryPageDto } from "../../types/dto";
+import {
+  loadRoutePageContext,
+  resolveEffectiveMonth
+} from "../page-shared";
 
 // Build the route-owned Summary page DTO from the shell seed and the summary
 // range requested by the active route.
@@ -23,10 +26,8 @@ export async function buildSummaryPageDto(
   summaryStartMonth?: string,
   summaryEndMonth?: string
 ): Promise<{ viewId: string; label: string; summaryPage: SummaryPageDto }> {
-  const { household, accounts, categories, trackedMonths, viewId, label, personNameById } = await loadPageShell(db, selectedViewId);
-  const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
-    ? selectedMonth
-    : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
+  const { household, accounts, categories, trackedMonths, viewId, label, personNameById } = await loadRoutePageContext(db, selectedViewId);
+  const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
   const summaryRangeMonths = buildSummaryRange(trackedMonths, summaryStartMonth, summaryEndMonth ?? effectiveSelectedMonth);
   const [summaryMonths, summaryEntries] = await Promise.all([
     loadSummaryMonths(db, viewId),

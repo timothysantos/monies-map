@@ -17,6 +17,7 @@ The target slices are:
 Supporting areas that remain outside a slice:
 
 - `app shell`
+- `shared domain fragments`
 - `shared client UI`
 - `shared client utilities`
 - `server and DTO contracts`
@@ -120,6 +121,17 @@ composition, routing, or environment setup.
   - Keep outside the main product slices.
 - `src/client/copy/en-SG.js` — `Shared`
   - Keep as shared UI copy source.
+
+## Shared Domain Fragments
+
+These files hold reusable route-context and DTO-fragment logic that multiple
+page modules need.
+
+- `src/domain/page-shared.ts` — `Shared`
+  - Keep month fallback, person-view resolution, and shared route-context
+    helpers here.
+- `src/domain/app-shell.ts` — `Shared`
+  - Keep shell orchestration and shell-shared DTO builders here.
 
 ## Summary Slice
 

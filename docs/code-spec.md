@@ -230,6 +230,9 @@ These are defaults, not excuses for clever golfing.
 - if `App.jsx`, `app-shell.ts`, or a page module grows large during migration,
   move page logic into slice deep modules instead of letting the file keep
   accumulating responsibilities
+- if several route modules repeat the same route-context or month-selection
+  logic, extract that logic into `src/domain/page-shared.ts` or another shared
+  domain fragment before the duplication spreads
 
 Good function split:
 

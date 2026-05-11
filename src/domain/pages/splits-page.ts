@@ -5,7 +5,6 @@ import {
   buildMonthPage,
   buildSplitsPage,
   buildEmptySummaryMonth,
-  loadPageShell,
   loadPlannedSummaryMonthsForViews
 } from "../app-shell";
 import {
@@ -18,6 +17,10 @@ import {
   loadSplitSettlements,
   loadSummaryMonths
 } from "../app-repository";
+import {
+  loadRoutePageContext,
+  resolveEffectiveMonth
+} from "../page-shared";
 
 // Build the route-owned Splits page DTO and keep the linked month slice local
 // to this route module.
@@ -26,10 +29,8 @@ export async function buildSplitsPageDto(
   selectedViewId = "household",
   selectedMonth = getCurrentMonthKey()
 ): Promise<{ viewId: string; label: string; monthPage: ReturnType<typeof buildMonthPage>; splitsPage: ReturnType<typeof buildSplitsPage> }> {
-  const { categories, trackedMonths, viewId, label, personNameById } = await loadPageShell(db, selectedViewId);
-  const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
-    ? selectedMonth
-    : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
+  const { categories, trackedMonths, viewId, label, personNameById } = await loadRoutePageContext(db, selectedViewId);
+  const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
   const [splitGroups, splitExpenses, splitSettlements, splitMatches, monthEntries, monthPlanRows, incomeRows, summaryMonths] = await Promise.all([
     loadSplitGroups(db),
     loadSplitExpenses(db, effectiveSelectedMonth),
