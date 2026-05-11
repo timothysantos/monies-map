@@ -803,6 +803,63 @@ Current weak coverage:
 6. Primary test level: `Integration`, then `E2E`
 7. Form factor: `Both`
 
+### I11. Parse a UOB current-transaction XLS from the OLE mini-stream
+
+1. User intent: import a supported UOB current-transaction export even when the
+   workbook container lives in the OLE mini-stream
+2. Starting state: a tiny UOB One current-transaction XLS fixture is available
+3. Action: upload the workbook
+4. Expected visible result: the import reaches preview instead of failing as an
+   unreadable spreadsheet
+5. Expected persisted or queried result: the parser recognizes the current
+   transaction XLS shape and returns normalized rows with no statement
+   checkpoints
+6. Primary test level: `Domain`
+7. Form factor: `Both`
+
+### I12. Parse a later UOB current-transaction XLS from the same source family
+
+1. User intent: trust that a later export from the same UOB source still
+   parses
+2. Starting state: a second UOB One current-transaction XLS fixture is
+   available
+3. Action: upload the workbook
+4. Expected visible result: the import reaches preview and the parsed rows
+   reflect the later export contents
+5. Expected persisted or queried result: the parser preserves the same
+   normalized contract while accepting the alternate structural variant
+6. Primary test level: `Domain`
+7. Form factor: `Both`
+
+### I13. Parse a UOB One Card current-transaction XLS from the workbook stream
+
+1. User intent: import a supported UOB current-transaction export for a credit
+   card account
+2. Starting state: a UOB One Card current-transaction XLS fixture is available
+3. Action: upload the workbook
+4. Expected visible result: the import reaches preview and the account label
+   is recognized correctly
+5. Expected persisted or queried result: the parser returns normalized rows
+   for the credit card source with the expected parser key and no statement
+   checkpoints
+6. Primary test level: `Domain`
+7. Form factor: `Both`
+
+### I14. Parse a UOB Lady's Card current-transaction XLS from the workbook stream
+
+1. User intent: import a supported UOB current-transaction export for another
+   credit card account
+2. Starting state: a UOB Lady's Card current-transaction XLS fixture is
+   available
+3. Action: upload the workbook
+4. Expected visible result: the import reaches preview and the alternate card
+   name is recognized correctly
+5. Expected persisted or queried result: the parser returns normalized rows
+   for the alternate credit card source with the expected parser key and no
+   statement checkpoints
+6. Primary test level: `Domain`
+7. Form factor: `Both`
+
 ## Splits Scenarios
 
 ### SP1. Review split workspace for a person or household

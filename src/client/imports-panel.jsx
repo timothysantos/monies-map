@@ -4,6 +4,7 @@ import { messages } from "./copy/en-SG";
 import { commitImportBatch, previewImportBatch, rollbackImportBatch } from "./import-api";
 import { ImportRecentHistorySection } from "./import-history";
 import { buildRecentImportModel, filterRecentImportsByAccount, getRecentImportAccountOptions } from "./import-history-model";
+import { buildImportWorkflowModel } from "./import-workflow-model";
 import { getStatementPreviewAutoRefreshKey, shouldAutoRefreshStatementPreview } from "./import-preview-auto-refresh";
 import { ImportMappingStage } from "./import-mapping-stage";
 import { buildImportPreviewModel, hasImportDraft } from "./import-preview-model";
@@ -191,7 +192,43 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }),
     [accounts, dismissedOverlapIds, isParsingStatement, isSubmitting, preview, previewRows, statementCheckpoints, statementImportMeta, unknownCategoryMode]
   );
-  const importDraftExists = hasImportDraft({
+  const currentPreviewSignature = useMemo(
+    () => buildStatementPreviewSnapshot(previewRows, statementCheckpoints),
+    [previewRows, statementCheckpoints]
+  );
+  const importWorkflowModel = useMemo(
+    () => buildImportWorkflowModel({
+      preview,
+      previewRows,
+      statementCheckpoints,
+      sourceLabel,
+      csvText,
+      importNote,
+      statementImportMeta,
+      uploadStatus,
+      previewError,
+      sourceLabelDefault: DEFAULT_SOURCE_LABEL,
+      isSubmitting,
+      isParsingStatement,
+      currentPreviewSignature,
+      hydratedPreviewSignature: lastStatementPreviewSnapshotRef.current
+    }),
+    [
+      currentPreviewSignature,
+      csvText,
+      importNote,
+      isParsingStatement,
+      isSubmitting,
+      preview,
+      previewError,
+      previewRows,
+      sourceLabel,
+      statementCheckpoints,
+      statementImportMeta,
+      uploadStatus
+    ]
+  );
+  const importDraftExists = importWorkflowModel.hasDraft || hasImportDraft({
     preview,
     previewRows,
     csvText,
@@ -519,11 +556,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   useEffect(() => {
     function handleStatementPreviewAutoRefresh() {
       const now = Date.now();
-      const currentSnapshot = buildStatementPreviewSnapshot(previewRows, statementCheckpoints);
       if (!shouldAutoRefreshStatementPreview({
         hasPreview: Boolean(preview),
         autoRefreshKey: statementPreviewAutoRefreshKey,
-        isWorkflowLocked: Boolean(preview) && currentSnapshot !== lastStatementPreviewSnapshotRef.current,
+        isWorkflowLocked: importWorkflowModel.isWorkflowLocked,
         isSubmitting,
         isParsingStatement,
         isDocumentVisible: typeof document === "undefined" || document.visibilityState === "visible",
@@ -554,7 +590,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       window.removeEventListener("focus", handleStatementPreviewAutoRefresh);
       document.removeEventListener("visibilitychange", handleStatementPreviewAutoRefresh);
     };
-  }, [isParsingStatement, isSubmitting, preview, previewRows, statementPreviewAutoRefreshKey, statementCheckpoints]);
+  }, [importWorkflowModel.isWorkflowLocked, isParsingStatement, isSubmitting, preview, previewRows, statementPreviewAutoRefreshKey, statementCheckpoints]);
 
   async function handlePreview() {
     if (!readyForPreview) {
