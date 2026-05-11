@@ -57,6 +57,9 @@ flowchart TD
 - if a rule belongs primarily to one route, keep it inside that route module
 - cross-route financial business rules belong in dedicated domain modules,
   not in `src/domain/page-shared.ts`
+- keep route interpretation and context resolution here; do not let
+  authorization, reconciliation, split calculations, account visibility, or
+  budgeting logic leak into this layer
 - `src/domain/pages/*.ts` owns the route-specific DTO builders.
 - `src/domain/app-shell-dto.ts` owns the shell DTO constructors.
 - the last settled screen is retained only as a hydration fallback; the active
