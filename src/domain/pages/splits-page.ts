@@ -20,7 +20,7 @@ import {
 import {
   loadRoutePageContext,
   resolveEffectiveMonth
-} from "../page-shared";
+} from "../route-context";
 
 // Build the route-owned Splits page DTO and keep the linked month slice local
 // to this route module.

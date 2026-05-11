@@ -16,7 +16,7 @@ import type { EntryDto, MonthPageDto, PersonScope, SummaryMonthDto } from "../..
 import {
   loadRoutePageContext,
   resolveEffectiveMonth
-} from "../page-shared";
+} from "../route-context";
 
 // Build the route-owned Month page DTO from the current month route.
 export async function buildMonthPageDto(

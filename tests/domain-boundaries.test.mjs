@@ -4,11 +4,14 @@ import path from "node:path";
 import test from "node:test";
 
 const repoRoot = process.cwd();
-const pageSharedPath = path.join(repoRoot, "src/domain/page-shared.ts");
+const routeContextPath = path.join(repoRoot, "src/domain/route-context.ts");
+const pageLabelsPath = path.join(repoRoot, "src/domain/page-labels.ts");
 const allowedExports = [
   "loadRoutePageContext",
   "resolveEffectiveMonth",
-  "resolvePageViewId",
+  "resolvePageViewId"
+];
+const allowedLabelExports = [
   "resolvePageLabel"
 ];
 
@@ -21,15 +24,15 @@ function extractImportSources(source) {
   return sources;
 }
 
-test("page-shared imports only shell/context helpers", async () => {
-  const source = await readFile(pageSharedPath, "utf8");
+test("route-context imports only shell/context helpers", async () => {
+  const source = await readFile(routeContextPath, "utf8");
   const imports = extractImportSources(source);
 
   assert.deepEqual(imports, ["./app-shell"]);
 });
 
-test("page-shared stays out of finance/business modules", async () => {
-  const source = await readFile(pageSharedPath, "utf8");
+test("route-context stays out of finance/business modules", async () => {
+  const source = await readFile(routeContextPath, "utf8");
   const imports = extractImportSources(source);
   const forbidden = [
     /^\.\/.*split/i,
@@ -46,14 +49,23 @@ test("page-shared stays out of finance/business modules", async () => {
     assert.equal(
       imports.some((importSource) => token.test(importSource)),
       false,
-      `page-shared.ts must not import ${token}`
+      `route-context.ts must not import ${token}`
     );
   }
 });
 
-test("page-shared only exposes route interpretation helpers", async () => {
-  const source = await readFile(pageSharedPath, "utf8");
+test("route-context only exposes route interpretation helpers", async () => {
+  const source = await readFile(routeContextPath, "utf8");
   const exportedNames = [...source.matchAll(/export\s+(?:async\s+)?function\s+([A-Za-z0-9_]+)/g)].map((match) => match[1]);
 
   assert.deepEqual(exportedNames.sort(), allowedExports.slice().sort());
+});
+
+test("page-labels stays label-only", async () => {
+  const source = await readFile(pageLabelsPath, "utf8");
+  const imports = extractImportSources(source);
+  const exportedNames = [...source.matchAll(/export\s+(?:async\s+)?function\s+([A-Za-z0-9_]+)/g)].map((match) => match[1]);
+
+  assert.deepEqual(imports, []);
+  assert.deepEqual(exportedNames.sort(), allowedLabelExports.slice().sort());
 });

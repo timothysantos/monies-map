@@ -233,15 +233,16 @@ These are defaults, not excuses for clever golfing.
 - `src/domain/app-shell.ts` is for shell orchestration and shell-shared DTO
   builders; keep route-page fragments out of that layer
 - if several route modules repeat the same route-context or month-selection
-  logic, extract that logic into `src/domain/page-shared.ts` or another shared
-  domain fragment before the duplication spreads
-- `src/domain/page-shared.ts` is only for shared route-page/domain fragments;
-  do not park formatting helpers, UI labels, parsing helpers, or React-only
-  logic there
+  logic, extract that logic into `src/domain/route-context.ts` or another
+  shared route fragment before the duplication spreads
+- `src/domain/route-context.ts` is only for shared route interpretation and
+  context resolution; do not park formatting helpers, UI labels, parsing
+  helpers, or React-only logic there
+- `src/domain/page-labels.ts` is label-only
 - if logic belongs primarily to one route, keep it in that route module
 - cross-route financial business rules belong in dedicated domain modules, not
-  in `page-shared.ts`
-- keep `page-shared.ts` focused on route interpretation and context resolution,
+  in `route-context.ts`
+- keep `route-context.ts` focused on route interpretation and context resolution,
   not authorization, reconciliation, split calculations, account visibility, or
   budgeting logic
 

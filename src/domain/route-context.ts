@@ -1,14 +1,8 @@
 import { loadPageShell } from "./app-shell";
 
-// This module is only for shared route-page/domain fragments.
-// Keep random helpers, formatting, UI text, and parsing logic elsewhere.
-// If logic belongs primarily to one route, keep it in that route module.
-// Cross-route financial business rules belong in dedicated domain modules, not
-// here.
-// Keep this focused on route interpretation and context resolution only.
-
-// Shared page fragments keep route modules from re-implementing shell view
-// selection and month-selection rules in slightly different ways.
+// This module is only for shared route interpretation and context resolution.
+// Keep routing rules narrow here; route-specific business logic belongs in the
+// relevant page module.
 export async function loadRoutePageContext(db: D1Database, selectedViewId: string) {
   return loadPageShell(db, selectedViewId);
 }
@@ -27,9 +21,4 @@ export function resolvePageViewId(selectedViewId: string, householdPeople: Array
   return selectedViewId === "household" || householdPeople.some((person) => person.id === selectedViewId)
     ? selectedViewId
     : "household";
-}
-
-// Route modules only need a display label, not the shell's full person map.
-export function resolvePageLabel(viewId: string, personNameById: Record<string, string>) {
-  return viewId === "household" ? "Household" : personNameById[viewId] ?? "Household";
 }
