@@ -1,7 +1,7 @@
 import {
   buildAppShellDto,
   buildEntriesShellDto
-} from "./domain/bootstrap-dto";
+} from "./domain/app-shell-dto";
 import {
   buildEntriesPageDto,
   buildImportsPageDto,
@@ -10,7 +10,7 @@ import {
   buildSplitsPageDto,
   buildSummaryPageDto,
   invalidateAppDataCache
-} from "./domain/bootstrap";
+} from "./domain/app-shell";
 import { enterEmptyState, reseedDemoSettings } from "./domain/demo-settings";
 import {
   archiveAccountRecord,

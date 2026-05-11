@@ -4,7 +4,7 @@ import {
   buildEntriesContextView,
   ensureAppData,
   loadAppShellContext
-} from "./bootstrap";
+} from "./app-shell";
 import {
   findSuggestedLoginPersonId,
   loadAccounts,
@@ -16,7 +16,7 @@ import {
   resolveLoginIdentityPersonId
 } from "./app-repository";
 import type {
-  AppBootstrapDto,
+  EntriesShellDto,
   AppShellDto,
 } from "../types/dto";
 
@@ -24,7 +24,7 @@ import type {
 export async function buildAppShellDto(
   db: D1Database,
   viewerEmail?: string,
-  appEnvironment?: AppBootstrapDto["appEnvironment"]
+  appEnvironment?: EntriesShellDto["appEnvironment"]
 ): Promise<AppShellDto> {
   return loadAppShellContext(db, viewerEmail, appEnvironment);
 }
@@ -35,8 +35,8 @@ export async function buildEntriesShellDto(
   selectedViewId = "household",
   selectedMonth = getCurrentMonthKey(),
   viewerEmail?: string,
-  appEnvironment?: AppBootstrapDto["appEnvironment"]
-): Promise<AppBootstrapDto> {
+  appEnvironment?: EntriesShellDto["appEnvironment"]
+): Promise<EntriesShellDto> {
   const demo = await ensureAppData(db);
   const [household, accounts, categories, trackedMonths, splitGroups] = await Promise.all([
     loadHousehold(db),

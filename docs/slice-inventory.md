@@ -105,7 +105,7 @@ composition, routing, or environment setup.
   - Long-term change: stop embedding slice data-fetch orchestration here beyond
     route selection and shell controls.
 - `src/client/main.jsx` — `Shared`
-  - Keep as React bootstrap entry point.
+  - Keep as React entry point.
 - `src/client/query-client.js` — `Shared`
   - Keep as TanStack Query client setup.
 - `src/client/app-sync.js` — `Shared`
@@ -452,9 +452,9 @@ to the same vertical language.
 - `src/domain/app-repository-helpers.ts` — `Shared`
 - `src/domain/app-repository-constants.ts` — `Shared`
 - `src/domain/app-repository-lookups.ts` — `Shared`
-- `src/domain/bootstrap.ts` — `Bridge`
+- `src/domain/app-shell.ts` — `Bridge`
   - Important for app shell and current loading strategy.
-  - Future direction: reduce bootstrap responsibility as slice queries grow.
+  - Future direction: reduce shell-orchestration responsibility as slice queries grow.
 
 ### Summary and month aligned
 
