@@ -230,9 +230,14 @@ These are defaults, not excuses for clever golfing.
 - if `App.jsx`, `app-shell.ts`, or a page module grows large during migration,
   move page logic into slice deep modules instead of letting the file keep
   accumulating responsibilities
+- `src/domain/app-shell.ts` is for shell orchestration and shell-shared DTO
+  builders; keep route-page fragments out of that layer
 - if several route modules repeat the same route-context or month-selection
   logic, extract that logic into `src/domain/page-shared.ts` or another shared
   domain fragment before the duplication spreads
+- `src/domain/page-shared.ts` is only for shared route-page/domain fragments;
+  do not park formatting helpers, UI labels, parsing helpers, or React-only
+  logic there
 
 Good function split:
 

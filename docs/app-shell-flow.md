@@ -48,10 +48,12 @@ flowchart TD
 - `src/client/App.jsx` is an orchestrator, not a hidden page service.
 - shell and route-page requests can overlap when the route page does not need
   shell-derived inputs to begin safely.
-- `src/domain/app-shell.ts` owns shell orchestration and shared page-building
-  helpers.
+- `src/domain/app-shell.ts` owns shell orchestration and shell-shared DTO
+  builders. Keep route-specific fragments out of this file.
 - `src/domain/page-shared.ts` owns shared route-fragment helpers such as
   month fallback and person-view resolution.
+- keep `src/domain/page-shared.ts` limited to route-page/domain fragments;
+  do not turn it into a generic helper drawer
 - `src/domain/pages/*.ts` owns the route-specific DTO builders.
 - `src/domain/app-shell-dto.ts` owns the shell DTO constructors.
 - the last settled screen is retained only as a hydration fallback; the active
