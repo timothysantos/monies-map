@@ -17,6 +17,9 @@ system.
 - [`docs/scenario-catalog.md`](./scenario-catalog.md): Stage 1 TDD scenario map
 - [`docs/slice-inventory.md`](./slice-inventory.md): Stage 2 slice ownership map
 - [`docs/query-map.md`](./query-map.md): Stage 3 query and cache map
+- [`docs/route-data-code-flow.md`](./route-data-code-flow.md): detailed
+  three-lane explanation of route flow, data flow, code/rendering flow, and
+  their current boundary rules
 - [`docs/code-spec.md`](./code-spec.md): compact implementation spec, query
   budgets, invalidation contract, and code-shape rules
 - [`docs/implementation-order.md`](./implementation-order.md): Stage 4

@@ -4,6 +4,10 @@ This document traces the first-load and follow-up query flow after the shell
 refactor. The goal is to show which files participate, which API endpoints are
 called, and what each stage returns.
 
+For the longer explanation that combines route flow, data flow, rendering flow,
+library concepts, boundary rules, and enforcement tests, read
+[`docs/route-data-code-flow.md`](./route-data-code-flow.md).
+
 ## Flowchart
 
 ```mermaid
