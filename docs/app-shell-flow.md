@@ -54,6 +54,9 @@ flowchart TD
   month fallback and person-view resolution.
 - keep `src/domain/page-shared.ts` limited to route-page/domain fragments;
   do not turn it into a generic helper drawer
+- if a rule belongs primarily to one route, keep it inside that route module
+- cross-route financial business rules belong in dedicated domain modules,
+  not in `src/domain/page-shared.ts`
 - `src/domain/pages/*.ts` owns the route-specific DTO builders.
 - `src/domain/app-shell-dto.ts` owns the shell DTO constructors.
 - the last settled screen is retained only as a hydration fallback; the active

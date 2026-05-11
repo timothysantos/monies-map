@@ -238,6 +238,9 @@ These are defaults, not excuses for clever golfing.
 - `src/domain/page-shared.ts` is only for shared route-page/domain fragments;
   do not park formatting helpers, UI labels, parsing helpers, or React-only
   logic there
+- if logic belongs primarily to one route, keep it in that route module
+- cross-route financial business rules belong in dedicated domain modules, not
+  in `page-shared.ts`
 
 Good function split:
 
