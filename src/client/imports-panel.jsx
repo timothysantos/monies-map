@@ -149,32 +149,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     });
   }, [headerSignature, csvInspection.headers]);
 
-  const mappedFields = useMemo(() => {
-    const counts = {};
-    for (const value of Object.values(columnMappings)) {
-      if (!value || value === "ignore") {
-        continue;
-      }
-      counts[value] = (counts[value] ?? 0) + 1;
-    }
-    return counts;
-  }, [columnMappings]);
-
-  const duplicateMappings = useMemo(
-    () => Object.entries(mappedFields).filter(([, count]) => count > 1).map(([field]) => field),
-    [mappedFields]
-  );
-
   const mappedRows = useMemo(
     () => importService.buildMappedRows(csvInspection.rows, columnMappings),
     [columnMappings, csvInspection.rows]
   );
-
-  const missingRequiredFields = [
-    !mappedFields.date ? "date" : null,
-    !mappedFields.description ? "description" : null,
-    !mappedFields.amount && !mappedFields.expense && !mappedFields.income ? "amount/expense/income" : null
-  ].filter(Boolean);
   const importPreviewModel = useMemo(
     () => buildImportPreviewModel({
       accounts,
@@ -199,11 +177,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       previewRows,
       statementCheckpoints,
       mappedRows,
-      mappedFields,
-      missingRequiredFields,
-      duplicateMappings,
-      missingRequiredFieldsCount: missingRequiredFields.length,
-      duplicateMappingsCount: duplicateMappings.length,
+      columnMappings,
       sourceLabel,
       csvText,
       importNote,
@@ -230,9 +204,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       statementImportMeta,
       uploadStatus,
       mappedRows,
-      mappedFields,
-      missingRequiredFields,
-      duplicateMappings
+      columnMappings
     ]
   );
   const importDraftExists = importWorkflowModel.hasDraft;

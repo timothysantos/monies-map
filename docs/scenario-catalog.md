@@ -831,7 +831,7 @@ Current weak coverage:
 6. Primary test level: `Domain`
 7. Form factor: `Both`
 
-### I13. Parse a UOB One Card current-transaction XLS from the workbook stream
+### I13. Parse the UOB One Card current-transaction XLS contract from the workbook stream
 
 1. User intent: import a supported UOB current-transaction export for a credit
    card account
@@ -845,7 +845,7 @@ Current weak coverage:
 6. Primary test level: `Domain`
 7. Form factor: `Both`
 
-### I14. Parse a UOB Lady's Card current-transaction XLS from the workbook stream
+### I14. Parse the UOB Lady's Card current-transaction XLS contract from the workbook stream
 
 1. User intent: import a supported UOB current-transaction export for another
    credit card account

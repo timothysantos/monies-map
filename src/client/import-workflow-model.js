@@ -6,11 +6,7 @@ export function buildImportWorkflowModel({
   previewRows = [],
   statementCheckpoints = [],
   mappedRows = [],
-  mappedFields = {},
-  missingRequiredFields = [],
-  duplicateMappings = [],
-  missingRequiredFieldsCount,
-  duplicateMappingsCount,
+  columnMappings = {},
   sourceLabel,
   csvText,
   importNote,
@@ -29,6 +25,9 @@ export function buildImportWorkflowModel({
     && !isWorkflowLocked
     && !isSubmitting
     && !isParsingStatement;
+  const mappedFields = buildMappedFields(columnMappings);
+  const duplicateMappings = Object.entries(mappedFields).filter(([, count]) => count > 1).map(([field]) => field);
+  const missingRequiredFields = buildMissingRequiredFields(mappedFields);
   const hasDraft = Boolean(
     preview
     || previewRows.length
@@ -40,15 +39,13 @@ export function buildImportWorkflowModel({
     || sourceLabel !== sourceLabelDefault
   );
   const hasReviewablePreview = Boolean(preview && previewRows.length);
-  const readyForMapping = Boolean(mappedRows?.length);
+  const readyForMapping = Boolean(mappedRows.length);
   const readyForPreview = Boolean(
     readyForMapping
-    && missingRequiredFieldsCount === 0
-    && duplicateMappingsCount === 0
+    && missingRequiredFields.length === 0
+    && duplicateMappings.length === 0
   );
   const currentStage = preview ? 3 : readyForMapping ? 2 : 1;
-  const hasMissingRequiredFields = missingRequiredFields.length > 0;
-  const hasDuplicateMappings = duplicateMappings.length > 0;
 
   return {
     currentStage,
@@ -58,11 +55,29 @@ export function buildImportWorkflowModel({
     isPreviewDirty,
     isPreviewRefreshSafe,
     isWorkflowLocked,
-    hasDuplicateMappings,
-    hasMissingRequiredFields,
     mappedFields,
+    mappedRows,
     missingRequiredFields,
     readyForMapping,
     readyForPreview
   };
+}
+
+function buildMappedFields(columnMappings) {
+  const counts = {};
+  for (const value of Object.values(columnMappings)) {
+    if (!value || value === "ignore") {
+      continue;
+    }
+    counts[value] = (counts[value] ?? 0) + 1;
+  }
+  return counts;
+}
+
+function buildMissingRequiredFields(mappedFields) {
+  return [
+    !mappedFields.date ? "date" : null,
+    !mappedFields.description ? "description" : null,
+    !mappedFields.amount && !mappedFields.expense && !mappedFields.income ? "amount/expense/income" : null
+  ].filter(Boolean);
 }
