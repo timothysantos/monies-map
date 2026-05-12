@@ -8,6 +8,7 @@ import {
   invalidateImportsPageQueries,
   invalidateEntriesMutationQueries,
   invalidateMonthQueries,
+  invalidateSplitsPageQueries,
   invalidateSummaryAccountPillQueries,
   invalidateSummaryPageQueries
 } from "../src/client/query-mutations.js";
@@ -45,6 +46,16 @@ test("queryKeys.summaryAccountPills returns a stable slice key", () => {
     "summary-account-pills",
     {
       viewId: "household"
+    }
+  ]);
+});
+
+test("queryKeys.splitsPage returns a stable slice key", () => {
+  assert.deepEqual(queryKeys.splitsPage({ viewId: "person-tim", month: "2025-10" }), [
+    "splits-page",
+    {
+      month: "2025-10",
+      viewId: "person-tim"
     }
   ]);
 });
@@ -95,6 +106,17 @@ test("invalidateSummaryAccountPillQueries only targets the wallet pill key", asy
   assert.deepEqual(queryClient.calls, [
     ["cancel", ["summary-account-pills", { viewId: "household" }]],
     ["invalidate", ["summary-account-pills", { viewId: "household" }]]
+  ]);
+});
+
+test("invalidateSplitsPageQueries only targets the splits page key", async () => {
+  const queryClient = createFakeQueryClient();
+
+  await invalidateSplitsPageQueries(queryClient, { viewId: "person-tim", month: "2025-10" });
+
+  assert.deepEqual(queryClient.calls, [
+    ["cancel", ["splits-page", { month: "2025-10", viewId: "person-tim" }]],
+    ["invalidate", ["splits-page", { month: "2025-10", viewId: "person-tim" }]]
   ]);
 });
 

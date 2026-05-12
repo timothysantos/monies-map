@@ -17,6 +17,10 @@ export async function invalidateEntriesPageQueries(queryClient, params) {
   await cancelAndInvalidate(queryClient, queryKeys.entriesPage(params));
 }
 
+export async function invalidateSplitsPageQueries(queryClient, params) {
+  await cancelAndInvalidate(queryClient, queryKeys.splitsPage(params));
+}
+
 export async function invalidateSummaryPageQueries(queryClient, params) {
   await cancelAndInvalidate(queryClient, queryKeys.summaryPage(params));
 }

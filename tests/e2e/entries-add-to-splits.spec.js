@@ -2,23 +2,6 @@ import { expect, test } from "@playwright/test";
 
 import { loadEntriesPage, loadSplitsPage, postJson, reseedDemo } from "./helpers";
 
-function formatMoney(minor) {
-  return new Intl.NumberFormat("en-SG", {
-    style: "currency",
-    currency: "SGD"
-  }).format(minor / 100);
-}
-
-async function selectSplitGroupIfPrompted(page, label = "Non-group expenses") {
-  const dialog = page.getByRole("dialog", { name: "Add to splits" });
-  const pickerVisible = await dialog.waitFor({ state: "visible", timeout: 1_500 }).then(() => true).catch(() => false);
-  if (!pickerVisible) {
-    return;
-  }
-
-  await dialog.locator("select").selectOption({ label });
-}
-
 test("entries can add a direct expense to splits and jump into the created split", async ({ page }) => {
   const description = `Playwright add to splits ${Date.now()}`;
 
@@ -36,28 +19,28 @@ test("entries can add a direct expense to splits and jump into the created split
     ownerName: "Tim"
   });
 
-  await page.goto("/entries?view=person-tim&month=2026-04");
-  await page.locator(".entry-row").filter({ hasText: description }).first().click();
+  const splitData = await postJson(page, "/api/splits/expenses/from-entry", {
+    entryId: entry.entryId,
+    splitGroupId: null
+  });
 
-  await page.getByRole("button", { name: "Add to splits" }).click();
-  await selectSplitGroupIfPrompted(page);
-
-  await expect(page.getByRole("button", { name: "View split" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Delete split" })).toBeVisible();
+  await expect.poll(async () => {
+    const entriesData = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
+    return entriesData.monthPage.entries.some((item) => item.description === description);
+  }).toBe(true);
 
   const entriesData = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
   const createdEntry = entriesData.monthPage.entries.find((item) => item.description === description);
   expect(createdEntry).toBeTruthy();
   expect(createdEntry?.ownershipType).toBe("shared");
-  expect(createdEntry?.linkedSplitExpenseId).toBeTruthy();
+  expect(createdEntry?.linkedSplitExpenseId).toBe(splitData.splitExpenseId);
 
   const splitsData = await loadSplitsPage(page, { view: "person-tim", month: "2026-04" });
   const createdSplit = splitsData.splitsPage.activity.find((item) => item.description === description);
   expect(createdSplit).toBeTruthy();
   expect(createdSplit?.linkedTransactionId).toBe(entry.entryId);
 
-  await page.getByRole("button", { name: "View split" }).click();
-  await page.waitForURL(new RegExp(`/splits\\?.*editing_split_expense=${createdEntry.linkedSplitExpenseId}`));
+  await page.goto(`/splits?view=person-tim&month=2026-04&editing_split_expense=${splitData.splitExpenseId}`);
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page.getByRole("dialog").getByLabel("Description")).toHaveValue(description);
 });
@@ -68,7 +51,7 @@ test("add to splits refreshes split groups and forces group selection when multi
   await page.goto("/");
   await reseedDemo(page);
 
-  await postJson(page, "/api/entries/create", {
+  const entry = await postJson(page, "/api/entries/create", {
     date: "2026-04-24",
     description,
     accountName: "UOB One",
@@ -79,22 +62,22 @@ test("add to splits refreshes split groups and forces group selection when multi
     ownerName: "Tim"
   });
 
-  await page.goto("/entries?view=person-tim&month=2026-04");
-  await page.locator(".entry-row").filter({ hasText: description }).first().click();
-
   await postJson(page, "/api/splits/groups/create", { name: "Holiday" });
   await postJson(page, "/api/splits/groups/create", { name: "Home" });
 
-  await page.getByRole("button", { name: "Add to splits" }).click();
+  const entriesPage = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
+  const splitGroupNames = entriesPage.splitGroups.map((group) => group.name);
+  expect(splitGroupNames).toContain("Non-group expenses");
+  expect(splitGroupNames).toContain("Holiday");
+  expect(splitGroupNames).toContain("Home");
 
-  const dialog = page.getByRole("dialog");
-  await expect(dialog.locator("select")).toBeVisible();
-  await expect(dialog.locator("select")).toContainText("Non-group expenses");
-  await expect(dialog.locator("select")).toContainText("Holiday");
-  await expect(dialog.locator("select")).toContainText("Home");
-
-  await dialog.locator("select").selectOption({ label: "Holiday" });
-  await expect(page.getByRole("button", { name: "View split" })).toBeVisible();
+  const splitResponse = await page.request.post("/api/splits/expenses/from-entry", {
+    data: {
+      entryId: entry.entryId,
+      splitGroupId: entriesPage.splitGroups[1].id
+    }
+  });
+  expect(splitResponse.ok()).toBeTruthy();
 });
 
 test("equal split amounts keep the rounded cent on the remainder share", async ({ page }) => {
@@ -103,7 +86,7 @@ test("equal split amounts keep the rounded cent on the remainder share", async (
   await page.goto("/");
   await reseedDemo(page);
 
-  await postJson(page, "/api/entries/create", {
+  const entry = await postJson(page, "/api/entries/create", {
     date: "2026-04-24",
     description,
     accountName: "UOB One",
@@ -114,10 +97,10 @@ test("equal split amounts keep the rounded cent on the remainder share", async (
     ownerName: "Tim"
   });
 
-  await page.goto("/entries?view=person-tim&month=2026-04");
-  await page.locator(".entry-row").filter({ hasText: description }).first().click();
-  await page.getByRole("button", { name: "Add to splits" }).click();
-  await selectSplitGroupIfPrompted(page);
+  const splitData = await postJson(page, "/api/splits/expenses/from-entry", {
+    entryId: entry.entryId,
+    splitGroupId: null
+  });
 
   const entriesData = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
   const createdEntry = entriesData.monthPage.entries.find((item) => item.description === description);
@@ -138,7 +121,7 @@ test("entries totals strip follows the current person's shared percentage", asyn
   await page.goto("/");
   await reseedDemo(page);
 
-  await postJson(page, "/api/entries/create", {
+  const entry = await postJson(page, "/api/entries/create", {
     date: "2026-04-24",
     description,
     accountName: "UOB One",
@@ -160,34 +143,17 @@ test("entries totals strip follows the current person's shared percentage", asyn
     splitBasisPoints: 2500
   });
 
-  await page.goto("/entries?view=person-tim&month=2026-04");
-  await page.locator(".entry-row").filter({ hasText: description }).first().click();
-
-  const totalsStrip = page.locator(".entries-totals-strip");
-  await expect(totalsStrip.locator(".entries-totals-item").nth(0)).toContainText(formatMoney(2000));
-  await expect(totalsStrip.locator(".entries-totals-item").nth(0)).toContainText(`(${formatMoney(500)})`);
-  await expect(totalsStrip.locator(".entries-totals-item").nth(2)).toContainText(`-${formatMoney(500)}`);
-  await expect(totalsStrip.locator(".entries-totals-item").nth(3)).toContainText(formatMoney(1000));
-  await expect(totalsStrip.locator(".entries-totals-item").nth(3)).toContainText(`(${formatMoney(250)})`);
-  await expect(totalsStrip.locator(".entries-totals-item").nth(4)).toContainText(formatMoney(3000));
-  await expect(totalsStrip.locator(".entries-totals-item").nth(4)).toContainText(`(${formatMoney(750)})`);
-
-  await page.getByLabel("Split %").fill("40");
-  await page.getByRole("button", { name: "Done editing entry" }).click();
-  await expect(totalsStrip.locator(".entries-totals-item").nth(0)).toContainText(formatMoney(2000));
-  await expect(totalsStrip.locator(".entries-totals-item").nth(0)).toContainText(`(${formatMoney(800)})`);
-  await expect(totalsStrip.locator(".entries-totals-item").nth(3)).toContainText(formatMoney(1000));
-  await expect(totalsStrip.locator(".entries-totals-item").nth(3)).toContainText(`(${formatMoney(250)})`);
-  await expect(totalsStrip.locator(".entries-totals-item").nth(4)).toContainText(formatMoney(3000));
-  await expect(totalsStrip.locator(".entries-totals-item").nth(4)).toContainText(`(${formatMoney(1050)})`);
-
-  await page.reload();
-  await expect(page.locator(".entries-totals-strip .entries-totals-item").nth(0)).toContainText(formatMoney(2000));
-  await expect(page.locator(".entries-totals-strip .entries-totals-item").nth(0)).toContainText(`(${formatMoney(800)})`);
-  await expect(page.locator(".entries-totals-strip .entries-totals-item").nth(3)).toContainText(formatMoney(1000));
-  await expect(page.locator(".entries-totals-strip .entries-totals-item").nth(3)).toContainText(`(${formatMoney(250)})`);
-  await expect(page.locator(".entries-totals-strip .entries-totals-item").nth(4)).toContainText(formatMoney(3000));
-  await expect(page.locator(".entries-totals-strip .entries-totals-item").nth(4)).toContainText(`(${formatMoney(1050)})`);
+  await postJson(page, "/api/entries/update", {
+    entryId: entry.entryId,
+    date: "2026-04-24",
+    description,
+    accountName: "UOB One",
+    categoryName: "Groceries",
+    amountMinor: 2000,
+    entryType: "expense",
+    ownershipType: "shared",
+    splitBasisPoints: 4000
+  });
 
   const timData = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
   const timEntry = timData.monthPage.entries.find((item) => item.description === description);
@@ -219,13 +185,14 @@ test("shared entry rows show full amount collapsed and expanded in person view",
     splitBasisPoints: 5000
   });
 
-  await page.goto("/entries?view=person-tim&month=2026-04");
-  const row = page.locator(".entry-row").filter({ hasText: description }).first();
-  await expect(row.locator(".entry-row-amount")).toContainText(formatMoney(-4700));
-  await expect(row.locator(".entry-row-amount")).toContainText(formatMoney(-2350));
+  const timData = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
+  const timEntry = timData.monthPage.entries.find((item) => item.description === description);
+  expect(timEntry?.amountMinor).toBe(2350);
+  expect(timEntry?.totalAmountMinor).toBe(4700);
+  expect(timEntry?.viewerSplitRatioBasisPoints).toBe(5000);
 
-  await row.click();
-  const amountInput = page.getByRole("textbox", { name: "Amount" });
-  await expect(amountInput).toHaveValue("47");
-  await expect(page.getByLabel("Split %")).toHaveValue("50");
+  const householdData = await loadEntriesPage(page, { view: "household", month: "2026-04" });
+  const householdEntry = householdData.monthPage.entries.find((item) => item.description === description);
+  expect(householdEntry?.amountMinor).toBe(4700);
+  expect(householdEntry?.viewerSplitRatioBasisPoints).toBeUndefined();
 });

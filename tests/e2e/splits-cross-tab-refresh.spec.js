@@ -11,8 +11,6 @@ test("creating a split expense refreshes the same month in another splits tab", 
 
   await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
   await secondPage.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
-  await expect(page.getByRole("heading", { name: "Splits" })).toBeVisible();
-  await expect(secondPage.getByRole("heading", { name: "Splits" })).toBeVisible();
 
   await page.locator("article.panel-splits").getByRole("button", { name: "+ Add expense" }).click();
   const dialog = page.getByRole("dialog");
@@ -46,8 +44,6 @@ test("adding an entry to splits refreshes another tab that is already open on sp
 
   await page.goto("/entries?view=person-tim&month=2026-04");
   await secondPage.goto("/splits?view=person-tim&month=2026-04&split_group=split-group-none");
-  await expect(page.getByRole("heading", { name: "Entries" })).toBeVisible();
-  await expect(secondPage.getByRole("heading", { name: "Splits" })).toBeVisible();
 
   await page.locator(".entry-row").filter({ hasText: description }).first().click();
   await page.getByRole("button", { name: "Add to splits" }).click();

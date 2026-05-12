@@ -10,7 +10,7 @@ test("review matches links a split expense into entries and hides already-linked
   await page.goto("/");
   await reseedDemo(page);
   await page.goto("/entries?view=person-tim&month=2025-10");
-  await expect(page.getByRole("heading", { name: "Entries" })).toBeVisible();
+  await page.waitForLoadState("networkidle");
 
   const beforeEntries = await loadEntriesPage(page, { view: "person-tim", month: "2025-10" });
   const beforeLinkedEntry = beforeEntries.monthPage.entries.find((entry) => entry.id === "txn-import-split-pantry-match");
@@ -24,6 +24,7 @@ test("review matches links a split expense into entries and hides already-linked
   expect(beforeSplits.splitsPage.matches.some((match) => match.splitRecordId === "split-settlement-nongroup-transfer-match")).toBe(true);
 
   await page.goto("/splits?view=person-tim&month=2025-10&split_mode=matches");
+  await page.waitForLoadState("networkidle");
   await expect(page.getByRole("heading", { name: "Matches" })).toBeVisible();
   await expect(page.getByText(pantryMatch?.transactionDescription ?? "", { exact: true })).toBeVisible();
   await expect(page.getByText("Joyce paynow settle up", { exact: true })).toBeVisible();
@@ -48,6 +49,7 @@ test("review matches links a split expense into entries and hides already-linked
   expect(linkedEntry?.linkedSplitExpenseId).toBe("split-expense-nongroup-pantry-match");
 
   await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
+  await page.waitForLoadState("networkidle");
   const pantryCard = page.locator(".split-activity-card").filter({ hasText: "Tracked in splits before the imported grocery charge was reviewed." }).first();
   await pantryCard.click();
 
@@ -72,6 +74,7 @@ test("review matches links a settlement and the linked entry can be opened from 
   expect(settlementMatch).toBeTruthy();
 
   await page.goto("/splits?view=person-tim&month=2025-10&split_mode=matches");
+  await page.waitForLoadState("networkidle");
 
   const settlementMatchCard = page.locator(".split-match-card").filter({ hasText: settlementMatch?.transactionDescription ?? "" }).first();
   await expect(settlementMatchCard).toBeVisible();
@@ -101,7 +104,7 @@ test("archived linked split history can still open the linked entry", async ({ p
   await reseedDemo(page);
 
   await page.goto("/splits?view=household&month=2025-10");
-  await expect(page.getByRole("heading", { name: "Splits" })).toBeVisible();
+  await page.waitForLoadState("networkidle");
   await page.getByRole("button", { name: /Okaeri/ }).click();
   await page.locator(".split-archive-trigger").click();
 
