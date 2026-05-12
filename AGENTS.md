@@ -65,6 +65,9 @@ team conventions evolve.
 - Practice TDD by scenario. Start each meaningful behavior change with a test or
   test update that describes the user-visible workflow before implementation
   details.
+- Do not write shallow tests for implemented behavior. For any non-trivial
+  slice, assert the concrete output shape and values, and include at least one
+  negative test that proves the guarded or rejected path.
 - Prefer deep modules with small public surfaces and hidden internals over wide,
   shallow helper graphs.
 - Prefer explicit domain boundaries between storage, transformation logic, DTOs,

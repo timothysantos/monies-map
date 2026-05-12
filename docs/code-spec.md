@@ -214,6 +214,13 @@ list when relevant:
 - slow query or restart does not break persisted app-shell cache
 - import parser accepts structural variants from the same bank source
 
+Testing depth rule:
+
+- do not stop at truthy checks or existence checks for implemented behavior
+- assert the concrete output shape and values that the slice owns
+- include at least one negative test for each non-trivial slice so blocked or
+  rejected behavior is covered explicitly
+
 ## Code Shape Rules
 
 These are defaults, not excuses for clever golfing.
