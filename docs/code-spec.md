@@ -158,6 +158,9 @@ Invalidation rules:
 - do not use "invalidate everything" as the default
 - stale is allowed immediately; visible replacement is not allowed if it would
   clobber an active workflow
+- if a slice needs shell refresh for a shared-metadata exception, isolate it
+  behind a named helper and document why it is not the normal invalidation
+  path
 
 ## Workflow Lock Contract
 

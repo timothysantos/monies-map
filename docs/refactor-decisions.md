@@ -162,7 +162,31 @@ Exit signal:
 - invalidation is readable from the mutation site without guessing which other
   page happened to depend on it.
 
-## 7. What This Means For The First Slice
+## 7. Import Account Creation Refresh Exception
+
+Current intended rule:
+
+- imports commit and rollback should use narrow slice invalidation, not shell
+  refresh.
+- creating a new account from within the imports workflow is a special case
+  because it changes shared account metadata that the shell and other slices
+  consume.
+- that special case should be isolated behind a named helper and treated as an
+  exception, not a pattern to reuse casually.
+
+Why:
+
+- the imports workflow can create a new account that must appear in account
+  selectors and other shared reference DTOs immediately.
+- a shell refresh is acceptable for that specific metadata change, but it must
+  stay narrowly scoped to account creation.
+
+Exit signal:
+
+- `refreshShell: true` appears only in the named import account-creation refresh
+  plan, not in general import commit / rollback flow.
+
+## 8. What This Means For The First Slice
 
 For the first slice refactor:
 
@@ -172,7 +196,7 @@ For the first slice refactor:
   shared helper with explicit tests
 - remove hidden broad invalidation as soon as the slice owns its query contract
 
-## 8. Stop Condition
+## 9. Stop Condition
 
 If the code proves one of these decisions wrong, update this document before
 continuing the refactor.

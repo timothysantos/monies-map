@@ -24,6 +24,15 @@ test("classifyImportFile routes PDFs before other formats", () => {
   }), "pdf");
 });
 
+test("classifyImportFile keeps XLS routing generic for current-transaction workbooks", () => {
+  assert.equal(classifyImportFile({
+    fileName: "ACC_TXN_History_02052026194007.xls",
+    fileType: "application/vnd.ms-excel",
+    text: "",
+    activityContext: creditCardContext
+  }), "xls");
+});
+
 test("classifyImportFile routes UOB/OCBC/Citi CSV variants explicitly", () => {
   assert.equal(classifyImportFile({
     fileName: "ACCT_12345_06_05_2026-rewards.csv",
