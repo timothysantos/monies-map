@@ -48,6 +48,12 @@ team conventions evolve.
 - Keep [`docs/fourth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/fourth-slice-prompt.md)
   updated alongside the actual fourth implementation prompt for the settings
   query and workflow slice.
+- Keep [`docs/fifth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/fifth-slice-prompt.md)
+  updated alongside the actual fifth implementation prompt for the summary
+  query and workflow slice.
+- Keep [`docs/sixth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/sixth-slice-prompt.md)
+  updated alongside the actual sixth implementation prompt for the splits
+  query and workflow slice.
 - Refactor work should be committed in small readable batches as it proceeds.
   Use that practice for the first slice and keep it for later slices unless a
   slice is explicitly being held back for one atomic change.
@@ -168,6 +174,12 @@ team conventions evolve.
   scenarios or coupling rows change.
 - Update [`docs/fourth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/fourth-slice-prompt.md)
   when the fourth slice prompt itself changes or when the settings target
+  scenarios or coupling rows change.
+- Update [`docs/fifth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/fifth-slice-prompt.md)
+  when the fifth slice prompt itself changes or when the summary target
+  scenarios or coupling rows change.
+- Update [`docs/sixth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/sixth-slice-prompt.md)
+  when the sixth slice prompt itself changes or when the splits target
   scenarios or coupling rows change.
 - Update [`design.md`](/Users/tim/22m/ai-projects/monies_map/design.md) when
   implementation boundaries such as the client deep module service evolve.
