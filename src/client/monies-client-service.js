@@ -62,7 +62,6 @@ export const moniesClient = Object.freeze({
     parseMoneyInput: formatters.parseMoneyInput
   }),
   imports: Object.freeze({
-    buildMappedRows: importHelpers.buildMappedImportRows,
     buildRawRowFromPreviewRow: importHelpers.buildRawImportRowFromPreviewRow,
     extractPdfText: importHelpers.extractPdfText,
     getDirectOwnerForAccount: importHelpers.getImportDirectOwnerForAccount,
