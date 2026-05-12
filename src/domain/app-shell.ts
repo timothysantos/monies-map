@@ -226,7 +226,6 @@ export function buildSummaryPage(
   summaryMonthsByView: Record<string, SummaryMonthDto[]>,
   plannedSummaryMonthsByView: Record<string, SummaryMonthDto[]>,
   categories: CategoryDto[],
-  accountPills: SummaryAccountPillDto[],
   selectedMonth: string,
   summaryRangeMonths: string[],
   trackedMonths: string[],
@@ -296,7 +295,6 @@ export function buildSummaryPage(
     months,
     categoryShareChart: buildDonutChart(visibleEntries, categories),
     categoryShareByMonth: buildSummaryDonutMonths(visibleEntries, categories, rangeMonths),
-    accountPills,
     notes:
       personId === "household"
         ? [

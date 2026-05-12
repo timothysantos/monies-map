@@ -10,6 +10,7 @@ import { buildImportsPageDto } from "./domain/pages/imports-page";
 import { buildMonthPageDto } from "./domain/pages/month-page";
 import { buildSettingsPageDto } from "./domain/pages/settings-page";
 import { buildSplitsPageDto } from "./domain/pages/splits-page";
+import { buildSummaryAccountPillsDto } from "./domain/pages/summary-account-pills";
 import { buildSummaryPageDto } from "./domain/pages/summary-page";
 import { enterEmptyState, reseedDemoSettings } from "./domain/demo-settings";
 import {
@@ -139,6 +140,15 @@ export default {
           (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared",
           url.searchParams.get("summary_start") ?? undefined,
           url.searchParams.get("summary_end") ?? undefined
+        )
+      );
+    }
+
+    if (url.pathname === "/api/summary-account-pills") {
+      return apiPageResponse("Summary account pills", request, url, () =>
+        buildSummaryAccountPillsDto(
+          env.DB,
+          url.searchParams.get("view") ?? "household"
         )
       );
     }

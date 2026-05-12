@@ -1,6 +1,5 @@
 import { getCurrentMonthKey } from "../../lib/month";
 import {
-  accountsForSummary,
   adjustEntriesForView,
   buildSummaryPage,
   buildSummaryRange,
@@ -46,7 +45,6 @@ export async function buildSummaryPageDto(
       { [viewId]: summaryMonths },
       plannedSummaryMonthsByView,
       categories,
-      accountsForSummary(viewId, accounts),
       effectiveSelectedMonth,
       summaryRangeMonths,
       trackedMonths,

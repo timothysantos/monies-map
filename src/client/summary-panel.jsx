@@ -14,11 +14,14 @@ import {
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import {
+  buildSummaryEntriesLocation,
+  buildSummaryMonthLocation,
+  SUMMARY_FOCUS_OVERALL
+} from "./summary-workflow";
+import {
   BarLine,
   MetricCard
 } from "./ui-components";
-
-const SUMMARY_FOCUS_OVERALL = "overall";
 const {
   accounts: accountService,
   categories: categoryService,
@@ -51,22 +54,7 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
   const focusState = buildSummaryFocusState(safeSummaryPage, summaryFocusParam);
 
   function navigateToEntries(nextFilters) {
-    const next = new URLSearchParams(location.search);
-    next.delete("entry_wallet");
-    next.delete("entry_person");
-    next.delete("entry_type");
-    next.delete("entry_category");
-
-    for (const [key, value] of Object.entries(nextFilters)) {
-      if (value) {
-        next.set(key, value);
-      }
-    }
-
-    navigate({
-      pathname: "/entries",
-      search: `?${next.toString()}`
-    });
+    navigate(buildSummaryEntriesLocation(location.search, nextFilters));
   }
 
   function handleFocusChange(nextMonth) {
@@ -92,12 +80,7 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
   }
 
   function handleOpenMonth(month) {
-    const next = new URLSearchParams(location.search);
-    next.set("month", month);
-    navigate({
-      pathname: "/month",
-      search: `?${next.toString()}`
-    });
+    navigate(buildSummaryMonthLocation(location.search, month));
   }
 
   async function saveSummaryMonthNote() {
@@ -105,18 +88,11 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
       return;
     }
 
-    await fetch("/api/month-note/update", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        month: monthNoteDialog.month,
-        personScope: view.id,
-        note: monthNoteDialog.draft
-      })
+    await onRefresh({
+      month: monthNoteDialog.month,
+      note: monthNoteDialog.draft
     });
-
     setMonthNoteDialog(null);
-    await onRefresh();
   }
 
   return (

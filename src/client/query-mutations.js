@@ -17,11 +17,20 @@ export async function invalidateEntriesPageQueries(queryClient, params) {
   await cancelAndInvalidate(queryClient, queryKeys.entriesPage(params));
 }
 
+export async function invalidateSummaryPageQueries(queryClient, params) {
+  await cancelAndInvalidate(queryClient, queryKeys.summaryPage(params));
+}
+
+export async function invalidateSummaryAccountPillQueries(queryClient, params) {
+  await cancelAndInvalidate(queryClient, queryKeys.summaryAccountPills(params));
+}
+
 export async function invalidateImportsPageQueries(queryClient) {
   await cancelAndInvalidate(queryClient, queryKeys.importsPage());
 }
 
 export async function invalidateMonthQueries(queryClient, {
+  invalidateSummaryAccountPills = false,
   entriesParams,
   month,
   scope,
@@ -37,15 +46,21 @@ export async function invalidateMonthQueries(queryClient, {
   if (summaryRange) {
     tasks.push(cancelAndInvalidate(queryClient, queryKeys.summaryPage({
       viewId,
+      scope,
       startMonth: summaryRange.startMonth,
       endMonth: summaryRange.endMonth
     })));
+  }
+
+  if (invalidateSummaryAccountPills && viewId) {
+    tasks.push(cancelAndInvalidate(queryClient, queryKeys.summaryAccountPills({ viewId })));
   }
 
   await Promise.all(tasks);
 }
 
 export async function invalidateEntriesMutationQueries(queryClient, {
+  invalidateSummaryAccountPills = false,
   entriesParams,
   monthKey,
   scope,
@@ -65,15 +80,21 @@ export async function invalidateEntriesMutationQueries(queryClient, {
   if (summaryRange && viewId) {
     tasks.push(cancelAndInvalidate(queryClient, queryKeys.summaryPage({
       viewId,
+      scope,
       startMonth: summaryRange.startMonth,
       endMonth: summaryRange.endMonth
     })));
+  }
+
+  if (invalidateSummaryAccountPills && viewId) {
+    tasks.push(cancelAndInvalidate(queryClient, queryKeys.summaryAccountPills({ viewId })));
   }
 
   await Promise.all(tasks);
 }
 
 export async function invalidateImportMutationQueries(queryClient, {
+  invalidateSummaryAccountPills = false,
   entriesParams,
   monthKeys = [],
   scope,
@@ -93,9 +114,14 @@ export async function invalidateImportMutationQueries(queryClient, {
   if (summaryRange && viewId) {
     tasks.push(cancelAndInvalidate(queryClient, queryKeys.summaryPage({
       viewId,
+      scope,
       startMonth: summaryRange.startMonth,
       endMonth: summaryRange.endMonth
     })));
+  }
+
+  if (invalidateSummaryAccountPills && viewId) {
+    tasks.push(cancelAndInvalidate(queryClient, queryKeys.summaryAccountPills({ viewId })));
   }
 
   await Promise.all(tasks);

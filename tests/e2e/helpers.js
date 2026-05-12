@@ -92,6 +92,12 @@ export async function loadSummaryPage(
   return response.json();
 }
 
+export async function loadSummaryAccountPills(page, { view = "person-tim" } = {}) {
+  const response = await page.request.get(`/api/summary-account-pills?view=${view}`);
+  expect(response.ok(), await response.text()).toBeTruthy();
+  return response.json();
+}
+
 export async function loadSettingsPage(page) {
   const response = await page.request.get("/api/settings-page");
   expect(response.ok(), await response.text()).toBeTruthy();

@@ -5,6 +5,7 @@ import {
   loadEntriesPage,
   loadMonthPage,
   loadSettingsPage,
+  loadSummaryAccountPills,
   loadSummaryPage,
   postJson,
   reseedDemo
@@ -49,8 +50,8 @@ test.describe("settings reference data", () => {
 
   test("account rename updates shell metadata plus summary and entries downstream DTOs", async ({ page }) => {
     const beforeShell = await loadAppShell(page);
-    const beforeSummary = await loadSummaryPage(page, { view: "household", month: "2026-04" });
-    const visiblePill = beforeSummary.summaryPage.accountPills[0];
+    const beforeSummaryPills = await loadSummaryAccountPills(page, { view: "household" });
+    const visiblePill = beforeSummaryPills.accountPills[0];
     const targetAccount = beforeShell.accounts.find((account) => account.id === visiblePill?.accountId) ?? beforeShell.accounts[0];
     const renamedAccount = uniqueLabel(`${targetAccount.name} renamed`);
     const createdDescription = uniqueLabel("Playwright account rename");
@@ -80,9 +81,9 @@ test.describe("settings reference data", () => {
     const afterShell = await loadAppShell(page);
     expect(afterShell.accounts.find((account) => account.id === targetAccount.id)?.name).toBe(renamedAccount);
 
-    const summaryPage = await loadSummaryPage(page, { view: "household", month: "2026-04" });
+    const summaryPage = await loadSummaryAccountPills(page, { view: "household" });
     expect(
-      summaryPage.summaryPage.accountPills.some((pill) => pill.accountId === targetAccount.id && pill.accountName === renamedAccount)
+      summaryPage.accountPills.some((pill) => pill.accountId === targetAccount.id && pill.accountName === renamedAccount)
     ).toBe(true);
 
     const entriesPage = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });

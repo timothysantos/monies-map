@@ -7,7 +7,9 @@ import {
   invalidateImportMutationQueries,
   invalidateImportsPageQueries,
   invalidateEntriesMutationQueries,
-  invalidateMonthQueries
+  invalidateMonthQueries,
+  invalidateSummaryAccountPillQueries,
+  invalidateSummaryPageQueries
 } from "../src/client/query-mutations.js";
 
 function createFakeQueryClient() {
@@ -38,6 +40,15 @@ test("queryKeys.importsPage returns a stable slice key", () => {
   assert.deepEqual(queryKeys.importsPage(), ["imports-page"]);
 });
 
+test("queryKeys.summaryAccountPills returns a stable slice key", () => {
+  assert.deepEqual(queryKeys.summaryAccountPills({ viewId: "household" }), [
+    "summary-account-pills",
+    {
+      viewId: "household"
+    }
+  ]);
+});
+
 test("invalidateAppShellQueries only targets the app shell key", async () => {
   const queryClient = createFakeQueryClient();
 
@@ -60,6 +71,33 @@ test("invalidateImportsPageQueries only targets the imports page key", async () 
   ]);
 });
 
+test("invalidateSummaryPageQueries only targets the summary page key", async () => {
+  const queryClient = createFakeQueryClient();
+
+  await invalidateSummaryPageQueries(queryClient, {
+    viewId: "household",
+    scope: "direct_plus_shared",
+    startMonth: "2026-01",
+    endMonth: "2026-04"
+  });
+
+  assert.deepEqual(queryClient.calls, [
+    ["cancel", ["summary-page", { endMonth: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]],
+    ["invalidate", ["summary-page", { endMonth: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
+  ]);
+});
+
+test("invalidateSummaryAccountPillQueries only targets the wallet pill key", async () => {
+  const queryClient = createFakeQueryClient();
+
+  await invalidateSummaryAccountPillQueries(queryClient, { viewId: "household" });
+
+  assert.deepEqual(queryClient.calls, [
+    ["cancel", ["summary-account-pills", { viewId: "household" }]],
+    ["invalidate", ["summary-account-pills", { viewId: "household" }]]
+  ]);
+});
+
 test("invalidateMonthQueries targets exact month, entries, and summary keys", async () => {
   const queryClient = createFakeQueryClient();
 
@@ -74,12 +112,12 @@ test("invalidateMonthQueries targets exact month, entries, and summary keys", as
   assert.deepEqual(queryClient.calls.slice(0, 3), [
     ["cancel", ["month-page", { month: "2026-04", scope: "direct_plus_shared", viewId: "household" }]],
     ["cancel", ["entries-page", { month: "2026-04", view: "household" }]],
-    ["cancel", ["summary-page", { endMonth: "2026-04", startMonth: "2026-01", viewId: "household" }]]
+    ["cancel", ["summary-page", { endMonth: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
   ]);
   assert.deepEqual(queryClient.calls.slice(3), [
     ["invalidate", ["month-page", { month: "2026-04", scope: "direct_plus_shared", viewId: "household" }]],
     ["invalidate", ["entries-page", { month: "2026-04", view: "household" }]],
-    ["invalidate", ["summary-page", { endMonth: "2026-04", startMonth: "2026-01", viewId: "household" }]]
+    ["invalidate", ["summary-page", { endMonth: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
   ]);
 });
 
@@ -97,12 +135,12 @@ test("invalidateEntriesMutationQueries targets exact entries, month, and summary
   assert.deepEqual(queryClient.calls.slice(0, 3), [
     ["cancel", ["entries-page", { month: "2026-04", type: "expense", view: "household" }]],
     ["cancel", ["month-page", { month: "2026-04", scope: "direct_plus_shared", viewId: "household" }]],
-    ["cancel", ["summary-page", { endMonth: "2026-04", startMonth: "2026-01", viewId: "household" }]]
+    ["cancel", ["summary-page", { endMonth: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
   ]);
   assert.deepEqual(queryClient.calls.slice(3), [
     ["invalidate", ["entries-page", { month: "2026-04", type: "expense", view: "household" }]],
     ["invalidate", ["month-page", { month: "2026-04", scope: "direct_plus_shared", viewId: "household" }]],
-    ["invalidate", ["summary-page", { endMonth: "2026-04", startMonth: "2026-01", viewId: "household" }]]
+    ["invalidate", ["summary-page", { endMonth: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
   ]);
 });
 
@@ -121,12 +159,12 @@ test("invalidateImportMutationQueries targets imports, entries, month, and summa
     ["cancel", ["imports-page"]],
     ["cancel", ["entries-page", { month: "2026-04", view: "household" }]],
     ["cancel", ["month-page", { month: "2026-04", scope: "direct_plus_shared", viewId: "household" }]],
-    ["cancel", ["summary-page", { endMonth: "2026-04", startMonth: "2026-01", viewId: "household" }]]
+    ["cancel", ["summary-page", { endMonth: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
   ]);
   assert.deepEqual(queryClient.calls.slice(4), [
     ["invalidate", ["imports-page"]],
     ["invalidate", ["entries-page", { month: "2026-04", view: "household" }]],
     ["invalidate", ["month-page", { month: "2026-04", scope: "direct_plus_shared", viewId: "household" }]],
-    ["invalidate", ["summary-page", { endMonth: "2026-04", startMonth: "2026-01", viewId: "household" }]]
+    ["invalidate", ["summary-page", { endMonth: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
   ]);
 });
