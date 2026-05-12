@@ -8,6 +8,7 @@ test("recording a settlement closes the open batch and archives it", async ({ pa
   await page.goto("/");
   await reseedDemo(page);
   await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
+  await page.waitForLoadState("networkidle");
 
   const archiveTrigger = page.locator(".split-archive-trigger");
   await expect(archiveTrigger).toContainText("No settled batches yet");

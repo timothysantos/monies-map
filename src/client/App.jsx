@@ -770,7 +770,9 @@ export function App() {
       return null;
     }
 
-    const queryKey = queryKeys.routePage(request);
+    const queryKey = request.path === "/api/splits-page"
+      ? queryKeys.splitsPage(request.params)
+      : queryKeys.routePage(request);
     const queryState = queryClient.getQueryState(queryKey);
     if (signal?.aborted) {
       throw new DOMException("Page request aborted.", "AbortError");
@@ -1024,6 +1026,13 @@ export function App() {
     queryClient.removeQueries({ predicate });
   }, [queryClient]);
 
+  // Splits-page cache entries are invalidated with the same targeted
+  // predicate style so the slice can own its cache boundary explicitly.
+  const clearSplitsPageCacheByPredicate = useCallback((predicate) => {
+    queryClient.cancelQueries({ predicate });
+    queryClient.removeQueries({ predicate });
+  }, [queryClient]);
+
   // Settings invalidation clears route-page families by endpoint path so
   // renamed reference data does not survive in stale page DTO caches.
   const clearRoutePageCacheByPath = useCallback((path, predicate) => {
@@ -1043,10 +1052,10 @@ export function App() {
     invalidateSummary = false,
     refreshShell = false
   }) => {
-    clearRoutePageCacheByPredicate((query) => (
-      query.queryKey?.[0] === "route-page"
-      && query.queryKey?.[1]?.path === "/api/splits-page"
-      && query.queryKey?.[1]?.params?.month === month
+    clearSplitsPageCacheByPredicate((query) => (
+      query.queryKey?.[0] === "splits-page"
+      && query.queryKey?.[1]?.month === month
+      && query.queryKey?.[1]?.viewId === selectedViewId
     ));
 
     if (invalidateEntries) {
@@ -1081,9 +1090,10 @@ export function App() {
   }, [
     clearAppShellCache,
     clearEntriesPageCacheByPredicate,
-    clearRoutePageCacheByPredicate,
+    clearSplitsPageCacheByPredicate,
     clearSummaryAccountPillsCache,
-    clearSummaryPageCache
+    clearSummaryPageCache,
+    selectedViewId
   ]);
 
   // Settings reference-data edits clear the specific downstream route caches

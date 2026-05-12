@@ -256,6 +256,20 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     };
   }
 
+  function buildLinkedSettlementRefreshOptions(linkedTransactionId, overrides = {}) {
+    // Linked settlements also change the visible transfer evidence in the
+    // ledger views, so they refresh the same downstream caches as linked
+    // split expenses.
+    const affectsLinkedLedgerEntry = Boolean(linkedTransactionId);
+    return {
+      broadcast: true,
+      invalidateEntries: affectsLinkedLedgerEntry,
+      invalidateMonth: affectsLinkedLedgerEntry,
+      invalidateSummary: affectsLinkedLedgerEntry,
+      ...overrides
+    };
+  }
+
   async function saveGroup() {
     if (!groupDialog?.name?.trim()) {
       setFormError("Group name is required.");
@@ -357,8 +371,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       // linked ledger row should appear elsewhere in the app.
       applyOptimisticSplitsPage((currentPage) => applyOptimisticSplitMatch(currentPage, match));
       refreshAfterSplitMutation(match.kind === "expense"
-        ? { broadcast: true, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true }
-        : { broadcast: true });
+        ? buildLinkedExpenseRefreshOptions(match.transactionId)
+        : buildLinkedSettlementRefreshOptions(match.transactionId));
     } finally {
       setIsSubmitting(false);
     }
@@ -479,7 +493,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       }
       refreshAfterSplitMutation({
         broadcast: true,
-        invalidateEntries: deleteTarget.kind === "expense" && Boolean(deleteTarget.linkedTransactionId)
+        invalidateEntries: Boolean(deleteTarget.linkedTransactionId),
+        invalidateMonth: Boolean(deleteTarget.linkedTransactionId),
+        invalidateSummary: Boolean(deleteTarget.linkedTransactionId)
       });
     } catch (error) {
       setFormError(error.message);
