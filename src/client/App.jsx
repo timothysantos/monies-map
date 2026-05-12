@@ -50,8 +50,21 @@ import {
 } from "./request-errors";
 import { installMobileFocusVisibility } from "./mobile-focus-visibility";
 import { queryKeys } from "./query-keys";
-import { invalidateImportMutationQueries, invalidateImportsPageQueries } from "./query-mutations";
+import {
+  invalidateImportMutationQueries,
+  invalidateImportsPageQueries,
+  invalidateMonthQueries,
+  invalidateSummaryAccountPillQueries,
+  invalidateSummaryPageQueries
+} from "./query-mutations";
 import { describeSettingsRefreshPlan, SETTINGS_ROUTE_REQUEST } from "./settings-refresh-plan";
+import {
+  buildSummaryAccountPillsParams,
+  buildSummaryPageParams,
+  buildSummaryPageView,
+  fetchSummaryAccountPillsQuery,
+  fetchSummaryPageQuery
+} from "./summary-query";
 import { getCurrentMonthKey } from "../lib/month";
 
 // Lazy route loaders keep the initial shell small while still splitting each
@@ -268,6 +281,8 @@ export function App() {
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
   const isAppShellLoading = appShellLoadCount > 0;
   const [routePageData, setRoutePageData] = useState(null);
+  const [summaryPageData, setSummaryPageData] = useState(null);
+  const [summaryAccountPillsData, setSummaryAccountPillsData] = useState(null);
   const [entriesExternalRefreshToken, setEntriesExternalRefreshToken] = useState(0);
   const [loginRegistrationDraft, setLoginRegistrationDraft] = useState(null);
   const [loginRegistrationError, setLoginRegistrationError] = useState("");
@@ -306,17 +321,33 @@ export function App() {
     [selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart]
   );
   const appShellCacheKey = appShellParams.toString();
-  // Route-page requests are derived from the current tab and route params so
-  // every screen loads the smallest possible server payload.
-  const routePageRequest = useMemo(
-    () => canUseAppShellRoutePage ? null : buildRoutePageRequest({
-      tabId: selectedTabId,
+  const summaryPageParams = useMemo(
+    () => buildSummaryPageParams({
       viewId: selectedViewId,
       month: selectedMonth,
       scope: selectedScope,
       summaryStart: selectedSummaryStart,
       summaryEnd: selectedSummaryEnd
     }),
+    [selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart, selectedViewId]
+  );
+  const summaryAccountPillsParams = useMemo(
+    () => buildSummaryAccountPillsParams({ viewId: selectedViewId }),
+    [selectedViewId]
+  );
+  // Route-page requests are derived from the current tab and route params so
+  // every screen loads the smallest possible server payload.
+  const routePageRequest = useMemo(
+    () => canUseAppShellRoutePage || selectedTabId === "summary"
+      ? null
+      : buildRoutePageRequest({
+          tabId: selectedTabId,
+          viewId: selectedViewId,
+          month: selectedMonth,
+          scope: selectedScope,
+          summaryStart: selectedSummaryStart,
+          summaryEnd: selectedSummaryEnd
+        }),
     [canUseAppShellRoutePage, selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart, selectedTabId, selectedViewId]
   );
 
@@ -451,6 +482,42 @@ export function App() {
     bumpQueryEpoch();
     queryClient.cancelQueries({ queryKey: ["route-page"] });
     queryClient.removeQueries({ queryKey: ["route-page"] });
+  }, [bumpQueryEpoch, queryClient]);
+
+  // Summary page DTOs are owned by dedicated slice queries, so they clear
+  // separately from generic route-page caches.
+  const clearSummaryPageCache = useCallback((predicate) => {
+    bumpQueryEpoch();
+    queryClient.cancelQueries({
+      predicate: (query) => (
+        query.queryKey?.[0] === "summary-page"
+        && (!predicate || predicate(query.queryKey?.[1] ?? {}))
+      )
+    });
+    queryClient.removeQueries({
+      predicate: (query) => (
+        query.queryKey?.[0] === "summary-page"
+        && (!predicate || predicate(query.queryKey?.[1] ?? {}))
+      )
+    });
+  }, [bumpQueryEpoch, queryClient]);
+
+  // Wallet pills use their own slice cache so reference-data changes do not
+  // force the whole summary range DTO to refetch.
+  const clearSummaryAccountPillsCache = useCallback((predicate) => {
+    bumpQueryEpoch();
+    queryClient.cancelQueries({
+      predicate: (query) => (
+        query.queryKey?.[0] === "summary-account-pills"
+        && (!predicate || predicate(query.queryKey?.[1] ?? {}))
+      )
+    });
+    queryClient.removeQueries({
+      predicate: (query) => (
+        query.queryKey?.[0] === "summary-account-pills"
+        && (!predicate || predicate(query.queryKey?.[1] ?? {}))
+      )
+    });
   }, [bumpQueryEpoch, queryClient]);
 
   // Clear the entries-page cache when entry mutations should be reflected in
@@ -787,6 +854,29 @@ export function App() {
     return data;
   }, [queryClient, updateLoadingStatus]);
 
+  // Summary uses slice-owned queries instead of the generic route-page
+  // endpoint so its range DTO and wallet pills can refresh independently.
+  const fetchSummaryPageData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
+    updateLoadingStatus({
+      label: "Loading current page",
+      detail: "Loading summary...",
+      percent: 88
+    });
+    const data = await fetchSummaryPageQuery(queryClient, params, { bypassCache, signal });
+    updateLoadingStatus({
+      label: "Current page ready",
+      detail: "Applying summary...",
+      percent: 96
+    });
+    return data;
+  }, [queryClient, updateLoadingStatus]);
+
+  // Summary account pills stay on a dedicated query so range changes and note
+  // edits do not fan out into unrelated wallet refreshes.
+  const fetchSummaryAccountPillsData = useCallback(async (params, { bypassCache = false, signal } = {}) => (
+    fetchSummaryAccountPillsQuery(queryClient, params, { bypassCache, signal })
+  ), [queryClient]);
+
   // Refresh the active route page, and optionally refresh shell state when the
   // mutation affected shared metadata.
   const refreshRoutePage = useCallback(async ({ broadcast = false, refreshShell = false } = {}) => {
@@ -812,6 +902,34 @@ export function App() {
     }
   }, [beginAppShellLoad, clearAppShellCache, clearEntriesPageCache, clearRoutePageCache, fetchRoutePageData, refreshAppShell, routePageRequest]);
 
+  // Refresh the summary slice from its dedicated page and account-pill
+  // queries without routing it back through the generic page loader.
+  const refreshCurrentSummaryPage = useCallback(async ({ bypassCache = true } = {}) => {
+    if (bypassCache) {
+      clearSummaryPageCache();
+      clearSummaryAccountPillsCache();
+    }
+
+    const [nextSummaryPage, nextSummaryAccountPills] = await Promise.all([
+      fetchSummaryPageData(summaryPageParams, { bypassCache }),
+      fetchSummaryAccountPillsData(summaryAccountPillsParams, { bypassCache })
+    ]);
+
+    setSummaryPageData(nextSummaryPage);
+    setSummaryAccountPillsData(nextSummaryAccountPills);
+    return {
+      summaryPage: nextSummaryPage,
+      summaryAccountPills: nextSummaryAccountPills
+    };
+  }, [
+    clearSummaryAccountPillsCache,
+    clearSummaryPageCache,
+    fetchSummaryAccountPillsData,
+    fetchSummaryPageData,
+    summaryAccountPillsParams,
+    summaryPageParams
+  ]);
+
   // Refresh the month page that shares the current route state, then refresh
   // the shell in the background so summary and month stay aligned.
   const refreshCurrentMonthPage = useCallback(async () => {
@@ -825,13 +943,25 @@ export function App() {
       return null;
     }
 
+    clearSummaryPageCache((params) => isMonthWithinRange(
+      selectedMonth,
+      params?.startMonth,
+      params?.endMonth
+    ));
     const [data] = await Promise.all([
       fetchRoutePageData(request, { bypassCache: true }),
       refreshAppShellInBackground().catch(() => null)
     ]);
     setRoutePageData(data);
     return data;
-  }, [fetchRoutePageData, refreshAppShellInBackground, selectedMonth, selectedScope, selectedViewId]);
+  }, [
+    clearSummaryPageCache,
+    fetchRoutePageData,
+    refreshAppShellInBackground,
+    selectedMonth,
+    selectedScope,
+    selectedViewId
+  ]);
 
   // Refresh the imports page and optionally rebroadcast shell freshness when
   // import mutations change shared reference data.
@@ -850,9 +980,13 @@ export function App() {
       return null;
     }
 
+    clearSummaryPageCache();
+    clearSummaryAccountPillsCache();
     const tasks = [fetchRoutePageData(request, { bypassCache: true })];
     if (invalidateImports) {
-      tasks.push(invalidateImportMutationQueries(queryClient, {}));
+      tasks.push(invalidateImportMutationQueries(queryClient, {
+        invalidateSummaryAccountPills: true
+      }));
     }
     if (refreshShell) {
       tasks.push(refreshAppShellInBackground().catch(() => null));
@@ -865,47 +999,15 @@ export function App() {
     }
 
     return data;
-  }, [fetchRoutePageData, queryClient, refreshAppShellInBackground, selectedMonth, selectedScope, selectedViewId]);
-
-  // Settings mutations refresh the settings page directly, while the settings
-  // slice owns which downstream route families must be invalidated.
-  const refreshCurrentSettingsPage = useCallback(async (options = {}) => {
-    const {
-      broadcast = false,
-      ...plan
-    } = options;
-    const refreshDescription = describeSettingsRefreshPlan(plan);
-
-    clearSettingsMutationCaches(refreshDescription);
-
-    const tasks = [fetchRoutePageData(refreshDescription.routeRequest, { bypassCache: true })];
-
-    if (refreshDescription.invalidateImportsPage) {
-      tasks.push(invalidateImportsPageQueries(queryClient));
-    }
-
-    if (refreshDescription.refreshShell) {
-      tasks.push(refreshAppShellInBackground().catch(() => null));
-    }
-
-    const [data, ...taskResults] = await Promise.all(tasks);
-    setRoutePageData((current) => (
-      selectedTabId === "settings" && current?.settingsPage ? data : current
-    ));
-
-    if (broadcast && refreshDescription.refreshShell) {
-      broadcastAppShellRefresh(syncChannelRef);
-    }
-
-    return refreshDescription.refreshShell
-      ? taskResults.find((result) => result?.accounts || result?.categories || result?.household) ?? data
-      : data;
   }, [
-    clearSettingsMutationCaches,
+    clearSummaryAccountPillsCache,
+    clearSummaryPageCache,
     fetchRoutePageData,
     queryClient,
     refreshAppShellInBackground,
-    selectedTabId
+    selectedMonth,
+    selectedScope,
+    selectedViewId
   ]);
 
   // Clear route-page cache entries that match a targeted invalidation
@@ -963,15 +1065,14 @@ export function App() {
     }
 
     if (invalidateSummary) {
-      clearRoutePageCacheByPredicate((query) => (
-        query.queryKey?.[0] === "route-page"
-        && query.queryKey?.[1]?.path === "/api/summary-page"
-        && isMonthWithinRange(
+      clearSummaryPageCache((params) => (
+        isMonthWithinRange(
           month,
-          query.queryKey?.[1]?.params?.summary_start,
-          query.queryKey?.[1]?.params?.summary_end
+          params?.startMonth,
+          params?.endMonth
         )
       ));
+      clearSummaryAccountPillsCache();
     }
 
     if (refreshShell || invalidateEntries || invalidateMonth || invalidateSummary) {
@@ -980,14 +1081,18 @@ export function App() {
   }, [
     clearAppShellCache,
     clearEntriesPageCacheByPredicate,
-    clearRoutePageCacheByPredicate
+    clearRoutePageCacheByPredicate,
+    clearSummaryAccountPillsCache,
+    clearSummaryPageCache
   ]);
 
   // Settings reference-data edits clear the specific downstream route caches
   // described by the settings slice refresh plan.
   const clearSettingsMutationCaches = useCallback(({
     routePagePaths = [],
-    clearEntriesPageCache = false
+    clearEntriesPageCache = false,
+    invalidateSummaryAccountPills = false,
+    invalidateSummaryPage = false
   }) => {
     for (const path of routePagePaths) {
       clearRoutePageCacheByPath(path);
@@ -996,9 +1101,60 @@ export function App() {
     if (clearEntriesPageCache) {
       clearEntriesPageCacheByPredicate(() => true);
     }
+
+    if (invalidateSummaryPage) {
+      clearSummaryPageCache();
+    }
+
+    if (invalidateSummaryAccountPills) {
+      clearSummaryAccountPillsCache();
+    }
   }, [
     clearEntriesPageCacheByPredicate,
-    clearRoutePageCacheByPath
+    clearRoutePageCacheByPath,
+    clearSummaryAccountPillsCache,
+    clearSummaryPageCache
+  ]);
+
+  // Settings mutations refresh the settings page directly, while the settings
+  // slice owns which downstream route families must be invalidated.
+  const refreshCurrentSettingsPage = useCallback(async (options = {}) => {
+    const {
+      broadcast = false,
+      ...plan
+    } = options;
+    const refreshDescription = describeSettingsRefreshPlan(plan);
+
+    clearSettingsMutationCaches(refreshDescription);
+
+    const tasks = [fetchRoutePageData(refreshDescription.routeRequest, { bypassCache: true })];
+
+    if (refreshDescription.invalidateImportsPage) {
+      tasks.push(invalidateImportsPageQueries(queryClient));
+    }
+
+    if (refreshDescription.refreshShell) {
+      tasks.push(refreshAppShellInBackground().catch(() => null));
+    }
+
+    const [data, ...taskResults] = await Promise.all(tasks);
+    setRoutePageData((current) => (
+      selectedTabId === "settings" && current?.settingsPage ? data : current
+    ));
+
+    if (broadcast && refreshDescription.refreshShell) {
+      broadcastAppShellRefresh(syncChannelRef);
+    }
+
+    return refreshDescription.refreshShell
+      ? taskResults.find((result) => result?.accounts || result?.categories || result?.household) ?? data
+      : data;
+  }, [
+    clearSettingsMutationCaches,
+    fetchRoutePageData,
+    queryClient,
+    refreshAppShellInBackground,
+    selectedTabId
   ]);
 
   // Refresh the current route page in the background without switching tabs or
@@ -1135,11 +1291,7 @@ export function App() {
         selectedSummaryEnd ?? appShellSummaryEnd
       )
     ) {
-      if (canUseAppShellRoutePage) {
-        tasks.push(refreshAppShellInBackground().catch(() => null));
-      } else {
-        tasks.push(refreshActiveRoutePageInBackground(routePageRequest).catch(() => null));
-      }
+      tasks.push(refreshCurrentSummaryPage({ bypassCache: true }).catch(() => null));
     }
 
     await Promise.all(tasks);
@@ -1148,8 +1300,8 @@ export function App() {
     appShellSummaryStart,
     canUseAppShellRoutePage,
     clearSplitMutationCaches,
-    refreshActiveRoutePageInBackground,
     refreshAppShellInBackground,
+    refreshCurrentSummaryPage,
     routePageRequest,
     selectedMonth,
     selectedSummaryEnd,
@@ -1160,8 +1312,10 @@ export function App() {
   // Refresh the shell after a mutation that needs global metadata to stay in
   // sync.
   const syncAppShellAfterMutation = useCallback(async () => {
+    clearSummaryPageCache();
+    clearSummaryAccountPillsCache();
     await refreshAppShellInBackground();
-  }, [refreshAppShellInBackground]);
+  }, [clearSummaryAccountPillsCache, clearSummaryPageCache, refreshAppShellInBackground]);
 
   // Prefetch the next likely route page without replacing the current active
   // page state.
@@ -1178,6 +1332,29 @@ export function App() {
 
     await fetchRoutePageData(request).catch(() => {});
   }, [fetchRoutePageData, queryClient]);
+
+  // Summary prefetch warms the range DTO and account pills together because
+  // both are needed for the tab to render without fallback gaps.
+  const prefetchSummaryPage = useCallback(async ({ pageParams, accountPillsParams }) => {
+    const summaryQueryKey = queryKeys.summaryPage({
+      viewId: pageParams.get("view") ?? "household",
+      scope: pageParams.get("scope") ?? "direct_plus_shared",
+      startMonth: pageParams.get("summary_start") ?? "",
+      endMonth: pageParams.get("summary_end") ?? ""
+    });
+    const pillsQueryKey = queryKeys.summaryAccountPills({
+      viewId: accountPillsParams.get("view") ?? "household"
+    });
+    const summaryState = queryClient.getQueryState(summaryQueryKey);
+    const pillsState = queryClient.getQueryState(pillsQueryKey);
+    const shouldFetchSummary = !queryClient.getQueryData(summaryQueryKey) && summaryState?.fetchStatus !== "fetching";
+    const shouldFetchPills = !queryClient.getQueryData(pillsQueryKey) && pillsState?.fetchStatus !== "fetching";
+
+    await Promise.all([
+      shouldFetchSummary ? fetchSummaryPageData(pageParams).catch(() => {}) : null,
+      shouldFetchPills ? fetchSummaryAccountPillsData(accountPillsParams).catch(() => {}) : null
+    ]);
+  }, [fetchSummaryAccountPillsData, fetchSummaryPageData, queryClient]);
 
   // Prefetch the entries page using the same exact key that the entries route
   // will later consume.
@@ -1364,6 +1541,8 @@ export function App() {
       if (payload?.type === APP_SYNC_EVENT_TYPES.appShellRefresh) {
         clearAppShellCache();
         clearRoutePageCache();
+        clearSummaryPageCache();
+        clearSummaryAccountPillsCache();
           const finishAppShellLoad = beginAppShellLoad();
           void loadAppShell()
             .catch(handleAppShellFailure)
@@ -1389,9 +1568,78 @@ export function App() {
     beginAppShellLoad,
     clearAppShellCache,
     clearRoutePageCache,
+    clearSummaryAccountPillsCache,
+    clearSummaryPageCache,
     handleAppShellFailure,
     handleRemoteSplitMutation,
     loadAppShell
+  ]);
+
+  // Summary owns its own page query plus wallet-pill query, so the summary tab
+  // hydrates from those slice caches instead of the generic route-page family.
+  useEffect(() => {
+    if (selectedTabId !== "summary") {
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const summaryQueryKey = queryKeys.summaryPage({
+      viewId: selectedViewId,
+      scope: selectedScope,
+      startMonth: selectedSummaryStart ?? "",
+      endMonth: selectedSummaryEnd ?? ""
+    });
+    const hasCachedPage = Boolean(queryClient.getQueryData(summaryQueryKey));
+    if (!hasCachedPage) {
+      updateLoadingStatus({
+        label: "Preparing current page",
+        detail: "Preparing summary...",
+        percent: 84
+      });
+    }
+    const finishAppShellLoad = hasCachedPage ? null : beginAppShellLoad();
+
+    void Promise.all([
+      fetchSummaryPageData(summaryPageParams, { signal: controller.signal }),
+      fetchSummaryAccountPillsData(summaryAccountPillsParams, { signal: controller.signal })
+    ])
+      .then(([nextSummaryPage, nextSummaryAccountPills]) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setSummaryPageData(nextSummaryPage);
+        setSummaryAccountPillsData(nextSummaryAccountPills);
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        setSummaryPageData(null);
+        setSummaryAccountPillsData(null);
+        reportLoadingIssue("Summary load failed", error);
+      })
+      .finally(() => finishAppShellLoad?.());
+
+    return () => {
+      controller.abort();
+      finishAppShellLoad?.();
+    };
+  }, [
+    beginAppShellLoad,
+    fetchSummaryAccountPillsData,
+    fetchSummaryPageData,
+    queryClient,
+    reportLoadingIssue,
+    selectedScope,
+    selectedSummaryEnd,
+    selectedSummaryStart,
+    selectedTabId,
+    selectedViewId,
+    summaryAccountPillsParams,
+    summaryPageParams,
+    updateLoadingStatus
   ]);
 
   // Route-page loading starts as soon as the route is known so shell and page
@@ -1440,8 +1688,15 @@ export function App() {
   // back to the previous screen without introducing a second render source of
   // truth.
   const currentPageView = useMemo(
-    () => buildPageViewFromRouteData(selectedTabId, routePageData, selectedViewId, appShell),
-    [appShell, routePageData, selectedTabId, selectedViewId]
+    () => selectedTabId === "summary"
+      ? buildSummaryPageView({
+          appShell,
+          selectedViewId,
+          summaryPageData,
+          summaryAccountPillsData
+        })
+      : buildPageViewFromRouteData(selectedTabId, routePageData, selectedViewId, appShell),
+    [appShell, routePageData, selectedTabId, selectedViewId, summaryAccountPillsData, summaryPageData]
   );
   const lastSettledPageViewRef = useRef(null);
   const lastSettledTabIdRef = useRef(null);
@@ -1530,6 +1785,43 @@ export function App() {
       : [],
     [isDetailMonthTab, rangePickerEndYear, pageView]
   );
+  const saveSummaryMonthNote = useCallback(async ({ month, note }) => {
+    const response = await fetch("/api/month-note/update", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        month,
+        personScope: selectedViewId,
+        note
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(await buildRequestErrorMessage(response, "Failed to save month note."));
+    }
+
+    await invalidateMonthQueries(queryClient, {
+      month,
+      scope: selectedScope,
+      summaryRange: summaryPage
+        ? {
+            startMonth: summaryPage.rangeStartMonth,
+            endMonth: summaryPage.rangeEndMonth
+          }
+        : undefined,
+      viewId: selectedViewId
+    });
+
+    await refreshCurrentSummaryPage({ bypassCache: true });
+  }, [
+    queryClient,
+    refreshCurrentSummaryPage,
+    selectedScope,
+    selectedViewId,
+    summaryPage
+  ]);
   const renderedRouteElement = useMemo(() => {
     if (!pageView) {
       return null;
@@ -1542,7 +1834,7 @@ export function App() {
           selectedMonth={selectedMonth}
           categories={categories}
           onCategoryAppearanceChange={handleCategoryAppearanceChange}
-          onRefresh={() => refreshRoutePage()}
+          onRefresh={saveSummaryMonthNote}
         />
       );
     }
@@ -1653,13 +1945,12 @@ export function App() {
     mobileContextOpen,
     pageView,
     refreshCurrentSettingsPage,
-    refreshAppShell,
     refreshCurrentImportsPage,
     refreshCurrentMonthPage,
     refreshCurrentSplitsPage,
-    refreshRoutePage,
     renderedTabId,
     routePageData,
+    saveSummaryMonthNote,
     selectedMonth,
     syncAppShellAfterMutation
   ]);
@@ -1740,17 +2031,18 @@ export function App() {
             const nextStartIndex = startIndex + offset;
             const nextEndIndex = endIndex + offset;
             if (nextStartIndex >= 0 && nextEndIndex < summaryMonths.length) {
-              const request = buildRoutePageRequest({
-                tabId: "summary",
-                viewId: selectedViewId,
-                month: selectedMonth,
-                scope: selectedScope,
-                summaryStart: summaryMonths[nextStartIndex],
-                summaryEnd: summaryMonths[nextEndIndex]
-              });
               highPriorityTasks.push({
-                key: `${request.path}?${request.params.toString()}`,
-                run: () => prefetchRoutePage(request)
+                key: `/api/summary-page?view=${selectedViewId}&scope=${selectedScope}&summary_start=${summaryMonths[nextStartIndex]}&summary_end=${summaryMonths[nextEndIndex]}`,
+                run: () => prefetchSummaryPage({
+                  pageParams: buildSummaryPageParams({
+                    viewId: selectedViewId,
+                    month: selectedMonth,
+                    scope: selectedScope,
+                    summaryStart: summaryMonths[nextStartIndex],
+                    summaryEnd: summaryMonths[nextEndIndex]
+                  }),
+                  accountPillsParams: buildSummaryAccountPillsParams({ viewId: selectedViewId })
+                })
               });
             }
           }
@@ -1808,6 +2100,7 @@ export function App() {
     pageView,
     prefetchEntriesPage,
     prefetchRoutePage,
+    prefetchSummaryPage,
     selectedMonth,
     selectedScope,
     selectedTabId,

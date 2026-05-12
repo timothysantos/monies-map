@@ -95,12 +95,13 @@ Current mental model:
   = shared shell metadata only
 
 /api/summary-page
+/api/summary-account-pills
 /api/month-page
 /api/entries-page
 /api/splits-page
 /api/imports-page
 /api/settings-page
-  = route-specific DTOs
+  = route-specific DTOs and summary-owned slice queries
 ```
 
 ### Route page
@@ -109,7 +110,7 @@ A `route page` is the JSON payload for one screen.
 
 Examples:
 
-- `/summary` -> `SummaryPageDto`
+- `/summary` -> `SummaryPageDto` plus `SummaryAccountPillDto[]`
 - `/month` -> `MonthPageDto`
 - `/entries` -> `EntriesPageDto`
 - `/splits` -> `SplitsPageDto`
@@ -407,6 +408,7 @@ It matches incoming URLs such as:
 
 - `/api/app-shell`
 - `/api/summary-page`
+- `/api/summary-account-pills`
 - `/api/month-page`
 - `/api/entries-page`
 - `/api/splits-page`

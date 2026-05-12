@@ -590,7 +590,6 @@ export interface SummaryPageDto {
   months: SummaryMonthDto[];
   categoryShareChart: DonutChartDatumDto[];
   categoryShareByMonth: SummaryDonutMonthDto[];
-  accountPills: SummaryAccountPillDto[];
   notes: string[];
 }
 

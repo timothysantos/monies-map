@@ -22,8 +22,8 @@ flowchart TD
   H --> I["Database"]
   I --> J["AppShellDto"]
   J --> K["src/client/App.jsx<br/>cache shell and render shell chrome"]
-  K --> L["src/client/app-routing.js<br/>buildRoutePageRequest()"]
-  K --> M["GET /api/summary-page or /api/month-page or /api/entries-page or /api/splits-page or /api/imports-page or /api/settings-page"]
+  K --> L["src/client/app-routing.js<br/>buildRoutePageRequest() for month, entries, splits, imports, and settings"]
+  K --> M["GET /api/summary-page + /api/summary-account-pills<br/>or /api/month-page or /api/entries-page or /api/splits-page or /api/imports-page or /api/settings-page"]
   M --> N["src/index.ts"]
   N --> O["src/domain/pages/*.ts<br/>route page DTO builders"]
   O --> P["Database"]
@@ -41,8 +41,8 @@ flowchart TD
 | Route parse | `src/client/App.jsx` | none | Active tab, selected view, month, scope, and summary range |
 | Shell key build | `src/client/app-shell-query.js` | none | Stable app-shell cache key and optional persisted shell payload |
 | Shell request | `src/client/App.jsx`, `src/index.ts`, `src/domain/app-shell-dto.ts`, `src/domain/app-shell.ts` | `GET /api/app-shell` | `AppShellDto` with household, accounts, categories, tracked months, and viewer identity fields |
-| Route request build | `src/client/app-routing.js` | none | Exact route page endpoint and query params for the current tab |
-| Page request | `src/client/App.jsx`, `src/index.ts`, `src/domain/pages/*.ts` | `GET /api/summary-page`, `GET /api/month-page`, `GET /api/entries-page`, `GET /api/splits-page`, `GET /api/imports-page`, or `GET /api/settings-page` | Page-specific DTO for the active screen |
+| Route request build | `src/client/app-routing.js`, `src/client/summary-query.js` | none | Exact route page endpoint and query params for the current tab or the summary slice queries |
+| Page request | `src/client/App.jsx`, `src/client/summary-query.js`, `src/index.ts`, `src/domain/pages/*.ts` | `GET /api/summary-page` plus `GET /api/summary-account-pills`, or `GET /api/month-page`, `GET /api/entries-page`, `GET /api/splits-page`, `GET /api/imports-page`, or `GET /api/settings-page` | Page-specific DTO for the active screen plus wallet-pill DTOs for Summary |
 | Continuity bridge | `src/client/App.jsx` | none | Keep the last settled screen visible while the next route hydrates without turning that snapshot into a competing source of truth |
 | View shaping | `src/client/App.jsx` | none | Minimal view object for the current panel |
 | Mutation refresh | `src/client/App.jsx`, `src/client/query-keys.js`, `src/client/app-sync.js` | mutation endpoint plus sync event | Exact cache invalidation and optional shell refresh broadcast |

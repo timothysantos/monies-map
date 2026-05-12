@@ -75,11 +75,12 @@ test("settings refresh description keeps route invalidation ownership in the sli
       routePagePaths: [
         "/api/entries-page",
         "/api/month-page",
-        "/api/splits-page",
-        "/api/summary-page"
+        "/api/splits-page"
       ],
       clearEntriesPageCache: true,
       invalidateImportsPage: false,
+      invalidateSummaryAccountPills: true,
+      invalidateSummaryPage: true,
       refreshShell: true
     }
   );
@@ -91,6 +92,8 @@ test("settings refresh description keeps route invalidation ownership in the sli
       routePagePaths: ["/api/imports-page"],
       clearEntriesPageCache: false,
       invalidateImportsPage: true,
+      invalidateSummaryAccountPills: false,
+      invalidateSummaryPage: false,
       refreshShell: false
     }
   );

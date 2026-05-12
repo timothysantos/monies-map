@@ -65,21 +65,6 @@ export function getSelectedTabId(pathname) {
 export function buildRoutePageRequest({ tabId, viewId, month, scope, summaryStart, summaryEnd }) {
   // Convert the active tab into the exact page endpoint and query params the
   // server expects for that screen.
-  if (tabId === "summary") {
-    const params = new URLSearchParams({
-      view: viewId,
-      month,
-      scope
-    });
-    if (summaryStart) {
-      params.set("summary_start", summaryStart);
-    }
-    if (summaryEnd) {
-      params.set("summary_end", summaryEnd);
-    }
-    return { path: "/api/summary-page", params };
-  }
-
   if (tabId === "month") {
     return {
       path: "/api/month-page",
@@ -135,13 +120,6 @@ export function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appS
     id: pageData.viewId ?? selectedViewId ?? appShell?.selectedViewId ?? "household",
     label: pageData.label ?? fallbackLabel
   };
-
-  if (tabId === "summary" && pageData.summaryPage) {
-    return {
-      ...baseView,
-      summaryPage: pageData.summaryPage
-    };
-  }
 
   if (tabId === "month" && pageData.monthPage) {
     // Month should only expose the month payload here; the summary slice can

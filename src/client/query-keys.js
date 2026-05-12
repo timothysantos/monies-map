@@ -58,8 +58,11 @@ export const queryKeys = {
   monthPage({ viewId, month, scope }) {
     return ["month-page", normalizeRecord({ viewId, month, scope })];
   },
-  summaryPage({ viewId, startMonth, endMonth }) {
-    return ["summary-page", normalizeRecord({ viewId, startMonth, endMonth })];
+  summaryPage({ viewId, scope, startMonth, endMonth }) {
+    return ["summary-page", normalizeRecord({ viewId, scope, startMonth, endMonth })];
+  },
+  summaryAccountPills({ viewId }) {
+    return ["summary-account-pills", normalizeRecord({ viewId })];
   },
   importPreview({ accountId, fileName, fileHash }) {
     return ["import-preview", normalizeRecord({ accountId, fileName, fileHash })];

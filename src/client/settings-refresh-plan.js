@@ -7,8 +7,7 @@ const SETTINGS_ROUTE_PAGE_TARGETS = Object.freeze({
   entries: "/api/entries-page",
   imports: "/api/imports-page",
   month: "/api/month-page",
-  splits: "/api/splits-page",
-  summary: "/api/summary-page"
+  splits: "/api/splits-page"
 });
 
 const SETTINGS_ONLY_PLAN = Object.freeze({
@@ -110,15 +109,13 @@ export function describeSettingsRefreshPlan(plan = SETTINGS_ONLY_PLAN) {
     routePagePaths.push(SETTINGS_ROUTE_PAGE_TARGETS.splits);
   }
 
-  if (plan.invalidateSummary) {
-    routePagePaths.push(SETTINGS_ROUTE_PAGE_TARGETS.summary);
-  }
-
   return {
     routeRequest: SETTINGS_ROUTE_REQUEST,
     routePagePaths,
     clearEntriesPageCache: plan.invalidateEntries,
     invalidateImportsPage: plan.invalidateImports,
+    invalidateSummaryAccountPills: plan.invalidateSummary,
+    invalidateSummaryPage: plan.invalidateSummary,
     refreshShell: Boolean(plan.refreshShell)
   };
 }
