@@ -508,8 +508,15 @@ These are behavioral targets, not exact library options yet.
 - do not refetch aggressively on every tab switch
 - invalidate on:
   - login identity registration changes
-  - settings changes that rename people/accounts/categories shown globally
-  - explicit demo reseed or reload
+  - named settings reference-data mutations that change global shell metadata:
+    - person rename
+    - account create/edit/archive
+    - category create/edit/delete
+    - explicit demo reseed or reload
+
+Shell refresh is an exception, not the default settings pattern. Use it only
+for those named metadata changes, and keep the justification in the slice-level
+refresh plan rather than the panel.
 
 ## Summary freshness
 
@@ -580,11 +587,12 @@ Also invalidate:
 ## Settings freshness
 
 - invalidate relevant settings queries after settings CRUD
-- selectively invalidate app shell reference data after:
-  - person rename
-  - account create/edit/archive
-  - category create/edit/delete
-  - category rule changes that affect imports later
+- selectively invalidate app shell reference data only after the named shell
+  metadata changes above
+- do not use shell refresh for category rule CRUD or reconciliation-only
+  workflows
+- category rule changes that affect imports later should invalidate imports, not
+  the shell
 
 Do not burst everything after every settings save.
 
