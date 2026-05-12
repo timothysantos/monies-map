@@ -1,3 +1,16 @@
+export const SETTINGS_ROUTE_REQUEST = Object.freeze({
+  path: "/api/settings-page",
+  params: new URLSearchParams()
+});
+
+const SETTINGS_ROUTE_PAGE_TARGETS = Object.freeze({
+  entries: "/api/entries-page",
+  imports: "/api/imports-page",
+  month: "/api/month-page",
+  splits: "/api/splits-page",
+  summary: "/api/summary-page"
+});
+
 const SETTINGS_ONLY_PLAN = Object.freeze({
   refreshShell: false,
   invalidateEntries: false,
@@ -74,4 +87,38 @@ export function buildSettingsRefreshPlan(kind) {
   }
 
   throw new Error(`Unknown settings refresh plan: ${kind}`);
+}
+
+// Convert the slice-level refresh flags into the concrete route-page families
+// that must be cleared. App executes this shape without owning the mapping.
+export function describeSettingsRefreshPlan(plan = SETTINGS_ONLY_PLAN) {
+  const routePagePaths = [];
+
+  if (plan.invalidateEntries) {
+    routePagePaths.push(SETTINGS_ROUTE_PAGE_TARGETS.entries);
+  }
+
+  if (plan.invalidateImports) {
+    routePagePaths.push(SETTINGS_ROUTE_PAGE_TARGETS.imports);
+  }
+
+  if (plan.invalidateMonth) {
+    routePagePaths.push(SETTINGS_ROUTE_PAGE_TARGETS.month);
+  }
+
+  if (plan.invalidateSplits) {
+    routePagePaths.push(SETTINGS_ROUTE_PAGE_TARGETS.splits);
+  }
+
+  if (plan.invalidateSummary) {
+    routePagePaths.push(SETTINGS_ROUTE_PAGE_TARGETS.summary);
+  }
+
+  return {
+    routeRequest: SETTINGS_ROUTE_REQUEST,
+    routePagePaths,
+    clearEntriesPageCache: plan.invalidateEntries,
+    invalidateImportsPage: plan.invalidateImports,
+    refreshShell: Boolean(plan.refreshShell)
+  };
 }

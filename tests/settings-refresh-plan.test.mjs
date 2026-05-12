@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildSettingsRefreshPlan } from "../src/client/settings-refresh-plan.js";
+import {
+  buildSettingsRefreshPlan,
+  describeSettingsRefreshPlan,
+  SETTINGS_ROUTE_REQUEST
+} from "../src/client/settings-refresh-plan.js";
 
 test("reference-data mutations refresh shell and downstream page caches", () => {
   assert.deepEqual(buildSettingsRefreshPlan("account_saved"), {
@@ -61,6 +65,35 @@ test("demo resets refresh every downstream slice they can invalidate", () => {
     invalidateSplits: true,
     invalidateSummary: true
   });
+});
+
+test("settings refresh description keeps route invalidation ownership in the slice", () => {
+  assert.deepEqual(
+    describeSettingsRefreshPlan(buildSettingsRefreshPlan("category_saved")),
+    {
+      routeRequest: SETTINGS_ROUTE_REQUEST,
+      routePagePaths: [
+        "/api/entries-page",
+        "/api/month-page",
+        "/api/splits-page",
+        "/api/summary-page"
+      ],
+      clearEntriesPageCache: true,
+      invalidateImportsPage: false,
+      refreshShell: true
+    }
+  );
+
+  assert.deepEqual(
+    describeSettingsRefreshPlan(buildSettingsRefreshPlan("category_rule_saved")),
+    {
+      routeRequest: SETTINGS_ROUTE_REQUEST,
+      routePagePaths: ["/api/imports-page"],
+      clearEntriesPageCache: false,
+      invalidateImportsPage: true,
+      refreshShell: false
+    }
+  );
 });
 
 test("unknown settings refresh plans fail fast", () => {
