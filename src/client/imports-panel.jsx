@@ -4,6 +4,7 @@ import { messages } from "./copy/en-SG";
 import { commitImportBatch, previewImportBatch, rollbackImportBatch } from "./import-api";
 import { ImportRecentHistorySection } from "./import-history";
 import { buildRecentImportModel, filterRecentImportsByAccount, getRecentImportAccountOptions } from "./import-history-model";
+import { classifyImportFile } from "./import-file-classifier";
 import { buildImportAccountCreationRefreshPlan } from "./import-refresh-plan";
 import { buildImportWorkflowModel } from "./import-workflow-model";
 import { getStatementPreviewAutoRefreshKey, shouldAutoRefreshStatementPreview } from "./import-preview-auto-refresh";
@@ -17,8 +18,6 @@ import { SettingsAccountDialog } from "./settings-dialogs";
 import { saveSettingsAccount } from "./settings-api";
 import { inspectCsv } from "../lib/csv";
 import {
-  canParseCitibankActivityCsv,
-  canRecognizeOcbcActivityCsv,
   parseCitibankActivityCsv,
   parseCurrentTransactionSpreadsheet,
   parseOcbcActivityCsv,
@@ -398,7 +397,18 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setPreviewRows([]);
     setIsParsingStatement(true);
     try {
-      if (/\.pdf$/i.test(file.name) || file.type === "application/pdf") {
+      const fileKind = classifyImportFile({
+        fileName: file.name,
+        fileType: file.type,
+        text: "",
+        activityContext: {
+          accountName: defaultAccount?.name ?? defaultAccountName,
+          accountKind: defaultAccount?.kind,
+          institution: defaultAccount?.institution
+        }
+      });
+
+      if (fileKind === "pdf") {
         setDismissedOverlapIds([]);
         setUploadStatus({ tone: "active", message: messages.imports.uploadExtracting(file.name) });
         const text = await importService.extractPdfText(file);
@@ -418,7 +428,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         return;
       }
 
-      if (/\.xls$/i.test(file.name) || file.type === "application/vnd.ms-excel") {
+      if (fileKind === "xls") {
         setDismissedOverlapIds([]);
         setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
         const parsed = parseCurrentTransactionSpreadsheet(await file.arrayBuffer(), file.name);
@@ -439,7 +449,14 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         accountKind: defaultAccount?.kind,
         institution: defaultAccount?.institution
       };
-      if (/\.csv$/i.test(file.name) && canParseCitibankActivityCsv(file.name, activityContext)) {
+      const csvKind = classifyImportFile({
+        fileName: file.name,
+        fileType: file.type,
+        text: nextText,
+        activityContext
+      });
+
+      if (csvKind === "citibank-activity-csv") {
         setDismissedOverlapIds([]);
         setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
         const parsed = parseCitibankActivityCsv(nextText, file.name, activityContext);
@@ -454,7 +471,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         return;
       }
 
-      if (/\.csv$/i.test(file.name) && canRecognizeOcbcActivityCsv(nextText, file.name, activityContext)) {
+      if (csvKind === "ocbc-activity-csv") {
         setDismissedOverlapIds([]);
         setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
         const parsed = parseOcbcActivityCsv(nextText, file.name, activityContext);
