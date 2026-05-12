@@ -199,6 +199,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       previewRows,
       statementCheckpoints,
       mappedRows,
+      mappedFields,
+      missingRequiredFields,
+      duplicateMappings,
       missingRequiredFieldsCount: missingRequiredFields.length,
       duplicateMappingsCount: duplicateMappings.length,
       sourceLabel,
@@ -227,6 +230,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       statementImportMeta,
       uploadStatus,
       mappedRows,
+      mappedFields,
       missingRequiredFields,
       duplicateMappings
     ]
@@ -1003,8 +1007,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             csvInspection={csvInspection}
             unknownCategoryMode={unknownCategoryMode}
             onUnknownCategoryModeChange={setUnknownCategoryMode}
-            missingRequiredFields={missingRequiredFields}
-            duplicateMappings={duplicateMappings}
+            missingRequiredFields={importWorkflowModel.missingRequiredFields}
+            duplicateMappings={importWorkflowModel.duplicateMappings}
             columnMappings={columnMappings}
             onColumnMappingChange={(header, nextValue) => {
               setColumnMappings((current) => ({ ...current, [header]: nextValue }));

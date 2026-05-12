@@ -3,9 +3,12 @@
 // the rules across hooks.
 export function buildImportWorkflowModel({
   preview,
-  previewRows,
-  statementCheckpoints,
-  mappedRows,
+  previewRows = [],
+  statementCheckpoints = [],
+  mappedRows = [],
+  mappedFields = {},
+  missingRequiredFields = [],
+  duplicateMappings = [],
   missingRequiredFieldsCount,
   duplicateMappingsCount,
   sourceLabel,
@@ -44,14 +47,21 @@ export function buildImportWorkflowModel({
     && duplicateMappingsCount === 0
   );
   const currentStage = preview ? 3 : readyForMapping ? 2 : 1;
+  const hasMissingRequiredFields = missingRequiredFields.length > 0;
+  const hasDuplicateMappings = duplicateMappings.length > 0;
 
   return {
     currentStage,
+    duplicateMappings,
     hasDraft,
     hasReviewablePreview,
     isPreviewDirty,
     isPreviewRefreshSafe,
     isWorkflowLocked,
+    hasDuplicateMappings,
+    hasMissingRequiredFields,
+    mappedFields,
+    missingRequiredFields,
     readyForMapping,
     readyForPreview
   };
