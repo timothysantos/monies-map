@@ -4,6 +4,7 @@ import { messages } from "./copy/en-SG";
 import { commitImportBatch, previewImportBatch, rollbackImportBatch } from "./import-api";
 import { ImportRecentHistorySection } from "./import-history";
 import { buildRecentImportModel, filterRecentImportsByAccount, getRecentImportAccountOptions } from "./import-history-model";
+import { buildImportAccountCreationRefreshPlan } from "./import-refresh-plan";
 import { buildImportWorkflowModel } from "./import-workflow-model";
 import { getStatementPreviewAutoRefreshKey, shouldAutoRefreshStatementPreview } from "./import-preview-auto-refresh";
 import { ImportMappingStage } from "./import-mapping-stage";
@@ -572,7 +573,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
     setIsSubmitting(true);
     try {
-      await previewImportRows({ rows: mappedRows });
+      await previewImportRows({ rows: importWorkflowModel.mappedRows });
     } catch (error) {
       setPreviewError(error instanceof Error ? error.message : "Import preview failed.");
     } finally {
@@ -892,7 +893,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         isJoint: accountDialog.isJoint
       };
       const detectedAccountName = pendingStatementAccountName;
-      await onRefresh({ refreshShell: true });
+      await onRefresh(buildImportAccountCreationRefreshPlan());
       await applyStatementAccountMapping(detectedAccountName, createdAccount);
       setUploadStatus({ tone: "success", message: messages.imports.accountCreatedFromStatement(createdAccount.name) });
       setAccountDialog(null);
