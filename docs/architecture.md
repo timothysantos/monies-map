@@ -39,6 +39,8 @@ system.
   prompt for the route-transition and domain-boundary slice
 - [`docs/third-slice-prompt.md`](./third-slice-prompt.md): ready-to-run prompt
   for the imports query and workflow slice
+- [`docs/fourth-slice-prompt.md`](./fourth-slice-prompt.md): ready-to-run
+  prompt for the settings query and workflow slice
 - [`docs/existing-behavior-guardrails.md`](./existing-behavior-guardrails.md): current-app behaviors that must survive refactors
 - [`docs/responsive-behavior.md`](./responsive-behavior.md): responsive UX and form-factor contract
 - [`docs/interaction-guidelines.md`](./interaction-guidelines.md): button, CTA, and dismissal semantics
