@@ -5,26 +5,29 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import {
-  archiveSettingsAccount,
+  archiveAccount,
   compareAccountCheckpointStatement,
+  deleteAccountCheckpoint,
+  fetchCheckpointExport,
+  saveAccount,
+  saveAccountCheckpoint
+} from "./accounts-api";
+import {
   createReconciliationException,
   deleteCategoryMatchRule,
-  deleteAccountCheckpoint,
   deleteSettingsCategory,
   dismissAllUnresolvedTransfers,
   dismissUnresolvedTransfer,
-  fetchCheckpointExport,
   ignoreCategoryMatchRuleSuggestion,
   resolveReconciliationException,
   runDemoAction,
-  saveAccountCheckpoint,
   saveCategoryMatchRule,
-  saveSettingsAccount,
   saveSettingsCategory,
   updateSettingsPerson
 } from "./settings-api";
+import { AccountDialog } from "./account-dialog";
 import { SettingsAccountsSection } from "./settings-accounts-section";
-import { SettingsAccountDialog, SettingsCategoryDialog, SettingsCategoryMatchRuleDialog, SettingsPersonDialog } from "./settings-dialogs";
+import { SettingsCategoryDialog, SettingsCategoryMatchRuleDialog, SettingsPersonDialog } from "./settings-dialogs";
 import { SettingsReconciliationDialog } from "./settings-reconciliation-dialog";
 import {
   SettingsActivitySection,
@@ -37,6 +40,25 @@ import {
 } from "./settings-sections";
 import { DeleteRowButton } from "./ui-components";
 import { FALLBACK_THEME } from "./ui-options";
+import { buildSettingsRefreshPlan } from "./settings-refresh-plan";
+import {
+  buildCheckpointHistoryYears,
+  buildCreateAccountDialog,
+  buildCreateCategoryDialog,
+  buildCreateCategoryRuleDialog,
+  buildEditAccountDialog,
+  buildEditCategoryDialog,
+  buildEditCategoryRuleDialog,
+  buildPersonDialog,
+  buildReconciliationDialog,
+  buildSafeSettingsPage,
+  buildStatementComparePanel,
+  buildSuggestionCategoryRuleDialog,
+  filterCheckpointHistoryByYear,
+  getVisibleSettingsAccounts,
+  getVisibleSettingsCategories,
+  groupSettingsAuditEventsByDate
+} from "./settings-workflow";
 import { inspectCsv } from "../lib/csv";
 import { getCurrentMonthKey } from "../lib/month";
 import { parseStatementText } from "../lib/statement-import";
@@ -87,51 +109,23 @@ export function SettingsPanel({
   const [statementCompareStatus, setStatementCompareStatus] = useState(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  // Settings shows demo and reconciliation sections that expect a shaped
-  // page slice, so hydrate a safe local fallback before the route settles.
-  const safeSettingsPage = settingsPage ?? {
-    demo: { emptyState: false, lastSeededAt: new Date().toISOString() },
-    categoryMatchRules: [],
-    categoryMatchRuleSuggestions: [],
-    unresolvedTransfers: [],
-    reconciliationExceptions: [],
-    recentAuditEvents: []
-  };
-  const visibleAccounts = useMemo(() => {
-    const scopedAccounts = viewId === "household"
-      ? accounts
-      : accounts.filter((account) => account.isJoint || account.ownerPersonId === viewId);
-
-    return scopedAccounts
-      .slice()
-      .sort((left, right) => (
-        Number(right.isActive) - Number(left.isActive)
-        || left.institution.localeCompare(right.institution)
-        || left.name.localeCompare(right.name)
-      ));
-  }, [accounts, viewId]);
-  const visibleCategories = useMemo(
-    () => categories.slice().sort((left, right) => left.name.localeCompare(right.name)),
-    [categories]
+  // Settings shows demo and reconciliation sections that expect a shaped page
+  // slice, so keep the fallback DTO builder in the settings workflow module.
+  const safeSettingsPage = useMemo(() => buildSafeSettingsPage(settingsPage), [settingsPage]);
+  const visibleAccounts = useMemo(() => getVisibleSettingsAccounts(accounts, viewId), [accounts, viewId]);
+  const visibleCategories = useMemo(() => getVisibleSettingsCategories(categories), [categories]);
+  const recentActivityGroups = useMemo(
+    () => groupSettingsAuditEventsByDate(safeSettingsPage.recentAuditEvents),
+    [safeSettingsPage.recentAuditEvents]
   );
-  const recentActivityGroups = useMemo(() => {
-    const grouped = new Map();
-    for (const event of safeSettingsPage.recentAuditEvents) {
-      const key = event.createdAt.slice(0, 10);
-      if (!grouped.has(key)) {
-        grouped.set(key, []);
-      }
-      grouped.get(key).push(event);
-    }
-    return Array.from(grouped.entries()).map(([date, events]) => ({ date, events }));
-  }, [safeSettingsPage.recentAuditEvents]);
-  const checkpointHistoryYears = useMemo(() => (
-    Array.from(new Set((reconciliationDialog?.history ?? []).map((item) => item.month.slice(0, 4)).filter(Boolean)))
-      .sort((left, right) => right.localeCompare(left))
-  ), [reconciliationDialog?.history]);
-  const visibleCheckpointHistory = useMemo(() => (
-    (reconciliationDialog?.history ?? []).filter((item) => !checkpointHistoryYear || item.month.startsWith(`${checkpointHistoryYear}-`))
-  ), [checkpointHistoryYear, reconciliationDialog?.history]);
+  const checkpointHistoryYears = useMemo(
+    () => buildCheckpointHistoryYears(reconciliationDialog?.history ?? []),
+    [reconciliationDialog?.history]
+  );
+  const visibleCheckpointHistory = useMemo(
+    () => filterCheckpointHistoryByYear(reconciliationDialog?.history ?? [], checkpointHistoryYear),
+    [checkpointHistoryYear, reconciliationDialog?.history]
+  );
   const canUseDemoControls = appEnvironment === "demo" || appEnvironment === "local";
 
   useEffect(() => {
@@ -161,7 +155,10 @@ export function SettingsPanel({
     setDemoActionError("");
     try {
       await runDemoAction("/api/demo/reseed", "Demo reseed failed.");
-      await onRefresh();
+      await onRefresh({
+        ...buildSettingsRefreshPlan("demo_reseed"),
+        broadcast: true
+      });
     } catch (error) {
       setDemoActionError(error instanceof Error ? error.message : "Demo reseed failed.");
     } finally {
@@ -188,7 +185,10 @@ export function SettingsPanel({
     setDemoActionError("");
     try {
       await runDemoAction("/api/demo/empty", "Empty-state reset failed.");
-      const refreshedAppShell = await onRefresh();
+      const refreshedAppShell = await onRefresh({
+        ...buildSettingsRefreshPlan("demo_empty_state"),
+        broadcast: true
+      });
       if (refreshedAppShell?.accounts?.length) {
         throw new Error(messages.settings.emptyStateStillHasAccounts);
       }
@@ -203,65 +203,28 @@ export function SettingsPanel({
 
   function openCreateAccountDialog() {
     setAccountDialogError("");
-    setAccountDialog({
-      mode: "create",
-      accountId: "",
-      name: "",
-      institution: "",
-      kind: "bank",
-      currency: "SGD",
-      openingBalance: "0.00",
-      ownerPersonId: "",
-      isJoint: false
-    });
+    setAccountDialog(buildCreateAccountDialog());
   }
 
   function openEditAccountDialog(account) {
     setAccountDialogError("");
-    setAccountDialog({
-      mode: "edit",
-      accountId: account.id,
-      name: account.name,
-      institution: account.institution,
-      kind: account.kind,
-      currency: account.currency,
-      openingBalance: formatService.formatMinorInput(account.openingBalanceMinor ?? 0),
-      ownerPersonId: account.ownerPersonId ?? "",
-      isJoint: account.isJoint
-    });
+    setAccountDialog(buildEditAccountDialog(account, formatService.formatMinorInput));
   }
 
   function openReconciliationDialog(account) {
-    setReconciliationDialog({
-      accountId: account.id,
-      accountName: account.name,
-      accountKind: account.kind,
-      checkpointMonth: account.latestCheckpointMonth ?? "",
-      statementStartDate: account.latestCheckpointStartDate ?? "",
-      statementEndDate: account.latestCheckpointEndDate ?? "",
-      statementBalance: formatService.formatCheckpointStatementInputMinor(
-        account.latestCheckpointBalanceMinor ?? account.balanceMinor ?? 0,
-        account.kind
-      ),
-      note: account.latestCheckpointNote ?? "",
-      history: account.checkpointHistory ?? []
-    });
+    setReconciliationDialog(
+      buildReconciliationDialog(account, formatService.formatCheckpointStatementInputMinor)
+    );
   }
 
   function openStatementComparePanel(account, checkpoint) {
-    if (!checkpoint?.month) {
+    const nextPanel = buildStatementComparePanel(account, checkpoint);
+    if (!nextPanel) {
       return;
     }
 
     setSettingsSectionsOpen((current) => ({ ...current, accounts: true }));
-    setStatementComparePanel({
-      accountId: account.id,
-      accountName: account.name,
-      checkpointMonth: checkpoint.month,
-      statementStartDate: checkpoint.statementStartDate,
-      statementEndDate: checkpoint.statementEndDate,
-      deltaMinor: checkpoint.deltaMinor
-    });
+    setStatementComparePanel(nextPanel);
     setStatementCompareResult(null);
     setStatementCompareStatus(null);
     setReconciliationDialog(null);
@@ -282,71 +245,32 @@ export function SettingsPanel({
   }
 
   function openCreateCategoryDialog() {
-    setCategoryDialog({
-      mode: "create",
-      categoryId: "",
-      name: "",
-      slug: "",
-      iconKey: FALLBACK_THEME.iconKey,
-      colorHex: FALLBACK_THEME.colorHex
-    });
+    setCategoryDialog(buildCreateCategoryDialog(FALLBACK_THEME));
   }
 
   function openEditCategoryDialog(category) {
-    setCategoryDialog({
-      mode: "edit",
-      categoryId: category.id,
-      name: category.name,
-      slug: category.slug,
-      iconKey: category.iconKey,
-      colorHex: category.colorHex
-    });
+    setCategoryDialog(buildEditCategoryDialog(category));
   }
 
   function openCreateCategoryRuleDialog() {
-    setCategoryRuleDialog({
-      mode: "create",
-      ruleId: "",
-      sourceSuggestionId: "",
-      pattern: "",
-      categoryId: categories.find((category) => category.name === "Other")?.id ?? categories[0]?.id ?? "",
-      priority: 100,
-      isActive: true,
-      note: ""
-    });
+    setCategoryRuleDialog(buildCreateCategoryRuleDialog(categories));
   }
 
   function openEditCategoryRuleDialog(rule) {
-    setCategoryRuleDialog({
-      mode: "edit",
-      ruleId: rule.id,
-      sourceSuggestionId: "",
-      pattern: rule.pattern,
-      categoryId: rule.categoryId,
-      priority: rule.priority,
-      isActive: rule.isActive,
-      note: rule.note ?? ""
-    });
+    setCategoryRuleDialog(buildEditCategoryRuleDialog(rule));
   }
 
   function openCategoryRuleSuggestionDialog(suggestion) {
-    setCategoryRuleDialog({
-      mode: "create",
-      ruleId: "",
-      sourceSuggestionId: suggestion.id,
-      pattern: suggestion.pattern,
-      categoryId: suggestion.categoryId,
-      priority: 100,
-      isActive: true,
-      note: messages.settings.categoryRuleSuggestionNote(suggestion.sourceCount)
-    });
+    setCategoryRuleDialog(
+      buildSuggestionCategoryRuleDialog(
+        suggestion,
+        messages.settings.categoryRuleSuggestionNote
+      )
+    );
   }
 
   function openEditPersonDialog(person) {
-    setPersonDialog({
-      personId: person.id,
-      name: person.name
-    });
+    setPersonDialog(buildPersonDialog(person));
   }
 
   async function handleSaveAccount() {
@@ -357,7 +281,7 @@ export function SettingsPanel({
     setIsSubmitting(true);
     setAccountDialogError("");
     try {
-      await saveSettingsAccount({
+      await saveAccount({
         mode: accountDialog.mode,
         accountId: accountDialog.accountId,
         name: accountDialog.name,
@@ -369,7 +293,7 @@ export function SettingsPanel({
         isJoint: accountDialog.isJoint
       });
       setAccountDialog(null);
-      await onRefresh();
+      await onRefresh(buildSettingsRefreshPlan("account_saved"));
     } catch (error) {
       setAccountDialogError(error instanceof Error ? error.message : "Account save failed.");
     } finally {
@@ -380,8 +304,8 @@ export function SettingsPanel({
   async function handleArchiveAccount(accountId) {
     setIsSubmitting(true);
     try {
-      await archiveSettingsAccount(accountId);
-      await onRefresh();
+      await archiveAccount(accountId);
+      await onRefresh(buildSettingsRefreshPlan("account_archived"));
     } finally {
       setIsSubmitting(false);
     }
@@ -403,7 +327,7 @@ export function SettingsPanel({
         note: reconciliationDialog.note
       });
       setReconciliationDialog(null);
-      await onRefresh();
+      await onRefresh(buildSettingsRefreshPlan("checkpoint_saved"));
     } finally {
       setIsSubmitting(false);
     }
@@ -424,7 +348,7 @@ export function SettingsPanel({
         ...current,
         history: current.history.filter((historyItem) => historyItem.month !== item.month)
       } : current);
-      await onRefresh();
+      await onRefresh(buildSettingsRefreshPlan("checkpoint_deleted"));
     } finally {
       setIsSubmitting(false);
     }
@@ -527,7 +451,7 @@ export function SettingsPanel({
         colorHex: categoryDialog.colorHex
       });
       setCategoryDialog(null);
-      await onRefresh();
+      await onRefresh(buildSettingsRefreshPlan("category_saved"));
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Failed to save category");
     } finally {
@@ -547,7 +471,7 @@ export function SettingsPanel({
         name: personDialog.name
       });
       setPersonDialog(null);
-      await onRefresh();
+      await onRefresh(buildSettingsRefreshPlan("person_saved"));
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Failed to update person");
     } finally {
@@ -559,7 +483,7 @@ export function SettingsPanel({
     setIsSubmitting(true);
     try {
       await deleteSettingsCategory(category.id);
-      await onRefresh();
+      await onRefresh(buildSettingsRefreshPlan("category_deleted"));
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Failed to delete category");
     } finally {
@@ -584,7 +508,7 @@ export function SettingsPanel({
         note: categoryRuleDialog.note
       });
       setCategoryRuleDialog(null);
-      await onRefresh();
+      await onRefresh(buildSettingsRefreshPlan("category_rule_saved"));
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Failed to save category match rule");
     } finally {
@@ -603,7 +527,7 @@ export function SettingsPanel({
         isActive: true,
         note: messages.settings.categoryRuleSuggestionNote(suggestion.sourceCount)
       });
-      await onRefresh();
+      await onRefresh(buildSettingsRefreshPlan("category_rule_suggestion_accepted"));
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Failed to save category match rule");
     } finally {
@@ -615,7 +539,7 @@ export function SettingsPanel({
     setIsSubmitting(true);
     try {
       await ignoreCategoryMatchRuleSuggestion(suggestion.id);
-      await onRefresh();
+      await onRefresh(buildSettingsRefreshPlan("category_rule_suggestion_ignored"));
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Failed to ignore category match suggestion");
     } finally {
@@ -627,7 +551,7 @@ export function SettingsPanel({
     setIsSubmitting(true);
     try {
       await deleteCategoryMatchRule(rule.id);
-      await onRefresh();
+      await onRefresh(buildSettingsRefreshPlan("category_rule_deleted"));
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Failed to delete category match rule");
     } finally {
@@ -639,7 +563,7 @@ export function SettingsPanel({
     setIsSubmitting(true);
     try {
       await dismissUnresolvedTransfer(entryId);
-      await onRefresh();
+      await onRefresh(buildSettingsRefreshPlan("unresolved_transfer_dismissed"));
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Failed to clear unresolved transfer");
     } finally {
@@ -658,7 +582,7 @@ export function SettingsPanel({
     setIsSubmitting(true);
     try {
       await dismissAllUnresolvedTransfers();
-      await onRefresh();
+      await onRefresh(buildSettingsRefreshPlan("unresolved_transfer_dismissed_all"));
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Failed to clear unresolved transfers");
     } finally {
@@ -670,7 +594,7 @@ export function SettingsPanel({
     setIsSubmitting(true);
     try {
       await createReconciliationException(draft);
-      await onRefresh();
+      await onRefresh(buildSettingsRefreshPlan("reconciliation_exception_created"));
       return true;
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Failed to create reconciliation exception.");
@@ -684,7 +608,7 @@ export function SettingsPanel({
     setIsSubmitting(true);
     try {
       await resolveReconciliationException({ exceptionId });
-      await onRefresh();
+      await onRefresh(buildSettingsRefreshPlan("reconciliation_exception_resolved"));
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Failed to resolve reconciliation exception.");
     } finally {
@@ -719,7 +643,7 @@ export function SettingsPanel({
         : current.deltaMinor
     } : current);
     setStatementCompareStatus({ tone: "success", message: messages.settings.statementCompareDirectionFixed });
-    void onRefresh();
+    void onRefresh(buildSettingsRefreshPlan("statement_compare_linked"));
   }
 
   function handleStatementCompareEntryAdded(rowId) {
@@ -729,7 +653,7 @@ export function SettingsPanel({
       unmatchedStatementRows: current.unmatchedStatementRows.filter((row) => row.id !== rowId)
     } : current);
     setStatementCompareStatus({ tone: "success", message: messages.settings.statementCompareEntryAdded });
-    void onRefresh();
+    void onRefresh(buildSettingsRefreshPlan("statement_compare_entry_added"));
   }
 
   function toggleSettingsSection(sectionKey) {
@@ -878,7 +802,7 @@ export function SettingsPanel({
         onSave={handleSavePerson}
       />
 
-      <SettingsAccountDialog
+      <AccountDialog
         dialog={accountDialog}
         error={accountDialogError}
         people={people}
