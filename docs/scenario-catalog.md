@@ -18,6 +18,13 @@ Use this document before implementation work to decide:
 - what state changes must be observable
 - which cross-page effects must remain intact during refactors
 
+Test depth rule:
+
+- for implemented scenarios, prefer deep assertions over shallow existence
+  checks
+- every non-trivial scenario should include at least one negative test that
+  proves the blocked or rejected path
+
 Scenario specificity rule:
 
 - name the exact control the user interacts with

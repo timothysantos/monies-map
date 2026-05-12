@@ -28,7 +28,6 @@ export function buildImportWorkflowModel({
   const mappedFields = buildMappedFields(columnMappings);
   const duplicateMappings = Object.entries(mappedFields).filter(([, count]) => count > 1).map(([field]) => field);
   const missingRequiredFields = buildMissingRequiredFields(mappedFields);
-  const mappedRows = buildMappedImportRows(csvRows, columnMappings);
   const hasDraft = Boolean(
     preview
     || previewRows.length
@@ -40,12 +39,15 @@ export function buildImportWorkflowModel({
     || sourceLabel !== sourceLabelDefault
   );
   const hasReviewablePreview = Boolean(preview && previewRows.length);
-  const readyForMapping = Boolean(mappedRows.length);
+  const readyForMapping = Boolean(csvRows.length);
   const readyForPreview = Boolean(
     readyForMapping
     && missingRequiredFields.length === 0
     && duplicateMappings.length === 0
   );
+  const mappedRows = readyForPreview
+    ? buildMappedImportRows(csvRows, columnMappings)
+    : [];
   const currentStage = preview ? 3 : readyForMapping ? 2 : 1;
 
   return {
