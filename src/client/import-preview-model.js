@@ -145,25 +145,3 @@ function getDuplicateCheckpointAccounts(statementCheckpoints) {
   }
   return Array.from(counts.entries()).filter(([, count]) => count > 1).map(([accountKey]) => accountKey);
 }
-
-export function hasImportDraft({
-  preview,
-  previewRows,
-  csvText,
-  importNote,
-  statementCheckpoints,
-  uploadStatus,
-  previewError,
-  sourceLabel
-}) {
-  return Boolean(
-    preview
-    || previewRows.length
-    || csvText
-    || importNote
-    || statementCheckpoints.length
-    || uploadStatus
-    || previewError
-    || sourceLabel !== "Imported CSV"
-  );
-}

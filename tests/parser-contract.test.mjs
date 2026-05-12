@@ -49,3 +49,33 @@ test("parseCurrentTransactionSpreadsheet preserves the normalized UOB current-tr
   assert.equal(parsed.checkpoints.length, 0);
   assert.equal(parsed.warnings.length, 0);
 });
+
+for (const [scenarioId, fixtureName, expectedAccountName] of [
+  ["I13", "CC_TXN_History_06052026211223-onecard-tim-06-may.xls", "UOB One Card"],
+  ["I14", "CC_TXN_History_06052026211316-ladys-tim-06-may.xls", "UOB Lady's Card"]
+]) {
+  test(`parseCurrentTransactionSpreadsheet preserves the ${scenarioId} UOB credit-card contract`, () => {
+    const parsed = parseCurrentTransactionSpreadsheet(
+      readWorkbookFixture(fixtureName),
+      fixtureName
+    );
+
+    assert.equal(parsed.parserKey, "uob_credit_card_current_transactions_xls");
+    assert.equal(parsed.rows[0].account, expectedAccountName);
+    assert.equal(parsed.sourceLabel.endsWith(fixtureName.replace(/\.xls$/i, "")), true);
+    assert.equal(parsed.rows.length > 0, true);
+    assert.deepEqual(Object.keys(parsed.rows[0]).sort(), [
+      "account",
+      "category",
+      "date",
+      "description",
+      "expense",
+      "income",
+      "note",
+      "reference",
+      "type"
+    ]);
+    assert.equal(parsed.checkpoints.length, 0);
+    assert.equal(parsed.warnings.length, 0);
+  });
+}
