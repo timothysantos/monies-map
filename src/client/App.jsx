@@ -51,6 +51,7 @@ import {
 import { installMobileFocusVisibility } from "./mobile-focus-visibility";
 import { queryKeys } from "./query-keys";
 import { invalidateImportMutationQueries, invalidateImportsPageQueries } from "./query-mutations";
+import { describeSettingsRefreshPlan, SETTINGS_ROUTE_REQUEST } from "./settings-refresh-plan";
 import { getCurrentMonthKey } from "../lib/month";
 
 // Lazy route loaders keep the initial shell small while still splitting each
@@ -102,11 +103,6 @@ const PAGE_PREFETCH_SPACING_MS = 1500;
 const PAGE_PREFETCH_STAGE_DELAY_MS = 5000;
 const APP_DOCUMENT_TITLE = "Monie's Map";
 const LOADING_STATUS_POLL_MS = 500;
-const SETTINGS_ROUTE_REQUEST = Object.freeze({
-  path: "/api/settings-page",
-  params: new URLSearchParams()
-});
-
 function createLoadingStatus(overrides = {}) {
   const now = Date.now();
   return {
@@ -871,32 +867,24 @@ export function App() {
     return data;
   }, [fetchRoutePageData, queryClient, refreshAppShellInBackground, selectedMonth, selectedScope, selectedViewId]);
 
-  // Settings mutations refresh the settings page directly and optionally touch
-  // only the downstream caches that actually render changed reference data.
-  const refreshCurrentSettingsPage = useCallback(async ({
-    broadcast = false,
-    refreshShell = false,
-    invalidateEntries = false,
-    invalidateImports = false,
-    invalidateMonth = false,
-    invalidateSplits = false,
-    invalidateSummary = false
-  } = {}) => {
-    clearSettingsMutationCaches({
-      invalidateEntries,
-      invalidateMonth,
-      invalidateSummary,
-      invalidateSplits
-    });
+  // Settings mutations refresh the settings page directly, while the settings
+  // slice owns which downstream route families must be invalidated.
+  const refreshCurrentSettingsPage = useCallback(async (options = {}) => {
+    const {
+      broadcast = false,
+      ...plan
+    } = options;
+    const refreshDescription = describeSettingsRefreshPlan(plan);
 
-    const tasks = [fetchRoutePageData(SETTINGS_ROUTE_REQUEST, { bypassCache: true })];
+    clearSettingsMutationCaches(refreshDescription);
 
-    if (invalidateImports) {
-      clearRoutePageCacheByPath("/api/imports-page");
+    const tasks = [fetchRoutePageData(refreshDescription.routeRequest, { bypassCache: true })];
+
+    if (refreshDescription.invalidateImportsPage) {
       tasks.push(invalidateImportsPageQueries(queryClient));
     }
 
-    if (refreshShell) {
+    if (refreshDescription.refreshShell) {
       tasks.push(refreshAppShellInBackground().catch(() => null));
     }
 
@@ -905,15 +893,14 @@ export function App() {
       selectedTabId === "settings" && current?.settingsPage ? data : current
     ));
 
-    if (broadcast && refreshShell) {
+    if (broadcast && refreshDescription.refreshShell) {
       broadcastAppShellRefresh(syncChannelRef);
     }
 
-    return refreshShell
+    return refreshDescription.refreshShell
       ? taskResults.find((result) => result?.accounts || result?.categories || result?.household) ?? data
       : data;
   }, [
-    clearRoutePageCacheByPath,
     clearSettingsMutationCaches,
     fetchRoutePageData,
     queryClient,
@@ -996,29 +983,18 @@ export function App() {
     clearRoutePageCacheByPredicate
   ]);
 
-  // Settings reference-data edits invalidate only the cached pages whose DTOs
-  // embed the changed names, labels, or account metadata.
+  // Settings reference-data edits clear the specific downstream route caches
+  // described by the settings slice refresh plan.
   const clearSettingsMutationCaches = useCallback(({
-    invalidateEntries = false,
-    invalidateMonth = false,
-    invalidateSummary = false,
-    invalidateSplits = false
+    routePagePaths = [],
+    clearEntriesPageCache = false
   }) => {
-    if (invalidateEntries) {
-      clearRoutePageCacheByPath("/api/entries-page");
+    for (const path of routePagePaths) {
+      clearRoutePageCacheByPath(path);
+    }
+
+    if (clearEntriesPageCache) {
       clearEntriesPageCacheByPredicate(() => true);
-    }
-
-    if (invalidateMonth) {
-      clearRoutePageCacheByPath("/api/month-page");
-    }
-
-    if (invalidateSummary) {
-      clearRoutePageCacheByPath("/api/summary-page");
-    }
-
-    if (invalidateSplits) {
-      clearRoutePageCacheByPath("/api/splits-page");
     }
   }, [
     clearEntriesPageCacheByPredicate,
