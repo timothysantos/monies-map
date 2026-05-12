@@ -5,7 +5,7 @@ export function buildImportWorkflowModel({
   preview,
   previewRows = [],
   statementCheckpoints = [],
-  mappedRows = [],
+  csvRows = [],
   columnMappings = {},
   sourceLabel,
   csvText,
@@ -28,6 +28,7 @@ export function buildImportWorkflowModel({
   const mappedFields = buildMappedFields(columnMappings);
   const duplicateMappings = Object.entries(mappedFields).filter(([, count]) => count > 1).map(([field]) => field);
   const missingRequiredFields = buildMissingRequiredFields(mappedFields);
+  const mappedRows = buildMappedImportRows(csvRows, columnMappings);
   const hasDraft = Boolean(
     preview
     || previewRows.length
@@ -80,4 +81,32 @@ function buildMissingRequiredFields(mappedFields) {
     !mappedFields.description ? "description" : null,
     !mappedFields.amount && !mappedFields.expense && !mappedFields.income ? "amount/expense/income" : null
   ].filter(Boolean);
+}
+
+function buildMappedImportRows(rows, columnMappings) {
+  return rows
+    .map((row) => {
+      const mappedRow = {};
+
+      for (const [header, target] of Object.entries(columnMappings)) {
+        if (!target || target === "ignore") {
+          continue;
+        }
+
+        const rawValue = row[header];
+        if (rawValue == null || rawValue === "") {
+          continue;
+        }
+
+        if (target === "amount" || target === "expense" || target === "income") {
+          mappedRow[target] = rawValue;
+          continue;
+        }
+
+        mappedRow[target] = rawValue;
+      }
+
+      return mappedRow;
+    })
+    .filter((row) => Object.keys(row).length > 0);
 }

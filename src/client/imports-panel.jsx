@@ -149,10 +149,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     });
   }, [headerSignature, csvInspection.headers]);
 
-  const mappedRows = useMemo(
-    () => importService.buildMappedRows(csvInspection.rows, columnMappings),
-    [columnMappings, csvInspection.rows]
-  );
   const importPreviewModel = useMemo(
     () => buildImportPreviewModel({
       accounts,
@@ -176,7 +172,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       preview,
       previewRows,
       statementCheckpoints,
-      mappedRows,
+      csvRows: csvInspection.rows,
       columnMappings,
       sourceLabel,
       csvText,
@@ -203,7 +199,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       statementCheckpoints,
       statementImportMeta,
       uploadStatus,
-      mappedRows,
+      csvInspection.rows,
       columnMappings
     ]
   );

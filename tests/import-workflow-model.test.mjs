@@ -8,7 +8,7 @@ test("import workflow model reports a draft when preview state exists", () => {
     preview: { sourceLabel: "Imported CSV" },
     previewRows: [{ rowId: "row-1" }],
     statementCheckpoints: [],
-    mappedRows: [{ rowId: "mapped-1" }],
+    csvRows: [{ date: "2026-01-01", description: "Coffee", amount: "4.50" }],
     columnMappings: { date: "date", description: "description", amount: "amount" },
     sourceLabel: "Imported CSV",
     csvText: "",
@@ -27,6 +27,7 @@ test("import workflow model reports a draft when preview state exists", () => {
   assert.equal(model.currentStage, 3);
   assert.equal(model.readyForMapping, true);
   assert.equal(model.readyForPreview, true);
+  assert.equal(model.mappedRows.length, 1);
   assert.equal(model.isWorkflowLocked, false);
   assert.equal(model.isPreviewRefreshSafe, true);
 });
@@ -36,7 +37,7 @@ test("import workflow model locks refresh when the preview has diverged from hyd
     preview: { sourceLabel: "Imported CSV" },
     previewRows: [{ rowId: "row-1", commitStatus: "included" }],
     statementCheckpoints: [],
-    mappedRows: [],
+    csvRows: [],
     columnMappings: { date: "date", description: "description", amount: "amount" },
     sourceLabel: "Imported CSV",
     csvText: "",
