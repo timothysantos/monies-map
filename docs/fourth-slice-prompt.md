@@ -11,6 +11,7 @@ This slice is intentionally focused:
 - category-rule and reconciliation workflows
 - narrow shell-level refresh only where shared reference metadata truly needs it
 - fixture-backed regression coverage for settings-driven downstream effects
+- explicit settings-panel thinness and ownership boundaries
 - documentation updates only where settings assumptions prove wrong
 
 It is not a broad rewrite of imports, entries, month, summary, or splits.
@@ -96,12 +97,16 @@ Constraints:
 - do not move imports or entries logic into settings helpers just because they
   consume the same reference data
 - keep the workflow narrow and reference-data driven
+- remove the old settings mutation/query path in the same slice once the new
+  path is verified and covered by tests; do not leave compatibility fallbacks
+  behind
 - commit in small readable batches as the slice progresses
 - keep code comments above every important block, hook, branch, and helper in
   any refactored file
 - use fixture-backed coverage for downstream effects when a settings change
   alters another workflow
 - keep settings as a deep module with explicit refresh rules, not a monolith
+- finish with a settings closure audit before considering the slice complete
 
 Implementation rules:
 - preserve explicit state ownership between:
@@ -114,6 +119,8 @@ Implementation rules:
 - keep app shell as global metadata only
 - keep settings page lightweight: reference data, trust panels, reconciliation,
   and workflow-specific actions only
+- keep the settings panel mostly as rendering and event wiring; move remaining
+  workflow decisions into the settings deep module
 - keep trust and reconciliation details out of app-shell bootstrap
 - use slice-owned key builders and selectors for settings data
 - preserve reference-data freshness across:
@@ -254,4 +261,3 @@ In other words:
 - the second slice fixed navigation hydration and boundary shape
 - the third slice moved imports onto the new workflow/query contracts
 - this fourth slice should move settings onto those same tight contracts
-

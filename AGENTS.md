@@ -51,6 +51,8 @@ team conventions evolve.
 - Refactor work should be committed in small readable batches as it proceeds.
   Use that practice for the first slice and keep it for later slices unless a
   slice is explicitly being held back for one atomic change.
+- Finish each slice with a closure audit so the implementation, tests, and docs
+  agree before the slice is considered complete.
 - Keep [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
   updated alongside user-facing product, setup, and workflow changes.
 - When implementation and documentation diverge, update the documentation in the

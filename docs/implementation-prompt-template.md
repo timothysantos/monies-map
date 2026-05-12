@@ -47,6 +47,9 @@ Constraints:
 - commit the work in small readable batches as the slice progresses
 - keep that commit rhythm for later slices unless a slice is explicitly
   reserved for one atomic change
+- finish with a closure audit for the slice before declaring it complete
+- if the slice includes a deliberate exception, name it, test it, and keep it
+  isolated instead of letting it become the new default path
 
 Deliverables:
 - code changes for the target slice only
