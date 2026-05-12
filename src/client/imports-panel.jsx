@@ -14,8 +14,8 @@ import { ImportPreviewReview } from "./import-preview-review";
 import { ImportPreviewRowsTable } from "./import-preview-rows-table";
 import { ImportSelectFileStage } from "./import-select-file-stage";
 import { moniesClient } from "./monies-client-service";
-import { SettingsAccountDialog } from "./settings-dialogs";
-import { saveSettingsAccount } from "./settings-api";
+import { AccountDialog } from "./account-dialog";
+import { saveAccount } from "./accounts-api";
 import { inspectCsv } from "../lib/csv";
 import {
   parseCitibankActivityCsv,
@@ -889,7 +889,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsSubmitting(true);
     setAccountDialogError("");
     try {
-      const data = await saveSettingsAccount({
+      const data = await saveAccount({
         mode: "create",
         accountId: "",
         name: accountDialog.name,
@@ -1115,7 +1115,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         onNextPage={() => setRecentImportPage((current) => Math.min(recentImportModel.pageCount, current + 1))}
         onRollback={handleRollback}
       />
-      <SettingsAccountDialog
+      <AccountDialog
         dialog={accountDialog}
         error={accountDialogError}
         people={people}

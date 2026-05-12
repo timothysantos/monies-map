@@ -63,6 +63,12 @@ export async function loadEntriesPage(page, { view = "person-tim", month = "2026
   return response.json();
 }
 
+export async function loadAppShell(page, { month = "2026-04", scope = "direct_plus_shared" } = {}) {
+  const response = await page.request.get(`/api/app-shell?month=${month}&scope=${scope}`);
+  expect(response.ok(), await response.text()).toBeTruthy();
+  return response.json();
+}
+
 export async function loadMonthPage(page, { view = "person-tim", month = "2026-04", scope = "direct_plus_shared" } = {}) {
   const response = await page.request.get(`/api/month-page?view=${view}&month=${month}&scope=${scope}`);
   expect(response.ok(), await response.text()).toBeTruthy();
@@ -82,6 +88,12 @@ export async function loadSummaryPage(
   const response = await page.request.get(
     `/api/summary-page?view=${view}&month=${month}&scope=${scope}&summary_start=${summaryStart}&summary_end=${summaryEnd}`
   );
+  expect(response.ok(), await response.text()).toBeTruthy();
+  return response.json();
+}
+
+export async function loadSettingsPage(page) {
+  const response = await page.request.get("/api/settings-page");
   expect(response.ok(), await response.text()).toBeTruthy();
   return response.json();
 }

@@ -50,7 +50,7 @@ import {
 } from "./request-errors";
 import { installMobileFocusVisibility } from "./mobile-focus-visibility";
 import { queryKeys } from "./query-keys";
-import { invalidateImportMutationQueries } from "./query-mutations";
+import { invalidateImportMutationQueries, invalidateImportsPageQueries } from "./query-mutations";
 import { getCurrentMonthKey } from "../lib/month";
 
 // Lazy route loaders keep the initial shell small while still splitting each
@@ -102,6 +102,10 @@ const PAGE_PREFETCH_SPACING_MS = 1500;
 const PAGE_PREFETCH_STAGE_DELAY_MS = 5000;
 const APP_DOCUMENT_TITLE = "Monie's Map";
 const LOADING_STATUS_POLL_MS = 500;
+const SETTINGS_ROUTE_REQUEST = Object.freeze({
+  path: "/api/settings-page",
+  params: new URLSearchParams()
+});
 
 function createLoadingStatus(overrides = {}) {
   const now = Date.now();
@@ -867,6 +871,56 @@ export function App() {
     return data;
   }, [fetchRoutePageData, queryClient, refreshAppShellInBackground, selectedMonth, selectedScope, selectedViewId]);
 
+  // Settings mutations refresh the settings page directly and optionally touch
+  // only the downstream caches that actually render changed reference data.
+  const refreshCurrentSettingsPage = useCallback(async ({
+    broadcast = false,
+    refreshShell = false,
+    invalidateEntries = false,
+    invalidateImports = false,
+    invalidateMonth = false,
+    invalidateSplits = false,
+    invalidateSummary = false
+  } = {}) => {
+    clearSettingsMutationCaches({
+      invalidateEntries,
+      invalidateMonth,
+      invalidateSummary,
+      invalidateSplits
+    });
+
+    const tasks = [fetchRoutePageData(SETTINGS_ROUTE_REQUEST, { bypassCache: true })];
+
+    if (invalidateImports) {
+      clearRoutePageCacheByPath("/api/imports-page");
+      tasks.push(invalidateImportsPageQueries(queryClient));
+    }
+
+    if (refreshShell) {
+      tasks.push(refreshAppShellInBackground().catch(() => null));
+    }
+
+    const [data, ...taskResults] = await Promise.all(tasks);
+    setRoutePageData((current) => (
+      selectedTabId === "settings" && current?.settingsPage ? data : current
+    ));
+
+    if (broadcast && refreshShell) {
+      broadcastAppShellRefresh(syncChannelRef);
+    }
+
+    return refreshShell
+      ? taskResults.find((result) => result?.accounts || result?.categories || result?.household) ?? data
+      : data;
+  }, [
+    clearRoutePageCacheByPath,
+    clearSettingsMutationCaches,
+    fetchRoutePageData,
+    queryClient,
+    refreshAppShellInBackground,
+    selectedTabId
+  ]);
+
   // Clear route-page cache entries that match a targeted invalidation
   // predicate.
   const clearRoutePageCacheByPredicate = useCallback((predicate) => {
@@ -880,6 +934,16 @@ export function App() {
     queryClient.cancelQueries({ predicate });
     queryClient.removeQueries({ predicate });
   }, [queryClient]);
+
+  // Settings invalidation clears route-page families by endpoint path so
+  // renamed reference data does not survive in stale page DTO caches.
+  const clearRoutePageCacheByPath = useCallback((path, predicate) => {
+    clearRoutePageCacheByPredicate((query) => (
+      query.queryKey?.[0] === "route-page"
+      && query.queryKey?.[1]?.path === path
+      && (!predicate || predicate(query.queryKey?.[1]?.params ?? {}))
+    ));
+  }, [clearRoutePageCacheByPredicate]);
 
   // Invalidate the exact caches affected by a split mutation before any
   // refresh or broadcast happens.
@@ -930,6 +994,35 @@ export function App() {
     clearAppShellCache,
     clearEntriesPageCacheByPredicate,
     clearRoutePageCacheByPredicate
+  ]);
+
+  // Settings reference-data edits invalidate only the cached pages whose DTOs
+  // embed the changed names, labels, or account metadata.
+  const clearSettingsMutationCaches = useCallback(({
+    invalidateEntries = false,
+    invalidateMonth = false,
+    invalidateSummary = false,
+    invalidateSplits = false
+  }) => {
+    if (invalidateEntries) {
+      clearRoutePageCacheByPath("/api/entries-page");
+      clearEntriesPageCacheByPredicate(() => true);
+    }
+
+    if (invalidateMonth) {
+      clearRoutePageCacheByPath("/api/month-page");
+    }
+
+    if (invalidateSummary) {
+      clearRoutePageCacheByPath("/api/summary-page");
+    }
+
+    if (invalidateSplits) {
+      clearRoutePageCacheByPath("/api/splits-page");
+    }
+  }, [
+    clearEntriesPageCacheByPredicate,
+    clearRoutePageCacheByPath
   ]);
 
   // Refresh the current route page in the background without switching tabs or
@@ -1553,7 +1646,7 @@ export function App() {
           isUnregisteringLogin={isUnregisteringLogin}
           onUnregisterLogin={handleUnregisterLogin}
           onLogout={handleLogout}
-          onRefresh={() => refreshAppShell({ broadcast: true })}
+          onRefresh={(options) => refreshCurrentSettingsPage(options)}
         />
       );
     }
@@ -1568,7 +1661,6 @@ export function App() {
     appShell?.accounts,
     appShell?.household?.people,
     appShell?.importsPage,
-    appShell?.settingsPage,
     appShell?.viewerIdentity,
     availableMonths,
     broadcastSplitMutation,
@@ -1584,6 +1676,7 @@ export function App() {
     loginIdentityError,
     mobileContextOpen,
     pageView,
+    refreshCurrentSettingsPage,
     refreshAppShell,
     refreshCurrentImportsPage,
     refreshCurrentMonthPage,
@@ -1998,9 +2091,10 @@ export function App() {
     : pageView?.summaryPage?.rangeStartMonth && pageView?.summaryPage?.rangeEndMonth
       ? `${formatService.formatMonthLabel(pageView.summaryPage.rangeStartMonth)} - ${formatService.formatMonthLabel(pageView.summaryPage.rangeEndMonth)}`
       : pageView.label;
-  // Settings badge state comes from the shell so every route sees the same
-  // suggestion count.
-  const pendingCategorySuggestionCount = appShell.settingsPage?.categoryMatchRuleSuggestions?.length ?? 0;
+  // The settings badge reads from the settings page cache so the shell stays a
+  // reference-data payload instead of reabsorbing settings-page state.
+  const cachedSettingsPage = queryClient.getQueryData(queryKeys.routePage(SETTINGS_ROUTE_REQUEST));
+  const pendingCategorySuggestionCount = cachedSettingsPage?.settingsPage?.categoryMatchRuleSuggestions?.length ?? 0;
   const buildTabTarget = (tab) => {
     // Each nav link preserves the relevant route query while stripping
     // parameters that belong to another tab.
