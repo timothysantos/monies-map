@@ -175,9 +175,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     !mappedFields.description ? "description" : null,
     !mappedFields.amount && !mappedFields.expense && !mappedFields.income ? "amount/expense/income" : null
   ].filter(Boolean);
-  const readyForMapping = csvInspection.headers.length > 0;
-  const readyForPreview = mappedRows.length > 0 && missingRequiredFields.length === 0 && duplicateMappings.length === 0;
-  const currentStage = preview ? 3 : readyForMapping ? 2 : 1;
   const importPreviewModel = useMemo(
     () => buildImportPreviewModel({
       accounts,
@@ -201,6 +198,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       preview,
       previewRows,
       statementCheckpoints,
+      mappedRows,
+      missingRequiredFieldsCount: missingRequiredFields.length,
+      duplicateMappingsCount: duplicateMappings.length,
       sourceLabel,
       csvText,
       importNote,
@@ -225,7 +225,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       sourceLabel,
       statementCheckpoints,
       statementImportMeta,
-      uploadStatus
+      uploadStatus,
+      mappedRows,
+      missingRequiredFields,
+      duplicateMappings
     ]
   );
   const importDraftExists = importWorkflowModel.hasDraft;
@@ -281,7 +284,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }, [recentImportAccountFilter]);
 
   useEffect(() => {
-    if (!readyForMapping) {
+    if (!importWorkflowModel.readyForMapping) {
       hasAutoScrolledMappingRef.current = false;
       return;
     }
@@ -290,7 +293,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
     hasAutoScrolledMappingRef.current = true;
     mappingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [readyForMapping]);
+  }, [importWorkflowModel.readyForMapping]);
 
   useEffect(() => {
     if (!preview) {
@@ -591,7 +594,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   ]);
 
   async function handlePreview() {
-    if (!readyForPreview) {
+    if (!importWorkflowModel.readyForPreview) {
       return;
     }
 
@@ -964,7 +967,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
         {/* Stage 1: get raw source rows into the draft. */}
         <ImportSelectFileStage
-          currentStage={currentStage}
+          currentStage={importWorkflowModel.currentStage}
           sourceLabel={sourceLabel}
           onSourceLabelChange={setSourceLabel}
           defaultAccountName={defaultAccountName}
@@ -993,10 +996,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         />
 
         {/* Stage 2: map source columns into the app's import schema. */}
-        {readyForMapping ? (
+        {importWorkflowModel.readyForMapping ? (
           <ImportMappingStage
             mappingSectionRef={mappingSectionRef}
-            currentStage={currentStage}
+            currentStage={importWorkflowModel.currentStage}
             csvInspection={csvInspection}
             unknownCategoryMode={unknownCategoryMode}
             onUnknownCategoryModeChange={setUnknownCategoryMode}
@@ -1008,14 +1011,14 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             }}
             isSubmitting={isSubmitting}
             isParsingStatement={isParsingStatement}
-            readyForPreview={readyForPreview}
+            readyForPreview={importWorkflowModel.readyForPreview}
             onPreview={handlePreview}
             previewError={previewError}
           />
         ) : null}
 
         {/* Stage 3: review the normalized preview and commit only safe rows. */}
-        <div ref={previewSectionRef} className={`import-stage-card ${currentStage === 3 ? "is-current" : ""}`}>
+        <div ref={previewSectionRef} className={`import-stage-card ${importWorkflowModel.currentStage === 3 ? "is-current" : ""}`}>
           <div className="import-stage-head">
             <div className="section-head">
               <h3>{messages.imports.previewRows}</h3>
@@ -1024,7 +1027,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               </span>
             </div>
             <div className="import-stage-head-actions">
-              <span className={`import-stage-label ${currentStage === 3 ? "is-current" : ""}`}>
+              <span className={`import-stage-label ${importWorkflowModel.currentStage === 3 ? "is-current" : ""}`}>
                 {messages.imports.steps[2]}
               </span>
               {preview ? (
