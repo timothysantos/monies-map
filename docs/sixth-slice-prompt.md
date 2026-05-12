@@ -74,7 +74,9 @@ Target coupling rows:
 
 Target query contract:
 - splitsPage
-- splitArchiveBatch only if archive payload cost justifies splitting it out
+- splitArchiveBatch only if archive payload size, fetch frequency, or
+  stale-refresh behavior proves it is materially different from the main
+  splitsPage query
 - invalidate only the exact slice keys named in docs/query-map.md
 - invalidate splits queries after split expense create/edit/delete
 - invalidate splits queries after settlement create/delete
@@ -99,8 +101,14 @@ Constraints:
 - do not let split workflow state leak into app-shell ownership
 - do not let broad shell refresh become the default answer for split CRUD
 - do not redesign accounting semantics, transfer semantics, or budgeting rules
+- do not reinterpret settlements as expenses or income during this slice
+- preserve current settlement and transfer semantics unless an existing
+  regression test proves the current behavior is broken
 - do not move entries or month logic into split helpers just because splits
   consume linked ledger state
+- do not broaden app-sync ownership during this slice
+- only adjust split-related sync events, payloads, and freshness guards needed
+  for the target splits scenarios
 - keep the workflow narrow and shared-expense driven
 - remove the old split mutation/query path in the same slice once the new path
   is verified and covered by tests; do not leave compatibility fallbacks behind
@@ -135,6 +143,9 @@ Implementation rules:
   - explicit split expense, settlement, and match mutations
 - preserve active draft, match, archive, and link-entry state while invalidation
   decides whether a rerender or refetch is safe
+- preserve optimistic split state against older refresh replacements
+- do not let stale background or cross-tab refreshes overwrite newer local
+  split draft or optimistic state
 - keep shell refresh as a narrow exception only where shared metadata changes
   truly require it
 - invalidate exact downstream queries for the specific split change instead of
@@ -145,6 +156,13 @@ Implementation rules:
 
 Deliverables:
 - tests for the target scenarios and coupling rows
+- tests for:
+  - split mutation that should refresh only splits
+  - split link or unlink that should refresh splits plus entries, month, and
+    summary
+  - settlement link that refreshes visible transfer evidence
+  - split edit that does not affect linked ledger totals and does not burst
+    downstream queries
 - splits page and splits workflow code changes only for this slice
 - exact invalidation updates for split expense, settlement, match, and linked-entry
   freshness
