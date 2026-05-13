@@ -7,6 +7,7 @@ import {
   APP_SYNC_STORAGE_KEY,
   broadcastAppShellRefresh,
   buildEntryMutationSyncEvent,
+  buildMonthMutationSyncEvent,
   buildSplitMutationSyncEvent,
   isMonthWithinRange,
   publishAppSyncEvent
@@ -62,6 +63,24 @@ test("buildEntryMutationSyncEvent keeps the entry payload scoped to the affected
     "ts",
     "type"
   ]);
+});
+
+test("buildMonthMutationSyncEvent keeps the month payload scoped to the affected month and refresh flags", () => {
+  const event = buildMonthMutationSyncEvent({
+    month: "2026-04",
+    invalidateEntries: false,
+    invalidateMonth: true,
+    invalidateSummary: true,
+    refreshShell: false
+  });
+
+  assert.equal(event.type, "month-mutation");
+  assert.equal(event.month, "2026-04");
+  assert.equal(event.invalidateEntries, false);
+  assert.equal(event.invalidateMonth, true);
+  assert.equal(event.invalidateSummary, true);
+  assert.equal(event.refreshShell, false);
+  assert.equal(typeof event.ts, "number");
 });
 
 test("isMonthWithinRange keeps range checks inclusive and bounded", () => {

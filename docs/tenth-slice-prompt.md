@@ -84,6 +84,19 @@ Target query contract:
 - do not use generic route fallback behavior for month once the dedicated
   month key exists
 
+Legacy month paths inventory:
+- file
+- current caller
+- replacement path
+- test proving replacement
+- safe to remove now? yes/no
+
+Current retained exceptions:
+- `routePage` fallback remains only for unsupported surfaces without a
+  dedicated month query key
+- named `refreshShell: true` exceptions remain only where a current workflow
+  still requires shell-level metadata refresh
+
 ## Month State / Semantics Guardrail
 
 Do not reinterpret month metrics, plan row meaning, note semantics, or

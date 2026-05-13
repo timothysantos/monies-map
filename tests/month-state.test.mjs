@@ -6,6 +6,7 @@ import {
   mergeMonthPlanSections,
   mergeMonthRowsById
 } from "../src/client/month-state.js";
+import { buildMonthMutationRefreshPlan } from "../src/client/month-workflow.js";
 
 test("M4 month workflow keeps pending draft rows alive across stale refreshes", () => {
   const currentRows = [
@@ -65,4 +66,99 @@ test("X4a month workflow opens the plan editor against the source row values", (
 
   assert.equal(editSource.plannedMinor, 4200);
   assert.equal(editSource.note, "Source note");
+});
+
+test("month invalidation matrix keeps note-save scoped to the month unless summary visibly depends on it", () => {
+  assert.deepEqual(buildMonthMutationRefreshPlan({
+    kind: "note-save"
+  }), {
+    invalidateEntries: false,
+    invalidateMonth: true,
+    invalidateSplits: false,
+    invalidateSummary: false,
+    refreshShell: false
+  });
+
+  assert.deepEqual(buildMonthMutationRefreshPlan({
+    kind: "note-save",
+    affectsSummary: true
+  }), {
+    invalidateEntries: false,
+    invalidateMonth: true,
+    invalidateSplits: false,
+    invalidateSummary: true,
+    refreshShell: false
+  });
+});
+
+test("month invalidation matrix keeps plan-link, drilldown return, and cross-page freshness narrow", () => {
+  assert.deepEqual(buildMonthMutationRefreshPlan({
+    kind: "plan-link-save",
+    affectsEntries: true,
+    affectsSplits: true,
+    affectsSummary: true
+  }), {
+    invalidateEntries: true,
+    invalidateMonth: true,
+    invalidateSplits: true,
+    invalidateSummary: true,
+    refreshShell: false
+  });
+
+  assert.deepEqual(buildMonthMutationRefreshPlan({
+    kind: "drilldown-return-entries"
+  }), {
+    invalidateEntries: true,
+    invalidateMonth: true,
+    invalidateSplits: false,
+    invalidateSummary: false,
+    refreshShell: false
+  });
+
+  assert.deepEqual(buildMonthMutationRefreshPlan({
+    kind: "drilldown-return-splits"
+  }), {
+    invalidateEntries: false,
+    invalidateMonth: true,
+    invalidateSplits: true,
+    invalidateSummary: false,
+    refreshShell: false
+  });
+});
+
+test("month invalidation matrix leaves filter-only and mobile-sheet changes server-local", () => {
+  assert.deepEqual(buildMonthMutationRefreshPlan({
+    kind: "filter-only"
+  }), {
+    invalidateEntries: false,
+    invalidateMonth: false,
+    invalidateSplits: false,
+    invalidateSummary: false,
+    refreshShell: false
+  });
+
+  assert.deepEqual(buildMonthMutationRefreshPlan({
+    kind: "mobile-sheet"
+  }), {
+    invalidateEntries: false,
+    invalidateMonth: false,
+    invalidateSplits: false,
+    invalidateSummary: false,
+    refreshShell: false
+  });
+});
+
+test("month must not become a cross-page coordinator when the workflow plan is built", () => {
+  const plan = buildMonthMutationRefreshPlan({
+    kind: "plan-link-save",
+    affectsEntries: true,
+    affectsSplits: true,
+    affectsSummary: true
+  });
+
+  assert.equal(plan.invalidateEntries, true);
+  assert.equal(plan.invalidateMonth, true);
+  assert.equal(plan.invalidateSplits, true);
+  assert.equal(plan.invalidateSummary, true);
+  assert.equal(plan.refreshShell, false);
 });

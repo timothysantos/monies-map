@@ -40,6 +40,24 @@ export function buildEntryMutationSyncEvent({
   };
 }
 
+export function buildMonthMutationSyncEvent({
+  month,
+  invalidateEntries = false,
+  invalidateMonth = false,
+  invalidateSummary = false,
+  refreshShell = false
+}) {
+  return {
+    type: "month-mutation",
+    ts: Date.now(),
+    month,
+    invalidateEntries,
+    invalidateMonth,
+    invalidateSummary,
+    refreshShell
+  };
+}
+
 export function buildSplitMutationSyncEvent({
   month,
   invalidateEntries = false,
