@@ -66,6 +66,9 @@ team conventions evolve.
 - Keep [`docs/tenth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/tenth-slice-prompt.md)
   updated alongside the actual tenth implementation prompt for the month
   workspace boundary slice.
+- Keep [`docs/eleventh-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/eleventh-slice-prompt.md)
+  updated alongside the actual eleventh implementation prompt for the summary
+  slice.
 - Refactor work should be committed in small readable batches as it proceeds.
   Use that practice for the first slice and keep it for later slices unless a
   slice is explicitly being held back for one atomic change.

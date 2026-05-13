@@ -47,6 +47,8 @@ system.
   prompt for the entries workflow boundary and remaining month handoff slice
 - [`docs/tenth-slice-prompt.md`](./tenth-slice-prompt.md): ready-to-run
   prompt for the month workspace boundary slice
+- [`docs/eleventh-slice-prompt.md`](./eleventh-slice-prompt.md): ready-to-run
+  prompt for the summary slice
 - [`docs/existing-behavior-guardrails.md`](./existing-behavior-guardrails.md): current-app behaviors that must survive refactors
 - [`docs/responsive-behavior.md`](./responsive-behavior.md): responsive UX and form-factor contract
 - [`docs/interaction-guidelines.md`](./interaction-guidelines.md): button, CTA, and dismissal semantics
