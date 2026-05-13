@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { moniesClient } from "./monies-client-service";
 import { buildEntryMutationRefreshPlan, hasLedgerAffectingEntryChange } from "./entry-refresh-plan";
+import { buildComparableEntryState, mergeEntriesById } from "./entry-state";
 import { buildRequestErrorMessage } from "./request-errors";
 
 const { entries: entryService } = moniesClient;
@@ -9,39 +10,6 @@ const { entries: entryService } = moniesClient;
 // This hook is the Entries page "write side".
 // It owns draft/edit state, optimistic updates, and the mutation calls that
 // eventually rehydrate from the canonical server payload.
-
-// Merge the latest server snapshot into the locally edited list without
-// clobbering the row the user is actively changing in the editor.
-function mergeEntriesById(currentEntries, serverEntries, editingEntryId) {
-  const currentById = new Map(currentEntries.map((entry) => [entry.id, entry]));
-  const serverIds = new Set(serverEntries.map((entry) => entry.id));
-  const localTransientEntries = currentEntries.filter((entry) => entry.isPendingDerived && !serverIds.has(entry.id));
-
-  return [
-    ...localTransientEntries,
-    ...serverEntries.map((serverEntry) => {
-      const currentEntry = currentById.get(serverEntry.id);
-      if (!currentEntry) {
-        return serverEntry;
-      }
-
-      if (serverEntry.id === editingEntryId) {
-        return {
-          ...currentEntry,
-          linkedTransfer: serverEntry.linkedTransfer,
-          linkedSplitExpenseId: serverEntry.linkedSplitExpenseId,
-          isPendingDerived: false
-        };
-      }
-
-      return {
-        ...currentEntry,
-        ...serverEntry,
-        isPendingDerived: false
-      };
-    })
-  ];
-}
 
 // Owns the local edit/draft state and server mutations for the entries page.
 // The panel still owns filters and derived lists so this hook stays about edits.
@@ -836,32 +804,6 @@ function buildPersistedEntryPayload(entry, primarySplit) {
     ownerName: entry.ownerName,
     note: entry.note ?? "",
     splitBasisPoints: primarySplit?.ratioBasisPoints
-  };
-}
-
-// Only compare fields the user can edit from the Entries UI. Server-derived
-// fields such as linked transfers or provisional flags should not make the row
-// look dirty.
-function buildComparableEntryState(entry) {
-  return {
-    date: entry.date,
-    description: entry.description,
-    accountId: entry.accountId ?? null,
-    accountName: entry.accountName ?? "",
-    categoryName: entry.categoryName,
-    amountMinor: Number(
-      entry.ownershipType === "shared"
-        ? entryService.getTotalAmountMinor(entry)
-        : (entry.amountMinor ?? 0)
-    ),
-    entryType: entry.entryType,
-    transferDirection: entry.transferDirection ?? null,
-    ownershipType: entry.ownershipType,
-    ownerName: entry.ownerName ?? null,
-    note: entry.note ?? "",
-    splitBasisPoints: entry.ownershipType === "shared"
-      ? Number(entry.splits?.[0]?.ratioBasisPoints ?? 5000)
-      : null
   };
 }
 
