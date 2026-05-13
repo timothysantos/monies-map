@@ -13,11 +13,14 @@ import {
   buildMobileMonthPlanDialog,
   canInlineEditMonthRow,
   canInlineEditMonthPlanRow,
-  canOpenMonthMobileSheet,
-  getMonthPlanEditSource
+  canOpenMonthMobileSheet
 } from "./month-row-editing";
 import { LastPeriodBudgetHint, MonthPlanStack } from "./month-plan-tables";
-import { mergeMonthPlanSections, mergeMonthRowsById } from "./month-state";
+import {
+  getMonthPlanEditSource,
+  mergeMonthPlanSections,
+  mergeMonthRowsById
+} from "./month-state";
 import { ResponsiveSelect } from "./responsive-select";
 import { getRowDateValue } from "./table-helpers";
 
