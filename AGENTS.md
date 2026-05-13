@@ -54,6 +54,9 @@ team conventions evolve.
 - Keep [`docs/sixth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/sixth-slice-prompt.md)
   updated alongside the actual sixth implementation prompt for the splits
   query and workflow slice.
+- Keep [`docs/seventh-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/seventh-slice-prompt.md)
+  updated alongside the actual seventh implementation prompt for the
+  cross-page freshness and workflow-lock coordination slice.
 - Refactor work should be committed in small readable batches as it proceeds.
   Use that practice for the first slice and keep it for later slices unless a
   slice is explicitly being held back for one atomic change.

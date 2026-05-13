@@ -89,6 +89,13 @@ Target query contract:
 - keep cross-page freshness exact for entries, month, and summary only when the
   split mutation actually changes their visible data
 
+Remaining intentional exception:
+
+- Archive refresh remains Option B: kept inside the main splits-page model for
+  now because no material payload/freshness difference justified
+  `splitArchiveBatch` yet. Revisit only if archive payload size, fetch
+  frequency, or stale-refresh behavior diverges.
+
 Constraints:
 - keep code within docs/code-spec.md limits
 - preserve docs/existing-behavior-guardrails.md
