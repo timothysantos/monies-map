@@ -52,6 +52,7 @@ import { installMobileFocusVisibility } from "./mobile-focus-visibility";
 import { queryKeys } from "./query-keys";
 import {
   invalidateImportMutationQueries,
+  invalidateEntriesMutationQueries,
   invalidateImportsPageQueries,
   invalidateMonthQueries,
   invalidateSummaryAccountPillQueries,
@@ -1202,6 +1203,43 @@ export function App() {
     }));
   }, [clearSplitMutationCaches]);
 
+  // Entries mutations keep their own narrow freshness policy so the shell
+  // does not absorb entries-specific invalidation branches.
+  const broadcastEntryMutation = useCallback(({
+    month,
+    invalidateEntries = false,
+    invalidateMonth = false,
+    invalidateSummary = false
+  }) => {
+    void invalidateEntriesMutationQueries(queryClient, {
+      entriesParams: routePageRequest?.path === "/api/entries-page" ? routePageRequest.params : null,
+      monthKey: month,
+      scope: selectedScope,
+      summaryRange: invalidateSummary ? {
+        startMonth: selectedSummaryStart ?? appShellSummaryStart,
+        endMonth: selectedSummaryEnd ?? appShellSummaryEnd
+      } : null,
+      viewId: selectedViewId
+    });
+    publishAppSyncEvent(syncChannelRef, {
+      type: APP_SYNC_EVENT_TYPES.entryMutation,
+      ts: Date.now(),
+      month,
+      invalidateEntries,
+      invalidateMonth,
+      invalidateSummary
+    });
+  }, [
+    appShellSummaryEnd,
+    appShellSummaryStart,
+    queryClient,
+    routePageRequest,
+    selectedScope,
+    selectedSummaryEnd,
+    selectedSummaryStart,
+    selectedViewId
+  ]);
+
   // Refresh the splits page and optionally refresh shell state when the split
   // mutation changed shared metadata.
   const refreshCurrentSplitsPage = useCallback(async ({
@@ -1315,6 +1353,68 @@ export function App() {
     selectedSummaryEnd,
     selectedSummaryStart,
     selectedTabId
+  ]);
+
+  // Apply a remote entries mutation to the current tab without widening the
+  // shell into entries-specific policy.
+  const handleRemoteEntryMutation = useCallback(async ({
+    month,
+    invalidateEntries = false,
+    invalidateMonth = false,
+    invalidateSummary = false
+  }) => {
+    if (invalidateEntries || invalidateMonth || invalidateSummary) {
+      void invalidateEntriesMutationQueries(queryClient, {
+        entriesParams: routePageRequest?.path === "/api/entries-page" ? routePageRequest.params : null,
+        monthKey: month,
+        scope: selectedScope,
+        summaryRange: invalidateSummary ? {
+          startMonth: selectedSummaryStart ?? appShellSummaryStart,
+          endMonth: selectedSummaryEnd ?? appShellSummaryEnd
+        } : null,
+        viewId: selectedViewId
+      });
+    }
+
+    const tasks = [];
+    if (selectedTabId === "entries" && invalidateEntries && selectedMonth === month) {
+      setEntriesExternalRefreshToken((current) => current + 1);
+    }
+
+    if (selectedTabId === "month" && invalidateMonth && selectedMonth === month) {
+      if (canUseAppShellRoutePage) {
+        tasks.push(refreshAppShellInBackground().catch(() => null));
+      } else {
+        tasks.push(refreshActiveRoutePageInBackground(routePageRequest).catch(() => null));
+      }
+    } else if (
+      selectedTabId === "summary"
+      && invalidateSummary
+      && isMonthWithinRange(
+        month,
+        selectedSummaryStart ?? appShellSummaryStart,
+        selectedSummaryEnd ?? appShellSummaryEnd
+      )
+    ) {
+      tasks.push(refreshCurrentSummaryPage({ bypassCache: true }).catch(() => null));
+    }
+
+    await Promise.all(tasks);
+  }, [
+    appShellSummaryEnd,
+    appShellSummaryStart,
+    canUseAppShellRoutePage,
+    queryClient,
+    refreshActiveRoutePageInBackground,
+    refreshAppShellInBackground,
+    refreshCurrentSummaryPage,
+    routePageRequest,
+    selectedMonth,
+    selectedScope,
+    selectedSummaryEnd,
+    selectedSummaryStart,
+    selectedTabId,
+    selectedViewId
   ]);
 
   // Refresh the shell after a mutation that needs global metadata to stay in
@@ -1530,6 +1630,11 @@ export function App() {
 
         if (event.data?.type === APP_SYNC_EVENT_TYPES.splitMutation) {
           void handleRemoteSplitMutation(event.data);
+          return;
+        }
+
+        if (event.data?.type === APP_SYNC_EVENT_TYPES.entryMutation) {
+          void handleRemoteEntryMutation(event.data);
         }
       };
     }
@@ -1560,6 +1665,11 @@ export function App() {
 
       if (payload?.type === APP_SYNC_EVENT_TYPES.splitMutation) {
         void handleRemoteSplitMutation(payload);
+        return;
+      }
+
+      if (payload?.type === APP_SYNC_EVENT_TYPES.entryMutation) {
+        void handleRemoteEntryMutation(payload);
       }
     };
 
@@ -1579,6 +1689,7 @@ export function App() {
     clearSummaryAccountPillsCache,
     clearSummaryPageCache,
     handleAppShellFailure,
+    handleRemoteEntryMutation,
     handleRemoteSplitMutation,
     loadAppShell
   ]);
@@ -1877,6 +1988,7 @@ export function App() {
           people={appShell.household.people}
           onCategoryAppearanceChange={handleCategoryAppearanceChange}
           onInvalidateAppShellCache={syncAppShellAfterMutation}
+          onInvalidateEntryMutation={broadcastEntryMutation}
           onBroadcastSplitMutation={broadcastSplitMutation}
         />
       );

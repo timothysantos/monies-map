@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { moniesClient } from "./monies-client-service";
+import { buildEntryMutationRefreshPlan, hasLedgerAffectingEntryChange } from "./entry-refresh-plan";
 import { buildRequestErrorMessage } from "./request-errors";
 
 const { entries: entryService } = moniesClient;
@@ -44,7 +45,7 @@ function mergeEntriesById(currentEntries, serverEntries, editingEntryId) {
 
 // Owns the local edit/draft state and server mutations for the entries page.
 // The panel still owns filters and derived lists so this hook stays about edits.
-export function useEntryActions({ view, accounts, categories, people, onRefresh, onSplitMutation }) {
+export function useEntryActions({ view, accounts, categories, people, onRefresh, onSplitMutation, onEntryMutation }) {
   const [entries, setEntries] = useState(view.monthPage.entries);
   const [editingEntryId, setEditingEntryId] = useState(null);
   const [entrySnapshot, setEntrySnapshot] = useState(null);
@@ -237,6 +238,21 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       } else {
         setEntrySnapshot(savedEntrySnapshot);
       }
+      const refreshPlan = buildEntryMutationRefreshPlan({
+        kind: hasLedgerAffectingEntryChange(currentEntry, entrySnapshot ?? currentEntry)
+          ? "entry-edit"
+          : "note-only-edit",
+        nextEntry: currentEntry,
+        previousEntry: entrySnapshot ?? currentEntry
+      });
+      if (refreshPlan.invalidateEntries || refreshPlan.invalidateMonth || refreshPlan.invalidateSummary) {
+        onEntryMutation?.({
+          month: view.monthPage.month,
+          invalidateEntries: refreshPlan.invalidateEntries,
+          invalidateMonth: refreshPlan.invalidateMonth,
+          invalidateSummary: refreshPlan.invalidateSummary
+        });
+      }
       refreshEntriesInBackground();
       return {
         ok: true,
@@ -305,6 +321,12 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
         isPendingDerived: true
       }, people, entryDraft);
       setEntries((current) => [optimisticEntry, ...current]);
+      onEntryMutation?.({
+        month: view.monthPage.month,
+        invalidateEntries: true,
+        invalidateMonth: true,
+        invalidateSummary: true
+      });
       queuedComposerDraftRef.current = null;
       closeEntryComposer();
       if (createdSplitExpenseId) {
@@ -375,9 +397,15 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
             ...entry,
             categoryName,
             isPendingDerived: true
-          }
+        }
         : entry
     )));
+    onEntryMutation?.({
+      month: view.monthPage.month,
+      invalidateEntries: true,
+      invalidateMonth: true,
+      invalidateSummary: true
+    });
     refreshEntriesInBackground();
   }
 
@@ -425,6 +453,12 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       )));
       setEditingEntryId(null);
       setEntrySnapshot(null);
+      onEntryMutation?.({
+        month: view.monthPage.month,
+        invalidateEntries: true,
+        invalidateMonth: true,
+        invalidateSummary: true
+      });
       refreshEntriesInBackground();
       setTransferCandidateOverrides((current) => {
         if (!current[entry.id]) {
@@ -540,6 +574,12 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       )));
       setEditingEntryId(null);
       setEntrySnapshot(null);
+      onEntryMutation?.({
+        month: view.monthPage.month,
+        invalidateEntries: true,
+        invalidateMonth: true,
+        invalidateSummary: true
+      });
       refreshEntriesInBackground();
     } finally {
       setSettlingTransferEntryId(null);
@@ -604,6 +644,12 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       if (nextLinkedEntry) {
         setEntrySnapshot(nextLinkedEntry);
       }
+      onEntryMutation?.({
+        month: view.monthPage.month,
+        invalidateEntries: true,
+        invalidateMonth: true,
+        invalidateSummary: true
+      });
       onSplitMutation?.({
         month: view.monthPage.month,
         invalidateEntries: true,
@@ -710,6 +756,12 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
         setEditingEntryId(null);
         setEntrySnapshot(null);
       }
+      onEntryMutation?.({
+        month: view.monthPage.month,
+        invalidateEntries: true,
+        invalidateMonth: true,
+        invalidateSummary: true
+      });
       onSplitMutation?.({
         month: view.monthPage.month,
         invalidateEntries: true,
