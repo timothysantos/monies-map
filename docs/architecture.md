@@ -43,6 +43,8 @@ system.
   prompt for the settings query and workflow slice
 - [`docs/eighth-slice-prompt.md`](./eighth-slice-prompt.md): ready-to-run
   prompt for the app-shell retirement and legacy-bridge cleanup slice
+- [`docs/ninth-slice-prompt.md`](./ninth-slice-prompt.md): ready-to-run
+  prompt for the entries workflow boundary and remaining month handoff slice
 - [`docs/existing-behavior-guardrails.md`](./existing-behavior-guardrails.md): current-app behaviors that must survive refactors
 - [`docs/responsive-behavior.md`](./responsive-behavior.md): responsive UX and form-factor contract
 - [`docs/interaction-guidelines.md`](./interaction-guidelines.md): button, CTA, and dismissal semantics
