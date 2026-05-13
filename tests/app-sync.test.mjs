@@ -8,6 +8,7 @@ import {
   broadcastAppShellRefresh,
   buildEntryMutationSyncEvent,
   buildMonthMutationSyncEvent,
+  buildSummaryMutationSyncEvent,
   buildSplitMutationSyncEvent,
   isMonthWithinRange,
   publishAppSyncEvent
@@ -19,6 +20,7 @@ test("app sync constants stay explicit and stable", () => {
   assert.deepEqual(APP_SYNC_EVENT_TYPES, {
     appShellRefresh: "app-shell-refresh",
     entryMutation: "entry-mutation",
+    summaryMutation: "summary-mutation",
     splitMutation: "split-mutation"
   });
 });
@@ -81,6 +83,30 @@ test("buildMonthMutationSyncEvent keeps the month payload scoped to the affected
   assert.equal(event.invalidateSummary, true);
   assert.equal(event.refreshShell, false);
   assert.equal(typeof event.ts, "number");
+});
+
+test("buildSummaryMutationSyncEvent keeps summary payloads scoped to the affected month and freshness flags", () => {
+  const event = buildSummaryMutationSyncEvent({
+    month: "2026-04",
+    invalidateMonth: true,
+    invalidateSummary: true,
+    refreshShell: false
+  });
+
+  assert.equal(event.type, "summary-mutation");
+  assert.equal(event.month, "2026-04");
+  assert.equal(event.invalidateMonth, true);
+  assert.equal(event.invalidateSummary, true);
+  assert.equal(event.refreshShell, false);
+  assert.equal(typeof event.ts, "number");
+  assert.deepEqual(Object.keys(event).sort(), [
+    "invalidateMonth",
+    "invalidateSummary",
+    "month",
+    "refreshShell",
+    "ts",
+    "type"
+  ]);
 });
 
 test("isMonthWithinRange keeps range checks inclusive and bounded", () => {

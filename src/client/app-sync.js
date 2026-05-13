@@ -4,6 +4,7 @@ export const APP_SYNC_STORAGE_KEY = "monies-map-app-sync";
 export const APP_SYNC_EVENT_TYPES = {
   appShellRefresh: "app-shell-refresh",
   entryMutation: "entry-mutation",
+  summaryMutation: "summary-mutation",
   splitMutation: "split-mutation"
 };
 
@@ -37,6 +38,22 @@ export function buildEntryMutationSyncEvent({
     invalidateEntries,
     invalidateMonth,
     invalidateSummary
+  };
+}
+
+export function buildSummaryMutationSyncEvent({
+  month,
+  invalidateMonth = false,
+  invalidateSummary = false,
+  refreshShell = false
+}) {
+  return {
+    type: APP_SYNC_EVENT_TYPES.summaryMutation,
+    ts: Date.now(),
+    month,
+    invalidateMonth,
+    invalidateSummary,
+    refreshShell
   };
 }
 

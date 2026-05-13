@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildSummaryEntriesLocation,
   buildSummaryMonthLocation,
+  buildSummaryMutationRefreshPlan,
   SUMMARY_FOCUS_OVERALL
 } from "../src/client/summary-workflow.js";
 
@@ -36,4 +37,22 @@ test("summary drilldown to month keeps the surrounding summary route context", (
 
 test("summary overall focus token stays explicit and shared", () => {
   assert.equal(SUMMARY_FOCUS_OVERALL, "overall");
+});
+
+test("summary mutation refresh plans keep note saves and drilldown returns narrow", () => {
+  assert.deepEqual(buildSummaryMutationRefreshPlan({ kind: "note-save" }), {
+    invalidateMonth: true,
+    invalidateSummary: true,
+    refreshShell: false
+  });
+  assert.deepEqual(buildSummaryMutationRefreshPlan({ kind: "drilldown-return" }), {
+    invalidateMonth: false,
+    invalidateSummary: true,
+    refreshShell: false
+  });
+  assert.deepEqual(buildSummaryMutationRefreshPlan({ kind: "filter-only" }), {
+    invalidateMonth: false,
+    invalidateSummary: false,
+    refreshShell: false
+  });
 });

@@ -119,6 +119,18 @@ works.
 If a summary metric or drilldown behavior appears wrong, first add a regression
 test proving the current behavior is broken before changing semantics.
 
+## Summary Legacy Path Inventory
+
+Before closing this slice, confirm there are no remaining competing summary
+save/refresh paths beyond the intentionally retained summary refresh behavior
+required by the slice:
+
+- old note-save refresh calls
+- old drilldown-return refresh calls
+- duplicate summary refresh-plan helpers
+- direct shell refresh from summary code
+- summary-specific invalidation decisions inside `App.jsx`
+
 ## Summary Freshness Matrix
 
 Add tests for:

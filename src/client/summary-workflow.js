@@ -1,5 +1,40 @@
 export const SUMMARY_FOCUS_OVERALL = "overall";
 
+export function buildSummaryMutationRefreshPlan({
+  kind,
+  refreshShell = false
+}) {
+  if (kind === "filter-only" || kind === "mobile-sheet") {
+    return {
+      invalidateMonth: false,
+      invalidateSummary: false,
+      refreshShell: false
+    };
+  }
+
+  if (kind === "note-save") {
+    return {
+      invalidateMonth: true,
+      invalidateSummary: true,
+      refreshShell: false
+    };
+  }
+
+  if (kind === "drilldown-return") {
+    return {
+      invalidateMonth: false,
+      invalidateSummary: true,
+      refreshShell: false
+    };
+  }
+
+  return {
+    invalidateMonth: true,
+    invalidateSummary: true,
+    refreshShell: Boolean(refreshShell)
+  };
+}
+
 // Summary drilldowns preserve the current summary route context while only
 // swapping the downstream entry filters that the target screen actually owns.
 export function buildSummaryEntriesLocation(search, nextFilters) {
