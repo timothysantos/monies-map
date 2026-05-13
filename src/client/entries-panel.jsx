@@ -60,6 +60,7 @@ export function EntriesPanel({
   people,
   onCategoryAppearanceChange,
   onInvalidateAppShellCache,
+  onInvalidateEntryMutation,
   onBroadcastSplitMutation
 }) {
   const queryClient = useQueryClient();
@@ -150,6 +151,7 @@ export function EntriesPanel({
     categories,
     people,
     onRefresh: () => refreshEntriesPage({ bypassCache: true, invalidateAppShell: true }),
+    onEntryMutation: onInvalidateEntryMutation,
     onSplitMutation: onBroadcastSplitMutation
   });
   const openEntryComposerRef = useRef(openEntryComposer);

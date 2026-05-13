@@ -16,6 +16,7 @@ test("app sync constants stay explicit and stable", () => {
   assert.equal(APP_SYNC_STORAGE_KEY, "monies-map-app-sync");
   assert.deepEqual(APP_SYNC_EVENT_TYPES, {
     appShellRefresh: "app-shell-refresh",
+    entryMutation: "entry-mutation",
     splitMutation: "split-mutation"
   });
 });
