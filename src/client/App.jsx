@@ -934,7 +934,9 @@ export function App() {
 
   // Refresh the month page that shares the current route state, then refresh
   // the shell in the background so summary and month stay aligned.
-  const refreshCurrentMonthPage = useCallback(async () => {
+  const refreshCurrentMonthPage = useCallback(async ({
+    refreshShell = true
+  } = {}) => {
     const request = buildRoutePageRequest({
       tabId: "month",
       viewId: selectedViewId,
@@ -952,7 +954,7 @@ export function App() {
     ));
     const [data] = await Promise.all([
       fetchRoutePageData(request, { bypassCache: true }),
-      refreshAppShellInBackground().catch(() => null)
+      refreshShell ? refreshAppShellInBackground().catch(() => null) : Promise.resolve(null)
     ]);
     setRoutePageData(data);
     return data;

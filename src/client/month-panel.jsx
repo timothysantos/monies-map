@@ -21,6 +21,7 @@ import {
   mergeMonthPlanSections,
   mergeMonthRowsById
 } from "./month-state";
+import { buildMonthMutationRefreshPlan } from "./month-workflow";
 import { ResponsiveSelect } from "./responsive-select";
 import { getRowDateValue } from "./table-helpers";
 
@@ -207,9 +208,9 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     [safeIncomeRows, safePlanSections]
   );
 
-  function refreshMonthDataInBackground() {
+  function refreshMonthDataInBackground(options) {
     setIsMonthDataRefreshing(true);
-    void onRefresh().catch(() => {}).finally(() => {
+    void onRefresh(options).catch(() => {}).finally(() => {
       setIsMonthDataRefreshing(false);
     });
   }
@@ -456,7 +457,10 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     setEditingRowId(null);
     setEditingSnapshot(null);
     setEditingDrafts({});
-    refreshMonthDataInBackground();
+    refreshMonthDataInBackground(buildMonthMutationRefreshPlan({
+      kind: "note-save",
+      affectsSummary: false
+    }));
   }
 
   function cancelEdit() {
@@ -756,7 +760,12 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         : item
     )));
     setEditingRowId((current) => (current === rowId ? null : current));
-    refreshMonthDataInBackground();
+    refreshMonthDataInBackground(buildMonthMutationRefreshPlan({
+      kind: "plan-link-save",
+      affectsEntries: true,
+      affectsSplits: true,
+      affectsSummary: true
+    }));
   }
 
   function handleIncomeRowChange(rowId, patch) {
