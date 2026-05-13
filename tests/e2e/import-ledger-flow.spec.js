@@ -305,6 +305,53 @@ test.describe("import flow", () => {
     await expect(page.locator("strong").filter({ hasText: formatMoney(afterMonth.realExpensesMinor) }).first()).toBeVisible();
   });
 
+  test("committed import can be rolled back and disappears from entries and import history", async ({ page }) => {
+    const description = `Playwright rollback import ${Date.now()}`;
+    const month = "2025-10";
+    const appShell = await loadAppShell(page, { month });
+    const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    expect(account).toBeTruthy();
+
+    const beforeEntries = await loadEntriesPage(page, { view: "person-tim", month });
+    const beforeSummary = await loadSummaryPage(page, { view: "person-tim", month });
+    const beforeMonth = findSummaryMonth(beforeSummary, month);
+    const beforeImportsPageResponse = await page.request.get("/api/imports-page");
+    const beforeImportsPage = await beforeImportsPageResponse.json();
+
+    const previewPayload = await postJson(page, "/api/imports/preview", {
+      sourceLabel: "Playwright rollback import",
+      sourceType: "csv",
+      csv: [
+        "date,description,amount,account,category,note",
+        `${month}-19,${description},-12.34,UOB One,Groceries,rollback coverage`
+      ].join("\n"),
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    const commitPayload = await postJson(page, "/api/imports/commit", {
+      sourceLabel: "Playwright rollback import",
+      sourceType: "csv",
+      parserKey: "generic_csv",
+      rows: previewPayload.preview.previewRows
+    });
+    expect(commitPayload.importId).toBeTruthy();
+
+    const rollbackPayload = await postJson(page, "/api/imports/rollback", { importId: commitPayload.importId });
+    expect(rollbackPayload.importId).toBe(commitPayload.importId);
+    expect(rollbackPayload.rolledBack).toBe(true);
+
+    const afterEntries = await loadEntriesPage(page, { view: "person-tim", month });
+    const afterSummary = await loadSummaryPage(page, { view: "person-tim", month });
+    const afterMonth = findSummaryMonth(afterSummary, month);
+    const afterImportsPageResponse = await page.request.get("/api/imports-page");
+    const afterImportsPage = await afterImportsPageResponse.json();
+
+    expect(afterEntries.monthPage.entries.some((item) => item.description === description)).toBe(false);
+    expect(afterMonth.realExpensesMinor).toBe(beforeMonth.realExpensesMinor);
+    expect(afterImportsPage.importsPage.recentImports.some((item) => item.id === commitPayload.importId && item.status === "rolled_back")).toBe(true);
+    expect(beforeImportsPage.importsPage.recentImports.some((item) => item.status === "rolled_back")).toBe(false);
+  });
+
   test("summary and month stay aligned across tabs after persisted changes", async ({ browser, page }) => {
     const context = page.context();
     const summaryPage = page;
