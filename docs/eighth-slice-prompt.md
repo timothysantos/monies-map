@@ -144,3 +144,9 @@ Deliverables:
   service.
 - It gives the next implementer a narrow closure target instead of opening a
   new feature area.
+
+No additional legacy bridge/fallback paths were found beyond the intentionally
+retained routePage fallback for unsupported surfaces and the named
+refreshShell: true exceptions.
+
+The eighth slice is now closed.
