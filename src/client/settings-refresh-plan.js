@@ -77,6 +77,9 @@ export function buildSettingsRefreshPlan(kind) {
     || kind === "reconciliation_exception_resolved"
     || kind === "statement_compare_linked"
     || kind === "statement_compare_entry_added"
+    || kind === "settings_form_draft"
+    || kind === "filter-only"
+    || kind === "mobile-sheet"
   ) {
     return SETTINGS_ONLY_PLAN;
   }
