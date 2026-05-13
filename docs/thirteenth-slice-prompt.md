@@ -18,6 +18,19 @@ This slice is intentionally focused:
 It is not a rewrite of imports, entries, months, summary, or splits. It is
 also not an excuse to broaden App.jsx or app-sync again.
 
+## Settings Shell Refresh Exception Guardrail
+
+Settings is one of the few places where shell refresh may still be justified
+because account, category, and person metadata can be global.
+
+Before adding or keeping `refreshShell: true`, prove:
+
+- the setting change updates global metadata used outside the settings page
+- exact query invalidation is insufficient
+- the shell refresh path is named in `settings-refresh-plan`
+- the behavior is test-backed
+- the exception is documented with an exit condition if temporary
+
 ## Clarify This Is Settings Hardening
 
 This slice assumes the earlier settings query boundary already exists.
@@ -62,18 +75,25 @@ required by the slice:
 
 Add tests for:
 
+- reference-data changes:
+  - account create/edit/archive refreshes settings + downstream imports/entries
+    and only the affected query families
+  - category create/edit/archive refreshes settings + affected downstream
+    entries/imports/month/summary queries
+  - person create/edit/archive refreshes settings + affected downstream query
+    families
+  - category rules refreshes only the affected downstream query families
 - account create/edit/archive refreshes settings + downstream imports/entries
-  and only the affected query families
-- category create/edit/archive refreshes settings + affected downstream
-  entries/imports/month/summary queries
-- person create/edit/archive refreshes settings + affected downstream query
-  families
-- reconciliation and statement-review changes refresh only the visible ledger
-  evidence they actually affect
-- filter-only changes do not invalidate server data
-- mobile-sheet open/close changes do not invalidate server data
-- cross-tab settings mutation refreshes correct queries without broad app
-  refresh
+- workflow/reconciliation changes:
+  - reconciliation exception changes refresh only the visible ledger evidence
+    they actually affect
+  - statement-review changes refresh only the visible ledger evidence they
+    actually affect
+  - settings form draft changes do not invalidate server data
+  - filter-only changes do not invalidate server data
+  - mobile-sheet open/close changes do not invalidate server data
+  - cross-tab settings mutation refreshes correct queries without broad app
+    refresh
 
 Before closing, map each freshness-matrix case to a test or mark it not
 applicable with a reason.
