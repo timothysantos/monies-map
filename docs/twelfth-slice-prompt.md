@@ -12,6 +12,11 @@ This slice is intentionally focused:
 - split review-matches freshness
 - exact downstream freshness when split changes affect entries, month, or
   summary views
+- continuity
+- exact freshness
+- stale-refresh protection
+- review-match hardening
+- remaining legacy cleanup
 
 It is not a rewrite of imports, settings, entries, months, or summary. It is
 also not an excuse to broaden App.jsx or app-sync again.
@@ -22,6 +27,9 @@ This slice assumes the earlier splits query split already exists.
 
 Do not rebuild `splitsPage` or `splitsBreakdown` from scratch unless the
 existing implementation fails a regression test.
+
+When hardening or refactoring this slice, ensure existing regression tests are
+present first so behavior can be checked continuously.
 
 Focus on:
 - workflow continuity
@@ -68,6 +76,9 @@ Add tests for:
   changes
 - filter-only changes do not invalidate server data
 - mobile-sheet open/close changes do not invalidate server data
+
+Before closing, map each freshness-matrix case to a test or mark it not
+applicable with a reason.
 
 Constraints:
 - keep code within docs/code-spec.md limits
