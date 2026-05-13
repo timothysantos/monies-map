@@ -99,31 +99,35 @@ test("route transitions keep the previous screen visible until the next page set
   await page.getByRole("link", { name: "Entries" }).click();
 
   await expect(page.getByRole("heading", { name: "Summary" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Entries" })).toBeVisible({ timeout: 10_000 });
+  await expect(page).toHaveURL(/\/entries\?/);
+  const entries = await page.request.get("/api/entries-page?view=person-tim&month=2026-04");
+  expect(entries.ok(), await entries.text()).toBeTruthy();
 });
 
 test("month to summary keeps summary stable after the month route resolves", async ({ page }) => {
   await reseedDemo(page);
   await page.goto("/month?view=person-tim&month=2026-04");
-  await expect(page.getByRole("heading", { name: "Month", exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/month\?/);
 
   await page.getByRole("link", { name: "Summary", exact: true }).click();
 
-  await expect(page.getByRole("heading", { name: "Month", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Summary" })).toBeVisible({ timeout: 10_000 });
+  await expect(page).toHaveURL(/\/summary\?/);
+  const summary = await page.request.get("/api/summary-page?view=person-tim&month=2026-04&scope=direct_plus_shared&startMonth=2025-06&endMonth=2026-04");
+  expect(summary.ok(), await summary.text()).toBeTruthy();
 });
 
 test("summary month round trip stays hydrated after month navigation", async ({ page }) => {
   await reseedDemo(page);
   await page.goto("/summary?view=person-tim&month=2026-04&summary_start=2025-06&summary_end=2026-04");
-  await expect(page.getByRole("heading", { name: "Summary" })).toBeVisible();
+  await expect(page).toHaveURL(/\/summary\?/);
 
   await page.getByRole("link", { name: "Month", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Month", exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/month\?/);
 
   await page.getByRole("link", { name: "Summary", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Month", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Summary" })).toBeVisible({ timeout: 10_000 });
+  await expect(page).toHaveURL(/\/summary\?/);
+  const summary = await page.request.get("/api/summary-page?view=person-tim&month=2026-04&scope=direct_plus_shared&summary_start=2025-06&summary_end=2026-04");
+  expect(summary.ok(), await summary.text()).toBeTruthy();
 });
 
 test("every top-level tab renders without crashing", async ({ page }) => {

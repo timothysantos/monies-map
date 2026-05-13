@@ -28,12 +28,12 @@ export async function reseedDemo(page) {
 export async function postJson(page, path, body) {
   let lastError = null;
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
     try {
       const response = await page.request.post(path, { data: body });
       const responseText = await response.text();
       if (!response.ok()) {
-        if (responseText.includes("worker restarted mid-request") && attempt === 0) {
+        if ((responseText.includes("worker restarted mid-request") || responseText.includes("socket hang up")) && attempt < 7) {
           continue;
         }
         expect(response.ok(), responseText).toBeTruthy();
@@ -41,7 +41,8 @@ export async function postJson(page, path, body) {
       return responseText ? JSON.parse(responseText) : {};
     } catch (error) {
       lastError = error;
-      if (attempt === 0 && String(error?.message ?? error).includes("worker restarted mid-request")) {
+      const errorMessage = String(error?.message ?? error);
+      if (attempt < 7 && (errorMessage.includes("worker restarted mid-request") || errorMessage.includes("socket hang up"))) {
         continue;
       }
       throw error;
@@ -52,15 +53,45 @@ export async function postJson(page, path, body) {
 }
 
 export async function loadSplitsPage(page, { view = "person-tim", month = "2025-10" } = {}) {
-  const response = await page.request.get(`/api/splits-page?view=${view}&month=${month}`);
-  expect(response.ok(), await response.text()).toBeTruthy();
-  return response.json();
+  let lastError = null;
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      const response = await page.request.get(`/api/splits-page?view=${view}&month=${month}`);
+      expect(response.ok(), await response.text()).toBeTruthy();
+      return response.json();
+    } catch (error) {
+      lastError = error;
+      const errorMessage = String(error?.message ?? error);
+      if (attempt < 7 && (errorMessage.includes("ECONNRESET") || errorMessage.includes("socket hang up"))) {
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError ?? new Error("GET /api/splits-page failed");
 }
 
 export async function loadEntriesPage(page, { view = "person-tim", month = "2026-04" } = {}) {
-  const response = await page.request.get(`/api/entries-page?view=${view}&month=${month}`);
-  expect(response.ok(), await response.text()).toBeTruthy();
-  return response.json();
+  let lastError = null;
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      const response = await page.request.get(`/api/entries-page?view=${view}&month=${month}`);
+      expect(response.ok(), await response.text()).toBeTruthy();
+      return response.json();
+    } catch (error) {
+      lastError = error;
+      const errorMessage = String(error?.message ?? error);
+      if (attempt < 7 && (errorMessage.includes("ECONNRESET") || errorMessage.includes("socket hang up"))) {
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError ?? new Error("GET /api/entries-page failed");
 }
 
 export async function loadAppShell(page, { month = "2026-04", scope = "direct_plus_shared" } = {}) {

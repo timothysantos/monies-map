@@ -26,6 +26,10 @@ import { SplitArchiveDialog } from "./splits-archive-dialog";
 import { SplitDeleteDialog, SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./splits-dialogs";
 import { SplitsMainSection } from "./splits-main-section";
 import { buildSplitsPanelModel } from "./splits-selectors";
+import {
+  buildLinkedSplitRefreshOptions,
+  createSplitRefreshGuard
+} from "./splits-workflow";
 
 export function SplitsPanel({ view, categories, people, onRefresh }) {
   const splitsPage = view.splitsPage ?? {
@@ -45,7 +49,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [isRefreshingDerived, setIsRefreshingDerived] = useState(false);
   const [optimisticSplitsPage, setOptimisticSplitsPage] = useState(null);
   const [dismissedMatchIds, setDismissedMatchIds] = useState([]);
-  const refreshGenerationRef = useRef(0);
+  const refreshGuardRef = useRef(null);
   const latestSplitsPageRef = useRef(splitsPage);
   const defaultGroupId = splitsPage.groups.find((group) => group.isDefault)?.id ?? "split-group-none";
   const selectedGroupParam = searchParams.get("split_group");
@@ -114,6 +118,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   } = useSplitEditState({ categoryOptions, people });
 
   useEffect(() => {
+    refreshGuardRef.current = refreshGuardRef.current ?? createSplitRefreshGuard();
     latestSplitsPageRef.current = splitsPage;
   }, [splitsPage]);
 
@@ -144,7 +149,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setShowBreakdown(false);
     setOptimisticSplitsPage(null);
     setIsRefreshingDerived(false);
-    refreshGenerationRef.current += 1;
+    refreshGuardRef.current = createSplitRefreshGuard();
     resetForViewChange();
     setArchiveDialog(null);
   }, [resetForViewChange, splitsPage.month, view.id]);
@@ -225,49 +230,21 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     // server to recompute any downstream data that depends on ledger ownership
     // or linked entries. The generation guard prevents older refreshes from
     // clobbering newer optimistic edits.
-    const refreshGeneration = refreshGenerationRef.current + 1;
-    refreshGenerationRef.current = refreshGeneration;
+    const refreshGeneration = refreshGuardRef.current?.next() ?? 1;
     setIsRefreshingDerived(true);
 
     void onRefresh(options)
       .then(() => {
-        if (refreshGenerationRef.current === refreshGeneration) {
+        if (refreshGuardRef.current?.isCurrent(refreshGeneration)) {
           setOptimisticSplitsPage(null);
         }
       })
       .catch(() => {})
       .finally(() => {
-        if (refreshGenerationRef.current === refreshGeneration) {
+        if (refreshGuardRef.current?.isCurrent(refreshGeneration)) {
           setIsRefreshingDerived(false);
         }
       });
-  }
-
-  function buildLinkedExpenseRefreshOptions(linkedTransactionId, overrides = {}) {
-    // Only expense rows can reinterpret an imported transaction. Settlements
-    // stay inside the splits layer and do not require entries/month refreshes.
-    const affectsLinkedLedgerEntry = Boolean(linkedTransactionId);
-    return {
-      broadcast: true,
-      invalidateEntries: affectsLinkedLedgerEntry,
-      invalidateMonth: affectsLinkedLedgerEntry,
-      invalidateSummary: affectsLinkedLedgerEntry,
-      ...overrides
-    };
-  }
-
-  function buildLinkedSettlementRefreshOptions(linkedTransactionId, overrides = {}) {
-    // Linked settlements also change the visible transfer evidence in the
-    // ledger views, so they refresh the same downstream caches as linked
-    // split expenses.
-    const affectsLinkedLedgerEntry = Boolean(linkedTransactionId);
-    return {
-      broadcast: true,
-      invalidateEntries: affectsLinkedLedgerEntry,
-      invalidateMonth: affectsLinkedLedgerEntry,
-      invalidateSummary: affectsLinkedLedgerEntry,
-      ...overrides
-    };
   }
 
   async function saveGroup() {
@@ -320,7 +297,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         };
       });
       closeExpenseDialog();
-      refreshAfterSplitMutation(buildLinkedExpenseRefreshOptions(draft?.linkedTransactionId));
+      refreshAfterSplitMutation(buildLinkedSplitRefreshOptions(draft?.linkedTransactionId));
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -355,7 +332,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         };
       });
       closeSettlementDialog();
-      refreshAfterSplitMutation({ broadcast: true });
+      refreshAfterSplitMutation(buildLinkedSplitRefreshOptions(draft?.linkedTransactionId));
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -370,9 +347,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       // Matching changes both the split record and, for expenses, the way the
       // linked ledger row should appear elsewhere in the app.
       applyOptimisticSplitsPage((currentPage) => applyOptimisticSplitMatch(currentPage, match));
-      refreshAfterSplitMutation(match.kind === "expense"
-        ? buildLinkedExpenseRefreshOptions(match.transactionId)
-        : buildLinkedSettlementRefreshOptions(match.transactionId));
+      refreshAfterSplitMutation(buildLinkedSplitRefreshOptions(match.transactionId));
     } finally {
       setIsSubmitting(false);
     }
