@@ -74,7 +74,7 @@ test("ledger-affecting entry changes ignore note-only edits", () => {
   assert.equal(hasLedgerAffectingEntryChange(after, before), false);
 });
 
-test("entries invalidation matrix keeps quick-entry create and ledger edits on the month and summary paths", () => {
+test("X5a entries invalidation matrix keeps quick-entry create and ledger edits on the month and summary paths", () => {
   const refreshPlan = buildEntryMutationRefreshPlan({
     kind: "quick-entry-create"
   });
@@ -87,7 +87,7 @@ test("entries invalidation matrix keeps quick-entry create and ledger edits on t
   });
 });
 
-test("entries invalidation matrix keeps note-only edits entry-local", () => {
+test("E3 entries invalidation matrix keeps note-only edits entry-local", () => {
   const before = {
     date: "2026-04-24",
     description: "Coffee",
@@ -119,7 +119,7 @@ test("entries invalidation matrix keeps note-only edits entry-local", () => {
   });
 });
 
-test("entries invalidation matrix keeps add-to-splits, transfer, and delete workflows on the expected downstream paths", () => {
+test("X6 entries invalidation matrix keeps add-to-splits on entries, splits, month, and summary paths", () => {
   assert.deepEqual(buildEntryMutationRefreshPlan({
     kind: "add-to-splits"
   }), {
@@ -157,7 +157,7 @@ test("entries invalidation matrix keeps add-to-splits, transfer, and delete work
   });
 });
 
-test("entries invalidation matrix leaves filter-only and mobile-sheet changes server-local", () => {
+test("E4 and E7 entries invalidation matrix leaves filter-only and mobile-sheet changes server-local", () => {
   assert.deepEqual(buildEntryMutationRefreshPlan({
     kind: "filter-only"
   }), {

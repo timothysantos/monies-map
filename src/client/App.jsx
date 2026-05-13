@@ -23,6 +23,7 @@ import {
   APP_SYNC_EVENT_TYPES,
   APP_SYNC_STORAGE_KEY,
   broadcastAppShellRefresh,
+  buildEntryMutationSyncEvent,
   buildSplitMutationSyncEvent,
   isMonthWithinRange,
   publishAppSyncEvent
@@ -1221,14 +1222,12 @@ export function App() {
       } : null,
       viewId: selectedViewId
     });
-    publishAppSyncEvent(syncChannelRef, {
-      type: APP_SYNC_EVENT_TYPES.entryMutation,
-      ts: Date.now(),
+    publishAppSyncEvent(syncChannelRef, buildEntryMutationSyncEvent({
       month,
       invalidateEntries,
       invalidateMonth,
       invalidateSummary
-    });
+    }));
   }, [
     appShellSummaryEnd,
     appShellSummaryStart,

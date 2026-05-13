@@ -6,6 +6,7 @@ import {
   APP_SYNC_EVENT_TYPES,
   APP_SYNC_STORAGE_KEY,
   broadcastAppShellRefresh,
+  buildEntryMutationSyncEvent,
   buildSplitMutationSyncEvent,
   isMonthWithinRange,
   publishAppSyncEvent
@@ -37,6 +38,30 @@ test("buildSplitMutationSyncEvent keeps split payloads narrow", () => {
   assert.equal(event.invalidateSummary, true);
   assert.equal(event.refreshShell, false);
   assert.equal(typeof event.ts, "number");
+});
+
+test("buildEntryMutationSyncEvent keeps the entry payload scoped to the affected month and invalidation flags", () => {
+  const event = buildEntryMutationSyncEvent({
+    month: "2026-04",
+    invalidateEntries: true,
+    invalidateMonth: false,
+    invalidateSummary: true
+  });
+
+  assert.equal(event.type, "entry-mutation");
+  assert.equal(event.month, "2026-04");
+  assert.equal(event.invalidateEntries, true);
+  assert.equal(event.invalidateMonth, false);
+  assert.equal(event.invalidateSummary, true);
+  assert.equal(typeof event.ts, "number");
+  assert.deepEqual(Object.keys(event).sort(), [
+    "invalidateEntries",
+    "invalidateMonth",
+    "invalidateSummary",
+    "month",
+    "ts",
+    "type"
+  ]);
 });
 
 test("isMonthWithinRange keeps range checks inclusive and bounded", () => {

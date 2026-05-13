@@ -24,6 +24,22 @@ export function broadcastAppShellRefresh(syncChannelRef) {
   });
 }
 
+export function buildEntryMutationSyncEvent({
+  month,
+  invalidateEntries = false,
+  invalidateMonth = false,
+  invalidateSummary = false
+}) {
+  return {
+    type: APP_SYNC_EVENT_TYPES.entryMutation,
+    ts: Date.now(),
+    month,
+    invalidateEntries,
+    invalidateMonth,
+    invalidateSummary
+  };
+}
+
 export function buildSplitMutationSyncEvent({
   month,
   invalidateEntries = false,
