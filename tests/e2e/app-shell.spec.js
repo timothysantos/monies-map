@@ -142,7 +142,7 @@ test("every top-level tab renders without crashing", async ({ page }) => {
   });
 
   await reseedDemo(page);
-  await page.goto("/");
+  await page.goto("/", { waitUntil: "domcontentloaded" });
   const rng = createSeededRandom(20260509);
   const startIndex = await waitForVisibleTabIndex(page);
   const visitedIndices = new Set([startIndex]);
