@@ -24,6 +24,7 @@ import {
   APP_SYNC_STORAGE_KEY,
   broadcastAppShellRefresh,
   buildEntryMutationSyncEvent,
+  buildSummaryMutationSyncEvent,
   buildSplitMutationSyncEvent,
   isMonthWithinRange,
   publishAppSyncEvent
@@ -67,6 +68,7 @@ import {
   fetchSummaryAccountPillsQuery,
   fetchSummaryPageQuery
 } from "./summary-query";
+import { buildSummaryMutationRefreshPlan } from "./summary-workflow";
 import { getCurrentMonthKey } from "../lib/month";
 
 // Lazy route loaders keep the initial shell small while still splitting each
@@ -1418,6 +1420,48 @@ export function App() {
     selectedViewId
   ]);
 
+  // Summary note saves stay narrow and should not turn summary into the owner
+  // of month or shell policy.
+  const handleRemoteSummaryMutation = useCallback(async ({
+    month,
+    invalidateMonth = false,
+    invalidateSummary = false
+  }) => {
+    const tasks = [];
+
+    if (selectedTabId === "month" && invalidateMonth && selectedMonth === month) {
+      if (canUseAppShellRoutePage) {
+        tasks.push(refreshAppShellInBackground().catch(() => null));
+      } else {
+        tasks.push(refreshActiveRoutePageInBackground(routePageRequest).catch(() => null));
+      }
+    } else if (
+      selectedTabId === "summary"
+      && invalidateSummary
+      && isMonthWithinRange(
+        month,
+        selectedSummaryStart ?? appShellSummaryStart,
+        selectedSummaryEnd ?? appShellSummaryEnd
+      )
+    ) {
+      tasks.push(refreshCurrentSummaryPage({ bypassCache: true }).catch(() => null));
+    }
+
+    await Promise.all(tasks);
+  }, [
+    appShellSummaryEnd,
+    appShellSummaryStart,
+    canUseAppShellRoutePage,
+    refreshActiveRoutePageInBackground,
+    refreshAppShellInBackground,
+    refreshCurrentSummaryPage,
+    routePageRequest,
+    selectedMonth,
+    selectedSummaryEnd,
+    selectedSummaryStart,
+    selectedTabId
+  ]);
+
   // Refresh the shell after a mutation that needs global metadata to stay in
   // sync.
   const syncAppShellAfterMutation = useCallback(async () => {
@@ -1636,6 +1680,11 @@ export function App() {
 
         if (event.data?.type === APP_SYNC_EVENT_TYPES.entryMutation) {
           void handleRemoteEntryMutation(event.data);
+          return;
+        }
+
+        if (event.data?.type === APP_SYNC_EVENT_TYPES.summaryMutation) {
+          void handleRemoteSummaryMutation(event.data);
         }
       };
     }
@@ -1671,6 +1720,11 @@ export function App() {
 
       if (payload?.type === APP_SYNC_EVENT_TYPES.entryMutation) {
         void handleRemoteEntryMutation(payload);
+        return;
+      }
+
+      if (payload?.type === APP_SYNC_EVENT_TYPES.summaryMutation) {
+        void handleRemoteSummaryMutation(payload);
       }
     };
 
@@ -1906,6 +1960,7 @@ export function App() {
     [isDetailMonthTab, rangePickerEndYear, pageView]
   );
   const saveSummaryMonthNote = useCallback(async ({ month, note }) => {
+    const refreshPlan = buildSummaryMutationRefreshPlan({ kind: "note-save" });
     const response = await fetch("/api/month-note/update", {
       method: "POST",
       headers: {
@@ -1929,14 +1984,22 @@ export function App() {
         ? {
             startMonth: summaryPage.rangeStartMonth,
             endMonth: summaryPage.rangeEndMonth
-          }
-        : undefined,
+        }
+      : undefined,
       viewId: selectedViewId
     });
 
     await refreshCurrentSummaryPage({ bypassCache: true });
+
+    publishAppSyncEvent(syncChannelRef, buildSummaryMutationSyncEvent({
+      month,
+      invalidateMonth: refreshPlan.invalidateMonth,
+      invalidateSummary: refreshPlan.invalidateSummary,
+      refreshShell: refreshPlan.refreshShell
+    }));
   }, [
     queryClient,
+    syncChannelRef,
     refreshCurrentSummaryPage,
     selectedScope,
     selectedViewId,
