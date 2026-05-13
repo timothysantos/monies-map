@@ -41,6 +41,10 @@ test("queryKeys.importsPage returns a stable slice key", () => {
   assert.deepEqual(queryKeys.importsPage(), ["imports-page"]);
 });
 
+test("queryKeys.settingsPage returns a stable slice key", () => {
+  assert.deepEqual(queryKeys.settingsPage(), ["settings-page"]);
+});
+
 test("queryKeys.summaryAccountPills returns a stable slice key", () => {
   assert.deepEqual(queryKeys.summaryAccountPills({ viewId: "household" }), [
     "summary-account-pills",
@@ -58,6 +62,27 @@ test("queryKeys.splitsPage returns a stable slice key", () => {
       viewId: "person-tim"
     }
   ]);
+});
+
+test("queryKeys.routeRequestKey routes settings to the dedicated settings key", () => {
+  assert.deepEqual(queryKeys.routeRequestKey({
+    path: "/api/settings-page",
+    params: new URLSearchParams([["settings_section", "categoryRules"]])
+  }), ["settings-page"]);
+});
+
+test("queryKeys.routeRequestKey routes month to the dedicated month key", () => {
+  assert.deepEqual(queryKeys.routeRequestKey({
+    path: "/api/month-page",
+    params: new URLSearchParams([["month", "2026-04"], ["viewId", "household"], ["scope", "direct_plus_shared"]])
+  }), ["month-page", { month: "2026-04", scope: "direct_plus_shared", viewId: "household" }]);
+});
+
+test("queryKeys.routeRequestKey keeps unsupported route pages on route-page keys", () => {
+  assert.deepEqual(queryKeys.routeRequestKey({
+    path: "/faq",
+    params: new URLSearchParams()
+  }), ["route-page", { path: "/faq", params: {} }]);
 });
 
 test("invalidateAppShellQueries only targets the app shell key", async () => {

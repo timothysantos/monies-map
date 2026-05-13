@@ -770,9 +770,7 @@ export function App() {
       return null;
     }
 
-    const queryKey = request.path === "/api/splits-page"
-      ? queryKeys.splitsPage(request.params)
-      : queryKeys.routePage(request);
+    const queryKey = queryKeys.routeRequestKey(request);
     const queryState = queryClient.getQueryState(queryKey);
     if (signal?.aborted) {
       throw new DOMException("Page request aborted.", "AbortError");
@@ -1334,7 +1332,7 @@ export function App() {
       return;
     }
 
-    const queryKey = queryKeys.routePage(request);
+    const queryKey = queryKeys.routeRequestKey(request);
     const queryState = queryClient.getQueryState(queryKey);
     if (queryClient.getQueryData(queryKey) || queryState?.fetchStatus === "fetching") {
       return;
@@ -2372,7 +2370,7 @@ export function App() {
       : pageView.label;
   // The settings badge reads from the settings page cache so the shell stays a
   // reference-data payload instead of reabsorbing settings-page state.
-  const cachedSettingsPage = queryClient.getQueryData(queryKeys.routePage(SETTINGS_ROUTE_REQUEST));
+  const cachedSettingsPage = queryClient.getQueryData(queryKeys.routeRequestKey(SETTINGS_ROUTE_REQUEST));
   const pendingCategorySuggestionCount = cachedSettingsPage?.settingsPage?.categoryMatchRuleSuggestions?.length ?? 0;
   const buildTabTarget = (tab) => {
     // Each nav link preserves the relevant route query while stripping

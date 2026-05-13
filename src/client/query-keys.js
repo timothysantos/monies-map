@@ -46,8 +46,40 @@ export const queryKeys = {
   appShell(params) {
     return ["app-shell", normalizeRecord(params)];
   },
+  settingsPage() {
+    return ["settings-page"];
+  },
   routePage(request) {
     return ["route-page", normalizeRouteRequest(request)];
+  },
+  routeRequestKey(request) {
+    const params = normalizeRecord(request?.params);
+
+    if (request?.path === "/api/entries-page") {
+      return this.entriesPage(params);
+    }
+
+    if (request?.path === "/api/month-page") {
+      return this.monthPage(params);
+    }
+
+    if (request?.path === "/api/splits-page") {
+      return this.splitsPage(params);
+    }
+
+    if (request?.path === "/api/imports-page") {
+      return this.importsPage();
+    }
+
+    if (request?.path === "/api/settings-page") {
+      return this.settingsPage();
+    }
+
+    if (request?.path === "/api/summary-page") {
+      return this.summaryPage(params);
+    }
+
+    return this.routePage(request);
   },
   entriesPage(params) {
     return ["entries-page", normalizeRecord(params)];
