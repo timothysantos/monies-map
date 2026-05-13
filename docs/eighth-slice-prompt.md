@@ -73,6 +73,10 @@ Target query contract:
 - importsPage
 - splitsPage
 - settingsPage
+- routePage may remain only for pages and surfaces that do not yet have verified
+  slice-owned query boundaries
+- do not use routePage as a fallback for slices that already have dedicated
+  query keys
 - remove compatibility fallbacks only after the replacement path is verified
   and test-covered
 - keep the shell bridge narrow and explicit
@@ -97,7 +101,10 @@ Constraints:
 - finish with a closure audit before considering the slice complete
 
 Implementation rules:
-- treat App.jsx as a shell execution layer, not a domain coordinator
+- App.jsx may execute shell and refresh plans, but must not become the owner of
+  slice-specific decisions
+- if a branch requires domain knowledge, move that decision into the slice
+  helper first
 - keep route selection in the browser/router and keep server state in TanStack
   Query
 - keep compatibility branches visibly temporary and delete them in the same
@@ -111,6 +118,17 @@ Implementation rules:
 Deliverables:
 - tests covering the remaining shell-bridge assumptions and compatibility
   cleanup
+- a legacy-path inventory before any deletions:
+  - file
+  - current caller
+  - replacement path
+  - test proving replacement
+  - safe to remove now? yes/no
+- a table of every remaining `refreshShell: true` path:
+  - why shell refresh is still required
+  - whether it is named
+  - whether it is test-backed
+  - exit condition for removing it
 - code changes that remove the verified legacy paths
 - doc updates only if the shell contract changed
 ```
