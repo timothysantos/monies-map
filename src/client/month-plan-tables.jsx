@@ -9,9 +9,9 @@ import {
   canInlineEditMonthPlanRow,
   canInlineEditMonthRow,
   canOpenMonthMobileSheet,
-  getMonthPlanEditSource,
   getMonthPlanSharedEditHint
 } from "./month-row-editing";
+import { getMonthPlanEditSource } from "./month-state";
 import { formatRowDateLabel, getRowDateValue, sortRows } from "./table-helpers";
 import { DeleteRowButton, SortableHeader } from "./ui-components";
 

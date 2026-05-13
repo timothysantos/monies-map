@@ -1,6 +1,8 @@
 // Month state helpers stay dependency-free so month panel orchestration can be
 // tested without browser or React runtime coupling.
 
+const DERIVED_SHARE_NOTE_PATTERN = /\s*• weighted to .*? share/g;
+
 export function mergeMonthRowsById(currentRows, serverRows) {
   const currentById = new Map(currentRows.map((row) => [row.id, row]));
   const serverIds = new Set(serverRows.map((row) => row.id));
@@ -41,6 +43,9 @@ export function getMonthPlanEditSource(row) {
   return {
     ...row,
     plannedMinor: row.sourcePlannedMinor ?? row.plannedMinor,
-    note: (row.sourceNote ?? row.note ?? "").trim()
+    note: (row.sourceNote ?? row.note ?? "")
+      .replace(DERIVED_SHARE_NOTE_PATTERN, "")
+      .replace(/\s{2,}/g, " ")
+      .trim()
   };
 }

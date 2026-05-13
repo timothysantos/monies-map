@@ -1,5 +1,6 @@
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
+import { getMonthPlanEditSource } from "./month-state";
 import { getRowDateValue } from "./table-helpers";
 
 const { format: formatService } = moniesClient;
@@ -39,16 +40,6 @@ export function canOpenMonthMobileSheet({ isCombinedHouseholdView, row }) {
   }
 
   return (row.sourceRowIds?.length ?? 0) === 1;
-}
-
-export function getMonthPlanEditSource(row) {
-  // Derived rows may show weighted values in the table. The editor should
-  // instead open against the original full-value row when that data exists.
-  return {
-    ...row,
-    plannedMinor: row.sourcePlannedMinor ?? row.plannedMinor,
-    note: stripDerivedMonthRowNote(row.sourceNote ?? row.note)
-  };
 }
 
 export function getMonthPlanSharedEditHint({ row, viewId, viewLabel }) {
