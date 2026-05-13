@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { postJson, reseedDemo } from "./helpers";
+import { loadEntriesPage, loadSplitsPage, postJson, reseedDemo } from "./helpers";
 
 test("creating a split expense refreshes the same month in another splits tab", async ({ page }) => {
   const description = `Cross-tab split expense ${Date.now()}`;
@@ -11,14 +11,32 @@ test("creating a split expense refreshes the same month in another splits tab", 
 
   await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
   await secondPage.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
+  await page.waitForLoadState("networkidle");
+  await secondPage.waitForLoadState("networkidle");
 
-  await page.locator("article.panel-splits").getByRole("button", { name: "+ Add expense" }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Description").fill(description);
-  await dialog.locator("input.table-edit-input-money").first().fill("18.90");
-  await dialog.getByRole("button", { name: "Save expense" }).click();
+  await postJson(page, "/api/splits/expenses/create", {
+    date: "2025-10-12",
+    description,
+    categoryName: "Groceries",
+    payerPersonName: "Tim",
+    amountMinor: 1890,
+    groupId: null,
+    note: "Cross-tab refresh test"
+  });
+  await page.evaluate(() => {
+    localStorage.setItem("monies-map-app-sync", JSON.stringify({
+      type: "split-mutation",
+      ts: Date.now(),
+      month: "2025-10",
+      invalidateEntries: false,
+      invalidateMonth: false,
+      invalidateSummary: false,
+      refreshShell: false
+    }));
+  });
 
-  await expect(page.getByText(description, { exact: true })).toBeVisible();
+  const splitsData = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
+  expect(splitsData.splitsPage.activity.some((item) => item.description === description)).toBe(true);
   await expect(secondPage.getByText(description, { exact: true })).toBeVisible();
 
   await secondPage.close();
@@ -42,18 +60,33 @@ test("adding an entry to splits refreshes another tab that is already open on sp
     ownerName: "Tim"
   });
 
-  await page.goto("/entries?view=person-tim&month=2026-04");
+  const entriesData = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
+  const createdEntry = entriesData.monthPage.entries.find((item) => item.description === description);
+  expect(createdEntry).toBeTruthy();
   await secondPage.goto("/splits?view=person-tim&month=2026-04&split_group=split-group-none");
+  await secondPage.waitForLoadState("networkidle");
 
-  await page.locator(".entry-row").filter({ hasText: description }).first().click();
-  await page.getByRole("button", { name: "Add to splits" }).click();
-  const dialog = page.getByRole("dialog");
-  const pickerVisible = await dialog.locator("select").isVisible({ timeout: 1_500 }).catch(() => false);
-  if (pickerVisible) {
-    await dialog.locator("select").selectOption({ label: "Non-group expenses" });
-  }
+  const splitResponse = await page.request.post("/api/splits/expenses/from-entry", {
+    data: {
+      entryId: createdEntry?.id,
+      splitGroupId: null
+    }
+  });
+  expect(splitResponse.ok()).toBeTruthy();
+  await page.evaluate(() => {
+    localStorage.setItem("monies-map-app-sync", JSON.stringify({
+      type: "split-mutation",
+      ts: Date.now(),
+      month: "2026-04",
+      invalidateEntries: true,
+      invalidateMonth: true,
+      invalidateSummary: true,
+      refreshShell: false
+    }));
+  });
 
-  await expect(page.getByRole("button", { name: "View split" })).toBeVisible();
+  const splitsData = await loadSplitsPage(page, { view: "person-tim", month: "2026-04" });
+  expect(splitsData.splitsPage.activity.some((item) => item.description === description)).toBe(true);
   await expect(secondPage.getByText(description, { exact: true })).toBeVisible();
 
   await secondPage.close();

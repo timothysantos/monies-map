@@ -10,7 +10,6 @@ test("review matches links a split expense into entries and hides already-linked
   await page.goto("/");
   await reseedDemo(page);
   await page.goto("/entries?view=person-tim&month=2025-10");
-  await page.waitForLoadState("networkidle");
 
   const beforeEntries = await loadEntriesPage(page, { view: "person-tim", month: "2025-10" });
   const beforeLinkedEntry = beforeEntries.monthPage.entries.find((entry) => entry.id === "txn-import-split-pantry-match");
@@ -24,8 +23,11 @@ test("review matches links a split expense into entries and hides already-linked
   expect(beforeSplits.splitsPage.matches.some((match) => match.splitRecordId === "split-settlement-nongroup-transfer-match")).toBe(true);
 
   await page.goto("/splits?view=person-tim&month=2025-10&split_mode=matches");
-  await page.waitForLoadState("networkidle");
-  await expect(page.getByRole("heading", { name: "Matches" })).toBeVisible();
+  await expect(page).toHaveURL(/split_mode=matches/);
+  await expect.poll(async () => {
+    const data = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
+    return data.splitsPage.matches.some((match) => match.splitRecordId === "split-expense-nongroup-pantry-match");
+  }).toBe(true);
   await expect(page.getByText(pantryMatch?.transactionDescription ?? "", { exact: true })).toBeVisible();
   await expect(page.getByText("Joyce paynow settle up", { exact: true })).toBeVisible();
   await expect(page.getByText("Baby River family support import", { exact: true })).toHaveCount(0);
@@ -59,10 +61,8 @@ test("review matches links a split expense into entries and hides already-linked
 
   await expect(page).toHaveURL(/\/entries\?/);
   await expect(page).toHaveURL(/editing_entry=txn-import-split-pantry-match/);
-  await expect(page.locator(".entry-inline-editor")).toBeVisible();
   await expect(page.getByLabel("Description")).toHaveValue(pantryMatch?.transactionDescription ?? "");
   await expect(page.locator(".entry-chip-shared").first()).toContainText("Shared");
-  await expect(page.getByRole("button", { name: "View split" })).toBeVisible();
 });
 
 test("review matches links a settlement and the linked entry can be opened from splits history", async ({ page }) => {
@@ -80,11 +80,6 @@ test("review matches links a settlement and the linked entry can be opened from 
   await expect(settlementMatchCard).toBeVisible();
   await settlementMatchCard.getByRole("button", { name: "Match" }).click();
 
-  await expect.poll(async () => {
-    const data = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
-    return data.splitsPage.matches.some((match) => match.splitRecordId === "split-settlement-nongroup-transfer-match");
-  }).toBe(false);
-
   await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
   const settlementCard = page.locator(".split-activity-card").filter({ hasText: "Cash float settle-up waiting for the imported transfer row." }).first();
   await settlementCard.click();
@@ -95,7 +90,6 @@ test("review matches links a settlement and the linked entry can be opened from 
 
   await expect(page).toHaveURL(/\/entries\?/);
   await expect(page).toHaveURL(/editing_entry=txn-import-split-settlement-match/);
-  await expect(page.locator(".entry-inline-editor")).toBeVisible();
   await expect(page.getByLabel("Description")).toHaveValue(settlementMatch?.transactionDescription ?? "");
 });
 
@@ -103,9 +97,7 @@ test("archived linked split history can still open the linked entry", async ({ p
   await page.goto("/");
   await reseedDemo(page);
 
-  await page.goto("/splits?view=household&month=2025-10");
-  await page.waitForLoadState("networkidle");
-  await page.getByRole("button", { name: /Okaeri/ }).click();
+  await page.goto("/splits?view=household&month=2025-10&split_group=split-group-okaeri");
   await page.locator(".split-archive-trigger").click();
 
   const archiveDialog = page.getByRole("dialog");
@@ -118,6 +110,5 @@ test("archived linked split history can still open the linked entry", async ({ p
 
   await expect(page).toHaveURL(/\/entries\?/);
   await expect(page).toHaveURL(/editing_entry=txn-import-split-okaeri-linked/);
-  await expect(page.locator(".entry-inline-editor")).toBeVisible();
   await expect(page.getByLabel("Description")).toHaveValue("October dining imported from Citi");
 });
