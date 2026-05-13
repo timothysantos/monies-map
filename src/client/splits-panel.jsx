@@ -406,7 +406,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       clearInlineSplitDraft();
       refreshAfterSplitMutation(
         draft.kind === "expense"
-          ? buildLinkedExpenseRefreshOptions(draft.linkedTransactionId)
+          ? buildLinkedSplitRefreshOptions(draft.linkedTransactionId)
           : { broadcast: true }
       );
     } catch (error) {

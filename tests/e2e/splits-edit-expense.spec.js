@@ -7,8 +7,7 @@ test("editing an existing split expense keeps the row in place and persists the 
 
   await page.goto("/");
   await reseedDemo(page);
-  await page.goto("/splits?view=person-tim&month=2025-10");
-  await page.getByRole("button", { name: /Baby River/ }).click();
+  await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-baby-river");
 
   await page.locator(".split-activity-card").filter({ hasText: "Family support" }).first().click();
   const inlineEditor = page.locator(".split-inline-editor-card").first();
