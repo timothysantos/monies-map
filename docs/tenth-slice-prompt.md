@@ -94,6 +94,28 @@ The goal is workflow ownership and freshness, not accounting behavior changes.
 If a month save/link behavior appears wrong, first add a regression test
 proving the current behavior is broken before changing semantics.
 
+## Month Plan Semantics Guardrail
+
+Do not reinterpret planned budget item meaning, linked-ledger matching,
+shared-expense allocation, or planned-vs-actual calculations during this
+slice.
+
+The goal is month workflow ownership and freshness, not changing how
+budget/planning math works.
+
+If planned-vs-actual behavior appears wrong, first add a regression test
+proving the current behavior is broken before changing semantics.
+
+## Month Must Not Become A Cross-Page Coordinator
+
+Month may consume entries/splits/summary freshness signals, but it must not
+become the owner of entries, splits, or summary invalidation policy.
+
+Entry-owned changes should stay entry-owned.
+Split-owned changes should stay split-owned.
+Summary-owned changes should stay summary-owned.
+Month should only own month workspace decisions and month-visible freshness.
+
 ## Month Freshness Matrix
 
 Add tests for:
