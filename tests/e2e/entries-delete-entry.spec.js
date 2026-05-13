@@ -4,12 +4,13 @@ import { loadEntriesPage, postJson, reseedDemo } from "./helpers";
 
 test("entries can delete a manually created row from the inline editor", async ({ page }) => {
   const description = `Playwright delete entry ${Date.now()}`;
+  const month = "2026-05";
 
   await page.goto("/");
   await reseedDemo(page);
 
   await postJson(page, "/api/entries/create", {
-    date: "2026-04-24",
+    date: `${month}-24`,
     description,
     accountName: "UOB One",
     categoryName: "Groceries",
@@ -19,12 +20,13 @@ test("entries can delete a manually created row from the inline editor", async (
     ownerName: "Tim"
   });
 
-  await page.goto("/entries?view=person-tim&month=2026-04");
+  await page.goto(`/entries?view=person-tim&month=${month}`);
+  await expect(page.getByRole("heading", { name: /Entries/ })).toBeVisible();
   await page.locator(".entry-row").filter({ hasText: description }).first().click();
   await page.getByRole("button", { name: "Delete entry" }).click();
 
   await expect(page.locator(".entry-row").filter({ hasText: description })).toHaveCount(0);
 
-  const entriesData = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
+  const entriesData = await loadEntriesPage(page, { view: "person-tim", month });
   expect(entriesData.monthPage.entries.some((item) => item.description === description)).toBe(false);
 });
