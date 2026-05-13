@@ -15,6 +15,29 @@ This slice is intentionally focused:
 It is not a rewrite of imports, settings, entries, months, or splits. It is
 also not an excuse to broaden App.jsx or app-sync again.
 
+## Clarify This Is Summary Hardening
+
+This slice assumes the earlier summary query split already exists.
+
+Do not rebuild `summaryPage` or `summaryAccountPills` from scratch unless the
+existing implementation fails a regression test.
+
+Focus on:
+- workflow continuity
+- focus state
+- drilldown/return freshness
+- note-save orchestration
+- stale-refresh protection
+- removing remaining summary-specific legacy paths
+
+## Summary Must Not Become A Reporting Engine Rewrite
+
+Do not reinterpret savings target, realized savings, category share, account
+pill, month range, or reporting calculations during this slice.
+
+If a summary number looks wrong, first add a regression test proving the
+current behavior is wrong before changing calculation semantics.
+
 ```text
 Implement the summary slice.
 
