@@ -72,6 +72,9 @@ team conventions evolve.
 - Keep [`docs/twelfth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/twelfth-slice-prompt.md)
   updated alongside the actual twelfth implementation prompt for the splits
   slice.
+- Keep [`docs/thirteenth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/thirteenth-slice-prompt.md)
+  updated alongside the actual thirteenth implementation prompt for the
+  settings slice.
 - Refactor work should be committed in small readable batches as it proceeds.
   Use that practice for the first slice and keep it for later slices unless a
   slice is explicitly being held back for one atomic change.
