@@ -70,6 +70,9 @@ Target query contract:
 - refresh the affected page data exactly when a save changes visible state
 - do not broaden app-shell invalidation beyond the documented bridge behavior
 - do not turn app-sync into a hidden workflow owner
+- do not centralize all cross-page behavior into `App.jsx` or `app-sync.js`
+- prefer slice-owned helpers for decisions, with `App.jsx` and `app-sync.js`
+  acting only as transport or execution bridges
 
 Constraints:
 - keep code within docs/code-spec.md limits
