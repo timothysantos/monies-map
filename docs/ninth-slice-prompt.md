@@ -82,6 +82,31 @@ Target query contract:
 - do not use generic route fallback behavior for entries once the dedicated
   entries key exists
 
+## Add Entry Amount / Transfer Semantics Guardrail
+
+Do not reinterpret entry amount, transfer, income, expense, or split-linked
+semantics during this slice.
+
+The goal is workflow ownership and freshness, not accounting behavior changes.
+
+If an entry/save/link behavior appears wrong, first add a regression test
+proving the current behavior is broken before changing semantics.
+
+## Entries Invalidation Matrix
+
+Add tests for:
+
+- quick-entry create refreshes entries + affected month + summary
+- entry edit that changes amount/category/date refreshes entries + affected
+  month + summary
+- entry edit that only changes note/details refreshes entries only unless
+  summary/month visibly depends on it
+- add-to-splits refreshes entries + splits + affected month/summary only when
+  visible ledger evidence changes
+- transfer link/settle refreshes entries + month + summary without changing
+  transfer semantics
+- filter-only changes do not invalidate server data
+
 Constraints:
 - keep code within docs/code-spec.md limits
 - preserve docs/existing-behavior-guardrails.md
