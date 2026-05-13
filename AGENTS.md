@@ -57,6 +57,9 @@ team conventions evolve.
 - Keep [`docs/seventh-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/seventh-slice-prompt.md)
   updated alongside the actual seventh implementation prompt for the
   cross-page freshness and workflow-lock coordination slice.
+- Keep [`docs/eighth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/eighth-slice-prompt.md)
+  updated alongside the actual eighth implementation prompt for the app-shell
+  retirement and legacy-bridge cleanup slice.
 - Refactor work should be committed in small readable batches as it proceeds.
   Use that practice for the first slice and keep it for later slices unless a
   slice is explicitly being held back for one atomic change.
