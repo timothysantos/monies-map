@@ -17,6 +17,7 @@ import {
   getMonthPlanEditSource
 } from "./month-row-editing";
 import { LastPeriodBudgetHint, MonthPlanStack } from "./month-plan-tables";
+import { mergeMonthPlanSections, mergeMonthRowsById } from "./month-state";
 import { ResponsiveSelect } from "./responsive-select";
 import { getRowDateValue } from "./table-helpers";
 
@@ -35,48 +36,6 @@ const {
 // - background refreshes so derived totals settle after saves
 // - route-level dialogs such as notes, plan links, and mobile editors
 //
-// Important month-page terms:
-// - "draft" rows exist only in the browser until the first save succeeds.
-// - "pending derived" rows were saved, but totals/actuals still need the server
-//   to recompute the downstream month and summary views.
-// - "derived" plan rows are weighted or rolled-up rows shown in a scope view;
-//   the editor often needs to map back to the source row values first.
-function mergeMonthRowsById(currentRows, serverRows) {
-  const currentById = new Map(currentRows.map((row) => [row.id, row]));
-  const serverIds = new Set(serverRows.map((row) => row.id));
-  const localTransientRows = currentRows.filter((row) => (
-    (row.isDraft || row.isPendingDerived) && !serverIds.has(row.id)
-  ));
-
-  return [
-    ...localTransientRows,
-    ...serverRows.map((serverRow) => {
-      const currentRow = currentById.get(serverRow.id);
-      return currentRow
-        ? {
-            ...currentRow,
-            ...serverRow,
-            isDraft: false,
-            isPendingDerived: false
-          }
-        : serverRow;
-    })
-  ];
-}
-
-function mergeMonthPlanSections(currentSections, serverSections) {
-  const currentByKey = new Map(currentSections.map((section) => [section.key, section]));
-  return serverSections.map((serverSection) => {
-    const currentSection = currentByKey.get(serverSection.key);
-    return currentSection
-      ? {
-          ...serverSection,
-          rows: mergeMonthRowsById(currentSection.rows ?? [], serverSection.rows ?? [])
-        }
-      : serverSection;
-  });
-}
-
 export function MonthPanel({ view, accounts, people, categories, householdMonthEntries, onCategoryAppearanceChange, onRefresh }) {
   const navigate = useNavigate();
   const monthUiKey = `${view.id}:${view.monthPage.month}:${view.monthPage.selectedScope}`;
