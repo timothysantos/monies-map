@@ -3088,9 +3088,26 @@ export async function commitImportBatch(
     note?: string;
   }
 ) {
-  const importId = `import-${crypto.randomUUID()}`;
+  const importId = await buildImportCommitId(input);
   const monthsToRecalculate = new Set<string>();
   const isOfficialStatementImport = input.sourceType === "pdf";
+
+  const existingImport = await db
+    .prepare("SELECT status FROM imports WHERE household_id = ? AND id = ?")
+    .bind(DEFAULT_HOUSEHOLD_ID, importId)
+    .first<{ status: string }>();
+
+  if (existingImport?.status === "completed") {
+    return { importId, created: false, importedRows: input.rows.length };
+  }
+
+  if (existingImport?.status === "draft") {
+    await cleanupImportBatchRows(db, importId);
+    await db
+      .prepare("DELETE FROM imports WHERE household_id = ? AND id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, importId)
+      .run();
+  }
 
   await db
     .prepare(`
@@ -3431,6 +3448,31 @@ export async function commitImportBatch(
   });
 
   return { importId, created: true, importedRows: input.rows.length };
+}
+
+async function buildImportCommitId(input: {
+  sourceLabel: string;
+  sourceType?: "csv" | "pdf" | "manual";
+  parserKey?: string;
+  rows: ImportPreviewRowDto[];
+  statementControlRows?: ImportPreviewRowDto[];
+  statementReconciliations?: ImportPreviewStatementReconciliationDto[];
+  statementCheckpoints?: StatementCheckpointDraftDto[];
+  note?: string;
+}) {
+  const signature = JSON.stringify({
+    sourceLabel: input.sourceLabel,
+    sourceType: input.sourceType ?? "csv",
+    parserKey: input.parserKey ?? "generic_csv",
+    note: input.note ?? null,
+    rows: input.rows.map((row) => buildImportRowHash(row)),
+    statementControlRows: input.statementControlRows?.map((row) => buildImportRowHash(row)) ?? [],
+    statementReconciliations: input.statementReconciliations ?? [],
+    statementCheckpoints: input.statementCheckpoints ?? []
+  });
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(signature));
+  const hash = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `import-${hash.slice(0, 24)}`;
 }
 
 function resolveImportPreviewEventDate(row: ImportPreviewRowDto) {

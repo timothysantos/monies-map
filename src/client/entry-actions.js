@@ -332,51 +332,6 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     return result.ok;
   }
 
-  async function saveEntryCategory(entryId, categoryName) {
-    const currentEntry = entries.find((entry) => entry.id === entryId);
-    if (!currentEntry) {
-      return;
-    }
-
-    const response = await fetch("/api/entries/update-classification", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        entryId: currentEntry.id,
-        entryType: currentEntry.entryType,
-        transferDirection: currentEntry.transferDirection,
-        categoryName
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(await buildRequestErrorMessage(response, "Failed to save category."));
-    }
-
-    setEntrySnapshot((current) => current && current.id === entryId
-      ? { ...current, categoryName }
-      : current
-    );
-    setEntries((current) => current.map((entry) => (
-      entry.id === entryId
-        ? {
-            ...entry,
-            categoryName,
-            isPendingDerived: true
-        }
-        : entry
-    )));
-    onEntryMutation?.({
-      month: view.monthPage.month,
-      invalidateEntries: true,
-      invalidateMonth: true,
-      invalidateSummary: true
-    });
-    refreshEntriesInBackground();
-  }
-
   function cancelEntryEdit() {
     if (!entrySnapshot) {
       setEditingEntryId(null);
@@ -783,8 +738,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     deleteEntry,
     updateEntry,
     updateEntryAmount,
-    updateEntrySplit,
-    saveEntryCategory
+    updateEntrySplit
   };
 }
 

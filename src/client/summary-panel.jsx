@@ -41,13 +41,13 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
   // Summary can mount while the route payload is still hydrating, so keep a
   // fully shaped local summary slice instead of reading nested fields directly.
   const safeSummaryPage = {
-    ...view.summaryPage,
     metricCards: [],
     rangeMonths: [],
     categoryShareByMonth: [],
     categoryShareChart: [],
     months: [],
-    accountPills: []
+    accountPills: [],
+    ...view.summaryPage
   };
 
   const summaryFocusParam = searchParams.get("summary_focus");

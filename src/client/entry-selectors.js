@@ -1,3 +1,4 @@
+import { entryBypassesFieldFilters } from "./entry-filter-pins";
 import { moniesClient } from "./monies-client-service";
 
 const {
@@ -36,11 +37,14 @@ export function getActiveEntryFilterCount(entryFilters) {
   );
 }
 
-export function getFilteredEntries({ entries, entryFilters, selectedScope, viewId }) {
+export function getFilteredEntries({ entries, entryFilters, selectedScope, viewId, pinnedEntryIds = [] }) {
   return entries.filter((entry) => {
     // Scope is the first gate because it is the page-level visibility rule.
     if (!entryService.entryMatchesScope(entry, viewId, selectedScope)) {
       return false;
+    }
+    if (entryBypassesFieldFilters(entry.id, pinnedEntryIds)) {
+      return true;
     }
     if (
       entryFilters.entryIds?.length
@@ -117,8 +121,8 @@ export function getExpenseBreakdown(entries) {
     .sort((left, right) => right.valueMinor - left.valueMinor);
 }
 
-export function getEntryDerivedData({ entries, entryFilters, selectedScope, viewId }) {
-  const filteredEntries = getFilteredEntries({ entries, entryFilters, selectedScope, viewId });
+export function getEntryDerivedData({ entries, entryFilters, selectedScope, viewId, pinnedEntryIds }) {
+  const filteredEntries = getFilteredEntries({ entries, entryFilters, selectedScope, viewId, pinnedEntryIds });
   const aggregateEntries = filteredEntries.map((entry) => ({
     ...entry,
     visibleAmountMinor: entryService.getVisibleAmountMinor(entry, viewId),

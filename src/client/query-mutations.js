@@ -50,6 +50,7 @@ export async function invalidateMonthQueries(queryClient, {
   if (summaryRange) {
     tasks.push(cancelAndInvalidate(queryClient, queryKeys.summaryPage({
       viewId,
+      month: summaryRange.endMonth,
       scope,
       startMonth: summaryRange.startMonth,
       endMonth: summaryRange.endMonth
@@ -84,6 +85,7 @@ export async function invalidateEntriesMutationQueries(queryClient, {
   if (summaryRange && viewId) {
     tasks.push(cancelAndInvalidate(queryClient, queryKeys.summaryPage({
       viewId,
+      month: summaryRange.endMonth,
       scope,
       startMonth: summaryRange.startMonth,
       endMonth: summaryRange.endMonth
@@ -118,6 +120,7 @@ export async function invalidateImportMutationQueries(queryClient, {
   if (summaryRange && viewId) {
     tasks.push(cancelAndInvalidate(queryClient, queryKeys.summaryPage({
       viewId,
+      month: summaryRange.endMonth,
       scope,
       startMonth: summaryRange.startMonth,
       endMonth: summaryRange.endMonth

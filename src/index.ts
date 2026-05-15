@@ -3,7 +3,8 @@ import {
   buildEntriesShellDto
 } from "./domain/app-shell-dto";
 import {
-  invalidateAppDataCache
+  invalidateAppDataCache,
+  primeAppDataCache
 } from "./domain/app-shell";
 import { buildEntriesPageDto } from "./domain/pages/entries-page";
 import { buildImportsPageDto } from "./domain/pages/imports-page";
@@ -187,7 +188,7 @@ export default {
         return json({ ok: false, error: "Demo controls are disabled in production." }, 403);
       }
       const demo = await reseedDemoSettings(env.DB);
-      invalidateAppDataCache();
+      primeAppDataCache(demo);
       return json({ ok: true, demo });
     }
 
@@ -196,7 +197,7 @@ export default {
         return json({ ok: false, error: "Demo controls are disabled in production." }, 403);
       }
       const demo = await enterEmptyState(env.DB);
-      invalidateAppDataCache();
+      primeAppDataCache(demo);
       return json({ ok: true, demo });
     }
 
@@ -1632,7 +1633,9 @@ async function apiPageResponse<T>(
     if (durationMs >= API_PAGE_SLOW_MS) {
       console.warn("API page slow", buildApiDiagnostic(label, request, url, requestId, durationMs));
     }
-    return json(payload);
+    return json(payload, 200, {
+      "server-timing": `app;dur=${durationMs}`
+    });
   } catch (error) {
     const durationMs = Date.now() - startedAt;
     console.error("API page failed", {

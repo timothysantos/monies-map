@@ -1,7 +1,5 @@
-import * as Dialog from "@radix-ui/react-dialog";
-import * as Popover from "@radix-ui/react-popover";
 import { X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
@@ -29,16 +27,11 @@ export function EntryEditorFields({
   lockTransferCategory = false,
   onChange,
   onAmountChange,
-  onQuickSaveCategory,
   onCategoryAppearanceChange,
   onOwnerChange,
   onSplitPercentChange,
   transferTools = null
 }) {
-  const [categorySavePrompt, setCategorySavePrompt] = useState(null);
-  const [isSavingCategory, setIsSavingCategory] = useState(false);
-  const [categorySaveError, setCategorySaveError] = useState("");
-  const [useMobileCategorySaveDialog, setUseMobileCategorySaveDialog] = useState(false);
   const displayCategoryName = lockTransferCategory && entry.entryType === "transfer" ? "Transfer" : entry.categoryName;
   const category = categoryService.get(categories, { categoryName: displayCategoryName });
   const categoryTheme = categoryService.getTheme(
@@ -59,65 +52,11 @@ export function EntryEditorFields({
     ?? entry.amountInput
     ?? formatService.formatEditableMinorInput(resolvedAmountMinor);
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const mediaQuery = window.matchMedia("(max-width: 900px)");
-    const update = () => setUseMobileCategorySaveDialog(mediaQuery.matches);
-    update();
-    mediaQuery.addEventListener?.("change", update);
-    return () => mediaQuery.removeEventListener?.("change", update);
-  }, []);
-
   function handleCategoryChange(nextCategoryName) {
     onChange({ categoryName: nextCategoryName });
-    if (!onQuickSaveCategory || nextCategoryName === entry.categoryName) {
-      return;
-    }
-    setCategorySaveError("");
-    setCategorySavePrompt({ categoryName: nextCategoryName });
   }
 
-  async function saveCategoryShortcut() {
-    if (!categorySavePrompt || !onQuickSaveCategory) {
-      return;
-    }
-
-    setIsSavingCategory(true);
-    setCategorySaveError("");
-    try {
-      await onQuickSaveCategory(categorySavePrompt.categoryName);
-      setCategorySavePrompt(null);
-    } catch (error) {
-      setCategorySaveError(error instanceof Error ? error.message : "Failed to save category.");
-    } finally {
-      setIsSavingCategory(false);
-    }
-  }
-
-  function dismissCategorySavePrompt() {
-    if (isSavingCategory) {
-      return;
-    }
-    setCategorySavePrompt(null);
-    setCategorySaveError("");
-  }
-
-  const desktopCategorySelect = (
-    <select
-      className="table-edit-input"
-      value={entry.categoryName}
-      onChange={(event) => handleCategoryChange(event.target.value)}
-    >
-      {categoryOptions.map((option) => (
-        <option key={option} value={option}>{option}</option>
-      ))}
-    </select>
-  );
-
-  const mobileCategorySelect = (
+  const categorySelect = (
     <ResponsiveSelect
       className="table-edit-input"
       title={messages.entries.editCategory}
@@ -134,22 +73,6 @@ export function EntryEditorFields({
       })}
       onValueChange={handleCategoryChange}
     />
-  );
-
-  const categorySavePromptBody = (
-    <>
-      <strong>Save this category?</strong>
-      <p>Update this entry now without saving the rest of the row.</p>
-      {categorySaveError ? <p className="form-error">{categorySaveError}</p> : null}
-      <div className="delete-popover-actions">
-        <button type="button" className="subtle-cancel" disabled={isSavingCategory} onClick={dismissCategorySavePrompt}>
-          Not yet
-        </button>
-        <button type="button" className="subtle-action" disabled={isSavingCategory} onClick={() => void saveCategoryShortcut()}>
-          {isSavingCategory ? "Saving..." : "Save category"}
-        </button>
-      </div>
-    </>
   );
 
   return (
@@ -178,49 +101,7 @@ export function EntryEditorFields({
                 readOnly
               />
             ) : (
-              useMobileCategorySaveDialog ? (
-                <>
-                  {mobileCategorySelect}
-                  <Dialog.Root open={Boolean(categorySavePrompt)} onOpenChange={(open) => {
-                    if (!open) {
-                      dismissCategorySavePrompt();
-                    }
-                  }}>
-                    <Dialog.Portal>
-                      <Dialog.Overlay className="entry-category-save-overlay" />
-                      <Dialog.Content className="entry-category-save-popover entry-category-save-dialog" onOpenAutoFocus={(event) => event.preventDefault()}>
-                        <Dialog.Title className="entry-category-save-title">Save this category?</Dialog.Title>
-                        <p>Update this entry now without saving the rest of the row.</p>
-                        {categorySaveError ? <p className="form-error">{categorySaveError}</p> : null}
-                        <div className="delete-popover-actions">
-                          <button type="button" className="subtle-cancel" disabled={isSavingCategory} onClick={dismissCategorySavePrompt}>
-                            Not yet
-                          </button>
-                          <button type="button" className="subtle-action" disabled={isSavingCategory} onClick={() => void saveCategoryShortcut()}>
-                            {isSavingCategory ? "Saving..." : "Save category"}
-                          </button>
-                        </div>
-                      </Dialog.Content>
-                    </Dialog.Portal>
-                  </Dialog.Root>
-                </>
-              ) : (
-                <Popover.Root open={Boolean(categorySavePrompt)} onOpenChange={(open) => {
-                  if (!open) {
-                    dismissCategorySavePrompt();
-                  }
-                }}>
-                  <Popover.Anchor asChild>
-                    {desktopCategorySelect}
-                  </Popover.Anchor>
-                  <Popover.Portal>
-                    <Popover.Content className="entry-category-save-popover" sideOffset={8} align="end">
-                      {categorySavePromptBody}
-                      <Popover.Arrow className="category-popover-arrow" />
-                    </Popover.Content>
-                  </Popover.Portal>
-                </Popover.Root>
-              )
+              categorySelect
             )}
           </div>
         </label>
