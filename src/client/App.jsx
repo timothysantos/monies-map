@@ -40,6 +40,7 @@ import {
 import {
   buildPageViewFromRouteData,
   buildRoutePageRequest,
+  getAppShellAvailableViewIds,
   getSelectedTabId,
   sanitizeTabParams
 } from "./app-routing";
@@ -85,6 +86,38 @@ const routeModuleLoaders = {
 // Track preloaded route bundles so the app does not request the same chunk
 // repeatedly during idle warmup.
 const routeModulePreloads = new Map();
+const TRANSIENT_WORKER_RESPONSE_SNIPPETS = [
+  "worker restarted mid-request",
+  "socket hang up",
+  "Your worker"
+];
+
+function isTransientWorkerResponse(responseText) {
+  return TRANSIENT_WORKER_RESPONSE_SNIPPETS.some((snippet) => responseText.includes(snippet));
+}
+
+async function waitForTransientWorkerRetry(attempt) {
+  await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+}
+
+async function fetchTextWithTransientWorkerRetry(url, options = {}) {
+  let lastResult = null;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const response = await fetch(url, options);
+    const responseText = await response.text();
+    lastResult = { response, responseText };
+
+    if (attempt < 2 && isTransientWorkerResponse(responseText)) {
+      await waitForTransientWorkerRetry(attempt);
+      continue;
+    }
+
+    return lastResult;
+  }
+
+  return lastResult;
+}
 
 const EntriesPanel = lazy(() => routeModuleLoaders.entries().then((module) => ({ default: module.EntriesPanel })));
 const FaqPanel = lazy(() => routeModuleLoaders.faq().then((module) => ({ default: module.FaqPanel })));
@@ -610,13 +643,14 @@ export function App() {
     // The app-shell fetcher uses a manual parse step so non-JSON error bodies
     // can still surface a useful message.
     const fetcher = async () => {
-      const response = await fetch(`/api/app-shell?${cacheKey}`, { cache: "no-store" });
+      const { response, responseText } = await fetchTextWithTransientWorkerRetry(`/api/app-shell?${cacheKey}`, {
+        cache: "no-store"
+      });
       updateLoadingStatus({
         label: "Reading dashboard response",
         detail: "Parsing dashboard...",
         percent: 55
       });
-      const responseText = await response.text();
       let data = null;
 
       if (responseText) {
@@ -678,16 +712,14 @@ export function App() {
       detail: "Loading entries...",
       percent: 22
     });
-    const response = await fetch(`/api/entries-shell?${params.toString()}`, {
-      cache: "no-store",
-      signal
+    const { response, responseText } = await fetchTextWithTransientWorkerRetry(`/api/entries-shell?${params.toString()}`, {
+      cache: "no-store"
     });
     updateLoadingStatus({
       label: "Preparing entry view",
       detail: "Opening editor...",
       percent: 48
     });
-    const responseText = await response.text();
     let data = null;
 
     if (responseText) {
@@ -807,13 +839,14 @@ export function App() {
     // Route-page responses are parsed manually for the same reason as the
     // shell fetch: server errors still need to surface useful context.
     const fetcher = async () => {
-      const response = await fetch(requestUrl, { cache: "no-store" });
+      const { response, responseText } = await fetchTextWithTransientWorkerRetry(requestUrl, {
+        cache: "no-store"
+      });
       updateLoadingStatus({
         label: "Reading page response",
         detail: "Parsing page...",
         percent: 92
       });
-      const responseText = await response.text();
       let data = null;
 
       if (responseText) {
@@ -1491,6 +1524,7 @@ export function App() {
   const prefetchSummaryPage = useCallback(async ({ pageParams, accountPillsParams }) => {
     const summaryQueryKey = queryKeys.summaryPage({
       viewId: pageParams.get("view") ?? "household",
+      month: pageParams.get("month") ?? "",
       scope: pageParams.get("scope") ?? "direct_plus_shared",
       startMonth: pageParams.get("summary_start") ?? "",
       endMonth: pageParams.get("summary_end") ?? ""
@@ -1759,6 +1793,7 @@ export function App() {
     const controller = new AbortController();
     const summaryQueryKey = queryKeys.summaryPage({
       viewId: selectedViewId,
+      month: selectedMonth,
       scope: selectedScope,
       startMonth: selectedSummaryStart ?? "",
       endMonth: selectedSummaryEnd ?? ""
@@ -2336,7 +2371,7 @@ export function App() {
       }
     }
 
-    const matchesKnownView = appShell.availableViewIds.includes(selectedViewId);
+    const matchesKnownView = getAppShellAvailableViewIds(appShell).includes(selectedViewId);
     if (matchesKnownView) {
       return;
     }

@@ -4217,6 +4217,20 @@ button.split-activity-card:hover {
   background: rgba(255, 255, 255, 0.84);
 }
 
+.category-row-button {
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.category-row-button:hover,
+.category-row-button:focus-visible {
+  border-color: rgba(62, 91, 70, 0.42);
+  box-shadow: 0 12px 26px rgba(53, 72, 55, 0.08);
+}
+
 .category-key {
   display: flex;
   align-items: center;

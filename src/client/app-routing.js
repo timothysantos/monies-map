@@ -161,3 +161,18 @@ export function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appS
 
   return null;
 }
+
+export function getAppShellAvailableViewIds(appShell) {
+  if (!appShell) {
+    return [];
+  }
+
+  if (Array.isArray(appShell.availableViewIds)) {
+    return appShell.availableViewIds;
+  }
+
+  return [
+    "household",
+    ...(appShell.household?.people ?? []).map((person) => person.id)
+  ];
+}

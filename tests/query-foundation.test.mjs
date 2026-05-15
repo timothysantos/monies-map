@@ -54,6 +54,32 @@ test("queryKeys.summaryAccountPills returns a stable slice key", () => {
   ]);
 });
 
+test("queryKeys.summaryPage includes selected month when range params are implicit", () => {
+  assert.deepEqual(queryKeys.summaryPage({
+    viewId: "household",
+    month: "2026-05",
+    scope: "direct_plus_shared",
+    startMonth: "",
+    endMonth: ""
+  }), [
+    "summary-page",
+    {
+      endMonth: "",
+      month: "2026-05",
+      scope: "direct_plus_shared",
+      startMonth: "",
+      viewId: "household"
+    }
+  ]);
+});
+
+test("queryKeys.summaryPage keeps different implicit summary months isolated", () => {
+  assert.notDeepEqual(
+    queryKeys.summaryPage({ viewId: "household", month: "2026-04", scope: "direct_plus_shared", startMonth: "", endMonth: "" }),
+    queryKeys.summaryPage({ viewId: "household", month: "2026-05", scope: "direct_plus_shared", startMonth: "", endMonth: "" })
+  );
+});
+
 test("queryKeys.splitsPage returns a stable slice key", () => {
   assert.deepEqual(queryKeys.splitsPage({ viewId: "person-tim", month: "2025-10" }), [
     "splits-page",
@@ -159,12 +185,12 @@ test("invalidateMonthQueries targets exact month, entries, and summary keys", as
   assert.deepEqual(queryClient.calls.slice(0, 3), [
     ["cancel", ["month-page", { month: "2026-04", scope: "direct_plus_shared", viewId: "household" }]],
     ["cancel", ["entries-page", { month: "2026-04", view: "household" }]],
-    ["cancel", ["summary-page", { endMonth: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
+    ["cancel", ["summary-page", { endMonth: "2026-04", month: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
   ]);
   assert.deepEqual(queryClient.calls.slice(3), [
     ["invalidate", ["month-page", { month: "2026-04", scope: "direct_plus_shared", viewId: "household" }]],
     ["invalidate", ["entries-page", { month: "2026-04", view: "household" }]],
-    ["invalidate", ["summary-page", { endMonth: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
+    ["invalidate", ["summary-page", { endMonth: "2026-04", month: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
   ]);
 });
 
@@ -182,12 +208,12 @@ test("invalidateEntriesMutationQueries targets exact entries, month, and summary
   assert.deepEqual(queryClient.calls.slice(0, 3), [
     ["cancel", ["entries-page", { month: "2026-04", type: "expense", view: "household" }]],
     ["cancel", ["month-page", { month: "2026-04", scope: "direct_plus_shared", viewId: "household" }]],
-    ["cancel", ["summary-page", { endMonth: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
+    ["cancel", ["summary-page", { endMonth: "2026-04", month: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
   ]);
   assert.deepEqual(queryClient.calls.slice(3), [
     ["invalidate", ["entries-page", { month: "2026-04", type: "expense", view: "household" }]],
     ["invalidate", ["month-page", { month: "2026-04", scope: "direct_plus_shared", viewId: "household" }]],
-    ["invalidate", ["summary-page", { endMonth: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
+    ["invalidate", ["summary-page", { endMonth: "2026-04", month: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
   ]);
 });
 
@@ -206,12 +232,12 @@ test("invalidateImportMutationQueries targets imports, entries, month, and summa
     ["cancel", ["imports-page"]],
     ["cancel", ["entries-page", { month: "2026-04", view: "household" }]],
     ["cancel", ["month-page", { month: "2026-04", scope: "direct_plus_shared", viewId: "household" }]],
-    ["cancel", ["summary-page", { endMonth: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
+    ["cancel", ["summary-page", { endMonth: "2026-04", month: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
   ]);
   assert.deepEqual(queryClient.calls.slice(4), [
     ["invalidate", ["imports-page"]],
     ["invalidate", ["entries-page", { month: "2026-04", view: "household" }]],
     ["invalidate", ["month-page", { month: "2026-04", scope: "direct_plus_shared", viewId: "household" }]],
-    ["invalidate", ["summary-page", { endMonth: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
+    ["invalidate", ["summary-page", { endMonth: "2026-04", month: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
   ]);
 });

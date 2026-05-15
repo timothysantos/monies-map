@@ -66,6 +66,10 @@ export function invalidateAppDataCache() {
   appDataReadyPromise = null;
 }
 
+export function primeAppDataCache(demo: DemoSettings) {
+  appDataReadyPromise = Promise.resolve(demo);
+}
+
 export async function loadAppShellContext(
   db: D1Database,
   viewerEmail?: string,

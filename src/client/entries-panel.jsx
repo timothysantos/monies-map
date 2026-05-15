@@ -143,8 +143,7 @@ export function EntriesPanel({
     deleteEntry,
     updateEntry,
     updateEntryAmount,
-    updateEntrySplit,
-    saveEntryCategory
+    updateEntrySplit
   } = useEntryActions({
     view: entryView,
     accounts,
@@ -214,20 +213,20 @@ export function EntriesPanel({
     [entries]
   );
   useEffect(() => {
-    const category = searchParams.get("entry_category");
     const person = searchParams.get("entry_person");
     const walletValues = wallets.map((option) => option.value);
     const staleWalletFilters = walletFilters.filter((wallet) => (
       !walletValues.includes(wallet) && !entries.some((entry) => entry.accountName === wallet)
     ));
-    const categoryIsStale = category && !entryCategoryOptions.includes(category);
 
-    if (!staleWalletFilters.length && !categoryIsStale && !person) {
+    if (!staleWalletFilters.length && !person) {
       return;
     }
 
     // Filters live in the URL, so this effect prunes values that stopped
-    // making sense after the month/view payload changed.
+    // making sense after the month/view payload changed. Category filters are
+    // allowed to have zero matches so reclassification workflows do not clear
+    // the user's active filter after save.
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       if (staleWalletFilters.length) {
@@ -236,15 +235,12 @@ export function EntriesPanel({
           .filter((wallet) => !staleWalletFilters.includes(wallet))
           .forEach((wallet) => next.append("entry_wallet", wallet));
       }
-      if (categoryIsStale) {
-        next.delete("entry_category");
-      }
       if (person) {
         next.delete("entry_person");
       }
       return next;
     }, { replace: true });
-  }, [entries, entryCategoryOptions, searchParams, setSearchParams, walletFilterKey, wallets]);
+  }, [entries, searchParams, setSearchParams, walletFilterKey, wallets]);
   const { categoryOptions, accountOptions, ownerOptions } = useMemo(
     () => getEntryFormOptions({ accounts, categories, people }),
     [accounts, categories, people]
@@ -407,8 +403,14 @@ export function EntriesPanel({
     entryNetMinor,
     expenseBreakdown
   } = useMemo(
-    () => getEntryDerivedData({ entries, entryFilters, selectedScope, viewId: entryView.id }),
-    [entries, entryFilters, selectedScope, entryView.id]
+    () => getEntryDerivedData({
+      entries,
+      entryFilters,
+      selectedScope,
+      viewId: entryView.id,
+      pinnedEntryIds: editingEntryId ? [editingEntryId] : []
+    }),
+    [editingEntryId, entries, entryFilters, selectedScope, entryView.id]
   );
   const entriesEmptyStateSuggestion = useMemo(
     () => getEntriesEmptyStateSuggestion({
@@ -758,7 +760,11 @@ export function EntriesPanel({
       />
 
       {showExpenseBreakdown ? (
-        <EntriesBreakdownPanel expenseBreakdown={expenseBreakdown} categories={categories} />
+        <EntriesBreakdownPanel
+          expenseBreakdown={expenseBreakdown}
+          categories={categories}
+          onSelectCategory={(categoryName) => updateEntryFilter("category", categoryName)}
+        />
       ) : null}
 
       {!useMobileEntrySheet ? <EntriesFilterStack {...filterStackProps} /> : null}
@@ -909,7 +915,6 @@ export function EntriesPanel({
             lockTransferCategory
             onChange={(patch) => updateEntry(activeEditingEntry.id, patch)}
             onAmountChange={(patch) => updateEntryAmount(activeEditingEntry.id, patch)}
-            onQuickSaveCategory={(categoryName) => saveEntryCategory(activeEditingEntry.id, categoryName)}
             onCategoryAppearanceChange={onCategoryAppearanceChange}
             onOwnerChange={(nextValue) => {
               if (nextValue === "Shared") {
@@ -982,7 +987,6 @@ export function EntriesPanel({
           onUpdateEntry={updateEntry}
           onUpdateEntryAmount={updateEntryAmount}
           onUpdateEntrySplit={updateEntrySplit}
-          onSaveEntryCategory={saveEntryCategory}
           onEnsureTransferSettlementDraft={ensureTransferSettlementDraft}
           onTransferDialogEntryChange={setTransferDialogEntryId}
           onUpdateTransferSettlementDraft={updateTransferSettlementDraft}

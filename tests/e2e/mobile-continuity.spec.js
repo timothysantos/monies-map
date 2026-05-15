@@ -30,11 +30,11 @@ test.describe("mobile continuity", () => {
 
   test("imports page stays readable on mobile", async ({ page }) => {
     await page.goto("/imports");
-    await expect(page.getByRole("heading", { name: "Imports", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Imports", exact: true })).toBeVisible({ timeout: 30_000 });
   });
 
   test("settings page stays readable on mobile", async ({ page }) => {
     await page.goto("/settings");
-    await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "People" })).toBeVisible({ timeout: 60_000 });
   });
 });

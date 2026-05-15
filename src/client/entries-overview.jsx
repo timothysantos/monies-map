@@ -66,7 +66,7 @@ export function EntriesTotalsStrip({
   );
 }
 
-export function EntriesBreakdownPanel({ expenseBreakdown, categories }) {
+export function EntriesBreakdownPanel({ expenseBreakdown, categories, onSelectCategory }) {
   return (
     <section className="entries-breakdown-panel">
       <div className="entries-breakdown-chart">
@@ -88,7 +88,13 @@ export function EntriesBreakdownPanel({ expenseBreakdown, categories }) {
         {expenseBreakdown.map((item, index) => {
           const theme = categoryService.getTheme(categories, item, index);
           return (
-            <div key={item.key} className="category-row">
+            <button
+              key={item.key}
+              type="button"
+              className="category-row category-row-button"
+              onClick={() => onSelectCategory?.(item.categoryName ?? item.label)}
+              aria-label={`Filter entries by ${item.label}`}
+            >
               <div className="category-key">
                 <span className="category-icon category-icon-static" style={{ "--category-color": theme.color }}>
                   <CategoryGlyph iconKey={theme.iconKey} />
@@ -98,7 +104,7 @@ export function EntriesBreakdownPanel({ expenseBreakdown, categories }) {
                   <p>{formatService.money(item.valueMinor)} • {item.entryCount} {item.entryCount === 1 ? "entry" : "entries"}</p>
                 </div>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>

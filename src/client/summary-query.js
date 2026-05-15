@@ -4,6 +4,7 @@ import { buildRequestErrorMessage } from "./request-errors.js";
 function getSummaryPageKeyFromParams(params) {
   return queryKeys.summaryPage({
     viewId: params.get("view") ?? "household",
+    month: params.get("month") ?? "",
     scope: params.get("scope") ?? "direct_plus_shared",
     startMonth: params.get("summary_start") ?? "",
     endMonth: params.get("summary_end") ?? ""

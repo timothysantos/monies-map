@@ -29,6 +29,13 @@ export function mergeEntriesById(currentEntries, serverEntries, editingEntryId) 
         };
       }
 
+      if (
+        currentEntry.isPendingDerived
+        && JSON.stringify(buildComparableEntryState(currentEntry)) !== JSON.stringify(buildComparableEntryState(serverEntry))
+      ) {
+        return currentEntry;
+      }
+
       return {
         ...currentEntry,
         ...serverEntry,

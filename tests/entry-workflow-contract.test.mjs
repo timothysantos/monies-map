@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { entryBypassesFieldFilters } from "../src/client/entry-filter-pins.js";
 import { buildComparableEntryState, mergeEntriesById } from "../src/client/entry-state.js";
 
 test("E1 entries workflow keeps an optimistic row alive when a stale refresh omits it", () => {
@@ -38,6 +39,39 @@ test("E7 entries workflow protects the actively edited row from stale server rep
   assert.equal(nextEntries[0].linkedSplitExpenseId, "split-1");
   assert.equal(nextEntries[0].isPendingDerived, false);
   assert.equal(nextEntries[1].description, "Lunch refreshed");
+});
+
+test("entries workflow keeps a saved pending row ahead of stale server payloads", () => {
+  const currentEntries = [
+    {
+      id: "reclassified",
+      date: "2026-05-24",
+      description: "Reclassified row",
+      accountId: "acct-1",
+      accountName: "UOB One",
+      categoryName: "Groceries",
+      amountMinor: 3210,
+      entryType: "expense",
+      transferDirection: null,
+      ownershipType: "direct",
+      ownerName: "Tim",
+      note: "",
+      splits: [],
+      isPendingDerived: true
+    }
+  ];
+  const serverEntries = [
+    {
+      ...currentEntries[0],
+      categoryName: "Other",
+      isPendingDerived: false
+    }
+  ];
+
+  const nextEntries = mergeEntriesById(currentEntries, serverEntries, null);
+
+  assert.equal(nextEntries[0].categoryName, "Groceries");
+  assert.equal(nextEntries[0].isPendingDerived, true);
 });
 
 test("X5a entries workflow keeps the active edit comparison stable across note-only changes", () => {
@@ -88,4 +122,10 @@ test("X7 entries workflow treats split-linked evidence as part of the entry comp
   };
 
   assert.notDeepEqual(buildComparableEntryState(before), buildComparableEntryState(after));
+});
+
+test("entries filtering can pin the actively edited row until save", () => {
+  assert.equal(entryBypassesFieldFilters("editing", ["editing"]), true);
+  assert.equal(entryBypassesFieldFilters("other", ["editing"]), false);
+  assert.equal(entryBypassesFieldFilters("editing", [null, "", "editing"]), true);
 });
