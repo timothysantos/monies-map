@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "monies-map-test",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-04-03",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
+  "vars": {
+    "APP_ENVIRONMENT": "test"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "monies-map-test",
+      "database_id": "c2d0f4a2-9dcb-4d6e-a1f0-8b0b6c2c9b71"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

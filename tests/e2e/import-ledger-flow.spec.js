@@ -255,6 +255,7 @@ test.describe("import flow", () => {
     const beforeFoodDonut = findDonutMonthValue(beforeSummaryPage, "2025-10", "Food & Drinks");
 
     await page.goto("/imports?view=person-tim&month=2025-10");
+    await expect(page.getByRole("heading", { name: "Import and certify" })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByLabel("Source label")).toBeVisible({ timeout: 30_000 });
 
     await page.getByLabel("Source label").fill("Playwright import");
@@ -365,6 +366,7 @@ test.describe("import flow", () => {
     expect(beforeMonthPage.monthPage.metricCards.find((item) => item.label === "Actual spend")?.amountMinor).toBe(beforeMonth.realExpensesMinor);
     const expectedAfterActual = beforeMonth.realExpensesMinor + 22_22;
 
+    await expect(importsPage.getByRole("heading", { name: "Import and certify" })).toBeVisible({ timeout: 30_000 });
     await importsPage.getByLabel("Source label").fill("Cross-tab sync import");
     await importsPage.getByLabel("CSV content").fill(
       [
@@ -2229,7 +2231,8 @@ test.describe("import flow", () => {
 
     const uploadPdfAndMap = async (path) => {
       await importFlowPage.goto("/imports?view=person-tim&month=2026-02");
-      await expect(importFlowPage.getByLabel("Source label")).toBeVisible();
+      await expect(importFlowPage.getByRole("heading", { name: "Import and certify" })).toBeVisible({ timeout: 30_000 });
+      await expect(importFlowPage.getByLabel("Source label")).toBeVisible({ timeout: 30_000 });
       const fileInput = importFlowPage.locator("input[type=\"file\"]");
       await fileInput.setInputFiles(path);
       await expect(importFlowPage.getByText("Unknown accounts need mapping before commit.")).toBeVisible();
@@ -2276,6 +2279,7 @@ test.describe("import flow", () => {
 
     const previewCsvSnapshot = async (label, rows, expectedImportCount, expectedSkipCount) => {
       await importFlowPage.goto("/imports?view=person-tim&month=2026-02");
+      await expect(importFlowPage.getByRole("heading", { name: "Import and certify" })).toBeVisible({ timeout: 30_000 });
       await importFlowPage.getByLabel("Source label").fill(label);
       await importFlowPage.getByLabel("CSV content").fill(csvFromRows(rows));
       await importFlowPage.getByRole("button", { name: "Preview import" }).click();

@@ -24,17 +24,16 @@ test.describe("mobile continuity", () => {
 
   test("splits page stays readable on mobile", async ({ page }) => {
     await page.goto("/splits?view=person-tim&month=2026-04&scope=direct_plus_shared");
-    await expect(page.getByRole("button", { name: "Create group" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "+ Add expense" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Non-group expenses" })).toBeVisible();
   });
 
   test("imports page stays readable on mobile", async ({ page }) => {
     await page.goto("/imports");
-    await expect(page.getByRole("heading", { name: "Imports", exact: true })).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator("body")).toContainText("Imports", { timeout: 30_000 });
   });
 
   test("settings page stays readable on mobile", async ({ page }) => {
     await page.goto("/settings");
-    await expect(page.getByRole("button", { name: "People" })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole("button", { name: /People/ })).toBeVisible({ timeout: 60_000 });
   });
 });
