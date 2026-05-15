@@ -20,6 +20,8 @@
     "pretest:e2e": "node ./scripts/ensure-node-major.mjs 22",
     "dev": "concurrently -k -n API,UI \"npm:dev:api\" \"npm:dev:ui\"",
     "dev:api": "wrangler dev --port 8787",
+    "dev:api:test": "wrangler dev --config wrangler.test.jsonc --port 8787",
+    "dev:test": "npm run db:migrate:test && concurrently -k -n API,UI \"npm:dev:api:test\" \"npm:dev:ui\"",
     "dev:ui": "vite",
     "build": "vite build",
     "test:e2e": "playwright test",
@@ -29,6 +31,7 @@
     "deploy:demo": "npm run build && wrangler deploy --config wrangler.demo.jsonc",
     "deploy:all": "npm run build && wrangler deploy && wrangler deploy --config wrangler.demo.jsonc",
     "db:migrate": "wrangler d1 execute monies-map --local --file=schema.sql",
+    "db:migrate:test": "wrangler d1 execute monies-map-test --config wrangler.test.jsonc --local --file=schema.sql",
     "db:migrate:remote": "wrangler d1 execute monies-map --remote --file=schema.sql",
     "db:migrate:demo": "wrangler d1 execute monies-map-demo --remote --file=schema.sql",
     "db:empty-production": "node ./scripts/empty-production.mjs"

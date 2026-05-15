@@ -73,6 +73,12 @@ export async function loadSplitsPage(page, { view = "person-tim", month = "2025-
   throw lastError ?? new Error("GET /api/splits-page failed");
 }
 
+export async function loadImportsPage(page) {
+  const response = await page.request.get("/api/imports-page");
+  expect(response.ok(), await response.text()).toBeTruthy();
+  return response.json();
+}
+
 export async function loadEntriesPage(page, { view = "person-tim", month = "2026-04" } = {}) {
   let lastError = null;
 

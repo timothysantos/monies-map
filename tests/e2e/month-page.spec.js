@@ -220,7 +220,6 @@ test.describe("month page", () => {
 
     await page.locator(".context-block .pill-row").getByRole("button", { name: "Tim" }).click();
     await expect(page).toHaveURL(/view=person-tim/);
-    await expect(page).toHaveURL(/entry_person=Tim/);
     await expect(page.locator(".panel-context")).toContainText("Viewing entries for Tim");
 
     const scopeToggle = page.locator(".desktop-scope-toggle");

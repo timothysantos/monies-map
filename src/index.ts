@@ -1673,7 +1673,7 @@ function getAppEnvironment(env: Env, url: URL): Env["APP_ENVIRONMENT"] {
 
 function canUseDemoControls(env: Env, url: URL) {
   const environment = getAppEnvironment(env, url);
-  return environment === "demo" || environment === "local";
+  return environment === "demo" || environment === "local" || environment === "test";
 }
 
 function isLocalHostname(hostname: string) {
