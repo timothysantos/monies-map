@@ -240,4 +240,5 @@ test("invalidateImportMutationQueries targets imports, entries, month, and summa
     ["invalidate", ["month-page", { month: "2026-04", scope: "direct_plus_shared", viewId: "household" }]],
     ["invalidate", ["summary-page", { endMonth: "2026-04", month: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
   ]);
+  assert.equal(queryClient.calls.some(([, queryKey]) => queryKey[0] === "app-shell"), false);
 });
