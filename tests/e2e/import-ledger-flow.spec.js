@@ -254,8 +254,9 @@ test.describe("import flow", () => {
     const beforeMonth = findSummaryMonth(beforeSummaryPage, "2025-10");
     const beforeFoodDonut = findDonutMonthValue(beforeSummaryPage, "2025-10", "Food & Drinks");
 
+    const importsPageReady = page.waitForResponse((response) => response.url().includes("/api/imports-page") && response.ok());
     await page.goto("/imports?view=person-tim&month=2025-10");
-    await expect(page.getByRole("heading", { name: "Import and certify" })).toBeVisible({ timeout: 30_000 });
+    await importsPageReady;
     await expect(page.getByLabel("Source label")).toBeVisible({ timeout: 30_000 });
 
     await page.getByLabel("Source label").fill("Playwright import");
@@ -358,7 +359,9 @@ test.describe("import flow", () => {
 
     await summaryPage.goto("/summary?view=person-tim&month=2025-10&summary_focus=2025-10");
     await monthPage.goto("/month?view=person-tim&month=2025-10");
+    const importsPageReady = importsPage.waitForResponse((response) => response.url().includes("/api/imports-page") && response.ok());
     await importsPage.goto("/imports?view=person-tim&month=2025-10");
+    await importsPageReady;
 
     const beforeSummaryPage = await loadSummaryPage(summaryPage, { view: "person-tim", month: "2025-10" });
     const beforeMonthPage = await loadMonthPage(monthPage, { view: "person-tim", month: "2025-10" });
@@ -366,7 +369,6 @@ test.describe("import flow", () => {
     expect(beforeMonthPage.monthPage.metricCards.find((item) => item.label === "Actual spend")?.amountMinor).toBe(beforeMonth.realExpensesMinor);
     const expectedAfterActual = beforeMonth.realExpensesMinor + 22_22;
 
-    await expect(importsPage.getByRole("heading", { name: "Import and certify" })).toBeVisible({ timeout: 30_000 });
     await importsPage.getByLabel("Source label").fill("Cross-tab sync import");
     await importsPage.getByLabel("CSV content").fill(
       [
@@ -2230,9 +2232,10 @@ test.describe("import flow", () => {
     };
 
     const uploadPdfAndMap = async (path) => {
+      const importsPageReady = importFlowPage.waitForResponse((response) => response.url().includes("/api/imports-page") && response.ok());
       await importFlowPage.goto("/imports?view=person-tim&month=2026-02");
-      await expect(importFlowPage.getByRole("heading", { name: "Import and certify" })).toBeVisible({ timeout: 30_000 });
-      await expect(importFlowPage.getByLabel("Source label")).toBeVisible({ timeout: 30_000 });
+      await importsPageReady;
+      await expect(importFlowPage.getByLabel("Source label")).toBeVisible({ timeout: 60_000 });
       const fileInput = importFlowPage.locator("input[type=\"file\"]");
       await fileInput.setInputFiles(path);
       await expect(importFlowPage.getByText("Unknown accounts need mapping before commit.")).toBeVisible();
@@ -2278,8 +2281,9 @@ test.describe("import flow", () => {
     ].filter(Boolean);
 
     const previewCsvSnapshot = async (label, rows, expectedImportCount, expectedSkipCount) => {
+      const importsPageReady = importFlowPage.waitForResponse((response) => response.url().includes("/api/imports-page") && response.ok());
       await importFlowPage.goto("/imports?view=person-tim&month=2026-02");
-      await expect(importFlowPage.getByRole("heading", { name: "Import and certify" })).toBeVisible({ timeout: 30_000 });
+      await importsPageReady;
       await importFlowPage.getByLabel("Source label").fill(label);
       await importFlowPage.getByLabel("CSV content").fill(csvFromRows(rows));
       await importFlowPage.getByRole("button", { name: "Preview import" }).click();

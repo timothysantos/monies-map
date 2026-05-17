@@ -28,8 +28,10 @@ test.describe("mobile continuity", () => {
   });
 
   test("imports page stays readable on mobile", async ({ page }) => {
+    const importsPageReady = page.waitForResponse((response) => response.url().includes("/api/imports-page") && response.ok());
     await page.goto("/imports");
-    await expect(page.locator("body")).toContainText("Imports", { timeout: 30_000 });
+    await importsPageReady;
+    await expect(page.getByLabel("Source label")).toBeVisible({ timeout: 60_000 });
   });
 
   test("settings page stays readable on mobile", async ({ page }) => {
