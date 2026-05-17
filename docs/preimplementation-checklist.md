@@ -12,6 +12,8 @@ Keep it short. If a change needs a larger audit, split the audit by slice.
 - Confirm the relevant scenarios exist in `docs/scenario-catalog.md`.
 - Confirm the relevant query and invalidation rules exist in `docs/query-map.md`
   or, if the change is not query-related, in the appropriate specialist doc.
+- Confirm whether the slice introduces multiple projections or review surfaces
+  for the same domain reality.
 
 ## 2. Check For Hidden Coupling
 
@@ -22,6 +24,8 @@ Keep it short. If a change needs a larger audit, split the audit by slice.
   separate workflow.
 - Find whether money formatting is stored as display state, draft state, or
   normalized minor state.
+- Find whether route/page orchestration is carrying domain logic that should be
+  moved into a thinner service or view-model.
 
 ## 3. Verify Behavior Risk
 
@@ -30,6 +34,8 @@ Keep it short. If a change needs a larger audit, split the audit by slice.
 - Check whether the change can trigger visible reload churn during save, focus,
   or tab sync.
 - Check whether the change affects the amount-edit typing contract.
+- Check whether visible behavior needs runtime proof in a browser or local
+  worker, not just source inspection.
 
 ## 4. Decide The First Slice Move
 
@@ -37,6 +43,8 @@ Keep it short. If a change needs a larger audit, split the audit by slice.
   dependencies.
 - Prefer the slice whose query boundary most reduces bootstrap dependence.
 - Prefer contract tests before moving helper code.
+- Prefer building the domain behavior before the UI if the slice introduces a
+  new business rule or correction/review path.
 
 ## 5. Stop Conditions
 
@@ -45,6 +53,8 @@ Keep it short. If a change needs a larger audit, split the audit by slice.
 - Stop and add a scenario if a user-visible behavior exists but is not captured.
 - Stop and widen the audit only if the first targeted pass reveals a repeated
   coupling pattern.
+- Stop and split the work if the slice introduces multiple projections that need
+  to stay synchronized.
 
 ## 6. Output Of The Audit
 
@@ -54,3 +64,47 @@ When the checklist is used, record:
 - what was still hidden or ambiguous
 - what doc changed
 - what slice should move first
+- what runtime proof was used, if any
+
+## Post-Slice Audit Checklist
+
+After each slice, the audit must answer all of the following:
+
+1. Did the implementation match the slice contract?
+- State clearly whether the intended slice goal is complete, partial, or not
+  met.
+
+2. Was the runtime behavior verified?
+- Confirm whether the user-visible behavior was checked in the real runtime,
+  not only in source or mocks.
+
+3. Are the projections consistent?
+- Verify whether all visible surfaces that represent the same reality stay
+  synchronized.
+
+4. Are corrections or review behaviors consistent?
+- If the slice introduces edits, deletes, merges, restores, or review flows,
+  confirm they work across every relevant surface.
+
+5. Were the tests added or updated?
+- List the test files that prove the slice behavior.
+- Call out any missing coverage as a weakness.
+
+6. Were docs updated?
+- Confirm whether user docs, in-app help, repo rules, or slice audits were
+  updated.
+
+7. What remains incomplete?
+- State the exact remaining gap, not just a general risk.
+
+8. What should the next slice not take on?
+- Preserve slice boundaries so future work does not blur into the current
+  slice.
+
+9. Is there any orchestration pressure?
+- Call out large routes, monolithic pages, or growing coordination layers that
+  should be extracted later.
+
+10. Is the final verdict honest?
+- Mark the slice complete only if the contract is proven.
+- Otherwise mark it incomplete and explain why.

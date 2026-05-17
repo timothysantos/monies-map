@@ -80,6 +80,8 @@ team conventions evolve.
   slice is explicitly being held back for one atomic change.
 - Finish each slice with a closure audit so the implementation, tests, and docs
   agree before the slice is considered complete.
+- Never mark a slice complete unless the slice contract is proven by tests and
+  runtime behavior.
 - Keep [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
   updated alongside user-facing product, setup, and workflow changes.
 - When implementation and documentation diverge, update the documentation in the
@@ -94,9 +96,18 @@ team conventions evolve.
   canonical name in `DOMAIN.md`.
 - Prefer vertical slices over horizontal utility sprawl. Build and refactor by
   end-to-end workflows such as imports, entries, months, splits, and settings.
+- Build domain-first. Model business behavior in types and domain services
+  before UI, and keep distinct semantics distinct when they represent different
+  realities.
+- Treat projections as first-class. When one underlying reality needs multiple
+  views, keep operational, summary, review, compact, and audit-compatible
+  projections synchronized and tested together.
 - Practice TDD by scenario. Start each meaningful behavior change with a test or
   test update that describes the user-visible workflow before implementation
   details.
+- Use runtime proof for user-facing behavior. Prefer real browser or real local
+  worker verification over source inspection when the behavior is visible to a
+  user.
 - Do not write shallow tests for implemented behavior. For any non-trivial
   slice, assert the concrete output shape and values, and include at least one
   negative test that proves the guarded or rejected path.
@@ -104,6 +115,9 @@ team conventions evolve.
   shallow helper graphs.
 - Prefer explicit domain boundaries between storage, transformation logic, DTOs,
   and UI presentation.
+- Keep route orchestration thin. Page components should coordinate, not contain
+  the whole system; extract helpers and view-models when a page starts carrying
+  too many responsibilities.
 - Build for change. Banks, import formats, categories, splits, and dashboard
   views will evolve over time.
 - Optimize for maintainability over short-term convenience.
@@ -120,6 +134,11 @@ team conventions evolve.
 - Favor composable modules over large files with mixed responsibilities.
 - Keep module APIs small. A caller should not need to understand a feature's
   internal helper graph to use it safely.
+- Keep continuity as an invariant. Preserve state across rerender, route
+  change, correction, and review flows where the workflow requires it.
+- Treat corrections and review as serious system behavior. Support update,
+  delete, merge, restore, undo, and reason capture where relevant, and make sure
+  correction history propagates consistently across projections.
 
 ## Frontend guidance
 
@@ -158,6 +177,8 @@ team conventions evolve.
   would otherwise be hard to infer.
 - Avoid comments that only restate the line below them.
 - Prefer clear names over dense abstractions.
+- Prefer user-friendly language in visible UI. Avoid internal jargon on the
+  main surface and keep deeper interpretation in dedicated review surfaces.
 
 ## Documentation expectations
 
