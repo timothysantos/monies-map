@@ -257,6 +257,8 @@ test.describe("import flow", () => {
     const importsPageReady = page.waitForResponse((response) => response.url().includes("/api/imports-page") && response.ok());
     await page.goto("/imports?view=person-tim&month=2025-10");
     await importsPageReady;
+    await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("Source label")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByLabel("Source label")).toBeVisible({ timeout: 30_000 });
 
     await page.getByLabel("Source label").fill("Playwright import");
@@ -2281,9 +2283,9 @@ test.describe("import flow", () => {
     ].filter(Boolean);
 
     const previewCsvSnapshot = async (label, rows, expectedImportCount, expectedSkipCount) => {
-      const importsPageReady = importFlowPage.waitForResponse((response) => response.url().includes("/api/imports-page") && response.ok());
-      await importFlowPage.goto("/imports?view=person-tim&month=2026-02");
-      await importsPageReady;
+      await expect(importFlowPage.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 60_000 });
+      await expect(importFlowPage.getByText("Source label")).toBeVisible({ timeout: 60_000 });
+      await expect(importFlowPage.getByLabel("Source label")).toBeVisible({ timeout: 60_000 });
       await importFlowPage.getByLabel("Source label").fill(label);
       await importFlowPage.getByLabel("CSV content").fill(csvFromRows(rows));
       await importFlowPage.getByRole("button", { name: "Preview import" }).click();

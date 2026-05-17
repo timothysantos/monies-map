@@ -78,6 +78,14 @@ team conventions evolve.
 - Keep [`docs/fourteenth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/fourteenth-slice-prompt.md)
   updated alongside the actual fourteenth implementation prompt for the
   remaining cross-slice infrastructure cleanup slice.
+- Keep [`docs/stage4-closure-audit-documentation-alignment-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/stage4-closure-audit-documentation-alignment-prompt.md)
+  updated alongside the Stage 4 closure audit and documentation alignment
+  prompt.
+- Keep [`docs/stage4-flow-index.md`](/Users/tim/22m/ai-projects/monies_map/docs/stage4-flow-index.md)
+  and the page flow docs under `docs/flows/` aligned with the current route,
+  state, and data contracts.
+- Keep [`docs/stage4-close-checklist.md`](/Users/tim/22m/ai-projects/monies_map/docs/stage4-close-checklist.md)
+  updated alongside the Stage 4 closure criteria.
 - Refactor work should be committed in small readable batches as it proceeds.
   Use that practice for the first slice and keep it for later slices unless a
   slice is explicitly being held back for one atomic change.

@@ -2,7 +2,7 @@
 
 ## Verdict
 
-Ready to close.
+Ready to close as a narrowing and regression-protection slice.
 
 ## Scope
 
@@ -19,6 +19,16 @@ ownership, invalidation narrowing, and removing broad shared refresh behavior.
   invalidation from touching the app-shell key.
 - Preserved the existing slice-owned refresh plans and query ownership rules
   instead of broadening shared infrastructure.
+
+## Measured Narrowing
+
+- Imports refresh no longer performs the extra `clearSummaryPageCache()` and
+  `clearSummaryAccountPillsCache()` work before fetching the imports route.
+- Split cache clearing no longer clears the app-shell cache merely because a
+  mutation affects entries, month, or summary caches; it only clears the shell
+  when `refreshShell` is explicitly requested.
+- The query foundation suite now asserts that import invalidation does not touch
+  the `app-shell` query key.
 
 ## Legacy Paths Removed
 
@@ -57,12 +67,21 @@ ownership, invalidation narrowing, and removing broad shared refresh behavior.
 - The app shell still owns global composition and the shell query itself.
 - Shared invalidation helpers remain, but their behavior is now constrained by
   slice-owned refresh plans and regression tests.
+- `App.jsx` still contains the coordination boundary for the app shell and
+  shared route refresh paths; this slice narrows its authority but does not
+  remove it.
+- Explicit shell refresh remains available as a named escape hatch for
+  reference-data flows that truly need it.
 
 ## Remaining Risk
 
-- The slice does not eliminate all shared infrastructure, and future feature
-  work should keep watching for broad refresh pressure in `App.jsx` and
-  app-sync-style helpers.
+- The slice does not eliminate all shared infrastructure.
+- `App.jsx` remains a coordination gravity center and should be watched for
+  future broad refresh pressure.
+- Explicit shell refresh remains an escape hatch that can grow if future slices
+  overuse it.
+- Shared invalidation helpers still exist, so future work should continue to
+  guard their scope with regression tests rather than convention alone.
 
 ## Why This Is Safe To Close
 
@@ -70,4 +89,5 @@ ownership, invalidation narrowing, and removing broad shared refresh behavior.
   widened.
 - The regression test now protects the narrower import invalidation contract.
 - The unit suite and the full serial smoke bundle both pass.
-
+- The slice reduced coordination breadth without reintroducing a global refresh
+  abstraction.
