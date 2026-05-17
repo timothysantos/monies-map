@@ -1019,8 +1019,6 @@ export function App() {
       return null;
     }
 
-    clearSummaryPageCache();
-    clearSummaryAccountPillsCache();
     const tasks = [fetchRoutePageData(request, { bypassCache: true })];
     if (invalidateImports) {
       tasks.push(invalidateImportMutationQueries(queryClient, {
@@ -1039,8 +1037,6 @@ export function App() {
 
     return data;
   }, [
-    clearSummaryAccountPillsCache,
-    clearSummaryPageCache,
     fetchRoutePageData,
     queryClient,
     refreshAppShellInBackground,
@@ -1121,7 +1117,7 @@ export function App() {
       clearSummaryAccountPillsCache();
     }
 
-    if (refreshShell || invalidateEntries || invalidateMonth || invalidateSummary) {
+    if (refreshShell) {
       clearAppShellCache();
     }
   }, [
