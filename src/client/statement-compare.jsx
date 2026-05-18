@@ -2,6 +2,7 @@ import { useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 
 import { messages } from "./copy/en-SG";
+import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 
 const {
@@ -345,6 +346,7 @@ function StatementCompareMissingRow({ row, result, accounts, categories, categor
                 <input
                   className="table-edit-input"
                   value={formatService.formatMinorInput(draft.amountMinor)}
+                  onFocus={selectAllOnFocus}
                   onChange={(event) => updateDraft({
                     amountMinor: formatService.parseMoneyInput(event.target.value, draft.amountMinor)
                   })}

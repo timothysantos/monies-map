@@ -75,6 +75,10 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   }, [accounts, categories, people, viewIdentityKey]);
 
   useEffect(() => {
+    if (editingEntryId) {
+      return;
+    }
+
     setEntries((current) => mergeEntriesById(current, view.monthPage.entries, editingEntryId));
   }, [editingEntryId, view.monthPage.entries]);
 

@@ -2,6 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { CategoryEditDialog } from "./category-edit-dialog";
 import { messages } from "./copy/en-SG";
+import { selectAllOnFocus } from "./focus-utils";
 
 // Settings dialogs receive draft objects from SettingsPanel; save handlers stay
 // in the panel because they own API calls and refresh sequencing.
@@ -108,6 +109,8 @@ export function SettingsCategoryMatchRuleDialog({ dialog, categories, isSubmitti
                 className="table-edit-input table-edit-input-money"
                 type="number"
                 value={dialog?.priority ?? 100}
+                onMouseDown={selectAllOnFocus}
+                onFocus={selectAllOnFocus}
                 onChange={(event) => onChange((current) => current ? { ...current, priority: Number(event.target.value) } : current)}
               />
               <small className="field-help">{messages.settings.categoryRulePriorityHelp}</small>

@@ -1,4 +1,5 @@
 import { messages } from "./copy/en-SG";
+import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 
 const { accounts: accountService } = moniesClient;
@@ -84,12 +85,14 @@ export function ImportSelectFileStage({
         <label className="entries-filter">
           <span className="entries-filter-label">{messages.imports.split}</span>
           <input
-            className="table-edit-input"
+            className="table-edit-input table-edit-input-money"
             type="number"
             min="0"
             max="100"
             value={splitPercent}
             disabled={ownershipType !== "shared"}
+            onMouseDown={selectAllOnFocus}
+            onFocus={selectAllOnFocus}
             onChange={(event) => onSplitPercentChange(event.target.value)}
           />
         </label>
