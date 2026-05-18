@@ -2,6 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { SquarePen, X } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
+import { selectAllOnFocus } from "./focus-utils";
 
 // Checkpoint editing has its own dialog because it also owns history review
 // actions like export, compare, and delete.
@@ -82,6 +83,8 @@ export function SettingsReconciliationDialog({
               <input
                 className="table-edit-input table-edit-input-money"
                 value={dialog?.statementBalance ?? "0.00"}
+                onMouseDown={selectAllOnFocus}
+                onFocus={selectAllOnFocus}
                 onChange={(event) => onChange((current) => current ? { ...current, statementBalance: event.target.value } : current)}
               />
             </label>

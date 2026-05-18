@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { messages } from "./copy/en-SG";
+import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 
 const {
@@ -215,6 +216,8 @@ function PreviewRowsTable({
                     <input
                       className="table-edit-input import-amount-input"
                       value={formatService.formatMinorInput(row.amountMinor)}
+                      onMouseDown={selectAllOnFocus}
+                      onFocus={selectAllOnFocus}
                       onChange={(event) => onUpdatePreviewRow(row.rowId, {
                         amountMinor: formatService.parseMoneyInput(event.target.value, row.amountMinor)
                       })}
@@ -289,6 +292,7 @@ function PreviewRowsTable({
                         min="0"
                         max="100"
                         value={Math.round((row.splitBasisPoints ?? 5000) / 100)}
+                        onMouseDown={selectAllOnFocus}
                         onChange={(event) => onUpdatePreviewRow(row.rowId, { splitBasisPoints: Math.round(Number(event.target.value || "50") * 100) })}
                         disabled={isSkippedTable}
                       />

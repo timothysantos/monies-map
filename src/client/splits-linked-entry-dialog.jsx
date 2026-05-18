@@ -1,6 +1,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 
 import { messages } from "./copy/en-SG";
+import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 
 const { format: formatService } = moniesClient;
@@ -43,13 +44,15 @@ export function SplitLinkedEntryDialog({ dialog, people, categoryOptions, formEr
             <div className="split-dialog-inline">
               <label className="split-dialog-field">
                 <span>{messages.entries.editAmount}</span>
-                <input
-                  className="table-edit-input table-edit-input-money"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formatService.minorToDecimalString(dialog?.amountMinor ?? 0)}
-                  onChange={(event) => onChange((current) => current ? {
+              <input
+                className="table-edit-input table-edit-input-money"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formatService.minorToDecimalString(dialog?.amountMinor ?? 0)}
+                onMouseDown={selectAllOnFocus}
+                onFocus={selectAllOnFocus}
+                onChange={(event) => onChange((current) => current ? {
                     ...current,
                     amountMinor: formatService.decimalStringToMinor(event.target.value)
                   } : current)}
@@ -73,7 +76,7 @@ export function SplitLinkedEntryDialog({ dialog, people, categoryOptions, formEr
               {dialog?.ownershipType === "shared" ? (
                 <label className="split-dialog-field">
                   <span>{messages.entries.editSplit}</span>
-                  <input className="table-edit-input table-edit-input-money" type="number" min="0" max="100" value={Number(dialog?.splitBasisPoints ?? 5000) / 100} onChange={(event) => onChange((current) => current ? { ...current, splitBasisPoints: Math.round(Number(event.target.value || 0) * 100) } : current)} />
+                  <input className="table-edit-input table-edit-input-money" type="number" min="0" max="100" value={Number(dialog?.splitBasisPoints ?? 5000) / 100} onMouseDown={selectAllOnFocus} onFocus={selectAllOnFocus} onChange={(event) => onChange((current) => current ? { ...current, splitBasisPoints: Math.round(Number(event.target.value || 0) * 100) } : current)} />
                 </label>
               ) : null}
             </div>

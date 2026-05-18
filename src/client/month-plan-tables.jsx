@@ -4,6 +4,7 @@ import { ChevronRight, SquarePen, X } from "lucide-react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 import {
   canInlineEditMonthPlanRow,
@@ -272,12 +273,14 @@ function IncomePlanSection({
                       </td>
                       <td {...rowOpenProps}>
                         {isEditing ? (
-                          <input
-                            className="table-edit-input table-edit-input-money"
-                            value={editingDrafts.plannedMinor ?? formatService.formatMinorInput(row.plannedMinor)}
-                            onChange={(event) => onEditingDraftChange({ plannedMinor: event.target.value })}
-                            onClick={(event) => event.stopPropagation()}
-                          />
+                        <input
+                          className="table-edit-input table-edit-input-money"
+                          value={editingDrafts.plannedMinor ?? formatService.formatMinorInput(row.plannedMinor)}
+                          onMouseDown={selectAllOnFocus}
+                          onFocus={selectAllOnFocus}
+                          onChange={(event) => onEditingDraftChange({ plannedMinor: event.target.value })}
+                          onClick={(event) => event.stopPropagation()}
+                        />
                         ) : formatService.money(row.plannedMinor)}
                       </td>
                       <td>
@@ -577,6 +580,8 @@ function PlanningRow({
               <input
                 className="table-edit-input table-edit-input-money"
                 value={editingDrafts.plannedMinor ?? formatService.formatMinorInput(editableRow.plannedMinor)}
+                onMouseDown={selectAllOnFocus}
+                onFocus={selectAllOnFocus}
                 onChange={(event) => {
                   if (isDraftBudgetBucket) {
                     onBudgetBucketPlannedMinorDraftChange(row.id, event.target.value);

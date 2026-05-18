@@ -1,8 +1,9 @@
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 import { ResponsiveSelect } from "./responsive-select";
 import { CategoryGlyph } from "./ui-components";
@@ -51,6 +52,25 @@ export function EntryEditorFields({
   const resolvedAmountInput = amountInputValue
     ?? entry.amountInput
     ?? formatService.formatEditableMinorInput(resolvedAmountMinor);
+  const [amountDraft, setAmountDraft] = useState(resolvedAmountInput);
+
+  useEffect(() => {
+    setAmountDraft(resolvedAmountInput);
+  }, [resolvedAmountInput, entry.id]);
+
+  function handleAmountDraftChange(nextValue) {
+    setAmountDraft(nextValue);
+    if (!nextValue.trim()) {
+      onChange({ amountInput: "", amountMinor: 0 });
+      return;
+    }
+
+    const nextAmountMinor = Math.max(0, formatService.parseMoneyInput(nextValue, resolvedAmountMinor));
+    onChange({
+      amountInput: nextValue,
+      amountMinor: nextAmountMinor
+    });
+  }
 
   function handleCategoryChange(nextCategoryName) {
     onChange({ categoryName: nextCategoryName });
@@ -150,33 +170,15 @@ export function EntryEditorFields({
             className={`table-edit-input table-edit-input-money ${amountToneClass}`}
             type="text"
             inputMode="decimal"
-            value={resolvedAmountInput}
-            onChange={(event) => {
-              const nextValue = event.target.value;
-              if (!nextValue.trim()) {
-                if (onAmountChange) {
-                  onAmountChange({ amountInput: "", amountMinor: 0 });
-                } else {
-                  onChange({ amountInput: "", amountMinor: 0 });
-                }
-                return;
-              }
-              const nextAmountMinor = Math.max(0, formatService.parseMoneyInput(nextValue, resolvedAmountMinor));
-              if (onAmountChange) {
-                onAmountChange({
-                  amountInput: nextValue,
-                  amountMinor: nextAmountMinor
-                });
-              } else {
-                onChange({
-                  amountInput: nextValue,
-                  amountMinor: nextAmountMinor
-                });
-              }
-            }}
+            value={amountDraft}
+            onMouseDown={selectAllOnFocus}
+            onFocus={selectAllOnFocus}
+            onInput={(event) => handleAmountDraftChange(event.target.value)}
+            onChange={(event) => handleAmountDraftChange(event.target.value)}
             onBlur={(event) => {
               const blurAmountMinor = Math.max(0, formatService.parseMoneyInput(event.target.value, resolvedAmountMinor));
               const formattedAmountInput = formatService.formatEditableMinorInput(blurAmountMinor);
+              setAmountDraft(formattedAmountInput);
               if (onAmountChange) {
                 onAmountChange({
                   amountInput: formattedAmountInput,
@@ -237,6 +239,8 @@ export function EntryEditorFields({
               min="0"
               max="100"
               value={splitPercentValue}
+              onMouseDown={selectAllOnFocus}
+              onFocus={selectAllOnFocus}
               onChange={(event) => onSplitPercentChange(Number(event.target.value))}
             />
           </label>

@@ -2,6 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
+import { selectAllOnFocus } from "./focus-utils";
 import { ACCOUNT_KIND_OPTIONS } from "./ui-options";
 
 // Account editing is shared between settings and imports, so keep the dialog
@@ -71,6 +72,8 @@ export function AccountDialog({ dialog, error, people, isSubmitting, onChange, o
                 className="table-edit-input table-edit-input-money"
                 inputMode="decimal"
                 value={dialog?.openingBalance ?? "0.00"}
+                onMouseDown={selectAllOnFocus}
+                onFocus={selectAllOnFocus}
                 onChange={(event) => onChange((current) => current ? { ...current, openingBalance: event.target.value } : current)}
               />
               <small className="field-help">{messages.settings.accountOpeningBalanceHelp}</small>

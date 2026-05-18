@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import { selectAllOnFocus } from "./focus-utils";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
 import { moniesClient } from "./monies-client-service";
 import { MonthMetricRow, MonthNotesAndAccounts, MonthPanelHeader } from "./month-overview";
@@ -1331,6 +1332,8 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
                 className="table-edit-input"
                 inputMode="decimal"
                 value={mobileAddDialog.plannedMinor ?? ""}
+                onMouseDown={selectAllOnFocus}
+                onFocus={selectAllOnFocus}
                 onChange={(event) => setMobileAddDialog((current) => current ? {
                   ...current,
                   plannedMinor: event.target.value,

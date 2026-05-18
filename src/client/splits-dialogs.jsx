@@ -2,6 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useRef } from "react";
 
 import { messages } from "./copy/en-SG";
+import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 import { ResponsiveSelect } from "./responsive-select";
 import { updateSplitExpenseDraft } from "./split-editing";
@@ -106,14 +107,16 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
         <div className="split-dialog-inline">
           <label className="split-dialog-field">
             <span>{messages.splits.expenseAmount}</span>
-            <input
-              ref={amountInputRef}
-              className="table-edit-input table-edit-input-money"
-              type="number"
-              min="0"
-              step="0.01"
-              value={dialog?.amountInput ?? formatService.minorToDecimalString(dialog?.amountMinor ?? 0)}
-              onChange={(event) => onChange((current) => current ? updateSplitExpenseDraft(current, {
+              <input
+                ref={amountInputRef}
+                className="table-edit-input table-edit-input-money"
+                type="number"
+                min="0"
+                step="0.01"
+                value={dialog?.amountInput ?? formatService.minorToDecimalString(dialog?.amountMinor ?? 0)}
+                onMouseDown={selectAllOnFocus}
+                onFocus={selectAllOnFocus}
+                onChange={(event) => onChange((current) => current ? updateSplitExpenseDraft(current, {
                 amountInput: event.target.value,
                 amountMinor: formatService.decimalStringToMinor(event.target.value)
               }) : current)}
@@ -125,13 +128,15 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
           </label>
           <label className="split-dialog-field split-dialog-field-percent">
             <span>{messages.splits.expenseSplit(dialog?.sharePersonName ?? "First person")}</span>
-            <input
-              className="table-edit-input table-edit-input-money"
-              type="number"
-              min="0"
-              max="100"
-              value={dialog?.splitPercentInput ?? String(Number(dialog?.splitBasisPoints ?? 5000) / 100)}
-              onChange={(event) => onChange((current) => current ? updateSplitExpenseDraft(current, {
+              <input
+                className="table-edit-input table-edit-input-money"
+                type="number"
+                min="0"
+                max="100"
+                value={dialog?.splitPercentInput ?? String(Number(dialog?.splitBasisPoints ?? 5000) / 100)}
+                onMouseDown={selectAllOnFocus}
+                onFocus={selectAllOnFocus}
+                onChange={(event) => onChange((current) => current ? updateSplitExpenseDraft(current, {
                 splitPercentInput: event.target.value,
                 splitBasisPoints: Math.round(Number(event.target.value || 0) * 100)
               }, "percent") : current)}
@@ -142,13 +147,15 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
           </label>
           <label className="split-dialog-field split-dialog-field-exact-amount">
             <span>{messages.splits.expenseExactAmount(dialog?.sharePersonName ?? "First person")}</span>
-            <input
-              className="table-edit-input table-edit-input-money"
-              type="number"
-              min="0"
-              step="0.01"
-              value={dialog?.splitAmountInput ?? formatService.minorToDecimalString(dialog?.splitAmountMinor ?? 0)}
-              onChange={(event) => onChange((current) => current ? updateSplitExpenseDraft(current, {
+              <input
+                className="table-edit-input table-edit-input-money"
+                type="number"
+                min="0"
+                step="0.01"
+                value={dialog?.splitAmountInput ?? formatService.minorToDecimalString(dialog?.splitAmountMinor ?? 0)}
+                onMouseDown={selectAllOnFocus}
+                onFocus={selectAllOnFocus}
+                onChange={(event) => onChange((current) => current ? updateSplitExpenseDraft(current, {
                 splitAmountInput: event.target.value,
                 splitAmountMinor: formatService.decimalStringToMinor(event.target.value)
               }, "amount") : current)}
@@ -272,14 +279,16 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
         <div className="split-dialog-inline">
           <label className="split-dialog-field">
             <span>{messages.splits.settlementAmount}</span>
-            <input
-              ref={amountInputRef}
-              className="table-edit-input table-edit-input-money"
-              type="number"
-              min="0"
-              step="0.01"
-              value={dialog?.amountInput ?? formatService.minorToDecimalString(dialog?.amountMinor ?? 0)}
-              onChange={(event) => onChange((current) => current ? {
+              <input
+                ref={amountInputRef}
+                className="table-edit-input table-edit-input-money"
+                type="number"
+                min="0"
+                step="0.01"
+                value={dialog?.amountInput ?? formatService.minorToDecimalString(dialog?.amountMinor ?? 0)}
+                onMouseDown={selectAllOnFocus}
+                onFocus={selectAllOnFocus}
+                onChange={(event) => onChange((current) => current ? {
                 ...current,
                 amountInput: event.target.value,
                 amountMinor: formatService.decimalStringToMinor(event.target.value)
