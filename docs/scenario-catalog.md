@@ -1217,15 +1217,15 @@ Notes:
 ### X5c. Money fields stay editable without select-all across core workflows
 
 1. User intent: edit money values naturally in the most common numeric fields
-2. Starting state: an entry amount, month budget amount, split amount, or
-   import reconciliation amount field contains a formatted value
+2. Starting state: an entry amount, month budget amount, split amount, import
+   reconciliation amount, or settings money field contains a formatted value
 3. Action: focus the field, type a replacement value, and use backspace or
    overwrite keys without manually selecting the whole field first
 4. Expected visible result: the field remains easy to edit by keyboard, does
    not require select-all for a simple replacement, and normalizes after blur
 5. Expected persisted or queried result: the updated minor values save
    correctly and downstream aggregates or previews recompute
-6. Primary test level: `E2E`
+6. Primary test level: `E2E`, anchored by `tests/e2e/money-field-editability.spec.js`
 7. Form factor: `Both`
 
 ### X5a. Same-tab return uses settled fresh data, not destructive reload
