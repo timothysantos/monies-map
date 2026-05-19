@@ -3281,6 +3281,7 @@ export function App() {
                     <select
                       className="table-edit-input"
                       value={loginRegistrationDraft.personId}
+                      enterKeyHint="next"
                       onChange={(event) => {
                         const person = appShell.household.people.find((item) => item.id === event.target.value);
                         setLoginRegistrationDraft((current) => current ? {
@@ -3301,6 +3302,7 @@ export function App() {
                       className="table-edit-input"
                       value={loginRegistrationDraft.name}
                       placeholder="Name for this household profile"
+                      enterKeyHint="done"
                       onChange={(event) => setLoginRegistrationDraft((current) => current ? { ...current, name: event.target.value } : current)}
                     />
                   </label>

@@ -1395,34 +1395,42 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         <Dialog.Portal>
           <Dialog.Overlay className="note-dialog-overlay" />
           <Dialog.Content className="note-dialog-content">
-            <div className="note-dialog-head">
-              <div>
-                <Dialog.Title>Edit note</Dialog.Title>
-                <Dialog.Description>Write the planning context without squeezing it into the table.</Dialog.Description>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                commitNoteDialog();
+              }}
+            >
+              <div className="note-dialog-head">
+                <div>
+                  <Dialog.Title>Edit note</Dialog.Title>
+                  <Dialog.Description>Write the planning context without squeezing it into the table.</Dialog.Description>
+                </div>
+                <button
+                  type="button"
+                  className="icon-action subtle-cancel"
+                  aria-label="Close note editor"
+                  onClick={() => setNoteDialog(null)}
+                >
+                  <X size={16} />
+                </button>
               </div>
-              <button
-                type="button"
-                className="icon-action subtle-cancel"
-                aria-label="Close note editor"
-                onClick={() => setNoteDialog(null)}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <textarea
-              className="note-dialog-textarea"
-              value={noteDialog?.draft ?? ""}
-              onChange={(event) => setNoteDialog((current) => current ? { ...current, draft: event.target.value } : current)}
-              rows={10}
-            />
-            <div className="note-dialog-actions">
-              <button type="button" className="subtle-cancel" onClick={() => setNoteDialog(null)}>
-                {messages.month.cancelEdit}
-              </button>
-              <button type="button" className="dialog-primary" onClick={commitNoteDialog}>
-                {messages.month.doneEdit}
-              </button>
-            </div>
+              <textarea
+                className="note-dialog-textarea"
+                value={noteDialog?.draft ?? ""}
+                onChange={(event) => setNoteDialog((current) => current ? { ...current, draft: event.target.value } : current)}
+                rows={10}
+                enterKeyHint="done"
+              />
+              <div className="note-dialog-actions">
+                <button type="button" className="subtle-cancel" onClick={() => setNoteDialog(null)}>
+                  {messages.month.cancelEdit}
+                </button>
+                <button type="submit" className="dialog-primary">
+                  {messages.month.doneEdit}
+                </button>
+              </div>
+            </form>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
@@ -1475,34 +1483,42 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         <Dialog.Portal>
           <Dialog.Overlay className="note-dialog-overlay" />
           <Dialog.Content className="note-dialog-content">
-            <div className="note-dialog-head">
-              <div>
-                <Dialog.Title>{messages.month.notesTitle}</Dialog.Title>
-                <Dialog.Description>{messages.month.notesDetail}</Dialog.Description>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void commitMonthNoteDialog();
+              }}
+            >
+              <div className="note-dialog-head">
+                <div>
+                  <Dialog.Title>{messages.month.notesTitle}</Dialog.Title>
+                  <Dialog.Description>{messages.month.notesDetail}</Dialog.Description>
+                </div>
+                <button
+                  type="button"
+                  className="icon-action subtle-cancel"
+                  aria-label="Close month note editor"
+                  onClick={() => setMonthNoteDialog(null)}
+                >
+                  <X size={16} />
+                </button>
               </div>
-              <button
-                type="button"
-                className="icon-action subtle-cancel"
-                aria-label="Close month note editor"
-                onClick={() => setMonthNoteDialog(null)}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <textarea
-              className="note-dialog-textarea"
-              value={monthNoteDialog?.draft ?? ""}
-              onChange={(event) => setMonthNoteDialog((current) => current ? { ...current, draft: event.target.value } : current)}
-              rows={10}
-            />
-            <div className="note-dialog-actions">
-              <button type="button" className="subtle-cancel" onClick={() => setMonthNoteDialog(null)}>
-                {messages.month.cancelEdit}
-              </button>
-              <button type="button" className="dialog-primary" onClick={() => void commitMonthNoteDialog()}>
-                {messages.month.doneEdit}
-              </button>
-            </div>
+              <textarea
+                className="note-dialog-textarea"
+                value={monthNoteDialog?.draft ?? ""}
+                onChange={(event) => setMonthNoteDialog((current) => current ? { ...current, draft: event.target.value } : current)}
+                rows={10}
+                enterKeyHint="done"
+              />
+              <div className="note-dialog-actions">
+                <button type="button" className="subtle-cancel" onClick={() => setMonthNoteDialog(null)}>
+                  {messages.month.cancelEdit}
+                </button>
+                <button type="submit" className="dialog-primary">
+                  {messages.month.doneEdit}
+                </button>
+              </div>
+            </form>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
@@ -1531,7 +1547,12 @@ function MonthPlanLinkContent({
   ];
 
   return (
-    <>
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void onSave();
+      }}
+    >
       {!isMobile ? (
         <div className="note-dialog-head">
           <div>
@@ -1573,6 +1594,7 @@ function MonthPlanLinkContent({
             className="table-edit-input"
             placeholder="Filter descriptions in this list"
             value={planLinkDialog?.descriptionFilter ?? ""}
+            enterKeyHint="next"
             onChange={(event) => onDescriptionFilterChange(event.target.value)}
           />
         </label>
@@ -1603,12 +1625,12 @@ function MonthPlanLinkContent({
           <button type="button" className="subtle-cancel" onClick={onClose}>
             {messages.month.cancelEdit}
           </button>
-          <button type="button" className="dialog-primary" onClick={onSave}>
+          <button type="submit" className="dialog-primary">
             Save matches
           </button>
         </div>
       ) : null}
-    </>
+    </form>
   );
 }
 

@@ -12,44 +12,54 @@ export function SettingsPersonDialog({ dialog, isSubmitting, onChange, onClose, 
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content settings-account-dialog">
-          <div className="note-dialog-head">
-            <div>
-              <Dialog.Title>{messages.settings.editPerson}</Dialog.Title>
-              <Dialog.Description>{messages.settings.editPersonDetail}</Dialog.Description>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!dialog?.name?.trim() || isSubmitting) {
+                return;
+              }
+              void onSave();
+            }}
+          >
+            <div className="note-dialog-head">
+              <div>
+                <Dialog.Title>{messages.settings.editPerson}</Dialog.Title>
+                <Dialog.Description>{messages.settings.editPersonDetail}</Dialog.Description>
+              </div>
+              <button
+                type="button"
+                className="icon-action subtle-cancel"
+                aria-label="Close person dialog"
+                disabled={isSubmitting}
+                onClick={onClose}
+              >
+                <X size={16} />
+              </button>
             </div>
-            <button
-              type="button"
-              className="icon-action subtle-cancel"
-              aria-label="Close person dialog"
-              disabled={isSubmitting}
-              onClick={onClose}
-            >
-              <X size={16} />
-            </button>
-          </div>
-          <div className="settings-account-form settings-person-form">
-            <label className="table-edit-field">
-              <span>{messages.settings.personDisplayName}</span>
-              <input
-                className="table-edit-input"
-                value={dialog?.name ?? ""}
-                onChange={(event) => onChange((current) => current ? { ...current, name: event.target.value } : current)}
-              />
-            </label>
-          </div>
-          <div className="note-dialog-actions">
-            <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="dialog-primary"
-              disabled={!dialog?.name?.trim() || isSubmitting}
-              onClick={() => void onSave()}
-            >
-              {isSubmitting ? messages.common.saving : messages.settings.savePerson}
-            </button>
-          </div>
+            <div className="settings-account-form settings-person-form">
+              <label className="table-edit-field">
+                <span>{messages.settings.personDisplayName}</span>
+                <input
+                  className="table-edit-input"
+                  value={dialog?.name ?? ""}
+                  enterKeyHint="done"
+                  onChange={(event) => onChange((current) => current ? { ...current, name: event.target.value } : current)}
+                />
+              </label>
+            </div>
+            <div className="note-dialog-actions">
+              <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="dialog-primary"
+                disabled={!dialog?.name?.trim() || isSubmitting}
+              >
+                {isSubmitting ? messages.common.saving : messages.settings.savePerson}
+              </button>
+            </div>
+          </form>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -84,12 +94,13 @@ export function SettingsCategoryMatchRuleDialog({ dialog, categories, isSubmitti
           <div className="settings-account-form">
             <label className="table-edit-field">
               <span>{messages.settings.categoryRulePattern}</span>
-              <input
-                className="table-edit-input"
-                value={dialog?.pattern ?? ""}
-                onChange={(event) => onChange((current) => current ? { ...current, pattern: event.target.value } : current)}
-                placeholder="SINGLIFE"
-              />
+                <input
+                  className="table-edit-input"
+                  value={dialog?.pattern ?? ""}
+                  enterKeyHint="next"
+                  onChange={(event) => onChange((current) => current ? { ...current, pattern: event.target.value } : current)}
+                  placeholder="SINGLIFE"
+                />
             </label>
             <label className="table-edit-field">
               <span>{messages.settings.categoryRuleCategory}</span>
@@ -105,12 +116,13 @@ export function SettingsCategoryMatchRuleDialog({ dialog, categories, isSubmitti
             </label>
             <label className="table-edit-field">
               <span>{messages.settings.categoryRulePriority}</span>
-              <input
-                className="table-edit-input table-edit-input-money"
-                type="number"
-                value={dialog?.priority ?? 100}
-                onMouseDown={selectAllOnFocus}
-                onFocus={selectAllOnFocus}
+                <input
+                  className="table-edit-input table-edit-input-money"
+                  type="number"
+                  enterKeyHint="next"
+                  value={dialog?.priority ?? 100}
+                  onMouseDown={selectAllOnFocus}
+                  onFocus={selectAllOnFocus}
                 onChange={(event) => onChange((current) => current ? { ...current, priority: Number(event.target.value) } : current)}
               />
               <small className="field-help">{messages.settings.categoryRulePriorityHelp}</small>

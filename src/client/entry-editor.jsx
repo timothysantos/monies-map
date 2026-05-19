@@ -131,6 +131,7 @@ export function EntryEditorFields({
             className="table-edit-input"
             type="date"
             value={entry.date}
+            enterKeyHint="next"
             onChange={(event) => onChange({ date: event.target.value })}
           />
         </label>
@@ -171,6 +172,7 @@ export function EntryEditorFields({
             type="text"
             inputMode="decimal"
             value={amountDraft}
+            enterKeyHint="next"
             onMouseDown={selectAllOnFocus}
             onFocus={selectAllOnFocus}
             onInput={(event) => handleAmountDraftChange(event.target.value)}
@@ -233,14 +235,15 @@ export function EntryEditorFields({
         {entry.ownershipType === "shared" && splitPercentValue != null ? (
           <label>
             <span>{messages.entries.editSplit}</span>
-            <input
-              className="table-edit-input table-edit-input-money"
-              type="number"
-              min="0"
-              max="100"
-              value={splitPercentValue}
-              onMouseDown={selectAllOnFocus}
-              onFocus={selectAllOnFocus}
+          <input
+            className="table-edit-input table-edit-input-money"
+            type="number"
+            min="0"
+            max="100"
+            value={splitPercentValue}
+            enterKeyHint="done"
+            onMouseDown={selectAllOnFocus}
+            onFocus={selectAllOnFocus}
               onChange={(event) => onSplitPercentChange(Number(event.target.value))}
             />
           </label>
@@ -252,6 +255,7 @@ export function EntryEditorFields({
           <textarea
             className="table-edit-input table-edit-textarea"
             value={entry.description}
+            enterKeyHint="done"
             onChange={(event) => onChange({ description: event.target.value })}
             rows={3}
           />
@@ -261,6 +265,7 @@ export function EntryEditorFields({
           <textarea
             className="table-edit-input table-edit-textarea"
             value={entry.note ?? ""}
+            enterKeyHint="done"
             onChange={(event) => onChange({ note: event.target.value })}
             rows={3}
           />

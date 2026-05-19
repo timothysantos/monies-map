@@ -18,67 +18,78 @@ export function CategoryEditDialog({
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content settings-account-dialog settings-category-dialog">
-          <div className="note-dialog-head">
-            <div>
-              <Dialog.Title>{dialog?.mode === "create" ? messages.settings.createCategory : messages.settings.editCategory}</Dialog.Title>
-              <Dialog.Description>{dialog?.mode === "create" ? messages.settings.createCategoryDetail : messages.settings.editCategoryDetail}</Dialog.Description>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!dialog?.name?.trim() || isSubmitting) {
+                return;
+              }
+              void onSave();
+            }}
+          >
+            <div className="note-dialog-head">
+              <div>
+                <Dialog.Title>{dialog?.mode === "create" ? messages.settings.createCategory : messages.settings.editCategory}</Dialog.Title>
+                <Dialog.Description>{dialog?.mode === "create" ? messages.settings.createCategoryDetail : messages.settings.editCategoryDetail}</Dialog.Description>
+              </div>
+              <button
+                type="button"
+                className="icon-action subtle-cancel"
+                aria-label="Close category dialog"
+                disabled={isSubmitting}
+                onClick={onClose}
+              >
+                <X size={16} />
+              </button>
             </div>
-            <button
-              type="button"
-              className="icon-action subtle-cancel"
-              aria-label="Close category dialog"
-              disabled={isSubmitting}
-              onClick={onClose}
-            >
-              <X size={16} />
-            </button>
-          </div>
-          <div className="settings-account-form">
-            <label className="table-edit-field">
-              <span>{messages.settings.categoryName}</span>
-              <input
-                className="table-edit-input"
-                value={dialog?.name ?? ""}
-                onChange={(event) => onChange((current) => current ? { ...current, name: event.target.value } : current)}
-              />
-            </label>
-            <label className="table-edit-field">
-              <span>{messages.settings.categorySlug}</span>
-              <input
-                className="table-edit-input"
-                value={dialog?.slug ?? ""}
-                onChange={(event) => onChange((current) => current ? { ...current, slug: event.target.value } : current)}
-              />
-            </label>
-            <label className="table-edit-field">
-              <span>{messages.settings.categoryIcon}</span>
-              <CategoryIconSelector
-                value={dialog?.iconKey ?? FALLBACK_THEME.iconKey}
-                colorHex={dialog?.colorHex ?? FALLBACK_THEME.colorHex}
-                onChange={(iconKey) => onChange((current) => current ? { ...current, iconKey } : current)}
-              />
-            </label>
-            <label className="table-edit-field">
-              <span>{messages.settings.categoryColor}</span>
-              <CategoryColorSelector
-                value={dialog?.colorHex ?? FALLBACK_THEME.colorHex}
-                onChange={(colorHex) => onChange((current) => current ? { ...current, colorHex } : current)}
-              />
-            </label>
-          </div>
-          <div className="note-dialog-actions">
-            <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="dialog-primary"
-              disabled={!dialog?.name?.trim() || isSubmitting}
-              onClick={() => void onSave()}
-            >
-              {isSubmitting ? messages.common.saving : dialog?.mode === "create" ? messages.settings.createCategory : messages.settings.saveCategory}
-            </button>
-          </div>
+            <div className="settings-account-form">
+              <label className="table-edit-field">
+                <span>{messages.settings.categoryName}</span>
+                <input
+                  className="table-edit-input"
+                  value={dialog?.name ?? ""}
+                  enterKeyHint="next"
+                  onChange={(event) => onChange((current) => current ? { ...current, name: event.target.value } : current)}
+                />
+              </label>
+              <label className="table-edit-field">
+                <span>{messages.settings.categorySlug}</span>
+                <input
+                  className="table-edit-input"
+                  value={dialog?.slug ?? ""}
+                  enterKeyHint="next"
+                  onChange={(event) => onChange((current) => current ? { ...current, slug: event.target.value } : current)}
+                />
+              </label>
+              <label className="table-edit-field">
+                <span>{messages.settings.categoryIcon}</span>
+                <CategoryIconSelector
+                  value={dialog?.iconKey ?? FALLBACK_THEME.iconKey}
+                  colorHex={dialog?.colorHex ?? FALLBACK_THEME.colorHex}
+                  onChange={(iconKey) => onChange((current) => current ? { ...current, iconKey } : current)}
+                />
+              </label>
+              <label className="table-edit-field">
+                <span>{messages.settings.categoryColor}</span>
+                <CategoryColorSelector
+                  value={dialog?.colorHex ?? FALLBACK_THEME.colorHex}
+                  onChange={(colorHex) => onChange((current) => current ? { ...current, colorHex } : current)}
+                />
+              </label>
+            </div>
+            <div className="note-dialog-actions">
+              <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="dialog-primary"
+                disabled={!dialog?.name?.trim() || isSubmitting}
+              >
+                {isSubmitting ? messages.common.saving : dialog?.mode === "create" ? messages.settings.createCategory : messages.settings.saveCategory}
+              </button>
+            </div>
+          </form>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

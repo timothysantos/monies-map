@@ -386,34 +386,42 @@ function SummaryMonthNoteDialog({ monthNoteDialog, onClose, onChangeDraft, onSav
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content">
-          <div className="note-dialog-head">
-            <div>
-              <Dialog.Title>{messages.month.notesTitle}</Dialog.Title>
-              <Dialog.Description>{messages.month.notesDetail}</Dialog.Description>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void onSave();
+            }}
+          >
+            <div className="note-dialog-head">
+              <div>
+                <Dialog.Title>{messages.month.notesTitle}</Dialog.Title>
+                <Dialog.Description>{messages.month.notesDetail}</Dialog.Description>
+              </div>
+              <button
+                type="button"
+                className="icon-action subtle-cancel"
+                aria-label="Close month note editor"
+                onClick={onClose}
+              >
+                <X size={16} />
+              </button>
             </div>
-            <button
-              type="button"
-              className="icon-action subtle-cancel"
-              aria-label="Close month note editor"
-              onClick={onClose}
-            >
-              <X size={16} />
-            </button>
-          </div>
-          <textarea
-            className="note-dialog-textarea"
-            value={monthNoteDialog?.draft ?? ""}
-            onChange={(event) => onChangeDraft(event.target.value)}
-            rows={10}
-          />
-          <div className="note-dialog-actions">
-            <button type="button" className="subtle-cancel" onClick={onClose}>
-              {messages.month.cancelEdit}
-            </button>
-            <button type="button" className="dialog-primary" onClick={() => void onSave()}>
-              {messages.month.doneEdit}
-            </button>
-          </div>
+            <textarea
+              className="note-dialog-textarea"
+              value={monthNoteDialog?.draft ?? ""}
+              onChange={(event) => onChangeDraft(event.target.value)}
+              rows={10}
+              enterKeyHint="done"
+            />
+            <div className="note-dialog-actions">
+              <button type="button" className="subtle-cancel" onClick={onClose}>
+                {messages.month.cancelEdit}
+              </button>
+              <button type="submit" className="dialog-primary">
+                {messages.month.doneEdit}
+              </button>
+            </div>
+          </form>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
