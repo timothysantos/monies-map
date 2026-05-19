@@ -30,6 +30,7 @@
     "deploy:prod": "npm run build && wrangler deploy",
     "deploy:demo": "npm run build && wrangler deploy --config wrangler.demo.jsonc",
     "deploy:all": "npm run build && wrangler deploy && wrangler deploy --config wrangler.demo.jsonc",
+    "test:e2e:smoke": "playwright test --workers=1 tests/e2e/api-performance.spec.js tests/e2e/month-page.spec.js tests/e2e/entries-delete-entry.spec.js tests/e2e/entries-category-filter.spec.js tests/e2e/import-ledger-flow.spec.js tests/e2e/summary-workflow.spec.js tests/e2e/entries-add-to-splits.spec.js tests/e2e/mobile-continuity.spec.js tests/e2e/reseed-contract.spec.js",
     "db:migrate": "wrangler d1 execute monies-map --local --file=schema.sql",
     "db:migrate:test": "wrangler d1 execute monies-map-test --config wrangler.test.jsonc --local --file=schema.sql",
     "db:migrate:remote": "wrangler d1 execute monies-map --remote --file=schema.sql",
