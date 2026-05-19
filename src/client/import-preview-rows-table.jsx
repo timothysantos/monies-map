@@ -35,7 +35,6 @@ export function ImportPreviewRowsTable({
   onPromotePreviewRowReconciliationTarget,
   getPreviewAccountOwnerPatch
 }) {
-  const [restoreTarget, setRestoreTarget] = useState(null);
   const accountOptions = accountService.getSelectOptions(accounts, { valueKey: "id" });
   const categorySelectOptions = categoryService.listForSelect(categories);
   const visibleRows = previewRows.filter((row) => (
@@ -142,6 +141,7 @@ function PreviewRowsTable({
   getPreviewAccountOwnerPatch,
   isSkippedTable = false
 }) {
+  const [restoreTarget, setRestoreTarget] = useState(null);
   return (
     <div className="table-wrap import-table-wrap">
       <table className="summary-table import-preview-table">

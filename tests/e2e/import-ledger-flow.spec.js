@@ -353,6 +353,100 @@ test.describe("import flow", () => {
     expect(beforeImportsPage.importsPage.recentImports.some((item) => item.status === "rolled_back")).toBe(false);
   });
 
+  test("restoring an exact covered import row opens the confirmation dialog and re-includes the row", async ({ page }) => {
+    const importsPageReady = page.waitForResponse((response) => response.url().includes("/api/imports-page") && response.ok());
+    await page.goto("/imports?view=person-tim&month=2025-10");
+    await importsPageReady;
+    await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
+
+    await page.getByLabel("Source label").fill(`Restore import ${Date.now()}`);
+    await page.route("**/api/imports/preview", async (route) => {
+      const request = route.request();
+      const body = JSON.parse(request.postData() ?? "{}");
+      await route.fulfill({
+        contentType: "application/json",
+        status: 200,
+        body: JSON.stringify({
+          ok: true,
+          preview: {
+            sourceLabel: body.sourceLabel ?? "Restore import",
+            parserKey: "generic_csv",
+            importedRows: 1,
+            previewRows: [{
+              rowId: "preview-restore-1",
+              rowIndex: 1,
+              date: "2025-10-17",
+              description: "Playwright restore import row",
+              amountMinor: 11111,
+              entryType: "expense",
+              accountId: "acct-uob-one",
+              accountName: "UOB One",
+              statementAccountName: "UOB One",
+              categoryName: "Groceries",
+              ownershipType: "direct",
+              ownerName: "Tim",
+              splitBasisPoints: 10000,
+              rawRow: {
+                date: "2025-10-17",
+                description: "Playwright restore import row",
+                amount: "-111.11",
+                account: "UOB One",
+                category: "Groceries",
+                note: ""
+              },
+              reconciliationMatch: {
+                existingTransactionId: "txn-restore-1",
+                existingAccountId: "acct-uob-one",
+                existingSourceType: "manual",
+                existingBankCertificationStatus: "provisional",
+                date: "2025-10-17",
+                description: "Playwright restore import row",
+                amountMinor: 11111,
+                accountName: "UOB One",
+                matchKind: "exact"
+              },
+              reconciliationMatchCount: 1,
+              commitStatus: "skipped",
+              commitStatusExplicit: false,
+              commitStatusReason: "Current-activity import will promote the existing manual ledger row while preserving user edits and split links.",
+              reconciliationTargetTransactionId: "txn-restore-1",
+              isCertifiedConflict: true
+            }],
+            unknownAccounts: [],
+            unknownCategories: [],
+            reconciliationCandidateCount: 0,
+            overlappingImportCount: 0,
+            overlapImports: [],
+            startDate: "2025-10-17",
+            endDate: "2025-10-17",
+            accountNames: ["UOB One"],
+            reconciliationCandidates: [],
+            statementReconciliations: [],
+            exceptionSummary: []
+          }
+        })
+      });
+    });
+    await page.getByLabel("CSV content").fill(
+      [
+        "date,description,amount,account,category,note",
+        "2025-10-17,Playwright restore import row,-111.11,UOB One,Groceries,"
+      ].join("\n")
+    );
+
+    await page.getByRole("button", { name: "Preview import" }).click();
+    const certifiedConflicts = page.locator(".import-warning-attention").filter({ hasText: "Certified row conflict" });
+    await expect(certifiedConflicts).toBeVisible();
+    await certifiedConflicts.getByRole("button", { name: "Include row" }).click();
+
+    const confirmDialog = page.locator('[role="dialog"]');
+    await expect(confirmDialog).toContainText("This row is marked as an exact already-covered match");
+    await confirmDialog.getByRole("button", { name: "Restore row" }).click();
+
+    await expect(page.locator('[role="dialog"]')).toHaveCount(0);
+    await expect(page.locator(".import-warning-attention").filter({ hasText: "Certified row conflict" })).toHaveCount(0);
+  });
+
   test("summary and month stay aligned across tabs after persisted changes", async ({ browser, page }) => {
     const context = page.context();
     const summaryPage = page;
