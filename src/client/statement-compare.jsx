@@ -186,8 +186,17 @@ function StatementCompareDirectionMismatch({ candidate, categories, categorySele
           <Popover.Trigger asChild>
             <button type="button" className="settings-text-link">{messages.settings.statementCompareFixDirection}</button>
           </Popover.Trigger>
-          <Popover.Portal>
-            <Popover.Content className="settings-statement-entry-popover" sideOffset={8} align="end">
+        <Popover.Portal>
+          <Popover.Content className="settings-statement-entry-popover" sideOffset={8} align="end">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (isSaving || !draft.entryType || !draft.categoryName) {
+                  return;
+                }
+                void saveDraft();
+              }}
+            >
               <strong>{messages.settings.statementCompareFixDirectionTitle}</strong>
               <div className="settings-statement-entry-form">
                 <label className="table-edit-field">
@@ -220,12 +229,13 @@ function StatementCompareDirectionMismatch({ candidate, categories, categorySele
               {error ? <p className="form-error">{error}</p> : null}
               <div className="dialog-actions">
                 <button type="button" className="subtle-cancel" onClick={() => setOpen(false)}>Cancel</button>
-                <button type="button" className="dialog-primary" disabled={isSaving || !draft.entryType || !draft.categoryName} onClick={() => void saveDraft()}>
+                <button type="submit" className="dialog-primary" disabled={isSaving || !draft.entryType || !draft.categoryName}>
                   {messages.settings.statementCompareFixDirectionSave}
                 </button>
               </div>
+            </form>
               <Popover.Arrow className="category-popover-arrow" />
-            </Popover.Content>
+          </Popover.Content>
           </Popover.Portal>
         </Popover.Root>
       </div>
@@ -323,88 +333,99 @@ function StatementCompareMissingRow({ row, result, accounts, categories, categor
         </Popover.Trigger>
         <Popover.Portal>
           <Popover.Content className="settings-statement-entry-popover" sideOffset={8} align="end">
-            <strong>{messages.settings.statementCompareAddEntryTitle}</strong>
-            <div className="settings-statement-entry-form">
-              <label className="table-edit-field">
-                <span>{messages.imports.table.date}</span>
-                <input className="table-edit-input" type="date" value={draft.date} onChange={(event) => updateDraft({ date: event.target.value })} />
-              </label>
-              <label className="table-edit-field">
-                <span>{messages.imports.table.account}</span>
-                <select className="table-edit-input" value={draft.accountName} onChange={(event) => updateDraft({ accountName: event.target.value })}>
-                  {accountOptions.map((accountOption) => (
-                    <option key={accountOption.id} value={accountOption.value}>{accountOption.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="table-edit-field">
-                <span>{messages.imports.table.description}</span>
-                <input className="table-edit-input" value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} />
-              </label>
-              <label className="table-edit-field">
-                <span>{messages.imports.table.amount}</span>
-                <input
-                  className="table-edit-input"
-                  value={formatService.formatMinorInput(draft.amountMinor)}
-                  onFocus={selectAllOnFocus}
-                  onChange={(event) => updateDraft({
-                    amountMinor: formatService.parseMoneyInput(event.target.value, draft.amountMinor)
-                  })}
-                />
-              </label>
-              <label className="table-edit-field">
-                <span>{messages.imports.table.type}</span>
-                <select className="table-edit-input" value={draft.entryType} onChange={(event) => updateDraft({ entryType: event.target.value })}>
-                  <option value="expense">Expense</option>
-                  <option value="income">Income</option>
-                  <option value="transfer">Transfer</option>
-                </select>
-              </label>
-              {draft.entryType === "transfer" ? (
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (isSaving || !draft.date || !draft.description || !draft.accountName || !draft.categoryName || !draft.amountMinor) {
+                  return;
+                }
+                void saveDraft();
+              }}
+            >
+              <strong>{messages.settings.statementCompareAddEntryTitle}</strong>
+              <div className="settings-statement-entry-form">
                 <label className="table-edit-field">
-                  <span>Direction</span>
-                  <select className="table-edit-input" value={draft.transferDirection ?? "out"} onChange={(event) => updateDraft({ transferDirection: event.target.value })}>
-                    <option value="out">Out</option>
-                    <option value="in">In</option>
-                  </select>
+                  <span>{messages.imports.table.date}</span>
+                  <input className="table-edit-input" type="date" value={draft.date} enterKeyHint="next" onChange={(event) => updateDraft({ date: event.target.value })} />
                 </label>
-              ) : (
                 <label className="table-edit-field">
-                  <span>{messages.imports.table.category}</span>
-                  <select className="table-edit-input" value={draft.categoryName} onChange={(event) => updateDraft({ categoryName: event.target.value })}>
-                    {categorySelectOptions.map((category) => (
-                      <option key={category.id} value={category.name}>{category.name}</option>
+                  <span>{messages.imports.table.account}</span>
+                  <select className="table-edit-input" value={draft.accountName} onChange={(event) => updateDraft({ accountName: event.target.value })}>
+                    {accountOptions.map((accountOption) => (
+                      <option key={accountOption.id} value={accountOption.value}>{accountOption.label}</option>
                     ))}
                   </select>
                 </label>
-              )}
-              <label className="table-edit-field">
-                <span>{messages.imports.table.owner}</span>
-                <select className="table-edit-input" value={draft.ownershipType === "shared" ? "shared" : draft.ownerName} onChange={(event) => {
-                  if (event.target.value === "shared") {
-                    updateDraft({ ownershipType: "shared", ownerName: undefined });
-                  } else {
-                    updateDraft({ ownershipType: "direct", ownerName: event.target.value });
-                  }
-                }}>
-                  {people.map((person) => (
-                    <option key={person.id} value={person.name}>{person.name}</option>
-                  ))}
-                  <option value="shared">{messages.entries.shared}</option>
-                </select>
-              </label>
-              <label className="table-edit-field">
-                <span>{messages.imports.table.note}</span>
-                <input className="table-edit-input" value={draft.note} onChange={(event) => updateDraft({ note: event.target.value })} />
-              </label>
-            </div>
-            {error ? <p className="form-error">{error}</p> : null}
-            <div className="dialog-actions">
-              <button type="button" className="subtle-cancel" onClick={() => setOpen(false)}>Cancel</button>
-              <button type="button" className="dialog-primary" disabled={isSaving || !draft.date || !draft.description || !draft.accountName || !draft.categoryName || !draft.amountMinor} onClick={() => void saveDraft()}>
-                {messages.settings.statementCompareAddEntrySave}
-              </button>
-            </div>
+                <label className="table-edit-field">
+                  <span>{messages.imports.table.description}</span>
+                  <input className="table-edit-input" value={draft.description} enterKeyHint="next" onChange={(event) => updateDraft({ description: event.target.value })} />
+                </label>
+                <label className="table-edit-field">
+                  <span>{messages.imports.table.amount}</span>
+                  <input
+                    className="table-edit-input"
+                    value={formatService.formatMinorInput(draft.amountMinor)}
+                    enterKeyHint="next"
+                    onFocus={selectAllOnFocus}
+                    onChange={(event) => updateDraft({
+                      amountMinor: formatService.parseMoneyInput(event.target.value, draft.amountMinor)
+                    })}
+                  />
+                </label>
+                <label className="table-edit-field">
+                  <span>{messages.imports.table.type}</span>
+                  <select className="table-edit-input" value={draft.entryType} onChange={(event) => updateDraft({ entryType: event.target.value })}>
+                    <option value="expense">Expense</option>
+                    <option value="income">Income</option>
+                    <option value="transfer">Transfer</option>
+                  </select>
+                </label>
+                {draft.entryType === "transfer" ? (
+                  <label className="table-edit-field">
+                    <span>Direction</span>
+                    <select className="table-edit-input" value={draft.transferDirection ?? "out"} onChange={(event) => updateDraft({ transferDirection: event.target.value })}>
+                      <option value="out">Out</option>
+                      <option value="in">In</option>
+                    </select>
+                  </label>
+                ) : (
+                  <label className="table-edit-field">
+                    <span>{messages.imports.table.category}</span>
+                    <select className="table-edit-input" value={draft.categoryName} onChange={(event) => updateDraft({ categoryName: event.target.value })}>
+                      {categorySelectOptions.map((category) => (
+                        <option key={category.id} value={category.name}>{category.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <label className="table-edit-field">
+                  <span>{messages.imports.table.owner}</span>
+                  <select className="table-edit-input" value={draft.ownershipType === "shared" ? "shared" : draft.ownerName} onChange={(event) => {
+                    if (event.target.value === "shared") {
+                      updateDraft({ ownershipType: "shared", ownerName: undefined });
+                    } else {
+                      updateDraft({ ownershipType: "direct", ownerName: event.target.value });
+                    }
+                  }}>
+                    {people.map((person) => (
+                      <option key={person.id} value={person.name}>{person.name}</option>
+                    ))}
+                    <option value="shared">{messages.entries.shared}</option>
+                  </select>
+                </label>
+                <label className="table-edit-field">
+                  <span>{messages.imports.table.note}</span>
+                  <input className="table-edit-input" value={draft.note} enterKeyHint="done" onChange={(event) => updateDraft({ note: event.target.value })} />
+                </label>
+              </div>
+              {error ? <p className="form-error">{error}</p> : null}
+              <div className="dialog-actions">
+                <button type="button" className="subtle-cancel" onClick={() => setOpen(false)}>Cancel</button>
+                <button type="submit" className="dialog-primary" disabled={isSaving || !draft.date || !draft.description || !draft.accountName || !draft.categoryName || !draft.amountMinor}>
+                  {messages.settings.statementCompareAddEntrySave}
+                </button>
+              </div>
+            </form>
             <Popover.Arrow className="category-popover-arrow" />
           </Popover.Content>
         </Popover.Portal>

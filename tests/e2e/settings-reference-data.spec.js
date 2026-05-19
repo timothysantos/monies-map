@@ -130,4 +130,22 @@ test.describe("settings reference data", () => {
     const aprilDonut = summaryPage.summaryPage.categoryShareByMonth.find((month) => month.month === "2026-04");
     expect(aprilDonut?.data.some((item) => item.label === renamedCategory)).toBe(true);
   });
+
+  test("edit person submits from Enter in the name field", async ({ page }) => {
+    const before = await loadAppShell(page);
+    const targetPerson = before.household.people[0];
+    const renamedPerson = uniqueLabel(`${targetPerson.name} updated`);
+
+    await page.goto("/settings?view=person-tim");
+    await page.getByLabel("Edit person").first().click();
+
+    const nameField = page.getByLabel("Display name");
+    await nameField.fill(renamedPerson);
+    await nameField.press("Enter");
+
+    await expect(page.getByRole("dialog", { name: "Edit person" })).toBeHidden();
+
+    const after = await loadAppShell(page);
+    expect(after.household.people.find((person) => person.id === targetPerson.id)?.name).toBe(renamedPerson);
+  });
 });
