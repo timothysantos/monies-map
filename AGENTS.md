@@ -122,6 +122,8 @@ team conventions evolve.
 - Never use browser system alerts, confirms, or prompts for app UX. Replace
   them with in-app dialogs, inline banners, or other app-native feedback that
   matches the surrounding desktop and mobile experience.
+- Use `npm run test:e2e:smoke` as the standard smoke-bundle command when you
+  need to verify the core desktop and mobile workflows together.
 - Do not write shallow tests for implemented behavior. For any non-trivial
   slice, assert the concrete output shape and values, and include at least one
   negative test that proves the guarded or rejected path.
