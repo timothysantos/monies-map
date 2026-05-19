@@ -119,6 +119,9 @@ team conventions evolve.
 - Use runtime proof for user-facing behavior. Prefer real browser or real local
   worker verification over source inspection when the behavior is visible to a
   user.
+- Never use browser system alerts, confirms, or prompts for app UX. Replace
+  them with in-app dialogs, inline banners, or other app-native feedback that
+  matches the surrounding desktop and mobile experience.
 - Do not write shallow tests for implemented behavior. For any non-trivial
   slice, assert the concrete output shape and values, and include at least one
   negative test that proves the guarded or rejected path.
