@@ -306,6 +306,46 @@ test.describe("import flow", () => {
     await expect(page.getByText(formatMoney(afterFoodDonut)).first()).toBeVisible({ timeout: 30_000 });
   });
 
+  test("final import shows recent-import loading and completion inline", async ({ page }) => {
+    const importsPageReady = page.waitForResponse((response) => response.url().includes("/api/imports-page") && response.ok());
+    await page.goto("/imports?view=person-tim&month=2025-10");
+    await importsPageReady;
+    await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
+
+    await page.getByLabel("Source label").fill(`Playwright loading import ${Date.now()}`);
+    await page.getByLabel("CSV content").fill(
+      [
+        "category,account,note,amount,date,description",
+        "Groceries,UOB One,Playwright loading import,-9.99,2025-10-19,Playwright loading import row"
+      ].join("\n")
+    );
+
+    await page.getByRole("button", { name: "Preview import" }).click();
+    await expect(page.getByRole("button", { name: "Commit import" }).first()).toBeEnabled();
+
+    await page.route("**/api/imports/commit", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          importId: "import-playwright-loading",
+          created: true,
+          importedRows: 1
+        })
+      });
+    });
+
+    const commitButton = page.getByRole("button", { name: "Commit import" }).first();
+    const importsPageRefresh = page.waitForResponse((response) => (
+      response.url().includes("/api/imports-page") && response.ok()
+    ));
+    await commitButton.click();
+    await expect(page.locator(".import-history-refreshing.is-active")).toBeVisible();
+    await importsPageRefresh;
+  });
+
   test("committed import can be rolled back and disappears from entries and import history", async ({ page }) => {
     const description = `Playwright rollback import ${Date.now()}`;
     const month = "2025-10";

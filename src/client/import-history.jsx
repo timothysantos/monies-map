@@ -15,6 +15,7 @@ export function ImportRecentHistorySection({
   recentImportGroups,
   recentImportsOpen,
   isRefreshing = false,
+  recentImportStatus = null,
   recentImportPage,
   recentImportPageCount,
   recentImportStart,
@@ -71,6 +72,12 @@ export function ImportRecentHistorySection({
             <div className="import-history-refreshing" role="status" aria-live="polite">
               <span className="app-spinner" aria-hidden="true" />
               <span>{messages.imports.recentRefreshing}</span>
+            </div>
+          ) : null}
+          {recentImportStatus ? (
+            <div className={`import-history-refreshing is-${recentImportStatus.tone}`} role="status" aria-live="polite">
+              {recentImportStatus.tone === "active" ? <span className="app-spinner" aria-hidden="true" /> : null}
+              <span>{recentImportStatus.message}</span>
             </div>
           ) : null}
           {recentImportGroups.map((group) => (
