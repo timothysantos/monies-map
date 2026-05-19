@@ -72,6 +72,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [recentImportsOpen, setRecentImportsOpen] = useState(true);
   const [recentImportPage, setRecentImportPage] = useState(1);
   const [recentImportAccountFilter, setRecentImportAccountFilter] = useState("");
+  const [recentImportStatus, setRecentImportStatus] = useState(null);
+  const [isRecentImportsRefreshing, setIsRecentImportsRefreshing] = useState(false);
   const [dismissedOverlapIds, setDismissedOverlapIds] = useState([]);
   const [jumpToSkippedRowsRequestKey, setJumpToSkippedRowsRequestKey] = useState(0);
   const fileInputRef = useRef(null);
@@ -294,7 +296,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
   }
 
-  function resetImportForm() {
+  function resetImportForm({ preserveRecentImportStatus = false } = {}) {
     setSourceLabel(DEFAULT_SOURCE_LABEL);
     setImportNote("");
     setCsvText("");
@@ -314,6 +316,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsDragActive(false);
     setDismissedOverlapIds([]);
     setJumpToSkippedRowsRequestKey(0);
+    if (!preserveRecentImportStatus) {
+      setRecentImportStatus(null);
+    }
     hasAutoScrolledMappingRef.current = false;
     hasAutoScrolledPreviewRef.current = false;
     if (fileInputRef.current) {
@@ -629,9 +634,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
 
     setIsSubmitting(true);
+    setRecentImportStatus({ tone: "active", message: messages.imports.recentCommitWorking });
+    setIsRecentImportsRefreshing(true);
     try {
-      await commitImportBatch({
-        sourceLabel: preview?.sourceLabel ?? sourceLabel,
+      const committedSourceLabel = preview?.sourceLabel ?? sourceLabel;
+      const commitResult = await commitImportBatch({
+        sourceLabel: committedSourceLabel,
         sourceType: statementImportMeta.sourceType,
         parserKey: statementImportMeta.parserKey,
         note: importNote,
@@ -640,22 +648,37 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         statementReconciliations: statementImportMeta.sourceType === "pdf" ? statementReconciliations : undefined,
         rows: rowsToCommit
       });
-      resetImportForm();
+      setRecentImportStatus({
+        tone: "active",
+        message: messages.imports.recentCommitRefreshing
+      });
+      resetImportForm({ preserveRecentImportStatus: true });
       await onRefresh({ broadcast: true, invalidateImports: true });
+      setRecentImportStatus({
+        tone: "success",
+        message: messages.imports.recentCommitCompleted(committedSourceLabel, commitResult.importedRows ?? rowsToCommit.length)
+      });
     } catch (error) {
+      setRecentImportStatus({
+        tone: "error",
+        message: error instanceof Error ? error.message : messages.imports.commitFailed
+      });
       setPreviewError(error instanceof Error ? error.message : messages.imports.commitFailed);
     } finally {
       setIsSubmitting(false);
+      setIsRecentImportsRefreshing(false);
     }
   }
 
   async function handleRollback(importId) {
     setIsSubmitting(true);
+    setIsRecentImportsRefreshing(true);
     try {
       await rollbackImportBatch(importId);
       await onRefresh({ broadcast: true, invalidateImports: true });
     } finally {
       setIsSubmitting(false);
+      setIsRecentImportsRefreshing(false);
     }
   }
 
@@ -1104,7 +1127,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         recentImportAccountOptions={recentImportAccountOptions}
         recentImportGroups={recentImportModel.groups}
         recentImportsOpen={recentImportsOpen}
-        isRefreshing={isSubmitting}
+        recentImportStatus={recentImportStatus}
         recentImportPage={recentImportPage}
         recentImportPageCount={recentImportModel.pageCount}
         recentImportStart={recentImportModel.start}
@@ -1114,6 +1137,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         onPreviousPage={() => setRecentImportPage((current) => Math.max(1, current - 1))}
         onNextPage={() => setRecentImportPage((current) => Math.min(recentImportModel.pageCount, current + 1))}
         onRollback={handleRollback}
+        isRefreshing={isRecentImportsRefreshing}
       />
       <AccountDialog
         dialog={accountDialog}
