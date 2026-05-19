@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import { messages } from "./copy/en-SG";
 import { selectAllOnFocus } from "./focus-utils";
@@ -34,6 +35,7 @@ export function ImportPreviewRowsTable({
   onPromotePreviewRowReconciliationTarget,
   getPreviewAccountOwnerPatch
 }) {
+  const [restoreTarget, setRestoreTarget] = useState(null);
   const accountOptions = accountService.getSelectOptions(accounts, { valueKey: "id" });
   const categorySelectOptions = categoryService.listForSelect(categories);
   const visibleRows = previewRows.filter((row) => (
@@ -188,10 +190,8 @@ function PreviewRowsTable({
                           type="button"
                           className="subtle-action"
                           onClick={() => {
-                            if (
-                              duplicateMatch?.matchKind === "exact"
-                              && !window.confirm(messages.imports.restoreExactCoveredRowConfirm)
-                            ) {
+                            if (duplicateMatch?.matchKind === "exact") {
+                              setRestoreTarget(row);
                               return;
                             }
                             onUpdatePreviewRowCommitStatus(row.rowId, "included");
@@ -340,6 +340,35 @@ function PreviewRowsTable({
           })}
         </tbody>
       </table>
+      <Dialog.Root open={Boolean(restoreTarget)} onOpenChange={(open) => { if (!open) setRestoreTarget(null); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="note-dialog-overlay" />
+          <Dialog.Content className="note-dialog-content settings-account-dialog">
+            <div className="note-dialog-head">
+              <div>
+                <Dialog.Title>{messages.imports.restorePreviewRow}</Dialog.Title>
+                <Dialog.Description>{messages.imports.restoreExactCoveredRowConfirm}</Dialog.Description>
+              </div>
+              <Dialog.Close className="dialog-close-button" aria-label="Close confirmation dialog">×</Dialog.Close>
+            </div>
+            <div className="note-dialog-actions">
+              <Dialog.Close className="subtle-action">Cancel</Dialog.Close>
+              <button
+                type="button"
+                className="dialog-primary"
+                onClick={() => {
+                  if (restoreTarget) {
+                    onUpdatePreviewRowCommitStatus(restoreTarget.rowId, "included");
+                  }
+                  setRestoreTarget(null);
+                }}
+              >
+                Restore row
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }
