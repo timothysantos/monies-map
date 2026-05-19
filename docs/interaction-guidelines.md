@@ -157,6 +157,25 @@ Examples:
 - desktop inline `Save` should correspond to mobile sheet `Save`
 - a destructive desktop action should remain visually destructive on mobile
 
+## Mutation Feedback Rule
+
+For user-triggered mutations, prefer local, contextual feedback over global
+loading indicators.
+
+When a user clicks Save, Delete, Restore, Split, Commit, or a similar action:
+
+- the clicked action should enter a pending state
+- the button should be disabled while the mutation is in flight
+- the pending state should be visible near the action that triggered it
+- the affected section may show a scoped refresh state after success
+- active forms and workflow state must not be destroyed by background refresh
+- global loading bars should not be the only feedback for mutations
+- global loading indicators should be reserved for route/page-level loading
+  unless a separate app-wide loading policy is created
+
+For imports, apply this rule locally in the import workflow unless a future
+slice explicitly expands the policy to other mutation surfaces.
+
 ## Filter And Search Surface Semantics
 
 Filter bars and filter sheets need their own rule because they mix navigation,
