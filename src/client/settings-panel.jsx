@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { LogOut } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -87,6 +88,8 @@ export function SettingsPanel({
   const [reloadText, setReloadText] = useState("");
   const [reloadDialogOpen, setReloadDialogOpen] = useState(false);
   const [demoActionError, setDemoActionError] = useState("");
+  const [settingsActionError, setSettingsActionError] = useState("");
+  const [dismissTransfersConfirmOpen, setDismissTransfersConfirmOpen] = useState(false);
   const [demoStateOpen, setDemoStateOpen] = useState(false);
   const [settingsSectionsOpen, setSettingsSectionsOpen] = useState({
     people: false,
@@ -153,6 +156,7 @@ export function SettingsPanel({
   async function handleReseed() {
     setIsSubmitting(true);
     setDemoActionError("");
+    setSettingsActionError("");
     try {
       await runDemoAction("/api/demo/reseed", "Demo reseed failed.");
       await onRefresh({
@@ -169,6 +173,7 @@ export function SettingsPanel({
   async function handleRefresh() {
     setIsSubmitting(true);
     setDemoActionError("");
+    setSettingsActionError("");
     try {
       await onRefresh();
       setReloadText("");
@@ -183,6 +188,7 @@ export function SettingsPanel({
   async function handleEmptyState() {
     setIsSubmitting(true);
     setDemoActionError("");
+    setSettingsActionError("");
     try {
       await runDemoAction("/api/demo/empty", "Empty-state reset failed.");
       const refreshedAppShell = await onRefresh({
@@ -280,6 +286,7 @@ export function SettingsPanel({
 
     setIsSubmitting(true);
     setAccountDialogError("");
+    setSettingsActionError("");
     try {
       await saveAccount({
         mode: accountDialog.mode,
@@ -303,6 +310,7 @@ export function SettingsPanel({
 
   async function handleArchiveAccount(accountId) {
     setIsSubmitting(true);
+    setSettingsActionError("");
     try {
       await archiveAccount(accountId);
       await onRefresh(buildSettingsRefreshPlan("account_archived"));
@@ -317,6 +325,7 @@ export function SettingsPanel({
     }
 
     setIsSubmitting(true);
+    setSettingsActionError("");
     try {
       await saveAccountCheckpoint({
         accountId: reconciliationDialog.accountId,
@@ -339,6 +348,7 @@ export function SettingsPanel({
     }
 
     setIsSubmitting(true);
+    setSettingsActionError("");
     try {
       await deleteAccountCheckpoint({
         accountId: reconciliationDialog.accountId,
@@ -360,6 +370,7 @@ export function SettingsPanel({
     }
 
     setIsSubmitting(true);
+    setSettingsActionError("");
     try {
       const exportFile = await fetchCheckpointExport({
         accountId: reconciliationDialog.accountId,
@@ -375,7 +386,7 @@ export function SettingsPanel({
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Checkpoint export failed.");
+      setSettingsActionError(error instanceof Error ? error.message : "Checkpoint export failed.");
     } finally {
       setIsSubmitting(false);
     }
@@ -441,6 +452,7 @@ export function SettingsPanel({
     }
 
     setIsSubmitting(true);
+    setSettingsActionError("");
     try {
       await saveSettingsCategory({
         mode: categoryDialog.mode,
@@ -453,7 +465,7 @@ export function SettingsPanel({
       setCategoryDialog(null);
       await onRefresh(buildSettingsRefreshPlan("category_saved"));
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to save category");
+      setSettingsActionError(error instanceof Error ? error.message : "Failed to save category");
     } finally {
       setIsSubmitting(false);
     }
@@ -465,6 +477,7 @@ export function SettingsPanel({
     }
 
     setIsSubmitting(true);
+    setSettingsActionError("");
     try {
       await updateSettingsPerson({
         personId: personDialog.personId,
@@ -473,7 +486,7 @@ export function SettingsPanel({
       setPersonDialog(null);
       await onRefresh(buildSettingsRefreshPlan("person_saved"));
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to update person");
+      setSettingsActionError(error instanceof Error ? error.message : "Failed to update person");
     } finally {
       setIsSubmitting(false);
     }
@@ -481,11 +494,12 @@ export function SettingsPanel({
 
   async function handleDeleteCategory(category) {
     setIsSubmitting(true);
+    setSettingsActionError("");
     try {
       await deleteSettingsCategory(category.id);
       await onRefresh(buildSettingsRefreshPlan("category_deleted"));
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to delete category");
+      setSettingsActionError(error instanceof Error ? error.message : "Failed to delete category");
     } finally {
       setIsSubmitting(false);
     }
@@ -497,6 +511,7 @@ export function SettingsPanel({
     }
 
     setIsSubmitting(true);
+    setSettingsActionError("");
     try {
       await saveCategoryMatchRule({
         ruleId: categoryRuleDialog.ruleId || undefined,
@@ -510,7 +525,7 @@ export function SettingsPanel({
       setCategoryRuleDialog(null);
       await onRefresh(buildSettingsRefreshPlan("category_rule_saved"));
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to save category match rule");
+      setSettingsActionError(error instanceof Error ? error.message : "Failed to save category match rule");
     } finally {
       setIsSubmitting(false);
     }
@@ -529,7 +544,7 @@ export function SettingsPanel({
       });
       await onRefresh(buildSettingsRefreshPlan("category_rule_suggestion_accepted"));
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to save category match rule");
+      setSettingsActionError(error instanceof Error ? error.message : "Failed to save category match rule");
     } finally {
       setIsSubmitting(false);
     }
@@ -541,7 +556,7 @@ export function SettingsPanel({
       await ignoreCategoryMatchRuleSuggestion(suggestion.id);
       await onRefresh(buildSettingsRefreshPlan("category_rule_suggestion_ignored"));
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to ignore category match suggestion");
+      setSettingsActionError(error instanceof Error ? error.message : "Failed to ignore category match suggestion");
     } finally {
       setIsSubmitting(false);
     }
@@ -553,7 +568,7 @@ export function SettingsPanel({
       await deleteCategoryMatchRule(rule.id);
       await onRefresh(buildSettingsRefreshPlan("category_rule_deleted"));
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to delete category match rule");
+      setSettingsActionError(error instanceof Error ? error.message : "Failed to delete category match rule");
     } finally {
       setIsSubmitting(false);
     }
@@ -565,7 +580,7 @@ export function SettingsPanel({
       await dismissUnresolvedTransfer(entryId);
       await onRefresh(buildSettingsRefreshPlan("unresolved_transfer_dismissed"));
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to clear unresolved transfer");
+      setSettingsActionError(error instanceof Error ? error.message : "Failed to clear unresolved transfer");
     } finally {
       setIsSubmitting(false);
     }
@@ -575,16 +590,18 @@ export function SettingsPanel({
     if (!safeSettingsPage.unresolvedTransfers.length) {
       return;
     }
-    if (!window.confirm(`Clear all ${safeSettingsPage.unresolvedTransfers.length} unresolved transfer reviews? This will only hide them from this review list.`)) {
-      return;
-    }
+    setDismissTransfersConfirmOpen(true);
+  }
 
+  async function confirmDismissAllUnresolvedTransfers() {
+    setDismissTransfersConfirmOpen(false);
     setIsSubmitting(true);
+    setSettingsActionError("");
     try {
       await dismissAllUnresolvedTransfers();
       await onRefresh(buildSettingsRefreshPlan("unresolved_transfer_dismissed_all"));
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to clear unresolved transfers");
+      setSettingsActionError(error instanceof Error ? error.message : "Failed to clear unresolved transfers");
     } finally {
       setIsSubmitting(false);
     }
@@ -592,12 +609,13 @@ export function SettingsPanel({
 
   async function handleCreateReconciliationException(draft) {
     setIsSubmitting(true);
+    setSettingsActionError("");
     try {
       await createReconciliationException(draft);
       await onRefresh(buildSettingsRefreshPlan("reconciliation_exception_created"));
       return true;
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to create reconciliation exception.");
+      setSettingsActionError(error instanceof Error ? error.message : "Failed to create reconciliation exception.");
       return false;
     } finally {
       setIsSubmitting(false);
@@ -606,11 +624,12 @@ export function SettingsPanel({
 
   async function handleResolveReconciliationException(exceptionId) {
     setIsSubmitting(true);
+    setSettingsActionError("");
     try {
       await resolveReconciliationException({ exceptionId });
       await onRefresh(buildSettingsRefreshPlan("reconciliation_exception_resolved"));
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to resolve reconciliation exception.");
+      setSettingsActionError(error instanceof Error ? error.message : "Failed to resolve reconciliation exception.");
     } finally {
       setIsSubmitting(false);
     }
@@ -665,6 +684,7 @@ export function SettingsPanel({
 
   return (
     <article className="panel settings-page">
+      {settingsActionError ? <p className="form-error" role="alert">{settingsActionError}</p> : null}
       <div className="panel-head">
         <div>
           <h2>{messages.tabs.settings}</h2>
@@ -757,7 +777,7 @@ export function SettingsPanel({
         onResolveException={handleResolveReconciliationException}
       />
 
-      <SettingsTransfersSection
+          <SettingsTransfersSection
         transfers={safeSettingsPage.unresolvedTransfers}
         isOpen={settingsSectionsOpen.transfers}
         isSubmitting={isSubmitting}
@@ -864,6 +884,31 @@ export function SettingsPanel({
         formatCheckpointBalanceLine={(item) => formatService.formatCheckpointHistoryBalanceLine(item, reconciliationDialog?.accountKind)}
         formatCheckpointDelta={(item) => (item.deltaMinor === 0 ? "Matched" : `Delta ${formatService.money(Math.abs(item.deltaMinor))}`)}
       />
+
+      <Dialog.Root open={dismissTransfersConfirmOpen} onOpenChange={(open) => { if (!open && !isSubmitting) setDismissTransfersConfirmOpen(false); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="note-dialog-overlay" />
+          <Dialog.Content className="note-dialog-content settings-account-dialog">
+            <div className="note-dialog-head">
+              <div>
+                <Dialog.Title>Clear unresolved transfers?</Dialog.Title>
+                <Dialog.Description>
+                  This hides {safeSettingsPage.unresolvedTransfers.length} unresolved transfer review{safeSettingsPage.unresolvedTransfers.length === 1 ? "" : "s"} from the review list.
+                </Dialog.Description>
+              </div>
+              <Dialog.Close className="dialog-close-button" aria-label="Close confirmation dialog">
+                ×
+              </Dialog.Close>
+            </div>
+            <div className="note-dialog-actions">
+              <Dialog.Close className="subtle-action" disabled={isSubmitting}>Cancel</Dialog.Close>
+              <button type="button" className="dialog-primary" disabled={isSubmitting} onClick={() => void confirmDismissAllUnresolvedTransfers()}>
+                {isSubmitting ? messages.common.saving : "Clear transfers"}
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
     </article>
   );

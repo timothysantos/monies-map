@@ -372,11 +372,8 @@ export function EntriesPanel({
       if (result?.saved) {
         pendingQuickExpenseDraftRef.current = null;
         setQuickExpensePendingKey("");
-        setQuickExpenseWarning("");
         clearStoredQuickExpenseDraft();
-        if (result.splitAddError && typeof window !== "undefined") {
-          window.setTimeout(() => window.alert(result.splitAddError), 0);
-        }
+        setQuickExpenseWarning(result.splitAddError ?? "");
       }
     } finally {
       setIsQuickExpenseSaving(false);
