@@ -60,6 +60,7 @@ export function MonthPlanStack({
   tableSorts,
   editingRowId,
   editingDrafts,
+  isSavingEdit = false,
   isCombinedHouseholdView,
   monthKey,
   onToggleSection,
@@ -81,7 +82,8 @@ export function MonthPlanStack({
   onOpenPlanLinkDialog,
   onOpenEntriesForActual,
   onSortChange,
-  onCategoryAppearanceChange
+  onCategoryAppearanceChange,
+  saveErrorMessage = ""
 }) {
   const sortedIncomeRows = sortRows(incomeRows, tableSorts.income, monthKey);
   const sortedSections = [...planSections].sort((left, right) => SECTION_ORDER[left.key] - SECTION_ORDER[right.key]);
@@ -100,6 +102,7 @@ export function MonthPlanStack({
         tableSorts={tableSorts}
         editingRowId={editingRowId}
         editingDrafts={editingDrafts}
+        isSavingEdit={isSavingEdit}
         isCombinedHouseholdView={isCombinedHouseholdView}
         onToggleSection={onToggleSection}
         onAddIncomeRow={onAddIncomeRow}
@@ -113,6 +116,7 @@ export function MonthPlanStack({
         onOpenEntriesForActual={onOpenEntriesForActual}
         onSortChange={onSortChange}
         onCategoryAppearanceChange={onCategoryAppearanceChange}
+        saveErrorMessage={saveErrorMessage}
       />
       {sortedSections.map((section) => (
         <PlanningSection
@@ -127,6 +131,7 @@ export function MonthPlanStack({
           tableSorts={tableSorts}
           editingRowId={editingRowId}
           editingDrafts={editingDrafts}
+          isSavingEdit={isSavingEdit}
           isCombinedHouseholdView={isCombinedHouseholdView}
           monthKey={monthKey}
           onToggleSection={onToggleSection}
@@ -145,6 +150,7 @@ export function MonthPlanStack({
           onOpenEntriesForActual={onOpenEntriesForActual}
           onSortChange={onSortChange}
           onCategoryAppearanceChange={onCategoryAppearanceChange}
+          saveErrorMessage={saveErrorMessage}
         />
       ))}
     </div>
@@ -160,6 +166,7 @@ function IncomePlanSection({
   tableSorts,
   editingRowId,
   editingDrafts,
+  isSavingEdit = false,
   isCombinedHouseholdView,
   onToggleSection,
   onAddIncomeRow,
@@ -172,7 +179,8 @@ function IncomePlanSection({
   onOpenNoteDialog,
   onOpenEntriesForActual,
   onSortChange,
-  onCategoryAppearanceChange
+  onCategoryAppearanceChange,
+  saveErrorMessage = ""
 }) {
   return (
     <section className={`month-plan-section month-plan-section-income ${isCombinedHouseholdView ? "is-readonly" : ""}`}>
@@ -326,6 +334,8 @@ function IncomePlanSection({
                       columnCount={6}
                       onFinishEdit={onFinishEdit}
                       onCancelEdit={onCancelEdit}
+                      isSavingEdit={isSavingEdit}
+                      errorMessage={saveErrorMessage}
                       deleteAction={incomeRows.length > 1 && canEditRow && !row.isDraft ? (
                         <DeleteRowButton
                           label={row.label || row.categoryName || "income row"}
@@ -360,6 +370,7 @@ function PlanningSection({
   tableSorts,
   editingRowId,
   editingDrafts,
+  isSavingEdit = false,
   isCombinedHouseholdView,
   monthKey,
   onToggleSection,
@@ -377,7 +388,8 @@ function PlanningSection({
   onOpenPlanLinkDialog,
   onOpenEntriesForActual,
   onSortChange,
-  onCategoryAppearanceChange
+  onCategoryAppearanceChange,
+  saveErrorMessage = ""
 }) {
   return (
     <section
@@ -444,6 +456,7 @@ function PlanningSection({
                   row={row}
                   isEditing={editingRowId === row.id}
                   editingDrafts={editingDrafts}
+                  isSavingEdit={isSavingEdit}
                   isCombinedHouseholdView={isCombinedHouseholdView}
                   onBudgetBucketCategoryChange={onBudgetBucketCategoryChange}
                   onBudgetBucketLabelChange={onBudgetBucketLabelChange}
@@ -458,6 +471,7 @@ function PlanningSection({
                   onOpenPlanLinkDialog={onOpenPlanLinkDialog}
                   onOpenEntriesForActual={onOpenEntriesForActual}
                   onCategoryAppearanceChange={onCategoryAppearanceChange}
+                  saveErrorMessage={saveErrorMessage}
                 />
               ))}
             </tbody>
@@ -479,6 +493,7 @@ function PlanningRow({
   row,
   isEditing,
   editingDrafts,
+  isSavingEdit = false,
   isCombinedHouseholdView,
   onBudgetBucketCategoryChange,
   onBudgetBucketLabelChange,
@@ -492,7 +507,8 @@ function PlanningRow({
   onOpenNoteDialog,
   onOpenPlanLinkDialog,
   onOpenEntriesForActual,
-  onCategoryAppearanceChange
+  onCategoryAppearanceChange,
+  saveErrorMessage = ""
 }) {
   const variance = row.plannedMinor - row.actualMinor;
   const canInlineEditRow = canInlineEditMonthPlanRow({ isCombinedHouseholdView, row });
@@ -674,6 +690,8 @@ function PlanningRow({
         columnCount={section.key === "planned_items" ? 8 : 6}
         onFinishEdit={onFinishEdit}
         onCancelEdit={onCancelEdit}
+        isSavingEdit={isSavingEdit}
+        errorMessage={saveErrorMessage}
         deleteAction={canInlineEditRow && !row.isDraft ? (
           <DeleteRowButton
             label={row.label || row.categoryName || "planning row"}
@@ -689,19 +707,21 @@ function PlanningRow({
   );
 }
 
-function MonthInlineActionRow({ isEditing, columnCount, onFinishEdit, onCancelEdit, deleteAction = null }) {
+function MonthInlineActionRow({ isEditing, columnCount, onFinishEdit, onCancelEdit, deleteAction = null, isSavingEdit = false, errorMessage = "" }) {
   if (!isEditing) {
     return null;
   }
 
   return (
-    <tr className="month-inline-action-row">
+    <tr className="month-inline-action-row" data-testid="month-inline-action-row">
       <td colSpan={columnCount}>
         <div className="month-inline-edit-actions">
           {deleteAction}
           <button
             type="button"
             className="subtle-cancel month-inline-cancel-button"
+            data-testid="month-inline-cancel-button"
+            disabled={isSavingEdit}
             onClick={(event) => {
               event.stopPropagation();
               onCancelEdit();
@@ -712,14 +732,17 @@ function MonthInlineActionRow({ isEditing, columnCount, onFinishEdit, onCancelEd
           <button
             type="button"
             className="dialog-primary month-inline-save-button"
+            data-testid="month-inline-save-button"
+            disabled={isSavingEdit}
             onClick={(event) => {
               event.stopPropagation();
               onFinishEdit();
             }}
           >
-            Save
+            {isSavingEdit ? messages.common.saving : "Save"}
           </button>
         </div>
+        {errorMessage ? <p className="form-error month-inline-error" role="alert" data-testid="month-inline-error">{errorMessage}</p> : null}
       </td>
     </tr>
   );

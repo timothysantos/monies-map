@@ -176,6 +176,40 @@ When a user clicks Save, Delete, Restore, Split, Commit, or a similar action:
 For imports, apply this rule locally in the import workflow unless a future
 slice explicitly expands the policy to other mutation surfaces.
 
+## Mutation Feedback Lifecycle
+
+Keep success and error feedback local to the action that triggered the
+mutation.
+
+### Pending
+
+- use `Saving...`, `Updating...`, `Deleting...`, `Restoring...`,
+  `Importing...`, or `Working...` on the triggered control when the action is
+  in flight
+- disable the same control while pending to prevent duplicate submit
+- keep layout stable while the label or spinner changes
+
+### Success
+
+- show success inline when the user needs confirmation that the local edit was
+  accepted
+- preserve the visible section or dialog while nearby data refreshes
+- clear transient success text after the next stable render or after the user
+  dismisses the surface
+
+### Failure
+
+- show inline error near the editor, row, dialog, or sheet that failed
+- keep the draft values visible so the user can retry without retyping
+- leave the surface open and actionable after failure unless the action is
+  explicitly destructive and the app already uses a confirmation flow
+
+### Refresh
+
+- keep stale content visible while safe background refreshes settle
+- do not convert a local mutation into route/app-shell loading
+- do not blank the surrounding surface just because the save path revalidated
+
 ## Filter And Search Surface Semantics
 
 Filter bars and filter sheets need their own rule because they mix navigation,

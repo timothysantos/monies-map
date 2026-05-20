@@ -57,6 +57,8 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   const [monthNoteDialog, setMonthNoteDialog] = useState(null);
   const [isSavingMonthNote, setIsSavingMonthNote] = useState(false);
   const [monthNoteError, setMonthNoteError] = useState("");
+  const [isSavingMonthRow, setIsSavingMonthRow] = useState(false);
+  const [monthRowError, setMonthRowError] = useState("");
   const [mobileAddDialog, setMobileAddDialog] = useState(null);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [useMobileMonthSheet, setUseMobileMonthSheet] = useState(false);
@@ -318,7 +320,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   async function persistMonthRow(sectionKey, row, nextPlannedMinor) {
     // The save API expects the canonical plan-row shape, even when the UI is
     // editing a temporary draft row or a derived table projection.
-    await fetch("/api/month-plan/save", {
+    const response = await fetch("/api/month-plan/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -338,6 +340,10 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
           : undefined
       })
     });
+    if (!response.ok) {
+      const errorPayload = await response.json().catch(() => null);
+      throw new Error(errorPayload?.error || "Failed to save month row.");
+    }
   }
 
   function beginIncomeEdit(row) {
@@ -416,54 +422,61 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     }
 
     const currentSnapshot = editingSnapshot;
-    let nextPlannedMinor;
-    if (currentSnapshot && Object.prototype.hasOwnProperty.call(editingDrafts, "plannedMinor")) {
-      nextPlannedMinor = formatService.parseDraftMoneyInput(editingDrafts.plannedMinor);
+    setIsSavingMonthRow(true);
+    setMonthRowError("");
+    try {
+      let nextPlannedMinor;
+      if (currentSnapshot && Object.prototype.hasOwnProperty.call(editingDrafts, "plannedMinor")) {
+        nextPlannedMinor = formatService.parseDraftMoneyInput(editingDrafts.plannedMinor);
+        if (currentSnapshot.kind === "income") {
+          handleIncomeRowChange(currentSnapshot.rowId, { plannedMinor: nextPlannedMinor });
+        } else {
+          updatePlanRow(currentSnapshot.sectionKey, currentSnapshot.rowId, { plannedMinor: nextPlannedMinor });
+        }
+      }
+
       if (currentSnapshot.kind === "income") {
-        handleIncomeRowChange(currentSnapshot.rowId, { plannedMinor: nextPlannedMinor });
+        const row = incomeRows.find((item) => item.id === currentSnapshot.rowId);
+        if (row) {
+          await persistMonthRow("income", {
+            ...row,
+            plannedMinor: typeof nextPlannedMinor === "number" ? nextPlannedMinor : row.plannedMinor
+          }, nextPlannedMinor);
+          upsertIncomeRow({
+            ...row,
+            plannedMinor: typeof nextPlannedMinor === "number" ? nextPlannedMinor : row.plannedMinor,
+            isDraft: false,
+            isPendingDerived: true
+          });
+        }
       } else {
-        updatePlanRow(currentSnapshot.sectionKey, currentSnapshot.rowId, { plannedMinor: nextPlannedMinor });
+        const section = planSections.find((item) => item.key === currentSnapshot.sectionKey);
+        const row = section?.rows.find((item) => item.id === currentSnapshot.rowId);
+        if (row) {
+          await persistMonthRow(currentSnapshot.sectionKey, {
+            ...row,
+            plannedMinor: typeof nextPlannedMinor === "number" ? nextPlannedMinor : row.plannedMinor
+          }, nextPlannedMinor);
+          upsertPlanRow(currentSnapshot.sectionKey, {
+            ...row,
+            plannedMinor: typeof nextPlannedMinor === "number" ? nextPlannedMinor : row.plannedMinor,
+            isDraft: false,
+            isPendingDerived: true
+          });
+        }
       }
-    }
 
-    if (currentSnapshot.kind === "income") {
-      const row = incomeRows.find((item) => item.id === currentSnapshot.rowId);
-      if (row) {
-        await persistMonthRow("income", {
-          ...row,
-          plannedMinor: typeof nextPlannedMinor === "number" ? nextPlannedMinor : row.plannedMinor
-        }, nextPlannedMinor);
-        upsertIncomeRow({
-          ...row,
-          plannedMinor: typeof nextPlannedMinor === "number" ? nextPlannedMinor : row.plannedMinor,
-          isDraft: false,
-          isPendingDerived: true
-        });
-      }
-    } else {
-      const section = planSections.find((item) => item.key === currentSnapshot.sectionKey);
-      const row = section?.rows.find((item) => item.id === currentSnapshot.rowId);
-      if (row) {
-        await persistMonthRow(currentSnapshot.sectionKey, {
-          ...row,
-          plannedMinor: typeof nextPlannedMinor === "number" ? nextPlannedMinor : row.plannedMinor
-        }, nextPlannedMinor);
-        upsertPlanRow(currentSnapshot.sectionKey, {
-          ...row,
-          plannedMinor: typeof nextPlannedMinor === "number" ? nextPlannedMinor : row.plannedMinor,
-          isDraft: false,
-          isPendingDerived: true
-        });
-      }
+      setEditingRowId(null);
+      setEditingSnapshot(null);
+      setEditingDrafts({});
+      refreshMonthDataInBackground(buildMonthMutationRefreshPlan({
+        kind: "plan-row-edit"
+      }));
+    } catch (error) {
+      setMonthRowError(error instanceof Error ? error.message : "Failed to save month row.");
+    } finally {
+      setIsSavingMonthRow(false);
     }
-
-    setEditingRowId(null);
-    setEditingSnapshot(null);
-    setEditingDrafts({});
-    refreshMonthDataInBackground(buildMonthMutationRefreshPlan({
-      kind: "note-save",
-      affectsSummary: false
-    }));
   }
 
   function cancelEdit() {
@@ -834,7 +847,9 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       });
 
       setMonthNoteDialog(null);
-      refreshMonthDataInBackground();
+      refreshMonthDataInBackground(buildMonthMutationRefreshPlan({
+        kind: "plan-row-edit"
+      }));
     } catch (error) {
       setMonthNoteError(error instanceof Error ? error.message : "Failed to save month note.");
     } finally {
@@ -962,6 +977,8 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     }
 
     const currentDialog = mobileAddDialog;
+    setIsSavingMonthRow(true);
+    setMonthRowError("");
     const plannedMinor = formatService.parseDraftMoneyInput(mobileAddDialog.plannedMinor);
     const selectedCategoryName = categoryService.buildPatch(categories, mobileAddDialog.categoryValue).categoryName ?? "";
     const basePatch = {
@@ -975,73 +992,79 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       note: mobileAddDialog.note.trim() || null
     };
 
-    if (currentDialog.kind === "income") {
-      const incomeRow = currentDialog.mode === "edit"
-        ? incomeRows.find((row) => row.id === currentDialog.rowId)
-        : null;
-      const nextIncomeRow = incomeRow ? {
-        ...incomeRow,
-        ...basePatch
-      } : buildIncomeRow(basePatch);
-      await persistMonthRow("income", nextIncomeRow, plannedMinor);
-      upsertIncomeRow({
-        ...nextIncomeRow,
-        isDraft: false,
-        isPendingDerived: true
-      }, { prepend: currentDialog.mode === "create" });
-      if (currentDialog.mode === "create") {
-        setTableSorts((current) => ({
-          ...current,
-          income: null
-        }));
-      }
-      openMonthSection("income");
-    } else {
-      const sectionKey = currentDialog.sectionKey;
-      const planSection = planSections.find((section) => section.key === sectionKey);
-      const planRow = currentDialog.mode === "edit"
-        ? planSection?.rows.find((row) => row.id === currentDialog.rowId)
-        : null;
-      const editablePlanRow = planRow ? getMonthPlanEditSource(planRow) : null;
-      const nextPlanRow = editablePlanRow ? {
-        ...editablePlanRow,
-        ...basePatch,
-        dayLabel: sectionKey === "planned_items" ? currentDialog.planDate : editablePlanRow.dayLabel,
-        accountName: sectionKey === "planned_items" ? currentDialog.accountName : editablePlanRow.accountName
-      } : buildPlanRow(sectionKey, {
-        ...basePatch,
-        dayLabel: sectionKey === "planned_items" ? currentDialog.planDate : undefined,
-        accountName: sectionKey === "planned_items" ? currentDialog.accountName : undefined
-      });
-      await persistMonthRow(sectionKey, nextPlanRow, plannedMinor);
-      upsertPlanRow(sectionKey, {
-        ...nextPlanRow,
-        isDraft: false,
-        isPendingDerived: true
-      }, { prepend: currentDialog.mode === "create" });
-      if (currentDialog.mode === "create") {
-        setTableSorts((current) => ({
-          ...current,
-          [sectionKey]: null
-        }));
-      }
-      openMonthSection(sectionKey);
-    }
-
-    if (currentDialog.mode === "create") {
+    try {
       if (currentDialog.kind === "income") {
-        setMobileAddDialog(buildCreateMobileIncomeDialog());
-      } else {
-        const nextDialog = buildCreateMobilePlanDialog(currentDialog.sectionKey);
-        setMobileAddDialog(nextDialog);
-        if (currentDialog.sectionKey === "budget_buckets") {
-          void applyBudgetBucketDefaultsToMobileDialog(nextDialog.categoryValue);
+        const incomeRow = currentDialog.mode === "edit"
+          ? incomeRows.find((row) => row.id === currentDialog.rowId)
+          : null;
+        const nextIncomeRow = incomeRow ? {
+          ...incomeRow,
+          ...basePatch
+        } : buildIncomeRow(basePatch);
+        await persistMonthRow("income", nextIncomeRow, plannedMinor);
+        upsertIncomeRow({
+          ...nextIncomeRow,
+          isDraft: false,
+          isPendingDerived: true
+        }, { prepend: currentDialog.mode === "create" });
+        if (currentDialog.mode === "create") {
+          setTableSorts((current) => ({
+            ...current,
+            income: null
+          }));
         }
+        openMonthSection("income");
+      } else {
+        const sectionKey = currentDialog.sectionKey;
+        const planSection = planSections.find((section) => section.key === sectionKey);
+        const planRow = currentDialog.mode === "edit"
+          ? planSection?.rows.find((row) => row.id === currentDialog.rowId)
+          : null;
+        const editablePlanRow = planRow ? getMonthPlanEditSource(planRow) : null;
+        const nextPlanRow = editablePlanRow ? {
+          ...editablePlanRow,
+          ...basePatch,
+          dayLabel: sectionKey === "planned_items" ? currentDialog.planDate : editablePlanRow.dayLabel,
+          accountName: sectionKey === "planned_items" ? currentDialog.accountName : editablePlanRow.accountName
+        } : buildPlanRow(sectionKey, {
+          ...basePatch,
+          dayLabel: sectionKey === "planned_items" ? currentDialog.planDate : undefined,
+          accountName: sectionKey === "planned_items" ? currentDialog.accountName : undefined
+        });
+        await persistMonthRow(sectionKey, nextPlanRow, plannedMinor);
+        upsertPlanRow(sectionKey, {
+          ...nextPlanRow,
+          isDraft: false,
+          isPendingDerived: true
+        }, { prepend: currentDialog.mode === "create" });
+        if (currentDialog.mode === "create") {
+          setTableSorts((current) => ({
+            ...current,
+            [sectionKey]: null
+          }));
+        }
+        openMonthSection(sectionKey);
       }
-    } else {
-      setMobileAddDialog(null);
+
+      if (currentDialog.mode === "create") {
+        if (currentDialog.kind === "income") {
+          setMobileAddDialog(buildCreateMobileIncomeDialog());
+        } else {
+          const nextDialog = buildCreateMobilePlanDialog(currentDialog.sectionKey);
+          setMobileAddDialog(nextDialog);
+          if (currentDialog.sectionKey === "budget_buckets") {
+            void applyBudgetBucketDefaultsToMobileDialog(nextDialog.categoryValue);
+          }
+        }
+      } else {
+        setMobileAddDialog(null);
+      }
+      refreshMonthDataInBackground();
+    } catch (error) {
+      setMonthRowError(error instanceof Error ? error.message : "Failed to save month row.");
+    } finally {
+      setIsSavingMonthRow(false);
     }
-    refreshMonthDataInBackground();
   }
 
   async function handleRemoveIncomeRow(rowId) {
@@ -1251,6 +1274,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         tableSorts={tableSorts}
         editingRowId={editingRowId}
         editingDrafts={editingDrafts}
+        isSavingEdit={isSavingMonthRow}
         isCombinedHouseholdView={isCombinedHouseholdView}
         monthKey={monthKey}
         onToggleSection={toggleSection}
@@ -1273,6 +1297,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         onOpenEntriesForActual={handleOpenEntriesForActual}
         onSortChange={handleSortChange}
         onCategoryAppearanceChange={onCategoryAppearanceChange}
+        saveErrorMessage={monthRowError}
       />
 
       <MonthNotesAndAccounts
@@ -1286,7 +1311,9 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         <EntryMobileSheet
           title={mobileAddDialog.title}
           description={mobileAddDialog.description ?? "Add the row without squeezing controls into the month table."}
-          saveLabel={messages.month.doneEdit}
+          errorMessage={monthRowError}
+          saveLabel={isSavingMonthRow ? messages.common.saving : messages.month.doneEdit}
+          isSaveDisabled={isSavingMonthRow}
           onClose={() => setMobileAddDialog(null)}
           onSave={() => void saveMobileAddDialog()}
         >
