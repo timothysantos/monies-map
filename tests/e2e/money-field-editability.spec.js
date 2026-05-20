@@ -59,9 +59,18 @@ test.describe("money field editability", () => {
     await page.goto("/entries?view=person-tim&month=2026-05");
     const editor = await openEntryEditor(page, description);
     const amountInput = editor.getByLabel("Amount");
+    await page.route("**/api/entries/update", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await route.continue();
+    });
     await amountInput.fill("48.76");
     await expect(amountInput).toHaveValue("48.76");
-    await page.getByRole("button", { name: "Done editing entry" }).click();
+    const saveButton = page.getByRole("button", { name: "Done editing entry" });
+    const updateResponse = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());
+    await saveButton.click();
+    await expect(saveButton).toBeDisabled();
+    await expect(saveButton).toContainText("Saving");
+    await updateResponse;
 
     await expect.poll(async () => {
       const entriesPage = await loadEntriesPage(page, { view: "person-tim", month: "2026-05" });
@@ -100,6 +109,10 @@ test.describe("money field editability", () => {
     const moneyInputs = inlineEditor.locator(".table-edit-input-money");
     const amountInput = moneyInputs.nth(0);
     const percentInput = moneyInputs.nth(1);
+    await page.route("**/api/splits/expenses/update", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await route.continue();
+    });
 
     await replaceInputValue(amountInput, "99.99");
     await expect(amountInput).toHaveValue("99.99");
@@ -107,7 +120,12 @@ test.describe("money field editability", () => {
     await replaceInputValue(percentInput, "60");
     await expect(percentInput).toHaveValue("60");
 
-    await inlineEditor.getByRole("button", { name: "Done editing split" }).click();
+    const saveButton = inlineEditor.getByRole("button", { name: "Done editing split" });
+    const saveResponse = page.waitForResponse((response) => response.url().includes("/api/splits/expenses/update") && response.ok());
+    await saveButton.click();
+    await expect(saveButton).toBeDisabled();
+    await expect(saveButton).toContainText("Saving");
+    await saveResponse;
 
     await expect.poll(async () => {
       const splitsPage = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });

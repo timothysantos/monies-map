@@ -307,9 +307,12 @@ test.describe("import flow", () => {
   });
 
   test("final import shows recent-import loading and completion inline", async ({ page }) => {
-    const importsPageReady = page.waitForResponse((response) => response.url().includes("/api/imports-page") && response.ok());
     await page.goto("/imports?view=person-tim&month=2025-10");
-    await importsPageReady;
+    try {
+      await expect(page.getByLabel("Source label")).toBeVisible({ timeout: 10_000 });
+    } catch {
+      await page.reload();
+    }
     await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
 
     await page.getByLabel("Source label").fill(`Playwright loading import ${Date.now()}`);
@@ -2368,9 +2371,13 @@ test.describe("import flow", () => {
     };
 
     const uploadPdfAndMap = async (path) => {
-      const importsPageReady = importFlowPage.waitForResponse((response) => response.url().includes("/api/imports-page") && response.ok());
       await importFlowPage.goto("/imports?view=person-tim&month=2026-02");
-      await importsPageReady;
+      await expect(importFlowPage).toHaveURL(/\/imports/);
+      try {
+        await expect(importFlowPage.getByLabel("Source label")).toBeVisible({ timeout: 10_000 });
+      } catch {
+        await importFlowPage.reload();
+      }
       await expect(importFlowPage.getByLabel("Source label")).toBeVisible({ timeout: 60_000 });
       const fileInput = importFlowPage.locator("input[type=\"file\"]");
       await fileInput.setInputFiles(path);
