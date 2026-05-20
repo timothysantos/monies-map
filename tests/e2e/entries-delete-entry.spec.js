@@ -23,7 +23,9 @@ test("entries can delete a manually created row from the inline editor", async (
   await page.goto(`/entries?view=person-tim&month=${month}`);
   await expect(page.getByRole("heading", { name: /Entries/ })).toBeVisible();
   await page.locator(".entry-row").filter({ hasText: description }).first().click();
+  const deleteResponse = page.waitForResponse((response) => response.url().includes("/api/entries/delete") && response.ok());
   await page.getByRole("button", { name: "Delete entry" }).click();
+  await deleteResponse;
 
   await expect(page.locator(".entry-row").filter({ hasText: description })).toHaveCount(0);
 

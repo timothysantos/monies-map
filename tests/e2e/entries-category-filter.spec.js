@@ -36,7 +36,9 @@ test("category-filtered entry remains visible until the category edit is explici
   const beforeSaveEntry = beforeSave.monthPage.entries.find((entry) => entry.description === description);
   expect(beforeSaveEntry?.categoryName).toBe("Other");
 
+  const updateResponse = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());
   await page.getByRole("button", { name: "Done editing entry" }).click();
+  await updateResponse;
 
   await expect(page.locator(".entry-row").filter({ hasText: description })).toHaveCount(0);
   const afterSave = await loadEntriesPage(page, { view: "person-tim", month });
