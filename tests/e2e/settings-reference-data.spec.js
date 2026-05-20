@@ -48,6 +48,46 @@ test.describe("settings reference data", () => {
     expect(afterDelete.settingsPage.categoryMatchRules.length).toBe(before.settingsPage.categoryMatchRules.length);
   });
 
+  test("category rule save shows pending state and keeps the dialog stable", async ({ page }) => {
+    const before = await loadSettingsPage(page);
+    const shell = await loadAppShell(page);
+    const targetCategory = shell.categories[0];
+    const rulePattern = uniqueLabel("Playwright rule save");
+
+    await page.goto("/settings?view=person-tim");
+    await page.getByRole("button", { name: /Category matching/ }).click();
+    await page.locator("#settings-category-rules").getByRole("button", { name: "+ Add match rule" }).click();
+    const dialog = page.locator(".settings-account-dialog");
+    await expect(dialog).toBeVisible();
+
+    await page.route("**/api/category-match-rules/save", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          rule: {
+            id: `rule-${Date.now()}`,
+            pattern: rulePattern,
+            categoryId: targetCategory.id,
+            priority: 75,
+            isActive: true,
+            note: "Created by Playwright"
+          }
+        })
+      });
+    });
+
+    await dialog.getByRole("textbox", { name: "Merchant text" }).fill(rulePattern);
+    const saveButton = dialog.locator("button.dialog-primary");
+    await saveButton.click();
+    await expect(saveButton).toBeDisabled();
+    await expect(saveButton).toContainText("Saving");
+
+    await expect(dialog).toHaveCount(0);
+  });
+
   test("account rename updates shell metadata plus summary and entries downstream DTOs", async ({ page }) => {
     const beforeShell = await loadAppShell(page);
     const beforeSummaryPills = await loadSummaryAccountPills(page, { view: "household" });

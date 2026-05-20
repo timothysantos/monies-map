@@ -55,6 +55,8 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   const [resetMonthText, setResetMonthText] = useState("");
   const [deleteMonthText, setDeleteMonthText] = useState("");
   const [monthNoteDialog, setMonthNoteDialog] = useState(null);
+  const [isSavingMonthNote, setIsSavingMonthNote] = useState(false);
+  const [monthNoteError, setMonthNoteError] = useState("");
   const [mobileAddDialog, setMobileAddDialog] = useState(null);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [useMobileMonthSheet, setUseMobileMonthSheet] = useState(false);
@@ -818,18 +820,26 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       return;
     }
 
-    await fetch("/api/month-note/update", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        month: view.monthPage.month,
-        personScope: view.id,
-        note: monthNoteDialog.draft
-      })
-    });
+    setIsSavingMonthNote(true);
+    setMonthNoteError("");
+    try {
+      await fetch("/api/month-note/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          month: view.monthPage.month,
+          personScope: view.id,
+          note: monthNoteDialog.draft
+        })
+      });
 
-    setMonthNoteDialog(null);
-    refreshMonthDataInBackground();
+      setMonthNoteDialog(null);
+      refreshMonthDataInBackground();
+    } catch (error) {
+      setMonthNoteError(error instanceof Error ? error.message : "Failed to save month note.");
+    } finally {
+      setIsSavingMonthNote(false);
+    }
   }
 
   function handleOpenEntriesForAccount(account) {
@@ -1479,13 +1489,16 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         </EntryMobileSheet>
       ) : null}
 
-      <Dialog.Root open={Boolean(monthNoteDialog)} onOpenChange={(open) => { if (!open) setMonthNoteDialog(null); }}>
+      <Dialog.Root open={Boolean(monthNoteDialog)} onOpenChange={(open) => { if (!open && !isSavingMonthNote) setMonthNoteDialog(null); }}>
         <Dialog.Portal>
           <Dialog.Overlay className="note-dialog-overlay" />
           <Dialog.Content className="note-dialog-content">
             <form
               onSubmit={(event) => {
                 event.preventDefault();
+                if (isSavingMonthNote) {
+                  return;
+                }
                 void commitMonthNoteDialog();
               }}
             >
@@ -1498,11 +1511,13 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
                   type="button"
                   className="icon-action subtle-cancel"
                   aria-label="Close month note editor"
+                  disabled={isSavingMonthNote}
                   onClick={() => setMonthNoteDialog(null)}
                 >
                   <X size={16} />
                 </button>
               </div>
+              {monthNoteError ? <p className="form-error" role="alert">{monthNoteError}</p> : null}
               <textarea
                 className="note-dialog-textarea"
                 value={monthNoteDialog?.draft ?? ""}
@@ -1511,11 +1526,11 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
                 enterKeyHint="done"
               />
               <div className="note-dialog-actions">
-                <button type="button" className="subtle-cancel" onClick={() => setMonthNoteDialog(null)}>
+                <button type="button" className="subtle-cancel" disabled={isSavingMonthNote} onClick={() => setMonthNoteDialog(null)}>
                   {messages.month.cancelEdit}
                 </button>
-                <button type="submit" className="dialog-primary">
-                  {messages.month.doneEdit}
+                <button type="submit" className="dialog-primary" disabled={isSavingMonthNote}>
+                  {isSavingMonthNote ? messages.common.saving : messages.month.doneEdit}
                 </button>
               </div>
             </form>
