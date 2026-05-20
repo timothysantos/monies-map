@@ -183,6 +183,35 @@ test.describe("month page", () => {
     await page.goto("/summary?view=person-tim&month=2026-05&scope=direct_plus_shared&summary_start=2025-06&summary_end=2026-05");
   });
 
+  test("desktop month note edits show pending state and refresh after save", async ({ page }) => {
+    const before = await loadMonthPageData(page);
+    const targetMonth = before.monthPage.month;
+    const nextNote = `Playwright month note ${Date.now()}`;
+
+    await page.goto(`/month?view=person-tim&month=${targetMonth}&scope=direct_plus_shared`);
+    await page.locator(".note-card-button").click();
+    const dialog = page.locator(".note-dialog-content");
+    await expect(dialog).toBeVisible();
+
+    await page.route("**/api/month-note/update", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true })
+      });
+    });
+
+    await dialog.locator("textarea").fill(nextNote);
+    const saveButton = dialog.locator("button.dialog-primary");
+    const refreshResponse = page.waitForResponse((response) => response.url().includes("/api/month-page") && response.ok());
+    await saveButton.click();
+    await expect(saveButton).toBeDisabled();
+    await expect(saveButton).toContainText("Saving");
+    await expect(dialog).toBeVisible();
+    await refreshResponse;
+  });
+
   test("desktop entries switches person view and scope from the shell controls", async ({ page }) => {
     const directDescription = `Playwright direct scope ${Date.now()}`;
     const sharedDescription = `Playwright shared scope ${Date.now()}`;
@@ -272,6 +301,42 @@ test.describe("month page", () => {
 
     await page.getByRole("button", { name: "Done" }).click();
     await expect(editSheet).toHaveCount(0);
+
+    await context.close();
+  });
+
+  test("mobile month note edits keep the dialog stable while saving", async ({ browser }) => {
+    const context = await browser.newContext({ ...devices["iPhone 12 Pro"] });
+    const page = await context.newPage();
+    await page.goto("/");
+    await reseedDemo(page);
+
+    const before = await loadMonthPageData(page);
+    const targetMonth = before.monthPage.month;
+    const nextNote = `Playwright mobile month note ${Date.now()}`;
+
+    await page.goto(`/month?view=person-tim&month=${targetMonth}&scope=direct_plus_shared`);
+    await page.locator(".note-card-button").click();
+    const dialog = page.locator(".note-dialog-content");
+    await expect(dialog).toBeVisible();
+
+    await page.route("**/api/month-note/update", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true })
+      });
+    });
+
+    await dialog.locator("textarea").fill(nextNote);
+    const saveButton = dialog.locator("button.dialog-primary");
+    const refreshResponse = page.waitForResponse((response) => response.url().includes("/api/month-page") && response.ok());
+    await saveButton.click();
+    await expect(saveButton).toBeDisabled();
+    await expect(saveButton).toContainText("Saving");
+    await expect(dialog).toBeVisible();
+    await refreshResponse;
 
     await context.close();
   });

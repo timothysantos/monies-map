@@ -38,6 +38,8 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
   const navigate = useNavigate();
   const location = useLocation();
   const [monthNoteDialog, setMonthNoteDialog] = useState(null);
+  const [isSavingMonthNote, setIsSavingMonthNote] = useState(false);
+  const [monthNoteError, setMonthNoteError] = useState("");
   // Summary can mount while the route payload is still hydrating, so keep a
   // fully shaped local summary slice instead of reading nested fields directly.
   const safeSummaryPage = {
@@ -88,11 +90,19 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
       return;
     }
 
-    await onRefresh({
-      month: monthNoteDialog.month,
-      note: monthNoteDialog.draft
-    });
-    setMonthNoteDialog(null);
+    setIsSavingMonthNote(true);
+    setMonthNoteError("");
+    try {
+      await onRefresh({
+        month: monthNoteDialog.month,
+        note: monthNoteDialog.draft
+      });
+      setMonthNoteDialog(null);
+    } catch (error) {
+      setMonthNoteError(error instanceof Error ? error.message : "Failed to save month note.");
+    } finally {
+      setIsSavingMonthNote(false);
+    }
   }
 
   return (
@@ -134,7 +144,14 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
 
       <SummaryMonthNoteDialog
         monthNoteDialog={monthNoteDialog}
-        onClose={() => setMonthNoteDialog(null)}
+        isSaving={isSavingMonthNote}
+        errorMessage={monthNoteError}
+        onClose={() => {
+          if (!isSavingMonthNote) {
+            setMonthNoteDialog(null);
+            setMonthNoteError("");
+          }
+        }}
         onChangeDraft={(draft) => {
           setMonthNoteDialog((current) => (current ? { ...current, draft } : current));
         }}
@@ -380,15 +397,18 @@ function SummaryAccountsSection({ accountPills, onOpenEntriesForAccount }) {
   );
 }
 
-function SummaryMonthNoteDialog({ monthNoteDialog, onClose, onChangeDraft, onSave }) {
+function SummaryMonthNoteDialog({ monthNoteDialog, isSaving = false, errorMessage = "", onClose, onChangeDraft, onSave }) {
   return (
-    <Dialog.Root open={Boolean(monthNoteDialog)} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog.Root open={Boolean(monthNoteDialog)} onOpenChange={(open) => { if (!open && !isSaving) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content">
           <form
             onSubmit={(event) => {
               event.preventDefault();
+              if (isSaving) {
+                return;
+              }
               void onSave();
             }}
           >
@@ -401,11 +421,13 @@ function SummaryMonthNoteDialog({ monthNoteDialog, onClose, onChangeDraft, onSav
                 type="button"
                 className="icon-action subtle-cancel"
                 aria-label="Close month note editor"
+                disabled={isSaving}
                 onClick={onClose}
               >
                 <X size={16} />
               </button>
             </div>
+            {errorMessage ? <p className="form-error" role="alert">{errorMessage}</p> : null}
             <textarea
               className="note-dialog-textarea"
               value={monthNoteDialog?.draft ?? ""}
@@ -414,11 +436,11 @@ function SummaryMonthNoteDialog({ monthNoteDialog, onClose, onChangeDraft, onSav
               enterKeyHint="done"
             />
             <div className="note-dialog-actions">
-              <button type="button" className="subtle-cancel" onClick={onClose}>
+              <button type="button" className="subtle-cancel" disabled={isSaving} onClick={onClose}>
                 {messages.month.cancelEdit}
               </button>
-              <button type="submit" className="dialog-primary">
-                {messages.month.doneEdit}
+              <button type="submit" className="dialog-primary" disabled={isSaving}>
+                {isSaving ? messages.common.saving : messages.month.doneEdit}
               </button>
             </div>
           </form>
