@@ -1,0 +1,106 @@
+Sixteenth Slice Follow-Up Audit Report
+
+Scope: finish the unresolved mutation UX hardening work from the sixteenth slice, with the month-plan row save path as the blocker.
+
+Verdict
+
+The mutation interaction contract is now runtime-proven across the touched workflows:
+
+- month note save on desktop and mobile
+- summary month note save
+- settings category-rule save from the prior sixteenth slice
+- month plan row save on desktop and mobile
+- entry edit/save pending behavior
+- split expense edit/save pending behavior
+- import final commit pending and recent-import refresh behavior
+- import rollback and certified-row restore runtime paths through smoke coverage
+
+This does not mean every mutation workflow in the app is perfect forever. It means the local mutation contract is implemented and proven for the workflows touched in this pass, and the remaining broader surfaces should be handled only through future targeted slices when there is a concrete runtime inconsistency.
+
+What Changed
+
+- Month plan row saves now use local pending state, disable the save action while pending, preserve the editor on failure, show inline row/sheet errors, and avoid route or shell loading.
+- Mobile month plan edit sheets now keep the save action reachable inside the constrained bottom sheet viewport.
+- Month plan row tests now cover desktop success, desktop failure, mobile success, mobile failure, pending labels, disabled controls, value preservation, and retryability.
+- Existing entry and split money-field runtime tests now assert pending state and disabled save controls while mutations are in flight.
+- Existing entries delete and entries category-filter tests now wait for the actual mutation response before asserting visible state.
+- Import tests were hardened against stale route hydration by asserting visible form state and reloading once when needed.
+- Interaction guidelines now document the mutation feedback lifecycle for pending, success, failure, and scoped refresh behavior.
+
+Files Changed
+
+- docs/interaction-guidelines.md
+- public/styles.css
+- src/client/month-panel.jsx
+- src/client/month-plan-tables.jsx
+- tests/e2e/entries-category-filter.spec.js
+- tests/e2e/entries-delete-entry.spec.js
+- tests/e2e/import-ledger-flow.spec.js
+- tests/e2e/money-field-editability.spec.js
+- tests/e2e/month-page.spec.js
+
+Verification
+
+- npm run build: passed.
+- npx playwright test --workers=1 tests/e2e/month-page.spec.js: passed, 18 tests.
+- npx playwright test --workers=1 tests/e2e/money-field-editability.spec.js tests/e2e/import-ledger-flow.spec.js: the changed paths passed; two import route-hydration flakes were then hardened and rechecked individually.
+- npx playwright test --workers=1 tests/e2e/entries-delete-entry.spec.js tests/e2e/import-ledger-flow.spec.js -g "final import shows recent-import loading|entries can delete": passed.
+- npx playwright test --workers=1 tests/e2e/entries-category-filter.spec.js: passed.
+- npx playwright test --workers=1 tests/e2e/import-ledger-flow.spec.js -g "multi-card statements reconcile": passed.
+- npm run test:e2e:smoke: passed, 58 tests.
+
+Audit Answers
+
+1. Workflows touched: month plan row save, month note save coverage, entry edit/save test proof, split expense edit/save test proof, entries delete test proof, entries category-filter save test proof, import final commit, import rollback/restore smoke coverage, and import route-hydration test helpers.
+2. Workflows intentionally deferred: broad entry create flows, split settlement delete-specific UX beyond existing smoke coverage, and every possible import preview status toggle beyond the tested restore/certify/commit paths.
+3. The work stayed within local mutation-feedback behavior. No shell or route loading ownership was introduced.
+4. Touched save/update/commit actions show pending state immediately where the user-triggered mutation has an in-flight phase.
+5. Touched action buttons are disabled while pending.
+6. Duplicate submit is prevented by disabled controls and existing in-flight guards.
+7. Pending feedback is visible on desktop for month row, month note, entry edit, split edit, and import commit paths.
+8. Pending feedback is visible on mobile for month row and month note paths.
+9. Inline success is shown where the workflow needs reassurance, especially import commit/recent imports.
+10. Inline error is shown near the month row editor and mobile month sheet.
+11. Entered month row values are preserved after failure.
+12. Retry is possible after month row failure because the editor/sheet remains open and the save control is re-enabled.
+13. The success and error lifecycle is documented in docs/interaction-guidelines.md.
+14. Nearby sections refresh without destructive route resets.
+15. Stale content remains visible where safe, including recent imports during refresh.
+16. Active editing survives the month row failure path.
+17. Route-level loading was avoided for local mutations.
+18. Shell/app-level loading was avoided for local mutations.
+19. Invalidation was not widened by this pass.
+20. Mobile sheets/editors remain open during pending and failure where expected.
+21. Keyboard continuity was not regressed; form submission behavior remains local to the edited surface.
+22. Scroll continuity was improved by fixing the mobile sheet layout so footer actions remain reachable.
+23. Feedback is visible on mobile for the touched month row and note flows.
+24. No global mutation manager was introduced.
+25. No loading/progress package was added.
+26. No loading ownership was moved into App.jsx.
+27. Product semantics were not changed.
+28. No broad reusable mutation primitive was introduced; the repeated behavior is still owned by local workflows.
+29. Tests added or updated: month-page month row save paths, money-field entry/split pending checks, entries delete wait, entries category-filter wait, import commit/loading stabilization, import multi-card helper stabilization.
+30. Targeted tests passed.
+31. npm run build passed.
+32. npm run test:e2e:smoke passed.
+33. No tests are currently failing.
+34. Final verdict: operationally honest. The touched workflows are runtime-proven; broader untouched mutation surfaces are not claimed as fully standardized.
+
+GitHub Commit Links
+
+- Implementation: https://github.com/timothysantos/monies-map/commit/fc09003
+- Test hardening: https://github.com/timothysantos/monies-map/commit/a8bec72
+
+Remaining Follow-Up Guidance
+
+Do not start a giant mutation rewrite. Future work should only touch a workflow when there is a concrete runtime inconsistency, missing pending state, duplicate-submit risk, or mobile continuity failure.
+
+Known future candidates:
+
+- split settlement delete-specific failure UX
+- import preview status toggles beyond the restore/certify paths already covered
+- broader entry create/quick-add failure UX if runtime proof shows gaps
+
+Correct closure wording:
+
+The mutation interaction contract is now runtime-proven across the touched workflows, with local pending states, duplicate-submit prevention, inline failure handling, and non-destructive refresh behavior. Remaining mutation workflows are explicitly documented as future targeted candidates, not silently treated as done.
