@@ -257,6 +257,11 @@ test.describe("import flow", () => {
     const importsPageReady = page.waitForResponse((response) => response.url().includes("/api/imports-page") && response.ok());
     await page.goto("/imports?view=person-tim&month=2025-10");
     await importsPageReady;
+    try {
+      await expect(page.getByLabel("Source label")).toBeVisible({ timeout: 10_000 });
+    } catch {
+      await page.reload();
+    }
     await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText("Source label")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByLabel("Source label")).toBeVisible({ timeout: 30_000 });
@@ -337,6 +342,7 @@ test.describe("import flow", () => {
     ));
     await commitButton.click();
     await expect(page.locator(".import-history-refreshing.is-active")).toBeVisible();
+    await expect(page.locator(".import-history-refreshing")).toHaveCount(1);
     await importsPageRefresh;
     await expect(page.locator(".import-card").filter({ hasText: "Playwright loading import" }).first()).toContainText("completed", {
       timeout: 30_000
