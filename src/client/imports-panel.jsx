@@ -633,10 +633,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         statementReconciliations: statementImportMeta.sourceType === "pdf" ? statementReconciliations : undefined,
         rows: rowsToCommit
       });
-      setRecentImportStatus({
-        tone: "active",
-        message: messages.imports.recentCommitRefreshing
-      });
       setOptimisticRecentImport(buildOptimisticRecentImportBatch({
         commitResult,
         committedSourceLabel,
@@ -646,15 +642,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         statementImportMeta,
         previewRows
       }));
+      setRecentImportStatus(null);
       resetImportForm({ preserveRecentImportStatus: true });
       const committedImportId = commitResult.importId;
       await refreshRecentImportsUntilVisible({
         committedImportId,
         refreshOptions: { broadcast: true, invalidateImports: true }
-      });
-      setRecentImportStatus({
-        tone: "success",
-        message: messages.imports.recentCommitCompleted(committedSourceLabel, commitResult.importedRows ?? rowsToCommit.length)
       });
     } catch (error) {
       setRecentImportStatus({
@@ -1182,6 +1175,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         recentImportGroups={recentImportModel.groups}
         recentImportsOpen={recentImportsOpen}
         recentImportStatus={recentImportStatus}
+        hasOptimisticRecentImport={Boolean(optimisticRecentImport)}
         recentImportPage={recentImportPage}
         recentImportPageCount={recentImportModel.pageCount}
         recentImportStart={recentImportModel.start}

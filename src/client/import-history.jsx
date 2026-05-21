@@ -16,6 +16,7 @@ export function ImportRecentHistorySection({
   recentImportsOpen,
   isRefreshing = false,
   recentImportStatus = null,
+  hasOptimisticRecentImport = false,
   recentImportPage,
   recentImportPageCount,
   recentImportStart,
@@ -27,7 +28,7 @@ export function ImportRecentHistorySection({
   onRollback
 }) {
   const shouldPaginate = recentImports.length > RECENT_IMPORTS_PAGE_SIZE;
-  const showGenericRefreshStatus = isRefreshing && !recentImportStatus;
+  const showGenericRefreshStatus = isRefreshing && !recentImportStatus && !hasOptimisticRecentImport;
 
   return (
     <section className={`panel-subsection import-history-section ${recentImportsOpen ? "is-open" : ""}`}>

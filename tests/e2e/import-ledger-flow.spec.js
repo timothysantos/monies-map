@@ -342,8 +342,8 @@ test.describe("import flow", () => {
     ));
     await commitButton.click();
     await expect(page.locator(".import-history-refreshing.is-active")).toBeVisible();
-    await expect(page.locator(".import-history-refreshing")).toHaveCount(1);
     await importsPageRefresh;
+    await expect(page.locator(".import-history-refreshing")).toHaveCount(0);
     await expect(page.locator(".import-card").filter({ hasText: "Playwright loading import" }).first()).toContainText("completed", {
       timeout: 30_000
     });
