@@ -74,6 +74,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [recentImportAccountFilter, setRecentImportAccountFilter] = useState("");
   const [recentImportStatus, setRecentImportStatus] = useState(null);
   const [isRecentImportsRefreshing, setIsRecentImportsRefreshing] = useState(false);
+  const [optimisticRecentImport, setOptimisticRecentImport] = useState(null);
   const [dismissedOverlapIds, setDismissedOverlapIds] = useState([]);
   const [jumpToSkippedRowsRequestKey, setJumpToSkippedRowsRequestKey] = useState(0);
   const fileInputRef = useRef(null);
@@ -206,18 +207,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     ]
   );
   const importDraftExists = importWorkflowModel.hasDraft;
-  const recentImportAccountOptions = useMemo(
-    () => getRecentImportAccountOptions(safeImportsPage.recentImports, accounts),
-    [accounts, safeImportsPage.recentImports]
-  );
-  const filteredRecentImports = useMemo(
-    () => filterRecentImportsByAccount(safeImportsPage.recentImports, recentImportAccountFilter),
-    [recentImportAccountFilter, safeImportsPage.recentImports]
-  );
-  const recentImportModel = useMemo(
-    () => buildRecentImportModel(filteredRecentImports, recentImportPage),
-    [filteredRecentImports, recentImportPage]
-  );
   const {
     accountMappingAccountNames,
     detectedPreviewAccountNames,
@@ -248,10 +237,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }),
     [previewRows, statementCheckpoints, statementImportMeta.sourceType]
   );
-
-  useEffect(() => {
-    setRecentImportPage((current) => Math.min(Math.max(current, 1), recentImportModel.pageCount));
-  }, [recentImportModel.pageCount]);
 
   useEffect(() => {
     setRecentImportPage(1);
@@ -652,8 +637,21 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         tone: "active",
         message: messages.imports.recentCommitRefreshing
       });
+      setOptimisticRecentImport(buildOptimisticRecentImportBatch({
+        commitResult,
+        committedSourceLabel,
+        importNote,
+        rowsToCommit,
+        statementCheckpoints,
+        statementImportMeta,
+        previewRows
+      }));
       resetImportForm({ preserveRecentImportStatus: true });
-      await onRefresh({ broadcast: true, invalidateImports: true });
+      const committedImportId = commitResult.importId;
+      await refreshRecentImportsUntilVisible({
+        committedImportId,
+        refreshOptions: { broadcast: true, invalidateImports: true }
+      });
       setRecentImportStatus({
         tone: "success",
         message: messages.imports.recentCommitCompleted(committedSourceLabel, commitResult.importedRows ?? rowsToCommit.length)
@@ -664,10 +662,32 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         message: error instanceof Error ? error.message : messages.imports.commitFailed
       });
       setPreviewError(error instanceof Error ? error.message : messages.imports.commitFailed);
+      setOptimisticRecentImport(null);
     } finally {
       setIsSubmitting(false);
       setIsRecentImportsRefreshing(false);
     }
+  }
+
+  async function refreshRecentImportsUntilVisible({
+    committedImportId,
+    refreshOptions
+  }) {
+    const maxAttempts = 20;
+    let latestPage = null;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      latestPage = await onRefresh(refreshOptions);
+      if (!committedImportId || latestPage?.importsPage?.recentImports?.some((item) => item.id === committedImportId)) {
+        return latestPage;
+      }
+
+      if (attempt < maxAttempts - 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 1000));
+      }
+    }
+
+    return latestPage;
   }
 
   async function handleRollback(importId) {
@@ -758,6 +778,40 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       });
     }
   }
+
+  const displayedRecentImports = useMemo(() => {
+    if (!optimisticRecentImport) {
+      return safeImportsPage.recentImports;
+    }
+
+    return [
+      optimisticRecentImport,
+      ...safeImportsPage.recentImports.filter((item) => item.id !== optimisticRecentImport.id)
+    ];
+  }, [optimisticRecentImport, safeImportsPage.recentImports]);
+
+  const recentImportAccountOptions = useMemo(
+    () => getRecentImportAccountOptions(displayedRecentImports, accounts),
+    [accounts, displayedRecentImports]
+  );
+  const filteredRecentImports = useMemo(
+    () => filterRecentImportsByAccount(displayedRecentImports, recentImportAccountFilter),
+    [displayedRecentImports, recentImportAccountFilter]
+  );
+  const recentImportModel = useMemo(
+    () => buildRecentImportModel(filteredRecentImports, recentImportPage),
+    [filteredRecentImports, recentImportPage]
+  );
+
+  useEffect(() => {
+    setRecentImportPage((current) => Math.min(Math.max(current, 1), recentImportModel.pageCount));
+  }, [recentImportModel.pageCount]);
+
+  useEffect(() => {
+    if (optimisticRecentImport && safeImportsPage.recentImports.some((item) => item.id === optimisticRecentImport.id)) {
+      setOptimisticRecentImport(null);
+    }
+  }, [optimisticRecentImport, safeImportsPage.recentImports]);
 
   function promotePreviewRowReconciliationTarget(rowId, targetTransactionId) {
     const nextRows = previewRows.map((row) => (
@@ -1154,6 +1208,46 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       />
     </article>
   );
+}
+
+function buildOptimisticRecentImportBatch({
+  commitResult,
+  committedSourceLabel,
+  importNote,
+  rowsToCommit,
+  statementCheckpoints,
+  statementImportMeta,
+  previewRows
+}) {
+  const accountNames = Array.from(new Set([
+    ...previewRows.map((row) => row.accountName).filter(Boolean),
+    ...statementCheckpoints.map((checkpoint) => checkpoint.accountName).filter(Boolean)
+  ])).sort();
+  const dateValues = rowsToCommit
+    .map((row) => row.date)
+    .filter((date) => typeof date === "string" && date.length >= 10)
+    .sort();
+  const startDate = dateValues[0] ?? undefined;
+  const endDate = dateValues[dateValues.length - 1] ?? undefined;
+
+  return {
+    id: commitResult.importId,
+    sourceLabel: committedSourceLabel,
+    sourceType: statementImportMeta.sourceType,
+    parserKey: statementImportMeta.parserKey,
+    importedAt: new Date().toISOString(),
+    status: "completed",
+    transactionCount: commitResult.importedRows ?? rowsToCommit.length,
+    startDate,
+    endDate,
+    accountNames,
+    overlapImportCount: 0,
+    overlapImports: [],
+    statementCertificateCount: statementCheckpoints.length,
+    statementCertificateStatus: statementCheckpoints.length ? "certified" : undefined,
+    rollbackProtected: false,
+    note: importNote?.trim() || undefined
+  };
 }
 
 function inferStatementAccountKind(accountName, parserKey) {

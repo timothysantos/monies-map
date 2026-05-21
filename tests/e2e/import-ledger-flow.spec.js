@@ -328,16 +328,7 @@ test.describe("import flow", () => {
 
     await page.route("**/api/imports/commit", async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          ok: true,
-          importId: "import-playwright-loading",
-          created: true,
-          importedRows: 1
-        })
-      });
+      await route.continue();
     });
 
     const commitButton = page.getByRole("button", { name: "Commit import" }).first();
@@ -347,6 +338,9 @@ test.describe("import flow", () => {
     await commitButton.click();
     await expect(page.locator(".import-history-refreshing.is-active")).toBeVisible();
     await importsPageRefresh;
+    await expect(page.locator(".import-card").filter({ hasText: "Playwright loading import" }).first()).toContainText("completed", {
+      timeout: 30_000
+    });
   });
 
   test("committed import can be rolled back and disappears from entries and import history", async ({ page }) => {
