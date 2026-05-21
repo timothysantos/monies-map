@@ -1019,12 +1019,12 @@ export function App() {
       return null;
     }
 
-    const tasks = [fetchRoutePageData(request, { bypassCache: true })];
     if (invalidateImports) {
-      tasks.push(invalidateImportMutationQueries(queryClient, {
+      await invalidateImportMutationQueries(queryClient, {
         invalidateSummaryAccountPills: true
-      }));
+      });
     }
+    const tasks = [fetchRoutePageData(request, { bypassCache: true })];
     if (refreshShell) {
       tasks.push(refreshAppShellInBackground().catch(() => null));
     }

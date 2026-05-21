@@ -320,7 +320,10 @@ test.describe("import flow", () => {
     }
     await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
 
-    await page.getByLabel("Source label").fill(`Playwright loading import ${Date.now()}`);
+    const firstImportLabel = `Playwright loading import ${Date.now()}`;
+    const secondImportLabel = `Playwright follow-up import ${Date.now()}`;
+
+    await page.getByLabel("Source label").fill(firstImportLabel);
     await page.getByLabel("CSV content").fill(
       [
         "category,account,note,amount,date,description",
@@ -344,9 +347,30 @@ test.describe("import flow", () => {
     await expect(page.locator(".import-history-refreshing.is-active")).toBeVisible();
     await importsPageRefresh;
     await expect(page.locator(".import-history-refreshing")).toHaveCount(0);
-    await expect(page.locator(".import-card").filter({ hasText: "Playwright loading import" }).first()).toContainText("completed", {
+    await expect(page.locator(".import-card").filter({ hasText: firstImportLabel }).first()).toContainText("completed", {
       timeout: 30_000
     });
+
+    await page.getByLabel("Source label").fill(secondImportLabel);
+    await page.getByLabel("CSV content").fill(
+      [
+        "category,account,note,amount,date,description",
+        "Groceries,UOB One,Playwright follow-up import,-8.88,2025-10-20,Playwright follow-up import row"
+      ].join("\n")
+    );
+
+    await page.getByRole("button", { name: "Preview import" }).click();
+    await expect(page.getByRole("button", { name: "Commit import" }).first()).toBeEnabled();
+    const followUpImportsPageRefresh = page.waitForResponse((response) => (
+      response.url().includes("/api/imports-page") && response.ok()
+    ));
+    await page.getByRole("button", { name: "Commit import" }).first().click();
+    await followUpImportsPageRefresh;
+    await expect(page.locator(".import-history-refreshing")).toHaveCount(0);
+    await expect(page.locator(".import-card").filter({ hasText: secondImportLabel }).first()).toContainText("completed", {
+      timeout: 30_000
+    });
+    await expect(page.locator(".import-card").filter({ hasText: firstImportLabel }).first()).toContainText("completed");
   });
 
   test("committed import can be rolled back and disappears from entries and import history", async ({ page }) => {
