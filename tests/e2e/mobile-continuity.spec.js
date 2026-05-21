@@ -31,12 +31,15 @@ test.describe("mobile continuity", () => {
     const importsPageReady = page.waitForResponse((response) => response.url().includes("/api/imports-page") && response.ok());
     await page.goto("/imports");
     await importsPageReady;
-    await expect(page.getByRole("heading", { name: "Imports", exact: true })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText("Source label")).toBeVisible({ timeout: 60_000 });
   });
 
   test("settings page stays readable on mobile", async ({ page }) => {
+    const settingsPageReady = page.waitForResponse((response) => response.url().includes("/api/settings-page") && response.ok());
     await page.goto("/settings");
+    await settingsPageReady;
+    await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole("button", { name: /People/ })).toBeVisible({ timeout: 60_000 });
   });
 });

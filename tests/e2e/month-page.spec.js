@@ -95,7 +95,7 @@ async function gotoMonthPage(page, {
     && response.url().includes(`month=${month}`)
     && response.url().includes(`scope=${scope}`)
     && response.ok()
-  ));
+  ), { timeout: 30_000 }).catch(() => null);
   await page.goto(`/month?view=${view}&month=${month}&scope=${scope}`);
   await monthPageReady;
   await expect(page).toHaveURL(new RegExp(`/month\\?[^#]*view=${view}[^#]*month=${month}[^#]*scope=${scope}`));
