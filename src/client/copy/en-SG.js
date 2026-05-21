@@ -379,8 +379,6 @@ export const messages = {
     recentTitle: "Recent imports",
     recentDetail: "Recent import batches with coverage and overlap signals.",
     recentCommitWorking: "Importing...",
-    recentCommitRefreshing: "Import saved. Refreshing recent imports...",
-    recentCommitCompleted: (label, count) => `${label} imported ${count} row${count === 1 ? "" : "s"}.`,
     recentAccountFilter: "By account",
     recentAllAccounts: "All accounts",
     recentEmpty: "No imports match this account filter.",
