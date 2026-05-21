@@ -83,7 +83,12 @@ function findBudgetRow(monthPageData, label) {
   return row;
 }
 
-async function gotoMonthPage(page, { view = "person-tim", month = "2026-05", scope = "direct_plus_shared" } = {}) {
+async function gotoMonthPage(page, {
+  view = "person-tim",
+  month = "2026-05",
+  scope = "direct_plus_shared",
+  expectHeading = true
+} = {}) {
   const monthPageReady = page.waitForResponse((response) => (
     response.url().includes("/api/month-page")
     && response.url().includes(`view=${view}`)
@@ -94,7 +99,9 @@ async function gotoMonthPage(page, { view = "person-tim", month = "2026-05", sco
   await page.goto(`/month?view=${view}&month=${month}&scope=${scope}`);
   await monthPageReady;
   await expect(page).toHaveURL(new RegExp(`/month\\?[^#]*view=${view}[^#]*month=${month}[^#]*scope=${scope}`));
-  await expect(page.getByRole("heading", { name: "Month", exact: true })).toBeVisible({ timeout: 30_000 });
+  if (expectHeading) {
+    await expect(page.getByRole("heading", { name: "Month", exact: true })).toBeVisible({ timeout: 30_000 });
+  }
 }
 
 test.describe("month page", () => {
@@ -329,9 +336,8 @@ test.describe("month page", () => {
 
   test("mobile month page supports add and edit sheets plus category editing above the sheet", async ({ page }) => {
     await page.setViewportSize(devices["iPhone 12 Pro"].viewport);
-    await page.goto("/month?view=person-tim&month=2026-05&scope=direct_plus_shared");
-    await page.reload();
-    await expect(page.getByRole("region", { name: "Month view controls" })).toBeVisible({ timeout: 30_000 });
+    await gotoMonthPage(page, { expectHeading: false });
+    await expect(page.getByRole("button", { name: "+ Add planned item" })).toBeVisible({ timeout: 30_000 });
 
     await page.getByRole("button", { name: "+ Add planned item" }).click();
     const addSheet = page.locator('.entry-mobile-sheet[aria-label="+ Add planned item"]');
