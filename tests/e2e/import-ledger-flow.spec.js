@@ -660,6 +660,7 @@ test.describe("import flow", () => {
     expect(preview.json.preview.previewRows).toHaveLength(1);
     expect(preview.json.preview.previewRows[0].commitStatus).toBe("included");
     expect(preview.json.preview.previewRows[0].reconciliationTargetTransactionId).toBeTruthy();
+    expect(preview.json.preview.previewRows[0].isStatementMatchResolved).toBe(true);
     expect(preview.json.preview.previewRows[0].duplicateMatches).toBeUndefined();
     expect(
       preview.json.preview.statementReconciliations[0].status,
@@ -2476,6 +2477,8 @@ test.describe("import flow", () => {
     await uploadPdfAndMap(febPdfPath);
     await expect(importFlowPage.getByText("1 row will import").first()).toBeVisible();
     await expect(importFlowPage.getByText("7 existing rows will be certified by the statement").first()).toBeVisible();
+    await expect(importFlowPage.locator(`input[value="${febAlphaRows[0].description}"]`)).toHaveCount(0);
+    await expect(importFlowPage.locator(`input[value="${febBetaRows[0].description}"]`)).toHaveCount(0);
     const lateStatementOnlyDescription = importFlowPage.locator(`input[value="${lateStatementOnlyRow.description}"]`);
     await expect(lateStatementOnlyDescription).toBeVisible();
     const lateStatementOnlyPreviewRow = lateStatementOnlyDescription.locator("xpath=ancestor::tr[1]");

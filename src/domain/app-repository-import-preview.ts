@@ -1034,7 +1034,10 @@ function markResolvedCertifiedRowsForMatchedStatements(
       if (
         row.accountId === checkpoint.accountId
         && row.date <= checkpoint.statementEndDate!
-        && row.commitStatus === "skipped"
+        && (
+          row.commitStatus === "skipped"
+          || (row.commitStatus === "included" && Boolean(row.reconciliationTargetTransactionId))
+        )
         && Boolean(row.reconciliationMatch?.existingTransactionId)
       ) {
         row.isStatementMatchResolved = true;
