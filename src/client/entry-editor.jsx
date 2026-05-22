@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import * as Popover from "@radix-ui/react-popover";
 import { useEffect, useState } from "react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
@@ -29,6 +30,8 @@ export function EntryEditorFields({
   onChange,
   onAmountChange,
   onCategoryAppearanceChange,
+  onCategoryQuickSave,
+  isCategoryQuickSaving = false,
   onOwnerChange,
   onSplitPercentChange,
   transferTools = null
@@ -53,6 +56,7 @@ export function EntryEditorFields({
     ?? entry.amountInput
     ?? formatService.formatEditableMinorInput(resolvedAmountMinor);
   const [amountDraft, setAmountDraft] = useState(resolvedAmountInput);
+  const [categoryQuickSaveOpen, setCategoryQuickSaveOpen] = useState(false);
 
   useEffect(() => {
     setAmountDraft(resolvedAmountInput);
@@ -74,6 +78,9 @@ export function EntryEditorFields({
 
   function handleCategoryChange(nextCategoryName) {
     onChange({ categoryName: nextCategoryName });
+    if (onCategoryQuickSave && nextCategoryName !== entry.categoryName) {
+      setCategoryQuickSaveOpen(true);
+    }
   }
 
   const categorySelect = (
@@ -120,6 +127,37 @@ export function EntryEditorFields({
                 value="Transfer"
                 readOnly
               />
+            ) : onCategoryQuickSave ? (
+              <Popover.Root open={categoryQuickSaveOpen} onOpenChange={setCategoryQuickSaveOpen}>
+                <Popover.Anchor className="entry-category-save-anchor">
+                  {categorySelect}
+                </Popover.Anchor>
+                <Popover.Portal>
+                  <Popover.Content className="entry-category-save-popover" sideOffset={8} align="start">
+                    <strong>{messages.entries.saveCategoryPrompt}</strong>
+                    <p>{messages.entries.saveCategoryPromptDetail}</p>
+                    <div className="entry-category-save-actions">
+                      <button
+                        type="button"
+                        className="dialog-primary"
+                        disabled={isCategoryQuickSaving}
+                        onClick={async () => {
+                          const saved = await onCategoryQuickSave();
+                          if (saved) {
+                            setCategoryQuickSaveOpen(false);
+                          }
+                        }}
+                      >
+                        {isCategoryQuickSaving ? messages.common.saving : messages.entries.saveCategoryNow}
+                      </button>
+                      <button type="button" className="subtle-action" disabled={isCategoryQuickSaving} onClick={() => setCategoryQuickSaveOpen(false)}>
+                        {messages.entries.cancelEdit}
+                      </button>
+                    </div>
+                    <Popover.Arrow className="category-popover-arrow" />
+                  </Popover.Content>
+                </Popover.Portal>
+              </Popover.Root>
             ) : (
               categorySelect
             )}

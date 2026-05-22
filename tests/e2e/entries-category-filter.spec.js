@@ -29,7 +29,7 @@ test("category-filtered entry remains visible until the category edit is explici
   await expect(entryEditor).toBeVisible();
   await entryEditor.locator("select").first().selectOption("Groceries");
 
-  await expect(page.getByText("Save this category?")).toHaveCount(0);
+  await expect(page.getByText("Save this category?")).toBeVisible();
   await expect(page.locator(".entry-row").filter({ hasText: description })).toHaveCount(1);
 
   const beforeSave = await loadEntriesPage(page, { view: "person-tim", month });
@@ -37,7 +37,7 @@ test("category-filtered entry remains visible until the category edit is explici
   expect(beforeSaveEntry?.categoryName).toBe("Other");
 
   const updateResponse = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());
-  await page.getByRole("button", { name: "Done editing entry" }).click();
+  await page.getByRole("button", { name: "Save category" }).click();
   await updateResponse;
 
   await expect(page.locator(".entry-row").filter({ hasText: description })).toHaveCount(0);
