@@ -423,6 +423,8 @@ function EntryRow({
             onChange={(patch) => onUpdateEntry(entry.id, patch)}
             onAmountChange={(patch) => onUpdateEntryAmount(entry.id, patch)}
             onCategoryAppearanceChange={onCategoryAppearanceChange}
+            onCategoryQuickSave={onFinishEntryEdit}
+            isCategoryQuickSaving={isSavingEntry}
             onOwnerChange={(nextValue) => {
               if (nextValue === "Shared") {
                 onUpdateEntry(entry.id, { ownershipType: "shared", ownerName: undefined });
