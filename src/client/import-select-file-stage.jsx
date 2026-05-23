@@ -63,7 +63,7 @@ export function ImportSelectFileStage({
           <select className="table-edit-input" value={defaultAccountName} onChange={(event) => onDefaultAccountChange(event.target.value)}>
             <option value="">{messages.entries.allWallets}</option>
             {accountOptions.map((account) => (
-              <option key={account.id} value={account.value}>{account.label}</option>
+              <option key={account.id} value={account.name}>{account.label}</option>
             ))}
           </select>
         </label>
