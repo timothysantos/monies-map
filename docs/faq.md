@@ -1244,7 +1244,11 @@ Import duplicate matching now runs in two lanes. First, exact duplicate
 suppression checks for the same mapped account, the same amount, and either the
 same normalized import hash or a perfect normalized description match with
 `dayDistance === 0`. Those rows are auto-skipped before any reconciliation
-status guard runs.
+status guard runs. When the existing ledger row is already statement-certified
+from a PDF and the incoming row is a later mid-cycle activity file, the
+description/hash lane may use the same velocity date window. That lets a final
+statement row posted on one date suppress a later activity export row for the
+same bank event when the activity export shows the transaction date instead.
 
 If a row is not an exact duplicate, the app then isolates one date lane for the
 promotion and reconciliation step. If both rows have event date hints, it
