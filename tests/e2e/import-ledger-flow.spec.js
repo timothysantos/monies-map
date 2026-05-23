@@ -880,6 +880,76 @@ test.describe("import flow", () => {
     expect(preview.json.preview.reconciliationCandidateCount).toBe(0);
   });
 
+  test("midcycle Citi activity skips an already certified statement row with a different activity date", async ({ page }) => {
+    const appShell = await loadAppShell(page, { month: "2026-04" });
+    const account = appShell.accounts.find((item) => item.name === "Citi Rewards");
+    expect(account).toBeTruthy();
+
+    const statementRow = {
+      rowId: "citi-certified-money-send",
+      rowIndex: 1,
+      date: "2026-04-04",
+      description: "MONEYSEND SANTOS TIMOTHY",
+      amountMinor: 17350,
+      entryType: "income",
+      accountId: account.id,
+      accountName: account.name,
+      categoryName: "Other",
+      ownershipType: "direct",
+      ownerName: account.ownerLabel,
+      splitBasisPoints: 10000,
+      rawRow: {
+        date: "2026-04-04",
+        description: "MONEYSEND SANTOS TIMOTHY",
+        income: "173.50",
+        accountId: account.id,
+        account: account.name,
+        category: "Other",
+        type: "income"
+      }
+    };
+
+    const statementCommit = await page.evaluate(async ({ row }) => {
+      const response = await fetch("/api/imports/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Playwright Citi card April PDF",
+          sourceType: "pdf",
+          parserKey: "citibank_credit_card_pdf",
+          rows: [row],
+          statementCheckpoints: []
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, { row: statementRow });
+    expect(statementCommit.ok, statementCommit.text).toBeTruthy();
+
+    const preview = await postJson(page, "/api/imports/preview", {
+      sourceLabel: "Playwright Citi card activity CSV",
+      sourceType: "csv",
+      rows: [{
+        date: "2026-04-02",
+        description: "MONEYSEND SANTOS TIMOTHY",
+        income: "173.50",
+        accountId: account.id,
+        account: account.name,
+        category: "Other",
+        type: "income",
+        note: "card ending: 6360"
+      }],
+      defaultAccountName: account.name,
+      ownershipType: "direct",
+      ownerName: account.ownerLabel
+    });
+
+    const [row] = preview.preview.previewRows;
+    expect(row.commitStatus).toBe("skipped");
+    expect(row.reconciliationMatch?.matchKind).toBe("exact");
+    expect(row.reconciliationMatch?.existingBankCertificationStatus).toBe("statement_certified");
+    expect(row.commitStatusReason).toBe("Official statement row is already certified in the ledger.");
+  });
+
   test("mid-cycle imports do not match imported provisional rows, but PDFs still can promote them", async ({ page }) => {
     const appShell = await loadAppShell(page, { month: "2025-03" });
     const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");

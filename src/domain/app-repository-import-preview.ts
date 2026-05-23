@@ -18,6 +18,10 @@ import {
 import { loadCategories } from "./app-repository-categories";
 import { loadCategoryMatchRules, matchCategoryRule } from "./app-repository-category-match-rules";
 import { loadAccounts } from "./app-repository-settings";
+import {
+  canSuppressCertifiedStatementDuplicate,
+  getDuplicateCandidateMaxDayDistance
+} from "./import-preview-match-policy";
 import type {
   AccountDto,
   ImportOverlapDto,
@@ -25,10 +29,6 @@ import type {
   ImportPreviewRowDto,
   StatementCheckpointDraftDto
 } from "../types/dto";
-
-const LOW_VALUE_DUPLICATE_WINDOW_THRESHOLD_MINOR = 500;
-const LOW_VALUE_DUPLICATE_MAX_DAY_DISTANCE = 2;
-const STANDARD_DUPLICATE_MAX_DAY_DISTANCE = 7;
 
 export async function buildImportPreview(
   db: D1Database,
@@ -164,7 +164,8 @@ export async function buildImportPreview(
     const exactDuplicateMatch = findExactDuplicateSuppressionMatch({
       previewRow,
       previewRowDateContext,
-      existingRows: existingTransactions.results
+      existingRows: existingTransactions.results,
+      incomingSourceType: input.sourceType
     });
     const reconciliationMatches = exactDuplicateMatch
       ? []
@@ -364,6 +365,7 @@ function findExactDuplicateSuppressionMatch(input: {
     account_name: string;
     normalized_hash: string | null;
   }>;
+  incomingSourceType?: "csv" | "pdf" | "manual";
 }) {
   const previewRowHash = buildImportRowHash(input.previewRow);
 
@@ -384,10 +386,24 @@ function findExactDuplicateSuppressionMatch(input: {
           candidate.source_type !== "pdf"
           || candidate.bank_certification_status !== "statement_certified"
           || dayDistance === 0
+          || canSuppressCertifiedStatementDuplicate({
+            candidateSourceType: candidate.source_type,
+            candidateBankCertificationStatus: candidate.bank_certification_status,
+            incomingSourceType: input.incomingSourceType,
+            dayDistance,
+            amountMinor: input.previewRow.amountMinor
+          })
         );
-      const hasPerfectDescriptionMatch = dayDistance === 0
+      const canUseCertifiedStatementDateWindow = canSuppressCertifiedStatementDuplicate({
+        candidateSourceType: candidate.source_type,
+        candidateBankCertificationStatus: candidate.bank_certification_status,
+        incomingSourceType: input.incomingSourceType,
+        dayDistance,
+        amountMinor: input.previewRow.amountMinor
+      });
+      const hasPerfectDescriptionMatch = (dayDistance === 0 || canUseCertifiedStatementDateWindow)
         && normalizeDescriptionForMatch(candidate.description) === normalizeDescriptionForMatch(input.previewRow.description);
-      const hasCompactDescriptionMatch = dayDistance === 0
+      const hasCompactDescriptionMatch = (dayDistance === 0 || canUseCertifiedStatementDateWindow)
         && compareDescriptionSimilarity(candidate.description, input.previewRow.description) >= 0.9;
 
       if (!hasMatchingHash && !hasPerfectDescriptionMatch && !hasCompactDescriptionMatch) {
@@ -647,8 +663,7 @@ function applyExactDuplicateSuppressionReason(
   sourceType?: "csv" | "pdf" | "manual"
 ) {
   if (
-    sourceType === "pdf"
-    && previewRow.commitStatus === "skipped"
+    previewRow.commitStatus === "skipped"
     && previewRow.reconciliationMatch?.matchKind === "exact"
     && (
       previewRow.reconciliationMatch.existingSourceType === "pdf"
@@ -1249,14 +1264,6 @@ function getDuplicateMatchKind(input: {
   }
 
   return undefined;
-}
-
-function getDuplicateCandidateMaxDayDistance(amountMinor: number) {
-  // High-velocity low-value rows need a much tighter window so recurring
-  // fares, coffee, or canteen charges are not treated as the same event.
-  return Math.abs(amountMinor) < LOW_VALUE_DUPLICATE_WINDOW_THRESHOLD_MINOR
-    ? LOW_VALUE_DUPLICATE_MAX_DAY_DISTANCE
-    : STANDARD_DUPLICATE_MAX_DAY_DISTANCE;
 }
 
 function getTokenSimilarity(left: string, right: string) {
