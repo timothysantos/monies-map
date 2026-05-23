@@ -36,6 +36,8 @@ Keep it short. If a change needs a larger audit, split the audit by slice.
 - Check whether the change affects the amount-edit typing contract.
 - Check whether visible behavior needs runtime proof in a browser or local
   worker, not just source inspection.
+- Check whether any dialog or popover path can fail at render time because the
+  module import is missing or mismatched with the component tree.
 
 ## 4. Decide The First Slice Move
 
@@ -65,6 +67,7 @@ When the checklist is used, record:
 - what doc changed
 - what slice should move first
 - what runtime proof was used, if any
+- whether any similar missing-import or render-time crash pattern was checked
 
 ## Post-Slice Audit Checklist
 
