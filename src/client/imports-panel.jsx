@@ -88,13 +88,13 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
   const csvInspection = useMemo(() => inspectCsv(csvText), [csvText]);
   const headerSignature = csvInspection.headers.join("|");
+  const defaultAccount = useMemo(
+    () => accounts.find((account) => account.name === defaultAccountName || account.accountName === defaultAccountName),
+    [accounts, defaultAccountName]
+  );
   const defaultAccountDirectOwnerName = useMemo(
     () => importService.getDirectOwnerForAccount(accounts, people, defaultAccountName, undefined),
     [accounts, defaultAccountName, people]
-  );
-  const defaultAccount = useMemo(
-    () => accounts.find((account) => account.name === defaultAccountName),
-    [accounts, defaultAccountName]
   );
 
   useEffect(() => {
@@ -325,7 +325,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     parsed,
     sourceType,
     nextStatementCheckpoints,
-    nextDefaultAccountName,
     successMessage
   }) {
     setSourceLabel(parsed.sourceLabel);
@@ -333,15 +332,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setStatementImportMeta({ sourceType, parserKey: parsed.parserKey });
     setCsvText(statementRowsToCsv(parsed.rows));
 
-    if (nextDefaultAccountName) {
-      setDefaultAccountName(nextDefaultAccountName);
-    }
-
     setUploadStatus({ tone: "active", message: messages.imports.uploadPreviewing(parsed.rows.length) });
     await previewImportRows({
       rows: parsed.rows,
       nextSourceLabel: parsed.sourceLabel,
-      nextDefaultAccountName: nextDefaultAccountName || defaultAccountName,
       nextStatementCheckpoints
     });
     setUploadStatus({ tone: "success", message: successMessage });
@@ -392,13 +386,13 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         fileType: file.type,
         text: "",
         activityContext: {
-          accountName: defaultAccount?.name ?? defaultAccountName,
+          accountName: defaultAccount?.name ?? "",
           accountKind: defaultAccount?.kind,
           institution: defaultAccount?.institution
         }
       });
 
-      if (fileKind === "pdf") {
+    if (fileKind === "pdf") {
         setDismissedOverlapIds([]);
         setUploadStatus({ tone: "active", message: messages.imports.uploadExtracting(file.name) });
         const text = await importService.extractPdfText(file);
@@ -410,7 +404,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           parsed,
           sourceType: "pdf",
           nextStatementCheckpoints: parsedCheckpoints,
-          nextDefaultAccountName: parsed.checkpoints[0]?.accountName ?? defaultAccountName,
           successMessage: parsed.checkpoints.length > 1
             ? messages.imports.uploadStatementReady(parsed.rows.length, parsed.checkpoints.length)
             : messages.imports.uploadReady(parsed.rows.length)
@@ -427,7 +420,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           parsed,
           sourceType: "csv",
           nextStatementCheckpoints: [],
-          nextDefaultAccountName: parsed.rows[0]?.account ?? defaultAccountName,
           successMessage: messages.imports.uploadReady(parsed.rows.length)
         });
         return;
@@ -435,7 +427,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
       const nextText = await file.text();
       const activityContext = {
-        accountName: defaultAccount?.name ?? defaultAccountName,
+        accountName: defaultAccount?.name ?? "",
         accountKind: defaultAccount?.kind,
         institution: defaultAccount?.institution
       };
@@ -455,7 +447,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           parsed,
           sourceType: "csv",
           nextStatementCheckpoints: [],
-          nextDefaultAccountName: parsed.rows[0]?.account ?? defaultAccountName,
           successMessage: messages.imports.uploadReady(parsed.rows.length)
         });
         return;
@@ -470,7 +461,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           parsed,
           sourceType: "csv",
           nextStatementCheckpoints: [],
-          nextDefaultAccountName: parsed.rows[0]?.account ?? defaultAccountName,
           successMessage: messages.imports.uploadReady(parsed.rows.length)
         });
         return;
@@ -495,7 +485,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   async function previewImportRows({
     rows,
     nextSourceLabel = sourceLabel,
-    nextDefaultAccountName = defaultAccountName,
     nextStatementCheckpoints = statementCheckpoints
   }) {
     // All source formats eventually converge here so the server only has one
@@ -506,7 +495,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         sourceLabel: nextSourceLabel,
         sourceType: statementImportMeta.sourceType,
         rows,
-        defaultAccountName: nextDefaultAccountName,
         ownershipType,
         ownerName,
         splitPercent,
