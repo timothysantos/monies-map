@@ -124,6 +124,10 @@ team conventions evolve.
   matches the surrounding desktop and mobile experience.
 - Use `npm run test:e2e:smoke` as the standard smoke-bundle command when you
   need to verify the core desktop and mobile workflows together.
+- Use `npm run verify` as the local merge gate. It must pass strict TypeScript,
+  unit and parser contracts, the production build, and the smoke bundle.
+- Run `npm run test:e2e` before merging a large refactor branch or a change that
+  affects shared route, settings, import, entry, month, or split orchestration.
 - Do not write shallow tests for implemented behavior. For any non-trivial
   slice, assert the concrete output shape and values, and include at least one
   negative test that proves the guarded or rejected path.

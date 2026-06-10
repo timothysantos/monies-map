@@ -219,6 +219,14 @@ list when relevant:
 
 Testing depth rule:
 
+- `npm run verify` is the local merge gate: dependency audit, strict
+  TypeScript, unit tests, production build, and the desktop/mobile smoke bundle
+- run `npm run test:e2e` before merging broad shared-infrastructure,
+  persistence, import, or cross-page invalidation changes
+- do not waive a failing browser scenario as timing-sensitive until the
+  user-visible invariant has been reproduced and the test has been proven to
+  wait on the correct route or rendered state
+
 - do not stop at truthy checks or existence checks for implemented behavior
 - assert the concrete output shape and values that the slice owns
 - include at least one negative test for each non-trivial slice so blocked or
