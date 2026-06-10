@@ -32,6 +32,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   const [transferCandidateErrors, setTransferCandidateErrors] = useState({});
   const [addingToSplitsEntryId, setAddingToSplitsEntryId] = useState(null);
   const queuedComposerDraftRef = useRef(null);
+  const deletedEntryIdsRef = useRef(new Set());
   const viewIdentityKey = `${view.id}:${view.monthPage.month}:${view.monthPage.selectedScope}`;
   const activeEditingEntry = useMemo(
     () => editingEntryId ? entries.find((entry) => entry.id === editingEntryId) ?? null : null,
@@ -47,12 +48,16 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   }, [activeEditingEntry, entrySnapshot]);
 
   useEffect(() => {
+    deletedEntryIdsRef.current.clear();
+  }, [viewIdentityKey]);
+
+  useEffect(() => {
     const queuedComposerDraft = queuedComposerDraftRef.current;
     queuedComposerDraftRef.current = null;
 
     // A view/month/scope change means the local editor state is no longer
     // trustworthy, so the hook resets to the fresh server-backed baseline.
-    setEntries(view.monthPage.entries);
+    setEntries(mergeEntriesById([], view.monthPage.entries, null, deletedEntryIdsRef.current));
     setEditingEntryId(null);
     setEntrySnapshot(null);
     setShowEntryComposer(Boolean(queuedComposerDraft));
@@ -79,7 +84,19 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       return;
     }
 
-    setEntries((current) => mergeEntriesById(current, view.monthPage.entries, editingEntryId));
+    setEntries((current) => mergeEntriesById(
+      current,
+      view.monthPage.entries,
+      editingEntryId,
+      deletedEntryIdsRef.current
+    ));
+
+    const serverEntryIds = new Set(view.monthPage.entries.map((entry) => entry.id));
+    for (const deletedEntryId of deletedEntryIdsRef.current) {
+      if (!serverEntryIds.has(deletedEntryId)) {
+        deletedEntryIdsRef.current.delete(deletedEntryId);
+      }
+    }
   }, [editingEntryId, view.monthPage.entries]);
 
   function refreshEntriesInBackground() {
@@ -678,6 +695,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
         };
       }
 
+      deletedEntryIdsRef.current.add(entry.id);
       setEntries((current) => current.filter((currentEntry) => currentEntry.id !== entry.id));
       if (editingEntryId === entry.id) {
         setEditingEntryId(null);
