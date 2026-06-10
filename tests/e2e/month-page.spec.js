@@ -91,19 +91,15 @@ async function gotoMonthPage(page, {
   scope = "direct_plus_shared",
   expectHeading = true
 } = {}) {
-  const monthPageReady = page.waitForResponse((response) => (
-    response.url().includes("/api/month-page")
-    && response.url().includes(`view=${view}`)
-    && response.url().includes(`month=${month}`)
-    && response.url().includes(`scope=${scope}`)
-    && response.ok()
-  ), { timeout: 30_000 }).catch(() => null);
-  await page.goto(`/month?view=${view}&month=${month}&scope=${scope}`);
-  await monthPageReady;
+  await gotoPageAfterApi(
+    page,
+    `/month?view=${view}&month=${month}&scope=${scope}`,
+    "/api/month-page",
+    () => expectHeading
+      ? page.getByRole("heading", { name: "Month", exact: true })
+      : page.getByRole("button", { name: "+ Add planned item" })
+  );
   await expect(page).toHaveURL(new RegExp(`/month\\?[^#]*view=${view}[^#]*month=${month}[^#]*scope=${scope}`));
-  if (expectHeading) {
-    await expect(page.getByRole("heading", { name: "Month", exact: true })).toBeVisible({ timeout: 30_000 });
-  }
 }
 
 test.describe("month page", () => {
