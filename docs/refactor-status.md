@@ -70,4 +70,3 @@ The remaining work is infrastructure thinning:
 - explicit shell refresh stays a bounded exception, not the default fallback.
 - the full serial smoke bundle continues to pass.
 - future changes do not reintroduce broad coordination paths.
-
