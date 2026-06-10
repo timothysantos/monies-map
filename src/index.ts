@@ -1,14 +1,18 @@
 import {
-  buildBootstrapDto,
-  buildEntriesBootstrapDto,
-  buildEntriesPageDto,
-  buildImportsPageDto,
-  buildMonthPageDto,
-  buildSettingsPageDto,
-  buildSplitsPageDto,
-  buildSummaryPageDto,
-  invalidateAppDataCache
-} from "./domain/bootstrap";
+  buildAppShellDto,
+  buildEntriesShellDto
+} from "./domain/app-shell-dto";
+import {
+  invalidateAppDataCache,
+  primeAppDataCache
+} from "./domain/app-shell";
+import { buildEntriesPageDto } from "./domain/pages/entries-page";
+import { buildImportsPageDto } from "./domain/pages/imports-page";
+import { buildMonthPageDto } from "./domain/pages/month-page";
+import { buildSettingsPageDto } from "./domain/pages/settings-page";
+import { buildSplitsPageDto } from "./domain/pages/splits-page";
+import { buildSummaryAccountPillsDto } from "./domain/pages/summary-account-pills";
+import { buildSummaryPageDto } from "./domain/pages/summary-page";
 import { enterEmptyState, reseedDemoSettings } from "./domain/demo-settings";
 import {
   archiveAccountRecord,
@@ -68,7 +72,8 @@ import { json } from "./server/json";
 
 export interface Env {
   DB: D1Database;
-  APP_ENVIRONMENT?: "demo" | "local" | "production";
+  APP_ENVIRONMENT?: "demo" | "local" | "production" | "test";
+  DEMO_SEED_MONTH?: string;
   SHORTCUT_INGEST_TOKEN?: string;
 }
 
@@ -84,14 +89,10 @@ export default {
       return json({ ok: true, service: "monies-map" });
     }
 
-    if (url.pathname === "/api/bootstrap") {
-      return apiPageResponse("Bootstrap", request, url, () =>
-        buildBootstrapDto(
+    if (url.pathname === "/api/app-shell") {
+      return apiPageResponse("App shell", request, url, () =>
+        buildAppShellDto(
           env.DB,
-          url.searchParams.get("month") ?? getCurrentMonthKey(),
-          (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared",
-          url.searchParams.get("summary_start") ?? undefined,
-          url.searchParams.get("summary_end") ?? undefined,
           getAuthenticatedEmail(request),
           getAppEnvironment(env, url)
         )
@@ -100,7 +101,7 @@ export default {
 
     if (url.pathname === "/api/entries-shell") {
       return apiPageResponse("Entries shell", request, url, () =>
-        buildEntriesBootstrapDto(
+        buildEntriesShellDto(
           env.DB,
           url.searchParams.get("view") ?? "household",
           url.searchParams.get("month") ?? getCurrentMonthKey(),
@@ -145,6 +146,15 @@ export default {
       );
     }
 
+    if (url.pathname === "/api/summary-account-pills") {
+      return apiPageResponse("Summary account pills", request, url, () =>
+        buildSummaryAccountPillsDto(
+          env.DB,
+          url.searchParams.get("view") ?? "household"
+        )
+      );
+    }
+
     if (url.pathname === "/api/month-page") {
       return apiPageResponse("Month page", request, url, () =>
         buildMonthPageDto(
@@ -178,8 +188,8 @@ export default {
       if (!canUseDemoControls(env, url)) {
         return json({ ok: false, error: "Demo controls are disabled in production." }, 403);
       }
-      const demo = await reseedDemoSettings(env.DB);
-      invalidateAppDataCache();
+      const demo = await reseedDemoSettings(env.DB, env.DEMO_SEED_MONTH);
+      primeAppDataCache(demo);
       return json({ ok: true, demo });
     }
 
@@ -188,7 +198,7 @@ export default {
         return json({ ok: false, error: "Demo controls are disabled in production." }, 403);
       }
       const demo = await enterEmptyState(env.DB);
-      invalidateAppDataCache();
+      primeAppDataCache(demo);
       return json({ ok: true, demo });
     }
 
@@ -985,11 +995,11 @@ export default {
       }
 
       return json({
-        ok: true,
         ...(await linkSplitExpenseMatch(env.DB, {
           splitExpenseId: body.splitExpenseId,
           transactionId: body.transactionId
-        }))
+        })),
+        ok: true
       });
     }
 
@@ -1000,11 +1010,11 @@ export default {
       }
 
       return json({
-        ok: true,
         ...(await linkSplitSettlementMatch(env.DB, {
           settlementId: body.settlementId,
           transactionId: body.transactionId
-        }))
+        })),
+        ok: true
       });
     }
 
@@ -1349,7 +1359,7 @@ export default {
           statementBalanceMinor: number;
           projectedLedgerBalanceMinor?: number;
           deltaMinor?: number;
-          status: "matched" | "mismatch" | "unknown_account" | "identity_unconfirmed";
+          status: "matched" | "mismatch" | "unknown_account" | "identity_unconfirmed" | "missing_prior_statement";
         }[];
         rows?: {
           rowId: string;
@@ -1624,7 +1634,9 @@ async function apiPageResponse<T>(
     if (durationMs >= API_PAGE_SLOW_MS) {
       console.warn("API page slow", buildApiDiagnostic(label, request, url, requestId, durationMs));
     }
-    return json(payload);
+    return json(payload, 200, {
+      "server-timing": `app;dur=${durationMs}`
+    });
   } catch (error) {
     const durationMs = Date.now() - startedAt;
     console.error("API page failed", {
@@ -1662,7 +1674,7 @@ function getAppEnvironment(env: Env, url: URL): Env["APP_ENVIRONMENT"] {
 
 function canUseDemoControls(env: Env, url: URL) {
   const environment = getAppEnvironment(env, url);
-  return environment === "demo" || environment === "local";
+  return environment === "demo" || environment === "local" || environment === "test";
 }
 
 function isLocalHostname(hostname: string) {

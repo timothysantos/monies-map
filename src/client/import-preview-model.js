@@ -59,17 +59,18 @@ export function buildImportPreviewModel({
   const skippedPreviewRowCount = visiblePreviewRows.filter((row) => row.commitStatus === "skipped").length;
   const needsReviewPreviewRowCount = visiblePreviewRows.filter((row) => row.commitStatus === "needs_review").length;
   const includedPreviewRows = visiblePreviewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review");
+  const commitPayloadPreviewRows = previewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review");
   const statementReconciliations = preview?.statementReconciliations ?? [];
   const hasDuplicateCheckpointAccounts = duplicateCheckpointAccounts.length > 0;
-  const hasCheckpointOnlyCommit = statementCheckpoints.length > 0 && includedPreviewRows.length === 0;
+  const hasCheckpointOnlyCommit = statementCheckpoints.length > 0 && commitPayloadPreviewRows.length === 0;
   const hasAlreadyCoveredCheckpointRefresh = hasCheckpointOnlyCommit && skippedPreviewRowCount > 0;
   const hasEmptyStatementCheckpointOnly = hasCheckpointOnlyCommit && skippedPreviewRowCount === 0;
   const hasMatchedCheckpointOnlyCommit = hasCheckpointOnlyCommit
     && statementReconciliations.length > 0
     && statementReconciliations.every((item) => item.status === "matched");
-  const hasUnmappedAccounts = includedPreviewRows.some((row) => !row.accountId && (!row.accountName || (accountNameCounts.get(row.accountName) ?? 0) !== 1));
+  const hasUnmappedAccounts = commitPayloadPreviewRows.some((row) => !row.accountId && (!row.accountName || (accountNameCounts.get(row.accountName) ?? 0) !== 1));
   const hasBlockingCategoryPolicy = unknownCategoryMode === "block" && Boolean(preview?.unknownCategories?.length);
-  const hasCommitPayload = includedPreviewRows.length > 0 || statementCheckpoints.length > 0;
+  const hasCommitPayload = commitPayloadPreviewRows.length > 0 || statementCheckpoints.length > 0;
   const hasStatementReconciliationMismatch = statementReconciliations.some((item) => item.status !== "matched");
   const isCommitDisabled = isSubmitting
     || isParsingStatement
@@ -144,26 +145,4 @@ function getDuplicateCheckpointAccounts(statementCheckpoints) {
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   return Array.from(counts.entries()).filter(([, count]) => count > 1).map(([accountKey]) => accountKey);
-}
-
-export function hasImportDraft({
-  preview,
-  previewRows,
-  csvText,
-  importNote,
-  statementCheckpoints,
-  uploadStatus,
-  previewError,
-  sourceLabel
-}) {
-  return Boolean(
-    preview
-    || previewRows.length
-    || csvText
-    || importNote
-    || statementCheckpoints.length
-    || uploadStatus
-    || previewError
-    || sourceLabel !== "Imported CSV"
-  );
 }

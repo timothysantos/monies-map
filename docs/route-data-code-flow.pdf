@@ -1,0 +1,1126 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R 8 0 R 10 0 R 12 0 R 14 0 R 16 0 R 18 0 R 20 0 R 22 0 R 24 0 R 26 0 R 28 0 R 30 0 R 32 0 R 34 0 R 36 0 R 38 0 R] /Count 18 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 1765 >>
+stream
+BT /F1 10 Tf 48 744 Td 13 TL
+() Tj
+T* (ROUTE, DATA, AND RENDERING FLOW) Tj
+T* () Tj
+T* () Tj
+T* (This document explains the current Monies Map app-shell and route-page design) Tj
+T* (as three related flows:) Tj
+T* () Tj
+T* (1. Route flow) Tj
+T* (   Where does the browser say the user is?) Tj
+T* (2. Data flow) Tj
+T* (   What JSON data does that route need?) Tj
+T* (3. Code/rendering flow) Tj
+T* (   Has the React code for that route been downloaded and rendered?) Tj
+T* () Tj
+T* (The important rule is that these are not the same thing.) Tj
+T* () Tj
+T* (When a user clicks Settings:) Tj
+T* () Tj
+T* (Route flow:) Tj
+T* (  Browser URL becomes /settings) Tj
+T* () Tj
+T* (Data flow:) Tj
+T* (  App fetches /api/settings-page and receives SettingsPageDto JSON) Tj
+T* () Tj
+T* (Code/rendering flow:) Tj
+T* (  Browser loads settings-panel.jsx, then React renders <SettingsPanel />) Tj
+T* () Tj
+T* () Tj
+T* (These three flows meet inside src/client/App.jsx \(../src/client/App.jsx\).) Tj
+T* () Tj
+T* () Tj
+T* (WHY THIS DOC EXISTS) Tj
+T* () Tj
+T* () Tj
+T* (The refactor introduced many small rules:) Tj
+T* () Tj
+T* (- app shell is not the old all-in-one bootstrap payload) Tj
+T* (- route pages fetch screen-specific JSON separately) Tj
+T* (- App.jsx is the orchestrator, not a hidden page service) Tj
+T* (- route-context.ts is only for route interpretation and context resolution) Tj
+T* (- page-labels.ts is label-only) Tj
+T* (- cross-route business rules belong in dedicated domain modules) Tj
+T* () Tj
+T* (Those rules are easy to lose track of if you only read the code one file at a) Tj
+T* (time. This doc explains the current shape in one place.) Tj
+T* () Tj
+T* () Tj
+T* (BIG PICTURE) Tj
+T* () Tj
+T* () Tj
+T* (Monies Map is one repo with several layers:) Tj
+T* () Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 1469 >>
+stream
+BT /F1 10 Tf 48 744 Td 13 TL
+(Browser client) Tj
+T* (  -> react-router-dom decides route state) Tj
+T* (  -> TanStack Query manages server-state cache) Tj
+T* (  -> React.lazy downloads panel code) Tj
+T* () Tj
+T* (Cloudflare Worker server) Tj
+T* (  -> src/index.ts matches API path) Tj
+T* (  -> domain DTO builder creates response shape) Tj
+T* (  -> repository functions read/write D1) Tj
+T* () Tj
+T* (Shared design rules) Tj
+T* (  -> docs define ownership and boundaries) Tj
+T* (  -> tests enforce query and module boundaries) Tj
+T* () Tj
+T* () Tj
+T* (The browser never talks directly to D1. The browser always talks to the Worker) Tj
+T* (API, and the Worker talks to the database through repository/domain code.) Tj
+T* () Tj
+T* () Tj
+T* (CORE DESIGN CONCEPTS) Tj
+T* () Tj
+T* () Tj
+T* () Tj
+T* (APP SHELL) Tj
+T* () Tj
+T* () Tj
+T* (The app shell is the lightweight global payload that many screens need.) Tj
+T* () Tj
+T* (It includes things like:) Tj
+T* () Tj
+T* (- household) Tj
+T* (- people) Tj
+T* (- accounts) Tj
+T* (- categories) Tj
+T* (- tracked months) Tj
+T* (- viewer identity and environment) Tj
+T* () Tj
+T* (It should not include full route-page payloads.) Tj
+T* () Tj
+T* (Old mental model:) Tj
+T* () Tj
+T* (/api/bootstrap) Tj
+T* (  = shell + page data + too much responsibility) Tj
+T* () Tj
+T* () Tj
+T* (Current mental model:) Tj
+T* () Tj
+T* (/api/app-shell) Tj
+T* (  = shared shell metadata only) Tj
+T* () Tj
+T* (/api/summary-page) Tj
+T* (/api/month-page) Tj
+ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 9 0 R >>
+endobj
+9 0 obj
+<< /Length 1506 >>
+stream
+BT /F1 10 Tf 48 744 Td 13 TL
+(/api/entries-page) Tj
+T* (/api/splits-page) Tj
+T* (/api/imports-page) Tj
+T* (/api/settings-page) Tj
+T* (  = route-specific DTOs) Tj
+T* () Tj
+T* () Tj
+T* () Tj
+T* (ROUTE PAGE) Tj
+T* () Tj
+T* () Tj
+T* (A route page is the JSON payload for one screen.) Tj
+T* () Tj
+T* (Examples:) Tj
+T* () Tj
+T* (- /summary -> SummaryPageDto) Tj
+T* (- /month -> MonthPageDto) Tj
+T* (- /entries -> EntriesPageDto) Tj
+T* (- /splits -> SplitsPageDto) Tj
+T* (- /imports -> ImportsPageDto) Tj
+T* (- /settings -> SettingsPageDto) Tj
+T* () Tj
+T* () Tj
+T* (DTO) Tj
+T* () Tj
+T* () Tj
+T* (DTO means Data Transfer Object.) Tj
+T* () Tj
+T* (In this repo, a DTO is the intentional JSON contract sent from the Worker to) Tj
+T* (the browser. DTO builders should shape data, not become hidden workflow) Tj
+T* (engines.) Tj
+T* () Tj
+T* () Tj
+T* (DOMAIN-DRIVEN DESIGN IN PRACTICAL TERMS) Tj
+T* () Tj
+T* () Tj
+T* (This repo uses domain-driven ideas in a pragmatic way:) Tj
+T* () Tj
+T* (- business concepts should have stable names in DOMAIN.md \(../DOMAIN.md\)) Tj
+T* (- important behavior should live in named domain modules, not random helpers) Tj
+T* (- orchestration, repository access, and DTO shaping should stay separate) Tj
+T* () Tj
+T* (This is not meant to be academic. It is meant to stop finance rules from) Tj
+T* (spreading into UI components and generic helper files.) Tj
+T* () Tj
+T* () Tj
+T* (VERTICAL SLICES) Tj
+T* () Tj
+T* () Tj
+T* (The main product areas are slices:) Tj
+T* () Tj
+T* (- summary) Tj
+ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 11 0 R >>
+endobj
+11 0 obj
+<< /Length 1628 >>
+stream
+BT /F1 10 Tf 48 744 Td 13 TL
+(- month) Tj
+T* (- entries) Tj
+T* (- splits) Tj
+T* (- imports) Tj
+T* (- settings) Tj
+T* () Tj
+T* (Each route-page module should mainly orchestrate one of those workflows.) Tj
+T* () Tj
+T* () Tj
+T* (DEEP MODULES) Tj
+T* () Tj
+T* () Tj
+T* (A deep module exposes a small public API while hiding internal details.) Tj
+T* () Tj
+T* (Good example in this refactor:) Tj
+T* () Tj
+T* (- route modules call a small shared route-context API) Tj
+T* (- they do not need to duplicate month fallback and view resolution logic) Tj
+T* () Tj
+T* (Bad example:) Tj
+T* () Tj
+T* (- a giant helper file that every slice imports for unrelated reasons) Tj
+T* () Tj
+T* () Tj
+T* (THE THREE FLOWS TOGETHER) Tj
+T* () Tj
+T* () Tj
+T* () Tj
+T* (ONE COMBINED DIAGRAM) Tj
+T* () Tj
+T* () Tj
+T* (USER ACTION) Tj
+T* (  click "Month") Tj
+T* () Tj
+T* (ROUTE FLOW) Tj
+T* (  BrowserRouter) Tj
+T* (    -> current URL becomes /month?view=person-tim&month=2026-04) Tj
+T* (    -> App.jsx reads location/search params) Tj
+T* (    -> getSelectedTabId\("/month"\) returns "month") Tj
+T* () Tj
+T* (DATA FLOW) Tj
+T* (  App.jsx) Tj
+T* (    -> buildAppShellParams\(...\) for shell cache identity) Tj
+T* (    -> buildRoutePageRequest\(...\) returns /api/month-page?view=...&month=...&scope=...) Tj
+T* (    -> TanStack Query checks cache) Tj
+T* (    -> browser fetches /api/month-page) Tj
+T* (    -> src/index.ts matches /api/month-page) Tj
+T* (    -> src/domain/pages/month-page.ts builds MonthPageDto) Tj
+T* (    -> repository loads D1 data) Tj
+T* (    -> Worker returns JSON) Tj
+T* (    -> App.jsx calls buildPageViewFromRouteData\(...\)) Tj
+T* () Tj
+ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 13 0 R >>
+endobj
+13 0 obj
+<< /Length 1660 >>
+stream
+BT /F1 10 Tf 48 744 Td 13 TL
+(CODE / RENDERING FLOW) Tj
+T* (  App.jsx) Tj
+T* (    -> routeModuleLoaders.month\(\) imports ./month-panel.jsx) Tj
+T* (    -> React.lazy resolves MonthPanel) Tj
+T* (    -> Suspense renders route fallback while code is loading) Tj
+T* (    -> previous settled screen may remain visible during route hydration) Tj
+T* (    -> MonthPanel renders with MonthPageDto-backed props) Tj
+T* () Tj
+T* () Tj
+T* () Tj
+T* (WHY THEY ARE SEPARATE) Tj
+T* () Tj
+T* () Tj
+T* (The route can change before the data arrives.) Tj
+T* () Tj
+T* (The data can arrive before the code chunk finishes downloading.) Tj
+T* () Tj
+T* (The code chunk can be ready while the route data is still loading.) Tj
+T* () Tj
+T* (That is why the app explicitly manages all three instead of pretending they are) Tj
+T* (one event.) Tj
+T* () Tj
+T* () Tj
+T* (ROUTE FLOW) Tj
+T* () Tj
+T* () Tj
+T* () Tj
+T* (BROWSER ENTRY POINT) Tj
+T* () Tj
+T* () Tj
+T* (src/client/main.jsx \(../src/client/main.jsx\) wraps the app in:) Tj
+T* () Tj
+T* (- BrowserRouter) Tj
+T* (- QueryClientProvider) Tj
+T* () Tj
+T* (Conceptually:) Tj
+T* () Tj
+T* (- BrowserRouter tells React Router to treat the browser URL as the route) Tj
+T* (  source of truth) Tj
+T* (- QueryClientProvider gives the app access to the TanStack Query cache) Tj
+T* () Tj
+T* (Usage in code:) Tj
+T* () Tj
+T* (- BrowserRouter provides hooks such as useLocation, useNavigate,) Tj
+T* (  useParams, and useSearchParams) Tj
+T* (- QueryClientProvider provides useQueryClient) Tj
+T* () Tj
+T* () Tj
+T* (REACT ROUTER IMPORTS IN APP.JSX) Tj
+T* () Tj
+T* () Tj
+T* (The route-related imports in src/client/App.jsx \(../src/client/App.jsx\) are) Tj
+ET
+endstream
+endobj
+14 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 15 0 R >>
+endobj
+15 0 obj
+<< /Length 1733 >>
+stream
+BT /F1 10 Tf 48 744 Td 13 TL
+(conceptually more important than the icon imports.) Tj
+T* () Tj
+T* (NavLink) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  a link component that knows which route it points to) Tj
+T* (- Usage here:) Tj
+T* (  top navigation tabs use NavLink so the browser URL changes through React) Tj
+T* (  Router instead of manual DOM navigation) Tj
+T* () Tj
+T* (useLocation) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  read the current browser location object from React Router) Tj
+T* (- Usage here:) Tj
+T* (  App.jsx uses it to inspect location.pathname and decide which top-level) Tj
+T* (  tab is active) Tj
+T* () Tj
+T* (useSearchParams) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  read and update query-string state) Tj
+T* (- Usage here:) Tj
+T* (  App.jsx derives view, month, scope, and summary-range parameters from) Tj
+T* (  the current URL) Tj
+T* () Tj
+T* (useNavigate) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  imperatively change routes from code) Tj
+T* (- Usage here:) Tj
+T* (  the deep-link route for opening an entry by entryId resolves the correct) Tj
+T* (  month and then redirects the user to the canonical /entries?... route) Tj
+T* () Tj
+T* (useParams) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  read dynamic path parameters from the route) Tj
+T* (- Usage here:) Tj
+T* (  the deep-link route reads entryId) Tj
+T* () Tj
+T* (Navigate, Route, Routes) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  React Router components for declarative redirects and route trees) Tj
+T* (- Usage in the current route model:) Tj
+T* (  they remain part of the routing library vocabulary, but the current top-level) Tj
+T* (  shell flow is more hook-driven than route-tree-driven inside App.jsx) Tj
+T* () Tj
+T* () Tj
+T* (ROUTE HELPERS IN APP-ROUTING.JS) Tj
+T* () Tj
+ET
+endstream
+endobj
+16 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 17 0 R >>
+endobj
+17 0 obj
+<< /Length 1785 >>
+stream
+BT /F1 10 Tf 48 744 Td 13 TL
+() Tj
+T* (src/client/app-routing.js \(../src/client/app-routing.js\) is the small client) Tj
+T* (module that translates browser route state into app concepts.) Tj
+T* () Tj
+T* (sanitizeTabParams\(params, tabId\)) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  strip query-string keys that do not belong to the current tab) Tj
+T* (- Why:) Tj
+T* (  canonical URLs and canonical query keys matter for stable cache behavior) Tj
+T* () Tj
+T* (getSelectedTabId\(pathname\)) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  map browser pathname to the app's tab identity) Tj
+T* (- Why:) Tj
+T* (  the app needs a stable internal tab id like summary, month, or settings) Tj
+T* (  even though the browser only stores strings in the URL) Tj
+T* () Tj
+T* (buildRoutePageRequest\(...\)) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  convert route state into the exact API request the server expects) Tj
+T* (- Why:) Tj
+T* (  this is the bridge between route flow and data flow) Tj
+T* () Tj
+T* (buildPageViewFromRouteData\(...\)) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  shape raw route-page JSON into the minimal object the UI panels need) Tj
+T* (- Why:) Tj
+T* (  the UI should not need to understand every server response variant directly) Tj
+T* () Tj
+T* () Tj
+T* (DATA FLOW) Tj
+T* () Tj
+T* () Tj
+T* () Tj
+T* (SHELL CACHE IDENTITY) Tj
+T* () Tj
+T* () Tj
+T* (src/client/app-shell-query.js \(../src/client/app-shell-query.js\) owns the) Tj
+T* (app-shell cache identity and persistence helpers.) Tj
+T* () Tj
+T* (buildAppShellParams\(...\)) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  construct the normalized parameters that define the shell request identity) Tj
+T* (- Why:) Tj
+T* (  shell cache identity must be stable or the browser will treat equivalent) Tj
+T* (  requests as different cache entries) Tj
+T* () Tj
+ET
+endstream
+endobj
+18 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 19 0 R >>
+endobj
+19 0 obj
+<< /Length 1612 >>
+stream
+BT /F1 10 Tf 48 744 Td 13 TL
+(readPersistedAppShell\(...\) / writePersistedAppShell\(...\)) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  keep a local persisted copy of the last valid shell payload) Tj
+T* (- Why:) Tj
+T* (  a reload can show stable reference data sooner without waiting for a full) Tj
+T* (  fresh shell fetch) Tj
+T* () Tj
+T* (clearPersistedAppShell\(\)) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  delete stale persisted shell data after mutations that change shell-level) Tj
+T* (  reference data) Tj
+T* () Tj
+T* () Tj
+T* (QUERY KEYS AND INVALIDATION) Tj
+T* () Tj
+T* () Tj
+T* (src/client/query-keys.js \(../src/client/query-keys.js\) normalizes the cache) Tj
+T* (keys used by TanStack Query.) Tj
+T* () Tj
+T* (Important idea:) Tj
+T* () Tj
+T* (same logical request) Tj
+T* (  -> same normalized query key) Tj
+T* (different logical request) Tj
+T* (  -> different query key) Tj
+T* () Tj
+T* () Tj
+T* (src/client/query-mutations.js \(../src/client/query-mutations.js\) owns narrow) Tj
+T* (invalidation rules.) Tj
+T* () Tj
+T* (Examples:) Tj
+T* () Tj
+T* (- entry mutations invalidate exact entries-page, month-page, and) Tj
+T* (  summary-page keys) Tj
+T* (- shell refresh only invalidates the app-shell key) Tj
+T* () Tj
+T* (This is one of the main design shifts away from the old broad refresh model.) Tj
+T* () Tj
+T* () Tj
+T* (QUERY CONCEPTS FROM TANSTACK QUERY) Tj
+T* () Tj
+T* () Tj
+T* (useQueryClient) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  get the shared client-side query cache/controller) Tj
+T* (- Usage here:) Tj
+T* (  App.jsx uses queryClient to:) Tj
+T* (  - read cached data) Tj
+T* (  - fetch route-page data) Tj
+ET
+endstream
+endobj
+20 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 21 0 R >>
+endobj
+21 0 obj
+<< /Length 1562 >>
+stream
+BT /F1 10 Tf 48 744 Td 13 TL
+(  - remove stale route-page state) Tj
+T* (  - prefetch route pages) Tj
+T* (  - invalidate data after writes) Tj
+T* () Tj
+T* (Important query-client methods used in App.jsx:) Tj
+T* () Tj
+T* (- getQueryData) Tj
+T* (  read already-cached data) Tj
+T* (- getQueryState) Tj
+T* (  inspect whether a query is idle, fetching, or settled) Tj
+T* (- ensureQueryData) Tj
+T* (  load data if missing, otherwise reuse cache) Tj
+T* (- fetchQuery) Tj
+T* (  explicitly fetch fresh data) Tj
+T* (- cancelQueries) Tj
+T* (  stop stale work from continuing) Tj
+T* (- removeQueries) Tj
+T* (  clear stale cached data when the shell/request identity changes) Tj
+T* (- setQueryData) Tj
+T* (  seed cache from persisted shell data) Tj
+T* () Tj
+T* () Tj
+T* (SERVER ROUTE HANDLING) Tj
+T* () Tj
+T* () Tj
+T* (src/index.ts \(../src/index.ts\) is the Cloudflare Worker entry point.) Tj
+T* () Tj
+T* (It matches incoming URLs such as:) Tj
+T* () Tj
+T* (- /api/app-shell) Tj
+T* (- /api/summary-page) Tj
+T* (- /api/month-page) Tj
+T* (- /api/entries-page) Tj
+T* (- /api/splits-page) Tj
+T* (- /api/imports-page) Tj
+T* (- /api/settings-page) Tj
+T* () Tj
+T* (Conceptually:) Tj
+T* () Tj
+T* (HTTP request path) Tj
+T* (  -> route match in src/index.ts) Tj
+T* (  -> call the correct DTO builder) Tj
+T* (  -> return JSON response) Tj
+T* () Tj
+T* () Tj
+T* (This file is not the place for business rules. It is the HTTP dispatcher.) Tj
+T* () Tj
+T* () Tj
+T* (SHELL DTO LAYER) Tj
+T* () Tj
+T* () Tj
+T* (src/domain/app-shell-dto.ts \(../src/domain/app-shell-dto.ts\) builds the DTO) Tj
+ET
+endstream
+endobj
+22 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 23 0 R >>
+endobj
+23 0 obj
+<< /Length 1543 >>
+stream
+BT /F1 10 Tf 48 744 Td 13 TL
+(for shell-oriented endpoints.) Tj
+T* () Tj
+T* (Important exports:) Tj
+T* () Tj
+T* (- buildAppShellDto) Tj
+T* (- buildEntriesShellDto) Tj
+T* () Tj
+T* (Conceptually:) Tj
+T* () Tj
+T* (- DTO layer decides the JSON response shape) Tj
+T* (- it should not become a hidden repository layer) Tj
+T* () Tj
+T* () Tj
+T* (SHELL ORCHESTRATION LAYER) Tj
+T* () Tj
+T* () Tj
+T* (src/domain/app-shell.ts \(../src/domain/app-shell.ts\) owns shell orchestration) Tj
+T* (and shell-shared DTO builders.) Tj
+T* () Tj
+T* (Examples of what belongs here:) Tj
+T* () Tj
+T* (- loadAppShellContext) Tj
+T* (- ensureAppData) Tj
+T* (- loadPageShell) Tj
+T* (- shared shell-oriented DTO shaping) Tj
+T* () Tj
+T* (Examples of what does not belong here:) Tj
+T* () Tj
+T* (- route-specific route interpretation) Tj
+T* (- route-specific business logic) Tj
+T* (- cross-route mega-helper behavior) Tj
+T* () Tj
+T* () Tj
+T* (SHARED ROUTE INTERPRETATION) Tj
+T* () Tj
+T* () Tj
+T* (src/domain/route-context.ts \(../src/domain/route-context.ts\) is the narrow) Tj
+T* (shared route-interpretation layer.) Tj
+T* () Tj
+T* (Allowed exports:) Tj
+T* () Tj
+T* (- loadRoutePageContext) Tj
+T* (- resolveEffectiveMonth) Tj
+T* (- resolvePageViewId) Tj
+T* () Tj
+T* (Conceptually this file answers:) Tj
+T* () Tj
+T* (- given a requested route, what is the valid view?) Tj
+T* (- given a requested month, what is the effective tracked month?) Tj
+T* (- how should route context be resolved before route-specific business logic runs?) Tj
+T* () Tj
+T* (It should not grow into:) Tj
+ET
+endstream
+endobj
+24 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 25 0 R >>
+endobj
+25 0 obj
+<< /Length 1393 >>
+stream
+BT /F1 10 Tf 48 744 Td 13 TL
+() Tj
+T* (- authorization) Tj
+T* (- permissions) Tj
+T* (- feature flags) Tj
+T* (- budgeting logic) Tj
+T* (- reconciliation rules) Tj
+T* (- split calculations) Tj
+T* (- account visibility policy) Tj
+T* () Tj
+T* () Tj
+T* (SHARED ROUTE LABELS) Tj
+T* () Tj
+T* () Tj
+T* (src/domain/page-labels.ts \(../src/domain/page-labels.ts\) is even narrower.) Tj
+T* () Tj
+T* (Allowed export:) Tj
+T* () Tj
+T* (- resolvePageLabel) Tj
+T* () Tj
+T* (This file exists so route label shaping does not get mixed back into) Tj
+T* (route-context resolution or finance logic.) Tj
+T* () Tj
+T* () Tj
+T* (ROUTE-PAGE DTO BUILDERS) Tj
+T* () Tj
+T* () Tj
+T* (src/domain/pages/ \(../src/domain/pages\) contains one route-page module per) Tj
+T* (screen:) Tj
+T* () Tj
+T* (- summary-page.ts) Tj
+T* (- month-page.ts) Tj
+T* (- entries-page.ts) Tj
+T* (- splits-page.ts) Tj
+T* (- imports-page.ts) Tj
+T* (- settings-page.ts) Tj
+T* () Tj
+T* (Their job is to orchestrate route-specific data loading and DTO shaping.) Tj
+T* () Tj
+T* (They should not become:) Tj
+T* () Tj
+T* (- giant feature god objects) Tj
+T* (- repository replacements) Tj
+T* (- generic helper libraries) Tj
+T* () Tj
+T* () Tj
+T* (REPOSITORY/DATABASE LAYER) Tj
+T* () Tj
+T* () Tj
+T* (src/domain/app-repository.ts \(../src/domain/app-repository.ts\) and related) Tj
+T* (repository files own database access.) Tj
+T* () Tj
+T* (Conceptually:) Tj
+ET
+endstream
+endobj
+26 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 27 0 R >>
+endobj
+27 0 obj
+<< /Length 1420 >>
+stream
+BT /F1 10 Tf 48 744 Td 13 TL
+() Tj
+T* (DTO builder) Tj
+T* (  asks repository for data) Tj
+T* () Tj
+T* (repository) Tj
+T* (  talks to D1) Tj
+T* () Tj
+T* () Tj
+T* (This boundary matters because route modules should not contain raw database) Tj
+T* (query logic if it can stay in repository modules.) Tj
+T* () Tj
+T* () Tj
+T* (CODE AND RENDERING FLOW) Tj
+T* () Tj
+T* () Tj
+T* () Tj
+T* (REACT IMPORTS THAT MATTER FOR THIS FLOW) Tj
+T* () Tj
+T* () Tj
+T* (lazy) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  code-split a component so it loads only when needed) Tj
+T* (- Usage here:) Tj
+T* (  each top-level panel is loaded through routeModuleLoaders and React.lazy) Tj
+T* () Tj
+T* (Suspense) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  show a fallback while lazy-loaded code is still downloading) Tj
+T* (- Usage here:) Tj
+T* (  route panels can show an in-panel fallback while the chunk loads) Tj
+T* () Tj
+T* (useState) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  local component state) Tj
+T* (- Usage here:) Tj
+T* (  shell payload, loading status, and mobile-sheet state all live in App.jsx) Tj
+T* () Tj
+T* (useMemo) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  memoize derived values from current inputs) Tj
+T* (- Usage here:) Tj
+T* (  route-derived request objects and shaped page views are memoized instead of) Tj
+T* (  re-derived noisily on every render) Tj
+T* () Tj
+T* (useEffect) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  run side effects after render) Tj
+ET
+endstream
+endobj
+28 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 29 0 R >>
+endobj
+29 0 obj
+<< /Length 1652 >>
+stream
+BT /F1 10 Tf 48 744 Td 13 TL
+(- Usage here:) Tj
+T* (  fetch coordination, polling, cross-tab sync listeners, deep-link resolution,) Tj
+T* (  and document-title updates use effects) Tj
+T* () Tj
+T* (useRef) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  hold mutable values across renders without causing rerenders) Tj
+T* (- Usage here:) Tj
+T* (  refs help keep route hydration continuity without creating a second route) Tj
+T* (  state store) Tj
+T* () Tj
+T* (useCallback) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  keep callback identity stable when the callback is reused as a dependency) Tj
+T* (- Usage here:) Tj
+T* (  fetch and refresh helpers in App.jsx rely on stable callback references) Tj
+T* () Tj
+T* (createPortal) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  render React UI into a different DOM location than the normal component tree) Tj
+T* (- Usage here:) Tj
+T* (  some overlays and popovers are portaled so they can escape local layout) Tj
+T* (  constraints) Tj
+T* () Tj
+T* () Tj
+T* (UI INFRASTRUCTURE IMPORTS THAT MATTER) Tj
+T* () Tj
+T* () Tj
+T* (@radix-ui/react-dialog) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  accessible modal dialog primitives) Tj
+T* (- Usage here:) Tj
+T* (  mobile context and login registration overlays) Tj
+T* () Tj
+T* (@radix-ui/react-popover) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  accessible anchored popover primitives) Tj
+T* (- Usage here:) Tj
+T* (  period pickers and overflow navigation) Tj
+T* () Tj
+T* (These are UI infrastructure, not route-state infrastructure, but they matter to) Tj
+T* (rendering flow because some route controls are rendered through them.) Tj
+T* () Tj
+T* () Tj
+T* (CODE SPLITTING IN APP.JSX) Tj
+T* () Tj
+T* () Tj
+ET
+endstream
+endobj
+30 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 31 0 R >>
+endobj
+31 0 obj
+<< /Length 1356 >>
+stream
+BT /F1 10 Tf 48 744 Td 13 TL
+(routeModuleLoaders) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  a registry from route id to dynamic import\(...\)) Tj
+T* (- Usage here:) Tj
+T* (  summary, month, entries, splits, imports, settings, and faq) Tj
+T* (  each have a lazy-loaded panel module) Tj
+T* () Tj
+T* (preloadRouteModule\(routeId\)) Tj
+T* () Tj
+T* (- Concept:) Tj
+T* (  speculative chunk warmup) Tj
+T* (- Usage here:) Tj
+T* (  the app can prefetch code bundles without changing the active route or) Tj
+T* (  current data) Tj
+T* () Tj
+T* () Tj
+T* (THE ROUTE AFFORDANCE) Tj
+T* () Tj
+T* () Tj
+T* (The route affordance is the visible hint that a new route is hydrating.) Tj
+T* () Tj
+T* (It is:) Tj
+T* () Tj
+T* (- a slim loading marker inside the route area) Tj
+T* (- a continuity signal) Tj
+T* () Tj
+T* (It is not:) Tj
+T* () Tj
+T* (- a full-screen startup wall) Tj
+T* (- a global shell reset) Tj
+T* (- permission to blank the old screen immediately) Tj
+T* () Tj
+T* (Analogy:) Tj
+T* () Tj
+T* (Seatbelt light in a car) Tj
+T* (  not) Tj
+T* (dashboard power-off) Tj
+T* () Tj
+T* () Tj
+T* () Tj
+T* (HYDRATION CONTINUITY) Tj
+T* () Tj
+T* () Tj
+T* (One of the important refactor rules is:) Tj
+T* () Tj
+T* (The last settled screen may stay visible) Tj
+T* (while the next route page hydrates.) Tj
+T* () Tj
+T* () Tj
+T* (That is why a route transition can look like:) Tj
+T* () Tj
+ET
+endstream
+endobj
+32 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 33 0 R >>
+endobj
+33 0 obj
+<< /Length 1735 >>
+stream
+BT /F1 10 Tf 48 744 Td 13 TL
+(URL says "Entries") Tj
+T* (but the old Summary screen remains visible briefly) Tj
+T* (until EntriesPageDto and EntriesPanel are ready) Tj
+T* () Tj
+T* () Tj
+T* (That is intentional. It avoids a blank shell while still keeping the browser) Tj
+T* (route as the source of truth.) Tj
+T* () Tj
+T* () Tj
+T* (FILE AND MODULE RULES CREATED DURING THE REFACTOR) Tj
+T* () Tj
+T* () Tj
+T* (These are the rules that got progressively tightened during the refactor.) Tj
+T* () Tj
+T* () Tj
+T* (APP-LEVEL RULES) Tj
+T* () Tj
+T* () Tj
+T* (- src/client/App.jsx \(../src/client/App.jsx\) is the orchestrator) Tj
+T* (- it is allowed to coordinate route flow, data flow, and rendering flow) Tj
+T* (- it is not allowed to become a hidden feature service for every slice) Tj
+T* () Tj
+T* () Tj
+T* (SHELL RULES) Tj
+T* () Tj
+T* () Tj
+T* (- src/domain/app-shell.ts \(../src/domain/app-shell.ts\) owns shell) Tj
+T* (  orchestration and shell-shared DTO builders) Tj
+T* (- it must not absorb route-specific fragments again) Tj
+T* () Tj
+T* () Tj
+T* (SHARED ROUTE-CONTEXT RULES) Tj
+T* () Tj
+T* () Tj
+T* (- src/domain/route-context.ts \(../src/domain/route-context.ts\) is only for) Tj
+T* (  route interpretation and context resolution) Tj
+T* (- if logic belongs mainly to one route, it stays in that route module) Tj
+T* (- if logic is cross-route financial business logic, it goes in a dedicated) Tj
+T* (  domain module instead) Tj
+T* () Tj
+T* () Tj
+T* (SHARED LABEL RULES) Tj
+T* () Tj
+T* () Tj
+T* (- src/domain/page-labels.ts \(../src/domain/page-labels.ts\) is label-only) Tj
+T* () Tj
+T* () Tj
+T* (ROUTE-PAGE RULES) Tj
+T* () Tj
+T* () Tj
+T* (- src/domain/pages/*.ts \(../src/domain/pages\) own route-specific DTO) Tj
+T* (  builders) Tj
+ET
+endstream
+endobj
+34 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 35 0 R >>
+endobj
+35 0 obj
+<< /Length 1624 >>
+stream
+BT /F1 10 Tf 48 744 Td 13 TL
+(- they orchestrate data loading for one screen) Tj
+T* (- they should not turn into settings-everything.ts or another giant feature) Tj
+T* (  dump) Tj
+T* () Tj
+T* () Tj
+T* (REPOSITORY RULES) Tj
+T* () Tj
+T* () Tj
+T* (- repository modules own storage access) Tj
+T* (- route-page DTO builders should call repository/domain functions, not embed raw) Tj
+T* (  persistence behavior everywhere) Tj
+T* () Tj
+T* () Tj
+T* (QUERY RULES) Tj
+T* () Tj
+T* () Tj
+T* (- query keys must be deterministic) Tj
+T* (- invalidation must be narrow) Tj
+T* (- visible route work should prefer exact keys over global refresh) Tj
+T* () Tj
+T* () Tj
+T* (TESTS THAT ENFORCE THE ARCHITECTURE) Tj
+T* () Tj
+T* () Tj
+T* () Tj
+T* (BOUNDARY TEST) Tj
+T* () Tj
+T* () Tj
+T* (tests/domain-boundaries.test.mjs \(../tests/domain-boundaries.test.mjs\)) Tj
+T* (enforces the split between route interpretation and labels.) Tj
+T* () Tj
+T* (It checks that:) Tj
+T* () Tj
+T* (- route-context.ts only imports ./app-shell) Tj
+T* (- route-context.ts only exports:) Tj
+T* (  - loadRoutePageContext) Tj
+T* (  - resolveEffectiveMonth) Tj
+T* (  - resolvePageViewId) Tj
+T* (- page-labels.ts only exports resolvePageLabel) Tj
+T* (- page-labels.ts has no imports) Tj
+T* () Tj
+T* (This is stronger than comments because it fails if the shared route-context) Tj
+T* (layer silently grows into a broader service.) Tj
+T* () Tj
+T* () Tj
+T* (APP-SHELL AND ROUTE-TRANSITION E2E TESTS) Tj
+T* () Tj
+T* () Tj
+T* (tests/e2e/app-shell.spec.js \(../tests/e2e/app-shell.spec.js\) protects the) Tj
+T* (user-visible contract.) Tj
+T* () Tj
+T* (It checks things like:) Tj
+ET
+endstream
+endobj
+36 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 37 0 R >>
+endobj
+37 0 obj
+<< /Length 2165 >>
+stream
+BT /F1 10 Tf 48 744 Td 13 TL
+() Tj
+T* (- app shell request stays shell-only) Tj
+T* (- previous screen stays visible until the next page settles) Tj
+T* (- month-to-summary and summary round-trip hydration do not crash) Tj
+T* (- every top-level tab renders in one browser session without console errors) Tj
+T* () Tj
+T* () Tj
+T* (QUERY-CONTRACT TEST) Tj
+T* () Tj
+T* () Tj
+T* (tests/query-foundation.test.mjs \(../tests/query-foundation.test.mjs\)) Tj
+T* (protects query-key normalization and exact invalidation behavior.) Tj
+T* () Tj
+T* (It checks things like:) Tj
+T* () Tj
+T* (- app-shell query key normalization) Tj
+T* (- exact app-shell invalidation) Tj
+T* (- exact month/entries/summary invalidation after relevant mutations) Tj
+T* () Tj
+T* () Tj
+T* (READING ORDER) Tj
+T* () Tj
+T* () Tj
+T* (If you want to understand this architecture without getting lost:) Tj
+T* () Tj
+T* (1. docs/architecture.md \(./architecture.md\)) Tj
+T* (2. docs/code-spec.md \(./code-spec.md\)) Tj
+T* (3. docs/app-shell-flow.md \(./app-shell-flow.md\)) Tj
+T* (4. this document) Tj
+T* (5. src/client/App.jsx \(../src/client/App.jsx\)) Tj
+T* (6. src/client/app-routing.js \(../src/client/app-routing.js\)) Tj
+T* (7. src/client/app-shell-query.js \(../src/client/app-shell-query.js\)) Tj
+T* (8. src/index.ts \(../src/index.ts\)) Tj
+T* (9. src/domain/app-shell-dto.ts \(../src/domain/app-shell-dto.ts\)) Tj
+T* (10. src/domain/app-shell.ts \(../src/domain/app-shell.ts\)) Tj
+T* (11. src/domain/route-context.ts \(../src/domain/route-context.ts\)) Tj
+T* (12. src/domain/page-labels.ts \(../src/domain/page-labels.ts\)) Tj
+T* (13. src/domain/pages/ \(../src/domain/pages\)) Tj
+T* (14. tests/domain-boundaries.test.mjs \(../tests/domain-boundaries.test.mjs\)) Tj
+T* (15. tests/e2e/app-shell.spec.js \(../tests/e2e/app-shell.spec.js\)) Tj
+T* () Tj
+T* () Tj
+T* (SHORT SUMMARY) Tj
+T* () Tj
+T* () Tj
+T* (The current design is:) Tj
+T* () Tj
+T* (Browser route says where the user is) Tj
+T* (App.jsx turns that into shell + route-page requests) Tj
+T* (Worker returns intentional DTOs) Tj
+T* (React loads the matching panel code) Tj
+T* (Previous screen can stay visible while the next route hydrates) Tj
+ET
+endstream
+endobj
+38 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 39 0 R >>
+endobj
+39 0 obj
+<< /Length 157 >>
+stream
+BT /F1 10 Tf 48 744 Td 13 TL
+(Boundaries are kept narrow by both docs and tests) Tj
+T* () Tj
+T* () Tj
+T* (That is the practical heart of the refactor.) Tj
+ET
+endstream
+endobj
+xref
+0 40
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000239 00000 n 
+0000000307 00000 n 
+0000000433 00000 n 
+0000002250 00000 n 
+0000002376 00000 n 
+0000003897 00000 n 
+0000004023 00000 n 
+0000005581 00000 n 
+0000005709 00000 n 
+0000007390 00000 n 
+0000007518 00000 n 
+0000009231 00000 n 
+0000009359 00000 n 
+0000011145 00000 n 
+0000011273 00000 n 
+0000013111 00000 n 
+0000013239 00000 n 
+0000014904 00000 n 
+0000015032 00000 n 
+0000016647 00000 n 
+0000016775 00000 n 
+0000018371 00000 n 
+0000018499 00000 n 
+0000019945 00000 n 
+0000020073 00000 n 
+0000021546 00000 n 
+0000021674 00000 n 
+0000023379 00000 n 
+0000023507 00000 n 
+0000024916 00000 n 
+0000025044 00000 n 
+0000026832 00000 n 
+0000026960 00000 n 
+0000028637 00000 n 
+0000028765 00000 n 
+0000030983 00000 n 
+0000031111 00000 n 
+trailer
+<< /Size 40 /Root 1 0 R >>
+startxref
+31320
+%%EOF

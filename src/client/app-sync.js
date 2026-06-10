@@ -2,7 +2,9 @@ export const APP_SYNC_CHANNEL = "monies-map-app-sync";
 export const APP_SYNC_STORAGE_KEY = "monies-map-app-sync";
 
 export const APP_SYNC_EVENT_TYPES = {
-  bootstrapRefresh: "bootstrap-refresh",
+  appShellRefresh: "app-shell-refresh",
+  entryMutation: "entry-mutation",
+  summaryMutation: "summary-mutation",
   splitMutation: "split-mutation"
 };
 
@@ -16,11 +18,61 @@ export function publishAppSyncEvent(syncChannelRef, payload) {
   } catch {}
 }
 
-export function broadcastBootstrapRefresh(syncChannelRef) {
+export function broadcastAppShellRefresh(syncChannelRef) {
   publishAppSyncEvent(syncChannelRef, {
-    type: APP_SYNC_EVENT_TYPES.bootstrapRefresh,
+    type: APP_SYNC_EVENT_TYPES.appShellRefresh,
     ts: Date.now()
   });
+}
+
+export function buildEntryMutationSyncEvent({
+  month,
+  invalidateEntries = false,
+  invalidateMonth = false,
+  invalidateSummary = false
+}) {
+  return {
+    type: APP_SYNC_EVENT_TYPES.entryMutation,
+    ts: Date.now(),
+    month,
+    invalidateEntries,
+    invalidateMonth,
+    invalidateSummary
+  };
+}
+
+export function buildSummaryMutationSyncEvent({
+  month,
+  invalidateMonth = false,
+  invalidateSummary = false,
+  refreshShell = false
+}) {
+  return {
+    type: APP_SYNC_EVENT_TYPES.summaryMutation,
+    ts: Date.now(),
+    month,
+    invalidateMonth,
+    invalidateSummary,
+    refreshShell
+  };
+}
+
+export function buildMonthMutationSyncEvent({
+  month,
+  invalidateEntries = false,
+  invalidateMonth = false,
+  invalidateSummary = false,
+  refreshShell = false
+}) {
+  return {
+    type: "month-mutation",
+    ts: Date.now(),
+    month,
+    invalidateEntries,
+    invalidateMonth,
+    invalidateSummary,
+    refreshShell
+  };
 }
 
 export function buildSplitMutationSyncEvent({

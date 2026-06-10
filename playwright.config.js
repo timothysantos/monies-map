@@ -6,6 +6,10 @@ export default defineConfig({
   testDir: "./tests/e2e",
   timeout: 120_000,
   workers: 1,
+  captureGitInfo: {
+    commit: true,
+    diff: false
+  },
   expect: {
     timeout: 10_000
   },
@@ -18,9 +22,11 @@ export default defineConfig({
   },
   webServer: shouldStartWebServer
     ? {
-        command: "zsh -lc 'source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && npm run dev'",
-        url: "http://127.0.0.1:5173/api/bootstrap",
+        command: "npm run dev:test:servers",
+        url: "http://127.0.0.1:5173/api/health",
         reuseExistingServer: !process.env.CI,
+        stdout: "pipe",
+        stderr: "pipe",
         timeout: 120_000
       }
     : undefined,

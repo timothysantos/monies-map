@@ -159,7 +159,7 @@ Core entities in [`schema.sql`](schema.sql):
 
 Recommended local environment:
 
-- Node.js `22`
+- Node.js `22.12.0` or newer
 - npm
 - Git
 
@@ -171,7 +171,7 @@ nvm use
 node -v
 ```
 
-If you do not use `nvm`, install Node 22 manually.
+If you do not use `nvm`, install Node 22.12.0 or newer manually.
 
 ## Local development
 
@@ -185,7 +185,7 @@ npm run db:migrate
 npm run dev
 ```
 
-If you start the repo on the wrong Node major, the local scripts now fail
+If you start the repo below the supported Node version, the local scripts fail
 immediately with a clear message instead of leaving Vite up while the Worker
 API exits in the background.
 
@@ -251,11 +251,11 @@ The app is deployed to Cloudflare Workers with Cloudflare D1:
 
 ### Command reference
 
-The repo requires Node 22 for local scripts:
+The repo requires Node 22.12.0 or newer for local scripts:
 
 ```bash
 source ~/.nvm/nvm.sh
-nvm use 22
+nvm use
 ```
 
 Use these commands from the repo root:
@@ -263,6 +263,8 @@ Use these commands from the repo root:
 ```bash
 npm run dev                  # local UI + Worker API
 npm run build                # production frontend bundle
+npm run verify               # audit, types, unit, build, and smoke merge gate
+npm run test:e2e             # complete Playwright suite
 npm run db:migrate           # local D1 schema
 npm run db:migrate:remote    # production D1 schema
 npm run db:migrate:demo      # demo D1 schema

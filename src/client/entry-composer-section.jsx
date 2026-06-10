@@ -115,7 +115,16 @@ export function EntryComposerInlineSection({
   onCancel
 }) {
   return (
-    <section className="entry-row is-editing entry-composer">
+    <form
+      className="entry-row is-editing entry-composer"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (isSaveDisabled) {
+          return;
+        }
+        void onSave();
+      }}
+    >
       <div className="entry-inline-editor">
         {warningMessage ? <p className="entry-submit-error">{warningMessage}</p> : null}
         <EntryComposerContent
@@ -135,11 +144,10 @@ export function EntryComposerInlineSection({
         {errorMessage ? <p className="entry-submit-error">{errorMessage}</p> : null}
         <div className="entry-inline-actions">
           <button
-            type="button"
+            type="submit"
             className="inline-action-button inline-save-action"
             aria-label="Create entry"
             disabled={isSaveDisabled}
-            onClick={onSave}
           >
             <Check size={16} />
             <span className="desktop-action-label">{isSaving ? "Saving..." : "Save"}</span>
@@ -156,7 +164,7 @@ export function EntryComposerInlineSection({
           </button>
         </div>
       </div>
-    </section>
+    </form>
   );
 }
 
@@ -189,20 +197,30 @@ export function EntryComposerMobileSection({
       onClose={onClose}
       onSave={onSave}
     >
-      <EntryComposerContent
-        entry={entry}
-        categories={categories}
-        categoryOptions={categoryOptions}
-        accountOptions={accountOptions}
-        ownerOptions={ownerOptions}
-        viewId={viewId}
-        showSplitOptions={showSplitOptions}
-        splitOptionsProps={splitOptionsProps}
-        onChange={onChange}
-        onCategoryAppearanceChange={onCategoryAppearanceChange}
-        onOwnerChange={onOwnerChange}
-        onSplitPercentChange={onSplitPercentChange}
-      />
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (isSaveDisabled) {
+            return;
+          }
+          void onSave();
+        }}
+      >
+        <EntryComposerContent
+          entry={entry}
+          categories={categories}
+          categoryOptions={categoryOptions}
+          accountOptions={accountOptions}
+          ownerOptions={ownerOptions}
+          viewId={viewId}
+          showSplitOptions={showSplitOptions}
+          splitOptionsProps={splitOptionsProps}
+          onChange={onChange}
+          onCategoryAppearanceChange={onCategoryAppearanceChange}
+          onOwnerChange={onOwnerChange}
+          onSplitPercentChange={onSplitPercentChange}
+        />
+      </form>
     </EntryMobileSheet>
   );
 }

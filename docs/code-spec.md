@@ -36,9 +36,9 @@ Prompting rule for implementation:
 
 The current app already shows the main risk:
 
-- `GET /api/bootstrap` is broad and can be slow
+- broad first-load requests can still be slow if they pull too much data
 - `src/index.ts` logs API pages as slow at `750ms`
-- `src/client/App.jsx` still depends heavily on bootstrap
+- `src/client/App.jsx` still owns the shell and route orchestration
 - E2E tests already defend against "worker restarted mid-request"
 
 The likely failure mode is:
@@ -51,6 +51,7 @@ The likely failure mode is:
 This refactor should reduce that risk by:
 
 - replacing broad bootstrap hydration with smaller slice-owned requests
+- removing old paths in the same slice once a replacement passes tests
 - avoiding eager prefetch storms
 - keeping warmup cancellable and low priority
 - invalidating narrowly instead of reloading the world after each write
@@ -117,6 +118,7 @@ Each slice must not own:
 
 - another slice's hidden query dependencies
 - broad bootstrap reads as a shortcut
+- compatibility fallbacks that outlive the slice that introduced them
 - global refresh side effects that ignore workflow locks
 
 ## Invalidation Contract
@@ -156,6 +158,9 @@ Invalidation rules:
 - do not use "invalidate everything" as the default
 - stale is allowed immediately; visible replacement is not allowed if it would
   clobber an active workflow
+- if a slice needs shell refresh for a shared-metadata exception, isolate it
+  behind a named helper and document why it is not the normal invalidation
+  path
 
 ## Workflow Lock Contract
 
@@ -209,8 +214,23 @@ list when relevant:
 - manual refresh during an open workflow does not lose the draft
 - rapid route changes cancel or ignore stale warmup work
 - two quick saves do not let the older refresh overwrite the newer state
-- slow query or restart does not break persisted shell fallback
+- slow query or restart does not break persisted app-shell cache
 - import parser accepts structural variants from the same bank source
+
+Testing depth rule:
+
+- `npm run verify` is the local merge gate: dependency audit, strict
+  TypeScript, unit tests, production build, and the desktop/mobile smoke bundle
+- run `npm run test:e2e` before merging broad shared-infrastructure,
+  persistence, import, or cross-page invalidation changes
+- do not waive a failing browser scenario as timing-sensitive until the
+  user-visible invariant has been reproduced and the test has been proven to
+  wait on the correct route or rendered state
+
+- do not stop at truthy checks or existence checks for implemented behavior
+- assert the concrete output shape and values that the slice owns
+- include at least one negative test for each non-trivial slice so blocked or
+  rejected behavior is covered explicitly
 
 ## Code Shape Rules
 
@@ -222,6 +242,27 @@ These are defaults, not excuses for clever golfing.
 - keep one main responsibility per file when practical
 - prefer one exported slice entry point over many wide helpers
 - keep public APIs small and intention-revealing
+- target `200-500` lines per handwritten module
+- treat `800+` line handwritten modules as mandatory extraction work, not a
+  normal steady-state shape
+- if `App.jsx`, `app-shell.ts`, or a page module grows large during migration,
+  move page logic into slice deep modules instead of letting the file keep
+  accumulating responsibilities
+- `src/domain/app-shell.ts` is for shell orchestration and shell-shared DTO
+  builders; keep route-page fragments out of that layer
+- if several route modules repeat the same route-context or month-selection
+  logic, extract that logic into `src/domain/route-context.ts` or another
+  shared route fragment before the duplication spreads
+- `src/domain/route-context.ts` is only for shared route interpretation and
+  context resolution; do not park formatting helpers, UI labels, parsing
+  helpers, or React-only logic there
+- `src/domain/page-labels.ts` is label-only
+- if logic belongs primarily to one route, keep it in that route module
+- cross-route financial business rules belong in dedicated domain modules, not
+  in `route-context.ts`
+- keep `route-context.ts` focused on route interpretation and context resolution,
+  not authorization, reconciliation, split calculations, account visibility, or
+  budgeting logic
 
 Good function split:
 
@@ -233,6 +274,14 @@ Bad function split:
 
 - giant one-file page helper with fetch, normalize, totals, filters, and UI
   branching mixed together
+
+Refactor rule:
+
+- old compatibility code and new replacement code should not both remain once
+  the replacement passes the slice tests
+- large legacy files are migration targets, not permission to keep adding more
+  responsibilities to the same file
+- split the file by slice boundary first, then by helper depth inside the slice
 
 ## Comment Rules
 
@@ -250,6 +299,17 @@ Comment rules:
 - keep comments short and local
 - add a short contract comment above dense selectors or mutation orchestration
 - do not narrate every line
+
+## Refactor Cutover Rule
+
+When a slice migrates to a new query, route, or workflow boundary:
+
+- the new path should replace the old path in the same change whenever
+  possible
+- if the old path must exist temporarily, it must be deleted before the slice
+  is declared complete
+- do not leave hidden compatibility branches behind for future slices to
+  discover later
 
 ## Documentation Output Rule
 

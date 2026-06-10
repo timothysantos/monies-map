@@ -15,6 +15,8 @@ export function ImportRecentHistorySection({
   recentImportGroups,
   recentImportsOpen,
   isRefreshing = false,
+  recentImportStatus = null,
+  hasOptimisticRecentImport = false,
   recentImportPage,
   recentImportPageCount,
   recentImportStart,
@@ -26,6 +28,7 @@ export function ImportRecentHistorySection({
   onRollback
 }) {
   const shouldPaginate = recentImports.length > RECENT_IMPORTS_PAGE_SIZE;
+  const showGenericRefreshStatus = isRefreshing && !recentImportStatus && !hasOptimisticRecentImport;
 
   return (
     <section className={`panel-subsection import-history-section ${recentImportsOpen ? "is-open" : ""}`}>
@@ -67,10 +70,16 @@ export function ImportRecentHistorySection({
               onNextPage={onNextPage}
             />
           ) : null}
-          {isRefreshing ? (
+          {showGenericRefreshStatus ? (
             <div className="import-history-refreshing" role="status" aria-live="polite">
               <span className="app-spinner" aria-hidden="true" />
               <span>{messages.imports.recentRefreshing}</span>
+            </div>
+          ) : null}
+          {recentImportStatus ? (
+            <div className={`import-history-refreshing is-${recentImportStatus.tone}`} role="status" aria-live="polite">
+              {recentImportStatus.tone === "active" ? <span className="app-spinner" aria-hidden="true" /> : null}
+              <span>{recentImportStatus.message}</span>
             </div>
           ) : null}
           {recentImportGroups.map((group) => (

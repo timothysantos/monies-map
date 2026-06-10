@@ -18,6 +18,10 @@ import {
 import { loadCategories } from "./app-repository-categories";
 import { loadCategoryMatchRules, matchCategoryRule } from "./app-repository-category-match-rules";
 import { loadAccounts } from "./app-repository-settings";
+import {
+  canSuppressCertifiedStatementDuplicate,
+  getDuplicateCandidateMaxDayDistance
+} from "./import-preview-match-policy";
 import type {
   AccountDto,
   ImportOverlapDto,
@@ -25,10 +29,6 @@ import type {
   ImportPreviewRowDto,
   StatementCheckpointDraftDto
 } from "../types/dto";
-
-const LOW_VALUE_DUPLICATE_WINDOW_THRESHOLD_MINOR = 500;
-const LOW_VALUE_DUPLICATE_MAX_DAY_DISTANCE = 2;
-const STANDARD_DUPLICATE_MAX_DAY_DISTANCE = 7;
 
 export async function buildImportPreview(
   db: D1Database,
@@ -164,7 +164,8 @@ export async function buildImportPreview(
     const exactDuplicateMatch = findExactDuplicateSuppressionMatch({
       previewRow,
       previewRowDateContext,
-      existingRows: existingTransactions.results
+      existingRows: existingTransactions.results,
+      incomingSourceType: input.sourceType
     });
     const reconciliationMatches = exactDuplicateMatch
       ? []
@@ -206,6 +207,7 @@ export async function buildImportPreview(
   }
 
   const overlapImports = await findOverlappingImports(db, previewRows);
+  const statementChainBreaks = await loadStatementChainBreaks(db, input.statementCheckpoints ?? []);
   autoIncludeDuplicateMatchesExplainedByStatementBalance({
     accounts,
     existingRows: existingTransactions.results,
@@ -232,7 +234,8 @@ export async function buildImportPreview(
     existingRows: existingTransactions.results,
     previewRows,
     sourceType: input.sourceType,
-    statementCheckpoints: input.statementCheckpoints ?? []
+    statementCheckpoints: input.statementCheckpoints ?? [],
+    statementChainBreaks
   });
   markResolvedCertifiedRowsForMatchedStatements(previewRows, statementReconciliations);
   markCertifiedConflictRows(previewRows, statementReconciliations);
@@ -275,12 +278,14 @@ function buildImportPreviewExceptionSummary(input: {
   const needsReviewCount = input.previewRows.filter((row) => row.commitStatus === "needs_review").length;
   const statementMismatchCount = input.statementReconciliations.filter((item) => item.status === "mismatch").length;
   const identityUnconfirmedCount = input.statementReconciliations.filter((item) => item.status === "identity_unconfirmed").length;
+  const missingPriorStatementCount = input.statementReconciliations.filter((item) => item.status === "missing_prior_statement").length;
 
   return [
     { kind: "unknown_account" as const, count: input.unknownAccountCount, tone: "blocking" as const },
     { kind: "unknown_category" as const, count: input.unknownCategoryCount, tone: "blocking" as const },
     { kind: "statement_mismatch" as const, count: statementMismatchCount, tone: "blocking" as const },
     { kind: "account_identity" as const, count: identityUnconfirmedCount, tone: "blocking" as const },
+    { kind: "statement_chain_gap" as const, count: missingPriorStatementCount, tone: "blocking" as const },
     { kind: "review_rows" as const, count: needsReviewCount, tone: "review" as const },
     { kind: "entry_reconciliation" as const, count: input.reconciliationCandidateCount, tone: "review" as const },
     { kind: "prior_import_context" as const, count: input.overlappingImportCount, tone: "context" as const }
@@ -359,11 +364,13 @@ function findExactDuplicateSuppressionMatch(input: {
     transaction_date: string;
     post_date: string | null;
     description: string;
+    note: string | null;
     amount_minor: number;
     bank_certification_status: "provisional" | "statement_certified";
     account_name: string;
     normalized_hash: string | null;
   }>;
+  incomingSourceType?: "csv" | "pdf" | "manual";
 }) {
   const previewRowHash = buildImportRowHash(input.previewRow);
 
@@ -384,10 +391,24 @@ function findExactDuplicateSuppressionMatch(input: {
           candidate.source_type !== "pdf"
           || candidate.bank_certification_status !== "statement_certified"
           || dayDistance === 0
+          || canSuppressCertifiedStatementDuplicate({
+            candidateSourceType: candidate.source_type,
+            candidateBankCertificationStatus: candidate.bank_certification_status,
+            incomingSourceType: input.incomingSourceType,
+            dayDistance,
+            amountMinor: input.previewRow.amountMinor
+          })
         );
-      const hasPerfectDescriptionMatch = dayDistance === 0
+      const canUseCertifiedStatementDateWindow = canSuppressCertifiedStatementDuplicate({
+        candidateSourceType: candidate.source_type,
+        candidateBankCertificationStatus: candidate.bank_certification_status,
+        incomingSourceType: input.incomingSourceType,
+        dayDistance,
+        amountMinor: input.previewRow.amountMinor
+      });
+      const hasPerfectDescriptionMatch = (dayDistance === 0 || canUseCertifiedStatementDateWindow)
         && normalizeDescriptionForMatch(candidate.description) === normalizeDescriptionForMatch(input.previewRow.description);
-      const hasCompactDescriptionMatch = dayDistance === 0
+      const hasCompactDescriptionMatch = (dayDistance === 0 || canUseCertifiedStatementDateWindow)
         && compareDescriptionSimilarity(candidate.description, input.previewRow.description) >= 0.9;
 
       if (!hasMatchingHash && !hasPerfectDescriptionMatch && !hasCompactDescriptionMatch) {
@@ -647,8 +668,7 @@ function applyExactDuplicateSuppressionReason(
   sourceType?: "csv" | "pdf" | "manual"
 ) {
   if (
-    sourceType === "pdf"
-    && previewRow.commitStatus === "skipped"
+    previewRow.commitStatus === "skipped"
     && previewRow.reconciliationMatch?.matchKind === "exact"
     && (
       previewRow.reconciliationMatch.existingSourceType === "pdf"
@@ -1000,6 +1020,32 @@ function getImmediatePreviousMatchedCheckpoint(account: AccountDto, checkpointMo
   };
 }
 
+async function loadStatementChainBreaks(
+  db: D1Database,
+  checkpoints: StatementCheckpointDraftDto[]
+) {
+  const accountIds = Array.from(new Set(checkpoints.map((checkpoint) => checkpoint.accountId).filter((id): id is string => Boolean(id))));
+  if (!accountIds.length) {
+    return [];
+  }
+
+  const placeholders = accountIds.map(() => "?").join(", ");
+  const rows = await db
+    .prepare(`
+      SELECT account_id, missing_checkpoint_month
+      FROM statement_chain_breaks
+      WHERE household_id = ?
+        AND account_id IN (${placeholders})
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, ...accountIds)
+    .all<{
+      account_id: string;
+      missing_checkpoint_month: string;
+    }>();
+
+  return rows.results;
+}
+
 function isDateWithinRange(value: string, startDate?: string, endDate?: string) {
   return value >= (startDate ?? "0000-00-00") && value <= (endDate ?? "9999-12-31");
 }
@@ -1034,7 +1080,10 @@ function markResolvedCertifiedRowsForMatchedStatements(
       if (
         row.accountId === checkpoint.accountId
         && row.date <= checkpoint.statementEndDate!
-        && row.commitStatus === "skipped"
+        && (
+          row.commitStatus === "skipped"
+          || (row.commitStatus === "included" && Boolean(row.reconciliationTargetTransactionId))
+        )
         && Boolean(row.reconciliationMatch?.existingTransactionId)
       ) {
         row.isStatementMatchResolved = true;
@@ -1095,6 +1144,10 @@ function buildImportPreviewStatementReconciliations(input: {
   previewRows: ImportPreviewRowDto[];
   sourceType?: "csv" | "pdf" | "manual";
   statementCheckpoints: StatementCheckpointDraftDto[];
+  statementChainBreaks: {
+    account_id: string;
+    missing_checkpoint_month: string;
+  }[];
 }) {
   if (!input.statementCheckpoints.length) {
     return [];
@@ -1134,6 +1187,24 @@ function buildImportPreviewStatementReconciliations(input: {
       rows: ledgerRows
     });
     const deltaMinor = projectedLedgerBalanceMinor - statementBalanceMinor;
+    const missingPriorCheckpoint = input.statementChainBreaks.find((breakItem) => (
+      breakItem.account_id === account.id
+      && breakItem.missing_checkpoint_month < checkpoint.checkpointMonth
+    ));
+    if (missingPriorCheckpoint) {
+      return {
+        accountName: account.name,
+        accountId: account.id,
+        accountKind: account.kind,
+        checkpointMonth: checkpoint.checkpointMonth,
+        statementStartDate,
+        statementEndDate,
+        statementBalanceMinor,
+        projectedLedgerBalanceMinor,
+        deltaMinor,
+        status: "missing_prior_statement" as const
+      };
+    }
     const hasIdentityConfidence = hasStatementAccountIdentityConfidence({
       sourceType: input.sourceType,
       checkpoint,
@@ -1246,14 +1317,6 @@ function getDuplicateMatchKind(input: {
   }
 
   return undefined;
-}
-
-function getDuplicateCandidateMaxDayDistance(amountMinor: number) {
-  // High-velocity low-value rows need a much tighter window so recurring
-  // fares, coffee, or canteen charges are not treated as the same event.
-  return Math.abs(amountMinor) < LOW_VALUE_DUPLICATE_WINDOW_THRESHOLD_MINOR
-    ? LOW_VALUE_DUPLICATE_MAX_DAY_DISTANCE
-    : STANDARD_DUPLICATE_MAX_DAY_DISTANCE;
 }
 
 function getTokenSimilarity(left: string, right: string) {

@@ -1,6 +1,8 @@
-import { Fragment, useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import { messages } from "./copy/en-SG";
+import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 
 const {
@@ -40,8 +42,9 @@ export function ImportPreviewRowsTable({
   ));
   const activeRows = visibleRows.filter((row) => row.commitStatus !== "skipped");
   const skippedRows = visibleRows.filter((row) => row.commitStatus === "skipped");
-  const includedCount = visibleRows.filter((row) => row.commitStatus === "included" || !row.commitStatus).length;
-  const newImportCount = includedCount - reconciledExistingRowCount;
+  const newImportCount = visibleRows.filter((row) => (
+    (row.commitStatus === "included" || !row.commitStatus) && !row.reconciliationTargetTransactionId
+  )).length;
   const needsReviewCount = visibleRows.filter((row) => row.commitStatus === "needs_review").length;
   const hasPreviewRows = visibleRows.length > 0 || statementCheckpointCount > 0;
   const skippedRowsRef = useRef(null);
@@ -139,6 +142,7 @@ function PreviewRowsTable({
   getPreviewAccountOwnerPatch,
   isSkippedTable = false
 }) {
+  const [restoreTarget, setRestoreTarget] = useState(null);
   return (
     <div className="table-wrap import-table-wrap">
       <table className="summary-table import-preview-table">
@@ -187,10 +191,8 @@ function PreviewRowsTable({
                           type="button"
                           className="subtle-action"
                           onClick={() => {
-                            if (
-                              duplicateMatch?.matchKind === "exact"
-                              && !window.confirm(messages.imports.restoreExactCoveredRowConfirm)
-                            ) {
+                            if (duplicateMatch?.matchKind === "exact") {
+                              setRestoreTarget(row);
                               return;
                             }
                             onUpdatePreviewRowCommitStatus(row.rowId, "included");
@@ -215,6 +217,8 @@ function PreviewRowsTable({
                     <input
                       className="table-edit-input import-amount-input"
                       value={formatService.formatMinorInput(row.amountMinor)}
+                      onMouseDown={selectAllOnFocus}
+                      onFocus={selectAllOnFocus}
                       onChange={(event) => onUpdatePreviewRow(row.rowId, {
                         amountMinor: formatService.parseMoneyInput(event.target.value, row.amountMinor)
                       })}
@@ -289,6 +293,7 @@ function PreviewRowsTable({
                         min="0"
                         max="100"
                         value={Math.round((row.splitBasisPoints ?? 5000) / 100)}
+                        onMouseDown={selectAllOnFocus}
                         onChange={(event) => onUpdatePreviewRow(row.rowId, { splitBasisPoints: Math.round(Number(event.target.value || "50") * 100) })}
                         disabled={isSkippedTable}
                       />
@@ -336,6 +341,35 @@ function PreviewRowsTable({
           })}
         </tbody>
       </table>
+      <Dialog.Root open={Boolean(restoreTarget)} onOpenChange={(open) => { if (!open) setRestoreTarget(null); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="note-dialog-overlay" />
+          <Dialog.Content className="note-dialog-content settings-account-dialog">
+            <div className="note-dialog-head">
+              <div>
+                <Dialog.Title>{messages.imports.restorePreviewRow}</Dialog.Title>
+                <Dialog.Description>{messages.imports.restoreExactCoveredRowConfirm}</Dialog.Description>
+              </div>
+              <Dialog.Close className="dialog-close-button" aria-label="Close confirmation dialog">×</Dialog.Close>
+            </div>
+            <div className="note-dialog-actions">
+              <Dialog.Close className="subtle-action">Cancel</Dialog.Close>
+              <button
+                type="button"
+                className="dialog-primary"
+                onClick={() => {
+                  if (restoreTarget) {
+                    onUpdatePreviewRowCommitStatus(restoreTarget.rowId, "included");
+                  }
+                  setRestoreTarget(null);
+                }}
+              >
+                Restore row
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }

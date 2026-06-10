@@ -4,19 +4,20 @@ import { messages } from "./copy/en-SG";
 import { commitImportBatch, previewImportBatch, rollbackImportBatch } from "./import-api";
 import { ImportRecentHistorySection } from "./import-history";
 import { buildRecentImportModel, filterRecentImportsByAccount, getRecentImportAccountOptions } from "./import-history-model";
+import { classifyImportFile } from "./import-file-classifier";
+import { buildImportAccountCreationRefreshPlan } from "./import-refresh-plan";
+import { buildImportWorkflowModel } from "./import-workflow-model";
 import { getStatementPreviewAutoRefreshKey, shouldAutoRefreshStatementPreview } from "./import-preview-auto-refresh";
 import { ImportMappingStage } from "./import-mapping-stage";
-import { buildImportPreviewModel, hasImportDraft } from "./import-preview-model";
+import { buildImportPreviewModel } from "./import-preview-model";
 import { ImportPreviewReview } from "./import-preview-review";
 import { ImportPreviewRowsTable } from "./import-preview-rows-table";
 import { ImportSelectFileStage } from "./import-select-file-stage";
 import { moniesClient } from "./monies-client-service";
-import { SettingsAccountDialog } from "./settings-dialogs";
-import { saveSettingsAccount } from "./settings-api";
+import { AccountDialog } from "./account-dialog";
+import { saveAccount } from "./accounts-api";
 import { inspectCsv } from "../lib/csv";
 import {
-  canParseCitibankActivityCsv,
-  canRecognizeOcbcActivityCsv,
   parseCitibankActivityCsv,
   parseCurrentTransactionSpreadsheet,
   parseOcbcActivityCsv,
@@ -35,6 +36,12 @@ const { format: formatService, imports: importService } = moniesClient;
 // - stage 2 maps CSV columns into the app's import schema
 // - stage 3 reviews the server-built preview before commit
 export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categories, people, onRefresh }) {
+  // Imports can mount while the route payload is still hydrating, so keep a
+  // minimal local shape instead of assuming the page slice is already present.
+  const safeImportsPage = importsPage ?? {
+    recentImports: [],
+    rollbackPolicy: ""
+  };
   // Draft metadata chosen by the user before preview.
   const [sourceLabel, setSourceLabel] = useState(DEFAULT_SOURCE_LABEL);
   const [importNote, setImportNote] = useState("");
@@ -65,6 +72,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [recentImportsOpen, setRecentImportsOpen] = useState(true);
   const [recentImportPage, setRecentImportPage] = useState(1);
   const [recentImportAccountFilter, setRecentImportAccountFilter] = useState("");
+  const [recentImportStatus, setRecentImportStatus] = useState(null);
+  const [isRecentImportsRefreshing, setIsRecentImportsRefreshing] = useState(false);
+  const [optimisticRecentImport, setOptimisticRecentImport] = useState(null);
   const [dismissedOverlapIds, setDismissedOverlapIds] = useState([]);
   const [jumpToSkippedRowsRequestKey, setJumpToSkippedRowsRequestKey] = useState(0);
   const fileInputRef = useRef(null);
@@ -74,16 +84,17 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const hasAutoScrolledPreviewRef = useRef(false);
   const lastPreviewHydratedAtRef = useRef(0);
   const lastStatementPreviewAutoRefreshRef = useRef({ key: "", at: 0 });
+  const lastStatementPreviewSnapshotRef = useRef("");
 
   const csvInspection = useMemo(() => inspectCsv(csvText), [csvText]);
   const headerSignature = csvInspection.headers.join("|");
+  const defaultAccount = useMemo(
+    () => accounts.find((account) => account.name === defaultAccountName || account.accountName === defaultAccountName),
+    [accounts, defaultAccountName]
+  );
   const defaultAccountDirectOwnerName = useMemo(
     () => importService.getDirectOwnerForAccount(accounts, people, defaultAccountName, undefined),
     [accounts, defaultAccountName, people]
-  );
-  const defaultAccount = useMemo(
-    () => accounts.find((account) => account.name === defaultAccountName),
-    [accounts, defaultAccountName]
   );
 
   useEffect(() => {
@@ -141,35 +152,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     });
   }, [headerSignature, csvInspection.headers]);
 
-  const mappedFields = useMemo(() => {
-    const counts = {};
-    for (const value of Object.values(columnMappings)) {
-      if (!value || value === "ignore") {
-        continue;
-      }
-      counts[value] = (counts[value] ?? 0) + 1;
-    }
-    return counts;
-  }, [columnMappings]);
-
-  const duplicateMappings = useMemo(
-    () => Object.entries(mappedFields).filter(([, count]) => count > 1).map(([field]) => field),
-    [mappedFields]
-  );
-
-  const mappedRows = useMemo(
-    () => importService.buildMappedRows(csvInspection.rows, columnMappings),
-    [columnMappings, csvInspection.rows]
-  );
-
-  const missingRequiredFields = [
-    !mappedFields.date ? "date" : null,
-    !mappedFields.description ? "description" : null,
-    !mappedFields.amount && !mappedFields.expense && !mappedFields.income ? "amount/expense/income" : null
-  ].filter(Boolean);
-  const readyForMapping = csvInspection.headers.length > 0;
-  const readyForPreview = mappedRows.length > 0 && missingRequiredFields.length === 0 && duplicateMappings.length === 0;
-  const currentStage = preview ? 3 : readyForMapping ? 2 : 1;
   const importPreviewModel = useMemo(
     () => buildImportPreviewModel({
       accounts,
@@ -184,28 +166,47 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }),
     [accounts, dismissedOverlapIds, isParsingStatement, isSubmitting, preview, previewRows, statementCheckpoints, statementImportMeta, unknownCategoryMode]
   );
-  const importDraftExists = hasImportDraft({
-    preview,
-    previewRows,
-    csvText,
-    importNote,
-    statementCheckpoints,
-    uploadStatus,
-    previewError,
-    sourceLabel
-  });
-  const recentImportAccountOptions = useMemo(
-    () => getRecentImportAccountOptions(importsPage.recentImports, accounts),
-    [accounts, importsPage.recentImports]
+  const currentPreviewSignature = useMemo(
+    () => buildStatementPreviewSnapshot(previewRows, statementCheckpoints),
+    [previewRows, statementCheckpoints]
   );
-  const filteredRecentImports = useMemo(
-    () => filterRecentImportsByAccount(importsPage.recentImports, recentImportAccountFilter),
-    [importsPage.recentImports, recentImportAccountFilter]
+  const importWorkflowModel = useMemo(
+    () => buildImportWorkflowModel({
+      preview,
+      previewRows,
+      statementCheckpoints,
+      csvRows: csvInspection.rows,
+      columnMappings,
+      sourceLabel,
+      csvText,
+      importNote,
+      statementImportMeta,
+      uploadStatus,
+      previewError,
+      sourceLabelDefault: DEFAULT_SOURCE_LABEL,
+      isSubmitting,
+      isParsingStatement,
+      currentPreviewSignature,
+      hydratedPreviewSignature: lastStatementPreviewSnapshotRef.current
+    }),
+    [
+      currentPreviewSignature,
+      csvText,
+      importNote,
+      isParsingStatement,
+      isSubmitting,
+      preview,
+      previewError,
+      previewRows,
+      sourceLabel,
+      statementCheckpoints,
+      statementImportMeta,
+      uploadStatus,
+      csvInspection.rows,
+      columnMappings
+    ]
   );
-  const recentImportModel = useMemo(
-    () => buildRecentImportModel(filteredRecentImports, recentImportPage),
-    [filteredRecentImports, recentImportPage]
-  );
+  const importDraftExists = importWorkflowModel.hasDraft;
   const {
     accountMappingAccountNames,
     detectedPreviewAccountNames,
@@ -238,15 +239,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   );
 
   useEffect(() => {
-    setRecentImportPage((current) => Math.min(Math.max(current, 1), recentImportModel.pageCount));
-  }, [recentImportModel.pageCount]);
-
-  useEffect(() => {
     setRecentImportPage(1);
   }, [recentImportAccountFilter]);
 
   useEffect(() => {
-    if (!readyForMapping) {
+    if (!importWorkflowModel.readyForMapping) {
       hasAutoScrolledMappingRef.current = false;
       return;
     }
@@ -255,7 +252,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
     hasAutoScrolledMappingRef.current = true;
     mappingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [readyForMapping]);
+  }, [importWorkflowModel.readyForMapping]);
 
   useEffect(() => {
     if (!preview) {
@@ -284,7 +281,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
   }
 
-  function resetImportForm() {
+  function resetImportForm({ preserveRecentImportStatus = false } = {}) {
     setSourceLabel(DEFAULT_SOURCE_LABEL);
     setImportNote("");
     setCsvText("");
@@ -304,6 +301,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsDragActive(false);
     setDismissedOverlapIds([]);
     setJumpToSkippedRowsRequestKey(0);
+    if (!preserveRecentImportStatus) {
+      setRecentImportStatus(null);
+    }
     hasAutoScrolledMappingRef.current = false;
     hasAutoScrolledPreviewRef.current = false;
     if (fileInputRef.current) {
@@ -325,7 +325,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     parsed,
     sourceType,
     nextStatementCheckpoints,
-    nextDefaultAccountName,
     successMessage
   }) {
     setSourceLabel(parsed.sourceLabel);
@@ -333,15 +332,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setStatementImportMeta({ sourceType, parserKey: parsed.parserKey });
     setCsvText(statementRowsToCsv(parsed.rows));
 
-    if (nextDefaultAccountName) {
-      setDefaultAccountName(nextDefaultAccountName);
-    }
-
     setUploadStatus({ tone: "active", message: messages.imports.uploadPreviewing(parsed.rows.length) });
     await previewImportRows({
       rows: parsed.rows,
       nextSourceLabel: parsed.sourceLabel,
-      nextDefaultAccountName: nextDefaultAccountName || defaultAccountName,
       nextStatementCheckpoints
     });
     setUploadStatus({ tone: "success", message: successMessage });
@@ -387,7 +381,18 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setPreviewRows([]);
     setIsParsingStatement(true);
     try {
-      if (/\.pdf$/i.test(file.name) || file.type === "application/pdf") {
+      const fileKind = classifyImportFile({
+        fileName: file.name,
+        fileType: file.type,
+        text: "",
+        activityContext: {
+          accountName: defaultAccount?.name ?? "",
+          accountKind: defaultAccount?.kind,
+          institution: defaultAccount?.institution
+        }
+      });
+
+    if (fileKind === "pdf") {
         setDismissedOverlapIds([]);
         setUploadStatus({ tone: "active", message: messages.imports.uploadExtracting(file.name) });
         const text = await importService.extractPdfText(file);
@@ -399,7 +404,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           parsed,
           sourceType: "pdf",
           nextStatementCheckpoints: parsedCheckpoints,
-          nextDefaultAccountName: parsed.checkpoints[0]?.accountName ?? defaultAccountName,
           successMessage: parsed.checkpoints.length > 1
             ? messages.imports.uploadStatementReady(parsed.rows.length, parsed.checkpoints.length)
             : messages.imports.uploadReady(parsed.rows.length)
@@ -407,7 +411,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         return;
       }
 
-      if (/\.xls$/i.test(file.name) || file.type === "application/vnd.ms-excel") {
+      if (fileKind === "xls") {
         setDismissedOverlapIds([]);
         setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
         const parsed = parseCurrentTransactionSpreadsheet(await file.arrayBuffer(), file.name);
@@ -416,7 +420,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           parsed,
           sourceType: "csv",
           nextStatementCheckpoints: [],
-          nextDefaultAccountName: parsed.rows[0]?.account ?? defaultAccountName,
           successMessage: messages.imports.uploadReady(parsed.rows.length)
         });
         return;
@@ -424,11 +427,18 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
       const nextText = await file.text();
       const activityContext = {
-        accountName: defaultAccount?.name ?? defaultAccountName,
+        accountName: defaultAccount?.name ?? "",
         accountKind: defaultAccount?.kind,
         institution: defaultAccount?.institution
       };
-      if (/\.csv$/i.test(file.name) && canParseCitibankActivityCsv(file.name, activityContext)) {
+      const csvKind = classifyImportFile({
+        fileName: file.name,
+        fileType: file.type,
+        text: nextText,
+        activityContext
+      });
+
+      if (csvKind === "citibank-activity-csv") {
         setDismissedOverlapIds([]);
         setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
         const parsed = parseCitibankActivityCsv(nextText, file.name, activityContext);
@@ -437,13 +447,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           parsed,
           sourceType: "csv",
           nextStatementCheckpoints: [],
-          nextDefaultAccountName: parsed.rows[0]?.account ?? defaultAccountName,
           successMessage: messages.imports.uploadReady(parsed.rows.length)
         });
         return;
       }
 
-      if (/\.csv$/i.test(file.name) && canRecognizeOcbcActivityCsv(nextText, file.name, activityContext)) {
+      if (csvKind === "ocbc-activity-csv") {
         setDismissedOverlapIds([]);
         setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
         const parsed = parseOcbcActivityCsv(nextText, file.name, activityContext);
@@ -452,7 +461,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           parsed,
           sourceType: "csv",
           nextStatementCheckpoints: [],
-          nextDefaultAccountName: parsed.rows[0]?.account ?? defaultAccountName,
           successMessage: messages.imports.uploadReady(parsed.rows.length)
         });
         return;
@@ -477,7 +485,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   async function previewImportRows({
     rows,
     nextSourceLabel = sourceLabel,
-    nextDefaultAccountName = defaultAccountName,
     nextStatementCheckpoints = statementCheckpoints
   }) {
     // All source formats eventually converge here so the server only has one
@@ -488,7 +495,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         sourceLabel: nextSourceLabel,
         sourceType: statementImportMeta.sourceType,
         rows,
-        defaultAccountName: nextDefaultAccountName,
         ownershipType,
         ownerName,
         splitPercent,
@@ -498,6 +504,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       setPreview(data.preview);
       setPreviewRows(data.preview?.previewRows ?? []);
       lastPreviewHydratedAtRef.current = Date.now();
+      lastStatementPreviewSnapshotRef.current = buildStatementPreviewSnapshot(
+        data.preview?.previewRows ?? [],
+        nextStatementCheckpoints
+      );
     } catch (error) {
       setPreview(null);
       setPreviewRows([]);
@@ -509,8 +519,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     function handleStatementPreviewAutoRefresh() {
       const now = Date.now();
       if (!shouldAutoRefreshStatementPreview({
-        hasPreview: Boolean(preview),
+        hasPreview: importWorkflowModel.hasReviewablePreview,
         autoRefreshKey: statementPreviewAutoRefreshKey,
+        isWorkflowLocked: importWorkflowModel.isWorkflowLocked,
         isSubmitting,
         isParsingStatement,
         isDocumentVisible: typeof document === "undefined" || document.visibilityState === "visible",
@@ -541,16 +552,23 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       window.removeEventListener("focus", handleStatementPreviewAutoRefresh);
       document.removeEventListener("visibilitychange", handleStatementPreviewAutoRefresh);
     };
-  }, [isParsingStatement, isSubmitting, preview, previewRows, statementPreviewAutoRefreshKey, statementCheckpoints]);
+  }, [
+    importWorkflowModel.hasReviewablePreview,
+    importWorkflowModel.isWorkflowLocked,
+    isParsingStatement,
+    isSubmitting,
+    previewRows,
+    statementPreviewAutoRefreshKey
+  ]);
 
   async function handlePreview() {
-    if (!readyForPreview) {
+    if (!importWorkflowModel.readyForPreview) {
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await previewImportRows({ rows: mappedRows });
+      await previewImportRows({ rows: importWorkflowModel.mappedRows });
     } catch (error) {
       setPreviewError(error instanceof Error ? error.message : "Import preview failed.");
     } finally {
@@ -589,9 +607,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
 
     setIsSubmitting(true);
+    setRecentImportStatus({ tone: "active", message: messages.imports.recentCommitWorking });
+    setIsRecentImportsRefreshing(true);
     try {
-      await commitImportBatch({
-        sourceLabel: preview?.sourceLabel ?? sourceLabel,
+      const committedSourceLabel = preview?.sourceLabel ?? sourceLabel;
+      const commitResult = await commitImportBatch({
+        sourceLabel: committedSourceLabel,
         sourceType: statementImportMeta.sourceType,
         parserKey: statementImportMeta.parserKey,
         note: importNote,
@@ -600,22 +621,71 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         statementReconciliations: statementImportMeta.sourceType === "pdf" ? statementReconciliations : undefined,
         rows: rowsToCommit
       });
-      resetImportForm();
-      await onRefresh({ refreshShell: true, broadcast: true });
+      setOptimisticRecentImport(buildOptimisticRecentImportBatch({
+        commitResult,
+        committedSourceLabel,
+        importNote,
+        rowsToCommit,
+        statementCheckpoints,
+        statementImportMeta,
+        previewRows
+      }));
+      setRecentImportStatus(null);
+      resetImportForm({ preserveRecentImportStatus: true });
+      const committedImportId = commitResult.importId;
+      await refreshRecentImportsUntilVisible({
+        committedImportId,
+        refreshOptions: { broadcast: true, invalidateImports: true }
+      });
     } catch (error) {
+      setRecentImportStatus({
+        tone: "error",
+        message: error instanceof Error ? error.message : messages.imports.commitFailed
+      });
       setPreviewError(error instanceof Error ? error.message : messages.imports.commitFailed);
+      setOptimisticRecentImport(null);
     } finally {
       setIsSubmitting(false);
+      setIsRecentImportsRefreshing(false);
     }
+  }
+
+  async function refreshRecentImportsUntilVisible({
+    committedImportId,
+    refreshOptions
+  }) {
+    const maxAttempts = 20;
+    let latestPage = null;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      latestPage = await onRefresh(refreshOptions);
+      if (!committedImportId || latestPage?.importsPage?.recentImports?.some((item) => item.id === committedImportId)) {
+        return latestPage;
+      }
+
+      if (attempt < maxAttempts - 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 1000));
+      }
+    }
+
+    return latestPage;
   }
 
   async function handleRollback(importId) {
     setIsSubmitting(true);
+    setIsRecentImportsRefreshing(true);
     try {
       await rollbackImportBatch(importId);
-      await onRefresh({ refreshShell: true, broadcast: true });
+      await onRefresh({
+        broadcast: true,
+        invalidateEntries: true,
+        invalidateImports: true,
+        invalidateMonth: true,
+        invalidateSummary: true
+      });
     } finally {
       setIsSubmitting(false);
+      setIsRecentImportsRefreshing(false);
     }
   }
 
@@ -695,6 +765,40 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       });
     }
   }
+
+  const displayedRecentImports = useMemo(() => {
+    if (!optimisticRecentImport) {
+      return safeImportsPage.recentImports;
+    }
+
+    return [
+      optimisticRecentImport,
+      ...safeImportsPage.recentImports.filter((item) => item.id !== optimisticRecentImport.id)
+    ];
+  }, [optimisticRecentImport, safeImportsPage.recentImports]);
+
+  const recentImportAccountOptions = useMemo(
+    () => getRecentImportAccountOptions(displayedRecentImports, accounts),
+    [accounts, displayedRecentImports]
+  );
+  const filteredRecentImports = useMemo(
+    () => filterRecentImportsByAccount(displayedRecentImports, recentImportAccountFilter),
+    [displayedRecentImports, recentImportAccountFilter]
+  );
+  const recentImportModel = useMemo(
+    () => buildRecentImportModel(filteredRecentImports, recentImportPage),
+    [filteredRecentImports, recentImportPage]
+  );
+
+  useEffect(() => {
+    setRecentImportPage((current) => Math.min(Math.max(current, 1), recentImportModel.pageCount));
+  }, [recentImportModel.pageCount]);
+
+  useEffect(() => {
+    if (optimisticRecentImport && safeImportsPage.recentImports.some((item) => item.id === optimisticRecentImport.id)) {
+      setOptimisticRecentImport(null);
+    }
+  }, [optimisticRecentImport, safeImportsPage.recentImports]);
 
   function promotePreviewRowReconciliationTarget(rowId, targetTransactionId) {
     const nextRows = previewRows.map((row) => (
@@ -849,7 +953,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsSubmitting(true);
     setAccountDialogError("");
     try {
-      const data = await saveSettingsAccount({
+      const data = await saveAccount({
         mode: "create",
         accountId: "",
         name: accountDialog.name,
@@ -870,7 +974,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         isJoint: accountDialog.isJoint
       };
       const detectedAccountName = pendingStatementAccountName;
-      await onRefresh({ refreshShell: true });
+      await onRefresh(buildImportAccountCreationRefreshPlan());
       await applyStatementAccountMapping(detectedAccountName, createdAccount);
       setUploadStatus({ tone: "success", message: messages.imports.accountCreatedFromStatement(createdAccount.name) });
       setAccountDialog(null);
@@ -917,7 +1021,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
         {/* Stage 1: get raw source rows into the draft. */}
         <ImportSelectFileStage
-          currentStage={currentStage}
+          currentStage={importWorkflowModel.currentStage}
           sourceLabel={sourceLabel}
           onSourceLabelChange={setSourceLabel}
           defaultAccountName={defaultAccountName}
@@ -942,33 +1046,33 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           onDragLeaveImportFile={handleDragLeaveImportFile}
           onDropImportFile={handleDropImportFile}
           uploadStatus={uploadStatus}
-          rollbackPolicy={importsPage.rollbackPolicy}
+          rollbackPolicy={safeImportsPage.rollbackPolicy}
         />
 
         {/* Stage 2: map source columns into the app's import schema. */}
-        {readyForMapping ? (
+        {importWorkflowModel.readyForMapping ? (
           <ImportMappingStage
             mappingSectionRef={mappingSectionRef}
-            currentStage={currentStage}
+            currentStage={importWorkflowModel.currentStage}
             csvInspection={csvInspection}
             unknownCategoryMode={unknownCategoryMode}
             onUnknownCategoryModeChange={setUnknownCategoryMode}
-            missingRequiredFields={missingRequiredFields}
-            duplicateMappings={duplicateMappings}
+            missingRequiredFields={importWorkflowModel.missingRequiredFields}
+            duplicateMappings={importWorkflowModel.duplicateMappings}
             columnMappings={columnMappings}
             onColumnMappingChange={(header, nextValue) => {
               setColumnMappings((current) => ({ ...current, [header]: nextValue }));
             }}
             isSubmitting={isSubmitting}
             isParsingStatement={isParsingStatement}
-            readyForPreview={readyForPreview}
+            readyForPreview={importWorkflowModel.readyForPreview}
             onPreview={handlePreview}
             previewError={previewError}
           />
         ) : null}
 
         {/* Stage 3: review the normalized preview and commit only safe rows. */}
-        <div ref={previewSectionRef} className={`import-stage-card ${currentStage === 3 ? "is-current" : ""}`}>
+        <div ref={previewSectionRef} className={`import-stage-card ${importWorkflowModel.currentStage === 3 ? "is-current" : ""}`}>
           <div className="import-stage-head">
             <div className="section-head">
               <h3>{messages.imports.previewRows}</h3>
@@ -977,7 +1081,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               </span>
             </div>
             <div className="import-stage-head-actions">
-              <span className={`import-stage-label ${currentStage === 3 ? "is-current" : ""}`}>
+              <span className={`import-stage-label ${importWorkflowModel.currentStage === 3 ? "is-current" : ""}`}>
                 {messages.imports.steps[2]}
               </span>
               {preview ? (
@@ -1064,7 +1168,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         recentImportAccountOptions={recentImportAccountOptions}
         recentImportGroups={recentImportModel.groups}
         recentImportsOpen={recentImportsOpen}
-        isRefreshing={isSubmitting}
+        recentImportStatus={recentImportStatus}
+        hasOptimisticRecentImport={Boolean(optimisticRecentImport)}
         recentImportPage={recentImportPage}
         recentImportPageCount={recentImportModel.pageCount}
         recentImportStart={recentImportModel.start}
@@ -1074,8 +1179,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         onPreviousPage={() => setRecentImportPage((current) => Math.max(1, current - 1))}
         onNextPage={() => setRecentImportPage((current) => Math.min(recentImportModel.pageCount, current + 1))}
         onRollback={handleRollback}
+        isRefreshing={isRecentImportsRefreshing}
       />
-      <SettingsAccountDialog
+      <AccountDialog
         dialog={accountDialog}
         error={accountDialogError}
         people={people}
@@ -1090,6 +1196,46 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       />
     </article>
   );
+}
+
+function buildOptimisticRecentImportBatch({
+  commitResult,
+  committedSourceLabel,
+  importNote,
+  rowsToCommit,
+  statementCheckpoints,
+  statementImportMeta,
+  previewRows
+}) {
+  const accountNames = Array.from(new Set([
+    ...previewRows.map((row) => row.accountName).filter(Boolean),
+    ...statementCheckpoints.map((checkpoint) => checkpoint.accountName).filter(Boolean)
+  ])).sort();
+  const dateValues = rowsToCommit
+    .map((row) => row.date)
+    .filter((date) => typeof date === "string" && date.length >= 10)
+    .sort();
+  const startDate = dateValues[0] ?? undefined;
+  const endDate = dateValues[dateValues.length - 1] ?? undefined;
+
+  return {
+    id: commitResult.importId,
+    sourceLabel: committedSourceLabel,
+    sourceType: statementImportMeta.sourceType,
+    parserKey: statementImportMeta.parserKey,
+    importedAt: new Date().toISOString(),
+    status: "completed",
+    transactionCount: commitResult.importedRows ?? rowsToCommit.length,
+    startDate,
+    endDate,
+    accountNames,
+    overlapImportCount: 0,
+    overlapImports: [],
+    statementCertificateCount: statementCheckpoints.length,
+    statementCertificateStatus: statementCheckpoints.length ? "certified" : undefined,
+    rollbackProtected: false,
+    note: importNote?.trim() || undefined
+  };
 }
 
 function inferStatementAccountKind(accountName, parserKey) {
@@ -1163,4 +1309,29 @@ function getPreviewCommitStatusReason(commitStatus, matchKind) {
   }
 
   return undefined;
+}
+
+function buildStatementPreviewSnapshot(previewRows, statementCheckpoints) {
+  return JSON.stringify({
+    checkpoints: statementCheckpoints.map((checkpoint) => ([
+      checkpoint.accountId ?? "",
+      checkpoint.accountName ?? "",
+      checkpoint.detectedAccountName ?? "",
+      checkpoint.checkpointMonth ?? "",
+      checkpoint.statementStartDate ?? "",
+      checkpoint.statementEndDate ?? "",
+      Number(checkpoint.statementBalanceMinor ?? 0)
+    ])),
+    rows: previewRows.map((row) => ([
+      row.rowId,
+      row.commitStatus,
+      row.reconciliationTargetTransactionId ?? "",
+      row.accountId ?? "",
+      row.accountName ?? "",
+      row.statementAccountName ?? "",
+      row.date,
+      row.description,
+      Number(row.amountMinor ?? 0)
+    ]))
+  });
 }

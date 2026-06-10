@@ -17,6 +17,7 @@ The target slices are:
 Supporting areas that remain outside a slice:
 
 - `app shell`
+- `shared domain fragments`
 - `shared client UI`
 - `shared client utilities`
 - `server and DTO contracts`
@@ -105,7 +106,7 @@ composition, routing, or environment setup.
   - Long-term change: stop embedding slice data-fetch orchestration here beyond
     route selection and shell controls.
 - `src/client/main.jsx` — `Shared`
-  - Keep as React bootstrap entry point.
+  - Keep as React entry point.
 - `src/client/query-client.js` — `Shared`
   - Keep as TanStack Query client setup.
 - `src/client/app-sync.js` — `Shared`
@@ -120,6 +121,19 @@ composition, routing, or environment setup.
   - Keep outside the main product slices.
 - `src/client/copy/en-SG.js` — `Shared`
   - Keep as shared UI copy source.
+
+## Shared Domain Fragments
+
+These files hold reusable route-context and label logic that multiple page
+modules need.
+
+- `src/domain/route-context.ts` — `Shared`
+  - Keep month fallback, person-view resolution, and shared route-context
+    helpers here.
+- `src/domain/page-labels.ts` — `Shared`
+  - Keep route label shaping here.
+- `src/domain/app-shell.ts` — `Shared`
+  - Keep shell orchestration and shell-shared DTO builders here.
 
 ## Summary Slice
 
@@ -452,9 +466,11 @@ to the same vertical language.
 - `src/domain/app-repository-helpers.ts` — `Shared`
 - `src/domain/app-repository-constants.ts` — `Shared`
 - `src/domain/app-repository-lookups.ts` — `Shared`
-- `src/domain/bootstrap.ts` — `Bridge`
+- `src/domain/app-shell.ts` — `Bridge`
   - Important for app shell and current loading strategy.
-  - Future direction: reduce bootstrap responsibility as slice queries grow.
+  - Future direction: reduce shell-orchestration responsibility as slice queries grow.
+- `src/domain/pages/*-page.ts` — `Bridge`
+  - Keep route DTO builders owned by the route they serve.
 
 ### Summary and month aligned
 

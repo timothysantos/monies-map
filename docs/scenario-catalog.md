@@ -18,6 +18,29 @@ Use this document before implementation work to decide:
 - what state changes must be observable
 - which cross-page effects must remain intact during refactors
 
+Test depth rule:
+
+- for implemented scenarios, prefer deep assertions over shallow existence
+  checks
+- every non-trivial scenario should include at least one negative test that
+  proves the blocked or rejected path
+
+Scenario specificity rule:
+
+- name the exact control the user interacts with
+- say where it is located on the page or in the sheet/dialog
+- classify the control type when relevant:
+  - primary button
+  - secondary button
+  - subtle/text button
+  - danger button
+  - dismiss button
+  - navigation action
+- if the surface uses staged controls, name the commit action separately from
+  the dismiss action
+- if a scenario involves a button, say whether it should behave as the main
+  action, supporting action, or dismissal
+
 ## How To Read This
 
 Each scenario uses this shape:
@@ -448,7 +471,8 @@ Current weak coverage:
 
 1. User intent: capture a ledger entry before or without an import
 2. Starting state: entries page is open
-3. Action: open the composer, enter entry details, save
+3. Action: click the `+ Add entry` primary button in the Entries toolbar, enter
+   entry details, then click `Save` in the composer footer
 4. Expected visible result: the new entry appears in the list
 5. Expected persisted or queried result: a ledger entry is created and later
    flows can use it
@@ -489,7 +513,8 @@ Current weak coverage:
 
 1. User intent: correct category, owner, note, amount, account, or type
 2. Starting state: an editable entry exists
-3. Action: open inline editor or mobile editor, make changes, save
+3. Action: open the entry row inline editor or mobile editor, make changes,
+   then click the editor's `Save` primary button
 4. Expected visible result: the entry row and any visible totals update
 5. Expected persisted or queried result: entry update persists and downstream
    aggregates refresh if affected
@@ -543,7 +568,9 @@ Current weak coverage:
 
 1. User intent: convert a direct expense into a shared split expense
 2. Starting state: a direct expense exists on Entries
-3. Action: choose `Add to splits`, optionally pick a split group, save
+3. Action: click the `Add to splits` secondary button in the entry editor,
+   optionally pick a split group from the split-group picker dialog, then click
+   the dialog's `Save` primary button
 4. Expected visible result: entry becomes shared, split actions appear, and the
    created split can be opened
 5. Expected persisted or queried result: linked split expense exists and
@@ -556,7 +583,7 @@ Current weak coverage:
 1. User intent: choose which split group should receive the shared expense
 2. Starting state: Entries has at least two existing split groups available for
    the current month and view
-3. Action: click `Add to splits` on an eligible entry
+3. Action: click the `Add to splits` secondary button on an eligible entry
 4. Expected visible result: the split-group selection dialog appears instead of
    silently picking a group
 5. Expected persisted or queried result: no split expense is created until the
@@ -570,7 +597,8 @@ Current weak coverage:
    losing the pending edits
 2. Starting state: an entry has unsaved changes in description, note, category,
    amount, or similar editable fields
-3. Action: click `Add to splits`
+3. Action: click the `Add to splits` secondary button while the entry editor is
+   dirty
 4. Expected visible result: the control behaves like a save-first action for the
    dirty entry, then continues into the split workflow
 5. Expected persisted or queried result: the entry edits are persisted before
@@ -782,6 +810,63 @@ Current weak coverage:
 6. Primary test level: `Integration`, then `E2E`
 7. Form factor: `Both`
 
+### I11. Parse a UOB current-transaction XLS from the OLE mini-stream
+
+1. User intent: import a supported UOB current-transaction export even when the
+   workbook container lives in the OLE mini-stream
+2. Starting state: a tiny UOB One current-transaction XLS fixture is available
+3. Action: upload the workbook
+4. Expected visible result: the import reaches preview instead of failing as an
+   unreadable spreadsheet
+5. Expected persisted or queried result: the parser recognizes the current
+   transaction XLS shape and returns normalized rows with no statement
+   checkpoints
+6. Primary test level: `Domain`
+7. Form factor: `Both`
+
+### I12. Parse a later UOB current-transaction XLS from the same source family
+
+1. User intent: trust that a later export from the same UOB source still
+   parses
+2. Starting state: a second UOB One current-transaction XLS fixture is
+   available
+3. Action: upload the workbook
+4. Expected visible result: the import reaches preview and the parsed rows
+   reflect the later export contents
+5. Expected persisted or queried result: the parser preserves the same
+   normalized contract while accepting the alternate structural variant
+6. Primary test level: `Domain`
+7. Form factor: `Both`
+
+### I13. Parse the UOB One Card current-transaction XLS contract from the workbook stream
+
+1. User intent: import a supported UOB current-transaction export for a credit
+   card account
+2. Starting state: a UOB One Card current-transaction XLS fixture is available
+3. Action: upload the workbook
+4. Expected visible result: the import reaches preview and the account label
+   is recognized correctly
+5. Expected persisted or queried result: the parser returns normalized rows
+   for the credit card source with the expected parser key and no statement
+   checkpoints
+6. Primary test level: `Domain`
+7. Form factor: `Both`
+
+### I14. Parse the UOB Lady's Card current-transaction XLS contract from the workbook stream
+
+1. User intent: import a supported UOB current-transaction export for another
+   credit card account
+2. Starting state: a UOB Lady's Card current-transaction XLS fixture is
+   available
+3. Action: upload the workbook
+4. Expected visible result: the import reaches preview and the alternate card
+   name is recognized correctly
+5. Expected persisted or queried result: the parser returns normalized rows
+   for the alternate credit card source with the expected parser key and no
+   statement checkpoints
+6. Primary test level: `Domain`
+7. Form factor: `Both`
+
 ## Splits Scenarios
 
 ### SP1. Review split workspace for a person or household
@@ -860,7 +945,8 @@ Current weak coverage:
 
 1. User intent: connect a split record to its real ledger evidence
 2. Starting state: split match candidates exist
-3. Action: open matches mode and confirm a match
+3. Action: click the `Matches` navigation tab, select a candidate row, and
+   click the `Match` primary button
 4. Expected visible result: match disappears from queue and linked split actions
    become available
 5. Expected persisted or queried result: split record stores linked transaction
@@ -905,6 +991,31 @@ Current weak coverage:
    split-derived shares recompute from the new value
 6. Primary test level: `E2E`
 7. Form factor: `Both`
+
+### SP8b. Link a previously manual split to an entry later
+
+1. User intent: keep a manual split first, then link it to the ledger entry
+   once the bank row becomes available
+2. Starting state: a manual split exists without a linked ledger entry, and a
+   matching bank row is available in the current account or review context
+3. Action: open the split `Link entry` surface, use its search field and filter
+   controls, choose the bank row, and click the `Save linked entry` primary
+   button
+4. Expected visible result: the split now shows linked-entry evidence and the
+   match surface closes without losing context
+5. Expected persisted or queried result: the manual split stores the linked
+   ledger transaction id and the linked entry refreshes downstream views
+6. Primary test level: `E2E`
+7. Form factor: `Split`
+
+Notes:
+
+- mobile should use the same bottom-sheet style used by the other mobile split
+  and match flows
+- desktop can use the existing popover or dialog pattern used by other review
+  surfaces
+- search and filters should reuse the same matching vocabulary already used in
+  split match review and import preview review
 
 ### SP9. Cross-tab refresh keeps split views in sync
 
@@ -1106,15 +1217,15 @@ Current weak coverage:
 ### X5c. Money fields stay editable without select-all across core workflows
 
 1. User intent: edit money values naturally in the most common numeric fields
-2. Starting state: an entry amount, month budget amount, split amount, or
-   import reconciliation amount field contains a formatted value
+2. Starting state: an entry amount, month budget amount, split amount, import
+   reconciliation amount, or settings money field contains a formatted value
 3. Action: focus the field, type a replacement value, and use backspace or
    overwrite keys without manually selecting the whole field first
 4. Expected visible result: the field remains easy to edit by keyboard, does
    not require select-all for a simple replacement, and normalizes after blur
 5. Expected persisted or queried result: the updated minor values save
    correctly and downstream aggregates or previews recompute
-6. Primary test level: `E2E`
+6. Primary test level: `E2E`, anchored by `tests/e2e/money-field-editability.spec.js`
 7. Form factor: `Both`
 
 ### X5a. Same-tab return uses settled fresh data, not destructive reload

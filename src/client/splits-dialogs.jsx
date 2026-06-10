@@ -2,6 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useRef } from "react";
 
 import { messages } from "./copy/en-SG";
+import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 import { ResponsiveSelect } from "./responsive-select";
 import { updateSplitExpenseDraft } from "./split-editing";
@@ -16,21 +17,31 @@ export function SplitGroupDialog({ dialog, formError, isSubmitting, onChange, on
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content split-dialog-content">
-          <div className="note-dialog-head split-dialog-head">
-            <Dialog.Title>{messages.splits.createGroup}</Dialog.Title>
-            <Dialog.Description>Add a named split group for shared expenses.</Dialog.Description>
-          </div>
-          <label className="split-dialog-field">
-            <span>{messages.splits.groupName}</span>
-            <input className="table-edit-input" value={dialog?.name ?? ""} onChange={(event) => onChange((current) => current ? { ...current, name: event.target.value } : current)} />
-          </label>
-          {formError ? <p className="form-error">{formError}</p> : null}
-          <div className="dialog-actions">
-            <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
-            <button type="button" className="dialog-primary" disabled={isSubmitting} onClick={() => void onSave()}>
-              {isSubmitting ? messages.common.saving : messages.splits.saveGroup}
-            </button>
-          </div>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (isSubmitting) {
+                return;
+              }
+              void onSave();
+            }}
+          >
+            <div className="note-dialog-head split-dialog-head">
+              <Dialog.Title>{messages.splits.createGroup}</Dialog.Title>
+              <Dialog.Description>Add a named split group for shared expenses.</Dialog.Description>
+            </div>
+            <label className="split-dialog-field">
+              <span>{messages.splits.groupName}</span>
+            <input className="table-edit-input" value={dialog?.name ?? ""} enterKeyHint="done" onChange={(event) => onChange((current) => current ? { ...current, name: event.target.value } : current)} />
+            </label>
+            {formError ? <p className="form-error">{formError}</p> : null}
+            <div className="dialog-actions">
+              <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
+              <button type="submit" className="dialog-primary" disabled={isSubmitting}>
+                {isSubmitting ? messages.common.saving : messages.splits.saveGroup}
+              </button>
+            </div>
+          </form>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -69,7 +80,7 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
           </label>
           <label className="split-dialog-field">
             <span>{messages.splits.expenseDate}</span>
-            <input className="table-edit-input" type="date" value={dialog?.date ?? ""} onChange={(event) => onChange((current) => current ? { ...current, date: event.target.value } : current)} />
+            <input className="table-edit-input" type="date" value={dialog?.date ?? ""} enterKeyHint="next" onChange={(event) => onChange((current) => current ? { ...current, date: event.target.value } : current)} />
           </label>
           <label className="split-dialog-field">
             <span>{messages.splits.expensePaidBy}</span>
@@ -106,14 +117,17 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
         <div className="split-dialog-inline">
           <label className="split-dialog-field">
             <span>{messages.splits.expenseAmount}</span>
-            <input
-              ref={amountInputRef}
-              className="table-edit-input table-edit-input-money"
-              type="number"
-              min="0"
-              step="0.01"
-              value={dialog?.amountInput ?? formatService.minorToDecimalString(dialog?.amountMinor ?? 0)}
-              onChange={(event) => onChange((current) => current ? updateSplitExpenseDraft(current, {
+              <input
+                ref={amountInputRef}
+                className="table-edit-input table-edit-input-money"
+                type="number"
+                min="0"
+                step="0.01"
+                value={dialog?.amountInput ?? formatService.minorToDecimalString(dialog?.amountMinor ?? 0)}
+                enterKeyHint="next"
+                onMouseDown={selectAllOnFocus}
+                onFocus={selectAllOnFocus}
+                onChange={(event) => onChange((current) => current ? updateSplitExpenseDraft(current, {
                 amountInput: event.target.value,
                 amountMinor: formatService.decimalStringToMinor(event.target.value)
               }) : current)}
@@ -125,13 +139,16 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
           </label>
           <label className="split-dialog-field split-dialog-field-percent">
             <span>{messages.splits.expenseSplit(dialog?.sharePersonName ?? "First person")}</span>
-            <input
-              className="table-edit-input table-edit-input-money"
-              type="number"
-              min="0"
-              max="100"
-              value={dialog?.splitPercentInput ?? String(Number(dialog?.splitBasisPoints ?? 5000) / 100)}
-              onChange={(event) => onChange((current) => current ? updateSplitExpenseDraft(current, {
+              <input
+                className="table-edit-input table-edit-input-money"
+                type="number"
+                min="0"
+                max="100"
+                value={dialog?.splitPercentInput ?? String(Number(dialog?.splitBasisPoints ?? 5000) / 100)}
+                enterKeyHint="next"
+                onMouseDown={selectAllOnFocus}
+                onFocus={selectAllOnFocus}
+                onChange={(event) => onChange((current) => current ? updateSplitExpenseDraft(current, {
                 splitPercentInput: event.target.value,
                 splitBasisPoints: Math.round(Number(event.target.value || 0) * 100)
               }, "percent") : current)}
@@ -142,13 +159,16 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
           </label>
           <label className="split-dialog-field split-dialog-field-exact-amount">
             <span>{messages.splits.expenseExactAmount(dialog?.sharePersonName ?? "First person")}</span>
-            <input
-              className="table-edit-input table-edit-input-money"
-              type="number"
-              min="0"
-              step="0.01"
-              value={dialog?.splitAmountInput ?? formatService.minorToDecimalString(dialog?.splitAmountMinor ?? 0)}
-              onChange={(event) => onChange((current) => current ? updateSplitExpenseDraft(current, {
+              <input
+                className="table-edit-input table-edit-input-money"
+                type="number"
+                min="0"
+                step="0.01"
+                value={dialog?.splitAmountInput ?? formatService.minorToDecimalString(dialog?.splitAmountMinor ?? 0)}
+                enterKeyHint="done"
+                onMouseDown={selectAllOnFocus}
+                onFocus={selectAllOnFocus}
+                onChange={(event) => onChange((current) => current ? updateSplitExpenseDraft(current, {
                 splitAmountInput: event.target.value,
                 splitAmountMinor: formatService.decimalStringToMinor(event.target.value)
               }, "amount") : current)}
@@ -181,31 +201,41 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content split-dialog-content" onOpenAutoFocus={(event) => event.preventDefault()}>
-          <div className="note-dialog-head split-dialog-head">
-            <Dialog.Title>{dialog?.id ? messages.splits.editSplit : messages.splits.createExpense}</Dialog.Title>
-            <Dialog.Description>Create or edit a split expense without touching the bank import workflow.</Dialog.Description>
-          </div>
-          <SplitExpenseFields dialog={dialog} groupOptions={groupOptions} people={people} categoryOptions={categoryOptions} categories={categories} onChange={onChange} autoFocusAmount />
-          {formError ? <p className="form-error">{formError}</p> : null}
-          <div className="dialog-actions">
-            {dialog?.linkedTransactionId ? (
-              <>
-                <button
-                  type="button"
-                  className="subtle-action"
-                  disabled={isSubmitting}
-                  onClick={() => onViewLinkedEntry?.(dialog)}
-                >
-                  {messages.splits.viewLinkedEntry}
-                </button>
-                <span className="split-dialog-actions-divider" aria-hidden="true">|</span>
-              </>
-            ) : null}
-            <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
-            <button type="button" className="dialog-primary" disabled={isSubmitting || isSaveDisabled} onClick={() => void onSave()}>
-              {isSubmitting ? messages.common.saving : messages.splits.saveExpense}
-            </button>
-          </div>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (isSubmitting || isSaveDisabled) {
+                return;
+              }
+              void onSave();
+            }}
+          >
+            <div className="note-dialog-head split-dialog-head">
+              <Dialog.Title>{dialog?.id ? messages.splits.editSplit : messages.splits.createExpense}</Dialog.Title>
+              <Dialog.Description>Create or edit a split expense without touching the bank import workflow.</Dialog.Description>
+            </div>
+            <SplitExpenseFields dialog={dialog} groupOptions={groupOptions} people={people} categoryOptions={categoryOptions} categories={categories} onChange={onChange} autoFocusAmount />
+            {formError ? <p className="form-error">{formError}</p> : null}
+            <div className="dialog-actions">
+              {dialog?.linkedTransactionId ? (
+                <>
+                  <button
+                    type="button"
+                    className="subtle-action"
+                    disabled={isSubmitting}
+                    onClick={() => onViewLinkedEntry?.(dialog)}
+                  >
+                    {messages.splits.viewLinkedEntry}
+                  </button>
+                  <span className="split-dialog-actions-divider" aria-hidden="true">|</span>
+                </>
+              ) : null}
+              <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
+              <button type="submit" className="dialog-primary" disabled={isSubmitting || isSaveDisabled}>
+                {isSubmitting ? messages.common.saving : messages.splits.saveExpense}
+              </button>
+            </div>
+          </form>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -244,7 +274,7 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
           </label>
           <label className="split-dialog-field">
             <span>{messages.splits.settlementDate}</span>
-            <input className="table-edit-input" type="date" value={dialog?.date ?? ""} onChange={(event) => onChange((current) => current ? { ...current, date: event.target.value } : current)} />
+            <input className="table-edit-input" type="date" value={dialog?.date ?? ""} enterKeyHint="next" onChange={(event) => onChange((current) => current ? { ...current, date: event.target.value } : current)} />
           </label>
           <label className="split-dialog-field">
             <span>{messages.splits.settlementFrom}</span>
@@ -272,14 +302,17 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
         <div className="split-dialog-inline">
           <label className="split-dialog-field">
             <span>{messages.splits.settlementAmount}</span>
-            <input
-              ref={amountInputRef}
-              className="table-edit-input table-edit-input-money"
-              type="number"
-              min="0"
-              step="0.01"
-              value={dialog?.amountInput ?? formatService.minorToDecimalString(dialog?.amountMinor ?? 0)}
-              onChange={(event) => onChange((current) => current ? {
+              <input
+                ref={amountInputRef}
+                className="table-edit-input table-edit-input-money"
+                type="number"
+                min="0"
+                step="0.01"
+                value={dialog?.amountInput ?? formatService.minorToDecimalString(dialog?.amountMinor ?? 0)}
+                enterKeyHint="done"
+                onMouseDown={selectAllOnFocus}
+                onFocus={selectAllOnFocus}
+                onChange={(event) => onChange((current) => current ? {
                 ...current,
                 amountInput: event.target.value,
                 amountMinor: formatService.decimalStringToMinor(event.target.value)
@@ -308,31 +341,41 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content split-dialog-content" onOpenAutoFocus={(event) => event.preventDefault()}>
-          <div className="note-dialog-head split-dialog-head">
-            <Dialog.Title>{dialog?.id ? messages.splits.editSplit : messages.splits.createSettlement}</Dialog.Title>
-            <Dialog.Description>Record or edit a settle-up and match the bank transfer later from the Matches view.</Dialog.Description>
-          </div>
-          <SplitSettlementFields dialog={dialog} groupOptions={groupOptions} people={people} onChange={onChange} autoFocusAmount />
-          {formError ? <p className="form-error">{formError}</p> : null}
-          <div className="dialog-actions">
-            {dialog?.linkedTransactionId ? (
-              <>
-                <button
-                  type="button"
-                  className="subtle-action"
-                  disabled={isSubmitting}
-                  onClick={() => onViewLinkedEntry?.(dialog)}
-                >
-                  {messages.splits.viewLinkedEntry}
-                </button>
-                <span className="split-dialog-actions-divider" aria-hidden="true">|</span>
-              </>
-            ) : null}
-            <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
-            <button type="button" className="dialog-primary" disabled={isSubmitting || isSaveDisabled} onClick={() => void onSave()}>
-              {isSubmitting ? messages.common.saving : messages.splits.saveSettlement}
-            </button>
-          </div>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (isSubmitting || isSaveDisabled) {
+                return;
+              }
+              void onSave();
+            }}
+          >
+            <div className="note-dialog-head split-dialog-head">
+              <Dialog.Title>{dialog?.id ? messages.splits.editSplit : messages.splits.createSettlement}</Dialog.Title>
+              <Dialog.Description>Record or edit a settle-up and match the bank transfer later from the Matches view.</Dialog.Description>
+            </div>
+            <SplitSettlementFields dialog={dialog} groupOptions={groupOptions} people={people} onChange={onChange} autoFocusAmount />
+            {formError ? <p className="form-error">{formError}</p> : null}
+            <div className="dialog-actions">
+              {dialog?.linkedTransactionId ? (
+                <>
+                  <button
+                    type="button"
+                    className="subtle-action"
+                    disabled={isSubmitting}
+                    onClick={() => onViewLinkedEntry?.(dialog)}
+                  >
+                    {messages.splits.viewLinkedEntry}
+                  </button>
+                  <span className="split-dialog-actions-divider" aria-hidden="true">|</span>
+                </>
+              ) : null}
+              <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
+              <button type="submit" className="dialog-primary" disabled={isSubmitting || isSaveDisabled}>
+                {isSubmitting ? messages.common.saving : messages.splits.saveSettlement}
+              </button>
+            </div>
+          </form>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -347,19 +390,29 @@ export function SplitDeleteDialog({ target, formError, isSubmitting, onClose, on
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content split-delete-dialog">
-          <div className="note-dialog-head split-dialog-head">
-            <Dialog.Title>Delete split row</Dialog.Title>
-            <Dialog.Description>
-              Delete {label}? This removes the split record only. Any linked bank ledger row stays in entries.
-            </Dialog.Description>
-          </div>
-          {formError ? <p className="form-error">{formError}</p> : null}
-          <div className="dialog-actions">
-            <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
-            <button type="button" className="dialog-danger" disabled={isSubmitting} onClick={() => void onConfirm()}>
-              {isSubmitting ? messages.common.working : "Delete split row"}
-            </button>
-          </div>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (isSubmitting) {
+                return;
+              }
+              void onConfirm();
+            }}
+          >
+            <div className="note-dialog-head split-dialog-head">
+              <Dialog.Title>Delete split row</Dialog.Title>
+              <Dialog.Description>
+                Delete {label}? This removes the split record only. Any linked bank ledger row stays in entries.
+              </Dialog.Description>
+            </div>
+            {formError ? <p className="form-error">{formError}</p> : null}
+            <div className="dialog-actions">
+              <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
+              <button type="submit" className="dialog-danger" disabled={isSubmitting}>
+                {isSubmitting ? messages.common.working : "Delete split row"}
+              </button>
+            </div>
+          </form>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
