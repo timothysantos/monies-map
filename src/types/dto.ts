@@ -460,7 +460,7 @@ export interface ImportPreviewDto {
 }
 
 export interface ImportPreviewExceptionDto {
-  kind: "unknown_account" | "unknown_category" | "review_rows" | "statement_mismatch" | "account_identity" | "entry_reconciliation" | "prior_import_context";
+  kind: "unknown_account" | "unknown_category" | "review_rows" | "statement_mismatch" | "account_identity" | "entry_reconciliation" | "prior_import_context" | "statement_chain_gap";
   count: number;
   tone: "blocking" | "review" | "context";
 }
@@ -486,7 +486,7 @@ export interface ImportPreviewStatementReconciliationDto {
   statementBalanceMinor: number;
   projectedLedgerBalanceMinor?: number;
   deltaMinor?: number;
-  status: "matched" | "mismatch" | "unknown_account" | "identity_unconfirmed";
+  status: "matched" | "mismatch" | "unknown_account" | "identity_unconfirmed" | "missing_prior_statement";
 }
 
 export interface StatementCompareRowDto {

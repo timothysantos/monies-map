@@ -72,7 +72,8 @@ import { json } from "./server/json";
 
 export interface Env {
   DB: D1Database;
-  APP_ENVIRONMENT?: "demo" | "local" | "production";
+  APP_ENVIRONMENT?: "demo" | "local" | "production" | "test";
+  DEMO_SEED_MONTH?: string;
   SHORTCUT_INGEST_TOKEN?: string;
 }
 
@@ -187,7 +188,7 @@ export default {
       if (!canUseDemoControls(env, url)) {
         return json({ ok: false, error: "Demo controls are disabled in production." }, 403);
       }
-      const demo = await reseedDemoSettings(env.DB);
+      const demo = await reseedDemoSettings(env.DB, env.DEMO_SEED_MONTH);
       primeAppDataCache(demo);
       return json({ ok: true, demo });
     }
@@ -1358,7 +1359,7 @@ export default {
           statementBalanceMinor: number;
           projectedLedgerBalanceMinor?: number;
           deltaMinor?: number;
-          status: "matched" | "mismatch" | "unknown_account" | "identity_unconfirmed";
+          status: "matched" | "mismatch" | "unknown_account" | "identity_unconfirmed" | "missing_prior_statement";
         }[];
         rows?: {
           rowId: string;

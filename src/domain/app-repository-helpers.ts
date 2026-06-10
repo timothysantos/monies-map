@@ -225,9 +225,9 @@ export function buildPlanDate(month: string, dayLabel?: string) {
   return `${month}-${dayLabel.padStart(2, "0")}`;
 }
 
-export function inferMonthKeyFromPlanRow(id: string) {
+export function inferMonthKeyFromPlanRow(id: string, fallbackMonth = getCurrentMonthKey()) {
   const match = id.match(/plan-(\d{4}-\d{2})-/);
-  return match?.[1] ?? getCurrentMonthKey();
+  return match?.[1] ?? fallbackMonth;
 }
 
 export function nextMonthKey(month: string) {

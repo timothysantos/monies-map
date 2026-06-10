@@ -1007,6 +1007,9 @@ export function App() {
   const refreshCurrentImportsPage = useCallback(async ({
     broadcast = false,
     invalidateImports = false,
+    invalidateEntries = false,
+    invalidateMonth = false,
+    invalidateSummary = false,
     refreshShell = false
   } = {}) => {
     const request = buildRoutePageRequest({
@@ -1021,7 +1024,18 @@ export function App() {
 
     if (invalidateImports) {
       await invalidateImportMutationQueries(queryClient, {
-        invalidateSummaryAccountPills: true
+        entriesParams: invalidateEntries ? {
+          viewId: selectedViewId,
+          month: selectedMonth
+        } : undefined,
+        invalidateSummaryAccountPills: true,
+        monthKeys: invalidateMonth ? [selectedMonth] : [],
+        scope: selectedScope,
+        summaryRange: invalidateSummary ? {
+          startMonth: selectedMonth,
+          endMonth: selectedMonth
+        } : undefined,
+        viewId: selectedViewId
       });
     }
     const tasks = [fetchRoutePageData(request, { bypassCache: true })];

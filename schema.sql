@@ -89,6 +89,17 @@ CREATE TABLE IF NOT EXISTS statement_reconciliation_certificates (
   FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS statement_chain_breaks (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  account_id TEXT NOT NULL,
+  missing_checkpoint_month TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id),
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+  UNIQUE (household_id, account_id, missing_checkpoint_month)
+);
+
 CREATE TABLE IF NOT EXISTS reconciliation_exceptions (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL,
