@@ -24,7 +24,7 @@ export async function loadHousehold(db: D1Database): Promise<HouseholdDto> {
   return {
     id: row?.id ?? DEFAULT_HOUSEHOLD_ID,
     name: row?.name ?? "Household",
-    currency: row?.base_currency ?? "SGD",
+    baseCurrency: row?.base_currency ?? "SGD",
     people: people.results.map((person) => ({ id: person.id, name: person.display_name }))
   };
 }
@@ -100,7 +100,8 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
         checkpoint_month,
         statement_start_date,
         statement_end_date,
-        statement_balance_minor
+        statement_balance_minor,
+        note
       FROM account_balance_checkpoints
       WHERE household_id = ?
         AND checkpoint_month = (
@@ -117,6 +118,7 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
       statement_start_date: string | null;
       statement_end_date: string | null;
       statement_balance_minor: number;
+      note: string | null;
     }>();
 
   const checkpointHistoryRows = await db

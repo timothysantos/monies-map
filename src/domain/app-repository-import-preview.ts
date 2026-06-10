@@ -219,8 +219,7 @@ export async function buildImportPreview(
     existingRows: existingTransactions.results,
     previewRows,
     sourceType: input.sourceType,
-    statementCheckpoints: input.statementCheckpoints ?? [],
-    statementChainBreaks
+    statementCheckpoints: input.statementCheckpoints ?? []
   });
   prioritizeCertifiedRowsExplainingStatementMismatch({
     accounts,
@@ -365,6 +364,7 @@ function findExactDuplicateSuppressionMatch(input: {
     transaction_date: string;
     post_date: string | null;
     description: string;
+    note: string | null;
     amount_minor: number;
     bank_certification_status: "provisional" | "statement_certified";
     account_name: string;

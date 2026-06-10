@@ -58,48 +58,58 @@ export const household: HouseholdDto = {
 export const accounts: AccountDto[] = [
   {
     id: "acct-uob-savings",
+    institutionId: "institution-uob",
     name: "UOB Savings",
     institution: "UOB",
     kind: "bank",
     ownerLabel: "Tim",
     currency: "SGD",
-    isJoint: false
+    isJoint: false,
+    isActive: true
   },
   {
     id: "acct-uob-one",
+    institutionId: "institution-uob",
     name: "UOB One",
     institution: "UOB",
     kind: "credit_card",
     ownerLabel: "Tim",
     currency: "SGD",
-    isJoint: false
+    isJoint: false,
+    isActive: true
   },
   {
     id: "acct-uob-lady",
+    institutionId: "institution-uob",
     name: "UOB Lady's",
     institution: "UOB",
     kind: "credit_card",
     ownerLabel: "Joyce",
     currency: "SGD",
-    isJoint: false
+    isJoint: false,
+    isActive: true
   },
   {
     id: "acct-citi-rewards",
+    institutionId: "institution-citibank",
     name: "Citi Rewards",
     institution: "Citibank",
     kind: "credit_card",
     ownerLabel: "Joyce",
     currency: "SGD",
-    isJoint: false
+    isJoint: false,
+    isActive: true
   },
   {
     id: "acct-household",
+    institutionId: "institution-dbs",
     name: "Household Float",
     institution: "DBS",
     kind: "bank",
     ownerLabel: "Shared",
     currency: "SGD",
-    isJoint: true
+    isJoint: true,
+    isActive: true
   }
 ];
 
@@ -1455,6 +1465,7 @@ export const importBatches: ImportBatchDto[] = [
     importedAt: "2026-04-03T10:15:00Z",
     status: "completed",
     transactionCount: 42,
+    accountNames: ["Citi Rewards"],
     note: "Demo import batch with grouped recurring charges."
   },
   {
@@ -1463,6 +1474,7 @@ export const importBatches: ImportBatchDto[] = [
     sourceType: "csv",
     importedAt: "2026-04-02T18:40:00Z",
     status: "completed",
-    transactionCount: 57
+    transactionCount: 57,
+    accountNames: ["UOB Lady's", "UOB Savings"]
   }
 ];

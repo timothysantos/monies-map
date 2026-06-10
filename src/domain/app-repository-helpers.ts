@@ -527,9 +527,12 @@ export function slugify(value: string) {
     .replace(/(^-|-$)/g, "");
 }
 
-export function groupSplits<T extends { person_id: string; ratio_basis_points: number; amount_minor: number; display_name: string }>(
-  rows: (T & Record<string, string>)[],
-  keyName: string
+export function groupSplits<
+  K extends string,
+  T extends { person_id: string; ratio_basis_points: number; amount_minor: number; display_name: string } & Record<K, string>
+>(
+  rows: T[],
+  keyName: K
 ) {
   const map = new Map<string, EntrySplitDto[]>();
 

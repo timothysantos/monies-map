@@ -391,15 +391,15 @@ export async function compareAccountCheckpointStatementRows(
   const statementEndDate = checkpoint.statement_end_date
     ?? uploadedStatementEndDate
     ?? getMonthEndDate(checkpoint.checkpoint_month);
-  const statementRows = input.rows
-    .map((rawRow, index) => {
+  const statementRows: StatementCompareRowDto[] = input.rows
+    .flatMap((rawRow, index) => {
       const normalized = normalizeImportRow(rawRow);
       if (normalized.errors.length || !normalized.date || !normalized.amountMinor) {
-        return null;
+        return [];
       }
 
       if (normalized.date < statementStartDate || normalized.date > statementEndDate) {
-        return null;
+        return [];
       }
 
       const signedAmountMinor = getSignedLedgerAmountMinor({
@@ -408,19 +408,18 @@ export async function compareAccountCheckpointStatementRows(
         amount_minor: normalized.amountMinor
       });
 
-      return {
+      return [{
         id: `statement-${index + 1}`,
         date: normalized.date,
-        description: normalized.description,
+        description: normalized.description ?? "",
         amountMinor: normalized.amountMinor,
         signedAmountMinor,
         entryType: normalized.entryType,
         transferDirection: normalized.transferDirection,
         categoryName: normalized.categoryName,
         note: normalized.note
-      };
-    })
-    .filter((row): row is StatementCompareRowDto => Boolean(row));
+      }];
+    });
 
   const ledgerResult = await db
     .prepare(`

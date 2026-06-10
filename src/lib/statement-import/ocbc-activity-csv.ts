@@ -83,7 +83,7 @@ export function parseOcbcActivityCsv(
   };
 }
 
-function parseOcbcActivityRow(cells: string[], isBankActivity: boolean) {
+function parseOcbcActivityRow(cells: string[], isBankActivity: boolean): OcbcActivityCandidate | undefined {
   const dateIndex = 0;
   const valueDateIndex = isBankActivity ? 1 : undefined;
   const descriptionIndex = isBankActivity ? 2 : 1;
