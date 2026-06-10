@@ -1,5 +1,26 @@
 import { expect } from "@playwright/test";
 
+export async function gotoPageAfterApi(page, path, apiPath, readyLocator) {
+  let lastError = null;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const pageReady = page.waitForResponse(
+        (response) => response.url().includes(apiPath) && response.ok(),
+        { timeout: 60_000 }
+      );
+      await page.goto(path, { waitUntil: "domcontentloaded" });
+      await pageReady;
+      await readyLocator().waitFor({ state: "visible", timeout: 30_000 });
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError ?? new Error(`${path} did not become ready.`);
+}
+
 export async function reseedDemo(page) {
   let lastText = "";
   let lastOk = false;
@@ -74,9 +95,28 @@ export async function loadSplitsPage(page, { view = "person-tim", month = "2025-
 }
 
 export async function loadImportsPage(page) {
-  const response = await page.request.get("/api/imports-page");
-  expect(response.ok(), await response.text()).toBeTruthy();
-  return response.json();
+  let lastError = null;
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      const response = await page.request.get("/api/imports-page");
+      expect(response.ok(), await response.text()).toBeTruthy();
+      return response.json();
+    } catch (error) {
+      lastError = error;
+      const errorMessage = String(error?.message ?? error);
+      if (attempt < 7 && (
+        errorMessage.includes("ECONNRESET")
+        || errorMessage.includes("socket hang up")
+        || errorMessage.includes("worker restarted mid-request")
+      )) {
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError ?? new Error("GET /api/imports-page failed");
 }
 
 export async function loadEntriesPage(page, { view = "person-tim", month = "2026-04" } = {}) {
@@ -136,7 +176,26 @@ export async function loadSummaryAccountPills(page, { view = "person-tim" } = {}
 }
 
 export async function loadSettingsPage(page) {
-  const response = await page.request.get("/api/settings-page");
-  expect(response.ok(), await response.text()).toBeTruthy();
-  return response.json();
+  let lastError = null;
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      const response = await page.request.get("/api/settings-page");
+      expect(response.ok(), await response.text()).toBeTruthy();
+      return response.json();
+    } catch (error) {
+      lastError = error;
+      const errorMessage = String(error?.message ?? error);
+      if (attempt < 7 && (
+        errorMessage.includes("ECONNRESET")
+        || errorMessage.includes("socket hang up")
+        || errorMessage.includes("worker restarted mid-request")
+      )) {
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError ?? new Error("GET /api/settings-page failed");
 }

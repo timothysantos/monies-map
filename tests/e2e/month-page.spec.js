@@ -1,5 +1,7 @@
 import { expect, test, devices } from "@playwright/test";
 
+import { gotoPageAfterApi } from "./helpers";
+
 function formatMoney(minor) {
   return new Intl.NumberFormat("en-SG", {
     style: "currency",
@@ -301,8 +303,12 @@ test.describe("month page", () => {
       splitBasisPoints: 5000
     });
 
-    await page.goto("/");
-    await page.getByRole("link", { name: "Entries" }).click();
+    await gotoPageAfterApi(
+      page,
+      "/entries?view=household&month=2026-05&scope=direct_plus_shared",
+      "/api/entries-page",
+      () => page.locator(".panel-context")
+    );
 
     await expect(page.locator(".panel-context")).toContainText("Viewing entries for Household");
     const householdScopeToggle = page.locator(".desktop-scope-toggle");
@@ -509,7 +515,12 @@ test.describe("month page", () => {
       ownershipType: "shared",
       splitBasisPoints: 5000
     });
-    await page.getByRole("link", { name: "Entries" }).click();
+    await gotoPageAfterApi(
+      page,
+      "/entries?view=household&month=2026-05&scope=direct_plus_shared",
+      "/api/entries-page",
+      () => page.locator(".mobile-context-sticky-wrap")
+    );
 
     const stickyBar = page.locator(".mobile-context-sticky-wrap");
     const trigger = stickyBar.locator(".mobile-context-trigger");

@@ -1,16 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-import { reseedDemo } from "./helpers";
+import { gotoPageAfterApi, reseedDemo } from "./helpers";
 
 const mobileViewport = { width: 390, height: 844 };
-
-async function gotoPageAfterApi(page, path, apiPath) {
-  const pageReady = page.waitForResponse((response) => (
-    response.url().includes(apiPath) && response.ok()
-  ), { timeout: 60_000 });
-  await page.goto(path);
-  await pageReady;
-}
 
 test.describe("mobile continuity", () => {
   test.beforeEach(async ({ page }) => {
@@ -22,7 +14,8 @@ test.describe("mobile continuity", () => {
     await gotoPageAfterApi(
       page,
       "/summary?view=household&month=2026-04&scope=direct_plus_shared&summary_start=2025-06&summary_end=2026-04",
-      "/api/summary-page"
+      "/api/summary-page",
+      () => page.getByRole("heading", { name: "Summary" })
     );
     await expect(page.getByRole("heading", { name: "Summary" })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole("heading", { name: "Spending Mix" })).toBeVisible({ timeout: 60_000 });
@@ -33,7 +26,8 @@ test.describe("mobile continuity", () => {
     await gotoPageAfterApi(
       page,
       "/month?view=person-tim&month=2026-04&scope=direct_plus_shared",
-      "/api/month-page"
+      "/api/month-page",
+      () => page.getByRole("heading", { name: "Month" })
     );
     await expect(page.getByRole("heading", { name: "Month" })).toBeVisible({ timeout: 60_000 });
   });
@@ -42,19 +36,30 @@ test.describe("mobile continuity", () => {
     await gotoPageAfterApi(
       page,
       "/splits?view=person-tim&month=2026-04&scope=direct_plus_shared",
-      "/api/splits-page"
+      "/api/splits-page",
+      () => page.getByRole("button", { name: "Non-group expenses" })
     );
     await expect(page.getByRole("button", { name: "Non-group expenses" })).toBeVisible({ timeout: 60_000 });
   });
 
   test("imports page stays readable on mobile", async ({ page }) => {
-    await gotoPageAfterApi(page, "/imports", "/api/imports-page");
+    await gotoPageAfterApi(
+      page,
+      "/imports",
+      "/api/imports-page",
+      () => page.getByRole("heading", { name: "Import and certify", exact: true })
+    );
     await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText("Source label")).toBeVisible({ timeout: 60_000 });
   });
 
   test("settings page stays readable on mobile", async ({ page }) => {
-    await gotoPageAfterApi(page, "/settings", "/api/settings-page");
+    await gotoPageAfterApi(
+      page,
+      "/settings",
+      "/api/settings-page",
+      () => page.getByRole("heading", { name: "Settings" })
+    );
     await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole("button", { name: /People/ })).toBeVisible({ timeout: 60_000 });
   });

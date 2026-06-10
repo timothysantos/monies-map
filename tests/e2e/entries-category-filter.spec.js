@@ -1,12 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-import { loadEntriesPage, postJson, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, loadEntriesPage, postJson, reseedDemo } from "./helpers";
 
 test("category-filtered entry remains visible until the category edit is explicitly saved", async ({ page }) => {
   const description = `Playwright reclassify entry ${Date.now()}`;
   const month = "2026-05";
 
-  await page.goto("/");
   await reseedDemo(page);
 
   await postJson(page, "/api/entries/create", {
@@ -20,8 +19,13 @@ test("category-filtered entry remains visible until the category edit is explici
     ownerName: "Tim"
   });
 
-  await page.goto(`/entries?view=person-tim&month=${month}&entry_category=Other`);
   const entryRow = page.locator(".entry-row").filter({ hasText: description });
+  await gotoPageAfterApi(
+    page,
+    `/entries?view=person-tim&month=${month}&entry_category=Other`,
+    "/api/entries-page",
+    () => entryRow
+  );
   await expect(entryRow).toHaveCount(1);
 
   await entryRow.first().click();

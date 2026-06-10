@@ -2853,8 +2853,13 @@ test.describe("import flow", () => {
 
     const commitCurrentPreview = async () => {
       await expect(importFlowPage.getByRole("button", { name: /Commit import/ }).first()).toBeEnabled();
+      const commitResponse = importFlowPage.waitForResponse(
+        (response) => response.url().includes("/api/imports/commit") && response.ok(),
+        { timeout: 60_000 }
+      );
       await importFlowPage.getByRole("button", { name: /Commit import/ }).first().click();
-      await expect(importFlowPage.getByText("No preview yet.").first()).toBeVisible();
+      await commitResponse;
+      await expect(importFlowPage.getByText("No preview yet.").first()).toBeVisible({ timeout: 60_000 });
     };
 
     await uploadPdfAndMap(janPdfPath);
@@ -2868,8 +2873,13 @@ test.describe("import flow", () => {
     await expect(importFlowPage.getByText("This statement has no transaction rows. Only the statement checkpoint will be saved.").first()).toBeVisible();
     await expect(importFlowPage.getByRole("button", { name: "Save empty statement checkpoint" }).first()).toBeEnabled();
     await screenshot("02-jan-two-card-pdf-all-duplicates-save-checkpoints");
+    const emptyCheckpointResponse = importFlowPage.waitForResponse(
+      (response) => response.url().includes("/api/imports/commit") && response.ok(),
+      { timeout: 60_000 }
+    );
     await importFlowPage.getByRole("button", { name: "Save empty statement checkpoint" }).first().click();
-    await expect(importFlowPage.getByText("No preview yet.").first()).toBeVisible();
+    await emptyCheckpointResponse;
+    await expect(importFlowPage.getByText("No preview yet.").first()).toBeVisible({ timeout: 60_000 });
 
     const midcycleRows = [
       ...febAlphaRows.map((row) => ({ ...row, account: alphaAccount.name, note: "synthetic growing midcycle" })),
