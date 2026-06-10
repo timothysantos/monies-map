@@ -25,6 +25,8 @@ export default defineConfig({
         command: "npm run dev:test:servers",
         url: "http://127.0.0.1:5173/api/health",
         reuseExistingServer: !process.env.CI,
+        stdout: "pipe",
+        stderr: "pipe",
         timeout: 120_000
       }
     : undefined,
