@@ -1,6 +1,15 @@
 import { expect, test } from "@playwright/test";
 
-import { loadAppShell, loadEntriesPage, loadImportsPage, loadMonthPage, loadSplitsPage, postJson, reseedDemo } from "./helpers";
+import {
+  gotoPageAfterApi,
+  loadAppShell,
+  loadEntriesPage,
+  loadImportsPage,
+  loadMonthPage,
+  loadSplitsPage,
+  postJson,
+  reseedDemo
+} from "./helpers";
 
 function formatMoney(minor) {
   return new Intl.NumberFormat("en-SG", {
@@ -134,9 +143,12 @@ test.describe("money field editability", () => {
   });
 
   test("import preview amount replaces the formatted value by typing before commit", async ({ page }) => {
-    const importsPageReady = page.waitForResponse((response) => response.url().includes("/api/imports-page") && response.ok());
-    await page.goto("/imports?view=person-tim&month=2025-10");
-    await importsPageReady;
+    await gotoPageAfterApi(
+      page,
+      "/imports?view=person-tim&month=2025-10",
+      "/api/imports-page",
+      () => page.getByRole("heading", { name: "Import and certify", exact: true })
+    );
     await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText("Source label")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByLabel("Source label")).toBeVisible({ timeout: 30_000 });
@@ -167,7 +179,12 @@ test.describe("money field editability", () => {
   });
 
   test("settings money fields replace the formatted value by typing and persist", async ({ page }) => {
-    await page.goto("/settings?view=person-tim");
+    await gotoPageAfterApi(
+      page,
+      "/settings?view=person-tim",
+      "/api/settings-page",
+      () => page.getByRole("heading", { name: "Settings" })
+    );
     await page.locator("button").filter({ hasText: "Accounts" }).first().click();
 
     await page.locator(".settings-account-row").filter({ hasText: "UOB One" }).first().getByRole("button", { name: "Edit account" }).click();

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  gotoPageAfterApi,
   loadAppShell,
   loadEntriesPage,
   loadMonthPage,
@@ -13,6 +14,15 @@ import {
 
 function uniqueLabel(prefix) {
   return `${prefix} ${Date.now()}`;
+}
+
+async function openSettingsPage(page) {
+  await gotoPageAfterApi(
+    page,
+    "/settings?view=person-tim",
+    "/api/settings-page",
+    () => page.getByRole("heading", { name: "Settings" })
+  );
 }
 
 test.describe("settings reference data", () => {
@@ -54,7 +64,7 @@ test.describe("settings reference data", () => {
     const targetCategory = shell.categories[0];
     const rulePattern = uniqueLabel("Playwright rule save");
 
-    await page.goto("/settings?view=person-tim");
+    await openSettingsPage(page);
     await page.getByRole("button", { name: /Category matching/ }).click();
     await page.locator("#settings-category-rules").getByRole("button", { name: "+ Add match rule" }).click();
     const dialog = page.locator(".settings-account-dialog");
@@ -176,7 +186,8 @@ test.describe("settings reference data", () => {
     const targetPerson = before.household.people[0];
     const renamedPerson = uniqueLabel(`${targetPerson.name} updated`);
 
-    await page.goto("/settings?view=person-tim");
+    await openSettingsPage(page);
+    await page.getByRole("button", { name: /People/ }).click();
     await page.getByLabel("Edit person").first().click();
 
     const nameField = page.getByLabel("Display name");
