@@ -7,14 +7,19 @@ function getComparableSplitBasisPoints(entry) {
     : null;
 }
 
-export function mergeEntriesById(currentEntries, serverEntries, editingEntryId) {
+export function mergeEntriesById(currentEntries, serverEntries, editingEntryId, excludedEntryIds = new Set()) {
+  const visibleServerEntries = serverEntries.filter((entry) => !excludedEntryIds.has(entry.id));
   const currentById = new Map(currentEntries.map((entry) => [entry.id, entry]));
-  const serverIds = new Set(serverEntries.map((entry) => entry.id));
-  const localTransientEntries = currentEntries.filter((entry) => entry.isPendingDerived && !serverIds.has(entry.id));
+  const serverIds = new Set(visibleServerEntries.map((entry) => entry.id));
+  const localTransientEntries = currentEntries.filter((entry) => (
+    entry.isPendingDerived
+    && !excludedEntryIds.has(entry.id)
+    && !serverIds.has(entry.id)
+  ));
 
   return [
     ...localTransientEntries,
-    ...serverEntries.map((serverEntry) => {
+    ...visibleServerEntries.map((serverEntry) => {
       const currentEntry = currentById.get(serverEntry.id);
       if (!currentEntry) {
         return serverEntry;

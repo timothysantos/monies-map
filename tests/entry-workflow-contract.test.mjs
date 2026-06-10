@@ -21,6 +21,26 @@ test("E1 entries workflow keeps an optimistic row alive when a stale refresh omi
   assert.equal(nextEntries[1].description, "Coffee refreshed");
 });
 
+test("entries workflow does not restore a deleted row from a stale server payload", () => {
+  const deletedEntry = {
+    id: "deleted-entry",
+    isPendingDerived: true,
+    description: "Deleted locally"
+  };
+  const visibleEntries = [
+    { id: "server-1", isPendingDerived: false, description: "Coffee" }
+  ];
+
+  const nextEntries = mergeEntriesById(
+    [deletedEntry, ...visibleEntries],
+    [deletedEntry, ...visibleEntries],
+    null,
+    new Set([deletedEntry.id])
+  );
+
+  assert.deepEqual(nextEntries, visibleEntries);
+});
+
 test("E7 entries workflow protects the actively edited row from stale server replacement", () => {
   const currentEntries = [
     { id: "editing", isPendingDerived: false, description: "Local edit", linkedTransfer: null, linkedSplitExpenseId: null },
