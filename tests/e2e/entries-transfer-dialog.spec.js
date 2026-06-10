@@ -1,15 +1,15 @@
 import { expect, test } from "@playwright/test";
 
-import { reseedDemo } from "./helpers";
+import { gotoPageAfterApi, reseedDemo } from "./helpers";
 
 async function openTransferManager(page, entryId) {
-  const entriesPageReady = page.waitForResponse((response) => (
-    response.url().includes("/api/entries-page") && response.ok()
-  ), { timeout: 60_000 });
-  await page.goto(`/entries?view=person-tim&month=2026-05&editing_entry=${entryId}`, { waitUntil: "domcontentloaded" });
-  await entriesPageReady;
+  await gotoPageAfterApi(
+    page,
+    `/entries?view=person-tim&month=2026-05&editing_entry=${entryId}`,
+    "/api/entries-page",
+    () => page.getByRole("button", { name: "Manage transfer" })
+  );
   await page.waitForURL(new RegExp(`editing_entry=${entryId}`));
-  await expect(page.getByRole("button", { name: "Manage transfer" })).toBeVisible({ timeout: 60_000 });
   await page.getByRole("button", { name: "Manage transfer" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page.getByRole("dialog").getByRole("heading", { name: "Transfer details" })).toBeVisible();
