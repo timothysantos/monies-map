@@ -6,6 +6,10 @@ export default defineConfig({
   testDir: "./tests/e2e",
   timeout: 120_000,
   workers: 1,
+  captureGitInfo: {
+    commit: true,
+    diff: false
+  },
   expect: {
     timeout: 10_000
   },
@@ -18,7 +22,7 @@ export default defineConfig({
   },
   webServer: shouldStartWebServer
     ? {
-        command: "npm run dev:test",
+        command: "npm run dev:test:servers",
         url: "http://127.0.0.1:5173/api/health",
         reuseExistingServer: !process.env.CI,
         timeout: 120_000
