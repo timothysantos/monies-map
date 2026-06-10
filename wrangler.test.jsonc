@@ -8,7 +8,8 @@
     "not_found_handling": "single-page-application"
   },
   "vars": {
-    "APP_ENVIRONMENT": "test"
+    "APP_ENVIRONMENT": "test",
+    "DEMO_SEED_MONTH": "2026-05"
   },
   "d1_databases": [
     {

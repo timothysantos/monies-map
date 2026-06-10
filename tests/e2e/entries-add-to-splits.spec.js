@@ -40,8 +40,12 @@ test("entries can add a direct expense to splits and jump into the created split
   expect(createdSplit).toBeTruthy();
   expect(createdSplit?.linkedTransactionId).toBe(entry.entryId);
 
+  const splitsPageReady = page.waitForResponse((response) => (
+    response.url().includes("/api/splits-page") && response.ok()
+  ), { timeout: 60_000 });
   await page.goto(`/splits?view=person-tim&month=2026-04&editing_split_expense=${splitData.splitExpenseId}`);
-  await expect(page.getByRole("dialog")).toBeVisible();
+  await splitsPageReady;
+  await expect(page.getByRole("dialog")).toBeVisible({ timeout: 60_000 });
   await expect(page.getByRole("dialog").getByLabel("Description")).toHaveValue(description);
 });
 

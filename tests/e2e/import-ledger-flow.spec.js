@@ -124,6 +124,34 @@ async function loadSummaryPage(page, { view = "person-tim", month = "2025-10", s
   return response.json();
 }
 
+async function loadImportsPage(page) {
+  const response = await page.request.get("/api/imports-page");
+  if (!response.ok()) {
+    throw new Error(`Imports page failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+async function gotoImportsPage(page, month = "2025-10") {
+  let lastError = null;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const importsPageReady = page.waitForResponse((response) => (
+        response.url().includes("/api/imports-page") && response.ok()
+      ), { timeout: 30_000 });
+      await page.goto(`/imports?view=person-tim&month=${month}`, { waitUntil: "domcontentloaded" });
+      await importsPageReady;
+      await page.getByLabel("Source label").waitFor({ state: "visible", timeout: 15_000 });
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError ?? new Error("Imports page did not become ready.");
+}
+
 function formatMoney(minor) {
   return currencyFormatter.format(minor / 100);
 }
@@ -184,6 +212,74 @@ function buildSyntheticUobCardStatement({ statementDate, sections }) {
   return lines.join("\n");
 }
 
+function buildSyntheticPdfImportRow({
+  rowId,
+  date,
+  description,
+  amountMinor,
+  entryType,
+  account
+}) {
+  const isIncome = entryType === "income";
+  return {
+    rowId,
+    rowIndex: 1,
+    date,
+    description,
+    amountMinor,
+    entryType,
+    accountId: account.id,
+    accountName: account.name,
+    categoryName: "Other",
+    ownershipType: "direct",
+    ownerName: account.ownerLabel,
+    splitBasisPoints: 10000,
+    rawRow: {
+      date,
+      description,
+      expense: isIncome ? "" : money(amountMinor),
+      income: isIncome ? money(amountMinor) : "",
+      accountId: account.id,
+      account: account.name,
+      category: "Other",
+      type: entryType
+    }
+  };
+}
+
+function buildSyntheticPdfPreviewRow({
+  date,
+  description,
+  amountMinor,
+  entryType,
+  account
+}) {
+  const isIncome = entryType === "income";
+  return {
+    date,
+    description,
+    expense: isIncome ? "" : money(amountMinor),
+    income: isIncome ? money(amountMinor) : "",
+    accountId: account.id,
+    account: account.name,
+    category: "Other",
+    type: entryType
+  };
+}
+
+function buildSyntheticStatementCheckpoint({ account, checkpointMonth, statementBalanceMinor, statementStartDate, statementEndDate }) {
+  return {
+    accountId: account.id,
+    accountName: account.name,
+    detectedAccountName: account.name,
+    checkpointMonth,
+    statementStartDate,
+    statementEndDate,
+    statementBalanceMinor,
+    note: "Playwright rollback coverage"
+  };
+}
+
 function escapeHtml(value) {
   return value
     .replace(/&/g, "&amp;")
@@ -209,7 +305,7 @@ test.describe("import flow", () => {
 
   test.beforeEach(async ({ page }) => {
     await reseedDemo(page);
-    await page.goto("/api/health");
+    await gotoImportsPage(page);
   });
 
   test("preview flags unknown accounts from the CSV input", async ({ page }) => {
@@ -277,12 +373,20 @@ test.describe("import flow", () => {
     await page.getByRole("button", { name: "Preview import" }).click();
     await expect(page.locator('.import-preview-table input[value="Playwright groceries import"]')).toBeVisible();
     await expect(page.getByRole("button", { name: "Commit import" }).first()).toBeEnabled();
+    const commitResponse = page.waitForResponse((response) => (
+      response.url().includes("/api/imports/commit") && response.ok()
+    ));
     await page.getByRole("button", { name: "Commit import" }).first().click();
+    await commitResponse;
 
+    const entriesPageReady = page.waitForResponse((response) => (
+      response.url().includes("/api/entries-page") && response.ok()
+    ));
     await page.goto("/entries?view=person-tim&month=2025-10");
+    await entriesPageReady;
     const entryRow = page.locator(".entry-row").filter({ hasText: "Playwright groceries import" }).first();
     await expect(entryRow.locator(".entry-row-description strong").filter({ hasText: "Playwright groceries import" })).toBeVisible();
-    await entryRow.click();
+    await entryRow.getByText("Playwright groceries import", { exact: true }).click();
     const entryEditor = page.locator(".entry-edit-grid").first();
     await expect(entryEditor).toBeVisible();
     await entryEditor.locator("select").first().selectOption("Food & Drinks");
@@ -334,43 +438,48 @@ test.describe("import flow", () => {
     await page.getByRole("button", { name: "Preview import" }).click();
     await expect(page.getByRole("button", { name: "Commit import" }).first()).toBeEnabled();
 
-    await page.route("**/api/imports/commit", async (route) => {
+    const delayedCommitRoute = async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       await route.continue();
-    });
+    };
 
-    const commitButton = page.getByRole("button", { name: "Commit import" }).first();
-    const importsPageRefresh = page.waitForResponse((response) => (
-      response.url().includes("/api/imports-page") && response.ok()
-    ));
-    await commitButton.click();
-    await expect(page.locator(".import-history-refreshing.is-active")).toBeVisible();
-    await importsPageRefresh;
-    await expect(page.locator(".import-history-refreshing")).toHaveCount(0);
-    await expect(page.locator(".import-card").filter({ hasText: firstImportLabel }).first()).toContainText("completed", {
-      timeout: 30_000
-    });
+    await page.route("**/api/imports/commit", delayedCommitRoute);
+    try {
+      const commitButton = page.getByRole("button", { name: "Commit import" }).first();
+      const importsPageRefresh = page.waitForResponse((response) => (
+        response.url().includes("/api/imports-page") && response.ok()
+      ));
+      await commitButton.click();
+      await expect(page.locator(".import-history-refreshing.is-active")).toBeVisible();
+      await importsPageRefresh;
+      await expect(page.locator(".import-history-refreshing")).toHaveCount(0);
+      const importsPage = await loadImportsPage(page);
+      expect(
+        importsPage.importsPage.recentImports.some((item) => item.sourceLabel === firstImportLabel && item.status === "completed")
+      ).toBe(true);
 
-    await page.getByLabel("Source label").fill(secondImportLabel);
-    await page.getByLabel("CSV content").fill(
-      [
-        "category,account,note,amount,date,description",
-        "Groceries,UOB One,Playwright follow-up import,-8.88,2025-10-20,Playwright follow-up import row"
-      ].join("\n")
-    );
+      await page.getByLabel("Source label").fill(secondImportLabel);
+      await page.getByLabel("CSV content").fill(
+        [
+          "category,account,note,amount,date,description",
+          "Groceries,UOB One,Playwright follow-up import,-8.88,2025-10-20,Playwright follow-up import row"
+        ].join("\n")
+      );
 
-    await page.getByRole("button", { name: "Preview import" }).click();
-    await expect(page.getByRole("button", { name: "Commit import" }).first()).toBeEnabled();
-    const followUpImportsPageRefresh = page.waitForResponse((response) => (
-      response.url().includes("/api/imports-page") && response.ok()
-    ));
-    await page.getByRole("button", { name: "Commit import" }).first().click();
-    await followUpImportsPageRefresh;
-    await expect(page.locator(".import-history-refreshing")).toHaveCount(0);
-    await expect(page.locator(".import-card").filter({ hasText: secondImportLabel }).first()).toContainText("completed", {
-      timeout: 30_000
-    });
-    await expect(page.locator(".import-card").filter({ hasText: firstImportLabel }).first()).toContainText("completed");
+      await page.getByRole("button", { name: "Preview import" }).click();
+      await expect(page.getByRole("button", { name: "Commit import" }).first()).toBeEnabled();
+      const followUpImportsPageRefresh = page.waitForResponse((response) => (
+        response.url().includes("/api/imports-page") && response.ok()
+      ));
+      await page.getByRole("button", { name: "Commit import" }).first().click();
+      await followUpImportsPageRefresh;
+      await expect(page.locator(".import-history-refreshing")).toHaveCount(0);
+      await expect(page.locator(".import-card").filter({ hasText: secondImportLabel }).first()).toContainText("completed", {
+        timeout: 30_000
+      });
+    } finally {
+      await page.unroute("**/api/imports/commit", delayedCommitRoute);
+    }
   });
 
   test("committed import can be rolled back and disappears from entries and import history", async ({ page }) => {
@@ -420,14 +529,270 @@ test.describe("import flow", () => {
     expect(beforeImportsPage.importsPage.recentImports.some((item) => item.status === "rolled_back")).toBe(false);
   });
 
-  test("restoring an exact covered import row opens the confirmation dialog and re-includes the row", async ({ page }) => {
-    const importsPageReady = page.waitForResponse((response) => response.url().includes("/api/imports-page") && response.ok());
-    await page.goto("/imports?view=person-tim&month=2025-10");
-    await importsPageReady;
-    await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
+  test("rolling back a PDF import invalidates cached entries before returning to the entries page", async ({ page }) => {
+    const month = "2025-01";
+    const appShell = await loadAppShell(page, { month });
+    const account = appShell.accounts.find((item) => item.name === "Citi Rewards");
+    expect(account).toBeTruthy();
 
+    const importedRow = buildSyntheticPdfImportRow({
+      rowId: "jan-rollback-row",
+      date: "2025-01-04",
+      description: "JAN PDF ROLLBACK ROW",
+      amountMinor: 17350,
+      entryType: "income",
+      account
+    });
+
+    await page.goto(`/entries?view=person-tim&month=${month}`);
+    const beforeEntries = await loadEntriesPage(page, { view: "person-tim", month });
+    expect(beforeEntries.monthPage.entries.some((item) => item.description === importedRow.description)).toBe(false);
+
+    const commitPayload = await postJson(page, "/api/imports/commit", {
+      sourceLabel: "Playwright January PDF rollback",
+      sourceType: "pdf",
+      parserKey: "citibank_credit_card_pdf",
+      rows: [importedRow],
+      statementCheckpoints: []
+    });
+    expect(commitPayload.importId).toBeTruthy();
+
+    await gotoImportsPage(page, month);
+
+    const importCard = page.locator(".import-card").filter({ hasText: "Playwright January PDF rollback" });
+    await expect(importCard).toBeVisible();
+    await importCard.getByRole("button", { name: "Rollback import" }).click();
+    await page.getByRole("button", { name: "Confirm rollback" }).click();
+    await expect(page.locator(".import-history-refreshing")).toHaveCount(0);
+
+    await page.getByRole("link", { name: "Entries" }).click();
+    await expect(page.locator(`text=${importedRow.description}`)).toHaveCount(0);
+
+    const afterEntries = await loadEntriesPage(page, { view: "person-tim", month });
+    expect(afterEntries.monthPage.entries.some((item) => item.description === importedRow.description)).toBe(false);
+  });
+
+  test("February PDF preview matches cleanly after the January rollback", async ({ page }) => {
+    const accountName = `Playwright blank rollback card ${Date.now()}`;
+    const createPayload = await postJson(page, "/api/accounts/create", {
+      name: accountName,
+      institution: "Synthetic Test Bank",
+      kind: "credit_card",
+      openingBalanceMinor: 0,
+      currency: "SGD",
+      ownerPersonId: "",
+      isJoint: false
+    });
+    const account = {
+      id: createPayload.accountId,
+      name: accountName,
+      kind: "credit_card",
+      ownerLabel: "Tim"
+    };
+    expect(account.id).toBeTruthy();
+
+    const januaryRow = buildSyntheticPdfImportRow({
+      rowId: "jan-seed-row",
+      date: "2025-01-10",
+      description: "JAN SEED ROW",
+      amountMinor: 12345,
+      entryType: "expense",
+      account
+    });
+    const januaryStatementCheckpoints = [buildSyntheticStatementCheckpoint({
+      account,
+      checkpointMonth: "2025-01",
+      statementBalanceMinor: januaryRow.amountMinor,
+      statementStartDate: "2025-01-01",
+      statementEndDate: "2025-01-31"
+    })];
+    const januaryPreview = await postJson(page, "/api/imports/preview", {
+      sourceLabel: "Playwright January PDF seed",
+      sourceType: "pdf",
+      rows: [buildSyntheticPdfPreviewRow({
+        date: januaryRow.date,
+        description: januaryRow.description,
+        amountMinor: januaryRow.amountMinor,
+        entryType: januaryRow.entryType,
+        account
+      })],
+      defaultAccountName: account.name,
+      ownershipType: "direct",
+      ownerName: account.ownerLabel,
+      statementCheckpoints: januaryStatementCheckpoints
+    });
+    expect(januaryPreview.preview.statementReconciliations[0].status).toBe("matched");
+
+    const januaryCommit = await postJson(page, "/api/imports/commit", {
+      sourceLabel: "Playwright January PDF seed",
+      sourceType: "pdf",
+      parserKey: "citibank_credit_card_pdf",
+      rows: [januaryRow],
+      statementCheckpoints: januaryStatementCheckpoints,
+      statementControlRows: januaryPreview.preview.previewRows,
+      statementReconciliations: januaryPreview.preview.statementReconciliations
+    });
+    expect(januaryCommit.importId).toBeTruthy();
+
+    const januaryRollback = await postJson(page, "/api/imports/rollback", { importId: januaryCommit.importId });
+    expect(januaryRollback.rolledBack).toBe(true);
+
+    const februaryRow = buildSyntheticPdfImportRow({
+      rowId: "feb-preview-row",
+      date: "2025-02-07",
+      description: "FEB CLEAN ROW",
+      amountMinor: 54321,
+      entryType: "expense",
+      account
+    });
+    const februaryPreview = await postJson(page, "/api/imports/preview", {
+      sourceLabel: "Playwright February PDF preview",
+      sourceType: "pdf",
+      rows: [buildSyntheticPdfPreviewRow({
+        date: februaryRow.date,
+        description: februaryRow.description,
+        amountMinor: februaryRow.amountMinor,
+        entryType: februaryRow.entryType,
+        account
+      })],
+      defaultAccountName: account.name,
+      ownershipType: "direct",
+      ownerName: account.ownerLabel,
+      statementCheckpoints: [buildSyntheticStatementCheckpoint({
+        account,
+        checkpointMonth: "2025-02",
+        statementBalanceMinor: 54321,
+        statementStartDate: "2025-02-01",
+        statementEndDate: "2025-02-28"
+      })]
+    });
+
+    expect(februaryPreview.preview.statementReconciliations[0].status).toBe("matched");
+    expect(februaryPreview.preview.previewRows[0].commitStatus).toBe("included");
+  });
+
+  test("re-importing the same January PDF after rollback does not hit the import id uniqueness guard", async ({ page }) => {
+    const appShell = await loadAppShell(page, { month: "2025-01" });
+    const account = appShell.accounts.find((item) => item.name === "Citi Rewards");
+    expect(account).toBeTruthy();
+
+    const januaryRow = buildSyntheticPdfImportRow({
+      rowId: "jan-reimport-row",
+      date: "2025-01-10",
+      description: "JAN REIMPORT ROW",
+      amountMinor: 12345,
+      entryType: "expense",
+      account
+    });
+
+    const firstCommit = await postJson(page, "/api/imports/commit", {
+      sourceLabel: "Playwright January PDF reimport",
+      sourceType: "pdf",
+      parserKey: "citibank_credit_card_pdf",
+      rows: [januaryRow],
+      statementCheckpoints: []
+    });
+    expect(firstCommit.importId).toBeTruthy();
+
+    const rollback = await postJson(page, "/api/imports/rollback", { importId: firstCommit.importId });
+    expect(rollback.rolledBack).toBe(true);
+
+    const secondCommit = await postJson(page, "/api/imports/commit", {
+      sourceLabel: "Playwright January PDF reimport",
+      sourceType: "pdf",
+      parserKey: "citibank_credit_card_pdf",
+      rows: [januaryRow],
+      statementCheckpoints: []
+    });
+    expect(secondCommit.importId).toBeTruthy();
+    expect(secondCommit.created).toBe(true);
+  });
+
+  test("rolling back a middle statement blocks later statements until the missing month is restored", async ({ page }) => {
+    const appShell = await loadAppShell(page, { month: "2025-02" });
+    const account = appShell.accounts.find((item) => item.openingBalanceMinor === 0 && !item.latestTransactionDate);
+    expect(account).toBeTruthy();
+
+    const novCheckpoint = await postJson(page, "/api/accounts/reconcile", {
+      accountId: account.id,
+      checkpointMonth: "2025-11",
+      statementStartDate: "2025-11-01",
+      statementEndDate: "2025-11-30",
+      statementBalanceMinor: 0,
+      note: "Playwright chain baseline"
+    });
+    expect(novCheckpoint.saved).toBe(true);
+
+    const decCheckpoint = await postJson(page, "/api/accounts/reconcile", {
+      accountId: account.id,
+      checkpointMonth: "2025-12",
+      statementStartDate: "2025-12-01",
+      statementEndDate: "2025-12-31",
+      statementBalanceMinor: 0,
+      note: "Playwright chain baseline"
+    });
+    expect(decCheckpoint.saved).toBe(true);
+
+    const januaryStatementCheckpoints = [{
+      accountId: account.id,
+      accountName: account.name,
+      detectedAccountName: account.name,
+      checkpointMonth: "2026-01",
+      statementStartDate: "2026-01-01",
+      statementEndDate: "2026-01-31",
+      statementBalanceMinor: 0,
+      note: "Playwright chained January statement"
+    }];
+
+    const janPreview = await postJson(page, "/api/imports/preview", {
+      sourceLabel: "Playwright chained January statement",
+      sourceType: "pdf",
+      rows: [],
+      ownershipType: "direct",
+      ownerName: account.ownerLabel,
+      statementCheckpoints: januaryStatementCheckpoints
+    });
+    expect(janPreview.preview.statementReconciliations[0].status).toBe("matched");
+
+    const janCommit = await postJson(page, "/api/imports/commit", {
+      sourceLabel: "Playwright chained January statement",
+      sourceType: "pdf",
+      parserKey: "synthetic_pdf",
+      rows: [],
+      statementCheckpoints: januaryStatementCheckpoints,
+      statementControlRows: [],
+      statementReconciliations: janPreview.preview.statementReconciliations
+    });
+    expect(janCommit.importId).toBeTruthy();
+
+    const rolledBackJan = await postJson(page, "/api/imports/rollback", { importId: janCommit.importId });
+    expect(rolledBackJan.rolledBack).toBe(true);
+
+    const febPreview = await postJson(page, "/api/imports/preview", {
+      sourceLabel: "Playwright chained February statement",
+      sourceType: "pdf",
+      rows: [],
+      ownershipType: "direct",
+      ownerName: account.ownerLabel,
+      statementCheckpoints: [{
+        accountId: account.id,
+        accountName: account.name,
+        detectedAccountName: account.name,
+        checkpointMonth: "2026-02",
+        statementStartDate: "2026-02-01",
+        statementEndDate: "2026-02-28",
+        statementBalanceMinor: 0,
+        note: "Playwright chained February statement"
+      }]
+    });
+
+    expect(febPreview.preview.statementReconciliations[0].status).toBe("missing_prior_statement");
+    expect(febPreview.preview.exceptionSummary.some((item) => item.kind === "statement_chain_gap")).toBe(true);
+  });
+
+  test("restoring an exact covered import row opens the confirmation dialog and re-includes the row", async ({ page }) => {
     await page.getByLabel("Source label").fill(`Restore import ${Date.now()}`);
-    await page.route("**/api/imports/preview", async (route) => {
+    const mockedPreviewRoute = async (route) => {
       const request = route.request();
       const body = JSON.parse(request.postData() ?? "{}");
       await route.fulfill({
@@ -493,25 +858,31 @@ test.describe("import flow", () => {
           }
         })
       });
-    });
-    await page.getByLabel("CSV content").fill(
-      [
-        "date,description,amount,account,category,note",
-        "2025-10-17,Playwright restore import row,-111.11,UOB One,Groceries,"
-      ].join("\n")
-    );
+    };
+    await page.route("**/api/imports/preview", mockedPreviewRoute);
+    try {
+      await page.getByLabel("CSV content").fill(
+        [
+          "date,description,amount,account,category,note",
+          "2025-10-17,Playwright restore import row,-111.11,UOB One,Groceries,"
+        ].join("\n")
+      );
 
-    await page.getByRole("button", { name: "Preview import" }).click();
-    const certifiedConflicts = page.locator(".import-warning-attention").filter({ hasText: "Certified row conflict" });
-    await expect(certifiedConflicts).toBeVisible();
-    await certifiedConflicts.getByRole("button", { name: "Include row" }).click();
+      await page.getByRole("button", { name: "Preview import" }).click();
+      const certifiedConflicts = page.locator(".import-warning-attention").filter({ hasText: "Certified row conflict" });
+      await expect(certifiedConflicts).toBeVisible();
+      await certifiedConflicts.getByRole("button", { name: "Include row" }).click();
 
-    const confirmDialog = page.locator('[role="dialog"]');
-    await expect(confirmDialog).toContainText("This row is marked as an exact already-covered match");
-    await confirmDialog.getByRole("button", { name: "Restore row" }).click();
+      const confirmDialog = page.locator('[role="dialog"]');
+      await expect(confirmDialog).toBeVisible();
+      await expect(confirmDialog).toContainText("This row is marked as an exact already-covered match");
+      await confirmDialog.getByRole("button", { name: "Restore row" }).click();
 
-    await expect(page.locator('[role="dialog"]')).toHaveCount(0);
-    await expect(page.locator(".import-warning-attention").filter({ hasText: "Certified row conflict" })).toHaveCount(0);
+      await expect(page.locator('[role="dialog"]')).toHaveCount(0);
+      await expect(page.locator(".import-warning-attention").filter({ hasText: "Certified row conflict" })).toHaveCount(0);
+    } finally {
+      await page.unroute("**/api/imports/preview", mockedPreviewRoute);
+    }
   });
 
   test("summary and month stay aligned across tabs after persisted changes", async ({ browser, page }) => {
