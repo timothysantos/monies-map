@@ -661,6 +661,8 @@ themselves.
 
 Storage:
 - `statement_reconciliation_certificates`
+- `statement_chain_breaks` records a missing certified month after a middle
+  statement rollback so later statements cannot silently skip the gap.
 
 Relationships:
 - belongs to one `household`

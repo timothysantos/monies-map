@@ -51,13 +51,13 @@ export async function saveDemoSettings(db: D1Database, settings: DemoSettings) {
     .run();
 }
 
-export async function reseedDemoSettings(db: D1Database): Promise<DemoSettings> {
+export async function reseedDemoSettings(db: D1Database, seedMonth?: string): Promise<DemoSettings> {
   const nextSettings: DemoSettings = {
     ...defaultDemoSettings,
     lastSeededAt: new Date().toISOString(),
     emptyState: false
   };
-  await reseedDemoData(db, nextSettings);
+  await reseedDemoData(db, nextSettings, seedMonth);
   await saveDemoSettings(db, nextSettings);
   return nextSettings;
 }

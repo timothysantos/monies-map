@@ -225,7 +225,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
           invalidateSummary: refreshPlan.invalidateSummary
         });
       }
-      refreshEntriesInBackground();
+      await onRefresh();
       return {
         ok: true,
         entry: savedEntrySnapshot
@@ -583,7 +583,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
         invalidateMonth: true,
         invalidateSummary: true
       });
-      refreshEntriesInBackground();
+      await onRefresh();
       return {
         ok: true,
         ...data

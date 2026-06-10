@@ -676,7 +676,13 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsRecentImportsRefreshing(true);
     try {
       await rollbackImportBatch(importId);
-      await onRefresh({ broadcast: true, invalidateImports: true });
+      await onRefresh({
+        broadcast: true,
+        invalidateEntries: true,
+        invalidateImports: true,
+        invalidateMonth: true,
+        invalidateSummary: true
+      });
     } finally {
       setIsSubmitting(false);
       setIsRecentImportsRefreshing(false);

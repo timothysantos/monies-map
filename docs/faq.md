@@ -764,6 +764,12 @@ A checkpoint-only PDF can be rolled back too, as long as it is still the newest
 statement certificate for that account. That removes the statement checkpoint
 and reconciliation certificate metadata, without touching older ledger activity.
 
+If the rolled-back PDF was the first statement for an otherwise blank account,
+rollback returns the account to its blank state and a later statement may become
+the new starting point. If earlier statement checkpoints already exist, rollback
+creates a statement-chain gap. Later statements stay blocked until the missing
+statement month is imported again.
+
 A PDF statement should not be rolled back once it certifies pre-existing ledger
 rows, such as rows that came from a mid-cycle export. At that point the
 statement has promoted existing working rows to bank-certified facts while

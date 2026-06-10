@@ -278,7 +278,8 @@ export const messages = {
       statement_mismatch: (count) => `${count} statement mismatch${count === 1 ? "" : "es"}`,
       account_identity: (count) => `${count} account identity proof${count === 1 ? "" : "s"}`,
       entry_reconciliation: (count) => `${count} entry reconciliation exception${count === 1 ? "" : "s"}`,
-      prior_import_context: (count) => `${count} prior import context item${count === 1 ? "" : "s"}`
+      prior_import_context: (count) => `${count} prior import context item${count === 1 ? "" : "s"}`,
+      statement_chain_gap: (count) => `${count} missing statement chain gap${count === 1 ? "" : "s"}`
     },
     previewGuardrailsLabel: "Import preview checks",
     previewCommitSummaryLabel: "Import commit summary",
@@ -331,7 +332,8 @@ export const messages = {
       matched: "Matched",
       mismatch: "Mismatch",
       unknown_account: "Needs account",
-      identity_unconfirmed: "Needs account proof"
+      identity_unconfirmed: "Needs account proof",
+      missing_prior_statement: "Needs earlier statement"
     },
     reconciliationMatchesTitle: "Entry reconciliation matches needing decision",
     reconciliationMatchesDetail: "These rows could not be reconciled automatically. Review only these exceptions before commit.",
