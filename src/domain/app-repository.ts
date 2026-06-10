@@ -142,12 +142,12 @@ const IMPORT_COMMIT_STATEMENT_CHUNK_SIZE = 90;
 const OLD_SHOPPING_COLOR_HEX = "#D4B35D";
 const SHOPPING_COLOR_HEX = "#D86B73";
 
-function resolveSeededDemoTransactionDate(entryId: string, date: string) {
+function resolveSeededDemoTransactionDate(entryId: string, date: string, seedMonth?: string) {
   if (!entryId.startsWith("txn-oct-")) {
     return date;
   }
 
-  const currentMonthKey = getCurrentMonthKey();
+  const currentMonthKey = seedMonth ?? getCurrentMonthKey();
   const [year, month] = currentMonthKey.split("-").map(Number);
   return shiftPlanDate(date, year, month) ?? date;
 }
@@ -458,6 +458,21 @@ export async function ensureDemoSchema(db: D1Database) {
 
   await db
     .prepare(`
+      CREATE TABLE IF NOT EXISTS statement_chain_breaks (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL,
+        account_id TEXT NOT NULL,
+        missing_checkpoint_month TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (household_id) REFERENCES households(id),
+        FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+        UNIQUE (household_id, account_id, missing_checkpoint_month)
+      )
+    `)
+    .run();
+
+  await db
+    .prepare(`
       CREATE TABLE IF NOT EXISTS reconciliation_exceptions (
         id TEXT PRIMARY KEY,
         household_id TEXT NOT NULL,
@@ -669,10 +684,10 @@ async function ensureHotReadIndexes(db: D1Database) {
   await db.batch(indexStatements.map((statement) => db.prepare(statement)));
 }
 
-export async function reseedDemoData(db: D1Database, settings: DemoSettings) {
+export async function reseedDemoData(db: D1Database, settings: DemoSettings, seedMonth?: string) {
   await ensureDemoSchema(db);
   await clearDemoData(db);
-  await seedDemoData(db, settings);
+  await seedDemoData(db, settings, seedMonth);
 }
 
 export async function seedEmptyStateReferenceData(db: D1Database) {
@@ -864,6 +879,7 @@ export async function clearDemoData(db: D1Database) {
     "DELETE FROM monthly_notes",
     "DELETE FROM monthly_snapshots",
     "DELETE FROM statement_reconciliation_certificates",
+    "DELETE FROM statement_chain_breaks",
     "DELETE FROM import_rows",
     "DELETE FROM imports",
     "DELETE FROM account_balance_checkpoints",
@@ -885,7 +901,7 @@ export async function clearDemoData(db: D1Database) {
   await db.prepare("PRAGMA defer_foreign_keys = OFF").run();
 }
 
-async function seedDemoData(db: D1Database, settings: DemoSettings) {
+async function seedDemoData(db: D1Database, settings: DemoSettings, seedMonth?: string) {
   await db
     .prepare("INSERT INTO households (id, name, base_currency) VALUES (?, ?, ?)")
     .bind(defaultHousehold.id, defaultHousehold.name, defaultHousehold.baseCurrency)
@@ -1002,7 +1018,7 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
   }
 
   for (const row of demoMonthPlanRows) {
-    const monthKey = inferMonthKeyFromPlanRow(row.id);
+    const monthKey = inferMonthKeyFromPlanRow(row.id, seedMonth);
     const [planYear, planMonth] = monthKey.split("-").map(Number);
     const planDate = buildPlanDate(monthKey, row.dayLabel);
     await db
@@ -1138,7 +1154,7 @@ async function seedDemoData(db: D1Database, settings: DemoSettings) {
         defaultHousehold.id,
         findSeedAccountId(entry.accountName),
         transferGroupIdByTransactionId.get(entry.id) ?? null,
-        resolveSeededDemoTransactionDate(entry.id, entry.date),
+        resolveSeededDemoTransactionDate(entry.id, entry.date, seedMonth),
         entry.description,
         entry.amountMinor,
         "SGD",
@@ -1332,7 +1348,21 @@ async function seedDemoSplitData(db: D1Database) {
       .run();
   }
 
-  const importedTransactionSeeds = [
+  const importedTransactionSeeds: Array<{
+    id: string;
+    importId: string;
+    accountName: string;
+    date: string;
+    description: string;
+    categoryName: string;
+    entryType: "expense" | "income" | "transfer";
+    transferDirection?: "in" | "out";
+    ownershipType: "direct" | "shared";
+    ownerName?: string;
+    amountMinor: number;
+    splitBasisPoints?: number;
+    note?: string;
+  }> = [
     {
       id: "txn-import-split-okaeri-linked",
       importId: "import-2025-10-citi",
@@ -2643,7 +2673,10 @@ export async function settleTransferPair(
       .run();
   }
 
-  const months = new Set([currentEntry.transaction_date.slice(0, 7), counterpartEntry?.transaction_date?.slice(0, 7)].filter(Boolean));
+  const months = new Set(
+    [currentEntry.transaction_date.slice(0, 7), counterpartEntry?.transaction_date?.slice(0, 7)]
+      .filter((month): month is string => Boolean(month))
+  );
   for (const month of months) {
     await recalculateMonthlySnapshots(db, month);
   }
@@ -3088,9 +3121,26 @@ export async function commitImportBatch(
     note?: string;
   }
 ) {
-  const importId = `import-${crypto.randomUUID()}`;
+  const importId = await buildImportCommitId(input);
   const monthsToRecalculate = new Set<string>();
   const isOfficialStatementImport = input.sourceType === "pdf";
+
+  const existingImport = await db
+    .prepare("SELECT status FROM imports WHERE household_id = ? AND id = ?")
+    .bind(DEFAULT_HOUSEHOLD_ID, importId)
+    .first<{ status: string }>();
+
+  if (existingImport?.status === "completed") {
+    return { importId, created: false, importedRows: input.rows.length };
+  }
+
+  if (existingImport?.status === "draft" || existingImport?.status === "rolled_back") {
+    await cleanupImportBatchRows(db, importId);
+    await db
+      .prepare("DELETE FROM imports WHERE household_id = ? AND id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, importId)
+      .run();
+  }
 
   await db
     .prepare(`
@@ -3404,6 +3454,7 @@ export async function commitImportBatch(
         accountsById,
         accountRowsByName
       });
+      await clearStatementChainBreaksForImport(db, input.statementCheckpoints);
     }
 
     await db
@@ -3431,6 +3482,31 @@ export async function commitImportBatch(
   });
 
   return { importId, created: true, importedRows: input.rows.length };
+}
+
+async function buildImportCommitId(input: {
+  sourceLabel: string;
+  sourceType?: "csv" | "pdf" | "manual";
+  parserKey?: string;
+  rows: ImportPreviewRowDto[];
+  statementControlRows?: ImportPreviewRowDto[];
+  statementReconciliations?: ImportPreviewStatementReconciliationDto[];
+  statementCheckpoints?: StatementCheckpointDraftDto[];
+  note?: string;
+}) {
+  const signature = JSON.stringify({
+    sourceLabel: input.sourceLabel,
+    sourceType: input.sourceType ?? "csv",
+    parserKey: input.parserKey ?? "generic_csv",
+    note: input.note ?? null,
+    rows: input.rows.map((row) => buildImportRowHash(row)),
+    statementControlRows: input.statementControlRows?.map((row) => buildImportRowHash(row)) ?? [],
+    statementReconciliations: input.statementReconciliations ?? [],
+    statementCheckpoints: input.statementCheckpoints ?? []
+  });
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(signature));
+  const hash = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `import-${hash.slice(0, 24)}`;
 }
 
 function resolveImportPreviewEventDate(row: ImportPreviewRowDto) {
@@ -3672,6 +3748,10 @@ export async function rollbackImportBatch(
     .bind(DEFAULT_HOUSEHOLD_ID, input.importId)
     .all<{ transaction_date: string }>();
 
+  if (importRecord.source_type === "pdf") {
+    await recordStatementChainBreaksForRollback(db, input.importId);
+  }
+
   await cleanupImportBatchRows(db, input.importId);
 
   await db
@@ -3692,6 +3772,96 @@ export async function rollbackImportBatch(
   });
 
   return { importId: input.importId, rolledBack: true };
+}
+
+async function recordStatementChainBreaksForRollback(db: D1Database, importId: string) {
+  const certificates = await db
+    .prepare(`
+      SELECT account_id, checkpoint_month
+      FROM statement_reconciliation_certificates
+      WHERE household_id = ? AND import_id = ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, importId)
+    .all<{
+      account_id: string;
+      checkpoint_month: string;
+    }>();
+
+  if (!certificates.results.length) {
+    return;
+  }
+
+  const blockers: D1PreparedStatement[] = [];
+  for (const certificate of certificates.results) {
+    const earlierCheckpoint = await db
+      .prepare(`
+        SELECT 1
+        FROM account_balance_checkpoints
+        WHERE household_id = ?
+          AND account_id = ?
+          AND checkpoint_month < ?
+        LIMIT 1
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, certificate.account_id, certificate.checkpoint_month)
+      .first<{ 1: number }>();
+
+    if (!earlierCheckpoint) {
+      continue;
+    }
+
+    blockers.push(
+      db
+        .prepare(`
+          INSERT INTO statement_chain_breaks (
+            id, household_id, account_id, missing_checkpoint_month
+          ) VALUES (?, ?, ?, ?)
+          ON CONFLICT(household_id, account_id, missing_checkpoint_month) DO NOTHING
+        `)
+        .bind(
+          `statement-chain-break-${crypto.randomUUID()}`,
+          DEFAULT_HOUSEHOLD_ID,
+          certificate.account_id,
+          certificate.checkpoint_month
+        )
+    );
+  }
+
+  if (blockers.length) {
+    await db.batch(blockers);
+  }
+}
+
+async function clearStatementChainBreaksForImport(db: D1Database, checkpoints: StatementCheckpointDraftDto[]) {
+  if (!checkpoints.length) {
+    return;
+  }
+
+  const statements: D1PreparedStatement[] = [];
+  for (const checkpoint of checkpoints) {
+    const account = await db
+      .prepare("SELECT id FROM accounts WHERE household_id = ? AND id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, checkpoint.accountId)
+      .first<{ id: string }>();
+
+    if (!account) {
+      continue;
+    }
+
+    statements.push(
+      db
+        .prepare(`
+          DELETE FROM statement_chain_breaks
+          WHERE household_id = ?
+            AND account_id = ?
+            AND missing_checkpoint_month = ?
+        `)
+        .bind(DEFAULT_HOUSEHOLD_ID, checkpoint.accountId, checkpoint.checkpointMonth)
+    );
+  }
+
+  if (statements.length) {
+    await db.batch(statements);
+  }
 }
 
 async function cleanupImportBatchRows(db: D1Database, importId: string) {

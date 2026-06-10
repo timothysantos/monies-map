@@ -14,12 +14,13 @@ Use it together with:
 
 | Risk area | What should be tested | Primary slice | Test level |
 | --- | --- | --- | --- |
-| `src/client/App.jsx` bootstrap coupling | Shell state, route fallback, cache reset, and cross-tab restore stay coherent while bootstrap is being retired | `app shell` then `summary`, `month`, `entries` | `Integration` and `E2E` |
+| `src/client/App.jsx` app-shell coupling | Shell state, route fallback, cache reset, and cross-tab restore stay coherent while the shell is being retired | `app shell` then `summary`, `month`, `entries` | `Integration` and `E2E` |
 | `src/client/query-mutations.js` broad invalidation | Mutation invalidation hits only the affected queries and does not fan out to broad buckets unless the docs allow it | `entries`, `month`, `summary`, `imports`, `settings` | `Integration` |
-| `src/client/splits-dialogs.jsx` amount focus/select behavior | Amount inputs do not force select-all just to replace a value; focus should not create a keyboard trap | `splits` | `E2E` |
+| `src/client/focus-utils.js`, `src/client/splits-dialogs.jsx`, `src/client/splits-linked-entry-dialog.jsx`, `src/client/account-dialog.jsx`, `src/client/settings-reconciliation-dialog.jsx` amount focus/select behavior | Money inputs do not force select-all just to replace a value; focus should not create a keyboard trap, and the replacement contract stays consistent across core workflows | `entries`, `month`, `splits`, `imports`, `settings` | `E2E` |
 | `src/client/entry-editor.jsx` amount typing contract | Editable amount fields preserve typed draft state and normalize on blur without requiring select-all | `entries` | `E2E` |
+| `src/client/entry-editor.jsx` transfer dialog render path | Matched and unmatched transfer rows can open the transfer manager without a missing-import crash, and both transfer directions survive the same render path | `entries` | `E2E` |
 | `src/client/month-panel.jsx` month amount editing | Month budget and planned amount fields accept replacement typing naturally and normalize after blur | `months` | `E2E` |
-| `src/client/import-preview-review.jsx` and statement compare amount editing | Import and reconciliation money fields follow the same typing and normalization contract as entries | `imports` | `E2E` |
+| `src/client/import-preview-rows-table.jsx` and `src/client/statement-compare.jsx` import/reconciliation amount editing | Import and reconciliation money fields follow the same typing and normalization contract as entries | `imports` | `E2E` |
 | Mobile sheets versus desktop editors | Same workflow versus separate workflow is deliberate, and workflow locks protect active sheets from background freshness | `entries`, `months`, `imports` | `E2E` |
 | `src/client/monies-client-service.js` helper facade boundaries | Shared helper APIs stay small, and slice-specific logic does not leak back into the facade | all slices, especially `entries` and `months` | `Integration` |
 

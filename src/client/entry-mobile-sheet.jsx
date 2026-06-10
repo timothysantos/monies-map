@@ -23,6 +23,15 @@ export function EntryMobileSheet({
         onClick={onClose}
       />
       <section className="entry-composer entry-mobile-sheet" role="dialog" aria-modal="true" aria-label={title}>
+        <form
+          className="entry-mobile-sheet-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!isSaveDisabled) {
+              onSave();
+            }
+          }}
+        >
         <div className="entry-mobile-sheet-scroll">
           <div className="note-dialog-head split-dialog-head entry-composer-head">
             <div className="entry-composer-copy">
@@ -44,10 +53,11 @@ export function EntryMobileSheet({
             <div className="entry-inline-actions entry-mobile-sheet-actions">
               {secondaryAction}
               <button type="button" className="subtle-cancel" onClick={onClose}>Cancel</button>
-              <button type="button" className="dialog-primary" disabled={isSaveDisabled} onClick={onSave}>{saveLabel}</button>
+              <button type="submit" className="dialog-primary" disabled={isSaveDisabled}>{saveLabel}</button>
             </div>
           )}
         </div>
+        </form>
       </section>
     </>
   );
@@ -109,14 +119,14 @@ export function EntryMobileEditExpenseFooter({
         </button>
         <span className="entry-mobile-sheet-action-divider" aria-hidden="true">|</span>
         <button type="button" className="subtle-cancel" onClick={onCancel}>Cancel</button>
-        <button type="button" className="dialog-primary" disabled={isSaveDisabled} onClick={onSave}>{saveLabel}</button>
+        <button type="submit" className="dialog-primary" disabled={isSaveDisabled}>{saveLabel}</button>
       </div>
     );
   }
 
   if (mode === "picker") {
     return (
-      <div className="entry-mobile-sheet-confirm-actions">
+        <div className="entry-mobile-sheet-confirm-actions">
         <span className="entry-mobile-sheet-confirm-copy">Choose split group</span>
         <ResponsiveSelect
           title="Split group"
@@ -162,7 +172,7 @@ export function EntryMobileEditExpenseFooter({
       </button>
       <span className="entry-mobile-sheet-action-divider" aria-hidden="true">|</span>
       <button type="button" className="subtle-cancel" onClick={onCancel}>Cancel</button>
-      <button type="button" className="dialog-primary" disabled={isSaveDisabled} onClick={onSave}>{saveLabel}</button>
+      <button type="submit" className="dialog-primary" disabled={isSaveDisabled}>{saveLabel}</button>
     </div>
   );
 }

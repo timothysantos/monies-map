@@ -377,7 +377,16 @@ export function SettingsTrustSection({
             </div>
 
             {draftOpen ? (
-              <div className="settings-exception-form">
+              <form
+                className="settings-exception-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (isSubmitting || !draft.title.trim()) {
+                    return;
+                  }
+                  void handleCreateException();
+                }}
+              >
                 <label>
                   <span>{messages.settings.exceptionAccountLabel}</span>
                   <select
@@ -396,6 +405,7 @@ export function SettingsTrustSection({
                   <input
                     className="table-edit-input"
                     type="month"
+                    enterKeyHint="next"
                     value={draft.checkpointMonth}
                     onChange={(event) => updateDraft({ checkpointMonth: event.target.value })}
                   />
@@ -428,6 +438,7 @@ export function SettingsTrustSection({
                   <span>{messages.settings.exceptionTitleLabel}</span>
                   <input
                     className="table-edit-input"
+                    enterKeyHint="done"
                     value={draft.title}
                     onChange={(event) => updateDraft({ title: event.target.value })}
                     placeholder={messages.settings.exceptionTitlePlaceholder}
@@ -445,15 +456,14 @@ export function SettingsTrustSection({
                 </label>
                 <div className="settings-exception-form-actions">
                   <button
-                    type="button"
+                    type="submit"
                     className="subtle-action"
                     disabled={isSubmitting || !draft.title.trim()}
-                    onClick={handleCreateException}
                   >
                     {isSubmitting ? messages.common.working : messages.settings.saveReconciliationException}
                   </button>
                 </div>
-              </div>
+              </form>
             ) : null}
 
             <div className="settings-exception-list">

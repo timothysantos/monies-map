@@ -17,6 +17,8 @@ test("parses a tiny UOB One current-transaction XLS stored in the OLE mini-strea
   );
 
   assert.equal(parsed.parserKey, "uob_current_transactions_xls");
+  assert.equal(parsed.checkpoints.length, 0);
+  assert.equal(parsed.warnings.length, 0);
   assert.equal(parsed.rows.length, 1);
   assert.deepEqual(parsed.rows[0], {
     date: "2026-05-02",
@@ -37,6 +39,8 @@ test("parses a later tiny UOB One current-transaction XLS from the same source",
   );
 
   assert.equal(parsed.parserKey, "uob_current_transactions_xls");
+  assert.equal(parsed.checkpoints.length, 0);
+  assert.equal(parsed.warnings.length, 0);
   assert.equal(parsed.rows.length, 2);
   assert.deepEqual(parsed.rows.at(-1), {
     date: "2026-05-04",
@@ -50,20 +54,28 @@ test("parses a later tiny UOB One current-transaction XLS from the same source",
   });
 });
 
-test("parses UOB credit-card current-transaction XLS files via the original workbook stream path", () => {
-  const oneCard = parseCurrentTransactionSpreadsheet(
+test("parses UOB One Card current-transaction XLS files via the original workbook stream path", () => {
+  const parsed = parseCurrentTransactionSpreadsheet(
     readWorkbookFixture("CC_TXN_History_06052026211223-onecard-tim-06-may.xls"),
     "CC_TXN_History_06052026211223-onecard-tim-06-may.xls"
   );
-  const ladyCard = parseCurrentTransactionSpreadsheet(
+
+  assert.equal(parsed.parserKey, "uob_credit_card_current_transactions_xls");
+  assert.equal(parsed.checkpoints.length, 0);
+  assert.equal(parsed.warnings.length, 0);
+  assert.ok(parsed.rows.length > 0);
+  assert.equal(parsed.rows[0].account, "UOB One Card");
+});
+
+test("parses UOB Lady's Card current-transaction XLS files via the original workbook stream path", () => {
+  const parsed = parseCurrentTransactionSpreadsheet(
     readWorkbookFixture("CC_TXN_History_06052026211316-ladys-tim-06-may.xls"),
     "CC_TXN_History_06052026211316-ladys-tim-06-may.xls"
   );
 
-  assert.equal(oneCard.parserKey, "uob_credit_card_current_transactions_xls");
-  assert.equal(ladyCard.parserKey, "uob_credit_card_current_transactions_xls");
-  assert.ok(oneCard.rows.length > 0);
-  assert.ok(ladyCard.rows.length > 0);
-  assert.equal(oneCard.rows[0].account, "UOB One Card");
-  assert.equal(ladyCard.rows[0].account, "UOB Lady's Card");
+  assert.equal(parsed.parserKey, "uob_credit_card_current_transactions_xls");
+  assert.equal(parsed.checkpoints.length, 0);
+  assert.equal(parsed.warnings.length, 0);
+  assert.ok(parsed.rows.length > 0);
+  assert.equal(parsed.rows[0].account, "UOB Lady's Card");
 });

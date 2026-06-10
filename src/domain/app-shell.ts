@@ -20,18 +20,17 @@ import {
   loadReconciliationExceptions,
   findSuggestedLoginPersonId,
   loadMonthIncomeRows,
-  loadMonthIncomeRowsForViews,
   loadMonthPlanRows,
   resolveLoginIdentityPersonId,
   loadTrackedMonths,
   loadUnresolvedTransfers,
   seedEmptyStateReferenceData,
   loadSummaryMonths,
-  loadSummaryMonthsForScopes
 } from "./app-repository";
 import type {
   AccountDto,
-  AppBootstrapDto,
+  AppShellDto,
+  EntriesShellDto,
   CategoryDto,
   ContextViewDto,
   DonutChartDatumDto,
@@ -60,66 +59,43 @@ import type {
 
 let appDataReadyPromise: Promise<DemoSettings> | null = null;
 
+// This module owns shell orchestration and shell-shared DTO builders.
+// Route-specific fragments belong in `src/domain/route-context.ts`,
+// `src/domain/page-labels.ts`, or the relevant page module, not here.
 export function invalidateAppDataCache() {
   appDataReadyPromise = null;
 }
 
-export async function buildBootstrapDto(
+export function primeAppDataCache(demo: DemoSettings) {
+  appDataReadyPromise = Promise.resolve(demo);
+}
+
+export async function loadAppShellContext(
   db: D1Database,
-  selectedMonth = getCurrentMonthKey(),
-  selectedScope: PersonScope = "direct_plus_shared",
-  summaryStartMonth?: string,
-  summaryEndMonth?: string,
   viewerEmail?: string,
-  appEnvironment?: AppBootstrapDto["appEnvironment"]
-): Promise<AppBootstrapDto> {
-  const demo = await ensureAppData(db);
-  const [household, accounts, categories, categoryMatchRuleSuggestions, trackedMonths] = await Promise.all([
+  appEnvironment?: EntriesShellDto["appEnvironment"]
+): Promise<AppShellDto> {
+  // Load the global shell metadata without pulling any route-specific page
+  // payloads into the shell response.
+  const [household, accounts, categories, trackedMonths] = await Promise.all([
     loadHousehold(db),
     loadAccounts(db),
     loadCategories(db),
-    loadCategoryMatchRuleSuggestions(db),
     loadTrackedMonths(db)
   ]);
-  const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
-    ? selectedMonth
-    : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
-  const [monthEntries, monthPlanRows] = await Promise.all([
-    loadEntries(db, effectiveSelectedMonth),
-    loadMonthPlanRows(db, effectiveSelectedMonth)
-  ]);
-  const primaryPersonId = household.people[0]?.id ?? "person-primary";
-  const partnerPersonId = household.people[1]?.id ?? "person-partner";
-  const viewIds = ["household", primaryPersonId, partnerPersonId];
-  const [summaryMonthsByView, incomeRowsByView] = await Promise.all([
-    loadSummaryMonthsForScopes(db, viewIds),
-    loadMonthIncomeRowsForViews(db, viewIds, effectiveSelectedMonth)
-  ]);
-  const summaryRangeMonths = buildSummaryRange(
-    trackedMonths,
-    summaryStartMonth,
-    summaryEndMonth ?? effectiveSelectedMonth
-  );
-  const plannedSummaryMonthsByView = await loadPlannedSummaryMonthsForViews(db, viewIds, summaryRangeMonths);
-  const summaryEntries = await loadEntriesForMonths(db, summaryRangeMonths);
-  const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
   const viewerPersonId = await resolveLoginIdentityPersonId(db, viewerEmail);
   const suggestedPersonId = viewerEmail && !viewerPersonId
     ? await findSuggestedLoginPersonId(db)
     : undefined;
-  const views: ContextViewDto[] = [
-    buildContextView("household", "Household", selectedScope, summaryMonthsByView, plannedSummaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, [], [], [], [], categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
-    buildContextView(primaryPersonId, personNameById[primaryPersonId] ?? "Primary", selectedScope, summaryMonthsByView, plannedSummaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, [], [], [], [], categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById),
-    buildContextView(partnerPersonId, personNameById[partnerPersonId] ?? "Partner", selectedScope, summaryMonthsByView, plannedSummaryMonthsByView, incomeRowsByView, summaryEntries, monthEntries, monthPlanRows, [], [], [], [], categories, accounts, effectiveSelectedMonth, summaryRangeMonths, trackedMonths, personNameById)
-  ];
 
   return {
     appEnvironment,
     household,
     accounts,
     categories,
-    views,
+    availableViewIds: ["household", ...household.people.map((person) => person.id)],
     selectedViewId: "household",
+    trackedMonths,
     viewerPersonId,
     viewerIdentity: viewerEmail ? {
       email: viewerEmail,
@@ -128,278 +104,11 @@ export async function buildBootstrapDto(
     viewerRegistration: viewerEmail && suggestedPersonId ? {
       email: viewerEmail,
       suggestedPersonId
-    } : undefined,
-    importsPage: {
-      recentImports: [],
-      rollbackPolicy:
-        "Every transaction is tied to an import batch so the last import can be removed without touching older data."
-    },
-    settingsPage: {
-      demo,
-      categoryMatchRules: [],
-      categoryMatchRuleSuggestions,
-      unresolvedTransfers: [],
-      reconciliationExceptions: [],
-      recentAuditEvents: []
-    }
+    } : undefined
   };
 }
 
-export async function buildEntriesBootstrapDto(
-  db: D1Database,
-  selectedViewId = "household",
-  selectedMonth = getCurrentMonthKey(),
-  viewerEmail?: string,
-  appEnvironment?: AppBootstrapDto["appEnvironment"]
-): Promise<AppBootstrapDto> {
-  const demo = await ensureAppData(db);
-  const [household, accounts, categories, trackedMonths, splitGroups] = await Promise.all([
-    loadHousehold(db),
-    loadAccounts(db),
-    loadCategories(db),
-    loadTrackedMonths(db),
-    loadSplitGroups(db)
-  ]);
-  const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
-    ? selectedMonth
-    : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
-  const availableMonths = trackedMonths.length ? trackedMonths : [effectiveSelectedMonth];
-  const monthEntries = await loadEntries(db, effectiveSelectedMonth);
-  const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
-  const viewIds = ["household", ...household.people.map((person) => person.id)];
-  const viewId = selectedViewId === "household" || household.people.some((person) => person.id === selectedViewId)
-    ? selectedViewId
-    : "household";
-  const viewerPersonId = await resolveLoginIdentityPersonId(db, viewerEmail);
-  const suggestedPersonId = viewerEmail && !viewerPersonId
-    ? await findSuggestedLoginPersonId(db)
-    : undefined;
-  const views = viewIds.map((id) =>
-    buildEntriesContextView(
-      id,
-      personNameById[id] ?? "Household",
-      adjustEntriesForView(monthEntries, id),
-      splitGroups,
-      effectiveSelectedMonth,
-      availableMonths
-    )
-  );
-
-  return {
-    appEnvironment,
-    household,
-    accounts,
-    categories,
-    views,
-    selectedViewId: viewId,
-    viewerPersonId,
-    viewerIdentity: viewerEmail ? {
-      email: viewerEmail,
-      personId: viewerPersonId
-    } : undefined,
-    viewerRegistration: viewerEmail && suggestedPersonId ? {
-      email: viewerEmail,
-      suggestedPersonId
-    } : undefined,
-    importsPage: {
-      recentImports: [],
-      rollbackPolicy:
-        "Every transaction is tied to an import batch so the last import can be removed without touching older data."
-    },
-    settingsPage: {
-      demo,
-      categoryMatchRules: [],
-      categoryMatchRuleSuggestions: [],
-      unresolvedTransfers: [],
-      reconciliationExceptions: [],
-      recentAuditEvents: []
-    }
-  };
-}
-
-export async function buildEntriesPageDto(
-  db: D1Database,
-  selectedViewId = "household",
-  selectedMonth = getCurrentMonthKey()
-): Promise<EntriesPageDto> {
-  await ensureAppData(db);
-
-  const [household, trackedMonths, splitGroups] = await Promise.all([
-    loadHousehold(db),
-    loadTrackedMonths(db),
-    loadSplitGroups(db)
-  ]);
-  const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
-    ? selectedMonth
-    : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
-  const monthEntries = await loadEntries(db, effectiveSelectedMonth);
-  const personNameById = Object.fromEntries(household.people.map((person) => [person.id, person.name]));
-  const viewId = selectedViewId === "household" || household.people.some((person) => person.id === selectedViewId)
-    ? selectedViewId
-    : "household";
-  const label = viewId === "household" ? "Household" : personNameById[viewId] ?? "Household";
-
-  return {
-    viewId,
-    label,
-    splitGroups: [
-      { id: "split-group-none", name: "Non-group expenses" },
-      ...splitGroups.map((group) => ({
-        id: group.id,
-        name: group.name
-      }))
-    ],
-    monthPage: {
-      month: effectiveSelectedMonth,
-      selectedPersonId: viewId,
-      selectedScope: viewId === "household" ? "direct_plus_shared" : "direct_plus_shared",
-      scopes: buildPersonScopes(viewId),
-      entries: adjustEntriesForView(monthEntries, viewId)
-    }
-  };
-}
-
-export async function buildSummaryPageDto(
-  db: D1Database,
-  selectedViewId = "household",
-  selectedMonth = getCurrentMonthKey(),
-  selectedScope: PersonScope = "direct_plus_shared",
-  summaryStartMonth?: string,
-  summaryEndMonth?: string
-): Promise<{ viewId: string; label: string; summaryPage: SummaryPageDto }> {
-  const { household, accounts, categories, trackedMonths, viewId, label, personNameById } = await loadPageShell(db, selectedViewId);
-  const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
-    ? selectedMonth
-    : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
-  const summaryRangeMonths = buildSummaryRange(trackedMonths, summaryStartMonth, summaryEndMonth ?? effectiveSelectedMonth);
-  const [summaryMonths, summaryEntries] = await Promise.all([
-    loadSummaryMonths(db, viewId),
-    loadEntriesForMonths(db, summaryRangeMonths)
-  ]);
-  const plannedSummaryMonthsByView = await loadPlannedSummaryMonthsForViews(db, [viewId], summaryRangeMonths);
-  const adjustedSummaryEntries = adjustEntriesForView(summaryEntries, viewId);
-  const visibleSummaryEntries = filterEntriesForView(adjustedSummaryEntries, viewId, selectedScope);
-
-  return {
-    viewId,
-    label,
-    summaryPage: buildSummaryPage(
-      viewId,
-      visibleSummaryEntries,
-      { [viewId]: summaryMonths },
-      plannedSummaryMonthsByView,
-      categories,
-      accountsForSummary(viewId, accounts),
-      effectiveSelectedMonth,
-      summaryRangeMonths,
-      trackedMonths,
-      personNameById
-    )
-  };
-}
-
-export async function buildMonthPageDto(
-  db: D1Database,
-  selectedViewId = "household",
-  selectedMonth = getCurrentMonthKey(),
-  selectedScope: PersonScope = "direct_plus_shared"
-): Promise<{ viewId: string; label: string; summaryPage: Pick<SummaryPageDto, "months">; monthPage: MonthPageDto; householdMonthEntries: EntryDto[] }> {
-  const { categories, trackedMonths, viewId, label } = await loadPageShell(db, selectedViewId);
-  const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
-    ? selectedMonth
-    : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
-  const [monthEntries, monthPlanRows, incomeRows, summaryMonths] = await Promise.all([
-    loadEntries(db, effectiveSelectedMonth),
-    loadMonthPlanRows(db, effectiveSelectedMonth),
-    loadMonthIncomeRows(db, viewId, effectiveSelectedMonth),
-    loadSummaryMonths(db, viewId)
-  ]);
-  const plannedSummaryMonthsByView = await loadPlannedSummaryMonthsForViews(db, [viewId], [effectiveSelectedMonth]);
-  const adjustedMonthEntries = adjustEntriesForView(monthEntries, viewId);
-  const visibleEntries = filterEntriesForView(adjustedMonthEntries, viewId, viewId === "household" ? "direct_plus_shared" : selectedScope);
-  const currentSnapshotMonth = summaryMonths.find((month) => month.month === effectiveSelectedMonth) ?? null;
-  const currentPlannedSummaryMonth = (plannedSummaryMonthsByView[viewId] ?? []).find((month) => month.month === effectiveSelectedMonth) ?? null;
-  const currentSummaryMonth = applyActualsFromEntries(
-    currentSnapshotMonth ?? currentPlannedSummaryMonth ?? buildEmptySummaryMonth(effectiveSelectedMonth),
-    visibleEntries,
-    effectiveSelectedMonth
-  );
-
-  return {
-    viewId,
-    label,
-    summaryPage: { months: [currentSummaryMonth] },
-    monthPage: buildMonthPage(
-      viewId,
-      selectedScope,
-      incomeRows,
-      adjustedMonthEntries,
-      monthPlanRows,
-      categories,
-      effectiveSelectedMonth,
-      currentSummaryMonth
-    ),
-    householdMonthEntries: monthEntries
-  };
-}
-
-export async function buildSplitsPageDto(
-  db: D1Database,
-  selectedViewId = "household",
-  selectedMonth = getCurrentMonthKey()
-): Promise<{ viewId: string; label: string; splitsPage: SplitsPageDto }> {
-  const { categories, trackedMonths, viewId, label, personNameById } = await loadPageShell(db, selectedViewId);
-  const effectiveSelectedMonth = trackedMonths.includes(selectedMonth)
-    ? selectedMonth
-    : trackedMonths[trackedMonths.length - 1] ?? selectedMonth;
-  const [splitGroups, splitExpenses, splitSettlements, splitMatches] = await Promise.all([
-    loadSplitGroups(db),
-    loadSplitExpenses(db, effectiveSelectedMonth),
-    loadSplitSettlements(db, effectiveSelectedMonth),
-    loadSplitMatchCandidates(db, effectiveSelectedMonth)
-  ]);
-
-  return {
-    viewId,
-    label,
-    splitsPage: buildSplitsPage(viewId, splitGroups, splitExpenses, splitSettlements, splitMatches, categories, effectiveSelectedMonth, personNameById)
-  };
-}
-
-export async function buildImportsPageDto(db: D1Database): Promise<{ importsPage: ImportsPageDto }> {
-  await ensureAppData(db);
-  const importBatches = await loadImportBatches(db, { includeOverlapDetails: false });
-  return {
-    importsPage: {
-      recentImports: importBatches,
-      rollbackPolicy:
-        "Every transaction is tied to an import batch so the last import can be removed without touching older data."
-    }
-  };
-}
-
-export async function buildSettingsPageDto(db: D1Database): Promise<{ settingsPage: SettingsPageDto }> {
-  const demo = await ensureAppData(db);
-  const [categoryMatchRules, categoryMatchRuleSuggestions, unresolvedTransfers, reconciliationExceptions, recentAuditEvents] = await Promise.all([
-    loadCategoryMatchRules(db),
-    loadCategoryMatchRuleSuggestions(db),
-    loadUnresolvedTransfers(db),
-    loadReconciliationExceptions(db),
-    loadAuditEvents(db)
-  ]);
-  return {
-    settingsPage: {
-      demo,
-      categoryMatchRules,
-      categoryMatchRuleSuggestions,
-      unresolvedTransfers,
-      reconciliationExceptions,
-      recentAuditEvents
-    }
-  };
-}
-
-async function ensureAppData(db: D1Database) {
+export async function ensureAppData(db: D1Database) {
   appDataReadyPromise ??= initializeAppData(db);
   try {
     return await appDataReadyPromise;
@@ -420,7 +129,7 @@ async function initializeAppData(db: D1Database) {
   return demo;
 }
 
-async function loadPageShell(db: D1Database, selectedViewId: string) {
+export async function loadPageShell(db: D1Database, selectedViewId: string) {
   await ensureAppData(db);
   const [household, accounts, categories, trackedMonths] = await Promise.all([
     loadHousehold(db),
@@ -445,69 +154,7 @@ async function loadPageShell(db: D1Database, selectedViewId: string) {
   };
 }
 
-function buildContextView(
-  id: string,
-  label: string,
-  selectedScope: PersonScope,
-  summaryMonthsByView: Record<string, SummaryMonthDto[]>,
-  plannedSummaryMonthsByView: Record<string, SummaryMonthDto[]>,
-  incomeRowsByView: Record<string, MonthIncomeRowDto[]>,
-  summaryEntries: EntryDto[],
-  monthEntries: EntryDto[],
-  monthPlanRows: MonthPlanRowDto[],
-  splitGroups: SplitGroupDto[],
-  splitExpenses: SplitExpenseDto[],
-  splitSettlements: SplitSettlementDto[],
-  splitMatches: SplitMatchCandidateDto[],
-  categories: CategoryDto[],
-  accounts: AccountDto[],
-  selectedMonth: string,
-  summaryRangeMonths: string[],
-  trackedMonths: string[],
-  personNameById: Record<string, string>
-): ContextViewDto {
-  const adjustedMonthEntries = adjustEntriesForView(monthEntries, id);
-  const adjustedSummaryEntries = adjustEntriesForView(summaryEntries, id);
-  const visibleEntries = filterEntriesForView(adjustedMonthEntries, id, selectedScope);
-  const visibleSummaryEntries = filterEntriesForView(adjustedSummaryEntries, id, selectedScope);
-  const currentSnapshotMonth = (summaryMonthsByView[id] ?? []).find((month) => month.month === selectedMonth) ?? null;
-  const currentPlannedSummaryMonth = (plannedSummaryMonthsByView[id] ?? []).find((month) => month.month === selectedMonth) ?? null;
-  const currentSummaryMonth = applyActualsFromEntries(
-    currentSnapshotMonth ?? currentPlannedSummaryMonth ?? buildEmptySummaryMonth(selectedMonth),
-    visibleEntries,
-    selectedMonth
-  );
-
-  return {
-    id,
-    label,
-    summaryPage: buildSummaryPage(
-      id,
-      visibleSummaryEntries,
-      summaryMonthsByView,
-      plannedSummaryMonthsByView,
-      categories,
-      accountsForSummary(id, accounts),
-      selectedMonth,
-      summaryRangeMonths,
-      trackedMonths,
-      personNameById
-    ),
-    monthPage: buildMonthPage(
-      id,
-      selectedScope,
-      incomeRowsByView[id] ?? [],
-      adjustedMonthEntries,
-      monthPlanRows,
-      categories,
-      selectedMonth,
-      currentSummaryMonth
-    ),
-    splitsPage: buildSplitsPage(id, splitGroups, splitExpenses, splitSettlements, splitMatches, categories, selectedMonth, personNameById)
-  };
-}
-
-function buildEntriesContextView(
+export function buildEntriesContextView(
   id: string,
   label: string,
   entries: EntryDto[],
@@ -527,7 +174,6 @@ function buildEntriesContextView(
       months: [buildEmptySummaryMonth(selectedMonth)],
       categoryShareChart: [],
       categoryShareByMonth: [],
-      accountPills: [],
       notes: []
     },
     monthPage: {
@@ -577,13 +223,12 @@ function buildEntriesSplitShellGroups(splitGroups: SplitGroupDto[]): SplitGroupP
   ];
 }
 
-function buildSummaryPage(
+export function buildSummaryPage(
   personId: string,
   visibleEntries: EntryDto[],
   summaryMonthsByView: Record<string, SummaryMonthDto[]>,
   plannedSummaryMonthsByView: Record<string, SummaryMonthDto[]>,
   categories: CategoryDto[],
-  accountPills: SummaryAccountPillDto[],
   selectedMonth: string,
   summaryRangeMonths: string[],
   trackedMonths: string[],
@@ -653,7 +298,6 @@ function buildSummaryPage(
     months,
     categoryShareChart: buildDonutChart(visibleEntries, categories),
     categoryShareByMonth: buildSummaryDonutMonths(visibleEntries, categories, rangeMonths),
-    accountPills,
     notes:
       personId === "household"
         ? [
@@ -667,7 +311,7 @@ function buildSummaryPage(
   };
 }
 
-function buildDerivedSummaryMonth(month: string, visibleEntries: EntryDto[]): SummaryMonthDto {
+export function buildDerivedSummaryMonth(month: string, visibleEntries: EntryDto[]): SummaryMonthDto {
   const monthEntries = visibleEntries.filter((entry) => entry.date.slice(0, 7) === month);
   const actualIncomeMinor = monthEntries
     .filter((entry) => entry.entryType === "income")
@@ -690,7 +334,7 @@ function buildDerivedSummaryMonth(month: string, visibleEntries: EntryDto[]): Su
   };
 }
 
-function buildEmptySummaryMonth(month: string): SummaryMonthDto {
+export function buildEmptySummaryMonth(month: string): SummaryMonthDto {
   return {
     month,
     plannedIncomeMinor: 0,
@@ -705,7 +349,7 @@ function buildEmptySummaryMonth(month: string): SummaryMonthDto {
   };
 }
 
-function applyActualsFromEntries(
+export function applyActualsFromEntries(
   snapshot: SummaryMonthDto,
   visibleEntries: EntryDto[],
   month: string
@@ -721,7 +365,7 @@ function applyActualsFromEntries(
   };
 }
 
-async function loadPlannedSummaryMonthsForViews(
+export async function loadPlannedSummaryMonthsForViews(
   db: D1Database,
   viewIds: string[],
   months: string[]
@@ -774,7 +418,7 @@ async function loadPlannedSummaryMonthsForViews(
   return result;
 }
 
-function buildSplitsPage(
+export function buildSplitsPage(
   viewId: string,
   splitGroups: SplitGroupDto[],
   splitExpenses: SplitExpenseDto[],
@@ -933,7 +577,7 @@ function buildSplitsPage(
   };
 }
 
-function accountsForSummary(personId: string, accounts: AccountDto[]): SummaryAccountPillDto[] {
+export function accountsForSummary(personId: string, accounts: AccountDto[]): SummaryAccountPillDto[] {
   return accounts
     .filter((account) => account.isActive)
     .filter((account) => (
@@ -953,7 +597,7 @@ function accountsForSummary(personId: string, accounts: AccountDto[]): SummaryAc
     }));
 }
 
-function buildMonthPage(
+export function buildMonthPage(
   selectedPersonId: string,
   selectedScope: PersonScope,
   incomeRows: MonthIncomeRowDto[],
@@ -1026,7 +670,7 @@ function buildMonthPage(
   };
 }
 
-function buildPersonScopes(selectedPersonId: string): Array<{ key: PersonScope; label: string }> {
+export function buildPersonScopes(selectedPersonId: string): Array<{ key: PersonScope; label: string }> {
   return selectedPersonId === "household"
     ? [{ key: "direct_plus_shared", label: "Combined" }]
     : [
@@ -1036,7 +680,7 @@ function buildPersonScopes(selectedPersonId: string): Array<{ key: PersonScope; 
       ];
 }
 
-function deriveIncomeRowActuals(
+export function deriveIncomeRowActuals(
   rows: MonthIncomeRowDto[],
   entries: EntryDto[],
   personId: string
@@ -1069,7 +713,7 @@ function deriveIncomeRowActuals(
   });
 }
 
-function derivePlanRowActuals(rows: MonthPlanRowDto[], entries: EntryDto[], viewerPersonId: string) {
+export function derivePlanRowActuals(rows: MonthPlanRowDto[], entries: EntryDto[], viewerPersonId: string) {
   const entriesById = new Map(entries.map((entry) => [entry.id, entry]));
   const rowsWithLinkedActuals = rows.map((row) => {
     if (row.section !== "planned_items") {
@@ -1087,7 +731,7 @@ function derivePlanRowActuals(rows: MonthPlanRowDto[], entries: EntryDto[], view
 
     const linkedEntries = row.linkedEntryIds
       .map((entryId) => entriesById.get(entryId))
-      .filter((entry): entry is EntryDto => Boolean(entry) && entry.entryType === "expense");
+      .filter((entry): entry is EntryDto => entry?.entryType === "expense");
     const actualMinor = linkedEntries.reduce((sum, entry) => {
       return sum + getVisibleLinkedEntryAmountMinor(entry, viewerPersonId);
     }, 0);
@@ -1162,7 +806,7 @@ function derivePlanRowActuals(rows: MonthPlanRowDto[], entries: EntryDto[], view
   });
 }
 
-function getVisibleLinkedEntryAmountMinor(entry: EntryDto, viewerPersonId: string) {
+export function getVisibleLinkedEntryAmountMinor(entry: EntryDto, viewerPersonId: string) {
   if (viewerPersonId === "household" || entry.ownershipType !== "shared") {
     return entry.amountMinor;
   }
@@ -1171,15 +815,15 @@ function getVisibleLinkedEntryAmountMinor(entry: EntryDto, viewerPersonId: strin
   return matchingSplit?.amountMinor ?? entry.amountMinor;
 }
 
-function normalizeCategoryLabel(value?: string) {
+export function normalizeCategoryLabel(value?: string) {
   return (value ?? "").trim().toLowerCase();
 }
 
-function buildSummaryMonthsForView(personId: string, summaryMonthsByView: Record<string, SummaryMonthDto[]>) {
+export function buildSummaryMonthsForView(personId: string, summaryMonthsByView: Record<string, SummaryMonthDto[]>) {
   return summaryMonthsByView[personId] ?? summaryMonthsByView.household;
 }
 
-function buildSummaryRange(
+export function buildSummaryRange(
   availableMonths: string[],
   summaryStartMonth?: string,
   summaryEndMonth?: string,
@@ -1201,7 +845,7 @@ function buildSummaryRange(
   return sortedMonths.slice(startIndex, anchorIndex + 1);
 }
 
-function buildSummaryDonutMonths(
+export function buildSummaryDonutMonths(
   entries: EntryDto[],
   categories: CategoryDto[],
   months: string[]
@@ -1215,7 +859,7 @@ function buildSummaryDonutMonths(
   }));
 }
 
-function buildPlanRowsForView(rows: MonthPlanRowDto[], personId: string): MonthPlanRowDto[] {
+export function buildPlanRowsForView(rows: MonthPlanRowDto[], personId: string): MonthPlanRowDto[] {
   if (personId === "household") {
     return combineHouseholdPlanRows(rows.map((row) => normalizePlanRowForView(row)));
   }
@@ -1241,7 +885,7 @@ function filterEntriesForView(entries: EntryDto[], personId: string, scope: Pers
   return entries.filter((entry) => rowMatchesView(entry.ownershipType, entry.splits, personId, scope));
 }
 
-function adjustEntriesForView(entries: EntryDto[], personId: string): EntryDto[] {
+export function adjustEntriesForView(entries: EntryDto[], personId: string): EntryDto[] {
   return entries.map((entry) => adjustEntryForView(entry, personId));
 }
 

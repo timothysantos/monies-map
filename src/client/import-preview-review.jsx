@@ -1,3 +1,4 @@
+import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import { useRef, useState } from "react";
 import { Info } from "lucide-react";
@@ -150,60 +151,91 @@ export function ImportPreviewReview({
 }
 
 function CertifiedConflictRows({ rows, onUpdatePreviewRowCommitStatus }) {
+  const [restoreTarget, setRestoreTarget] = useState(null);
   return (
-    <div className="import-warning import-warning-attention">
-      <strong>{messages.imports.certifiedConflictTitle(rows.length)}</strong>
-      <p className="lede compact">{messages.imports.certifiedConflictDetail}</p>
-      <div className="stack">
-        {rows.map((row) => {
-          const match = row.reconciliationMatch;
-          return (
-            <div key={row.rowId} className="import-card import-card-compact">
-              <div className="import-history-main">
-                <strong>{messages.imports.certifiedConflictRow(
-                  formatService.formatDateOnly(row.date),
-                  row.description,
-                  formatService.formatMinorInput(row.amountMinor)
-                )}</strong>
-                <span className="import-history-inline">
-                  {messages.common.triplet(
-                    row.accountName ?? messages.common.emptyValue,
-                    row.entryType,
+    <>
+      <div className="import-warning import-warning-attention">
+        <strong>{messages.imports.certifiedConflictTitle(rows.length)}</strong>
+        <p className="lede compact">{messages.imports.certifiedConflictDetail}</p>
+        <div className="stack">
+          {rows.map((row) => {
+            const match = row.reconciliationMatch;
+            return (
+              <div key={row.rowId} className="import-card import-card-compact">
+                <div className="import-history-main">
+                  <strong>{messages.imports.certifiedConflictRow(
+                    formatService.formatDateOnly(row.date),
+                    row.description,
                     formatService.formatMinorInput(row.amountMinor)
-                  )}
-                </span>
-                <p className="lede compact">{row.commitStatusReason}</p>
-                {match ? (
-                  <div className="duplicate-row-detail-line">
-                    <small className="duplicate-row-detail">
-                      {messages.imports.duplicateRowDetail(formatDuplicateMatch(match))}
-                    </small>
-                    <DuplicateMatchPopover row={row} match={match} statementImportSourceType="pdf" />
+                  )}</strong>
+                  <span className="import-history-inline">
+                    {messages.common.triplet(
+                      row.accountName ?? messages.common.emptyValue,
+                      row.entryType,
+                      formatService.formatMinorInput(row.amountMinor)
+                    )}
+                  </span>
+                  <p className="lede compact">{row.commitStatusReason}</p>
+                  {match ? (
+                    <div className="duplicate-row-detail-line">
+                      <small className="duplicate-row-detail">
+                        {messages.imports.duplicateRowDetail(formatDuplicateMatch(match))}
+                      </small>
+                      <DuplicateMatchPopover row={row} match={match} statementImportSourceType="pdf" />
+                    </div>
+                  ) : null}
+                  <div className="import-row-actions">
+                    <button
+                      type="button"
+                      className="subtle-action"
+                      onClick={() => {
+                        if (match?.matchKind === "exact") {
+                          setRestoreTarget(row);
+                          return;
+                        }
+                        onUpdatePreviewRowCommitStatus(row.rowId, "included");
+                      }}
+                    >
+                      {messages.imports.restorePreviewRow}
+                    </button>
                   </div>
-                ) : null}
-                <div className="import-row-actions">
-                  <button
-                    type="button"
-                    className="subtle-action"
-                    onClick={() => {
-                      if (
-                        match?.matchKind === "exact"
-                        && !window.confirm(messages.imports.restoreExactCoveredRowConfirm)
-                      ) {
-                        return;
-                      }
-                      onUpdatePreviewRowCommitStatus(row.rowId, "included");
-                    }}
-                  >
-                    {messages.imports.restorePreviewRow}
-                  </button>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
-    </div>
+
+      <Dialog.Root open={Boolean(restoreTarget)} onOpenChange={(open) => { if (!open) setRestoreTarget(null); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="note-dialog-overlay" />
+          <Dialog.Content className="note-dialog-content settings-account-dialog">
+            <div className="note-dialog-head">
+              <div>
+                <Dialog.Title>{messages.imports.restorePreviewRow}</Dialog.Title>
+                <Dialog.Description>{messages.imports.restoreExactCoveredRowConfirm}</Dialog.Description>
+              </div>
+              <Dialog.Close className="dialog-close-button" aria-label="Close confirmation dialog">×</Dialog.Close>
+            </div>
+            <div className="note-dialog-actions">
+              <Dialog.Close className="subtle-action">Cancel</Dialog.Close>
+              <button
+                type="button"
+                className="dialog-primary"
+                onClick={() => {
+                  if (restoreTarget) {
+                    onUpdatePreviewRowCommitStatus(restoreTarget.rowId, "included");
+                  }
+                  setRestoreTarget(null);
+                }}
+              >
+                Restore row
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+    </>
   );
 }
 

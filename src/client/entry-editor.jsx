@@ -1,10 +1,11 @@
+import { X } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
-import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 import { ResponsiveSelect } from "./responsive-select";
 import { CategoryGlyph } from "./ui-components";
@@ -29,16 +30,13 @@ export function EntryEditorFields({
   lockTransferCategory = false,
   onChange,
   onAmountChange,
-  onQuickSaveCategory,
   onCategoryAppearanceChange,
+  onCategoryQuickSave,
+  isCategoryQuickSaving = false,
   onOwnerChange,
   onSplitPercentChange,
   transferTools = null
 }) {
-  const [categorySavePrompt, setCategorySavePrompt] = useState(null);
-  const [isSavingCategory, setIsSavingCategory] = useState(false);
-  const [categorySaveError, setCategorySaveError] = useState("");
-  const [useMobileCategorySaveDialog, setUseMobileCategorySaveDialog] = useState(false);
   const displayCategoryName = lockTransferCategory && entry.entryType === "transfer" ? "Transfer" : entry.categoryName;
   const category = categoryService.get(categories, { categoryName: displayCategoryName });
   const categoryTheme = categoryService.getTheme(
@@ -58,66 +56,35 @@ export function EntryEditorFields({
   const resolvedAmountInput = amountInputValue
     ?? entry.amountInput
     ?? formatService.formatEditableMinorInput(resolvedAmountMinor);
+  const [amountDraft, setAmountDraft] = useState(resolvedAmountInput);
+  const [categoryQuickSaveOpen, setCategoryQuickSaveOpen] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
+    setAmountDraft(resolvedAmountInput);
+  }, [resolvedAmountInput, entry.id]);
+
+  function handleAmountDraftChange(nextValue) {
+    setAmountDraft(nextValue);
+    if (!nextValue.trim()) {
+      onChange({ amountInput: "", amountMinor: 0 });
+      return;
     }
 
-    const mediaQuery = window.matchMedia("(max-width: 900px)");
-    const update = () => setUseMobileCategorySaveDialog(mediaQuery.matches);
-    update();
-    mediaQuery.addEventListener?.("change", update);
-    return () => mediaQuery.removeEventListener?.("change", update);
-  }, []);
+    const nextAmountMinor = Math.max(0, formatService.parseMoneyInput(nextValue, resolvedAmountMinor));
+    onChange({
+      amountInput: nextValue,
+      amountMinor: nextAmountMinor
+    });
+  }
 
   function handleCategoryChange(nextCategoryName) {
     onChange({ categoryName: nextCategoryName });
-    if (!onQuickSaveCategory || nextCategoryName === entry.categoryName) {
-      return;
-    }
-    setCategorySaveError("");
-    setCategorySavePrompt({ categoryName: nextCategoryName });
-  }
-
-  async function saveCategoryShortcut() {
-    if (!categorySavePrompt || !onQuickSaveCategory) {
-      return;
-    }
-
-    setIsSavingCategory(true);
-    setCategorySaveError("");
-    try {
-      await onQuickSaveCategory(categorySavePrompt.categoryName);
-      setCategorySavePrompt(null);
-    } catch (error) {
-      setCategorySaveError(error instanceof Error ? error.message : "Failed to save category.");
-    } finally {
-      setIsSavingCategory(false);
+    if (onCategoryQuickSave && nextCategoryName !== entry.categoryName) {
+      setCategoryQuickSaveOpen(true);
     }
   }
 
-  function dismissCategorySavePrompt() {
-    if (isSavingCategory) {
-      return;
-    }
-    setCategorySavePrompt(null);
-    setCategorySaveError("");
-  }
-
-  const desktopCategorySelect = (
-    <select
-      className="table-edit-input"
-      value={entry.categoryName}
-      onChange={(event) => handleCategoryChange(event.target.value)}
-    >
-      {categoryOptions.map((option) => (
-        <option key={option} value={option}>{option}</option>
-      ))}
-    </select>
-  );
-
-  const mobileCategorySelect = (
+  const categorySelect = (
     <ResponsiveSelect
       className="table-edit-input"
       title={messages.entries.editCategory}
@@ -134,22 +101,6 @@ export function EntryEditorFields({
       })}
       onValueChange={handleCategoryChange}
     />
-  );
-
-  const categorySavePromptBody = (
-    <>
-      <strong>Save this category?</strong>
-      <p>Update this entry now without saving the rest of the row.</p>
-      {categorySaveError ? <p className="form-error">{categorySaveError}</p> : null}
-      <div className="delete-popover-actions">
-        <button type="button" className="subtle-cancel" disabled={isSavingCategory} onClick={dismissCategorySavePrompt}>
-          Not yet
-        </button>
-        <button type="button" className="subtle-action" disabled={isSavingCategory} onClick={() => void saveCategoryShortcut()}>
-          {isSavingCategory ? "Saving..." : "Save category"}
-        </button>
-      </div>
-    </>
   );
 
   return (
@@ -177,50 +128,39 @@ export function EntryEditorFields({
                 value="Transfer"
                 readOnly
               />
+            ) : onCategoryQuickSave ? (
+              <Popover.Root open={categoryQuickSaveOpen} onOpenChange={setCategoryQuickSaveOpen}>
+                <Popover.Anchor className="entry-category-save-anchor">
+                  {categorySelect}
+                </Popover.Anchor>
+                <Popover.Portal>
+                  <Popover.Content className="entry-category-save-popover" sideOffset={8} align="start">
+                    <strong>{messages.entries.saveCategoryPrompt}</strong>
+                    <p>{messages.entries.saveCategoryPromptDetail}</p>
+                    <div className="entry-category-save-actions">
+                      <button
+                        type="button"
+                        className="dialog-primary"
+                        disabled={isCategoryQuickSaving}
+                        onClick={async () => {
+                          const saved = await onCategoryQuickSave();
+                          if (saved) {
+                            setCategoryQuickSaveOpen(false);
+                          }
+                        }}
+                      >
+                        {isCategoryQuickSaving ? messages.common.saving : messages.entries.saveCategoryNow}
+                      </button>
+                      <button type="button" className="subtle-action" disabled={isCategoryQuickSaving} onClick={() => setCategoryQuickSaveOpen(false)}>
+                        {messages.entries.cancelEdit}
+                      </button>
+                    </div>
+                    <Popover.Arrow className="category-popover-arrow" />
+                  </Popover.Content>
+                </Popover.Portal>
+              </Popover.Root>
             ) : (
-              useMobileCategorySaveDialog ? (
-                <>
-                  {mobileCategorySelect}
-                  <Dialog.Root open={Boolean(categorySavePrompt)} onOpenChange={(open) => {
-                    if (!open) {
-                      dismissCategorySavePrompt();
-                    }
-                  }}>
-                    <Dialog.Portal>
-                      <Dialog.Overlay className="entry-category-save-overlay" />
-                      <Dialog.Content className="entry-category-save-popover entry-category-save-dialog" onOpenAutoFocus={(event) => event.preventDefault()}>
-                        <Dialog.Title className="entry-category-save-title">Save this category?</Dialog.Title>
-                        <p>Update this entry now without saving the rest of the row.</p>
-                        {categorySaveError ? <p className="form-error">{categorySaveError}</p> : null}
-                        <div className="delete-popover-actions">
-                          <button type="button" className="subtle-cancel" disabled={isSavingCategory} onClick={dismissCategorySavePrompt}>
-                            Not yet
-                          </button>
-                          <button type="button" className="subtle-action" disabled={isSavingCategory} onClick={() => void saveCategoryShortcut()}>
-                            {isSavingCategory ? "Saving..." : "Save category"}
-                          </button>
-                        </div>
-                      </Dialog.Content>
-                    </Dialog.Portal>
-                  </Dialog.Root>
-                </>
-              ) : (
-                <Popover.Root open={Boolean(categorySavePrompt)} onOpenChange={(open) => {
-                  if (!open) {
-                    dismissCategorySavePrompt();
-                  }
-                }}>
-                  <Popover.Anchor asChild>
-                    {desktopCategorySelect}
-                  </Popover.Anchor>
-                  <Popover.Portal>
-                    <Popover.Content className="entry-category-save-popover" sideOffset={8} align="end">
-                      {categorySavePromptBody}
-                      <Popover.Arrow className="category-popover-arrow" />
-                    </Popover.Content>
-                  </Popover.Portal>
-                </Popover.Root>
-              )
+              categorySelect
             )}
           </div>
         </label>
@@ -230,6 +170,7 @@ export function EntryEditorFields({
             className="table-edit-input"
             type="date"
             value={entry.date}
+            enterKeyHint="next"
             onChange={(event) => onChange({ date: event.target.value })}
           />
         </label>
@@ -269,33 +210,16 @@ export function EntryEditorFields({
             className={`table-edit-input table-edit-input-money ${amountToneClass}`}
             type="text"
             inputMode="decimal"
-            value={resolvedAmountInput}
-            onChange={(event) => {
-              const nextValue = event.target.value;
-              if (!nextValue.trim()) {
-                if (onAmountChange) {
-                  onAmountChange({ amountInput: "", amountMinor: 0 });
-                } else {
-                  onChange({ amountInput: "", amountMinor: 0 });
-                }
-                return;
-              }
-              const nextAmountMinor = Math.max(0, formatService.parseMoneyInput(nextValue, resolvedAmountMinor));
-              if (onAmountChange) {
-                onAmountChange({
-                  amountInput: nextValue,
-                  amountMinor: nextAmountMinor
-                });
-              } else {
-                onChange({
-                  amountInput: nextValue,
-                  amountMinor: nextAmountMinor
-                });
-              }
-            }}
+            value={amountDraft}
+            enterKeyHint="next"
+            onMouseDown={selectAllOnFocus}
+            onFocus={selectAllOnFocus}
+            onInput={(event) => handleAmountDraftChange(event.target.value)}
+            onChange={(event) => handleAmountDraftChange(event.target.value)}
             onBlur={(event) => {
               const blurAmountMinor = Math.max(0, formatService.parseMoneyInput(event.target.value, resolvedAmountMinor));
               const formattedAmountInput = formatService.formatEditableMinorInput(blurAmountMinor);
+              setAmountDraft(formattedAmountInput);
               if (onAmountChange) {
                 onAmountChange({
                   amountInput: formattedAmountInput,
@@ -350,12 +274,15 @@ export function EntryEditorFields({
         {entry.ownershipType === "shared" && splitPercentValue != null ? (
           <label>
             <span>{messages.entries.editSplit}</span>
-            <input
-              className="table-edit-input table-edit-input-money"
-              type="number"
-              min="0"
-              max="100"
-              value={splitPercentValue}
+          <input
+            className="table-edit-input table-edit-input-money"
+            type="number"
+            min="0"
+            max="100"
+            value={splitPercentValue}
+            enterKeyHint="done"
+            onMouseDown={selectAllOnFocus}
+            onFocus={selectAllOnFocus}
               onChange={(event) => onSplitPercentChange(Number(event.target.value))}
             />
           </label>
@@ -367,6 +294,7 @@ export function EntryEditorFields({
           <textarea
             className="table-edit-input table-edit-textarea"
             value={entry.description}
+            enterKeyHint="done"
             onChange={(event) => onChange({ description: event.target.value })}
             rows={3}
           />
@@ -376,6 +304,7 @@ export function EntryEditorFields({
           <textarea
             className="table-edit-input table-edit-textarea"
             value={entry.note ?? ""}
+            enterKeyHint="done"
             onChange={(event) => onChange({ note: event.target.value })}
             rows={3}
           />

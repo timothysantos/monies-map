@@ -136,11 +136,16 @@ export async function backfillSplitBatches(db: D1Database) {
   }
 
   for (const current of grouped.values()) {
-    const shouldClose = Boolean(current.latestSettlementDate)
-      && (!current.latestExpenseDate || current.latestExpenseDate <= current.latestSettlementDate);
+    const firstActivityDate = current.dates[0];
+    if (!firstActivityDate) {
+      continue;
+    }
+    const latestSettlementDate = current.latestSettlementDate;
+    const shouldClose = latestSettlementDate != null
+      && (!current.latestExpenseDate || current.latestExpenseDate <= latestSettlementDate);
     const batchId = await createSplitBatch(db, {
       groupId: current.groupId,
-      openedOn: current.dates[0],
+      openedOn: firstActivityDate,
       closedOn: shouldClose ? current.latestSettlementDate ?? current.dates[current.dates.length - 1] : null
     });
 

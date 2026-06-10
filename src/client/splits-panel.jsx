@@ -26,8 +26,19 @@ import { SplitArchiveDialog } from "./splits-archive-dialog";
 import { SplitDeleteDialog, SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./splits-dialogs";
 import { SplitsMainSection } from "./splits-main-section";
 import { buildSplitsPanelModel } from "./splits-selectors";
+import {
+  buildLinkedSplitRefreshOptions,
+  createSplitRefreshGuard
+} from "./splits-workflow";
 
 export function SplitsPanel({ view, categories, people, onRefresh }) {
+  const splitsPage = view.splitsPage ?? {
+    groups: [],
+    activity: [],
+    matches: [],
+    donutChart: [],
+    month: view.monthPage?.month ?? ""
+  };
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showBreakdown, setShowBreakdown] = useState(false);
@@ -38,16 +49,16 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [isRefreshingDerived, setIsRefreshingDerived] = useState(false);
   const [optimisticSplitsPage, setOptimisticSplitsPage] = useState(null);
   const [dismissedMatchIds, setDismissedMatchIds] = useState([]);
-  const refreshGenerationRef = useRef(0);
-  const latestSplitsPageRef = useRef(view.splitsPage);
-  const defaultGroupId = view.splitsPage.groups.find((group) => group.isDefault)?.id ?? "split-group-none";
+  const refreshGuardRef = useRef(null);
+  const latestSplitsPageRef = useRef(splitsPage);
+  const defaultGroupId = splitsPage.groups.find((group) => group.isDefault)?.id ?? "split-group-none";
   const selectedGroupParam = searchParams.get("split_group");
   const selectedGroupId = selectedGroupParam ?? defaultGroupId;
   const selectedMode = searchParams.get("split_mode") ?? "entries";
   const isHouseholdView = view.id === "household";
   const displayView = useMemo(
-    () => (optimisticSplitsPage ? { ...view, splitsPage: optimisticSplitsPage } : view),
-    [optimisticSplitsPage, view]
+    () => (optimisticSplitsPage ? { ...view, splitsPage: optimisticSplitsPage } : { ...view, splitsPage }),
+    [optimisticSplitsPage, splitsPage, view]
   );
   const splitModel = useMemo(
     () => buildSplitsPanelModel({
@@ -107,8 +118,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   } = useSplitEditState({ categoryOptions, people });
 
   useEffect(() => {
-    latestSplitsPageRef.current = view.splitsPage;
-  }, [view.splitsPage]);
+    refreshGuardRef.current = refreshGuardRef.current ?? createSplitRefreshGuard();
+    latestSplitsPageRef.current = splitsPage;
+  }, [splitsPage]);
 
   useEffect(() => {
     // Keep the URL explicit once the default group is known so refreshes and
@@ -137,10 +149,10 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setShowBreakdown(false);
     setOptimisticSplitsPage(null);
     setIsRefreshingDerived(false);
-    refreshGenerationRef.current += 1;
+    refreshGuardRef.current = createSplitRefreshGuard();
     resetForViewChange();
     setArchiveDialog(null);
-  }, [resetForViewChange, view.id, view.splitsPage.month]);
+  }, [resetForViewChange, splitsPage.month, view.id]);
 
   useEffect(() => {
     if (!useMobileSplitSheet) {
@@ -156,7 +168,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       return;
     }
 
-    const targetExpense = view.splitsPage.activity.find((item) => (
+    const targetExpense = splitsPage.activity.find((item) => (
       item.kind === "expense" && item.id === targetSplitExpenseId && !item.isArchived
     ));
     if (!targetExpense) {
@@ -185,7 +197,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     selectedGroupId,
     selectedMode,
     setSearchParams,
-    view.splitsPage.activity
+    splitsPage.activity
   ]);
 
   function updateSplitView(patch) {
@@ -218,35 +230,21 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     // server to recompute any downstream data that depends on ledger ownership
     // or linked entries. The generation guard prevents older refreshes from
     // clobbering newer optimistic edits.
-    const refreshGeneration = refreshGenerationRef.current + 1;
-    refreshGenerationRef.current = refreshGeneration;
+    const refreshGeneration = refreshGuardRef.current?.next() ?? 1;
     setIsRefreshingDerived(true);
 
     void onRefresh(options)
       .then(() => {
-        if (refreshGenerationRef.current === refreshGeneration) {
+        if (refreshGuardRef.current?.isCurrent(refreshGeneration)) {
           setOptimisticSplitsPage(null);
         }
       })
       .catch(() => {})
       .finally(() => {
-        if (refreshGenerationRef.current === refreshGeneration) {
+        if (refreshGuardRef.current?.isCurrent(refreshGeneration)) {
           setIsRefreshingDerived(false);
         }
       });
-  }
-
-  function buildLinkedExpenseRefreshOptions(linkedTransactionId, overrides = {}) {
-    // Only expense rows can reinterpret an imported transaction. Settlements
-    // stay inside the splits layer and do not require entries/month refreshes.
-    const affectsLinkedLedgerEntry = Boolean(linkedTransactionId);
-    return {
-      broadcast: true,
-      invalidateEntries: affectsLinkedLedgerEntry,
-      invalidateMonth: affectsLinkedLedgerEntry,
-      invalidateSummary: affectsLinkedLedgerEntry,
-      ...overrides
-    };
   }
 
   async function saveGroup() {
@@ -299,7 +297,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         };
       });
       closeExpenseDialog();
-      refreshAfterSplitMutation(buildLinkedExpenseRefreshOptions(draft?.linkedTransactionId));
+      refreshAfterSplitMutation(buildLinkedSplitRefreshOptions(draft?.linkedTransactionId));
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -334,7 +332,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         };
       });
       closeSettlementDialog();
-      refreshAfterSplitMutation({ broadcast: true });
+      refreshAfterSplitMutation(buildLinkedSplitRefreshOptions(draft?.linkedTransactionId));
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -349,9 +347,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       // Matching changes both the split record and, for expenses, the way the
       // linked ledger row should appear elsewhere in the app.
       applyOptimisticSplitsPage((currentPage) => applyOptimisticSplitMatch(currentPage, match));
-      refreshAfterSplitMutation(match.kind === "expense"
-        ? { broadcast: true, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true }
-        : { broadcast: true });
+      refreshAfterSplitMutation(buildLinkedSplitRefreshOptions(match.transactionId));
     } finally {
       setIsSubmitting(false);
     }
@@ -410,7 +406,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       clearInlineSplitDraft();
       refreshAfterSplitMutation(
         draft.kind === "expense"
-          ? buildLinkedExpenseRefreshOptions(draft.linkedTransactionId)
+          ? buildLinkedSplitRefreshOptions(draft.linkedTransactionId)
           : { broadcast: true }
       );
     } catch (error) {
@@ -427,7 +423,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
 
     const params = new URLSearchParams({
       view: view.id,
-      month: view.splitsPage.month,
+      month: splitsPage.month,
       editing_entry: item.linkedTransactionId
     });
     navigate({
@@ -472,7 +468,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       }
       refreshAfterSplitMutation({
         broadcast: true,
-        invalidateEntries: deleteTarget.kind === "expense" && Boolean(deleteTarget.linkedTransactionId)
+        invalidateEntries: Boolean(deleteTarget.linkedTransactionId),
+        invalidateMonth: Boolean(deleteTarget.linkedTransactionId),
+        invalidateSummary: Boolean(deleteTarget.linkedTransactionId)
       });
     } catch (error) {
       setFormError(error.message);
@@ -536,7 +534,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         groupBalanceMinor={groupBalanceMinor}
         groupSummaryLabel={groupSummaryLabel}
         donutRows={donutRows}
-        donutChart={view.splitsPage.donutChart}
+        donutChart={splitsPage.donutChart}
         categories={categories}
         groupOptions={groupOptions}
         people={people}

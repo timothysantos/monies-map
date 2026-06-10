@@ -460,7 +460,7 @@ export interface ImportPreviewDto {
 }
 
 export interface ImportPreviewExceptionDto {
-  kind: "unknown_account" | "unknown_category" | "review_rows" | "statement_mismatch" | "account_identity" | "entry_reconciliation" | "prior_import_context";
+  kind: "unknown_account" | "unknown_category" | "review_rows" | "statement_mismatch" | "account_identity" | "entry_reconciliation" | "prior_import_context" | "statement_chain_gap";
   count: number;
   tone: "blocking" | "review" | "context";
 }
@@ -486,7 +486,7 @@ export interface ImportPreviewStatementReconciliationDto {
   statementBalanceMinor: number;
   projectedLedgerBalanceMinor?: number;
   deltaMinor?: number;
-  status: "matched" | "mismatch" | "unknown_account" | "identity_unconfirmed";
+  status: "matched" | "mismatch" | "unknown_account" | "identity_unconfirmed" | "missing_prior_statement";
 }
 
 export interface StatementCompareRowDto {
@@ -590,7 +590,6 @@ export interface SummaryPageDto {
   months: SummaryMonthDto[];
   categoryShareChart: DonutChartDatumDto[];
   categoryShareByMonth: SummaryDonutMonthDto[];
-  accountPills: SummaryAccountPillDto[];
   notes: string[];
 }
 
@@ -629,8 +628,27 @@ export interface SettingsPageDto {
   recentAuditEvents: AuditEventDto[];
 }
 
-export interface AppBootstrapDto {
-  appEnvironment?: "demo" | "local" | "production";
+export interface AppShellDto {
+  appEnvironment?: "demo" | "local" | "production" | "test";
+  household: HouseholdDto;
+  accounts: AccountDto[];
+  categories: CategoryDto[];
+  availableViewIds: string[];
+  selectedViewId: string;
+  trackedMonths: string[];
+  viewerPersonId?: string;
+  viewerIdentity?: {
+    email: string;
+    personId?: string;
+  };
+  viewerRegistration?: {
+    email: string;
+    suggestedPersonId: string;
+  };
+}
+
+export interface EntriesShellDto {
+  appEnvironment?: "demo" | "local" | "production" | "test";
   household: HouseholdDto;
   accounts: AccountDto[];
   categories: CategoryDto[];

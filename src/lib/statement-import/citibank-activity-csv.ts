@@ -71,7 +71,7 @@ export function parseCitibankActivityCsv(
   };
 }
 
-function parseCitibankActivityRow(cells: string[]) {
+function parseCitibankActivityRow(cells: string[]): CitibankActivityCandidate | undefined {
   if (cells.length < 3) {
     return undefined;
   }

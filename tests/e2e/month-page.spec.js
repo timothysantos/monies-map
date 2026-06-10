@@ -1,5 +1,7 @@
 import { expect, test, devices } from "@playwright/test";
 
+import { gotoPageAfterApi } from "./helpers";
+
 function formatMoney(minor) {
   return new Intl.NumberFormat("en-SG", {
     style: "currency",
@@ -32,13 +34,13 @@ async function reseedDemo(page) {
   throw new Error(lastText || "Failed to reseed demo data.");
 }
 
-async function loadMonthPageData(page, { view = "person-tim", month = "2026-04", scope = "direct_plus_shared" } = {}) {
+async function loadMonthPageData(page, { view = "person-tim", month = "2026-05", scope = "direct_plus_shared" } = {}) {
   const response = await page.request.get(`/api/month-page?view=${view}&month=${month}&scope=${scope}`);
   expect(response.ok(), await response.text()).toBeTruthy();
   return response.json();
 }
 
-async function loadSummaryPageData(page, { view = "person-tim", month = "2026-04", scope = "direct_plus_shared", summaryStart = "2025-06", summaryEnd = "2026-04" } = {}) {
+async function loadSummaryPageData(page, { view = "person-tim", month = "2026-05", scope = "direct_plus_shared", summaryStart = "2025-06", summaryEnd = "2026-05" } = {}) {
   const response = await page.request.get(
     `/api/summary-page?view=${view}&month=${month}&scope=${scope}&summary_start=${summaryStart}&summary_end=${summaryEnd}`
   );
@@ -83,12 +85,21 @@ function findBudgetRow(monthPageData, label) {
   return row;
 }
 
-async function openBudgetRowEditor(page, label) {
-  const row = page.locator("tr").filter({ hasText: label }).first();
-  await expect(row).toBeVisible();
-  await row.getByText(label).first().click();
-  await expect(page.locator(".month-inline-action-row").first().getByRole("button", { name: "Save" })).toBeVisible();
-  return row;
+async function gotoMonthPage(page, {
+  view = "person-tim",
+  month = "2026-05",
+  scope = "direct_plus_shared",
+  expectHeading = true
+} = {}) {
+  await gotoPageAfterApi(
+    page,
+    `/month?view=${view}&month=${month}&scope=${scope}`,
+    "/api/month-page",
+    () => expectHeading
+      ? page.getByRole("heading", { name: "Month", exact: true })
+      : page.getByRole("button", { name: "+ Add planned item" })
+  );
+  await expect(page).toHaveURL(new RegExp(`/month\\?[^#]*view=${view}[^#]*month=${month}[^#]*scope=${scope}`));
 }
 
 test.describe("month page", () => {
@@ -114,9 +125,14 @@ test.describe("month page", () => {
       }
     }
 
-    await page.goto("/month?view=person-tim&month=2026-04&scope=direct_plus_shared");
+    const beforeMonth = await loadMonthPageData(page);
+    const publicTransportRowData = findBudgetRow(beforeMonth, "Public Transport");
+    expect(publicTransportRowData.plannedMinor).toBeGreaterThan(0);
+    const nextPlannedMinor = 7500;
 
+    await gotoMonthPage(page);
     const publicTransportRow = page.locator("tr").filter({ hasText: "Public Transport" }).first();
+    await expect(publicTransportRow).toBeVisible();
     await expect(publicTransportRow.getByText("Delete")).toHaveCount(0);
     await expect(page.locator(".month-inline-action-row")).toHaveCount(0);
 
@@ -134,6 +150,52 @@ test.describe("month page", () => {
     await actionRow.getByRole("button", { name: "Cancel" }).click();
     await expect(publicTransportRow.getByText("Delete")).toHaveCount(0);
     await expect(page.locator(".month-inline-action-row")).toHaveCount(0);
+
+    await publicTransportRow.getByText("Public Transport").first().click();
+    const saveActionRow = page.locator(".month-inline-action-row").first();
+    const amountInput = publicTransportRow.locator(".table-edit-input-money");
+    await amountInput.fill("75.00");
+    const delayedMonthPlanSave = async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await route.continue();
+    };
+    await page.route("**/api/month-plan/save", delayedMonthPlanSave);
+    const saveButton = saveActionRow.getByTestId("month-inline-save-button");
+    const saveResponse = page.waitForResponse((response) => response.url().includes("/api/month-plan/save") && response.ok());
+    await saveButton.click();
+    await expect(saveButton).toBeDisabled();
+    await expect(saveButton).toContainText("Saving");
+    await saveResponse;
+    await page.unroute("**/api/month-plan/save", delayedMonthPlanSave);
+    await expect(publicTransportRow.locator("td").nth(2)).toContainText("$75.00");
+
+    const afterMonth = await loadMonthPageData(page);
+    expect(findBudgetRow(afterMonth, "Public Transport").plannedMinor).toBe(nextPlannedMinor);
+    expectedPlannedValues.set("Public Transport", nextPlannedMinor);
+
+    await publicTransportRow.getByText("Public Transport").first().click();
+    const failedActionRow = page.locator(".month-inline-action-row").first();
+    await publicTransportRow.locator(".table-edit-input-money").fill("80.00");
+    const failedMonthPlanSave = async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Month plan save failed." })
+      });
+    };
+    await page.route("**/api/month-plan/save", failedMonthPlanSave);
+    const failedSaveButton = failedActionRow.getByTestId("month-inline-save-button");
+    const failedSaveResponse = page.waitForResponse((response) => response.url().includes("/api/month-plan/save"));
+    await failedSaveButton.click();
+    await expect(failedSaveButton).toBeDisabled();
+    await expect(failedSaveButton).toContainText("Saving");
+    await failedSaveResponse;
+    await expect(failedActionRow.getByTestId("month-inline-error")).toContainText("Month plan save failed.");
+    await expect(publicTransportRow.locator(".table-edit-input-money")).toHaveValue("80.00");
+    await expect(failedActionRow.getByTestId("month-inline-save-button")).toBeEnabled();
+    await page.unroute("**/api/month-plan/save", failedMonthPlanSave);
+    await failedActionRow.getByTestId("month-inline-cancel-button").click();
 
     for (const [label, plannedMinor] of expectedPlannedValues.entries()) {
       const row = page.locator("tr").filter({ hasText: label }).first();
@@ -162,35 +224,62 @@ test.describe("month page", () => {
     const entertainmentRow = findBudgetRow(beforeMonth, "Entertainment");
     const nextPlannedMinor = entertainmentRow.plannedMinor + 500;
     const deltaMinor = nextPlannedMinor - entertainmentRow.plannedMinor;
-    const beforeSummaryMonth = beforeSummary.summaryPage.months.find((month) => month.month === "2026-04");
+    const beforeSummaryMonth = beforeSummary.summaryPage.months.find((month) => month.month === "2026-05");
     expect(beforeSummaryMonth).toBeTruthy();
 
-    await page.goto("/month?view=person-tim&month=2026-04&scope=direct_plus_shared");
-    const row = await openBudgetRowEditor(page, "Entertainment");
-    await row.locator(".table-edit-input-money").fill("75.00");
-    await page.locator(".month-inline-action-row").first().getByRole("button", { name: "Save" }).click();
-    await expect(row.getByText("$75.00")).toBeVisible();
+    await gotoMonthPage(page);
+    const row = page.locator("tr").filter({ hasText: "Entertainment" }).first();
+    await expect(row).toBeVisible();
+    await row.getByText("Entertainment").first().click();
+    await expect(page.locator(".month-inline-action-row").first().getByRole("button", { name: "Save" })).toBeVisible();
+    await row.locator(".table-edit-input-money").fill((nextPlannedMinor / 100).toFixed(2));
+    await page.locator(".month-inline-action-row").first().getByTestId("month-inline-save-button").click();
+    await expect(row.locator("td").nth(2)).toContainText(formatMoney(nextPlannedMinor));
 
     const afterMonth = await loadMonthPageData(page);
     const updatedEntertainmentRow = findBudgetRow(afterMonth, "Entertainment");
     expect(updatedEntertainmentRow.plannedMinor).toBe(nextPlannedMinor);
 
     const afterSummary = await loadSummaryPageData(page);
-    const afterSummaryMonth = afterSummary.summaryPage.months.find((month) => month.month === "2026-04");
+    const afterSummaryMonth = afterSummary.summaryPage.months.find((month) => month.month === "2026-05");
     expect(afterSummaryMonth).toBeTruthy();
     expect(afterSummaryMonth.estimatedExpensesMinor).toBe(beforeSummaryMonth.estimatedExpensesMinor + deltaMinor);
+  });
 
-    await page.goto("/summary?view=person-tim&month=2026-04&scope=direct_plus_shared&summary_start=2025-06&summary_end=2026-04");
-    const aprCard = page.locator(".plan-row-card").filter({ hasText: "Apr 2026" }).first();
-    await expect(aprCard).toContainText(formatMoney(afterSummaryMonth.estimatedExpensesMinor));
-    await expect(aprCard).toContainText("Income");
+  test("desktop month note edits show pending state and refresh after save", async ({ page }) => {
+    const before = await loadMonthPageData(page);
+    const targetMonth = before.monthPage.month;
+    const nextNote = `Playwright month note ${Date.now()}`;
+
+    await page.goto(`/month?view=person-tim&month=${targetMonth}&scope=direct_plus_shared`);
+    await page.locator(".note-card-button").click();
+    const dialog = page.locator(".note-dialog-content");
+    await expect(dialog).toBeVisible();
+
+    await page.route("**/api/month-note/update", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true })
+      });
+    });
+
+    await dialog.locator("textarea").fill(nextNote);
+    const saveButton = dialog.locator("button.dialog-primary");
+    const refreshResponse = page.waitForResponse((response) => response.url().includes("/api/month-page") && response.ok());
+    await saveButton.click();
+    await expect(saveButton).toBeDisabled();
+    await expect(saveButton).toContainText("Saving");
+    await expect(dialog).toBeVisible();
+    await refreshResponse;
   });
 
   test("desktop entries switches person view and scope from the shell controls", async ({ page }) => {
     const directDescription = `Playwright direct scope ${Date.now()}`;
     const sharedDescription = `Playwright shared scope ${Date.now()}`;
     await postJson(page, "/api/entries/create", {
-      date: "2026-04-24",
+      date: "2026-05-24",
       description: directDescription,
       accountName: "UOB One",
       categoryName: "Groceries",
@@ -200,7 +289,7 @@ test.describe("month page", () => {
       ownerName: "Tim"
     });
     await postJson(page, "/api/entries/create", {
-      date: "2026-04-24",
+      date: "2026-05-24",
       description: sharedDescription,
       accountName: "UOB One",
       categoryName: "Groceries",
@@ -210,8 +299,12 @@ test.describe("month page", () => {
       splitBasisPoints: 5000
     });
 
-    await page.goto("/");
-    await page.getByRole("link", { name: "Entries" }).click();
+    await gotoPageAfterApi(
+      page,
+      "/entries?view=household&month=2026-05&scope=direct_plus_shared",
+      "/api/entries-page",
+      () => page.locator(".panel-context")
+    );
 
     await expect(page.locator(".panel-context")).toContainText("Viewing entries for Household");
     const householdScopeToggle = page.locator(".desktop-scope-toggle");
@@ -223,7 +316,6 @@ test.describe("month page", () => {
 
     await page.locator(".context-block .pill-row").getByRole("button", { name: "Tim" }).click();
     await expect(page).toHaveURL(/view=person-tim/);
-    await expect(page).toHaveURL(/entry_person=Tim/);
     await expect(page.locator(".panel-context")).toContainText("Viewing entries for Tim");
 
     const scopeToggle = page.locator(".desktop-scope-toggle");
@@ -244,38 +336,98 @@ test.describe("month page", () => {
     await expect(page.getByText(sharedDescription, { exact: true })).toBeVisible();
   });
 
-  test("mobile month page supports add and edit sheets plus category editing above the sheet", async ({ browser }) => {
-    const context = await browser.newContext({ ...devices["iPhone 12 Pro"] });
-    const page = await context.newPage();
-    await page.goto("/");
+  test("mobile month page supports add and edit sheets plus category editing above the sheet", async ({ page }) => {
+    await page.setViewportSize(devices["iPhone 12 Pro"].viewport);
+    await gotoMonthPage(page, { expectHeading: false });
+    await expect(page.getByRole("button", { name: "+ Add planned item" })).toBeVisible({ timeout: 30_000 });
 
-    await page.goto("/month?view=person-tim&month=2026-04&scope=direct_plus_shared");
-
-    await page.getByRole("button", { name: "+ Add budget bucket" }).click();
-    const addSheet = page.locator('.entry-mobile-sheet[aria-label="+ Add budget bucket"]');
+    await page.getByRole("button", { name: "+ Add planned item" }).click();
+    const addSheet = page.locator('.entry-mobile-sheet[aria-label="+ Add planned item"]');
     await expect(addSheet).toBeVisible();
-    await expect(addSheet.locator('input[value="Food & Drinks"]')).toBeVisible();
+    await expect(addSheet.getByRole("button", { name: "Savings", exact: true })).toBeVisible();
 
-    await addSheet.getByRole("button", { name: "Edit Food & Drinks" }).click();
+    await addSheet.getByRole("button", { name: "Edit Savings" }).click();
     await expect(page.getByText("Edit category")).toBeVisible();
     await expect(addSheet).toBeVisible();
     await page.keyboard.press("Escape");
 
-    await addSheet.getByText("Last month's total:").click();
-    await expect(page.getByText("Budget default")).toBeVisible();
-    await page.keyboard.press("Escape");
-
-    await page.getByRole("button", { name: "Cancel" }).click();
+    await addSheet.getByRole("button", { name: "Close + add planned item" }).click();
     await expect(addSheet).toHaveCount(0);
 
-    await page.locator("tr").filter({ hasText: "Public Transport" }).first().click();
-    const editSheet = page.locator('.entry-mobile-sheet[aria-label="Edit budget bucket"]');
+    await page.locator("tr").filter({ hasText: "Savings" }).first().click();
+    const editSheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
     await expect(editSheet).toBeVisible();
-    await expect(editSheet.locator('input[value="Public Transport"]')).toBeVisible();
-    await expect(editSheet.locator('input[value="60.00"]')).toBeVisible();
+    await expect(editSheet.locator('input[value="Savings"]')).toBeVisible();
+    await expect(editSheet.locator('input[value="1800.00"]')).toBeVisible();
 
-    await page.getByRole("button", { name: "Done" }).click();
+    const delayedMobileMonthPlanSave = async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await route.continue();
+    };
+    await page.route("**/api/month-plan/save", delayedMobileMonthPlanSave);
+    const mobileSaveButton = editSheet.locator("button.dialog-primary");
+    await editSheet.locator('input[value="1800.00"]').fill("1805.00");
+    await mobileSaveButton.click();
+    await expect(mobileSaveButton).toBeDisabled();
+    await expect(mobileSaveButton).toContainText("Saving");
     await expect(editSheet).toHaveCount(0);
+    await page.unroute("**/api/month-plan/save", delayedMobileMonthPlanSave);
+
+    await page.locator("tr").filter({ hasText: "Savings" }).first().click();
+    const failedSheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+    await expect(failedSheet).toBeVisible();
+    await failedSheet.locator('input[value="1805.00"]').fill("1810.00");
+    const failedMobileMonthPlanSave = async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Month plan save failed." })
+      });
+    };
+    await page.route("**/api/month-plan/save", failedMobileMonthPlanSave);
+    const failedMobileSaveButton = failedSheet.locator("button.dialog-primary");
+    await failedMobileSaveButton.click();
+    await expect(failedMobileSaveButton).toBeDisabled();
+    await expect(failedMobileSaveButton).toContainText("Saving");
+    await expect(failedSheet.locator(".entry-submit-error")).toContainText("Month plan save failed.");
+    await expect(failedSheet.locator('input[value="1810.00"]')).toBeVisible();
+    await expect(failedSheet).toBeVisible();
+    await page.unroute("**/api/month-plan/save", failedMobileMonthPlanSave);
+  });
+
+  test("mobile month note edits keep the dialog stable while saving", async ({ browser }) => {
+    const context = await browser.newContext({ ...devices["iPhone 12 Pro"] });
+    const page = await context.newPage();
+    await page.goto("/");
+    await reseedDemo(page);
+
+    const before = await loadMonthPageData(page);
+    const targetMonth = before.monthPage.month;
+    const nextNote = `Playwright mobile month note ${Date.now()}`;
+
+    await page.goto(`/month?view=person-tim&month=${targetMonth}&scope=direct_plus_shared`);
+    await page.locator(".note-card-button").click();
+    const dialog = page.locator(".note-dialog-content");
+    await expect(dialog).toBeVisible();
+
+    await page.route("**/api/month-note/update", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true })
+      });
+    });
+
+    await dialog.locator("textarea").fill(nextNote);
+    const saveButton = dialog.locator("button.dialog-primary");
+    const refreshResponse = page.waitForResponse((response) => response.url().includes("/api/month-page") && response.ok());
+    await saveButton.click();
+    await expect(saveButton).toBeDisabled();
+    await expect(saveButton).toContainText("Saving");
+    await expect(dialog).toBeVisible();
+    await refreshResponse;
 
     await context.close();
   });
@@ -287,11 +439,11 @@ test.describe("month page", () => {
 
     const saveResult = await postJson(page, "/api/month-plan/save", {
       rowId: `mobile-plan-link-${Date.now()}`,
-      month: "2026-04",
+      month: "2026-05",
       sectionKey: "planned_items",
       categoryName: "Entertainment",
       label: "Mobile date night",
-      planDate: "2026-04-18",
+      planDate: "2026-05-18",
       accountName: "UOB One",
       plannedMinor: 5000,
       note: "Mobile matching flow.",
@@ -302,7 +454,7 @@ test.describe("month page", () => {
     expect(rowId).toBeTruthy();
 
     await postJson(page, "/api/entries/create", {
-      date: "2026-04-18",
+      date: "2026-05-18",
       description: "Mobile dinner charge",
       accountName: "UOB One",
       categoryName: "Entertainment",
@@ -312,7 +464,7 @@ test.describe("month page", () => {
       ownerName: "Tim"
     });
 
-    await page.goto("/month?view=person-tim&month=2026-04&scope=direct_plus_shared");
+    await page.goto("/month?view=person-tim&month=2026-05&scope=direct_plus_shared");
     const row = page.locator("tr").filter({ hasText: "Mobile date night" }).first();
     await row.getByRole("button", { name: "Link entries" }).click();
 
@@ -340,7 +492,7 @@ test.describe("month page", () => {
     const page = await context.newPage();
     await page.goto("/");
     await postJson(page, "/api/entries/create", {
-      date: "2026-04-24",
+      date: "2026-05-24",
       description: directDescription,
       accountName: "UOB One",
       categoryName: "Groceries",
@@ -350,7 +502,7 @@ test.describe("month page", () => {
       ownerName: "Tim"
     });
     await postJson(page, "/api/entries/create", {
-      date: "2026-04-24",
+      date: "2026-05-24",
       description: sharedDescription,
       accountName: "UOB One",
       categoryName: "Groceries",
@@ -359,7 +511,12 @@ test.describe("month page", () => {
       ownershipType: "shared",
       splitBasisPoints: 5000
     });
-    await page.getByRole("link", { name: "Entries" }).click();
+    await gotoPageAfterApi(
+      page,
+      "/entries?view=household&month=2026-05&scope=direct_plus_shared",
+      "/api/entries-page",
+      () => page.locator(".mobile-context-sticky-wrap")
+    );
 
     const stickyBar = page.locator(".mobile-context-sticky-wrap");
     const trigger = stickyBar.locator(".mobile-context-trigger");
@@ -377,7 +534,6 @@ test.describe("month page", () => {
 
     await dialog.getByRole("button", { name: "Tim" }).click();
     await expect(page).toHaveURL(/view=person-tim/);
-    await expect(page).toHaveURL(/entry_person=Tim/);
     await expect(dialog.locator('section[aria-label="Scope"]')).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Direct + Shared" })).toHaveClass(/is-active/);
 
@@ -408,11 +564,11 @@ test.describe("month page", () => {
   test("desktop actual drilldown opens only the entries that make up a planned item's actual total", async ({ page }) => {
     const saveResult = await postJson(page, "/api/month-plan/save", {
       rowId: `actual-drilldown-${Date.now()}`,
-      month: "2026-04",
+      month: "2026-05",
       sectionKey: "planned_items",
       categoryName: "Entertainment",
       label: "Actual drilldown item",
-      planDate: "2026-04-18",
+      planDate: "2026-05-18",
       accountName: "UOB One",
       plannedMinor: 5000,
       note: "Actual drilldown coverage.",
@@ -423,7 +579,7 @@ test.describe("month page", () => {
     expect(rowId).toBeTruthy();
 
     const firstEntry = await postJson(page, "/api/entries/create", {
-      date: "2026-04-18",
+      date: "2026-05-18",
       description: "Actual drilldown dinner",
       accountName: "UOB One",
       categoryName: "Entertainment",
@@ -433,7 +589,7 @@ test.describe("month page", () => {
       ownerName: "Tim"
     });
     const secondEntry = await postJson(page, "/api/entries/create", {
-      date: "2026-04-18",
+      date: "2026-05-18",
       description: "Actual drilldown dessert",
       accountName: "UOB One",
       categoryName: "Entertainment",
@@ -443,7 +599,7 @@ test.describe("month page", () => {
       ownerName: "Tim"
     });
     await postJson(page, "/api/entries/create", {
-      date: "2026-04-18",
+      date: "2026-05-18",
       description: "Actual drilldown unrelated",
       accountName: "UOB One",
       categoryName: "Entertainment",
@@ -454,11 +610,11 @@ test.describe("month page", () => {
     });
     await postJson(page, "/api/month-plan/links", {
       rowId,
-      month: "2026-04",
+      month: "2026-05",
       transactionIds: [firstEntry.entryId, secondEntry.entryId]
     });
 
-    await page.goto("/month?view=person-tim&month=2026-04&scope=direct_plus_shared");
+    await page.goto("/month?view=person-tim&month=2026-05&scope=direct_plus_shared");
     const row = page.locator("tr").filter({ hasText: "Actual drilldown item" }).first();
     await row.locator(".month-actual-drilldown").click();
 
@@ -475,7 +631,7 @@ test.describe("month page", () => {
     const beforeCombinedMonth = await loadMonthPageData(page, { scope: "direct_plus_shared" });
 
     await postJson(page, "/api/entries/create", {
-      date: "2026-04-20",
+      date: "2026-05-20",
       description: "Playwright month food expense",
       accountName: "UOB One",
       categoryName: "Food & Drinks",
@@ -498,11 +654,11 @@ test.describe("month page", () => {
     const rowId = `playwright-plan-${Date.now()}`;
     await postJson(page, "/api/month-plan/save", {
       rowId,
-      month: "2026-04",
+      month: "2026-05",
       sectionKey: "planned_items",
       categoryName: "Entertainment",
       label: "Playwright date night",
-      planDate: "2026-04-18",
+      planDate: "2026-05-18",
       accountName: "",
       plannedMinor: 5000,
       note: "Playwright planned item.",
@@ -511,7 +667,7 @@ test.describe("month page", () => {
     });
 
     const firstEntry = await postJson(page, "/api/entries/create", {
-      date: "2026-04-18",
+      date: "2026-05-18",
       description: "Playwright dinner charge",
       accountName: "UOB One",
       categoryName: "Entertainment",
@@ -522,7 +678,7 @@ test.describe("month page", () => {
     });
 
     const secondEntry = await postJson(page, "/api/entries/create", {
-      date: "2026-04-19",
+      date: "2026-05-19",
       description: "Playwright dessert charge",
       accountName: "UOB One",
       categoryName: "Entertainment",
@@ -541,7 +697,7 @@ test.describe("month page", () => {
 
     await postJson(page, "/api/month-plan/links", {
       rowId,
-      month: "2026-04",
+      month: "2026-05",
       transactionIds: [firstEntry.entryId, secondEntry.entryId]
     });
 
@@ -558,11 +714,11 @@ test.describe("month page", () => {
     const rowId = `playwright-shared-plan-${Date.now()}`;
     await postJson(page, "/api/month-plan/save", {
       rowId,
-      month: "2026-04",
+      month: "2026-05",
       sectionKey: "planned_items",
       categoryName: "Family & Personal",
       label: "Playwright shared family spend",
-      planDate: "2026-04-20",
+      planDate: "2026-05-20",
       accountName: "UOB One",
       plannedMinor: 4000,
       note: "Shared linked actuals should stay view-weighted.",
@@ -571,7 +727,7 @@ test.describe("month page", () => {
     });
 
     const linkedEntry = await postJson(page, "/api/entries/create", {
-      date: "2026-04-20",
+      date: "2026-05-20",
       description: "Playwright shared family charge",
       accountName: "UOB One",
       categoryName: "Family & Personal",
@@ -583,7 +739,7 @@ test.describe("month page", () => {
 
     await postJson(page, "/api/month-plan/links", {
       rowId,
-      month: "2026-04",
+      month: "2026-05",
       transactionIds: [linkedEntry.entryId]
     });
 
@@ -610,11 +766,11 @@ test.describe("month page", () => {
     const rowId = `playwright-filter-plan-${Date.now()}`;
     await postJson(page, "/api/month-plan/save", {
       rowId,
-      month: "2026-04",
+      month: "2026-05",
       sectionKey: "planned_items",
       categoryName: "Entertainment",
       label: "Playwright date night",
-      planDate: "2026-04-18",
+      planDate: "2026-05-18",
       accountName: "",
       plannedMinor: 5000,
       note: "Filter dialog coverage.",
@@ -623,7 +779,7 @@ test.describe("month page", () => {
     });
 
     await postJson(page, "/api/entries/create", {
-      date: "2026-04-18",
+      date: "2026-05-18",
       description: "Playwright dinner charge",
       accountName: "UOB One",
       categoryName: "Entertainment",
@@ -634,7 +790,7 @@ test.describe("month page", () => {
     });
 
     await postJson(page, "/api/entries/create", {
-      date: "2026-04-18",
+      date: "2026-05-18",
       description: "Playwright dessert charge",
       accountName: "UOB One",
       categoryName: "Entertainment",
@@ -644,7 +800,7 @@ test.describe("month page", () => {
       ownerName: "Tim"
     });
 
-    await page.goto("/month?view=person-tim&month=2026-04&scope=direct_plus_shared");
+    await page.goto("/month?view=person-tim&month=2026-05&scope=direct_plus_shared");
     const row = page.locator("tr").filter({ hasText: "Playwright date night" }).first();
     await row.getByRole("button", { name: "Link entries" }).click();
 
@@ -665,11 +821,11 @@ test.describe("month page", () => {
   test("planned item matcher keeps already linked entries visible even when default filters would hide them", async ({ page }) => {
     const saveResult = await postJson(page, "/api/month-plan/save", {
       rowId: `linked-visible-${Date.now()}`,
-      month: "2026-04",
+      month: "2026-05",
       sectionKey: "planned_items",
       categoryName: "Family & Personal",
       label: "Linked visibility item",
-      planDate: "2026-04-01",
+      planDate: "2026-05-01",
       accountName: "UOB One",
       plannedMinor: 26000,
       note: "Regression coverage for saved links.",
@@ -680,7 +836,7 @@ test.describe("month page", () => {
     expect(rowId).toBeTruthy();
 
     const linkedEntry = await postJson(page, "/api/entries/create", {
-      date: "2026-04-01",
+      date: "2026-05-01",
       description: "Linked visibility actual",
       accountName: "Citi Rewards",
       categoryName: "Subscriptions MO",
@@ -692,11 +848,11 @@ test.describe("month page", () => {
 
     await postJson(page, "/api/month-plan/links", {
       rowId,
-      month: "2026-04",
+      month: "2026-05",
       transactionIds: [linkedEntry.entryId]
     });
 
-    await page.goto("/month?view=person-tim&month=2026-04&scope=direct_plus_shared");
+    await page.goto("/month?view=person-tim&month=2026-05&scope=direct_plus_shared");
     const row = page.locator("tr").filter({ hasText: "Linked visibility item" }).first();
     await row.getByRole("button", { name: "1 linked" }).click();
 
@@ -710,11 +866,11 @@ test.describe("month page", () => {
     const rowId = `playwright-dense-plan-${Date.now()}`;
     await postJson(page, "/api/month-plan/save", {
       rowId,
-      month: "2026-04",
+      month: "2026-05",
       sectionKey: "planned_items",
       categoryName: "Food & Drinks",
       label: "Playwright coffee beans",
-      planDate: "2026-04-21",
+      planDate: "2026-05-21",
       accountName: "UOB One",
       plannedMinor: 2400,
       note: "Dense candidate coverage.",
@@ -730,7 +886,7 @@ test.describe("month page", () => {
         ? `Playwright oat latte ${padded}`
         : `Playwright dinner ${padded}`;
       const entry = await postJson(page, "/api/entries/create", {
-        date: "2026-04-21",
+        date: "2026-05-21",
         description,
         accountName,
         categoryName: "Food & Drinks",
@@ -746,11 +902,11 @@ test.describe("month page", () => {
 
     await postJson(page, "/api/month-plan/links", {
       rowId,
-      month: "2026-04",
+      month: "2026-05",
       transactionIds: linkedEntryIds
     });
 
-    await page.goto("/month?view=person-tim&month=2026-04&scope=direct_plus_shared");
+    await page.goto("/month?view=person-tim&month=2026-05&scope=direct_plus_shared");
     const row = page.locator("tr").filter({ hasText: "Playwright coffee beans" }).first();
     await row.getByRole("button", { name: /linked|Link entries/i }).click();
 
@@ -780,7 +936,7 @@ test.describe("month page", () => {
     const beforeMonthData = await loadMonthPageData(page, { scope: "direct_plus_shared" });
 
     await postJson(page, "/api/entries/create", {
-      date: "2026-04-22",
+      date: "2026-05-22",
       description: "Playwright groceries charge",
       accountName: "UOB One",
       categoryName: "Groceries",
@@ -791,7 +947,7 @@ test.describe("month page", () => {
     });
 
     await postJson(page, "/api/entries/create", {
-      date: "2026-04-23",
+      date: "2026-05-23",
       description: "Playwright grocery reimbursement",
       accountName: "UOB One",
       categoryName: "Groceries",
@@ -813,11 +969,11 @@ test.describe("month page", () => {
 
     const saveResult = await postJson(page, "/api/month-plan/save", {
       rowId: `mobile-actual-${Date.now()}`,
-      month: "2026-04",
+      month: "2026-05",
       sectionKey: "planned_items",
       categoryName: "Entertainment",
       label: "Mobile actual drilldown",
-      planDate: "2026-04-18",
+      planDate: "2026-05-18",
       accountName: "UOB One",
       plannedMinor: 3000,
       note: "Mobile actual drilldown coverage.",
@@ -828,7 +984,7 @@ test.describe("month page", () => {
     expect(rowId).toBeTruthy();
 
     const entry = await postJson(page, "/api/entries/create", {
-      date: "2026-04-18",
+      date: "2026-05-18",
       description: "Mobile actual entry",
       accountName: "UOB One",
       categoryName: "Entertainment",
@@ -839,11 +995,11 @@ test.describe("month page", () => {
     });
     await postJson(page, "/api/month-plan/links", {
       rowId,
-      month: "2026-04",
+      month: "2026-05",
       transactionIds: [entry.entryId]
     });
 
-    await page.goto("/month?view=person-tim&month=2026-04&scope=direct_plus_shared");
+    await page.goto("/month?view=person-tim&month=2026-05&scope=direct_plus_shared");
     await page.locator("tr").filter({ hasText: "Mobile actual drilldown" }).first().click();
     const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
     await expect(sheet).toBeVisible();

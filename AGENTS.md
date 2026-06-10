@@ -33,6 +33,66 @@ team conventions evolve.
   contract checks.
 - Keep [`docs/implementation-prompt-template.md`](/Users/tim/22m/ai-projects/monies_map/docs/implementation-prompt-template.md)
   updated alongside prompt-shape guidance for slice work and bug fixes.
+- Keep [`docs/refactor-decisions.md`](/Users/tim/22m/ai-projects/monies_map/docs/refactor-decisions.md)
+  updated alongside decisions about shell shape, shared helpers, mobile
+  workflow boundaries, money editing, bootstrap migration, and invalidation.
+- Keep [`docs/first-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/first-slice-prompt.md)
+  updated alongside the actual first implementation prompt for the shell and
+  query foundation slice.
+- Keep [`docs/second-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/second-slice-prompt.md)
+  updated alongside the actual second implementation prompt for route
+  transition and domain-boundary work.
+- Keep [`docs/third-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/third-slice-prompt.md)
+  updated alongside the actual third implementation prompt for the imports
+  query and workflow slice.
+- Keep [`docs/fourth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/fourth-slice-prompt.md)
+  updated alongside the actual fourth implementation prompt for the settings
+  query and workflow slice.
+- Keep [`docs/fifth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/fifth-slice-prompt.md)
+  updated alongside the actual fifth implementation prompt for the summary
+  query and workflow slice.
+- Keep [`docs/sixth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/sixth-slice-prompt.md)
+  updated alongside the actual sixth implementation prompt for the splits
+  query and workflow slice.
+- Keep [`docs/seventh-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/seventh-slice-prompt.md)
+  updated alongside the actual seventh implementation prompt for the
+  cross-page freshness and workflow-lock coordination slice.
+- Keep [`docs/eighth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/eighth-slice-prompt.md)
+  updated alongside the actual eighth implementation prompt for the app-shell
+  retirement and legacy-bridge cleanup slice.
+- Keep [`docs/ninth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/ninth-slice-prompt.md)
+  updated alongside the actual ninth implementation prompt for the entries
+  workflow boundary and remaining month handoff slice.
+- Keep [`docs/tenth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/tenth-slice-prompt.md)
+  updated alongside the actual tenth implementation prompt for the month
+  workspace boundary slice.
+- Keep [`docs/eleventh-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/eleventh-slice-prompt.md)
+  updated alongside the actual eleventh implementation prompt for the summary
+  slice.
+- Keep [`docs/twelfth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/twelfth-slice-prompt.md)
+  updated alongside the actual twelfth implementation prompt for the splits
+  slice.
+- Keep [`docs/thirteenth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/thirteenth-slice-prompt.md)
+  updated alongside the actual thirteenth implementation prompt for the
+  settings slice.
+- Keep [`docs/fourteenth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/fourteenth-slice-prompt.md)
+  updated alongside the actual fourteenth implementation prompt for the
+  remaining cross-slice infrastructure cleanup slice.
+- Keep [`docs/stage4-closure-audit-documentation-alignment-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/stage4-closure-audit-documentation-alignment-prompt.md)
+  updated alongside the Stage 4 closure audit and documentation alignment
+  prompt.
+- Keep [`docs/stage4-flow-index.md`](/Users/tim/22m/ai-projects/monies_map/docs/stage4-flow-index.md)
+  and the page flow docs under `docs/flows/` aligned with the current route,
+  state, and data contracts.
+- Keep [`docs/stage4-close-checklist.md`](/Users/tim/22m/ai-projects/monies_map/docs/stage4-close-checklist.md)
+  updated alongside the Stage 4 closure criteria.
+- Refactor work should be committed in small readable batches as it proceeds.
+  Use that practice for the first slice and keep it for later slices unless a
+  slice is explicitly being held back for one atomic change.
+- Finish each slice with a closure audit so the implementation, tests, and docs
+  agree before the slice is considered complete.
+- Never mark a slice complete unless the slice contract is proven by tests and
+  runtime behavior.
 - Keep [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
   updated alongside user-facing product, setup, and workflow changes.
 - When implementation and documentation diverge, update the documentation in the
@@ -47,13 +107,37 @@ team conventions evolve.
   canonical name in `DOMAIN.md`.
 - Prefer vertical slices over horizontal utility sprawl. Build and refactor by
   end-to-end workflows such as imports, entries, months, splits, and settings.
+- Build domain-first. Model business behavior in types and domain services
+  before UI, and keep distinct semantics distinct when they represent different
+  realities.
+- Treat projections as first-class. When one underlying reality needs multiple
+  views, keep operational, summary, review, compact, and audit-compatible
+  projections synchronized and tested together.
 - Practice TDD by scenario. Start each meaningful behavior change with a test or
   test update that describes the user-visible workflow before implementation
   details.
+- Use runtime proof for user-facing behavior. Prefer real browser or real local
+  worker verification over source inspection when the behavior is visible to a
+  user.
+- Never use browser system alerts, confirms, or prompts for app UX. Replace
+  them with in-app dialogs, inline banners, or other app-native feedback that
+  matches the surrounding desktop and mobile experience.
+- Use `npm run test:e2e:smoke` as the standard smoke-bundle command when you
+  need to verify the core desktop and mobile workflows together.
+- Use `npm run verify` as the local merge gate. It must pass strict TypeScript,
+  unit and parser contracts, the production build, and the smoke bundle.
+- Run `npm run test:e2e` before merging a large refactor branch or a change that
+  affects shared route, settings, import, entry, month, or split orchestration.
+- Do not write shallow tests for implemented behavior. For any non-trivial
+  slice, assert the concrete output shape and values, and include at least one
+  negative test that proves the guarded or rejected path.
 - Prefer deep modules with small public surfaces and hidden internals over wide,
   shallow helper graphs.
 - Prefer explicit domain boundaries between storage, transformation logic, DTOs,
   and UI presentation.
+- Keep route orchestration thin. Page components should coordinate, not contain
+  the whole system; extract helpers and view-models when a page starts carrying
+  too many responsibilities.
 - Build for change. Banks, import formats, categories, splits, and dashboard
   views will evolve over time.
 - Optimize for maintainability over short-term convenience.
@@ -70,6 +154,11 @@ team conventions evolve.
 - Favor composable modules over large files with mixed responsibilities.
 - Keep module APIs small. A caller should not need to understand a feature's
   internal helper graph to use it safely.
+- Keep continuity as an invariant. Preserve state across rerender, route
+  change, correction, and review flows where the workflow requires it.
+- Treat corrections and review as serious system behavior. Support update,
+  delete, merge, restore, undo, and reason capture where relevant, and make sure
+  correction history propagates consistently across projections.
 
 ## Frontend guidance
 
@@ -108,6 +197,8 @@ team conventions evolve.
   would otherwise be hard to infer.
 - Avoid comments that only restate the line below them.
 - Prefer clear names over dense abstractions.
+- Prefer user-friendly language in visible UI. Avoid internal jargon on the
+  main surface and keep deeper interpretation in dedicated review surfaces.
 
 ## Documentation expectations
 
@@ -131,6 +222,27 @@ team conventions evolve.
   needs to stay on the test plan.
 - Update [`docs/implementation-prompt-template.md`](/Users/tim/22m/ai-projects/monies_map/docs/implementation-prompt-template.md)
   when the recommended prompt shape or required doc list changes.
+- Update [`docs/refactor-decisions.md`](/Users/tim/22m/ai-projects/monies_map/docs/refactor-decisions.md)
+  when a decision about App shell shape, shared helpers, mobile workflow
+  shape, money editing, bootstrap dependence, or invalidation changes.
+- Update [`docs/first-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/first-slice-prompt.md)
+  when the first slice prompt itself changes or when the first slice target
+  scenarios or coupling rows change.
+- Update [`docs/second-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/second-slice-prompt.md)
+  when the second slice prompt itself changes or when the route-transition
+  target scenarios or coupling rows change.
+- Update [`docs/third-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/third-slice-prompt.md)
+  when the third slice prompt itself changes or when the imports target
+  scenarios or coupling rows change.
+- Update [`docs/fourth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/fourth-slice-prompt.md)
+  when the fourth slice prompt itself changes or when the settings target
+  scenarios or coupling rows change.
+- Update [`docs/fifth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/fifth-slice-prompt.md)
+  when the fifth slice prompt itself changes or when the summary target
+  scenarios or coupling rows change.
+- Update [`docs/sixth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/sixth-slice-prompt.md)
+  when the sixth slice prompt itself changes or when the splits target
+  scenarios or coupling rows change.
 - Update [`design.md`](/Users/tim/22m/ai-projects/monies_map/design.md) when
   implementation boundaries such as the client deep module service evolve.
 - Update [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)

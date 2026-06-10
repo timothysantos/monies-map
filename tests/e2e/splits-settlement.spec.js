@@ -17,7 +17,7 @@ test("recording a settlement closes the open batch and archives it", async ({ pa
   await dialog.getByLabel("Note").fill(note);
   await dialog.getByRole("button", { name: "Save settlement" }).click();
 
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("dialog")).toBeHidden();
   await expect.poll(async () => {
     const data = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
     const selectedGroup = data.splitsPage.groups.find((item) => item.id === "split-group-none");

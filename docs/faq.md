@@ -764,6 +764,12 @@ A checkpoint-only PDF can be rolled back too, as long as it is still the newest
 statement certificate for that account. That removes the statement checkpoint
 and reconciliation certificate metadata, without touching older ledger activity.
 
+If the rolled-back PDF was the first statement for an otherwise blank account,
+rollback returns the account to its blank state and a later statement may become
+the new starting point. If earlier statement checkpoints already exist, rollback
+creates a statement-chain gap. Later statements stay blocked until the missing
+statement month is imported again.
+
 A PDF statement should not be rolled back once it certifies pre-existing ledger
 rows, such as rows that came from a mid-cycle export. At that point the
 statement has promoted existing working rows to bank-certified facts while
@@ -1100,11 +1106,11 @@ The current setup runs as two local processes during development:
 Local development shows a thin sticky green `local` banner at the top of the
 page so it is visually distinct from deployed environments.
 
-If the app sits on `Loading...` and the browser console shows `/api/bootstrap`
-returning `500` plus a JSON parse error, the usual local cause is that Vite is
-still running while the Worker API failed to start. This repo expects Node 22
-for local scripts, so run `nvm use` from the repo root and restart
-`npm run dev`.
+If the app sits on `Loading...` and the browser console shows `/api/app-shell`
+or one of the page routes returning `500` plus a JSON parse error, the usual
+local cause is that Vite is still running while the Worker API failed to
+start. This repo expects Node 22.12.0 or newer for local scripts, so run
+`nvm use` from the repo root and restart `npm run dev`.
 
 ## Where is the production app deployed?
 
@@ -1143,10 +1149,10 @@ blue `demo` banner at the top of the page.
 
 Use the Cloudflare deploy steps in
 [`README.md`](../README.md#cloudflare-deploy).
-The routine production path is to use Node 22, then run `npm run deploy:prod`.
-Use `npm run deploy:demo` for only the public demo, or `npm run deploy:all` to
-build once and publish both Workers. If the app change depends on a schema
-update, run the matching D1 migration before deploy.
+The routine production path is to use Node 22.12.0 or newer, then run
+`npm run deploy:prod`. Use `npm run deploy:demo` for only the public demo, or
+`npm run deploy:all` to build once and publish both Workers. If the app change
+depends on a schema update, run the matching D1 migration before deploy.
 
 ## Can it know the real balance of each wallet?
 
@@ -1244,7 +1250,11 @@ Import duplicate matching now runs in two lanes. First, exact duplicate
 suppression checks for the same mapped account, the same amount, and either the
 same normalized import hash or a perfect normalized description match with
 `dayDistance === 0`. Those rows are auto-skipped before any reconciliation
-status guard runs.
+status guard runs. When the existing ledger row is already statement-certified
+from a PDF and the incoming row is a later mid-cycle activity file, the
+description/hash lane may use the same velocity date window. That lets a final
+statement row posted on one date suppress a later activity export row for the
+same bank event when the activity export shows the transaction date instead.
 
 If a row is not an exact duplicate, the app then isolates one date lane for the
 promotion and reconciliation step. If both rows have event date hints, it

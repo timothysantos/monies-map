@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { moniesClient } from "./monies-client-service";
+import { buildEntryMutationRefreshPlan, hasLedgerAffectingEntryChange } from "./entry-refresh-plan";
+import { buildComparableEntryState, mergeEntriesById } from "./entry-state";
 import { buildRequestErrorMessage } from "./request-errors";
 
 const { entries: entryService } = moniesClient;
@@ -9,42 +11,9 @@ const { entries: entryService } = moniesClient;
 // It owns draft/edit state, optimistic updates, and the mutation calls that
 // eventually rehydrate from the canonical server payload.
 
-// Merge the latest server snapshot into the locally edited list without
-// clobbering the row the user is actively changing in the editor.
-function mergeEntriesById(currentEntries, serverEntries, editingEntryId) {
-  const currentById = new Map(currentEntries.map((entry) => [entry.id, entry]));
-  const serverIds = new Set(serverEntries.map((entry) => entry.id));
-  const localTransientEntries = currentEntries.filter((entry) => entry.isPendingDerived && !serverIds.has(entry.id));
-
-  return [
-    ...localTransientEntries,
-    ...serverEntries.map((serverEntry) => {
-      const currentEntry = currentById.get(serverEntry.id);
-      if (!currentEntry) {
-        return serverEntry;
-      }
-
-      if (serverEntry.id === editingEntryId) {
-        return {
-          ...currentEntry,
-          linkedTransfer: serverEntry.linkedTransfer,
-          linkedSplitExpenseId: serverEntry.linkedSplitExpenseId,
-          isPendingDerived: false
-        };
-      }
-
-      return {
-        ...currentEntry,
-        ...serverEntry,
-        isPendingDerived: false
-      };
-    })
-  ];
-}
-
 // Owns the local edit/draft state and server mutations for the entries page.
 // The panel still owns filters and derived lists so this hook stays about edits.
-export function useEntryActions({ view, accounts, categories, people, onRefresh, onSplitMutation }) {
+export function useEntryActions({ view, accounts, categories, people, onRefresh, onSplitMutation, onEntryMutation }) {
   const [entries, setEntries] = useState(view.monthPage.entries);
   const [editingEntryId, setEditingEntryId] = useState(null);
   const [entrySnapshot, setEntrySnapshot] = useState(null);
@@ -63,6 +32,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   const [transferCandidateErrors, setTransferCandidateErrors] = useState({});
   const [addingToSplitsEntryId, setAddingToSplitsEntryId] = useState(null);
   const queuedComposerDraftRef = useRef(null);
+  const deletedEntryIdsRef = useRef(new Set());
   const viewIdentityKey = `${view.id}:${view.monthPage.month}:${view.monthPage.selectedScope}`;
   const activeEditingEntry = useMemo(
     () => editingEntryId ? entries.find((entry) => entry.id === editingEntryId) ?? null : null,
@@ -78,12 +48,16 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   }, [activeEditingEntry, entrySnapshot]);
 
   useEffect(() => {
+    deletedEntryIdsRef.current.clear();
+  }, [viewIdentityKey]);
+
+  useEffect(() => {
     const queuedComposerDraft = queuedComposerDraftRef.current;
     queuedComposerDraftRef.current = null;
 
     // A view/month/scope change means the local editor state is no longer
     // trustworthy, so the hook resets to the fresh server-backed baseline.
-    setEntries(view.monthPage.entries);
+    setEntries(mergeEntriesById([], view.monthPage.entries, null, deletedEntryIdsRef.current));
     setEditingEntryId(null);
     setEntrySnapshot(null);
     setShowEntryComposer(Boolean(queuedComposerDraft));
@@ -106,7 +80,23 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   }, [accounts, categories, people, viewIdentityKey]);
 
   useEffect(() => {
-    setEntries((current) => mergeEntriesById(current, view.monthPage.entries, editingEntryId));
+    if (editingEntryId) {
+      return;
+    }
+
+    setEntries((current) => mergeEntriesById(
+      current,
+      view.monthPage.entries,
+      editingEntryId,
+      deletedEntryIdsRef.current
+    ));
+
+    const serverEntryIds = new Set(view.monthPage.entries.map((entry) => entry.id));
+    for (const deletedEntryId of deletedEntryIdsRef.current) {
+      if (!serverEntryIds.has(deletedEntryId)) {
+        deletedEntryIdsRef.current.delete(deletedEntryId);
+      }
+    }
   }, [editingEntryId, view.monthPage.entries]);
 
   function refreshEntriesInBackground() {
@@ -237,7 +227,22 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       } else {
         setEntrySnapshot(savedEntrySnapshot);
       }
-      refreshEntriesInBackground();
+      const refreshPlan = buildEntryMutationRefreshPlan({
+        kind: hasLedgerAffectingEntryChange(currentEntry, entrySnapshot ?? currentEntry)
+          ? "entry-edit"
+          : "note-only-edit",
+        nextEntry: currentEntry,
+        previousEntry: entrySnapshot ?? currentEntry
+      });
+      if (refreshPlan.invalidateEntries || refreshPlan.invalidateMonth || refreshPlan.invalidateSummary) {
+        onEntryMutation?.({
+          month: view.monthPage.month,
+          invalidateEntries: refreshPlan.invalidateEntries,
+          invalidateMonth: refreshPlan.invalidateMonth,
+          invalidateSummary: refreshPlan.invalidateSummary
+        });
+      }
+      await onRefresh();
       return {
         ok: true,
         entry: savedEntrySnapshot
@@ -305,6 +310,12 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
         isPendingDerived: true
       }, people, entryDraft);
       setEntries((current) => [optimisticEntry, ...current]);
+      onEntryMutation?.({
+        month: view.monthPage.month,
+        invalidateEntries: true,
+        invalidateMonth: true,
+        invalidateSummary: true
+      });
       queuedComposerDraftRef.current = null;
       closeEntryComposer();
       if (createdSplitExpenseId) {
@@ -340,45 +351,6 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   async function finishEntryEdit() {
     const result = await persistExistingEntry(editingEntryId, { closeEditor: true });
     return result.ok;
-  }
-
-  async function saveEntryCategory(entryId, categoryName) {
-    const currentEntry = entries.find((entry) => entry.id === entryId);
-    if (!currentEntry) {
-      return;
-    }
-
-    const response = await fetch("/api/entries/update-classification", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        entryId: currentEntry.id,
-        entryType: currentEntry.entryType,
-        transferDirection: currentEntry.transferDirection,
-        categoryName
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(await buildRequestErrorMessage(response, "Failed to save category."));
-    }
-
-    setEntrySnapshot((current) => current && current.id === entryId
-      ? { ...current, categoryName }
-      : current
-    );
-    setEntries((current) => current.map((entry) => (
-      entry.id === entryId
-        ? {
-            ...entry,
-            categoryName,
-            isPendingDerived: true
-          }
-        : entry
-    )));
-    refreshEntriesInBackground();
   }
 
   function cancelEntryEdit() {
@@ -425,6 +397,12 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       )));
       setEditingEntryId(null);
       setEntrySnapshot(null);
+      onEntryMutation?.({
+        month: view.monthPage.month,
+        invalidateEntries: true,
+        invalidateMonth: true,
+        invalidateSummary: true
+      });
       refreshEntriesInBackground();
       setTransferCandidateOverrides((current) => {
         if (!current[entry.id]) {
@@ -540,6 +518,12 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       )));
       setEditingEntryId(null);
       setEntrySnapshot(null);
+      onEntryMutation?.({
+        month: view.monthPage.month,
+        invalidateEntries: true,
+        invalidateMonth: true,
+        invalidateSummary: true
+      });
       refreshEntriesInBackground();
     } finally {
       setSettlingTransferEntryId(null);
@@ -604,13 +588,19 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       if (nextLinkedEntry) {
         setEntrySnapshot(nextLinkedEntry);
       }
+      onEntryMutation?.({
+        month: view.monthPage.month,
+        invalidateEntries: true,
+        invalidateMonth: true,
+        invalidateSummary: true
+      });
       onSplitMutation?.({
         month: view.monthPage.month,
         invalidateEntries: true,
         invalidateMonth: true,
         invalidateSummary: true
       });
-      refreshEntriesInBackground();
+      await onRefresh();
       return {
         ok: true,
         ...data
@@ -705,11 +695,18 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
         };
       }
 
+      deletedEntryIdsRef.current.add(entry.id);
       setEntries((current) => current.filter((currentEntry) => currentEntry.id !== entry.id));
       if (editingEntryId === entry.id) {
         setEditingEntryId(null);
         setEntrySnapshot(null);
       }
+      onEntryMutation?.({
+        month: view.monthPage.month,
+        invalidateEntries: true,
+        invalidateMonth: true,
+        invalidateSummary: true
+      });
       onSplitMutation?.({
         month: view.monthPage.month,
         invalidateEntries: true,
@@ -763,8 +760,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     deleteEntry,
     updateEntry,
     updateEntryAmount,
-    updateEntrySplit,
-    saveEntryCategory
+    updateEntrySplit
   };
 }
 
@@ -784,32 +780,6 @@ function buildPersistedEntryPayload(entry, primarySplit) {
     ownerName: entry.ownerName,
     note: entry.note ?? "",
     splitBasisPoints: primarySplit?.ratioBasisPoints
-  };
-}
-
-// Only compare fields the user can edit from the Entries UI. Server-derived
-// fields such as linked transfers or provisional flags should not make the row
-// look dirty.
-function buildComparableEntryState(entry) {
-  return {
-    date: entry.date,
-    description: entry.description,
-    accountId: entry.accountId ?? null,
-    accountName: entry.accountName ?? "",
-    categoryName: entry.categoryName,
-    amountMinor: Number(
-      entry.ownershipType === "shared"
-        ? entryService.getTotalAmountMinor(entry)
-        : (entry.amountMinor ?? 0)
-    ),
-    entryType: entry.entryType,
-    transferDirection: entry.transferDirection ?? null,
-    ownershipType: entry.ownershipType,
-    ownerName: entry.ownerName ?? null,
-    note: entry.note ?? "",
-    splitBasisPoints: entry.ownershipType === "shared"
-      ? Number(entry.splits?.[0]?.ratioBasisPoints ?? 5000)
-      : null
   };
 }
 

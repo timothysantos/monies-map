@@ -72,3 +72,18 @@ test("statement preview auto-refresh re-runs when a visible statement draft is s
     lastAutoRefreshKey: "older-draft"
   })).toBe(true);
 });
+
+test("statement preview auto-refresh is blocked while the draft has active workflow edits", () => {
+  expect(shouldAutoRefreshStatementPreview({
+    hasPreview: true,
+    autoRefreshKey: "statement-draft",
+    isWorkflowLocked: true,
+    isSubmitting: false,
+    isParsingStatement: false,
+    isDocumentVisible: true,
+    now: 30_000,
+    lastPreviewHydratedAt: 10_000,
+    lastAutoRefreshAt: 1_000,
+    lastAutoRefreshKey: "older-draft"
+  })).toBe(false);
+});

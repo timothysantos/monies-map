@@ -17,6 +17,9 @@ system.
 - [`docs/scenario-catalog.md`](./scenario-catalog.md): Stage 1 TDD scenario map
 - [`docs/slice-inventory.md`](./slice-inventory.md): Stage 2 slice ownership map
 - [`docs/query-map.md`](./query-map.md): Stage 3 query and cache map
+- [`docs/route-data-code-flow.md`](./route-data-code-flow.md): detailed
+  three-lane explanation of route flow, data flow, code/rendering flow, and
+  their current boundary rules
 - [`docs/code-spec.md`](./code-spec.md): compact implementation spec, query
   budgets, invalidation contract, and code-shape rules
 - [`docs/implementation-order.md`](./implementation-order.md): Stage 4
@@ -27,6 +30,25 @@ system.
   findings that should become explicit tests or contract checks
 - [`docs/implementation-prompt-template.md`](./implementation-prompt-template.md):
   exact prompt shape for slice work and bug fixes
+- [`docs/refactor-decisions.md`](./refactor-decisions.md): intended answers to
+  the remaining shell, helper, mobile, money-editing, bootstrap, and
+  invalidation shape questions
+- [`docs/first-slice-prompt.md`](./first-slice-prompt.md): ready-to-run prompt
+  for the app shell and query infrastructure foundation slice
+- [`docs/second-slice-prompt.md`](./second-slice-prompt.md): ready-to-run
+  prompt for the route-transition and domain-boundary slice
+- [`docs/third-slice-prompt.md`](./third-slice-prompt.md): ready-to-run prompt
+  for the imports query and workflow slice
+- [`docs/fourth-slice-prompt.md`](./fourth-slice-prompt.md): ready-to-run
+  prompt for the settings query and workflow slice
+- [`docs/eighth-slice-prompt.md`](./eighth-slice-prompt.md): ready-to-run
+  prompt for the app-shell retirement and legacy-bridge cleanup slice
+- [`docs/ninth-slice-prompt.md`](./ninth-slice-prompt.md): ready-to-run
+  prompt for the entries workflow boundary and remaining month handoff slice
+- [`docs/tenth-slice-prompt.md`](./tenth-slice-prompt.md): ready-to-run
+  prompt for the month workspace boundary slice
+- [`docs/eleventh-slice-prompt.md`](./eleventh-slice-prompt.md): ready-to-run
+  prompt for the summary slice
 - [`docs/existing-behavior-guardrails.md`](./existing-behavior-guardrails.md): current-app behaviors that must survive refactors
 - [`docs/responsive-behavior.md`](./responsive-behavior.md): responsive UX and form-factor contract
 - [`docs/interaction-guidelines.md`](./interaction-guidelines.md): button, CTA, and dismissal semantics
@@ -42,6 +64,8 @@ state flow. The main problems are:
 - data flow is not obvious from screen to query to domain logic to storage
 - feature code is not consistently organized as vertical slices
 - the current client bootstrap is carrying too much responsibility
+- slice migrations must cut over cleanly instead of preserving old and new
+  paths side by side
 - deep modules are present in intent but not yet enforced as the dominant shape
 - tests exist, but the development process is not yet consistently TDD-first at
   the scenario level
@@ -256,6 +280,8 @@ Artifact:
 
 Goal:
 - move from broad bootstrap hydration to minimal, screen-owned data fetching
+- remove the old path in the same slice once the replacement passes the slice
+  tests
 
 Actions:
 - inventory current refresh, prefetch, quick-entry, and cross-tab behaviors
@@ -266,6 +292,8 @@ Actions:
 - separate month list queries from month detail queries
 - keep invalidation narrow and predictable
 - remove hidden data dependencies on one giant bootstrap payload
+- do not leave a compatibility path alive after the slice owns its new query
+  boundary
 
 Exit criteria:
 - each screen can describe which query powers it
@@ -304,6 +332,8 @@ Before implementation work, also use:
 - [`docs/preimplementation-checklist.md`](./preimplementation-checklist.md)
 - [`docs/known-coupling-targets.md`](./known-coupling-targets.md)
 - [`docs/implementation-prompt-template.md`](./implementation-prompt-template.md)
+- [`docs/refactor-decisions.md`](./refactor-decisions.md)
+- [`docs/first-slice-prompt.md`](./first-slice-prompt.md)
 
 ### Stage 5: Tighten backend boundaries to match the slices
 

@@ -14,11 +14,14 @@ import {
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import {
+  buildSummaryEntriesLocation,
+  buildSummaryMonthLocation,
+  SUMMARY_FOCUS_OVERALL
+} from "./summary-workflow";
+import {
   BarLine,
   MetricCard
 } from "./ui-components";
-
-const SUMMARY_FOCUS_OVERALL = "overall";
 const {
   accounts: accountService,
   categories: categoryService,
@@ -35,27 +38,25 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
   const navigate = useNavigate();
   const location = useLocation();
   const [monthNoteDialog, setMonthNoteDialog] = useState(null);
+  const [isSavingMonthNote, setIsSavingMonthNote] = useState(false);
+  const [monthNoteError, setMonthNoteError] = useState("");
+  // Summary can mount while the route payload is still hydrating, so keep a
+  // fully shaped local summary slice instead of reading nested fields directly.
+  const safeSummaryPage = {
+    metricCards: [],
+    rangeMonths: [],
+    categoryShareByMonth: [],
+    categoryShareChart: [],
+    months: [],
+    accountPills: [],
+    ...view.summaryPage
+  };
 
   const summaryFocusParam = searchParams.get("summary_focus");
-  const focusState = buildSummaryFocusState(view.summaryPage, summaryFocusParam);
+  const focusState = buildSummaryFocusState(safeSummaryPage, summaryFocusParam);
 
   function navigateToEntries(nextFilters) {
-    const next = new URLSearchParams(location.search);
-    next.delete("entry_wallet");
-    next.delete("entry_person");
-    next.delete("entry_type");
-    next.delete("entry_category");
-
-    for (const [key, value] of Object.entries(nextFilters)) {
-      if (value) {
-        next.set(key, value);
-      }
-    }
-
-    navigate({
-      pathname: "/entries",
-      search: `?${next.toString()}`
-    });
+    navigate(buildSummaryEntriesLocation(location.search, nextFilters));
   }
 
   function handleFocusChange(nextMonth) {
@@ -81,12 +82,7 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
   }
 
   function handleOpenMonth(month) {
-    const next = new URLSearchParams(location.search);
-    next.set("month", month);
-    navigate({
-      pathname: "/month",
-      search: `?${next.toString()}`
-    });
+    navigate(buildSummaryMonthLocation(location.search, month));
   }
 
   async function saveSummaryMonthNote() {
@@ -94,18 +90,19 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
       return;
     }
 
-    await fetch("/api/month-note/update", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    setIsSavingMonthNote(true);
+    setMonthNoteError("");
+    try {
+      await onRefresh({
         month: monthNoteDialog.month,
-        personScope: view.id,
         note: monthNoteDialog.draft
-      })
-    });
-
-    setMonthNoteDialog(null);
-    await onRefresh();
+      });
+      setMonthNoteDialog(null);
+    } catch (error) {
+      setMonthNoteError(error instanceof Error ? error.message : "Failed to save month note.");
+    } finally {
+      setIsSavingMonthNote(false);
+    }
   }
 
   return (
@@ -116,7 +113,7 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
           <span className="panel-context">{messages.common.viewingDot(view.label)}</span>
         </div>
         <div className="metric-row metric-row-summary summary-head-metrics">
-          {view.summaryPage.metricCards.map((card) => (
+          {safeSummaryPage.metricCards.map((card) => (
             <MetricCard key={card.label} card={card} />
           ))}
         </div>
@@ -124,7 +121,7 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
 
       <div className="summary-top-grid">
         <SummarySpendingMixSection
-          rangeMonths={view.summaryPage.rangeMonths}
+          rangeMonths={safeSummaryPage.rangeMonths}
           focusState={focusState}
           categories={categories}
           onCategoryAppearanceChange={onCategoryAppearanceChange}
@@ -134,20 +131,27 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
         />
 
         <SummaryIntentVsOutcomeSection
-          months={view.summaryPage.months}
+          months={safeSummaryPage.months}
           onOpenMonth={handleOpenMonth}
           onEditNote={(month, note) => setMonthNoteDialog({ month, draft: note ?? "" })}
         />
       </div>
 
       <SummaryAccountsSection
-        accountPills={view.summaryPage.accountPills}
+        accountPills={safeSummaryPage.accountPills}
         onOpenEntriesForAccount={handleOpenEntriesForAccount}
       />
 
       <SummaryMonthNoteDialog
         monthNoteDialog={monthNoteDialog}
-        onClose={() => setMonthNoteDialog(null)}
+        isSaving={isSavingMonthNote}
+        errorMessage={monthNoteError}
+        onClose={() => {
+          if (!isSavingMonthNote) {
+            setMonthNoteDialog(null);
+            setMonthNoteError("");
+          }
+        }}
         onChangeDraft={(draft) => {
           setMonthNoteDialog((current) => (current ? { ...current, draft } : current));
         }}
@@ -393,40 +397,53 @@ function SummaryAccountsSection({ accountPills, onOpenEntriesForAccount }) {
   );
 }
 
-function SummaryMonthNoteDialog({ monthNoteDialog, onClose, onChangeDraft, onSave }) {
+function SummaryMonthNoteDialog({ monthNoteDialog, isSaving = false, errorMessage = "", onClose, onChangeDraft, onSave }) {
   return (
-    <Dialog.Root open={Boolean(monthNoteDialog)} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog.Root open={Boolean(monthNoteDialog)} onOpenChange={(open) => { if (!open && !isSaving) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content">
-          <div className="note-dialog-head">
-            <div>
-              <Dialog.Title>{messages.month.notesTitle}</Dialog.Title>
-              <Dialog.Description>{messages.month.notesDetail}</Dialog.Description>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (isSaving) {
+                return;
+              }
+              void onSave();
+            }}
+          >
+            <div className="note-dialog-head">
+              <div>
+                <Dialog.Title>{messages.month.notesTitle}</Dialog.Title>
+                <Dialog.Description>{messages.month.notesDetail}</Dialog.Description>
+              </div>
+              <button
+                type="button"
+                className="icon-action subtle-cancel"
+                aria-label="Close month note editor"
+                disabled={isSaving}
+                onClick={onClose}
+              >
+                <X size={16} />
+              </button>
             </div>
-            <button
-              type="button"
-              className="icon-action subtle-cancel"
-              aria-label="Close month note editor"
-              onClick={onClose}
-            >
-              <X size={16} />
-            </button>
-          </div>
-          <textarea
-            className="note-dialog-textarea"
-            value={monthNoteDialog?.draft ?? ""}
-            onChange={(event) => onChangeDraft(event.target.value)}
-            rows={10}
-          />
-          <div className="note-dialog-actions">
-            <button type="button" className="subtle-cancel" onClick={onClose}>
-              {messages.month.cancelEdit}
-            </button>
-            <button type="button" className="dialog-primary" onClick={() => void onSave()}>
-              {messages.month.doneEdit}
-            </button>
-          </div>
+            {errorMessage ? <p className="form-error" role="alert">{errorMessage}</p> : null}
+            <textarea
+              className="note-dialog-textarea"
+              value={monthNoteDialog?.draft ?? ""}
+              onChange={(event) => onChangeDraft(event.target.value)}
+              rows={10}
+              enterKeyHint="done"
+            />
+            <div className="note-dialog-actions">
+              <button type="button" className="subtle-cancel" disabled={isSaving} onClick={onClose}>
+                {messages.month.cancelEdit}
+              </button>
+              <button type="submit" className="dialog-primary" disabled={isSaving}>
+                {isSaving ? messages.common.saving : messages.month.doneEdit}
+              </button>
+            </div>
+          </form>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -434,17 +451,29 @@ function SummaryMonthNoteDialog({ monthNoteDialog, onClose, onChangeDraft, onSav
 }
 
 function buildSummaryFocusState(summaryPage, summaryFocusParam) {
-  const latestRangeMonth = summaryPage.rangeMonths.at(-1) ?? "";
+  // Summary can hydrate before the full range slice lands, so default to
+  // empty collections instead of assuming every summary field is present.
+  const safeSummaryPage = summaryPage ?? {
+    rangeMonths: [],
+    categoryShareByMonth: [],
+    categoryShareChart: [],
+    months: []
+  };
+  const rangeMonths = safeSummaryPage.rangeMonths ?? [];
+  const categoryShareByMonth = safeSummaryPage.categoryShareByMonth ?? [];
+  const categoryShareChart = safeSummaryPage.categoryShareChart ?? [];
+  const months = safeSummaryPage.months ?? [];
+  const latestRangeMonth = rangeMonths.at(-1) ?? "";
   const selectedFocusMonth = summaryFocusParam === SUMMARY_FOCUS_OVERALL
     ? ""
-    : (summaryFocusParam && summaryPage.rangeMonths.includes(summaryFocusParam)
+    : (summaryFocusParam && rangeMonths.includes(summaryFocusParam)
       ? summaryFocusParam
       : latestRangeMonth);
-  const selectedDonutMonth = summaryPage.categoryShareByMonth.find((month) => month.month === selectedFocusMonth) ?? null;
-  const donutData = selectedDonutMonth?.data ?? summaryPage.categoryShareChart;
+  const selectedDonutMonth = categoryShareByMonth.find((month) => month.month === selectedFocusMonth) ?? null;
+  const donutData = selectedDonutMonth?.data ?? categoryShareChart;
   const totalSpendMinor = selectedDonutMonth
-    ? summaryPage.months.find((month) => month.month === selectedDonutMonth.month)?.realExpensesMinor ?? 0
-    : summaryPage.months.reduce((sum, month) => sum + month.realExpensesMinor, 0);
+    ? months.find((month) => month.month === selectedDonutMonth.month)?.realExpensesMinor ?? 0
+    : months.reduce((sum, month) => sum + month.realExpensesMinor, 0);
 
   return {
     selectedFocusMonth,
