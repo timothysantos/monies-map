@@ -36,4 +36,3 @@ Do not call Stage 4 closed if any of the following is true:
 
 Stage 4 is closed only when the checklist items above are true together, not
 when any one of them is true by itself.
-
