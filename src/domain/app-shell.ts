@@ -174,7 +174,6 @@ export function buildEntriesContextView(
       months: [buildEmptySummaryMonth(selectedMonth)],
       categoryShareChart: [],
       categoryShareByMonth: [],
-      accountPills: [],
       notes: []
     },
     monthPage: {
@@ -732,7 +731,7 @@ export function derivePlanRowActuals(rows: MonthPlanRowDto[], entries: EntryDto[
 
     const linkedEntries = row.linkedEntryIds
       .map((entryId) => entriesById.get(entryId))
-      .filter((entry): entry is EntryDto => Boolean(entry) && entry.entryType === "expense");
+      .filter((entry): entry is EntryDto => entry?.entryType === "expense");
     const actualMinor = linkedEntries.reduce((sum, entry) => {
       return sum + getVisibleLinkedEntryAmountMinor(entry, viewerPersonId);
     }, 0);

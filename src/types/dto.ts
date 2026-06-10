@@ -629,7 +629,7 @@ export interface SettingsPageDto {
 }
 
 export interface AppShellDto {
-  appEnvironment?: "demo" | "local" | "production";
+  appEnvironment?: "demo" | "local" | "production" | "test";
   household: HouseholdDto;
   accounts: AccountDto[];
   categories: CategoryDto[];
@@ -648,7 +648,7 @@ export interface AppShellDto {
 }
 
 export interface EntriesShellDto {
-  appEnvironment?: "demo" | "local" | "production";
+  appEnvironment?: "demo" | "local" | "production" | "test";
   household: HouseholdDto;
   accounts: AccountDto[];
   categories: CategoryDto[];

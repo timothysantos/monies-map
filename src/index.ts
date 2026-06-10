@@ -995,11 +995,11 @@ export default {
       }
 
       return json({
-        ok: true,
         ...(await linkSplitExpenseMatch(env.DB, {
           splitExpenseId: body.splitExpenseId,
           transactionId: body.transactionId
-        }))
+        })),
+        ok: true
       });
     }
 
@@ -1010,11 +1010,11 @@ export default {
       }
 
       return json({
-        ok: true,
         ...(await linkSplitSettlementMatch(env.DB, {
           settlementId: body.settlementId,
           transactionId: body.transactionId
-        }))
+        })),
+        ok: true
       });
     }
 

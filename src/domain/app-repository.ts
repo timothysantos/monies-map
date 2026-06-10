@@ -1348,7 +1348,21 @@ async function seedDemoSplitData(db: D1Database) {
       .run();
   }
 
-  const importedTransactionSeeds = [
+  const importedTransactionSeeds: Array<{
+    id: string;
+    importId: string;
+    accountName: string;
+    date: string;
+    description: string;
+    categoryName: string;
+    entryType: "expense" | "income" | "transfer";
+    transferDirection?: "in" | "out";
+    ownershipType: "direct" | "shared";
+    ownerName?: string;
+    amountMinor: number;
+    splitBasisPoints?: number;
+    note?: string;
+  }> = [
     {
       id: "txn-import-split-okaeri-linked",
       importId: "import-2025-10-citi",
@@ -2659,7 +2673,10 @@ export async function settleTransferPair(
       .run();
   }
 
-  const months = new Set([currentEntry.transaction_date.slice(0, 7), counterpartEntry?.transaction_date?.slice(0, 7)].filter(Boolean));
+  const months = new Set(
+    [currentEntry.transaction_date.slice(0, 7), counterpartEntry?.transaction_date?.slice(0, 7)]
+      .filter((month): month is string => Boolean(month))
+  );
   for (const month of months) {
     await recalculateMonthlySnapshots(db, month);
   }
