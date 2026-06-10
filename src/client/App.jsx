@@ -2051,7 +2051,7 @@ export function App() {
     summaryPage
   ]);
   const renderedRouteElement = useMemo(() => {
-    if (!pageView) {
+    if (!appShell || !pageView) {
       return null;
     }
 
