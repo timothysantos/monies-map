@@ -1038,6 +1038,29 @@ test.describe("import flow", () => {
       JSON.stringify(preview.json.preview.statementReconciliations[0])
     ).toBe("matched");
 
+    const ambiguousStatementCheckpoints = matchingStatementCheckpoints.map(({ accountId: _accountId, ...checkpoint }) => checkpoint);
+    const ambiguousCheckpointOnlyCommit = await page.evaluate(async ({ statementCheckpoints, statementControlRows, statementReconciliations }) => {
+      const response = await fetch("/api/imports/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "Playwright monthly PDF ambiguous checkpoint",
+          sourceType: "pdf",
+          parserKey: "uob_credit_card_pdf",
+          rows: [],
+          statementCheckpoints,
+          statementControlRows,
+          statementReconciliations
+        })
+      });
+      return { ok: response.ok, text: await response.text() };
+    }, {
+      statementCheckpoints: ambiguousStatementCheckpoints,
+      statementControlRows: preview.json.preview.previewRows,
+      statementReconciliations: preview.json.preview.statementReconciliations
+    });
+    expect(ambiguousCheckpointOnlyCommit.ok, ambiguousCheckpointOnlyCommit.text).toBeTruthy();
+
     const checkpointOnlyCommit = await page.evaluate(async ({ statementCheckpoints }) => {
       const response = await fetch("/api/imports/commit", {
         method: "POST",
