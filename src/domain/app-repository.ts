@@ -383,6 +383,10 @@ export async function ensureDemoSchema(db: D1Database) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN statement_certified_at TEXT").run();
   }
 
+  if (transactionColumns.results.length > 0) {
+    await resetRolledBackStatementCertifications(db);
+  }
+
   if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "transfer_review_dismissed_at")) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN transfer_review_dismissed_at TEXT").run();
   }
@@ -3866,6 +3870,7 @@ async function clearStatementChainBreaksForImport(db: D1Database, checkpoints: S
 
 async function cleanupImportBatchRows(db: D1Database, importId: string) {
   await cleanupStatementImportMetadata(db, importId);
+  await resetStatementCertificationForImport(db, importId);
 
   await db
     .prepare(`
@@ -3912,6 +3917,43 @@ async function cleanupImportBatchRows(db: D1Database, importId: string) {
       WHERE import_id IN (
         SELECT id FROM imports WHERE household_id = ? AND id = ?
       )
+      `)
+    .bind(DEFAULT_HOUSEHOLD_ID, importId)
+    .run();
+}
+
+async function resetRolledBackStatementCertifications(db: D1Database) {
+  await db
+    .prepare(`
+      UPDATE transactions
+      SET bank_certification_status = 'provisional',
+        statement_certified_import_id = NULL,
+        statement_certified_import_row_id = NULL,
+        statement_certified_at = NULL,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE household_id = ?
+        AND statement_certified_import_id IN (
+          SELECT id
+          FROM imports
+          WHERE household_id = ?
+            AND status = 'rolled_back'
+        )
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID)
+    .run();
+}
+
+async function resetStatementCertificationForImport(db: D1Database, importId: string) {
+  await db
+    .prepare(`
+      UPDATE transactions
+      SET bank_certification_status = 'provisional',
+        statement_certified_import_id = NULL,
+        statement_certified_import_row_id = NULL,
+        statement_certified_at = NULL,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE household_id = ?
+        AND statement_certified_import_id = ?
     `)
     .bind(DEFAULT_HOUSEHOLD_ID, importId)
     .run();
