@@ -3407,7 +3407,7 @@ export async function commitImportBatch(
     }
 
     for (const checkpoint of input.statementCheckpoints ?? []) {
-      const account = resolveImportAccount(accountsById, accountRowsByName, checkpoint.accountId, checkpoint.accountName);
+      const account = resolveImportCheckpointAccount(accountsById, accountRowsByName, checkpoint, input.statementControlRows ?? input.rows);
       if (!account) {
         throw new Error(`Unknown checkpoint account: ${checkpoint.accountName}`);
       }
@@ -3458,7 +3458,12 @@ export async function commitImportBatch(
         accountsById,
         accountRowsByName
       });
-      await clearStatementChainBreaksForImport(db, input.statementCheckpoints);
+      await clearStatementChainBreaksForImport(db, {
+        checkpoints: input.statementCheckpoints,
+        statementControlRows: input.statementControlRows ?? input.rows,
+        accountsById,
+        accountRowsByName
+      });
     }
 
     await db
@@ -3562,7 +3567,7 @@ async function saveStatementReconciliationCertificates(
 
   const statements: D1PreparedStatement[] = [];
   for (const checkpoint of input.checkpoints) {
-    const account = resolveImportAccount(input.accountsById, input.accountRowsByName, checkpoint.accountId, checkpoint.accountName);
+    const account = resolveImportCheckpointAccount(input.accountsById, input.accountRowsByName, checkpoint, input.statementControlRows);
     if (!account) {
       throw new Error(`Unknown checkpoint account: ${checkpoint.accountName}`);
     }
@@ -3685,6 +3690,42 @@ function resolveImportAccount(
 
   const nameMatches = accountRowsByName.get(accountName) ?? [];
   return nameMatches.length === 1 ? nameMatches[0] : undefined;
+}
+
+function resolveImportCheckpointAccount(
+  accountsById: Map<string, { id: string; account_name: string; account_kind: string; opening_balance_minor?: number }>,
+  accountRowsByName: Map<string, { id: string; account_name: string; account_kind: string; opening_balance_minor?: number }[]>,
+  checkpoint: StatementCheckpointDraftDto,
+  statementControlRows: ImportPreviewRowDto[] = []
+) {
+  const directAccount = resolveImportAccount(accountsById, accountRowsByName, checkpoint.accountId, checkpoint.accountName);
+  if (directAccount) {
+    return directAccount;
+  }
+
+  const detectedAccountName = checkpoint.detectedAccountName ?? checkpoint.accountName;
+  const rowAccounts = new Map<string, { id: string; account_name: string; account_kind: string; opening_balance_minor?: number }>();
+  for (const row of statementControlRows) {
+    const rowStatementAccountName = getImportPreviewStatementAccountName(row);
+    if (rowStatementAccountName !== detectedAccountName) {
+      continue;
+    }
+
+    const rowAccount = resolveImportAccount(accountsById, accountRowsByName, row.accountId, row.accountName);
+    if (rowAccount) {
+      rowAccounts.set(rowAccount.id, rowAccount);
+    }
+  }
+
+  return rowAccounts.size === 1 ? Array.from(rowAccounts.values())[0] : undefined;
+}
+
+function getImportPreviewStatementAccountName(row: ImportPreviewRowDto) {
+  return row.statementAccountName
+    ?? row.rawRow?.statementAccountName
+    ?? row.rawRow?.statementAccount
+    ?? row.rawRow?.account
+    ?? row.accountName;
 }
 
 export async function rollbackImportBatch(
@@ -3835,18 +3876,27 @@ async function recordStatementChainBreaksForRollback(db: D1Database, importId: s
   }
 }
 
-async function clearStatementChainBreaksForImport(db: D1Database, checkpoints: StatementCheckpointDraftDto[]) {
-  if (!checkpoints.length) {
+async function clearStatementChainBreaksForImport(
+  db: D1Database,
+  input: {
+    checkpoints: StatementCheckpointDraftDto[];
+    statementControlRows: ImportPreviewRowDto[];
+    accountsById: Map<string, { id: string; account_name: string; account_kind: string; opening_balance_minor?: number }>;
+    accountRowsByName: Map<string, { id: string; account_name: string; account_kind: string; opening_balance_minor?: number }[]>;
+  }
+) {
+  if (!input.checkpoints.length) {
     return;
   }
 
   const statements: D1PreparedStatement[] = [];
-  for (const checkpoint of checkpoints) {
-    const account = await db
-      .prepare("SELECT id FROM accounts WHERE household_id = ? AND id = ?")
-      .bind(DEFAULT_HOUSEHOLD_ID, checkpoint.accountId)
-      .first<{ id: string }>();
-
+  for (const checkpoint of input.checkpoints) {
+    const account = resolveImportCheckpointAccount(
+      input.accountsById,
+      input.accountRowsByName,
+      checkpoint,
+      input.statementControlRows
+    );
     if (!account) {
       continue;
     }
@@ -3859,7 +3909,7 @@ async function clearStatementChainBreaksForImport(db: D1Database, checkpoints: S
             AND account_id = ?
             AND missing_checkpoint_month = ?
         `)
-        .bind(DEFAULT_HOUSEHOLD_ID, checkpoint.accountId, checkpoint.checkpointMonth)
+        .bind(DEFAULT_HOUSEHOLD_ID, account.id, checkpoint.checkpointMonth)
     );
   }
 

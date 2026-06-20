@@ -1401,19 +1401,25 @@ export default {
         return json({ ok: false, error: "Missing import payload" }, 400);
       }
 
-      return json({
-        ok: true,
-        ...(await commitImportBatch(env.DB, {
-          sourceLabel: body.sourceLabel,
-          sourceType: body.sourceType ?? "csv",
-          parserKey: body.parserKey ?? "generic_csv",
-          note: body.note,
-          statementCheckpoints: body.statementCheckpoints ?? [],
-          statementControlRows: body.statementControlRows,
-          statementReconciliations: body.statementReconciliations,
-          rows: body.rows ?? []
-        }))
-      });
+      try {
+        return json({
+          ok: true,
+          ...(await commitImportBatch(env.DB, {
+            sourceLabel: body.sourceLabel,
+            sourceType: body.sourceType ?? "csv",
+            parserKey: body.parserKey ?? "generic_csv",
+            note: body.note,
+            statementCheckpoints: body.statementCheckpoints ?? [],
+            statementControlRows: body.statementControlRows,
+            statementReconciliations: body.statementReconciliations,
+            rows: body.rows ?? []
+          }))
+        });
+      } catch (error) {
+        const message = describeError(error);
+        console.error("Import commit failed", error);
+        return json({ ok: false, error: message || "Import commit failed." }, 400);
+      }
     }
 
     if (url.pathname === "/api/imports/rollback" && request.method === "POST") {
