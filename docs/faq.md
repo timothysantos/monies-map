@@ -705,6 +705,19 @@ manual ledger row, the app promotes the existing row instead of creating a
 duplicate. That preserves user-added category choices, notes, ownership, splits,
 and links while updating the bank-facing facts from the statement.
 
+If a mid-cycle row and the final PDF use different dates for the same bank
+event, the app keeps both lanes: `transaction_date` stays as the original
+mid-cycle event date, while `post_date` is updated to the PDF statement date.
+Entries stays event-first; statement checks and checkpoints use the posted
+statement date.
+
+Sometimes a mid-cycle export contains a provisional row that the final PDF does
+not include. The PDF can supersede that provisional row only when the statement
+check proves it exactly: the row must be import-provisional, inside the
+statement period, for the same account, not matched by any statement row, and
+its signed amount must uniquely explain the statement difference. Manual rows
+and already statement-certified rows are not removed by this path.
+
 If the same official statement row has already been imported or previously
 certified, the app treats it as already certified rather than asking for another
 duplicate decision. PDF statement imports that certify pre-existing ledger rows
@@ -1300,6 +1313,13 @@ warnings. With the statement-certification model, matching provisional mid-cycle
 rows are promoted in place: the statement owns the bank facts, while user
 annotations stay attached to the existing transaction. Rows you explicitly
 skipped stay skipped until you restore them.
+
+If the mismatch is exactly explained by provisional mid-cycle ledger rows that
+are absent from the official PDF, the preview lists those rows as superseded by
+the statement. Commit removes only those listed provisional rows while saving
+the statement certification. If multiple possible row combinations could explain
+the same difference, the app leaves the mismatch open for review instead of
+guessing.
 
 Status guards only apply in that second lane. `statement_certified` ledger rows
 cannot be chosen as reconciliation targets, and non-PDF mid-cycle imports

@@ -328,6 +328,8 @@ export const messages = {
     statementReconciliationRefreshed: "Statement certification check refreshed.",
     statementReconciliationAccount: (accountName, month) => `${accountName} • ${month}`,
     statementReconciliationDelta: (amount) => `Difference ${amount}`,
+    statementReconciliationSupersededRowsTitle: "Official statement will remove provisional rows not present on the PDF",
+    statementReconciliationSupersededRow: (date, description, amount) => `${date} • ${description} • ${amount}`,
     statementReconciliationStatus: {
       matched: "Matched",
       mismatch: "Mismatch",

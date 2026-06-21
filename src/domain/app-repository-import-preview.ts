@@ -477,16 +477,28 @@ function findReconciliationMatches(input: {
         return undefined;
       }
 
-      const sharedTokenCount = countSharedTokens(input.previewRow.description, candidate.description);
-      const tokenSimilarity = getTokenSimilarity(input.previewRow.description, candidate.description);
-      const descriptionSimilarity = boostDescriptionSimilarityForManualPromotionCandidate({
-        baseSimilarity: compareDescriptionSimilarity(input.previewRow.description, candidate.description),
+      const isCardPaymentAlias = isCardPaymentAliasReconciliationCandidate({
+        previewRow: input.previewRow,
+        incomingSourceType: input.incomingSourceType,
         candidateSourceType: candidate.source_type,
         candidateBankCertificationStatus: candidate.bank_certification_status,
+        candidateDescription: candidate.description,
+        dayDistance
+      });
+      const sharedTokenCount = countSharedTokens(input.previewRow.description, candidate.description);
+      const tokenSimilarity = getTokenSimilarity(input.previewRow.description, candidate.description);
+      const baseDescriptionSimilarity = compareDescriptionSimilarity(input.previewRow.description, candidate.description);
+      const descriptionSimilarity = boostDescriptionSimilarityForReconciliationCandidate({
+        previewRow: input.previewRow,
+        baseSimilarity: baseDescriptionSimilarity,
+        incomingSourceType: input.incomingSourceType,
+        candidateSourceType: candidate.source_type,
+        candidateBankCertificationStatus: candidate.bank_certification_status,
+        candidateDescription: candidate.description,
         dayDistance,
         sharedTokenCount
       });
-      const matchKind = getDuplicateMatchKind({
+      const matchKind = isCardPaymentAlias ? "probable" : getDuplicateMatchKind({
         dayDistance,
         descriptionSimilarity,
         tokenSimilarity
@@ -565,10 +577,13 @@ function mapCandidateToReconciliationMatch(
   };
 }
 
-function boostDescriptionSimilarityForManualPromotionCandidate(input: {
+function boostDescriptionSimilarityForReconciliationCandidate(input: {
+  previewRow: ImportPreviewRowDto;
   baseSimilarity: number;
+  incomingSourceType?: "csv" | "pdf" | "manual";
   candidateSourceType: "csv" | "pdf" | "manual";
   candidateBankCertificationStatus: "provisional" | "statement_certified";
+  candidateDescription: string;
   dayDistance: number;
   sharedTokenCount: number;
 }) {
@@ -581,7 +596,38 @@ function boostDescriptionSimilarityForManualPromotionCandidate(input: {
     return Math.max(input.baseSimilarity, 0.7);
   }
 
+  if (isCardPaymentAliasReconciliationCandidate(input)) {
+    return Math.max(input.baseSimilarity, 0.75);
+  }
+
   return input.baseSimilarity;
+}
+
+function isCardPaymentAliasReconciliationCandidate(input: {
+  previewRow: ImportPreviewRowDto;
+  incomingSourceType?: "csv" | "pdf" | "manual";
+  candidateSourceType: "csv" | "pdf" | "manual";
+  candidateBankCertificationStatus: "provisional" | "statement_certified";
+  candidateDescription: string;
+  dayDistance: number;
+}) {
+  if (
+    input.incomingSourceType !== "pdf"
+    || input.candidateSourceType !== "csv"
+    || input.candidateBankCertificationStatus !== "provisional"
+    || input.dayDistance > 3
+    || input.previewRow.entryType !== "transfer"
+    || input.previewRow.transferDirection !== "in"
+  ) {
+    return false;
+  }
+
+  const statementDescription = normalizeDescriptionForMatch(input.previewRow.description);
+  const candidateDescription = normalizeDescriptionForMatch(input.candidateDescription);
+  const statementLooksLikeMoneySend = statementDescription.startsWith("moneysend");
+  const candidateLooksLikeCardPayment = candidateDescription.includes("payment") && candidateDescription.includes("via");
+
+  return statementLooksLikeMoneySend && candidateLooksLikeCardPayment;
 }
 
 function isReconciliationCandidateEligibleForSource(
@@ -752,7 +798,8 @@ function buildProjectedLedgerRows(
     transfer_direction: "in" | "out" | null;
     amount_minor: number;
   }[],
-  previewRows: ImportPreviewRowDto[]
+  previewRows: ImportPreviewRowDto[],
+  options: { excludedTransactionIds?: Set<string> } = {}
 ) {
   const certificationTargetIds = new Set(
     previewRows
@@ -761,7 +808,13 @@ function buildProjectedLedgerRows(
   );
   return [
     ...existingRows
-      .filter((row) => !row.transaction_id || !certificationTargetIds.has(row.transaction_id))
+      .filter((row) => (
+        !row.transaction_id
+        || (
+          !certificationTargetIds.has(row.transaction_id)
+          && !options.excludedTransactionIds?.has(row.transaction_id)
+        )
+      ))
       .map((row) => ({
         ...row,
         cleared_date: row.cleared_date ?? row.post_date ?? row.transaction_date
@@ -792,15 +845,191 @@ function sumSignedPreviewRows(previewRows: ImportPreviewRowDto[]) {
   ), 0);
 }
 
-function autoIncludeDuplicateMatchesExplainedByStatementBalance(input: {
-  accounts: AccountDto[];
-  existingRows: {
+function getExistingRowSignedAmountMinor(row: {
+  entry_type: "expense" | "income" | "transfer";
+  transfer_direction: "in" | "out" | null;
+  amount_minor: number;
+}) {
+  return getSignedLedgerAmountMinor({
+    entry_type: row.entry_type,
+    transfer_direction: row.transfer_direction,
+    amount_minor: row.amount_minor
+  });
+}
+
+function getExistingRowClearedDate(row: {
+  transaction_date: string;
+  post_date?: string | null;
+  cleared_date?: string;
+}) {
+  return row.cleared_date ?? row.post_date ?? row.transaction_date;
+}
+
+function findOfficialStatementSupersededLedgerRows(input: {
+  account: AccountDto;
+  existingRows: Array<{
+    import_id?: string | null;
+    source_type?: "csv" | "pdf" | "manual";
+    transaction_id?: string;
     account_id: string;
     transaction_date: string;
     post_date?: string | null;
+    description?: string;
+    amount_minor: number;
+    entry_type: "expense" | "income" | "transfer";
+    transfer_direction: "in" | "out" | null;
+    bank_certification_status?: "provisional" | "statement_certified";
+    account_name?: string;
+  }>;
+  previewRows: ImportPreviewRowDto[];
+  statementStartDate?: string;
+  statementEndDate: string;
+  deltaMinor: number;
+}) {
+  if (input.deltaMinor === 0) {
+    return [];
+  }
+
+  const reconciliationTargetIds = new Set(
+    input.previewRows
+      .map((row) => row.reconciliationTargetTransactionId)
+      .filter((id): id is string => Boolean(id))
+  );
+
+  const candidates = input.existingRows
+    .filter((row) => (
+      row.transaction_id
+      && row.import_id
+      && row.source_type === "csv"
+      && row.bank_certification_status === "provisional"
+      && row.account_id === input.account.id
+      && !reconciliationTargetIds.has(row.transaction_id)
+      && isDateWithinRange(getExistingRowClearedDate(row), input.statementStartDate, input.statementEndDate)
+      && !hasPotentialOfficialStatementRowForExistingCandidate(row, input.previewRows)
+    ))
+    .map((row) => {
+      const transactionId = row.transaction_id;
+      const importId = row.import_id;
+      if (!transactionId || !importId) {
+        return undefined;
+      }
+      return {
+        row: {
+          ...row,
+          transaction_id: transactionId,
+          import_id: importId
+        },
+        signedAmountMinor: getExistingRowSignedAmountMinor(row)
+      };
+    })
+    .filter((item): item is {
+      row: typeof input.existingRows[number] & { transaction_id: string; import_id: string };
+      signedAmountMinor: number;
+    } => Boolean(item))
+    .filter((item) => item.signedAmountMinor !== 0);
+
+  const subset = findUniqueSignedSubset(candidates, input.deltaMinor);
+  if (!subset) {
+    return [];
+  }
+
+  return subset.map((item) => ({
+    transactionId: item.row.transaction_id,
+    importId: item.row.import_id,
+    date: item.row.transaction_date,
+    ...(item.row.post_date ? { postedDate: item.row.post_date } : {}),
+    description: item.row.description ?? "",
+    amountMinor: Number(item.row.amount_minor),
+    signedAmountMinor: item.signedAmountMinor,
+    accountName: item.row.account_name ?? input.account.name
+  }));
+}
+
+function hasPotentialOfficialStatementRowForExistingCandidate(
+  candidate: {
+    account_id: string;
+    transaction_date: string;
+    post_date?: string | null;
+    description?: string;
+    amount_minor: number;
+    entry_type: "expense" | "income" | "transfer";
+    transfer_direction: "in" | "out" | null;
+  },
+  previewRows: ImportPreviewRowDto[]
+) {
+  const candidateClearedDate = getExistingRowClearedDate(candidate);
+  const candidateSignedAmountMinor = getExistingRowSignedAmountMinor(candidate);
+
+  return previewRows.some((row) => {
+    if (!row.accountId || row.accountId !== candidate.account_id) {
+      return false;
+    }
+
+    const rowSignedAmountMinor = getSignedLedgerAmountMinor({
+      entry_type: row.entryType,
+      transfer_direction: row.transferDirection ?? null,
+      amount_minor: row.amountMinor
+    });
+    if (rowSignedAmountMinor !== candidateSignedAmountMinor) {
+      return false;
+    }
+
+    const dayDistance = Math.abs(daysBetween(row.date, candidateClearedDate));
+    if (dayDistance > getDuplicateCandidateMaxDayDistance(row.amountMinor)) {
+      return false;
+    }
+
+    const description = candidate.description ?? "";
+    const similarity = compareDescriptionSimilarity(row.description, description);
+    const tokenSimilarity = getTokenSimilarity(row.description, description);
+    return Boolean(getDuplicateMatchKind({ dayDistance, descriptionSimilarity: similarity, tokenSimilarity }))
+      || isCardPaymentAliasReconciliationCandidate({
+        previewRow: row,
+        incomingSourceType: "pdf",
+        candidateSourceType: "csv",
+        candidateBankCertificationStatus: "provisional",
+        candidateDescription: description,
+        dayDistance
+      });
+  });
+}
+
+function findUniqueSignedSubset<T extends { signedAmountMinor: number }>(items: T[], targetMinor: number) {
+  const states = new Map<number, { items: T[]; count: number }>();
+  states.set(0, { items: [], count: 1 });
+
+  for (const item of items) {
+    const snapshot = Array.from(states.entries());
+    for (const [sum, state] of snapshot) {
+      const nextSum = sum + item.signedAmountMinor;
+      const existing = states.get(nextSum);
+      if (existing) {
+        existing.count = Math.min(2, existing.count + state.count);
+        continue;
+      }
+      states.set(nextSum, { items: [...state.items, item], count: state.count });
+    }
+  }
+
+  const match = states.get(targetMinor);
+  return match?.count === 1 ? match.items : undefined;
+}
+
+function autoIncludeDuplicateMatchesExplainedByStatementBalance(input: {
+  accounts: AccountDto[];
+  existingRows: {
+    import_id?: string | null;
+    source_type?: "csv" | "pdf" | "manual";
+    transaction_id?: string;
+    account_id: string;
+    transaction_date: string;
+    post_date?: string | null;
+    description?: string;
     entry_type: "expense" | "income" | "transfer";
     transfer_direction: "in" | "out" | null;
     amount_minor: number;
+    bank_certification_status?: "provisional" | "statement_certified";
+    account_name?: string;
   }[];
   previewRows: ImportPreviewRowDto[];
   statementCheckpoints: StatementCheckpointDraftDto[];
@@ -1155,7 +1384,6 @@ function buildImportPreviewStatementReconciliations(input: {
 
   const accountsById = new Map(input.accounts.map((account) => [account.id, account]));
   const accountsByName = groupAccountsByName(input.accounts);
-  const ledgerRows = buildProjectedLedgerRows(input.existingRows, input.previewRows);
 
   return input.statementCheckpoints.map((checkpoint) => {
     const account = resolvePreviewAccount(accountsById, accountsByName, checkpoint.accountId, checkpoint.accountName);
@@ -1176,7 +1404,8 @@ function buildImportPreviewStatementReconciliations(input: {
       };
     }
 
-    const projectedLedgerBalanceMinor = computeCheckpointLedgerBalanceMinor({
+    const initialLedgerRows = buildProjectedLedgerRows(input.existingRows, input.previewRows);
+    let projectedLedgerBalanceMinor = computeCheckpointLedgerBalanceMinor({
       openingBalanceMinor: normalizeAccountOpeningBalanceMinor(Number(account.openingBalanceMinor ?? 0), account.kind),
       checkpoint: {
         account_id: account.id,
@@ -1184,9 +1413,33 @@ function buildImportPreviewStatementReconciliations(input: {
         statement_start_date: statementStartDate ?? null,
         statement_end_date: statementEndDate
       },
-      rows: ledgerRows
+      rows: initialLedgerRows
     });
-    const deltaMinor = projectedLedgerBalanceMinor - statementBalanceMinor;
+    let deltaMinor = projectedLedgerBalanceMinor - statementBalanceMinor;
+    const supersededLedgerRows = input.sourceType === "pdf"
+      ? findOfficialStatementSupersededLedgerRows({
+        account,
+        existingRows: input.existingRows,
+        previewRows: input.previewRows,
+        statementStartDate,
+        statementEndDate,
+        deltaMinor
+      })
+      : [];
+    if (supersededLedgerRows.length) {
+      const supersededIds = new Set(supersededLedgerRows.map((row) => row.transactionId));
+      projectedLedgerBalanceMinor = computeCheckpointLedgerBalanceMinor({
+        openingBalanceMinor: normalizeAccountOpeningBalanceMinor(Number(account.openingBalanceMinor ?? 0), account.kind),
+        checkpoint: {
+          account_id: account.id,
+          checkpoint_month: checkpoint.checkpointMonth,
+          statement_start_date: statementStartDate ?? null,
+          statement_end_date: statementEndDate
+        },
+        rows: buildProjectedLedgerRows(input.existingRows, input.previewRows, { excludedTransactionIds: supersededIds })
+      });
+      deltaMinor = projectedLedgerBalanceMinor - statementBalanceMinor;
+    }
     const missingPriorCheckpoint = input.statementChainBreaks.find((breakItem) => (
       breakItem.account_id === account.id
       && breakItem.missing_checkpoint_month < checkpoint.checkpointMonth
@@ -1202,6 +1455,7 @@ function buildImportPreviewStatementReconciliations(input: {
         statementBalanceMinor,
         projectedLedgerBalanceMinor,
         deltaMinor,
+        ...(supersededLedgerRows.length ? { supersededLedgerRows } : {}),
         status: "missing_prior_statement" as const
       };
     }
@@ -1220,6 +1474,7 @@ function buildImportPreviewStatementReconciliations(input: {
       statementBalanceMinor,
       projectedLedgerBalanceMinor,
       deltaMinor,
+      ...(supersededLedgerRows.length ? { supersededLedgerRows } : {}),
       status: deltaMinor === 0
         ? hasIdentityConfidence ? "matched" as const : "identity_unconfirmed" as const
         : "mismatch" as const

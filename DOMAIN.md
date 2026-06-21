@@ -272,6 +272,13 @@ Important distinctions:
   other original transaction dates when both exist; otherwise compare posted
   dates, so imported commuter rows do not become false matches through a mixed
   original-versus-posted comparison.
+- When a final PDF statement certifies a provisional mid-cycle row whose dates
+  differ, the ledger preserves the original economic `transaction_date` and
+  updates the bank-cleared `post_date` from the statement.
+- If an official statement balance is mismatched only because one or more
+  provisional CSV rows in the statement period are absent from the PDF, those
+  rows may be superseded by the statement only when their signed total uniquely
+  and exactly explains the statement delta.
 
 ### Ledger Entry
 
@@ -370,6 +377,10 @@ Important distinctions:
   mid-cycle imports only match pending manual entries. However, official PDF
   statement imports can match against mid-cycle provisional entries to elevate
   them to certified status.
+- Official PDF statements can also supersede import-provisional rows that are
+  not present on the statement, but only when the statement reconciliation math
+  identifies the superseded rows exactly. Manual provisional and
+  statement-certified rows are not removed by this path.
 - Those status guards do not block exact duplicate suppression. Repeated bank
   files should still auto-skip a row that is already present in the ledger,
   even if that ledger row is import provisional or statement certified.
