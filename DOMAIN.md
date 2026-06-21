@@ -282,6 +282,11 @@ Important distinctions:
 - Statement certification preserves user annotations such as category, note,
   ownership, splits, and links; it does not preserve provisional bank facts that
   conflict with the final PDF.
+- The newest PDF statement for an account remains rollbackable even when it
+  certified existing provisional rows. Rollback restores those rows to their
+  prior working state and removes the statement certificate metadata. Older PDF
+  statements stay locked once a later statement certificate exists for the same
+  account.
 - If an official statement balance is mismatched only because one or more
   provisional CSV rows in the statement period are absent from the PDF, those
   rows may be superseded by the statement only when their signed total uniquely

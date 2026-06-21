@@ -788,11 +788,11 @@ the new starting point. If earlier statement checkpoints already exist, rollback
 creates a statement-chain gap. Later statements stay blocked until the missing
 statement month is imported again.
 
-A PDF statement should not be rolled back once it certifies pre-existing ledger
-rows, such as rows that came from a mid-cycle export. At that point the
-statement has promoted existing working rows to bank-certified facts while
-preserving user annotations. Corrections should use a replacement statement or
-an explicit adjustment instead of silently unwinding that certification.
+A PDF statement may still be rolled back even when it certifies pre-existing
+ledger rows, as long as it is still the newest statement certificate for that
+account. In that case rollback restores the prior working rows and removes the
+statement certificate metadata. Older PDF statements stay locked once a later
+statement certificate exists for the same account.
 
 Older PDF statements should also not be rolled back after a later statement for
 the same account has been saved. Rollbacks should move backward from the newest
