@@ -487,6 +487,18 @@ export interface ImportPreviewStatementReconciliationDto {
   projectedLedgerBalanceMinor?: number;
   deltaMinor?: number;
   status: "matched" | "mismatch" | "unknown_account" | "identity_unconfirmed" | "missing_prior_statement";
+  supersededLedgerRows?: ImportPreviewSupersededLedgerRowDto[];
+}
+
+export interface ImportPreviewSupersededLedgerRowDto {
+  transactionId: string;
+  importId: string;
+  date: string;
+  postedDate?: string;
+  description: string;
+  amountMinor: number;
+  signedAmountMinor: number;
+  accountName: string;
 }
 
 export interface StatementCompareRowDto {

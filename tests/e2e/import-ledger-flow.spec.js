@@ -1792,6 +1792,203 @@ test.describe("import flow", () => {
     expect(certifiedEntry.bankCertificationStatus).toBe("statement_certified");
   });
 
+  test("official statement certifies shifted mid-cycle rows and supersedes absent provisional rows", async ({ page }) => {
+    const accountName = `Playwright Citi Rewards May ${Date.now()}`;
+    const createPayload = await postJson(page, "/api/accounts/create", {
+      name: accountName,
+      institution: "Synthetic Test Bank",
+      kind: "credit_card",
+      openingBalanceMinor: 0,
+      currency: "SGD",
+      ownerPersonId: "",
+      isJoint: false
+    });
+    const accountId = createPayload.accountId;
+    expect(accountId).toBeTruthy();
+
+    const csvRows = [
+      {
+        date: "2026-04-24",
+        description: "AMAZON MKTPLC SG Singapore SGP",
+        expense: "6.05",
+        income: "",
+        accountId,
+        account: accountName,
+        category: "Shopping",
+        type: "expense"
+      },
+      {
+        date: "2026-05-01",
+        description: "SHOPEE SINGAPORE MP SINGAPORE SGP",
+        expense: "2.66",
+        income: "",
+        accountId,
+        account: accountName,
+        category: "Shopping",
+        type: "expense"
+      },
+      {
+        date: "2026-05-02",
+        description: "Google One SINGAPORE SGP",
+        expense: "139.99",
+        income: "",
+        accountId,
+        account: accountName,
+        category: "Other",
+        type: "expense"
+      },
+      {
+        date: "2026-05-02",
+        description: "PAYMENT VIA UOB SINGAPORE SGP",
+        expense: "",
+        income: "756.73",
+        accountId,
+        account: accountName,
+        category: "Transfer",
+        type: "transfer"
+      }
+    ];
+    const csvPreview = await postJson(page, "/api/imports/preview", {
+      sourceLabel: "Citi Rewards May mid-cycle CSV",
+      sourceType: "csv",
+      defaultAccountName: accountName,
+      ownershipType: "direct",
+      ownerName: "Tim",
+      rows: csvRows
+    });
+    expect(csvPreview.preview.previewRows).toHaveLength(4);
+
+    const csvCommit = await postJson(page, "/api/imports/commit", {
+      sourceLabel: "Citi Rewards May mid-cycle CSV",
+      sourceType: "csv",
+      parserKey: "generic_csv",
+      rows: csvPreview.preview.previewRows,
+      statementCheckpoints: []
+    });
+    expect(csvCommit.importId).toBeTruthy();
+
+    const pdfRows = [
+      {
+        date: "2026-04-30",
+        description: "SHOPEESINGAPOREMP",
+        expense: "2.66",
+        income: "",
+        accountId,
+        account: accountName,
+        category: "Shopping",
+        type: "expense"
+      },
+      {
+        date: "2026-05-03",
+        description: "Google One",
+        expense: "139.99",
+        income: "",
+        accountId,
+        account: accountName,
+        category: "Other",
+        type: "expense"
+      },
+      {
+        date: "2026-05-04",
+        description: "MONEYSENDSANTOSTIMOTHY",
+        expense: "",
+        income: "756.73",
+        accountId,
+        account: accountName,
+        category: "Transfer",
+        type: "transfer"
+      },
+      {
+        date: "2026-05-11",
+        description: "ANNUALMEMBERSHIPFEE",
+        expense: "180.00",
+        income: "",
+        accountId,
+        account: accountName,
+        category: "Other",
+        type: "expense"
+      },
+      {
+        date: "2026-05-11",
+        description: "GSTONANNUALMEMBERSHIPFEE",
+        expense: "16.20",
+        income: "",
+        accountId,
+        account: accountName,
+        category: "Other",
+        type: "expense"
+      }
+    ];
+    const statementCheckpoint = {
+      accountId,
+      accountName,
+      detectedAccountName: accountName,
+      checkpointMonth: "2026-05",
+      statementStartDate: "2026-04-10",
+      statementEndDate: "2026-05-11",
+      statementBalanceMinor: -41788,
+      note: "Synthetic Citi Rewards May statement"
+    };
+    const pdfPreview = await postJson(page, "/api/imports/preview", {
+      sourceLabel: "Citi Rewards May PDF",
+      sourceType: "pdf",
+      defaultAccountName: accountName,
+      ownershipType: "direct",
+      ownerName: "Tim",
+      rows: pdfRows,
+      statementCheckpoints: [statementCheckpoint]
+    });
+
+    const previewRows = pdfPreview.preview.previewRows;
+    const shopeedRow = previewRows.find((row) => row.description === "SHOPEESINGAPOREMP");
+    const googleRow = previewRows.find((row) => row.description === "Google One");
+    const paymentRow = previewRows.find((row) => row.description === "MONEYSENDSANTOSTIMOTHY");
+    expect(shopeedRow?.commitStatus).toBe("included");
+    expect(shopeedRow?.reconciliationTargetTransactionId).toBeTruthy();
+    expect(googleRow?.commitStatus).toBe("included");
+    expect(googleRow?.reconciliationTargetTransactionId).toBeTruthy();
+    expect(paymentRow?.commitStatus).toBe("included");
+    expect(paymentRow?.reconciliationTargetTransactionId).toBeTruthy();
+
+    const reconciliation = pdfPreview.preview.statementReconciliations[0];
+    expect(reconciliation.status, JSON.stringify(reconciliation)).toBe("matched");
+    expect(reconciliation.projectedLedgerBalanceMinor).toBe(41788);
+    expect(reconciliation.deltaMinor).toBe(0);
+    expect(reconciliation.supersededLedgerRows).toHaveLength(1);
+    expect(reconciliation.supersededLedgerRows[0].description).toBe("AMAZON MKTPLC SG Singapore SGP");
+    expect(reconciliation.supersededLedgerRows[0].signedAmountMinor).toBe(-605);
+
+    const pdfCommit = await postJson(page, "/api/imports/commit", {
+      sourceLabel: "Citi Rewards May PDF",
+      sourceType: "pdf",
+      parserKey: "citibank_rewards_pdf",
+      rows: previewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review"),
+      statementControlRows: previewRows,
+      statementReconciliations: pdfPreview.preview.statementReconciliations,
+      statementCheckpoints: [statementCheckpoint]
+    });
+    expect(pdfCommit.importId).toBeTruthy();
+
+    const mayEntries = await loadEntriesPage(page, { month: "2026-05" });
+    const certifiedShopee = mayEntries.monthPage.entries.find((entry) => entry.description === "SHOPEESINGAPOREMP");
+    const certifiedGoogle = mayEntries.monthPage.entries.find((entry) => entry.description === "Google One");
+    const certifiedPayment = mayEntries.monthPage.entries.find((entry) => entry.description === "MONEYSENDSANTOSTIMOTHY");
+    expect(certifiedShopee?.date).toBe("2026-05-01");
+    expect(certifiedShopee?.postDate).toBe("2026-04-30");
+    expect(certifiedShopee?.bankCertificationStatus).toBe("statement_certified");
+    expect(certifiedGoogle?.date).toBe("2026-05-02");
+    expect(certifiedGoogle?.postDate).toBe("2026-05-03");
+    expect(certifiedGoogle?.bankCertificationStatus).toBe("statement_certified");
+    expect(certifiedPayment?.date).toBe("2026-05-02");
+    expect(certifiedPayment?.postDate).toBe("2026-05-04");
+    expect(certifiedPayment?.bankCertificationStatus).toBe("statement_certified");
+    expect(mayEntries.monthPage.entries.some((entry) => entry.description === "ANNUALMEMBERSHIPFEE")).toBeTruthy();
+    expect(mayEntries.monthPage.entries.some((entry) => entry.description === "GSTONANNUALMEMBERSHIPFEE")).toBeTruthy();
+
+    const aprilEntries = await loadEntriesPage(page, { month: "2026-04" });
+    expect(aprilEntries.monthPage.entries.some((entry) => entry.description === "AMAZON MKTPLC SG Singapore SGP")).toBeFalsy();
+  });
+
   test("statement preview excludes rows whose post date lands after the statement end", async ({ page }) => {
     const accountName = `Playwright UOB Post Date ${Date.now()}`;
     const createPayload = await postJson(page, "/api/accounts/create", {

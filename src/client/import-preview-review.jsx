@@ -617,6 +617,19 @@ function StatementBalanceCheck({ reconciliations, hasMismatch, isSubmitting, onR
                 <p>{messages.imports.statementReconciliationDelta(formatService.money(Math.abs(item.deltaMinor)))}</p>
               ) : null}
             </div>
+            {item.supersededLedgerRows?.length ? (
+              <div className="import-overlap-entry-list" aria-label={messages.imports.statementReconciliationSupersededRowsTitle}>
+                <strong>{messages.imports.statementReconciliationSupersededRowsTitle}</strong>
+                {item.supersededLedgerRows.map((row) => (
+                  <div key={row.transactionId} className="import-overlap-entry-row">
+                    <span className="import-overlap-entry-date">{formatService.formatDateOnly(row.postedDate ?? row.date)}</span>
+                    <span className="import-overlap-entry-description">{row.description}</span>
+                    <span className="import-overlap-entry-account">{row.accountName}</span>
+                    <strong className="import-overlap-entry-amount">{formatService.money(Math.abs(row.signedAmountMinor))}</strong>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         ))}
       </div>

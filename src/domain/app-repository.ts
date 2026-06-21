@@ -3112,6 +3112,35 @@ async function clearMonthData(db: D1Database, month: string, year: number, month
     .run();
 }
 
+function collectStatementSupersededLedgerRows(statementReconciliations: ImportPreviewStatementReconciliationDto[]) {
+  const rowsById = new Map<string, {
+    transactionId: string;
+    importId: string;
+    date: string;
+    postedDate?: string;
+  }>();
+
+  for (const reconciliation of statementReconciliations) {
+    if (reconciliation.status !== "matched") {
+      continue;
+    }
+
+    for (const row of reconciliation.supersededLedgerRows ?? []) {
+      if (!row.transactionId || !row.importId || !row.date) {
+        continue;
+      }
+      rowsById.set(row.transactionId, {
+        transactionId: row.transactionId,
+        importId: row.importId,
+        date: row.date,
+        ...(row.postedDate ? { postedDate: row.postedDate } : {})
+      });
+    }
+  }
+
+  return Array.from(rowsById.values());
+}
+
 export async function commitImportBatch(
   db: D1Database,
   input: {
@@ -3181,6 +3210,33 @@ export async function commitImportBatch(
     const personIdsByName = new Map(personRows.results.map((person) => [person.display_name, person.id]));
     const [firstPerson, secondPerson] = personRows.results;
     const statements: D1PreparedStatement[] = [];
+    const supersededLedgerRows = collectStatementSupersededLedgerRows(input.statementReconciliations ?? []);
+    for (const row of supersededLedgerRows) {
+      statements.push(
+        db
+          .prepare("UPDATE split_expenses SET linked_transaction_id = NULL WHERE household_id = ? AND linked_transaction_id = ?")
+          .bind(DEFAULT_HOUSEHOLD_ID, row.transactionId),
+        db
+          .prepare("UPDATE split_settlements SET linked_transaction_id = NULL WHERE household_id = ? AND linked_transaction_id = ?")
+          .bind(DEFAULT_HOUSEHOLD_ID, row.transactionId),
+        db
+          .prepare("DELETE FROM transaction_splits WHERE transaction_id = ?")
+          .bind(row.transactionId),
+        db
+          .prepare(`
+            DELETE FROM transactions
+            WHERE household_id = ?
+              AND id = ?
+              AND import_id = ?
+              AND bank_certification_status = 'provisional'
+          `)
+          .bind(DEFAULT_HOUSEHOLD_ID, row.transactionId, row.importId)
+      );
+      monthsToRecalculate.add(row.date.slice(0, 7));
+      if (row.postedDate) {
+        monthsToRecalculate.add(row.postedDate.slice(0, 7));
+      }
+    }
 
     for (const row of input.rows) {
       const rowId = `import-row-${crypto.randomUUID()}`;

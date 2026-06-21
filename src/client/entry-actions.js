@@ -697,10 +697,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
 
       deletedEntryIdsRef.current.add(entry.id);
       setEntries((current) => current.filter((currentEntry) => currentEntry.id !== entry.id));
-      if (editingEntryId === entry.id) {
-        setEditingEntryId(null);
-        setEntrySnapshot(null);
-      }
+      setEditingEntryId((current) => (current === entry.id ? null : current));
+      setEntrySnapshot((current) => (current?.id === entry.id ? null : current));
       onEntryMutation?.({
         month: view.monthPage.month,
         invalidateEntries: true,
