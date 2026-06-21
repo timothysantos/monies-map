@@ -1990,6 +1990,33 @@ test.describe("import flow", () => {
 
     const aprilEntriesAfterSupersede = await loadEntriesPage(page, { month: "2026-04" });
     expect(aprilEntriesAfterSupersede.monthPage.entries.some((entry) => entry.description === "AMAZON MKTPLC SG Singapore SGP")).toBeFalsy();
+
+    await gotoImportsPage(page, "2026-05");
+    const mayPdfImportCard = page.locator(".import-card").filter({ hasText: "Citi Rewards May PDF" }).first();
+    await expect(mayPdfImportCard).toBeVisible();
+    await expect(mayPdfImportCard.getByRole("button", { name: "Rollback import" })).toBeVisible();
+    await mayPdfImportCard.getByRole("button", { name: "Rollback import" }).click();
+    await page.getByRole("button", { name: "Confirm rollback" }).click();
+    await expect(page.locator(".import-history-refreshing")).toHaveCount(0);
+
+    const aprilEntriesAfterRollback = await loadEntriesPage(page, { month: "2026-04" });
+    const mayEntriesAfterRollback = await loadEntriesPage(page, { month: "2026-05" });
+    const rolledBackAmazon = aprilEntriesAfterRollback.monthPage.entries.find((entry) => entry.description === "AMAZON MKTPLC SG Singapore SGP");
+    const rolledBackShopee = mayEntriesAfterRollback.monthPage.entries.find((entry) => entry.description === "SHOPEE SINGAPORE MP SINGAPORE SGP");
+    const rolledBackGoogle = mayEntriesAfterRollback.monthPage.entries.find((entry) => entry.description === "Google One SINGAPORE SGP");
+    const rolledBackPayment = mayEntriesAfterRollback.monthPage.entries.find((entry) => entry.description === "PAYMENT VIA UOB SINGAPORE SGP");
+    expect(rolledBackAmazon?.date).toBe("2026-04-24");
+    expect(rolledBackAmazon?.postDate).toBe("2026-04-24");
+    expect(rolledBackAmazon?.bankCertificationStatus).toBe("import_provisional");
+    expect(rolledBackShopee?.date).toBe("2026-05-01");
+    expect(rolledBackShopee?.postDate).toBe("2026-05-01");
+    expect(rolledBackShopee?.bankCertificationStatus).toBe("import_provisional");
+    expect(rolledBackGoogle?.date).toBe("2026-05-02");
+    expect(rolledBackGoogle?.postDate).toBe("2026-05-02");
+    expect(rolledBackGoogle?.bankCertificationStatus).toBe("import_provisional");
+    expect(rolledBackPayment?.date).toBe("2026-05-02");
+    expect(rolledBackPayment?.postDate).toBe("2026-05-02");
+    expect(rolledBackPayment?.bankCertificationStatus).toBe("import_provisional");
   });
 
   test("uploaded PDF uses statement reconciliation on the first preview request", async ({ page }, testInfo) => {

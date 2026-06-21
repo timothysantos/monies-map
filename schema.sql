@@ -83,6 +83,8 @@ CREATE TABLE IF NOT EXISTS statement_reconciliation_certificates (
   delta_minor INTEGER NOT NULL,
   exception_count INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL CHECK (status IN ('certified', 'exception')),
+  superseded_ledger_rows_json TEXT,
+  certified_ledger_rows_json TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (household_id) REFERENCES households(id),
   FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE,
@@ -247,6 +249,14 @@ CREATE TABLE IF NOT EXISTS transactions (
   statement_certified_import_id TEXT,
   statement_certified_import_row_id TEXT,
   statement_certified_at TEXT,
+  statement_certified_previous_import_id TEXT,
+  statement_certified_previous_import_row_id TEXT,
+  statement_certified_previous_transaction_date TEXT,
+  statement_certified_previous_post_date TEXT,
+  statement_certified_previous_description TEXT,
+  statement_certified_previous_amount_minor INTEGER,
+  statement_certified_previous_entry_type TEXT,
+  statement_certified_previous_transfer_direction TEXT,
   transfer_review_dismissed_at TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -258,7 +268,9 @@ CREATE TABLE IF NOT EXISTS transactions (
   FOREIGN KEY (category_id) REFERENCES categories(id),
   FOREIGN KEY (owner_person_id) REFERENCES people(id),
   FOREIGN KEY (statement_certified_import_id) REFERENCES imports(id),
-  FOREIGN KEY (statement_certified_import_row_id) REFERENCES import_rows(id)
+  FOREIGN KEY (statement_certified_import_row_id) REFERENCES import_rows(id),
+  FOREIGN KEY (statement_certified_previous_import_id) REFERENCES imports(id),
+  FOREIGN KEY (statement_certified_previous_import_row_id) REFERENCES import_rows(id)
 );
 
 CREATE TABLE IF NOT EXISTS transaction_splits (
