@@ -198,6 +198,9 @@ export async function ensureSeedData(db: D1Database, settings: DemoSettings) {
 }
 
 export async function ensureDemoSchema(db: D1Database) {
+  let shouldBackfillImportedPostDates = false;
+  let shouldResetRolledBackStatementCertifications = false;
+
   await db.prepare(`
     CREATE TABLE IF NOT EXISTS monthly_plan_row_splits (
       id TEXT PRIMARY KEY,
@@ -354,11 +357,13 @@ export async function ensureDemoSchema(db: D1Database) {
   // - brand new schemas just add post_date
   if (transactionColumns.results.length > 0 && !hasPostDate && hasLegacyOriginalTransactionDate) {
     await db.prepare("ALTER TABLE transactions RENAME COLUMN original_transaction_date TO post_date").run();
+    shouldBackfillImportedPostDates = true;
   } else if (transactionColumns.results.length > 0 && !hasPostDate) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN post_date TEXT").run();
+    shouldBackfillImportedPostDates = true;
   }
 
-  if (transactionColumns.results.length > 0 && hasLegacyOriginalTransactionDate && hasPostDate) {
+  if (shouldBackfillImportedPostDates && hasLegacyOriginalTransactionDate && hasPostDate) {
     await db.prepare(`
       UPDATE transactions
       SET post_date = COALESCE(post_date, original_transaction_date)
@@ -366,58 +371,71 @@ export async function ensureDemoSchema(db: D1Database) {
     `).run();
   }
 
-  await db.prepare(`
-    UPDATE transactions
-    SET post_date = transaction_date
-    WHERE import_id IS NOT NULL
-      AND post_date IS NULL
-  `).run();
+  if (shouldBackfillImportedPostDates) {
+    await db.prepare(`
+      UPDATE transactions
+      SET post_date = transaction_date
+      WHERE import_id IS NOT NULL
+        AND post_date IS NULL
+    `).run();
+  }
 
   if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "statement_certified_import_id")) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN statement_certified_import_id TEXT").run();
+    shouldResetRolledBackStatementCertifications = true;
   }
 
   if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "statement_certified_import_row_id")) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN statement_certified_import_row_id TEXT").run();
+    shouldResetRolledBackStatementCertifications = true;
   }
 
   if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "statement_certified_at")) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN statement_certified_at TEXT").run();
+    shouldResetRolledBackStatementCertifications = true;
   }
 
   if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "statement_certified_previous_import_id")) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN statement_certified_previous_import_id TEXT").run();
+    shouldResetRolledBackStatementCertifications = true;
   }
 
   if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "statement_certified_previous_import_row_id")) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN statement_certified_previous_import_row_id TEXT").run();
+    shouldResetRolledBackStatementCertifications = true;
   }
 
   if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "statement_certified_previous_transaction_date")) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN statement_certified_previous_transaction_date TEXT").run();
+    shouldResetRolledBackStatementCertifications = true;
   }
 
   if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "statement_certified_previous_post_date")) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN statement_certified_previous_post_date TEXT").run();
+    shouldResetRolledBackStatementCertifications = true;
   }
 
   if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "statement_certified_previous_description")) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN statement_certified_previous_description TEXT").run();
+    shouldResetRolledBackStatementCertifications = true;
   }
 
   if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "statement_certified_previous_amount_minor")) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN statement_certified_previous_amount_minor INTEGER").run();
+    shouldResetRolledBackStatementCertifications = true;
   }
 
   if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "statement_certified_previous_entry_type")) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN statement_certified_previous_entry_type TEXT").run();
+    shouldResetRolledBackStatementCertifications = true;
   }
 
   if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "statement_certified_previous_transfer_direction")) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN statement_certified_previous_transfer_direction TEXT").run();
+    shouldResetRolledBackStatementCertifications = true;
   }
 
-  if (transactionColumns.results.length > 0) {
+  if (shouldResetRolledBackStatementCertifications) {
     await resetRolledBackStatementCertifications(db);
   }
 
