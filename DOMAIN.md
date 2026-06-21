@@ -272,9 +272,16 @@ Important distinctions:
   other original transaction dates when both exist; otherwise compare posted
   dates, so imported commuter rows do not become false matches through a mixed
   original-versus-posted comparison.
-- When a final PDF statement certifies a provisional mid-cycle row whose dates
-  differ, the ledger preserves the original economic `transaction_date` and
-  updates the bank-cleared `post_date` from the statement.
+- A final PDF statement is the source of truth for bank date lanes. When it
+  carries both an event or transaction date and a posted date, certification
+  sets `transaction_date` from the PDF event date and `post_date` from the PDF
+  posted date.
+- When the official statement carries only one row date, that date is the only
+  bank evidence available for the event. Certification sets both
+  `transaction_date` and `post_date` to the statement date.
+- Statement certification preserves user annotations such as category, note,
+  ownership, splits, and links; it does not preserve provisional bank facts that
+  conflict with the final PDF.
 - If an official statement balance is mismatched only because one or more
   provisional CSV rows in the statement period are absent from the PDF, those
   rows may be superseded by the statement only when their signed total uniquely
@@ -318,9 +325,10 @@ Relationships:
 The system uses an event-first date model so planning and split workflows do
 not drift when the bank clears later:
 
-* **Event Date (`transaction_date`):** The immutable date the economic event
-  happened. This drives ledger sorting, monthly planning, summary grouping, and
-  split workspace calculations.
+* **Event Date (`transaction_date`):** The date the economic event happened.
+  This drives ledger sorting, monthly planning, summary grouping, and split
+  workspace calculations. It is provisional until an official statement
+  certifies the row.
 * **Posted Date (`post_date`):** The bank-cleared date used for statement
   verification, balance checkpoints, and other reconciliation-only workflows.
 
@@ -334,8 +342,9 @@ Important distinctions:
 - A ledger entry should represent one economic event even when that event is
   observed through multiple source paths such as manual entry, current-activity
   import, and final statement import.
-- During entry reconciliation, later bank sources should fill or update
-  `post_date` without rewriting `transaction_date`.
+- During entry reconciliation, non-statement bank sources should fill or update
+  `post_date` without rewriting `transaction_date`. Final PDF statements own
+  both date lanes when they certify a provisional row.
 - A transfer ledger entry is still one ledger entry; a full transfer usually
   needs a matched pair of entries linked by a transfer group.
 - Shared ownership on a ledger entry is not the same thing as a split expense
@@ -364,7 +373,7 @@ Important distinctions:
 - `Import provisional` means the row is provisional and came from a working
   import such as CSV or XLS.
 - `Statement certified` means a supported final statement is the authority for
-  the row's posted bank facts.
+  the row's bank-facing facts, including statement-owned date lanes.
 - The UI shows three states, but storage only needs two raw values because
   `Manual provisional` versus `Import provisional` is derived from whether the
   provisional row has an `import batch`.

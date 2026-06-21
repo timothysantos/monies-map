@@ -3339,15 +3339,17 @@ export async function commitImportBatch(
       }
 
       if (reconciliationTarget) {
-        // Official statements certify bank facts, but they do not rewrite the
-        // economic event date used by planning, splits, or monthly rollups.
+        // Official statements own bank facts. Preserve user annotations by not
+        // touching category, note, ownership, splits, or transfer links here.
         const promotedPostDate = row.date;
+        const promotedEventDate = resolveImportPreviewEventDate(row);
 
         statements.push(
           db
             .prepare(`
               UPDATE transactions
-              SET post_date = ?,
+              SET transaction_date = ?,
+                post_date = ?,
                 description = ?,
                 amount_minor = ?,
                 entry_type = ?,
@@ -3363,6 +3365,7 @@ export async function commitImportBatch(
                 AND bank_certification_status = 'provisional'
             `)
             .bind(
+              promotedEventDate,
               promotedPostDate,
               row.description,
               row.amountMinor,
@@ -3376,6 +3379,7 @@ export async function commitImportBatch(
             )
         );
         monthsToRecalculate.add(reconciliationTarget.transaction_date.slice(0, 7));
+        monthsToRecalculate.add(promotedEventDate.slice(0, 7));
         continue;
       }
 
