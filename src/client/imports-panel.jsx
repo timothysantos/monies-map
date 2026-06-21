@@ -336,6 +336,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     await previewImportRows({
       rows: parsed.rows,
       nextSourceLabel: parsed.sourceLabel,
+      nextSourceType: sourceType,
       nextStatementCheckpoints
     });
     setUploadStatus({ tone: "success", message: successMessage });
@@ -351,6 +352,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   function refreshPreviewFromRows({
     rows,
     nextStatementCheckpoints = statementCheckpoints,
+    nextSourceType = statementImportMeta.sourceType,
     activeMessage,
     successMessage,
     silent = false
@@ -359,6 +361,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
     return previewImportRows({
       rows,
+      nextSourceType,
       nextStatementCheckpoints
     })
       .then(() => {
@@ -485,6 +488,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   async function previewImportRows({
     rows,
     nextSourceLabel = sourceLabel,
+    nextSourceType = statementImportMeta.sourceType,
     nextStatementCheckpoints = statementCheckpoints
   }) {
     // All source formats eventually converge here so the server only has one
@@ -493,7 +497,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     try {
       const data = await previewImportBatch({
         sourceLabel: nextSourceLabel,
-        sourceType: statementImportMeta.sourceType,
+        sourceType: nextSourceType,
         rows,
         ownershipType,
         ownerName,
@@ -542,7 +546,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       };
       void refreshPreviewFromRows({
         rows: previewRows.map(importService.buildRawRowFromPreviewRow),
-        silent: true
+        activeMessage: messages.imports.statementReconciliationRefreshing,
+        successMessage: messages.imports.statementReconciliationRefreshed
       });
     }
 
