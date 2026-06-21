@@ -6,7 +6,6 @@ test("entries can delete a manually created row from the inline editor", async (
   const description = `Playwright delete entry ${Date.now()}`;
   const month = "2026-05";
 
-  await page.goto("/");
   await reseedDemo(page);
 
   await postJson(page, "/api/entries/create", {
