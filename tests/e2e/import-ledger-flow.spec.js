@@ -1667,9 +1667,10 @@ test.describe("import flow", () => {
     expect(laterPreview.json.preview.previewRows[0].reconciliationMatches ?? []).toHaveLength(0);
   });
 
-  test("promoting a manual provisional row keeps the event date and stores the bank post date separately", async ({ page }) => {
-    // The ledger should keep the user-entered event date in place while the
-    // import fills in the bank-cleared postDate lane.
+  test("promoting a manual provisional row applies both official statement date lanes", async ({ page }) => {
+    // The final statement is the source of truth for bank facts. User-owned
+    // annotations are preserved, but transaction and posted dates come from the
+    // official statement when the parser provides both lanes.
     const appShell = await loadAppShell(page, { month: "2025-08" });
     const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
@@ -1758,7 +1759,8 @@ test.describe("import flow", () => {
             expense: "2.48",
             accountId,
             account: accountName,
-            category: "Public Transport"
+            category: "Public Transport",
+            note: "txn date: 2025-08-13"
           }],
           statementCheckpoints: []
         })
@@ -1787,7 +1789,7 @@ test.describe("import flow", () => {
     const afterStatement = await loadEntriesPage(page, { month: "2025-08" });
     const certifiedEntry = afterStatement.monthPage.entries.find((entry) => entry.id === createdEntry.json.entryId);
     expect(certifiedEntry, JSON.stringify(afterStatement.monthPage.entries)).toBeTruthy();
-    expect(certifiedEntry.date).toBe("2025-08-11");
+    expect(certifiedEntry.date).toBe("2025-08-13");
     expect(certifiedEntry.postDate).toBe("2025-08-15");
     expect(certifiedEntry.bankCertificationStatus).toBe("statement_certified");
   });
@@ -1969,24 +1971,119 @@ test.describe("import flow", () => {
     });
     expect(pdfCommit.importId).toBeTruthy();
 
+    const aprilEntries = await loadEntriesPage(page, { month: "2026-04" });
     const mayEntries = await loadEntriesPage(page, { month: "2026-05" });
-    const certifiedShopee = mayEntries.monthPage.entries.find((entry) => entry.description === "SHOPEESINGAPOREMP");
+    const certifiedShopee = aprilEntries.monthPage.entries.find((entry) => entry.description === "SHOPEESINGAPOREMP");
     const certifiedGoogle = mayEntries.monthPage.entries.find((entry) => entry.description === "Google One");
     const certifiedPayment = mayEntries.monthPage.entries.find((entry) => entry.description === "MONEYSENDSANTOSTIMOTHY");
-    expect(certifiedShopee?.date).toBe("2026-05-01");
+    expect(certifiedShopee?.date).toBe("2026-04-30");
     expect(certifiedShopee?.postDate).toBe("2026-04-30");
     expect(certifiedShopee?.bankCertificationStatus).toBe("statement_certified");
-    expect(certifiedGoogle?.date).toBe("2026-05-02");
+    expect(certifiedGoogle?.date).toBe("2026-05-03");
     expect(certifiedGoogle?.postDate).toBe("2026-05-03");
     expect(certifiedGoogle?.bankCertificationStatus).toBe("statement_certified");
-    expect(certifiedPayment?.date).toBe("2026-05-02");
+    expect(certifiedPayment?.date).toBe("2026-05-04");
     expect(certifiedPayment?.postDate).toBe("2026-05-04");
     expect(certifiedPayment?.bankCertificationStatus).toBe("statement_certified");
     expect(mayEntries.monthPage.entries.some((entry) => entry.description === "ANNUALMEMBERSHIPFEE")).toBeTruthy();
     expect(mayEntries.monthPage.entries.some((entry) => entry.description === "GSTONANNUALMEMBERSHIPFEE")).toBeTruthy();
 
-    const aprilEntries = await loadEntriesPage(page, { month: "2026-04" });
-    expect(aprilEntries.monthPage.entries.some((entry) => entry.description === "AMAZON MKTPLC SG Singapore SGP")).toBeFalsy();
+    const aprilEntriesAfterSupersede = await loadEntriesPage(page, { month: "2026-04" });
+    expect(aprilEntriesAfterSupersede.monthPage.entries.some((entry) => entry.description === "AMAZON MKTPLC SG Singapore SGP")).toBeFalsy();
+  });
+
+  test("uploaded PDF uses statement reconciliation on the first preview request", async ({ page }, testInfo) => {
+    const importFlowPage = await page.context().newPage();
+    const accountName = `Playwright Pdf Race ${Date.now()}`;
+    const accountHeading = accountName.toUpperCase();
+    const createPayload = await postJson(page, "/api/accounts/create", {
+      name: accountName,
+      institution: "Synthetic Test Bank",
+      kind: "credit_card",
+      openingBalanceMinor: 0,
+      currency: "SGD",
+      ownerPersonId: "",
+      isJoint: false
+    });
+    const accountId = createPayload.accountId;
+    expect(accountId).toBeTruthy();
+
+    const midcyclePreview = await postJson(page, "/api/imports/preview", {
+      sourceLabel: "PDF race mid-cycle CSV",
+      sourceType: "csv",
+      defaultAccountName: accountName,
+      ownershipType: "direct",
+      ownerName: "Tim",
+      rows: [{
+        date: "2026-03-01",
+        description: "RACE MID CYCLE",
+        expense: "10.00",
+        income: "",
+        accountId,
+        account: accountName,
+        category: "Other",
+        type: "expense"
+      }]
+    });
+    expect(midcyclePreview.preview.previewRows).toHaveLength(1);
+
+    const midcycleCommit = await postJson(page, "/api/imports/commit", {
+      sourceLabel: "PDF race mid-cycle CSV",
+      sourceType: "csv",
+      parserKey: "generic_csv",
+      rows: midcyclePreview.preview.previewRows,
+      statementCheckpoints: []
+    });
+    expect(midcycleCommit.importId).toBeTruthy();
+
+    const pdfPath = testInfo.outputPath("first-upload-preview-source-type.pdf");
+    await writeTextPdf(page, pdfPath, buildSyntheticUobCardStatement({
+      statementDate: "31 MAR 2026",
+      sections: [{
+        heading: accountHeading,
+        cardNumber: "4111-1111-1111-1111",
+        previousBalanceMinor: 0,
+        totalBalanceMinor: 1_000,
+        rows: [{
+          postDate: "02 MAR",
+          transactionDate: "01 MAR",
+          description: "RACE MID CYCLE",
+          reference: "RACE-1",
+          amountMinor: 1_000
+        }]
+      }]
+    }));
+
+    const previewBodies = [];
+    importFlowPage.on("request", (request) => {
+      if (!request.url().includes("/api/imports/preview") || request.method() !== "POST") {
+        return;
+      }
+      try {
+        previewBodies.push(request.postDataJSON());
+      } catch {
+        previewBodies.push(null);
+      }
+    });
+
+    await importFlowPage.goto("/imports?view=person-tim&month=2026-03");
+    await expect(importFlowPage.getByLabel("Source label")).toBeVisible({ timeout: 60_000 });
+
+    const firstPreviewResponsePromise = importFlowPage.waitForResponse((response) => (
+      response.url().includes("/api/imports/preview") && response.request().method() === "POST"
+    ), { timeout: 60_000 });
+    await importFlowPage.locator("input[type=\"file\"]").setInputFiles(pdfPath);
+    const firstPreviewResponse = await firstPreviewResponsePromise;
+    if (!firstPreviewResponse.ok()) {
+      throw new Error(await firstPreviewResponse.text());
+    }
+    const firstPreview = await firstPreviewResponse.json();
+
+    expect(previewBodies[0]?.sourceType).toBe("pdf");
+    expect(firstPreview.preview.statementReconciliations[0].status).toBe("matched");
+    expect(firstPreview.preview.previewRows[0].reconciliationTargetTransactionId).toBeTruthy();
+    await expect(importFlowPage.getByText("1 statement mismatch")).toHaveCount(0);
+    await expect(importFlowPage.getByText("1 existing row will be certified by the statement").first()).toBeVisible();
   });
 
   test("statement preview excludes rows whose post date lands after the statement end", async ({ page }) => {

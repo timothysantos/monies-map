@@ -706,10 +706,15 @@ duplicate. That preserves user-added category choices, notes, ownership, splits,
 and links while updating the bank-facing facts from the statement.
 
 If a mid-cycle row and the final PDF use different dates for the same bank
-event, the app keeps both lanes: `transaction_date` stays as the original
-mid-cycle event date, while `post_date` is updated to the PDF statement date.
-Entries stays event-first; statement checks and checkpoints use the posted
-statement date.
+event, the final PDF owns the bank date lanes. When the PDF carries both a
+transaction or event date and a posted date, certification sets
+`transaction_date` from the PDF event date and `post_date` from the PDF posted
+date. Entries stays event-first; statement checks and checkpoints use the
+posted statement date.
+
+If the official PDF row only has one printed date, the app treats that date as
+the bank's full evidence for the event. Certification updates both
+`transaction_date` and `post_date` to that statement date.
 
 Sometimes a mid-cycle export contains a provisional row that the final PDF does
 not include. The PDF can supersede that provisional row only when the statement
@@ -859,11 +864,19 @@ bank facts from the statement but preserves these annotations.
 A provisional row is useful working data that has not yet been proven by a final
 statement. Manual quick-entry rows show as `Manual provisional`; mid-cycle CSV
 and XLS exports show as `Import provisional`. They help with planning during the
-month, but the final PDF statement gets the last word on posted bank facts.
-When a later bank source promotes a manual provisional row, Entries switches the
-row's main date stays on the original event date and the bank-cleared date is
-stored in `post_date`. Sorting, monthly plans, and split views stay
-event-first; balance checkpoints and statement comparison use `post_date`.
+month, but the final PDF statement gets the last word on bank-facing facts.
+When a later non-statement bank source promotes a manual provisional row,
+Entries keeps the row's main date on the original event date when the bank
+source also carries a separate posted date. The bank-cleared date is stored in
+`post_date`.
+
+When a final PDF statement certifies a provisional row, the final statement
+gets the last word on both bank date lanes. If the PDF has both a transaction
+or event date and a posted date, `transaction_date` becomes the PDF event date
+and `post_date` becomes the PDF posted date. If the PDF only has one row date,
+certification updates both lanes to that statement date. Sorting, monthly
+plans, and split views stay event-first; balance checkpoints and statement
+comparison use `post_date`.
 
 ### Statement-certified row
 
@@ -1644,6 +1657,8 @@ the current draft without refreshing the page.
   parser recognizes both bank-account exports and credit-card exports when the
   UOB header row is present.
 - Citibank card PDFs use layout-aware parsing for compact card-section rows.
+  Citi card PDFs currently expose one row date, so statement certification uses
+  that date for both the ledger event date and posted date.
 - Citibank current-activity CSV files are headerless, so the app only applies
   the Citi activity parser when the selected default account is a Citibank
   credit card and the file name matches the Citi activity export pattern. The
