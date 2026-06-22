@@ -328,14 +328,26 @@ export const messages = {
     statementReconciliationRefreshed: "Statement certification check refreshed.",
     statementReconciliationAccount: (accountName, month) => `${accountName} • ${month}`,
     statementReconciliationDelta: (amount) => `Difference ${amount}`,
-    statementReconciliationBreakdownTitle: "Balance breakdown",
-    statementReconciliationBreakdownLine: ({ priorBalance, existingRows, includedRows, supersededAdjustment, projectedBalance }) => (
-      `Prior ledger ${priorBalance} + existing period rows ${existingRows} + included PDF rows ${includedRows} + superseded adjustment ${supersededAdjustment} = projected ledger ${projectedBalance}`
+    statementReconciliationBreakdownTitle: "Why this does not close",
+    statementReconciliationAuthority: "If the PDF is mapped to the correct card account, treat the PDF as the stronger bank record. The ledger rows listed here are candidates to inspect, remap, delete, roll back, or match before committing.",
+    statementReconciliationResult: ({ projectedBalance, statementBalance, delta }) => (
+      `After this preview, the ledger would show ${projectedBalance}. The PDF says ${statementBalance}. That leaves ${delta} to explain.`
     ),
-    statementReconciliationCausesTitle: "What to check",
-    statementReconciliationExistingRowsTitle: "Existing ledger rows in this period",
-    statementReconciliationSkippedRowsTitle: "Skipped or needs-review PDF rows",
-    statementReconciliationMatchedRowsTitle: "PDF rows certifying existing ledger rows",
+    statementReconciliationMovementLabels: {
+      priorBalance: "Before statement period",
+      existingRows: "Already in ledger during this period",
+      includedRows: "PDF activity in this preview",
+      supersededAdjustment: "Rows the PDF can remove",
+      projectedBalance: "Projected ledger after preview"
+    },
+    statementReconciliationCausesTitle: "Recommended next checks",
+    statementReconciliationExistingRowsTitle: "Ledger rows not proven by this PDF",
+    statementReconciliationExistingRowsDetail: "These were picked because they are already in this account's ledger inside the statement period and are not matched to a PDF row. If the PDF/account mapping is correct, inspect these in Entries first.",
+    statementReconciliationSkippedRowsTitle: "PDF rows not included yet",
+    statementReconciliationSkippedRowsDetail: "These are official PDF rows currently skipped or needing review. Include or match them if they are real statement activity for this account.",
+    statementReconciliationMatchedRowsTitle: "PDF rows already matching ledger rows",
+    statementReconciliationMatchedRowsDetail: "These are not the main problem. They show statement rows that will certify existing ledger rows while preserving user edits.",
+    openDiagnosticEntry: "Open",
     statementReconciliationSupersededRowsTitle: "Official statement will remove provisional rows not present on the PDF",
     statementReconciliationSupersededRow: (date, description, amount) => `${date} • ${description} • ${amount}`,
     statementReconciliationStatus: {

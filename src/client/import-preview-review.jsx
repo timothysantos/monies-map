@@ -38,6 +38,7 @@ export function ImportPreviewReview({
   statementReconciliations,
   hasStatementReconciliationMismatch,
   statementCheckpoints,
+  viewId,
   hasDuplicateCheckpointAccounts,
   duplicateCheckpointAccounts,
   isSubmitting,
@@ -115,6 +116,7 @@ export function ImportPreviewReview({
         <StatementBalanceCheck
           reconciliations={statementReconciliations}
           hasMismatch={hasStatementReconciliationMismatch}
+          viewId={viewId}
           isSubmitting={isSubmitting}
           onRefreshStatementReconciliation={onRefreshStatementReconciliation}
         />
@@ -577,7 +579,7 @@ function formatOverlapEntryAmount(entry) {
   return formatService.money(entry.amountMinor);
 }
 
-function StatementBalanceCheck({ reconciliations, hasMismatch, isSubmitting, onRefreshStatementReconciliation }) {
+function StatementBalanceCheck({ reconciliations, hasMismatch, viewId, isSubmitting, onRefreshStatementReconciliation }) {
   return (
     <div className={`import-warning ${hasMismatch ? "import-warning-attention" : "import-warning-reconciled"}`}>
       <div className="import-warning-head">
@@ -632,8 +634,10 @@ function StatementBalanceCheck({ reconciliations, hasMismatch, isSubmitting, onR
             ) : null}
             {item.reconciliationBreakdown ? (
               <StatementReconciliationBreakdown
+                reconciliation={item}
                 breakdown={item.reconciliationBreakdown}
                 accountKind={item.accountKind}
+                viewId={viewId}
               />
             ) : null}
           </div>
@@ -643,21 +647,51 @@ function StatementBalanceCheck({ reconciliations, hasMismatch, isSubmitting, onR
   );
 }
 
-function StatementReconciliationBreakdown({ breakdown, accountKind }) {
+function StatementReconciliationBreakdown({ reconciliation, breakdown, accountKind, viewId }) {
   const showExistingRows = breakdown.periodExistingLedgerRows?.length > 0;
   const showSkippedRows = breakdown.skippedStatementRows?.length > 0;
   const showMatchedRows = breakdown.matchedStatementRows?.length > 0;
+  const resultDeltaMinor = Math.abs(breakdown.deltaMinor ?? 0);
 
   return (
     <div className="statement-reconciliation-breakdown">
       <strong>{messages.imports.statementReconciliationBreakdownTitle}</strong>
-      <p className="lede compact">{messages.imports.statementReconciliationBreakdownLine({
-        priorBalance: formatStatementBalanceForAccount(breakdown.priorLedgerBalanceMinor, accountKind),
-        existingRows: formatSignedDiagnosticAmount(breakdown.statementPeriodExistingRowsMinor),
-        includedRows: formatSignedDiagnosticAmount(breakdown.includedStatementRowsMinor),
-        supersededAdjustment: formatSignedDiagnosticAmount(-breakdown.supersededLedgerRowsMinor),
-        projectedBalance: formatStatementBalanceForAccount(breakdown.projectedLedgerBalanceMinor, accountKind)
-      })}</p>
+      <p className="lede compact">{messages.imports.statementReconciliationAuthority}</p>
+      <div className="statement-reconciliation-result">
+        {messages.imports.statementReconciliationResult({
+          projectedBalance: formatStatementBalanceForAccount(breakdown.projectedLedgerBalanceMinor, accountKind),
+          statementBalance: formatStatementBalanceForAccount(breakdown.statementBalanceMinor, accountKind),
+          delta: formatService.money(resultDeltaMinor)
+        })}
+      </div>
+      <div className="statement-reconciliation-movement-grid">
+        <StatementReconciliationMovement
+          label={messages.imports.statementReconciliationMovementLabels.priorBalance}
+          value={formatStatementBalanceForAccount(breakdown.priorLedgerBalanceMinor, accountKind)}
+          detail="ledger balance before the statement start date"
+        />
+        <StatementReconciliationMovement
+          label={messages.imports.statementReconciliationMovementLabels.existingRows}
+          value={formatMovementForAccount(breakdown.statementPeriodExistingRowsMinor, accountKind)}
+          detail="ledger-only rows already inside the PDF period"
+          isProblem={Boolean(breakdown.statementPeriodExistingRowsMinor)}
+        />
+        <StatementReconciliationMovement
+          label={messages.imports.statementReconciliationMovementLabels.includedRows}
+          value={formatMovementForAccount(breakdown.includedStatementRowsMinor, accountKind)}
+          detail="net movement from rows in this PDF preview"
+        />
+        <StatementReconciliationMovement
+          label={messages.imports.statementReconciliationMovementLabels.supersededAdjustment}
+          value={formatMovementForAccount(-breakdown.supersededLedgerRowsMinor, accountKind)}
+          detail="provisional ledger rows removed because the PDF does not contain them"
+        />
+        <StatementReconciliationMovement
+          label={messages.imports.statementReconciliationMovementLabels.projectedBalance}
+          value={formatStatementBalanceForAccount(breakdown.projectedLedgerBalanceMinor, accountKind)}
+          detail="what the ledger would show after this preview"
+        />
+      </div>
       {breakdown.suspectedCauses?.length ? (
         <div className="statement-reconciliation-causes">
           <strong>{messages.imports.statementReconciliationCausesTitle}</strong>
@@ -669,35 +703,58 @@ function StatementReconciliationBreakdown({ breakdown, accountKind }) {
       {showSkippedRows ? (
         <StatementReconciliationDiagnosticRows
           title={messages.imports.statementReconciliationSkippedRowsTitle}
+          detail={messages.imports.statementReconciliationSkippedRowsDetail}
           rows={breakdown.skippedStatementRows}
+          viewId={viewId}
         />
       ) : null}
       {showExistingRows ? (
         <StatementReconciliationDiagnosticRows
           title={messages.imports.statementReconciliationExistingRowsTitle}
+          detail={messages.imports.statementReconciliationExistingRowsDetail}
           rows={breakdown.periodExistingLedgerRows}
+          viewId={viewId}
+          accountId={reconciliation.accountId}
         />
       ) : null}
       {showMatchedRows ? (
         <StatementReconciliationDiagnosticRows
           title={messages.imports.statementReconciliationMatchedRowsTitle}
+          detail={messages.imports.statementReconciliationMatchedRowsDetail}
           rows={breakdown.matchedStatementRows}
+          viewId={viewId}
         />
       ) : null}
     </div>
   );
 }
 
-function StatementReconciliationDiagnosticRows({ title, rows }) {
+function StatementReconciliationMovement({ label, value, detail, isProblem = false }) {
+  return (
+    <div className={`statement-reconciliation-movement ${isProblem ? "is-problem" : ""}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>{detail}</small>
+    </div>
+  );
+}
+
+function StatementReconciliationDiagnosticRows({ title, detail, rows, viewId, accountId }) {
   return (
     <div className="import-overlap-entry-list" aria-label={title}>
       <strong>{title}</strong>
+      {detail ? <p className="lede compact">{detail}</p> : null}
       {rows.map((row) => (
         <div key={row.id} className="import-overlap-entry-row statement-reconciliation-diagnostic-row">
           <span className="import-overlap-entry-date">{formatService.formatDateOnly(row.postedDate ?? row.date)}</span>
           <span className="import-overlap-entry-description">{row.description}</span>
           <span className="import-overlap-entry-account">{row.status || row.accountName}</span>
           <strong className="import-overlap-entry-amount">{formatSignedDiagnosticAmount(row.signedAmountMinor)}</strong>
+          {row.source === "ledger" ? (
+            <a className="settings-text-link statement-reconciliation-entry-link" href={buildDiagnosticEntryHref({ row, viewId, accountId })}>
+              {messages.imports.openDiagnosticEntry}
+            </a>
+          ) : null}
         </div>
       ))}
     </div>
@@ -723,6 +780,37 @@ function formatStatementBalanceForAccount(valueMinor, accountKind) {
     return `credit ${formatService.money(valueMinor)}`;
   }
   return formatService.money(0);
+}
+
+function formatMovementForAccount(valueMinor, accountKind) {
+  if (!valueMinor) {
+    return formatService.money(0);
+  }
+
+  if (accountKind === "credit_card") {
+    return valueMinor < 0
+      ? `adds ${formatService.money(Math.abs(valueMinor))} owed`
+      : `reduces owed by ${formatService.money(valueMinor)}`;
+  }
+
+  return valueMinor < 0
+    ? `reduces balance by ${formatService.money(Math.abs(valueMinor))}`
+    : `adds ${formatService.money(valueMinor)}`;
+}
+
+function buildDiagnosticEntryHref({ row, viewId, accountId }) {
+  const params = new URLSearchParams({
+    view: viewId || "household",
+    month: row.date.slice(0, 7)
+  });
+  if (row.id) {
+    params.append("entry_id", row.id);
+  }
+  const wallet = row.accountId ?? accountId;
+  if (wallet) {
+    params.set("entry_wallet", wallet);
+  }
+  return `/entries?${params.toString()}`;
 }
 
 function StatementCheckpointDrafts({

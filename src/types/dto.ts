@@ -521,6 +521,7 @@ export interface ImportPreviewStatementReconciliationBreakdownDto {
 
 export interface ImportPreviewReconciliationDiagnosticRowDto {
   id: string;
+  accountId?: string;
   date: string;
   postedDate?: string;
   description: string;

@@ -55,7 +55,9 @@ canonical terms.
 - `reconciliation breakdown`: The per-account statement preview diagnostic that
   explains the projected ledger balance from prior ledger balance, existing
   period rows, included PDF rows, matched certification rows, skipped statement
-  rows, and superseded provisional ledger rows.
+  rows, and superseded provisional ledger rows. Ledger-only diagnostic rows link
+  to Entries using the row's actual calendar month and wallet so cross-month
+  statement periods remain inspectable.
 - `checkpoint-only commit`: A commit where no transactions are inserted, but the
   user still wants to save statement checkpoints or reconciliation data.
 - `needs review`: A preview row that the system cannot safely auto-commit

@@ -1144,6 +1144,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             statementReconciliations={statementReconciliations}
             hasStatementReconciliationMismatch={hasStatementReconciliationMismatch}
             statementCheckpoints={statementCheckpoints}
+            viewId={viewId}
             hasDuplicateCheckpointAccounts={hasDuplicateCheckpointAccounts}
             duplicateCheckpointAccounts={duplicateCheckpointAccounts}
             isSubmitting={isSubmitting}

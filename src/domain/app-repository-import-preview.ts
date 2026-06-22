@@ -1616,6 +1616,7 @@ function sumSignedExistingRows(rows: {
 function mapExistingRowToDiagnosticRow(
   row: {
     transaction_id?: string;
+    account_id: string;
     transaction_date: string;
     post_date?: string | null;
     description?: string;
@@ -1630,6 +1631,7 @@ function mapExistingRowToDiagnosticRow(
 ) {
   return {
     id: row.transaction_id ?? `${row.transaction_date}-${row.description ?? ""}-${row.amount_minor}`,
+    accountId: row.account_id,
     date: row.transaction_date,
     ...(row.post_date ? { postedDate: row.post_date } : {}),
     description: row.description ?? "",
@@ -1643,6 +1645,7 @@ function mapExistingRowToDiagnosticRow(
 function mapPreviewRowToDiagnosticRow(row: ImportPreviewRowDto) {
   return {
     id: row.rowId,
+    ...(row.accountId ? { accountId: row.accountId } : {}),
     date: row.date,
     description: row.description,
     signedAmountMinor: getSignedLedgerAmountMinor({

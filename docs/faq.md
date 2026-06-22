@@ -737,12 +737,15 @@ zero-balance wrong account from passing just because the statement's own rows
 and ending balance are internally consistent.
 
 When the statement certification check does not match, the import preview shows
-a balance breakdown for each affected account. It separates the prior ledger
-balance, existing ledger rows inside the statement period, included PDF rows,
-matched rows that will certify existing ledger entries, skipped or needs-review
-PDF rows, and any provisional rows the official statement can supersede. The
-preview also lists the most likely rows to inspect so users do not have to
-manually compare the whole PDF against the ledger.
+a plain-language balance breakdown for each affected account. It separates the
+prior ledger balance, existing ledger rows inside the statement period, included
+PDF rows, matched rows that will certify existing ledger entries, skipped or
+needs-review PDF rows, and any provisional rows the official statement can
+supersede. If the PDF is mapped to the correct card account, treat the PDF as
+the stronger bank record. Start by opening the listed ledger-only rows in
+Entries from the provided row links; those links use the row's actual month,
+entry id, and wallet filter so cross-month statement periods do not hide April
+rows from a May statement.
 
 When a PDF statement closes successfully, the app stores a reconciliation
 certificate for each account section. The certificate records row counts,
@@ -928,9 +931,12 @@ statement mismatch, unknown categories, unresolved row decisions, and prior
 import context.
 
 For statement mismatches, the detailed certification card is the first place to
-look. It shows whether the difference is explained by an existing manual ledger
-row, a skipped statement row, a row direction problem, account mapping, or a
-provisional import row that can be superseded by the official PDF.
+look. It shows whether the difference is explained by an existing manual or
+mid-cycle ledger row, a skipped statement row, a row direction problem, account
+mapping, or a provisional import row that can be superseded by the official PDF.
+If the card lists "ledger rows not proven by this PDF", use the row links to go
+to Entries and inspect whether each row should be deleted, remapped, rolled
+back through its import, or matched to a PDF row.
 
 Settings also has a persistent reconciliation exception list under Balance trust
 rules. Use it when a known issue survives beyond one import preview: a missing

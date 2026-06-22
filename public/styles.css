@@ -5773,13 +5773,57 @@ button.split-activity-card:hover {
 
 .statement-reconciliation-breakdown {
   display: grid;
-  gap: 8px;
+  gap: 12px;
   flex-basis: 100%;
   width: 100%;
   padding: 10px 12px;
   border: 1px solid rgba(142, 81, 39, 0.16);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.58);
+}
+
+.statement-reconciliation-result {
+  padding: 10px 12px;
+  border: 1px solid rgba(180, 35, 24, 0.14);
+  border-radius: 8px;
+  background: rgba(180, 35, 24, 0.06);
+  color: var(--negative);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.statement-reconciliation-movement-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.statement-reconciliation-movement {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(142, 81, 39, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.statement-reconciliation-movement.is-problem {
+  border-color: rgba(180, 35, 24, 0.18);
+  background: rgba(180, 35, 24, 0.06);
+}
+
+.statement-reconciliation-movement span,
+.statement-reconciliation-movement small {
+  min-width: 0;
+  color: var(--muted);
+  line-height: 1.25;
+}
+
+.statement-reconciliation-movement strong {
+  min-width: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
 }
 
 .statement-reconciliation-causes {
@@ -5798,7 +5842,13 @@ button.split-activity-card:hover {
 }
 
 .statement-reconciliation-diagnostic-row {
+  grid-template-columns: minmax(110px, 0.75fr) minmax(170px, 2fr) minmax(120px, 1fr) max-content max-content;
   border-color: rgba(142, 81, 39, 0.16);
+}
+
+.statement-reconciliation-entry-link {
+  white-space: nowrap;
+  justify-self: end;
 }
 
 .statement-account-map-grid {
@@ -7109,6 +7159,19 @@ th {
   .import-stage-card,
   .import-warning {
     padding: 14px;
+  }
+
+  .statement-reconciliation-movement-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .statement-reconciliation-diagnostic-row {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .statement-reconciliation-entry-link {
+    justify-self: start;
   }
 
   .import-stage-card .section-head,
