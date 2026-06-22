@@ -505,6 +505,8 @@ test.describe("import flow", () => {
       await expect(breakdown).toContainText("Already in ledger during this period");
       await expect(breakdown).toContainText("adds $5.00 owed");
       await expect(breakdown).toContainText("Ledger rows not proven by this PDF");
+      await expect(breakdown).toContainText("These ledger-only rows total $5.00, which matches the unexplained difference.");
+      await expect(breakdown).toContainText("Open each row in a new tab, compare it against the PDF for this card and period");
 
       const ledgerRow = breakdown.locator(".statement-reconciliation-diagnostic-row").filter({ hasText: "EXTRA MIDCYCLE ROW" });
       const openLink = ledgerRow.getByRole("link", { name: "Open" });
@@ -512,6 +514,8 @@ test.describe("import flow", () => {
         "href",
         "/entries?view=person-tim&month=2026-04&entry_id=txn-statement-guidance-extra&entry_wallet=acct-statement-guidance"
       );
+      await expect(openLink).toHaveAttribute("target", "_blank");
+      await expect(openLink).toHaveAttribute("rel", "noopener noreferrer");
     } finally {
       await page.unroute("**/api/imports/preview", mockedPreviewRoute);
     }

@@ -343,8 +343,14 @@ export const messages = {
     statementReconciliationCausesTitle: "Recommended next checks",
     statementReconciliationExistingRowsTitle: "Ledger rows not proven by this PDF",
     statementReconciliationExistingRowsDetail: "These were picked because they are already in this account's ledger inside the statement period and are not matched to a PDF row. If the PDF/account mapping is correct, inspect these in Entries first.",
+    statementReconciliationExistingRowsExactAction: (amount) => (
+      `These ledger-only rows total ${amount}, which matches the unexplained difference. If the PDF/account mapping is correct and these rows are not on this card's PDF, deleting them, remapping them to the right account, or rolling back their prior import should reconcile this statement. Open each row in a new tab, compare it against the PDF for this card and period, then correct it in Entries.`
+    ),
     statementReconciliationSkippedRowsTitle: "PDF rows not included yet",
     statementReconciliationSkippedRowsDetail: "These are official PDF rows currently skipped or needing review. Include or match them if they are real statement activity for this account.",
+    statementReconciliationSkippedRowsExactAction: (amount) => (
+      `These skipped PDF rows total ${amount}, which matches the unexplained difference. If they are real activity for this account, including or matching them should reconcile this statement. Compare them against the PDF, then include or match the rows in the preview before committing.`
+    ),
     statementReconciliationMatchedRowsTitle: "PDF rows already matching ledger rows",
     statementReconciliationMatchedRowsDetail: "These are not the main problem. They show statement rows that will certify existing ledger rows while preserving user edits.",
     openDiagnosticEntry: "Open",
