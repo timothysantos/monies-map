@@ -18,6 +18,65 @@ test("parseStatementText rejects unsupported statement layouts with a clear erro
   );
 });
 
+test("parseStatementText preserves UOB credit card post and event date lanes", () => {
+  const parsed = parseStatementText(`
+Credit Card(s) Statement
+Statement Date
+12 MAY 2026
+UOB ONE CARD
+1234-5678-9012-3456
+PREVIOUS BALANCE
+0.00
+13 APR
+11 APR
+HONG KONG ZHAI DIMI S Singapore
+Ref No. : 12712986102759374477422
+11.40
+14 APR
+13 APR
+PAYMENT VIA FAST
+Ref No. : 12712986102759374477500
+3.00 CR
+SUB TOTAL
+TOTAL BALANCE FOR UOB ONE CARD
+8.40
+End of Transaction Details
+`, "uob-may.pdf");
+
+  assert.equal(parsed.parserKey, "uob_credit_card_pdf");
+  assert.equal(parsed.rows.length, 2);
+  assert.deepEqual(parsed.rows.map((row) => ({
+    date: row.date,
+    note: row.note,
+    description: row.description,
+    expense: row.expense,
+    income: row.income
+  })), [
+    {
+      date: "2026-04-13",
+      note: "txn date: 2026-04-11",
+      description: "HONG KONG ZHAI DIMI S Singapore",
+      expense: "11.40",
+      income: ""
+    },
+    {
+      date: "2026-04-14",
+      note: "txn date: 2026-04-13",
+      description: "PAYMENT VIA FAST",
+      expense: "",
+      income: "3.00"
+    }
+  ]);
+  assert.deepEqual(parsed.checkpoints[0], {
+    accountName: "UOB One Card",
+    checkpointMonth: "2026-05",
+    statementStartDate: "2026-04-13",
+    statementEndDate: "2026-05-12",
+    statementBalanceMinor: 840,
+    note: "Imported from UOB credit card statement"
+  });
+});
+
 test("parseCurrentTransactionSpreadsheet rejects empty or unreadable XLS buffers", () => {
   const emptyBuffer = new ArrayBuffer(0);
 
