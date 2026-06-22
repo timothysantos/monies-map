@@ -389,11 +389,132 @@ test.describe("import flow", () => {
       deltaMinor: -500
     });
     expect(reconciliation.reconciliationBreakdown.periodExistingLedgerRows[0]).toMatchObject({
+      accountId,
       description: "EXTRA MIDCYCLE ROW",
       signedAmountMinor: -500,
       source: "ledger"
     });
     expect(reconciliation.reconciliationBreakdown.suspectedCauses.join(" ")).toContain("Existing ledger rows inside this statement period");
+  });
+
+  test("statement mismatch UI gives action guidance and links ledger rows to entries", async ({ page }) => {
+    const mockedPreviewRoute = async (route) => {
+      const request = route.request();
+      const body = JSON.parse(request.postData() ?? "{}");
+      await route.fulfill({
+        contentType: "application/json",
+        status: 200,
+        body: JSON.stringify({
+          ok: true,
+          preview: {
+            sourceLabel: body.sourceLabel ?? "Statement guidance preview",
+            parserKey: "generic_csv",
+            importedRows: 1,
+            previewRows: [{
+              rowId: "preview-statement-guidance-1",
+              rowIndex: 1,
+              date: "2026-04-16",
+              description: "PDF STATEMENT ROW",
+              amountMinor: 1000,
+              entryType: "expense",
+              accountId: "acct-statement-guidance",
+              accountName: "Statement Guidance Card",
+              statementAccountName: "Statement Guidance Card",
+              categoryName: "Other",
+              ownershipType: "direct",
+              ownerName: "Tim",
+              splitBasisPoints: 10000,
+              rawRow: {
+                date: "2026-04-16",
+                description: "PDF STATEMENT ROW",
+                expense: "10.00",
+                account: "Statement Guidance Card",
+                category: "Other",
+                note: "txn date: 2026-04-14"
+              },
+              commitStatus: "included",
+              commitStatusExplicit: false
+            }],
+            unknownAccounts: [],
+            unknownCategories: [],
+            reconciliationCandidateCount: 0,
+            overlappingImportCount: 0,
+            overlapImports: [],
+            startDate: "2026-04-16",
+            endDate: "2026-04-16",
+            accountNames: ["Statement Guidance Card"],
+            reconciliationCandidates: [],
+            exceptionSummary: [],
+            statementReconciliations: [{
+              accountId: "acct-statement-guidance",
+              accountName: "Statement Guidance Card",
+              accountKind: "credit_card",
+              checkpointMonth: "2026-05",
+              statementStartDate: "2026-04-13",
+              statementEndDate: "2026-05-12",
+              statementBalanceMinor: -1000,
+              ledgerBalanceMinor: -1500,
+              deltaMinor: -500,
+              status: "mismatch",
+              reconciliationBreakdown: {
+                priorLedgerBalanceMinor: 0,
+                statementPeriodExistingRowsMinor: -500,
+                includedStatementRowsMinor: -1000,
+                supersededLedgerRowsMinor: 0,
+                projectedLedgerBalanceMinor: -1500,
+                statementBalanceMinor: -1000,
+                deltaMinor: -500,
+                suspectedCauses: [
+                  "Existing ledger rows inside this statement period total $5.00, matching the difference."
+                ],
+                periodExistingLedgerRows: [{
+                  id: "txn-statement-guidance-extra",
+                  accountId: "acct-statement-guidance",
+                  date: "2026-04-15",
+                  description: "EXTRA MIDCYCLE ROW",
+                  signedAmountMinor: -500,
+                  accountName: "Statement Guidance Card",
+                  source: "ledger",
+                  status: "manual / provisional"
+                }],
+                skippedStatementRows: [],
+                matchedStatementRows: []
+              }
+            }]
+          }
+        })
+      });
+    };
+
+    await page.route("**/api/imports/preview", mockedPreviewRoute);
+    try {
+      await page.getByLabel("Source label").fill("Statement guidance preview");
+      await page.getByLabel("CSV content").fill(
+        [
+          "date,description,expense,account,category,note",
+          "2026-04-16,PDF STATEMENT ROW,10.00,Statement Guidance Card,Other,txn date: 2026-04-14"
+        ].join("\n")
+      );
+
+      await page.getByRole("button", { name: "Preview import" }).click();
+
+      const breakdown = page.locator(".statement-reconciliation-breakdown");
+      await expect(breakdown).toContainText("Why this does not close");
+      await expect(breakdown).toContainText("treat the PDF as the stronger bank record");
+      await expect(breakdown).toContainText("After this preview, the ledger would show");
+      await expect(breakdown).toContainText("Already in ledger during this period");
+      await expect(breakdown).toContainText("adds $5.00 owed");
+      await expect(breakdown).toContainText("Ledger rows not proven by this PDF");
+
+      const ledgerRow = breakdown.locator(".statement-reconciliation-diagnostic-row").filter({ hasText: "EXTRA MIDCYCLE ROW" });
+      const openLink = ledgerRow.getByRole("link", { name: "Open" });
+      await expect(openLink).toHaveAttribute(
+        "href",
+        "/entries?view=person-tim&month=2026-04&entry_id=txn-statement-guidance-extra&entry_wallet=acct-statement-guidance"
+      );
+    } finally {
+      await page.unroute("**/api/imports/preview", mockedPreviewRoute);
+    }
   });
 
   test("expense and income headers auto-map without manual mapping", async ({ page }) => {

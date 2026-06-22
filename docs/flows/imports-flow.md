@@ -51,7 +51,9 @@ Imports owns:
 - commit and rollback
 - certification and duplicate review
 - statement mismatch diagnostics, including balance breakdown rows that explain
-  likely account, row direction, skipped-row, or extra-ledger causes
+  likely account, row direction, skipped-row, or extra-ledger causes and link
+  ledger diagnostic rows back to Entries with row-specific month and wallet
+  filters
 - non-destructive statement preview auto-refresh; transient refresh failures
   must keep the current reviewed preview visible
 
