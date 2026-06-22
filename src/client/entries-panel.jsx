@@ -584,7 +584,6 @@ export function EntriesPanel({
   }
 
   async function handleDeleteEntry(entry) {
-    preserveEntryEditorInUrl(entry.id);
     const result = await deleteEntry(entry);
     if (result?.ok) {
       clearEditingEntrySearchParam();
