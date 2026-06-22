@@ -51,11 +51,13 @@ Imports owns:
 - commit and rollback
 - certification and duplicate review
 - statement mismatch diagnostics, including balance breakdown rows that explain
-  likely account, row direction, skipped-row, or extra-ledger causes and link
-  ledger diagnostic rows back to Entries in a new tab with row-specific month
-  and wallet filters; when a diagnostic row bucket exactly matches the
-  statement difference, the preview says whether correcting those ledger rows or
-  including those PDF rows should reconcile the statement
+  likely account, row direction, skipped-row, or unmatched-ledger causes and
+  link ledger diagnostic rows back to Entries in a new tab with row-specific
+  month and wallet filters; unmatched ledger rows mean the preview did not
+  certify a unique PDF match, not that the rows are definitely absent from the
+  PDF. When a diagnostic bucket exactly matches the statement difference, the
+  preview says whether correcting those ledger matches or including skipped PDF
+  rows should reconcile the statement
 - non-destructive statement preview auto-refresh; transient refresh failures
   must keep the current reviewed preview visible
 

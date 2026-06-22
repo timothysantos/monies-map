@@ -654,9 +654,8 @@ function StatementReconciliationBreakdown({ reconciliation, breakdown, accountKi
   const resultDeltaMinor = Math.abs(breakdown.deltaMinor ?? 0);
   const existingRowsExplainMismatch = resultDeltaMinor > 0
     && Math.abs(breakdown.statementPeriodExistingRowsMinor ?? 0) === resultDeltaMinor;
-  const skippedRowsTotalMinor = sumDiagnosticRows(breakdown.skippedStatementRows);
   const skippedRowsExplainMismatch = resultDeltaMinor > 0
-    && Math.abs(skippedRowsTotalMinor) === resultDeltaMinor;
+    && Math.abs(breakdown.skippedStatementRowsMinor ?? 0) === resultDeltaMinor;
 
   return (
     <div className="statement-reconciliation-breakdown">
@@ -713,6 +712,8 @@ function StatementReconciliationBreakdown({ reconciliation, breakdown, accountKi
             ? messages.imports.statementReconciliationSkippedRowsExactAction(formatService.money(resultDeltaMinor))
             : null}
           rows={breakdown.skippedStatementRows}
+          totalRowCount={breakdown.skippedStatementRowCount}
+          totalAmountMinor={breakdown.skippedStatementRowsMinor}
           viewId={viewId}
         />
       ) : null}
@@ -724,6 +725,8 @@ function StatementReconciliationBreakdown({ reconciliation, breakdown, accountKi
             ? messages.imports.statementReconciliationExistingRowsExactAction(formatService.money(resultDeltaMinor))
             : null}
           rows={breakdown.periodExistingLedgerRows}
+          totalRowCount={breakdown.periodExistingLedgerRowCount}
+          totalAmountMinor={breakdown.statementPeriodExistingRowsMinor}
           viewId={viewId}
           accountId={reconciliation.accountId}
         />
@@ -733,6 +736,8 @@ function StatementReconciliationBreakdown({ reconciliation, breakdown, accountKi
           title={messages.imports.statementReconciliationMatchedRowsTitle}
           detail={messages.imports.statementReconciliationMatchedRowsDetail}
           rows={breakdown.matchedStatementRows}
+          totalRowCount={breakdown.matchedStatementRowCount}
+          totalAmountMinor={breakdown.matchedStatementRowsMinor}
           viewId={viewId}
         />
       ) : null}
@@ -750,11 +755,19 @@ function StatementReconciliationMovement({ label, value, detail, isProblem = fal
   );
 }
 
-function StatementReconciliationDiagnosticRows({ title, detail, actionDetail, rows, viewId, accountId }) {
+function StatementReconciliationDiagnosticRows({ title, detail, actionDetail, rows, totalRowCount, totalAmountMinor, viewId, accountId }) {
+  const rowCount = totalRowCount ?? rows.length;
   return (
     <div className="import-overlap-entry-list" aria-label={title}>
       <strong>{title}</strong>
       {detail ? <p className="lede compact">{detail}</p> : null}
+      <p className="lede compact">
+        {messages.imports.statementReconciliationBucketSample({
+          shown: rows.length,
+          total: rowCount,
+          amount: formatSignedDiagnosticAmount(totalAmountMinor ?? sumDiagnosticRows(rows))
+        })}
+      </p>
       {actionDetail ? <p className="lede compact statement-reconciliation-action">{actionDetail}</p> : null}
       {rows.map((row) => (
         <div key={row.id} className="import-overlap-entry-row statement-reconciliation-diagnostic-row">

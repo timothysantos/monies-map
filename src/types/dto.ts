@@ -513,6 +513,9 @@ export interface ImportPreviewStatementReconciliationBreakdownDto {
   projectedLedgerBalanceMinor: number;
   statementBalanceMinor: number;
   deltaMinor: number;
+  periodExistingLedgerRowCount: number;
+  skippedStatementRowCount: number;
+  matchedStatementRowCount: number;
   periodExistingLedgerRows: ImportPreviewReconciliationDiagnosticRowDto[];
   skippedStatementRows: ImportPreviewReconciliationDiagnosticRowDto[];
   matchedStatementRows: ImportPreviewReconciliationDiagnosticRowDto[];

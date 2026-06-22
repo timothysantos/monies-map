@@ -934,15 +934,18 @@ For statement mismatches, the detailed certification card is the first place to
 look. It shows whether the difference is explained by an existing manual or
 mid-cycle ledger row, a skipped statement row, a row direction problem, account
 mapping, or a provisional import row that can be superseded by the official PDF.
-If the card lists "ledger rows not proven by this PDF", use the row links to go
-to Entries in a new tab and inspect whether each row should be deleted,
-remapped, rolled back through its import, or matched to a PDF row. When those
-ledger-only rows total the same amount as the unexplained difference, correcting
-that row set should reconcile the statement as long as the PDF is mapped to the
-right account. Check each opened row against the PDF for the same card and
-statement period: if the PDF does not contain the row, remove it from that
-account; if it belongs to a different card, remap it; if it came from a prior
-provisional import, roll back that import.
+If the card lists "ledger rows not automatically matched to this PDF", use the
+row links to go to Entries in a new tab and inspect whether each row should be
+matched, deleted, remapped, or rolled back through its import. This bucket means
+the preview did not certify those ledger rows against unique PDF rows; it does
+not prove the rows are absent from the PDF. Repeated same-merchant charges can
+land here when the app cannot safely pair every copy. When that bucket total is
+the same amount as the unexplained difference, correcting that bucket should
+reconcile the statement as long as the PDF is mapped to the right account. Check
+each opened row against the PDF for the same card and statement period: if the
+PDF contains it, it should be matched or certified; if the PDF does not contain
+it, remove it from that account; if it belongs to a different card, remap it; if
+it came from a prior provisional import, roll back that import.
 
 Settings also has a persistent reconciliation exception list under Balance trust
 rules. Use it when a known issue survives beyond one import preview: a missing

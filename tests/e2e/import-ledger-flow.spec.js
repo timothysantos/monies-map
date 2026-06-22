@@ -460,10 +460,15 @@ test.describe("import flow", () => {
                 priorLedgerBalanceMinor: 0,
                 statementPeriodExistingRowsMinor: -500,
                 includedStatementRowsMinor: -1000,
+                matchedStatementRowsMinor: 0,
+                skippedStatementRowsMinor: 0,
                 supersededLedgerRowsMinor: 0,
                 projectedLedgerBalanceMinor: -1500,
                 statementBalanceMinor: -1000,
                 deltaMinor: -500,
+                periodExistingLedgerRowCount: 1,
+                skippedStatementRowCount: 0,
+                matchedStatementRowCount: 0,
                 suspectedCauses: [
                   "Existing ledger rows inside this statement period total $5.00, matching the difference."
                 ],
@@ -504,9 +509,10 @@ test.describe("import flow", () => {
       await expect(breakdown).toContainText("After this preview, the ledger would show");
       await expect(breakdown).toContainText("Already in ledger during this period");
       await expect(breakdown).toContainText("adds $5.00 owed");
-      await expect(breakdown).toContainText("Ledger rows not proven by this PDF");
-      await expect(breakdown).toContainText("These ledger-only rows total $5.00, which matches the unexplained difference.");
-      await expect(breakdown).toContainText("Open each row in a new tab, compare it against the PDF for this card and period");
+      await expect(breakdown).toContainText("Ledger rows not automatically matched to this PDF");
+      await expect(breakdown).toContainText("Showing all 1 row in this bucket. The bucket total is -$5.00.");
+      await expect(breakdown).toContainText("This unmatched ledger bucket totals $5.00, which matches the unexplained difference.");
+      await expect(breakdown).toContainText("if the row is on this card's PDF, it should be matched or certified");
 
       const ledgerRow = breakdown.locator(".statement-reconciliation-diagnostic-row").filter({ hasText: "EXTRA MIDCYCLE ROW" });
       const openLink = ledgerRow.getByRole("link", { name: "Open" });
@@ -1278,6 +1284,79 @@ test.describe("import flow", () => {
     const afterAccount = afterAppShell.accounts.find((item) => item.id === account.id);
     expect(afterAccount?.latestCheckpointMonth).toBe("2025-10");
     expect(Number.isFinite(afterAccount?.latestCheckpointDeltaMinor)).toBeTruthy();
+  });
+
+  test("statement preview certifies repeated same-merchant rows against unique ledger targets", async ({ page }) => {
+    const accountName = `Playwright Repeated Statement ${Date.now()}`;
+    const createPayload = await postJson(page, "/api/accounts/create", {
+      name: accountName,
+      institution: "Synthetic Test Bank",
+      kind: "credit_card",
+      openingBalanceMinor: 0,
+      currency: "SGD",
+      ownerPersonId: "",
+      isJoint: false
+    });
+    const accountId = createPayload.accountId;
+    expect(accountId).toBeTruthy();
+
+    for (const description of ["OPENAI OPENAI.COM US first", "OPENAI OPENAI.COM US second"]) {
+      await postJson(page, "/api/entries/create", {
+        date: "2026-04-16",
+        description,
+        amountMinor: 729,
+        entryType: "expense",
+        accountId,
+        accountName,
+        categoryName: "Other",
+        ownershipType: "direct",
+        ownerName: "Tim"
+      });
+    }
+
+    const preview = await postJson(page, "/api/imports/preview", {
+      sourceLabel: "Repeated OpenAI PDF",
+      sourceType: "pdf",
+      defaultAccountName: accountName,
+      ownershipType: "direct",
+      ownerName: "Tim",
+      rows: [
+        {
+          date: "2026-04-16",
+          description: "OPENAI OPENAI.COM",
+          expense: "7.29",
+          accountId,
+          account: accountName,
+          category: "Other",
+          note: "txn date: 2026-04-16"
+        },
+        {
+          date: "2026-04-16",
+          description: "OPENAI OPENAI.COM",
+          expense: "7.29",
+          accountId,
+          account: accountName,
+          category: "Other",
+          note: "txn date: 2026-04-16"
+        }
+      ],
+      statementCheckpoints: [{
+        accountId,
+        accountName,
+        detectedAccountName: accountName,
+        checkpointMonth: "2026-05",
+        statementStartDate: "2026-04-13",
+        statementEndDate: "2026-05-12",
+        statementBalanceMinor: 1458,
+        note: "Repeated OpenAI certification checkpoint"
+      }]
+    });
+
+    const targets = preview.preview.previewRows.map((row) => row.reconciliationTargetTransactionId);
+    expect(targets.every(Boolean), JSON.stringify(preview.preview.previewRows)).toBeTruthy();
+    expect(new Set(targets).size).toBe(2);
+    expect(preview.preview.statementReconciliations[0].status).toBe("matched");
+    expect(preview.preview.statementReconciliations[0].reconciliationBreakdown.periodExistingLedgerRows).toHaveLength(0);
   });
 
   test("statement balance can certify a near-match provisional row when amount clears the velocity rule", async ({ page }) => {
