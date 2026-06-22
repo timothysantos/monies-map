@@ -1363,12 +1363,18 @@ function markCertifiedConflictRows(
 function buildImportPreviewStatementReconciliations(input: {
   accounts: AccountDto[];
   existingRows: {
+    import_id?: string | null;
+    source_type?: "csv" | "pdf" | "manual";
+    transaction_id?: string;
     account_id: string;
     transaction_date: string;
     post_date?: string | null;
+    description?: string;
     entry_type: "expense" | "income" | "transfer";
     transfer_direction: "in" | "out" | null;
     amount_minor: number;
+    bank_certification_status?: "provisional" | "statement_certified";
+    account_name?: string;
   }[];
   previewRows: ImportPreviewRowDto[];
   sourceType?: "csv" | "pdf" | "manual";
@@ -1440,6 +1446,19 @@ function buildImportPreviewStatementReconciliations(input: {
       });
       deltaMinor = projectedLedgerBalanceMinor - statementBalanceMinor;
     }
+    const openingBalanceMinor = normalizeAccountOpeningBalanceMinor(Number(account.openingBalanceMinor ?? 0), account.kind);
+    const reconciliationBreakdown = buildStatementReconciliationBreakdown({
+      account,
+      existingRows: input.existingRows,
+      previewRows: input.previewRows,
+      statementStartDate,
+      statementEndDate,
+      openingBalanceMinor,
+      statementBalanceMinor,
+      projectedLedgerBalanceMinor,
+      deltaMinor,
+      supersededLedgerRows
+    });
     const missingPriorCheckpoint = input.statementChainBreaks.find((breakItem) => (
       breakItem.account_id === account.id
       && breakItem.missing_checkpoint_month < checkpoint.checkpointMonth
@@ -1456,6 +1475,7 @@ function buildImportPreviewStatementReconciliations(input: {
         projectedLedgerBalanceMinor,
         deltaMinor,
         ...(supersededLedgerRows.length ? { supersededLedgerRows } : {}),
+        reconciliationBreakdown,
         status: "missing_prior_statement" as const
       };
     }
@@ -1475,11 +1495,195 @@ function buildImportPreviewStatementReconciliations(input: {
       projectedLedgerBalanceMinor,
       deltaMinor,
       ...(supersededLedgerRows.length ? { supersededLedgerRows } : {}),
+      reconciliationBreakdown,
       status: deltaMinor === 0
         ? hasIdentityConfidence ? "matched" as const : "identity_unconfirmed" as const
         : "mismatch" as const
     };
   });
+}
+
+function buildStatementReconciliationBreakdown(input: {
+  account: AccountDto;
+  existingRows: {
+    transaction_id?: string;
+    import_id?: string | null;
+    source_type?: "csv" | "pdf" | "manual";
+    account_id: string;
+    transaction_date: string;
+    post_date?: string | null;
+    description?: string;
+    entry_type: "expense" | "income" | "transfer";
+    transfer_direction: "in" | "out" | null;
+    amount_minor: number;
+    bank_certification_status?: "provisional" | "statement_certified";
+    account_name?: string;
+  }[];
+  previewRows: ImportPreviewRowDto[];
+  statementStartDate?: string;
+  statementEndDate: string;
+  openingBalanceMinor: number;
+  statementBalanceMinor: number;
+  projectedLedgerBalanceMinor: number;
+  deltaMinor: number;
+  supersededLedgerRows: NonNullable<ImportPreviewDto["statementReconciliations"][number]["supersededLedgerRows"]>;
+}) {
+  const reconciliationTargetIds = new Set(
+    input.previewRows
+      .map((row) => row.reconciliationTargetTransactionId)
+      .filter((id): id is string => Boolean(id))
+  );
+  const supersededIds = new Set(input.supersededLedgerRows.map((row) => row.transactionId));
+  const projectedRows = buildProjectedLedgerRows(input.existingRows, input.previewRows, {
+    excludedTransactionIds: supersededIds
+  });
+  const priorLedgerRows = input.statementStartDate
+    ? projectedRows.filter((row) => row.account_id === input.account.id && row.cleared_date < input.statementStartDate!)
+    : [];
+  const periodExistingRows = input.existingRows.filter((row) => (
+    row.account_id === input.account.id
+    && (!row.transaction_id || (!reconciliationTargetIds.has(row.transaction_id) && !supersededIds.has(row.transaction_id)))
+    && isDateWithinRange(getExistingRowClearedDate(row), input.statementStartDate, input.statementEndDate)
+  ));
+  const includedStatementRows = input.previewRows.filter((row) => (
+    row.accountId === input.account.id
+    && row.commitStatus !== "skipped"
+    && row.commitStatus !== "needs_review"
+    && isDateWithinRange(row.date, input.statementStartDate, input.statementEndDate)
+  ));
+  const matchedStatementRows = includedStatementRows.filter((row) => row.reconciliationTargetTransactionId);
+  const skippedStatementRows = input.previewRows.filter((row) => (
+    row.accountId === input.account.id
+    && (row.commitStatus === "skipped" || row.commitStatus === "needs_review")
+    && isDateWithinRange(row.date, input.statementStartDate, input.statementEndDate)
+  ));
+  const priorLedgerBalanceMinor = input.openingBalanceMinor + sumSignedProjectedRows(priorLedgerRows);
+  const periodExistingLedgerRowsMinor = sumSignedExistingRows(periodExistingRows);
+  const includedStatementRowsMinor = sumSignedPreviewRows(includedStatementRows);
+  const matchedStatementRowsMinor = sumSignedPreviewRows(matchedStatementRows);
+  const skippedStatementRowsMinor = sumSignedPreviewRows(skippedStatementRows);
+  const supersededLedgerRowsMinor = input.supersededLedgerRows.reduce((total, row) => total + row.signedAmountMinor, 0);
+
+  return {
+    openingBalanceMinor: input.openingBalanceMinor,
+    priorLedgerBalanceMinor,
+    statementPeriodExistingRowsMinor: periodExistingLedgerRowsMinor,
+    includedStatementRowsMinor,
+    matchedStatementRowsMinor,
+    skippedStatementRowsMinor,
+    supersededLedgerRowsMinor,
+    projectedLedgerBalanceMinor: input.projectedLedgerBalanceMinor,
+    statementBalanceMinor: input.statementBalanceMinor,
+    deltaMinor: input.deltaMinor,
+    periodExistingLedgerRows: periodExistingRows
+      .sort((left, right) => Math.abs(getExistingRowSignedAmountMinor(right)) - Math.abs(getExistingRowSignedAmountMinor(left)))
+      .slice(0, 8)
+      .map((row) => mapExistingRowToDiagnosticRow(row, input.account.name)),
+    skippedStatementRows: skippedStatementRows
+      .sort((left, right) => Math.abs(right.amountMinor) - Math.abs(left.amountMinor))
+      .slice(0, 8)
+      .map(mapPreviewRowToDiagnosticRow),
+    matchedStatementRows: matchedStatementRows
+      .sort((left, right) => Math.abs(right.amountMinor) - Math.abs(left.amountMinor))
+      .slice(0, 8)
+      .map(mapPreviewRowToDiagnosticRow),
+    suspectedCauses: buildStatementReconciliationSuspectedCauses({
+      deltaMinor: input.deltaMinor,
+      periodExistingLedgerRowsMinor,
+      skippedStatementRowsMinor,
+      matchedStatementRowCount: matchedStatementRows.length,
+      supersededLedgerRowCount: input.supersededLedgerRows.length
+    })
+  };
+}
+
+function sumSignedProjectedRows(rows: {
+  entry_type: "expense" | "income" | "transfer";
+  transfer_direction: "in" | "out" | null;
+  amount_minor: number;
+}[]) {
+  return rows.reduce((total, row) => total + getExistingRowSignedAmountMinor(row), 0);
+}
+
+function sumSignedExistingRows(rows: {
+  entry_type: "expense" | "income" | "transfer";
+  transfer_direction: "in" | "out" | null;
+  amount_minor: number;
+}[]) {
+  return rows.reduce((total, row) => total + getExistingRowSignedAmountMinor(row), 0);
+}
+
+function mapExistingRowToDiagnosticRow(
+  row: {
+    transaction_id?: string;
+    transaction_date: string;
+    post_date?: string | null;
+    description?: string;
+    entry_type: "expense" | "income" | "transfer";
+    transfer_direction: "in" | "out" | null;
+    amount_minor: number;
+    account_name?: string;
+    source_type?: "csv" | "pdf" | "manual";
+    bank_certification_status?: "provisional" | "statement_certified";
+  },
+  fallbackAccountName: string
+) {
+  return {
+    id: row.transaction_id ?? `${row.transaction_date}-${row.description ?? ""}-${row.amount_minor}`,
+    date: row.transaction_date,
+    ...(row.post_date ? { postedDate: row.post_date } : {}),
+    description: row.description ?? "",
+    signedAmountMinor: getExistingRowSignedAmountMinor(row),
+    accountName: row.account_name ?? fallbackAccountName,
+    source: "ledger" as const,
+    status: [row.source_type, row.bank_certification_status].filter(Boolean).join(" / ")
+  };
+}
+
+function mapPreviewRowToDiagnosticRow(row: ImportPreviewRowDto) {
+  return {
+    id: row.rowId,
+    date: row.date,
+    description: row.description,
+    signedAmountMinor: getSignedLedgerAmountMinor({
+      entry_type: row.entryType,
+      transfer_direction: row.transferDirection ?? null,
+      amount_minor: row.amountMinor
+    }),
+    accountName: row.accountName ?? row.statementAccountName ?? "",
+    source: "statement" as const,
+    status: row.commitStatus
+  };
+}
+
+function buildStatementReconciliationSuspectedCauses(input: {
+  deltaMinor: number;
+  periodExistingLedgerRowsMinor: number;
+  skippedStatementRowsMinor: number;
+  matchedStatementRowCount: number;
+  supersededLedgerRowCount: number;
+}) {
+  if (input.deltaMinor === 0) {
+    return ["The projected ledger balance now equals the statement balance."];
+  }
+
+  const causes: string[] = [];
+  if (input.skippedStatementRowsMinor !== 0 && input.deltaMinor + input.skippedStatementRowsMinor === 0) {
+    causes.push(`Skipped or needs-review statement rows total ${formatMinorForReason(Math.abs(input.skippedStatementRowsMinor))}, which exactly explains the difference.`);
+  }
+  if (input.periodExistingLedgerRowsMinor !== 0 && Math.abs(input.periodExistingLedgerRowsMinor) === Math.abs(input.deltaMinor)) {
+    causes.push(`Existing ledger rows inside this statement period total ${formatMinorForReason(Math.abs(input.periodExistingLedgerRowsMinor))}, matching the difference. Check whether they belong to this account or should be replaced by the PDF.`);
+  }
+  if (input.matchedStatementRowCount > 0) {
+    causes.push(`${input.matchedStatementRowCount} statement row${input.matchedStatementRowCount === 1 ? "" : "s"} will certify existing ledger rows. Check event dates versus posted dates if a row appears in the wrong period.`);
+  }
+  if (input.supersededLedgerRowCount > 0) {
+    causes.push(`${input.supersededLedgerRowCount} provisional ledger row${input.supersededLedgerRowCount === 1 ? "" : "s"} can be removed because the official PDF does not contain them.`);
+  }
+  if (!causes.length) {
+    causes.push("No single skipped statement row or existing ledger total explains the difference. Review account mapping, row direction, and unmatched rows.");
+  }
+  return causes;
 }
 
 function hasStatementAccountIdentityConfidence(input: {

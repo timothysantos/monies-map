@@ -630,11 +630,99 @@ function StatementBalanceCheck({ reconciliations, hasMismatch, isSubmitting, onR
                 ))}
               </div>
             ) : null}
+            {item.reconciliationBreakdown ? (
+              <StatementReconciliationBreakdown
+                breakdown={item.reconciliationBreakdown}
+                accountKind={item.accountKind}
+              />
+            ) : null}
           </div>
         ))}
       </div>
     </div>
   );
+}
+
+function StatementReconciliationBreakdown({ breakdown, accountKind }) {
+  const showExistingRows = breakdown.periodExistingLedgerRows?.length > 0;
+  const showSkippedRows = breakdown.skippedStatementRows?.length > 0;
+  const showMatchedRows = breakdown.matchedStatementRows?.length > 0;
+
+  return (
+    <div className="statement-reconciliation-breakdown">
+      <strong>{messages.imports.statementReconciliationBreakdownTitle}</strong>
+      <p className="lede compact">{messages.imports.statementReconciliationBreakdownLine({
+        priorBalance: formatStatementBalanceForAccount(breakdown.priorLedgerBalanceMinor, accountKind),
+        existingRows: formatSignedDiagnosticAmount(breakdown.statementPeriodExistingRowsMinor),
+        includedRows: formatSignedDiagnosticAmount(breakdown.includedStatementRowsMinor),
+        supersededAdjustment: formatSignedDiagnosticAmount(-breakdown.supersededLedgerRowsMinor),
+        projectedBalance: formatStatementBalanceForAccount(breakdown.projectedLedgerBalanceMinor, accountKind)
+      })}</p>
+      {breakdown.suspectedCauses?.length ? (
+        <div className="statement-reconciliation-causes">
+          <strong>{messages.imports.statementReconciliationCausesTitle}</strong>
+          <ul>
+            {breakdown.suspectedCauses.map((cause) => <li key={cause}>{cause}</li>)}
+          </ul>
+        </div>
+      ) : null}
+      {showSkippedRows ? (
+        <StatementReconciliationDiagnosticRows
+          title={messages.imports.statementReconciliationSkippedRowsTitle}
+          rows={breakdown.skippedStatementRows}
+        />
+      ) : null}
+      {showExistingRows ? (
+        <StatementReconciliationDiagnosticRows
+          title={messages.imports.statementReconciliationExistingRowsTitle}
+          rows={breakdown.periodExistingLedgerRows}
+        />
+      ) : null}
+      {showMatchedRows ? (
+        <StatementReconciliationDiagnosticRows
+          title={messages.imports.statementReconciliationMatchedRowsTitle}
+          rows={breakdown.matchedStatementRows}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function StatementReconciliationDiagnosticRows({ title, rows }) {
+  return (
+    <div className="import-overlap-entry-list" aria-label={title}>
+      <strong>{title}</strong>
+      {rows.map((row) => (
+        <div key={row.id} className="import-overlap-entry-row statement-reconciliation-diagnostic-row">
+          <span className="import-overlap-entry-date">{formatService.formatDateOnly(row.postedDate ?? row.date)}</span>
+          <span className="import-overlap-entry-description">{row.description}</span>
+          <span className="import-overlap-entry-account">{row.status || row.accountName}</span>
+          <strong className="import-overlap-entry-amount">{formatSignedDiagnosticAmount(row.signedAmountMinor)}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function formatSignedDiagnosticAmount(valueMinor) {
+  if (!valueMinor) {
+    return formatService.money(0);
+  }
+  const prefix = valueMinor > 0 ? "+" : "-";
+  return `${prefix}${formatService.money(Math.abs(valueMinor))}`;
+}
+
+function formatStatementBalanceForAccount(valueMinor, accountKind) {
+  if (accountKind !== "credit_card") {
+    return formatSignedDiagnosticAmount(valueMinor);
+  }
+  if (valueMinor < 0) {
+    return `owed ${formatService.money(Math.abs(valueMinor))}`;
+  }
+  if (valueMinor > 0) {
+    return `credit ${formatService.money(valueMinor)}`;
+  }
+  return formatService.money(0);
 }
 
 function StatementCheckpointDrafts({

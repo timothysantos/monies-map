@@ -488,6 +488,7 @@ export interface ImportPreviewStatementReconciliationDto {
   deltaMinor?: number;
   status: "matched" | "mismatch" | "unknown_account" | "identity_unconfirmed" | "missing_prior_statement";
   supersededLedgerRows?: ImportPreviewSupersededLedgerRowDto[];
+  reconciliationBreakdown?: ImportPreviewStatementReconciliationBreakdownDto;
 }
 
 export interface ImportPreviewSupersededLedgerRowDto {
@@ -499,6 +500,34 @@ export interface ImportPreviewSupersededLedgerRowDto {
   amountMinor: number;
   signedAmountMinor: number;
   accountName: string;
+}
+
+export interface ImportPreviewStatementReconciliationBreakdownDto {
+  openingBalanceMinor: number;
+  priorLedgerBalanceMinor: number;
+  statementPeriodExistingRowsMinor: number;
+  includedStatementRowsMinor: number;
+  matchedStatementRowsMinor: number;
+  skippedStatementRowsMinor: number;
+  supersededLedgerRowsMinor: number;
+  projectedLedgerBalanceMinor: number;
+  statementBalanceMinor: number;
+  deltaMinor: number;
+  periodExistingLedgerRows: ImportPreviewReconciliationDiagnosticRowDto[];
+  skippedStatementRows: ImportPreviewReconciliationDiagnosticRowDto[];
+  matchedStatementRows: ImportPreviewReconciliationDiagnosticRowDto[];
+  suspectedCauses: string[];
+}
+
+export interface ImportPreviewReconciliationDiagnosticRowDto {
+  id: string;
+  date: string;
+  postedDate?: string;
+  description: string;
+  signedAmountMinor: number;
+  accountName: string;
+  source: "ledger" | "statement";
+  status?: string;
 }
 
 export interface StatementCompareRowDto {
