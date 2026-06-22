@@ -324,6 +324,78 @@ test.describe("import flow", () => {
     expect(payload.preview.previewRows[0].accountName).toBe("Imaginary Wallet");
   });
 
+  test("statement mismatch preview explains period ledger rows and skipped statement rows", async ({ page }) => {
+    const accountName = `Playwright Reconciliation Diagnostics ${Date.now()}`;
+    const createPayload = await postJson(page, "/api/accounts/create", {
+      name: accountName,
+      institution: "Synthetic Test Bank",
+      kind: "credit_card",
+      openingBalanceMinor: 0,
+      currency: "SGD",
+      ownerPersonId: "",
+      isJoint: false
+    });
+    const accountId = createPayload.accountId;
+    expect(accountId).toBeTruthy();
+
+    await postJson(page, "/api/entries/create", {
+      date: "2026-04-15",
+      description: "EXTRA MIDCYCLE ROW",
+      amountMinor: 500,
+      entryType: "expense",
+      accountId,
+      accountName,
+      categoryName: "Other",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+
+    const preview = await postJson(page, "/api/imports/preview", {
+      sourceLabel: "Diagnostics PDF preview",
+      sourceType: "pdf",
+      rows: [{
+        date: "2026-04-16",
+        description: "PDF STATEMENT ROW",
+        expense: "10.00",
+        accountId,
+        account: accountName,
+        category: "Other",
+        note: "txn date: 2026-04-14"
+      }],
+      defaultAccountName: accountName,
+      ownershipType: "direct",
+      ownerName: "Tim",
+      statementCheckpoints: [{
+        accountId,
+        accountName,
+        detectedAccountName: accountName,
+        checkpointMonth: "2026-05",
+        statementStartDate: "2026-04-13",
+        statementEndDate: "2026-05-12",
+        statementBalanceMinor: 1000,
+        note: "Diagnostics checkpoint"
+      }]
+    });
+
+    const reconciliation = preview.preview.statementReconciliations[0];
+    expect(reconciliation.status).toBe("mismatch");
+    expect(reconciliation.deltaMinor).toBe(-500);
+    expect(reconciliation.reconciliationBreakdown).toMatchObject({
+      priorLedgerBalanceMinor: 0,
+      statementPeriodExistingRowsMinor: -500,
+      includedStatementRowsMinor: -1000,
+      projectedLedgerBalanceMinor: -1500,
+      statementBalanceMinor: -1000,
+      deltaMinor: -500
+    });
+    expect(reconciliation.reconciliationBreakdown.periodExistingLedgerRows[0]).toMatchObject({
+      description: "EXTRA MIDCYCLE ROW",
+      signedAmountMinor: -500,
+      source: "ledger"
+    });
+    expect(reconciliation.reconciliationBreakdown.suspectedCauses.join(" ")).toContain("Existing ledger rows inside this statement period");
+  });
+
   test("expense and income headers auto-map without manual mapping", async ({ page }) => {
     const payload = await postJson(page, "/api/imports/preview", {
       sourceLabel: "Auto map headers",

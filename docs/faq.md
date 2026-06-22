@@ -736,6 +736,14 @@ the detected statement account name. This prevents a first PDF import into a
 zero-balance wrong account from passing just because the statement's own rows
 and ending balance are internally consistent.
 
+When the statement certification check does not match, the import preview shows
+a balance breakdown for each affected account. It separates the prior ledger
+balance, existing ledger rows inside the statement period, included PDF rows,
+matched rows that will certify existing ledger entries, skipped or needs-review
+PDF rows, and any provisional rows the official statement can supersede. The
+preview also lists the most likely rows to inspect so users do not have to
+manually compare the whole PDF against the ledger.
+
 When a PDF statement closes successfully, the app stores a reconciliation
 certificate for each account section. The certificate records row counts,
 debit/credit totals, net movement, statement balance, projected ledger balance,
@@ -918,6 +926,11 @@ attention. Normal matched statement rows should not appear as work for the user.
 The register focuses on blockers such as account mapping, account identity,
 statement mismatch, unknown categories, unresolved row decisions, and prior
 import context.
+
+For statement mismatches, the detailed certification card is the first place to
+look. It shows whether the difference is explained by an existing manual ledger
+row, a skipped statement row, a row direction problem, account mapping, or a
+provisional import row that can be superseded by the official PDF.
 
 Settings also has a persistent reconciliation exception list under Balance trust
 rules. Use it when a known issue survives beyond one import preview: a missing

@@ -328,6 +328,14 @@ export const messages = {
     statementReconciliationRefreshed: "Statement certification check refreshed.",
     statementReconciliationAccount: (accountName, month) => `${accountName} • ${month}`,
     statementReconciliationDelta: (amount) => `Difference ${amount}`,
+    statementReconciliationBreakdownTitle: "Balance breakdown",
+    statementReconciliationBreakdownLine: ({ priorBalance, existingRows, includedRows, supersededAdjustment, projectedBalance }) => (
+      `Prior ledger ${priorBalance} + existing period rows ${existingRows} + included PDF rows ${includedRows} + superseded adjustment ${supersededAdjustment} = projected ledger ${projectedBalance}`
+    ),
+    statementReconciliationCausesTitle: "What to check",
+    statementReconciliationExistingRowsTitle: "Existing ledger rows in this period",
+    statementReconciliationSkippedRowsTitle: "Skipped or needs-review PDF rows",
+    statementReconciliationMatchedRowsTitle: "PDF rows certifying existing ledger rows",
     statementReconciliationSupersededRowsTitle: "Official statement will remove provisional rows not present on the PDF",
     statementReconciliationSupersededRow: (date, description, amount) => `${date} • ${description} • ${amount}`,
     statementReconciliationStatus: {

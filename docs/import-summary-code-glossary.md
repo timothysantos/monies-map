@@ -52,6 +52,10 @@ canonical terms.
   already-covered rows.
 - `certified conflict`: A preview row that collides with a ledger row already
   treated as statement-certified history. These rows require extra protection.
+- `reconciliation breakdown`: The per-account statement preview diagnostic that
+  explains the projected ledger balance from prior ledger balance, existing
+  period rows, included PDF rows, matched certification rows, skipped statement
+  rows, and superseded provisional ledger rows.
 - `checkpoint-only commit`: A commit where no transactions are inserted, but the
   user still wants to save statement checkpoints or reconciliation data.
 - `needs review`: A preview row that the system cannot safely auto-commit

@@ -5771,6 +5771,36 @@ button.split-activity-card:hover {
   align-items: center;
 }
 
+.statement-reconciliation-breakdown {
+  display: grid;
+  gap: 8px;
+  flex-basis: 100%;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(142, 81, 39, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.statement-reconciliation-causes {
+  display: grid;
+  gap: 6px;
+}
+
+.statement-reconciliation-causes ul {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+}
+
+.statement-reconciliation-causes li + li {
+  margin-top: 4px;
+}
+
+.statement-reconciliation-diagnostic-row {
+  border-color: rgba(142, 81, 39, 0.16);
+}
+
 .statement-account-map-grid {
   display: grid;
   gap: 10px;
