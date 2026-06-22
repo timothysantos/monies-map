@@ -652,6 +652,11 @@ function StatementReconciliationBreakdown({ reconciliation, breakdown, accountKi
   const showSkippedRows = breakdown.skippedStatementRows?.length > 0;
   const showMatchedRows = breakdown.matchedStatementRows?.length > 0;
   const resultDeltaMinor = Math.abs(breakdown.deltaMinor ?? 0);
+  const existingRowsExplainMismatch = resultDeltaMinor > 0
+    && Math.abs(breakdown.statementPeriodExistingRowsMinor ?? 0) === resultDeltaMinor;
+  const skippedRowsTotalMinor = sumDiagnosticRows(breakdown.skippedStatementRows);
+  const skippedRowsExplainMismatch = resultDeltaMinor > 0
+    && Math.abs(skippedRowsTotalMinor) === resultDeltaMinor;
 
   return (
     <div className="statement-reconciliation-breakdown">
@@ -704,6 +709,9 @@ function StatementReconciliationBreakdown({ reconciliation, breakdown, accountKi
         <StatementReconciliationDiagnosticRows
           title={messages.imports.statementReconciliationSkippedRowsTitle}
           detail={messages.imports.statementReconciliationSkippedRowsDetail}
+          actionDetail={skippedRowsExplainMismatch
+            ? messages.imports.statementReconciliationSkippedRowsExactAction(formatService.money(resultDeltaMinor))
+            : null}
           rows={breakdown.skippedStatementRows}
           viewId={viewId}
         />
@@ -712,6 +720,9 @@ function StatementReconciliationBreakdown({ reconciliation, breakdown, accountKi
         <StatementReconciliationDiagnosticRows
           title={messages.imports.statementReconciliationExistingRowsTitle}
           detail={messages.imports.statementReconciliationExistingRowsDetail}
+          actionDetail={existingRowsExplainMismatch
+            ? messages.imports.statementReconciliationExistingRowsExactAction(formatService.money(resultDeltaMinor))
+            : null}
           rows={breakdown.periodExistingLedgerRows}
           viewId={viewId}
           accountId={reconciliation.accountId}
@@ -739,11 +750,12 @@ function StatementReconciliationMovement({ label, value, detail, isProblem = fal
   );
 }
 
-function StatementReconciliationDiagnosticRows({ title, detail, rows, viewId, accountId }) {
+function StatementReconciliationDiagnosticRows({ title, detail, actionDetail, rows, viewId, accountId }) {
   return (
     <div className="import-overlap-entry-list" aria-label={title}>
       <strong>{title}</strong>
       {detail ? <p className="lede compact">{detail}</p> : null}
+      {actionDetail ? <p className="lede compact statement-reconciliation-action">{actionDetail}</p> : null}
       {rows.map((row) => (
         <div key={row.id} className="import-overlap-entry-row statement-reconciliation-diagnostic-row">
           <span className="import-overlap-entry-date">{formatService.formatDateOnly(row.postedDate ?? row.date)}</span>
@@ -751,7 +763,12 @@ function StatementReconciliationDiagnosticRows({ title, detail, rows, viewId, ac
           <span className="import-overlap-entry-account">{row.status || row.accountName}</span>
           <strong className="import-overlap-entry-amount">{formatSignedDiagnosticAmount(row.signedAmountMinor)}</strong>
           {row.source === "ledger" ? (
-            <a className="settings-text-link statement-reconciliation-entry-link" href={buildDiagnosticEntryHref({ row, viewId, accountId })}>
+            <a
+              className="settings-text-link statement-reconciliation-entry-link"
+              href={buildDiagnosticEntryHref({ row, viewId, accountId })}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               {messages.imports.openDiagnosticEntry}
             </a>
           ) : null}
@@ -759,6 +776,10 @@ function StatementReconciliationDiagnosticRows({ title, detail, rows, viewId, ac
       ))}
     </div>
   );
+}
+
+function sumDiagnosticRows(rows = []) {
+  return rows.reduce((total, row) => total + (row.signedAmountMinor ?? 0), 0);
 }
 
 function formatSignedDiagnosticAmount(valueMinor) {

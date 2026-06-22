@@ -5841,6 +5841,13 @@ button.split-activity-card:hover {
   margin-top: 4px;
 }
 
+.statement-reconciliation-action {
+  padding: 9px 10px;
+  border: 1px solid rgba(76, 111, 85, 0.2);
+  border-radius: 8px;
+  background: rgba(76, 111, 85, 0.08);
+}
+
 .statement-reconciliation-diagnostic-row {
   grid-template-columns: minmax(110px, 0.75fr) minmax(170px, 2fr) minmax(120px, 1fr) max-content max-content;
   border-color: rgba(142, 81, 39, 0.16);
