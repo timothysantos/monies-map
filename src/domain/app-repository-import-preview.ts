@@ -96,6 +96,7 @@ export async function buildImportPreview(
   const unknownCategories = new Set<string>();
   const previewRows: ImportPreviewRowDto[] = [];
   const validationErrors: string[] = [];
+  const claimedReconciliationTargetIds = new Set<string>();
   for (const [index, rawRow] of input.rows.entries()) {
     const normalized = normalizeImportRow(rawRow);
     if (normalized.errors.length) {
@@ -161,12 +162,15 @@ export async function buildImportPreview(
     const requestedCommitStatus = getRequestedCommitStatus(rawRow);
     const requestedReconciliationTargetTransactionId = getRequestedReconciliationTargetTransactionId(rawRow);
     const previewRowDateContext = getPreviewRowDateContext(previewRow);
-    const exactDuplicateMatch = findExactDuplicateSuppressionMatch({
+    let exactDuplicateMatch = findExactDuplicateSuppressionMatch({
       previewRow,
       previewRowDateContext,
       existingRows: existingTransactions.results,
       incomingSourceType: input.sourceType
     });
+    if (exactDuplicateMatch?.existingTransactionId && claimedReconciliationTargetIds.has(exactDuplicateMatch.existingTransactionId)) {
+      exactDuplicateMatch = undefined;
+    }
     const reconciliationMatches = exactDuplicateMatch
       ? []
       : findReconciliationMatches({
@@ -174,7 +178,7 @@ export async function buildImportPreview(
         previewRowDateContext,
         existingRows: existingTransactions.results,
         incomingSourceType: input.sourceType
-      });
+      }).filter((match) => !claimedReconciliationTargetIds.has(match.existingTransactionId));
 
     // Exact duplicate suppression is the raw identity lane. It must run before
     // promotion and reconciliation guards so overlapping bank files can auto-skip
@@ -198,6 +202,9 @@ export async function buildImportPreview(
       input.sourceType,
       requestedReconciliationTargetTransactionId
     );
+    if (previewRow.reconciliationTargetTransactionId) {
+      claimedReconciliationTargetIds.add(previewRow.reconciliationTargetTransactionId);
+    }
     previewRows.push(previewRow);
 
   }
@@ -1575,6 +1582,9 @@ function buildStatementReconciliationBreakdown(input: {
     projectedLedgerBalanceMinor: input.projectedLedgerBalanceMinor,
     statementBalanceMinor: input.statementBalanceMinor,
     deltaMinor: input.deltaMinor,
+    periodExistingLedgerRowCount: periodExistingRows.length,
+    skippedStatementRowCount: skippedStatementRows.length,
+    matchedStatementRowCount: matchedStatementRows.length,
     periodExistingLedgerRows: periodExistingRows
       .sort((left, right) => Math.abs(getExistingRowSignedAmountMinor(right)) - Math.abs(getExistingRowSignedAmountMinor(left)))
       .slice(0, 8)

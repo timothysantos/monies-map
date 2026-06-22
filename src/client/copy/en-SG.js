@@ -329,7 +329,7 @@ export const messages = {
     statementReconciliationAccount: (accountName, month) => `${accountName} • ${month}`,
     statementReconciliationDelta: (amount) => `Difference ${amount}`,
     statementReconciliationBreakdownTitle: "Why this does not close",
-    statementReconciliationAuthority: "If the PDF is mapped to the correct card account, treat the PDF as the stronger bank record. The ledger rows listed here are candidates to inspect, remap, delete, roll back, or match before committing.",
+    statementReconciliationAuthority: "If the PDF is mapped to the correct card account, treat the PDF as the stronger bank record. The ledger rows listed here are not automatically certified yet; some may still be present on the PDF but need a unique match before committing.",
     statementReconciliationResult: ({ projectedBalance, statementBalance, delta }) => (
       `After this preview, the ledger would show ${projectedBalance}. The PDF says ${statementBalance}. That leaves ${delta} to explain.`
     ),
@@ -341,10 +341,15 @@ export const messages = {
       projectedBalance: "Projected ledger after preview"
     },
     statementReconciliationCausesTitle: "Recommended next checks",
-    statementReconciliationExistingRowsTitle: "Ledger rows not proven by this PDF",
-    statementReconciliationExistingRowsDetail: "These were picked because they are already in this account's ledger inside the statement period and are not matched to a PDF row. If the PDF/account mapping is correct, inspect these in Entries first.",
+    statementReconciliationExistingRowsTitle: "Ledger rows not automatically matched to this PDF",
+    statementReconciliationExistingRowsDetail: "These were picked because they are already in this account's ledger inside the statement period but this preview has not certified them against a unique PDF row. Repeated same-merchant charges can appear here even when matching rows exist on the PDF.",
+    statementReconciliationBucketSample: ({ shown, total, amount }) => (
+      shown < total
+        ? `Showing ${shown} of ${total} rows in this bucket. The bucket total is ${amount}; the visible sample will not add up to the full total.`
+        : `Showing all ${total} row${total === 1 ? "" : "s"} in this bucket. The bucket total is ${amount}.`
+    ),
     statementReconciliationExistingRowsExactAction: (amount) => (
-      `These ledger-only rows total ${amount}, which matches the unexplained difference. If the PDF/account mapping is correct and these rows are not on this card's PDF, deleting them, remapping them to the right account, or rolling back their prior import should reconcile this statement. Open each row in a new tab, compare it against the PDF for this card and period, then correct it in Entries.`
+      `This unmatched ledger bucket totals ${amount}, which matches the unexplained difference. Correcting this bucket should reconcile the statement, but correction does not always mean deletion. Open each row in a new tab and compare it with the PDF: if the row is on this card's PDF, it should be matched or certified; if it is absent, duplicated, or on another card, delete it, remap it, or roll back the prior import.`
     ),
     statementReconciliationSkippedRowsTitle: "PDF rows not included yet",
     statementReconciliationSkippedRowsDetail: "These are official PDF rows currently skipped or needing review. Include or match them if they are real statement activity for this account.",
