@@ -5,6 +5,7 @@ import { Info } from "lucide-react";
 import { DuplicateMatchPopover } from "./import-preview-rows-table";
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
+import { DeleteRowButton } from "./ui-components";
 
 const {
   accounts: accountService,
@@ -49,6 +50,7 @@ export function ImportPreviewReview({
   onUpdatePreviewRowCommitStatus,
   onJumpToSkippedRows,
   onRefreshStatementReconciliation,
+  onDeleteDiagnosticLedgerRow,
   onUpdateStatementCheckpoint
 }) {
   if (!preview) {
@@ -119,6 +121,7 @@ export function ImportPreviewReview({
           viewId={viewId}
           isSubmitting={isSubmitting}
           onRefreshStatementReconciliation={onRefreshStatementReconciliation}
+          onDeleteDiagnosticLedgerRow={onDeleteDiagnosticLedgerRow}
         />
       ) : null}
 
@@ -579,7 +582,14 @@ function formatOverlapEntryAmount(entry) {
   return formatService.money(entry.amountMinor);
 }
 
-function StatementBalanceCheck({ reconciliations, hasMismatch, viewId, isSubmitting, onRefreshStatementReconciliation }) {
+function StatementBalanceCheck({
+  reconciliations,
+  hasMismatch,
+  viewId,
+  isSubmitting,
+  onRefreshStatementReconciliation,
+  onDeleteDiagnosticLedgerRow
+}) {
   return (
     <div className={`import-warning ${hasMismatch ? "import-warning-attention" : "import-warning-reconciled"}`}>
       <div className="import-warning-head">
@@ -638,6 +648,7 @@ function StatementBalanceCheck({ reconciliations, hasMismatch, viewId, isSubmitt
                 breakdown={item.reconciliationBreakdown}
                 accountKind={item.accountKind}
                 viewId={viewId}
+                onDeleteDiagnosticLedgerRow={onDeleteDiagnosticLedgerRow}
               />
             ) : null}
           </div>
@@ -647,11 +658,17 @@ function StatementBalanceCheck({ reconciliations, hasMismatch, viewId, isSubmitt
   );
 }
 
-function StatementReconciliationBreakdown({ reconciliation, breakdown, accountKind, viewId }) {
+function StatementReconciliationBreakdown({ reconciliation, breakdown, accountKind, viewId, onDeleteDiagnosticLedgerRow }) {
   const showExistingRows = breakdown.periodExistingLedgerRows?.length > 0;
   const showSkippedRows = breakdown.skippedStatementRows?.length > 0;
   const showMatchedRows = breakdown.matchedStatementRows?.length > 0;
   const resultDeltaMinor = Math.abs(breakdown.deltaMinor ?? 0);
+  const statementStartLabel = reconciliation.statementStartDate
+    ? formatService.formatDateOnly(reconciliation.statementStartDate)
+    : "the statement start date";
+  const statementEndLabel = reconciliation.statementEndDate
+    ? formatService.formatDateOnly(reconciliation.statementEndDate)
+    : "the statement end date";
   const existingRowsExplainMismatch = resultDeltaMinor > 0
     && Math.abs(breakdown.statementPeriodExistingRowsMinor ?? 0) === resultDeltaMinor;
   const skippedRowsExplainMismatch = resultDeltaMinor > 0
@@ -673,27 +690,52 @@ function StatementReconciliationBreakdown({ reconciliation, breakdown, accountKi
           label={messages.imports.statementReconciliationMovementLabels.priorBalance}
           value={formatStatementBalanceForAccount(breakdown.priorLedgerBalanceMinor, accountKind)}
           detail="ledger balance before the statement start date"
+          explanation={messages.imports.statementReconciliationMovementHelp.priorBalance({
+            startDate: statementStartLabel,
+            endDate: statementEndLabel,
+            value: formatStatementBalanceForAccount(breakdown.priorLedgerBalanceMinor, accountKind)
+          })}
         />
         <StatementReconciliationMovement
           label={messages.imports.statementReconciliationMovementLabels.existingRows}
           value={formatMovementForAccount(breakdown.statementPeriodExistingRowsMinor, accountKind)}
           detail="ledger-only rows already inside the PDF period"
           isProblem={Boolean(breakdown.statementPeriodExistingRowsMinor)}
+          explanation={messages.imports.statementReconciliationMovementHelp.existingRows({
+            startDate: statementStartLabel,
+            endDate: statementEndLabel,
+            value: formatMovementForAccount(breakdown.statementPeriodExistingRowsMinor, accountKind)
+          })}
         />
         <StatementReconciliationMovement
           label={messages.imports.statementReconciliationMovementLabels.includedRows}
           value={formatMovementForAccount(breakdown.includedStatementRowsMinor, accountKind)}
           detail="net movement from rows in this PDF preview"
+          explanation={messages.imports.statementReconciliationMovementHelp.includedRows({
+            startDate: statementStartLabel,
+            endDate: statementEndLabel,
+            value: formatMovementForAccount(breakdown.includedStatementRowsMinor, accountKind)
+          })}
         />
         <StatementReconciliationMovement
           label={messages.imports.statementReconciliationMovementLabels.supersededAdjustment}
           value={formatMovementForAccount(-breakdown.supersededLedgerRowsMinor, accountKind)}
           detail="provisional ledger rows removed because the PDF does not contain them"
+          explanation={messages.imports.statementReconciliationMovementHelp.supersededAdjustment({
+            startDate: statementStartLabel,
+            endDate: statementEndLabel,
+            value: formatMovementForAccount(-breakdown.supersededLedgerRowsMinor, accountKind)
+          })}
         />
         <StatementReconciliationMovement
           label={messages.imports.statementReconciliationMovementLabels.projectedBalance}
           value={formatStatementBalanceForAccount(breakdown.projectedLedgerBalanceMinor, accountKind)}
           detail="what the ledger would show after this preview"
+          explanation={messages.imports.statementReconciliationMovementHelp.projectedBalance({
+            startDate: statementStartLabel,
+            endDate: statementEndLabel,
+            value: formatStatementBalanceForAccount(breakdown.projectedLedgerBalanceMinor, accountKind)
+          })}
         />
       </div>
       {breakdown.suspectedCauses?.length ? (
@@ -729,6 +771,7 @@ function StatementReconciliationBreakdown({ reconciliation, breakdown, accountKi
           totalAmountMinor={breakdown.statementPeriodExistingRowsMinor}
           viewId={viewId}
           accountId={reconciliation.accountId}
+          onDeleteDiagnosticLedgerRow={onDeleteDiagnosticLedgerRow}
         />
       ) : null}
       {showMatchedRows ? (
@@ -745,17 +788,63 @@ function StatementReconciliationBreakdown({ reconciliation, breakdown, accountKi
   );
 }
 
-function StatementReconciliationMovement({ label, value, detail, isProblem = false }) {
+function StatementReconciliationMovement({ label, value, detail, explanation, isProblem = false }) {
   return (
     <div className={`statement-reconciliation-movement ${isProblem ? "is-problem" : ""}`}>
-      <span>{label}</span>
+      <span className="statement-reconciliation-movement-label">
+        {label}
+        {explanation ? <HoverExplanation content={explanation} label={`Explain ${label}`} /> : null}
+      </span>
       <strong>{value}</strong>
       <small>{detail}</small>
     </div>
   );
 }
 
-function StatementReconciliationDiagnosticRows({ title, detail, actionDetail, rows, totalRowCount, totalAmountMinor, viewId, accountId }) {
+function HoverExplanation({ content, label }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          className="statement-reconciliation-help-trigger"
+          aria-label={label}
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setOpen(false)}
+        >
+          <Info size={14} aria-hidden="true" />
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          className="statement-reconciliation-help-popover"
+          sideOffset={8}
+          align="start"
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+        >
+          <p>{content}</p>
+          <Popover.Arrow className="category-popover-arrow" />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
+function StatementReconciliationDiagnosticRows({
+  title,
+  detail,
+  actionDetail,
+  rows,
+  totalRowCount,
+  totalAmountMinor,
+  viewId,
+  accountId,
+  onDeleteDiagnosticLedgerRow
+}) {
   const rowCount = totalRowCount ?? rows.length;
   return (
     <div className="import-overlap-entry-list" aria-label={title}>
@@ -771,24 +860,65 @@ function StatementReconciliationDiagnosticRows({ title, detail, actionDetail, ro
       {actionDetail ? <p className="lede compact statement-reconciliation-action">{actionDetail}</p> : null}
       {rows.map((row) => (
         <div key={row.id} className="import-overlap-entry-row statement-reconciliation-diagnostic-row">
-          <span className="import-overlap-entry-date">{formatService.formatDateOnly(row.postedDate ?? row.date)}</span>
+          <span className="import-overlap-entry-date statement-reconciliation-date-cell">
+            <span>{formatService.formatDateOnly(row.date)}</span>
+            <small>{getDiagnosticRowDateDetail(row)}</small>
+          </span>
           <span className="import-overlap-entry-description">{row.description}</span>
           <span className="import-overlap-entry-account">{row.status || row.accountName}</span>
           <strong className="import-overlap-entry-amount">{formatSignedDiagnosticAmount(row.signedAmountMinor)}</strong>
           {row.source === "ledger" ? (
-            <a
-              className="settings-text-link statement-reconciliation-entry-link"
-              href={buildDiagnosticEntryHref({ row, viewId, accountId })}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {messages.imports.openDiagnosticEntry}
-            </a>
+            <span className="statement-reconciliation-row-actions">
+              <a
+                className="settings-text-link statement-reconciliation-entry-link"
+                href={buildDiagnosticEntryHref({ row, viewId, accountId })}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {messages.imports.openDiagnosticEntry}
+              </a>
+              {onDeleteDiagnosticLedgerRow ? (
+                <DeleteRowButton
+                  label={row.description}
+                  triggerLabel={messages.imports.deleteDiagnosticEntry}
+                  confirmLabel={messages.imports.deleteDiagnosticEntry}
+                  buttonClassName="statement-reconciliation-delete-button"
+                  prompt={messages.imports.deleteDiagnosticEntryConfirm({
+                    date: formatService.formatDateOnly(row.date),
+                    description: row.description,
+                    amount: formatSignedDiagnosticAmount(row.signedAmountMinor)
+                  })}
+                  onConfirm={() => onDeleteDiagnosticLedgerRow(row)}
+                >
+                  {messages.imports.deleteDiagnosticEntry}
+                </DeleteRowButton>
+              ) : null}
+            </span>
           ) : null}
         </div>
       ))}
     </div>
   );
+}
+
+function getDiagnosticRowDateDetail(row) {
+  if (row.source === "statement") {
+    if (row.eventDate && row.eventDate !== row.date) {
+      return messages.imports.statementReconciliationStatementDualDateDetail({
+        postedDate: formatService.formatDateOnly(row.date),
+        eventDate: formatService.formatDateOnly(row.eventDate)
+      });
+    }
+    return messages.imports.statementReconciliationStatementDateDetail;
+  }
+
+  if (row.postedDate && row.postedDate !== row.date) {
+    return messages.imports.statementReconciliationLedgerDualDateDetail({
+      transactionDate: formatService.formatDateOnly(row.date),
+      postedDate: formatService.formatDateOnly(row.postedDate)
+    });
+  }
+  return messages.imports.statementReconciliationLedgerDateDetail;
 }
 
 function sumDiagnosticRows(rows = []) {

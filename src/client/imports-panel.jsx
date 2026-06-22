@@ -1022,6 +1022,41 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     });
   }
 
+  async function handleDeleteDiagnosticLedgerRow(row) {
+    if (!row?.id) {
+      throw new Error("Missing ledger row id.");
+    }
+
+    setUploadStatus({ tone: "active", message: `Deleting ${row.description || "ledger row"} and refreshing statement check.` });
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/entries/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ entryId: row.id })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to delete ledger row.");
+      }
+      await refreshPreviewFromRows({
+        rows: previewRows.map(importService.buildRawRowFromPreviewRow),
+        activeMessage: messages.imports.statementReconciliationRefreshing,
+        successMessage: messages.imports.statementReconciliationRefreshed,
+        silent: true
+      });
+      setUploadStatus({ tone: "success", message: "Ledger row deleted. Statement check refreshed." });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete ledger row.";
+      setUploadStatus({ tone: "error", message });
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <article className="panel">
       <div className="panel-head">
@@ -1155,6 +1190,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             onUpdatePreviewRowCommitStatus={updatePreviewRowCommitStatus}
             onJumpToSkippedRows={() => setJumpToSkippedRowsRequestKey((current) => current + 1)}
             onRefreshStatementReconciliation={handleRefreshStatementReconciliation}
+            onDeleteDiagnosticLedgerRow={handleDeleteDiagnosticLedgerRow}
             onUpdateStatementCheckpoint={updateStatementCheckpoint}
           />
 

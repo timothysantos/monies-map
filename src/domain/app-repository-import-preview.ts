@@ -1587,15 +1587,12 @@ function buildStatementReconciliationBreakdown(input: {
     matchedStatementRowCount: matchedStatementRows.length,
     periodExistingLedgerRows: periodExistingRows
       .sort((left, right) => Math.abs(getExistingRowSignedAmountMinor(right)) - Math.abs(getExistingRowSignedAmountMinor(left)))
-      .slice(0, 8)
       .map((row) => mapExistingRowToDiagnosticRow(row, input.account.name)),
     skippedStatementRows: skippedStatementRows
       .sort((left, right) => Math.abs(right.amountMinor) - Math.abs(left.amountMinor))
-      .slice(0, 8)
       .map(mapPreviewRowToDiagnosticRow),
     matchedStatementRows: matchedStatementRows
       .sort((left, right) => Math.abs(right.amountMinor) - Math.abs(left.amountMinor))
-      .slice(0, 8)
       .map(mapPreviewRowToDiagnosticRow),
     suspectedCauses: buildStatementReconciliationSuspectedCauses({
       deltaMinor: input.deltaMinor,
@@ -1644,6 +1641,7 @@ function mapExistingRowToDiagnosticRow(
     accountId: row.account_id,
     date: row.transaction_date,
     ...(row.post_date ? { postedDate: row.post_date } : {}),
+    dateRole: "transaction" as const,
     description: row.description ?? "",
     signedAmountMinor: getExistingRowSignedAmountMinor(row),
     accountName: row.account_name ?? fallbackAccountName,
@@ -1653,10 +1651,14 @@ function mapExistingRowToDiagnosticRow(
 }
 
 function mapPreviewRowToDiagnosticRow(row: ImportPreviewRowDto) {
+  const dateContext = getPreviewRowDateContext(row);
   return {
     id: row.rowId,
     ...(row.accountId ? { accountId: row.accountId } : {}),
-    date: row.date,
+    date: dateContext.postedDate,
+    ...(dateContext.hasEventDateHint ? { eventDate: dateContext.eventDate } : {}),
+    postedDate: dateContext.postedDate,
+    dateRole: "posted" as const,
     description: row.description,
     signedAmountMinor: getSignedLedgerAmountMinor({
       entry_type: row.entryType,

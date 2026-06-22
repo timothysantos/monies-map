@@ -5820,6 +5820,51 @@ button.split-activity-card:hover {
   line-height: 1.25;
 }
 
+.statement-reconciliation-movement-label {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.statement-reconciliation-help-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(142, 81, 39, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--accent);
+  cursor: help;
+}
+
+.statement-reconciliation-help-trigger:hover,
+.statement-reconciliation-help-trigger:focus-visible {
+  border-color: rgba(142, 81, 39, 0.46);
+  background: #fff;
+  outline: none;
+}
+
+.statement-reconciliation-help-popover {
+  z-index: 92;
+  width: min(340px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border: 1px solid rgba(142, 81, 39, 0.22);
+  border-radius: 10px;
+  background: rgba(255, 250, 242, 0.98);
+  box-shadow: 0 18px 40px rgba(40, 31, 24, 0.18);
+}
+
+.statement-reconciliation-help-popover p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
 .statement-reconciliation-movement strong {
   min-width: 0;
   color: var(--ink);
@@ -5849,13 +5894,45 @@ button.split-activity-card:hover {
 }
 
 .statement-reconciliation-diagnostic-row {
-  grid-template-columns: minmax(110px, 0.75fr) minmax(170px, 2fr) minmax(120px, 1fr) max-content max-content;
+  grid-template-columns: minmax(150px, 0.9fr) minmax(170px, 2fr) minmax(120px, 1fr) max-content max-content;
   border-color: rgba(142, 81, 39, 0.16);
+}
+
+.statement-reconciliation-date-cell {
+  display: grid;
+  gap: 2px;
+}
+
+.statement-reconciliation-date-cell small {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.statement-reconciliation-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  white-space: nowrap;
 }
 
 .statement-reconciliation-entry-link {
   white-space: nowrap;
   justify-self: end;
+}
+
+.statement-reconciliation-delete-button {
+  margin-left: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--negative);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
 }
 
 .statement-account-map-grid {
@@ -7179,6 +7256,11 @@ th {
 
   .statement-reconciliation-entry-link {
     justify-self: start;
+  }
+
+  .statement-reconciliation-row-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 
   .import-stage-card .section-head,

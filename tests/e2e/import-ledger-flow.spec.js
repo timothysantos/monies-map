@@ -349,6 +349,19 @@ test.describe("import flow", () => {
       ownershipType: "direct",
       ownerName: "Tim"
     });
+    for (let index = 1; index <= 9; index += 1) {
+      await postJson(page, "/api/entries/create", {
+        date: "2026-04-15",
+        description: `EXTRA MIDCYCLE ROW ${index}`,
+        amountMinor: 1,
+        entryType: "expense",
+        accountId,
+        accountName,
+        categoryName: "Other",
+        ownershipType: "direct",
+        ownerName: "Tim"
+      });
+    }
 
     const preview = await postJson(page, "/api/imports/preview", {
       sourceLabel: "Diagnostics PDF preview",
@@ -379,17 +392,20 @@ test.describe("import flow", () => {
 
     const reconciliation = preview.preview.statementReconciliations[0];
     expect(reconciliation.status).toBe("mismatch");
-    expect(reconciliation.deltaMinor).toBe(-500);
+    expect(reconciliation.deltaMinor).toBe(-509);
     expect(reconciliation.reconciliationBreakdown).toMatchObject({
       priorLedgerBalanceMinor: 0,
-      statementPeriodExistingRowsMinor: -500,
+      statementPeriodExistingRowsMinor: -509,
       includedStatementRowsMinor: -1000,
-      projectedLedgerBalanceMinor: -1500,
+      projectedLedgerBalanceMinor: -1509,
       statementBalanceMinor: -1000,
-      deltaMinor: -500
+      deltaMinor: -509,
+      periodExistingLedgerRowCount: 10
     });
+    expect(reconciliation.reconciliationBreakdown.periodExistingLedgerRows).toHaveLength(10);
     expect(reconciliation.reconciliationBreakdown.periodExistingLedgerRows[0]).toMatchObject({
       accountId,
+      dateRole: "transaction",
       description: "EXTRA MIDCYCLE ROW",
       signedAmountMinor: -500,
       source: "ledger"
@@ -513,8 +529,11 @@ test.describe("import flow", () => {
       await expect(breakdown).toContainText("Showing all 1 row in this bucket. The bucket total is -$5.00.");
       await expect(breakdown).toContainText("This unmatched ledger bucket totals $5.00, which matches the unexplained difference.");
       await expect(breakdown).toContainText("if the row is on this card's PDF, it should be matched or certified");
+      await breakdown.getByLabel("Explain Before statement period").hover();
+      await expect(page.getByText("For this statement, the window is 13 Apr 2026 to 12 May 2026")).toBeVisible();
 
       const ledgerRow = breakdown.locator(".statement-reconciliation-diagnostic-row").filter({ hasText: "EXTRA MIDCYCLE ROW" });
+      await expect(ledgerRow).toContainText("Date shown: transaction date from the ledger row.");
       const openLink = ledgerRow.getByRole("link", { name: "Open" });
       await expect(openLink).toHaveAttribute(
         "href",
@@ -522,6 +541,9 @@ test.describe("import flow", () => {
       );
       await expect(openLink).toHaveAttribute("target", "_blank");
       await expect(openLink).toHaveAttribute("rel", "noopener noreferrer");
+      await ledgerRow.getByRole("button", { name: "Delete" }).click();
+      await expect(page.getByText("Delete this ledger row now? 15 Apr 2026")).toBeVisible();
+      await expect(page.getByText("Use this only when the row is absent from the PDF, duplicated, or belongs to another card/account.")).toBeVisible();
     } finally {
       await page.unroute("**/api/imports/preview", mockedPreviewRoute);
     }
