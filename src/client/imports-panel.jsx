@@ -1030,17 +1030,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setUploadStatus({ tone: "active", message: `Deleting ${row.description || "ledger row"} and refreshing statement check.` });
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/entries/delete", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ entryId: row.id })
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error ?? "Failed to delete ledger row.");
-      }
+      await deleteDiagnosticLedgerEntry(row);
       await refreshPreviewFromRows({
         rows: previewRows.map(importService.buildRawRowFromPreviewRow),
         activeMessage: messages.imports.statementReconciliationRefreshing,
@@ -1054,6 +1044,54 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       throw error;
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleDeleteDiagnosticLedgerRows(rows) {
+    const ledgerRows = rows.filter((row) => row?.id);
+    if (!ledgerRows.length) {
+      throw new Error("No ledger rows were available to delete.");
+    }
+
+    setUploadStatus({
+      tone: "active",
+      message: messages.imports.deleteDiagnosticEntriesProgress(ledgerRows.length)
+    });
+    setIsSubmitting(true);
+    try {
+      for (const row of ledgerRows) {
+        await deleteDiagnosticLedgerEntry(row);
+      }
+      await refreshPreviewFromRows({
+        rows: previewRows.map(importService.buildRawRowFromPreviewRow),
+        activeMessage: messages.imports.statementReconciliationRefreshing,
+        successMessage: messages.imports.statementReconciliationRefreshed,
+        silent: true
+      });
+      setUploadStatus({
+        tone: "success",
+        message: messages.imports.deleteDiagnosticEntriesSuccess(ledgerRows.length)
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete ledger rows.";
+      setUploadStatus({ tone: "error", message });
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function deleteDiagnosticLedgerEntry(row) {
+    const response = await fetch("/api/entries/delete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ entryId: row.id })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error ?? `Failed to delete ${row.description || "ledger row"}.`);
     }
   }
 
@@ -1191,6 +1229,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             onJumpToSkippedRows={() => setJumpToSkippedRowsRequestKey((current) => current + 1)}
             onRefreshStatementReconciliation={handleRefreshStatementReconciliation}
             onDeleteDiagnosticLedgerRow={handleDeleteDiagnosticLedgerRow}
+            onDeleteDiagnosticLedgerRows={handleDeleteDiagnosticLedgerRows}
             onUpdateStatementCheckpoint={updateStatementCheckpoint}
           />
 

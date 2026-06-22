@@ -950,6 +950,16 @@ PDF contains it, it should be matched or certified; if the PDF does not contain
 it, remove it from that account; if it belongs to a different card, remap it; if
 it came from a prior provisional import, roll back that import.
 
+For buckets with multiple ledger rows, the card can show a confirmed "Delete
+all" action. Treat it as a bulk version of the per-row delete, not as the default
+fix. Use it only when the whole listed bucket is absent from this PDF, duplicated
+elsewhere, or mapped to the wrong account. If the PDF contains those charges, the
+right correction is to match/certify the rows or fix their date lanes. UOB card
+matching ignores foreign-currency amount fragments in descriptions, so rows such
+as `OPENAI OPENAI.COM US` can match PDF descriptions such as
+`OPENAI OPENAI.COM USD 5.58` when the amount, account, posted date, and event
+date evidence line up.
+
 The five balance boxes in the statement certification card have hover/focus
 help. Use them to see the exact statement start and end dates, what rows feed
 each number, and why the number is part of the projected ledger balance.

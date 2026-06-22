@@ -51,6 +51,7 @@ export function ImportPreviewReview({
   onJumpToSkippedRows,
   onRefreshStatementReconciliation,
   onDeleteDiagnosticLedgerRow,
+  onDeleteDiagnosticLedgerRows,
   onUpdateStatementCheckpoint
 }) {
   if (!preview) {
@@ -122,6 +123,7 @@ export function ImportPreviewReview({
           isSubmitting={isSubmitting}
           onRefreshStatementReconciliation={onRefreshStatementReconciliation}
           onDeleteDiagnosticLedgerRow={onDeleteDiagnosticLedgerRow}
+          onDeleteDiagnosticLedgerRows={onDeleteDiagnosticLedgerRows}
         />
       ) : null}
 
@@ -588,7 +590,8 @@ function StatementBalanceCheck({
   viewId,
   isSubmitting,
   onRefreshStatementReconciliation,
-  onDeleteDiagnosticLedgerRow
+  onDeleteDiagnosticLedgerRow,
+  onDeleteDiagnosticLedgerRows
 }) {
   return (
     <div className={`import-warning ${hasMismatch ? "import-warning-attention" : "import-warning-reconciled"}`}>
@@ -649,6 +652,7 @@ function StatementBalanceCheck({
                 accountKind={item.accountKind}
                 viewId={viewId}
                 onDeleteDiagnosticLedgerRow={onDeleteDiagnosticLedgerRow}
+                onDeleteDiagnosticLedgerRows={onDeleteDiagnosticLedgerRows}
               />
             ) : null}
           </div>
@@ -658,7 +662,14 @@ function StatementBalanceCheck({
   );
 }
 
-function StatementReconciliationBreakdown({ reconciliation, breakdown, accountKind, viewId, onDeleteDiagnosticLedgerRow }) {
+function StatementReconciliationBreakdown({
+  reconciliation,
+  breakdown,
+  accountKind,
+  viewId,
+  onDeleteDiagnosticLedgerRow,
+  onDeleteDiagnosticLedgerRows
+}) {
   const showExistingRows = breakdown.periodExistingLedgerRows?.length > 0;
   const showSkippedRows = breakdown.skippedStatementRows?.length > 0;
   const showMatchedRows = breakdown.matchedStatementRows?.length > 0;
@@ -772,6 +783,7 @@ function StatementReconciliationBreakdown({ reconciliation, breakdown, accountKi
           viewId={viewId}
           accountId={reconciliation.accountId}
           onDeleteDiagnosticLedgerRow={onDeleteDiagnosticLedgerRow}
+          onDeleteDiagnosticLedgerRows={onDeleteDiagnosticLedgerRows}
         />
       ) : null}
       {showMatchedRows ? (
@@ -843,18 +855,39 @@ function StatementReconciliationDiagnosticRows({
   totalAmountMinor,
   viewId,
   accountId,
-  onDeleteDiagnosticLedgerRow
+  onDeleteDiagnosticLedgerRow,
+  onDeleteDiagnosticLedgerRows
 }) {
   const rowCount = totalRowCount ?? rows.length;
+  const ledgerRows = rows.filter((row) => row.source === "ledger" && row.id);
+  const formattedTotalAmount = formatSignedDiagnosticAmount(totalAmountMinor ?? sumDiagnosticRows(rows));
+  const canBulkDeleteLedgerRows = ledgerRows.length > 1 && typeof onDeleteDiagnosticLedgerRows === "function";
   return (
     <div className="import-overlap-entry-list" aria-label={title}>
-      <strong>{title}</strong>
+      <div className="statement-reconciliation-list-head">
+        <strong>{title}</strong>
+        {canBulkDeleteLedgerRows ? (
+          <DeleteRowButton
+            label={messages.imports.deleteDiagnosticEntriesLabel(ledgerRows.length)}
+            triggerLabel={messages.imports.deleteDiagnosticEntriesLabel(ledgerRows.length)}
+            confirmLabel={messages.imports.deleteDiagnosticEntries}
+            buttonClassName="statement-reconciliation-delete-all-button"
+            prompt={messages.imports.deleteDiagnosticEntriesConfirm({
+              count: ledgerRows.length,
+              amount: formattedTotalAmount
+            })}
+            onConfirm={() => onDeleteDiagnosticLedgerRows(ledgerRows)}
+          >
+            {messages.imports.deleteDiagnosticEntries}
+          </DeleteRowButton>
+        ) : null}
+      </div>
       {detail ? <p className="lede compact">{detail}</p> : null}
       <p className="lede compact">
         {messages.imports.statementReconciliationBucketSample({
           shown: rows.length,
           total: rowCount,
-          amount: formatSignedDiagnosticAmount(totalAmountMinor ?? sumDiagnosticRows(rows))
+          amount: formattedTotalAmount
         })}
       </p>
       {actionDetail ? <p className="lede compact statement-reconciliation-action">{actionDetail}</p> : null}

@@ -5893,6 +5893,26 @@ button.split-activity-card:hover {
   background: rgba(76, 111, 85, 0.08);
 }
 
+.statement-reconciliation-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.statement-reconciliation-delete-all-button {
+  margin-left: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--negative);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+  white-space: nowrap;
+}
+
 .statement-reconciliation-diagnostic-row {
   grid-template-columns: minmax(150px, 0.9fr) minmax(170px, 2fr) minmax(120px, 1fr) max-content max-content;
   border-color: rgba(142, 81, 39, 0.16);
@@ -7261,6 +7281,11 @@ th {
   .statement-reconciliation-row-actions {
     justify-content: flex-start;
     flex-wrap: wrap;
+  }
+
+  .statement-reconciliation-list-head {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .import-stage-card .section-head,
