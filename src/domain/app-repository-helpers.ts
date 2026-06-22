@@ -511,7 +511,8 @@ export function normalizeDescriptionForMatch(value: string) {
     .replace(/\bcs\b/g, "cold storage");
 
   return canonicalized
-    .replace(/\b(singapore|sg|applepay|apple\s+pay)\b/g, " ")
+    .replace(/\b(?:usd|eur|gbp|aud|jpy|myr|thb|php|idr|hkd|twd|krw|cny|vnd)\s+\d+(?:\.\d{1,2})?\b/g, " ")
+    .replace(/\b(singapore|sg|us|applepay|apple\s+pay)\b/g, " ")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }

@@ -382,6 +382,11 @@ export const messages = {
     openDiagnosticEntry: "Open",
     deleteDiagnosticEntry: "Delete",
     deleteDiagnosticEntryConfirm: ({ date, description, amount }) => `Delete this ledger row now? ${date} • ${description} • ${amount}. Use this only when the row is absent from the PDF, duplicated, or belongs to another card/account.`,
+    deleteDiagnosticEntries: "Delete all",
+    deleteDiagnosticEntriesLabel: (count) => `Delete ${count} ledger rows`,
+    deleteDiagnosticEntriesConfirm: ({ count, amount }) => `Delete all ${count} ledger rows in this bucket now? Their bucket total is ${amount}. Use this only after checking the PDF/account mapping and confirming these rows are absent from this card's PDF, duplicated, or belong to another card/account.`,
+    deleteDiagnosticEntriesProgress: (count) => `Deleting ${count} ledger rows and refreshing statement check.`,
+    deleteDiagnosticEntriesSuccess: (count) => `${count} ledger rows deleted. Statement check refreshed.`,
     statementReconciliationSupersededRowsTitle: "Official statement will remove provisional rows not present on the PDF",
     statementReconciliationSupersededRow: (date, description, amount) => `${date} • ${description} • ${amount}`,
     statementReconciliationStatus: {

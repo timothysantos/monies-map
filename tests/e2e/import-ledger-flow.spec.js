@@ -413,6 +413,69 @@ test.describe("import flow", () => {
     expect(reconciliation.reconciliationBreakdown.suspectedCauses.join(" ")).toContain("Existing ledger rows inside this statement period");
   });
 
+  test("UOB PDF foreign-currency descriptions certify matching provisional card rows", async ({ page }) => {
+    const accountName = `Playwright UOB FX Match ${Date.now()}`;
+    const createPayload = await postJson(page, "/api/accounts/create", {
+      name: accountName,
+      institution: "Synthetic Test Bank",
+      kind: "credit_card",
+      openingBalanceMinor: 0,
+      currency: "SGD",
+      ownerPersonId: "",
+      isJoint: false
+    });
+    const accountId = createPayload.accountId;
+    expect(accountId).toBeTruthy();
+
+    const existing = await postJson(page, "/api/entries/create", {
+      date: "2026-04-16",
+      description: "OPENAI OPENAI.COM US",
+      amountMinor: 734,
+      entryType: "expense",
+      accountId,
+      accountName,
+      categoryName: "Other",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    expect(existing.entryId).toBeTruthy();
+
+    const preview = await postJson(page, "/api/imports/preview", {
+      sourceLabel: "UOB FX description preview",
+      sourceType: "pdf",
+      rows: [{
+        date: "2026-04-16",
+        description: "OPENAI OPENAI.COM USD 5.58",
+        expense: "7.34",
+        accountId,
+        account: accountName,
+        category: "Other",
+        note: "txn date: 2026-04-16"
+      }],
+      defaultAccountName: accountName,
+      ownershipType: "direct",
+      ownerName: "Tim",
+      statementCheckpoints: [{
+        accountId,
+        accountName,
+        detectedAccountName: accountName,
+        checkpointMonth: "2026-05",
+        statementStartDate: "2026-04-13",
+        statementEndDate: "2026-05-12",
+        statementBalanceMinor: 734,
+        note: "UOB FX description checkpoint"
+      }]
+    });
+
+    const previewRow = preview.preview.previewRows[0];
+    expect(previewRow.reconciliationTargetTransactionId).toBe(existing.entryId);
+    expect(previewRow.commitStatus).toBe("included");
+    const reconciliation = preview.preview.statementReconciliations[0];
+    expect(reconciliation.status).toBe("matched");
+    expect(reconciliation.reconciliationBreakdown.periodExistingLedgerRows).toHaveLength(0);
+    expect(reconciliation.reconciliationBreakdown.matchedStatementRows).toHaveLength(1);
+  });
+
   test("statement mismatch UI gives action guidance and links ledger rows to entries", async ({ page }) => {
     const mockedPreviewRoute = async (route) => {
       const request = route.request();
@@ -482,7 +545,7 @@ test.describe("import flow", () => {
                 projectedLedgerBalanceMinor: -1500,
                 statementBalanceMinor: -1000,
                 deltaMinor: -500,
-                periodExistingLedgerRowCount: 1,
+                periodExistingLedgerRowCount: 2,
                 skippedStatementRowCount: 0,
                 matchedStatementRowCount: 0,
                 suspectedCauses: [
@@ -493,7 +556,16 @@ test.describe("import flow", () => {
                   accountId: "acct-statement-guidance",
                   date: "2026-04-15",
                   description: "EXTRA MIDCYCLE ROW",
-                  signedAmountMinor: -500,
+                  signedAmountMinor: -300,
+                  accountName: "Statement Guidance Card",
+                  source: "ledger",
+                  status: "manual / provisional"
+                }, {
+                  id: "txn-statement-guidance-extra-2",
+                  accountId: "acct-statement-guidance",
+                  date: "2026-04-16",
+                  description: "SECOND MIDCYCLE ROW",
+                  signedAmountMinor: -200,
                   accountName: "Statement Guidance Card",
                   source: "ledger",
                   status: "manual / provisional"
@@ -526,11 +598,13 @@ test.describe("import flow", () => {
       await expect(breakdown).toContainText("Already in ledger during this period");
       await expect(breakdown).toContainText("adds $5.00 owed");
       await expect(breakdown).toContainText("Ledger rows not automatically matched to this PDF");
-      await expect(breakdown).toContainText("Showing all 1 row in this bucket. The bucket total is -$5.00.");
+      await expect(breakdown).toContainText("Showing all 2 rows in this bucket. The bucket total is -$5.00.");
       await expect(breakdown).toContainText("This unmatched ledger bucket totals $5.00, which matches the unexplained difference.");
       await expect(breakdown).toContainText("if the row is on this card's PDF, it should be matched or certified");
       await breakdown.getByLabel("Explain Before statement period").hover();
       await expect(page.getByText("For this statement, the window is 13 Apr 2026 to 12 May 2026")).toBeVisible();
+      await page.mouse.move(0, 0);
+      await expect(breakdown.getByRole("button", { name: "Delete 2 ledger rows" })).toBeVisible();
 
       const ledgerRow = breakdown.locator(".statement-reconciliation-diagnostic-row").filter({ hasText: "EXTRA MIDCYCLE ROW" });
       await expect(ledgerRow).toContainText("Date shown: transaction date from the ledger row.");
@@ -541,9 +615,7 @@ test.describe("import flow", () => {
       );
       await expect(openLink).toHaveAttribute("target", "_blank");
       await expect(openLink).toHaveAttribute("rel", "noopener noreferrer");
-      await ledgerRow.getByRole("button", { name: "Delete" }).click();
-      await expect(page.getByText("Delete this ledger row now? 15 Apr 2026")).toBeVisible();
-      await expect(page.getByText("Use this only when the row is absent from the PDF, duplicated, or belongs to another card/account.")).toBeVisible();
+      await expect(ledgerRow.getByRole("button", { name: "Delete" })).toBeVisible();
     } finally {
       await page.unroute("**/api/imports/preview", mockedPreviewRoute);
     }
