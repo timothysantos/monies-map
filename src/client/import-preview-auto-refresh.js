@@ -65,3 +65,10 @@ export function shouldAutoRefreshStatementPreview({
     && now - lastAutoRefreshAt < AUTO_REFRESH_COOLDOWN_MS
   );
 }
+
+export function shouldPreserveStatementPreviewOnRefreshError({
+  isAutoRefresh = false,
+  hasPreview = false
+}) {
+  return Boolean(isAutoRefresh && hasPreview);
+}
