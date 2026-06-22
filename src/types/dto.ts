@@ -526,7 +526,9 @@ export interface ImportPreviewReconciliationDiagnosticRowDto {
   id: string;
   accountId?: string;
   date: string;
+  eventDate?: string;
   postedDate?: string;
+  dateRole?: "transaction" | "posted";
   description: string;
   signedAmountMinor: number;
   accountName: string;

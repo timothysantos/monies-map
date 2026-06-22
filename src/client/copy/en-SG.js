@@ -340,6 +340,23 @@ export const messages = {
       supersededAdjustment: "Rows the PDF can remove",
       projectedBalance: "Projected ledger after preview"
     },
+    statementReconciliationMovementHelp: {
+      priorBalance: ({ startDate, endDate, value }) => (
+        `This is the account balance before the statement window starts. For this statement, the window is ${startDate} to ${endDate}, so this box means the ledger balance before ${startDate}: ${value}. It is the starting point for the certification math.`
+      ),
+      existingRows: ({ startDate, endDate, value }) => (
+        `These are ledger rows already saved in this account from ${startDate} to ${endDate} before this PDF preview is committed. They matter because they may duplicate, replace, or need to be certified by rows in the official PDF. Their net movement is ${value}.`
+      ),
+      includedRows: ({ startDate, endDate, value }) => (
+        `These are the PDF rows currently included in this preview for ${startDate} to ${endDate}. The box shows the net movement those PDF rows would add to the ledger if committed: ${value}.`
+      ),
+      supersededAdjustment: ({ startDate, endDate, value }) => (
+        `These are provisional ledger rows from ${startDate} to ${endDate} that this official PDF can replace or remove because the final statement does not support them. The box shows the balance effect of removing those provisional rows: ${value}.`
+      ),
+      projectedBalance: ({ startDate, endDate, value }) => (
+        `This is the ledger balance the account would show after applying this preview for ${startDate} to ${endDate}. It should match the PDF statement balance before the statement can be certified. Projected result: ${value}.`
+      )
+    },
     statementReconciliationCausesTitle: "Recommended next checks",
     statementReconciliationExistingRowsTitle: "Ledger rows not automatically matched to this PDF",
     statementReconciliationExistingRowsDetail: "These were picked because they are already in this account's ledger inside the statement period but this preview has not certified them against a unique PDF row. Repeated same-merchant charges can appear here even when matching rows exist on the PDF.",
@@ -358,7 +375,13 @@ export const messages = {
     ),
     statementReconciliationMatchedRowsTitle: "PDF rows already matching ledger rows",
     statementReconciliationMatchedRowsDetail: "These are not the main problem. They show statement rows that will certify existing ledger rows while preserving user edits.",
+    statementReconciliationLedgerDateDetail: "Date shown: transaction date from the ledger row.",
+    statementReconciliationLedgerDualDateDetail: ({ transactionDate, postedDate }) => `Date shown: transaction date ${transactionDate}. Posted date saved on the ledger row: ${postedDate}.`,
+    statementReconciliationStatementDateDetail: "Date shown: posted date from the PDF statement.",
+    statementReconciliationStatementDualDateDetail: ({ postedDate, eventDate }) => `Date shown: posted date ${postedDate}. Event/transaction date found on the PDF row: ${eventDate}.`,
     openDiagnosticEntry: "Open",
+    deleteDiagnosticEntry: "Delete",
+    deleteDiagnosticEntryConfirm: ({ date, description, amount }) => `Delete this ledger row now? ${date} • ${description} • ${amount}. Use this only when the row is absent from the PDF, duplicated, or belongs to another card/account.`,
     statementReconciliationSupersededRowsTitle: "Official statement will remove provisional rows not present on the PDF",
     statementReconciliationSupersededRow: (date, description, amount) => `${date} • ${description} • ${amount}`,
     statementReconciliationStatus: {

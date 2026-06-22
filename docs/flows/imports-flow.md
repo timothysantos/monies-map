@@ -52,12 +52,15 @@ Imports owns:
 - certification and duplicate review
 - statement mismatch diagnostics, including balance breakdown rows that explain
   likely account, row direction, skipped-row, or unmatched-ledger causes and
-  link ledger diagnostic rows back to Entries in a new tab with row-specific
-  month and wallet filters; unmatched ledger rows mean the preview did not
-  certify a unique PDF match, not that the rows are definitely absent from the
-  PDF. When a diagnostic bucket exactly matches the statement difference, the
-  preview says whether correcting those ledger matches or including skipped PDF
-  rows should reconcile the statement
+  expose hover/focus explanations with the exact statement date window; ledger
+  diagnostic rows link back to Entries in a new tab with row-specific month and
+  wallet filters and can be deleted inline after confirmation. Unmatched ledger
+  rows mean the preview did not certify a unique PDF match, not that the rows are
+  definitely absent from the PDF. Diagnostic buckets return the full row list,
+  and row date labels distinguish ledger transaction dates from PDF posted dates
+  and event dates. When a diagnostic bucket exactly matches the statement
+  difference, the preview says whether correcting those ledger matches or
+  including skipped PDF rows should reconcile the statement
 - non-destructive statement preview auto-refresh; transient refresh failures
   must keep the current reviewed preview visible
 
