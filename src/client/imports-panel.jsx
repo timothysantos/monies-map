@@ -7,7 +7,11 @@ import { buildRecentImportModel, filterRecentImportsByAccount, getRecentImportAc
 import { classifyImportFile } from "./import-file-classifier";
 import { buildImportAccountCreationRefreshPlan } from "./import-refresh-plan";
 import { buildImportWorkflowModel } from "./import-workflow-model";
-import { getStatementPreviewAutoRefreshKey, shouldAutoRefreshStatementPreview } from "./import-preview-auto-refresh";
+import {
+  getStatementPreviewAutoRefreshKey,
+  shouldAutoRefreshStatementPreview,
+  shouldPreserveStatementPreviewOnRefreshError
+} from "./import-preview-auto-refresh";
 import { ImportMappingStage } from "./import-mapping-stage";
 import { buildImportPreviewModel } from "./import-preview-model";
 import { ImportPreviewReview } from "./import-preview-review";
@@ -355,14 +359,19 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     nextSourceType = statementImportMeta.sourceType,
     activeMessage,
     successMessage,
-    silent = false
+    silent = false,
+    isAutoRefresh = false
   }) {
     markPreviewRefreshStarted(silent ? undefined : activeMessage);
 
     return previewImportRows({
       rows,
       nextSourceType,
-      nextStatementCheckpoints
+      nextStatementCheckpoints,
+      preservePreviewOnError: shouldPreserveStatementPreviewOnRefreshError({
+        isAutoRefresh,
+        hasPreview: Boolean(preview)
+      })
     })
       .then(() => {
         if (!silent && successMessage) {
@@ -372,7 +381,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       .catch((error) => {
         const message = error instanceof Error ? error.message : "Import preview failed.";
         setPreviewError(message);
-        setUploadStatus({ tone: "error", message });
+        setUploadStatus({
+          tone: "error",
+          message: silent
+            ? `Could not refresh the statement check. Keeping the current preview. ${message}`
+            : message
+        });
       })
       .finally(() => setIsSubmitting(false));
   }
@@ -489,7 +503,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     rows,
     nextSourceLabel = sourceLabel,
     nextSourceType = statementImportMeta.sourceType,
-    nextStatementCheckpoints = statementCheckpoints
+    nextStatementCheckpoints = statementCheckpoints,
+    preservePreviewOnError = false
   }) {
     // All source formats eventually converge here so the server only has one
     // preview path to reason about.
@@ -513,8 +528,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         nextStatementCheckpoints
       );
     } catch (error) {
-      setPreview(null);
-      setPreviewRows([]);
+      if (!preservePreviewOnError) {
+        setPreview(null);
+        setPreviewRows([]);
+      }
       throw error;
     }
   }
@@ -547,7 +564,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       void refreshPreviewFromRows({
         rows: previewRows.map(importService.buildRawRowFromPreviewRow),
         activeMessage: messages.imports.statementReconciliationRefreshing,
-        successMessage: messages.imports.statementReconciliationRefreshed
+        successMessage: messages.imports.statementReconciliationRefreshed,
+        silent: true,
+        isAutoRefresh: true
       });
     }
 

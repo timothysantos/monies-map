@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 
 import {
   getStatementPreviewAutoRefreshKey,
-  shouldAutoRefreshStatementPreview
+  shouldAutoRefreshStatementPreview,
+  shouldPreserveStatementPreviewOnRefreshError
 } from "../../src/client/import-preview-auto-refresh.js";
 
 test("statement preview auto-refresh key is empty for non-statement drafts", () => {
@@ -85,5 +86,17 @@ test("statement preview auto-refresh is blocked while the draft has active workf
     lastPreviewHydratedAt: 10_000,
     lastAutoRefreshAt: 1_000,
     lastAutoRefreshKey: "older-draft"
+  })).toBe(false);
+});
+
+test("statement preview auto-refresh failures preserve the current preview", () => {
+  expect(shouldPreserveStatementPreviewOnRefreshError({
+    isAutoRefresh: true,
+    hasPreview: true
+  })).toBe(true);
+
+  expect(shouldPreserveStatementPreviewOnRefreshError({
+    isAutoRefresh: false,
+    hasPreview: true
   })).toBe(false);
 });

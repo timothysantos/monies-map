@@ -50,6 +50,10 @@ Imports owns:
 - account mapping
 - commit and rollback
 - certification and duplicate review
+- statement mismatch diagnostics, including balance breakdown rows that explain
+  likely account, row direction, skipped-row, or extra-ledger causes
+- non-destructive statement preview auto-refresh; transient refresh failures
+  must keep the current reviewed preview visible
 
 ## Audit Status
 
