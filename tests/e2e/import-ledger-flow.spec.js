@@ -476,6 +476,75 @@ test.describe("import flow", () => {
     expect(reconciliation.reconciliationBreakdown.matchedStatementRows).toHaveLength(1);
   });
 
+  test("repeated UOB PDF card rows certify more than three matching provisional rows", async ({ page }) => {
+    const accountName = `Playwright UOB Repeated Rows ${Date.now()}`;
+    const createPayload = await postJson(page, "/api/accounts/create", {
+      name: accountName,
+      institution: "Synthetic Test Bank",
+      kind: "credit_card",
+      openingBalanceMinor: 0,
+      currency: "SGD",
+      ownerPersonId: "",
+      isJoint: false
+    });
+    const accountId = createPayload.accountId;
+    expect(accountId).toBeTruthy();
+
+    const existingEntryIds = [];
+    for (let index = 0; index < 4; index += 1) {
+      const existing = await postJson(page, "/api/entries/create", {
+        date: "2026-04-16",
+        description: "OPENAI OPENAI.COM US",
+        amountMinor: 722,
+        entryType: "expense",
+        accountId,
+        accountName,
+        categoryName: "Other",
+        ownershipType: "direct",
+        ownerName: "Tim"
+      });
+      expect(existing.entryId).toBeTruthy();
+      existingEntryIds.push(existing.entryId);
+    }
+
+    const preview = await postJson(page, "/api/imports/preview", {
+      sourceLabel: "UOB repeated OpenAI rows preview",
+      sourceType: "pdf",
+      rows: Array.from({ length: 4 }, (_, index) => ({
+        date: "2026-04-16",
+        description: `OPENAI OPENAI.COM USD 5.49 Ref ${index + 1}`,
+        expense: "7.22",
+        accountId,
+        account: accountName,
+        category: "Other",
+        note: "txn date: 2026-04-16"
+      })),
+      defaultAccountName: accountName,
+      ownershipType: "direct",
+      ownerName: "Tim",
+      statementCheckpoints: [{
+        accountId,
+        accountName,
+        detectedAccountName: accountName,
+        checkpointMonth: "2026-05",
+        statementStartDate: "2026-04-13",
+        statementEndDate: "2026-05-12",
+        statementBalanceMinor: 2888,
+        note: "UOB repeated row checkpoint"
+      }]
+    });
+
+    const targetIds = preview.preview.previewRows.map((row) => row.reconciliationTargetTransactionId);
+    expect(targetIds).toHaveLength(4);
+    expect(new Set(targetIds)).toEqual(new Set(existingEntryIds));
+    expect(preview.preview.previewRows.every((row) => row.commitStatus === "included")).toBe(true);
+
+    const reconciliation = preview.preview.statementReconciliations[0];
+    expect(reconciliation.status).toBe("matched");
+    expect(reconciliation.reconciliationBreakdown.periodExistingLedgerRows).toHaveLength(0);
+    expect(reconciliation.reconciliationBreakdown.matchedStatementRows).toHaveLength(4);
+  });
+
   test("statement mismatch UI gives action guidance and links ledger rows to entries", async ({ page }) => {
     const mockedPreviewRoute = async (route) => {
       const request = route.request();
@@ -600,9 +669,15 @@ test.describe("import flow", () => {
       await expect(breakdown).toContainText("Ledger rows not automatically matched to this PDF");
       await expect(breakdown).toContainText("Showing all 2 rows in this bucket. The bucket total is -$5.00.");
       await expect(breakdown).toContainText("This unmatched ledger bucket totals $5.00, which matches the unexplained difference.");
+      await expect(breakdown).toContainText("For credit cards, negative ledger expenses increase the owed balance");
       await expect(breakdown).toContainText("if the row is on this card's PDF, it should be matched or certified");
-      await breakdown.getByLabel("Explain Before statement period").hover();
+      const beforePeriodHelp = breakdown.getByLabel("Explain Before statement period");
+      await beforePeriodHelp.scrollIntoViewIfNeeded();
+      const scrollBeforePopover = await page.evaluate(() => window.scrollY);
+      await beforePeriodHelp.hover();
       await expect(page.getByText("For this statement, the window is 13 Apr 2026 to 12 May 2026")).toBeVisible();
+      const scrollAfterPopover = await page.evaluate(() => window.scrollY);
+      expect(Math.abs(scrollAfterPopover - scrollBeforePopover)).toBeLessThan(20);
       await page.mouse.move(0, 0);
       await expect(breakdown.getByRole("button", { name: "Delete 2 ledger rows" })).toBeVisible();
 

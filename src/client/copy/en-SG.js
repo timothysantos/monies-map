@@ -366,7 +366,7 @@ export const messages = {
         : `Showing all ${total} row${total === 1 ? "" : "s"} in this bucket. The bucket total is ${amount}.`
     ),
     statementReconciliationExistingRowsExactAction: (amount) => (
-      `This unmatched ledger bucket totals ${amount}, which matches the unexplained difference. Correcting this bucket should reconcile the statement, but correction does not always mean deletion. Open each row in a new tab and compare it with the PDF: if the row is on this card's PDF, it should be matched or certified; if it is absent, duplicated, or on another card, delete it, remap it, or roll back the prior import.`
+      `This unmatched ledger bucket totals ${amount}, which matches the unexplained difference. Correcting this bucket should reconcile the statement, but correction does not always mean deletion. For credit cards, negative ledger expenses increase the owed balance; deleting one lowers owed by that amount, while replacing it with a different PDF amount changes owed only by the difference. Open each row in a new tab and compare it with the PDF: if the row is on this card's PDF, it should be matched or certified; if it is absent, duplicated, or on another card, delete it, remap it, or roll back the prior import.`
     ),
     statementReconciliationSkippedRowsTitle: "PDF rows not included yet",
     statementReconciliationSkippedRowsDetail: "These are official PDF rows currently skipped or needing review. Include or match them if they are real statement activity for this account.",

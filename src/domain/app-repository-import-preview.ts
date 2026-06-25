@@ -166,19 +166,18 @@ export async function buildImportPreview(
       previewRow,
       previewRowDateContext,
       existingRows: existingTransactions.results,
-      incomingSourceType: input.sourceType
+      incomingSourceType: input.sourceType,
+      excludedTransactionIds: claimedReconciliationTargetIds
     });
-    if (exactDuplicateMatch?.existingTransactionId && claimedReconciliationTargetIds.has(exactDuplicateMatch.existingTransactionId)) {
-      exactDuplicateMatch = undefined;
-    }
     const reconciliationMatches = exactDuplicateMatch
       ? []
       : findReconciliationMatches({
         previewRow,
         previewRowDateContext,
         existingRows: existingTransactions.results,
-        incomingSourceType: input.sourceType
-      }).filter((match) => !claimedReconciliationTargetIds.has(match.existingTransactionId));
+        incomingSourceType: input.sourceType,
+        excludedTransactionIds: claimedReconciliationTargetIds
+      });
 
     // Exact duplicate suppression is the raw identity lane. It must run before
     // promotion and reconciliation guards so overlapping bank files can auto-skip
@@ -378,11 +377,16 @@ function findExactDuplicateSuppressionMatch(input: {
     normalized_hash: string | null;
   }>;
   incomingSourceType?: "csv" | "pdf" | "manual";
+  excludedTransactionIds?: Set<string>;
 }) {
   const previewRowHash = buildImportRowHash(input.previewRow);
 
   const exactMatches = input.existingRows
     .map((candidate) => {
+      if (input.excludedTransactionIds?.has(candidate.transaction_id)) {
+        return undefined;
+      }
+
       if (!isSameAmountAndAccountCandidate(input.previewRow, candidate)) {
         return undefined;
       }
@@ -458,9 +462,14 @@ function findReconciliationMatches(input: {
     account_name: string;
   }>;
   incomingSourceType?: "csv" | "pdf" | "manual";
+  excludedTransactionIds?: Set<string>;
 }) {
   return input.existingRows
     .map((candidate) => {
+      if (input.excludedTransactionIds?.has(candidate.transaction_id)) {
+        return undefined;
+      }
+
       if (!isReconciliationCandidateEligibleForSource(candidate, input.incomingSourceType)) {
         return undefined;
       }
