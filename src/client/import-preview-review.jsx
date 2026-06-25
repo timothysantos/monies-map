@@ -835,6 +835,8 @@ function HoverExplanation({ content, label }) {
           className="statement-reconciliation-help-popover"
           sideOffset={8}
           align="start"
+          onOpenAutoFocus={(event) => event.preventDefault()}
+          onCloseAutoFocus={(event) => event.preventDefault()}
           onMouseEnter={() => setOpen(true)}
           onMouseLeave={() => setOpen(false)}
         >

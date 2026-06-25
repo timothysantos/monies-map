@@ -1,6 +1,7 @@
 # UOB May 2026 Import Reconciliation Audit
 
 Date: 2026-06-22
+Updated: 2026-06-25
 
 ## Scope
 
@@ -15,23 +16,16 @@ failure and the UOB dual-date PDF parser behavior.
 
 ## Production Data Access
 
-Direct production D1 inspection was attempted with:
+Direct production D1 inspection is available through Wrangler:
 
 ```bash
 npx wrangler d1 execute monies-map --remote --command "..."
 ```
 
-Cloudflare returned API error `7403`:
-
-```text
-The given account is not valid or is not authorized to access this service
-```
-
-The deployed app APIs were also checked directly, but Cloudflare Access returned
-`302` redirects to the Access login flow. Because of that, this audit does not
-claim exact production transaction IDs or exact production ledger row
-descriptions for the mismatch. Those require refreshed Cloudflare/D1 access or
-an authenticated Access service token.
+The deployed app HTTP APIs are still protected by Cloudflare Access and return
+`302` redirects to the Access login flow from an unauthenticated shell. For this
+audit, the production investigation used read-only D1 queries plus the local PDF
+parser. No production writes were made during the investigation.
 
 ## PDF Parser Findings
 
@@ -84,8 +78,66 @@ The exact row causes could be one or more of:
 - row direction mistakes, especially payments or credits
 - provisional mid-cycle import rows that the official PDF can supersede
 
-The new reconciliation breakdown UI is designed to list these row groups
-directly in future previews.
+The new reconciliation breakdown UI lists these row groups directly in previews.
+
+## 2026-06-25 Production/PDF Follow-up
+
+The May PDF and the production D1 rows were compared using:
+
+- the parsed May UOB PDF rows
+- production rows for Tim's UOB One Card and UOB Lady's Card where either
+  `transaction_date` or `post_date` falls inside 2026-04-13 to 2026-05-12
+- the app's description-normalization helper for merchant comparison
+
+Findings:
+
+| Result | Count |
+| --- | ---: |
+| Parsed PDF rows | 139 |
+| Production ledger rows read | 138 |
+| PDF rows with a production ledger counterpart | 137 |
+| PDF rows without a production ledger counterpart | 2 |
+| Production ledger rows not proven by the PDF | 1 |
+
+UOB One Card:
+
+- all 60 `OPENAI OPENAI.COM` PDF rows have production ledger counterparts
+- the earlier diagnostic that listed repeated OpenAI rows as unmatched was a
+  matching allocation bug, not a PDF absence
+- two PDF rows did not have production ledger counterparts and should be added
+  by the statement import:
+  - `2026-05-05` transaction / `2026-05-06` post,
+    `Buyandship Limited Hong Kong`, `13.13`
+  - `2026-05-05` transaction / `2026-05-09` post,
+    `BUS/MRT 847589739 SINGAPORE`, `3.94`
+
+UOB Lady's Card:
+
+- the PDF row shown by the user, `2280 SINGAPORE`, is `23.50`, transaction date
+  `2026-04-14`, post date `2026-04-15`
+- production already has a matching CSV provisional row for that PDF row:
+  `2280 SINGAPORE SG`, `23.50`, transaction date `2026-04-14`, post date
+  `2026-04-15`
+- the remaining unproven production ledger row is a different manual row:
+  `2280`, `30.70`, transaction date `2026-05-12`, no post date
+
+Actionable reconciliation report:
+
+- UOB One Card should reconcile after the repeated-row matcher fix; the OpenAI
+  rows should certify existing ledger rows and the two statement-only rows above
+  should import as new official PDF rows.
+- UOB Lady's Card should reconcile after deleting or otherwise correcting the
+  manual `2280` `30.70` row if it is not real activity for this card's May PDF.
+  It is not the same row as the PDF's `2280 SINGAPORE` `23.50` charge.
+
+Root cause:
+
+The preview matcher ranked and truncated candidate ledger rows before removing
+ledger rows already claimed by earlier PDF rows. With repeated same-merchant
+same-amount rows, later PDF rows only saw the already-claimed first three
+candidates and were incorrectly reported as unmatched. Exact duplicate
+suppression had the same claimed-row issue. The fix makes both matching paths
+claim-aware before ranking and truncation.
 
 ## Product Changes Added
 
@@ -110,4 +162,6 @@ visible and the user sees an error status instead of losing the workflow state.
 - Statement preview auto-refresh failures preserve the current preview.
 - Statement mismatch preview returns balance-breakdown diagnostics from the
   preview API.
-
+- Repeated UOB PDF card rows can certify more than three matching provisional
+  ledger rows without starving later rows.
+- Statement mismatch hover explanations do not move the page scroll position.
