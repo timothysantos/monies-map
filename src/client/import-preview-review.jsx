@@ -775,6 +775,7 @@ function StatementReconciliationBreakdown({
         <StatementReconciliationDiagnosticRows
           title={messages.imports.statementReconciliationSkippedRowsTitle}
           detail={messages.imports.statementReconciliationSkippedRowsDetail}
+          summary={(summaryInput) => messages.imports.statementReconciliationSkippedRowsSummary(summaryInput)}
           actionDetail={skippedRowsExplainMismatch
             ? messages.imports.statementReconciliationSkippedRowsExactAction(formatService.money(resultDeltaMinor))
             : null}
@@ -788,6 +789,7 @@ function StatementReconciliationBreakdown({
         <StatementReconciliationDiagnosticRows
           title={messages.imports.statementReconciliationExistingRowsTitle}
           detail={messages.imports.statementReconciliationExistingRowsDetail}
+          summary={(summaryInput) => messages.imports.statementReconciliationExistingRowsSummary(summaryInput)}
           actionDetail={existingRowsExplainMismatch
             ? messages.imports.statementReconciliationExistingRowsExactAction(formatService.money(resultDeltaMinor))
             : null}
@@ -804,6 +806,12 @@ function StatementReconciliationBreakdown({
         <StatementReconciliationDiagnosticRows
           title={messages.imports.statementReconciliationMatchedRowsTitle}
           detail={messages.imports.statementReconciliationMatchedRowsDetail}
+          summary={(summaryInput) => messages.imports.statementReconciliationMatchedRowsSummary({
+            ...summaryInput,
+            isMatched
+          })}
+          collapsedSummary={(summaryInput) => messages.imports.statementReconciliationMatchedRowsCollapsedSummary(summaryInput)}
+          collapsedByDefault={isMatched}
           rows={breakdown.matchedStatementRows}
           totalRowCount={breakdown.matchedStatementRowCount}
           totalAmountMinor={breakdown.matchedStatementRowsMinor}
@@ -865,6 +873,9 @@ function HoverExplanation({ content, label }) {
 function StatementReconciliationDiagnosticRows({
   title,
   detail,
+  summary,
+  collapsedSummary,
+  collapsedByDefault = false,
   actionDetail,
   rows,
   totalRowCount,
@@ -878,34 +889,18 @@ function StatementReconciliationDiagnosticRows({
   const ledgerRows = rows.filter((row) => row.source === "ledger" && row.id);
   const formattedTotalAmount = formatSignedDiagnosticAmount(totalAmountMinor ?? sumDiagnosticRows(rows));
   const canBulkDeleteLedgerRows = ledgerRows.length > 1 && typeof onDeleteDiagnosticLedgerRows === "function";
-  return (
-    <div className="import-overlap-entry-list" aria-label={title}>
-      <div className="statement-reconciliation-list-head">
-        <strong>{title}</strong>
-        {canBulkDeleteLedgerRows ? (
-          <DeleteRowButton
-            label={messages.imports.deleteDiagnosticEntriesLabel(ledgerRows.length)}
-            triggerLabel={messages.imports.deleteDiagnosticEntriesLabel(ledgerRows.length)}
-            confirmLabel={messages.imports.deleteDiagnosticEntries}
-            buttonClassName="statement-reconciliation-delete-all-button"
-            prompt={messages.imports.deleteDiagnosticEntriesConfirm({
-              count: ledgerRows.length,
-              amount: formattedTotalAmount
-            })}
-            onConfirm={() => onDeleteDiagnosticLedgerRows(ledgerRows)}
-          >
-            {messages.imports.deleteDiagnosticEntries}
-          </DeleteRowButton>
-        ) : null}
-      </div>
+  const summaryInput = {
+    shown: rows.length,
+    total: rowCount,
+    amount: formattedTotalAmount
+  };
+  const summaryText = summary
+    ? summary(summaryInput)
+    : messages.imports.statementReconciliationExistingRowsSummary(summaryInput);
+  const content = (
+    <>
       {detail ? <p className="lede compact">{detail}</p> : null}
-      <p className="lede compact">
-        {messages.imports.statementReconciliationBucketSample({
-          shown: rows.length,
-          total: rowCount,
-          amount: formattedTotalAmount
-        })}
-      </p>
+      <p className="lede compact">{summaryText}</p>
       {actionDetail ? <p className="lede compact statement-reconciliation-action">{actionDetail}</p> : null}
       {rows.map((row) => (
         <div key={row.id} className="import-overlap-entry-row statement-reconciliation-diagnostic-row">
@@ -946,6 +941,45 @@ function StatementReconciliationDiagnosticRows({
           ) : null}
         </div>
       ))}
+    </>
+  );
+
+  if (collapsedByDefault) {
+    const collapsedText = collapsedSummary ? collapsedSummary(summaryInput) : summaryText;
+    return (
+      <details className="import-overlap-entry-list statement-reconciliation-diagnostic-details" aria-label={title}>
+        <summary className="statement-reconciliation-list-summary">
+          <span>
+            <strong>{title}</strong>
+            <small>{collapsedText}</small>
+          </span>
+        </summary>
+        {content}
+      </details>
+    );
+  }
+
+  return (
+    <div className="import-overlap-entry-list" aria-label={title}>
+      <div className="statement-reconciliation-list-head">
+        <strong>{title}</strong>
+        {canBulkDeleteLedgerRows ? (
+          <DeleteRowButton
+            label={messages.imports.deleteDiagnosticEntriesLabel(ledgerRows.length)}
+            triggerLabel={messages.imports.deleteDiagnosticEntriesLabel(ledgerRows.length)}
+            confirmLabel={messages.imports.deleteDiagnosticEntries}
+            buttonClassName="statement-reconciliation-delete-all-button"
+            prompt={messages.imports.deleteDiagnosticEntriesConfirm({
+              count: ledgerRows.length,
+              amount: formattedTotalAmount
+            })}
+            onConfirm={() => onDeleteDiagnosticLedgerRows(ledgerRows)}
+          >
+            {messages.imports.deleteDiagnosticEntries}
+          </DeleteRowButton>
+        ) : null}
+      </div>
+      {content}
     </div>
   );
 }

@@ -365,21 +365,35 @@ export const messages = {
     statementReconciliationCausesTitle: "Recommended next checks",
     statementReconciliationExistingRowsTitle: "Ledger rows not automatically matched to this PDF",
     statementReconciliationExistingRowsDetail: "These were picked because they are already in this account's ledger inside the statement period but this preview has not certified them against a unique PDF row. Repeated same-merchant charges can appear here even when matching rows exist on the PDF.",
-    statementReconciliationBucketSample: ({ shown, total, amount }) => (
+    statementReconciliationExistingRowsSummary: ({ shown, total, amount }) => (
       shown < total
-        ? `Showing ${shown} of ${total} rows in this bucket. The bucket total is ${amount}; the visible sample will not add up to the full total.`
-        : `Showing all ${total} row${total === 1 ? "" : "s"} in this bucket. The bucket total is ${amount}.`
+        ? `Showing ${shown} of ${total} unresolved ledger rows. Together these rows net to ${amount}; the visible rows are only a sample, so they will not add up to the full total.`
+        : `Showing all ${total} unresolved ledger row${total === 1 ? "" : "s"}. Together these rows net to ${amount}.`
     ),
     statementReconciliationExistingRowsExactAction: (amount) => (
-      `This unmatched ledger bucket totals ${amount}, which matches the unexplained difference. Correcting this bucket should reconcile the statement, but correction does not always mean deletion. For credit cards, negative ledger expenses increase the owed balance; deleting one lowers owed by that amount, while replacing it with a different PDF amount changes owed only by the difference. Open each row in a new tab and compare it with the PDF: if the row is on this card's PDF, it should be matched or certified; if it is absent, duplicated, or on another card, delete it, remap it, or roll back the prior import.`
+      `These unresolved ledger rows total ${amount}, which matches the unexplained difference. Correcting these rows should reconcile the statement, but correction does not always mean deletion. For credit cards, negative ledger expenses increase the owed balance; deleting one lowers owed by that amount, while replacing it with a different PDF amount changes owed only by the difference. Open each row in a new tab and compare it with the PDF: if the row is on this card's PDF, it should be matched or certified; if it is absent, duplicated, or on another card, delete it, remap it, or roll back the prior import.`
     ),
     statementReconciliationSkippedRowsTitle: "PDF rows not included yet",
     statementReconciliationSkippedRowsDetail: "These are official PDF rows currently skipped or needing review. Include or match them if they are real statement activity for this account.",
+    statementReconciliationSkippedRowsSummary: ({ shown, total, amount }) => (
+      shown < total
+        ? `Showing ${shown} of ${total} PDF rows not included yet. Together these PDF rows net to ${amount}; the visible rows are only a sample, so they will not add up to the full total.`
+        : `Showing all ${total} PDF row${total === 1 ? "" : "s"} not included yet. Together these PDF rows net to ${amount}.`
+    ),
     statementReconciliationSkippedRowsExactAction: (amount) => (
       `These skipped PDF rows total ${amount}, which matches the unexplained difference. If they are real activity for this account, including or matching them should reconcile this statement. Compare them against the PDF, then include or match the rows in the preview before committing.`
     ),
     statementReconciliationMatchedRowsTitle: "PDF rows already matching ledger rows",
-    statementReconciliationMatchedRowsDetail: "These are not the main problem. They show statement rows that will certify existing ledger rows while preserving user edits.",
+    statementReconciliationMatchedRowsDetail: "These PDF rows already found matching ledger rows. They do not need action unless you want to audit exactly which existing entries will be certified by this statement.",
+    statementReconciliationMatchedRowsCollapsedSummary: ({ total, amount }) => `${total} PDF row${total === 1 ? "" : "s"} already match ledger rows. Net statement movement: ${amount}.`,
+    statementReconciliationMatchedRowsSummary: ({ shown, total, amount, isMatched }) => {
+      const auditContext = isMatched
+        ? "This is audit context only; the statement already closes."
+        : "This is context for rows that are already handled while you review the remaining mismatch.";
+      return shown < total
+        ? `Showing ${shown} of ${total} already-matched PDF rows. Their full net statement movement is ${amount}; the visible rows are only a sample. ${auditContext}`
+        : `Showing all ${total} already-matched PDF row${total === 1 ? "" : "s"}. Their net statement movement is ${amount}. ${auditContext}`;
+    },
     statementReconciliationLedgerDateDetail: "Date shown: transaction date from the ledger row.",
     statementReconciliationLedgerDualDateDetail: ({ transactionDate, postedDate }) => `Date shown: transaction date ${transactionDate}. Posted date saved on the ledger row: ${postedDate}.`,
     statementReconciliationStatementDateDetail: "Date shown: posted date from the PDF statement.",
@@ -389,7 +403,7 @@ export const messages = {
     deleteDiagnosticEntryConfirm: ({ date, description, amount }) => `Delete this ledger row now? ${date} • ${description} • ${amount}. Use this only when the row is absent from the PDF, duplicated, or belongs to another card/account.`,
     deleteDiagnosticEntries: "Delete all",
     deleteDiagnosticEntriesLabel: (count) => `Delete ${count} ledger rows`,
-    deleteDiagnosticEntriesConfirm: ({ count, amount }) => `Delete all ${count} ledger rows in this bucket now? Their bucket total is ${amount}. Use this only after checking the PDF/account mapping and confirming these rows are absent from this card's PDF, duplicated, or belong to another card/account.`,
+    deleteDiagnosticEntriesConfirm: ({ count, amount }) => `Delete all ${count} unresolved ledger rows shown here now? Together these rows net to ${amount}. Use this only after checking the PDF/account mapping and confirming these rows are absent from this card's PDF, duplicated, or belong to another card/account.`,
     deleteDiagnosticEntriesProgress: (count) => `Deleting ${count} ledger rows and refreshing statement check.`,
     deleteDiagnosticEntriesSuccess: (count) => `${count} ledger rows deleted. Statement check refreshed.`,
     statementReconciliationSupersededRowsTitle: "Official statement will remove provisional rows not present on the PDF",

@@ -667,8 +667,8 @@ test.describe("import flow", () => {
       await expect(breakdown).toContainText("Already in ledger during this period");
       await expect(breakdown).toContainText("adds $5.00 owed");
       await expect(breakdown).toContainText("Ledger rows not automatically matched to this PDF");
-      await expect(breakdown).toContainText("Showing all 2 rows in this bucket. The bucket total is -$5.00.");
-      await expect(breakdown).toContainText("This unmatched ledger bucket totals $5.00, which matches the unexplained difference.");
+      await expect(breakdown).toContainText("Showing all 2 unresolved ledger rows. Together these rows net to -$5.00.");
+      await expect(breakdown).toContainText("These unresolved ledger rows total $5.00, which matches the unexplained difference.");
       await expect(breakdown).toContainText("For credit cards, negative ledger expenses increase the owed balance");
       await expect(breakdown).toContainText("if the row is on this card's PDF, it should be matched or certified");
       const beforePeriodHelp = breakdown.getByLabel("Explain Before statement period");
@@ -759,7 +759,7 @@ test.describe("import flow", () => {
                 priorLedgerBalanceMinor: 0,
                 statementPeriodExistingRowsMinor: 0,
                 includedStatementRowsMinor: -1000,
-                matchedStatementRowsMinor: 0,
+                matchedStatementRowsMinor: -1000,
                 skippedStatementRowsMinor: 0,
                 supersededLedgerRowsMinor: 0,
                 projectedLedgerBalanceMinor: -1000,
@@ -767,13 +767,30 @@ test.describe("import flow", () => {
                 deltaMinor: 0,
                 periodExistingLedgerRowCount: 0,
                 skippedStatementRowCount: 0,
-                matchedStatementRowCount: 0,
+                matchedStatementRowCount: 2,
                 suspectedCauses: [
                   "The projected ledger balance now equals the statement balance."
                 ],
                 periodExistingLedgerRows: [],
                 skippedStatementRows: [],
-                matchedStatementRows: []
+                matchedStatementRows: [{
+                  id: "preview-statement-matched-1",
+                  date: "2026-04-16",
+                  eventDate: "2026-04-14",
+                  description: "PDF STATEMENT ROW",
+                  signedAmountMinor: -600,
+                  accountName: "Statement Matched Card",
+                  source: "statement",
+                  status: "included"
+                }, {
+                  id: "preview-statement-matched-2",
+                  date: "2026-04-17",
+                  description: "SECOND PDF STATEMENT ROW",
+                  signedAmountMinor: -400,
+                  accountName: "Statement Matched Card",
+                  source: "statement",
+                  status: "included"
+                }]
               }
             }]
           }
@@ -798,6 +815,15 @@ test.describe("import flow", () => {
       await expect(breakdown).toContainText("The statement is ready to close for this account.");
       await expect(breakdown).not.toContainText("Why this does not close");
       await expect(breakdown).not.toContainText("That leaves $0.00 to explain.");
+      await expect(breakdown).toContainText("2 PDF rows already match ledger rows. Net statement movement: -$10.00.");
+      await expect(breakdown.getByText("These PDF rows already found matching ledger rows.")).not.toBeVisible();
+      await expect(breakdown.getByText("PDF STATEMENT ROW", { exact: true })).not.toBeVisible();
+
+      await breakdown.getByText("PDF rows already matching ledger rows").click();
+      await expect(breakdown.getByText("These PDF rows already found matching ledger rows.")).toBeVisible();
+      await expect(breakdown).toContainText("Showing all 2 already-matched PDF rows. Their net statement movement is -$10.00. This is audit context only; the statement already closes.");
+      await expect(breakdown.getByText("PDF STATEMENT ROW", { exact: true })).toBeVisible();
+      await expect(breakdown).not.toContainText("this bucket");
     } finally {
       await page.unroute("**/api/imports/preview", mockedPreviewRoute);
     }

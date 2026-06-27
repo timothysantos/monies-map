@@ -5906,6 +5906,29 @@ button.split-activity-card:hover {
   gap: 12px;
 }
 
+.statement-reconciliation-diagnostic-details {
+  padding: 10px 12px;
+}
+
+.statement-reconciliation-list-summary {
+  cursor: pointer;
+  color: var(--text);
+}
+
+.statement-reconciliation-list-summary span {
+  display: inline-grid;
+  gap: 4px;
+  margin-left: 4px;
+  vertical-align: top;
+}
+
+.statement-reconciliation-list-summary small {
+  color: var(--muted);
+  font-size: 0.94rem;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
 .statement-reconciliation-delete-all-button {
   margin-left: 0;
   padding: 0;
