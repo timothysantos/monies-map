@@ -329,9 +329,14 @@ export const messages = {
     statementReconciliationAccount: (accountName, month) => `${accountName} • ${month}`,
     statementReconciliationDelta: (amount) => `Difference ${amount}`,
     statementReconciliationBreakdownTitle: "Why this does not close",
+    statementReconciliationMatchedBreakdownTitle: "Why this closes",
     statementReconciliationAuthority: "If the PDF is mapped to the correct card account, treat the PDF as the stronger bank record. The ledger rows listed here are not automatically certified yet; some may still be present on the PDF but need a unique match before committing.",
+    statementReconciliationMatchedAuthority: "The PDF is mapped to this account and the projected ledger balance equals the official statement balance. The rows listed here are context: they show which PDF rows will certify existing ledger entries or which PDF-only rows will be added.",
     statementReconciliationResult: ({ projectedBalance, statementBalance, delta }) => (
       `After this preview, the ledger would show ${projectedBalance}. The PDF says ${statementBalance}. That leaves ${delta} to explain.`
+    ),
+    statementReconciliationMatchedResult: ({ projectedBalance, statementBalance }) => (
+      `After this preview, the ledger would show ${projectedBalance}. The PDF also says ${statementBalance}. The statement is ready to close for this account.`
     ),
     statementReconciliationMovementLabels: {
       priorBalance: "Before statement period",

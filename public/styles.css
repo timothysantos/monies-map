@@ -5792,6 +5792,12 @@ button.split-activity-card:hover {
   line-height: 1.35;
 }
 
+.statement-reconciliation-result.is-matched {
+  border-color: rgba(26, 127, 79, 0.18);
+  background: rgba(26, 127, 79, 0.07);
+  color: var(--positive);
+}
+
 .statement-reconciliation-movement-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));

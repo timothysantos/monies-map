@@ -684,17 +684,31 @@ function StatementReconciliationBreakdown({
     && Math.abs(breakdown.statementPeriodExistingRowsMinor ?? 0) === resultDeltaMinor;
   const skippedRowsExplainMismatch = resultDeltaMinor > 0
     && Math.abs(breakdown.skippedStatementRowsMinor ?? 0) === resultDeltaMinor;
+  const isMatched = reconciliation.status === "matched" || resultDeltaMinor === 0;
 
   return (
     <div className="statement-reconciliation-breakdown">
-      <strong>{messages.imports.statementReconciliationBreakdownTitle}</strong>
-      <p className="lede compact">{messages.imports.statementReconciliationAuthority}</p>
-      <div className="statement-reconciliation-result">
-        {messages.imports.statementReconciliationResult({
-          projectedBalance: formatStatementBalanceForAccount(breakdown.projectedLedgerBalanceMinor, accountKind),
-          statementBalance: formatStatementBalanceForAccount(breakdown.statementBalanceMinor, accountKind),
-          delta: formatService.money(resultDeltaMinor)
-        })}
+      <strong>
+        {isMatched
+          ? messages.imports.statementReconciliationMatchedBreakdownTitle
+          : messages.imports.statementReconciliationBreakdownTitle}
+      </strong>
+      <p className="lede compact">
+        {isMatched
+          ? messages.imports.statementReconciliationMatchedAuthority
+          : messages.imports.statementReconciliationAuthority}
+      </p>
+      <div className={`statement-reconciliation-result ${isMatched ? "is-matched" : ""}`}>
+        {isMatched
+          ? messages.imports.statementReconciliationMatchedResult({
+            projectedBalance: formatStatementBalanceForAccount(breakdown.projectedLedgerBalanceMinor, accountKind),
+            statementBalance: formatStatementBalanceForAccount(breakdown.statementBalanceMinor, accountKind)
+          })
+          : messages.imports.statementReconciliationResult({
+            projectedBalance: formatStatementBalanceForAccount(breakdown.projectedLedgerBalanceMinor, accountKind),
+            statementBalance: formatStatementBalanceForAccount(breakdown.statementBalanceMinor, accountKind),
+            delta: formatService.money(resultDeltaMinor)
+          })}
       </div>
       <div className="statement-reconciliation-movement-grid">
         <StatementReconciliationMovement
