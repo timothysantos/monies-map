@@ -1110,8 +1110,16 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       setUploadStatus({ tone: "success", message: successMessage });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to update posted date.";
-      setUploadStatus({ tone: "error", message });
-      throw error;
+      await refreshPreviewFromRows({
+        rows: previewRows.map(importService.buildRawRowFromPreviewRow),
+        activeMessage: messages.imports.statementReconciliationRefreshing,
+        successMessage: messages.imports.statementReconciliationRefreshed,
+        silent: true
+      });
+      setUploadStatus({
+        tone: "error",
+        message: messages.imports.setDiagnosticPostDateUnconfirmed(message)
+      });
     } finally {
       setIsSubmitting(false);
     }

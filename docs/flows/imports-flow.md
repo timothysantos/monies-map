@@ -74,7 +74,13 @@ Imports owns:
   the bank app shows it, or defer the row to the next statement by setting a
   provisional posted date to the day after the current statement end. Both
   actions keep the event transaction date intact for spending history while
-  moving statement reconciliation to the cleared/post date
+  moving statement reconciliation to the cleared/post date. Deferral is
+  provisional only: a later official PDF remains the source of truth and can
+  certify the row in place, replacing both event and posted dates with the
+  statement dates while preserving user-owned annotations
+- preview API failures preserve server detail. JSON errors are shown verbatim,
+  while non-JSON failures such as edge 503s include HTTP status and a short
+  cleaned response snippet instead of only a generic fallback
 - non-destructive statement preview auto-refresh; transient refresh failures
   must keep the current reviewed preview visible
 
