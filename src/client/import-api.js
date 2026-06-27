@@ -6,11 +6,42 @@ async function postJson(endpoint, body, fallbackError) {
     },
     body: JSON.stringify(body)
   });
-  const data = await response.json().catch(() => ({}));
+  const responseText = await response.text().catch(() => "");
+  const data = responseText ? parseJsonResponse(responseText) : {};
   if (!response.ok) {
-    throw new Error(data.error ?? fallbackError);
+    throw new Error(getResponseErrorMessage({
+      data,
+      fallbackError,
+      response,
+      responseText
+    }));
   }
   return data;
+}
+
+function parseJsonResponse(responseText) {
+  try {
+    return JSON.parse(responseText);
+  } catch {
+    return {};
+  }
+}
+
+function getResponseErrorMessage({ data, fallbackError, response, responseText }) {
+  if (data?.error || data?.message) {
+    return data.error ?? data.message;
+  }
+
+  const statusLine = response.status
+    ? `HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ""}`
+    : "";
+  const bodySnippet = responseText
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 220);
+  const detail = [statusLine, bodySnippet].filter(Boolean).join(": ");
+  return detail ? `${fallbackError} ${detail}` : fallbackError;
 }
 
 // Keep import endpoint payloads out of ImportsPanel so the panel can focus on flow state.

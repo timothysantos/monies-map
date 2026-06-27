@@ -5776,13 +5776,18 @@ button.split-activity-card:hover {
   gap: 12px;
   flex-basis: 100%;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 10px 12px;
   border: 1px solid rgba(142, 81, 39, 0.16);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.58);
+  overflow-wrap: anywhere;
 }
 
 .statement-reconciliation-result {
+  max-width: 100%;
+  min-width: 0;
   padding: 10px 12px;
   border: 1px solid rgba(180, 35, 24, 0.14);
   border-radius: 8px;
@@ -5800,7 +5805,7 @@ button.split-activity-card:hover {
 
 .statement-reconciliation-movement-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 8px;
 }
 
@@ -5859,8 +5864,10 @@ button.split-activity-card:hover {
   width: min(340px, calc(100vw - 32px));
   padding: 12px 14px;
   border: 1px solid rgba(142, 81, 39, 0.22);
-  border-radius: 10px;
-  background: rgba(255, 250, 242, 0.98);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 249, 0.99), rgba(255, 255, 255, 0.99)),
+    radial-gradient(circle at top right, rgba(177, 94, 47, 0.08), transparent 42%);
   box-shadow: 0 18px 40px rgba(40, 31, 24, 0.18);
 }
 
@@ -5893,6 +5900,8 @@ button.split-activity-card:hover {
 }
 
 .statement-reconciliation-action {
+  max-width: 100%;
+  min-width: 0;
   padding: 9px 10px;
   border: 1px solid rgba(76, 111, 85, 0.2);
   border-radius: 8px;
@@ -5907,6 +5916,8 @@ button.split-activity-card:hover {
 }
 
 .statement-reconciliation-diagnostic-details {
+  max-width: 100%;
+  min-width: 0;
   padding: 10px 12px;
 }
 
@@ -5943,8 +5954,10 @@ button.split-activity-card:hover {
 }
 
 .statement-reconciliation-diagnostic-row {
-  grid-template-columns: minmax(150px, 0.9fr) minmax(170px, 2fr) minmax(120px, 1fr) max-content max-content;
+  grid-template-columns: minmax(130px, 0.8fr) minmax(160px, 1.55fr) minmax(110px, 0.8fr) max-content minmax(170px, auto);
   border-color: rgba(142, 81, 39, 0.16);
+  max-width: 100%;
+  min-width: 0;
 }
 
 .statement-reconciliation-date-cell {
@@ -5964,7 +5977,8 @@ button.split-activity-card:hover {
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  white-space: nowrap;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .statement-reconciliation-entry-link {
@@ -5980,9 +5994,10 @@ button.split-activity-card:hover {
   color: var(--accent);
   font: inherit;
   font-weight: 700;
+  line-height: 1.2;
   text-decoration: underline;
   text-underline-offset: 0.16em;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .statement-reconciliation-post-date-button.icon-action {
@@ -5995,6 +6010,50 @@ button.split-activity-card:hover {
 .statement-reconciliation-post-date-dialog form {
   display: grid;
   gap: 14px;
+}
+
+.statement-reconciliation-post-date-dialog {
+  width: min(560px, calc(100vw - 40px));
+  padding: 18px;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 249, 0.99), rgba(255, 255, 255, 0.99)),
+    radial-gradient(circle at top right, rgba(177, 94, 47, 0.08), transparent 42%);
+}
+
+.statement-reconciliation-post-date-dialog .note-dialog-head {
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(177, 94, 47, 0.12);
+}
+
+.statement-reconciliation-post-date-dialog .lede.compact {
+  margin: 4px 0 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.statement-reconciliation-confirm-popover {
+  z-index: 92;
+  width: min(360px, calc(100vw - 32px));
+  padding: 12px;
+  border: 1px solid rgba(142, 81, 39, 0.22);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 249, 0.99), rgba(255, 255, 255, 0.99)),
+    radial-gradient(circle at top right, rgba(177, 94, 47, 0.08), transparent 42%);
+  box-shadow: 0 18px 40px rgba(40, 31, 24, 0.18);
+}
+
+.statement-reconciliation-confirm-popover strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.statement-reconciliation-confirm-popover p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
 }
 
 .statement-reconciliation-delete-button {

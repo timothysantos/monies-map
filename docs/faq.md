@@ -629,6 +629,12 @@ or keep both because they are genuinely different transactions.
 Import the activity file normally, but review duplicates and split matches before
 commit.
 
+If `Preview import` fails after a file was parsed and mapped, the preview card
+should show the server's own error when it returned JSON. If the failure came
+from an edge timeout, Cloudflare Access redirect, or another non-JSON response,
+the card includes the HTTP status and a short cleaned response snippet so the
+next action is visible instead of just `Import preview failed`.
+
 What should happen:
 
 1. The import preview warns about duplicate-looking rows already in the ledger.
@@ -966,6 +972,16 @@ When a statement already closes, matched PDF rows are audit context rather than
 work for the user. The import preview collapses that list by default and shows
 only the count and net statement movement; open it only if you want to inspect
 which PDF rows will certify existing ledger rows while preserving user edits.
+
+When a real ledger row is inside the transaction-date period but the PDF omits
+it because the bank posted it after the statement cutoff, use `Set posted date`
+if the bank app shows the exact posted date. Use `Defer` when you know the row is
+legitimate but do not know the posted date yet. Defer assigns a provisional
+posted date to the first day after the statement end so the current statement can
+close without deleting the row. A later official PDF remains the stronger bank
+record: if it uniquely matches the deferred row, certification replaces both the
+transaction date and posted date with the official statement dates while keeping
+the user's category, owner, split setup, and notes.
 
 The five balance boxes in the statement certification card have hover/focus
 help. Use them to see the exact statement start and end dates, what rows feed

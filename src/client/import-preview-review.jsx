@@ -1,7 +1,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import { useRef, useState } from "react";
-import { Info } from "lucide-react";
+import { Info, X } from "lucide-react";
 import { DuplicateMatchPopover } from "./import-preview-rows-table";
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
@@ -1019,11 +1019,10 @@ function SetPostedDateButton({ row, statementEndDate, onSetPostDate }) {
         onSetPostDate={onSetPostDate}
       />
       {deferDate ? (
-        <DeleteRowButton
+        <ConfirmLedgerActionButton
           label={row.description}
           triggerLabel={messages.imports.deferDiagnosticEntry}
           confirmLabel={messages.imports.deferDiagnosticEntryConfirm}
-          destructive={false}
           buttonClassName="statement-reconciliation-post-date-button"
           prompt={messages.imports.deferDiagnosticEntryDetail({
             statementEndDate: statementEndLabel,
@@ -1035,9 +1034,91 @@ function SetPostedDateButton({ row, statementEndDate, onSetPostDate }) {
           })}
         >
           {messages.imports.deferDiagnosticEntry}
-        </DeleteRowButton>
+        </ConfirmLedgerActionButton>
       ) : null}
     </>
+  );
+}
+
+function ConfirmLedgerActionButton({
+  label,
+  onConfirm,
+  triggerLabel,
+  confirmLabel,
+  prompt,
+  buttonClassName = "",
+  children
+}) {
+  const [open, setOpen] = useState(false);
+  const [isWorking, setIsWorking] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleConfirm() {
+    setIsWorking(true);
+    setError("");
+    try {
+      await onConfirm?.();
+      setOpen(false);
+    } catch (confirmError) {
+      setError(confirmError instanceof Error ? confirmError.message : "The action could not finish.");
+    } finally {
+      setIsWorking(false);
+    }
+  }
+
+  return (
+    <Popover.Root
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (isWorking) {
+          return;
+        }
+        setOpen(nextOpen);
+        if (!nextOpen) {
+          setError("");
+        }
+      }}
+    >
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          className={buttonClassName}
+          aria-label={triggerLabel ?? label}
+          disabled={isWorking}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {children ?? triggerLabel ?? label}
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          className="statement-reconciliation-confirm-popover"
+          sideOffset={8}
+          align="end"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <strong>{triggerLabel ?? label}</strong>
+          <p>{prompt}</p>
+          {error ? <p className="form-error">{error}</p> : null}
+          <div className="delete-popover-actions">
+            <Popover.Close asChild>
+              <button type="button" className="subtle-action" disabled={isWorking}>
+                Cancel
+              </button>
+            </Popover.Close>
+            <button
+              type="button"
+              className="dialog-primary"
+              disabled={isWorking}
+              onClick={() => void handleConfirm()}
+            >
+              {isWorking ? messages.common.working : confirmLabel}
+            </button>
+          </div>
+          <Popover.Arrow className="category-popover-arrow" />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }
 
@@ -1091,17 +1172,19 @@ function PostedDateDialog({ row, initialDate, statementEndLabel, onSetPostDate }
         <Dialog.Overlay className="note-dialog-overlay" />
         <Dialog.Content className="note-dialog-content statement-reconciliation-post-date-dialog" onOpenAutoFocus={(event) => event.preventDefault()}>
           <form onSubmit={(event) => void handleSubmit(event)}>
-            <div className="dialog-header">
-              <Dialog.Title>{messages.imports.setDiagnosticPostDateTitle}</Dialog.Title>
+            <div className="note-dialog-head">
+              <div>
+                <Dialog.Title>{messages.imports.setDiagnosticPostDateTitle}</Dialog.Title>
+                <Dialog.Description className="lede compact">
+                  {messages.imports.setDiagnosticPostDateDetail({ statementEndDate: statementEndLabel })}
+                </Dialog.Description>
+              </div>
               <Dialog.Close asChild>
-                <button type="button" className="icon-button" aria-label="Close" disabled={isWorking}>
-                  &times;
+                <button type="button" className="icon-action subtle-cancel" aria-label="Close" disabled={isWorking}>
+                  <X size={16} aria-hidden="true" />
                 </button>
               </Dialog.Close>
             </div>
-            <Dialog.Description className="lede compact">
-              {messages.imports.setDiagnosticPostDateDetail({ statementEndDate: statementEndLabel })}
-            </Dialog.Description>
             <label className="field-stack">
               <span>{messages.imports.setDiagnosticPostDateField}</span>
               <input
@@ -1112,13 +1195,13 @@ function PostedDateDialog({ row, initialDate, statementEndLabel, onSetPostDate }
               />
             </label>
             {error ? <p className="form-error">{error}</p> : null}
-            <div className="dialog-actions">
+            <div className="note-dialog-actions">
               <Dialog.Close asChild>
                 <button type="button" className="subtle-action" disabled={isWorking}>
                   Cancel
                 </button>
               </Dialog.Close>
-              <button type="submit" className="primary-action" disabled={isWorking}>
+              <button type="submit" className="dialog-primary" disabled={isWorking}>
                 {messages.imports.setDiagnosticPostDateConfirm}
               </button>
             </div>
