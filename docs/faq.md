@@ -936,29 +936,36 @@ mid-cycle ledger row, a skipped statement row, a row direction problem, account
 mapping, or a provisional import row that can be superseded by the official PDF.
 If the card lists "ledger rows not automatically matched to this PDF", use the
 row links to go to Entries in a new tab, or use the inline delete action only
-after confirming the row is absent, duplicated, or on another account. This
-bucket means the preview did not certify those ledger rows against unique PDF
-rows; it does not prove the rows are absent from the PDF. Repeated same-merchant
-charges can land here when the app cannot safely pair every copy. The diagnostic
-list shows every row in the bucket, not a sample. The date shown on ledger rows
-is the transaction date; PDF diagnostic rows show posted date and include the
-event/transaction date when the parser found one. When that bucket total is the
-same amount as the unexplained difference, correcting that bucket should
-reconcile the statement as long as the PDF is mapped to the right account. Check
-each opened row against the PDF for the same card and statement period: if the
-PDF contains it, it should be matched or certified; if the PDF does not contain
-it, remove it from that account; if it belongs to a different card, remap it; if
-it came from a prior provisional import, roll back that import.
+after confirming the row is absent, duplicated, or on another account. This list
+means the preview did not certify those ledger rows against unique PDF rows; it
+does not prove the rows are absent from the PDF. Repeated same-merchant charges
+can land here when the app cannot safely pair every copy. The diagnostic list
+shows every row in the unresolved set, not a sample. The date shown on ledger
+rows is the transaction date; PDF diagnostic rows show posted date and include
+the event/transaction date when the parser found one. When the unresolved ledger
+rows total the same amount as the unexplained difference, correcting those rows
+should reconcile the statement as long as the PDF is mapped to the right
+account. Check each opened row against the PDF for the same card and statement
+period: if the PDF contains it, it should be matched or certified; if the PDF
+does not contain it, remove it from that account; if it belongs to a different
+card, remap it; if it came from a prior provisional import, roll back that
+import.
 
-For buckets with multiple ledger rows, the card can show a confirmed "Delete
-all" action. Treat it as a bulk version of the per-row delete, not as the default
-fix. Use it only when the whole listed bucket is absent from this PDF, duplicated
-elsewhere, or mapped to the wrong account. If the PDF contains those charges, the
-right correction is to match/certify the rows or fix their date lanes. UOB card
-matching ignores foreign-currency amount fragments in descriptions, so rows such
-as `OPENAI OPENAI.COM US` can match PDF descriptions such as
+For unresolved lists with multiple ledger rows, the card can show a confirmed
+"Delete all" action. Treat it as a bulk version of the per-row delete, not as the
+default fix. Use it only when the whole listed set is absent from this PDF,
+duplicated elsewhere, or mapped to the wrong account. If the PDF contains those
+charges, the right correction is to match/certify the rows or fix their date
+lanes. UOB card matching ignores foreign-currency amount fragments in
+descriptions, so rows such as `OPENAI OPENAI.COM US` can match PDF descriptions
+such as
 `OPENAI OPENAI.COM USD 5.58` when the amount, account, posted date, and event
 date evidence line up.
+
+When a statement already closes, matched PDF rows are audit context rather than
+work for the user. The import preview collapses that list by default and shows
+only the count and net statement movement; open it only if you want to inspect
+which PDF rows will certify existing ledger rows while preserving user edits.
 
 The five balance boxes in the statement certification card have hover/focus
 help. Use them to see the exact statement start and end dates, what rows feed

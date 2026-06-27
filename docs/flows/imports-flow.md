@@ -55,17 +55,19 @@ Imports owns:
   expose hover/focus explanations with the exact statement date window; ledger
   diagnostic rows link back to Entries in a new tab with row-specific month and
   wallet filters and can be deleted inline after confirmation. Ledger diagnostic
-  buckets with multiple rows also expose a confirmed "Delete all" action for
-  cases where the whole bucket is known to be absent, duplicated, or on another
+  lists with multiple rows also expose a confirmed "Delete all" action for cases
+  where the whole unresolved set is known to be absent, duplicated, or on another
   account. Unmatched ledger rows mean the preview did not certify a unique PDF
-  match, not that the rows are definitely absent from the PDF. Diagnostic
-  buckets return the full row list, and row date labels distinguish ledger
-  transaction dates from PDF posted dates and event dates. When a diagnostic
-  bucket exactly matches the statement difference, the preview says whether
-  correcting those ledger matches or including skipped PDF rows should reconcile
-  the statement. UOB card PDF matching normalizes foreign-currency description
-  suffixes such as `USD 5.58`, so a ledger row like `OPENAI OPENAI.COM US` can
-  certify against `OPENAI OPENAI.COM USD 5.58` when the account, amount, and
+  match, not that the rows are definitely absent from the PDF. Diagnostic lists
+  return the full row list, and row date labels distinguish ledger transaction
+  dates from PDF posted dates and event dates. When an unresolved list exactly
+  matches the statement difference, the preview says whether correcting those
+  ledger matches or including skipped PDF rows should reconcile the statement.
+  Already-matched PDF rows are collapsed by default when a statement closes
+  because they are audit context, not required user action. UOB card PDF
+  matching normalizes foreign-currency description suffixes such as `USD 5.58`,
+  so a ledger row like `OPENAI OPENAI.COM US` can certify against
+  `OPENAI OPENAI.COM USD 5.58` when the account, amount, and
   date evidence align
 - non-destructive statement preview auto-refresh; transient refresh failures
   must keep the current reviewed preview visible
