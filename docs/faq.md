@@ -426,8 +426,9 @@ Supported PDF parsers include:
 - UOB One savings statements
 - Citibank credit-card statements, including known Citi Rewards and Citibank
   Miles layouts
-- OCBC 365 credit-card statements with embedded text
+- OCBC 365 and OCBC Infinity Cashback credit-card statements with embedded text
 - OCBC 360 account statements with embedded text
+- OCBC Child Development Acc (CDA) statements with embedded text
 
 ### If this is your first account setup
 
@@ -1756,10 +1757,15 @@ the current draft without refreshing the page.
   either the filename or the OCBC account-details and transaction-history
   headers, then normalize them into reviewable rows without creating a
   statement checkpoint.
-- OCBC 365 card PDFs use the printed statement date, subtotal, and total amount
-  due.
+- OCBC 365 and OCBC Infinity Cashback card PDFs use the printed statement date,
+  subtotal, and total amount due. Credits such as card payments and cash rebates
+  are imported as income/transfer rows so the statement balance reconciles.
 - OCBC 360 account PDFs use the monthly period, running balances, and balance
   carried forward.
+- OCBC Child Development Acc (CDA) PDFs use the printed statement period,
+  opening balance, and balance carried forward. If the statement has no activity,
+  the import creates a statement checkpoint with zero rows so the account can
+  still be certified.
 
 For supported PDFs, the browser extracts statement text locally and turns it
 into reviewable rows. If the PDF creates statement checkpoints, those fields are

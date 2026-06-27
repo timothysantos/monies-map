@@ -77,6 +77,95 @@ End of Transaction Details
   });
 });
 
+test("parseStatementText supports OCBC Infinity Cashback credit card statements", () => {
+  const parsed = parseStatementText(`
+__PDF_SPACED_LAYOUT_TEXT__
+STATEMENT DATE PAYMENT DUE DATE TOTAL CREDIT LIMIT TOTAL AVAILABLE CREDIT LIMIT TOTAL MINIMUM DUE
+27 - 05 - 2026 19 - 06 - 2026 S $ 32 , 400 S $ 30 , 272 . 59 S $ 64 . 00
+TRANSACTION DATE DESCRIPTION AMOUNT (SGD)
+OCBC INFINITY CASHBACK
+TIMOTHY SANTOS 5413-8301-0060-2572
+LAST MONTH ' S BALANCE 1 , 349 . 33
+04 / 05 PAYMENT - MONEY SEND ( 1 , 349 . 33 )
+09 / 05 - 5038 PERCOLATE PTE LTD N / A SGP 2 , 149 . 00
+30 / 04 CASH REBATE ( 21 . 59 )
+SUBTOTAL 2 , 127 . 41
+TOTAL 2,127.41
+TOTAL AMOUNT DUE 2 , 127 . 41
+`, "OCBC INFINITY CASHBACK-2572-May-26.pdf");
+
+  assert.equal(parsed.parserKey, "ocbc_infinity_cashback_pdf");
+  assert.equal(parsed.sourceLabel, "OCBC INFINITY CASHBACK-2572-May-26");
+  assert.deepEqual(parsed.checkpoints[0], {
+    accountName: "OCBC Infinity Cashback",
+    checkpointMonth: "2026-05",
+    statementStartDate: "2026-04-30",
+    statementEndDate: "2026-05-27",
+    statementBalanceMinor: 212741,
+    note: "Imported from OCBC credit card statement"
+  });
+  assert.deepEqual(parsed.rows.map((row) => ({
+    date: row.date,
+    description: row.description,
+    expense: row.expense,
+    income: row.income,
+    account: row.account,
+    type: row.type
+  })), [
+    {
+      date: "2026-04-30",
+      description: "CASH REBATE",
+      expense: "",
+      income: "21.59",
+      account: "OCBC Infinity Cashback",
+      type: "income"
+    },
+    {
+      date: "2026-05-04",
+      description: "PAYMENT - MONEY SEND",
+      expense: "",
+      income: "1349.33",
+      account: "OCBC Infinity Cashback",
+      type: "transfer"
+    },
+    {
+      date: "2026-05-09",
+      description: "PERCOLATE PTE LTD N / A SGP",
+      expense: "2149.00",
+      income: "",
+      account: "OCBC Infinity Cashback",
+      type: "expense"
+    }
+  ]);
+});
+
+test("parseStatementText supports OCBC Child Development Acc statements with no activity", () => {
+  const parsed = parseStatementText(`
+__PDF_SPACED_LAYOUT_TEXT__
+RIVER LI SANTOS STATEMENT OF ACCOUNT
+OCBC CENTRE BRANCH
+CHILD DEVELOPMENT ACC (CDA) 29 MAY 2026 TO 31 MAY 2026
+Account No. 705656593001
+Transaction Value
+Date Date Description Cheque Withdrawal Deposit Balance
+BALANCE B/F 0.00
+BALANCE C/F 0.00
+Total Withdrawals/Deposits 0.00 0.00
+`, "CHILD DEVELOPMENT ACC (CDA)-3001-May-26.pdf");
+
+  assert.equal(parsed.parserKey, "ocbc_cda_pdf");
+  assert.equal(parsed.sourceLabel, "CHILD DEVELOPMENT ACC (CDA)-3001-May-26");
+  assert.deepEqual(parsed.rows, []);
+  assert.deepEqual(parsed.checkpoints[0], {
+    accountName: "Child Development Acc (CDA)",
+    checkpointMonth: "2026-05",
+    statementStartDate: "2026-05-29",
+    statementEndDate: "2026-05-31",
+    statementBalanceMinor: 0,
+    note: "Imported from OCBC deposit statement"
+  });
+});
+
 test("parseCurrentTransactionSpreadsheet rejects empty or unreadable XLS buffers", () => {
   const emptyBuffer = new ArrayBuffer(0);
 
