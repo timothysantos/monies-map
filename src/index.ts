@@ -1295,6 +1295,7 @@ export default {
           statementStartDate?: string;
           statementEndDate?: string;
           statementBalanceMinor: number;
+          previousBalanceMinor?: number;
           note?: string;
         }[];
       }>();
@@ -1334,6 +1335,7 @@ export default {
           statementStartDate?: string;
           statementEndDate?: string;
           statementBalanceMinor: number;
+          previousBalanceMinor?: number;
           note?: string;
         }[];
         statementControlRows?: {

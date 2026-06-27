@@ -102,6 +102,7 @@ TOTAL AMOUNT DUE 2 , 127 . 41
     statementStartDate: "2026-04-30",
     statementEndDate: "2026-05-27",
     statementBalanceMinor: 212741,
+    previousBalanceMinor: 134933,
     note: "Imported from OCBC credit card statement"
   });
   assert.deepEqual(parsed.rows.map((row) => ({
@@ -132,6 +133,50 @@ TOTAL AMOUNT DUE 2 , 127 . 41
       date: "2026-05-09",
       description: "PERCOLATE PTE LTD N / A SGP",
       expense: "2149.00",
+      income: "",
+      account: "OCBC Infinity Cashback",
+      type: "expense"
+    }
+  ]);
+});
+
+test("parseStatementText uses OCBC Infinity printed last-month balance for first statement opening balance", () => {
+  const parsed = parseStatementText(`
+__PDF_SPACED_LAYOUT_TEXT__
+STATEMENT DATE PAYMENT DUE DATE TOTAL CREDIT LIMIT TOTAL AVAILABLE CREDIT LIMIT TOTAL MINIMUM DUE
+27 - 04 - 2026 19 - 05 - 2026 S $ 32 , 400 S $ 31 , 050 . 67 S $ 40 . 00
+TRANSACTION DATE DESCRIPTION AMOUNT (SGD)
+OCBC INFINITY CASHBACK
+TIMOTHY SANTOS 5413-8301-0060-2572
+LAST MONTH ' S BALANCE 0 . 00
+23 / 04 ROBOROCK SINGAPORE SINGAPORE SGP 1 , 349 . 33
+SUBTOTAL 1 , 349 . 33
+TOTAL 1,349.33
+TOTAL AMOUNT DUE 1 , 349 . 33
+`, "OCBC INFINITY CASHBACK-2572-Apr-26.pdf");
+
+  assert.equal(parsed.parserKey, "ocbc_infinity_cashback_pdf");
+  assert.deepEqual(parsed.checkpoints[0], {
+    accountName: "OCBC Infinity Cashback",
+    checkpointMonth: "2026-04",
+    statementStartDate: "2026-04-23",
+    statementEndDate: "2026-04-27",
+    statementBalanceMinor: 134933,
+    previousBalanceMinor: 0,
+    note: "Imported from OCBC credit card statement"
+  });
+  assert.deepEqual(parsed.rows.map((row) => ({
+    date: row.date,
+    description: row.description,
+    expense: row.expense,
+    income: row.income,
+    account: row.account,
+    type: row.type
+  })), [
+    {
+      date: "2026-04-23",
+      description: "ROBOROCK SINGAPORE SINGAPORE SGP",
+      expense: "1349.33",
       income: "",
       account: "OCBC Infinity Cashback",
       type: "expense"

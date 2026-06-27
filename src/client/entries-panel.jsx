@@ -503,8 +503,8 @@ export function EntriesPanel({
     cancelEntryEdit();
   }
 
-  async function finishEntryEditAndClearLink() {
-    const saved = await finishEntryEdit();
+  async function finishEntryEditAndClearLink(patch) {
+    const saved = await finishEntryEdit(patch);
     if (saved) {
       clearEditingEntrySearchParam();
     }

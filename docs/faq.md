@@ -790,11 +790,13 @@ They are provisional working data until a statement confirms them.
 A first PDF statement can also be rolled back when the ledger rows were created
 by that same PDF import and no later statement exists for the same account. This
 includes the case where the user creates a new account from the import page and
-the form pre-fills an opening balance from the statement. The app calculates the
-opening balance from the statement ending balance minus the statement's net
-activity, so the newly created account can reconcile immediately. If that
-account mapping was wrong, rollbacking the PDF batch and re-importing to the
-right account is the clean correction before newer statements are added.
+the form pre-fills an opening balance from the statement. When a supported PDF
+prints a previous or last-month balance, the app uses that value directly.
+Otherwise, it calculates the opening balance from the statement ending balance
+minus the statement's net activity, so the newly created account can reconcile
+immediately. If that account mapping was wrong, rollbacking the PDF batch and
+re-importing to the right account is the clean correction before newer
+statements are added.
 
 A checkpoint-only PDF can be rolled back too, as long as it is still the newest
 statement certificate for that account. That removes the statement checkpoint
@@ -1758,8 +1760,10 @@ the current draft without refreshing the page.
   headers, then normalize them into reviewable rows without creating a
   statement checkpoint.
 - OCBC 365 and OCBC Infinity Cashback card PDFs use the printed statement date,
-  subtotal, and total amount due. Credits such as card payments and cash rebates
-  are imported as income/transfer rows so the statement balance reconciles.
+  last-month balance, subtotal, and total amount due. Credits such as card
+  payments and cash rebates are imported as income/transfer rows so the
+  statement balance reconciles. If you create the card account from the import
+  page, the opening balance is pre-filled from the printed last-month balance.
 - OCBC 360 account PDFs use the monthly period, running balances, and balance
   carried forward.
 - OCBC Child Development Acc (CDA) PDFs use the printed statement period,

@@ -114,6 +114,9 @@ export function rollbackImportBatch(importId) {
 function normalizeStatementCheckpoints(statementCheckpoints) {
   return statementCheckpoints.map((checkpoint) => ({
     ...checkpoint,
-    statementBalanceMinor: Number(checkpoint.statementBalanceMinor ?? 0)
+    statementBalanceMinor: Number(checkpoint.statementBalanceMinor ?? 0),
+    previousBalanceMinor: checkpoint.previousBalanceMinor == null
+      ? undefined
+      : Number(checkpoint.previousBalanceMinor)
   }));
 }

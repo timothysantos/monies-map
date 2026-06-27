@@ -58,6 +58,7 @@ export function EntryEditorFields({
     ?? formatService.formatEditableMinorInput(resolvedAmountMinor);
   const [amountDraft, setAmountDraft] = useState(resolvedAmountInput);
   const [categoryQuickSaveOpen, setCategoryQuickSaveOpen] = useState(false);
+  const [quickSaveCategoryName, setQuickSaveCategoryName] = useState("");
 
   useEffect(() => {
     setAmountDraft(resolvedAmountInput);
@@ -80,6 +81,7 @@ export function EntryEditorFields({
   function handleCategoryChange(nextCategoryName) {
     onChange({ categoryName: nextCategoryName });
     if (onCategoryQuickSave && nextCategoryName !== entry.categoryName) {
+      setQuickSaveCategoryName(nextCategoryName);
       setCategoryQuickSaveOpen(true);
     }
   }
@@ -143,15 +145,21 @@ export function EntryEditorFields({
                         className="dialog-primary"
                         disabled={isCategoryQuickSaving}
                         onClick={async () => {
-                          const saved = await onCategoryQuickSave();
+                          const saved = await onCategoryQuickSave({
+                            categoryName: quickSaveCategoryName || entry.categoryName
+                          });
                           if (saved) {
+                            setQuickSaveCategoryName("");
                             setCategoryQuickSaveOpen(false);
                           }
                         }}
                       >
                         {isCategoryQuickSaving ? messages.common.saving : messages.entries.saveCategoryNow}
                       </button>
-                      <button type="button" className="subtle-action" disabled={isCategoryQuickSaving} onClick={() => setCategoryQuickSaveOpen(false)}>
+                      <button type="button" className="subtle-action" disabled={isCategoryQuickSaving} onClick={() => {
+                        setQuickSaveCategoryName("");
+                        setCategoryQuickSaveOpen(false);
+                      }}>
                         {messages.entries.cancelEdit}
                       </button>
                     </div>
