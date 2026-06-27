@@ -68,7 +68,13 @@ Imports owns:
   matching normalizes foreign-currency description suffixes such as `USD 5.58`,
   so a ledger row like `OPENAI OPENAI.COM US` can certify against
   `OPENAI OPENAI.COM USD 5.58` when the account, amount, and
-  date evidence align
+  date evidence align. When a real ledger row falls inside the transaction-date
+  period but the bank PDF omits it because it posted after the statement cutoff,
+  diagnostics expose two non-delete corrections: set the exact posted date when
+  the bank app shows it, or defer the row to the next statement by setting a
+  provisional posted date to the day after the current statement end. Both
+  actions keep the event transaction date intact for spending history while
+  moving statement reconciliation to the cleared/post date
 - non-destructive statement preview auto-refresh; transient refresh failures
   must keep the current reviewed preview visible
 

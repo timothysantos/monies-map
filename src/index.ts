@@ -60,6 +60,7 @@ import {
   updatePersonRecord,
   updateMonthlySnapshotNote,
   updateEntryClassificationRecord,
+  updateEntryPostDateRecord,
   updateEntryRecord
 } from "./domain/app-repository";
 import {
@@ -551,6 +552,26 @@ export default {
         });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to delete entry" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/entries/update-post-date" && request.method === "POST") {
+      const body = await request.json<{ entryId?: string; postDate?: string }>();
+
+      if (!body.entryId || !body.postDate) {
+        return json({ ok: false, error: "Missing entry posted date fields" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await updateEntryPostDateRecord(env.DB, {
+            entryId: body.entryId,
+            postDate: body.postDate
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update posted date" }, 400);
       }
     }
 

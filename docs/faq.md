@@ -1623,6 +1623,26 @@ For statement-certified rows in a saved period, the app blocks bank-fact edits
 and asks for a replacement statement or adjustment instead. User annotations
 remain editable because they do not change the bank evidence.
 
+### What if the bank app shows a real transaction that is missing from the PDF?
+
+Some card statements close by posted date. A transaction can happen before the
+statement cutoff but post after it, so the bank app shows the row while the PDF
+statement does not include it yet. Do not delete a legitimate row just because
+the current PDF omits it.
+
+In the import diagnostics, use:
+
+1. **Set posted date** when the bank app shows the exact post date. This keeps
+   the transaction date for spending history and uses the posted date for
+   statement reconciliation.
+2. **Defer to next statement** when the row is legitimate but you do not know the
+   exact post date. The app sets a provisional posted date to the first day after
+   the current statement end, moving the row out of this statement without
+   deleting it. Replace it later with the exact posted date if you learn it.
+
+Delete is only for rows that are absent, duplicated, or on the wrong
+card/account after checking the PDF and bank app.
+
 ### Two-month example
 
 Month 1:
