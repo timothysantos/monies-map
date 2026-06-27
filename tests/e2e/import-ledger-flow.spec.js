@@ -696,6 +696,113 @@ test.describe("import flow", () => {
     }
   });
 
+  test("matched statement breakdown uses close-ready wording", async ({ page }) => {
+    const mockedPreviewRoute = async (route) => {
+      const request = route.request();
+      const body = JSON.parse(request.postData() ?? "{}");
+      await route.fulfill({
+        contentType: "application/json",
+        status: 200,
+        body: JSON.stringify({
+          ok: true,
+          preview: {
+            sourceLabel: body.sourceLabel ?? "Matched statement preview",
+            parserKey: "generic_csv",
+            importedRows: 1,
+            previewRows: [{
+              rowId: "preview-statement-matched-1",
+              rowIndex: 1,
+              date: "2026-04-16",
+              description: "PDF STATEMENT ROW",
+              amountMinor: 1000,
+              entryType: "expense",
+              accountId: "acct-statement-matched",
+              accountName: "Statement Matched Card",
+              statementAccountName: "Statement Matched Card",
+              categoryName: "Other",
+              ownershipType: "direct",
+              ownerName: "Tim",
+              splitBasisPoints: 10000,
+              rawRow: {
+                date: "2026-04-16",
+                description: "PDF STATEMENT ROW",
+                expense: "10.00",
+                account: "Statement Matched Card",
+                category: "Other",
+                note: "txn date: 2026-04-14"
+              },
+              commitStatus: "included",
+              commitStatusExplicit: false
+            }],
+            unknownAccounts: [],
+            unknownCategories: [],
+            reconciliationCandidateCount: 0,
+            overlappingImportCount: 0,
+            overlapImports: [],
+            startDate: "2026-04-16",
+            endDate: "2026-04-16",
+            accountNames: ["Statement Matched Card"],
+            reconciliationCandidates: [],
+            exceptionSummary: [],
+            statementReconciliations: [{
+              accountId: "acct-statement-matched",
+              accountName: "Statement Matched Card",
+              accountKind: "credit_card",
+              checkpointMonth: "2026-05",
+              statementStartDate: "2026-04-13",
+              statementEndDate: "2026-05-12",
+              statementBalanceMinor: -1000,
+              ledgerBalanceMinor: -1000,
+              deltaMinor: 0,
+              status: "matched",
+              reconciliationBreakdown: {
+                priorLedgerBalanceMinor: 0,
+                statementPeriodExistingRowsMinor: 0,
+                includedStatementRowsMinor: -1000,
+                matchedStatementRowsMinor: 0,
+                skippedStatementRowsMinor: 0,
+                supersededLedgerRowsMinor: 0,
+                projectedLedgerBalanceMinor: -1000,
+                statementBalanceMinor: -1000,
+                deltaMinor: 0,
+                periodExistingLedgerRowCount: 0,
+                skippedStatementRowCount: 0,
+                matchedStatementRowCount: 0,
+                suspectedCauses: [
+                  "The projected ledger balance now equals the statement balance."
+                ],
+                periodExistingLedgerRows: [],
+                skippedStatementRows: [],
+                matchedStatementRows: []
+              }
+            }]
+          }
+        })
+      });
+    };
+
+    await page.route("**/api/imports/preview", mockedPreviewRoute);
+    try {
+      await page.getByLabel("Source label").fill("Matched statement preview");
+      await page.getByLabel("CSV content").fill(
+        [
+          "date,description,expense,account,category,note",
+          "2026-04-16,PDF STATEMENT ROW,10.00,Statement Matched Card,Other,txn date: 2026-04-14"
+        ].join("\n")
+      );
+
+      await page.getByRole("button", { name: "Preview import" }).click();
+
+      const breakdown = page.locator(".statement-reconciliation-breakdown");
+      await expect(breakdown).toContainText("Why this closes");
+      await expect(breakdown).toContainText("The statement is ready to close for this account.");
+      await expect(breakdown).not.toContainText("Why this does not close");
+      await expect(breakdown).not.toContainText("That leaves $0.00 to explain.");
+    } finally {
+      await page.unroute("**/api/imports/preview", mockedPreviewRoute);
+    }
+  });
+
   test("expense and income headers auto-map without manual mapping", async ({ page }) => {
     const payload = await postJson(page, "/api/imports/preview", {
       sourceLabel: "Auto map headers",
