@@ -30,11 +30,18 @@ export function parseOcbcCreditCardStatement(lines: string[], fileName?: string)
     throw new Error("Could not find the OCBC credit card statement date.");
   }
 
-  const section = parseOcbcCreditCardSection(lines, statementDate);
+  const accountName = findOcbcCreditCardAccountName(lines);
+  if (!accountName) {
+    throw new Error("Could not identify the OCBC credit card account.");
+  }
+
+  const section = parseOcbcCreditCardSection(lines, statementDate, accountName);
   const checkpointMonth = statementDate.slice(0, 7);
   return {
-    parserKey: "ocbc_365_credit_card_pdf",
-    sourceLabel: labelFromFile(fileName, `OCBC 365 statement ${checkpointMonth}`),
+    parserKey: accountName === "OCBC 365 Credit Card"
+      ? "ocbc_365_credit_card_pdf"
+      : "ocbc_infinity_cashback_pdf",
+    sourceLabel: labelFromFile(fileName, `${accountName} statement ${checkpointMonth}`),
     rows: section.rows.sort(compareImportRowsByDate),
     checkpoints: [{
       accountName: section.accountName,
@@ -43,6 +50,65 @@ export function parseOcbcCreditCardStatement(lines: string[], fileName?: string)
       statementEndDate: statementDate,
       statementBalanceMinor: section.totalBalanceMinor,
       note: "Imported from OCBC credit card statement"
+    }],
+    warnings: []
+  };
+}
+
+export function parseOcbcDepositStatement(lines: string[], fileName?: string): ParsedStatementImport {
+  const accountHeader = findOcbcDepositAccountHeader(lines);
+  if (!accountHeader) {
+    throw new Error("Could not find the OCBC deposit account statement period.");
+  }
+
+  const previousIndex = lines.findIndex((line) => /^BALANCE B\/F\b/i.test(line));
+  if (previousIndex < 0) {
+    throw new Error("Could not find the OCBC deposit opening balance.");
+  }
+
+  const previousBalanceMinor = parseOcbcLastMoney(lines[previousIndex]);
+  if (previousBalanceMinor == null) {
+    throw new Error("Could not read the OCBC deposit opening balance.");
+  }
+
+  const closingIndex = lines.findIndex((line, index) => index > previousIndex && /^BALANCE C\/F\b/i.test(line));
+  if (closingIndex < 0) {
+    throw new Error("Could not find the OCBC deposit closing balance.");
+  }
+
+  const finalBalanceMinor = parseOcbcLastMoney(lines[closingIndex]);
+  if (finalBalanceMinor == null) {
+    throw new Error("Could not read the OCBC deposit closing balance.");
+  }
+
+  const rows = parseOcbcDepositRows(
+    lines.slice(previousIndex + 1, closingIndex),
+    accountHeader.accountName,
+    previousBalanceMinor,
+    accountHeader.startDate,
+    accountHeader.endDate
+  );
+  const rowMovementMinor = rows.reduce((total, row) => {
+    const incomeMinor = row.income ? parseOcbcMoneyToMinor(row.income) : 0;
+    const expenseMinor = row.expense ? parseOcbcMoneyToMinor(row.expense) : 0;
+    return total + incomeMinor - expenseMinor;
+  }, 0);
+  const computedBalanceMinor = previousBalanceMinor + rowMovementMinor;
+  if (computedBalanceMinor !== finalBalanceMinor) {
+    throw new Error(`OCBC deposit statement did not reconcile. Expected ${minorToDecimal(finalBalanceMinor)}, got ${minorToDecimal(computedBalanceMinor)}.`);
+  }
+
+  return {
+    parserKey: "ocbc_cda_pdf",
+    sourceLabel: labelFromFile(fileName, `${accountHeader.accountName} statement ${accountHeader.endDate.slice(0, 7)}`),
+    rows: rows.sort(compareImportRowsByDate),
+    checkpoints: [{
+      accountName: accountHeader.accountName,
+      checkpointMonth: accountHeader.endDate.slice(0, 7),
+      statementStartDate: accountHeader.startDate,
+      statementEndDate: accountHeader.endDate,
+      statementBalanceMinor: finalBalanceMinor,
+      note: "Imported from OCBC deposit statement"
     }],
     warnings: []
   };
@@ -136,10 +202,9 @@ export function parseOcbc360Statement(lines: string[], fileName?: string): Parse
   };
 }
 
-function parseOcbcCreditCardSection(lines: string[], statementDate: string): OcbcStatementSection {
+function parseOcbcCreditCardSection(lines: string[], statementDate: string, accountName: string): OcbcStatementSection {
   const statementYear = Number(statementDate.slice(0, 4));
   const statementMonth = Number(statementDate.slice(5, 7));
-  const accountName = "OCBC 365 Credit Card";
   const previousIndex = lines.findIndex((line) => /^LAST MONTH '? S BALANCE\b/i.test(line));
   if (previousIndex < 0) {
     throw new Error("Could not find the OCBC card previous balance.");
@@ -189,6 +254,103 @@ function parseOcbcCreditCardSection(lines: string[], statementDate: string): Ocb
   }
 
   return { accountName, previousBalanceMinor, totalBalanceMinor, minDate, maxDate, rows };
+}
+
+function findOcbcCreditCardAccountName(lines: string[]) {
+  if (lines.some((line) => /^OCBC 365 CREDIT CARD$/i.test(line))) {
+    return "OCBC 365 Credit Card";
+  }
+  if (lines.some((line) => /^OCBC INFINITY CASHBACK$/i.test(line))) {
+    return "OCBC Infinity Cashback";
+  }
+  return undefined;
+}
+
+function findOcbcDepositAccountHeader(lines: string[]) {
+  for (const line of lines) {
+    const match = line.match(/^(CHILD DEVELOPMENT ACC \(CDA\))\s+(\d{1,2})\s+([A-Z]{3})\s+(\d{4})\s+TO\s+(\d{1,2})\s+([A-Z]{3})\s+(\d{4})$/i);
+    if (!match) {
+      continue;
+    }
+    return {
+      accountName: "Child Development Acc (CDA)",
+      startDate: formatDate(Number(match[4]), MONTHS[match[3].toUpperCase()], Number(match[2])),
+      endDate: formatDate(Number(match[7]), MONTHS[match[6].toUpperCase()], Number(match[5]))
+    };
+  }
+  return undefined;
+}
+
+function parseOcbcDepositRows(
+  lines: string[],
+  accountName: string,
+  openingBalanceMinor: number,
+  statementStartDate: string,
+  statementEndDate: string
+) {
+  const rows: Record<string, string>[] = [];
+  let runningBalanceMinor = openingBalanceMinor;
+  for (const line of lines) {
+    const parsedRow = parseOcbcDepositTransactionLine(line, accountName, statementStartDate, statementEndDate);
+    if (!parsedRow) {
+      continue;
+    }
+    if (parsedRow.balanceMinor != null) {
+      const expectedMovement = parsedRow.balanceMinor - runningBalanceMinor;
+      const signedMovement = parsedRow.incomeMinor - parsedRow.expenseMinor;
+      if (expectedMovement !== signedMovement) {
+        throw new Error(`OCBC deposit row did not reconcile around ${parsedRow.row.date}. Expected row movement ${minorToDecimal(expectedMovement)}, got ${minorToDecimal(signedMovement)}.`);
+      }
+      runningBalanceMinor = parsedRow.balanceMinor;
+    }
+    rows.push(parsedRow.row);
+  }
+  return rows;
+}
+
+function parseOcbcDepositTransactionLine(
+  line: string,
+  accountName: string,
+  statementStartDate: string,
+  statementEndDate: string
+) {
+  const datePattern = "(\\d{1,2}\\s+[A-Z]{3})";
+  const moneyPattern = "(\\d{1,3}(?:\\s*,\\s*\\d{3})*\\s*\\.\\s*\\d{2})";
+  const match = line.match(new RegExp(`^${datePattern}\\s+${datePattern}\\s+(.+?)\\s+${moneyPattern}(?:\\s+${moneyPattern})?(?:\\s+${moneyPattern})?$`, "i"));
+  if (!match) {
+    return null;
+  }
+
+  const transactionDate = dateFromOcbc360StatementParts(match[1].split(/\s+/)[0], match[1].split(/\s+/)[1], statementStartDate, statementEndDate);
+  const valueDate = dateFromOcbc360StatementParts(match[2].split(/\s+/)[0], match[2].split(/\s+/)[1], statementStartDate, statementEndDate);
+  const moneyValues = Array.from(line.matchAll(/\d{1,3}(?:\s*,\s*\d{3})*\s*\.\s*\d{2}/g)).map((moneyMatch) => moneyMatch[0]);
+  if (moneyValues.length < 2) {
+    return null;
+  }
+
+  const balanceMinor = parseOcbcMoneyToMinor(moneyValues.at(-1) ?? "0.00");
+  const depositMinor = moneyValues.length >= 3 ? parseOcbcMoneyToMinor(moneyValues.at(-2) ?? "0.00") : 0;
+  const withdrawalMinor = moneyValues.length >= 3 ? parseOcbcMoneyToMinor(moneyValues.at(-3) ?? "0.00") : parseOcbcMoneyToMinor(moneyValues[0]);
+  const isIncome = depositMinor > 0;
+  const amountMinor = isIncome ? depositMinor : withdrawalMinor;
+  const description = cleanOcbcDescription(match[3]);
+  const type = isTransferDescription(description) ? "transfer" : isIncome ? "income" : "expense";
+
+  return {
+    incomeMinor: isIncome ? amountMinor : 0,
+    expenseMinor: isIncome ? 0 : amountMinor,
+    balanceMinor,
+    row: {
+      date: transactionDate,
+      description,
+      expense: isIncome ? "" : minorToDecimal(amountMinor),
+      income: isIncome ? minorToDecimal(amountMinor) : "",
+      account: accountName,
+      category: type === "transfer" ? "Transfer" : inferCategory(description, isIncome),
+      note: valueDate === transactionDate ? "" : `value date: ${valueDate}`,
+      type
+    }
+  };
 }
 
 function parseOcbcCardTransactionLine(line: string, accountName: string, statementYear: number, statementMonth: number) {

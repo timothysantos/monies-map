@@ -8,7 +8,7 @@ import {
   canRecognizeOcbcActivityCsv,
   parseOcbcActivityCsv
 } from "./statement-import/ocbc-activity-csv";
-import { parseOcbc360Statement, parseOcbcCreditCardStatement } from "./statement-import/ocbc";
+import { parseOcbc360Statement, parseOcbcCreditCardStatement, parseOcbcDepositStatement } from "./statement-import/ocbc";
 import {
   getPdfLayoutLines,
   getPdfSpacedLayoutLines,
@@ -39,8 +39,12 @@ export function parseStatementText(text: string, fileName?: string): ParsedState
     return parseCitibankCreditCardStatement(layoutLines, fileName);
   }
 
-  if (spacedLayoutLines.some((line) => /^OCBC 365 CREDIT CARD$/i.test(line))) {
+  if (spacedLayoutLines.some((line) => /^OCBC (?:365 CREDIT CARD|INFINITY CASHBACK)$/i.test(line))) {
     return parseOcbcCreditCardStatement(spacedLayoutLines, fileName);
+  }
+
+  if (spacedLayoutLines.some((line) => /^CHILD DEVELOPMENT ACC \(CDA\)(?:\s|$)/i.test(line))) {
+    return parseOcbcDepositStatement(spacedLayoutLines, fileName);
   }
 
   if (spacedLayoutLines.some((line) => /^360 ACCOUNT\b/i.test(line))) {
@@ -55,5 +59,5 @@ export function parseStatementText(text: string, fileName?: string): ParsedState
     return parseUobSavingsStatement(rawText, fileName);
   }
 
-  throw new Error("Unsupported statement PDF. This importer currently recognizes UOB, Citi Rewards, Citi Miles, OCBC 365, and OCBC 360 statement text.");
+  throw new Error("Unsupported statement PDF. This importer currently recognizes UOB, Citi Rewards, Citi Miles, OCBC 365, OCBC Infinity Cashback, OCBC 360, and OCBC CDA statement text.");
 }
