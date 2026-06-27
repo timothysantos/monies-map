@@ -1421,6 +1421,10 @@ function inferOpeningBalanceInputMinor({ checkpoint, kind, previewRows }) {
     return 0;
   }
 
+  if (checkpoint.previousBalanceMinor != null) {
+    return Number(checkpoint.previousBalanceMinor);
+  }
+
   const internalStatementBalanceMinor = kind === "credit_card"
     ? -checkpoint.statementBalanceMinor
     : checkpoint.statementBalanceMinor;
@@ -1479,7 +1483,8 @@ function buildStatementPreviewSnapshot(previewRows, statementCheckpoints) {
       checkpoint.checkpointMonth ?? "",
       checkpoint.statementStartDate ?? "",
       checkpoint.statementEndDate ?? "",
-      Number(checkpoint.statementBalanceMinor ?? 0)
+      Number(checkpoint.statementBalanceMinor ?? 0),
+      Number(checkpoint.previousBalanceMinor ?? 0)
     ])),
     rows: previewRows.map((row) => ([
       row.rowId,

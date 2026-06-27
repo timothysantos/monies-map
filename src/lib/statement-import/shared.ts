@@ -21,6 +21,7 @@ export interface StatementCheckpointDraft {
   statementStartDate?: string;
   statementEndDate?: string;
   statementBalanceMinor: number;
+  previousBalanceMinor?: number;
   note?: string;
 }
 

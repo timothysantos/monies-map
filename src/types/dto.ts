@@ -473,6 +473,7 @@ export interface StatementCheckpointDraftDto {
   statementStartDate?: string;
   statementEndDate?: string;
   statementBalanceMinor: number;
+  previousBalanceMinor?: number;
   note?: string;
 }
 

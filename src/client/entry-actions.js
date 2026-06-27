@@ -171,17 +171,20 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     });
   }
 
-  async function persistExistingEntry(entryId, { closeEditor } = {}) {
+  async function persistExistingEntry(entryId, { closeEditor, patch } = {}) {
     if (!entryId) {
       return { ok: false };
     }
 
-    const currentEntry = entries.find((entry) => entry.id === entryId);
-    if (!currentEntry) {
+    const existingEntry = entries.find((entry) => entry.id === entryId);
+    if (!existingEntry) {
       setEditingEntryId(null);
       setEntrySnapshot(null);
       return { ok: false };
     }
+    const currentEntry = patch
+      ? entryService.normalize({ ...existingEntry, ...patch }, people, existingEntry)
+      : existingEntry;
 
     const primarySplit = currentEntry.ownershipType === "shared" ? currentEntry.splits[0] : undefined;
 
@@ -348,8 +351,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     setEntrySnapshot({ ...entry, splits: entry.splits.map((split) => ({ ...split })) });
   }
 
-  async function finishEntryEdit() {
-    const result = await persistExistingEntry(editingEntryId, { closeEditor: true });
+  async function finishEntryEdit(patch) {
+    const result = await persistExistingEntry(editingEntryId, { closeEditor: true, patch });
     return result.ok;
   }
 

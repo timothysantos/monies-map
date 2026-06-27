@@ -49,6 +49,7 @@ export function parseOcbcCreditCardStatement(lines: string[], fileName?: string)
       statementStartDate: section.minDate,
       statementEndDate: statementDate,
       statementBalanceMinor: section.totalBalanceMinor,
+      previousBalanceMinor: section.previousBalanceMinor,
       note: "Imported from OCBC credit card statement"
     }],
     warnings: []
