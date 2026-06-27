@@ -1398,7 +1398,7 @@ function buildOptimisticRecentImportBatch({
 }
 
 function inferStatementAccountKind(accountName, parserKey) {
-  return /credit_card|card/i.test(parserKey) || /card/i.test(accountName)
+  return /credit_card|cashback|rewards|miles|card/i.test(parserKey) || /card|cashback|rewards|miles/i.test(accountName)
     ? "credit_card"
     : "bank";
 }
