@@ -1081,6 +1081,42 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
   }
 
+  async function handleSetDiagnosticLedgerPostDate(row, postDate, options = {}) {
+    if (!row?.id) {
+      throw new Error("Missing ledger row id.");
+    }
+    if (!postDate) {
+      throw new Error("Missing posted date.");
+    }
+
+    const formattedPostDate = options.label ?? postDate;
+    const activeMessage = options.mode === "defer"
+      ? messages.imports.deferDiagnosticEntryProgress({ description: row.description, deferDate: formattedPostDate })
+      : messages.imports.setDiagnosticPostDateProgress({ description: row.description, postDate: formattedPostDate });
+    const successMessage = options.mode === "defer"
+      ? messages.imports.deferDiagnosticEntrySuccess({ deferDate: formattedPostDate })
+      : messages.imports.setDiagnosticPostDateSuccess({ postDate: formattedPostDate });
+
+    setUploadStatus({ tone: "active", message: activeMessage });
+    setIsSubmitting(true);
+    try {
+      await updateDiagnosticLedgerPostDate(row, postDate);
+      await refreshPreviewFromRows({
+        rows: previewRows.map(importService.buildRawRowFromPreviewRow),
+        activeMessage: messages.imports.statementReconciliationRefreshing,
+        successMessage: messages.imports.statementReconciliationRefreshed,
+        silent: true
+      });
+      setUploadStatus({ tone: "success", message: successMessage });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update posted date.";
+      setUploadStatus({ tone: "error", message });
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function deleteDiagnosticLedgerEntry(row) {
     const response = await fetch("/api/entries/delete", {
       method: "POST",
@@ -1092,6 +1128,20 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(data.error ?? `Failed to delete ${row.description || "ledger row"}.`);
+    }
+  }
+
+  async function updateDiagnosticLedgerPostDate(row, postDate) {
+    const response = await fetch("/api/entries/update-post-date", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ entryId: row.id, postDate })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error ?? `Failed to update posted date for ${row.description || "ledger row"}.`);
     }
   }
 
@@ -1230,6 +1280,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             onRefreshStatementReconciliation={handleRefreshStatementReconciliation}
             onDeleteDiagnosticLedgerRow={handleDeleteDiagnosticLedgerRow}
             onDeleteDiagnosticLedgerRows={handleDeleteDiagnosticLedgerRows}
+            onSetDiagnosticLedgerPostDate={handleSetDiagnosticLedgerPostDate}
             onUpdateStatementCheckpoint={updateStatementCheckpoint}
           />
 

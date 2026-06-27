@@ -5972,6 +5972,31 @@ button.split-activity-card:hover {
   justify-self: end;
 }
 
+.statement-reconciliation-post-date-button {
+  margin-left: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+  white-space: nowrap;
+}
+
+.statement-reconciliation-post-date-button.icon-action {
+  width: auto;
+  height: auto;
+  min-height: 0;
+  border-radius: 0;
+}
+
+.statement-reconciliation-post-date-dialog form {
+  display: grid;
+  gap: 14px;
+}
+
 .statement-reconciliation-delete-button {
   margin-left: 0;
   padding: 0;

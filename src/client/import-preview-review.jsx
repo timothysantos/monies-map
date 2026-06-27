@@ -52,6 +52,7 @@ export function ImportPreviewReview({
   onRefreshStatementReconciliation,
   onDeleteDiagnosticLedgerRow,
   onDeleteDiagnosticLedgerRows,
+  onSetDiagnosticLedgerPostDate,
   onUpdateStatementCheckpoint
 }) {
   if (!preview) {
@@ -124,6 +125,7 @@ export function ImportPreviewReview({
           onRefreshStatementReconciliation={onRefreshStatementReconciliation}
           onDeleteDiagnosticLedgerRow={onDeleteDiagnosticLedgerRow}
           onDeleteDiagnosticLedgerRows={onDeleteDiagnosticLedgerRows}
+          onSetDiagnosticLedgerPostDate={onSetDiagnosticLedgerPostDate}
         />
       ) : null}
 
@@ -591,7 +593,8 @@ function StatementBalanceCheck({
   isSubmitting,
   onRefreshStatementReconciliation,
   onDeleteDiagnosticLedgerRow,
-  onDeleteDiagnosticLedgerRows
+  onDeleteDiagnosticLedgerRows,
+  onSetDiagnosticLedgerPostDate
 }) {
   return (
     <div className={`import-warning ${hasMismatch ? "import-warning-attention" : "import-warning-reconciled"}`}>
@@ -653,6 +656,7 @@ function StatementBalanceCheck({
                 viewId={viewId}
                 onDeleteDiagnosticLedgerRow={onDeleteDiagnosticLedgerRow}
                 onDeleteDiagnosticLedgerRows={onDeleteDiagnosticLedgerRows}
+                onSetDiagnosticLedgerPostDate={onSetDiagnosticLedgerPostDate}
               />
             ) : null}
           </div>
@@ -668,7 +672,8 @@ function StatementReconciliationBreakdown({
   accountKind,
   viewId,
   onDeleteDiagnosticLedgerRow,
-  onDeleteDiagnosticLedgerRows
+  onDeleteDiagnosticLedgerRows,
+  onSetDiagnosticLedgerPostDate
 }) {
   const showExistingRows = breakdown.periodExistingLedgerRows?.length > 0;
   const showSkippedRows = breakdown.skippedStatementRows?.length > 0;
@@ -798,8 +803,10 @@ function StatementReconciliationBreakdown({
           totalAmountMinor={breakdown.statementPeriodExistingRowsMinor}
           viewId={viewId}
           accountId={reconciliation.accountId}
+          statementEndDate={reconciliation.statementEndDate}
           onDeleteDiagnosticLedgerRow={onDeleteDiagnosticLedgerRow}
           onDeleteDiagnosticLedgerRows={onDeleteDiagnosticLedgerRows}
+          onSetDiagnosticLedgerPostDate={onSetDiagnosticLedgerPostDate}
         />
       ) : null}
       {showMatchedRows ? (
@@ -882,8 +889,10 @@ function StatementReconciliationDiagnosticRows({
   totalAmountMinor,
   viewId,
   accountId,
+  statementEndDate,
   onDeleteDiagnosticLedgerRow,
-  onDeleteDiagnosticLedgerRows
+  onDeleteDiagnosticLedgerRows,
+  onSetDiagnosticLedgerPostDate
 }) {
   const rowCount = totalRowCount ?? rows.length;
   const ledgerRows = rows.filter((row) => row.source === "ledger" && row.id);
@@ -921,6 +930,13 @@ function StatementReconciliationDiagnosticRows({
               >
                 {messages.imports.openDiagnosticEntry}
               </a>
+              {onSetDiagnosticLedgerPostDate ? (
+                <SetPostedDateButton
+                  row={row}
+                  statementEndDate={statementEndDate}
+                  onSetPostDate={onSetDiagnosticLedgerPostDate}
+                />
+              ) : null}
               {onDeleteDiagnosticLedgerRow ? (
                 <DeleteRowButton
                   label={row.description}
@@ -984,6 +1000,135 @@ function StatementReconciliationDiagnosticRows({
   );
 }
 
+function SetPostedDateButton({ row, statementEndDate, onSetPostDate }) {
+  const fallbackDate = row.postedDate ?? row.date;
+  const deferDate = getNextIsoDate(statementEndDate);
+  const statementEndLabel = statementEndDate
+    ? formatService.formatDateOnly(statementEndDate)
+    : "the statement end date";
+  const deferDateLabel = deferDate
+    ? formatService.formatDateOnly(deferDate)
+    : "the first day after this statement";
+
+  return (
+    <>
+      <PostedDateDialog
+        row={row}
+        initialDate={fallbackDate}
+        statementEndLabel={statementEndLabel}
+        onSetPostDate={onSetPostDate}
+      />
+      {deferDate ? (
+        <DeleteRowButton
+          label={row.description}
+          triggerLabel={messages.imports.deferDiagnosticEntry}
+          confirmLabel={messages.imports.deferDiagnosticEntryConfirm}
+          destructive={false}
+          buttonClassName="statement-reconciliation-post-date-button"
+          prompt={messages.imports.deferDiagnosticEntryDetail({
+            statementEndDate: statementEndLabel,
+            deferDate: deferDateLabel
+          })}
+          onConfirm={() => onSetPostDate(row, deferDate, {
+            mode: "defer",
+            label: deferDateLabel
+          })}
+        >
+          {messages.imports.deferDiagnosticEntry}
+        </DeleteRowButton>
+      ) : null}
+    </>
+  );
+}
+
+function PostedDateDialog({ row, initialDate, statementEndLabel, onSetPostDate }) {
+  const [open, setOpen] = useState(false);
+  const [postDate, setPostDate] = useState(initialDate);
+  const [isWorking, setIsWorking] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    if (!postDate) {
+      setError("Choose a posted date.");
+      return;
+    }
+    setIsWorking(true);
+    setError("");
+    try {
+      await onSetPostDate(row, postDate, {
+        mode: "exact",
+        label: formatService.formatDateOnly(postDate)
+      });
+      setOpen(false);
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "Posted date could not be saved.");
+    } finally {
+      setIsWorking(false);
+    }
+  }
+
+  return (
+    <Dialog.Root
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (isWorking) {
+          return;
+        }
+        setOpen(nextOpen);
+        if (nextOpen) {
+          setPostDate(initialDate);
+          setError("");
+        }
+      }}
+    >
+      <Dialog.Trigger asChild>
+        <button type="button" className="statement-reconciliation-post-date-button">
+          {messages.imports.setDiagnosticPostDate}
+        </button>
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="note-dialog-overlay" />
+        <Dialog.Content className="note-dialog-content statement-reconciliation-post-date-dialog" onOpenAutoFocus={(event) => event.preventDefault()}>
+          <form onSubmit={(event) => void handleSubmit(event)}>
+            <div className="dialog-header">
+              <Dialog.Title>{messages.imports.setDiagnosticPostDateTitle}</Dialog.Title>
+              <Dialog.Close asChild>
+                <button type="button" className="icon-button" aria-label="Close" disabled={isWorking}>
+                  &times;
+                </button>
+              </Dialog.Close>
+            </div>
+            <Dialog.Description className="lede compact">
+              {messages.imports.setDiagnosticPostDateDetail({ statementEndDate: statementEndLabel })}
+            </Dialog.Description>
+            <label className="field-stack">
+              <span>{messages.imports.setDiagnosticPostDateField}</span>
+              <input
+                className="table-edit-input"
+                type="date"
+                value={postDate}
+                onChange={(event) => setPostDate(event.target.value)}
+              />
+            </label>
+            {error ? <p className="form-error">{error}</p> : null}
+            <div className="dialog-actions">
+              <Dialog.Close asChild>
+                <button type="button" className="subtle-action" disabled={isWorking}>
+                  Cancel
+                </button>
+              </Dialog.Close>
+              <button type="submit" className="primary-action" disabled={isWorking}>
+                {messages.imports.setDiagnosticPostDateConfirm}
+              </button>
+            </div>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
 function getDiagnosticRowDateDetail(row) {
   if (row.source === "statement") {
     if (row.eventDate && row.eventDate !== row.date) {
@@ -1002,6 +1147,18 @@ function getDiagnosticRowDateDetail(row) {
     });
   }
   return messages.imports.statementReconciliationLedgerDateDetail;
+}
+
+function getNextIsoDate(date) {
+  if (!date) {
+    return "";
+  }
+  const parsed = new Date(`${date}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+  parsed.setUTCDate(parsed.getUTCDate() + 1);
+  return parsed.toISOString().slice(0, 10);
 }
 
 function sumDiagnosticRows(rows = []) {

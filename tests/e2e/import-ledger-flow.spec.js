@@ -690,6 +690,14 @@ test.describe("import flow", () => {
       );
       await expect(openLink).toHaveAttribute("target", "_blank");
       await expect(openLink).toHaveAttribute("rel", "noopener noreferrer");
+      await ledgerRow.getByRole("button", { name: "Set posted date" }).click();
+      await expect(page.getByRole("dialog", { name: "Set posted date" })).toContainText("The transaction date stays where it is for spending history");
+      await expect(page.getByRole("dialog", { name: "Set posted date" })).toContainText("If the posted date is after 12 May 2026");
+      await page.getByRole("button", { name: "Cancel" }).click();
+      await ledgerRow.getByRole("button", { name: "Defer" }).click();
+      await expect(page.getByText("Use this when the row is legitimate")).toBeVisible();
+      await expect(page.getByText("first day after this statement")).toBeVisible();
+      await page.getByRole("button", { name: "Cancel" }).click();
       await expect(ledgerRow.getByRole("button", { name: "Delete" })).toBeVisible();
     } finally {
       await page.unroute("**/api/imports/preview", mockedPreviewRoute);
@@ -2784,6 +2792,101 @@ test.describe("import flow", () => {
     expect(statementPreview.json.preview.statementReconciliations[0].status).toBe("matched");
     expect(statementPreview.json.preview.statementReconciliations[0].projectedLedgerBalanceMinor).toBe(0);
     expect(statementPreview.json.preview.statementReconciliations[0].deltaMinor).toBe(0);
+  });
+
+  test("posted-date corrections defer legitimate ledger rows out of the current statement", async ({ page }) => {
+    const accountName = `Playwright UOB Deferred Post Date ${Date.now()}`;
+    const createPayload = await postJson(page, "/api/accounts/create", {
+      name: accountName,
+      institution: "Synthetic Test Bank",
+      kind: "credit_card",
+      openingBalanceMinor: 0,
+      currency: "SGD",
+      ownerPersonId: "",
+      isJoint: false
+    });
+    const accountId = createPayload.accountId;
+    expect(accountId).toBeTruthy();
+
+    const subway = await postJson(page, "/api/entries/create", {
+      date: "2026-06-11",
+      description: "Subway-Great World Cit",
+      amountMinor: 1320,
+      entryType: "expense",
+      accountId,
+      accountName,
+      categoryName: "Other",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    const malaysiaBoleh = await postJson(page, "/api/entries/create", {
+      date: "2026-06-11",
+      description: "Malaysia Boleh - Great",
+      amountMinor: 530,
+      entryType: "expense",
+      accountId,
+      accountName,
+      categoryName: "Other",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+
+    const previewStatement = async () => page.evaluate(async ({ accountId, accountName }) => {
+      const response = await fetch("/api/imports/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceLabel: "June post-date spillover PDF",
+          sourceType: "pdf",
+          rows: [{
+            date: "2026-06-12",
+            description: "INTERESTS",
+            expense: "18.37",
+            accountId,
+            account: accountName,
+            category: "Other"
+          }],
+          defaultAccountName: accountName,
+          ownershipType: "direct",
+          ownerName: "Tim",
+          statementCheckpoints: [{
+            accountId,
+            accountName,
+            checkpointMonth: "2026-06",
+            statementStartDate: "2026-05-13",
+            statementEndDate: "2026-06-12",
+            statementBalanceMinor: 1837,
+            note: "June statement through interest only"
+          }]
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId, accountName });
+
+    const beforePostDateFix = await previewStatement();
+    expect(beforePostDateFix.ok, JSON.stringify(beforePostDateFix.json)).toBeTruthy();
+    const beforeReconciliation = beforePostDateFix.json.preview.statementReconciliations[0];
+    expect(beforeReconciliation.status).toBe("mismatch");
+    expect(beforeReconciliation.reconciliationBreakdown.statementPeriodExistingRowsMinor).toBe(-1850);
+    expect(beforeReconciliation.reconciliationBreakdown.periodExistingLedgerRows).toHaveLength(2);
+
+    await postJson(page, "/api/entries/update-post-date", {
+      entryId: subway.entryId,
+      postDate: "2026-06-15"
+    });
+    await postJson(page, "/api/entries/update-post-date", {
+      entryId: malaysiaBoleh.entryId,
+      postDate: "2026-06-13"
+    });
+
+    const afterPostDateFix = await previewStatement();
+    expect(afterPostDateFix.ok, JSON.stringify(afterPostDateFix.json)).toBeTruthy();
+    const afterReconciliation = afterPostDateFix.json.preview.statementReconciliations[0];
+    expect(afterReconciliation.status).toBe("matched");
+    expect(afterReconciliation.reconciliationBreakdown.statementPeriodExistingRowsMinor).toBe(0);
+    expect(afterReconciliation.reconciliationBreakdown.periodExistingLedgerRows).toHaveLength(0);
+    expect(afterReconciliation.projectedLedgerBalanceMinor).toBe(-1837);
+    expect(afterReconciliation.deltaMinor).toBe(0);
   });
 
   test("already certified statement rows retain ledger comparison details", async ({ page }) => {

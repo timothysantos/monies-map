@@ -2195,6 +2195,69 @@ export async function updateEntryRecord(
   return { entryId: input.entryId, updated: true };
 }
 
+export async function updateEntryPostDateRecord(
+  db: D1Database,
+  input: {
+    entryId: string;
+    postDate: string;
+  }
+) {
+  const transaction = await db
+    .prepare(`
+      SELECT
+        transactions.account_id,
+        transactions.transaction_date,
+        transactions.post_date,
+        transactions.description,
+        transactions.bank_certification_status
+      FROM transactions
+      WHERE transactions.id = ? AND transactions.household_id = ?
+    `)
+    .bind(input.entryId, DEFAULT_HOUSEHOLD_ID)
+    .first<{
+      account_id: string;
+      transaction_date: string;
+      post_date: string | null;
+      description: string;
+      bank_certification_status: "provisional" | "statement_certified";
+    }>();
+
+  if (!transaction) {
+    throw new Error(`Unknown entry: ${input.entryId}`);
+  }
+
+  if (transaction.bank_certification_status === "statement_certified") {
+    throw new Error("This entry is already statement-certified. Posted date changes need a replacement statement or adjustment.");
+  }
+
+  const normalizedPostDate = normalizeStatementDate(input.postDate);
+  if (!normalizedPostDate) {
+    throw new Error("Posted date must use YYYY-MM-DD.");
+  }
+
+  await db
+    .prepare(`
+      UPDATE transactions
+      SET
+        post_date = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND household_id = ?
+    `)
+    .bind(normalizedPostDate, input.entryId, DEFAULT_HOUSEHOLD_ID)
+    .run();
+
+  await recalculateMonthlySnapshots(db, transaction.transaction_date.slice(0, 7));
+
+  await recordAuditEvent(db, {
+    entityType: "transaction",
+    entityId: input.entryId,
+    action: "entry_post_date_updated",
+    detail: `Updated posted date for ${transaction.description} from ${transaction.post_date ?? "unset"} to ${normalizedPostDate}.`
+  });
+
+  return { entryId: input.entryId, postDate: normalizedPostDate, updated: true };
+}
+
 export async function updateEntryClassificationRecord(
   db: D1Database,
   input: {
