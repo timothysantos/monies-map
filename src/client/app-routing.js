@@ -151,12 +151,22 @@ export function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appS
     };
   }
 
-  if (tabId === "imports" || tabId === "settings" || tabId === "faq") {
+  if (tabId === "imports" && pageData.importsPage) {
     return {
       ...baseView,
-      ...(tabId === "imports" ? { importsPage: pageData.importsPage } : null),
-      ...(tabId === "settings" ? { settingsPage: pageData.settingsPage } : null)
+      importsPage: pageData.importsPage
     };
+  }
+
+  if (tabId === "settings" && pageData.settingsPage) {
+    return {
+      ...baseView,
+      settingsPage: pageData.settingsPage
+    };
+  }
+
+  if (tabId === "faq") {
+    return baseView;
   }
 
   return null;

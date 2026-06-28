@@ -1,5 +1,6 @@
 import { queryKeys } from "./query-keys.js";
 import { buildRequestErrorMessage } from "./request-errors.js";
+import { fetchWithTimeout } from "./request-timeout.js";
 
 function getSummaryPageKeyFromParams(params) {
   return queryKeys.summaryPage({
@@ -64,7 +65,9 @@ async function fetchSummaryJson(queryClient, {
   }
 
   const fetcher = async () => {
-    const response = await fetch(`${path}?${params.toString()}`, { cache: "no-store" });
+    const response = await fetchWithTimeout(`${path}?${params.toString()}`, {
+      cache: "no-store"
+    }, "Summary request");
     if (!response.ok) {
       throw new Error(await buildRequestErrorMessage(response, `${path} failed.`));
     }
@@ -75,11 +78,13 @@ async function fetchSummaryJson(queryClient, {
     ? await queryClient.fetchQuery({
         queryKey,
         queryFn: fetcher,
+        retry: false,
         staleTime: 0
       })
     : await queryClient.ensureQueryData({
         queryKey,
         queryFn: fetcher,
+        retry: false,
         revalidateIfStale: true
       });
 

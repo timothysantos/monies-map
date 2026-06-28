@@ -6,6 +6,8 @@ export const messages = {
     saving: "Saving...",
     working: "Working...",
     appShellErrorTitle: "Dashboard data could not load.",
+    pageLoadErrorTitle: "This page could not finish loading.",
+    retryPageLoad: "Try loading again",
     emptyValue: "—",
     viewingDot: (label) => `Viewing • ${label}`,
     contextWithView: (left, right) => `${left} • ${right}`,
