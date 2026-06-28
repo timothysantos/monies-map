@@ -614,26 +614,28 @@ function StatementBalanceCheck({
       <div className="stack">
         {reconciliations.map((item) => (
           <div key={`${item.accountName}-${item.checkpointMonth}`} className="import-card import-card-compact statement-reconciliation-row">
-            <div className="import-history-main">
-              <strong>{messages.imports.statementReconciliationAccount(
-                item.accountName,
-                formatService.formatMonthLabel(item.checkpointMonth)
-              )}</strong>
-              {item.statementStartDate && item.statementEndDate ? (
-                <span className="import-history-inline">{messages.imports.importCoverage(
-                  formatService.formatDateOnly(item.statementStartDate),
-                  formatService.formatDateOnly(item.statementEndDate)
-                )}</span>
-              ) : null}
-              <span className="import-history-inline">{formatService.formatStatementReconciliationLine(item)}</span>
-            </div>
-            <div className="import-meta import-meta-compact">
-              <span className={`pill ${item.status === "matched" ? "success" : "warning"}`}>
-                {messages.imports.statementReconciliationStatus[item.status]}
-              </span>
-              {item.deltaMinor != null && item.deltaMinor !== 0 ? (
-                <p>{messages.imports.statementReconciliationDelta(formatService.money(Math.abs(item.deltaMinor)))}</p>
-              ) : null}
+            <div className="statement-reconciliation-card-head">
+              <div className="statement-reconciliation-card-title">
+                <strong>{messages.imports.statementReconciliationAccount(
+                  item.accountName,
+                  formatService.formatMonthLabel(item.checkpointMonth)
+                )}</strong>
+                {item.statementStartDate && item.statementEndDate ? (
+                  <span className="import-history-inline">{messages.imports.importCoverage(
+                    formatService.formatDateOnly(item.statementStartDate),
+                    formatService.formatDateOnly(item.statementEndDate)
+                  )}</span>
+                ) : null}
+                <span className="import-history-inline">{formatService.formatStatementReconciliationLine(item)}</span>
+              </div>
+              <div className="statement-reconciliation-card-meta">
+                <span className={`pill ${item.status === "matched" ? "success" : "warning"}`}>
+                  {messages.imports.statementReconciliationStatus[item.status]}
+                </span>
+                {item.deltaMinor != null && item.deltaMinor !== 0 ? (
+                  <p>{messages.imports.statementReconciliationDelta(formatService.money(Math.abs(item.deltaMinor)))}</p>
+                ) : null}
+              </div>
             </div>
             {item.supersededLedgerRows?.length ? (
               <div className="import-overlap-entry-list" aria-label={messages.imports.statementReconciliationSupersededRowsTitle}>

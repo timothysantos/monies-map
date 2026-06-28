@@ -46,6 +46,44 @@ function buildImportPreviewError(error, fallbackMessage = "Import preview failed
   };
 }
 
+function filterDeletedDiagnosticLedgerRowsFromPreview(preview, deletedLedgerIds) {
+  if (!preview || !deletedLedgerIds?.size || !Array.isArray(preview.statementReconciliations)) {
+    return preview;
+  }
+
+  return {
+    ...preview,
+    statementReconciliations: preview.statementReconciliations.map((reconciliation) => ({
+      ...reconciliation,
+      reconciliationBreakdown: filterDeletedDiagnosticRowsFromBreakdown(
+        reconciliation.reconciliationBreakdown,
+        deletedLedgerIds
+      )
+    }))
+  };
+}
+
+function filterDeletedDiagnosticRowsFromBreakdown(breakdown, deletedLedgerIds) {
+  if (!breakdown?.periodExistingLedgerRows?.length) {
+    return breakdown;
+  }
+
+  const periodExistingLedgerRows = breakdown.periodExistingLedgerRows.filter((row) => !deletedLedgerIds.has(row.id));
+  if (periodExistingLedgerRows.length === breakdown.periodExistingLedgerRows.length) {
+    return breakdown;
+  }
+
+  return {
+    ...breakdown,
+    periodExistingLedgerRows,
+    periodExistingLedgerRowCount: periodExistingLedgerRows.length,
+    statementPeriodExistingRowsMinor: periodExistingLedgerRows.reduce(
+      (totalMinor, row) => totalMinor + Number(row.signedAmountMinor ?? 0),
+      0
+    )
+  };
+}
+
 // Read alongside docs/import-summary-code-glossary.md.
 // This component is intentionally the import workflow "orchestrator":
 // - stage 1 collects source rows and default import ownership/account choices
@@ -102,6 +140,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const lastStatementPreviewAutoRefreshRef = useRef({ key: "", at: 0 });
   const lastStatementPreviewSnapshotRef = useRef("");
   const lastImportActionRef = useRef("");
+  const deletedDiagnosticLedgerIdsRef = useRef(new Set());
 
   const csvInspection = useMemo(() => inspectCsv(csvText), [csvText]);
   const headerSignature = csvInspection.headers.join("|");
@@ -318,6 +357,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsDragActive(false);
     setDismissedOverlapIds([]);
     setJumpToSkippedRowsRequestKey(0);
+    deletedDiagnosticLedgerIdsRef.current = new Set();
     if (!preserveRecentImportStatus) {
       setRecentImportStatus(null);
     }
@@ -549,11 +589,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         }
       });
       setDismissedOverlapIds((current) => current.filter((id) => data.preview?.overlapImports?.some((item) => item.id === id)));
-      setPreview(data.preview);
-      setPreviewRows(data.preview?.previewRows ?? []);
+      const filteredPreview = filterDeletedDiagnosticLedgerRowsFromPreview(data.preview, deletedDiagnosticLedgerIdsRef.current);
+      setPreview(filteredPreview);
+      setPreviewRows(filteredPreview?.previewRows ?? []);
       lastPreviewHydratedAtRef.current = Date.now();
       lastStatementPreviewSnapshotRef.current = buildStatementPreviewSnapshot(
-        data.preview?.previewRows ?? [],
+        filteredPreview?.previewRows ?? [],
         nextStatementCheckpoints
       );
     } catch (error) {
@@ -674,7 +715,21 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         statementCheckpoints,
         statementControlRows: statementImportMeta.sourceType === "pdf" ? previewRows : undefined,
         statementReconciliations: statementImportMeta.sourceType === "pdf" ? statementReconciliations : undefined,
-        rows: rowsToCommit
+        rows: rowsToCommit,
+        diagnosticContext: {
+          source: "import_commit",
+          action: `Commit import: ${committedSourceLabel || DEFAULT_SOURCE_LABEL} (${rowsToCommit.length} rows, ${statementImportMeta.sourceType})`,
+          previousAction: lastImportActionRef.current,
+          requestContext: {
+            sourceLabel: committedSourceLabel,
+            sourceType: statementImportMeta.sourceType,
+            parserKey: statementImportMeta.parserKey,
+            rowCount: rowsToCommit.length,
+            checkpointCount: statementCheckpoints.length,
+            statementControlRowCount: statementImportMeta.sourceType === "pdf" ? previewRows.length : 0,
+            statementReconciliationCount: statementImportMeta.sourceType === "pdf" ? statementReconciliations.length : 0
+          }
+        }
       });
       setOptimisticRecentImport(buildOptimisticRecentImportBatch({
         commitResult,
@@ -693,11 +748,14 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         refreshOptions: { broadcast: true, invalidateImports: true }
       });
     } catch (error) {
+      const commitErrorDetail = buildImportPreviewError(error, messages.imports.commitFailed);
       setRecentImportStatus({
         tone: "error",
-        message: error instanceof Error ? error.message : messages.imports.commitFailed
+        message: commitErrorDetail.message,
+        diagnosticHref: commitErrorDetail.diagnosticHref,
+        diagnosticId: commitErrorDetail.diagnosticId
       });
-      setPreviewError(error instanceof Error ? error.message : messages.imports.commitFailed);
+      setPreviewError(commitErrorDetail);
       setOptimisticRecentImport(null);
     } finally {
       setIsSubmitting(false);
@@ -1062,6 +1120,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsSubmitting(true);
     try {
       await deleteDiagnosticLedgerEntry(row);
+      deletedDiagnosticLedgerIdsRef.current.add(row.id);
+      setPreview((currentPreview) => filterDeletedDiagnosticLedgerRowsFromPreview(
+        currentPreview,
+        deletedDiagnosticLedgerIdsRef.current
+      ));
       await refreshPreviewFromRows({
         rows: previewRows.map(importService.buildRawRowFromPreviewRow),
         activeMessage: messages.imports.statementReconciliationRefreshing,
@@ -1092,7 +1155,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     try {
       for (const row of ledgerRows) {
         await deleteDiagnosticLedgerEntry(row);
+        deletedDiagnosticLedgerIdsRef.current.add(row.id);
       }
+      setPreview((currentPreview) => filterDeletedDiagnosticLedgerRowsFromPreview(
+        currentPreview,
+        deletedDiagnosticLedgerIdsRef.current
+      ));
       await refreshPreviewFromRows({
         rows: previewRows.map(importService.buildRawRowFromPreviewRow),
         activeMessage: messages.imports.statementReconciliationRefreshing,

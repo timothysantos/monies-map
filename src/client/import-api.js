@@ -68,7 +68,7 @@ function getResponseErrorMessage({ data, fallbackError, response, responseText }
   const isHtml = contentType.includes("text/html") || /^<!doctype html|<html[\s>]/i.test(responseText.trim());
   if (isHtml && response.status === 503 && responseText.includes("Worker exceeded resource limits")) {
     return {
-      message: `${fallbackError} ${statusLine}: Cloudflare ended the request because the Worker exceeded resource limits. Open Settings -> Error diagnostics for the saved response and action context.`,
+      message: `${fallbackError} ${statusLine}: Cloudflare ended the request because the Worker exceeded resource limits. Open Error diagnostics for the saved response and action context.`,
       possibleReason: "Cloudflare returned a Worker resource-limit page before the app could return JSON. Common causes include a large import preview, repeated heavy previews close together, CPU pressure, memory pressure, or a matching path that needs to be made cheaper.",
       shouldRecordDiagnostic: true
     };
@@ -76,7 +76,7 @@ function getResponseErrorMessage({ data, fallbackError, response, responseText }
 
   if (isHtml) {
     return {
-      message: `${fallbackError} ${statusLine}: The server returned an HTML error page instead of app JSON. Open Settings -> Error diagnostics for the saved response and action context.`,
+      message: `${fallbackError} ${statusLine}: The server returned an HTML error page instead of app JSON. Open Error diagnostics for the saved response and action context.`,
       possibleReason: "The app expected JSON, but the edge returned an HTML error page. This usually points to an infrastructure, routing, or Worker runtime failure before application error handling completed.",
       shouldRecordDiagnostic: true
     };
@@ -171,7 +171,8 @@ export function commitImportBatch({
   statementCheckpoints,
   statementControlRows,
   statementReconciliations,
-  rows
+  rows,
+  diagnosticContext
 }) {
   return postJson(
     "/api/imports/commit",
@@ -191,7 +192,8 @@ export function commitImportBatch({
         splitBasisPoints: Number(row.splitBasisPoints ?? 10000)
       }))
     },
-    "Import commit failed."
+    "Import commit failed.",
+    diagnosticContext
   );
 }
 

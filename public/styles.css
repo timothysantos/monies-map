@@ -5893,7 +5893,45 @@ button.split-activity-card:hover {
 }
 
 .statement-reconciliation-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.statement-reconciliation-card-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 16px;
+  align-items: start;
+  width: 100%;
+}
+
+.statement-reconciliation-card-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.statement-reconciliation-card-title strong {
+  min-width: min(100%, 18rem);
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.statement-reconciliation-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   align-items: center;
+  justify-content: flex-end;
+  min-width: max-content;
+}
+
+.statement-reconciliation-card-meta p {
+  margin: 0;
 }
 
 .statement-reconciliation-breakdown {
@@ -8377,8 +8415,14 @@ th {
     align-items: start;
   }
 
-  .statement-reconciliation-row .import-meta-compact {
+  .statement-reconciliation-card-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .statement-reconciliation-card-meta {
     align-items: flex-start;
+    justify-content: flex-start;
+    min-width: 0;
   }
 
   .desktop-scope-toggle.scope-toggle-row {

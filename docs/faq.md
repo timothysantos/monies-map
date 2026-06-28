@@ -649,17 +649,20 @@ or keep both because they are genuinely different transactions.
 Import the activity file normally, but review duplicates and split matches before
 commit.
 
-If `Preview import` fails after a file was parsed and mapped, the preview card
-should show the server's own error when it returned JSON. If the failure came
-from Cloudflare returning an HTML error page instead of app JSON, the card shows
-a short diagnosis and links to Settings -> Error diagnostics. That settings
-section keeps the previous action, the action that just failed, route/status,
-possible reason, bounded request context, and the saved response body. A
-`Worker exceeded resource limits` response means Cloudflare ended the Worker
-request before the app could finish the preview. It can be triggered by a large
-or expensive preview, repeated heavy previews close together, CPU pressure,
-memory pressure, or a matching path that needs to be made cheaper; it is not by
-itself proof that the import data was duplicated or changed.
+If `Preview import` or `Commit import to ledger` fails after a file was parsed
+and mapped, the import card should show the server's own error when it returned
+JSON. If the failure came from Cloudflare returning an HTML error page instead
+of app JSON, the card shows a short diagnosis with an **Open error diagnostics**
+link. That settings section keeps the previous action, the action that just
+failed, route/status, possible reason, bounded request context, and the saved
+response body. A `Worker exceeded resource limits` response means Cloudflare
+ended the Worker request before the app could finish the preview or commit. It
+can be triggered by a large or expensive import, repeated heavy imports close
+together, CPU pressure, memory pressure, or a matching path that needs to be
+made cheaper; it is not by itself proof that the import data was duplicated or
+changed. If retrying once does not work, open the linked diagnostics record and
+use the saved action context and response body to decide whether to split the
+import, wait and retry, or optimize the backend path.
 
 What should happen:
 

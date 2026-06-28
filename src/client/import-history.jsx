@@ -80,6 +80,11 @@ export function ImportRecentHistorySection({
             <div className={`import-history-refreshing is-${recentImportStatus.tone}`} role="status" aria-live="polite">
               {recentImportStatus.tone === "active" ? <span className="app-spinner" aria-hidden="true" /> : null}
               <span>{recentImportStatus.message}</span>
+              {recentImportStatus.diagnosticHref ? (
+                <a href={recentImportStatus.diagnosticHref} className="inline-link">
+                  {messages.imports.openErrorDiagnostics}
+                </a>
+              ) : null}
             </div>
           ) : null}
           {recentImportGroups.map((group) => (

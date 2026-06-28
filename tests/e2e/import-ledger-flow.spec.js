@@ -660,8 +660,16 @@ test.describe("import flow", () => {
         })
       });
     };
+    const mockedDeleteRoute = async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        status: 200,
+        body: JSON.stringify({ ok: true })
+      });
+    };
 
     await page.route("**/api/imports/preview", mockedPreviewRoute);
+    await page.route("**/api/entries/delete", mockedDeleteRoute);
     try {
       await page.getByLabel("Source label").fill("Statement guidance preview");
       await page.getByLabel("CSV content").fill(
@@ -720,8 +728,13 @@ test.describe("import flow", () => {
       await expect(page.getByText("first day after this statement")).toBeVisible();
       await page.getByRole("button", { name: "Cancel" }).click();
       await expect(ledgerRow.getByRole("button", { name: "Delete" })).toBeVisible();
+      await ledgerRow.getByRole("button", { name: "Delete" }).click();
+      await page.locator(".delete-popover").getByRole("button", { name: "Delete" }).click();
+      await expect(breakdown).not.toContainText("EXTRA MIDCYCLE ROW");
+      await expect(breakdown).toContainText("SECOND MIDCYCLE ROW");
     } finally {
       await page.unroute("**/api/imports/preview", mockedPreviewRoute);
+      await page.unroute("**/api/entries/delete", mockedDeleteRoute);
     }
   });
 
@@ -4135,5 +4148,31 @@ test.describe("import flow", () => {
     const savedResponseBody = page.locator(".settings-diagnostic-block pre").filter({ hasText: "Worker exceeded resource limits" });
     await expect(savedResponseBody).toBeVisible();
     await expect(savedResponseBody).toContainText("body{margin:0");
+  });
+
+  test("import commit resource-limit failures link recent status to settings diagnostics", async ({ page }) => {
+    await reseedDemo(page);
+    await page.route("**/api/imports/commit", async (route) => {
+      await route.fulfill({
+        status: 503,
+        contentType: "text/html",
+        body: "<html><body><h1>Worker exceeded resource limits</h1><style>body{margin:0;padding:0}</style></body></html>"
+      });
+    });
+
+    await gotoImportsPage(page);
+    await page.getByLabel("CSV content").fill([
+      "date,description,expense,account,category",
+      "2026-06-02,Funds Transfer HDB mortgage,450.00,UOB One,Transfer"
+    ].join("\n"));
+
+    await page.getByRole("button", { name: "Preview import" }).click();
+    await page.getByRole("button", { name: "Commit import to ledger" }).first().click();
+    const recentStatus = page.locator(".import-history-refreshing.is-error");
+    await expect(recentStatus).toContainText("Import commit failed. HTTP 503");
+    await recentStatus.getByRole("link", { name: "Open error diagnostics" }).click();
+    await expect(page).toHaveURL(/settings_section=errorDiagnostics/);
+    await expect(page.getByRole("button", { name: /Error diagnostics/ })).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByText("Commit import: Imported CSV (1 rows, csv)")).toBeVisible();
   });
 });
