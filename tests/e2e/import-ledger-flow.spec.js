@@ -580,6 +580,19 @@ test.describe("import flow", () => {
                 category: "Other",
                 note: "txn date: 2026-04-14"
               },
+              reconciliationMatch: {
+                existingTransactionId: "txn-statement-guidance-existing",
+                existingAccountId: "acct-statement-guidance",
+                existingSourceType: "manual",
+                existingBankCertificationStatus: "provisional",
+                date: "2026-04-14",
+                postedDate: "2026-04-16",
+                description: "PDF STATEMENT ROW",
+                amountMinor: 1000,
+                accountName: "Statement Guidance Card",
+                matchKind: "exact"
+              },
+              reconciliationMatchCount: 1,
               commitStatus: "included",
               commitStatusExplicit: false
             }],
@@ -671,6 +684,15 @@ test.describe("import flow", () => {
       await expect(breakdown).toContainText("These unresolved ledger rows total $5.00, which matches the unexplained difference.");
       await expect(breakdown).toContainText("For credit cards, negative ledger expenses increase the owed balance");
       await expect(breakdown).toContainText("if the row is on this card's PDF, it should be matched or certified");
+      await page.getByRole("button", { name: "View match" }).click();
+      const matchPopover = page.locator(".duplicate-match-popover");
+      await expect(matchPopover).toContainText("Ledger match");
+      await expect(matchPopover).toContainText("Incoming row");
+      await expect(matchPopover).toContainText("Transaction date");
+      await expect(matchPopover).toContainText("14/04/2026");
+      await expect(matchPopover).toContainText("Posted date");
+      await expect(matchPopover).toContainText("16/04/2026");
+      await page.keyboard.press("Escape");
       const beforePeriodHelp = breakdown.getByLabel("Explain Before statement period");
       await beforePeriodHelp.scrollIntoViewIfNeeded();
       const scrollBeforePopover = await page.evaluate(() => window.scrollY);

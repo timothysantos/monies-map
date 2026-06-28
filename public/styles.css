@@ -6381,6 +6381,42 @@ button.split-activity-card:hover {
   line-height: 1.25;
 }
 
+.duplicate-match-dates {
+  display: grid;
+  gap: 6px;
+  margin: 2px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(177, 94, 47, 0.16);
+  border-radius: 10px;
+  background: rgba(250, 244, 237, 0.6);
+}
+
+.duplicate-match-dates div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.duplicate-match-dates dt,
+.duplicate-match-dates dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.duplicate-match-dates dt {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.duplicate-match-dates dd {
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-align: right;
+}
+
 .duplicate-match-arrow {
   align-self: center;
   color: var(--accent-strong);

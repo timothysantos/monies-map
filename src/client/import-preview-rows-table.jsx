@@ -411,6 +411,8 @@ export function DuplicateMatchPopover({ row, match, statementImportSourceType = 
             <DuplicateMatchCard
               label={messages.imports.duplicateMatchIncomingLabel}
               date={row.date}
+              eventDate={getIncomingEventDate(row)}
+              postedDate={row.date}
               description={row.description}
               comparisonDescription={match.description}
               accountName={row.accountName}
@@ -421,6 +423,8 @@ export function DuplicateMatchPopover({ row, match, statementImportSourceType = 
             <DuplicateMatchCard
               label={messages.imports.duplicateMatchLedgerLabel}
               date={match.date}
+              eventDate={match.date}
+              postedDate={match.postedDate}
               description={match.description}
               comparisonDescription={row.description}
               accountName={match.accountName}
@@ -440,15 +444,63 @@ export function DuplicateMatchPopover({ row, match, statementImportSourceType = 
   );
 }
 
-function DuplicateMatchCard({ label, date, description, comparisonDescription, accountName, amountMinor, bankCertificationLabel }) {
+function DuplicateMatchCard({ label, date, eventDate, postedDate, description, comparisonDescription, accountName, amountMinor, bankCertificationLabel }) {
   return (
     <div className="duplicate-match-card">
       <span>{label}</span>
       <strong>{renderHighlightedDescription(description, comparisonDescription)}</strong>
       <p>{messages.common.triplet(date, accountName ?? messages.common.emptyValue, formatService.formatMinorInput(amountMinor))}</p>
+      <dl className="duplicate-match-dates">
+        <div>
+          <dt>{messages.imports.duplicateMatchTransactionDate}</dt>
+          <dd>{formatOptionalMatchDate(eventDate)}</dd>
+        </div>
+        <div>
+          <dt>{messages.imports.duplicateMatchPostedDate}</dt>
+          <dd>{formatOptionalMatchDate(postedDate)}</dd>
+        </div>
+      </dl>
       <small>{messages.imports.bankCertificationStatusLine(bankCertificationLabel)}</small>
     </div>
   );
+}
+
+function getIncomingEventDate(row) {
+  return normalizeMatchDate(
+    row.rawRow?.transactionDate
+      ?? row.rawRow?.["transaction date"]
+      ?? extractTransactionDateHint(row.note)
+      ?? extractTransactionDateHint(row.rawRow?.note)
+      ?? extractTransactionDateHint(row.rawRow?.notes)
+      ?? extractTransactionDateHint(row.rawRow?.remarks)
+  );
+}
+
+function extractTransactionDateHint(value) {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const match = value.match(/\b(?:txn|transaction)\s+date\s*:\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\b/i);
+  return match?.[1];
+}
+
+function normalizeMatchDate(value) {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  return trimmed;
+}
+
+function formatOptionalMatchDate(value) {
+  const normalized = normalizeMatchDate(value);
+  return normalized ? formatImportPreviewDate(normalized) : messages.imports.duplicateMatchDateUnavailable;
 }
 
 function getIncomingBankCertificationLabel(sourceType) {
