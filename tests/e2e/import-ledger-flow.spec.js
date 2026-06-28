@@ -999,7 +999,7 @@ test.describe("import flow", () => {
       await commitButton.click();
       await expect(page.locator(".import-history-refreshing.is-active")).toBeVisible();
       await importsPageRefresh;
-      await expect(page.locator(".import-history-refreshing")).toHaveCount(0);
+      await expect(page.locator(".import-history-refreshing.is-active")).toHaveCount(0);
       const importsPage = await loadImportsPage(page);
       expect(
         importsPage.importsPage.recentImports.some((item) => item.sourceLabel === firstImportLabel && item.status === "completed")
@@ -1020,7 +1020,10 @@ test.describe("import flow", () => {
       ));
       await page.getByRole("button", { name: "Commit import" }).first().click();
       await followUpImportsPageRefresh;
-      await expect(page.locator(".import-history-refreshing")).toHaveCount(0);
+      await expect(page.locator(".import-history-refreshing.is-active")).toHaveCount(0);
+      await expect(page.getByText(`${secondImportLabel} committed successfully. Recent imports have been updated.`)).toBeVisible({
+        timeout: 30_000
+      });
       await expect(page.locator(".import-card").filter({ hasText: secondImportLabel }).first()).toContainText("completed", {
         timeout: 30_000
       });
@@ -3934,6 +3937,8 @@ test.describe("import flow", () => {
       await remapAccount(alphaAccount.detectedName, alphaAccount.id, betaAccount.id);
       await remapAccount(betaAccount.detectedName, betaAccount.id, alphaAccount.id);
       await expect(importFlowPage.locator(".statement-reconciliation-row .pill.success")).toHaveCount(2);
+      await expect(importFlowPage.locator(".statement-reconciliation-row").first()).toHaveCSS("display", "grid");
+      await expect(importFlowPage.locator(".statement-reconciliation-row").first()).toHaveCSS("grid-template-columns", /px$/);
     };
 
     const uploadPdfAndMap = async (path) => {

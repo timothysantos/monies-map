@@ -613,7 +613,7 @@ function StatementBalanceCheck({
       </div>
       <div className="stack">
         {reconciliations.map((item) => (
-          <div key={`${item.accountName}-${item.checkpointMonth}`} className="import-card import-card-compact statement-reconciliation-row">
+          <div key={`${item.accountName}-${item.checkpointMonth}`} className="import-card statement-reconciliation-row">
             <div className="statement-reconciliation-card-head">
               <div className="statement-reconciliation-card-title">
                 <strong>{messages.imports.statementReconciliationAccount(

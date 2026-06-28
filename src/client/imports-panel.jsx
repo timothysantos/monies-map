@@ -747,6 +747,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         committedImportId,
         refreshOptions: { broadcast: true, invalidateImports: true }
       });
+      setRecentImportStatus({
+        tone: "success",
+        message: messages.imports.recentCommitSuccess(committedSourceLabel || DEFAULT_SOURCE_LABEL)
+      });
     } catch (error) {
       const commitErrorDetail = buildImportPreviewError(error, messages.imports.commitFailed);
       setRecentImportStatus({
