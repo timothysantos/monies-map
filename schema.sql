@@ -483,6 +483,26 @@ CREATE TABLE IF NOT EXISTS demo_settings (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS app_error_diagnostics (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  source TEXT NOT NULL,
+  action TEXT NOT NULL,
+  previous_action TEXT,
+  method TEXT,
+  route TEXT,
+  status INTEGER,
+  status_text TEXT,
+  content_type TEXT,
+  error_message TEXT NOT NULL,
+  possible_reason TEXT,
+  request_context_json TEXT,
+  response_excerpt TEXT,
+  response_body TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_imports_household_imported_at
   ON imports (household_id, imported_at DESC);
 
@@ -506,6 +526,9 @@ CREATE INDEX IF NOT EXISTS idx_statement_reconciliation_certificates_account_per
 
 CREATE INDEX IF NOT EXISTS idx_reconciliation_exceptions_household_status
   ON reconciliation_exceptions (household_id, status, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_app_error_diagnostics_household_created
+  ON app_error_diagnostics (household_id, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_transactions_transfer_group
   ON transactions (transfer_group_id);

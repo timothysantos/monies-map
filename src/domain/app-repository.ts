@@ -63,6 +63,11 @@ export { loadEntries, loadEntriesForMonths, loadTransferMatchCandidates } from "
 export { buildImportPreview } from "./app-repository-import-preview";
 export { loadImportBatches } from "./app-repository-import-history";
 export {
+  loadAppErrorDiagnostics,
+  recordAppErrorDiagnostic,
+  retainLatestAppErrorDiagnostics
+} from "./app-repository-error-diagnostics";
+export {
   createReconciliationExceptionRecord,
   loadReconciliationExceptions,
   resolveReconciliationExceptionRecord
@@ -611,6 +616,37 @@ export async function ensureDemoSchema(db: D1Database) {
 
   await db
     .prepare(`
+      CREATE TABLE IF NOT EXISTS app_error_diagnostics (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL,
+        source TEXT NOT NULL,
+        action TEXT NOT NULL,
+        previous_action TEXT,
+        method TEXT,
+        route TEXT,
+        status INTEGER,
+        status_text TEXT,
+        content_type TEXT,
+        error_message TEXT NOT NULL,
+        possible_reason TEXT,
+        request_context_json TEXT,
+        response_excerpt TEXT,
+        response_body TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (household_id) REFERENCES households(id)
+      )
+    `)
+    .run();
+
+  await db
+    .prepare(`
+      CREATE INDEX IF NOT EXISTS idx_app_error_diagnostics_household_created
+      ON app_error_diagnostics (household_id, created_at DESC)
+    `)
+    .run();
+
+  await db
+    .prepare(`
       CREATE TABLE IF NOT EXISTS split_groups (
         id TEXT PRIMARY KEY,
         household_id TEXT NOT NULL,
@@ -956,6 +992,7 @@ export async function clearDemoData(db: D1Database) {
     "DELETE FROM import_rows",
     "DELETE FROM imports",
     "DELETE FROM account_balance_checkpoints",
+    "DELETE FROM app_error_diagnostics",
     "DELETE FROM audit_events",
     "DELETE FROM category_match_rule_suggestions",
     "DELETE FROM category_match_rules",

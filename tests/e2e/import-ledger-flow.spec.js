@@ -4106,4 +4106,34 @@ test.describe("import flow", () => {
     await importFlowPage.getByRole("button", { name: /Recent imports/ }).click();
     await screenshot("10-recent-imports-after-combined-flow");
   });
+
+  test("import preview resource-limit failures link to settings diagnostics", async ({ page }) => {
+    await reseedDemo(page);
+    await page.route("**/api/imports/preview", async (route) => {
+      await route.fulfill({
+        status: 503,
+        contentType: "text/html",
+        body: "<html><body><h1>Worker exceeded resource limits</h1><style>body{margin:0;padding:0}</style></body></html>"
+      });
+    });
+
+    await gotoImportsPage(page);
+    await page.getByLabel("CSV content").fill([
+      "date,description,expense,account,category",
+      "2026-06-02,Funds Transfer HDB mortgage,450.00,UOB One,Transfer"
+    ].join("\n"));
+
+    await page.getByRole("button", { name: "Preview import" }).click();
+    await expect(page.getByText("Cloudflare ended the request because the Worker exceeded resource limits")).toBeVisible();
+    await expect(page.getByText("body{margin:0")).toHaveCount(0);
+    await page.getByRole("link", { name: "Open error diagnostics" }).click();
+    await expect(page).toHaveURL(/settings_section=errorDiagnostics/);
+    await expect(page.getByRole("button", { name: /Error diagnostics/ })).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByText("Preview import: Imported CSV (1 rows, csv)")).toBeVisible();
+    await page.getByText("Preview import: Imported CSV (1 rows, csv)").click();
+    await expect(page.getByText("Previous action", { exact: true })).toBeVisible();
+    const savedResponseBody = page.locator(".settings-diagnostic-block pre").filter({ hasText: "Worker exceeded resource limits" });
+    await expect(savedResponseBody).toBeVisible();
+    await expect(savedResponseBody).toContainText("body{margin:0");
+  });
 });

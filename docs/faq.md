@@ -634,9 +634,15 @@ commit.
 
 If `Preview import` fails after a file was parsed and mapped, the preview card
 should show the server's own error when it returned JSON. If the failure came
-from an edge timeout, Cloudflare Access redirect, or another non-JSON response,
-the card includes the HTTP status and a short cleaned response snippet so the
-next action is visible instead of just `Import preview failed`.
+from Cloudflare returning an HTML error page instead of app JSON, the card shows
+a short diagnosis and links to Settings -> Error diagnostics. That settings
+section keeps the previous action, the action that just failed, route/status,
+possible reason, bounded request context, and the saved response body. A
+`Worker exceeded resource limits` response means Cloudflare ended the Worker
+request before the app could finish the preview. It can be triggered by a large
+or expensive preview, repeated heavy previews close together, CPU pressure,
+memory pressure, or a matching path that needs to be made cheaper; it is not by
+itself proof that the import data was duplicated or changed.
 
 What should happen:
 

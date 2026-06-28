@@ -610,6 +610,24 @@ export interface AuditEventDto {
   entityId?: string;
 }
 
+export interface AppErrorDiagnosticDto {
+  id: string;
+  source: string;
+  action: string;
+  previousAction?: string;
+  method?: string;
+  route?: string;
+  status?: number;
+  statusText?: string;
+  contentType?: string;
+  errorMessage: string;
+  possibleReason?: string;
+  requestContextJson?: string;
+  responseExcerpt?: string;
+  responseBody?: string;
+  createdAt: string;
+}
+
 export interface ReconciliationExceptionDto {
   id: string;
   accountId?: string;
@@ -674,6 +692,7 @@ export interface SettingsPageDto {
   unresolvedTransfers: TransferIssueDto[];
   reconciliationExceptions: ReconciliationExceptionDto[];
   recentAuditEvents: AuditEventDto[];
+  errorDiagnostics: AppErrorDiagnosticDto[];
 }
 
 export interface AppShellDto {

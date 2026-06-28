@@ -28,12 +28,22 @@ test("previewImportBatch surfaces JSON server errors", async () => {
   }
 });
 
-test("previewImportBatch includes HTTP context for non-JSON failures", async () => {
+test("previewImportBatch records diagnostics for non-JSON failures", async () => {
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => new Response(
-    "<html><body><h1>Service Unavailable</h1><p>edge timeout</p></body></html>",
-    { status: 503, statusText: "Service Unavailable", headers: { "content-type": "text/html" } }
-  );
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    if (url === "/api/error-diagnostics/record") {
+      return new Response(JSON.stringify({ ok: true, diagnosticId: "diagnostic-1" }), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      });
+    }
+    return new Response(
+      "<html><body><h1>Worker exceeded resource limits</h1><style>body{margin:0}</style></body></html>",
+      { status: 503, statusText: "Service Unavailable", headers: { "content-type": "text/html" } }
+    );
+  };
 
   try {
     await assert.rejects(
@@ -44,10 +54,26 @@ test("previewImportBatch includes HTTP context for non-JSON failures", async () 
         ownershipType: "direct",
         ownerName: "Tim",
         splitPercent: "50",
-        statementCheckpoints: []
+        statementCheckpoints: [],
+        diagnosticContext: {
+          action: "Preview import: test (0 rows, csv)",
+          previousAction: "Upload file",
+          requestContext: { rowCount: 0 }
+        }
       }),
-      /Import preview failed\. HTTP 503 Service Unavailable: Service Unavailable edge timeout/
+      (error) => {
+        assert.match(error.message, /Cloudflare ended the request because the Worker exceeded resource limits/);
+        assert.equal(error.diagnosticHref, "/settings?settings_section=errorDiagnostics");
+        assert.equal(error.diagnosticId, "diagnostic-1");
+        return true;
+      }
     );
+    assert.equal(calls.length, 2);
+    assert.equal(calls[1].url, "/api/error-diagnostics/record");
+    const diagnosticPayload = JSON.parse(calls[1].options.body);
+    assert.equal(diagnosticPayload.action, "Preview import: test (0 rows, csv)");
+    assert.equal(diagnosticPayload.previousAction, "Upload file");
+    assert.match(diagnosticPayload.responseBody, /Worker exceeded resource limits/);
   } finally {
     globalThis.fetch = originalFetch;
   }

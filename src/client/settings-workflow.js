@@ -8,7 +8,8 @@ export function buildSafeSettingsPage(settingsPage) {
     categoryMatchRuleSuggestions: [],
     unresolvedTransfers: [],
     reconciliationExceptions: [],
-    recentAuditEvents: []
+    recentAuditEvents: [],
+    errorDiagnostics: []
   };
 }
 
