@@ -17,6 +17,7 @@ import { enterEmptyState, reseedDemoSettings } from "./domain/demo-settings";
 import {
   archiveAccountRecord,
   loadTransferMatchCandidates,
+  recordAppErrorDiagnostic,
   buildAccountCheckpointLedgerCsv,
   buildImportPreview,
   compareAccountCheckpointStatementRows,
@@ -41,6 +42,7 @@ import {
   deleteMonthPlanRow,
   duplicateMonthPlan,
   rollbackImportBatch,
+  retainLatestAppErrorDiagnostics,
   resetMonthPlan,
   resolveReconciliationExceptionRecord,
   saveAccountCheckpointRecord,
@@ -183,6 +185,55 @@ export default {
 
     if (url.pathname === "/api/settings-page") {
       return apiPageResponse("Settings page", request, url, () => buildSettingsPageDto(env.DB));
+    }
+
+    if (url.pathname === "/api/error-diagnostics/record" && request.method === "POST") {
+      const body = await request.json<{
+        source?: string;
+        action?: string;
+        previousAction?: string;
+        method?: string;
+        route?: string;
+        status?: number;
+        statusText?: string;
+        contentType?: string;
+        errorMessage?: string;
+        possibleReason?: string;
+        requestContextJson?: string;
+        responseExcerpt?: string;
+        responseBody?: string;
+      }>();
+
+      if (!body.source || !body.action || !body.errorMessage) {
+        return json({ ok: false, error: "Missing diagnostic fields" }, 400);
+      }
+
+      return json({
+        ok: true,
+        ...(await recordAppErrorDiagnostic(env.DB, {
+          source: body.source,
+          action: body.action,
+          previousAction: body.previousAction,
+          method: body.method,
+          route: body.route,
+          status: body.status,
+          statusText: body.statusText,
+          contentType: body.contentType,
+          errorMessage: body.errorMessage,
+          possibleReason: body.possibleReason,
+          requestContextJson: body.requestContextJson,
+          responseExcerpt: body.responseExcerpt,
+          responseBody: body.responseBody
+        }))
+      });
+    }
+
+    if (url.pathname === "/api/error-diagnostics/retain-latest" && request.method === "POST") {
+      const body = await request.json<{ keep?: number }>().catch(() => ({ keep: undefined }));
+      return json({
+        ok: true,
+        ...(await retainLatestAppErrorDiagnostics(env.DB, body.keep ?? 50))
+      });
     }
 
     if (url.pathname === "/api/demo/reseed" && request.method === "POST") {

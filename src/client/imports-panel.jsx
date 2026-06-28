@@ -34,6 +34,18 @@ const DEFAULT_STATEMENT_IMPORT_META = { sourceType: "csv", parserKey: "generic_c
 const DEFAULT_UNKNOWN_CATEGORY_MODE = "other";
 const { format: formatService, imports: importService } = moniesClient;
 
+function buildImportPreviewError(error, fallbackMessage = "Import preview failed.") {
+  if (!(error instanceof Error)) {
+    return { message: fallbackMessage };
+  }
+
+  return {
+    message: error.message || fallbackMessage,
+    diagnosticHref: error.diagnosticHref,
+    diagnosticId: error.diagnosticId
+  };
+}
+
 // Read alongside docs/import-summary-code-glossary.md.
 // This component is intentionally the import workflow "orchestrator":
 // - stage 1 collects source rows and default import ownership/account choices
@@ -89,6 +101,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const lastPreviewHydratedAtRef = useRef(0);
   const lastStatementPreviewAutoRefreshRef = useRef({ key: "", at: 0 });
   const lastStatementPreviewSnapshotRef = useRef("");
+  const lastImportActionRef = useRef("");
 
   const csvInspection = useMemo(() => inspectCsv(csvText), [csvText]);
   const headerSignature = csvInspection.headers.join("|");
@@ -379,13 +392,13 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         }
       })
       .catch((error) => {
-        const message = error instanceof Error ? error.message : "Import preview failed.";
-        setPreviewError(message);
+        const previewErrorDetail = buildImportPreviewError(error);
+        setPreviewError(previewErrorDetail);
         setUploadStatus({
           tone: "error",
           message: silent
-            ? `Could not refresh the statement check. Keeping the current preview. ${message}`
-            : message
+            ? `Could not refresh the statement check. Keeping the current preview. ${previewErrorDetail.message}`
+            : previewErrorDetail.message
         });
       })
       .finally(() => setIsSubmitting(false));
@@ -491,9 +504,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     } catch (error) {
       setPreview(null);
       setPreviewRows([]);
-      const message = error instanceof Error ? error.message : "Statement import failed.";
-      setPreviewError(message);
-      setUploadStatus({ tone: "error", message });
+      const previewErrorDetail = buildImportPreviewError(error, "Statement import failed.");
+      setPreviewError(previewErrorDetail);
+      setUploadStatus({ tone: "error", message: previewErrorDetail.message });
     } finally {
       setIsParsingStatement(false);
     }
@@ -509,6 +522,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     // All source formats eventually converge here so the server only has one
     // preview path to reason about.
     setPreviewError("");
+    const currentAction = `Preview import: ${nextSourceLabel || DEFAULT_SOURCE_LABEL} (${rows.length} rows, ${nextSourceType})`;
+    const previousAction = lastImportActionRef.current;
     try {
       const data = await previewImportBatch({
         sourceLabel: nextSourceLabel,
@@ -517,7 +532,21 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         ownershipType,
         ownerName,
         splitPercent,
-        statementCheckpoints: nextStatementCheckpoints
+        statementCheckpoints: nextStatementCheckpoints,
+        diagnosticContext: {
+          source: "import_preview",
+          action: currentAction,
+          previousAction,
+          requestContext: {
+            sourceLabel: nextSourceLabel,
+            sourceType: nextSourceType,
+            rowCount: rows.length,
+            checkpointCount: nextStatementCheckpoints.length,
+            defaultAccountName,
+            ownershipType,
+            ownerName
+          }
+        }
       });
       setDismissedOverlapIds((current) => current.filter((id) => data.preview?.overlapImports?.some((item) => item.id === id)));
       setPreview(data.preview);
@@ -533,6 +562,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         setPreviewRows([]);
       }
       throw error;
+    } finally {
+      lastImportActionRef.current = currentAction;
     }
   }
 
@@ -594,7 +625,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     try {
       await previewImportRows({ rows: importWorkflowModel.mappedRows });
     } catch (error) {
-      setPreviewError(error instanceof Error ? error.message : "Import preview failed.");
+      setPreviewError(buildImportPreviewError(error));
     } finally {
       setIsSubmitting(false);
     }

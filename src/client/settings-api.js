@@ -128,3 +128,11 @@ export function resolveReconciliationException({ exceptionId, resolutionNote }) 
     "Failed to resolve reconciliation exception."
   );
 }
+
+export function retainLatestErrorDiagnostics(keep = 50) {
+  return postJson(
+    "/api/error-diagnostics/retain-latest",
+    { keep },
+    "Failed to clean up error diagnostics."
+  );
+}

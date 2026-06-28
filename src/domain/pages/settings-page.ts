@@ -1,6 +1,7 @@
 import { ensureAppData } from "../app-shell";
 import {
   loadAuditEvents,
+  loadAppErrorDiagnostics,
   loadCategoryMatchRules,
   loadCategoryMatchRuleSuggestions,
   loadReconciliationExceptions,
@@ -11,12 +12,20 @@ import type { SettingsPageDto } from "../../types/dto";
 // Build the route-owned Settings page DTO.
 export async function buildSettingsPageDto(db: D1Database): Promise<{ settingsPage: SettingsPageDto }> {
   const demo = await ensureAppData(db);
-  const [categoryMatchRules, categoryMatchRuleSuggestions, unresolvedTransfers, reconciliationExceptions, recentAuditEvents] = await Promise.all([
+  const [
+    categoryMatchRules,
+    categoryMatchRuleSuggestions,
+    unresolvedTransfers,
+    reconciliationExceptions,
+    recentAuditEvents,
+    errorDiagnostics
+  ] = await Promise.all([
     loadCategoryMatchRules(db),
     loadCategoryMatchRuleSuggestions(db),
     loadUnresolvedTransfers(db),
     loadReconciliationExceptions(db),
-    loadAuditEvents(db)
+    loadAuditEvents(db),
+    loadAppErrorDiagnostics(db)
   ]);
   return {
     settingsPage: {
@@ -25,7 +34,8 @@ export async function buildSettingsPageDto(db: D1Database): Promise<{ settingsPa
       categoryMatchRuleSuggestions,
       unresolvedTransfers,
       reconciliationExceptions,
-      recentAuditEvents
+      recentAuditEvents,
+      errorDiagnostics
     }
   };
 }

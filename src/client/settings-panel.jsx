@@ -20,6 +20,7 @@ import {
   dismissAllUnresolvedTransfers,
   dismissUnresolvedTransfer,
   ignoreCategoryMatchRuleSuggestion,
+  retainLatestErrorDiagnostics,
   resolveReconciliationException,
   runDemoAction,
   saveCategoryMatchRule,
@@ -35,6 +36,7 @@ import {
   SettingsCategoriesSection,
   SettingsCategoryMatchRulesSection,
   SettingsDemoSection,
+  SettingsErrorDiagnosticsSection,
   SettingsPeopleSection,
   SettingsTransfersSection,
   SettingsTrustSection
@@ -98,6 +100,7 @@ export function SettingsPanel({
     categoryRules: false,
     trust: false,
     transfers: false,
+    errorDiagnostics: false,
     activity: false
   });
   const [personDialog, setPersonDialog] = useState(null);
@@ -132,13 +135,16 @@ export function SettingsPanel({
   const canUseDemoControls = appEnvironment === "demo" || appEnvironment === "local";
 
   useEffect(() => {
-    if (searchParams.get("settings_section") !== "categoryRules") {
+    const targetSection = searchParams.get("settings_section");
+    if (targetSection !== "categoryRules" && targetSection !== "errorDiagnostics") {
       return;
     }
 
-    setSettingsSectionsOpen((current) => ({ ...current, categoryRules: true }));
+    const sectionKey = targetSection === "errorDiagnostics" ? "errorDiagnostics" : "categoryRules";
+    const elementId = targetSection === "errorDiagnostics" ? "settings-error-diagnostics" : "settings-category-rules";
+    setSettingsSectionsOpen((current) => ({ ...current, [sectionKey]: true }));
     window.requestAnimationFrame(() => {
-      document.getElementById("settings-category-rules")?.scrollIntoView({ block: "start", behavior: "smooth" });
+      document.getElementById(elementId)?.scrollIntoView({ block: "start", behavior: "smooth" });
     });
   }, [searchParams]);
 
@@ -635,6 +641,19 @@ export function SettingsPanel({
     }
   }
 
+  async function handleRetainLatestErrorDiagnostics() {
+    setIsSubmitting(true);
+    setSettingsActionError("");
+    try {
+      await retainLatestErrorDiagnostics(50);
+      await onRefresh(buildSettingsRefreshPlan("error_diagnostics_retained"));
+    } catch (error) {
+      setSettingsActionError(error instanceof Error ? error.message : "Failed to clean up error diagnostics.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   function openTransferReview(entryId) {
     const params = new URLSearchParams(searchParams);
     params.set("view", viewId);
@@ -777,7 +796,7 @@ export function SettingsPanel({
         onResolveException={handleResolveReconciliationException}
       />
 
-          <SettingsTransfersSection
+      <SettingsTransfersSection
         transfers={safeSettingsPage.unresolvedTransfers}
         isOpen={settingsSectionsOpen.transfers}
         isSubmitting={isSubmitting}
@@ -785,6 +804,14 @@ export function SettingsPanel({
         onDismissTransfer={handleDismissUnresolvedTransfer}
         onDismissAllTransfers={handleDismissAllUnresolvedTransfers}
         onOpenTransferReview={openTransferReview}
+      />
+
+      <SettingsErrorDiagnosticsSection
+        diagnostics={safeSettingsPage.errorDiagnostics ?? []}
+        isOpen={settingsSectionsOpen.errorDiagnostics}
+        isSubmitting={isSubmitting}
+        onToggle={() => toggleSettingsSection("errorDiagnostics")}
+        onRetainLatest={handleRetainLatestErrorDiagnostics}
       />
 
       <SettingsActivitySection

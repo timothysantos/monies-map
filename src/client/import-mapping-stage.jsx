@@ -31,6 +31,8 @@ export function ImportMappingStage({
   previewError
 }) {
   const stageClassName = currentStage === 2 ? "is-current" : currentStage > 2 ? "is-complete" : "";
+  const previewErrorMessage = typeof previewError === "string" ? previewError : previewError?.message;
+  const previewErrorHref = typeof previewError === "string" ? "" : previewError?.diagnosticHref;
 
   return (
     <div ref={mappingSectionRef} className={`import-stage-card ${stageClassName}`}>
@@ -96,7 +98,16 @@ export function ImportMappingStage({
         </button>
       </div>
       {readyForPreview ? <p className="import-stage-note">{messages.imports.mappingNext}</p> : null}
-      {previewError ? <div className="import-warning"><strong>{previewError}</strong></div> : null}
+      {previewErrorMessage ? (
+        <div className="import-warning">
+          <strong>{previewErrorMessage}</strong>
+          {previewErrorHref ? (
+            <a href={previewErrorHref} className="inline-link">
+              {messages.imports.openErrorDiagnostics}
+            </a>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -240,6 +240,7 @@ export const messages = {
     mappingReady: "Mapping ready",
     sampleRows: "Sample rows",
     mappingNext: "When the mappings look right, click Preview import.",
+    openErrorDiagnostics: "Open error diagnostics",
     preview: "Preview import",
     commit: "Commit import to ledger",
     saveStatementCheckpoints: "Refresh statement checkpoints",
@@ -668,6 +669,25 @@ export const messages = {
     transferReviewDetail: "Use this list to clean up unpaired transfer rows before trusting wallet balances.",
     recentActivityTitle: "Recent balance activity",
     recentActivityDetail: "A lightweight audit trail for actions that can change balances or transfer links.",
+    errorDiagnosticsTitle: "Error diagnostics",
+    errorDiagnosticsDetail: "Saved request failures with the previous action, current action, response body, and likely reason.",
+    errorDiagnosticsRetentionDetail: "Keep this for troubleshooting production-only failures. The app stores bounded response bodies here; use Cloudflare Logs for long-term infrastructure history.",
+    errorDiagnosticsRetainLatest: "Retain latest 50",
+    errorDiagnosticsEmpty: "No saved error diagnostics.",
+    errorDiagnosticsStatus: (diagnostic) => {
+      const status = diagnostic.status ? `HTTP ${diagnostic.status}` : "No status";
+      const route = diagnostic.route || "unknown route";
+      return `${status} • ${route}`;
+    },
+    errorDiagnosticsPage: (page, pageCount, count) => `Page ${page} of ${pageCount} (${count} diagnostic${count === 1 ? "" : "s"})`,
+    errorDiagnosticsPreviousAction: "Previous action",
+    errorDiagnosticsRoute: "Route",
+    errorDiagnosticsContentType: "Content type",
+    errorDiagnosticsPossibleReason: "Possible reason",
+    errorDiagnosticsUnknownReason: "The response did not include enough structure to classify the likely cause.",
+    errorDiagnosticsShownMessage: "Message shown to the user",
+    errorDiagnosticsRequestContext: "Request context",
+    errorDiagnosticsResponseBody: "Saved response body",
     createAccount: "Create account",
     saveAccount: "Save account",
     createAccountDetail: "Add a tracked account for imports, entries, and planning filters.",

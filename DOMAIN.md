@@ -212,6 +212,20 @@ Relationships:
 - may create or certify many `ledger entries`
 - may create many statement reconciliation records
 
+### Error Diagnostic
+
+A bounded support record created when a browser request fails in a way the app
+can still observe. It stores the previous action, failed action, route/status,
+possible reason, request context summary, and saved response body so production
+failures such as Cloudflare resource-limit pages can be reviewed from Settings
+without exposing raw HTML in the workflow panel.
+
+Storage:
+- `app_error_diagnostics`
+
+Relationships:
+- belongs to one `household`
+
 ### Import Row
 
 One raw source row inside an import batch. Import rows preserve traceability

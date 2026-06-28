@@ -97,7 +97,8 @@ export async function buildEntriesShellDto(
       categoryMatchRuleSuggestions: [],
       unresolvedTransfers: [],
       reconciliationExceptions: [],
-      recentAuditEvents: []
+      recentAuditEvents: [],
+      errorDiagnostics: []
     }
   };
 }

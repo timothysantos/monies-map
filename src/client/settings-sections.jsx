@@ -625,6 +625,110 @@ export function SettingsActivitySection({ activityGroups, isOpen, onToggle }) {
   );
 }
 
+export function SettingsErrorDiagnosticsSection({ diagnostics, isOpen, onToggle, isSubmitting, onRetainLatest }) {
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
+  const pageCount = Math.max(1, Math.ceil(diagnostics.length / pageSize));
+  const visibleDiagnostics = diagnostics.slice((page - 1) * pageSize, page * pageSize);
+
+  return (
+    <section id="settings-error-diagnostics" className="chart-card settings-card">
+      <SettingsSectionToggle
+        title={messages.settings.errorDiagnosticsTitle}
+        detail={messages.settings.errorDiagnosticsDetail}
+        isOpen={isOpen}
+        onToggle={onToggle}
+      />
+      {isOpen ? (
+        <div className="settings-diagnostics">
+          <div className="settings-diagnostics-toolbar">
+            <p>{messages.settings.errorDiagnosticsRetentionDetail}</p>
+            <button
+              type="button"
+              className="subtle-action"
+              disabled={isSubmitting || diagnostics.length === 0}
+              onClick={onRetainLatest}
+            >
+              {messages.settings.errorDiagnosticsRetainLatest}
+            </button>
+          </div>
+          {visibleDiagnostics.length ? (
+            <>
+              <div className="settings-diagnostic-list">
+                {visibleDiagnostics.map((diagnostic) => (
+                  <details key={diagnostic.id} className="settings-diagnostic-row">
+                    <summary>
+                      <span>
+                        <strong>{diagnostic.action}</strong>
+                        <span>{formatService.formatDate(diagnostic.createdAt)}</span>
+                      </span>
+                      <span>{messages.settings.errorDiagnosticsStatus(diagnostic)}</span>
+                    </summary>
+                    <div className="settings-diagnostic-body">
+                      <dl className="settings-diagnostic-grid">
+                        <div>
+                          <dt>{messages.settings.errorDiagnosticsPreviousAction}</dt>
+                          <dd>{diagnostic.previousAction || messages.common.emptyValue}</dd>
+                        </div>
+                        <div>
+                          <dt>{messages.settings.errorDiagnosticsRoute}</dt>
+                          <dd>{[diagnostic.method, diagnostic.route].filter(Boolean).join(" ") || messages.common.emptyValue}</dd>
+                        </div>
+                        <div>
+                          <dt>{messages.settings.errorDiagnosticsContentType}</dt>
+                          <dd>{diagnostic.contentType || messages.common.emptyValue}</dd>
+                        </div>
+                        <div>
+                          <dt>{messages.settings.errorDiagnosticsPossibleReason}</dt>
+                          <dd>{diagnostic.possibleReason || messages.settings.errorDiagnosticsUnknownReason}</dd>
+                        </div>
+                      </dl>
+                      <div className="settings-diagnostic-block">
+                        <strong>{messages.settings.errorDiagnosticsShownMessage}</strong>
+                        <p>{diagnostic.errorMessage}</p>
+                      </div>
+                      {diagnostic.requestContextJson ? (
+                        <div className="settings-diagnostic-block">
+                          <strong>{messages.settings.errorDiagnosticsRequestContext}</strong>
+                          <pre>{diagnostic.requestContextJson}</pre>
+                        </div>
+                      ) : null}
+                      {diagnostic.responseBody ? (
+                        <div className="settings-diagnostic-block">
+                          <strong>{messages.settings.errorDiagnosticsResponseBody}</strong>
+                          <pre>{diagnostic.responseBody}</pre>
+                        </div>
+                      ) : diagnostic.responseExcerpt ? (
+                        <div className="settings-diagnostic-block">
+                          <strong>{messages.settings.errorDiagnosticsResponseBody}</strong>
+                          <pre>{diagnostic.responseExcerpt}</pre>
+                        </div>
+                      ) : null}
+                    </div>
+                  </details>
+                ))}
+              </div>
+              <div className="import-history-pagination">
+                <span>{messages.settings.errorDiagnosticsPage(page, pageCount, diagnostics.length)}</span>
+                <div>
+                  <button type="button" className="subtle-action" disabled={page === 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
+                    {messages.imports.previousPage}
+                  </button>
+                  <button type="button" className="subtle-action" disabled={page === pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))}>
+                    {messages.imports.nextPage}
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="lede compact">{messages.settings.errorDiagnosticsEmpty}</p>
+          )}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 export function SettingsDemoSection({
   demo,
   error,
