@@ -77,7 +77,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     setTransferCandidateOverrides({});
     setTransferCandidateErrors({});
     setAddingToSplitsEntryId(null);
-  }, [accounts, categories, people, viewIdentityKey]);
+  }, [viewIdentityKey]);
 
   useEffect(() => {
     if (editingEntryId) {

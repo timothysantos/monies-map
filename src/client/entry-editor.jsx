@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
@@ -59,6 +59,7 @@ export function EntryEditorFields({
   const [amountDraft, setAmountDraft] = useState(resolvedAmountInput);
   const [categoryQuickSaveOpen, setCategoryQuickSaveOpen] = useState(false);
   const [quickSaveCategoryName, setQuickSaveCategoryName] = useState("");
+  const quickSaveCategoryNameRef = useRef("");
 
   useEffect(() => {
     setAmountDraft(resolvedAmountInput);
@@ -79,8 +80,10 @@ export function EntryEditorFields({
   }
 
   function handleCategoryChange(nextCategoryName) {
-    onChange({ categoryName: nextCategoryName });
+    const categoryPatch = categoryService.buildPatch(categories, nextCategoryName);
+    onChange(categoryPatch);
     if (onCategoryQuickSave && nextCategoryName !== entry.categoryName) {
+      quickSaveCategoryNameRef.current = nextCategoryName;
       setQuickSaveCategoryName(nextCategoryName);
       setCategoryQuickSaveOpen(true);
     }
@@ -145,10 +148,10 @@ export function EntryEditorFields({
                         className="dialog-primary"
                         disabled={isCategoryQuickSaving}
                         onClick={async () => {
-                          const saved = await onCategoryQuickSave({
-                            categoryName: quickSaveCategoryName || entry.categoryName
-                          });
+                          const categoryName = quickSaveCategoryNameRef.current || quickSaveCategoryName || entry.categoryName;
+                          const saved = await onCategoryQuickSave(categoryService.buildPatch(categories, categoryName));
                           if (saved) {
+                            quickSaveCategoryNameRef.current = "";
                             setQuickSaveCategoryName("");
                             setCategoryQuickSaveOpen(false);
                           }
@@ -157,6 +160,7 @@ export function EntryEditorFields({
                         {isCategoryQuickSaving ? messages.common.saving : messages.entries.saveCategoryNow}
                       </button>
                       <button type="button" className="subtle-action" disabled={isCategoryQuickSaving} onClick={() => {
+                        quickSaveCategoryNameRef.current = "";
                         setQuickSaveCategoryName("");
                         setCategoryQuickSaveOpen(false);
                       }}>
