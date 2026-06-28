@@ -692,7 +692,7 @@ function applySourceAuthorityToPreviewRow(
 
   if (sourceType === "csv" && canPromoteManualReconciliationMatch(previewRow, strongestMatch)) {
     previewRow.commitStatus = "included";
-    previewRow.commitStatusReason = "Current-activity import will promote the existing manual ledger row while preserving user edits and split links.";
+    previewRow.commitStatusReason = buildCurrentActivityManualPromotionReason(previewRow);
     previewRow.reconciliationTargetTransactionId = strongestMatch.existingTransactionId;
     previewRow.reconciliationMatches = undefined;
     return;
@@ -749,6 +749,14 @@ function canPromoteManualReconciliationMatch(
     && strongestMatch.existingBankCertificationStatus === "provisional"
     && (previewRow.reconciliationMatchCount ?? 0) === 1
     && strongestMatch.matchKind !== "near";
+}
+
+function buildCurrentActivityManualPromotionReason(previewRow: ImportPreviewRowDto) {
+  const dateContext = getPreviewRowDateContext(previewRow);
+  const dateAction = dateContext.eventDate !== dateContext.postedDate
+    ? ` It will keep transaction date ${dateContext.eventDate} for spending history and set posted date ${dateContext.postedDate} for statement reconciliation.`
+    : ` It will use ${dateContext.postedDate} as both the transaction date and posted date because this source has only one date.`;
+  return `Current-activity import will promote the existing manual ledger row while preserving user edits and split links.${dateAction}`;
 }
 
 function getDirectOwnerNameForAccount(account?: AccountDto, fallbackOwnerName?: string) {
