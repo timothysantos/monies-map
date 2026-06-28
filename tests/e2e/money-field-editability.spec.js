@@ -2,10 +2,10 @@ import { expect, test } from "@playwright/test";
 
 import {
   gotoPageAfterApi,
-  loadAppShell,
   loadEntriesPage,
   loadImportsPage,
   loadMonthPage,
+  loadSettingsPage,
   loadSplitsPage,
   postJson,
   reseedDemo
@@ -207,8 +207,8 @@ test.describe("money field editability", () => {
     await reconciliationDialog.getByRole("button", { name: "Save checkpoint" }).click();
 
     await expect.poll(async () => {
-      const shell = await loadAppShell(page);
-      const account = shell.accounts.find((item) => item.name === "UOB One");
+      const settingsPage = await loadSettingsPage(page);
+      const account = settingsPage.settingsPage.accounts.find((item) => item.name === "UOB One");
       return account?.checkpointHistory?.find((item) => item.month === "2026-05")?.statementBalanceMinor ?? null;
     }).toBe(-234567);
   });

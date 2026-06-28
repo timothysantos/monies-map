@@ -325,6 +325,8 @@ export function App() {
   const isAppShellLoading = appShellLoadCount > 0;
   const [routePageData, setRoutePageData] = useState(null);
   const [routePageError, setRoutePageError] = useState("");
+  const [referenceData, setReferenceData] = useState(null);
+  const [referenceDataError, setReferenceDataError] = useState("");
   const [summaryPageData, setSummaryPageData] = useState(null);
   const [summaryAccountPillsData, setSummaryAccountPillsData] = useState(null);
   const [entriesExternalRefreshToken, setEntriesExternalRefreshToken] = useState(0);
@@ -356,13 +358,8 @@ export function App() {
   // Build the shell query key once per route state change so caches stay
   // canonical and stable.
   const appShellParams = useMemo(
-    () => buildAppShellParams({
-      month: selectedMonth,
-      scope: selectedScope,
-      summaryStart: selectedSummaryStart,
-      summaryEnd: selectedSummaryEnd
-    }),
-    [selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart]
+    () => buildAppShellParams(),
+    []
   );
   const appShellCacheKey = appShellParams.toString();
   const summaryPageParams = useMemo(
@@ -520,6 +517,12 @@ export function App() {
     clearPersistedAppShell();
   }, [bumpQueryEpoch, queryClient]);
 
+  const clearReferenceDataCache = useCallback(() => {
+    bumpQueryEpoch();
+    queryClient.cancelQueries({ queryKey: queryKeys.referenceData() });
+    queryClient.removeQueries({ queryKey: queryKeys.referenceData() });
+  }, [bumpQueryEpoch, queryClient]);
+
   // Clear the route-page cache so the next navigation or refresh rebuilds the
   // active screen from fresh server data.
   const clearRoutePageCache = useCallback(() => {
@@ -618,6 +621,49 @@ export function App() {
     return data;
   }, [queryClient]);
 
+  const fetchReferenceData = useCallback(async ({ bypassCache = false, signal } = {}) => {
+    const queryKey = queryKeys.referenceData();
+    if (signal?.aborted) {
+      throw new DOMException("Reference data request aborted.", "AbortError");
+    }
+
+    if (!bypassCache) {
+      const cachedData = queryClient.getQueryData(queryKey);
+      if (cachedData) {
+        return cachedData;
+      }
+    }
+
+    const fetcher = async () => {
+      const response = await fetchWithTimeout("/api/reference-data", {
+        cache: "no-store"
+      }, "Reference data request");
+      if (!response.ok) {
+        throw new Error(await buildRequestErrorMessage(response, "Reference data failed."));
+      }
+      return response.json();
+    };
+
+    const data = bypassCache
+      ? await queryClient.fetchQuery({
+          queryKey,
+          queryFn: fetcher,
+          retry: false,
+          staleTime: 0
+        })
+      : await queryClient.ensureQueryData({
+          queryKey,
+          queryFn: fetcher,
+          retry: false,
+          revalidateIfStale: true
+        });
+
+    if (signal?.aborted) {
+      throw new DOMException("Reference data request aborted.", "AbortError");
+    }
+    return data;
+  }, [queryClient]);
+
   // Fetch the app shell payload and persist it so the next render can reuse
   // global metadata immediately.
   const fetchAppShellData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
@@ -654,7 +700,8 @@ export function App() {
     // The app-shell fetcher uses a manual parse step so non-JSON error bodies
     // can still surface a useful message.
     const fetcher = async () => {
-      const { response, responseText } = await fetchTextWithTransientWorkerRetry(`/api/app-shell?${cacheKey}`, {
+      const requestUrl = cacheKey ? `/api/app-shell?${cacheKey}` : "/api/app-shell";
+      const { response, responseText } = await fetchTextWithTransientWorkerRetry(requestUrl, {
         cache: "no-store",
         requestLabel: "App shell request"
       });
@@ -817,6 +864,14 @@ export function App() {
     return data;
   }, [appShellParams, clearAppShellCache, fetchAppShellData]);
 
+  const refreshReferenceDataInBackground = useCallback(async () => {
+    clearReferenceDataCache();
+    const data = await fetchReferenceData({ bypassCache: true });
+    setReferenceDataError("");
+    setReferenceData(data);
+    return data;
+  }, [clearReferenceDataCache, fetchReferenceData]);
+
   // Fetch the active route page and shape it into the current screen payload.
   const fetchRoutePageData = useCallback(async (request, { bypassCache = false, signal } = {}) => {
     if (!request) {
@@ -938,7 +993,6 @@ export function App() {
   // mutation affected shared metadata.
   const refreshRoutePage = useCallback(async ({ broadcast = false, refreshShell = false } = {}) => {
     clearRoutePageCache();
-    clearAppShellCache();
     clearEntriesPageCache();
 
     if (!routePageRequest) {
@@ -957,7 +1011,7 @@ export function App() {
     } finally {
       finishAppShellLoad();
     }
-  }, [beginAppShellLoad, clearAppShellCache, clearEntriesPageCache, clearRoutePageCache, fetchRoutePageData, refreshAppShell, routePageRequest]);
+  }, [beginAppShellLoad, clearEntriesPageCache, clearRoutePageCache, fetchRoutePageData, refreshAppShell, routePageRequest]);
 
   // Refresh the summary slice from its dedicated page and account-pill
   // queries without routing it back through the generic page loader.
@@ -1086,7 +1140,7 @@ export function App() {
     }
     const tasks = [fetchRoutePageData(request, { bypassCache: true })];
     if (refreshShell) {
-      tasks.push(refreshAppShellInBackground().catch(() => null));
+      tasks.push(refreshReferenceDataInBackground().catch(() => null));
     }
     const [data] = await Promise.all(tasks);
     setRoutePageData(data);
@@ -1099,7 +1153,7 @@ export function App() {
   }, [
     fetchRoutePageData,
     queryClient,
-    refreshAppShellInBackground,
+    refreshReferenceDataInBackground,
     selectedMonth,
     selectedScope,
     selectedViewId
@@ -1240,16 +1294,20 @@ export function App() {
       tasks.push(refreshAppShellInBackground().catch(() => null));
     }
 
+    if (refreshDescription.refreshReferenceData) {
+      tasks.push(refreshReferenceDataInBackground().catch(() => null));
+    }
+
     const [data, ...taskResults] = await Promise.all(tasks);
     setRoutePageData((current) => (
       selectedTabId === "settings" && current?.settingsPage ? data : current
     ));
 
-    if (broadcast && refreshDescription.refreshShell) {
+    if (broadcast && (refreshDescription.refreshShell || refreshDescription.refreshReferenceData)) {
       broadcastAppShellRefresh(syncChannelRef);
     }
 
-    return refreshDescription.refreshShell
+    return refreshDescription.refreshShell || refreshDescription.refreshReferenceData
       ? taskResults.find((result) => result?.accounts || result?.categories || result?.household) ?? data
       : data;
   }, [
@@ -1257,6 +1315,7 @@ export function App() {
     fetchRoutePageData,
     queryClient,
     refreshAppShellInBackground,
+    refreshReferenceDataInBackground,
     selectedTabId
   ]);
 
@@ -1556,8 +1615,7 @@ export function App() {
   const syncAppShellAfterMutation = useCallback(async () => {
     clearSummaryPageCache();
     clearSummaryAccountPillsCache();
-    await refreshAppShellInBackground();
-  }, [clearSummaryAccountPillsCache, clearSummaryPageCache, refreshAppShellInBackground]);
+  }, [clearSummaryAccountPillsCache, clearSummaryPageCache]);
 
   // Prefetch the next likely route page without replacing the current active
   // page state.
@@ -1610,6 +1668,29 @@ export function App() {
 
     await fetchEntriesPageData(params).catch(() => {});
   }, [fetchEntriesPageData, queryClient]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    void fetchReferenceData({ signal: controller.signal })
+      .then((data) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setReferenceData(data);
+        setReferenceDataError("");
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+        setReferenceData(null);
+        setReferenceDataError(describeAppShellError(error));
+        reportLoadingIssue("Reference data load failed", error);
+      });
+
+    return () => controller.abort();
+  }, [fetchReferenceData, reportLoadingIssue]);
 
   // Hydrate the shell from persisted cache first, then replace it with fresh
   // server data and an optional entries-shell warm start when the entries tab
@@ -1671,25 +1752,6 @@ export function App() {
         // Fall back to the normal shell fetch for every non-entries route and
         // for the second, full shell pass after the entries warm start.
         await loadAppShell(controller.signal);
-        if (!hasCachedAppShell || controller.signal.aborted) {
-          return;
-        }
-
-        try {
-          const data = await fetchAppShellData(appShellParams, {
-            bypassCache: true,
-            signal: controller.signal
-          });
-          if (!controller.signal.aborted) {
-            setAppShellError("");
-            setRoutePageError("");
-            setAppShell(data);
-          }
-        } catch (error) {
-          if (error instanceof DOMException && error.name === "AbortError") {
-            return;
-          }
-        }
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
@@ -1759,10 +1821,16 @@ export function App() {
       channel.onmessage = (event) => {
         if (event.data?.type === APP_SYNC_EVENT_TYPES.appShellRefresh) {
           clearAppShellCache();
+          clearReferenceDataCache();
           clearRoutePageCache();
           const finishAppShellLoad = beginAppShellLoad();
-          void loadAppShell()
-            .catch(handleAppShellFailure)
+          void Promise.all([
+            loadAppShell().catch(handleAppShellFailure),
+            refreshReferenceDataInBackground().catch((error) => {
+              setReferenceDataError(describeAppShellError(error));
+              reportLoadingIssue("Reference data refresh failed", error);
+            })
+          ])
             .finally(finishAppShellLoad);
           return;
         }
@@ -1797,13 +1865,19 @@ export function App() {
 
       if (payload?.type === APP_SYNC_EVENT_TYPES.appShellRefresh) {
         clearAppShellCache();
+        clearReferenceDataCache();
         clearRoutePageCache();
         clearSummaryPageCache();
         clearSummaryAccountPillsCache();
-          const finishAppShellLoad = beginAppShellLoad();
-          void loadAppShell()
-            .catch(handleAppShellFailure)
-            .finally(finishAppShellLoad);
+        const finishAppShellLoad = beginAppShellLoad();
+        void Promise.all([
+          loadAppShell().catch(handleAppShellFailure),
+          refreshReferenceDataInBackground().catch((error) => {
+            setReferenceDataError(describeAppShellError(error));
+            reportLoadingIssue("Reference data refresh failed", error);
+          })
+        ])
+          .finally(finishAppShellLoad);
         return;
       }
 
@@ -1834,13 +1908,17 @@ export function App() {
   }, [
     beginAppShellLoad,
     clearAppShellCache,
+    clearReferenceDataCache,
     clearRoutePageCache,
     clearSummaryAccountPillsCache,
     clearSummaryPageCache,
     handleAppShellFailure,
     handleRemoteEntryMutation,
     handleRemoteSplitMutation,
-    loadAppShell
+    handleRemoteSummaryMutation,
+    loadAppShell,
+    reportLoadingIssue,
+    refreshReferenceDataInBackground
   ]);
 
   // Summary owns its own page query plus wallet-pill query, so the summary tab
@@ -2027,8 +2105,14 @@ export function App() {
     [routePageData, selectedTabId]
   );
   const categories = useMemo(
-    () => appShell?.categories.map((category) => ({ ...category, ...(categoryOverrides[category.id] ?? {}) })) ?? [],
-    [appShell, categoryOverrides]
+    () => referenceData?.categories.map((category) => ({ ...category, ...(categoryOverrides[category.id] ?? {}) })) ?? [],
+    [referenceData, categoryOverrides]
+  );
+  const accounts = useMemo(
+    () => renderedTabId === "settings" && pageView?.settingsPage?.accounts?.length
+      ? pageView.settingsPage.accounts
+      : referenceData?.accounts ?? [],
+    [pageView, referenceData, renderedTabId]
   );
   // Use the summary page's month list when present, otherwise fall back to the
   // shell's tracked months for detail tabs and route-neutral navigation.
@@ -2131,7 +2215,7 @@ export function App() {
     summaryPage
   ]);
   const renderedRouteElement = useMemo(() => {
-    if (!appShell || !pageView) {
+    if (!appShell || !pageView || !referenceData) {
       return null;
     }
 
@@ -2151,7 +2235,7 @@ export function App() {
       return (
         <MonthPanel
           view={pageView}
-          accounts={appShell.accounts}
+          accounts={accounts}
           people={appShell.household.people}
           categories={categories}
           householdMonthEntries={householdMonthEntries}
@@ -2172,7 +2256,7 @@ export function App() {
           onMobileFilterStateChange={handleEntriesMobileFilterStateChange}
           externalRefreshToken={entriesExternalRefreshToken}
           availableMonths={availableMonths}
-          accounts={appShell.accounts}
+          accounts={accounts}
           categories={categories}
           people={appShell.household.people}
           onCategoryAppearanceChange={handleCategoryAppearanceChange}
@@ -2200,7 +2284,7 @@ export function App() {
           importsPage={pageView.importsPage}
           viewId={pageView.id}
           viewLabel={pageView.label}
-          accounts={appShell.accounts}
+          accounts={accounts}
           categories={categories}
           people={appShell.household.people}
           onRefresh={(options) => refreshCurrentImportsPage(options)}
@@ -2212,7 +2296,7 @@ export function App() {
       return (
         <SettingsPanel
           settingsPage={pageView.settingsPage}
-          accounts={appShell.accounts}
+          accounts={accounts}
           categories={categories}
           people={appShell.household.people}
           viewId={pageView.id}
@@ -2235,9 +2319,8 @@ export function App() {
     return null;
   }, [
     appEnvironment,
-    appShell?.accounts,
+    accounts,
     appShell?.household?.people,
-    appShell?.importsPage,
     appShell?.viewerIdentity,
     availableMonths,
     broadcastSplitMutation,
@@ -2253,6 +2336,7 @@ export function App() {
     loginIdentityError,
     mobileContextOpen,
     pageView,
+    referenceData,
     refreshCurrentSettingsPage,
     refreshCurrentImportsPage,
     refreshCurrentMonthPage,
@@ -2668,6 +2752,35 @@ export function App() {
     );
   }
 
+  if (referenceDataError) {
+    return (
+      <main className="shell">
+        <EnvironmentBanner environment={appEnvironment} />
+        <section className="panel app-loading-panel app-loading-panel-error">
+          <div>
+            <p>{messages.common.referenceDataErrorTitle}</p>
+            <p className="app-loading-error-copy">{referenceDataError}</p>
+            <div className="app-loading-diagnosis">
+              <strong>{messages.common.referenceDataErrorTitle}</strong>
+              <p>{messages.common.referenceDataErrorDetail}</p>
+            </div>
+          </div>
+          {loadingStatus.issue ? <p className="app-loading-issue-inline">{loadingStatus.issue}</p> : null}
+          <button
+            type="button"
+            className="button-primary"
+            onClick={() => { void refreshReferenceDataInBackground().catch((error) => {
+              setReferenceDataError(describeAppShellError(error));
+              reportLoadingIssue("Reference data retry failed", error);
+            }); }}
+          >
+            {messages.common.referenceDataRetry}
+          </button>
+        </section>
+      </main>
+    );
+  }
+
   if (appShell && !pageView && routePageError) {
     return (
       <main className="shell">
@@ -2688,7 +2801,7 @@ export function App() {
 
   // Render the loading state while either the shell or the active page is
   // still being resolved.
-  if (!appShell || !pageView) {
+  if (!appShell || !referenceData || !pageView) {
     return (
       <main className="shell">
         <EnvironmentBanner environment={appEnvironment} />

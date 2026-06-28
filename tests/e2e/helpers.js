@@ -146,6 +146,12 @@ export async function loadAppShell(page, { month = "2026-04", scope = "direct_pl
   return response.json();
 }
 
+export async function loadReferenceData(page) {
+  const response = await page.request.get("/api/reference-data");
+  expect(response.ok(), await response.text()).toBeTruthy();
+  return response.json();
+}
+
 export async function loadMonthPage(page, { view = "person-tim", month = "2026-04", scope = "direct_plus_shared" } = {}) {
   const response = await page.request.get(`/api/month-page?view=${view}&month=${month}&scope=${scope}`);
   expect(response.ok(), await response.text()).toBeTruthy();

@@ -12,6 +12,7 @@ const SETTINGS_ROUTE_PAGE_TARGETS = Object.freeze({
 
 const SETTINGS_ONLY_PLAN = Object.freeze({
   refreshShell: false,
+  refreshReferenceData: false,
   invalidateEntries: false,
   invalidateImports: false,
   invalidateMonth: false,
@@ -20,7 +21,8 @@ const SETTINGS_ONLY_PLAN = Object.freeze({
 });
 
 const REFERENCE_DATA_PLAN = Object.freeze({
-  refreshShell: true,
+  refreshShell: false,
+  refreshReferenceData: true,
   invalidateEntries: true,
   invalidateImports: false,
   invalidateMonth: true,
@@ -28,8 +30,14 @@ const REFERENCE_DATA_PLAN = Object.freeze({
   invalidateSummary: true
 });
 
+const PERSON_REFERENCE_DATA_PLAN = Object.freeze({
+  ...REFERENCE_DATA_PLAN,
+  refreshShell: true
+});
+
 const CATEGORY_RULE_PLAN = Object.freeze({
   refreshShell: false,
+  refreshReferenceData: false,
   invalidateEntries: false,
   invalidateImports: true,
   invalidateMonth: false,
@@ -39,6 +47,7 @@ const CATEGORY_RULE_PLAN = Object.freeze({
 
 const DEMO_RESET_PLAN = Object.freeze({
   refreshShell: true,
+  refreshReferenceData: true,
   invalidateEntries: true,
   invalidateImports: true,
   invalidateMonth: true,
@@ -51,7 +60,12 @@ const DEMO_RESET_PLAN = Object.freeze({
 export function buildSettingsRefreshPlan(kind) {
   if (
     kind === "person_saved"
-    || kind === "account_saved"
+  ) {
+    return PERSON_REFERENCE_DATA_PLAN;
+  }
+
+  if (
+    kind === "account_saved"
     || kind === "account_archived"
     || kind === "category_saved"
     || kind === "category_deleted"
@@ -119,6 +133,7 @@ export function describeSettingsRefreshPlan(plan = SETTINGS_ONLY_PLAN) {
     invalidateImportsPage: plan.invalidateImports,
     invalidateSummaryAccountPills: plan.invalidateSummary,
     invalidateSummaryPage: plan.invalidateSummary,
-    refreshShell: Boolean(plan.refreshShell)
+    refreshShell: Boolean(plan.refreshShell),
+    refreshReferenceData: Boolean(plan.refreshReferenceData)
   };
 }

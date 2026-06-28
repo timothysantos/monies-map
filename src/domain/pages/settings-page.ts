@@ -1,6 +1,7 @@
 import { ensureAppData } from "../app-shell";
 import {
   loadAuditEvents,
+  loadAccounts,
   loadAppErrorDiagnostics,
   loadCategoryMatchRules,
   loadCategoryMatchRuleSuggestions,
@@ -13,6 +14,7 @@ import type { SettingsPageDto } from "../../types/dto";
 export async function buildSettingsPageDto(db: D1Database): Promise<{ settingsPage: SettingsPageDto }> {
   const demo = await ensureAppData(db);
   const [
+    accounts,
     categoryMatchRules,
     categoryMatchRuleSuggestions,
     unresolvedTransfers,
@@ -20,6 +22,7 @@ export async function buildSettingsPageDto(db: D1Database): Promise<{ settingsPa
     recentAuditEvents,
     errorDiagnostics
   ] = await Promise.all([
+    loadAccounts(db),
     loadCategoryMatchRules(db),
     loadCategoryMatchRuleSuggestions(db),
     loadUnresolvedTransfers(db),
@@ -29,6 +32,7 @@ export async function buildSettingsPageDto(db: D1Database): Promise<{ settingsPa
   ]);
   return {
     settingsPage: {
+      accounts,
       demo,
       categoryMatchRules,
       categoryMatchRuleSuggestions,

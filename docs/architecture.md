@@ -145,6 +145,8 @@ Rules:
 - stop treating bootstrap as the default source for all screens
 - fetch the minimum data needed per screen
 - keep separate queries for separate concerns such as:
+  - route-neutral app shell identity
+  - lightweight account/category reference data
   - month list
   - month detail
   - entries list
@@ -152,9 +154,11 @@ Rules:
   - aggregates
   - imports preview state
   - splits workspace state
-  - settings reference data
+  - settings account diagnostics and reference management
 - let each slice own its query keys and query option builders
 - invalidate narrowly after mutations
+- keep `/api/app-shell` free of accounts, categories, page payloads, balances,
+  checkpoint history, and import history
 
 ### Client state strategy
 

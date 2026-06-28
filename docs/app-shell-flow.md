@@ -22,16 +22,18 @@ flowchart TD
   H --> I["Database"]
   I --> J["AppShellDto"]
   J --> K["src/client/App.jsx<br/>cache shell and render shell chrome"]
-  K --> L["src/client/app-routing.js<br/>buildRoutePageRequest() for month, entries, splits, imports, and settings"]
-  K --> M["GET /api/summary-page + /api/summary-account-pills<br/>or /api/month-page or /api/entries-page or /api/splits-page or /api/imports-page or /api/settings-page"]
-  M --> N["src/index.ts"]
-  N --> O["src/domain/pages/*.ts<br/>route page DTO builders"]
-  O --> P["Database"]
-  P --> Q["Route-specific page DTO"]
-  Q --> R["src/client/App.jsx<br/>keep the previous settled screen visible until the new page is ready"]
-  R --> S["src/client/App.jsx<br/>buildPageViewFromRouteData()"]
-  S --> T["Feature panel render"]
-  T --> U["Mutations invalidate exact query keys and broadcast app-shell refresh when needed"]
+  K --> L["GET /api/reference-data"]
+  L --> M["Account and category reference lists"]
+  K --> N["src/client/app-routing.js<br/>buildRoutePageRequest() for month, entries, splits, imports, and settings"]
+  K --> O["GET /api/summary-page + /api/summary-account-pills<br/>or /api/month-page or /api/entries-page or /api/splits-page or /api/imports-page or /api/settings-page"]
+  O --> P["src/index.ts"]
+  P --> Q["src/domain/pages/*.ts<br/>route page DTO builders"]
+  Q --> R["Database"]
+  R --> S["Route-specific page DTO"]
+  S --> T["src/client/App.jsx<br/>keep the previous settled screen visible until the new page is ready"]
+  T --> U["src/client/App.jsx<br/>buildPageViewFromRouteData()"]
+  U --> V["Feature panel render"]
+  V --> W["Mutations invalidate exact query keys and refresh app-shell only for shell identity changes"]
 ```
 
 ## Stage Breakdown
@@ -39,8 +41,9 @@ flowchart TD
 | Stage | File(s) | API call | Output |
 | --- | --- | --- | --- |
 | Route parse | `src/client/App.jsx` | none | Active tab, selected view, month, scope, and summary range |
-| Shell key build | `src/client/app-shell-query.js` | none | Stable app-shell cache key and optional persisted shell payload |
-| Shell request | `src/client/App.jsx`, `src/index.ts`, `src/domain/app-shell-dto.ts`, `src/domain/app-shell.ts` | `GET /api/app-shell` | `AppShellDto` with household, accounts, categories, tracked months, and viewer identity fields |
+| Shell key build | `src/client/app-shell-query.js` | none | Route-neutral app-shell cache key and optional persisted shell payload |
+| Shell request | `src/client/App.jsx`, `src/index.ts`, `src/domain/app-shell-dto.ts`, `src/domain/app-shell.ts` | `GET /api/app-shell` | `AppShellDto` with household, available view ids, tracked months, and viewer identity fields |
+| Reference data request | `src/client/App.jsx`, `src/index.ts`, `src/domain/app-shell-dto.ts` | `GET /api/reference-data` | Lightweight account and category lists without account health scans |
 | Route request build | `src/client/app-routing.js`, `src/client/summary-query.js` | none | Exact route page endpoint and query params for the current tab or the summary slice queries |
 | Page request | `src/client/App.jsx`, `src/client/summary-query.js`, `src/index.ts`, `src/domain/pages/*.ts` | `GET /api/summary-page` plus `GET /api/summary-account-pills`, or `GET /api/month-page`, `GET /api/entries-page`, `GET /api/splits-page`, `GET /api/imports-page`, or `GET /api/settings-page` | Page-specific DTO for the active screen plus wallet-pill DTOs for Summary |
 | Continuity bridge | `src/client/App.jsx` | none | Keep the last settled screen visible while the next route hydrates without turning that snapshot into a competing source of truth |
@@ -50,8 +53,14 @@ flowchart TD
 ## Practical Notes
 
 - `src/client/App.jsx` is an orchestrator, not a hidden page service.
-- shell and route-page requests can overlap when the route page does not need
+- shell, reference-data, and route-page requests can overlap when the route page does not need
   shell-derived inputs to begin safely.
+- `/api/app-shell` is route-neutral. Do not add selected month, scope, summary
+  range, accounts, categories, page payloads, account balances, checkpoint
+  history, or import history to it.
+- `/api/reference-data` owns account/category dropdown data. Full account
+  diagnostics remain on `/api/settings-page`; Summary account-pill balances
+  remain on `/api/summary-account-pills`.
 - `src/domain/app-shell.ts` owns shell orchestration and shell-shared DTO
   builders. Keep route-specific fragments out of this file.
 - `src/domain/route-context.ts` owns shared route interpretation and context

@@ -7,17 +7,31 @@ import {
   SETTINGS_ROUTE_REQUEST
 } from "../src/client/settings-refresh-plan.js";
 
-test("reference-data mutations refresh shell and downstream page caches", () => {
+test("account and category mutations refresh reference data and downstream page caches", () => {
   assert.deepEqual(buildSettingsRefreshPlan("account_saved"), {
-    refreshShell: true,
+    refreshShell: false,
+    refreshReferenceData: true,
     invalidateEntries: true,
     invalidateImports: false,
     invalidateMonth: true,
     invalidateSplits: true,
     invalidateSummary: true
   });
+  assert.deepEqual(buildSettingsRefreshPlan("category_saved"), {
+    refreshShell: false,
+    refreshReferenceData: true,
+    invalidateEntries: true,
+    invalidateImports: false,
+    invalidateMonth: true,
+    invalidateSplits: true,
+    invalidateSummary: true
+  });
+});
+
+test("person mutations refresh shell identity plus reference data", () => {
   assert.deepEqual(buildSettingsRefreshPlan("person_saved"), {
     refreshShell: true,
+    refreshReferenceData: true,
     invalidateEntries: true,
     invalidateImports: false,
     invalidateMonth: true,
@@ -29,6 +43,7 @@ test("reference-data mutations refresh shell and downstream page caches", () => 
 test("category-rule mutations stay narrow to settings and later imports", () => {
   assert.deepEqual(buildSettingsRefreshPlan("category_rule_saved"), {
     refreshShell: false,
+    refreshReferenceData: false,
     invalidateEntries: false,
     invalidateImports: true,
     invalidateMonth: false,
@@ -40,6 +55,7 @@ test("category-rule mutations stay narrow to settings and later imports", () => 
 test("trust and reconciliation mutations avoid unrelated cache bursts", () => {
   assert.deepEqual(buildSettingsRefreshPlan("checkpoint_saved"), {
     refreshShell: false,
+    refreshReferenceData: false,
     invalidateEntries: false,
     invalidateImports: false,
     invalidateMonth: false,
@@ -48,6 +64,7 @@ test("trust and reconciliation mutations avoid unrelated cache bursts", () => {
   });
   assert.deepEqual(buildSettingsRefreshPlan("reconciliation_exception_resolved"), {
     refreshShell: false,
+    refreshReferenceData: false,
     invalidateEntries: false,
     invalidateImports: false,
     invalidateMonth: false,
@@ -56,6 +73,7 @@ test("trust and reconciliation mutations avoid unrelated cache bursts", () => {
   });
   assert.deepEqual(buildSettingsRefreshPlan("statement_compare_linked"), {
     refreshShell: false,
+    refreshReferenceData: false,
     invalidateEntries: false,
     invalidateImports: false,
     invalidateMonth: false,
@@ -64,6 +82,7 @@ test("trust and reconciliation mutations avoid unrelated cache bursts", () => {
   });
   assert.deepEqual(buildSettingsRefreshPlan("settings_form_draft"), {
     refreshShell: false,
+    refreshReferenceData: false,
     invalidateEntries: false,
     invalidateImports: false,
     invalidateMonth: false,
@@ -75,6 +94,7 @@ test("trust and reconciliation mutations avoid unrelated cache bursts", () => {
 test("demo resets refresh every downstream slice they can invalidate", () => {
   assert.deepEqual(buildSettingsRefreshPlan("demo_empty_state"), {
     refreshShell: true,
+    refreshReferenceData: true,
     invalidateEntries: true,
     invalidateImports: true,
     invalidateMonth: true,
@@ -97,7 +117,8 @@ test("settings refresh description keeps route invalidation ownership in the sli
       invalidateImportsPage: false,
       invalidateSummaryAccountPills: true,
       invalidateSummaryPage: true,
-      refreshShell: true
+      refreshShell: false,
+      refreshReferenceData: true
     }
   );
 
@@ -110,7 +131,8 @@ test("settings refresh description keeps route invalidation ownership in the sli
       invalidateImportsPage: true,
       invalidateSummaryAccountPills: false,
       invalidateSummaryPage: false,
-      refreshShell: false
+      refreshShell: false,
+      refreshReferenceData: false
     }
   );
 });

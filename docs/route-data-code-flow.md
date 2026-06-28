@@ -325,10 +325,18 @@ app-shell cache identity and persistence helpers.
 `buildAppShellParams(...)`
 
 - Concept:
-  construct the normalized parameters that define the shell request identity
+  construct the route-neutral parameters that define the shell request identity
 - Why:
-  shell cache identity must be stable or the browser will treat equivalent
-  requests as different cache entries
+  shell cache identity must stay independent from month, scope, and summary
+  range changes or ordinary navigation will refetch `/api/app-shell`
+
+`/api/reference-data`
+
+- Concept:
+  load account and category reference lists outside the app shell
+- Why:
+  account/category dropdowns are shared UI data, but they should not force the
+  app shell to load transaction balances, checkpoint history, or page payloads
 
 `readPersistedAppShell(...)` / `writePersistedAppShell(...)`
 
@@ -342,7 +350,7 @@ app-shell cache identity and persistence helpers.
 
 - Concept:
   delete stale persisted shell data after mutations that change shell-level
-  reference data
+  identity data such as people or viewer registration
 
 ### Query keys and invalidation
 

@@ -4,7 +4,6 @@ import { getCurrentMonthKey } from "../lib/month";
 import {
   ensureDemoSchema,
   ensureSeedData,
-  loadAccounts,
   loadCategories,
   loadEntries,
   loadEntriesForMonths,
@@ -77,10 +76,8 @@ export async function loadAppShellContext(
 ): Promise<AppShellDto> {
   // Load the global shell metadata without pulling any route-specific page
   // payloads into the shell response.
-  const [household, accounts, categories, trackedMonths] = await Promise.all([
+  const [household, trackedMonths] = await Promise.all([
     loadHousehold(db),
-    loadAccounts(db),
-    loadCategories(db),
     loadTrackedMonths(db)
   ]);
   const viewerPersonId = await resolveLoginIdentityPersonId(db, viewerEmail);
@@ -91,8 +88,6 @@ export async function loadAppShellContext(
   return {
     appEnvironment,
     household,
-    accounts,
-    categories,
     availableViewIds: ["household", ...household.people.map((person) => person.id)],
     selectedViewId: "household",
     trackedMonths,
@@ -131,9 +126,8 @@ async function initializeAppData(db: D1Database) {
 
 export async function loadPageShell(db: D1Database, selectedViewId: string) {
   await ensureAppData(db);
-  const [household, accounts, categories, trackedMonths] = await Promise.all([
+  const [household, categories, trackedMonths] = await Promise.all([
     loadHousehold(db),
-    loadAccounts(db),
     loadCategories(db),
     loadTrackedMonths(db)
   ]);
@@ -145,7 +139,6 @@ export async function loadPageShell(db: D1Database, selectedViewId: string) {
 
   return {
     household,
-    accounts,
     categories,
     trackedMonths,
     viewId,

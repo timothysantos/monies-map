@@ -1,6 +1,7 @@
 import {
   buildAppShellDto,
-  buildEntriesShellDto
+  buildEntriesShellDto,
+  buildReferenceDataDto
 } from "./domain/app-shell-dto";
 import {
   invalidateAppDataCache,
@@ -99,6 +100,12 @@ export default {
           getAuthenticatedEmail(request),
           getAppEnvironment(env, url)
         )
+      );
+    }
+
+    if (url.pathname === "/api/reference-data") {
+      return apiPageResponse("Reference data", request, url, () =>
+        buildReferenceDataDto(env.DB)
       );
     }
 

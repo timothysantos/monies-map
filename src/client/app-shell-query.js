@@ -1,19 +1,10 @@
-export const APP_SHELL_PERSISTED_CACHE_KEY = "monies-map-app-shell-cache-v3";
+export const APP_SHELL_PERSISTED_CACHE_KEY = "monies-map-app-shell-cache-v4";
 
-export function buildAppShellParams({ month, scope, summaryStart, summaryEnd }) {
-  // Encode the shell query identity from the route state that actually
-  // affects the shell payload.
-  const params = new URLSearchParams({
-    month,
-    scope
-  });
-  if (summaryStart) {
-    params.set("summary_start", summaryStart);
-  }
-  if (summaryEnd) {
-    params.set("summary_end", summaryEnd);
-  }
-  return params;
+export function buildAppShellParams() {
+  // The app shell contains route-neutral household and login metadata. Month,
+  // scope, and summary range belong to route-page query keys, not shell cache
+  // identity.
+  return new URLSearchParams();
 }
 
 export function buildEntriesShellParams({ viewId, month }) {

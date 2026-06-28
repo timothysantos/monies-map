@@ -100,6 +100,22 @@ async function loadAppShell(page, { month = "2025-10", scope = "direct_plus_shar
   return response.json();
 }
 
+async function loadReferenceData(page) {
+  const response = await page.request.get("/api/reference-data");
+  if (!response.ok()) {
+    throw new Error(`Reference data failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+async function loadSettingsPage(page) {
+  const response = await page.request.get("/api/settings-page");
+  if (!response.ok()) {
+    throw new Error(`Settings page failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
 async function loadMonthPage(page, { view = "person-tim", month = "2025-10", scope = "direct_plus_shared" } = {}) {
   const params = new URLSearchParams({ view, month, scope });
   const response = await page.request.get(`/api/month-page?${params.toString()}`);
@@ -1035,8 +1051,8 @@ test.describe("import flow", () => {
   test("committed import can be rolled back and disappears from entries and import history", async ({ page }) => {
     const description = `Playwright rollback import ${Date.now()}`;
     const month = "2025-10";
-    const appShell = await loadAppShell(page, { month });
-    const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    const referenceData = await loadReferenceData(page);
+    const account = referenceData.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
 
     const beforeEntries = await loadEntriesPage(page, { view: "person-tim", month });
@@ -1081,8 +1097,8 @@ test.describe("import flow", () => {
 
   test("rolling back a PDF import invalidates cached entries before returning to the entries page", async ({ page }) => {
     const month = "2025-01";
-    const appShell = await loadAppShell(page, { month });
-    const account = appShell.accounts.find((item) => item.name === "Citi Rewards");
+    const referenceData = await loadReferenceData(page);
+    const account = referenceData.accounts.find((item) => item.name === "Citi Rewards");
     expect(account).toBeTruthy();
 
     const importedRow = buildSyntheticPdfImportRow({
@@ -1222,8 +1238,8 @@ test.describe("import flow", () => {
   });
 
   test("re-importing the same January PDF after rollback does not hit the import id uniqueness guard", async ({ page }) => {
-    const appShell = await loadAppShell(page, { month: "2025-01" });
-    const account = appShell.accounts.find((item) => item.name === "Citi Rewards");
+    const referenceData = await loadReferenceData(page);
+    const account = referenceData.accounts.find((item) => item.name === "Citi Rewards");
     expect(account).toBeTruthy();
 
     const januaryRow = buildSyntheticPdfImportRow({
@@ -1259,8 +1275,8 @@ test.describe("import flow", () => {
   });
 
   test("rolling back a middle statement blocks later statements until the missing month is restored", async ({ page }) => {
-    const appShell = await loadAppShell(page, { month: "2025-02" });
-    const account = appShell.accounts.find((item) => item.openingBalanceMinor === 0 && !item.latestTransactionDate);
+    const settingsPage = await loadSettingsPage(page);
+    const account = settingsPage.settingsPage.accounts.find((item) => item.openingBalanceMinor === 0 && !item.latestTransactionDate);
     expect(account).toBeTruthy();
 
     const novCheckpoint = await postJson(page, "/api/accounts/reconcile", {
@@ -1481,8 +1497,8 @@ test.describe("import flow", () => {
   });
 
   test("statement preview can certify midcycle rows and still save the checkpoint", async ({ page }) => {
-    const appShell = await loadAppShell(page, { month: "2025-10" });
-    const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    const referenceData = await loadReferenceData(page);
+    const account = referenceData.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
 
     const importedRow = {
@@ -1627,8 +1643,8 @@ test.describe("import flow", () => {
     }, { statementCheckpoints: matchingStatementCheckpoints });
     expect(checkpointOnlyCommit.ok, checkpointOnlyCommit.text).toBeTruthy();
 
-    const afterAppShell = await loadAppShell(page, { month: "2025-10" });
-    const afterAccount = afterAppShell.accounts.find((item) => item.id === account.id);
+    const afterSettingsPage = await loadSettingsPage(page);
+    const afterAccount = afterSettingsPage.settingsPage.accounts.find((item) => item.id === account.id);
     expect(afterAccount?.latestCheckpointMonth).toBe("2025-10");
     expect(Number.isFinite(afterAccount?.latestCheckpointDeltaMinor)).toBeTruthy();
   });
@@ -1707,8 +1723,8 @@ test.describe("import flow", () => {
   });
 
   test("statement balance can certify a near-match provisional row when amount clears the velocity rule", async ({ page }) => {
-    const appShell = await loadAppShell(page, { month: "2025-08" });
-    const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    const referenceData = await loadReferenceData(page);
+    const account = referenceData.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
 
     const existingRow = {
@@ -1824,8 +1840,8 @@ test.describe("import flow", () => {
   });
 
   test("low-value near matches beyond two days stay out of the reconciliation lane", async ({ page }) => {
-    const appShell = await loadAppShell(page, { month: "2025-08" });
-    const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    const referenceData = await loadReferenceData(page);
+    const account = referenceData.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
 
     const existingRow = {
@@ -1898,8 +1914,8 @@ test.describe("import flow", () => {
   });
 
   test("midcycle Citi activity skips an already certified statement row with a different activity date", async ({ page }) => {
-    const appShell = await loadAppShell(page, { month: "2026-04" });
-    const account = appShell.accounts.find((item) => item.name === "Citi Rewards");
+    const referenceData = await loadReferenceData(page);
+    const account = referenceData.accounts.find((item) => item.name === "Citi Rewards");
     expect(account).toBeTruthy();
 
     const statementRow = {
@@ -1968,8 +1984,8 @@ test.describe("import flow", () => {
   });
 
   test("mid-cycle imports do not match imported provisional rows, but PDFs still can promote them", async ({ page }) => {
-    const appShell = await loadAppShell(page, { month: "2025-03" });
-    const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    const referenceData = await loadReferenceData(page);
+    const account = referenceData.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
 
     const existingImportedRow = {
@@ -2121,8 +2137,8 @@ test.describe("import flow", () => {
   });
 
   test("compact Citi PDF merchant text can still promote the spaced mid-cycle CSV row", async ({ page }) => {
-    const appShell = await loadAppShell(page, { month: "2025-03" });
-    const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    const referenceData = await loadReferenceData(page);
+    const account = referenceData.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
 
     const existingImportedRow = {
@@ -2194,8 +2210,8 @@ test.describe("import flow", () => {
   });
 
   test("current-activity exact manual matches are shown as already handled", async ({ page }) => {
-    const appShell = await loadAppShell(page, { month: "2025-06" });
-    const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    const referenceData = await loadReferenceData(page);
+    const account = referenceData.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
 
     const createdEntry = await page.evaluate(async ({ accountId, accountName }) => {
@@ -2235,8 +2251,8 @@ test.describe("import flow", () => {
   });
 
   test("certified PDF hash does not suppress a later statement row when the bank-cleared dates differ", async ({ page }) => {
-    const appShell = await loadAppShell(page, { month: "2025-05" });
-    const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    const referenceData = await loadReferenceData(page);
+    const account = referenceData.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
 
     const manualEntry = await page.evaluate(async ({ accountId, accountName }) => {
@@ -2335,8 +2351,8 @@ test.describe("import flow", () => {
     // The final statement is the source of truth for bank facts. User-owned
     // annotations are preserved, but transaction and posted dates come from the
     // official statement when the parser provides both lanes.
-    const appShell = await loadAppShell(page, { month: "2025-08" });
-    const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    const referenceData = await loadReferenceData(page);
+    const account = referenceData.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
 
     const createdEntry = await page.evaluate(async ({ accountId, accountName }) => {

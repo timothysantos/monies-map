@@ -46,6 +46,9 @@ export const queryKeys = {
   appShell(params) {
     return ["app-shell", normalizeRecord(params)];
   },
+  referenceData() {
+    return ["reference-data"];
+  },
   settingsPage() {
     return ["settings-page"];
   },
