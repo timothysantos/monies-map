@@ -1,4 +1,5 @@
 import type { SummaryAccountPillDto } from "../../types/dto";
+import { loadAccounts } from "../app-repository";
 import { accountsForSummary } from "../app-shell";
 import { loadRoutePageContext } from "../route-context";
 
@@ -8,7 +9,8 @@ export async function buildSummaryAccountPillsDto(
   db: D1Database,
   selectedViewId = "household"
 ): Promise<{ viewId: string; label: string; accountPills: SummaryAccountPillDto[] }> {
-  const { accounts, viewId, label } = await loadRoutePageContext(db, selectedViewId);
+  const { viewId, label } = await loadRoutePageContext(db, selectedViewId);
+  const accounts = await loadAccounts(db);
 
   return {
     viewId,

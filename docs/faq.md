@@ -74,10 +74,11 @@ matches the bank.
 
 ## What if the app stays on Loading?
 
-The app loads in two stages: first the shared dashboard shell, then the active
-page payload such as Imports, Entries, or Summary. If either request stalls, the
-loading panel now stops waiting after the request timeout and shows which page
-request failed, with a retry button.
+The app loads in three small stages: first the shared dashboard shell, then
+lightweight account/category reference data, then the active page payload such
+as Imports, Entries, or Summary. If any request stalls, the loading panel stops
+waiting after the request timeout and shows which request failed, with a retry
+button.
 
 Cloudflare Access can also show browser-console warnings for `/site.webmanifest`
 when the manifest request is redirected to the Access login page. That warning
@@ -86,20 +87,20 @@ dashboard shell or page API failing to load.
 
 If the retry keeps failing, check Settings → Error diagnostics for saved server
 responses from import previews, then check the browser Network panel for the
-specific `/api/app-shell`, `/api/*-page`, or `/api/summary-*` request that timed
-out or returned an HTML error page.
+specific `/api/app-shell`, `/api/reference-data`, `/api/*-page`, or
+`/api/summary-*` request that timed out or returned an HTML error page.
 
 If the visible failure says `/api/app-shell` returned a Cloudflare 503 because
 the Worker exceeded CPU or resource limits, the request was stopped before the
-app could return JSON. In that state, Settings and Error diagnostics may also be
-unable to open because they use the same shared app-shell request. Retry once
-after a short wait, then check Cloudflare Workers observability for the failing
-endpoint and timestamp. There is no separate app restart button for this class
-of failure; redeploying creates a new Worker version but does not fix an endpoint
-that is consistently too expensive. The durable fix is to reduce the endpoint's
-work, split the requested data into smaller route-specific payloads, or move the
-Worker to a plan with more CPU/resource headroom if the production data size now
-requires it.
+app could return JSON. `/api/app-shell` is now route-neutral and should not load
+accounts, categories, page payloads, balances, checkpoint history, or import
+history. If it still fails, check Cloudflare Workers observability for the
+failing timestamp and confirm whether shell identity data or schema/seed startup
+work is the remaining cost. There is no separate app restart button for this
+class of failure; redeploying creates a new Worker version but does not fix an
+endpoint that is consistently too expensive. The durable fix is to keep broad
+reads split into route-specific payloads or move the Worker to a plan with more
+CPU/resource headroom if the production data size now requires it.
 
 ## How should saves and refreshes feel during repeated editing?
 

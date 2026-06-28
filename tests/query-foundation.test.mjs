@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { queryKeys } from "../src/client/query-keys.js";
+import { buildAppShellParams } from "../src/client/app-shell-query.js";
 import {
   invalidateAppShellQueries,
   invalidateImportMutationQueries,
@@ -35,6 +36,22 @@ test("queryKeys.appShell normalizes its params", () => {
       selectedViewId: "household"
     }
   ]);
+});
+
+test("buildAppShellParams keeps the shell route-neutral", () => {
+  const params = buildAppShellParams({
+    selectedViewId: "person-tim",
+    selectedMonth: "2026-06",
+    selectedScope: "direct_only",
+    summaryStartMonth: "2026-01",
+    summaryEndMonth: "2026-06"
+  });
+
+  assert.deepEqual([...params.entries()], []);
+});
+
+test("queryKeys.referenceData returns a stable reference slice key", () => {
+  assert.deepEqual(queryKeys.referenceData(), ["reference-data"]);
 });
 
 test("queryKeys.importsPage returns a stable slice key", () => {

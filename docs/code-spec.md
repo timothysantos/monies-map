@@ -65,7 +65,8 @@ to stay well below that.
 
 | Query / workflow | Target server time | Stretch limit | Notes |
 | --- | --- | --- | --- |
-| `appShell` | `<= 200ms` | `350ms` | no page payloads |
+| `appShell` | `<= 100ms` | `200ms` | route-neutral shell only; no accounts, categories, page payloads, balances, checkpoints, or import history |
+| `referenceData` | `<= 150ms` | `250ms` | account/category dropdown data only; no transaction or checkpoint scans |
 | `summaryPage` | `<= 300ms` | `500ms` | aggregates only |
 | `summaryAccountPills` | `<= 200ms` | `350ms` | keep separate if costly |
 | `monthPage` | `<= 350ms` | `600ms` | month rows and metrics only |
@@ -73,7 +74,7 @@ to stay well below that.
 | `importsPage` | `<= 250ms` | `400ms` | list and lightweight metadata |
 | `importPreview` | `<= 700ms` | `1200ms` | heavy but draft-sensitive |
 | `splitsPage` | `<= 300ms` | `500ms` | slice-owned |
-| `settingsPage` | `<= 250ms` | `400ms` | reference data |
+| `settingsPage` | `<= 350ms` | `600ms` | settings forms plus full account diagnostics and checkpoint history |
 | warmup / prefetch | `<= 250ms` | `400ms` | must yield to visible work |
 
 Budget rules:
@@ -82,6 +83,8 @@ Budget rules:
 - warmup must stop before it competes with the active page
 - one slow query is acceptable temporarily; broad slow dependency chains are not
 - mutations may take longer, but their follow-up invalidation should stay narrow
+- account/category mutations refresh `referenceData`; only viewer/person/demo
+  changes should refresh `appShell`
 
 ## Query State Chart
 

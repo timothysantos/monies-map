@@ -261,6 +261,57 @@ export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
   }));
 }
 
+export async function loadAccountReferences(db: D1Database): Promise<AccountDto[]> {
+  const result = await db
+    .prepare(`
+      SELECT
+        accounts.id,
+        accounts.institution_id,
+        institutions.name AS institution_name,
+        accounts.owner_person_id,
+        people.display_name AS owner_name,
+        accounts.account_name,
+        accounts.account_kind,
+        accounts.currency,
+        accounts.opening_balance_minor,
+        accounts.is_joint,
+        accounts.is_active
+      FROM accounts
+      INNER JOIN institutions ON institutions.id = accounts.institution_id
+      LEFT JOIN people ON people.id = accounts.owner_person_id
+      WHERE accounts.household_id = ?
+      ORDER BY lower(institutions.name), lower(accounts.account_name)
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID)
+    .all<{
+      id: string;
+      institution_id: string;
+      institution_name: string;
+      owner_person_id: string | null;
+      owner_name: string | null;
+      account_name: string;
+      account_kind: "bank" | "credit_card" | "cash" | "investment";
+      currency: string;
+      opening_balance_minor: number;
+      is_joint: number;
+      is_active: number;
+    }>();
+
+  return result.results.map((row) => ({
+    id: row.id,
+    institutionId: row.institution_id,
+    ownerPersonId: row.owner_person_id ?? undefined,
+    name: row.account_name,
+    institution: row.institution_name,
+    kind: row.account_kind,
+    ownerLabel: row.owner_name ?? "Shared",
+    currency: row.currency,
+    isJoint: Boolean(row.is_joint),
+    isActive: Boolean(row.is_active),
+    openingBalanceMinor: Number(row.opening_balance_minor ?? 0)
+  }));
+}
+
 async function findOrCreateInstitution(db: D1Database, name: string) {
   const trimmed = name.trim();
   const existing = await db

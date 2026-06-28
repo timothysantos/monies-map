@@ -686,6 +686,7 @@ export interface ContextViewDto {
 }
 
 export interface SettingsPageDto {
+  accounts: AccountDto[];
   demo: DemoSettingsDto;
   categoryMatchRules: CategoryMatchRuleDto[];
   categoryMatchRuleSuggestions: CategoryMatchRuleSuggestionDto[];
@@ -698,8 +699,6 @@ export interface SettingsPageDto {
 export interface AppShellDto {
   appEnvironment?: "demo" | "local" | "production" | "test";
   household: HouseholdDto;
-  accounts: AccountDto[];
-  categories: CategoryDto[];
   availableViewIds: string[];
   selectedViewId: string;
   trackedMonths: string[];
@@ -712,6 +711,11 @@ export interface AppShellDto {
     email: string;
     suggestedPersonId: string;
   };
+}
+
+export interface ReferenceDataDto {
+  accounts: AccountDto[];
+  categories: CategoryDto[];
 }
 
 export interface EntriesShellDto {

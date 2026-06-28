@@ -5,6 +5,7 @@ import {
   loadAppShell,
   loadEntriesPage,
   loadMonthPage,
+  loadReferenceData,
   loadSettingsPage,
   loadSummaryAccountPills,
   loadSummaryPage,
@@ -32,8 +33,8 @@ test.describe("settings reference data", () => {
 
   test("category rule CRUD stays inside the settings page DTO", async ({ page }) => {
     const before = await loadSettingsPage(page);
-    const shell = await loadAppShell(page);
-    const targetCategory = shell.categories[0];
+    const referenceData = await loadReferenceData(page);
+    const targetCategory = referenceData.categories[0];
     const rulePattern = uniqueLabel("Playwright category rule");
 
     await postJson(page, "/api/category-match-rules/save", {
@@ -60,8 +61,8 @@ test.describe("settings reference data", () => {
 
   test("category rule save shows pending state and keeps the dialog stable", async ({ page }) => {
     const before = await loadSettingsPage(page);
-    const shell = await loadAppShell(page);
-    const targetCategory = shell.categories[0];
+    const referenceData = await loadReferenceData(page);
+    const targetCategory = referenceData.categories[0];
     const rulePattern = uniqueLabel("Playwright rule save");
 
     await openSettingsPage(page);
@@ -98,11 +99,11 @@ test.describe("settings reference data", () => {
     await expect(dialog).toHaveCount(0);
   });
 
-  test("account rename updates shell metadata plus summary and entries downstream DTOs", async ({ page }) => {
-    const beforeShell = await loadAppShell(page);
+  test("account rename updates reference data plus summary and entries downstream DTOs", async ({ page }) => {
+    const beforeReferenceData = await loadReferenceData(page);
     const beforeSummaryPills = await loadSummaryAccountPills(page, { view: "household" });
     const visiblePill = beforeSummaryPills.accountPills[0];
-    const targetAccount = beforeShell.accounts.find((account) => account.id === visiblePill?.accountId) ?? beforeShell.accounts[0];
+    const targetAccount = beforeReferenceData.accounts.find((account) => account.id === visiblePill?.accountId) ?? beforeReferenceData.accounts[0];
     const renamedAccount = uniqueLabel(`${targetAccount.name} renamed`);
     const createdDescription = uniqueLabel("Playwright account rename");
 
@@ -110,7 +111,7 @@ test.describe("settings reference data", () => {
       date: "2026-04-24",
       description: createdDescription,
       accountName: targetAccount.name,
-      categoryName: beforeShell.categories[0].name,
+      categoryName: beforeReferenceData.categories[0].name,
       amountMinor: 4321,
       entryType: "expense",
       ownershipType: "direct",
@@ -128,8 +129,8 @@ test.describe("settings reference data", () => {
       isJoint: targetAccount.isJoint
     });
 
-    const afterShell = await loadAppShell(page);
-    expect(afterShell.accounts.find((account) => account.id === targetAccount.id)?.name).toBe(renamedAccount);
+    const afterReferenceData = await loadReferenceData(page);
+    expect(afterReferenceData.accounts.find((account) => account.id === targetAccount.id)?.name).toBe(renamedAccount);
 
     const summaryPage = await loadSummaryAccountPills(page, { view: "household" });
     expect(
@@ -142,12 +143,12 @@ test.describe("settings reference data", () => {
     ).toBe(true);
   });
 
-  test("category rename refreshes shell metadata plus month and summary downstream DTOs", async ({ page }) => {
-    const beforeShell = await loadAppShell(page);
-    const targetCategory = beforeShell.categories.find((category) => !category.isSystem) ?? beforeShell.categories[0];
+  test("category rename refreshes reference data plus month and summary downstream DTOs", async ({ page }) => {
+    const beforeReferenceData = await loadReferenceData(page);
+    const targetCategory = beforeReferenceData.categories.find((category) => !category.isSystem) ?? beforeReferenceData.categories[0];
     const renamedCategory = uniqueLabel(`${targetCategory.name} renamed`);
     const createdDescription = uniqueLabel("Playwright category rename");
-    const targetAccount = beforeShell.accounts.find((account) => account.isActive) ?? beforeShell.accounts[0];
+    const targetAccount = beforeReferenceData.accounts.find((account) => account.isActive) ?? beforeReferenceData.accounts[0];
 
     await postJson(page, "/api/entries/create", {
       date: "2026-04-25",
@@ -168,8 +169,8 @@ test.describe("settings reference data", () => {
       colorHex: targetCategory.colorHex
     });
 
-    const afterShell = await loadAppShell(page);
-    expect(afterShell.categories.find((category) => category.id === targetCategory.id)?.name).toBe(renamedCategory);
+    const afterReferenceData = await loadReferenceData(page);
+    expect(afterReferenceData.categories.find((category) => category.id === targetCategory.id)?.name).toBe(renamedCategory);
 
     const monthPage = await loadMonthPage(page, { view: "person-tim", month: "2026-04" });
     expect(

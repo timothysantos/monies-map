@@ -7,8 +7,8 @@ import {
 } from "./app-shell";
 import {
   findSuggestedLoginPersonId,
-  loadAccounts,
   loadCategories,
+  loadAccountReferences,
   loadEntries,
   loadHousehold,
   loadSplitGroups,
@@ -18,6 +18,7 @@ import {
 import type {
   EntriesShellDto,
   AppShellDto,
+  ReferenceDataDto,
 } from "../types/dto";
 
 // Build the cached app shell payload that the client loads on first paint.
@@ -27,6 +28,19 @@ export async function buildAppShellDto(
   appEnvironment?: EntriesShellDto["appEnvironment"]
 ): Promise<AppShellDto> {
   return loadAppShellContext(db, viewerEmail, appEnvironment);
+}
+
+export async function buildReferenceDataDto(db: D1Database): Promise<ReferenceDataDto> {
+  await ensureAppData(db);
+  const [accounts, categories] = await Promise.all([
+    loadAccountReferences(db),
+    loadCategories(db)
+  ]);
+
+  return {
+    accounts,
+    categories
+  };
 }
 
 // Build the dedicated entries shell payload for the entries workflow.
@@ -40,7 +54,7 @@ export async function buildEntriesShellDto(
   const demo = await ensureAppData(db);
   const [household, accounts, categories, trackedMonths, splitGroups] = await Promise.all([
     loadHousehold(db),
-    loadAccounts(db),
+    loadAccountReferences(db),
     loadCategories(db),
     loadTrackedMonths(db),
     loadSplitGroups(db)
@@ -92,6 +106,7 @@ export async function buildEntriesShellDto(
         "Every transaction is tied to an import batch so the last import can be removed without touching older data."
     },
     settingsPage: {
+      accounts: [],
       demo,
       categoryMatchRules: [],
       categoryMatchRuleSuggestions: [],

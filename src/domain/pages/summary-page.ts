@@ -25,7 +25,7 @@ export async function buildSummaryPageDto(
   summaryStartMonth?: string,
   summaryEndMonth?: string
 ): Promise<{ viewId: string; label: string; summaryPage: SummaryPageDto }> {
-  const { household, accounts, categories, trackedMonths, viewId, label, personNameById } = await loadRoutePageContext(db, selectedViewId);
+  const { categories, trackedMonths, viewId, label, personNameById } = await loadRoutePageContext(db, selectedViewId);
   const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
   const summaryRangeMonths = buildSummaryRange(trackedMonths, summaryStartMonth, summaryEndMonth ?? effectiveSelectedMonth);
   const [summaryMonths, summaryEntries] = await Promise.all([
