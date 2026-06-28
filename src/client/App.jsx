@@ -49,7 +49,8 @@ import { moniesClient } from "./monies-client-service";
 import {
   buildAppShellErrorMessage,
   buildRequestErrorMessage,
-  describeAppShellError
+  describeAppShellError,
+  isAppShellResourceLimitError
 } from "./request-errors";
 import { fetchWithTimeout } from "./request-timeout";
 import { installMobileFocusVisibility } from "./mobile-focus-visibility";
@@ -2638,13 +2639,30 @@ export function App() {
   // Render the explicit error state before any route chrome if the shell load
   // failed.
   if (appShellError) {
+    const isResourceLimitError = isAppShellResourceLimitError(appShellError);
     return (
       <main className="shell">
         <EnvironmentBanner environment={appEnvironment} />
-        <section className="panel">
-          <p>{messages.common.appShellErrorTitle}</p>
-          <p>{appShellError}</p>
+        <section className="panel app-loading-panel app-loading-panel-error">
+          <div>
+            <p>{messages.common.appShellErrorTitle}</p>
+            <p className="app-loading-error-copy">{appShellError}</p>
+            {isResourceLimitError ? (
+              <div className="app-loading-diagnosis">
+                <strong>{messages.common.appShellResourceLimitTitle}</strong>
+                <p>{messages.common.appShellResourceLimitDetail}</p>
+                <p>{messages.common.appShellDiagnosticsUnavailable}</p>
+              </div>
+            ) : null}
+          </div>
           {loadingStatus.issue ? <p className="app-loading-issue-inline">{loadingStatus.issue}</p> : null}
+          <button
+            type="button"
+            className="button-primary"
+            onClick={() => { void refreshAppShell({ broadcast: false }).catch(handleAppShellFailure); }}
+          >
+            {messages.common.appShellRetry}
+          </button>
         </section>
       </main>
     );

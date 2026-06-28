@@ -89,6 +89,18 @@ responses from import previews, then check the browser Network panel for the
 specific `/api/app-shell`, `/api/*-page`, or `/api/summary-*` request that timed
 out or returned an HTML error page.
 
+If the visible failure says `/api/app-shell` returned a Cloudflare 503 because
+the Worker exceeded CPU or resource limits, the request was stopped before the
+app could return JSON. In that state, Settings and Error diagnostics may also be
+unable to open because they use the same shared app-shell request. Retry once
+after a short wait, then check Cloudflare Workers observability for the failing
+endpoint and timestamp. There is no separate app restart button for this class
+of failure; redeploying creates a new Worker version but does not fix an endpoint
+that is consistently too expensive. The durable fix is to reduce the endpoint's
+work, split the requested data into smaller route-specific payloads, or move the
+Worker to a plan with more CPU/resource headroom if the production data size now
+requires it.
+
 ## How should saves and refreshes feel during repeated editing?
 
 The app is moving toward a more precise save model for row-heavy screens such as
