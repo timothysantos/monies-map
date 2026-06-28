@@ -155,6 +155,8 @@ function parseUobCreditCardTransactionRows(
     const type = isCredit && isTransferDescription(description) ? "transfer" : isCredit ? "income" : isTransferDescription(description) ? "transfer" : "expense";
     rows.push({
       date: postingDate,
+      transactionDate: transactionDate ?? "",
+      postedDate: postingDate,
       description,
       expense: isCredit ? "" : minorToDecimal(amountMinor),
       income: isCredit ? minorToDecimal(amountMinor) : "",

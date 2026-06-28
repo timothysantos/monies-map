@@ -265,9 +265,13 @@ for (const [scenarioId, fixtureName, expectedAccountName] of [
       "expense",
       "income",
       "note",
+      "postedDate",
       "reference",
+      "transactionDate",
       "type"
     ]);
+    assert.match(parsed.rows[0].transactionDate, /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(parsed.rows[0].postedDate, parsed.rows[0].date);
     assert.equal(parsed.checkpoints.length, 0);
     assert.equal(parsed.warnings.length, 0);
   });

@@ -611,6 +611,8 @@ Expected workflow:
    instead of personal descriptions such as `lunch`.
 2. When a mid-cycle `.xls` or `.csv` arrives, import it normally. Rows that match
    manual entries should appear as exact, probable, or near ledger matches.
+   Unique exact matches are already handled by the preview: the import promotes
+   the existing manual provisional row instead of asking you to exclude it.
 3. Keep genuinely new bank rows included. Leave exact and probable duplicates
    skipped unless the match is wrong. Review near matches before commit.
 4. When the PDF statement arrives, import or compare it against the current
@@ -1356,7 +1358,10 @@ same bank event when the activity export shows the transaction date instead.
 If a row is not an exact duplicate, the app then isolates one date lane for the
 promotion and reconciliation step. If both rows have event date hints, it
 compares event date to event date. Otherwise it compares posted date to posted
-date. The match tiers are:
+date. For card activity files, posted date remains the balance-control date
+because card statements close by posted date; event date stays on the ledger row
+for spending history and matching. A unique exact promotion should show as
+`Matched to ledger`, not as a manual exclusion task. The match tiers are:
 
 - exact: same account, same absolute amount, `dayDistance === 0`, and
   description similarity `>= 0.8`
