@@ -491,6 +491,19 @@ h3 {
   font-weight: 700;
 }
 
+.app-loading-panel-error {
+  gap: 16px;
+}
+
+.app-loading-panel .app-loading-error-copy {
+  margin-top: 8px;
+  max-width: 760px;
+  color: var(--text);
+  font-size: 0.94rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
 .app-loading-overlay {
   position: fixed;
   z-index: 20;

@@ -51,6 +51,7 @@ import {
   buildRequestErrorMessage,
   describeAppShellError
 } from "./request-errors";
+import { fetchWithTimeout } from "./request-timeout";
 import { installMobileFocusVisibility } from "./mobile-focus-visibility";
 import { queryKeys } from "./query-keys";
 import {
@@ -104,7 +105,7 @@ async function fetchTextWithTransientWorkerRetry(url, options = {}) {
   let lastResult = null;
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const response = await fetch(url, options);
+    const response = await fetchWithTimeout(url, options, options.requestLabel ?? "App request");
     const responseText = await response.text();
     lastResult = { response, responseText };
 
@@ -177,6 +178,10 @@ function ellipsizeText(value, maxLength = 52) {
     return normalized;
   }
   return `${normalized.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+}
+
+function describeRoutePageContractError(tabId) {
+  return `The ${tabId} page response did not include the data needed to render this screen.`;
 }
 
 // Warm route bundles ahead of time so navigation stays fast without changing
@@ -318,6 +323,7 @@ export function App() {
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
   const isAppShellLoading = appShellLoadCount > 0;
   const [routePageData, setRoutePageData] = useState(null);
+  const [routePageError, setRoutePageError] = useState("");
   const [summaryPageData, setSummaryPageData] = useState(null);
   const [summaryAccountPillsData, setSummaryAccountPillsData] = useState(null);
   const [entriesExternalRefreshToken, setEntriesExternalRefreshToken] = useState(0);
@@ -582,7 +588,9 @@ export function App() {
     }
 
     const fetcher = async () => {
-      const response = await fetch(`/api/entries-page?${params.toString()}`, { cache: "no-store" });
+      const response = await fetchWithTimeout(`/api/entries-page?${params.toString()}`, {
+        cache: "no-store"
+      }, "Entries page request");
       if (!response.ok) {
         throw new Error(await buildRequestErrorMessage(response, "Entries page failed."));
       }
@@ -593,11 +601,13 @@ export function App() {
       ? await queryClient.fetchQuery({
           queryKey,
           queryFn: fetcher,
+          retry: false,
           staleTime: 0
         })
       : await queryClient.ensureQueryData({
           queryKey,
           queryFn: fetcher,
+          retry: false,
           revalidateIfStale: true
         });
 
@@ -644,7 +654,8 @@ export function App() {
     // can still surface a useful message.
     const fetcher = async () => {
       const { response, responseText } = await fetchTextWithTransientWorkerRetry(`/api/app-shell?${cacheKey}`, {
-        cache: "no-store"
+        cache: "no-store",
+        requestLabel: "App shell request"
       });
       updateLoadingStatus({
         label: "Reading dashboard response",
@@ -682,11 +693,13 @@ export function App() {
       ? await queryClient.fetchQuery({
           queryKey,
           queryFn: fetcher,
+          retry: false,
           staleTime: 0
         })
       : await queryClient.ensureQueryData({
           queryKey,
           queryFn: fetcher,
+          retry: false,
           revalidateIfStale: true
         });
 
@@ -713,7 +726,8 @@ export function App() {
       percent: 22
     });
     const { response, responseText } = await fetchTextWithTransientWorkerRetry(`/api/entries-shell?${params.toString()}`, {
-      cache: "no-store"
+      cache: "no-store",
+      requestLabel: "Entries shell request"
     });
     updateLoadingStatus({
       label: "Preparing entry view",
@@ -751,6 +765,7 @@ export function App() {
     const data = await fetchAppShellData(appShellParams, { bypassCache, signal });
 
     setAppShellError("");
+    setRoutePageError("");
     setAppShell(data);
     return data;
   }, [appShellParams, fetchAppShellData]);
@@ -760,6 +775,7 @@ export function App() {
   const handleAppShellFailure = useCallback((error) => {
     setAppShell(null);
     setAppShellError(describeAppShellError(error));
+    setRoutePageError("");
     reportLoadingIssue("Load failed", error);
     updateLoadingStatus({
       label: "Dashboard load failed",
@@ -840,7 +856,8 @@ export function App() {
     // shell fetch: server errors still need to surface useful context.
     const fetcher = async () => {
       const { response, responseText } = await fetchTextWithTransientWorkerRetry(requestUrl, {
-        cache: "no-store"
+        cache: "no-store",
+        requestLabel: "Page request"
       });
       updateLoadingStatus({
         label: "Reading page response",
@@ -872,11 +889,13 @@ export function App() {
       ? await queryClient.fetchQuery({
           queryKey,
           queryFn: fetcher,
+          retry: false,
           staleTime: 0
         })
       : await queryClient.ensureQueryData({
           queryKey,
           queryFn: fetcher,
+          retry: false,
           revalidateIfStale: true
         });
 
@@ -965,6 +984,32 @@ export function App() {
     fetchSummaryPageData,
     summaryAccountPillsParams,
     summaryPageParams
+  ]);
+
+  const retryActivePageLoad = useCallback(async () => {
+    setRoutePageError("");
+
+    try {
+      if (selectedTabId === "summary") {
+        const finishAppShellLoad = beginAppShellLoad();
+        try {
+          await refreshCurrentSummaryPage({ bypassCache: true });
+        } finally {
+          finishAppShellLoad();
+        }
+      } else {
+        await refreshRoutePage();
+      }
+    } catch (error) {
+      setRoutePageError(describeAppShellError(error));
+      reportLoadingIssue("Page retry failed", error);
+    }
+  }, [
+    beginAppShellLoad,
+    refreshCurrentSummaryPage,
+    refreshRoutePage,
+    reportLoadingIssue,
+    selectedTabId
   ]);
 
   // Refresh the month page that shares the current route state, then refresh
@@ -1606,6 +1651,7 @@ export function App() {
           });
           if (!controller.signal.aborted) {
             setAppShellError("");
+            setRoutePageError("");
             setAppShell(shellData);
           }
 
@@ -1615,6 +1661,7 @@ export function App() {
           });
           if (!controller.signal.aborted) {
             setAppShellError("");
+            setRoutePageError("");
             setAppShell(fullData);
           }
           return;
@@ -1634,6 +1681,7 @@ export function App() {
           });
           if (!controller.signal.aborted) {
             setAppShellError("");
+            setRoutePageError("");
             setAppShell(data);
           }
         } catch (error) {
@@ -1656,6 +1704,7 @@ export function App() {
             });
             if (!controller.signal.aborted) {
               setAppShellError("");
+              setRoutePageError("");
               setAppShell(fallbackData);
             }
             return;
@@ -1809,6 +1858,7 @@ export function App() {
       endMonth: selectedSummaryEnd ?? ""
     });
     const hasCachedPage = Boolean(queryClient.getQueryData(summaryQueryKey));
+    setRoutePageError("");
     if (!hasCachedPage) {
       updateLoadingStatus({
         label: "Preparing current page",
@@ -1829,6 +1879,7 @@ export function App() {
 
         setSummaryPageData(nextSummaryPage);
         setSummaryAccountPillsData(nextSummaryAccountPills);
+        setRoutePageError("");
       })
       .catch((error) => {
         if (error instanceof DOMException && error.name === "AbortError") {
@@ -1837,6 +1888,7 @@ export function App() {
 
         setSummaryPageData(null);
         setSummaryAccountPillsData(null);
+        setRoutePageError(describeAppShellError(error));
         reportLoadingIssue("Summary load failed", error);
       })
       .finally(() => finishAppShellLoad?.());
@@ -1870,6 +1922,7 @@ export function App() {
 
     const controller = new AbortController();
     const hasCachedPage = Boolean(queryClient.getQueryData(queryKeys.routePage(routePageRequest)));
+    setRoutePageError("");
     if (!hasCachedPage) {
       updateLoadingStatus({
         label: "Preparing current page",
@@ -1886,6 +1939,7 @@ export function App() {
         }
 
         setRoutePageData(data);
+        setRoutePageError("");
       })
       .catch((error) => {
         if (error instanceof DOMException && error.name === "AbortError") {
@@ -1893,6 +1947,7 @@ export function App() {
         }
 
         setRoutePageData(null);
+        setRoutePageError(describeAppShellError(error));
         reportLoadingIssue("Page load failed", error);
       })
       .finally(() => finishAppShellLoad?.());
@@ -1925,6 +1980,30 @@ export function App() {
       lastSettledTabIdRef.current = selectedTabId;
     }
   }, [currentPageView, selectedTabId]);
+
+  useEffect(() => {
+    if (currentPageView || routePageError) {
+      return;
+    }
+
+    if (selectedTabId === "summary") {
+      if (summaryPageData || summaryAccountPillsData) {
+        setRoutePageError(describeRoutePageContractError(selectedTabId));
+      }
+      return;
+    }
+
+    if (routePageData) {
+      setRoutePageError(describeRoutePageContractError(selectedTabId));
+    }
+  }, [
+    currentPageView,
+    routePageData,
+    routePageError,
+    selectedTabId,
+    summaryAccountPillsData,
+    summaryPageData
+  ]);
 
   // Derive the active render state directly from the current route, falling
   // back to the last settled route only while the next page hydrates.
@@ -2566,6 +2645,24 @@ export function App() {
           <p>{messages.common.appShellErrorTitle}</p>
           <p>{appShellError}</p>
           {loadingStatus.issue ? <p className="app-loading-issue-inline">{loadingStatus.issue}</p> : null}
+        </section>
+      </main>
+    );
+  }
+
+  if (appShell && !pageView && routePageError) {
+    return (
+      <main className="shell">
+        <EnvironmentBanner environment={appEnvironment} />
+        <section className="panel app-loading-panel app-loading-panel-error">
+          <div>
+            <p>{messages.common.pageLoadErrorTitle}</p>
+            <p className="app-loading-error-copy">{routePageError}</p>
+            {loadingStatus.issue ? <p className="app-loading-issue-inline">{loadingStatus.issue}</p> : null}
+          </div>
+          <button type="button" className="button-primary" onClick={retryActivePageLoad}>
+            {messages.common.retryPageLoad}
+          </button>
         </section>
       </main>
     );

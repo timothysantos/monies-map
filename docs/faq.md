@@ -72,6 +72,23 @@ data. At statement close, the PDF statement is the stronger proof. It can
 confirm rows, save a statement checkpoint, and explain whether the app balance
 matches the bank.
 
+## What if the app stays on Loading?
+
+The app loads in two stages: first the shared dashboard shell, then the active
+page payload such as Imports, Entries, or Summary. If either request stalls, the
+loading panel now stops waiting after the request timeout and shows which page
+request failed, with a retry button.
+
+Cloudflare Access can also show browser-console warnings for `/site.webmanifest`
+when the manifest request is redirected to the Access login page. That warning
+affects the installable web-app manifest only. It is not the same as the
+dashboard shell or page API failing to load.
+
+If the retry keeps failing, check Settings → Error diagnostics for saved server
+responses from import previews, then check the browser Network panel for the
+specific `/api/app-shell`, `/api/*-page`, or `/api/summary-*` request that timed
+out or returned an HTML error page.
+
 ## How should saves and refreshes feel during repeated editing?
 
 The app is moving toward a more precise save model for row-heavy screens such as
