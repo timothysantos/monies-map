@@ -2215,6 +2215,7 @@ test.describe("import flow", () => {
     await expect(page.getByText("Matched to ledger")).toBeVisible();
     await expect(page.getByRole("button", { name: "Exclude row" })).toHaveCount(0);
     await expect(page.getByText("Current-activity import will promote the existing manual ledger row")).toBeVisible();
+    await expect(page.getByText("It will keep transaction date 2025-06-11 for spending history and set posted date 2025-06-13 for statement reconciliation.")).toBeVisible();
   });
 
   test("certified PDF hash does not suppress a later statement row when the bank-cleared dates differ", async ({ page }) => {
