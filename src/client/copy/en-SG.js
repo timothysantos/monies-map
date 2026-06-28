@@ -461,6 +461,7 @@ export const messages = {
     noRowsToImportCoveredStatement: "This statement's rows are already in the ledger. No duplicate ledger rows will be created. You can still refresh the statement checkpoint and certification.",
     noRowsToImportEmptyStatement: "This statement has no transaction rows. Only the statement checkpoint will be saved.",
     skipPreviewRow: "Exclude row",
+    matchedExistingPreviewRow: "Matched to ledger",
     restorePreviewRow: "Include row",
     restoreExactCoveredRowConfirm: "This row is marked as an exact already-covered match. Including it again can create a duplicate ledger entry. Continue?",
     importPreviewRow: "Include row",

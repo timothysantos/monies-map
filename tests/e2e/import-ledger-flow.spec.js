@@ -672,7 +672,6 @@ test.describe("import flow", () => {
       );
 
       await page.getByRole("button", { name: "Preview import" }).click();
-
       const breakdown = page.locator(".statement-reconciliation-breakdown");
       await expect(breakdown).toContainText("Why this does not close");
       await expect(breakdown).toContainText("treat the PDF as the stronger bank record");
@@ -2176,6 +2175,46 @@ test.describe("import flow", () => {
     expect(pdfPreview.ok, JSON.stringify(pdfPreview.json)).toBeTruthy();
     expect(pdfPreview.json.preview.previewRows[0].reconciliationTargetTransactionId).toBeTruthy();
     expect(pdfPreview.json.preview.previewRows[0].commitStatus).toBe("included");
+  });
+
+  test("current-activity exact manual matches are shown as already handled", async ({ page }) => {
+    const appShell = await loadAppShell(page, { month: "2025-06" });
+    const account = appShell.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
+    expect(account).toBeTruthy();
+
+    const createdEntry = await page.evaluate(async ({ accountId, accountName }) => {
+      const response = await fetch("/api/entries/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: "2025-06-11",
+          description: "MATCHED MANUAL CARD ROW",
+          accountId,
+          accountName,
+          categoryName: "Food & Drinks",
+          amountMinor: 530,
+          entryType: "expense",
+          ownershipType: "direct",
+          ownerName: "Tim",
+          postedDate: "2025-06-13"
+        })
+      });
+      return { ok: response.ok, json: await response.json() };
+    }, { accountId: account.id, accountName: account.name });
+    expect(createdEntry.ok, JSON.stringify(createdEntry.json)).toBeTruthy();
+
+    await page.getByLabel("Source label").fill("Matched manual card row import");
+    await page.getByLabel("CSV content").fill(
+      [
+        "date,description,expense,account,category,note",
+        `2025-06-13,MATCHED MANUAL CARD ROW,5.30,${account.name},Food & Drinks,txn date: 2025-06-11`
+      ].join("\n")
+    );
+    await page.getByRole("button", { name: "Preview import" }).click();
+
+    await expect(page.getByText("Matched to ledger")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Exclude row" })).toHaveCount(0);
+    await expect(page.getByText("Current-activity import will promote the existing manual ledger row")).toBeVisible();
   });
 
   test("certified PDF hash does not suppress a later statement row when the bank-cleared dates differ", async ({ page }) => {

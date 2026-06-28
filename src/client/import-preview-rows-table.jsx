@@ -165,6 +165,7 @@ function PreviewRowsTable({
           {rows.map((row) => {
             const duplicateMatch = row.reconciliationMatches?.[0] ?? row.reconciliationMatch;
             const canPromoteExistingRow = canPromoteExistingRowMatch(row, duplicateMatch);
+            const isAutoMatchedExistingRow = isAutoMatchedExistingRowMatch(row, duplicateMatch);
             const showReviewDetails = Boolean(duplicateMatch || row.commitStatus === "needs_review" || row.commitStatusReason);
             return (
               <Fragment key={row.rowId}>
@@ -186,7 +187,9 @@ function PreviewRowsTable({
                           {canPromoteExistingRow ? messages.imports.importAsNewPreviewRow : messages.imports.importPreviewRow}
                         </button>
                       ) : null}
-                      {isSkippedTable ? (
+                      {isAutoMatchedExistingRow ? (
+                        <span className="pill success">{messages.imports.matchedExistingPreviewRow}</span>
+                      ) : isSkippedTable ? (
                         <button
                           type="button"
                           className="subtle-action"
@@ -541,6 +544,17 @@ function canPromoteExistingRowMatch(row, match) {
   return Boolean(
     row.commitStatus === "needs_review"
     && match?.existingTransactionId
+    && match?.existingSourceType === "manual"
+    && match?.existingBankCertificationStatus === "provisional"
+    && (row.reconciliationMatchCount ?? row.reconciliationMatches?.length ?? 0) === 1
+  );
+}
+
+function isAutoMatchedExistingRowMatch(row, match) {
+  return Boolean(
+    row.commitStatus === "included"
+    && row.reconciliationTargetTransactionId
+    && match?.existingTransactionId === row.reconciliationTargetTransactionId
     && match?.existingSourceType === "manual"
     && match?.existingBankCertificationStatus === "provisional"
     && (row.reconciliationMatchCount ?? row.reconciliationMatches?.length ?? 0) === 1
