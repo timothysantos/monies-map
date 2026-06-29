@@ -760,6 +760,13 @@ transaction or event date and a posted date, certification sets
 date. Entries stays event-first; statement checks and checkpoints use the
 posted statement date.
 
+For bank and deposit accounts, mid-cycle CSV exports can also have two dates.
+OCBC 360, for example, uses `Transaction date` and `Value date`. The value date
+is the date that belongs to statement balance reconciliation, so the app imports
+that as the bank-facing date and keeps the transaction date as event context. A
+May 31 transfer with a June 2 value date should therefore not make the May
+statement go out of balance.
+
 If the official PDF row only has one printed date, the app treats that date as
 the bank's full evidence for the event. Certification updates both
 `transaction_date` and `post_date` to that statement date.

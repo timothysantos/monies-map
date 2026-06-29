@@ -247,24 +247,24 @@ test("parseOcbcActivityCsv preserves a near-real OCBC 360 current-activity expor
       type: "transfer"
     },
     {
-      date: "2026-05-31",
-      description: "FUND TRANSFER OTHR - 00000000 REDACTED PAYEE to EXAMPLE PAYEE via PayNow-UEN",
-      expense: "1000.00",
-      income: "",
-      account: "OCBC 360",
-      category: "Transfer",
-      note: "value date: 2026-06-02",
-      type: "transfer"
-    },
-    {
-      date: "2026-05-31",
+      date: "2026-05-30",
       description: "INTEREST CREDIT",
       expense: "",
       income: "2.14",
       account: "OCBC 360",
       category: "Other - Income",
-      note: "value date: 2026-05-30",
+      note: "transaction date: 2026-05-31",
       type: "income"
+    },
+    {
+      date: "2026-06-02",
+      description: "FUND TRANSFER OTHR - 00000000 REDACTED PAYEE to EXAMPLE PAYEE via PayNow-UEN",
+      expense: "1000.00",
+      income: "",
+      account: "OCBC 360",
+      category: "Transfer",
+      note: "transaction date: 2026-05-31",
+      type: "transfer"
     }
   ]);
   assert.deepEqual(parsed.rows.at(-1), {

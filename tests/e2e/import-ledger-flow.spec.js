@@ -1983,6 +1983,127 @@ test.describe("import flow", () => {
     expect(row.commitStatusReason).toBe("Official statement row is already certified in the ledger.");
   });
 
+  test("OCBC 360 activity after a statement uses value dates and preserves the matched statement checkpoint", async ({ page }) => {
+    const accountName = `Playwright OCBC 360 ${Date.now()}`;
+    const createPayload = await postJson(page, "/api/accounts/create", {
+      name: accountName,
+      institution: "OCBC",
+      kind: "bank",
+      openingBalanceMinor: 100000,
+      currency: "SGD",
+      ownerPersonId: "",
+      isJoint: false
+    });
+    const accountId = createPayload.accountId;
+    expect(accountId).toBeTruthy();
+
+    const statementCheckpoint = {
+      accountId,
+      accountName,
+      detectedAccountName: accountName,
+      checkpointMonth: "2026-05",
+      statementStartDate: "2026-05-01",
+      statementEndDate: "2026-05-31",
+      statementBalanceMinor: 54302,
+      note: "Synthetic OCBC 360 May statement"
+    };
+    const statementPreview = await postJson(page, "/api/imports/preview", {
+      sourceLabel: "Synthetic OCBC 360 May PDF",
+      sourceType: "pdf",
+      defaultAccountName: accountName,
+      ownershipType: "direct",
+      ownerName: "Tim",
+      rows: [
+        {
+          date: "2026-05-29",
+          description: "BILL PAYMENT INB 4524192012247528 INTERNET BANKING SINGAPORE",
+          expense: "459.12",
+          income: "",
+          accountId,
+          account: accountName,
+          category: "Transfer",
+          type: "transfer"
+        },
+        {
+          date: "2026-05-30",
+          description: "INTEREST CREDIT",
+          expense: "",
+          income: "2.14",
+          accountId,
+          account: accountName,
+          category: "Other - Income",
+          type: "income"
+        }
+      ],
+      statementCheckpoints: [statementCheckpoint]
+    });
+    const statementReconciliation = statementPreview.preview.statementReconciliations[0];
+    expect(statementReconciliation.status, JSON.stringify(statementReconciliation)).toBe("matched");
+
+    const statementCommit = await postJson(page, "/api/imports/commit", {
+      sourceLabel: "Synthetic OCBC 360 May PDF",
+      sourceType: "pdf",
+      parserKey: "ocbc_360_pdf",
+      rows: statementPreview.preview.previewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review"),
+      statementControlRows: statementPreview.preview.previewRows,
+      statementReconciliations: statementPreview.preview.statementReconciliations,
+      statementCheckpoints: [statementCheckpoint]
+    });
+    expect(statementCommit.importId).toBeTruthy();
+
+    const activityPreview = await postJson(page, "/api/imports/preview", {
+      sourceLabel: "Synthetic OCBC 360 current activity CSV",
+      sourceType: "csv",
+      defaultAccountName: accountName,
+      ownershipType: "direct",
+      ownerName: "Tim",
+      rows: [
+        {
+          date: "2026-05-29",
+          description: "BILL PAYMENT INB INTERNET BANKING SINGAPORE4524192012247528",
+          expense: "459.12",
+          income: "",
+          accountId,
+          account: accountName,
+          category: "Transfer",
+          type: "transfer"
+        },
+        {
+          date: "2026-06-02",
+          description: "FUND TRANSFER OTHR - 90991884 Joyce Li to NEW CREATION CHUvia PayNow-UEN",
+          expense: "1000.00",
+          income: "",
+          accountId,
+          account: accountName,
+          category: "Transfer",
+          type: "transfer",
+          note: "transaction date: 2026-05-31"
+        }
+      ],
+      statementCheckpoints: []
+    });
+    const billPaymentRow = activityPreview.preview.previewRows.find((row) => row.description.startsWith("BILL PAYMENT"));
+    const juneValueDateRow = activityPreview.preview.previewRows.find((row) => row.description.startsWith("FUND TRANSFER"));
+    expect(billPaymentRow?.commitStatus).toBe("skipped");
+    expect(billPaymentRow?.reconciliationMatch?.existingBankCertificationStatus).toBe("statement_certified");
+    expect(juneValueDateRow?.commitStatus).toBe("included");
+    expect(juneValueDateRow?.date).toBe("2026-06-02");
+
+    const activityCommit = await postJson(page, "/api/imports/commit", {
+      sourceLabel: "Synthetic OCBC 360 current activity CSV",
+      sourceType: "csv",
+      parserKey: "ocbc_360_activity_csv",
+      rows: activityPreview.preview.previewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review"),
+      statementCheckpoints: []
+    });
+    expect(activityCommit.importId).toBeTruthy();
+
+    const afterSettingsPage = await loadSettingsPage(page);
+    const afterAccount = afterSettingsPage.settingsPage.accounts.find((item) => item.id === accountId);
+    expect(afterAccount?.latestCheckpointMonth).toBe("2026-05");
+    expect(afterAccount?.latestCheckpointDeltaMinor).toBe(0);
+  });
+
   test("mid-cycle imports do not match imported provisional rows, but PDFs still can promote them", async ({ page }) => {
     const referenceData = await loadReferenceData(page);
     const account = referenceData.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");

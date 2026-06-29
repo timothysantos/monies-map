@@ -16,7 +16,7 @@ interface OcbcActivityContext {
 }
 
 interface OcbcActivityCandidate {
-  date: string;
+  transactionDate: string;
   valueDate?: string;
   description: string;
   amountMinor: number;
@@ -56,6 +56,7 @@ export function parseOcbcActivityCsv(
 
   const accountName = resolveOcbcActivityAccountName(isBankActivity, context);
   const importRows = rows.map((row) => {
+    const importDate = isBankActivity ? (row.valueDate ?? row.transactionDate) : row.transactionDate;
     const type = isTransferDescription(row.description)
       ? "transfer"
       : row.isCredit
@@ -63,13 +64,19 @@ export function parseOcbcActivityCsv(
         : "expense";
 
     return {
-      date: row.date,
+      date: importDate,
       description: row.description,
       expense: row.isCredit ? "" : minorToDecimal(row.amountMinor),
       income: row.isCredit ? minorToDecimal(row.amountMinor) : "",
       account: accountName,
       category: type === "transfer" ? "Transfer" : inferCategory(row.description, row.isCredit),
-      note: buildOcbcActivityNote({ cardEnding: isBankActivity ? undefined : cardEnding, date: row.date, valueDate: row.valueDate }),
+      note: buildOcbcActivityNote({
+        cardEnding: isBankActivity ? undefined : cardEnding,
+        importDate,
+        isBankActivity,
+        transactionDate: row.transactionDate,
+        valueDate: row.valueDate
+      }),
       type
     };
   }).sort(compareImportRowsByDate);
@@ -93,23 +100,23 @@ function parseOcbcActivityRow(cells: string[], isBankActivity: boolean): OcbcAct
     return undefined;
   }
 
-  const date = parseOcbcActivityDate(cleanCsvCell(cells[dateIndex]));
+  const transactionDate = parseOcbcActivityDate(cleanCsvCell(cells[dateIndex]));
   const valueDate = valueDateIndex == null ? undefined : parseOcbcActivityDate(cleanCsvCell(cells[valueDateIndex]));
   const description = cleanOcbcDescription(cleanCsvCell(cells[descriptionIndex]));
   const withdrawalMinor = parseOcbcActivityAmount(cells[withdrawalIndex]);
   const depositMinor = parseOcbcActivityAmount(cells[depositIndex]);
-  if (!date || !description) {
+  if (!transactionDate || !description) {
     return undefined;
   }
   if (withdrawalMinor != null && depositMinor != null) {
-    throw new Error(`OCBC card activity row has both withdrawal and deposit amounts for ${date}.`);
+    throw new Error(`OCBC card activity row has both withdrawal and deposit amounts for ${transactionDate}.`);
   }
   if (withdrawalMinor == null && depositMinor == null) {
     return undefined;
   }
 
   return {
-    date,
+    transactionDate,
     valueDate,
     description,
     amountMinor: withdrawalMinor ?? depositMinor ?? 0,
@@ -186,12 +193,20 @@ function isOcbc360Activity(rows: string[][], fileName?: string, context?: OcbcAc
   return rows.some((row) => row.join(" ").toUpperCase().includes("360 ACCOUNT"));
 }
 
-function buildOcbcActivityNote(input: { cardEnding?: string; date: string; valueDate?: string }) {
+function buildOcbcActivityNote(input: {
+  cardEnding?: string;
+  importDate: string;
+  isBankActivity: boolean;
+  transactionDate: string;
+  valueDate?: string;
+}) {
   const notes = [];
   if (input.cardEnding) {
     notes.push(`card ending: ${input.cardEnding}`);
   }
-  if (input.valueDate && input.valueDate !== input.date) {
+  if (input.isBankActivity && input.transactionDate !== input.importDate) {
+    notes.push(`transaction date: ${input.transactionDate}`);
+  } else if (input.valueDate && input.valueDate !== input.importDate) {
     notes.push(`value date: ${input.valueDate}`);
   }
   return notes.join("; ");
