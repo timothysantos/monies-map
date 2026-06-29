@@ -325,8 +325,8 @@ export function cellString(value: string | number | undefined) {
 
 export function isTransferDescription(description: string) {
   const normalized = description.replace(/\s+/g, "");
-  return /PAYMT THRU E-BANK|Bill Payment|mBK-|Funds Transfer|MONEYSEND|MONEY SEND|PAYMENT BY INTERNET|PAYMENT VIA|FAST PAYMENT|INB|OTHR Transfer/i.test(description)
-    || /PAYMENTVIA|FASTPAYMENT|PAYMTTHRUE-BANK|PAYMENTBYINTERNET|MONEYSEND|TSFTO/i.test(normalized);
+  return /PAYMT THRU E-BANK|Bill Payment|mBK-|Funds? Transfer|MONEYSEND|MONEY SEND|PAYMENT BY INTERNET|PAYMENT VIA|FAST PAYMENT|INB|OTHR Transfer/i.test(description)
+    || /PAYMENTVIA|FASTPAYMENT|FUNDSTRANSFER|FUNDTRANSFER|PAYMTTHRUE-BANK|PAYMENTBYINTERNET|MONEYSEND|TSFTO/i.test(normalized);
 }
 
 export function inferCategory(description: string, isIncome: boolean) {

@@ -3,12 +3,17 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { parseStatementText } from "../src/lib/statement-import.ts";
+import { parseOcbcActivityCsv } from "../src/lib/statement-import.ts";
 import { parseCurrentTransactionSpreadsheet } from "../src/lib/statement-import/xls.ts";
 
 function readWorkbookFixture(name) {
   const file = new URL(`./fixtures/uob-current-transactions/${name}`, import.meta.url);
   const buffer = readFileSync(file);
   return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+}
+
+function readTextFixture(path) {
+  return readFileSync(new URL(path, import.meta.url), "utf8");
 }
 
 test("parseStatementText rejects unsupported statement layouts with a clear error", () => {
@@ -208,6 +213,69 @@ Total Withdrawals/Deposits 0.00 0.00
     statementEndDate: "2026-05-31",
     statementBalanceMinor: 0,
     note: "Imported from OCBC deposit statement"
+  });
+});
+
+test("parseOcbcActivityCsv preserves a near-real OCBC 360 current-activity export", () => {
+  const parsed = parseOcbcActivityCsv(
+    readTextFixture("./fixtures/ocbc-activity/TransactionHistory_20260628140517-ocbc-360-sanitized.csv"),
+    "TransactionHistory_20260628140517.csv"
+  );
+
+  assert.equal(parsed.parserKey, "ocbc_360_activity_csv");
+  assert.equal(parsed.sourceLabel, "TransactionHistory_20260628140517");
+  assert.equal(parsed.checkpoints.length, 0);
+  assert.equal(parsed.rows.length, 14);
+  assert.deepEqual(parsed.rows.slice(0, 3).map((row) => ({
+    date: row.date,
+    description: row.description,
+    expense: row.expense,
+    income: row.income,
+    account: row.account,
+    category: row.category,
+    note: row.note,
+    type: row.type
+  })), [
+    {
+      date: "2026-05-29",
+      description: "BILL PAYMENT INB INTERNET BANKING SINGAPORE0000000000000000",
+      expense: "459.12",
+      income: "",
+      account: "OCBC 360",
+      category: "Transfer",
+      note: "",
+      type: "transfer"
+    },
+    {
+      date: "2026-05-31",
+      description: "FUND TRANSFER OTHR - 00000000 REDACTED PAYEE to EXAMPLE PAYEE via PayNow-UEN",
+      expense: "1000.00",
+      income: "",
+      account: "OCBC 360",
+      category: "Transfer",
+      note: "value date: 2026-06-02",
+      type: "transfer"
+    },
+    {
+      date: "2026-05-31",
+      description: "INTEREST CREDIT",
+      expense: "",
+      income: "2.14",
+      account: "OCBC 360",
+      category: "Other - Income",
+      note: "value date: 2026-05-30",
+      type: "income"
+    }
+  ]);
+  assert.deepEqual(parsed.rows.at(-1), {
+    date: "2026-06-26",
+    description: "FAST PAYMENT SALA-PayNow Transfer via PayNow-Mobile to REDACTED PAYEE",
+    expense: "5000.00",
+    income: "",
+    account: "OCBC 360",
+    category: "Transfer",
+    note: "",
+    type: "transfer"
   });
 });
 

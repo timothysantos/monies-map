@@ -234,6 +234,12 @@ Testing depth rule:
 - assert the concrete output shape and values that the slice owns
 - include at least one negative test for each non-trivial slice so blocked or
   rejected behavior is covered explicitly
+- bank import parser changes must use sanitized near-real fixtures for each
+  affected supported format. Keep structural details that commonly break
+  imports: preamble lines, multiline quoted descriptions, quoted comma amounts,
+  dual date columns, section boundaries, and footer rows. Minimal synthetic
+  snippets can cover narrow edge cases, but they are not enough as the only
+  contract for a production importer.
 
 ## Code Shape Rules
 

@@ -1801,8 +1801,9 @@ the current draft without refreshing the page.
 - OCBC card and 360 current-activity CSV files use transaction-history headers
   with withdrawal and deposit columns, so the app can recognize them from
   either the filename or the OCBC account-details and transaction-history
-  headers, then normalize them into reviewable rows without creating a
-  statement checkpoint.
+  headers. OCBC 360 browser exports may include account preamble rows and
+  compact headers such as `Withdrawals(SGD)` and `Deposits(SGD)`; those are
+  parsed directly into reviewable rows without creating a statement checkpoint.
 - OCBC 365 and OCBC Infinity Cashback card PDFs use the printed statement date,
   last-month balance, subtotal, and total amount due. Credits such as card
   payments and cash rebates are imported as income/transfer rows so the
