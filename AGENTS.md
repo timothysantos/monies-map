@@ -131,6 +131,12 @@ team conventions evolve.
 - Do not write shallow tests for implemented behavior. For any non-trivial
   slice, assert the concrete output shape and values, and include at least one
   negative test that proves the guarded or rejected path.
+- Import parser changes must include near-real fixture coverage for every bank
+  format they touch. Preserve real-world structure such as statement preambles,
+  multiline descriptions, quoted comma amounts, dual date columns, and footer
+  rows, with private account/person details sanitized. Synthetic one-line CSV
+  or PDF snippets are only acceptable as narrow supplemental tests, not as the
+  only regression proof for a supported import format.
 - Prefer deep modules with small public surfaces and hidden internals over wide,
   shallow helper graphs.
 - Prefer explicit domain boundaries between storage, transformation logic, DTOs,

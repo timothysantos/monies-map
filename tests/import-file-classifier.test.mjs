@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { classifyImportFile } from "../src/client/import-file-classifier.js";
@@ -46,6 +47,20 @@ test("classifyImportFile routes UOB/OCBC/Citi CSV variants explicitly", () => {
     fileType: "text/csv",
     text: "Account details for: OCBC",
     activityContext: ocbcContext
+  }), "ocbc-activity-csv");
+});
+
+test("classifyImportFile recognizes OCBC 360 exports with account preamble and compact SGD headers", () => {
+  const text = readFileSync(
+    new URL("./fixtures/ocbc-activity/TransactionHistory_20260628140517-ocbc-360-sanitized.csv", import.meta.url),
+    "utf8"
+  );
+
+  assert.equal(classifyImportFile({
+    fileName: "TransactionHistory_20260628140517.csv",
+    fileType: "text/csv",
+    text,
+    activityContext: {}
   }), "ocbc-activity-csv");
 });
 

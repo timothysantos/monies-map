@@ -167,8 +167,8 @@ function hasOcbcActivitySignature(text: string) {
     && /Transaction history/i.test(text)
     && (
       /Main credit card OCBC/i.test(text)
-      || /Transaction date,Description,Withdrawals \(SGD\),Deposits \(SGD\)/i.test(text)
-      || /Transaction date,Value date,Description,Withdrawals \(SGD\),Deposits \(SGD\),Balance \(SGD\)/i.test(text)
+      || /Transaction date,Description,Withdrawals\s*\(SGD\),Deposits\s*\(SGD\)/i.test(text)
+      || /Transaction date,Value date,Description,Withdrawals\s*\(SGD\),Deposits\s*\(SGD\)(?:,Balance\s*\(SGD\))?/i.test(text)
     );
 }
 
