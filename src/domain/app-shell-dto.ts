@@ -31,7 +31,6 @@ export async function buildAppShellDto(
 }
 
 export async function buildReferenceDataDto(db: D1Database): Promise<ReferenceDataDto> {
-  await ensureAppData(db);
   const [accounts, categories] = await Promise.all([
     loadAccountReferences(db),
     loadCategories(db)

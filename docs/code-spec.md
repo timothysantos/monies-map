@@ -248,6 +248,10 @@ Testing depth rule:
   code legends, page headers, and footers cannot be swallowed into transaction
   descriptions. Near-real fixtures should include at least one page boundary or
   non-transaction section for statement formats that print them.
+- One-off data repairs and schema maintenance must not run from hot read helpers
+  such as reference-data, account-list, summary, entries, or settings reads.
+  Put repairs behind explicit initialization and persist a completion marker so
+  new Worker isolates can skip expensive scans.
 - import flow tests for statement-plus-mid-cycle scenarios must include the
   sequence both ways when supported by the source: current activity before the
   statement, and current activity after a statement has already certified the
