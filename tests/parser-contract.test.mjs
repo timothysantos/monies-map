@@ -274,9 +274,57 @@ test("parseOcbcActivityCsv preserves a near-real OCBC 360 current-activity expor
     income: "",
     account: "OCBC 360",
     category: "Transfer",
+    "transaction date": "2026-06-26",
+    "value date": "2026-06-26",
     note: "",
     type: "transfer"
   });
+  assert.equal(parsed.rows[2]["transaction date"], "2026-05-31");
+  assert.equal(parsed.rows[2]["value date"], "2026-06-02");
+});
+
+test("parseStatementText keeps OCBC 360 disclosure text out of transaction descriptions", () => {
+  const parsed = parseStatementText(`
+__PDF_SPACED_LAYOUT_TEXT__
+360 ACCOUNT 1 MAY 2026 TO 31 MAY 2026
+BALANCE B/F 52,811.40
+01 MAY 02 MAY FAST PAYMENT 200.00 52,611.40
+via PayNow-Mobile
+to REDACTED PERSON
+18 MAY 18 MAY BILL PAYMENT INB 791.72 51,819.68
+4524192012247528
+INTERNET BANKING
+SINGAPORE
+RNB05ESNI\\1
+Deposit Insurance Scheme
+Your Account balances are protected under the Deposit Insurance Scheme.
+TRANSACTION CODE DESCRIPTION
+A/C Account
+Contact for Consumer Banking: 1800 363 3333
+OCBC Bank
+65 Chulia Street, OCBC Centre
+Singapore 049513
+LI LITING, JOYCE STATEMENT OF ACCOUNT
+Page 2 of 3
+360 ACCOUNT 1 MAY 2026 TO 31 MAY 2026
+Account No. 604271908001
+Transaction Value
+Date Date Description Cheque Withdrawal Deposit Balance
+22 MAY 22 MAY FAST PAYMENT 50,000.00 1,819.68
+4503629482
+to REDACTED PAYEE
+31 MAY 30 MAY INTEREST CREDIT 2.14 1,821.82
+BALANCE C/F 1,821.82
+`, "360 ACCOUNT-8001-May-26.pdf");
+
+  assert.equal(parsed.parserKey, "ocbc_360_pdf");
+  assert.equal(parsed.rows.length, 4);
+  const billPayment = parsed.rows.find((row) => row.description.startsWith("BILL PAYMENT INB"));
+  assert.equal(billPayment?.description, "BILL PAYMENT INB 4524192012247528 INTERNET BANKING SINGAPORE");
+  for (const row of parsed.rows) {
+    assert.ok(row.description.length < 120, row.description);
+    assert.doesNotMatch(row.description, /Deposit Insurance|TRANSACTION CODE|APPLICATIONS FOR|STATEMENT OF ACCOUNT/i);
+  }
 });
 
 test("parseCurrentTransactionSpreadsheet rejects empty or unreadable XLS buffers", () => {

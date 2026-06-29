@@ -767,6 +767,11 @@ that as the bank-facing date and keeps the transaction date as event context. A
 May 31 transfer with a June 2 value date should therefore not make the May
 statement go out of balance.
 
+Older OCBC 360 activity rows may show the value date only in the note, for
+example `value date: 2026-06-02`. On startup the app repairs those rows by
+putting that value into the posted-date lane when the row did not already have a
+separate posted date, so statement checks use the bank-cleared date.
+
 If the official PDF row only has one printed date, the app treats that date as
 the bank's full evidence for the event. Certification updates both
 `transaction_date` and `post_date` to that statement date.

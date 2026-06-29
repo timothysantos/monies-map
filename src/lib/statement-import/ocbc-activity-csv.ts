@@ -70,6 +70,10 @@ export function parseOcbcActivityCsv(
       income: row.isCredit ? minorToDecimal(row.amountMinor) : "",
       account: accountName,
       category: type === "transfer" ? "Transfer" : inferCategory(row.description, row.isCredit),
+      ...(isBankActivity ? {
+        "transaction date": row.transactionDate,
+        ...(row.valueDate ? { "value date": row.valueDate } : {})
+      } : {}),
       note: buildOcbcActivityNote({
         cardEnding: isBankActivity ? undefined : cardEnding,
         importDate,

@@ -244,6 +244,10 @@ Testing depth rule:
   assert which date becomes the statement/checkpoint date and where the other
   date is preserved. For bank balances, value/cleared/posted date is the
   reconciliation date; transaction date remains event-date context.
+- PDF statement parser changes must assert that legal disclosures, transaction
+  code legends, page headers, and footers cannot be swallowed into transaction
+  descriptions. Near-real fixtures should include at least one page boundary or
+  non-transaction section for statement formats that print them.
 - import flow tests for statement-plus-mid-cycle scenarios must include the
   sequence both ways when supported by the source: current activity before the
   statement, and current activity after a statement has already certified the

@@ -152,6 +152,9 @@ export function parseOcbc360Statement(lines: string[], fileName?: string): Parse
     const continuationLines: string[] = [];
     let cursor = index + 1;
     while (cursor < lines.length && !isOcbc360TransactionBoundary(lines[cursor])) {
+      if (isOcbc360NonTransactionSectionStart(lines[cursor])) {
+        break;
+      }
       continuationLines.push(lines[cursor]);
       cursor += 1;
     }
@@ -435,4 +438,25 @@ function isOcbc360TransactionBoundary(line: string) {
   return /^(\d{2})\s+[A-Z]{3}\s+\d{2}\s+[A-Z]{3}\s+/.test(line)
     || /^BALANCE C\/F\b/i.test(line)
     || /^Total Withdrawals\/Deposits\b/i.test(line);
+}
+
+function isOcbc360NonTransactionSectionStart(line: string) {
+  return /^RNB05ESNI\\/i.test(line)
+    || /^Deposit Insurance Scheme\b/i.test(line)
+    || /^Your Account balances are protected/i.test(line)
+    || /^TRANSACTION CODE DESCRIPTION\b/i.test(line)
+    || /^A\/C Account\b/i.test(line)
+    || /^Contact for (?:Consumer|Business) Banking:/i.test(line)
+    || /^APPLICATIONS FOR /i.test(line)
+    || /^OCBC Bank$/i.test(line)
+    || /^65 Chulia Street\b/i.test(line)
+    || /^Singapore 049513$/i.test(line)
+    || /^Page \d+ of \d+/i.test(line)
+    || /^360 ACCOUNT\b/i.test(line)
+    || /^Account No\./i.test(line)
+    || /^Transaction Value$/i.test(line)
+    || /^Date Date Description\b/i.test(line)
+    || /^CHECK YOUR STATEMENT\b/i.test(line)
+    || /^UPDATING YOUR PERSONAL PARTICULARS\b/i.test(line)
+    || /^OCBC PROMOTION & INFORMATION\b/i.test(line);
 }
