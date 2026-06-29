@@ -6732,6 +6732,14 @@ button.split-activity-card:hover {
   line-height: 1.1;
 }
 
+.entry-row-description strong {
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
 .entry-row-description strong,
 .entry-row-transfer strong {
   margin-bottom: 1px;

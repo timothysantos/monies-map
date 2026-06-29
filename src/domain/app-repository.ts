@@ -33,6 +33,7 @@ import {
 } from "./app-repository-helpers";
 import { getCurrentMonthKey } from "../lib/month";
 import { backfillSplitBatches } from "./app-repository-split-batches";
+import { repairLegacyOcbcValueDatePostDates } from "./app-repository-repairs";
 import { ensureDefaultCategoryMatchRules, recordCategoryMatchSuggestion } from "./app-repository-category-match-rules";
 import { recordAuditEvent } from "./app-repository-audit";
 import { resolveAccountId, resolveCategoryId, resolvePersonId } from "./app-repository-lookups";
@@ -385,6 +386,10 @@ export async function ensureDemoSchema(db: D1Database) {
         AND post_date IS NULL
     `).run();
   }
+
+  // Older OCBC 360 activity imports saved the bank value date only in notes.
+  // Repair those rows so statement checkpoints use the cleared date lane.
+  await repairLegacyOcbcValueDatePostDates(db);
 
   if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "statement_certified_import_id")) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN statement_certified_import_id TEXT").run();

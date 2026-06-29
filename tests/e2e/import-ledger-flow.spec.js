@@ -2104,6 +2104,109 @@ test.describe("import flow", () => {
     expect(afterAccount?.latestCheckpointDeltaMinor).toBe(0);
   });
 
+  test("OCBC 360 legacy value-date notes are repaired before checkpoint health", async ({ page }) => {
+    const accountName = `Playwright OCBC 360 legacy ${Date.now()}`;
+    const createPayload = await postJson(page, "/api/accounts/create", {
+      name: accountName,
+      institution: "OCBC",
+      kind: "bank",
+      openingBalanceMinor: 100000,
+      currency: "SGD",
+      ownerPersonId: "",
+      isJoint: false
+    });
+    const accountId = createPayload.accountId;
+    expect(accountId).toBeTruthy();
+
+    const statementCheckpoint = {
+      accountId,
+      accountName,
+      detectedAccountName: accountName,
+      checkpointMonth: "2026-05",
+      statementStartDate: "2026-05-01",
+      statementEndDate: "2026-05-31",
+      statementBalanceMinor: 54302,
+      note: "Synthetic OCBC 360 May statement"
+    };
+    const statementPreview = await postJson(page, "/api/imports/preview", {
+      sourceLabel: "Synthetic OCBC 360 May PDF",
+      sourceType: "pdf",
+      defaultAccountName: accountName,
+      ownershipType: "direct",
+      ownerName: "Tim",
+      rows: [
+        {
+          date: "2026-05-29",
+          description: "BILL PAYMENT INB 4524192012247528 INTERNET BANKING SINGAPORE",
+          expense: "459.12",
+          income: "",
+          accountId,
+          account: accountName,
+          category: "Transfer",
+          type: "transfer"
+        },
+        {
+          date: "2026-05-30",
+          description: "INTEREST CREDIT",
+          expense: "",
+          income: "2.14",
+          accountId,
+          account: accountName,
+          category: "Other - Income",
+          type: "income"
+        }
+      ],
+      statementCheckpoints: [statementCheckpoint]
+    });
+    expect(statementPreview.preview.statementReconciliations[0].status).toBe("matched");
+
+    const statementCommit = await postJson(page, "/api/imports/commit", {
+      sourceLabel: "Synthetic OCBC 360 May PDF",
+      sourceType: "pdf",
+      parserKey: "ocbc_360_pdf",
+      rows: statementPreview.preview.previewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review"),
+      statementControlRows: statementPreview.preview.previewRows,
+      statementReconciliations: statementPreview.preview.statementReconciliations,
+      statementCheckpoints: [statementCheckpoint]
+    });
+    expect(statementCommit.importId).toBeTruthy();
+
+    const legacyActivityPreview = await postJson(page, "/api/imports/preview", {
+      sourceLabel: "Legacy OCBC 360 current activity CSV",
+      sourceType: "csv",
+      defaultAccountName: accountName,
+      ownershipType: "direct",
+      ownerName: "Tim",
+      rows: [{
+        date: "2026-05-31",
+        description: "FUND TRANSFER OTHR - 90991884 Joyce Li to NEW CREATION CHUvia PayNow-UEN",
+        expense: "1000.00",
+        income: "",
+        accountId,
+        account: accountName,
+        category: "Transfer",
+        type: "transfer",
+        note: "value date: 2026-06-02"
+      }],
+      statementCheckpoints: []
+    });
+    expect(legacyActivityPreview.preview.previewRows[0].commitStatus).toBe("included");
+
+    const legacyActivityCommit = await postJson(page, "/api/imports/commit", {
+      sourceLabel: "Legacy OCBC 360 current activity CSV",
+      sourceType: "csv",
+      parserKey: "ocbc_360_activity_csv",
+      rows: legacyActivityPreview.preview.previewRows,
+      statementCheckpoints: []
+    });
+    expect(legacyActivityCommit.importId).toBeTruthy();
+
+    const afterSettingsPage = await loadSettingsPage(page);
+    const afterAccount = afterSettingsPage.settingsPage.accounts.find((item) => item.id === accountId);
+    expect(afterAccount?.latestCheckpointMonth).toBe("2026-05");
+    expect(afterAccount?.latestCheckpointDeltaMinor).toBe(0);
+  });
+
   test("mid-cycle imports do not match imported provisional rows, but PDFs still can promote them", async ({ page }) => {
     const referenceData = await loadReferenceData(page);
     const account = referenceData.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");

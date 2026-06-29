@@ -1,4 +1,5 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
+import { repairLegacyOcbcValueDatePostDates } from "./app-repository-repairs";
 import {
   buildAccountHealth,
   computeCheckpointLedgerBalanceMinor,
@@ -30,6 +31,8 @@ export async function loadHousehold(db: D1Database): Promise<HouseholdDto> {
 }
 
 export async function loadAccounts(db: D1Database): Promise<AccountDto[]> {
+  await repairLegacyOcbcValueDatePostDates(db);
+
   const result = await db
     .prepare(`
       SELECT
