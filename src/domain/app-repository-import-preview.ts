@@ -421,8 +421,11 @@ function findExactDuplicateSuppressionMatch(input: {
         && normalizeDescriptionForMatch(candidate.description) === normalizeDescriptionForMatch(input.previewRow.description);
       const hasCompactDescriptionMatch = (dayDistance === 0 || canUseCertifiedStatementDateWindow)
         && compareDescriptionSimilarity(candidate.description, input.previewRow.description) >= 0.9;
+      const hasTokenReorderedCertifiedMatch = canUseCertifiedStatementDateWindow
+        && countSharedTokens(candidate.description, input.previewRow.description) >= 5
+        && getTokenSimilarity(candidate.description, input.previewRow.description) >= 0.7;
 
-      if (!hasMatchingHash && !hasPerfectDescriptionMatch && !hasCompactDescriptionMatch) {
+      if (!hasMatchingHash && !hasPerfectDescriptionMatch && !hasCompactDescriptionMatch && !hasTokenReorderedCertifiedMatch) {
         return undefined;
       }
 

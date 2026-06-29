@@ -240,6 +240,15 @@ Testing depth rule:
   dual date columns, section boundaries, and footer rows. Minimal synthetic
   snippets can cover narrow edge cases, but they are not enough as the only
   contract for a production importer.
+- parser contracts for bank/deposit activity exports with dual date columns must
+  assert which date becomes the statement/checkpoint date and where the other
+  date is preserved. For bank balances, value/cleared/posted date is the
+  reconciliation date; transaction date remains event-date context.
+- import flow tests for statement-plus-mid-cycle scenarios must include the
+  sequence both ways when supported by the source: current activity before the
+  statement, and current activity after a statement has already certified the
+  month. The latter must prove a later import cannot reopen or break a matched
+  statement checkpoint.
 
 ## Code Shape Rules
 

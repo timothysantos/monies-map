@@ -286,6 +286,11 @@ Important distinctions:
   other original transaction dates when both exist; otherwise compare posted
   dates, so imported commuter rows do not become false matches through a mixed
   original-versus-posted comparison.
+- Bank and deposit account activity exports that provide both a transaction
+  date and a value, cleared, or posted date should import the value/cleared date
+  as the bank-facing ledger date and preserve the transaction date as event
+  evidence. Statement checkpoint math uses the bank-facing date, not the event
+  date.
 - A final PDF statement is the source of truth for bank date lanes. When it
   carries both an event or transaction date and a posted date, certification
   sets `transaction_date` from the PDF event date and `post_date` from the PDF
@@ -364,6 +369,10 @@ Important distinctions:
 - During entry reconciliation, non-statement bank sources should fill or update
   `post_date` without rewriting `transaction_date`. Final PDF statements own
   both date lanes when they certify a provisional row.
+- For bank and deposit activity imports with a `value date`, the imported row's
+  statement/checkpoint date is the value date. The original transaction date
+  remains visible as event-date context so budgeting and reconciliation can be
+  checked without moving a later-cleared row into an already closed statement.
 - A transfer ledger entry is still one ledger entry; a full transfer usually
   needs a matched pair of entries linked by a transfer group.
 - Shared ownership on a ledger entry is not the same thing as a split expense
