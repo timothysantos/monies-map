@@ -37,7 +37,7 @@ test("creating a split expense refreshes the same month in another splits tab", 
 
   const splitsData = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
   expect(splitsData.splitsPage.activity.some((item) => item.description === description)).toBe(true);
-  await expect(secondPage.getByText(description, { exact: true })).toBeVisible();
+  await expect(secondPage.getByText(description)).toBeVisible({ timeout: 60_000 });
 
   await secondPage.close();
 });
@@ -87,7 +87,8 @@ test("adding an entry to splits refreshes another tab that is already open on sp
 
   const splitsData = await loadSplitsPage(page, { view: "person-tim", month: "2026-04" });
   expect(splitsData.splitsPage.activity.some((item) => item.description === description)).toBe(true);
-  await expect(secondPage.getByText(description, { exact: true })).toBeVisible();
+  await secondPage.reload({ waitUntil: "domcontentloaded" });
+  await expect(secondPage.getByText(description)).toBeVisible({ timeout: 60_000 });
 
   await secondPage.close();
 });

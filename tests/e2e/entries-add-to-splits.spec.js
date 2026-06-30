@@ -84,6 +84,57 @@ test("add to splits refreshes split groups and forces group selection when multi
   expect(splitResponse.ok()).toBeTruthy();
 });
 
+test("editing an entry then adding it to splits keeps the saved row stable across tabs", async ({ page }) => {
+  const month = "2026-05";
+  const originalDescription = `Playwright split workflow original ${Date.now()}`;
+  const updatedDescription = `Playwright split workflow updated ${Date.now()}`;
+  const secondPage = await page.context().newPage();
+
+  await page.goto("/");
+  await reseedDemo(page);
+
+  const createdEntry = await postJson(page, "/api/entries/create", {
+    date: `${month}-24`,
+    description: originalDescription,
+    accountName: "UOB One",
+    categoryName: "Groceries",
+    amountMinor: 2550,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+
+  await page.goto(`/entries?view=person-tim&month=${month}&editing_entry=${createdEntry.entryId}`);
+  await secondPage.goto(`/splits?view=person-tim&month=${month}&split_group=split-group-none`);
+  await secondPage.waitForLoadState("networkidle");
+
+  const editor = page.locator(".entry-inline-editor").first();
+  await expect(editor).toBeVisible();
+  await editor.getByLabel("Description").fill(updatedDescription);
+
+  const updateResponse = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());
+  const splitResponse = page.waitForResponse((response) => response.url().includes("/api/splits/expenses/from-entry") && response.ok());
+  await editor.getByRole("button", { name: "Add to splits" }).click();
+  await page.getByRole("dialog", { name: "Add to splits" }).locator("select").selectOption({ label: "Non-group expenses" });
+  await updateResponse;
+  await splitResponse;
+
+  await expect(page.locator(".entry-row").filter({ hasText: updatedDescription }).first()).toBeVisible();
+  await expect(page.locator(".entry-row").filter({ hasText: updatedDescription }).first()).toContainText("View split");
+
+  await expect(secondPage.getByText(updatedDescription)).toBeVisible({ timeout: 60_000 });
+  await secondPage.reload({ waitUntil: "domcontentloaded" });
+  await expect(secondPage.getByText(updatedDescription)).toBeVisible({ timeout: 60_000 });
+  await expect(secondPage.getByText("Reference data could not load.")).toHaveCount(0);
+
+  const entriesData = await loadEntriesPage(page, { view: "person-tim", month });
+  const updatedEntry = entriesData.monthPage.entries.find((item) => item.description === updatedDescription);
+  expect(updatedEntry?.ownershipType).toBe("shared");
+  expect(updatedEntry?.linkedSplitExpenseId).toBeTruthy();
+
+  await secondPage.close();
+});
+
 test("equal split amounts keep the rounded cent on the remainder share", async ({ page }) => {
   const description = `Playwright split rounding ${Date.now()}`;
 
