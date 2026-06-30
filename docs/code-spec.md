@@ -85,6 +85,9 @@ Budget rules:
 - mutations may take longer, but their follow-up invalidation should stay narrow
 - account/category mutations refresh `referenceData`; only viewer/person/demo
   changes should refresh `appShell`
+- entry-row edits and split-link actions from `Entries` must not invalidate
+  `appShell`; they refresh slice queries only and rely on split/entry mutation
+  events for cross-tab freshness
 
 ## Query State Chart
 
