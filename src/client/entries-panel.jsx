@@ -149,7 +149,7 @@ export function EntriesPanel({
     accounts,
     categories,
     people,
-    onRefresh: () => refreshEntriesPage({ bypassCache: true, invalidateAppShell: true }),
+    onRefresh: () => refreshEntriesPage({ bypassCache: true }),
     onEntryMutation: onInvalidateEntryMutation,
     onSplitMutation: onBroadcastSplitMutation
   });
@@ -523,7 +523,7 @@ export function EntriesPanel({
     preserveEntryEditorInUrl(entry.id);
     const result = await addEntryToSplits(entry, splitGroupId);
     if (result?.alreadyLinked) {
-      await refreshEntriesPage({ bypassCache: true, invalidateAppShell: true });
+      await refreshEntriesPage({ bypassCache: true });
       return;
     }
 
@@ -540,7 +540,7 @@ export function EntriesPanel({
   }
 
   async function refreshLatestSplitGroups() {
-    const latestEntriesPage = await refreshEntriesPage({ bypassCache: true, invalidateAppShell: true });
+    const latestEntriesPage = await refreshEntriesPage({ bypassCache: true });
     return latestEntriesPage?.splitGroups ?? entriesPage.splitGroups;
   }
 
@@ -575,7 +575,7 @@ export function EntriesPanel({
         month: selectedMonth,
         invalidateEntries: true
       });
-      await refreshEntriesPage({ bypassCache: true, invalidateAppShell: true });
+      await refreshEntriesPage({ bypassCache: true });
     } catch (error) {
       setCreatedSplitActionError(error instanceof Error ? error.message : "Failed to delete split expense.");
     } finally {
@@ -657,7 +657,7 @@ export function EntriesPanel({
   }, []);
 
   const refreshEntriesFilters = useCallback(() => (
-    refreshEntriesPage({ bypassCache: true, invalidateAppShell: true })
+    refreshEntriesPage({ bypassCache: true })
   ), [refreshEntriesPage]);
 
   const filterStackProps = useMemo(() => ({
