@@ -591,12 +591,6 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       if (nextLinkedEntry) {
         setEntrySnapshot(nextLinkedEntry);
       }
-      onEntryMutation?.({
-        month: view.monthPage.month,
-        invalidateEntries: true,
-        invalidateMonth: true,
-        invalidateSummary: true
-      });
       onSplitMutation?.({
         month: view.monthPage.month,
         invalidateEntries: true,
