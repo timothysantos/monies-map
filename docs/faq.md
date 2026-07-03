@@ -72,6 +72,23 @@ data. At statement close, the PDF statement is the stronger proof. It can
 confirm rows, save a statement checkpoint, and explain whether the app balance
 matches the bank.
 
+## What can I still edit on a statement-certified row?
+
+Statement-certified rows keep the bank facts from the saved statement. That
+means the date, description, wallet, amount, entry type, and transfer
+direction are treated as locked once the statement has certified them.
+
+You can still add context on the row itself:
+
+- note
+- category
+- owner
+- splits
+
+That split is intentional. Use the note field for extra explanation, receipts,
+or cleanup notes, and use a replacement statement or adjustment only when the
+bank facts themselves were wrong.
+
 ## What if the app stays on Loading?
 
 The app loads in three small stages: first the shared dashboard shell, then
