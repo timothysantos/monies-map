@@ -48,6 +48,99 @@ export function SplitGroupDialog({ dialog, formError, isSubmitting, onChange, on
   );
 }
 
+function getSplitCounterparty(people, primaryName) {
+  return people.find((person) => person.name !== primaryName) ?? null;
+}
+
+function splitSharePreview(dialog, people) {
+  const totalAmountMinor = Math.max(0, Number(dialog?.amountMinor ?? 0));
+  const primaryName = dialog?.sharePersonName ?? people[0]?.name ?? "First person";
+  const counterparty = getSplitCounterparty(people, primaryName);
+  const primaryAmountMinor = Math.max(0, Math.min(totalAmountMinor, Number(dialog?.splitAmountMinor ?? 0)));
+  const secondaryAmountMinor = Math.max(0, totalAmountMinor - primaryAmountMinor);
+
+  return {
+    totalAmountMinor,
+    primaryName,
+    secondaryName: counterparty?.name ?? "Second person",
+    primaryAmountMinor,
+    secondaryAmountMinor
+  };
+}
+
+function applyPrimarySplitAmount(current, primaryAmountMinor) {
+  const amountMinor = Math.max(0, Math.min(Number(current?.amountMinor ?? 0), Number(primaryAmountMinor ?? 0)));
+  return updateSplitExpenseDraft(current, {
+    splitAmountMinor: amountMinor,
+    splitAmountInput: formatService.minorToDecimalString(amountMinor)
+  }, "amount", { commit: true });
+}
+
+function OddCentChooser({ dialog, people, onChange }) {
+  const preview = splitSharePreview(dialog, people);
+  const hasOddCent = preview.totalAmountMinor % 2 === 1;
+  const canShow = hasOddCent && people.length >= 2 && preview.totalAmountMinor > 0;
+
+  if (!canShow) {
+    return null;
+  }
+
+  const lowerHalf = Math.floor(preview.totalAmountMinor / 2);
+  const higherHalf = preview.totalAmountMinor - lowerHalf;
+  const extraCentName = preview.primaryAmountMinor > preview.secondaryAmountMinor
+    ? preview.primaryName
+    : preview.secondaryName;
+
+  return (
+    <div className="split-odd-cent-control">
+      <div>
+        <strong>Odd cent</strong>
+        <p>
+          This amount cannot split into two equal cents. Pick who carries the extra cent so this record can match
+          another split app exactly.
+        </p>
+      </div>
+      <div className="split-odd-cent-actions" role="group" aria-label="Choose odd cent recipient">
+        <button
+          type="button"
+          className={extraCentName === preview.primaryName ? "is-selected" : ""}
+          onClick={() => onChange((current) => current ? applyPrimarySplitAmount(current, higherHalf) : current)}
+        >
+          {preview.primaryName} gets +$0.01
+        </button>
+        <button
+          type="button"
+          className={extraCentName === preview.secondaryName ? "is-selected" : ""}
+          onClick={() => onChange((current) => current ? applyPrimarySplitAmount(current, lowerHalf) : current)}
+        >
+          {preview.secondaryName} gets +$0.01
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SplitSharePreview({ dialog, people }) {
+  const preview = splitSharePreview(dialog, people);
+
+  if (preview.totalAmountMinor <= 0 || people.length < 2) {
+    return null;
+  }
+
+  return (
+    <div className="split-share-preview" aria-label="Split share amounts">
+      <span>
+        <span>{preview.primaryName} owes</span>
+        <strong>{formatService.money(preview.primaryAmountMinor)}</strong>
+      </span>
+      <span>
+        <span>{preview.secondaryName} owes</span>
+        <strong>{formatService.money(preview.secondaryAmountMinor)}</strong>
+      </span>
+    </div>
+  );
+}
+
 export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptions, categories = [], onChange, autoFocusAmount = false }) {
   const amountInputRef = useRef(null);
 
@@ -178,6 +271,8 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
             />
           </label>
         </div>
+        <SplitSharePreview dialog={dialog} people={people} />
+        <OddCentChooser dialog={dialog} people={people} onChange={onChange} />
       </div>
       <div className="split-dialog-section">
         <div className="entry-writing-grid split-dialog-writing-grid">

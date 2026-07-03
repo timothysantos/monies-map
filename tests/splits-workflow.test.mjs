@@ -8,10 +8,10 @@ import {
 } from "../src/client/splits-workflow.js";
 import { splitAmountMinorWithRoundedRemainder } from "../src/domain/split-allocation.ts";
 
-test("odd-cent split allocation rounds the first share and balances the remainder", () => {
+test("odd-cent split allocation keeps a deterministic remainder share", () => {
   assert.deepEqual(splitAmountMinorWithRoundedRemainder(4065, 5000), {
-    firstAmount: 2033,
-    secondAmount: 2032
+    firstAmount: 2032,
+    secondAmount: 2033
   });
 });
 

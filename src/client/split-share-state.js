@@ -37,7 +37,7 @@ export function buildSplitShareState({
   }
 
   const nextBasisPoints = clampBasisPoints(splitBasisPoints);
-  const nextAmountMinor = Math.round(safeTotal * (nextBasisPoints / 10000));
+  const nextAmountMinor = Math.floor(safeTotal * (nextBasisPoints / 10000));
 
   return {
     splitValueMode: "percent",
