@@ -87,6 +87,36 @@ test.describe("money field editability", () => {
     }).toBe(4876);
   });
 
+  test("entries still allow note edits and persist them after save", async ({ page }) => {
+    const description = `Playwright note edit ${Date.now()}`;
+    await postJson(page, "/api/entries/create", {
+      date: "2026-05-24",
+      description,
+      accountName: "UOB One",
+      categoryName: "Groceries",
+      amountMinor: 3210,
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+
+    await page.goto("/entries?view=person-tim&month=2026-05");
+    const editor = await openEntryEditor(page, description);
+
+    const noteInput = page.getByRole("textbox", { name: "Note" });
+    await noteInput.fill("receipt captured and itemized");
+
+    const saveButton = page.getByRole("button", { name: "Done editing entry" });
+    const updateResponse = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());
+    await saveButton.click();
+    await updateResponse;
+
+    await expect.poll(async () => {
+      const entriesPage = await loadEntriesPage(page, { view: "person-tim", month: "2026-05" });
+      return entriesPage.monthPage.entries.find((entry) => entry.description === description)?.note ?? "";
+    }).toBe("receipt captured and itemized");
+  });
+
   test("month budget amount replaces the formatted value by typing and persists", async ({ page }) => {
     const month = await loadMonthPage(page, { view: "person-tim", month: "2026-05", scope: "direct_plus_shared" });
     const entertainmentRow = month.monthPage.planSections
