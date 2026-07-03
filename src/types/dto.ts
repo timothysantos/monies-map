@@ -242,6 +242,7 @@ export interface SplitActivityDto {
   fromPersonName?: string;
   toPersonName?: string;
   totalAmountMinor: number;
+  shares?: EntrySplitDto[];
   viewerAmountMinor?: number;
   editableSplitPersonName?: string;
   editableSplitBasisPoints?: number;

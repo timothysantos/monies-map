@@ -1116,6 +1116,7 @@ function buildSplitActivity(
       categoryName: expense.categoryName,
       paidByPersonName: expense.payerPersonName,
       totalAmountMinor: expense.totalAmountMinor,
+      shares: expense.shares,
       viewerAmountMinor: viewerShare,
       editableSplitPersonName: editableShare?.personName,
       editableSplitBasisPoints: editableShare?.ratioBasisPoints,

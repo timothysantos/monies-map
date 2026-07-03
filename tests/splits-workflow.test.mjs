@@ -6,6 +6,14 @@ import {
   buildSplitArchiveRefreshPlan,
   createSplitRefreshGuard
 } from "../src/client/splits-workflow.js";
+import { splitAmountMinorWithRoundedRemainder } from "../src/domain/split-allocation.ts";
+
+test("odd-cent split allocation rounds the first share and balances the remainder", () => {
+  assert.deepEqual(splitAmountMinorWithRoundedRemainder(4065, 5000), {
+    firstAmount: 2033,
+    secondAmount: 2032
+  });
+});
 
 test("linked split refreshes stay narrow until a ledger transaction exists", () => {
   assert.deepEqual(buildLinkedSplitRefreshOptions(null), {

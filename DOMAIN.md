@@ -562,6 +562,12 @@ workspace equivalent of an entry split.
 Storage:
 - `split_expense_shares`
 
+Rounding rule:
+- percentage-based shares are stored as exact minor-unit amounts
+- when the ideal split contains a half-cent, the first household person gets
+  the rounded cent and the second person gets the balancing remainder
+- the stored share amounts must always add exactly to the split expense total
+
 Relationships:
 - belongs to one `split expense`
 - belongs to one `person`

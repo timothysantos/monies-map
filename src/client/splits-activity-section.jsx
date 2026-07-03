@@ -21,6 +21,7 @@ export function SplitsActivitySection({
   onSaveInlineSplit,
   onRequestDeleteSplit,
   onViewLinkedEntry,
+  viewId,
   readOnly = false
 }) {
   return (
@@ -54,6 +55,7 @@ export function SplitsActivitySection({
             onEditExpense={onEditExpense}
             onEditSettlement={onEditSettlement}
             onViewLinkedEntry={onViewLinkedEntry}
+            viewId={viewId}
             readOnly={readOnly}
           />
         ) : null}
