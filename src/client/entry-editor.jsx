@@ -28,6 +28,7 @@ export function EntryEditorFields({
   amountMinorValue,
   amountInputValue,
   lockTransferCategory = false,
+  bankFactsLocked = false,
   onChange,
   onAmountChange,
   onCategoryAppearanceChange,
@@ -60,6 +61,7 @@ export function EntryEditorFields({
   const [categoryQuickSaveOpen, setCategoryQuickSaveOpen] = useState(false);
   const [quickSaveCategoryName, setQuickSaveCategoryName] = useState("");
   const quickSaveCategoryNameRef = useRef("");
+  const bankFactsLockMessage = "This row is statement certified. Description, date, wallet, amount, and type are locked to the saved statement. Use note, category, owner, or splits for annotations.";
 
   useEffect(() => {
     setAmountDraft(resolvedAmountInput);
@@ -110,6 +112,11 @@ export function EntryEditorFields({
 
   return (
     <>
+      {bankFactsLocked ? (
+        <p className="field-help entry-edit-lock-message" role="status">
+          {bankFactsLockMessage}
+        </p>
+      ) : null}
       <div className="entry-edit-grid">
         <label>
           <span>{messages.entries.editCategory}</span>
@@ -182,6 +189,7 @@ export function EntryEditorFields({
             className="table-edit-input"
             type="date"
             value={entry.date}
+            disabled={bankFactsLocked}
             enterKeyHint="next"
             onChange={(event) => onChange({ date: event.target.value })}
           />
@@ -192,6 +200,7 @@ export function EntryEditorFields({
             className="table-edit-input"
             title={messages.entries.editWallet}
             value={entry.accountId ?? entry.accountName}
+            disabled={bankFactsLocked}
             options={accountOptions.map((option) => ({
               value: option.value,
               label: option.label
@@ -223,6 +232,7 @@ export function EntryEditorFields({
             type="text"
             inputMode="decimal"
             value={amountDraft}
+            disabled={bankFactsLocked}
             enterKeyHint="next"
             onMouseDown={selectAllOnFocus}
             onFocus={selectAllOnFocus}
@@ -249,6 +259,7 @@ export function EntryEditorFields({
             className={`table-edit-input ${typeToneClass}`}
             title={messages.entries.editType}
             value={entry.entryType}
+            disabled={bankFactsLocked}
             options={[
               { value: "expense", label: "Expense" },
               { value: "income", label: "Income" },
@@ -274,6 +285,7 @@ export function EntryEditorFields({
               className="table-edit-input"
               title={messages.entries.editTransferDirection}
               value={entry.transferDirection ?? "out"}
+              disabled={bankFactsLocked}
               options={[
                 { value: "out", label: "Transfer out" },
                 { value: "in", label: "Transfer in" }
@@ -306,6 +318,7 @@ export function EntryEditorFields({
           <textarea
             className="table-edit-input table-edit-textarea"
             value={entry.description}
+            readOnly={bankFactsLocked}
             enterKeyHint="done"
             onChange={(event) => onChange({ description: event.target.value })}
             rows={3}

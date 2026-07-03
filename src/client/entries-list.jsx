@@ -68,6 +68,7 @@ export function EntriesDateGroups({
   onDeleteEntry,
   onFinishEntryEdit,
   onCancelEntryEdit,
+  entrySubmitError = "",
   hasEditingChanges = false,
   renderInlineEditor = true
 }) {
@@ -196,6 +197,7 @@ export function EntriesDateGroups({
                 onDeleteEntry={onDeleteEntry}
                 onFinishEntryEdit={onFinishEntryEdit}
                 onCancelEntryEdit={onCancelEntryEdit}
+                entrySubmitError={entrySubmitError}
                 hasEditingChanges={hasEditingChanges}
                 renderInlineEditor={renderInlineEditor}
               />
@@ -315,6 +317,7 @@ function EntryRow({
   onDeleteEntry,
   onFinishEntryEdit,
   onCancelEntryEdit,
+  entrySubmitError = "",
   hasEditingChanges = false,
   renderInlineEditor = true
 }) {
@@ -420,6 +423,7 @@ function EntryRow({
             amountMinorValue={editableAmountMinor}
             amountInputValue={entry.amountInput}
             lockTransferCategory
+            bankFactsLocked={entry.bankCertificationStatus === "statement_certified"}
             onChange={(patch) => onUpdateEntry(entry.id, patch)}
             onAmountChange={(patch) => onUpdateEntryAmount(entry.id, patch)}
             onCategoryAppearanceChange={onCategoryAppearanceChange}
@@ -453,6 +457,7 @@ function EntryRow({
               />
             )}
           />
+          {entrySubmitError ? <p className="form-error" role="alert">{entrySubmitError}</p> : null}
           <div className="entry-inline-status-legend" aria-label="Entry status legend">
             <span className="entry-inline-status-item">
               <span className="entry-inline-status-label">Status:</span>

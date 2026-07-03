@@ -909,6 +909,7 @@ export function EntriesPanel({
             amountMinorValue={entryService.getTotalAmountMinor(activeEditingEntry)}
             amountInputValue={activeEditingEntry.amountInput}
             lockTransferCategory
+            bankFactsLocked={activeEditingEntry.bankCertificationStatus === "statement_certified"}
             onChange={(patch) => updateEntry(activeEditingEntry.id, patch)}
             onAmountChange={(patch) => updateEntryAmount(activeEditingEntry.id, patch)}
             onCategoryAppearanceChange={onCategoryAppearanceChange}
@@ -999,6 +1000,7 @@ export function EntriesPanel({
           onDeleteEntry={handleDeleteEntry}
           onFinishEntryEdit={finishEntryEditAndClearLink}
           onCancelEntryEdit={closeEntryEditSheet}
+          entrySubmitError={entrySubmitError}
           hasEditingChanges={hasEditingEntryChanges}
           renderInlineEditor={!useMobileEntrySheet}
         />
