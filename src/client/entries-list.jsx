@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Check, X } from "lucide-react";
+import { Check, RefreshCw, X } from "lucide-react";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
@@ -68,6 +68,7 @@ export function EntriesDateGroups({
   onDeleteEntry,
   onFinishEntryEdit,
   onCancelEntryEdit,
+  onRefreshEntries,
   entrySubmitError = "",
   hasEditingChanges = false,
   renderInlineEditor = true
@@ -81,6 +82,7 @@ export function EntriesDateGroups({
   );
   const [splitPickerEntry, setSplitPickerEntry] = useState(null);
   const [splitPickerOptions, setSplitPickerOptions] = useState(splitGroupOptions);
+  const [refreshingDate, setRefreshingDate] = useState("");
 
   async function handleAddEntryToSplits(entry, splitGroupId) {
     await onAddEntryToSplits(entry, splitGroupId === NON_GROUP_SPLIT_VALUE ? null : splitGroupId);
@@ -118,7 +120,7 @@ export function EntriesDateGroups({
       return undefined;
     }
 
-    function handlePointerDown(event) {
+    function handleOutsideInteraction(event) {
       const target = event.target;
       const openEditor = document.getElementById(editingEntryId);
 
@@ -143,9 +145,26 @@ export function EntriesDateGroups({
       onCancelEntryEdit();
     }
 
-    document.addEventListener("pointerdown", handlePointerDown, true);
-    return () => document.removeEventListener("pointerdown", handlePointerDown, true);
+    document.addEventListener("pointerdown", handleOutsideInteraction, true);
+    document.addEventListener("click", handleOutsideInteraction, true);
+    return () => {
+      document.removeEventListener("pointerdown", handleOutsideInteraction, true);
+      document.removeEventListener("click", handleOutsideInteraction, true);
+    };
   }, [editingEntryId, onCancelEntryEdit, renderInlineEditor]);
+
+  async function refreshDateGroup(date) {
+    if (!onRefreshEntries || refreshingDate) {
+      return;
+    }
+
+    setRefreshingDate(date);
+    try {
+      await onRefreshEntries();
+    } finally {
+      setRefreshingDate("");
+    }
+  }
 
   return (
     <div className="entries-date-groups">
@@ -153,7 +172,21 @@ export function EntriesDateGroups({
         <section key={group.date} className="entries-date-group">
           <div className="entries-date-head">
             <strong>{formatService.formatDateOnly(group.date)}</strong>
-            <span>{messages.entries.dateNet}: {formatService.money(group.netMinor)}</span>
+            <div className="entries-date-actions">
+              <span>{messages.entries.dateNet}: {formatService.money(group.netMinor)}</span>
+              {onRefreshEntries ? (
+                <button
+                  type="button"
+                  className="entries-date-refresh-button"
+                  aria-label={`Refresh rows for ${formatService.formatDateOnly(group.date)}`}
+                  title={`Refresh rows for ${formatService.formatDateOnly(group.date)}`}
+                  disabled={Boolean(refreshingDate)}
+                  onClick={() => void refreshDateGroup(group.date)}
+                >
+                  <RefreshCw size={15} className={refreshingDate === group.date ? "is-spinning" : ""} />
+                </button>
+              ) : null}
+            </div>
           </div>
 
           <div className="entries-rows">
