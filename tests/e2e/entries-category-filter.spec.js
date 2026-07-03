@@ -93,3 +93,65 @@ test("category quick-save keeps the collapsed row on the saved category without 
   const afterSaveEntry = afterSave.monthPage.entries.find((entry) => entry.description === description);
   expect(afterSaveEntry?.categoryName).toBe("Travel");
 });
+
+test("date group refresh reloads entries without leaving the page", async ({ page }) => {
+  const description = `Playwright date refresh ${Date.now()}`;
+  const month = "2026-06";
+
+  await reseedDemo(page);
+  await postJson(page, "/api/entries/create", {
+    date: `${month}-01`,
+    description,
+    accountName: "Citi Rewards",
+    categoryName: "Taxi",
+    amountMinor: 205,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+
+  await page.goto(`/entries?view=person-tim&month=${month}`);
+  await expect(page.getByRole("heading", { name: /Entries/ })).toBeVisible();
+  await expect(page.locator(".entry-row").filter({ hasText: description })).toHaveCount(1);
+
+  const refreshButton = page.getByRole("button", { name: "Refresh rows for 1 Jun 2026" });
+  await expect(refreshButton).toBeVisible();
+  const refreshResponse = page.waitForResponse((response) => response.url().includes("/api/entries-page") && response.ok());
+  await refreshButton.click();
+  await refreshResponse;
+
+  await expect(page).toHaveURL(/\/entries/);
+  await expect(page.locator(".entry-row").filter({ hasText: description })).toHaveCount(1);
+  await expect(page.locator(".entries-page-loading")).toHaveCount(0);
+});
+
+test("expanded entry closes on the first cancel or outside click", async ({ page }) => {
+  const description = `Playwright close edit ${Date.now()}`;
+  const month = "2026-06";
+
+  await reseedDemo(page);
+  await postJson(page, "/api/entries/create", {
+    date: `${month}-01`,
+    description,
+    accountName: "Citi Rewards",
+    categoryName: "Taxi",
+    amountMinor: 910,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+
+  await page.goto(`/entries?view=person-tim&month=${month}`);
+  await expect(page.getByRole("heading", { name: /Entries/ })).toBeVisible();
+  const entryRow = page.locator(".entry-row").filter({ hasText: description }).first();
+
+  await entryRow.click();
+  await expect(entryRow).toHaveClass(/is-inline-editing/);
+  await entryRow.getByRole("button", { name: "Cancel editing entry" }).click();
+  await expect(entryRow).not.toHaveClass(/is-inline-editing/);
+
+  await entryRow.click();
+  await expect(entryRow).toHaveClass(/is-inline-editing/);
+  await page.locator(".entries-date-head").filter({ hasText: "1 Jun 2026" }).click();
+  await expect(entryRow).not.toHaveClass(/is-inline-editing/);
+});

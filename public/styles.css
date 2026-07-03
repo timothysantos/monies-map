@@ -6756,6 +6756,42 @@ button.split-activity-card:hover {
   font-weight: 500;
 }
 
+.entries-date-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.entries-date-refresh-button {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(177, 94, 47, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 250, 246, 0.92);
+  color: var(--accent-strong);
+  cursor: pointer;
+}
+
+.entries-date-refresh-button:hover,
+.entries-date-refresh-button:focus-visible {
+  border-color: rgba(177, 94, 47, 0.28);
+  background: rgba(255, 245, 237, 0.98);
+  outline: none;
+}
+
+.entries-date-refresh-button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.entries-date-refresh-button .is-spinning {
+  animation: app-spin 0.8s linear infinite;
+}
+
 .entries-rows {
   display: grid;
 }
@@ -9006,6 +9042,16 @@ th {
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 0.8rem;
+  }
+
+  .entries-date-actions {
+    min-width: 0;
+    gap: 6px;
+  }
+
+  .entries-date-refresh-button {
+    width: 26px;
+    height: 26px;
   }
 
   .entry-row-category {

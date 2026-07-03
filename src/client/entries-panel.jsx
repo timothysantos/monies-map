@@ -278,7 +278,14 @@ export function EntriesPanel({
 
   useEffect(() => {
     const linkedEntryId = searchParams.get("editing_entry") ?? "";
-    if (!linkedEntryId || linkedEntryId === pendingLinkedEntryId) {
+    if (!linkedEntryId) {
+      if (pendingLinkedEntryId) {
+        setPendingLinkedEntryId("");
+      }
+      return;
+    }
+
+    if (linkedEntryId === pendingLinkedEntryId) {
       return;
     }
 
@@ -495,12 +502,12 @@ export function EntriesPanel({
   }, [activeEditingEntry, createdSplitAction]);
 
   function closeEntryEditSheet() {
-    clearEditingEntrySearchParam();
     setCreatedSplitAction(null);
     setDeletingCreatedSplitId("");
     setCreatedSplitActionError("");
     resetMobileSplitPickerState();
     cancelEntryEdit();
+    clearEditingEntrySearchParam();
   }
 
   async function finishEntryEditAndClearLink(patch) {
@@ -1000,6 +1007,7 @@ export function EntriesPanel({
           onDeleteEntry={handleDeleteEntry}
           onFinishEntryEdit={finishEntryEditAndClearLink}
           onCancelEntryEdit={closeEntryEditSheet}
+          onRefreshEntries={() => refreshEntriesPage({ bypassCache: true })}
           entrySubmitError={entrySubmitError}
           hasEditingChanges={hasEditingEntryChanges}
           renderInlineEditor={!useMobileEntrySheet}
