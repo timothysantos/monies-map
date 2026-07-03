@@ -114,6 +114,10 @@ export function buildOptimisticExpenseActivityItem({
     categoryName: draft?.categoryName ?? existingItem?.categoryName ?? "Other",
     paidByPersonName: payer.personName,
     totalAmountMinor,
+    shares: [
+      shares.primary,
+      shares.secondary
+    ],
     viewerAmountMinor,
     editableSplitPersonName: shares.primary.personName,
     editableSplitBasisPoints: shares.primary.ratioBasisPoints,

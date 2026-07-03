@@ -3464,6 +3464,30 @@ button.split-activity-card:hover {
   color: var(--muted);
 }
 
+.split-share-breakdown {
+  display: grid;
+  gap: 4px;
+  margin-top: 7px;
+}
+
+.split-share-breakdown > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.2;
+}
+
+.split-share-breakdown strong {
+  display: inline;
+  margin: 0;
+  color: var(--ink);
+  font-size: inherit;
+  font-weight: 700;
+}
+
 .split-activity-trailing {
   display: grid;
   gap: 4px;
@@ -9096,6 +9120,17 @@ th {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .split-share-breakdown {
+    gap: 2px;
+    margin-top: 4px;
+  }
+
+  .split-share-breakdown > span {
+    gap: 6px;
+    font-size: 0.74rem;
+    line-height: 1.08;
   }
 
   .split-activity-trailing {

@@ -23,6 +23,35 @@ function scrollInlineEditorIntoView(element) {
   window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
 }
 
+function formatExpensePaidLine(item, viewId) {
+  const amount = formatService.money(item.totalAmountMinor);
+  if (viewId && viewId !== "household" && item.shares?.some((share) => share.personId === viewId) && item.paidByPersonName) {
+    const payerShare = item.shares.find((share) => share.personName === item.paidByPersonName);
+    if (payerShare?.personId === viewId) {
+      return `You paid ${amount}`;
+    }
+  }
+
+  return `${item.paidByPersonName} paid ${amount}`;
+}
+
+function buildExpenseShareLines(item, viewId) {
+  if (item.kind !== "expense" || !item.shares?.length) {
+    return [];
+  }
+
+  return item.shares.map((share) => {
+    const personLabel = viewId && viewId !== "household" && share.personId === viewId
+      ? "You"
+      : share.personName;
+    return {
+      key: `${item.id}-${share.personId}`,
+      label: `${personLabel} owe${personLabel === "You" ? "" : "s"}`,
+      amount: formatService.money(share.amountMinor)
+    };
+  });
+}
+
 // Activity cards are shared by current split rows and archived batch history.
 export function SplitActivityGroups({
   groups,
@@ -42,7 +71,8 @@ export function SplitActivityGroups({
   onRequestDelete,
   onEditExpense,
   onEditSettlement,
-  onViewLinkedEntry
+  onViewLinkedEntry,
+  viewId = "household"
 }) {
   const inlineEditorRef = useRef(null);
   const editingDraftKey = editingDraft ? `${editingDraft.kind}:${editingDraft.id}` : "";
@@ -111,6 +141,7 @@ export function SplitActivityGroups({
           const isEditing = isEditable && editingDraft && splitItemKey(item) === `${editingDraft.kind}:${editingDraft.id}`;
           const isPendingDerived = item.isPendingDerived === true;
           const showDirectionLabel = Boolean(item.viewerDirectionLabel) && !readOnly;
+          const expenseShareLines = buildExpenseShareLines(item, viewId);
           const amountToneClass = showDirectionLabel
             ? (item.viewerDirectionLabel.includes("borrowed") || item.viewerDirectionLabel.includes("owe") ? "negative" : "positive")
             : "";
@@ -194,7 +225,17 @@ export function SplitActivityGroups({
               </div>
               <div className="split-activity-copy">
                 <strong>{item.description}</strong>
-                <p>{item.kind === "expense" ? `${item.paidByPersonName} paid ${formatService.money(item.totalAmountMinor)}` : `${item.fromPersonName} paid ${item.toPersonName}`}</p>
+                <p>{item.kind === "expense" ? formatExpensePaidLine(item, viewId) : `${item.fromPersonName} paid ${item.toPersonName}`}</p>
+                {expenseShareLines.length ? (
+                  <div className="split-share-breakdown" aria-label="Split share breakdown">
+                    {expenseShareLines.map((shareLine) => (
+                      <span key={shareLine.key}>
+                        <span>{shareLine.label}</span>
+                        <strong>{shareLine.amount}</strong>
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
                 {item.note ? <span className="share-row-meta">{item.note}</span> : null}
                 {archived && !readOnly ? (
                   <div className="split-card-actions">
