@@ -12,6 +12,12 @@ function splitItemKey(item) {
   return `${item.kind}:${item.id}`;
 }
 
+export function splitActivityDomId(itemOrKind, maybeId) {
+  const kind = typeof itemOrKind === "string" ? itemOrKind : itemOrKind?.kind;
+  const id = typeof itemOrKind === "string" ? maybeId : itemOrKind?.id;
+  return `split-activity-${kind}-${id}`;
+}
+
 function scrollInlineEditorIntoView(element) {
   if (window.matchMedia("(max-width: 760px)").matches) {
     element.scrollIntoView({ block: "start", behavior: "smooth" });
@@ -137,6 +143,7 @@ export function SplitActivityGroups({
             return (
               <article
                 ref={inlineEditorRef}
+                id={splitActivityDomId(item)}
                 key={splitItemKey(item)}
                 className="split-inline-editor-card"
                 onClick={(event) => event.stopPropagation()}
@@ -259,6 +266,7 @@ export function SplitActivityGroups({
           if (isEditable) {
             return (
               <button
+                id={splitActivityDomId(item)}
                 key={splitItemKey(item)}
                 type="button"
                 className={`split-activity-card ${isPendingDerived ? "is-pending" : ""}`}
@@ -270,7 +278,7 @@ export function SplitActivityGroups({
           }
 
           return (
-            <article key={splitItemKey(item)} className={`split-activity-card ${isPendingDerived ? "is-pending" : ""}`}>
+            <article id={splitActivityDomId(item)} key={splitItemKey(item)} className={`split-activity-card ${isPendingDerived ? "is-pending" : ""}`}>
               {cardContent}
             </article>
           );

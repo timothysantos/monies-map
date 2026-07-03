@@ -148,6 +148,7 @@ test.describe("money field editability", () => {
     const moneyInputs = inlineEditor.locator(".table-edit-input-money");
     const amountInput = moneyInputs.nth(0);
     const percentInput = moneyInputs.nth(1);
+    const exactAmountInput = moneyInputs.nth(2);
     await page.route("**/api/splits/expenses/update", async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       await route.continue();
@@ -158,6 +159,12 @@ test.describe("money field editability", () => {
 
     await replaceInputValue(percentInput, "60");
     await expect(percentInput).toHaveValue("60");
+
+    await exactAmountInput.fill("");
+    await exactAmountInput.type("8.");
+    await expect(exactAmountInput).toHaveValue("8.");
+    await exactAmountInput.type("01");
+    await expect(exactAmountInput).toHaveValue("8.01");
 
     const saveButton = inlineEditor.getByRole("button", { name: "Done editing split" });
     const saveResponse = page.waitForResponse((response) => response.url().includes("/api/splits/expenses/update") && response.ok());

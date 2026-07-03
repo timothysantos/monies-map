@@ -23,6 +23,7 @@ import {
   upsertOptimisticSplitActivity
 } from "./splits-optimistic";
 import { SplitArchiveDialog } from "./splits-archive-dialog";
+import { splitActivityDomId } from "./splits-activity";
 import { SplitDeleteDialog, SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./splits-dialogs";
 import { SplitsMainSection } from "./splits-main-section";
 import { buildSplitsPanelModel } from "./splits-selectors";
@@ -51,6 +52,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [dismissedMatchIds, setDismissedMatchIds] = useState([]);
   const refreshGuardRef = useRef(null);
   const latestSplitsPageRef = useRef(splitsPage);
+  const returnToSplitIdRef = useRef("");
   const defaultGroupId = splitsPage.groups.find((group) => group.isDefault)?.id ?? "split-group-none";
   const selectedGroupParam = searchParams.get("split_group");
   const selectedGroupId = selectedGroupParam ?? defaultGroupId;
@@ -190,6 +192,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       return;
     }
 
+    returnToSplitIdRef.current = targetSplitExpenseId;
     openExpenseEditor(targetExpense);
   }, [
     expenseDialog?.id,
@@ -199,6 +202,28 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setSearchParams,
     splitsPage.activity
   ]);
+
+  function scrollBackToSplitCard(splitExpenseId) {
+    if (!splitExpenseId || typeof window === "undefined") {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      const element = document.getElementById(splitActivityDomId("expense", splitExpenseId));
+      if (!element) {
+        return;
+      }
+
+      element.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+  }
+
+  function closeExpenseDialogAndReturn() {
+    const returnToSplitId = returnToSplitIdRef.current || expenseDialog?.id || "";
+    closeExpenseDialog();
+    returnToSplitIdRef.current = "";
+    scrollBackToSplitCard(returnToSplitId);
+  }
 
   function updateSplitView(patch) {
     setSearchParams((current) => {
@@ -296,7 +321,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
           }))
         };
       });
-      closeExpenseDialog();
+      closeExpenseDialogAndReturn();
       refreshAfterSplitMutation(buildLinkedSplitRefreshOptions(draft?.linkedTransactionId));
     } catch (error) {
       setFormError(error.message);
@@ -614,9 +639,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         isSubmitting={isSubmitting}
         isSaveDisabled={!hasExpenseDialogChanges}
         onChange={setExpenseDialog}
-        onClose={() => {
-          closeExpenseDialog();
-        }}
+        onClose={closeExpenseDialogAndReturn}
         onSave={saveExpense}
         onViewLinkedEntry={openLinkedEntry}
       />

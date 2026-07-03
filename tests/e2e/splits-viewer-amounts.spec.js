@@ -92,3 +92,34 @@ test("split editor can choose the odd-cent recipient explicitly", async ({ page 
     expect.objectContaining({ personName: "Joyce", amountMinor: 2032 })
   ]));
 });
+
+test("closing a split opened from an entries link returns to that split card", async ({ page }) => {
+  const description = `Deep linked split ${Date.now()}`;
+
+  await page.goto("/");
+  await reseedDemo(page);
+
+  const response = await postJson(page, "/api/splits/expenses/create", {
+    date: "2025-10-28",
+    description,
+    categoryName: "Groceries",
+    payerPersonName: "Tim",
+    amountMinor: 1710,
+    splitBasisPoints: 4684,
+    groupId: null,
+    note: "polyclinic"
+  });
+
+  const splitExpenseId = response.splitExpenseId;
+  await page.goto(`/splits?view=person-tim&month=2025-10&split_group=split-group-none&editing_split_expense=${splitExpenseId}`);
+  await expect(page.getByRole("dialog", { name: "Edit split" })).toBeVisible();
+  await page.getByRole("dialog", { name: "Edit split" }).getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByRole("dialog", { name: "Edit split" })).toHaveCount(0);
+
+  const splitCard = page.locator(`#split-activity-expense-${splitExpenseId}`);
+  await expect(splitCard).toBeVisible();
+  await expect.poll(async () => splitCard.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.top >= 0 && rect.bottom <= window.innerHeight;
+  })).toBe(true);
+});

@@ -213,7 +213,8 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
               <input
                 ref={amountInputRef}
                 className="table-edit-input table-edit-input-money"
-                type="number"
+                type="text"
+                inputMode="decimal"
                 min="0"
                 step="0.01"
                 value={dialog?.amountInput ?? formatService.minorToDecimalString(dialog?.amountMinor ?? 0)}
@@ -234,7 +235,8 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
             <span>{messages.splits.expenseSplit(dialog?.sharePersonName ?? "First person")}</span>
               <input
                 className="table-edit-input table-edit-input-money"
-                type="number"
+                type="text"
+                inputMode="decimal"
                 min="0"
                 max="100"
                 value={dialog?.splitPercentInput ?? String(Number(dialog?.splitBasisPoints ?? 5000) / 100)}
@@ -254,7 +256,8 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
             <span>{messages.splits.expenseExactAmount(dialog?.sharePersonName ?? "First person")}</span>
               <input
                 className="table-edit-input table-edit-input-money"
-                type="number"
+                type="text"
+                inputMode="decimal"
                 min="0"
                 step="0.01"
                 value={dialog?.splitAmountInput ?? formatService.minorToDecimalString(dialog?.splitAmountMinor ?? 0)}
@@ -400,7 +403,8 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
               <input
                 ref={amountInputRef}
                 className="table-edit-input table-edit-input-money"
-                type="number"
+                type="text"
+                inputMode="decimal"
                 min="0"
                 step="0.01"
                 value={dialog?.amountInput ?? formatService.minorToDecimalString(dialog?.amountMinor ?? 0)}

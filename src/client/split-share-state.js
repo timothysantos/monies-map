@@ -52,6 +52,12 @@ export function syncSplitShareState(draft, patch = {}, modeOverride, options = {
   const nextDraft = { ...draft, ...patch };
   const shouldCommit = options.commit === true;
   const nextMode = modeOverride ?? nextDraft.splitValueMode;
+  const computedShareState = buildSplitShareState({
+    totalAmountMinor: nextDraft.amountMinor,
+    splitBasisPoints: nextDraft.splitBasisPoints,
+    splitAmountMinor: nextDraft.splitAmountMinor,
+    splitValueMode: nextMode
+  });
 
   if (!shouldCommit) {
     if (Object.prototype.hasOwnProperty.call(patch, "splitPercentInput") && patch.splitPercentInput === "") {
@@ -67,15 +73,34 @@ export function syncSplitShareState(draft, patch = {}, modeOverride, options = {
         splitValueMode: nextMode
       };
     }
+
+    if (Object.prototype.hasOwnProperty.call(patch, "splitPercentInput")) {
+      return {
+        ...nextDraft,
+        ...computedShareState,
+        splitPercentInput: patch.splitPercentInput
+      };
+    }
+
+    if (Object.prototype.hasOwnProperty.call(patch, "splitAmountInput")) {
+      return {
+        ...nextDraft,
+        ...computedShareState,
+        splitAmountInput: patch.splitAmountInput
+      };
+    }
+
+    if (Object.prototype.hasOwnProperty.call(patch, "amountInput")) {
+      return {
+        ...nextDraft,
+        ...computedShareState,
+        amountInput: patch.amountInput
+      };
+    }
   }
 
   return {
     ...nextDraft,
-    ...buildSplitShareState({
-      totalAmountMinor: nextDraft.amountMinor,
-      splitBasisPoints: nextDraft.splitBasisPoints,
-      splitAmountMinor: nextDraft.splitAmountMinor,
-      splitValueMode: nextMode
-    })
+    ...computedShareState
   };
 }
