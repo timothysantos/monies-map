@@ -1161,10 +1161,12 @@ tab to add, edit, or settle split records.
 ![Splits shows open groups, owed totals, and linked split entries](/faq/features/thumbs/splits-overview.png)
 
 Each split expense keeps the exact per-person share amounts. For a 50/50 split
-with an odd cent, the first household person gets the rounded cent and the
-second person gets the balancing remainder so the shares always add back to the
-original bank amount. For example, a `$40.65` split becomes `$20.33` and
-`$20.32`, and the activity card shows those amounts under the paid line.
+with an odd cent, the app stores exact cents instead of relying on a hidden
+rounding rule from another app. The default share uses a deterministic balancing
+remainder, and the expanded split editor shows an `Odd cent` control so you can
+choose which person gets the extra cent when matching a Splitwise record. The
+collapsed activity row stays compact; open the row to see or change the exact
+shares.
 
 Imported shared rows or transfer rows can then be matched later from `Matches`
 instead of from the import screen itself.

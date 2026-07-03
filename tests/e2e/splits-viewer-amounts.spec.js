@@ -45,7 +45,7 @@ test("person splits view tones lent and borrowed amounts with income and expense
   await expect(borrowedCard.locator(".split-activity-amount-line > span").first()).toHaveCSS("color", "rgb(178, 58, 46)");
 });
 
-test("split activity shows Splitwise-style odd-cent share breakdown", async ({ page }) => {
+test("split editor can choose the odd-cent recipient explicitly", async ({ page }) => {
   const description = `M1 recurring ${Date.now()}`;
 
   await page.goto("/");
@@ -65,17 +65,30 @@ test("split activity shows Splitwise-style odd-cent share breakdown", async ({ p
   const data = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
   const createdItem = data.splitsPage.activity.find((item) => item.description === description);
   expect(createdItem?.shares).toEqual(expect.arrayContaining([
-    expect.objectContaining({ personName: "Tim", amountMinor: 2033 }),
-    expect.objectContaining({ personName: "Joyce", amountMinor: 2032 })
+    expect.objectContaining({ personName: "Tim", amountMinor: 2032 }),
+    expect.objectContaining({ personName: "Joyce", amountMinor: 2033 })
   ]));
 
   await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
   await expect(page.locator("article.panel-splits")).toBeVisible();
   const splitCard = page.locator(".split-activity-card").filter({ hasText: description }).first();
-  const shareBreakdown = splitCard.locator(".split-share-breakdown");
   await expect(splitCard.getByText("You paid $40.65")).toBeVisible();
-  await expect(shareBreakdown.getByText("You owe")).toBeVisible();
-  await expect(shareBreakdown.getByText("$20.33")).toBeVisible();
-  await expect(shareBreakdown.getByText("Joyce owes")).toBeVisible();
-  await expect(shareBreakdown.getByText("$20.32")).toBeVisible();
+  await expect(splitCard.locator(".split-share-breakdown")).toHaveCount(0);
+
+  await splitCard.click();
+  const editor = page.locator(".split-inline-editor-card").filter({ hasText: description }).first();
+  await expect(editor.getByText("Tim owes")).toBeVisible();
+  await expect(editor.getByText("$20.32")).toBeVisible();
+  await expect(editor.getByText("Joyce owes")).toBeVisible();
+  await expect(editor.getByText("$20.33")).toBeVisible();
+  await expect(editor.getByText("Odd cent")).toBeVisible();
+  await editor.getByRole("button", { name: "Tim gets +$0.01" }).click();
+  await editor.getByRole("button", { name: /Save|Done editing split/ }).click();
+
+  const updatedData = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
+  const updatedItem = updatedData.splitsPage.activity.find((item) => item.description === description);
+  expect(updatedItem?.shares).toEqual(expect.arrayContaining([
+    expect.objectContaining({ personName: "Tim", amountMinor: 2033 }),
+    expect.objectContaining({ personName: "Joyce", amountMinor: 2032 })
+  ]));
 });

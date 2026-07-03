@@ -564,8 +564,9 @@ Storage:
 
 Rounding rule:
 - percentage-based shares are stored as exact minor-unit amounts
-- when the ideal split contains a half-cent, the first household person gets
-  the rounded cent and the second person gets the balancing remainder
+- when the ideal split contains a half-cent, the app uses a deterministic
+  balancing remainder by default, and the split editor can explicitly assign the
+  odd cent to either person when matching an external split record
 - the stored share amounts must always add exactly to the split expense total
 
 Relationships:

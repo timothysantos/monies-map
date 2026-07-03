@@ -9,8 +9,8 @@ export function buildExpenseDraft(item, categoryOptions, people) {
   const shareState = buildSplitShareState({
     totalAmountMinor: item.totalAmountMinor,
     splitBasisPoints: item.editableSplitBasisPoints ?? 5000,
-    splitAmountMinor: item.editableSplitAmountMinor ?? Math.round(item.totalAmountMinor / 2),
-    splitValueMode: "percent"
+    splitAmountMinor: item.editableSplitAmountMinor ?? Math.floor(item.totalAmountMinor / 2),
+    splitValueMode: item.editableSplitAmountMinor == null ? "percent" : "amount"
   });
 
   return {

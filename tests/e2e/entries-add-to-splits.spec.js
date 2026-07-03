@@ -135,7 +135,7 @@ test("editing an entry then adding it to splits keeps the saved row stable acros
   await secondPage.close();
 });
 
-test("equal split amounts keep the rounded cent on the remainder share", async ({ page }) => {
+test("equal split amounts keep the odd cent on the deterministic remainder share", async ({ page }) => {
   const description = `Playwright split rounding ${Date.now()}`;
 
   await page.goto("/");
