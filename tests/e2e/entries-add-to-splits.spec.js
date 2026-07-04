@@ -89,6 +89,11 @@ test("add to splits refreshes split groups and forces group selection when multi
   const linkedEntry = afterEntriesPage.monthPage.entries.find((item) => item.id === entry.entryId);
   expect(linkedEntry?.linkedSplitExpenseId).toBeTruthy();
   expect(linkedEntry?.linkedSplitGroupName).toBe("Holiday");
+
+  await page.goto("/entries?view=person-tim&month=2026-04");
+  const linkedEntryRow = page.locator(".entry-row").filter({ hasText: description }).first();
+  await expect(linkedEntryRow).toBeVisible();
+  await expect(linkedEntryRow.locator(".entry-chip-linked-split")).toContainText("On splits · Holiday");
 });
 
 test("editing an entry then adding it to splits keeps the saved row stable across tabs", async ({ page }) => {
