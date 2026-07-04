@@ -57,12 +57,15 @@ import {
   settleTransferPair,
   unregisterLoginIdentity,
   updateSplitExpenseRecord,
+  updateSplitExpenseNoteRecord,
+  updateSplitSettlementNoteRecord,
   updateSplitSettlementRecord,
   updateAccountRecord,
   updateCategoryRecord,
   updatePersonRecord,
   updateMonthlySnapshotNote,
   updateEntryClassificationRecord,
+  updateEntryNoteRecord,
   updateEntryPostDateRecord,
   updateEntryRecord
 } from "./domain/app-repository";
@@ -594,6 +597,26 @@ export default {
       });
     }
 
+    if (url.pathname === "/api/entries/update-note" && request.method === "POST") {
+      const body = await request.json<{ entryId?: string; note?: string }>();
+
+      if (!body.entryId) {
+        return json({ ok: false, error: "Missing entry note fields" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await updateEntryNoteRecord(env.DB, {
+            entryId: body.entryId,
+            note: body.note
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update entry note" }, 400);
+      }
+    }
+
     if (url.pathname === "/api/entries/delete" && request.method === "POST") {
       const body = await request.json<{ entryId?: string }>();
 
@@ -1002,6 +1025,26 @@ export default {
       }
     }
 
+    if (url.pathname === "/api/splits/expenses/update-note" && request.method === "POST") {
+      const body = await request.json<{ splitExpenseId?: string; note?: string }>();
+
+      if (!body.splitExpenseId) {
+        return json({ ok: false, error: "Missing split expense note fields" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await updateSplitExpenseNoteRecord(env.DB, {
+            splitExpenseId: body.splitExpenseId,
+            note: body.note
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update split expense note" }, 400);
+      }
+    }
+
     if (url.pathname === "/api/splits/settlements/update" && request.method === "POST") {
       const body = await request.json<{
         settlementId?: string;
@@ -1032,6 +1075,26 @@ export default {
         });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update split settlement" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/splits/settlements/update-note" && request.method === "POST") {
+      const body = await request.json<{ settlementId?: string; note?: string }>();
+
+      if (!body.settlementId) {
+        return json({ ok: false, error: "Missing split settlement note fields" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await updateSplitSettlementNoteRecord(env.DB, {
+            settlementId: body.settlementId,
+            note: body.note
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update split settlement note" }, 400);
       }
     }
 

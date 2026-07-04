@@ -17,6 +17,7 @@ export function buildExpenseDraft(item, categoryOptions, people) {
     kind: "expense",
     id: item.id,
     linkedTransactionId: item.linkedTransactionId,
+    linkedTransactionNote: item.linkedTransactionNote ?? "",
     groupId: item.groupId,
     date: item.date,
     description: item.description,
@@ -24,6 +25,7 @@ export function buildExpenseDraft(item, categoryOptions, people) {
     payerPersonName: item.paidByPersonName ?? people[0]?.name ?? "",
     amountMinor: item.totalAmountMinor,
     note: item.note ?? "",
+    originalNote: item.note ?? "",
     sharePersonName: item.editableSplitPersonName ?? people[0]?.name ?? "",
     ...shareState
   };
@@ -34,12 +36,14 @@ export function buildSettlementDraft(item, people) {
     kind: "settlement",
     id: item.id,
     linkedTransactionId: item.linkedTransactionId,
+    linkedTransactionNote: item.linkedTransactionNote ?? "",
     groupId: item.groupId,
     date: item.date,
     fromPersonName: item.fromPersonName ?? people[1]?.name ?? "",
     toPersonName: item.toPersonName ?? people[0]?.name ?? "",
     amountMinor: item.totalAmountMinor,
-    note: item.note ?? ""
+    note: item.note ?? "",
+    originalNote: item.note ?? ""
   };
 }
 

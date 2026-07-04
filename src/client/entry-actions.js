@@ -737,6 +737,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   return {
     entries,
     editingEntryId,
+    entrySnapshot,
     hasEditingEntryChanges,
     showEntryComposer,
     entryDraft,

@@ -1125,6 +1125,7 @@ function buildSplitActivity(
       note: expense.note,
       linkedTransactionId: expense.linkedTransactionId,
       linkedTransactionDescription: expense.linkedTransactionDescription,
+      linkedTransactionNote: expense.linkedTransactionNote,
       matched: Boolean(expense.linkedTransactionId)
     });
   }
@@ -1148,6 +1149,7 @@ function buildSplitActivity(
       note: settlement.note,
       linkedTransactionId: settlement.linkedTransactionId,
       linkedTransactionDescription: settlement.linkedTransactionDescription,
+      linkedTransactionNote: settlement.linkedTransactionNote,
       matched: Boolean(settlement.linkedTransactionId)
     });
   }

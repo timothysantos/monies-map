@@ -95,6 +95,8 @@ export {
   loadSplitMatchCandidates,
   loadSplitSettlements,
   updateSplitExpenseRecord,
+  updateSplitExpenseNoteRecord,
+  updateSplitSettlementNoteRecord,
   updateSplitSettlementRecord
 } from "./app-repository-splits";
 export {
@@ -2234,6 +2236,36 @@ export async function updateEntryRecord(
       categoryName: input.categoryName
     });
   }
+
+  return { entryId: input.entryId, updated: true };
+}
+
+export async function updateEntryNoteRecord(
+  db: D1Database,
+  input: {
+    entryId: string;
+    note?: string;
+  }
+) {
+  const transaction = await db
+    .prepare("SELECT id FROM transactions WHERE household_id = ? AND id = ?")
+    .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
+    .first<{ id: string }>();
+  if (!transaction) {
+    throw new Error("Entry not found.");
+  }
+
+  await db
+    .prepare("UPDATE transactions SET note = ?, updated_at = CURRENT_TIMESTAMP WHERE household_id = ? AND id = ?")
+    .bind(input.note ?? null, DEFAULT_HOUSEHOLD_ID, input.entryId)
+    .run();
+
+  await recordAuditEvent(db, {
+    entityType: "transaction",
+    entityId: input.entryId,
+    action: "entry_note_updated",
+    detail: "Updated entry note from linked split note sync."
+  });
 
   return { entryId: input.entryId, updated: true };
 }
