@@ -130,11 +130,11 @@ function SplitSharePreview({ dialog, people }) {
   return (
     <div className="split-share-preview" aria-label="Split share amounts">
       <span>
-        <span>{preview.primaryName} owes</span>
+        <span>{preview.primaryName} share</span>
         <strong>{formatService.money(preview.primaryAmountMinor)}</strong>
       </span>
       <span>
-        <span>{preview.secondaryName} owes</span>
+        <span>{preview.secondaryName} share</span>
         <strong>{formatService.money(preview.secondaryAmountMinor)}</strong>
       </span>
     </div>
