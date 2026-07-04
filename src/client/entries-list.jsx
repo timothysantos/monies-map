@@ -654,11 +654,11 @@ function getOwnerCueColor(ownerKey) {
   const normalized = ownerKey.trim().toLowerCase();
 
   if (normalized.includes("tim")) {
-    return "#0F766E";
+    return "#74C69D";
   }
 
   if (normalized.includes("joyce")) {
-    return "#EA580C";
+    return "#F28482";
   }
 
   if (normalized === "shared") {
