@@ -88,3 +88,27 @@ export function updateSplitLinkedEntry(draft) {
     "Failed to update linked entry."
   );
 }
+
+export function updateLinkedEntryNote({ entryId, note }) {
+  return postJson(
+    "/api/entries/update-note",
+    { entryId, note },
+    "Failed to update linked entry note."
+  );
+}
+
+export function updateSplitExpenseNote({ splitExpenseId, note }) {
+  return postJson(
+    "/api/splits/expenses/update-note",
+    { splitExpenseId, note },
+    "Failed to update split note."
+  );
+}
+
+export function updateSplitSettlementNote({ settlementId, note }) {
+  return postJson(
+    "/api/splits/settlements/update-note",
+    { settlementId, note },
+    "Failed to update settlement note."
+  );
+}

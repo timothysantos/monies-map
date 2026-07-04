@@ -182,6 +182,7 @@ export interface EntryDto {
   linkedTransfer?: LinkedTransferDto;
   linkedSplitExpenseId?: string;
   linkedSplitGroupName?: string;
+  linkedSplitNote?: string;
   splits: EntrySplitDto[];
 }
 
@@ -252,6 +253,7 @@ export interface SplitActivityDto {
   note?: string;
   linkedTransactionId?: string;
   linkedTransactionDescription?: string;
+  linkedTransactionNote?: string;
   matched: boolean;
 }
 
@@ -285,6 +287,7 @@ export interface SplitExpenseDto {
   note?: string;
   linkedTransactionId?: string;
   linkedTransactionDescription?: string;
+  linkedTransactionNote?: string;
   shares: EntrySplitDto[];
 }
 
@@ -304,6 +307,7 @@ export interface SplitSettlementDto {
   note?: string;
   linkedTransactionId?: string;
   linkedTransactionDescription?: string;
+  linkedTransactionNote?: string;
 }
 
 export interface SplitsPageDto {

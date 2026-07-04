@@ -563,6 +563,11 @@ That keeps the bank ledger complete while also recording who owes whom. The
 original entry remains traceable to the import batch, and the split record points
 back to the ledger entry.
 
+When a linked entry and split already exist, changing the note on either side
+opens a confirmation dialog before save. The dialog shows the note you are
+saving and the connected record's current note, then lets you save only the
+record you edited or update both notes together.
+
 If you manually create a split before the bank row exists, it is still useful as
 a reminder, but it is not yet matched to the ledger. When the bank row arrives,
 use the split match prompts to link the split to the imported entry instead of

@@ -49,6 +49,59 @@ test("entries can add a direct expense to splits and jump into the created split
   await expect(page.getByRole("dialog").getByLabel("Description")).toHaveValue(description);
 });
 
+test("editing a linked entry note can update the connected split note", async ({ page }) => {
+  const month = "2026-05";
+  const description = `Playwright linked note sync ${Date.now()}`;
+  const entryNote = "entry original note";
+  const splitNote = "split current note";
+  const syncedNote = "shared linked note";
+
+  await page.goto("/");
+  await reseedDemo(page);
+
+  const entry = await postJson(page, "/api/entries/create", {
+    date: `${month}-24`,
+    description,
+    accountName: "UOB One",
+    categoryName: "Groceries",
+    amountMinor: 2550,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim",
+    note: entryNote
+  });
+
+  const splitData = await postJson(page, "/api/splits/expenses/from-entry", {
+    entryId: entry.entryId,
+    splitGroupId: null
+  });
+  await postJson(page, "/api/splits/expenses/update-note", {
+    splitExpenseId: splitData.splitExpenseId,
+    note: splitNote
+  });
+
+  await page.goto(`/entries?view=person-tim&month=${month}&editing_entry=${entry.entryId}`);
+  const editor = page.locator(".entry-inline-editor").first();
+  await expect(editor).toBeVisible();
+  await editor.getByRole("textbox", { name: "Note", exact: true }).fill(syncedNote);
+  await editor.getByRole("button", { name: "Done editing entry" }).click();
+
+  const syncDialog = page.getByRole("dialog", { name: "Update connected note?" });
+  await expect(syncDialog).toBeVisible();
+  await expect(syncDialog).toContainText(syncedNote);
+  await expect(syncDialog).toContainText(splitNote);
+  await syncDialog.getByRole("button", { name: "Update both" }).click();
+
+  await expect(syncDialog).toBeHidden({ timeout: 60_000 });
+  const entriesData = await loadEntriesPage(page, { view: "person-tim", month });
+  const updatedEntry = entriesData.monthPage.entries.find((item) => item.id === entry.entryId);
+  expect(updatedEntry?.note).toBe(syncedNote);
+
+  const splitsData = await loadSplitsPage(page, { view: "person-tim", month });
+  const updatedSplit = splitsData.splitsPage.activity.find((item) => item.id === splitData.splitExpenseId);
+  expect(updatedSplit?.note).toBe(syncedNote);
+});
+
 test("add to splits refreshes split groups and forces group selection when multiple groups exist", async ({ page }) => {
   const month = "2026-05";
   const description = `Playwright split picker refresh ${Date.now()}`;

@@ -58,7 +58,8 @@ export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthK
         payer.id AS payer_person_id,
         payer.display_name AS payer_person_name,
         categories.name AS category_name,
-        transactions.description AS linked_transaction_description
+        transactions.description AS linked_transaction_description,
+        transactions.note AS linked_transaction_note
       FROM split_expenses
       LEFT JOIN split_groups ON split_groups.id = split_expenses.split_group_id
       LEFT JOIN split_batches ON split_batches.id = split_expenses.split_batch_id
@@ -85,6 +86,7 @@ export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthK
       payer_person_name: string;
       category_name: string | null;
       linked_transaction_description: string | null;
+      linked_transaction_note: string | null;
     }>();
 
   const shares = await db
@@ -137,6 +139,7 @@ export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthK
     note: row.note ?? undefined,
     linkedTransactionId: row.linked_transaction_id ?? undefined,
     linkedTransactionDescription: row.linked_transaction_description ?? undefined,
+    linkedTransactionNote: row.linked_transaction_note ?? undefined,
     shares: shareMap.get(row.id) ?? []
   }));
 }
@@ -159,7 +162,8 @@ export async function loadSplitSettlements(db: D1Database, month = getCurrentMon
         from_person.display_name AS from_person_name,
         to_person.id AS to_person_id,
         to_person.display_name AS to_person_name,
-        transactions.description AS linked_transaction_description
+        transactions.description AS linked_transaction_description,
+        transactions.note AS linked_transaction_note
       FROM split_settlements
       LEFT JOIN split_groups ON split_groups.id = split_settlements.split_group_id
       LEFT JOIN split_batches ON split_batches.id = split_settlements.split_batch_id
@@ -186,6 +190,7 @@ export async function loadSplitSettlements(db: D1Database, month = getCurrentMon
       to_person_id: string;
       to_person_name: string;
       linked_transaction_description: string | null;
+      linked_transaction_note: string | null;
     }>();
 
   return settlements.results.map((row) => ({
@@ -203,7 +208,8 @@ export async function loadSplitSettlements(db: D1Database, month = getCurrentMon
     amountMinor: row.amount_minor,
     note: row.note ?? undefined,
     linkedTransactionId: row.linked_transaction_id ?? undefined,
-    linkedTransactionDescription: row.linked_transaction_description ?? undefined
+    linkedTransactionDescription: row.linked_transaction_description ?? undefined,
+    linkedTransactionNote: row.linked_transaction_note ?? undefined
   }));
 }
 
@@ -591,6 +597,29 @@ export async function updateSplitExpenseRecord(
   return { splitExpenseId: input.splitExpenseId };
 }
 
+export async function updateSplitExpenseNoteRecord(
+  db: D1Database,
+  input: {
+    splitExpenseId: string;
+    note?: string;
+  }
+) {
+  const existing = await db
+    .prepare("SELECT id FROM split_expenses WHERE id = ? AND household_id = ?")
+    .bind(input.splitExpenseId, DEFAULT_HOUSEHOLD_ID)
+    .first<{ id: string }>();
+  if (!existing) {
+    throw new Error("Split expense not found.");
+  }
+
+  await db
+    .prepare("UPDATE split_expenses SET note = ? WHERE id = ? AND household_id = ?")
+    .bind(input.note ?? null, input.splitExpenseId, DEFAULT_HOUSEHOLD_ID)
+    .run();
+
+  return { splitExpenseId: input.splitExpenseId, updated: true };
+}
+
 function buildSplitShareAmounts(amountMinor: number, splitBasisPoints = 5000, splitAmountMinor?: number) {
   const safeAmountMinor = Math.max(0, Number(amountMinor ?? 0));
   const safeBasisPoints = Math.max(0, Math.min(10000, splitBasisPoints));
@@ -704,6 +733,29 @@ export async function updateSplitSettlementRecord(
   }
 
   return { settlementId: input.settlementId };
+}
+
+export async function updateSplitSettlementNoteRecord(
+  db: D1Database,
+  input: {
+    settlementId: string;
+    note?: string;
+  }
+) {
+  const existing = await db
+    .prepare("SELECT id FROM split_settlements WHERE id = ? AND household_id = ?")
+    .bind(input.settlementId, DEFAULT_HOUSEHOLD_ID)
+    .first<{ id: string }>();
+  if (!existing) {
+    throw new Error("Split settlement not found.");
+  }
+
+  await db
+    .prepare("UPDATE split_settlements SET note = ? WHERE id = ? AND household_id = ?")
+    .bind(input.note ?? null, input.settlementId, DEFAULT_HOUSEHOLD_ID)
+    .run();
+
+  return { settlementId: input.settlementId, updated: true };
 }
 
 export async function deleteSplitExpenseRecord(

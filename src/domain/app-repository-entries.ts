@@ -112,6 +112,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
         imports.source_label AS import_source_label,
         split_expenses.id AS linked_split_expense_id,
         split_groups.group_name AS linked_split_group_name,
+        split_expenses.note AS linked_split_note,
         people.display_name AS owner_name,
         accounts.account_name AS account_name,
         CASE
@@ -158,6 +159,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       import_source_label: string | null;
       linked_split_expense_id: string | null;
       linked_split_group_name: string | null;
+      linked_split_note: string | null;
       owner_name: string | null;
       account_name: string;
       account_owner_label: string | null;
@@ -244,6 +246,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       linkedTransfer,
       linkedSplitExpenseId: row.linked_split_expense_id ?? undefined,
       linkedSplitGroupName: row.linked_split_group_name ?? undefined,
+      linkedSplitNote: row.linked_split_note ?? undefined,
       splits: splitMap.get(row.id) ?? []
     };
   });

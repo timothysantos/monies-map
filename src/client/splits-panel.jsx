@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
+import { LinkedNoteSyncDialog } from "./linked-note-sync-dialog";
 import {
   useSplitEditState,
   validateSplitExpenseDraft,
@@ -13,7 +14,8 @@ import {
   deleteSplitSettlement,
   linkSplitMatch,
   saveSplitExpense,
-  saveSplitSettlement
+  saveSplitSettlement,
+  updateLinkedEntryNote
 } from "./splits-api";
 import {
   applyOptimisticSplitMatch,
@@ -47,6 +49,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [archiveDialog, setArchiveDialog] = useState(null);
   const [groupDialog, setGroupDialog] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [splitNoteSyncPrompt, setSplitNoteSyncPrompt] = useState(null);
+  const [isSyncingSplitNote, setIsSyncingSplitNote] = useState(false);
   const [isRefreshingDerived, setIsRefreshingDerived] = useState(false);
   const [optimisticSplitsPage, setOptimisticSplitsPage] = useState(null);
   const [dismissedMatchIds, setDismissedMatchIds] = useState([]);
@@ -91,6 +95,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     expenseDialog,
     settlementDialog,
     inlineSplitDraft,
+    expenseDialogSnapshot,
+    settlementDialogSnapshot,
+    inlineSplitDraftSnapshot,
     inlineSplitError,
     deleteTarget,
     formError,
@@ -272,6 +279,41 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       });
   }
 
+  function buildSplitNoteSyncPrompt(draft, snapshot) {
+    if (!draft?.linkedTransactionId || !snapshot) {
+      return null;
+    }
+
+    const previousNote = snapshot.note ?? "";
+    const nextNote = draft.note ?? "";
+    const linkedNote = draft.linkedTransactionNote ?? "";
+    if (previousNote === nextNote || linkedNote === nextNote) {
+      return null;
+    }
+
+    return {
+      draftKind: draft.kind,
+      editedNote: nextNote,
+      connectedNote: linkedNote,
+      editedLabel: draft.kind === "settlement" ? "Split settlement note being saved" : "Split expense note being saved",
+      connectedLabel: "Connected ledger entry current note",
+      description: "This split is connected to a ledger entry. Apply the same note to the ledger entry too?"
+    };
+  }
+
+  function requestSplitNoteSync(draft, snapshot, saveKind) {
+    const prompt = buildSplitNoteSyncPrompt(draft, snapshot);
+    if (!prompt) {
+      return false;
+    }
+
+    setSplitNoteSyncPrompt({
+      ...prompt,
+      saveKind
+    });
+    return true;
+  }
+
   async function saveGroup() {
     if (!groupDialog?.name?.trim()) {
       setFormError("Group name is required.");
@@ -292,7 +334,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
   }
 
-  async function saveExpense() {
+  async function saveExpense({ syncLinkedNote = false } = {}) {
     const draft = expenseDialog;
     const validationError = validateSplitExpenseDraft(expenseDialog);
     if (validationError) {
@@ -321,16 +363,24 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
           }))
         };
       });
+      if (syncLinkedNote && draft?.linkedTransactionId) {
+        await updateLinkedEntryNote({
+          entryId: draft.linkedTransactionId,
+          note: draft.note ?? ""
+        });
+      }
       closeExpenseDialogAndReturn();
       refreshAfterSplitMutation(buildLinkedSplitRefreshOptions(draft?.linkedTransactionId));
+      return true;
     } catch (error) {
       setFormError(error.message);
+      return false;
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  async function saveSettlement() {
+  async function saveSettlement({ syncLinkedNote = false } = {}) {
     const draft = settlementDialog;
     const validationError = validateSplitSettlementDraft(settlementDialog);
     if (validationError) {
@@ -356,10 +406,18 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
           }))
         };
       });
+      if (syncLinkedNote && draft?.linkedTransactionId) {
+        await updateLinkedEntryNote({
+          entryId: draft.linkedTransactionId,
+          note: draft.note ?? ""
+        });
+      }
       closeSettlementDialog();
       refreshAfterSplitMutation(buildLinkedSplitRefreshOptions(draft?.linkedTransactionId));
+      return true;
     } catch (error) {
       setFormError(error.message);
+      return false;
     } finally {
       setIsSubmitting(false);
     }
@@ -378,7 +436,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
   }
 
-  async function saveInlineSplit() {
+  async function saveInlineSplit({ syncLinkedNote = false } = {}) {
     if (!inlineSplitDraft) {
       return;
     }
@@ -428,16 +486,78 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
           };
         });
       }
+      if (syncLinkedNote && draft.linkedTransactionId) {
+        await updateLinkedEntryNote({
+          entryId: draft.linkedTransactionId,
+          note: draft.note ?? ""
+        });
+      }
       clearInlineSplitDraft();
       refreshAfterSplitMutation(
-        draft.kind === "expense"
+        draft.linkedTransactionId
           ? buildLinkedSplitRefreshOptions(draft.linkedTransactionId)
           : { broadcast: true }
       );
+      return true;
     } catch (error) {
       setInlineSplitError(error.message);
+      return false;
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  function requestSaveExpense() {
+    if (requestSplitNoteSync(expenseDialog, expenseDialogSnapshot, "expense-dialog")) {
+      return;
+    }
+
+    void saveExpense();
+  }
+
+  function requestSaveSettlement() {
+    if (requestSplitNoteSync(settlementDialog, settlementDialogSnapshot, "settlement-dialog")) {
+      return;
+    }
+
+    void saveSettlement();
+  }
+
+  function requestSaveInlineSplit() {
+    if (requestSplitNoteSync(inlineSplitDraft, inlineSplitDraftSnapshot, "inline-split")) {
+      return;
+    }
+
+    void saveInlineSplit();
+  }
+
+  async function confirmSplitNoteSync({ updateLinked }) {
+    const prompt = splitNoteSyncPrompt;
+    if (!prompt) {
+      return;
+    }
+
+    setIsSyncingSplitNote(true);
+    setSplitNoteSyncPrompt((current) => current ? { ...current, error: "" } : current);
+    try {
+      let saved = false;
+      if (prompt.saveKind === "expense-dialog") {
+        saved = await saveExpense({ syncLinkedNote: updateLinked });
+      } else if (prompt.saveKind === "settlement-dialog") {
+        saved = await saveSettlement({ syncLinkedNote: updateLinked });
+      } else {
+        saved = await saveInlineSplit({ syncLinkedNote: updateLinked });
+      }
+      if (!saved) {
+        return;
+      }
+      setSplitNoteSyncPrompt(null);
+    } catch (error) {
+      setSplitNoteSyncPrompt((current) => current
+        ? { ...current, error: error instanceof Error ? error.message : "Failed to update connected note." }
+        : current);
+    } finally {
+      setIsSyncingSplitNote(false);
     }
   }
 
@@ -591,7 +711,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
           setInlineSplitError("");
         }}
         hasInlineSplitChanges={hasInlineSplitChanges}
-        onSaveInlineSplit={saveInlineSplit}
+        onSaveInlineSplit={requestSaveInlineSplit}
         onRequestDeleteSplit={requestDeleteSplit}
         onViewLinkedEntry={openLinkedEntry}
         viewId={view.id}
@@ -640,7 +760,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         isSaveDisabled={!hasExpenseDialogChanges}
         onChange={setExpenseDialog}
         onClose={closeExpenseDialogAndReturn}
-        onSave={saveExpense}
+        onSave={requestSaveExpense}
         onViewLinkedEntry={openLinkedEntry}
       />
 
@@ -655,8 +775,15 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onClose={() => {
           closeSettlementDialog();
         }}
-        onSave={saveSettlement}
+        onSave={requestSaveSettlement}
         onViewLinkedEntry={openLinkedEntry}
+      />
+      <LinkedNoteSyncDialog
+        prompt={splitNoteSyncPrompt}
+        isSubmitting={isSyncingSplitNote || isSubmitting}
+        onCancel={() => setSplitNoteSyncPrompt(null)}
+        onSaveOnly={() => void confirmSplitNoteSync({ updateLinked: false })}
+        onUpdateBoth={() => void confirmSplitNoteSync({ updateLinked: true })}
       />
     </article>
   );

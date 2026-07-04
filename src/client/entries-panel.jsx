@@ -14,6 +14,7 @@ import { EntryEditorFields, EntryTransferTools } from "./entry-editor";
 import { EntriesDateGroups } from "./entries-list";
 import { EntriesBreakdownPanel, EntriesFilterStack, EntriesTotalsStrip } from "./entries-overview";
 import { EntryMobileEditExpenseFooter, EntryMobileSheet } from "./entry-mobile-sheet";
+import { LinkedNoteSyncDialog } from "./linked-note-sync-dialog";
 import {
   getActiveEntryFilterCount,
   getEntryDerivedData,
@@ -24,7 +25,7 @@ import {
 import { moniesClient } from "./monies-client-service";
 import { queryKeys } from "./query-keys";
 import { buildRequestErrorMessage } from "./request-errors";
-import { deleteSplitExpense } from "./splits-api";
+import { deleteSplitExpense, updateSplitExpenseNote } from "./splits-api";
 
 const ENTRIES_PAGE_PREFETCH_DELAY_MS = 1200;
 const ENTRIES_PAGE_PREFETCH_SPACING_MS = 650;
@@ -76,6 +77,8 @@ export function EntriesPanel({
   const [createdSplitAction, setCreatedSplitAction] = useState(null);
   const [deletingCreatedSplitId, setDeletingCreatedSplitId] = useState("");
   const [createdSplitActionError, setCreatedSplitActionError] = useState("");
+  const [entryNoteSyncPrompt, setEntryNoteSyncPrompt] = useState(null);
+  const [isSyncingEntryNote, setIsSyncingEntryNote] = useState(false);
   const [isMobileSplitPickerOpen, setIsMobileSplitPickerOpen] = useState(false);
   const [isMobileSplitSelectorOpen, setIsMobileSplitSelectorOpen] = useState(false);
   const [mobileSplitGroupId, setMobileSplitGroupId] = useState("");
@@ -109,6 +112,7 @@ export function EntriesPanel({
   const {
     entries,
     editingEntryId,
+    entrySnapshot,
     hasEditingEntryChanges,
     showEntryComposer,
     entryDraft,
@@ -516,6 +520,77 @@ export function EntriesPanel({
     if (saved) {
       clearEditingEntrySearchParam();
     }
+    return saved;
+  }
+
+  function buildEntryNoteSyncPrompt() {
+    if (!activeEditingEntry?.linkedSplitExpenseId || !entrySnapshot) {
+      return null;
+    }
+
+    const previousNote = entrySnapshot.note ?? "";
+    const nextNote = activeEditingEntry.note ?? "";
+    const linkedNote = activeEditingEntry.linkedSplitNote ?? "";
+    if (previousNote === nextNote || linkedNote === nextNote) {
+      return null;
+    }
+
+    return {
+      splitExpenseId: activeEditingEntry.linkedSplitExpenseId,
+      editedNote: nextNote,
+      connectedNote: linkedNote,
+      editedLabel: "Entry note being saved",
+      connectedLabel: "Connected split current note",
+      description: "This ledger entry is connected to a split expense. Apply the same note to the split too?"
+    };
+  }
+
+  function requestFinishEntryEdit() {
+    const prompt = buildEntryNoteSyncPrompt();
+    if (prompt) {
+      setEntryNoteSyncPrompt(prompt);
+      return;
+    }
+
+    void finishEntryEditAndClearLink();
+  }
+
+  async function confirmEntryNoteSync({ updateLinked }) {
+    const prompt = entryNoteSyncPrompt;
+    if (!prompt) {
+      return;
+    }
+
+    setIsSyncingEntryNote(true);
+    setEntryNoteSyncPrompt((current) => current ? { ...current, error: "" } : current);
+    try {
+      const saved = await finishEntryEditAndClearLink();
+      if (!saved) {
+        return;
+      }
+
+      if (updateLinked) {
+        await updateSplitExpenseNote({
+          splitExpenseId: prompt.splitExpenseId,
+          note: prompt.editedNote
+        });
+        await refreshEntriesPage({ bypassCache: true });
+        onBroadcastSplitMutation?.({
+          month: entryView.monthPage.month,
+          invalidateEntries: true,
+          invalidateMonth: false,
+          invalidateSummary: false
+        });
+      }
+
+      setEntryNoteSyncPrompt(null);
+    } catch (error) {
+      setEntryNoteSyncPrompt((current) => current
+        ? { ...current, error: error instanceof Error ? error.message : "Failed to update connected note." }
+        : current);
+    } finally {
+      setIsSyncingEntryNote(false);
+    }
   }
 
   function preserveEntryEditorInUrl(entryId) {
@@ -867,7 +942,7 @@ export function EntriesPanel({
                   onDeleteSplit={() => void handleDeleteCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
                   onDeleteEntry={() => void handleDeleteEntry(activeEditingEntry)}
                   onCancel={closeEntryEditSheet}
-                  onSave={() => void finishEntryEditAndClearLink()}
+                  onSave={requestFinishEntryEdit}
                   onOpenAddToSplits={() => {
                     void (async () => {
                       const latestSplitGroups = await refreshLatestSplitGroups();
@@ -905,7 +980,7 @@ export function EntriesPanel({
               )
             : null}
           onClose={closeEntryEditSheet}
-          onSave={() => void finishEntryEditAndClearLink()}
+          onSave={requestFinishEntryEdit}
         >
           <EntryEditorFields
             entry={activeEditingEntry}
@@ -1006,7 +1081,7 @@ export function EntriesPanel({
           onViewCreatedSplit={openCreatedSplit}
           onDeleteCreatedSplit={handleDeleteCreatedSplit}
           onDeleteEntry={handleDeleteEntry}
-          onFinishEntryEdit={finishEntryEditAndClearLink}
+          onFinishEntryEdit={requestFinishEntryEdit}
           onCancelEntryEdit={closeEntryEditSheet}
           onRefreshEntries={refreshEntriesFromServerTruth}
           entrySubmitError={entrySubmitError}
@@ -1019,6 +1094,13 @@ export function EntriesPanel({
           onSwitchView={applySuggestedView}
         />
       )}
+      <LinkedNoteSyncDialog
+        prompt={entryNoteSyncPrompt}
+        isSubmitting={isSyncingEntryNote || Boolean(savingEntryId)}
+        onCancel={() => setEntryNoteSyncPrompt(null)}
+        onSaveOnly={() => void confirmEntryNoteSync({ updateLinked: false })}
+        onUpdateBoth={() => void confirmEntryNoteSync({ updateLinked: true })}
+      />
     </article>
   );
 }
