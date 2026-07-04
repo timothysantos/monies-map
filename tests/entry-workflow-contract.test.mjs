@@ -94,6 +94,44 @@ test("entries workflow keeps a saved pending row ahead of stale server payloads"
   assert.equal(nextEntries[0].isPendingDerived, true);
 });
 
+test("entries workflow lets explicit refresh accept the server row and clear a pending badge", () => {
+  const currentEntries = [
+    {
+      id: "reclassified",
+      date: "2026-06-10",
+      description: "Shopee",
+      accountId: "acct-1",
+      accountName: "UOB One",
+      categoryName: "Shopping",
+      amountMinor: 2135,
+      entryType: "expense",
+      transferDirection: null,
+      ownershipType: "shared",
+      ownerName: null,
+      note: "ridwind, cooling patch",
+      totalAmountMinor: 2135,
+      splits: [{ ratioBasisPoints: 10000 }],
+      isPendingDerived: true
+    }
+  ];
+  const serverEntries = [
+    {
+      ...currentEntries[0],
+      categoryName: "Other",
+      splits: [{ ratioBasisPoints: 5000 }],
+      isPendingDerived: false
+    }
+  ];
+
+  const nextEntries = mergeEntriesById(currentEntries, serverEntries, null, new Set(), {
+    preferServerEntries: true
+  });
+
+  assert.equal(nextEntries[0].categoryName, "Other");
+  assert.equal(nextEntries[0].splits[0].ratioBasisPoints, 5000);
+  assert.equal(nextEntries[0].isPendingDerived, false);
+});
+
 test("X5a entries workflow keeps the active edit comparison stable across note-only changes", () => {
   const baseEntry = {
     id: "entry-1",
