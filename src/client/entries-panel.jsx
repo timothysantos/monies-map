@@ -139,6 +139,7 @@ export function EntriesPanel({
     ensureTransferSettlementDraft,
     updateTransferSettlementDraft,
     settleTransfer,
+    refreshEntriesFromServerTruth,
     addEntryToSplits,
     deleteEntry,
     updateEntry,
@@ -1007,7 +1008,7 @@ export function EntriesPanel({
           onDeleteEntry={handleDeleteEntry}
           onFinishEntryEdit={finishEntryEditAndClearLink}
           onCancelEntryEdit={closeEntryEditSheet}
-          onRefreshEntries={() => refreshEntriesPage({ bypassCache: true })}
+          onRefreshEntries={refreshEntriesFromServerTruth}
           entrySubmitError={entrySubmitError}
           hasEditingChanges={hasEditingEntryChanges}
           renderInlineEditor={!useMobileEntrySheet}

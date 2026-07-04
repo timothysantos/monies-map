@@ -33,6 +33,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   const [addingToSplitsEntryId, setAddingToSplitsEntryId] = useState(null);
   const queuedComposerDraftRef = useRef(null);
   const deletedEntryIdsRef = useRef(new Set());
+  const preferServerEntriesOnNextMergeRef = useRef(false);
   const viewIdentityKey = `${view.id}:${view.monthPage.month}:${view.monthPage.selectedScope}`;
   const activeEditingEntry = useMemo(
     () => editingEntryId ? entries.find((entry) => entry.id === editingEntryId) ?? null : null,
@@ -49,6 +50,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
 
   useEffect(() => {
     deletedEntryIdsRef.current.clear();
+    preferServerEntriesOnNextMergeRef.current = false;
   }, [viewIdentityKey]);
 
   useEffect(() => {
@@ -81,14 +83,18 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
 
   useEffect(() => {
     if (editingEntryId) {
+      preferServerEntriesOnNextMergeRef.current = false;
       return;
     }
 
+    const preferServerEntries = preferServerEntriesOnNextMergeRef.current;
+    preferServerEntriesOnNextMergeRef.current = false;
     setEntries((current) => mergeEntriesById(
       current,
       view.monthPage.entries,
       editingEntryId,
-      deletedEntryIdsRef.current
+      deletedEntryIdsRef.current,
+      { preferServerEntries }
     ));
 
     const serverEntryIds = new Set(view.monthPage.entries.map((entry) => entry.id));
@@ -101,6 +107,16 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
 
   function refreshEntriesInBackground() {
     void onRefresh();
+  }
+
+  async function refreshEntriesFromServerTruth() {
+    preferServerEntriesOnNextMergeRef.current = true;
+    try {
+      await onRefresh();
+    } catch (error) {
+      preferServerEntriesOnNextMergeRef.current = false;
+      throw error;
+    }
   }
 
   // The composer can be launched directly from the page or seeded by a
@@ -751,6 +767,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     ensureTransferSettlementDraft,
     updateTransferSettlementDraft,
     settleTransfer,
+    refreshEntriesFromServerTruth,
     addEntryToSplits,
     deleteEntry,
     updateEntry,
