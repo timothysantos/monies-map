@@ -601,7 +601,9 @@ function buildEntryRowDisplay(entry, viewId, isLinkedToSplits = false) {
     ? entry.linkedSplitGroupName
     : "";
   const ownerLabel = isLinkedToSplits
-    ? "On splits"
+    ? splitGroupName
+      ? `On splits · ${splitGroupName}`
+      : "On splits"
     : entry.ownershipType === "shared"
       ? "Shared"
       : entry.ownerName ?? messages.common.emptyValue;
@@ -643,7 +645,7 @@ function getEntryOwnerCue(entry) {
   return {
     style: {
       "--entry-owner-color": color,
-      "--entry-owner-border-color": hexToRgba(color, 0.42)
+      "--entry-owner-border-color": hexToRgba(color, 0.68)
     }
   };
 }
@@ -652,15 +654,15 @@ function getOwnerCueColor(ownerKey) {
   const normalized = ownerKey.trim().toLowerCase();
 
   if (normalized.includes("tim")) {
-    return "#1F7A63";
+    return "#0F766E";
   }
 
   if (normalized.includes("joyce")) {
-    return "#B15E2F";
+    return "#EA580C";
   }
 
   if (normalized === "shared") {
-    return "#567CC9";
+    return "#2563EB";
   }
 
   const palette = ["#6A7A73", "#7C8791", "#8FAE4B", "#C97B47", "#5EA89B", "#8B78E6"];

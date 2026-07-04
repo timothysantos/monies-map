@@ -6835,9 +6835,9 @@ button.split-activity-card:hover {
 }
 
 .entry-row-main.has-owner-cue {
-  border-left: 4px solid var(--entry-owner-border-color, transparent);
+  border-left: 5px solid var(--entry-owner-border-color, transparent);
   border-radius: 8px 0 0 8px;
-  padding-left: 10px;
+  padding-left: 9px;
 }
 
 .entry-row-main.is-pending {
@@ -6959,9 +6959,12 @@ button.split-activity-card:hover {
 }
 
 .entry-chip-linked-split {
-  background: rgba(29, 122, 99, 0.08);
-  color: var(--positive);
-  border-color: rgba(29, 122, 99, 0.16);
+  max-width: 172px;
+  background: rgba(255, 237, 213, 0.98);
+  color: #b45309;
+  border-color: rgba(251, 146, 60, 0.34);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .entry-chip-transfer {
@@ -9153,6 +9156,10 @@ th {
     font-size: 0.7rem;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .entry-chip-linked-split {
+    max-width: min(42vw, 138px);
   }
 
   .entries-filter-toggle {
