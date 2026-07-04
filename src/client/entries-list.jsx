@@ -359,12 +359,13 @@ function EntryRow({
   const transferCandidates = entry.entryType === "transfer"
     ? getTransferCandidatesForEntry(entry)
     : [];
-  const bankState = getEntryBankState(entry);
-  const display = buildEntryRowDisplay(entry, viewId);
-  const editableAmountMinor = entryService.getTotalAmountMinor(entry);
   const linkedSplitExpenseId = createdSplitAction && createdSplitAction.entryId === entry.id
     ? createdSplitAction.splitExpenseId
     : entry.linkedSplitExpenseId;
+  const bankState = getEntryBankState(entry);
+  const display = buildEntryRowDisplay(entry, viewId, Boolean(linkedSplitExpenseId));
+  const ownerCue = getEntryOwnerCue(entry);
+  const editableAmountMinor = entryService.getTotalAmountMinor(entry);
   const isSavingEntry = savingEntryId === entry.id;
   const isDeletingEntry = deletingEntryId === entry.id;
   const isAddingToSplits = addingToSplitsEntryId === entry.id;
@@ -387,7 +388,8 @@ function EntryRow({
     <div className={`entry-row ${isEditing ? "is-editing" : ""} ${renderInlineEditor && isEditing ? "is-inline-editing" : ""}`} id={entry.id}>
       {!isEditing || !renderInlineEditor ? (
         <div
-          className={`entry-row-main ${entry.isPendingDerived ? "is-pending" : ""}`}
+          className={`entry-row-main has-owner-cue ${entry.isPendingDerived ? "is-pending" : ""}`}
+          style={ownerCue.style}
           role="button"
           tabIndex={0}
           onClick={(event) => {
@@ -435,7 +437,13 @@ function EntryRow({
                 aria-label={bankState.label}
                 title={bankState.label}
               />
-              <span className={`entry-chip ${entry.ownershipType === "shared" ? "entry-chip-shared" : "entry-chip-owner"}`}>{display.ownerLabel}</span>
+              <span
+                className={`entry-chip ${display.ownerChipClassName}`}
+                title={display.ownerTitle}
+                aria-label={display.ownerTitle}
+              >
+                {display.ownerLabel}
+              </span>
               {entry.ownershipType === "shared" && display.splitPercent != null ? (
                 <span className="entry-chip entry-chip-split">{display.splitPercent}%</span>
               ) : null}
@@ -584,14 +592,32 @@ function EntryRow({
   );
 }
 
-function buildEntryRowDisplay(entry, viewId) {
+function buildEntryRowDisplay(entry, viewId, isLinkedToSplits = false) {
   const splitPercent = entryService.getVisibleSplitPercent(entry, viewId);
   const signedAmountMinor = entryService.getSignedAmountMinor(entry);
   const signedTotalAmountMinor = entryService.getSignedTotalAmountMinor(entry);
   const hasWeightedTotal = signedTotalAmountMinor != null && signedTotalAmountMinor !== signedAmountMinor;
+  const splitGroupName = entry.linkedSplitGroupName && entry.linkedSplitGroupName !== "Non-group expenses"
+    ? entry.linkedSplitGroupName
+    : "";
+  const ownerLabel = isLinkedToSplits
+    ? "On splits"
+    : entry.ownershipType === "shared"
+      ? "Shared"
+      : entry.ownerName ?? messages.common.emptyValue;
 
   return {
-    ownerLabel: entry.ownershipType === "shared" ? "Shared" : entry.ownerName ?? messages.common.emptyValue,
+    ownerLabel,
+    ownerTitle: isLinkedToSplits
+      ? splitGroupName
+        ? `On Splits: ${splitGroupName}`
+        : "On Splits"
+      : ownerLabel,
+    ownerChipClassName: isLinkedToSplits
+      ? "entry-chip-shared entry-chip-linked-split"
+      : entry.ownershipType === "shared"
+        ? "entry-chip-shared"
+        : "entry-chip-owner",
     splitPercent,
     transferLabel: entry.entryType === "transfer"
       ? `${entry.linkedTransfer ? "Matched transfer" : "Transfer"} ${entry.transferDirection === "in" ? "in" : "out"}`
@@ -606,6 +632,55 @@ function buildEntryRowDisplay(entry, viewId) {
     primarySignedAmountMinor: hasWeightedTotal ? signedTotalAmountMinor : signedAmountMinor,
     secondarySignedAmountMinor: hasWeightedTotal ? signedAmountMinor : null
   };
+}
+
+function getEntryOwnerCue(entry) {
+  const ownerKey = entry.ownershipType === "shared"
+    ? "shared"
+    : entry.ownerName ?? entry.accountOwnerLabel ?? "unassigned";
+  const color = getOwnerCueColor(ownerKey);
+
+  return {
+    style: {
+      "--entry-owner-color": color,
+      "--entry-owner-border-color": hexToRgba(color, 0.42)
+    }
+  };
+}
+
+function getOwnerCueColor(ownerKey) {
+  const normalized = ownerKey.trim().toLowerCase();
+
+  if (normalized.includes("tim")) {
+    return "#1F7A63";
+  }
+
+  if (normalized.includes("joyce")) {
+    return "#B15E2F";
+  }
+
+  if (normalized === "shared") {
+    return "#567CC9";
+  }
+
+  const palette = ["#6A7A73", "#7C8791", "#8FAE4B", "#C97B47", "#5EA89B", "#8B78E6"];
+  let hash = 0;
+  for (let index = 0; index < normalized.length; index += 1) {
+    hash = ((hash << 5) - hash + normalized.charCodeAt(index)) | 0;
+  }
+  return palette[Math.abs(hash) % palette.length];
+}
+
+function hexToRgba(hex, alpha) {
+  const normalized = hex.replace("#", "");
+  if (!/^[0-9a-f]{6}$/i.test(normalized)) {
+    return `rgba(106, 122, 115, ${alpha})`;
+  }
+
+  const red = Number.parseInt(normalized.slice(0, 2), 16);
+  const green = Number.parseInt(normalized.slice(2, 4), 16);
+  const blue = Number.parseInt(normalized.slice(4, 6), 16);
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
 function shouldIgnoreRowEditClick(target, currentTarget) {

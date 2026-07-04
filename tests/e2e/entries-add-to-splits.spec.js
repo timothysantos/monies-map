@@ -74,14 +74,21 @@ test("add to splits refreshes split groups and forces group selection when multi
   expect(splitGroupNames).toContain("Non-group expenses");
   expect(splitGroupNames).toContain("Holiday");
   expect(splitGroupNames).toContain("Home");
+  const holidayGroup = entriesPage.splitGroups.find((group) => group.name === "Holiday");
+  expect(holidayGroup).toBeTruthy();
 
   const splitResponse = await page.request.post("/api/splits/expenses/from-entry", {
     data: {
       entryId: entry.entryId,
-      splitGroupId: entriesPage.splitGroups[1].id
+      splitGroupId: holidayGroup?.id
     }
   });
   expect(splitResponse.ok()).toBeTruthy();
+
+  const afterEntriesPage = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
+  const linkedEntry = afterEntriesPage.monthPage.entries.find((item) => item.id === entry.entryId);
+  expect(linkedEntry?.linkedSplitExpenseId).toBeTruthy();
+  expect(linkedEntry?.linkedSplitGroupName).toBe("Holiday");
 });
 
 test("editing an entry then adding it to splits keeps the saved row stable across tabs", async ({ page }) => {
@@ -119,8 +126,9 @@ test("editing an entry then adding it to splits keeps the saved row stable acros
   await updateResponse;
   await splitResponse;
 
-  await expect(page.locator(".entry-row").filter({ hasText: updatedDescription }).first()).toBeVisible();
-  await expect(page.locator(".entry-row").filter({ hasText: updatedDescription }).first()).toContainText("View split");
+  const updatedRow = page.locator(".entry-row").filter({ hasText: updatedDescription }).first();
+  await expect(updatedRow).toBeVisible();
+  await expect(updatedRow).toContainText("View split");
 
   await expect(secondPage.getByText(updatedDescription)).toBeVisible({ timeout: 60_000 });
   await secondPage.reload({ waitUntil: "domcontentloaded" });

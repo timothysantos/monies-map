@@ -181,6 +181,7 @@ export interface EntryDto {
   statementCertifiedAt?: string;
   linkedTransfer?: LinkedTransferDto;
   linkedSplitExpenseId?: string;
+  linkedSplitGroupName?: string;
   splits: EntrySplitDto[];
 }
 

@@ -6820,6 +6820,7 @@ button.split-activity-card:hover {
 }
 
 .entry-row-main {
+  box-sizing: border-box;
   width: 100%;
   display: grid;
   grid-template-columns: 52px minmax(320px, 1.55fr) minmax(220px, 1fr) minmax(170px, 0.8fr);
@@ -6831,6 +6832,12 @@ button.split-activity-card:hover {
   text-align: left;
   color: inherit;
   cursor: pointer;
+}
+
+.entry-row-main.has-owner-cue {
+  border-left: 4px solid var(--entry-owner-border-color, transparent);
+  border-radius: 8px 0 0 8px;
+  padding-left: 10px;
 }
 
 .entry-row-main.is-pending {
@@ -6949,6 +6956,12 @@ button.split-activity-card:hover {
   background: rgba(177, 94, 47, 0.1);
   color: var(--accent-strong);
   border-color: rgba(177, 94, 47, 0.18);
+}
+
+.entry-chip-linked-split {
+  background: rgba(29, 122, 99, 0.08);
+  color: var(--positive);
+  border-color: rgba(29, 122, 99, 0.16);
 }
 
 .entry-chip-transfer {
