@@ -77,10 +77,12 @@ test("split editor can choose the odd-cent recipient explicitly", async ({ page 
 
   await splitCard.click();
   const editor = page.locator(".split-inline-editor-card").filter({ hasText: description }).first();
-  await expect(editor.getByText("Tim owes")).toBeVisible();
+  await expect(editor.getByText("Tim share", { exact: true })).toBeVisible();
   await expect(editor.getByText("$20.32")).toBeVisible();
-  await expect(editor.getByText("Joyce owes")).toBeVisible();
+  await expect(editor.getByText("Joyce share", { exact: true })).toBeVisible();
   await expect(editor.getByText("$20.33")).toBeVisible();
+  await expect(editor.getByText("Tim owes")).toHaveCount(0);
+  await expect(editor.getByText("Joyce owes")).toHaveCount(0);
   await expect(editor.getByText("Odd cent")).toBeVisible();
   await editor.getByRole("button", { name: "Tim gets +$0.01" }).click();
   await editor.getByRole("button", { name: /Save|Done editing split/ }).click();
