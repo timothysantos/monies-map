@@ -82,6 +82,7 @@ export function EntriesDateGroups({
   );
   const [splitPickerEntry, setSplitPickerEntry] = useState(null);
   const [splitPickerOptions, setSplitPickerOptions] = useState(splitGroupOptions);
+  const splitPickerRefreshIdRef = useRef(0);
   const [refreshingDate, setRefreshingDate] = useState("");
 
   async function handleAddEntryToSplits(entry, splitGroupId) {
@@ -91,7 +92,22 @@ export function EntriesDateGroups({
   }
 
   async function openSplitPicker(entry) {
+    const currentSingleSplitGroupValue = splitGroupOptions.length === 1
+      ? splitGroupOptions[0].value
+      : null;
+    const refreshId = splitPickerRefreshIdRef.current + 1;
+    splitPickerRefreshIdRef.current = refreshId;
+
+    if (!currentSingleSplitGroupValue) {
+      setSplitPickerOptions(splitGroupOptions);
+      setSplitPickerEntry(entry);
+    }
+
     const latestGroups = await onRefreshSplitGroups?.() ?? splitGroups;
+    if (splitPickerRefreshIdRef.current !== refreshId) {
+      return;
+    }
+
     const latestOptions = latestGroups.map((group) => ({
       value: group.id === "split-group-none" ? NON_GROUP_SPLIT_VALUE : group.id,
       label: group.name
@@ -100,7 +116,7 @@ export function EntriesDateGroups({
       ? latestOptions[0].value
       : null;
 
-    if (latestSingleSplitGroupValue) {
+    if (currentSingleSplitGroupValue && latestSingleSplitGroupValue) {
       await handleAddEntryToSplits(entry, latestSingleSplitGroupValue);
       return;
     }

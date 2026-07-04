@@ -50,13 +50,14 @@ test("entries can add a direct expense to splits and jump into the created split
 });
 
 test("add to splits refreshes split groups and forces group selection when multiple groups exist", async ({ page }) => {
+  const month = "2026-05";
   const description = `Playwright split picker refresh ${Date.now()}`;
 
   await page.goto("/");
   await reseedDemo(page);
 
   const entry = await postJson(page, "/api/entries/create", {
-    date: "2026-04-24",
+    date: `${month}-24`,
     description,
     accountName: "UOB One",
     categoryName: "Groceries",
@@ -69,7 +70,7 @@ test("add to splits refreshes split groups and forces group selection when multi
   await postJson(page, "/api/splits/groups/create", { name: "Holiday" });
   await postJson(page, "/api/splits/groups/create", { name: "Home" });
 
-  const entriesPage = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
+  const entriesPage = await loadEntriesPage(page, { view: "person-tim", month });
   const splitGroupNames = entriesPage.splitGroups.map((group) => group.name);
   expect(splitGroupNames).toContain("Non-group expenses");
   expect(splitGroupNames).toContain("Holiday");
@@ -85,15 +86,49 @@ test("add to splits refreshes split groups and forces group selection when multi
   });
   expect(splitResponse.ok()).toBeTruthy();
 
-  const afterEntriesPage = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
+  const afterEntriesPage = await loadEntriesPage(page, { view: "person-tim", month });
   const linkedEntry = afterEntriesPage.monthPage.entries.find((item) => item.id === entry.entryId);
   expect(linkedEntry?.linkedSplitExpenseId).toBeTruthy();
   expect(linkedEntry?.linkedSplitGroupName).toBe("Holiday");
 
-  await page.goto("/entries?view=person-tim&month=2026-04");
+  await page.goto(`/entries?view=person-tim&month=${month}`);
   const linkedEntryRow = page.locator(".entry-row").filter({ hasText: description }).first();
   await expect(linkedEntryRow).toBeVisible();
   await expect(linkedEntryRow.locator(".entry-chip-linked-split")).toContainText("On splits · Holiday");
+});
+
+test("add to splits opens the group picker without waiting for the freshness refresh", async ({ page }) => {
+  const month = "2026-05";
+  const description = `Playwright split picker immediate ${Date.now()}`;
+
+  await page.goto("/");
+  await reseedDemo(page);
+
+  const createdEntry = await postJson(page, "/api/entries/create", {
+    date: `${month}-24`,
+    description,
+    accountName: "UOB One",
+    categoryName: "Groceries",
+    amountMinor: 2550,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+  await postJson(page, "/api/splits/groups/create", { name: "Holiday" });
+  await postJson(page, "/api/splits/groups/create", { name: "Home" });
+
+  await page.goto(`/entries?view=person-tim&month=${month}&editing_entry=${createdEntry.entryId}`);
+  const editor = page.locator(".entry-inline-editor").first();
+  await expect(editor).toBeVisible();
+
+  await page.route("**/api/entries-page**", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await route.continue();
+  });
+
+  await editor.getByRole("button", { name: "Add to splits" }).click();
+  await expect(page.getByRole("dialog", { name: "Add to splits" })).toBeVisible({ timeout: 1000 });
+  await expect(page.getByRole("dialog", { name: "Add to splits" }).locator("select")).toContainText("Holiday");
 });
 
 test("editing an entry then adding it to splits keeps the saved row stable across tabs", async ({ page }) => {
