@@ -50,6 +50,14 @@ test("review matches links a split expense into entries and hides already-linked
   expect(linkedEntry?.ownershipType).toBe("shared");
   expect(linkedEntry?.linkedSplitExpenseId).toBe("split-expense-nongroup-pantry-match");
 
+  await page.goto("/entries?view=household&month=2025-10");
+  const linkedEntryRow = page.locator(".entry-row").filter({ hasText: pantryMatch?.transactionDescription ?? "" }).first();
+  await expect(linkedEntryRow).toBeVisible();
+  await expect(linkedEntryRow.locator(".entry-chip-linked-split")).toContainText("On splits");
+  const ownerBorderColor = await linkedEntryRow.locator(".entry-row-main").evaluate((element) => getComputedStyle(element).borderLeftColor);
+  expect(ownerBorderColor).not.toBe("rgba(0, 0, 0, 0)");
+  expect(ownerBorderColor).not.toBe("transparent");
+
   await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
   await page.waitForLoadState("networkidle");
   const pantryCard = page.locator(".split-activity-card").filter({ hasText: "Tracked in splits before the imported grocery charge was reviewed." }).first();
@@ -62,7 +70,7 @@ test("review matches links a split expense into entries and hides already-linked
   await expect(page).toHaveURL(/\/entries\?/);
   await expect(page).toHaveURL(/editing_entry=txn-import-split-pantry-match/);
   await expect(page.getByLabel("Description")).toHaveValue(pantryMatch?.transactionDescription ?? "");
-  await expect(page.locator(".entry-chip-shared").first()).toContainText("Shared");
+  await expect(page.locator(".entry-chip-linked-split").first()).toContainText("On splits");
 });
 
 test("review matches links a settlement and the linked entry can be opened from splits history", async ({ page }) => {
