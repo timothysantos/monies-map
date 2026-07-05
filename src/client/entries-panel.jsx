@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import * as Dialog from "@radix-ui/react-dialog";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
@@ -83,6 +84,7 @@ export function EntriesPanel({
   const [createdSplitAction, setCreatedSplitAction] = useState(null);
   const [deletingCreatedSplitId, setDeletingCreatedSplitId] = useState("");
   const [createdSplitActionError, setCreatedSplitActionError] = useState("");
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null);
   const [entryNoteSyncPrompt, setEntryNoteSyncPrompt] = useState(null);
   const [isSyncingEntryNote, setIsSyncingEntryNote] = useState(false);
   const [isMobileSplitPickerOpen, setIsMobileSplitPickerOpen] = useState(false);
@@ -661,6 +663,10 @@ export function EntriesPanel({
   }
 
   async function handleDeleteCreatedSplit(entryId, splitExpenseId) {
+    if (!splitExpenseId) {
+      return false;
+    }
+
     preserveEntryEditorInUrl(entryId);
     setDeletingCreatedSplitId(splitExpenseId);
     setCreatedSplitActionError("");
@@ -674,8 +680,10 @@ export function EntriesPanel({
         invalidateEntries: true
       });
       await refreshEntriesPage({ bypassCache: true });
+      return true;
     } catch (error) {
       setCreatedSplitActionError(error instanceof Error ? error.message : "Failed to delete split expense.");
+      return false;
     } finally {
       setDeletingCreatedSplitId("");
     }
@@ -689,6 +697,42 @@ export function EntriesPanel({
       setDeletingCreatedSplitId("");
       setCreatedSplitActionError("");
       resetMobileSplitPickerState();
+    }
+    return result;
+  }
+
+  function requestDeleteEntry(entry) {
+    if (!entry?.id || deletingEntryId === entry.id || savingEntryId === entry.id) {
+      return;
+    }
+    setDeleteConfirmation({ kind: "entry", entry });
+  }
+
+  function requestDeleteCreatedSplit(entryId, splitExpenseId) {
+    if (!entryId || !splitExpenseId || deletingCreatedSplitId === splitExpenseId) {
+      return;
+    }
+    const entry = entries.find((item) => item.id === entryId) ?? activeEditingEntry ?? null;
+    setDeleteConfirmation({ kind: "created-split", entryId, splitExpenseId, entry });
+  }
+
+  async function confirmDeleteAction() {
+    const pending = deleteConfirmation;
+    if (!pending) {
+      return;
+    }
+
+    if (pending.kind === "entry") {
+      const result = await handleDeleteEntry(pending.entry);
+      if (result?.ok) {
+        setDeleteConfirmation(null);
+      }
+      return;
+    }
+
+    const deleted = await handleDeleteCreatedSplit(pending.entryId, pending.splitExpenseId);
+    if (deleted) {
+      setDeleteConfirmation(null);
     }
   }
 
@@ -929,7 +973,7 @@ export function EntriesPanel({
                   type="button"
                   className="subtle-action entry-mobile-sheet-secondary"
                   disabled={deletingEntryId === activeEditingEntry.id || savingEntryId === activeEditingEntry.id}
-                  onClick={() => void handleDeleteEntry(activeEditingEntry)}
+                  onClick={() => requestDeleteEntry(activeEditingEntry)}
                 >
                   {deletingEntryId === activeEditingEntry.id ? messages.common.working : "Delete entry"}
                 </button>
@@ -954,8 +998,8 @@ export function EntriesPanel({
                   splitGroupOptions={splitGroupOptions}
                   isSplitSelectorOpen={isMobileSplitSelectorOpen}
                   onViewSplit={() => openCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
-                  onDeleteSplit={() => void handleDeleteCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
-                  onDeleteEntry={() => void handleDeleteEntry(activeEditingEntry)}
+                  onDeleteSplit={() => requestDeleteCreatedSplit(activeEditingEntry.id, activeLinkedSplitExpenseId)}
+                  onDeleteEntry={() => requestDeleteEntry(activeEditingEntry)}
                   onCancel={closeEntryEditSheet}
                   onSave={requestFinishEntryEdit}
                   onOpenAddToSplits={() => {
@@ -1094,8 +1138,8 @@ export function EntriesPanel({
           onAddEntryToSplits={handleAddEntryToSplits}
           onRefreshSplitGroups={refreshLatestSplitGroups}
           onViewCreatedSplit={openCreatedSplit}
-          onDeleteCreatedSplit={handleDeleteCreatedSplit}
-          onDeleteEntry={handleDeleteEntry}
+          onDeleteCreatedSplit={requestDeleteCreatedSplit}
+          onDeleteEntry={requestDeleteEntry}
           onFinishEntryEdit={requestFinishEntryEdit}
           onCancelEntryEdit={closeEntryEditSheet}
           onRefreshEntries={refreshEntriesFromServerTruth}
@@ -1116,7 +1160,69 @@ export function EntriesPanel({
         onSaveOnly={() => void confirmEntryNoteSync({ updateLinked: false })}
         onUpdateBoth={() => void confirmEntryNoteSync({ updateLinked: true })}
       />
+      <EntriesDeleteConfirmationDialog
+        confirmation={deleteConfirmation}
+        isSubmitting={
+          deleteConfirmation?.kind === "entry"
+            ? deletingEntryId === deleteConfirmation.entry?.id
+            : deletingCreatedSplitId === deleteConfirmation?.splitExpenseId
+        }
+        onCancel={() => setDeleteConfirmation(null)}
+        onConfirm={() => void confirmDeleteAction()}
+      />
     </article>
+  );
+}
+
+function EntriesDeleteConfirmationDialog({ confirmation, isSubmitting = false, onCancel, onConfirm }) {
+  const isEntryDelete = confirmation?.kind === "entry";
+  const entry = confirmation?.entry;
+  const amountMinor = entry ? moniesClient.entries.getTotalAmountMinor(entry) : null;
+  const amountLabel = amountMinor == null ? "" : moniesClient.format.money(amountMinor);
+  const dateLabel = entry?.date ? moniesClient.format.formatDateOnly(entry.date) : "";
+  const description = entry?.description || "this row";
+  const detailParts = [dateLabel, description, amountLabel].filter(Boolean);
+
+  return (
+    <Dialog.Root
+      open={Boolean(confirmation)}
+      onOpenChange={(open) => {
+        if (!open && !isSubmitting) {
+          onCancel();
+        }
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Overlay className="note-dialog-overlay" />
+        <Dialog.Content className="note-dialog-content entry-delete-dialog">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!isSubmitting) {
+                onConfirm();
+              }
+            }}
+          >
+            <div className="note-dialog-head">
+              <Dialog.Title>{isEntryDelete ? "Delete entry?" : "Delete split?"}</Dialog.Title>
+              <Dialog.Description>
+                {isEntryDelete
+                  ? `Delete ${detailParts.join(" - ")}? This removes the ledger entry.`
+                  : `Delete the split record for ${description}? The ledger entry stays in Entries.`}
+              </Dialog.Description>
+            </div>
+            <div className="dialog-actions">
+              <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onCancel}>
+                Cancel
+              </button>
+              <button type="submit" className="dialog-danger" disabled={isSubmitting}>
+                {isSubmitting ? messages.common.working : isEntryDelete ? "Delete entry" : "Delete split"}
+              </button>
+            </div>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
