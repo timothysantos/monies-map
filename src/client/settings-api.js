@@ -136,3 +136,11 @@ export function retainLatestErrorDiagnostics(keep = 50) {
     "Failed to clean up error diagnostics."
   );
 }
+
+export function saveShortcutSettings({ apiKey, defaultAccountPriorityIds }) {
+  return postJson(
+    "/api/settings/shortcuts/save",
+    { apiKey, defaultAccountPriorityIds },
+    "Failed to save shortcut settings."
+  );
+}

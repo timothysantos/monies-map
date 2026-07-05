@@ -24,6 +24,7 @@ import {
   resolveReconciliationException,
   runDemoAction,
   saveCategoryMatchRule,
+  saveShortcutSettings,
   saveSettingsCategory,
   updateSettingsPerson
 } from "./settings-api";
@@ -38,6 +39,7 @@ import {
   SettingsDemoSection,
   SettingsErrorDiagnosticsSection,
   SettingsPeopleSection,
+  SettingsShortcutApiSection,
   SettingsTransfersSection,
   SettingsTrustSection
 } from "./settings-sections";
@@ -55,12 +57,14 @@ import {
   buildPersonDialog,
   buildReconciliationDialog,
   buildSafeSettingsPage,
+  buildShortcutSettingsDraft,
   buildStatementComparePanel,
   buildSuggestionCategoryRuleDialog,
   filterCheckpointHistoryByYear,
   getVisibleSettingsAccounts,
   getVisibleSettingsCategories,
-  groupSettingsAuditEventsByDate
+  groupSettingsAuditEventsByDate,
+  reorderShortcutAccountPriorityIds
 } from "./settings-workflow";
 import { inspectCsv } from "../lib/csv";
 import { getCurrentMonthKey } from "../lib/month";
@@ -96,6 +100,7 @@ export function SettingsPanel({
   const [settingsSectionsOpen, setSettingsSectionsOpen] = useState({
     people: false,
     accounts: false,
+    shortcutApi: false,
     categories: false,
     categoryRules: false,
     trust: false,
@@ -133,6 +138,12 @@ export function SettingsPanel({
     [checkpointHistoryYear, reconciliationDialog?.history]
   );
   const canUseDemoControls = appEnvironment === "demo" || appEnvironment === "local";
+  const [shortcutSettingsDraft, setShortcutSettingsDraft] = useState(() => buildShortcutSettingsDraft(safeSettingsPage.shortcutSettings, accounts));
+  const [shortcutSettingsError, setShortcutSettingsError] = useState("");
+
+  useEffect(() => {
+    setShortcutSettingsDraft(buildShortcutSettingsDraft(safeSettingsPage.shortcutSettings, accounts));
+  }, [safeSettingsPage.shortcutSettings, accounts]);
 
   useEffect(() => {
     const targetSection = searchParams.get("settings_section");
@@ -694,6 +705,37 @@ export function SettingsPanel({
     void onRefresh(buildSettingsRefreshPlan("statement_compare_entry_added"));
   }
 
+  function handleGenerateShortcutApiKey() {
+    const bytes = new Uint8Array(24);
+    window.crypto.getRandomValues(bytes);
+    const key = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    setShortcutSettingsDraft((current) => ({ ...current, apiKey: `mm_${key}` }));
+  }
+
+  function handleMoveShortcutAccount(fromIndex, toIndex) {
+    setShortcutSettingsDraft((current) => ({
+      ...current,
+      defaultAccountPriorityIds: reorderShortcutAccountPriorityIds(
+        current.defaultAccountPriorityIds,
+        fromIndex,
+        toIndex
+      )
+    }));
+  }
+
+  async function handleSaveShortcutSettings() {
+    setIsSubmitting(true);
+    setShortcutSettingsError("");
+    try {
+      await saveShortcutSettings(shortcutSettingsDraft);
+      await onRefresh(buildSettingsRefreshPlan("shortcut_settings_saved"));
+    } catch (error) {
+      setShortcutSettingsError(error instanceof Error ? error.message : "Failed to save shortcut settings.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   function toggleSettingsSection(sectionKey) {
     setSettingsSectionsOpen((current) => ({
       ...current,
@@ -760,6 +802,20 @@ export function SettingsPanel({
         onUploadStatementCompare={handleCompareStatementUpload}
         onRowsMatched={handleStatementCompareRowsMatched}
         onEntryAdded={handleStatementCompareEntryAdded}
+      />
+
+      <SettingsShortcutApiSection
+        accounts={accounts}
+        draft={shortcutSettingsDraft}
+        error={shortcutSettingsError}
+        isOpen={settingsSectionsOpen.shortcutApi}
+        isSubmitting={isSubmitting}
+        shortcutSettings={safeSettingsPage.shortcutSettings}
+        onApiKeyChange={(apiKey) => setShortcutSettingsDraft((current) => ({ ...current, apiKey }))}
+        onGenerateApiKey={handleGenerateShortcutApiKey}
+        onMoveAccount={handleMoveShortcutAccount}
+        onToggle={() => toggleSettingsSection("shortcutApi")}
+        onSave={handleSaveShortcutSettings}
       />
 
       <SettingsCategoriesSection
