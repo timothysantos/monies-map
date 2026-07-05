@@ -1375,6 +1375,11 @@ The routine production path is to use Node 22.12.0 or newer, then run
 `npm run deploy:all` to build once and publish both Workers. If the app change
 depends on a schema update, run the matching D1 migration before deploy.
 
+If production is deployed but does not load, follow
+[`docs/production-debugging-runbook.md`](production-debugging-runbook.md). Start
+with Cloudflare Access and Worker logs before redeploying, because Access can
+block a request before the Worker runs.
+
 ## Can it know the real balance of each wallet?
 
 Yes, if the ledger is complete from a known starting point. The app does not
