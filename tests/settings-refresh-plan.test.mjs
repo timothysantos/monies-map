@@ -89,6 +89,15 @@ test("trust and reconciliation mutations avoid unrelated cache bursts", () => {
     invalidateSplits: false,
     invalidateSummary: false
   });
+  assert.deepEqual(buildSettingsRefreshPlan("shortcut_settings_saved"), {
+    refreshShell: false,
+    refreshReferenceData: false,
+    invalidateEntries: false,
+    invalidateImports: false,
+    invalidateMonth: false,
+    invalidateSplits: false,
+    invalidateSummary: false
+  });
 });
 
 test("demo resets refresh every downstream slice they can invalidate", () => {

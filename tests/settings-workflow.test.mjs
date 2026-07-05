@@ -8,10 +8,12 @@ import {
   buildEditAccountDialog,
   buildReconciliationDialog,
   buildSafeSettingsPage,
+  buildShortcutSettingsDraft,
   buildStatementComparePanel,
   buildSuggestionCategoryRuleDialog,
   filterCheckpointHistoryByYear,
-  getVisibleSettingsAccounts
+  getVisibleSettingsAccounts,
+  reorderShortcutAccountPriorityIds
 } from "../src/client/settings-workflow.js";
 
 test("buildSafeSettingsPage supplies empty collections for the settings route", () => {
@@ -22,7 +24,34 @@ test("buildSafeSettingsPage supplies empty collections for the settings route", 
   assert.deepEqual(result.unresolvedTransfers, []);
   assert.deepEqual(result.reconciliationExceptions, []);
   assert.deepEqual(result.recentAuditEvents, []);
+  assert.deepEqual(result.shortcutSettings.defaultAccountPriorityIds, []);
   assert.equal(result.demo.emptyState, false);
+});
+
+test("shortcut settings draft keeps active saved priority then appends active accounts", () => {
+  const accounts = [
+    { id: "card", isActive: true },
+    { id: "bank", isActive: true },
+    { id: "old", isActive: false },
+    { id: "cash", isActive: true }
+  ];
+
+  assert.deepEqual(
+    buildShortcutSettingsDraft({
+      apiKey: "mm_test",
+      defaultAccountPriorityIds: ["bank", "old"]
+    }, accounts),
+    {
+      apiKey: "mm_test",
+      defaultAccountPriorityIds: ["bank", "card", "cash"]
+    }
+  );
+});
+
+test("shortcut account reorder moves one account without losing ids", () => {
+  assert.deepEqual(reorderShortcutAccountPriorityIds(["card", "bank", "cash"], 0, 2), ["bank", "cash", "card"]);
+  assert.deepEqual(reorderShortcutAccountPriorityIds(["card", "bank"], 1, 1), ["card", "bank"]);
+  assert.deepEqual(reorderShortcutAccountPriorityIds(["card", "bank"], -1, 1), ["card", "bank"]);
 });
 
 test("getVisibleSettingsAccounts filters person views and keeps active accounts first", () => {
