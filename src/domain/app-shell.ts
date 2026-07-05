@@ -125,7 +125,6 @@ async function initializeAppData(db: D1Database) {
 }
 
 export async function loadPageShell(db: D1Database, selectedViewId: string) {
-  await ensureAppData(db);
   const [household, categories, trackedMonths] = await Promise.all([
     loadHousehold(db),
     loadCategories(db),
