@@ -5,6 +5,7 @@ import { Check, RefreshCw, X } from "lucide-react";
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
 import { EntryEditorFields, EntryTransferTools } from "./entry-editor";
+import { buildEntryRowDisplay, getEntryOwnerCue } from "./entry-row-display";
 import { moniesClient } from "./monies-client-service";
 
 const {
@@ -379,8 +380,9 @@ function EntryRow({
     ? createdSplitAction.splitExpenseId
     : entry.linkedSplitExpenseId;
   const bankState = getEntryBankState(entry);
-  const display = buildEntryRowDisplay(entry, viewId, Boolean(linkedSplitExpenseId));
-  const ownerCue = getEntryOwnerCue(entry);
+  const isLinkedToSplits = Boolean(linkedSplitExpenseId);
+  const display = buildEntryRowDisplay(entry, viewId, isLinkedToSplits);
+  const ownerCue = getEntryOwnerCue(entry, isLinkedToSplits);
   const editableAmountMinor = entryService.getTotalAmountMinor(entry);
   const isSavingEntry = savingEntryId === entry.id;
   const isDeletingEntry = deletingEntryId === entry.id;
@@ -606,99 +608,6 @@ function EntryRow({
       ) : null}
     </div>
   );
-}
-
-function buildEntryRowDisplay(entry, viewId, isLinkedToSplits = false) {
-  const splitPercent = entryService.getVisibleSplitPercent(entry, viewId);
-  const signedAmountMinor = entryService.getSignedAmountMinor(entry);
-  const signedTotalAmountMinor = entryService.getSignedTotalAmountMinor(entry);
-  const hasWeightedTotal = signedTotalAmountMinor != null && signedTotalAmountMinor !== signedAmountMinor;
-  const splitGroupName = entry.linkedSplitGroupName && entry.linkedSplitGroupName !== "Non-group expenses"
-    ? entry.linkedSplitGroupName
-    : "";
-  const ownerLabel = isLinkedToSplits
-    ? splitGroupName
-      ? `On splits · ${splitGroupName}`
-      : "On splits"
-    : entry.ownershipType === "shared"
-      ? "Shared"
-      : entry.ownerName ?? messages.common.emptyValue;
-
-  return {
-    ownerLabel,
-    ownerTitle: isLinkedToSplits
-      ? splitGroupName
-        ? `On Splits: ${splitGroupName}`
-        : "On Splits"
-      : ownerLabel,
-    ownerChipClassName: isLinkedToSplits
-      ? "entry-chip-shared entry-chip-linked-split"
-      : entry.ownershipType === "shared"
-        ? "entry-chip-shared"
-        : "entry-chip-owner",
-    splitPercent,
-    transferLabel: entry.entryType === "transfer"
-      ? `${entry.linkedTransfer ? "Matched transfer" : "Transfer"} ${entry.transferDirection === "in" ? "in" : "out"}`
-      : null,
-    transferDetail: entry.linkedTransfer
-      ? `${entry.transferDirection === "out" ? "To" : "From"} ${entry.linkedTransfer.accountName}`
-      : entry.accountName,
-    accountDetail: [
-      entry.linkedTransfer ? entry.accountName : null,
-      entry.accountOwnerLabel
-    ].filter(Boolean).join(" - "),
-    primarySignedAmountMinor: hasWeightedTotal ? signedTotalAmountMinor : signedAmountMinor,
-    secondarySignedAmountMinor: hasWeightedTotal ? signedAmountMinor : null
-  };
-}
-
-function getEntryOwnerCue(entry) {
-  const ownerKey = entry.ownershipType === "shared"
-    ? "shared"
-    : entry.ownerName ?? entry.accountOwnerLabel ?? "unassigned";
-  const color = getOwnerCueColor(ownerKey);
-
-  return {
-    style: {
-      "--entry-owner-color": color,
-      "--entry-owner-border-color": hexToRgba(color, 0.68)
-    }
-  };
-}
-
-function getOwnerCueColor(ownerKey) {
-  const normalized = ownerKey.trim().toLowerCase();
-
-  if (normalized.includes("tim")) {
-    return "#74C69D";
-  }
-
-  if (normalized.includes("joyce")) {
-    return "#F28482";
-  }
-
-  if (normalized === "shared") {
-    return "#2563EB";
-  }
-
-  const palette = ["#6A7A73", "#7C8791", "#8FAE4B", "#C97B47", "#5EA89B", "#8B78E6"];
-  let hash = 0;
-  for (let index = 0; index < normalized.length; index += 1) {
-    hash = ((hash << 5) - hash + normalized.charCodeAt(index)) | 0;
-  }
-  return palette[Math.abs(hash) % palette.length];
-}
-
-function hexToRgba(hex, alpha) {
-  const normalized = hex.replace("#", "");
-  if (!/^[0-9a-f]{6}$/i.test(normalized)) {
-    return `rgba(106, 122, 115, ${alpha})`;
-  }
-
-  const red = Number.parseInt(normalized.slice(0, 2), 16);
-  const green = Number.parseInt(normalized.slice(2, 4), 16);
-  const blue = Number.parseInt(normalized.slice(4, 6), 16);
-  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
 function shouldIgnoreRowEditClick(target, currentTarget) {
