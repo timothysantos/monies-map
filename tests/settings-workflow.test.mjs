@@ -12,6 +12,7 @@ import {
   buildStatementComparePanel,
   buildSuggestionCategoryRuleDialog,
   filterCheckpointHistoryByYear,
+  findDuplicateCategoryMatchRules,
   getVisibleSettingsAccounts,
   reorderShortcutAccountPriorityIds
 } from "../src/client/settings-workflow.js";
@@ -55,6 +56,43 @@ test("shortcut account reorder moves one account without losing ids", () => {
   assert.deepEqual(reorderShortcutAccountPriorityIds(["card", "bank", "cash"], 0, 2), ["bank", "cash", "card"]);
   assert.deepEqual(reorderShortcutAccountPriorityIds(["card", "bank"], 1, 1), ["card", "bank"]);
   assert.deepEqual(reorderShortcutAccountPriorityIds(["card", "bank"], -1, 1), ["card", "bank"]);
+});
+
+test("duplicate category match rules surface same-category overlaps", () => {
+  const issues = findDuplicateCategoryMatchRules([
+    { id: "broad", pattern: "MA MUM SINGAPORE", categoryId: "food", categoryName: "Food & Drinks", priority: 100, isActive: true },
+    { id: "specific", pattern: "MA MUM SINGAPORE SG", categoryId: "food", categoryName: "Food & Drinks", priority: 50, isActive: true },
+    { id: "other", pattern: "BUS MRT", categoryId: "transport", categoryName: "Transport", priority: 100, isActive: true }
+  ]);
+
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0].kind, "overlap");
+  assert.deepEqual(issues[0].rules.map((rule) => rule.id), ["specific", "broad"]);
+});
+
+test("duplicate category match rules surface cross-category conflicts first", () => {
+  const issues = findDuplicateCategoryMatchRules([
+    { id: "food", pattern: "MA MUM", categoryId: "food", categoryName: "Food & Drinks", priority: 100, isActive: true },
+    { id: "other", pattern: "MA-MUM", categoryId: "other", categoryName: "Other", priority: 100, isActive: true },
+    { id: "coffee", pattern: "Coffee Bean", categoryId: "food", categoryName: "Food & Drinks", priority: 100, isActive: true },
+    { id: "coffee-short", pattern: "Coffee Bean SG", categoryId: "food", categoryName: "Food & Drinks", priority: 110, isActive: true }
+  ]);
+
+  assert.equal(issues.length, 2);
+  assert.equal(issues[0].kind, "conflict");
+  assert.deepEqual(issues[0].rules.map((rule) => rule.id), ["food", "other"]);
+  assert.equal(issues[1].kind, "overlap");
+});
+
+test("duplicate category match rules ignore inactive and unrelated rules", () => {
+  assert.deepEqual(
+    findDuplicateCategoryMatchRules([
+      { id: "active", pattern: "MA MUM SINGAPORE", categoryId: "food", categoryName: "Food & Drinks", priority: 100, isActive: true },
+      { id: "inactive", pattern: "MA MUM", categoryId: "food", categoryName: "Food & Drinks", priority: 50, isActive: false },
+      { id: "unrelated", pattern: "BUS MRT", categoryId: "transport", categoryName: "Transport", priority: 100, isActive: true }
+    ]),
+    []
+  );
 });
 
 test("getVisibleSettingsAccounts filters person views and keeps active accounts first", () => {

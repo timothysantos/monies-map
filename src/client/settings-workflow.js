@@ -43,6 +43,98 @@ export function reorderShortcutAccountPriorityIds(accountIds, fromIndex, toIndex
   return nextIds;
 }
 
+function normalizeCategoryRuleText(value) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function getCategoryRuleParts(rule) {
+  return String(rule?.pattern ?? "")
+    .split(",")
+    .map((part) => normalizeCategoryRuleText(part))
+    .filter(Boolean);
+}
+
+function getCategoryRuleSignature(rule) {
+  return getCategoryRuleParts(rule).slice().sort().join("|");
+}
+
+function categoryRulePartCanShareMatch(leftPart, rightPart) {
+  if (leftPart === rightPart) {
+    return true;
+  }
+
+  if (leftPart.length <= 3) {
+    return rightPart.split(" ").includes(leftPart);
+  }
+
+  if (rightPart.length <= 3) {
+    return leftPart.split(" ").includes(rightPart);
+  }
+
+  return leftPart.includes(rightPart) || rightPart.includes(leftPart);
+}
+
+function categoryRulePartsOverlap(leftParts, rightParts) {
+  if (!leftParts.length || !rightParts.length) {
+    return false;
+  }
+
+  return leftParts.every((leftPart) =>
+    rightParts.some((rightPart) => categoryRulePartCanShareMatch(leftPart, rightPart))
+  ) || rightParts.every((rightPart) =>
+    leftParts.some((leftPart) => categoryRulePartCanShareMatch(leftPart, rightPart))
+  );
+}
+
+export function findDuplicateCategoryMatchRules(rules) {
+  const activeRules = (rules ?? [])
+    .filter((rule) => rule?.isActive !== false)
+    .map((rule) => ({
+      rule,
+      parts: getCategoryRuleParts(rule),
+      signature: getCategoryRuleSignature(rule)
+    }))
+    .filter((item) => item.parts.length > 0);
+
+  const issues = [];
+
+  for (let leftIndex = 0; leftIndex < activeRules.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < activeRules.length; rightIndex += 1) {
+      const left = activeRules[leftIndex];
+      const right = activeRules[rightIndex];
+      const sameCategory = Boolean(left.rule.categoryId && right.rule.categoryId)
+        ? left.rule.categoryId === right.rule.categoryId
+        : left.rule.categoryName === right.rule.categoryName;
+      const isExactDuplicate = left.signature === right.signature;
+      const isOverlap = !isExactDuplicate && categoryRulePartsOverlap(left.parts, right.parts);
+
+      if (!isExactDuplicate && !isOverlap) {
+        continue;
+      }
+
+      issues.push({
+        id: [left.rule.id, right.rule.id].sort().join(":"),
+        kind: sameCategory
+          ? (isExactDuplicate ? "duplicate" : "overlap")
+          : "conflict",
+        rules: [left.rule, right.rule].sort((first, second) => (
+          first.priority - second.priority
+          || first.pattern.localeCompare(second.pattern)
+        ))
+      });
+    }
+  }
+
+  return issues.sort((left, right) => (
+    Number(right.kind === "conflict") - Number(left.kind === "conflict")
+    || left.rules[0].pattern.localeCompare(right.rules[0].pattern)
+  ));
+}
+
 export function getVisibleSettingsAccounts(accounts, viewId) {
   const scopedAccounts = viewId === "household"
     ? accounts
