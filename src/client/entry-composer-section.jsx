@@ -247,7 +247,7 @@ function EntryComposerContent({
         categoryOptions={categoryOptions}
         accountOptions={accountOptions}
         ownerOptions={ownerOptions}
-        splitPercentValue={entry.ownershipType === "shared" ? entryService.getVisibleSplitPercent(entry, viewId) ?? 50 : null}
+        splitPercentValue={null}
         onChange={onChange}
         onCategoryAppearanceChange={onCategoryAppearanceChange}
         onOwnerChange={onOwnerChange}

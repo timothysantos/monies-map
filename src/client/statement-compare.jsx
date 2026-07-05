@@ -400,17 +400,12 @@ function StatementCompareMissingRow({ row, result, accounts, categories, categor
                 )}
                 <label className="table-edit-field">
                   <span>{messages.imports.table.owner}</span>
-                  <select className="table-edit-input" value={draft.ownershipType === "shared" ? "shared" : draft.ownerName} onChange={(event) => {
-                    if (event.target.value === "shared") {
-                      updateDraft({ ownershipType: "shared", ownerName: undefined });
-                    } else {
-                      updateDraft({ ownershipType: "direct", ownerName: event.target.value });
-                    }
+                  <select className="table-edit-input" value={draft.ownerName} onChange={(event) => {
+                    updateDraft({ ownershipType: "direct", ownerName: event.target.value });
                   }}>
                     {people.map((person) => (
                       <option key={person.id} value={person.name}>{person.name}</option>
                     ))}
-                    <option value="shared">{messages.entries.shared}</option>
                   </select>
                 </label>
                 <label className="table-edit-field">

@@ -57,10 +57,10 @@ export function buildLinkedEntryDraft(entry) {
     amountMinor: entry.totalAmountMinor ?? entry.amountMinor,
     entryType: entry.entryType,
     transferDirection: entry.transferDirection,
-    ownershipType: entry.ownershipType,
+    ownershipType: "direct",
     ownerName: entry.ownerName ?? "",
     note: entry.note ?? "",
-    splitBasisPoints: entry.viewerSplitRatioBasisPoints ?? entry.splits[0]?.ratioBasisPoints ?? 5000
+    splitBasisPoints: entry.viewerSplitRatioBasisPoints ?? entry.linkedSplitShares?.[0]?.ratioBasisPoints ?? 5000
   };
 }
 

@@ -27,7 +27,7 @@ export function SplitLinkedEntryDialog({ dialog, people, categoryOptions, formEr
             </div>
             <div className="linked-entry-notice">
               <strong>Linked to Entries</strong>
-              <p>Saving here updates the matching row in Entries too.</p>
+              <p>Saving here updates the ledger facts in Entries. Split allocation stays on the split row.</p>
             </div>
             <div className="split-dialog-section">
               <div className="entry-core-grid split-dialog-grid">
@@ -70,25 +70,19 @@ export function SplitLinkedEntryDialog({ dialog, people, categoryOptions, formEr
                 </label>
                 <label className="split-dialog-field">
                   <span>{messages.entries.editOwner}</span>
-                  <select className="table-edit-input" value={dialog?.ownershipType === "shared" ? "Shared" : (dialog?.ownerName ?? "")} onChange={(event) => {
+                  <select className="table-edit-input" value={dialog?.ownerName ?? ""} onChange={(event) => {
                     const nextValue = event.target.value;
                     onChange((current) => current ? {
                       ...current,
-                      ownershipType: nextValue === "Shared" ? "shared" : "direct",
-                      ownerName: nextValue === "Shared" ? undefined : nextValue
+                      ownershipType: "direct",
+                      ownerName: nextValue
                     } : current);
                   }}>
-                    {[...people.map((person) => person.name), "Shared"].map((option) => (
+                    {people.map((person) => person.name).map((option) => (
                       <option key={option} value={option}>{option}</option>
                     ))}
                   </select>
                 </label>
-                {dialog?.ownershipType === "shared" ? (
-                  <label className="split-dialog-field">
-                    <span>{messages.entries.editSplit}</span>
-                    <input className="table-edit-input table-edit-input-money" type="number" min="0" max="100" value={Number(dialog?.splitBasisPoints ?? 5000) / 100} onMouseDown={selectAllOnFocus} onFocus={selectAllOnFocus} onChange={(event) => onChange((current) => current ? { ...current, splitBasisPoints: Math.round(Number(event.target.value || 0) * 100) } : current)} />
-                  </label>
-                ) : null}
               </div>
             </div>
             <div className="split-dialog-section">

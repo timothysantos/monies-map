@@ -6,7 +6,6 @@ import {
   slugify
 } from "./app-repository-helpers";
 import { closeSplitBatch, getOrCreateActiveSplitBatch } from "./app-repository-split-batches";
-import { syncTransactionSplits } from "./app-repository-split-sync";
 import { splitAmountMinorWithRoundedRemainder } from "./split-allocation";
 import { getCurrentMonthKey } from "../lib/month";
 import type {
@@ -641,41 +640,13 @@ function buildSplitShareAmounts(amountMinor: number, splitBasisPoints = 5000, sp
 }
 
 async function syncLinkedTransactionToSplitExpense(
-  db: D1Database,
+  _db: D1Database,
   input: { transactionId: string; splitBasisPoints: number }
 ) {
-  const transaction = await db
-    .prepare(`
-      SELECT amount_minor
-      FROM transactions
-      WHERE household_id = ?
-        AND id = ?
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, input.transactionId)
-    .first<{ amount_minor: number }>();
-
-  if (!transaction) {
-    throw new Error("Linked transaction not found.");
-  }
-
-  await db
-    .prepare(`
-      UPDATE transactions
-      SET ownership_type = 'shared',
-          owner_person_id = NULL,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE household_id = ?
-        AND id = ?
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, input.transactionId)
-    .run();
-
-  await syncTransactionSplits(db, {
-    transactionId: input.transactionId,
-    ownershipType: "shared",
-    amountMinor: transaction.amount_minor,
-    splitBasisPoints: input.splitBasisPoints
-  });
+  // Split allocation is owned by split_expense_shares. Linking a split expense
+  // must not rewrite the ledger entry owner or legacy transaction_splits.
+  void input.transactionId;
+  void input.splitBasisPoints;
 }
 
 export async function updateSplitSettlementRecord(
@@ -850,7 +821,6 @@ export async function createSplitExpenseFromEntryRecord(
         transactions.transaction_date,
         transactions.description,
         transactions.amount_minor,
-        transactions.ownership_type,
         transactions.owner_person_id,
         transactions.note,
         transactions.category_id,
@@ -867,7 +837,6 @@ export async function createSplitExpenseFromEntryRecord(
       transaction_date: string;
       description: string;
       amount_minor: number;
-      ownership_type: "direct" | "shared";
       owner_person_id: string | null;
       note: string | null;
       category_id: string | null;
@@ -897,27 +866,6 @@ export async function createSplitExpenseFromEntryRecord(
     throw new Error("This entry does not have a clear payer. Assign an owner first.");
   }
 
-  if (entry.ownership_type !== "shared") {
-    await db
-      .prepare(`
-        UPDATE transactions
-        SET ownership_type = 'shared',
-            owner_person_id = NULL,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE household_id = ?
-          AND id = ?
-      `)
-      .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
-      .run();
-
-    await syncTransactionSplits(db, {
-      transactionId: input.entryId,
-      ownershipType: "shared",
-      amountMinor: entry.amount_minor,
-      splitBasisPoints: 5000
-    });
-  }
-
   const id = `split-expense-${Date.now()}`;
   await db
     .prepare(`
@@ -940,28 +888,21 @@ export async function createSplitExpenseFromEntryRecord(
     )
     .run();
 
-  const transactionSplits = await db
-    .prepare(`
-      SELECT person_id, ratio_basis_points, amount_minor
-      FROM transaction_splits
-      WHERE transaction_id = ?
-      ORDER BY created_at
-    `)
-    .bind(input.entryId)
-    .all<{
-      person_id: string;
-      ratio_basis_points: number;
-      amount_minor: number;
-    }>();
+  const sharePeople = await loadSplitSharePeople(db);
+  const { firstBasisPoints, secondBasisPoints, firstAmount, secondAmount } = buildSplitShareAmounts(entry.amount_minor, 5000);
+  const shares = [
+    { personId: sharePeople[0].id, ratioBasisPoints: firstBasisPoints, amountMinor: firstAmount },
+    { personId: sharePeople[1].id, ratioBasisPoints: secondBasisPoints, amountMinor: secondAmount }
+  ];
 
-  for (const split of transactionSplits.results) {
+  for (const split of shares) {
     await db
       .prepare(`
         INSERT INTO split_expense_shares (
           id, split_expense_id, person_id, ratio_basis_points, amount_minor
         ) VALUES (?, ?, ?, ?, ?)
       `)
-      .bind(`${id}-${split.person_id}`, id, split.person_id, split.ratio_basis_points, split.amount_minor)
+      .bind(`${id}-${split.personId}`, id, split.personId, split.ratioBasisPoints, split.amountMinor)
       .run();
   }
 

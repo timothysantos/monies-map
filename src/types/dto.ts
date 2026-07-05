@@ -191,6 +191,7 @@ export interface EntryDto {
   linkedSplitExpenseId?: string;
   linkedSplitGroupName?: string;
   linkedSplitNote?: string;
+  linkedSplitShares?: EntrySplitDto[];
   splits: EntrySplitDto[];
 }
 

@@ -8,7 +8,7 @@ export function buildEntryDraft(view, accounts, categories, people) {
   const defaultOwnerName = view.id !== "household"
     ? people.find((person) => person.id === view.id)?.name ?? people[0]?.name ?? ""
     : people[0]?.name ?? "";
-  const ownershipType = view.monthPage.selectedScope === "shared" ? "shared" : "direct";
+  const ownershipType = "direct";
   const defaultAccount = accounts.find((account) => account.isActive !== false) ?? accounts[0];
   const preferredCategoryName = categories.find((category) => category.name === "Other")?.name ?? categories[0]?.name ?? "";
   const draft = {
@@ -141,23 +141,41 @@ export function applySharedSplit(entry, people, percentage, viewId = "household"
 }
 
 export function entryMatchesScope(entry, viewId, scope) {
+  const isLinkedToSplits = Boolean(entry.linkedSplitExpenseId);
+  const directShares = entry.splits ?? [];
+  const linkedShares = entry.linkedSplitShares ?? [];
+
   if (viewId === "household") {
-    return scope === "shared" ? entry.ownershipType === "shared" : true;
+    return scope === "shared"
+      ? isLinkedToSplits
+      : scope === "direct"
+        ? !isLinkedToSplits
+        : true;
   }
 
   const personId = viewId;
   if (scope === "shared") {
-    return entry.ownershipType === "shared" && entry.splits.some((split) => split.personId === personId);
+    return isLinkedToSplits && linkedShares.some((split) => split.personId === personId);
   }
 
   if (scope === "direct") {
-    return entry.ownershipType === "direct" && entry.splits.some((split) => split.personId === personId);
+    return !isLinkedToSplits && directShares.some((split) => split.personId === personId);
   }
 
-  return entry.splits.some((split) => split.personId === personId);
+  return directShares.some((split) => split.personId === personId)
+    || linkedShares.some((split) => split.personId === personId);
 }
 
 export function getVisibleSplitIndex(entry, viewId) {
+  if (entry.linkedSplitExpenseId && entry.linkedSplitShares?.length) {
+    if (viewId === "household") {
+      return 0;
+    }
+
+    const linkedIndex = entry.linkedSplitShares.findIndex((split) => split.personId === viewId);
+    return linkedIndex === -1 ? 0 : linkedIndex;
+  }
+
   if (entry.ownershipType !== "shared" || !entry.splits.length) {
     return -1;
   }
@@ -171,6 +189,15 @@ export function getVisibleSplitIndex(entry, viewId) {
 }
 
 export function getVisibleSplitPercent(entry, viewId) {
+  if (entry.linkedSplitExpenseId && entry.linkedSplitShares?.length) {
+    if (typeof entry.viewerSplitRatioBasisPoints === "number") {
+      return entry.viewerSplitRatioBasisPoints / 100;
+    }
+
+    const splitIndex = getVisibleSplitIndex(entry, viewId);
+    return entry.linkedSplitShares[splitIndex]?.ratioBasisPoints / 100;
+  }
+
   if (entry.ownershipType !== "shared") {
     return null;
   }
@@ -188,6 +215,11 @@ export function getVisibleSplitPercent(entry, viewId) {
 }
 
 export function getVisibleAmountMinor(entry, viewId) {
+  if (entry.linkedSplitExpenseId && viewId !== "household" && entry.linkedSplitShares?.length) {
+    const matchingSplit = entry.linkedSplitShares.find((split) => split.personId === viewId);
+    return matchingSplit?.amountMinor ?? entry.amountMinor;
+  }
+
   if (viewId === "household" || entry.ownershipType !== "shared") {
     return entry.amountMinor;
   }
