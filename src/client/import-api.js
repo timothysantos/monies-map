@@ -140,9 +140,7 @@ export function previewImportBatch({
   sourceType,
   rows,
   defaultAccountName,
-  ownershipType,
   ownerName,
-  splitPercent,
   statementCheckpoints,
   diagnosticContext
 }) {
@@ -153,9 +151,9 @@ export function previewImportBatch({
       sourceType,
       rows,
       defaultAccountName,
-      ownershipType,
+      ownershipType: "direct",
       ownerName,
-      splitBasisPoints: Math.round(Number(splitPercent || "50") * 100),
+      splitBasisPoints: 10000,
       statementCheckpoints: normalizeStatementCheckpoints(statementCheckpoints)
     },
     "Import preview failed.",

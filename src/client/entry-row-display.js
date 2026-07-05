@@ -12,25 +12,19 @@ export function buildEntryRowDisplay(entry, viewId, isLinkedToSplits = false) {
     ? splitGroupName
       ? `On splits · ${splitGroupName}`
       : "On splits"
-    : entry.ownershipType === "shared"
-      ? "Shared ownership"
-      : entry.ownerName ?? messages.common.emptyValue;
+    : entry.ownerName ?? entry.accountOwnerLabel ?? messages.common.emptyValue;
   const ownerTitle = isLinkedToSplits
     ? splitGroupName
       ? `On Splits: ${splitGroupName}`
       : "On Splits"
-    : entry.ownershipType === "shared"
-      ? "Shared ledger ownership. Add to splits separately to track this in Splits."
-      : ownerLabel;
+    : ownerLabel;
 
   return {
     ownerLabel,
     ownerTitle,
     ownerChipClassName: isLinkedToSplits
       ? "entry-chip-shared entry-chip-linked-split"
-      : entry.ownershipType === "shared"
-        ? "entry-chip-shared"
-        : "entry-chip-owner",
+      : "entry-chip-owner",
     linkedSplitGroupName: isLinkedToSplits ? splitGroupName : "",
     linkedSplitGroupStyle: isLinkedToSplits && splitGroupName
       ? getSplitGroupChipStyle(splitGroupName)
@@ -78,9 +72,7 @@ export function getSplitGroupChipStyle(groupName) {
 export function getEntryOwnerCue(entry, isLinkedToSplits = false) {
   const ownerKey = isLinkedToSplits
     ? "linked-splits"
-    : entry.ownershipType === "shared"
-      ? "shared-ownership"
-      : entry.ownerName ?? entry.accountOwnerLabel ?? "unassigned";
+    : entry.ownerName ?? entry.accountOwnerLabel ?? "unassigned";
   const color = getOwnerCueColor(ownerKey);
 
   return {
@@ -92,6 +84,15 @@ export function getEntryOwnerCue(entry, isLinkedToSplits = false) {
 }
 
 function getVisibleSplitIndex(entry, viewId) {
+  if (entry.linkedSplitExpenseId && entry.linkedSplitShares?.length) {
+    if (viewId === "household") {
+      return 0;
+    }
+
+    const matchingIndex = entry.linkedSplitShares.findIndex((split) => split.personId === viewId);
+    return matchingIndex === -1 ? 0 : matchingIndex;
+  }
+
   if (entry.ownershipType !== "shared" || !entry.splits.length) {
     return -1;
   }
@@ -105,6 +106,15 @@ function getVisibleSplitIndex(entry, viewId) {
 }
 
 function getVisibleSplitPercent(entry, viewId) {
+  if (entry.linkedSplitExpenseId && entry.linkedSplitShares?.length) {
+    if (typeof entry.viewerSplitRatioBasisPoints === "number") {
+      return entry.viewerSplitRatioBasisPoints / 100;
+    }
+
+    const splitIndex = getVisibleSplitIndex(entry, viewId);
+    return entry.linkedSplitShares[splitIndex]?.ratioBasisPoints / 100;
+  }
+
   if (entry.ownershipType !== "shared") {
     return null;
   }
@@ -171,10 +181,6 @@ function getOwnerCueColor(ownerKey) {
 
   if (normalized === "linked-splits") {
     return "#2563EB";
-  }
-
-  if (normalized === "shared-ownership") {
-    return "#B15E2F";
   }
 
   const palette = ["#6A7A73", "#7C8791", "#8FAE4B", "#C97B47", "#5EA89B", "#8B78E6"];

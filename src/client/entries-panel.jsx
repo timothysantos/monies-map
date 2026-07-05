@@ -1051,7 +1051,7 @@ export function EntriesPanel({
             categoryOptions={categoryOptions}
             accountOptions={accountOptions}
             ownerOptions={ownerOptions}
-            splitPercentValue={activeEditingEntry.ownershipType === "shared" ? entryService.getVisibleSplitPercent(activeEditingEntry, entryView.id) ?? null : null}
+            splitPercentValue={null}
             amountMinorValue={entryService.getTotalAmountMinor(activeEditingEntry)}
             amountInputValue={activeEditingEntry.amountInput}
             lockTransferCategory

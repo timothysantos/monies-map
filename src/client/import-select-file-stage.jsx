@@ -1,5 +1,4 @@
 import { messages } from "./copy/en-SG";
-import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 
 const { accounts: accountService } = moniesClient;
@@ -12,13 +11,9 @@ export function ImportSelectFileStage({
   defaultAccountName,
   onDefaultAccountChange,
   accounts,
-  ownershipType,
-  onOwnershipTypeChange,
   ownerName,
   onOwnerNameChange,
   people,
-  splitPercent,
-  onSplitPercentChange,
   importNote,
   onImportNoteChange,
   csvText,
@@ -68,33 +63,12 @@ export function ImportSelectFileStage({
           </select>
         </label>
         <label className="entries-filter">
-          <span className="entries-filter-label">{messages.imports.ownership}</span>
-          <select className="table-edit-input" value={ownershipType} onChange={(event) => onOwnershipTypeChange(event.target.value)}>
-            <option value="direct">Direct</option>
-            <option value="shared">{messages.entries.shared}</option>
-          </select>
-        </label>
-        <label className="entries-filter">
           <span className="entries-filter-label">{messages.imports.owner}</span>
-          <select className="table-edit-input" value={ownerName} disabled={ownershipType !== "direct"} onChange={(event) => onOwnerNameChange(event.target.value)}>
+          <select className="table-edit-input" value={ownerName} onChange={(event) => onOwnerNameChange(event.target.value)}>
             {people.map((person) => (
               <option key={person.id} value={person.name}>{person.name}</option>
             ))}
           </select>
-        </label>
-        <label className="entries-filter">
-          <span className="entries-filter-label">{messages.imports.split}</span>
-          <input
-            className="table-edit-input table-edit-input-money"
-            type="number"
-            min="0"
-            max="100"
-            value={splitPercent}
-            disabled={ownershipType !== "shared"}
-            onMouseDown={selectAllOnFocus}
-            onFocus={selectAllOnFocus}
-            onChange={(event) => onSplitPercentChange(event.target.value)}
-          />
         </label>
         <label className="entries-filter import-note-field">
           <span className="entries-filter-label">{messages.imports.importNote}</span>

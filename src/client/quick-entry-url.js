@@ -28,7 +28,6 @@ export function buildQuickExpenseDraftPatch({ searchParams, accountOptions, cate
   const ownerName = findCaseInsensitiveOption(ownerOptions.filter((option) => option !== "Shared"), searchParams.get("owner"))
     ?? fallbackOwnerName
     ?? "";
-  const isShared = ["1", "true", "yes", "shared"].includes(String(searchParams.get("shared") ?? "").trim().toLowerCase());
   const amountMinor = Math.abs(parseDraftMoneyInput(rawAmount ?? "0"));
   const description = isQuickExpensePlaceholder(rawDescription) ? "" : rawDescription ?? "";
   const date = normalizeQuickExpenseDate(searchParams.get("date")) || new Date().toISOString().slice(0, 10);
@@ -57,8 +56,8 @@ export function buildQuickExpenseDraftPatch({ searchParams, accountOptions, cate
       totalAmountMinor: amountMinor,
       entryType: "expense",
       transferDirection: undefined,
-      ownershipType: isShared ? "shared" : "direct",
-      ownerName: isShared ? undefined : ownerName,
+      ownershipType: "direct",
+      ownerName,
       note: isQuickExpensePlaceholder(searchParams.get("note")) ? "" : searchParams.get("note") ?? "",
       addToSplits: false,
       splitGroupId: ""

@@ -35,7 +35,6 @@ import type {
   DonutChartDatumDto,
   EntriesPageDto,
   EntryDto,
-  EntrySplitDto,
   ImportsPageDto,
   MetricCardDto,
   MonthPageDto,
@@ -864,17 +863,17 @@ export function buildPlanRowsForView(rows: MonthPlanRowDto[], personId: string):
 function filterEntriesForView(entries: EntryDto[], personId: string, scope: PersonScope): EntryDto[] {
   if (personId === "household") {
     if (scope === "shared") {
-      return entries.filter((entry) => entry.ownershipType === "shared");
+      return entries.filter((entry) => isEntryLinkedToSplitExpense(entry));
     }
 
     if (scope === "direct") {
-      return entries.filter((entry) => entry.ownershipType === "direct");
+      return entries.filter((entry) => !isEntryLinkedToSplitExpense(entry));
     }
 
     return entries;
   }
 
-  return entries.filter((entry) => rowMatchesView(entry.ownershipType, entry.splits, personId, scope));
+  return entries.filter((entry) => rowMatchesView(entry, personId, scope));
 }
 
 export function adjustEntriesForView(entries: EntryDto[], personId: string): EntryDto[] {
@@ -882,6 +881,18 @@ export function adjustEntriesForView(entries: EntryDto[], personId: string): Ent
 }
 
 function adjustEntryForView(entry: EntryDto, personId: string): EntryDto {
+  if (personId !== "household" && isEntryLinkedToSplitExpense(entry)) {
+    const matchingLinkedShare = entry.linkedSplitShares?.find((split) => split.personId === personId);
+    if (matchingLinkedShare) {
+      return {
+        ...entry,
+        amountMinor: matchingLinkedShare.amountMinor,
+        totalAmountMinor: entry.amountMinor,
+        viewerSplitRatioBasisPoints: matchingLinkedShare.ratioBasisPoints
+      };
+    }
+  }
+
   if (personId === "household" || entry.ownershipType !== "shared") {
     return entry;
   }
@@ -900,28 +911,36 @@ function adjustEntryForView(entry: EntryDto, personId: string): EntryDto {
 }
 
 function rowMatchesView(
-  ownershipType: "direct" | "shared",
-  splits: EntrySplitDto[],
+  entry: EntryDto,
   personId: string,
   scope: PersonScope
 ) {
+  const isLinkedToSplits = isEntryLinkedToSplitExpense(entry);
+  const directShares = entry.splits ?? [];
+  const linkedShares = entry.linkedSplitShares ?? [];
+
   if (personId === "household") {
     return scope === "shared"
-      ? ownershipType === "shared"
+      ? isLinkedToSplits
       : scope === "direct"
-        ? ownershipType === "direct"
+        ? !isLinkedToSplits
         : true;
   }
 
   if (scope === "shared") {
-    return ownershipType === "shared" && splits.some((split) => split.personId === personId);
+    return isLinkedToSplits && linkedShares.some((split) => split.personId === personId);
   }
 
   if (scope === "direct") {
-    return ownershipType === "direct" && splits.some((split) => split.personId === personId);
+    return !isLinkedToSplits && directShares.some((split) => split.personId === personId);
   }
 
-  return splits.some((split) => split.personId === personId);
+  return directShares.some((split) => split.personId === personId)
+    || linkedShares.some((split) => split.personId === personId);
+}
+
+function isEntryLinkedToSplitExpense(entry: EntryDto) {
+  return Boolean(entry.linkedSplitExpenseId);
 }
 
 function normalizePlanRowForView(row: MonthPlanRowDto): MonthPlanRowDto {

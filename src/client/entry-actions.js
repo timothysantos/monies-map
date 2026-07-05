@@ -593,12 +593,8 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
           return currentEntry;
         }
 
-        // Splits are always shared expenses, so linking an entry promotes the
-        // row into shared ownership even if it started as a direct expense.
         nextLinkedEntry = entryService.normalize({
           ...currentEntry,
-          ownershipType: "shared",
-          ownerName: undefined,
           linkedSplitExpenseId: data.splitExpenseId,
           isPendingDerived: true
         }, people, currentEntry);

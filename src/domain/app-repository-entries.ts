@@ -192,6 +192,33 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
     }>();
 
   const splitMap = groupSplits(splits.results, "transaction_id");
+  const linkedSplitShares = await db
+    .prepare(`
+      SELECT
+        split_expenses.linked_transaction_id AS transaction_id,
+        split_expense_shares.person_id,
+        split_expense_shares.ratio_basis_points,
+        split_expense_shares.amount_minor,
+        people.display_name
+      FROM split_expense_shares
+      INNER JOIN split_expenses ON split_expenses.id = split_expense_shares.split_expense_id
+      INNER JOIN people ON people.id = split_expense_shares.person_id
+      INNER JOIN transactions ON transactions.id = split_expenses.linked_transaction_id
+      WHERE split_expenses.household_id = ?
+        AND split_expenses.linked_transaction_id IS NOT NULL
+        AND transactions.transaction_date >= ?
+        AND transactions.transaction_date < ?
+      ORDER BY split_expense_shares.created_at
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, monthStart, nextMonth)
+    .all<{
+      transaction_id: string;
+      person_id: string;
+      ratio_basis_points: number;
+      amount_minor: number;
+      display_name: string;
+    }>();
+  const linkedSplitShareMap = groupSplits(linkedSplitShares.results, "transaction_id");
   const entriesByTransferGroup = new Map<string, typeof entries.results>();
 
   for (const entry of entries.results) {
@@ -247,6 +274,9 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       linkedSplitExpenseId: row.linked_split_expense_id ?? undefined,
       linkedSplitGroupName: row.linked_split_group_name ?? undefined,
       linkedSplitNote: row.linked_split_note ?? undefined,
+      linkedSplitShares: row.linked_split_expense_id
+        ? linkedSplitShareMap.get(row.id) ?? []
+        : undefined,
       splits: splitMap.get(row.id) ?? []
     };
   });

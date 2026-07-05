@@ -474,7 +474,7 @@ function EntryRow({
                   </>
                 ) : display.ownerLabel}
               </span>
-              {entry.ownershipType === "shared" && display.splitPercent != null ? (
+              {isLinkedToSplits && display.splitPercent != null ? (
                 <span className="entry-chip entry-chip-split">{display.splitPercent}%</span>
               ) : null}
             </div>
@@ -490,7 +490,7 @@ function EntryRow({
             categoryOptions={categoryOptions}
             accountOptions={accountOptions}
             ownerOptions={ownerOptions}
-            splitPercentValue={entry.ownershipType === "shared" ? display.splitPercent : null}
+            splitPercentValue={null}
             amountMinorValue={editableAmountMinor}
             amountInputValue={entry.amountInput}
             lockTransferCategory

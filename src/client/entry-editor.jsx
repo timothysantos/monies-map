@@ -220,7 +220,7 @@ export function EntryEditorFields({
           <ResponsiveSelect
             className="table-edit-input"
             title={messages.entries.editOwner}
-            value={entry.ownershipType === "shared" ? "Shared" : (entry.ownerName ?? "")}
+            value={entry.ownerName ?? ""}
             options={ownerOptions.map((person) => ({ value: person, label: person }))}
             onValueChange={onOwnerChange}
           />

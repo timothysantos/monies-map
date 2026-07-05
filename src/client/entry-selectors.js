@@ -26,7 +26,7 @@ export function getEntryFormOptions({ accounts, categories, people }) {
   return {
     categoryOptions: categoryService.getNameOptions(categories),
     accountOptions: accountService.getSelectOptions(accounts.filter((account) => account.isActive !== false), { valueKey: "id" }),
-    ownerOptions: [...people.map((person) => person.name), "Shared"]
+    ownerOptions: people.map((person) => person.name)
   };
 }
 
