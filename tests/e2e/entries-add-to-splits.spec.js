@@ -49,6 +49,56 @@ test("entries can add a direct expense to splits and jump into the created split
   await expect(page.getByRole("dialog").getByLabel("Description")).toHaveValue(description);
 });
 
+test("newly added split can be viewed immediately and preserves the entries scope", async ({ page }) => {
+  const month = "2026-05";
+  const description = `Playwright immediate view split ${Date.now()}`;
+
+  await page.goto("/");
+  await reseedDemo(page);
+
+  const createdEntry = await postJson(page, "/api/entries/create", {
+    date: `${month}-24`,
+    description,
+    accountName: "UOB One",
+    categoryName: "Groceries",
+    amountMinor: 2550,
+    entryType: "expense",
+    ownershipType: "shared",
+    splitBasisPoints: 5000
+  });
+
+  await page.goto(`/entries?view=person-tim&month=${month}&entries_scope=shared&editing_entry=${createdEntry.entryId}`);
+  const editor = page.locator(".entry-inline-editor").first();
+  await expect(editor).toBeVisible();
+
+  const splitResponse = page.waitForResponse((response) => response.url().includes("/api/splits/expenses/from-entry") && response.ok());
+  await editor.getByRole("button", { name: "Add to splits" }).click();
+  const groupPicker = page.getByRole("dialog", { name: "Add to splits" });
+  try {
+    await expect(groupPicker).toBeVisible({ timeout: 1000 });
+    await groupPicker.locator("select").selectOption({ label: "Non-group expenses" });
+  } catch {
+    // Single-group split workspaces post immediately without opening the picker.
+  }
+  await splitResponse;
+
+  const viewSplitButton = editor.getByRole("button", { name: "View split" });
+  await expect(viewSplitButton).toBeVisible({ timeout: 30_000 });
+
+  const splitsPageReady = page.waitForResponse((response) => response.url().includes("/api/splits-page") && response.ok());
+  await viewSplitButton.click();
+  await splitsPageReady;
+
+  await expect(page).toHaveURL(/\/splits\?/);
+  expect(new URL(page.url()).searchParams.get("scope")).toBe("shared");
+  await expect(page.getByRole("dialog")).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("dialog").getByLabel("Description")).toHaveValue(description);
+
+  await page.goBack({ waitUntil: "domcontentloaded" });
+  await expect(page).toHaveURL(/\/entries\?/);
+  await expect(page.locator(".scope-button.is-active")).toContainText("Shared");
+});
+
 test("editing a linked entry note can update the connected split note", async ({ page }) => {
   const month = "2026-05";
   const description = `Playwright linked note sync ${Date.now()}`;
