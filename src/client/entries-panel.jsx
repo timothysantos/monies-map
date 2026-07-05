@@ -90,6 +90,7 @@ export function EntriesPanel({
   const [mobileSplitGroupId, setMobileSplitGroupId] = useState("");
   const handledQuickExpenseKeyRef = useRef("");
   const pendingQuickExpenseDraftRef = useRef(null);
+  const suppressedLinkedEntryIdRef = useRef("");
   const {
     entriesPage,
     isEntriesPageLoading,
@@ -295,6 +296,11 @@ export function EntriesPanel({
       if (pendingLinkedEntryId) {
         setPendingLinkedEntryId("");
       }
+      suppressedLinkedEntryIdRef.current = "";
+      return;
+    }
+
+    if (linkedEntryId === suppressedLinkedEntryIdRef.current) {
       return;
     }
 
@@ -370,6 +376,7 @@ export function EntriesPanel({
   }, [beginEntryEdit, editingEntryId, entries, isEntriesPageLoading, pendingLinkedEntryId]);
 
   function clearEditingEntrySearchParam() {
+    suppressedLinkedEntryIdRef.current = editingEntryId ?? pendingLinkedEntryId;
     setPendingLinkedEntryId("");
     setSearchParams((current) => {
       if (!current.get("editing_entry")) {
@@ -519,8 +526,8 @@ export function EntriesPanel({
     setDeletingCreatedSplitId("");
     setCreatedSplitActionError("");
     resetMobileSplitPickerState();
-    cancelEntryEdit();
     clearEditingEntrySearchParam();
+    cancelEntryEdit();
   }
 
   async function finishEntryEditAndClearLink(patch) {
