@@ -535,6 +535,13 @@ Use Settings -> Category matching to add or adjust rules. Rules apply to future
 previews and can override a parser guess; they do not rewrite older ledger rows
 that you already reviewed and committed.
 
+The category matching settings also surface active duplicate and overlapping
+rules before pending suggestions. Same-category overlaps help you spot broad
+and specific rules that may both match a merchant. Different-category overlaps
+are shown as conflicts because either rule could win depending on priority. Use
+the edit shortcut beside each surfaced rule to tighten the merchant text,
+change category, update priority or status, or delete the redundant rule.
+
 ![Settings category matching keeps editable rules and pending suggestions together](/faq/features/thumbs/category-matching.png)
 
 How rules match:

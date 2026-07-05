@@ -760,6 +760,19 @@ export const messages = {
     editCategoryRuleSuggestion: "Edit first",
     ignoreCategoryRuleSuggestion: "Ignore",
     settingsCategorySuggestionBadgeTitle: (count) => `${count} pending category match suggestion${count === 1 ? "" : "s"}`,
+    categoryRuleDuplicatesTitle: "Duplicate and overlapping rules",
+    categoryRuleDuplicatesDetail: "Active rules that can match the same merchant text are shown here first. Edit the more general rule, adjust priority, or delete the one you no longer need.",
+    categoryRuleDuplicatesCount: (count) => `${count} to review`,
+    categoryRuleDuplicateKind: (kind) => {
+      if (kind === "conflict") {
+        return "Different categories overlap";
+      }
+      if (kind === "duplicate") {
+        return "Same merchant rule";
+      }
+      return "Similar same-category rules";
+    },
+    categoryRuleDuplicateDetail: (firstRule, secondRule) => `${firstRule.pattern} and ${secondRule.pattern} can both match similar bank rows.`,
     addCategoryRule: "+ Add match rule",
     collapseCategoryRules: "Collapse all",
     expandCategoryRules: "Expand all",

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
+import { findDuplicateCategoryMatchRules } from "./settings-workflow";
 import { CategoryGlyph, DeleteRowButton } from "./ui-components";
 
 const { accounts: accountService, format: formatService } = moniesClient;
@@ -288,6 +289,7 @@ export function SettingsCategoryMatchRulesSection({
   onIgnoreSuggestion
 }) {
   const ruleGroups = useMemo(() => groupCategoryMatchRules(rules, categories), [categories, rules]);
+  const duplicateRuleIssues = useMemo(() => findDuplicateCategoryMatchRules(rules), [rules]);
   const [areRuleGroupsExpanded, setAreRuleGroupsExpanded] = useState(true);
 
   return (
@@ -300,6 +302,48 @@ export function SettingsCategoryMatchRulesSection({
       />
       {isOpen ? (
         <>
+          {duplicateRuleIssues.length ? (
+            <section className="settings-duplicate-rule-panel">
+              <div className="settings-rule-group-header">
+                <strong>{messages.settings.categoryRuleDuplicatesTitle}</strong>
+                <span>{messages.settings.categoryRuleDuplicatesCount(duplicateRuleIssues.length)}</span>
+              </div>
+              <p className="lede compact">{messages.settings.categoryRuleDuplicatesDetail}</p>
+              <div className="settings-duplicate-rule-list">
+                {duplicateRuleIssues.map((issue) => (
+                  <div key={issue.id} className={`settings-duplicate-rule-issue is-${issue.kind}`}>
+                    <div className="settings-duplicate-rule-summary">
+                      <strong>{messages.settings.categoryRuleDuplicateKind(issue.kind)}</strong>
+                      <p>{messages.settings.categoryRuleDuplicateDetail(issue.rules[0], issue.rules[1])}</p>
+                    </div>
+                    <div className="settings-duplicate-rule-actions">
+                      {issue.rules.map((rule) => (
+                        <div key={rule.id} className="settings-account-row settings-rule-row settings-duplicate-rule-row">
+                          <div className="settings-account-main">
+                            <strong>{rule.pattern}</strong>
+                            <p>{messages.common.triplet(rule.categoryName, messages.settings.categoryRulePriorityValue(rule.priority), rule.note || messages.common.emptyValue)}</p>
+                          </div>
+                          <div className="settings-account-actions">
+                            <button type="button" className="icon-action" aria-label={messages.settings.editCategoryRule} onClick={() => onEditRule(rule)}>
+                              <SquarePen size={16} />
+                            </button>
+                            <DeleteRowButton
+                              label={rule.pattern}
+                              triggerLabel={messages.settings.deleteCategoryRule}
+                              confirmLabel={messages.settings.deleteCategoryRule}
+                              destructive={false}
+                              prompt={messages.settings.deleteCategoryRuleDetail(rule.pattern)}
+                              onConfirm={() => onDeleteRule(rule)}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
           {suggestions.length ? (
             <section className="settings-suggestion-panel">
               <div className="settings-rule-group-header">
