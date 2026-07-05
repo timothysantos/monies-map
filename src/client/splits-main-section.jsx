@@ -42,6 +42,7 @@ export function SplitsMainSection({
   onSaveInlineSplit,
   onRequestDeleteSplit,
   onViewLinkedEntry,
+  onRefreshActivity,
   viewId,
   isRefreshingDerived = false,
   readOnly = false
@@ -127,6 +128,7 @@ export function SplitsMainSection({
           onSaveInlineSplit={onSaveInlineSplit}
           onRequestDeleteSplit={onRequestDeleteSplit}
           onViewLinkedEntry={onViewLinkedEntry}
+          onRefreshActivity={onRefreshActivity}
           viewId={viewId}
           readOnly={readOnly}
         />
