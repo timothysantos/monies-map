@@ -2257,6 +2257,58 @@ test.describe("import flow", () => {
     expect(maMumEntries.every((entry) => entry.bankCertificationStatus === "import_provisional")).toBeTruthy();
   });
 
+  test("current-activity import promotes shortcut rows with compact merchant aliases", async ({ page }) => {
+    const accountName = `Playwright Zero Coffee ${Date.now()}`;
+    const accountPayload = await postJson(page, "/api/accounts/create", {
+      name: accountName,
+      institution: "Synthetic Test Bank",
+      kind: "credit_card",
+      openingBalanceMinor: 0,
+      currency: "SGD",
+      ownerPersonId: "",
+      isJoint: false
+    });
+    expect(accountPayload.accountId).toBeTruthy();
+
+    const created = await postJson(page, "/api/entries/create", {
+      date: "2026-06-27",
+      description: "Zerocoffeellp",
+      amountMinor: 8150,
+      entryType: "expense",
+      accountId: accountPayload.accountId,
+      accountName,
+      categoryName: "Food & Drinks",
+      ownershipType: "direct",
+      ownerName: "Tim",
+      note: "applepay"
+    });
+    expect(created.entryId).toBeTruthy();
+
+    const preview = await postJson(page, "/api/imports/preview", {
+      sourceLabel: "Zero Coffee current activity CSV",
+      sourceType: "csv",
+      defaultAccountName: accountName,
+      ownershipType: "direct",
+      ownerName: "Tim",
+      rows: [{
+        date: "2026-06-27",
+        description: "ZERO COFFE* ZEROCOFFEE SINGAPORE SG",
+        expense: "81.50",
+        accountId: accountPayload.accountId,
+        account: accountName,
+        category: "Food & Drinks",
+        note: "txn date: 2026-06-27"
+      }]
+    });
+
+    const previewRow = preview.preview.previewRows[0];
+    expect(previewRow.reconciliationTargetTransactionId).toBe(created.entryId);
+    expect(previewRow.reconciliationMatch?.existingSourceType).toBe("manual");
+    expect(previewRow.reconciliationMatch?.matchKind).toBe("probable");
+    expect(previewRow.commitStatus).toBe("included");
+    expect(previewRow.commitStatusReason).toContain("Current-activity import will promote the existing manual ledger row");
+  });
+
   test("compact Citi PDF merchant text can still promote the spaced mid-cycle CSV row", async ({ page }) => {
     const referenceData = await loadReferenceData(page);
     const account = referenceData.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
