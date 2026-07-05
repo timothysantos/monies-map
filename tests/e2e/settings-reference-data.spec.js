@@ -17,6 +17,14 @@ function uniqueLabel(prefix) {
   return `${prefix} ${Date.now()}`;
 }
 
+function shortcutHeaders(apiKey) {
+  return {
+    "X-Monies-Shortcut-Token": apiKey,
+    "X-Monies-Shortcut-Nonce": `pw-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    "X-Monies-Shortcut-Timestamp": String(Date.now())
+  };
+}
+
 async function openSettingsPage(page) {
   await gotoPageAfterApi(
     page,
@@ -140,6 +148,52 @@ test.describe("settings reference data", () => {
     const entriesPage = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
     expect(
       entriesPage.monthPage.entries.some((entry) => entry.description === createdDescription && entry.accountName === renamedAccount)
+    ).toBe(true);
+  });
+
+  test("shortcut settings provide API key auth and default account fallback", async ({ page }) => {
+    const referenceData = await loadReferenceData(page);
+    const activeAccounts = referenceData.accounts.filter((account) => account.isActive);
+    expect(activeAccounts.length).toBeGreaterThan(0);
+    const targetAccount = activeAccounts.find((account) => account.kind === "credit_card") ?? activeAccounts[0];
+    const otherAccounts = activeAccounts.filter((account) => account.id !== targetAccount.id);
+    const apiKey = `mm_playwright_${Date.now()}`;
+    const description = uniqueLabel("Apple Shortcut fallback");
+
+    await postJson(page, "/api/settings/shortcuts/save", {
+      apiKey,
+      defaultAccountPriorityIds: [targetAccount.id, ...otherAccounts.map((account) => account.id)]
+    });
+
+    const settingsPage = await loadSettingsPage(page);
+    expect(settingsPage.settingsPage.shortcutSettings.apiKey).toBe(apiKey);
+    expect(settingsPage.settingsPage.shortcutSettings.apiKeySource).toBe("app");
+    expect(settingsPage.settingsPage.shortcutSettings.defaultAccountPriorityIds[0]).toBe(targetAccount.id);
+
+    const response = await page.request.post("/api/shortcuts/entries/create", {
+      headers: shortcutHeaders(apiKey),
+      data: {
+        date: "2026-04-27",
+        description,
+        amount: "12.34",
+        ownershipType: "direct",
+        ownerName: "Tim"
+      }
+    });
+    expect(response.ok(), await response.text()).toBeTruthy();
+    const created = await response.json();
+    expect(created.ok).toBe(true);
+    expect(created.entryId).toBeTruthy();
+    expect(created.openUrl).toContain(`/entries`);
+    expect(created.openUrl).toContain(`entry_wallet=${encodeURIComponent(targetAccount.id)}`);
+
+    const entriesPage = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
+    expect(
+      entriesPage.monthPage.entries.some((entry) => (
+        entry.description === description
+        && entry.accountName === targetAccount.name
+        && entry.amountMinor === 1234
+      ))
     ).toBe(true);
   });
 
