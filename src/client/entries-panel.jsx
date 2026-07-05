@@ -740,16 +740,20 @@ export function EntriesPanel({
     const activeCreatedSplitAction = createdSplitAction && createdSplitAction.entryId === entryId
       ? createdSplitAction
       : null;
+    const splitGroupId = activeCreatedSplitAction?.splitGroupId
+      ?? searchParams.get("split_group")
+      ?? "";
     setCreatedSplitAction(null);
     navigate({
       pathname: "/splits",
       search: (() => {
         const next = new URLSearchParams(searchParams);
         next.delete("editing_entry");
+        next.set("scope", selectedScope);
         next.set("editing_split_expense", splitExpenseId);
         next.set("split_mode", "entries");
-        if (activeCreatedSplitAction?.splitGroupId) {
-          next.set("split_group", activeCreatedSplitAction.splitGroupId);
+        if (splitGroupId) {
+          next.set("split_group", splitGroupId);
         }
         return next.toString();
       })()
