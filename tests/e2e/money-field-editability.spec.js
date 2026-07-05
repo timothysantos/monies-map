@@ -160,8 +160,7 @@ test.describe("money field editability", () => {
     await replaceInputValue(percentInput, "60");
     await expect(percentInput).toHaveValue("60");
 
-    await exactAmountInput.fill("");
-    await exactAmountInput.type("8.");
+    await replaceInputValue(exactAmountInput, "8.");
     await expect(exactAmountInput).toHaveValue("8.");
     await exactAmountInput.type("01");
     await expect(exactAmountInput).toHaveValue("8.01");
