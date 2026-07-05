@@ -288,15 +288,19 @@ test.describe("month page", () => {
       ownershipType: "direct",
       ownerName: "Tim"
     });
-    await postJson(page, "/api/entries/create", {
+    const sharedEntry = await postJson(page, "/api/entries/create", {
       date: "2026-05-24",
       description: sharedDescription,
       accountName: "UOB One",
       categoryName: "Groceries",
       amountMinor: 1234,
       entryType: "expense",
-      ownershipType: "shared",
-      splitBasisPoints: 5000
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    await postJson(page, "/api/splits/expenses/from-entry", {
+      entryId: sharedEntry.entryId,
+      splitGroupId: null
     });
 
     await gotoPageAfterApi(
@@ -501,15 +505,19 @@ test.describe("month page", () => {
       ownershipType: "direct",
       ownerName: "Tim"
     });
-    await postJson(page, "/api/entries/create", {
+    const sharedEntry = await postJson(page, "/api/entries/create", {
       date: "2026-05-24",
       description: sharedDescription,
       accountName: "UOB One",
       categoryName: "Groceries",
       amountMinor: 1234,
       entryType: "expense",
-      ownershipType: "shared",
-      splitBasisPoints: 5000
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    await postJson(page, "/api/splits/expenses/from-entry", {
+      entryId: sharedEntry.entryId,
+      splitGroupId: null
     });
     await gotoPageAfterApi(
       page,
