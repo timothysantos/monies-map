@@ -183,21 +183,30 @@ nonces.
 
 ### How do I configure the server secret?
 
-Set a Cloudflare Worker secret named:
+Open Settings -> Shortcut API and save:
+
+- an API key for the Apple Shortcut to send
+- the default account priority order used when the shortcut omits account
+  fields
+
+The app-managed key is stored in app settings and takes priority over the
+Cloudflare environment token. Existing deployments can still use a Cloudflare
+Worker secret named:
 
 - `SHORTCUT_INGEST_TOKEN`
 
-Example:
+Example fallback setup:
 
 ```bash
 wrangler secret put SHORTCUT_INGEST_TOKEN
 ```
 
 Use a long random value. Do not put that value in URLs. Keep it only in the
-Shortcut headers.
+Shortcut headers. Saving a key in Settings lets you rotate the Shortcut key
+without logging in to Cloudflare.
 
 Before using this in production, also apply the database migration so replay
-protection storage exists:
+protection and app-managed shortcut settings storage exist:
 
 ```bash
 npm run db:migrate:remote
@@ -211,8 +220,10 @@ Required fields:
 
 - `date`
 - `description`
-- either `accountId` or `accountName`
 - either `amountMinor` or `amount`
+
+`accountId` or `accountName` is optional. If neither is sent, the API uses the
+first active account in Settings -> Shortcut API -> Default account priority.
 
 Important ownership rule:
 
