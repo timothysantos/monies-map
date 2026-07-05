@@ -238,6 +238,60 @@ test("entry date headers stick while scrolling through a date group", async ({ p
   expect(headerTop).toBeLessThanOrEqual(1);
 });
 
+test("entry date headers stick on mobile while scrolling through a date group", async ({ page }) => {
+  const month = "2026-05";
+  const marker = `Playwright mobile sticky date ${Date.now()}`;
+  const createdEntryIds = [];
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await reseedDemo(page);
+
+  for (let index = 0; index < 36; index += 1) {
+    const created = await postJson(page, "/api/entries/create", {
+      date: `${month}-24`,
+      description: `${marker} ${String(index + 1).padStart(2, "0")}`,
+      accountName: "UOB One",
+      categoryName: "Groceries",
+      amountMinor: 100 + index,
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    createdEntryIds.push(created.entryId);
+  }
+
+  const query = new URLSearchParams({
+    view: "person-tim",
+    month
+  });
+  createdEntryIds.forEach((entryId) => query.append("entry_id", entryId));
+
+  await gotoPageAfterApi(
+    page,
+    `/entries?${query.toString()}`,
+    "/api/entries-page",
+    () => page.locator(".entry-row").filter({ hasText: `${marker} 01` }).first()
+  );
+
+  const dateHeader = page.locator(".entries-date-head").filter({ hasText: "24 May 2026" }).first();
+  await expect(dateHeader).toBeVisible();
+  await expect(dateHeader).toHaveCSS("position", "sticky");
+  await expect(page.locator(".shell")).toHaveCSS("overflow-x", "clip");
+  await expect(page.locator(".panel").first()).toHaveCSS("overflow-x", "clip");
+
+  await page.evaluate((element) => {
+    document.documentElement.style.scrollBehavior = "auto";
+    const documentTop = element.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo({ top: documentTop + 420, behavior: "instant" });
+  }, await dateHeader.elementHandle());
+
+  const scrollY = await page.evaluate(() => window.scrollY);
+  expect(scrollY).toBeGreaterThan(0);
+  const headerTop = await dateHeader.evaluate((element) => element.getBoundingClientRect().top);
+  expect(headerTop).toBeGreaterThanOrEqual(-1);
+  expect(headerTop).toBeLessThanOrEqual(1);
+});
+
 test("expanded entry closes on the first cancel or outside click", async ({ page }) => {
   const description = `Playwright close edit ${Date.now()}`;
   const month = "2026-06";
