@@ -8,7 +8,8 @@ export function buildSafeSettingsPage(settingsPage) {
       endpointPath: "/api/shortcuts/entries/create",
       apiKey: "",
       apiKeySource: "none",
-      defaultAccountPriorityIds: []
+      defaultAccountPriorityIds: [],
+      defaultParams: ""
     },
     categoryMatchRules: [],
     categoryMatchRuleSuggestions: [],
@@ -27,6 +28,7 @@ export function buildShortcutSettingsDraft(shortcutSettings, accounts) {
     .map((account) => account.id);
   return {
     apiKey: shortcutSettings?.apiKey ?? "",
+    defaultParams: shortcutSettings?.defaultParams ?? "",
     defaultAccountPriorityIds: [...savedPriorityIds, ...remainingPriorityIds]
   };
 }

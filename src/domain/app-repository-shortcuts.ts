@@ -8,6 +8,7 @@ const SHORTCUT_ENDPOINT_PATH = "/api/shortcuts/entries/create";
 interface StoredShortcutSettings {
   apiKey?: string;
   defaultAccountPriorityIds?: string[];
+  defaultParams?: string;
 }
 
 export async function ensureAppSettingsTable(db: D1Database) {
@@ -57,7 +58,8 @@ export async function loadShortcutSettings(
     endpointPath: SHORTCUT_ENDPOINT_PATH,
     apiKey: appApiKey || fallbackToken,
     apiKeySource: appApiKey ? "app" : fallbackToken ? "environment" : "none",
-    defaultAccountPriorityIds: priorityIds
+    defaultAccountPriorityIds: priorityIds,
+    defaultParams: stored.defaultParams?.trim() ?? ""
   };
 }
 
@@ -66,6 +68,7 @@ export async function saveShortcutSettings(
   input: {
     apiKey: string;
     defaultAccountPriorityIds: string[];
+    defaultParams?: string;
   }
 ) {
   await ensureAppSettingsTable(db);
@@ -87,7 +90,8 @@ export async function saveShortcutSettings(
 
   const value: StoredShortcutSettings = {
     apiKey,
-    defaultAccountPriorityIds
+    defaultAccountPriorityIds,
+    defaultParams: input.defaultParams?.trim() ?? ""
   };
   await db
     .prepare(`
@@ -176,7 +180,8 @@ function parseShortcutSettings(value?: string | null): StoredShortcutSettings {
       apiKey: typeof parsed.apiKey === "string" ? parsed.apiKey : "",
       defaultAccountPriorityIds: Array.isArray(parsed.defaultAccountPriorityIds)
         ? parsed.defaultAccountPriorityIds.filter((item): item is string => typeof item === "string")
-        : []
+        : [],
+      defaultParams: typeof parsed.defaultParams === "string" ? parsed.defaultParams : ""
     };
   } catch {
     return {};

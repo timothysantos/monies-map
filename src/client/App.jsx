@@ -2259,6 +2259,7 @@ export function App() {
           accounts={accounts}
           categories={categories}
           people={appShell.household.people}
+          shortcutSettings={pageView.settingsPage?.shortcutSettings}
           onCategoryAppearanceChange={handleCategoryAppearanceChange}
           onInvalidateAppShellCache={syncAppShellAfterMutation}
           onInvalidateEntryMutation={broadcastEntryMutation}

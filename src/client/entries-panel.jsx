@@ -24,6 +24,11 @@ import {
 } from "./entry-selectors";
 import { moniesClient } from "./monies-client-service";
 import { queryKeys } from "./query-keys";
+import {
+  buildEffectiveQuickExpenseParams,
+  buildQuickExpenseDraftPatch,
+  QUICK_EXPENSE_PARAMS
+} from "./quick-entry-url";
 import { buildRequestErrorMessage } from "./request-errors";
 import { deleteSplitExpense, updateSplitExpenseNote } from "./splits-api";
 
@@ -59,6 +64,7 @@ export function EntriesPanel({
   accounts,
   categories,
   people,
+  shortcutSettings,
   onCategoryAppearanceChange,
   onInvalidateAppShellCache,
   onInvalidateEntryMutation,
@@ -255,7 +261,8 @@ export function EntriesPanel({
     if (quickAction !== "add-expense" && quickAction !== "quick-expense") {
       return;
     }
-    const quickExpenseKey = buildQuickExpenseKey(searchParams);
+    const effectiveQuickExpenseParams = buildEffectiveQuickExpenseParams(searchParams, shortcutSettings);
+    const quickExpenseKey = buildQuickExpenseKey(effectiveQuickExpenseParams);
     if (handledQuickExpenseKeyRef.current === quickExpenseKey) {
       return;
     }
@@ -264,10 +271,11 @@ export function EntriesPanel({
     // Shortcut URLs are translated once into a normal entry draft, then the
     // special query params are cleared so refreshes do not reopen the composer.
     const quickExpenseDraft = buildQuickExpenseDraftPatch({
-      searchParams,
+      searchParams: effectiveQuickExpenseParams,
       accountOptions,
       categoryOptions,
       ownerOptions,
+      defaultAccountPriorityIds: shortcutSettings?.defaultAccountPriorityIds ?? [],
       fallbackOwnerName: defaultEntryPerson || people[0]?.name
     });
     pendingQuickExpenseDraftRef.current = quickExpenseDraft.draft;
@@ -279,7 +287,7 @@ export function EntriesPanel({
       QUICK_EXPENSE_PARAMS.forEach((key) => next.delete(key));
       return next;
     }, { replace: true });
-  }, [accountOptions, categoryOptions, defaultEntryPerson, ownerOptions, people, searchParams, setSearchParams]);
+  }, [accountOptions, categoryOptions, defaultEntryPerson, ownerOptions, people, searchParams, setSearchParams, shortcutSettings]);
 
   useEffect(() => {
     const linkedEntryId = searchParams.get("editing_entry") ?? "";
@@ -1340,20 +1348,6 @@ function useEntriesSearchFilters(searchParams, defaultScope) {
   };
 }
 
-const QUICK_EXPENSE_PARAMS = [
-  "action",
-  "amount",
-  "merchant",
-  "description",
-  "date",
-  "account",
-  "account_id",
-  "category",
-  "note",
-  "owner",
-  "shared"
-];
-
 function getWalletFilterValues(searchParams) {
   const values = searchParams.getAll("entry_wallet");
   if (values.length > 1) {
@@ -1416,124 +1410,6 @@ function getEntriesEmptyStateSuggestion({ accounts, people, walletFilters, filte
     viewLabel: currentPerson?.name ?? "this view",
     walletLabel: account.name ?? account.accountName ?? owner.name
   };
-}
-
-function buildQuickExpenseDraftPatch({ searchParams, accountOptions, categoryOptions, ownerOptions, fallbackOwnerName }) {
-  const warnings = [];
-  const rawAmount = searchParams.get("amount");
-  const rawDescription = searchParams.get("merchant") ?? searchParams.get("description");
-  const rawAccount = searchParams.get("account");
-  const account = findQuickExpenseAccount(accountOptions, {
-    accountId: searchParams.get("account_id"),
-    accountName: rawAccount
-  });
-  const categoryName = findCaseInsensitiveOption(categoryOptions, searchParams.get("category")) ?? "Other";
-  const ownerName = findCaseInsensitiveOption(ownerOptions.filter((option) => option !== "Shared"), searchParams.get("owner"))
-    ?? fallbackOwnerName
-    ?? "";
-  const isShared = ["1", "true", "yes", "shared"].includes(String(searchParams.get("shared") ?? "").trim().toLowerCase());
-  const amountMinor = Math.abs(formatService.parseDraftMoneyInput(rawAmount ?? "0"));
-  const description = isQuickExpensePlaceholder(rawDescription) ? "" : rawDescription ?? "";
-  const date = normalizeQuickExpenseDate(searchParams.get("date")) || new Date().toISOString().slice(0, 10);
-
-  if (!hasQuickExpenseAmount(rawAmount)) {
-    warnings.push("Shortcut did not pass an amount. Check that the URL uses the real Amount variable, not placeholder text.");
-  }
-  if (isQuickExpensePlaceholder(rawDescription)) {
-    warnings.push("Shortcut did not pass a merchant or description.");
-  }
-  if (rawAccount && !account && isQuickExpensePlaceholder(rawAccount)) {
-    warnings.push("Shortcut did not pass a card or account.");
-  }
-
-  return {
-    draft: {
-      ...(date ? { date } : {}),
-      ...(description ? { description } : {}),
-      ...(account ? {
-        accountId: account.value,
-        accountName: account.accountName,
-        accountOwnerLabel: account.ownerLabel
-      } : {}),
-      categoryName,
-      amountMinor,
-      totalAmountMinor: amountMinor,
-      entryType: "expense",
-      transferDirection: undefined,
-      ownershipType: isShared ? "shared" : "direct",
-      ownerName: isShared ? undefined : ownerName,
-      note: isQuickExpensePlaceholder(searchParams.get("note")) ? "" : searchParams.get("note") ?? "",
-      addToSplits: false,
-      splitGroupId: ""
-    },
-    warning: warnings.join(" ")
-  };
-}
-
-function hasQuickExpenseAmount(value) {
-  return /\d/.test(String(value ?? "")) && !isQuickExpensePlaceholder(value);
-}
-
-function isQuickExpensePlaceholder(value) {
-  return /^\s*\[[^\]]+\]\s*$/.test(String(value ?? ""));
-}
-
-function findQuickExpenseAccount(accountOptions, { accountId, accountName }) {
-  if (accountId) {
-    const byId = accountOptions.find((option) => option.value === accountId || option.id === accountId);
-    if (byId) {
-      return byId;
-    }
-  }
-
-  if (!accountName) {
-    return undefined;
-  }
-
-  const normalizedAccountName = normalizeQuickExpenseToken(accountName);
-  const exactMatch = accountOptions.find((option) => (
-    normalizeQuickExpenseToken(option.accountName) === normalizedAccountName
-    || normalizeQuickExpenseToken(option.label) === normalizedAccountName
-    || normalizeQuickExpenseToken(option.value) === normalizedAccountName
-  ));
-  if (exactMatch) {
-    return exactMatch;
-  }
-
-  const partialMatches = accountOptions.filter((option) => (
-    normalizeQuickExpenseToken(option.accountName).includes(normalizedAccountName)
-    || normalizeQuickExpenseToken(option.label).includes(normalizedAccountName)
-  ));
-  return partialMatches.length === 1 ? partialMatches[0] : undefined;
-}
-
-function findCaseInsensitiveOption(options, value) {
-  if (!value) {
-    return undefined;
-  }
-  const normalizedValue = normalizeQuickExpenseToken(value);
-  return options.find((option) => normalizeQuickExpenseToken(option) === normalizedValue);
-}
-
-function normalizeQuickExpenseToken(value) {
-  return String(value ?? "").trim().toLowerCase();
-}
-
-function normalizeQuickExpenseDate(value) {
-  if (!value) {
-    return "";
-  }
-
-  const trimmed = value.trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return trimmed;
-  }
-
-  const parsed = new Date(trimmed);
-  if (Number.isNaN(parsed.getTime())) {
-    return "";
-  }
-  return parsed.toISOString().slice(0, 10);
 }
 
 function buildQuickExpenseKey(searchParams) {

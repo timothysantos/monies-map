@@ -257,9 +257,11 @@ export default {
       const body = await request.json<{
         apiKey?: string;
         defaultAccountPriorityIds?: string[];
+        defaultParams?: string;
       }>().catch(() => ({
         apiKey: undefined,
-        defaultAccountPriorityIds: undefined
+        defaultAccountPriorityIds: undefined,
+        defaultParams: undefined
       }));
 
       try {
@@ -267,7 +269,8 @@ export default {
           ok: true,
           ...(await saveShortcutSettings(env.DB, {
             apiKey: body.apiKey ?? "",
-            defaultAccountPriorityIds: body.defaultAccountPriorityIds ?? []
+            defaultAccountPriorityIds: body.defaultAccountPriorityIds ?? [],
+            defaultParams: body.defaultParams ?? ""
           }))
         });
       } catch (error) {
@@ -802,12 +805,14 @@ export default {
         view?: string;
       }>();
 
-      const amountMinor = normalizeShortcutAmountMinor(body.amountMinor, body.amount);
-      const accountId = body.accountId ?? (!body.accountName ? await resolveShortcutDefaultAccountId(env.DB) : undefined);
+      const shortcutDefaults = await loadShortcutSettings(env.DB);
+      const bodyWithDefaults = applyShortcutCreateDefaults(body, shortcutDefaults.defaultParams);
+      const amountMinor = normalizeShortcutAmountMinor(bodyWithDefaults.amountMinor, bodyWithDefaults.amount);
+      const accountId = bodyWithDefaults.accountId ?? (!bodyWithDefaults.accountName ? await resolveShortcutDefaultAccountId(env.DB) : undefined);
       if (
-        !body.date
-        || !body.description
-        || (!accountId && !body.accountName)
+        !bodyWithDefaults.date
+        || !bodyWithDefaults.description
+        || (!accountId && !bodyWithDefaults.accountName)
         || amountMinor == null
       ) {
         return json({ ok: false, error: "Missing shortcut entry fields" }, 400);
@@ -815,26 +820,26 @@ export default {
 
       try {
         const created = await createEntryRecord(env.DB, {
-          date: body.date,
-          description: body.description,
+          date: bodyWithDefaults.date,
+          description: bodyWithDefaults.description,
           accountId,
-          accountName: body.accountName,
-          categoryName: body.categoryName ?? "Other",
+          accountName: bodyWithDefaults.accountName,
+          categoryName: bodyWithDefaults.categoryName ?? "Other",
           amountMinor,
-          entryType: body.entryType ?? "expense",
-          transferDirection: body.transferDirection,
-          ownershipType: body.ownershipType ?? "direct",
-          ownerName: body.ownerName,
-          offsetsCategory: body.offsetsCategory,
-          note: body.note,
-          splitBasisPoints: body.splitBasisPoints
+          entryType: bodyWithDefaults.entryType ?? "expense",
+          transferDirection: bodyWithDefaults.transferDirection,
+          ownershipType: bodyWithDefaults.ownershipType ?? "direct",
+          ownerName: bodyWithDefaults.ownerName,
+          offsetsCategory: bodyWithDefaults.offsetsCategory,
+          note: bodyWithDefaults.note,
+          splitBasisPoints: bodyWithDefaults.splitBasisPoints
         });
         const openUrl = buildShortcutEntryOpenUrl(request, {
           entryId: created.entryId,
-          date: body.date,
-          viewId: body.view,
+          date: bodyWithDefaults.date,
+          viewId: bodyWithDefaults.view,
           accountId,
-          accountName: body.accountName
+          accountName: bodyWithDefaults.accountName
         });
 
         return json({
@@ -1773,6 +1778,85 @@ function normalizeShortcutAmountMinor(amountMinor?: number, amount?: number | st
   }
 
   return null;
+}
+
+function applyShortcutCreateDefaults<
+  T extends {
+    date?: string;
+    description?: string;
+    accountId?: string;
+    accountName?: string;
+    categoryName?: string;
+    amountMinor?: number;
+    amount?: number | string;
+    entryType?: "expense" | "income" | "transfer";
+    transferDirection?: "in" | "out";
+    ownershipType?: "direct" | "shared";
+    ownerName?: string;
+    offsetsCategory?: boolean;
+    note?: string;
+    splitBasisPoints?: number;
+    view?: string;
+  }
+>(body: T, defaultParams = ""): T {
+  const params = parseShortcutDefaultParams(defaultParams);
+  const shared = parseShortcutBoolean(params.get("shared"));
+  return {
+    ...body,
+    date: body.date ?? params.get("date") ?? undefined,
+    description: body.description ?? params.get("description") ?? params.get("merchant") ?? undefined,
+    accountId: body.accountId ?? params.get("account_id") ?? params.get("accountId") ?? undefined,
+    accountName: body.accountName ?? params.get("account") ?? params.get("accountName") ?? undefined,
+    categoryName: body.categoryName ?? params.get("categoryName") ?? params.get("category") ?? undefined,
+    amount: body.amount ?? params.get("amount") ?? undefined,
+    entryType: body.entryType ?? parseShortcutEntryType(params.get("entryType")) ?? "expense",
+    transferDirection: body.transferDirection ?? parseShortcutTransferDirection(params.get("transferDirection")),
+    ownershipType: body.ownershipType ?? parseShortcutOwnershipType(params.get("ownershipType")) ?? (shared === true ? "shared" : undefined),
+    ownerName: body.ownerName ?? params.get("ownerName") ?? params.get("owner") ?? undefined,
+    offsetsCategory: body.offsetsCategory ?? parseShortcutBoolean(params.get("offsetsCategory")),
+    note: body.note ?? params.get("note") ?? undefined,
+    splitBasisPoints: body.splitBasisPoints ?? parseShortcutNumber(params.get("splitBasisPoints")),
+    view: body.view ?? params.get("view") ?? undefined
+  };
+}
+
+function parseShortcutDefaultParams(defaultParams = "") {
+  const trimmed = defaultParams.trim().replace(/^\?/, "");
+  return new URLSearchParams(trimmed);
+}
+
+function parseShortcutBoolean(value?: string | null) {
+  if (value == null) {
+    return undefined;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (["1", "true", "yes", "shared"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "direct"].includes(normalized)) {
+    return false;
+  }
+  return undefined;
+}
+
+function parseShortcutNumber(value?: string | null) {
+  if (value == null || !value.trim()) {
+    return undefined;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function parseShortcutEntryType(value?: string | null): "expense" | "income" | "transfer" | undefined {
+  return value === "expense" || value === "income" || value === "transfer" ? value : undefined;
+}
+
+function parseShortcutTransferDirection(value?: string | null): "in" | "out" | undefined {
+  return value === "in" || value === "out" ? value : undefined;
+}
+
+function parseShortcutOwnershipType(value?: string | null): "direct" | "shared" | undefined {
+  return value === "direct" || value === "shared" ? value : undefined;
 }
 
 function buildShortcutEntryOpenUrl(
