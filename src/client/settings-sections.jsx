@@ -1,5 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { ChevronRight, SquarePen, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, GripVertical, SquarePen, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { messages } from "./copy/en-SG";
@@ -75,6 +75,111 @@ export function SettingsPeopleSection({ people, isOpen, onToggle, onEditPerson }
               </div>
             </div>
           ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+export function SettingsShortcutApiSection({
+  accounts,
+  draft,
+  error,
+  isOpen,
+  isSubmitting,
+  shortcutSettings,
+  onApiKeyChange,
+  onGenerateApiKey,
+  onMoveAccount,
+  onToggle,
+  onSave
+}) {
+  const accountsById = useMemo(() => new Map(accounts.map((account) => [account.id, account])), [accounts]);
+  const orderedAccounts = draft.defaultAccountPriorityIds
+    .map((accountId) => accountsById.get(accountId))
+    .filter(Boolean);
+  const endpoint = `${window.location.origin}${shortcutSettings.endpointPath}`;
+
+  return (
+    <section className="chart-card settings-card">
+      <SettingsSectionToggle
+        title={messages.settings.shortcutApiTitle}
+        detail={messages.settings.shortcutApiDetail}
+        isOpen={isOpen}
+        onToggle={onToggle}
+      />
+      {isOpen ? (
+        <div className="settings-shortcut-grid">
+          {error ? <p className="form-error" role="alert">{error}</p> : null}
+          <label className="table-edit-field settings-form-wide">
+            <span>{messages.settings.shortcutEndpoint}</span>
+            <input className="table-edit-input" value={endpoint} readOnly />
+          </label>
+          <label className="table-edit-field settings-form-wide">
+            <span>{messages.settings.shortcutApiKey}</span>
+            <input
+              className="table-edit-input"
+              value={draft.apiKey}
+              onChange={(event) => onApiKeyChange(event.target.value)}
+              autoComplete="off"
+            />
+            <small className="field-help">{messages.settings.shortcutApiKeyHelp(shortcutSettings.apiKeySource)}</small>
+          </label>
+          <div className="settings-actions">
+            <button type="button" className="subtle-action" onClick={onGenerateApiKey} disabled={isSubmitting}>
+              {messages.settings.shortcutGenerateApiKey}
+            </button>
+            <button type="button" className="subtle-action" onClick={onSave} disabled={isSubmitting || !draft.apiKey.trim() || orderedAccounts.length === 0}>
+              {isSubmitting ? messages.common.saving : messages.settings.shortcutSave}
+            </button>
+          </div>
+          <div className="settings-shortcut-priority">
+            <div className="chart-head">
+              <h3>{messages.settings.shortcutDefaultAccountsTitle}</h3>
+              <p>{messages.settings.shortcutDefaultAccountsDetail}</p>
+            </div>
+            <div className="settings-shortcut-account-list">
+              {orderedAccounts.map((account, index) => (
+                <div
+                  key={account.id}
+                  className="settings-account-row settings-shortcut-account-row"
+                  draggable
+                  onDragStart={(event) => event.dataTransfer.setData("text/plain", String(index))}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    onMoveAccount(Number(event.dataTransfer.getData("text/plain")), index);
+                  }}
+                >
+                  <GripVertical size={16} aria-hidden="true" />
+                  <div className="settings-account-main">
+                    <strong>{account.name}</strong>
+                    <p>{messages.common.triplet(account.institution, account.kind, account.ownerLabel)}</p>
+                  </div>
+                  <div className="settings-account-actions">
+                    <button
+                      type="button"
+                      className="icon-action"
+                      aria-label={messages.settings.shortcutMoveAccountUp(account.name)}
+                      disabled={index === 0}
+                      onClick={() => onMoveAccount(index, index - 1)}
+                    >
+                      <ArrowUp size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-action"
+                      aria-label={messages.settings.shortcutMoveAccountDown(account.name)}
+                      disabled={index === orderedAccounts.length - 1}
+                      onClick={() => onMoveAccount(index, index + 1)}
+                    >
+                      <ArrowDown size={15} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       ) : null}
     </section>

@@ -1708,6 +1708,26 @@ h3 {
   flex-wrap: wrap;
 }
 
+.settings-shortcut-grid,
+.settings-shortcut-priority,
+.settings-shortcut-account-list {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-shortcut-account-row {
+  cursor: grab;
+}
+
+.settings-shortcut-account-row:active {
+  cursor: grabbing;
+}
+
+.settings-shortcut-account-row > svg {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
 .settings-trust-stack {
   display: grid;
   gap: 12px;

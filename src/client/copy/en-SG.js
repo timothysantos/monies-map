@@ -710,6 +710,21 @@ export const messages = {
     accountHealthLastImport: (date) => `Last import ${date}`,
     accountHealthNoImports: "No imports yet",
     accountHealthUnresolvedTransfers: (count) => `${count} unresolved transfer${count === 1 ? "" : "s"}`,
+    shortcutApiTitle: "Shortcut API",
+    shortcutApiDetail: "Manage the Apple Shortcut direct-create endpoint, API key, and account fallback order.",
+    shortcutEndpoint: "Endpoint",
+    shortcutApiKey: "API key",
+    shortcutApiKeyHelp: (source) => source === "environment"
+      ? "Using the Cloudflare environment token until you save an app-managed key here."
+      : source === "app"
+        ? "Saved in app settings and used before the Cloudflare environment token."
+        : "Generate or enter a key before calling the shortcut endpoint.",
+    shortcutGenerateApiKey: "Generate key",
+    shortcutSave: "Save shortcut settings",
+    shortcutDefaultAccountsTitle: "Default account priority",
+    shortcutDefaultAccountsDetail: "When the shortcut omits accountId and accountName, the endpoint uses the first active account in this order.",
+    shortcutMoveAccountUp: (name) => `Move ${name} up`,
+    shortcutMoveAccountDown: (name) => `Move ${name} down`,
     categoriesTitle: "Categories",
     categoriesDetail: "Manage the default and custom categories used by imports, entries, plans, and charts.",
     addCategory: "+ Add category",

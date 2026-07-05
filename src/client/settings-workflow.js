@@ -4,6 +4,12 @@
 export function buildSafeSettingsPage(settingsPage) {
   return settingsPage ?? {
     demo: { emptyState: false, lastSeededAt: new Date().toISOString() },
+    shortcutSettings: {
+      endpointPath: "/api/shortcuts/entries/create",
+      apiKey: "",
+      apiKeySource: "none",
+      defaultAccountPriorityIds: []
+    },
     categoryMatchRules: [],
     categoryMatchRuleSuggestions: [],
     unresolvedTransfers: [],
@@ -11,6 +17,28 @@ export function buildSafeSettingsPage(settingsPage) {
     recentAuditEvents: [],
     errorDiagnostics: []
   };
+}
+
+export function buildShortcutSettingsDraft(shortcutSettings, accounts) {
+  const activeAccountIds = new Set(accounts.filter((account) => account.isActive).map((account) => account.id));
+  const savedPriorityIds = (shortcutSettings?.defaultAccountPriorityIds ?? []).filter((accountId) => activeAccountIds.has(accountId));
+  const remainingPriorityIds = accounts
+    .filter((account) => account.isActive && !savedPriorityIds.includes(account.id))
+    .map((account) => account.id);
+  return {
+    apiKey: shortcutSettings?.apiKey ?? "",
+    defaultAccountPriorityIds: [...savedPriorityIds, ...remainingPriorityIds]
+  };
+}
+
+export function reorderShortcutAccountPriorityIds(accountIds, fromIndex, toIndex) {
+  if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= accountIds.length || toIndex >= accountIds.length) {
+    return accountIds;
+  }
+  const nextIds = accountIds.slice();
+  const [moved] = nextIds.splice(fromIndex, 1);
+  nextIds.splice(toIndex, 0, moved);
+  return nextIds;
 }
 
 export function getVisibleSettingsAccounts(accounts, viewId) {

@@ -91,6 +91,7 @@ export function buildSettingsRefreshPlan(kind) {
     || kind === "reconciliation_exception_resolved"
     || kind === "statement_compare_linked"
     || kind === "statement_compare_entry_added"
+    || kind === "shortcut_settings_saved"
     || kind === "settings_form_draft"
     || kind === "filter-only"
     || kind === "mobile-sheet"
