@@ -249,6 +249,11 @@ The app is deployed to Cloudflare Workers with Cloudflare D1:
   `APP_ENVIRONMENT=demo`, shows a thin blue `demo` banner, and allows
   demo-state controls.
 
+If production does not load, use the step-by-step
+[`docs/production-debugging-runbook.md`](docs/production-debugging-runbook.md)
+before redeploying. It covers Cloudflare Access, Worker logs, deployment
+rollback, D1 schema checks, asset routing, and stale browser sessions.
+
 ### Command reference
 
 The repo requires Node 22.12.0 or newer for local scripts:
