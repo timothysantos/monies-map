@@ -714,6 +714,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onSaveInlineSplit={requestSaveInlineSplit}
         onRequestDeleteSplit={requestDeleteSplit}
         onViewLinkedEntry={openLinkedEntry}
+        onRefreshActivity={() => onRefresh()}
         viewId={view.id}
         isRefreshingDerived={isRefreshingDerived}
       />

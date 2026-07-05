@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { Check, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, RefreshCw, X } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
@@ -61,10 +61,12 @@ export function SplitActivityGroups({
   onEditExpense,
   onEditSettlement,
   onViewLinkedEntry,
+  onRefreshActivity,
   viewId = "household"
 }) {
   const inlineEditorRef = useRef(null);
   const editingDraftKey = editingDraft ? `${editingDraft.kind}:${editingDraft.id}` : "";
+  const [refreshingDate, setRefreshingDate] = useState("");
 
   useEffect(() => {
     if (!editingDraft || archived) {
@@ -117,13 +119,43 @@ export function SplitActivityGroups({
     return () => window.cancelAnimationFrame(frame);
   }, [archived, editingDraftKey]);
 
-  return groups.map((group) => (
-    <section key={`${archived ? "archived" : "current"}-${group.date}`} className={`split-date-group ${archived ? "is-archived" : ""}`}>
-      <header className="split-date-header">
-        <strong>{formatService.formatDateOnly(group.date)}</strong>
-        <span>{group.items.length} {messages.splits.entries}</span>
-      </header>
-      <div className="split-date-items">
+  async function refreshDateGroup(date) {
+    if (!onRefreshActivity || refreshingDate) {
+      return;
+    }
+
+    setRefreshingDate(date);
+    try {
+      await onRefreshActivity();
+    } finally {
+      setRefreshingDate("");
+    }
+  }
+
+  return groups.map((group) => {
+    const formattedDate = formatService.formatDateOnly(group.date);
+
+    return (
+      <section key={`${archived ? "archived" : "current"}-${group.date}`} className={`split-date-group ${archived ? "is-archived" : ""}`}>
+        <header className="split-date-header">
+          <strong>{formattedDate}</strong>
+          <div className="split-date-actions">
+            <span>{group.items.length} {messages.splits.entries}</span>
+            {onRefreshActivity && !archived ? (
+              <button
+                type="button"
+                className="entries-date-refresh-button split-date-refresh-button"
+                aria-label={`Refresh split rows for ${formattedDate}`}
+                title={`Refresh split rows for ${formattedDate}`}
+                disabled={Boolean(refreshingDate)}
+                onClick={() => void refreshDateGroup(group.date)}
+              >
+                <RefreshCw size={15} className={refreshingDate === group.date ? "is-spinning" : ""} />
+              </button>
+            ) : null}
+          </div>
+        </header>
+        <div className="split-date-items">
         {group.items.map((item, index) => {
           const theme = categoryService.getTheme(categories, { categoryName: item.categoryName ?? "Other" }, index);
           const isEditable = !archived && !readOnly;
@@ -285,5 +317,6 @@ export function SplitActivityGroups({
         })}
       </div>
     </section>
-  ));
+    );
+  });
 }
