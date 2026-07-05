@@ -197,7 +197,11 @@ test("add to splits refreshes split groups and forces group selection when multi
   await page.goto(`/entries?view=person-tim&month=${month}`);
   const linkedEntryRow = page.locator(".entry-row").filter({ hasText: description }).first();
   await expect(linkedEntryRow).toBeVisible();
-  await expect(linkedEntryRow.locator(".entry-chip-linked-split")).toContainText("On splits · Holiday");
+  const linkedSplitChip = linkedEntryRow.locator(".entry-chip-linked-split");
+  await expect(linkedSplitChip.locator(".entry-chip-linked-split-base")).toHaveText("On splits");
+  await expect(linkedSplitChip.locator(".entry-chip-linked-split-group")).toHaveText("Holiday");
+  await expect(linkedSplitChip.locator(".entry-chip-linked-split-base")).toHaveCSS("color", "rgb(180, 83, 9)");
+  await expect(linkedSplitChip.locator(".entry-chip-linked-split-group")).not.toHaveCSS("color", "rgb(180, 83, 9)");
 });
 
 test("add to splits opens the group picker without waiting for the freshness refresh", async ({ page }) => {

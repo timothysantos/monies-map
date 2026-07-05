@@ -31,6 +31,10 @@ export function buildEntryRowDisplay(entry, viewId, isLinkedToSplits = false) {
       : entry.ownershipType === "shared"
         ? "entry-chip-shared"
         : "entry-chip-owner",
+    linkedSplitGroupName: isLinkedToSplits ? splitGroupName : "",
+    linkedSplitGroupStyle: isLinkedToSplits && splitGroupName
+      ? getSplitGroupChipStyle(splitGroupName)
+      : undefined,
     splitPercent,
     transferLabel: entry.entryType === "transfer"
       ? `${entry.linkedTransfer ? "Matched transfer" : "Transfer"} ${entry.transferDirection === "in" ? "in" : "out"}`
@@ -44,6 +48,30 @@ export function buildEntryRowDisplay(entry, viewId, isLinkedToSplits = false) {
     ].filter(Boolean).join(" - "),
     primarySignedAmountMinor: hasWeightedTotal ? signedTotalAmountMinor : signedAmountMinor,
     secondarySignedAmountMinor: hasWeightedTotal ? signedAmountMinor : null
+  };
+}
+
+export function getSplitGroupChipStyle(groupName) {
+  const palette = [
+    { background: "#e6f3ff", color: "#135d8c", border: "#9bd0f5" },
+    { background: "#eaf7ed", color: "#1d6f42", border: "#a5dcb3" },
+    { background: "#f1ecff", color: "#5d3aa0", border: "#c6b6f4" },
+    { background: "#fff1e8", color: "#a84a17", border: "#f4b38e" },
+    { background: "#eaf7f6", color: "#176a68", border: "#9ed9d4" },
+    { background: "#fff3c7", color: "#7a5700", border: "#e8c34c" },
+    { background: "#fce7f3", color: "#9d2463", border: "#efa3cb" },
+    { background: "#eceff4", color: "#43516a", border: "#bac3d1" }
+  ];
+  const hash = Array.from(String(groupName)).reduce(
+    (value, character) => ((value << 5) - value + character.charCodeAt(0)) | 0,
+    0
+  );
+  const tone = palette[Math.abs(hash) % palette.length];
+
+  return {
+    "--split-group-chip-bg": tone.background,
+    "--split-group-chip-color": tone.color,
+    "--split-group-chip-border": tone.border
   };
 }
 

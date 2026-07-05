@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildEntryRowDisplay, getEntryOwnerCue } from "../src/client/entry-row-display.js";
+import { buildEntryRowDisplay, getEntryOwnerCue, getSplitGroupChipStyle } from "../src/client/entry-row-display.js";
 
 const sharedEntry = {
   id: "entry-shared",
@@ -41,5 +41,12 @@ test("linked split rows keep the Splits workspace label and cue", () => {
   assert.equal(display.ownerLabel, "On splits · Okaeri");
   assert.equal(display.ownerTitle, "On Splits: Okaeri");
   assert.equal(display.ownerChipClassName, "entry-chip-shared entry-chip-linked-split");
+  assert.equal(display.linkedSplitGroupName, "Okaeri");
+  assert.deepEqual(display.linkedSplitGroupStyle, getSplitGroupChipStyle("Okaeri"));
   assert.match(ownerCue.style["--entry-owner-border-color"], /37, 99, 235/);
+});
+
+test("split group chip colors are stable per group name", () => {
+  assert.deepEqual(getSplitGroupChipStyle("Okaeri"), getSplitGroupChipStyle("Okaeri"));
+  assert.notDeepEqual(getSplitGroupChipStyle("Okaeri"), getSplitGroupChipStyle("B.River"));
 });
