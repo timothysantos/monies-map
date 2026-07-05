@@ -53,6 +53,7 @@ export interface ShortcutSettingsDto {
   apiKey: string;
   apiKeySource: "app" | "environment" | "none";
   defaultAccountPriorityIds: string[];
+  defaultParams: string;
 }
 
 export interface AccountCheckpointDto {
