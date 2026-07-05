@@ -7,6 +7,7 @@ const repoRoot = process.cwd();
 const routeContextPath = path.join(repoRoot, "src/domain/route-context.ts");
 const pageLabelsPath = path.join(repoRoot, "src/domain/page-labels.ts");
 const appShellDtoPath = path.join(repoRoot, "src/domain/app-shell-dto.ts");
+const appShellPath = path.join(repoRoot, "src/domain/app-shell.ts");
 const allowedExports = [
   "loadRoutePageContext",
   "resolveEffectiveMonth",
@@ -76,4 +77,13 @@ test("reference data builder stays read-only and skips app initialization", asyn
   const match = source.match(/export\s+async\s+function\s+buildReferenceDataDto[\s\S]+?\n}\n/);
   assert.ok(match, "buildReferenceDataDto must exist");
   assert.equal(match[0].includes("ensureAppData"), false);
+});
+
+test("route page shell stays read-only and skips app initialization", async () => {
+  const source = await readFile(appShellPath, "utf8");
+  const match = source.match(/export\s+async\s+function\s+loadPageShell[\s\S]+?\n}\n/);
+  assert.ok(match, "loadPageShell must exist");
+  assert.equal(match[0].includes("ensureAppData"), false);
+  assert.equal(match[0].includes("ensureSeedData"), false);
+  assert.equal(match[0].includes("ensureDemoSchema"), false);
 });
