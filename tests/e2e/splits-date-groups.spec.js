@@ -110,6 +110,9 @@ test("split date headers stick on mobile while scrolling through a date group", 
   await expect(page.locator(".shell")).toHaveCSS("overflow-x", "clip");
   await expect(page.locator(".panel-splits")).toHaveCSS("overflow-x", "clip");
 
+  const initialBox = await dateHeader.boundingBox();
+  expect(initialBox).not.toBeNull();
+
   await page.evaluate((element) => {
     document.documentElement.style.scrollBehavior = "auto";
     const documentTop = element.getBoundingClientRect().top + window.scrollY;
@@ -121,4 +124,15 @@ test("split date headers stick on mobile while scrolling through a date group", 
   const headerTop = await dateHeader.evaluate((element) => element.getBoundingClientRect().top);
   expect(headerTop).toBeGreaterThanOrEqual(-1);
   expect(headerTop).toBeLessThanOrEqual(1);
+
+  for (const extraOffset of [520, 640, 760]) {
+    await page.evaluate((offset) => window.scrollTo({ top: offset, behavior: "instant" }), extraOffset);
+    const box = await dateHeader.boundingBox();
+    expect(box).not.toBeNull();
+    expect(Math.abs((box?.x ?? 0) - (initialBox?.x ?? 0))).toBeLessThanOrEqual(1);
+    expect(Math.abs((box?.width ?? 0) - (initialBox?.width ?? 0))).toBeLessThanOrEqual(1);
+    const top = await dateHeader.evaluate((element) => element.getBoundingClientRect().top);
+    expect(top).toBeGreaterThanOrEqual(-1);
+    expect(top).toBeLessThanOrEqual(1);
+  }
 });
