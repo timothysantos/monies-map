@@ -155,3 +155,35 @@ test("expanded entry closes on the first cancel or outside click", async ({ page
   await page.locator(".entries-date-head").filter({ hasText: "1 Jun 2026" }).click();
   await expect(entryRow).not.toHaveClass(/is-inline-editing/);
 });
+
+test("linked entry opened from the URL closes on the first cancel", async ({ page }) => {
+  const description = `Playwright URL close edit ${Date.now()}`;
+  const month = "2026-06";
+
+  await reseedDemo(page);
+  const createdEntry = await postJson(page, "/api/entries/create", {
+    date: `${month}-01`,
+    description,
+    accountName: "Citi Rewards",
+    categoryName: "Taxi",
+    amountMinor: 910,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+
+  await page.goto(`/entries?view=person-tim&month=${month}&editing_entry=${createdEntry.entryId}`);
+  await expect(page.getByRole("heading", { name: /Entries/ })).toBeVisible();
+  const entryRow = page.locator(".entry-row").filter({ hasText: description }).first();
+
+  await expect(entryRow).toHaveClass(/is-inline-editing/);
+  await entryRow.getByRole("button", { name: "Cancel editing entry" }).click();
+  await expect(entryRow).not.toHaveClass(/is-inline-editing/);
+  await expect(page).not.toHaveURL(/editing_entry=/);
+
+  await page.goto(`/entries?view=person-tim&month=${month}&editing_entry=${createdEntry.entryId}`);
+  await expect(entryRow).toHaveClass(/is-inline-editing/);
+  await page.locator(".entries-date-head").filter({ hasText: "1 Jun 2026" }).click();
+  await expect(entryRow).not.toHaveClass(/is-inline-editing/);
+  await expect(page).not.toHaveURL(/editing_entry=/);
+});
