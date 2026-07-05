@@ -80,43 +80,48 @@ export async function loadCategoryMatchRules(db: D1Database): Promise<CategoryMa
 }
 
 export async function loadCategoryMatchRuleSuggestions(db: D1Database): Promise<CategoryMatchRuleSuggestionDto[]> {
-  const result = await db
-    .prepare(`
-      SELECT
-        category_match_rule_suggestions.id,
-        category_match_rule_suggestions.pattern,
-        category_match_rule_suggestions.category_id,
-        categories.name AS category_name,
-        category_match_rule_suggestions.source_count,
-        category_match_rule_suggestions.sample_descriptions_json,
-        category_match_rule_suggestions.updated_at
-      FROM category_match_rule_suggestions
-      INNER JOIN categories ON categories.id = category_match_rule_suggestions.category_id
-      WHERE category_match_rule_suggestions.household_id = ?
-        AND category_match_rule_suggestions.status = 'pending'
-        AND category_match_rule_suggestions.source_count >= 2
-      ORDER BY category_match_rule_suggestions.updated_at DESC, lower(category_match_rule_suggestions.pattern)
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID)
-    .all<{
-      id: string;
-      pattern: string;
-      category_id: string;
-      category_name: string;
-      source_count: number;
-      sample_descriptions_json: string;
-      updated_at: string;
-    }>();
+  const [result, existingRules] = await Promise.all([
+    db
+      .prepare(`
+        SELECT
+          category_match_rule_suggestions.id,
+          category_match_rule_suggestions.pattern,
+          category_match_rule_suggestions.category_id,
+          categories.name AS category_name,
+          category_match_rule_suggestions.source_count,
+          category_match_rule_suggestions.sample_descriptions_json,
+          category_match_rule_suggestions.updated_at
+        FROM category_match_rule_suggestions
+        INNER JOIN categories ON categories.id = category_match_rule_suggestions.category_id
+        WHERE category_match_rule_suggestions.household_id = ?
+          AND category_match_rule_suggestions.status = 'pending'
+          AND category_match_rule_suggestions.source_count >= 2
+        ORDER BY category_match_rule_suggestions.updated_at DESC, lower(category_match_rule_suggestions.pattern)
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID)
+      .all<{
+        id: string;
+        pattern: string;
+        category_id: string;
+        category_name: string;
+        source_count: number;
+        sample_descriptions_json: string;
+        updated_at: string;
+      }>(),
+    loadCategoryMatchRules(db)
+  ]);
 
-  return result.results.map((row) => ({
-    id: row.id,
-    pattern: row.pattern,
-    categoryId: row.category_id,
-    categoryName: row.category_name,
-    sourceCount: Number(row.source_count ?? 0),
-    sampleDescriptions: parseSuggestionSamples(row.sample_descriptions_json),
-    lastSeenAt: row.updated_at
-  }));
+  return result.results
+    .map((row) => ({
+      id: row.id,
+      pattern: row.pattern,
+      categoryId: row.category_id,
+      categoryName: row.category_name,
+      sourceCount: Number(row.source_count ?? 0),
+      sampleDescriptions: parseSuggestionSamples(row.sample_descriptions_json),
+      lastSeenAt: row.updated_at
+    }))
+    .filter((suggestion) => !isCategoryMatchSuggestionCoveredByRule(suggestion, existingRules));
 }
 
 export function matchCategoryRule(description: string, rules: CategoryMatchRuleDto[]) {
@@ -142,6 +147,51 @@ export function matchCategoryRule(description: string, rules: CategoryMatchRuleD
         categoryRulePartMatches(patternPart, normalizedDescription, upperDescription)
       );
     })?.categoryName;
+}
+
+export function isCategoryMatchSuggestionCoveredByRule(
+  suggestion: Pick<CategoryMatchRuleSuggestionDto, "pattern" | "categoryName" | "sampleDescriptions">,
+  rules: CategoryMatchRuleDto[]
+) {
+  return rules
+    .filter((rule) => rule.isActive && rule.categoryName === suggestion.categoryName)
+    .some((rule) => {
+      if (matchCategoryRule(suggestion.pattern, [rule]) === suggestion.categoryName) {
+        return true;
+      }
+
+      if (suggestion.sampleDescriptions.some((sample) => matchCategoryRule(sample, [rule]) === suggestion.categoryName)) {
+        return true;
+      }
+
+      const normalizedSuggestion = normalizeRuleText(suggestion.pattern);
+      const normalizedRule = normalizeRuleText(rule.pattern);
+      return Boolean(
+        normalizedSuggestion
+        && normalizedRule
+        && (normalizedRule.includes(normalizedSuggestion) || normalizedSuggestion.includes(normalizedRule))
+      );
+    });
+}
+
+function markSuggestionAcceptedByPattern(
+  db: D1Database,
+  input: {
+    pattern: string;
+    categoryId: string;
+  }
+) {
+  return db
+    .prepare(`
+      UPDATE category_match_rule_suggestions
+      SET status = 'accepted', updated_at = CURRENT_TIMESTAMP
+      WHERE household_id = ?
+        AND pattern = ?
+        AND category_id = ?
+        AND status = 'pending'
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.pattern, input.categoryId)
+    .run();
 }
 
 function categoryRulePartMatches(
@@ -281,7 +331,21 @@ export async function recordCategoryMatchSuggestion(
   }
 
   const existingRules = await loadCategoryMatchRules(db);
-  if (matchCategoryRule(input.description, existingRules) === input.categoryName) {
+  if (isCategoryMatchSuggestionCoveredByRule({
+    pattern,
+    categoryName: input.categoryName,
+    sampleDescriptions: [input.description]
+  }, existingRules)) {
+    const category = await db
+      .prepare("SELECT id FROM categories WHERE household_id = ? AND name = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, input.categoryName)
+      .first<{ id: string }>();
+    if (category) {
+      await markSuggestionAcceptedByPattern(db, {
+        pattern,
+        categoryId: category.id
+      });
+    }
     return;
   }
 
