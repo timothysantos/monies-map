@@ -483,6 +483,12 @@ CREATE TABLE IF NOT EXISTS demo_settings (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS app_error_diagnostics (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL,

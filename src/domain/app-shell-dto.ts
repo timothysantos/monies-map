@@ -106,6 +106,12 @@ export async function buildEntriesShellDto(
     },
     settingsPage: {
       accounts: [],
+      shortcutSettings: {
+        endpointPath: "/api/shortcuts/entries/create",
+        apiKey: "",
+        apiKeySource: "none",
+        defaultAccountPriorityIds: []
+      },
       demo,
       categoryMatchRules: [],
       categoryMatchRuleSuggestions: [],
