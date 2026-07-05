@@ -198,15 +198,24 @@ export function getVisibleAmountMinor(entry, viewId) {
 
 export function groupEntriesByDate(entries) {
   const grouped = new Map();
+  const visibleEntryIds = new Set(entries.map((entry) => entry.id));
 
   for (const entry of entries) {
     const current = grouped.get(entry.date) ?? { date: entry.date, entries: [], netMinor: 0 };
     current.entries.push(entry);
-    current.netMinor += getSignedAmountMinor(entry);
+    current.netMinor += getDailyNetAmountMinor(entry, visibleEntryIds);
     grouped.set(entry.date, current);
   }
 
   return [...grouped.values()].sort((left, right) => right.date.localeCompare(left.date));
+}
+
+export function getDailyNetAmountMinor(entry, visibleEntryIds = new Set()) {
+  if (entry.entryType === "transfer" && entry.linkedTransfer?.transactionId && visibleEntryIds.has(entry.linkedTransfer.transactionId)) {
+    return 0;
+  }
+
+  return getSignedAmountMinor(entry);
 }
 
 export function getSignedAmountMinor(entry) {
