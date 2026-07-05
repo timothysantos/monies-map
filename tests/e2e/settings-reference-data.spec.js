@@ -157,27 +157,30 @@ test.describe("settings reference data", () => {
     expect(activeAccounts.length).toBeGreaterThan(0);
     const targetAccount = activeAccounts.find((account) => account.kind === "credit_card") ?? activeAccounts[0];
     const otherAccounts = activeAccounts.filter((account) => account.id !== targetAccount.id);
+    const targetCategory = referenceData.categories.find((category) => category.name === "Food & Drinks")
+      ?? referenceData.categories.find((category) => category.name !== "Other")
+      ?? referenceData.categories[0];
     const apiKey = `mm_playwright_${Date.now()}`;
     const description = uniqueLabel("Apple Shortcut fallback");
 
     await postJson(page, "/api/settings/shortcuts/save", {
       apiKey,
-      defaultAccountPriorityIds: [targetAccount.id, ...otherAccounts.map((account) => account.id)]
+      defaultAccountPriorityIds: [targetAccount.id, ...otherAccounts.map((account) => account.id)],
+      defaultParams: `categoryName=${encodeURIComponent(targetCategory.name)}&ownerName=Tim&view=person-tim`
     });
 
     const settingsPage = await loadSettingsPage(page);
     expect(settingsPage.settingsPage.shortcutSettings.apiKey).toBe(apiKey);
     expect(settingsPage.settingsPage.shortcutSettings.apiKeySource).toBe("app");
     expect(settingsPage.settingsPage.shortcutSettings.defaultAccountPriorityIds[0]).toBe(targetAccount.id);
+    expect(settingsPage.settingsPage.shortcutSettings.defaultParams).toContain("ownerName=Tim");
 
     const response = await page.request.post("/api/shortcuts/entries/create", {
       headers: shortcutHeaders(apiKey),
       data: {
         date: "2026-04-27",
         description,
-        amount: "12.34",
-        ownershipType: "direct",
-        ownerName: "Tim"
+        amount: "12.34"
       }
     });
     expect(response.ok(), await response.text()).toBeTruthy();
@@ -192,6 +195,7 @@ test.describe("settings reference data", () => {
       entriesPage.monthPage.entries.some((entry) => (
         entry.description === description
         && entry.accountName === targetAccount.name
+        && entry.categoryName === targetCategory.name
         && entry.amountMinor === 1234
       ))
     ).toBe(true);
