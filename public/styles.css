@@ -9239,10 +9239,15 @@ th {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: baseline;
     gap: 8px;
-    margin: -10px -12px 4px;
+    width: 100vw;
+    margin: -10px calc(50% - 50vw) 4px;
     padding: 10px 12px 6px;
     border-radius: 0;
-    max-width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    contain: paint;
   }
 
   .entries-date-head strong {
@@ -9452,6 +9457,9 @@ th {
     margin-inline: -12px;
     padding: 10px 12px 6px;
     border-radius: 0;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    contain: paint;
   }
 
   .split-date-header strong,

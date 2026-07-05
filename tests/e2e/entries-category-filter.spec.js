@@ -279,6 +279,14 @@ test("entry date headers stick on mobile while scrolling through a date group", 
   await expect(page.locator(".shell")).toHaveCSS("overflow-x", "clip");
   await expect(page.locator(".panel").first()).toHaveCSS("overflow-x", "clip");
 
+  const viewport = page.viewportSize();
+  expect(viewport).not.toBeNull();
+  const initialBox = await dateHeader.boundingBox();
+  expect(initialBox).not.toBeNull();
+  expect(initialBox.x).toBeGreaterThanOrEqual(-1);
+  expect(initialBox.x).toBeLessThanOrEqual(1);
+  expect(initialBox.width).toBeGreaterThanOrEqual((viewport?.width ?? 0) - 1);
+
   await page.evaluate((element) => {
     document.documentElement.style.scrollBehavior = "auto";
     const documentTop = element.getBoundingClientRect().top + window.scrollY;
@@ -290,6 +298,17 @@ test("entry date headers stick on mobile while scrolling through a date group", 
   const headerTop = await dateHeader.evaluate((element) => element.getBoundingClientRect().top);
   expect(headerTop).toBeGreaterThanOrEqual(-1);
   expect(headerTop).toBeLessThanOrEqual(1);
+
+  for (const extraOffset of [520, 640, 760]) {
+    await page.evaluate((offset) => window.scrollTo({ top: offset, behavior: "instant" }), extraOffset);
+    const box = await dateHeader.boundingBox();
+    expect(box).not.toBeNull();
+    expect(Math.abs((box?.x ?? 0) - (initialBox?.x ?? 0))).toBeLessThanOrEqual(1);
+    expect(Math.abs((box?.width ?? 0) - (initialBox?.width ?? 0))).toBeLessThanOrEqual(1);
+    const top = await dateHeader.evaluate((element) => element.getBoundingClientRect().top);
+    expect(top).toBeGreaterThanOrEqual(-1);
+    expect(top).toBeLessThanOrEqual(1);
+  }
 });
 
 test("expanded entry closes on the first cancel or outside click", async ({ page }) => {
