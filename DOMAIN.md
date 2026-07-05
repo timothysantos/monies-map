@@ -375,8 +375,8 @@ Important distinctions:
   checked without moving a later-cleared row into an already closed statement.
 - A transfer ledger entry is still one ledger entry; a full transfer usually
   needs a matched pair of entries linked by a transfer group.
-- Shared ownership on a ledger entry is not the same thing as a split expense
-  record in the split workspace.
+- The ledger owner is the person attached to the bank/account-side record. A
+  row is shared in Entries only when it is linked to a `split expense`.
 
 ### Bank Certification Status
 
@@ -422,24 +422,22 @@ Important distinctions:
   files should still auto-skip a row that is already present in the ledger,
   even if that ledger row is import provisional or statement certified.
 
-### Entry Split
+### Entry Share
 
-An allocation of one shared ledger entry across participating people. This is
-the household-ledger ownership split model.
+The per-person projection used to decide which person can see a ledger entry in
+their direct view. For ordinary ledger entries this is a 100% direct owner
+projection.
 
 Important distinction:
 
-- `shared` is an `ownership type`, not a virtual third person
-- a shared ledger entry is a real ledger state, not just a flag that says the
-  row appears in the split workspace
-- in storage, shared entries use `ownership_type = 'shared'`
-- shared entries do not need a synthetic `person` row called `shared`
-- when an entry is shared, `entry splits` allocate that one shared ledger entry
-  across real people
-- a shared ledger entry may exist without a linked `split expense`
+- an entry share is not the source of truth for shared-expense settlement
+- new ledger rows should use direct ownership and a real owner
+- `transaction_splits` remains as a storage compatibility table for direct
+  person projection and legacy shared ledger rows
+- new shared-expense allocation should live on `split expense shares`
 
 Canonical term:
-- `entry split`
+- `entry share`
 
 Storage alias:
 - `transaction_splits`
@@ -448,9 +446,23 @@ Relationships:
 - belongs to one `ledger entry`
 - belongs to one `person`
 
+### Split-Linked Ledger Entry
+
+A ledger entry that is connected to a split expense through
+`split_expenses.linked_transaction_id`.
+
+Important distinction:
+
+- this is the Entries-page meaning of `Shared`
+- the ledger owner and bank-facing facts remain on the ledger entry
+- the split allocation and group live on the split expense and its shares
+- deleting or unlinking the split expense removes the shared Entries attribute
+  without rewriting the ledger owner
+
 Related but separate concepts:
 
-- `shared ledger entry`
+- `ledger entry`
+- `entry share`
 - `split expense`
 - `split expense share`
 

@@ -231,8 +231,9 @@ Important ownership rule:
 
 - if you omit `ownershipType`, the API defaults it to `direct`
 - `direct` entries require `ownerName`
-- so in practice, either send both `ownershipType: "direct"` and `ownerName`,
-  or send `ownershipType: "shared"` if the row should be shared
+- send `ownerName` for the person who owns the ledger row
+- shared-expense allocation is managed by linking the saved ledger row to a
+  split expense, not by creating a shared ledger owner
 
 Common payload:
 
@@ -266,7 +267,6 @@ The shortcut endpoint accepts these optional fields:
 - `ownerName`
 - `offsetsCategory`
 - `note`
-- `splitBasisPoints`
 - `view`
 
 Defaults and behavior:
@@ -287,17 +287,11 @@ Defaults and behavior:
   - optional
   - defaults to `direct`
 - `ownerName`
-  - optional only when `ownershipType` is `shared`
   - required when `ownershipType` is `direct`, including when you rely on the
     default `direct`
 - `note`
   - optional
   - defaults to empty / no note
-- `splitBasisPoints`
-  - optional
-  - only used when `ownershipType` is `shared`
-  - defaults to `5000`, which means a 50/50 split between the two household
-    people
 
 Fields with no server default:
 
@@ -644,7 +638,6 @@ Supported query parameters are:
 - `account` or `account_id`
 - `category`
 - `owner`
-- `shared=true`
 - `note`
 
 `account` or `account_id` is optional. If neither is sent, the app uses the
@@ -1168,23 +1161,23 @@ It is intentionally separate from `Entries`:
 - `Splits` is where manual shared expenses, named groups, settle-up records,
   and shared-expense matching live
 
-That does not mean every shared ledger row must live in `Splits`.
+Shared Entries rows are driven by a split-expense link.
 
 Current model:
 
-- an entry in `Entries` can have direct ownership or shared ownership
-- `Shared` in the owner control is a real ledger ownership state
-- `Shared` is not a third person or virtual household user
-- a shared entry may have per-person `transaction splits`
-- a shared entry may also remain only a shared ledger row, without a linked
-  split-workspace record
+- an entry in `Entries` has a real ledger owner
+- `Shared` in Entries means the row has a linked split expense
+- `Shared` is not a third person, virtual household user, or ledger owner
+- the split ratio lives on the split expense and its split expense shares
+- deleting or unlinking the split expense removes the shared Entries cue without
+  rewriting the ledger owner
 
 So:
 
-- `shared ledger entry` means the ledger row belongs to the household/shared
-  bucket
-- `split expense` means the row is also being tracked in the separate
-  shared-expense workspace
+- `ledger owner` means the person attached to the bank/account-side row
+- `split expense` means the row is being tracked in the separate shared-expense
+  workspace
+- `split-linked ledger entry` means an Entries row has a linked split expense
 
 That separation keeps the CSV import flow focused on ledger review instead of
 mixing bank cleanup with Splitwise-style matching decisions.
@@ -1234,10 +1227,10 @@ the sharing record is removed.
   date is backdated
 
 When you use `Add to splits` from the entries editor, the app treats the entry
-owner or owning account as the payer. If the ledger row is still direct, it is
-converted to shared first with a default `50/50` transaction split. The app then
-opens a centered split-group picker; nothing is saved until you choose a group,
-and you can cancel the picker without creating a split expense.
+owner or owning account as the payer and creates a linked split expense with a
+default `50/50` split. The ledger row keeps its owner. The app opens a centered
+split-group picker; nothing is saved until you choose a group, and you can
+cancel the picker without creating a split expense.
 
 ## What are the default app categories?
 
