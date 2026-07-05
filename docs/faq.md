@@ -541,6 +541,10 @@ How rules match:
 If you keep changing similar merchant rows to the same category, the app does
 not create a rule by itself. It creates a pending suggestion.
 
+Suggestions are only shown when they still need review. If an active rule in
+the same category already covers the suggested merchant text or one of its saved
+sample descriptions, the suggestion is filtered out of Settings.
+
 You will see a small number badge on Settings when suggestions are waiting. Use
 that badge, or open Settings -> Category matching, to review them.
 
