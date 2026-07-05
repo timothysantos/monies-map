@@ -23,7 +23,8 @@ Settings state is split between:
 - server state for the settings page DTO
 - workflow state for account, category, person, checkpoint, and reconciliation
   actions
-- workflow state for Shortcut API key edits and default-account priority order
+- workflow state for Shortcut API key edits, default shortcut params, and
+  default-account priority order
 - transient UI state for dialogs and section disclosure
 
 Settings should stay lightweight. It should not become a hidden app-shell
@@ -56,7 +57,7 @@ Settings owns:
 - checkpoints
 - reconciliation exceptions
 - unresolved transfer review
-- Shortcut API key and default account fallback order
+- Shortcut API key, default shortcut params, and default account fallback order
 
 ## Audit Status
 

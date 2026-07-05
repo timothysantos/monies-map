@@ -224,6 +224,8 @@ Required fields:
 
 `accountId` or `accountName` is optional. If neither is sent, the API uses the
 first active account in Settings -> Shortcut API -> Default account priority.
+The endpoint also applies Settings -> Shortcut API -> Default shortcut params
+before the JSON body, so values sent by the shortcut always win.
 
 Important ownership rule:
 
@@ -255,13 +257,17 @@ shortcut already uses cents.
 
 The shortcut endpoint accepts these optional fields:
 
+- `accountId`
+- `accountName`
 - `categoryName`
 - `entryType`
 - `transferDirection`
 - `ownershipType`
 - `ownerName`
+- `offsetsCategory`
 - `note`
 - `splitBasisPoints`
+- `view`
 
 Defaults and behavior:
 
@@ -297,10 +303,10 @@ Fields with no server default:
 
 - `date`
 - `description`
-- `accountId` or `accountName`
 - `amountMinor` or `amount`
 
-If any of those are missing, the shortcut request is rejected.
+If any of those are missing after Settings defaults are applied, the shortcut
+request is rejected.
 
 ### How do I build the Apple Shortcut?
 
@@ -309,6 +315,14 @@ Apple documents `Get Contents of URL` as the API action for Shortcuts and
 
 - [Request your first API in Shortcuts on iPhone or iPad](https://support.apple.com/en-euro/guide/shortcuts/apd58d46713f/ios)
 - [Intro to URL schemes in Shortcuts on iPhone or iPad](https://support.apple.com/en-au/guide/shortcuts/apd621a1ad7a/ios)
+- [Open and create a shortcut using a URL scheme on iPhone or iPad](https://support.apple.com/guide/shortcuts/open-create-and-run-a-shortcut-apda283236d7/ios)
+
+Settings -> Shortcut API includes a link to `shortcuts://create-shortcut`. Apple
+documents that link as a way to open the Shortcuts editor for a new blank
+shortcut. Apple does not document a URL that pre-fills all shortcut actions, so
+the app can open the editor and show the required parameters, but it cannot
+install the complete shortcut automatically unless you separately create and
+share an iCloud Shortcut link.
 
 The practical action flow is:
 
@@ -625,6 +639,11 @@ Supported query parameters are:
 - `owner`
 - `shared=true`
 - `note`
+
+`account` or `account_id` is optional. If neither is sent, the app uses the
+first active account in Settings -> Shortcut API -> Default account priority.
+The quick-entry URL also applies Settings -> Shortcut API -> Default shortcut
+params first, then lets explicit URL parameters override them.
 
 After the app reads the parameters, it removes them from the URL so refreshing
 the page does not reopen the draft.
