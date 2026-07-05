@@ -8,10 +8,14 @@ import {
   loadReconciliationExceptions,
   loadUnresolvedTransfers
 } from "../app-repository";
+import { loadShortcutSettings } from "../app-repository-shortcuts";
 import type { SettingsPageDto } from "../../types/dto";
 
 // Build the route-owned Settings page DTO.
-export async function buildSettingsPageDto(db: D1Database): Promise<{ settingsPage: SettingsPageDto }> {
+export async function buildSettingsPageDto(
+  db: D1Database,
+  environmentShortcutToken?: string | null
+): Promise<{ settingsPage: SettingsPageDto }> {
   const demo = await ensureAppData(db);
   const [
     accounts,
@@ -30,9 +34,11 @@ export async function buildSettingsPageDto(db: D1Database): Promise<{ settingsPa
     loadAuditEvents(db),
     loadAppErrorDiagnostics(db)
   ]);
+  const shortcutSettings = await loadShortcutSettings(db, accounts, environmentShortcutToken);
   return {
     settingsPage: {
       accounts,
+      shortcutSettings,
       demo,
       categoryMatchRules,
       categoryMatchRuleSuggestions,

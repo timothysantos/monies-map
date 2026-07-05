@@ -73,6 +73,11 @@ import {
   dismissAllUnresolvedTransfers,
   dismissUnresolvedTransfer
 } from "./domain/app-repository-settings";
+import {
+  loadShortcutSettings,
+  resolveShortcutDefaultAccountId,
+  saveShortcutSettings
+} from "./domain/app-repository-shortcuts";
 import { parseCsv } from "./lib/csv";
 import { getCurrentMonthKey } from "./lib/month";
 import { json } from "./server/json";
@@ -194,7 +199,9 @@ export default {
     }
 
     if (url.pathname === "/api/settings-page") {
-      return apiPageResponse("Settings page", request, url, () => buildSettingsPageDto(env.DB));
+      return apiPageResponse("Settings page", request, url, () =>
+        buildSettingsPageDto(env.DB, env.SHORTCUT_INGEST_TOKEN)
+      );
     }
 
     if (url.pathname === "/api/error-diagnostics/record" && request.method === "POST") {
@@ -244,6 +251,28 @@ export default {
         ok: true,
         ...(await retainLatestAppErrorDiagnostics(env.DB, body.keep ?? 50))
       });
+    }
+
+    if (url.pathname === "/api/settings/shortcuts/save" && request.method === "POST") {
+      const body = await request.json<{
+        apiKey?: string;
+        defaultAccountPriorityIds?: string[];
+      }>().catch(() => ({
+        apiKey: undefined,
+        defaultAccountPriorityIds: undefined
+      }));
+
+      try {
+        return json({
+          ok: true,
+          ...(await saveShortcutSettings(env.DB, {
+            apiKey: body.apiKey ?? "",
+            defaultAccountPriorityIds: body.defaultAccountPriorityIds ?? []
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to save shortcut settings" }, 400);
+      }
     }
 
     if (url.pathname === "/api/demo/reseed" && request.method === "POST") {
@@ -774,10 +803,11 @@ export default {
       }>();
 
       const amountMinor = normalizeShortcutAmountMinor(body.amountMinor, body.amount);
+      const accountId = body.accountId ?? (!body.accountName ? await resolveShortcutDefaultAccountId(env.DB) : undefined);
       if (
         !body.date
         || !body.description
-        || (!body.accountId && !body.accountName)
+        || (!accountId && !body.accountName)
         || amountMinor == null
       ) {
         return json({ ok: false, error: "Missing shortcut entry fields" }, 400);
@@ -787,7 +817,7 @@ export default {
         const created = await createEntryRecord(env.DB, {
           date: body.date,
           description: body.description,
-          accountId: body.accountId,
+          accountId,
           accountName: body.accountName,
           categoryName: body.categoryName ?? "Other",
           amountMinor,
@@ -803,7 +833,7 @@ export default {
           entryId: created.entryId,
           date: body.date,
           viewId: body.view,
-          accountId: body.accountId,
+          accountId,
           accountName: body.accountName
         });
 
@@ -1630,7 +1660,7 @@ async function authenticateShortcutRequest(
   | { ok: true }
   | { ok: false; status: number; error: string }
 > {
-  const configuredToken = env.SHORTCUT_INGEST_TOKEN?.trim();
+  const configuredToken = (await loadShortcutSettings(env.DB, [], env.SHORTCUT_INGEST_TOKEN)).apiKey.trim();
   if (!configuredToken) {
     return { ok: false, status: 503, error: "Shortcut ingest is not configured." };
   }

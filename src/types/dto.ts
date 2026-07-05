@@ -48,6 +48,13 @@ export interface AccountDto {
   checkpointHistory?: AccountCheckpointDto[];
 }
 
+export interface ShortcutSettingsDto {
+  endpointPath: string;
+  apiKey: string;
+  apiKeySource: "app" | "environment" | "none";
+  defaultAccountPriorityIds: string[];
+}
+
 export interface AccountCheckpointDto {
   month: string;
   statementStartDate?: string;
@@ -693,6 +700,7 @@ export interface ContextViewDto {
 
 export interface SettingsPageDto {
   accounts: AccountDto[];
+  shortcutSettings: ShortcutSettingsDto;
   demo: DemoSettingsDto;
   categoryMatchRules: CategoryMatchRuleDto[];
   categoryMatchRuleSuggestions: CategoryMatchRuleSuggestionDto[];
