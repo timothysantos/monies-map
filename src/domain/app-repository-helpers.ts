@@ -475,6 +475,16 @@ export function compareDescriptionSimilarity(left: string, right: string) {
   return Math.max(compactSimilarity, overlap / Math.max(leftTokens.size, rightTokens.size));
 }
 
+export function hasCompactMerchantContainment(left: string, right: string) {
+  const leftCompact = normalizeMerchantForCompactContainment(left);
+  const rightCompact = normalizeMerchantForCompactContainment(right);
+  if (leftCompact.length < 8 || rightCompact.length < 8) {
+    return false;
+  }
+
+  return leftCompact.includes(rightCompact) || rightCompact.includes(leftCompact);
+}
+
 function compareCompactDescriptionSimilarity(left: string, right: string) {
   const leftCompact = normalizeDescriptionForCompactMatch(left);
   const rightCompact = normalizeDescriptionForCompactMatch(right);
@@ -501,6 +511,17 @@ function normalizeDescriptionForCompactMatch(value: string) {
     .replaceAll("singapore", "")
     .replace(/sgp$/g, "")
     .replace(/sg$/g, "");
+}
+
+function normalizeMerchantForCompactContainment(value: string) {
+  const compact = normalizeDescriptionForMatch(value)
+    .replace(/\b(?:pte|ltd|llp|pl|co|company|inc)\b/g, " ")
+    .replace(/\b(?:singapore|sgp|sg)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replaceAll(" ", "");
+
+  return compact.replace(/(?:pteltd|pte|ltd|llp|pl|company|inc)$/g, "");
 }
 
 export function normalizeDescriptionForMatch(value: string) {

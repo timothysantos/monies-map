@@ -8,6 +8,7 @@ import {
   extractTransactionDateHint,
   getMonthEndDate,
   getSignedLedgerAmountMinor,
+  hasCompactMerchantContainment,
   normalizeAccountOpeningBalanceMinor,
   normalizeDescriptionForMatch,
   normalizeDateString,
@@ -507,6 +508,7 @@ function findReconciliationMatches(input: {
       const sharedTokenCount = countSharedTokens(input.previewRow.description, candidate.description);
       const tokenSimilarity = getTokenSimilarity(input.previewRow.description, candidate.description);
       const baseDescriptionSimilarity = compareDescriptionSimilarity(input.previewRow.description, candidate.description);
+      const hasCompactMerchantMatch = hasCompactMerchantContainment(input.previewRow.description, candidate.description);
       const descriptionSimilarity = boostDescriptionSimilarityForReconciliationCandidate({
         previewRow: input.previewRow,
         baseSimilarity: baseDescriptionSimilarity,
@@ -515,7 +517,8 @@ function findReconciliationMatches(input: {
         candidateBankCertificationStatus: candidate.bank_certification_status,
         candidateDescription: candidate.description,
         dayDistance,
-        sharedTokenCount
+        sharedTokenCount,
+        hasCompactMerchantMatch
       });
       const matchKind = isCardPaymentAlias ? "probable" : getDuplicateMatchKind({
         dayDistance,
@@ -605,12 +608,13 @@ function boostDescriptionSimilarityForReconciliationCandidate(input: {
   candidateDescription: string;
   dayDistance: number;
   sharedTokenCount: number;
+  hasCompactMerchantMatch: boolean;
 }) {
   if (
     input.candidateSourceType === "manual"
     && input.candidateBankCertificationStatus === "provisional"
     && input.dayDistance === 0
-    && input.sharedTokenCount >= 1
+    && (input.sharedTokenCount >= 1 || input.hasCompactMerchantMatch)
   ) {
     return Math.max(input.baseSimilarity, 0.7);
   }
