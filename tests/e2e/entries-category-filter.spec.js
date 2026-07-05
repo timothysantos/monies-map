@@ -125,6 +125,67 @@ test("date group refresh reloads entries without leaving the page", async ({ pag
   await expect(page.locator(".entries-page-loading")).toHaveCount(0);
 });
 
+test("daily net ignores matched transfers that stay inside the visible scope", async ({ page }) => {
+  const month = "2026-06";
+  const transferOutDescription = `Playwright card payment out ${Date.now()}`;
+  const transferInDescription = `Playwright card payment in ${Date.now()}`;
+  const feeDescription = `Playwright fee reversal ${Date.now()}`;
+
+  await reseedDemo(page);
+  const transferOut = await postJson(page, "/api/entries/create", {
+    date: `${month}-08`,
+    description: transferOutDescription,
+    accountName: "UOB One",
+    categoryName: "Transfer",
+    amountMinor: 462602,
+    entryType: "transfer",
+    transferDirection: "out",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+  const transferIn = await postJson(page, "/api/entries/create", {
+    date: `${month}-08`,
+    description: transferInDescription,
+    accountName: "Citi Rewards",
+    categoryName: "Transfer",
+    amountMinor: 462602,
+    entryType: "transfer",
+    transferDirection: "in",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+  await postJson(page, "/api/transfers/link", {
+    fromEntryId: transferOut.entryId,
+    toEntryId: transferIn.entryId
+  });
+  const fee = await postJson(page, "/api/entries/create", {
+    date: `${month}-08`,
+    description: feeDescription,
+    accountName: "Citi Rewards",
+    categoryName: "Fees",
+    amountMinor: 10000,
+    entryType: "income",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+
+  const query = new URLSearchParams({
+    view: "person-tim",
+    month
+  });
+  [transferOut.entryId, transferIn.entryId, fee.entryId].forEach((entryId) => query.append("entry_id", entryId));
+
+  await gotoPageAfterApi(
+    page,
+    `/entries?${query.toString()}`,
+    "/api/entries-page",
+    () => page.locator(".entry-row").filter({ hasText: transferInDescription }).first()
+  );
+
+  const dateHeader = page.locator(".entries-date-head").filter({ hasText: "8 Jun 2026" }).first();
+  await expect(dateHeader).toContainText("Daily net: $100.00");
+});
+
 test("entry date headers stick while scrolling through a date group", async ({ page }) => {
   const month = "2026-05";
   const marker = `Playwright sticky date ${Date.now()}`;

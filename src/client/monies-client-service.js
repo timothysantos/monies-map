@@ -31,6 +31,7 @@ export const moniesClient = Object.freeze({
     buildDraft: entryHelpers.buildEntryDraft,
     entryMatchesScope: entryHelpers.entryMatchesScope,
     getAmountToneClass: entryHelpers.getAmountToneClass,
+    getDailyNetAmountMinor: entryHelpers.getDailyNetAmountMinor,
     getSignedAmountMinor: entryHelpers.getSignedAmountMinor,
     getTotalAmountMinor: entryHelpers.getTotalAmountMinor,
     getSignedTotalAmountMinor: entryHelpers.getSignedTotalAmountMinor,
