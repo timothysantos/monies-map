@@ -7112,9 +7112,36 @@ button.split-activity-card:hover {
 
 .entry-chip-linked-split {
   max-width: 172px;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  border-color: rgba(251, 146, 60, 0.34);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entry-chip-linked-split-base,
+.entry-chip-linked-split-group {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  min-width: 0;
+  padding: 0 9px;
+  line-height: 1;
+}
+
+.entry-chip-linked-split-base {
+  flex: 0 0 auto;
   background: rgba(255, 237, 213, 0.98);
   color: #b45309;
-  border-color: rgba(251, 146, 60, 0.34);
+}
+
+.entry-chip-linked-split-group {
+  flex: 1 1 auto;
+  max-width: 96px;
+  border-left: 1px solid var(--split-group-chip-border, rgba(251, 146, 60, 0.34));
+  background: var(--split-group-chip-bg, rgba(255, 247, 237, 0.98));
+  color: var(--split-group-chip-color, #9a3412);
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -9315,6 +9342,17 @@ th {
 
   .entry-chip-linked-split {
     max-width: min(42vw, 138px);
+    padding: 0;
+  }
+
+  .entry-chip-linked-split-base,
+  .entry-chip-linked-split-group {
+    min-height: 20px;
+    padding: 0 7px;
+  }
+
+  .entry-chip-linked-split-group {
+    max-width: 72px;
   }
 
   .entries-filter-toggle {

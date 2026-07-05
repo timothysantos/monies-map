@@ -460,7 +460,19 @@ function EntryRow({
                 title={display.ownerTitle}
                 aria-label={display.ownerTitle}
               >
-                {display.ownerLabel}
+                {isLinkedToSplits ? (
+                  <>
+                    <span className="entry-chip-linked-split-base">On splits</span>
+                    {display.linkedSplitGroupName ? (
+                      <span
+                        className="entry-chip-linked-split-group"
+                        style={display.linkedSplitGroupStyle}
+                      >
+                        {display.linkedSplitGroupName}
+                      </span>
+                    ) : null}
+                  </>
+                ) : display.ownerLabel}
               </span>
               {entry.ownershipType === "shared" && display.splitPercent != null ? (
                 <span className="entry-chip entry-chip-split">{display.splitPercent}%</span>
