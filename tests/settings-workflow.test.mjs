@@ -25,6 +25,7 @@ test("buildSafeSettingsPage supplies empty collections for the settings route", 
   assert.deepEqual(result.reconciliationExceptions, []);
   assert.deepEqual(result.recentAuditEvents, []);
   assert.deepEqual(result.shortcutSettings.defaultAccountPriorityIds, []);
+  assert.equal(result.shortcutSettings.defaultParams, "");
   assert.equal(result.demo.emptyState, false);
 });
 
@@ -39,10 +40,12 @@ test("shortcut settings draft keeps active saved priority then appends active ac
   assert.deepEqual(
     buildShortcutSettingsDraft({
       apiKey: "mm_test",
+      defaultParams: "category=Transport",
       defaultAccountPriorityIds: ["bank", "old"]
     }, accounts),
     {
       apiKey: "mm_test",
+      defaultParams: "category=Transport",
       defaultAccountPriorityIds: ["bank", "card", "cash"]
     }
   );
