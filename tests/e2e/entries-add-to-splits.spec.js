@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { loadEntriesPage, loadSplitsPage, postJson, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, loadEntriesPage, loadSplitsPage, postJson, reseedDemo } from "./helpers";
 
 test("entries can add a direct expense to splits and jump into the created split", async ({ page }) => {
   const description = `Playwright add to splits ${Date.now()}`;
@@ -32,8 +32,13 @@ test("entries can add a direct expense to splits and jump into the created split
   const entriesData = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
   const createdEntry = entriesData.monthPage.entries.find((item) => item.description === description);
   expect(createdEntry).toBeTruthy();
-  expect(createdEntry?.ownershipType).toBe("shared");
+  expect(createdEntry?.ownershipType).toBe("direct");
+  expect(createdEntry?.ownerName).toBe("Tim");
   expect(createdEntry?.linkedSplitExpenseId).toBe(splitData.splitExpenseId);
+  expect(createdEntry?.linkedSplitShares).toEqual([
+    expect.objectContaining({ personId: "person-tim", amountMinor: 1275 }),
+    expect.objectContaining({ personId: "person-joyce", amountMinor: 1275 })
+  ]);
 
   const splitsData = await loadSplitsPage(page, { view: "person-tim", month: "2026-04" });
   const createdSplit = splitsData.splitsPage.activity.find((item) => item.description === description);
@@ -47,6 +52,54 @@ test("entries can add a direct expense to splits and jump into the created split
   await splitsPageReady;
   await expect(page.getByRole("dialog")).toBeVisible({ timeout: 60_000 });
   await expect(page.getByRole("dialog").getByLabel("Description")).toHaveValue(description);
+});
+
+test("entries shared scope is based on the linked split record, not ledger ownership", async ({ page }) => {
+  const month = "2026-05";
+  const description = `Playwright split scope contract ${Date.now()}`;
+
+  await page.goto("/");
+  await reseedDemo(page);
+
+  const entry = await postJson(page, "/api/entries/create", {
+    date: `${month}-24`,
+    description,
+    accountName: "UOB One",
+    categoryName: "Groceries",
+    amountMinor: 2550,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+
+  await postJson(page, "/api/splits/expenses/from-entry", {
+    entryId: entry.entryId,
+    splitGroupId: null
+  });
+
+  const timDirectData = await loadEntriesPage(page, { view: "person-tim", month });
+  const linkedTimEntry = timDirectData.monthPage.entries.find((item) => item.description === description);
+  expect(linkedTimEntry?.ownershipType).toBe("direct");
+  expect(linkedTimEntry?.linkedSplitExpenseId).toBeTruthy();
+
+  await gotoPageAfterApi(
+    page,
+    `/entries?view=person-tim&month=${month}&entries_scope=direct`,
+    "/api/entries-page",
+    () => page.locator(".panel").first()
+  );
+  await expect(page.locator(".entry-row").filter({ hasText: description })).toHaveCount(0);
+
+  await gotoPageAfterApi(
+    page,
+    `/entries?view=person-joyce&month=${month}&entries_scope=shared`,
+    "/api/entries-page",
+    () => page.locator(".entry-row").filter({ hasText: description }).first()
+  );
+  const joyceSharedRow = page.locator(".entry-row").filter({ hasText: description }).first();
+  await expect(joyceSharedRow).toBeVisible();
+  await expect(joyceSharedRow.locator(".entry-chip-linked-split")).toContainText("On splits");
+  await expect(joyceSharedRow.locator(".entry-chip-split")).toContainText("50%");
 });
 
 test("newly added split can be viewed immediately and preserves the entries scope", async ({ page }) => {
@@ -63,11 +116,11 @@ test("newly added split can be viewed immediately and preserves the entries scop
     categoryName: "Groceries",
     amountMinor: 2550,
     entryType: "expense",
-    ownershipType: "shared",
-    splitBasisPoints: 5000
+    ownershipType: "direct",
+    ownerName: "Tim"
   });
 
-  await page.goto(`/entries?view=person-tim&month=${month}&entries_scope=shared&editing_entry=${createdEntry.entryId}`);
+  await page.goto(`/entries?view=person-tim&month=${month}&entries_scope=direct_plus_shared&editing_entry=${createdEntry.entryId}`);
   const editor = page.locator(".entry-inline-editor").first();
   await expect(editor).toBeVisible();
 
@@ -90,13 +143,13 @@ test("newly added split can be viewed immediately and preserves the entries scop
   await splitsPageReady;
 
   await expect(page).toHaveURL(/\/splits\?/);
-  expect(new URL(page.url()).searchParams.get("scope")).toBe("shared");
+  expect(new URL(page.url()).searchParams.get("scope")).toBe("direct_plus_shared");
   await expect(page.getByRole("dialog")).toBeVisible({ timeout: 60_000 });
   await expect(page.getByRole("dialog").getByLabel("Description")).toHaveValue(description);
 
   await page.goBack({ waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(/\/entries\?/);
-  await expect(page.locator(".scope-button.is-active")).toContainText("Shared");
+  await expect(page.locator(".scope-button.is-active")).toContainText("Direct + Shared");
 });
 
 test("editing a linked entry note can update the connected split note", async ({ page }) => {
@@ -284,7 +337,8 @@ test("editing an entry then adding it to splits keeps the saved row stable acros
 
   const entriesData = await loadEntriesPage(page, { view: "person-tim", month });
   const updatedEntry = entriesData.monthPage.entries.find((item) => item.description === updatedDescription);
-  expect(updatedEntry?.ownershipType).toBe("shared");
+  expect(updatedEntry?.ownershipType).toBe("direct");
+  expect(updatedEntry?.ownerName).toBe("Tim");
   expect(updatedEntry?.linkedSplitExpenseId).toBeTruthy();
 
   await secondPage.close();
@@ -314,7 +368,8 @@ test("equal split amounts keep the odd cent on the deterministic remainder share
 
   const entriesData = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
   const createdEntry = entriesData.monthPage.entries.find((item) => item.description === description);
-  expect(createdEntry?.splits).toEqual([
+  expect(createdEntry?.ownershipType).toBe("direct");
+  expect(createdEntry?.linkedSplitShares).toEqual([
     expect.objectContaining({ personId: "person-tim", amountMinor: 6999 }),
     expect.objectContaining({ personId: "person-joyce", amountMinor: 7000 })
   ]);

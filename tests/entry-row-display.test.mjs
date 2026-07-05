@@ -19,29 +19,33 @@ const sharedEntry = {
   ]
 };
 
-test("shared ledger ownership is labeled separately from the Splits workspace", () => {
+test("legacy shared ledger rows do not use the Splits shared cue", () => {
   const display = buildEntryRowDisplay(sharedEntry, "person-tim", false);
   const ownerCue = getEntryOwnerCue(sharedEntry, false);
 
-  assert.equal(display.ownerLabel, "Shared ownership");
-  assert.equal(display.ownerTitle, "Shared ledger ownership. Add to splits separately to track this in Splits.");
-  assert.equal(display.ownerChipClassName, "entry-chip-shared");
+  assert.equal(display.ownerLabel, "Tim");
+  assert.equal(display.ownerTitle, "Tim");
+  assert.equal(display.ownerChipClassName, "entry-chip-owner");
   assert.equal(display.splitPercent, 50);
-  assert.match(ownerCue.style["--entry-owner-border-color"], /177, 94, 47/);
+  assert.match(ownerCue.style["--entry-owner-border-color"], /116, 198, 157/);
 });
 
 test("linked split rows keep the Splits workspace label and cue", () => {
   const display = buildEntryRowDisplay({
     ...sharedEntry,
+    ownershipType: "direct",
+    ownerName: "Tim",
     linkedSplitExpenseId: "split-expense-1",
-    linkedSplitGroupName: "Okaeri"
+    linkedSplitGroupName: "Okaeri",
+    linkedSplitShares: sharedEntry.splits
   }, "person-tim", true);
-  const ownerCue = getEntryOwnerCue(sharedEntry, true);
+  const ownerCue = getEntryOwnerCue({ ...sharedEntry, ownershipType: "direct" }, true);
 
   assert.equal(display.ownerLabel, "On splits · Okaeri");
   assert.equal(display.ownerTitle, "On Splits: Okaeri");
   assert.equal(display.ownerChipClassName, "entry-chip-shared entry-chip-linked-split");
   assert.equal(display.linkedSplitGroupName, "Okaeri");
+  assert.equal(display.splitPercent, 50);
   assert.deepEqual(display.linkedSplitGroupStyle, getSplitGroupChipStyle("Okaeri"));
   assert.match(ownerCue.style["--entry-owner-border-color"], /37, 99, 235/);
 });

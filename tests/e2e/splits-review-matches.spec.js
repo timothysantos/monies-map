@@ -47,8 +47,9 @@ test("review matches links a split expense into entries and hides already-linked
   const afterEntries = await loadEntriesPage(page, { view: "person-tim", month: "2025-10" });
   const linkedEntry = afterEntries.monthPage.entries.find((entry) => entry.id === "txn-import-split-pantry-match");
   expect(linkedEntry).toBeTruthy();
-  expect(linkedEntry?.ownershipType).toBe("shared");
+  expect(linkedEntry?.ownershipType).toBe("direct");
   expect(linkedEntry?.linkedSplitExpenseId).toBe("split-expense-nongroup-pantry-match");
+  expect(linkedEntry?.linkedSplitShares?.length).toBeGreaterThan(0);
 
   await page.goto("/entries?view=household&month=2025-10");
   const linkedEntryRow = page.locator(".entry-row").filter({ hasText: pantryMatch?.transactionDescription ?? "" }).first();

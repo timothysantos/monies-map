@@ -190,10 +190,7 @@ test.describe("money field editability", () => {
     await expect(page.getByLabel("Source label")).toBeVisible({ timeout: 30_000 });
 
     await page.getByLabel("Source label").fill(`Playwright import ${Date.now()}`);
-    await page.getByLabel("Default ownership").selectOption("shared");
-    const importSplitPercent = page.getByLabel("Shared split %");
-    await replaceInputValue(importSplitPercent, "60");
-    await expect(importSplitPercent).toHaveValue("60");
+    await page.getByLabel("Default owner").selectOption("Tim");
     await page.getByLabel("CSV content").fill(
       [
         "category,account,note,amount,date,description",

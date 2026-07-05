@@ -69,3 +69,18 @@ test("quick-entry URL explicit account overrides account priority", () => {
   assert.equal(result.draft.accountId, "acct-bank");
   assert.equal(result.draft.accountName, "OCBC 360");
 });
+
+test("quick-entry URL keeps shared=true as a non-ledger hint", () => {
+  const result = buildQuickExpenseDraftPatch({
+    searchParams: new URLSearchParams("action=add-expense&amount=9.99&merchant=Coffee&shared=true&owner=Tim"),
+    accountOptions,
+    categoryOptions: ["Other"],
+    ownerOptions: ["Tim", "Shared"],
+    defaultAccountPriorityIds: ["acct-card"],
+    fallbackOwnerName: "Bea"
+  });
+
+  assert.equal(result.draft.ownershipType, "direct");
+  assert.equal(result.draft.ownerName, "Tim");
+  assert.equal(result.draft.addToSplits, false);
+});
