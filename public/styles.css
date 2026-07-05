@@ -5447,7 +5447,8 @@ button.split-activity-card:hover {
   position: relative;
   min-width: 0;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
+  overflow-y: visible;
 }
 
 .entries-page-loading {
@@ -6869,7 +6870,7 @@ button.split-activity-card:hover {
 .entries-date-group {
   min-width: 0;
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
   padding: 12px 16px;
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -6877,11 +6878,19 @@ button.split-activity-card:hover {
 }
 
 .entries-date-head {
+  position: sticky;
+  top: 0;
+  z-index: 4;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 8px;
+  margin: -12px -16px 8px;
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid rgba(217, 207, 194, 0.72);
+  border-radius: 12px 12px 0 0;
+  background: rgba(255, 252, 247, 0.96);
+  backdrop-filter: blur(10px);
 }
 
 .entries-date-head span {
@@ -9175,6 +9184,7 @@ th {
   .entries-date-group {
     padding: 10px 12px;
     border-radius: 0;
+    overflow: visible;
   }
 
   .entries-date-head {
@@ -9182,7 +9192,9 @@ th {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: baseline;
     gap: 8px;
-    margin-bottom: 4px;
+    margin: -10px -12px 4px;
+    padding: 10px 12px 6px;
+    border-radius: 0;
     max-width: 100%;
   }
 
