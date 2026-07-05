@@ -63,4 +63,26 @@ test.describe("mobile continuity", () => {
     await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole("button", { name: /People/ })).toBeVisible({ timeout: 60_000 });
   });
+
+  test("entries rows stay inside the viewport on narrow screens", async ({ page }) => {
+    await gotoPageAfterApi(
+      page,
+      "/entries?view=person-joyce&month=2026-05&scope=direct_plus_shared",
+      "/api/entries-page",
+      () => page.getByRole("heading", { name: "Entries" })
+    );
+    await expect(page.getByRole("heading", { name: "Entries" })).toBeVisible({ timeout: 60_000 });
+
+    const overflow = await page.evaluate(() => ({
+      viewportWidth: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      overflowingRows: Array.from(document.querySelectorAll(".entry-row-main")).filter((row) => {
+        const rect = row.getBoundingClientRect();
+        return rect.left < -1 || rect.right > window.innerWidth + 1;
+      }).length
+    }));
+
+    expect(overflow.documentWidth).toBeLessThanOrEqual(overflow.viewportWidth + 1);
+    expect(overflow.overflowingRows).toBe(0);
+  });
 });
