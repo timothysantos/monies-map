@@ -1715,6 +1715,27 @@ h3 {
   gap: 10px;
 }
 
+.settings-shortcut-params-input {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.settings-shortcut-reference {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.settings-shortcut-reference p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
 .settings-shortcut-account-row {
   cursor: grab;
 }

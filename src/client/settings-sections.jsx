@@ -89,6 +89,7 @@ export function SettingsShortcutApiSection({
   isSubmitting,
   shortcutSettings,
   onApiKeyChange,
+  onDefaultParamsChange,
   onGenerateApiKey,
   onMoveAccount,
   onToggle,
@@ -125,6 +126,34 @@ export function SettingsShortcutApiSection({
             />
             <small className="field-help">{messages.settings.shortcutApiKeyHelp(shortcutSettings.apiKeySource)}</small>
           </label>
+          <label className="table-edit-field settings-form-wide">
+            <span>{messages.settings.shortcutDefaultParams}</span>
+            <textarea
+              className="table-edit-input settings-shortcut-params-input"
+              value={draft.defaultParams}
+              onChange={(event) => onDefaultParamsChange(event.target.value)}
+              placeholder={messages.settings.shortcutDefaultParamsPlaceholder}
+              rows={2}
+            />
+            <small className="field-help">{messages.settings.shortcutDefaultParamsHelp}</small>
+          </label>
+          <div className="settings-shortcut-reference">
+            <div>
+              <strong>{messages.settings.shortcutUrlParamsTitle}</strong>
+              <p>{messages.settings.shortcutUrlParamsList}</p>
+            </div>
+            <div>
+              <strong>{messages.settings.shortcutApiParamsTitle}</strong>
+              <p>{messages.settings.shortcutApiParamsList}</p>
+            </div>
+            <div>
+              <strong>{messages.settings.shortcutSystemDefaultsTitle}</strong>
+              <p>{messages.settings.shortcutSystemDefaultsDetail}</p>
+            </div>
+            <a className="subtle-action" href="shortcuts://create-shortcut">
+              {messages.settings.shortcutOpenCreateShortcut}
+            </a>
+          </div>
           <div className="settings-actions">
             <button type="button" className="subtle-action" onClick={onGenerateApiKey} disabled={isSubmitting}>
               {messages.settings.shortcutGenerateApiKey}

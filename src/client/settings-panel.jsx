@@ -812,6 +812,7 @@ export function SettingsPanel({
         isSubmitting={isSubmitting}
         shortcutSettings={safeSettingsPage.shortcutSettings}
         onApiKeyChange={(apiKey) => setShortcutSettingsDraft((current) => ({ ...current, apiKey }))}
+        onDefaultParamsChange={(defaultParams) => setShortcutSettingsDraft((current) => ({ ...current, defaultParams }))}
         onGenerateApiKey={handleGenerateShortcutApiKey}
         onMoveAccount={handleMoveShortcutAccount}
         onToggle={() => toggleSettingsSection("shortcutApi")}
