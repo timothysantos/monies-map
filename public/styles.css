@@ -5445,6 +5445,9 @@ button.split-activity-card:hover {
 
 .entries-panel-root {
   position: relative;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .entries-page-loading {
@@ -5550,6 +5553,9 @@ button.split-activity-card:hover {
   flex-wrap: nowrap;
   align-items: center;
   gap: 18px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
   padding: 0 2px 10px;
   margin-bottom: 6px;
