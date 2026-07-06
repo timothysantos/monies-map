@@ -31,7 +31,7 @@ import {
   QUICK_EXPENSE_PARAMS
 } from "./quick-entry-url";
 import { buildRequestErrorMessage } from "./request-errors";
-import { deleteSplitExpense, updateSplitExpenseNote } from "./splits-api";
+import { deleteSplitExpense, updateSplitExpenseCategory, updateSplitExpenseNote } from "./splits-api";
 
 const ENTRIES_PAGE_PREFETCH_DELAY_MS = 1200;
 const ENTRIES_PAGE_PREFETCH_SPACING_MS = 650;
@@ -87,6 +87,8 @@ export function EntriesPanel({
   const [deleteConfirmation, setDeleteConfirmation] = useState(null);
   const [entryNoteSyncPrompt, setEntryNoteSyncPrompt] = useState(null);
   const [isSyncingEntryNote, setIsSyncingEntryNote] = useState(false);
+  const [entryCategorySyncPrompt, setEntryCategorySyncPrompt] = useState(null);
+  const [isSyncingEntryCategory, setIsSyncingEntryCategory] = useState(false);
   const [isMobileSplitPickerOpen, setIsMobileSplitPickerOpen] = useState(false);
   const [isMobileSplitSelectorOpen, setIsMobileSplitSelectorOpen] = useState(false);
   const [mobileSplitGroupId, setMobileSplitGroupId] = useState("");
@@ -554,15 +556,47 @@ export function EntriesPanel({
 
     return {
       splitExpenseId: activeEditingEntry.linkedSplitExpenseId,
-      editedNote: nextNote,
-      connectedNote: linkedNote,
+      editedValue: nextNote,
+      connectedValue: linkedNote,
       editedLabel: "Entry note being saved",
       connectedLabel: "Connected split current note",
       description: "This ledger entry is connected to a split expense. Apply the same note to the split too?"
     };
   }
 
+  function buildEntryCategorySyncPrompt() {
+    if (!activeEditingEntry?.linkedSplitExpenseId || !entrySnapshot) {
+      return null;
+    }
+
+    const previousCategory = entrySnapshot.categoryName ?? "";
+    const nextCategory = activeEditingEntry.categoryName ?? "";
+    const linkedCategory = activeEditingEntry.linkedSplitCategoryName ?? "";
+    if (!nextCategory || previousCategory === nextCategory || linkedCategory === nextCategory) {
+      return null;
+    }
+
+    return {
+      splitExpenseId: activeEditingEntry.linkedSplitExpenseId,
+      categoryName: nextCategory,
+      editedValue: nextCategory,
+      connectedValue: linkedCategory || previousCategory,
+      title: "Update connected split category?",
+      editedLabel: "Entry category being saved",
+      connectedLabel: "Connected split current category",
+      description: `This ledger entry changed category from ${previousCategory || "Unassigned"} to ${nextCategory}. Apply the same category to the connected split too?`,
+      helpText: "Choose \"Update both\" when the ledger entry and split expense describe the same real-world item. Choose \"Save only this\" when the split should keep a different category.",
+      valueFormatter: (value) => value || "Unassigned"
+    };
+  }
+
   function requestFinishEntryEdit() {
+    const categoryPrompt = buildEntryCategorySyncPrompt();
+    if (categoryPrompt) {
+      setEntryCategorySyncPrompt(categoryPrompt);
+      return;
+    }
+
     const prompt = buildEntryNoteSyncPrompt();
     if (prompt) {
       setEntryNoteSyncPrompt(prompt);
@@ -589,7 +623,7 @@ export function EntriesPanel({
       if (updateLinked) {
         await updateSplitExpenseNote({
           splitExpenseId: prompt.splitExpenseId,
-          note: prompt.editedNote
+          note: prompt.editedValue
         });
         await refreshEntriesPage({ bypassCache: true });
         onBroadcastSplitMutation?.({
@@ -607,6 +641,44 @@ export function EntriesPanel({
         : current);
     } finally {
       setIsSyncingEntryNote(false);
+    }
+  }
+
+  async function confirmEntryCategorySync({ updateLinked }) {
+    const prompt = entryCategorySyncPrompt;
+    if (!prompt) {
+      return;
+    }
+
+    setIsSyncingEntryCategory(true);
+    setEntryCategorySyncPrompt((current) => current ? { ...current, error: "" } : current);
+    try {
+      const saved = await finishEntryEditAndClearLink();
+      if (!saved) {
+        return;
+      }
+
+      if (updateLinked) {
+        await updateSplitExpenseCategory({
+          splitExpenseId: prompt.splitExpenseId,
+          categoryName: prompt.categoryName
+        });
+        await refreshEntriesPage({ bypassCache: true });
+        onBroadcastSplitMutation?.({
+          month: entryView.monthPage.month,
+          invalidateEntries: true,
+          invalidateMonth: false,
+          invalidateSummary: false
+        });
+      }
+
+      setEntryCategorySyncPrompt(null);
+    } catch (error) {
+      setEntryCategorySyncPrompt((current) => current
+        ? { ...current, error: error instanceof Error ? error.message : "Failed to update connected split category." }
+        : current);
+    } finally {
+      setIsSyncingEntryCategory(false);
     }
   }
 
@@ -1165,6 +1237,13 @@ export function EntriesPanel({
         onCancel={() => setEntryNoteSyncPrompt(null)}
         onSaveOnly={() => void confirmEntryNoteSync({ updateLinked: false })}
         onUpdateBoth={() => void confirmEntryNoteSync({ updateLinked: true })}
+      />
+      <LinkedNoteSyncDialog
+        prompt={entryCategorySyncPrompt}
+        isSubmitting={isSyncingEntryCategory || Boolean(savingEntryId)}
+        onCancel={() => setEntryCategorySyncPrompt(null)}
+        onSaveOnly={() => void confirmEntryCategorySync({ updateLinked: false })}
+        onUpdateBoth={() => void confirmEntryCategorySync({ updateLinked: true })}
       />
       <EntriesDeleteConfirmationDialog
         confirmation={deleteConfirmation}

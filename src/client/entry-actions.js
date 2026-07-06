@@ -780,7 +780,7 @@ function buildPersistedEntryPayload(entry, primarySplit) {
     accountId: entry.accountId,
     accountName: entry.accountName,
     categoryName: entry.categoryName,
-    amountMinor: entry.ownershipType === "shared"
+    amountMinor: entry.ownershipType === "shared" || entry.linkedSplitExpenseId
       ? entryService.getTotalAmountMinor(entry)
       : entry.amountMinor,
     entryType: entry.entryType,

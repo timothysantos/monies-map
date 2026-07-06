@@ -105,6 +105,14 @@ export function updateSplitExpenseNote({ splitExpenseId, note }) {
   );
 }
 
+export function updateSplitExpenseCategory({ splitExpenseId, categoryName }) {
+  return postJson(
+    "/api/splits/expenses/update-category",
+    { splitExpenseId, categoryName },
+    "Failed to update split category."
+  );
+}
+
 export function updateSplitSettlementNote({ settlementId, note }) {
   return postJson(
     "/api/splits/settlements/update-note",
