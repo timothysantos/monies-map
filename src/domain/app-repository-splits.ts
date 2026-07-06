@@ -906,5 +906,10 @@ export async function createSplitExpenseFromEntryRecord(
       .run();
   }
 
-  return { splitExpenseId: id };
+  return {
+    splitExpenseId: id,
+    splitExpenseDate: entry.transaction_date,
+    splitExpenseMonth: entry.transaction_date.slice(0, 7),
+    splitGroupId: input.splitGroupId || "split-group-none"
+  };
 }

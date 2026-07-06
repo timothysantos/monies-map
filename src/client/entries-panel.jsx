@@ -634,7 +634,8 @@ export function EntriesPanel({
     setCreatedSplitAction({
       entryId: entry.id,
       splitExpenseId: result.splitExpenseId,
-      splitGroupId: splitGroupId ?? "split-group-none"
+      splitGroupId: result.splitGroupId ?? splitGroupId ?? "split-group-none",
+      splitExpenseMonth: result.splitExpenseMonth ?? entry.date?.slice(0, 7) ?? selectedMonth
     });
     resetMobileSplitPickerState();
   }
@@ -749,6 +750,7 @@ export function EntriesPanel({
       search: (() => {
         const next = new URLSearchParams(searchParams);
         next.delete("editing_entry");
+        next.set("month", activeCreatedSplitAction?.splitExpenseMonth ?? selectedMonth);
         next.set("scope", selectedScope);
         next.set("editing_split_expense", splitExpenseId);
         next.set("split_mode", "entries");
