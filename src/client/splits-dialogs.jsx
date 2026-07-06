@@ -79,7 +79,8 @@ function applyPrimarySplitAmount(current, primaryAmountMinor) {
 function OddCentChooser({ dialog, people, onChange }) {
   const preview = splitSharePreview(dialog, people);
   const hasOddCent = preview.totalAmountMinor % 2 === 1;
-  const canShow = hasOddCent && people.length >= 2 && preview.totalAmountMinor > 0;
+  const hasTwoSidedShare = preview.primaryAmountMinor > 0 && preview.secondaryAmountMinor > 0;
+  const canShow = hasOddCent && hasTwoSidedShare && people.length >= 2 && preview.totalAmountMinor > 0;
 
   if (!canShow) {
     return null;

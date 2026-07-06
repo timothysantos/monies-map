@@ -2532,7 +2532,7 @@ export function App() {
     }
 
     if (selectedTabId === "splits") {
-      if ((!explicitViewId || selectedViewId === "household") && defaultSplitsViewId && defaultSplitsViewId !== selectedViewId) {
+      if (!explicitViewId && defaultSplitsViewId && defaultSplitsViewId !== selectedViewId) {
         setSearchParams((current) => {
           const currentViewId = current.get("view");
           if (currentViewId && currentViewId !== "household") {

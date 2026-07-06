@@ -568,7 +568,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
 
     const params = new URLSearchParams({
       view: view.id,
-      month: splitsPage.month,
+      month: item.date?.slice(0, 7) ?? splitsPage.month,
+      entries_scope: searchParams.get("scope") ?? "direct_plus_shared",
       editing_entry: item.linkedTransactionId
     });
     navigate({
