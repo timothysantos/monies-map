@@ -88,7 +88,8 @@ ledger split projection. The product invariant is now:
 
 Existing legacy `ownership_type = 'shared'` rows still load and can be displayed.
 They are no longer the source of truth for Entries `Shared` scope. Future data
-cleanup can migrate or retire legacy shared ledger rows separately.
+cleanup is tracked in
+[`legacy-ledger-ownership-repair-audit.md`](./legacy-ledger-ownership-repair-audit.md).
 
 Month plan rows still have their own shared planning model. This audit changed
 ledger entry sharing only.
