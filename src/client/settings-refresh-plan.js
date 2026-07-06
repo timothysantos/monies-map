@@ -69,6 +69,7 @@ export function buildSettingsRefreshPlan(kind) {
     || kind === "account_archived"
     || kind === "category_saved"
     || kind === "category_deleted"
+    || kind === "legacy_ledger_ownership_repaired"
   ) {
     return REFERENCE_DATA_PLAN;
   }
