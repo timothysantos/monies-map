@@ -78,6 +78,7 @@ import {
   resolveShortcutDefaultAccountId,
   saveShortcutSettings
 } from "./domain/app-repository-shortcuts";
+import { repairLegacySharedLedgerOwnership } from "./domain/app-repository-repairs";
 import { parseCsv } from "./lib/csv";
 import { getCurrentMonthKey } from "./lib/month";
 import { json } from "./server/json";
@@ -275,6 +276,17 @@ export default {
         });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to save shortcut settings" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/settings/ledger-ownership/repair" && request.method === "POST") {
+      try {
+        return json({
+          ok: true,
+          legacyLedgerOwnershipRepair: await repairLegacySharedLedgerOwnership(env.DB)
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to repair legacy ledger ownership." }, 400);
       }
     }
 

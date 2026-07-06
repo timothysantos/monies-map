@@ -137,10 +137,18 @@ export function retainLatestErrorDiagnostics(keep = 50) {
   );
 }
 
-export function saveShortcutSettings({ apiKey, defaultAccountPriorityIds }) {
+export function repairLegacyLedgerOwnership() {
+  return postJson(
+    "/api/settings/ledger-ownership/repair",
+    {},
+    "Failed to repair legacy ledger ownership."
+  );
+}
+
+export function saveShortcutSettings({ apiKey, defaultAccountPriorityIds, defaultParams }) {
   return postJson(
     "/api/settings/shortcuts/save",
-    { apiKey, defaultAccountPriorityIds },
+    { apiKey, defaultAccountPriorityIds, defaultParams },
     "Failed to save shortcut settings."
   );
 }

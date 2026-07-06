@@ -907,6 +907,114 @@ export function SettingsErrorDiagnosticsSection({ diagnostics, isOpen, onToggle,
   );
 }
 
+export function SettingsMaintenanceSection({
+  error,
+  isOpen,
+  isSubmitting,
+  repairStatus,
+  onToggle,
+  onRepairLegacyLedgerOwnership
+}) {
+  const [repairText, setRepairText] = useState("");
+  const [repairDialogOpen, setRepairDialogOpen] = useState(false);
+  const status = repairStatus ?? {
+    legacySharedCount: 0,
+    repairableCount: 0,
+    skippedCount: 0,
+    legacySplitCount: 0,
+    obsoleteDirectSplitCount: 0
+  };
+  const canRepair = status.repairableCount > 0 || status.obsoleteDirectSplitCount > 0;
+
+  return (
+    <section className="chart-card settings-card">
+      <SettingsSectionToggle
+        title={messages.settings.maintenanceTitle}
+        detail={messages.settings.maintenanceDetail}
+        isOpen={isOpen}
+        onToggle={onToggle}
+      />
+      {isOpen ? (
+        <div className="settings-shortcut-grid">
+          {error ? <p className="form-error" role="alert">{error}</p> : null}
+          <div className="settings-reference-panel settings-form-wide">
+            <strong>{messages.settings.legacyOwnershipTitle}</strong>
+            <p>{messages.settings.legacyOwnershipDetail}</p>
+            <p>{messages.settings.legacyOwnershipCounts(status)}</p>
+            {status.completedAt ? (
+              <p>{messages.settings.legacyOwnershipCompleted(formatService.formatDate(status.completedAt))}</p>
+            ) : null}
+            {status.detail ? <p>{status.detail}</p> : null}
+            <Dialog.Root
+              open={repairDialogOpen}
+              onOpenChange={(open) => {
+                if (!open && isSubmitting) {
+                  return;
+                }
+                setRepairDialogOpen(open);
+                if (!open) {
+                  setRepairText("");
+                }
+              }}
+            >
+              <Dialog.Trigger asChild>
+                <button type="button" className="subtle-action" disabled={isSubmitting || !canRepair}>
+                  {messages.settings.legacyOwnershipRepair}
+                </button>
+              </Dialog.Trigger>
+              <Dialog.Portal>
+                <Dialog.Overlay className="note-dialog-overlay" />
+                <Dialog.Content className="note-dialog-content">
+                  <div className="note-dialog-head">
+                    <div>
+                      <Dialog.Title>{messages.settings.legacyOwnershipRepairTitle}</Dialog.Title>
+                      <Dialog.Description>{messages.settings.legacyOwnershipRepairDetail}</Dialog.Description>
+                    </div>
+                    <Dialog.Close asChild>
+                      <button
+                        type="button"
+                        className="icon-action subtle-cancel"
+                        aria-label="Close legacy ledger ownership repair dialog"
+                        disabled={isSubmitting}
+                      >
+                        <X size={16} />
+                      </button>
+                    </Dialog.Close>
+                  </div>
+                  <input
+                    className="table-edit-input"
+                    placeholder={messages.settings.legacyOwnershipRepairPlaceholder}
+                    value={repairText}
+                    onChange={(event) => setRepairText(event.target.value)}
+                  />
+                  <div className="note-dialog-actions">
+                    <Dialog.Close asChild>
+                      <button type="button" className="subtle-action" disabled={isSubmitting}>Cancel</button>
+                    </Dialog.Close>
+                    <button
+                      type="button"
+                      className="dialog-danger"
+                      disabled={repairText.trim().toLowerCase() !== "repair ownership" || isSubmitting}
+                      onClick={() => {
+                        void onRepairLegacyLedgerOwnership().then(() => {
+                          setRepairDialogOpen(false);
+                          setRepairText("");
+                        }).catch(() => {});
+                      }}
+                    >
+                      {isSubmitting ? messages.common.working : messages.settings.legacyOwnershipRepairConfirm}
+                    </button>
+                  </div>
+                </Dialog.Content>
+              </Dialog.Portal>
+            </Dialog.Root>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 export function SettingsDemoSection({
   demo,
   error,

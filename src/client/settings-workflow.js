@@ -11,6 +11,13 @@ export function buildSafeSettingsPage(settingsPage) {
       defaultAccountPriorityIds: [],
       defaultParams: ""
     },
+    legacyLedgerOwnershipRepair: {
+      legacySharedCount: 0,
+      repairableCount: 0,
+      skippedCount: 0,
+      legacySplitCount: 0,
+      obsoleteDirectSplitCount: 0
+    },
     categoryMatchRules: [],
     categoryMatchRuleSuggestions: [],
     unresolvedTransfers: [],
