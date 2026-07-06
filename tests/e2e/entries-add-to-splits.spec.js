@@ -102,6 +102,62 @@ test("entries shared scope is based on the linked split record, not ledger owner
   await expect(joyceSharedRow.locator(".entry-chip-split")).toContainText("50%");
 });
 
+test("linked entry category save preserves ledger amount and can update the connected split category", async ({ page }) => {
+  const month = "2026-05";
+  const description = `Playwright linked category sync ${Date.now()}`;
+
+  await page.goto("/");
+  await reseedDemo(page);
+
+  const entry = await postJson(page, "/api/entries/create", {
+    date: `${month}-22`,
+    description,
+    accountName: "UOB One",
+    categoryName: "Food & Drinks",
+    amountMinor: 2200,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+
+  const splitData = await postJson(page, "/api/splits/expenses/from-entry", {
+    entryId: entry.entryId,
+    splitGroupId: null
+  });
+
+  await page.goto(`/entries?view=person-tim&month=${month}&entries_scope=direct_plus_shared&editing_entry=${entry.entryId}`);
+  const editor = page.locator(".entry-inline-editor").first();
+  await expect(editor).toBeVisible();
+  await expect(editor.getByLabel("Amount")).toHaveValue("22");
+
+  await editor.locator("select").first().selectOption("Entertainment");
+  await editor.getByRole("button", { name: "Done editing entry" }).click();
+
+  const syncDialog = page.getByRole("dialog", { name: "Update connected split category?" });
+  await expect(syncDialog).toBeVisible();
+  await expect(syncDialog).toContainText("Entry category being saved");
+  await expect(syncDialog).toContainText("Entertainment");
+  await expect(syncDialog).toContainText("Connected split current category");
+  await expect(syncDialog).toContainText("Food & Drinks");
+
+  const entryUpdate = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());
+  const splitCategoryUpdate = page.waitForResponse((response) => response.url().includes("/api/splits/expenses/update-category") && response.ok());
+  await syncDialog.getByRole("button", { name: "Update both" }).click();
+  await entryUpdate;
+  await splitCategoryUpdate;
+  await expect(syncDialog).toHaveCount(0);
+
+  const entriesData = await loadEntriesPage(page, { view: "person-tim", month });
+  const updatedEntry = entriesData.monthPage.entries.find((item) => item.id === entry.entryId);
+  expect(updatedEntry?.categoryName).toBe("Entertainment");
+  expect(updatedEntry?.amountMinor).toBe(1100);
+  expect(updatedEntry?.totalAmountMinor).toBe(2200);
+
+  const splitsData = await loadSplitsPage(page, { view: "person-tim", month });
+  const updatedSplit = splitsData.splitsPage.activity.find((item) => item.id === splitData.splitExpenseId);
+  expect(updatedSplit?.categoryName).toBe("Entertainment");
+});
+
 test("newly added split can be viewed immediately and preserves the entries scope", async ({ page }) => {
   const month = "2026-05";
   const description = `Playwright immediate view split ${Date.now()}`;
