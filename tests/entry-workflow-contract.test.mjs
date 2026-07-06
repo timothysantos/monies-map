@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { entryBypassesFieldFilters } from "../src/client/entry-filter-pins.js";
+import { normalizeEntryShape } from "../src/client/entry-helpers.js";
 import { buildComparableEntryState, mergeEntriesById } from "../src/client/entry-state.js";
 
 test("E1 entries workflow keeps an optimistic row alive when a stale refresh omits it", () => {
@@ -180,6 +181,37 @@ test("X7 entries workflow treats split-linked evidence as part of the entry comp
   };
 
   assert.notDeepEqual(buildComparableEntryState(before), buildComparableEntryState(after));
+});
+
+test("split-linked direct entry edits preserve the full ledger amount", () => {
+  const previous = {
+    id: "linked-direct",
+    date: "2026-06-22",
+    description: "Movie",
+    accountId: "acct-1",
+    accountName: "UOB One",
+    categoryName: "Other",
+    amountMinor: 1100,
+    totalAmountMinor: 2200,
+    entryType: "expense",
+    transferDirection: null,
+    ownershipType: "direct",
+    ownerName: "Tim",
+    linkedSplitExpenseId: "split-expense-1",
+    linkedSplitShares: [
+      { personId: "person-tim", personName: "Tim", ratioBasisPoints: 5000, amountMinor: 1100 },
+      { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 5000, amountMinor: 1100 }
+    ],
+    splits: [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor: 2200 }]
+  };
+
+  const normalized = normalizeEntryShape({ ...previous, categoryName: "Entertainment" }, [
+    { id: "person-tim", name: "Tim" },
+    { id: "person-joyce", name: "Joyce" }
+  ], previous);
+
+  assert.equal(normalized.amountMinor, 1100);
+  assert.equal(normalized.totalAmountMinor, 2200);
 });
 
 test("entries filtering can pin the actively edited row until save", () => {
