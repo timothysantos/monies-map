@@ -95,6 +95,33 @@ test("split editor can choose the odd-cent recipient explicitly", async ({ page 
   ]));
 });
 
+test("split editor hides odd-cent choice when one share is zero percent", async ({ page }) => {
+  const description = `Zero share odd cent ${Date.now()}`;
+
+  await page.goto("/");
+  await reseedDemo(page);
+
+  await postJson(page, "/api/splits/expenses/create", {
+    date: "2025-10-12",
+    description,
+    categoryName: "Groceries",
+    payerPersonName: "Tim",
+    amountMinor: 101,
+    splitBasisPoints: 0,
+    groupId: null,
+    note: ""
+  });
+
+  await page.goto("/splits?view=person-tim&month=2025-10&split_group=split-group-none");
+  await expect(page.locator("article.panel-splits")).toBeVisible();
+  const splitCard = page.locator(".split-activity-card").filter({ hasText: description }).first();
+  await splitCard.click();
+
+  const editor = page.locator(".split-inline-editor-card").filter({ hasText: description }).first();
+  await expect(editor.getByText("Tim share", { exact: true })).toBeVisible();
+  await expect(editor.getByText("Odd cent", { exact: true })).toHaveCount(0);
+});
+
 test("closing a split opened from an entries link returns to that split card", async ({ page }) => {
   const description = `Deep linked split ${Date.now()}`;
 
