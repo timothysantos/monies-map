@@ -619,6 +619,38 @@ export async function updateSplitExpenseNoteRecord(
   return { splitExpenseId: input.splitExpenseId, updated: true };
 }
 
+export async function updateSplitExpenseCategoryRecord(
+  db: D1Database,
+  input: {
+    splitExpenseId: string;
+    categoryName: string;
+  }
+) {
+  const category = await db
+    .prepare("SELECT id FROM categories WHERE household_id = ? AND name = ?")
+    .bind(DEFAULT_HOUSEHOLD_ID, input.categoryName)
+    .first<{ id: string }>();
+
+  if (!category) {
+    throw new Error(`Unknown category: ${input.categoryName}`);
+  }
+
+  const existing = await db
+    .prepare("SELECT id FROM split_expenses WHERE id = ? AND household_id = ?")
+    .bind(input.splitExpenseId, DEFAULT_HOUSEHOLD_ID)
+    .first<{ id: string }>();
+  if (!existing) {
+    throw new Error("Split expense not found.");
+  }
+
+  await db
+    .prepare("UPDATE split_expenses SET category_id = ? WHERE id = ? AND household_id = ?")
+    .bind(category.id, input.splitExpenseId, DEFAULT_HOUSEHOLD_ID)
+    .run();
+
+  return { splitExpenseId: input.splitExpenseId, updated: true };
+}
+
 function buildSplitShareAmounts(amountMinor: number, splitBasisPoints = 5000, splitAmountMinor?: number) {
   const safeAmountMinor = Math.max(0, Number(amountMinor ?? 0));
   const safeBasisPoints = Math.max(0, Math.min(10000, splitBasisPoints));

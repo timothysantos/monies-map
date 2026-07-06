@@ -293,8 +293,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
 
     return {
       draftKind: draft.kind,
-      editedNote: nextNote,
-      connectedNote: linkedNote,
+      editedValue: nextNote,
+      connectedValue: linkedNote,
       editedLabel: draft.kind === "settlement" ? "Split settlement note being saved" : "Split expense note being saved",
       connectedLabel: "Connected ledger entry current note",
       description: "This split is connected to a ledger entry. Apply the same note to the ledger entry too?"

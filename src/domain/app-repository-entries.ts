@@ -112,6 +112,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
         imports.source_label AS import_source_label,
         split_expenses.id AS linked_split_expense_id,
         split_groups.group_name AS linked_split_group_name,
+        split_categories.name AS linked_split_category_name,
         split_expenses.note AS linked_split_note,
         people.display_name AS owner_name,
         accounts.account_name AS account_name,
@@ -132,6 +133,9 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       LEFT JOIN split_groups
         ON split_groups.household_id = split_expenses.household_id
        AND split_groups.id = split_expenses.split_group_id
+      LEFT JOIN categories AS split_categories
+        ON split_categories.household_id = split_expenses.household_id
+       AND split_categories.id = split_expenses.category_id
       WHERE transactions.household_id = ?
         AND transactions.transaction_date >= ?
         AND transactions.transaction_date < ?
@@ -159,6 +163,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       import_source_label: string | null;
       linked_split_expense_id: string | null;
       linked_split_group_name: string | null;
+      linked_split_category_name: string | null;
       linked_split_note: string | null;
       owner_name: string | null;
       account_name: string;
@@ -273,6 +278,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       linkedTransfer,
       linkedSplitExpenseId: row.linked_split_expense_id ?? undefined,
       linkedSplitGroupName: row.linked_split_group_name ?? undefined,
+      linkedSplitCategoryName: row.linked_split_category_name ?? undefined,
       linkedSplitNote: row.linked_split_note ?? undefined,
       linkedSplitShares: row.linked_split_expense_id
         ? linkedSplitShareMap.get(row.id) ?? []

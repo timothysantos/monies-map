@@ -72,8 +72,15 @@ export function normalizeEntryShape(entry, people, previousEntry = entry) {
   if (nextEntry.ownershipType === "direct") {
     const ownerName = nextEntry.ownerName ?? previousEntry.ownerName ?? people[0]?.name ?? "";
     const owner = people.find((person) => person.name === ownerName);
+    const shouldPreserveLinkedTotal = (
+      Boolean(nextEntry.linkedSplitExpenseId)
+      && typeof previousEntry?.totalAmountMinor === "number"
+      && nextAmountMinor === previousAmountMinor
+    );
     nextEntry.ownerName = ownerName;
-    nextEntry.totalAmountMinor = nextEntry.amountMinor;
+    nextEntry.totalAmountMinor = shouldPreserveLinkedTotal
+      ? previousEntry.totalAmountMinor
+      : nextEntry.amountMinor;
     nextEntry.viewerSplitRatioBasisPoints = 10000;
     nextEntry.splits = ownerName
       ? [{

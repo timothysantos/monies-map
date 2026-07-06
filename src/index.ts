@@ -56,6 +56,7 @@ import {
   registerLoginIdentity,
   settleTransferPair,
   unregisterLoginIdentity,
+  updateSplitExpenseCategoryRecord,
   updateSplitExpenseRecord,
   updateSplitExpenseNoteRecord,
   updateSplitSettlementNoteRecord,
@@ -620,25 +621,29 @@ export default {
         return json({ ok: false, error: "Missing entry update fields" }, 400);
       }
 
-      return json({
-        ok: true,
-        ...(await updateEntryRecord(env.DB, {
-          entryId: body.entryId,
-          date: body.date,
-          description: body.description,
-          accountId: body.accountId,
-          accountName: body.accountName,
-          categoryName: body.categoryName,
-          amountMinor: body.amountMinor,
-          entryType: body.entryType,
-          transferDirection: body.transferDirection,
-          ownershipType: body.ownershipType,
-          ownerName: body.ownerName,
-          offsetsCategory: body.offsetsCategory,
-          note: body.note,
-          splitBasisPoints: body.splitBasisPoints
-        }))
-      });
+      try {
+        return json({
+          ok: true,
+          ...(await updateEntryRecord(env.DB, {
+            entryId: body.entryId,
+            date: body.date,
+            description: body.description,
+            accountId: body.accountId,
+            accountName: body.accountName,
+            categoryName: body.categoryName,
+            amountMinor: body.amountMinor,
+            entryType: body.entryType,
+            transferDirection: body.transferDirection,
+            ownershipType: body.ownershipType,
+            ownerName: body.ownerName,
+            offsetsCategory: body.offsetsCategory,
+            note: body.note,
+            splitBasisPoints: body.splitBasisPoints
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update entry" }, 400);
+      }
     }
 
     if (url.pathname === "/api/entries/update-note" && request.method === "POST") {
@@ -712,15 +717,19 @@ export default {
         return json({ ok: false, error: "Missing entry classification fields" }, 400);
       }
 
-      return json({
-        ok: true,
-        ...(await updateEntryClassificationRecord(env.DB, {
-          entryId: body.entryId,
-          entryType: body.entryType,
-          transferDirection: body.transferDirection,
-          categoryName: body.categoryName
-        }))
-      });
+      try {
+        return json({
+          ok: true,
+          ...(await updateEntryClassificationRecord(env.DB, {
+            entryId: body.entryId,
+            entryType: body.entryType,
+            transferDirection: body.transferDirection,
+            categoryName: body.categoryName
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update entry classification" }, 400);
+      }
     }
 
     if (url.pathname === "/api/entries/create" && request.method === "POST") {
@@ -1089,6 +1098,26 @@ export default {
         });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update split expense note" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/splits/expenses/update-category" && request.method === "POST") {
+      const body = await request.json<{ splitExpenseId?: string; categoryName?: string }>();
+
+      if (!body.splitExpenseId || !body.categoryName) {
+        return json({ ok: false, error: "Missing split expense category fields" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await updateSplitExpenseCategoryRecord(env.DB, {
+            splitExpenseId: body.splitExpenseId,
+            categoryName: body.categoryName
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update split expense category" }, 400);
       }
     }
 

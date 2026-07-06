@@ -5,6 +5,14 @@ function formatNotePreview(value) {
   return note || "No note saved.";
 }
 
+function formatPromptValue(prompt, key) {
+  if (prompt.valueFormatter) {
+    return prompt.valueFormatter(prompt[key]);
+  }
+
+  return formatNotePreview(prompt[key]);
+}
+
 export function LinkedNoteSyncDialog({
   prompt,
   isSubmitting = false,
@@ -23,7 +31,7 @@ export function LinkedNoteSyncDialog({
         <Dialog.Content className="note-dialog-content linked-note-sync-dialog">
           <div className="note-dialog-head">
             <div>
-              <Dialog.Title>Update connected note?</Dialog.Title>
+              <Dialog.Title>{prompt.title ?? "Update connected note?"}</Dialog.Title>
               <Dialog.Description>{prompt.description}</Dialog.Description>
             </div>
           </div>
@@ -31,16 +39,16 @@ export function LinkedNoteSyncDialog({
           <div className="linked-note-sync-grid">
             <section className="linked-note-sync-panel">
               <h4>{prompt.editedLabel}</h4>
-              <p>{formatNotePreview(prompt.editedNote)}</p>
+              <p>{formatPromptValue(prompt, "editedValue")}</p>
             </section>
             <section className="linked-note-sync-panel">
               <h4>{prompt.connectedLabel}</h4>
-              <p>{formatNotePreview(prompt.connectedNote)}</p>
+              <p>{formatPromptValue(prompt, "connectedValue")}</p>
             </section>
           </div>
 
           <p className="linked-note-sync-help">
-            Choose "Update both" when the note is a shared explanation for the same real-world item. Choose "Save only this" when the connected record needs a different note.
+            {prompt.helpText ?? "Choose \"Update both\" when the note is a shared explanation for the same real-world item. Choose \"Save only this\" when the connected record needs a different note."}
           </p>
 
           {prompt.error ? <p className="form-error">{prompt.error}</p> : null}

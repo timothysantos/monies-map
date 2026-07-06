@@ -94,6 +94,7 @@ export {
   loadSplitGroups,
   loadSplitMatchCandidates,
   loadSplitSettlements,
+  updateSplitExpenseCategoryRecord,
   updateSplitExpenseRecord,
   updateSplitExpenseNoteRecord,
   updateSplitSettlementNoteRecord,
