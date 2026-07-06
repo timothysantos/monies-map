@@ -27,6 +27,13 @@ test("buildSafeSettingsPage supplies empty collections for the settings route", 
   assert.deepEqual(result.recentAuditEvents, []);
   assert.deepEqual(result.shortcutSettings.defaultAccountPriorityIds, []);
   assert.equal(result.shortcutSettings.defaultParams, "");
+  assert.deepEqual(result.legacyLedgerOwnershipRepair, {
+    legacySharedCount: 0,
+    repairableCount: 0,
+    skippedCount: 0,
+    legacySplitCount: 0,
+    obsoleteDirectSplitCount: 0
+  });
   assert.equal(result.demo.emptyState, false);
 });
 

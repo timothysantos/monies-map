@@ -26,6 +26,15 @@ test("account and category mutations refresh reference data and downstream page 
     invalidateSplits: true,
     invalidateSummary: true
   });
+  assert.deepEqual(buildSettingsRefreshPlan("legacy_ledger_ownership_repaired"), {
+    refreshShell: false,
+    refreshReferenceData: true,
+    invalidateEntries: true,
+    invalidateImports: false,
+    invalidateMonth: true,
+    invalidateSplits: true,
+    invalidateSummary: true
+  });
 });
 
 test("person mutations refresh shell identity plus reference data", () => {
