@@ -120,7 +120,10 @@ test("newly added split can be viewed immediately and preserves the entries scop
     ownerName: "Tim"
   });
 
-  await page.goto(`/entries?view=person-tim&month=${month}&entries_scope=direct_plus_shared&editing_entry=${createdEntry.entryId}`);
+  await page.goto(`/splits?view=household&month=${month}&split_group=split-group-none`);
+  await expect(page.locator("article.panel-splits")).toBeVisible();
+
+  await page.goto(`/entries?view=household&month=${month}&entries_scope=direct_plus_shared&editing_entry=${createdEntry.entryId}`);
   const editor = page.locator(".entry-inline-editor").first();
   await expect(editor).toBeVisible();
 
@@ -143,13 +146,23 @@ test("newly added split can be viewed immediately and preserves the entries scop
   await splitsPageReady;
 
   await expect(page).toHaveURL(/\/splits\?/);
+  expect(new URL(page.url()).searchParams.get("view")).toBe("household");
+  expect(new URL(page.url()).searchParams.get("month")).toBe(month);
   expect(new URL(page.url()).searchParams.get("scope")).toBe("direct_plus_shared");
   await expect(page.getByRole("dialog")).toBeVisible({ timeout: 60_000 });
   await expect(page.getByRole("dialog").getByLabel("Description")).toHaveValue(description);
 
-  await page.goBack({ waitUntil: "domcontentloaded" });
+  await page.getByRole("dialog").getByRole("button", { name: "View entry" }).click();
   await expect(page).toHaveURL(/\/entries\?/);
-  await expect(page.locator(".scope-button.is-active")).toContainText("Direct + Shared");
+  const returnUrl = new URL(page.url());
+  expect(returnUrl.searchParams.get("view")).toBe("household");
+  expect(returnUrl.searchParams.get("month")).toBe(month);
+  expect(returnUrl.searchParams.get("entries_scope")).toBe("direct_plus_shared");
+  expect(returnUrl.searchParams.get("editing_entry")).toBe(createdEntry.entryId);
+  await expect(page.getByLabel("Description")).toHaveValue(description);
+
+  await page.goBack({ waitUntil: "domcontentloaded" });
+  await expect(page).toHaveURL(/\/splits\?/);
 });
 
 test("editing a linked entry note can update the connected split note", async ({ page }) => {
