@@ -18,6 +18,7 @@ export function buildExpenseDraft(item, categoryOptions, people) {
     id: item.id,
     linkedTransactionId: item.linkedTransactionId,
     linkedTransactionNote: item.linkedTransactionNote ?? "",
+    linkedTransactionCategoryName: item.linkedTransactionCategoryName ?? "",
     groupId: item.groupId,
     date: item.date,
     description: item.description,

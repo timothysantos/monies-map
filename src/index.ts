@@ -65,6 +65,7 @@ import {
   updateCategoryRecord,
   updatePersonRecord,
   updateMonthlySnapshotNote,
+  updateEntryCategoryRecord,
   updateEntryClassificationRecord,
   updateEntryNoteRecord,
   updateEntryPostDateRecord,
@@ -652,6 +653,26 @@ export default {
         });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update entry note" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/entries/update-category" && request.method === "POST") {
+      const body = await request.json<{ entryId?: string; categoryName?: string }>();
+
+      if (!body.entryId || !body.categoryName) {
+        return json({ ok: false, error: "Missing entry category fields" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await updateEntryCategoryRecord(env.DB, {
+            entryId: body.entryId,
+            categoryName: body.categoryName
+          }))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update entry category" }, 400);
       }
     }
 
