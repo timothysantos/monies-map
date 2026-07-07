@@ -26,6 +26,12 @@ Updated: 2026-07-08
   transaction merchant onto the line above its dates, drop the first letter from
   `Total Account Balance`, read `01 May` as `on May`, or misread a single
   transaction amount while still reading the account-summary totals correctly.
+- Production can expose stale browser bundle behavior even after parser tests
+  pass locally. On 2026-07-08 the May 2026 PDF failed in production with
+  `Expected 0.00, got -157.20`, which means the payment row was missing from
+  the deployed browser OCR path while the current local bundle parsed the same
+  PDF as one expense and one matching payment. Deploy freshness is now part of
+  the validation checklist for HSBC OCR changes.
 - A normal CSV conversion would import rows but lose statement checkpoint/certification semantics. OCR output must continue through the PDF statement preview and reconciliation flow.
 
 ## Decisions
@@ -59,12 +65,21 @@ Updated: 2026-07-08
   actual in-browser OCR failure modes without requiring tests to read local
   Downloads files.
 - Unit classifier coverage routes `.hsbc-ocr.tsv` and `__OCR_TSV__` content to statement parsing.
-- E2E upload coverage proves both direct image-only PDF OCR and the local OCR
-  package reach the Imports statement preview, show account mapping, and display
-  parsed HSBC rows.
-- Local real-file check converted the supplied February through July 2026 HSBC
-  PDFs without uploading them. March, April, and May produced activity rows;
-  February, June, and July produced valid empty statement checkpoints.
+- E2E upload coverage proves both direct image-only PDF OCR and local OCR
+  packages reach the Imports statement preview, show account mapping, and
+  display parsed HSBC rows.
+- App-level E2E package coverage uploads the browser-OCR February through July
+  2026 fixtures, including the May statement that previously failed in
+  production.
+- Local real-PDF E2E coverage runs when `HSBC_REAL_PDF_DIR` points at the
+  supplied statements. It uploads February through July 2026 through the same
+  private browser OCR path the user uses in Imports. This test is intentionally
+  local-only unless sanitized PDFs are committed later; it is the regression
+  check that would have caught a May-specific browser OCR drift before deploy.
+- Local real-file checks confirmed the supplied February through July 2026 HSBC
+  PDFs upload without sending files to a third-party OCR service. March, April,
+  and May produced activity rows; February, June, and July produced valid empty
+  statement checkpoints.
 
 ## Follow-Up
 
