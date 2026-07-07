@@ -317,6 +317,103 @@ async function writeTextPdf(page, path, text) {
   await pdfPage.close();
 }
 
+async function writeHsbcImagePdf(page, path) {
+  const pdfPage = await page.context().newPage();
+  await pdfPage.setViewportSize({ width: 1600, height: 2200 });
+  await pdfPage.setContent(`
+    <html>
+      <body style="margin:0;background:white;">
+        <canvas id="statement" width="1600" height="2200"></canvas>
+        <script>
+          const canvas = document.getElementById("statement");
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = "#000";
+          ctx.strokeStyle = "#000";
+          ctx.lineWidth = 3;
+          ctx.font = "48px Arial";
+          ctx.fillText("HSBC VISA REVOLUTION", 120, 160);
+          ctx.font = "26px Arial";
+          ctx.fillText("HSBC Bank (Singapore) Limited", 120, 205);
+          ctx.font = "36px Arial";
+          ctx.fillText("CARDHOLDER SAMPLE USER", 120, 340);
+          ctx.fillRect(120, 370, 1320, 52);
+          ctx.fillStyle = "#fff";
+          ctx.font = "30px Arial";
+          ctx.fillText("4835-XXXX-XXXX-8155", 130, 405);
+          ctx.fillStyle = "#000";
+          ctx.font = "25px Arial";
+          ctx.fillText("Statement period", 130, 470);
+          ctx.font = "31px Arial";
+          ctx.fillText("From 06 MAR 2026 to 05 APR 2026", 130, 515);
+          ctx.font = "34px Arial";
+          ctx.fillText("POST", 130, 780);
+          ctx.fillText("TRAN", 260, 780);
+          ctx.fillText("DESCRIPTION", 395, 780);
+          ctx.fillText("AMOUNT(SGD)", 760, 780);
+          ctx.beginPath();
+          ctx.moveTo(120, 795);
+          ctx.lineTo(980, 795);
+          ctx.stroke();
+          ctx.font = "26px Arial";
+          ctx.fillText("Previous Statement Balance", 420, 875);
+          ctx.fillText("0.00", 900, 875);
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(120, 900);
+          ctx.lineTo(980, 900);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.font = "28px Arial";
+          ctx.fillText("09 Mar", 130, 950);
+          ctx.fillText("06 Mar", 265, 950);
+          ctx.fillText("IKEA - ONLINE", 400, 950);
+          ctx.fillText("SINGAPORE", 580, 950);
+          ctx.fillText("117.80", 880, 950);
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(120, 985);
+          ctx.lineTo(980, 985);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillText("04 Apr", 130, 1038);
+          ctx.fillText("02 Apr", 265, 1038);
+          ctx.fillText("PAYMENT VIA UOB", 400, 1038);
+          ctx.fillText("VISA", 650, 1038);
+          ctx.fillText("117.80CR", 850, 1038);
+          ctx.fillText("DIRECT SG", 400, 1085);
+          ctx.font = "38px Arial";
+          ctx.fillText("Total Due", 400, 1160);
+          ctx.fillText("0.00", 880, 1160);
+          ctx.font = "34px Arial";
+          ctx.fillText("ACCOUNT SUMMARY", 1040, 760);
+          ctx.font = "27px Arial";
+          ctx.fillText("SGD", 1450, 760);
+          ctx.fillText("Previous Statement Balance", 1040, 805);
+          ctx.fillText("0.00", 1420, 805);
+          ctx.fillText("Payments & Credits", 1040, 850);
+          ctx.fillText("117.80CR", 1390, 850);
+          ctx.fillText("Purchases & Debits", 1040, 895);
+          ctx.fillText("117.80", 1420, 895);
+          ctx.fillText("GST Charges", 1040, 940);
+          ctx.fillText("0.00", 1420, 940);
+          ctx.fillText("GST Reversals", 1040, 985);
+          ctx.fillText("0.00", 1420, 985);
+          ctx.fillStyle = "#000";
+          ctx.fillText("Total Account Balance", 1040, 1040);
+          ctx.fillText("(incl GST)", 1040, 1070);
+          ctx.fillText("0.00", 1420, 1060);
+          const dataUrl = canvas.toDataURL("image/png");
+          document.body.innerHTML = '<img src="' + dataUrl + '" style="width:100%;height:auto;" />';
+        </script>
+      </body>
+    </html>
+  `);
+  await pdfPage.pdf({ path, width: "1600px", height: "2200px", printBackground: true });
+  await pdfPage.close();
+}
+
 test.describe("import flow", () => {
   test.describe.configure({ timeout: 240_000 });
 
@@ -1113,6 +1210,30 @@ test.describe("import flow", () => {
 
     await expect(page.getByText("2 rows ready for review")).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText("Unknown accounts need mapping before commit.")).toHaveCount(0);
+    await expect(page.locator('.import-preview-table input[value="IKEA - ONLINE SINGAPORE"]')).toBeVisible();
+    await expect(page.locator('.import-preview-table input[value="PAYMENT VIA UOB VISA DIRECT SG"]')).toBeVisible();
+  });
+
+  test("image-only HSBC PDF runs private browser OCR and opens statement preview", async ({ page }, testInfo) => {
+    const pdfPath = testInfo.outputPath("hsbc-visa-revolution-image-only.pdf");
+    await writeHsbcImagePdf(page, pdfPath);
+    await postJson(page, "/api/accounts/create", {
+      name: "HSBC Visa Revolution",
+      institution: "HSBC",
+      kind: "credit_card",
+      openingBalanceMinor: 0,
+      currency: "SGD",
+      ownerPersonId: "",
+      isJoint: false
+    });
+
+    await page.goto("/imports?view=person-tim&month=2026-04");
+    await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
+
+    await page.locator("input[type=\"file\"]").setInputFiles(pdfPath);
+
+    await expect(page.getByText(/Running private OCR in this browser/)).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText("2 rows ready for review")).toBeVisible({ timeout: 120_000 });
     await expect(page.locator('.import-preview-table input[value="IKEA - ONLINE SINGAPORE"]')).toBeVisible();
     await expect(page.locator('.import-preview-table input[value="PAYMENT VIA UOB VISA DIRECT SG"]')).toBeVisible();
   });

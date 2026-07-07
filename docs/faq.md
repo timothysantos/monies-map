@@ -495,22 +495,28 @@ Supported PDF parsers include:
 - OCBC 365 and OCBC Infinity Cashback credit-card statements with embedded text
 - OCBC 360 account statements with embedded text
 - OCBC Child Development Acc (CDA) statements with embedded text
-- HSBC Visa Revolution image-based statements through the local OCR package
-  helper
+- HSBC Visa Revolution image-based statements through private in-browser OCR
 
 ### How do I import an image-only HSBC PDF?
 
-HSBC Visa Revolution PDFs can be image-only, so browser PDF text extraction
-cannot read them directly. Run the local helper first:
+Drag the HSBC Visa Revolution PDF onto Imports the same way as the other
+supported bank statements. If the PDF has no embedded text, the app detects that
+and runs private OCR in your browser. No additional command is required.
+
+The import then continues through the normal statement preview: account mapping,
+row review, statement checkpoint, duplicate checks, reconciliation, and commit.
+Review the parsed rows against the original PDF before saving, because OCR can
+still misread bank text.
+
+The fallback helper still exists for troubleshooting unsupported browsers or
+very slow devices:
 
 ```bash
 PATH=/Users/tim/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin:$PATH ./node_modules/.bin/tsx scripts/hsbc-pdf-to-import.mjs /path/to/HSBC.pdf
 ```
 
-This writes a `.hsbc-ocr.tsv` file next to your current shell location. Upload
-that file in Imports. The PDF and rendered page images stay local; the helper
-deletes temporary OCR images and the app uses the uploaded OCR package for the
-normal statement preview, mapping, reconciliation, and checkpoint flow.
+It writes a `.hsbc-ocr.tsv` package that can be uploaded in Imports. The PDF and
+rendered page images stay local, and the helper deletes temporary OCR images.
 
 ### If this is your first account setup
 

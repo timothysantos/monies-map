@@ -64,9 +64,11 @@ export const moniesClient = Object.freeze({
   }),
   imports: Object.freeze({
     buildRawRowFromPreviewRow: importHelpers.buildRawImportRowFromPreviewRow,
+    extractPdfOcrText: importHelpers.extractPdfOcrText,
     extractPdfText: importHelpers.extractPdfText,
     getDirectOwnerForAccount: importHelpers.getImportDirectOwnerForAccount,
     inferMapping: importHelpers.inferImportMapping,
+    isExtractedPdfTextEmpty: importHelpers.isExtractedPdfTextEmpty,
     selectParsedStatementForCompare: importHelpers.selectParsedStatementForCompare
   }),
   months: Object.freeze({
