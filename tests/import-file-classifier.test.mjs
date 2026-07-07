@@ -25,6 +25,22 @@ test("classifyImportFile routes PDFs before other formats", () => {
   }), "pdf");
 });
 
+test("classifyImportFile routes local OCR statement packages to statement parsing", () => {
+  assert.equal(classifyImportFile({
+    fileName: "HSBC-8155-apr-2026.hsbc-ocr.tsv",
+    fileType: "text/tab-separated-values",
+    text: "",
+    activityContext: creditCardContext
+  }), "ocr-statement");
+
+  assert.equal(classifyImportFile({
+    fileName: "statement.tsv",
+    fileType: "text/tab-separated-values",
+    text: "__OCR_TSV__\nlevel\tpage_num",
+    activityContext: creditCardContext
+  }), "ocr-statement");
+});
+
 test("classifyImportFile keeps XLS routing generic for current-transaction workbooks", () => {
   assert.equal(classifyImportFile({
     fileName: "ACC_TXN_History_02052026194007.xls",

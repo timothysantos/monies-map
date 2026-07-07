@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readFile, writeFile } from "node:fs/promises";
 const currencyFormatter = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" });
 
 function findSummaryMonth(view, month) {
@@ -1089,6 +1090,31 @@ test.describe("import flow", () => {
 
     await page.goto("/splits?view=person-tim&month=2025-10");
     await expect(page.locator(".split-header-toolbar .split-matches-link")).toContainText(/Review matches \([1-9]/);
+  });
+
+  test("local HSBC OCR package uploads through the statement preview path", async ({ page }, testInfo) => {
+    const tsv = await readFile("tests/fixtures/hsbc-ocr/hsbc-visa-revolution-apr-2026.tsv", "utf8");
+    const ocrPackagePath = testInfo.outputPath("hsbc-visa-revolution-apr-2026.hsbc-ocr.tsv");
+    await writeFile(ocrPackagePath, `__OCR_TSV__\n${tsv}`, "utf8");
+    await postJson(page, "/api/accounts/create", {
+      name: "HSBC Visa Revolution",
+      institution: "HSBC",
+      kind: "credit_card",
+      openingBalanceMinor: 0,
+      currency: "SGD",
+      ownerPersonId: "",
+      isJoint: false
+    });
+
+    await page.goto("/imports?view=person-tim&month=2026-04");
+    await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
+
+    await page.locator("input[type=\"file\"]").setInputFiles(ocrPackagePath);
+
+    await expect(page.getByText("2 rows ready for review")).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText("Unknown accounts need mapping before commit.")).toHaveCount(0);
+    await expect(page.locator('.import-preview-table input[value="IKEA - ONLINE SINGAPORE"]')).toBeVisible();
+    await expect(page.locator('.import-preview-table input[value="PAYMENT VIA UOB VISA DIRECT SG"]')).toBeVisible();
   });
 
   test("committed import can be rolled back and disappears from entries and import history", async ({ page }) => {
