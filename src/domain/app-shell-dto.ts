@@ -15,6 +15,7 @@ import {
   loadTrackedMonths,
   resolveLoginIdentityPersonId
 } from "./app-repository";
+import { loadShortcutSettings } from "./app-repository-shortcuts";
 import type {
   EntriesShellDto,
   AppShellDto,
@@ -72,6 +73,7 @@ export async function buildEntriesShellDto(
   const suggestedPersonId = viewerEmail && !viewerPersonId
     ? await findSuggestedLoginPersonId(db)
     : undefined;
+  const shortcutSettings = await loadShortcutSettings(db, accounts);
   const views = viewIds.map((id) =>
     buildEntriesContextView(
       id,
@@ -107,11 +109,9 @@ export async function buildEntriesShellDto(
     settingsPage: {
       accounts: [],
       shortcutSettings: {
-        endpointPath: "/api/shortcuts/entries/create",
+        ...shortcutSettings,
         apiKey: "",
-        apiKeySource: "none",
-        defaultAccountPriorityIds: [],
-        defaultParams: ""
+        apiKeySource: "none"
       },
       demo,
       categoryMatchRules: [],

@@ -246,6 +246,22 @@ test.describe("settings reference data", () => {
         && entry.amountMinor === 1234
       ))
     ).toBe(true);
+
+    await gotoPageAfterApi(
+      page,
+      `/entries?view=person-tim&month=2026-04&action=add-expense&date=2026-04-27&amount=7.89&merchant=Shortcut%20URL%20priority`,
+      "/api/entries-page",
+      () => page.locator(".entry-composer")
+    );
+    await expect(page.locator(".entry-composer")).toBeVisible();
+    await page.locator(".entry-composer").getByRole("button", { name: "Create entry" }).click();
+    await expect(page.locator(".entry-composer")).toHaveCount(0);
+    const entriesAfterUrlCreate = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
+    expect(entriesAfterUrlCreate.monthPage.entries.some((entry) => (
+      entry.description === "Shortcut URL priority"
+      && entry.accountName === targetAccount.name
+      && entry.amountMinor === 789
+    ))).toBe(true);
   });
 
   test("category rename refreshes reference data plus month and summary downstream DTOs", async ({ page }) => {
