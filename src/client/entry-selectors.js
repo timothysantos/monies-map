@@ -1,4 +1,8 @@
 import { entryBypassesFieldFilters } from "./entry-filter-pins";
+import {
+  categoryMatchesEntryFilter,
+  countActiveEntryFilters
+} from "./entry-filter-values";
 import { moniesClient } from "./monies-client-service";
 
 const {
@@ -31,10 +35,7 @@ export function getEntryFormOptions({ accounts, categories, people }) {
 }
 
 export function getActiveEntryFilterCount(entryFilters) {
-  return ["category", "type"].reduce(
-    (count, key) => count + (entryFilters[key] ? 1 : 0),
-    (entryFilters.wallets?.length ? 1 : 0) + (entryFilters.entryIds?.length ? 1 : 0)
-  );
+  return countActiveEntryFilters(entryFilters);
 }
 
 export function getFilteredEntries({ entries, entryFilters, selectedScope, viewId, pinnedEntryIds = [] }) {
@@ -58,7 +59,7 @@ export function getFilteredEntries({ entries, entryFilters, selectedScope, viewI
     ) {
       return false;
     }
-    if (entryFilters.category && entry.categoryName !== entryFilters.category) {
+    if (!categoryMatchesEntryFilter(entry.categoryName, entryFilters.categories)) {
       return false;
     }
     if (entryFilters.type && entry.entryType !== entryFilters.type) {

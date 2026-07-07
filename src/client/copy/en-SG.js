@@ -18,13 +18,14 @@ export const messages = {
     emptyValue: "—",
     viewingDot: (label) => `Viewing • ${label}`,
     contextWithView: (left, right) => `${left} • ${right}`,
-    triplet: (first, second, third) => `${first} • ${second} • ${third}`,
+    triplet: (...parts) => parts.filter(Boolean).join(" • "),
     moneyAndPercent: (moneyValue, percentage) => `${moneyValue} • ${percentage}%`,
     shownInChart: "Shown",
     hiddenFromChart: "Hidden",
     clickToToggle: "Click to toggle",
     resetHiddenCategories: (count) => `Show ${count} hidden ${count === 1 ? "category" : "categories"}`,
-    viewEntries: "View entries"
+    viewEntries: "View entries",
+    viewEntriesFor: (categoryName) => `View entries for ${categoryName}`
   },
   views: {
     household: "Household"
@@ -119,6 +120,8 @@ export const messages = {
     resetFilters: "Reset filters",
     allWallets: "All wallets",
     allCategories: "All categories",
+    filter: "Filter",
+    filtered: "Filtered",
     allPeople: "All people",
     type: "By type",
     allTypes: "All types",

@@ -1,7 +1,14 @@
+import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
 
 import { SpendingMixChart } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import {
+  getDonutItemId,
+  getVisibleDonutData,
+  sumDonutValueMinor,
+  toggleHiddenDonutItemIds
+} from "./donut-visibility";
 import { moniesClient } from "./monies-client-service";
 import { CategoryGlyph, FilterMultiSelect, FilterSelect } from "./ui-components";
 
@@ -66,20 +73,52 @@ export function EntriesTotalsStrip({
   );
 }
 
-export function EntriesBreakdownPanel({ expenseBreakdown, categories, onSelectCategory }) {
+export function EntriesBreakdownPanel({
+  expenseBreakdown,
+  categories,
+  selectedCategoryNames = [],
+  onChangeCategories
+}) {
+  const [hiddenCategoryIds, setHiddenCategoryIds] = useState(() => new Set());
+  const visibleBreakdown = useMemo(
+    () => getVisibleDonutData(expenseBreakdown, hiddenCategoryIds),
+    [expenseBreakdown, hiddenCategoryIds]
+  );
+  const visibleTotalMinor = sumDonutValueMinor(visibleBreakdown);
+
+  function toggleCategoryVisibility(item) {
+    setHiddenCategoryIds((current) => toggleHiddenDonutItemIds(current, getDonutItemId(item)));
+  }
+
+  function toggleCategoryFilter(categoryName) {
+    const selected = Array.isArray(selectedCategoryNames) ? selectedCategoryNames : [];
+    const next = selected.includes(categoryName)
+      ? selected.filter((item) => item !== categoryName)
+      : [...selected, categoryName];
+    onChangeCategories?.(next);
+  }
+
   return (
     <section className="entries-breakdown-panel">
       <div className="entries-breakdown-chart">
         {expenseBreakdown.length ? (
-          <SpendingMixChart
-            data={expenseBreakdown}
-            categories={categories}
-            totalLabel={messages.entries.totalSpend}
-            compact
-            height={300}
-            innerRadius={58}
-            outerRadius={96}
-          />
+          <>
+            <SpendingMixChart
+              data={visibleBreakdown}
+              categories={categories}
+              totalMinor={visibleTotalMinor}
+              totalLabel={messages.entries.totalSpend}
+              compact
+              height={300}
+              innerRadius={58}
+              outerRadius={96}
+            />
+            {hiddenCategoryIds.size ? (
+              <button type="button" className="subtle-action donut-reset-action" onClick={() => setHiddenCategoryIds(new Set())}>
+                {messages.common.resetHiddenCategories(hiddenCategoryIds.size)}
+              </button>
+            ) : null}
+          </>
         ) : (
           <p className="lede compact">{messages.entries.noSpendBreakdown}</p>
         )}
@@ -87,14 +126,12 @@ export function EntriesBreakdownPanel({ expenseBreakdown, categories, onSelectCa
       <div className="entries-breakdown-list category-list">
         {expenseBreakdown.map((item, index) => {
           const theme = categoryService.getTheme(categories, item, index);
+          const itemId = getDonutItemId(item);
+          const isHidden = hiddenCategoryIds.has(itemId);
+          const categoryName = item.categoryName ?? item.label;
+          const isFiltered = selectedCategoryNames.includes(categoryName);
           return (
-            <button
-              key={item.key}
-              type="button"
-              className="category-row category-row-button"
-              onClick={() => onSelectCategory?.(item.categoryName ?? item.label)}
-              aria-label={`Filter entries by ${item.label}`}
-            >
+            <div key={item.key} className={`category-row category-toggle-row ${isHidden ? "is-hidden-from-donut" : ""}`}>
               <div className="category-key">
                 <span className="category-icon category-icon-static" style={{ "--category-color": theme.color }}>
                   <CategoryGlyph iconKey={theme.iconKey} />
@@ -104,7 +141,25 @@ export function EntriesBreakdownPanel({ expenseBreakdown, categories, onSelectCa
                   <p>{formatService.money(item.valueMinor)} • {item.entryCount} {item.entryCount === 1 ? "entry" : "entries"}</p>
                 </div>
               </div>
-            </button>
+              <div className="category-toggle-actions">
+                <button
+                  type="button"
+                  className={`subtle-action chart-toggle-action ${isHidden ? "" : "is-active"}`}
+                  aria-pressed={!isHidden}
+                  onClick={() => toggleCategoryVisibility(item)}
+                >
+                  {isHidden ? messages.common.hiddenFromChart : messages.common.shownInChart}
+                </button>
+                <button
+                  type="button"
+                  className={`subtle-action filter-toggle-action ${isFiltered ? "is-active" : ""}`}
+                  aria-pressed={isFiltered}
+                  onClick={() => toggleCategoryFilter(categoryName)}
+                >
+                  {isFiltered ? messages.entries.filtered : messages.entries.filter}
+                </button>
+              </div>
+            </div>
           );
         })}
       </div>
@@ -163,12 +218,18 @@ export function EntriesFilterStack({
           }}
           onChange={(values) => onChangeFilter("wallet", values)}
         />
-        <FilterSelect
+        <FilterMultiSelect
           label={messages.entries.category}
-          value={entryFilters.category}
+          values={entryFilters.categories}
           options={entryCategoryOptions}
           emptyLabel={messages.entries.allCategories}
-          onChange={(value) => onChangeFilter("category", value)}
+          selectionLabel={(selectedOptions) => {
+            if (selectedOptions.length === 1) {
+              return selectedOptions[0].label;
+            }
+            return `${selectedOptions.length} categories`;
+          }}
+          onChange={(values) => onChangeFilter("category", values)}
         />
         <FilterSelect
           label={messages.entries.type}

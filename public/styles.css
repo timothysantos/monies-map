@@ -4606,6 +4606,12 @@ button.split-activity-card:hover {
   background: rgba(255, 255, 255, 0.84);
 }
 
+.category-toggle-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
 .category-row-button {
   width: 100%;
   color: inherit;
@@ -4624,6 +4630,11 @@ button.split-activity-card:hover {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+}
+
+.category-key > div {
+  min-width: 0;
 }
 
 .category-icon {
@@ -5015,6 +5026,12 @@ button.split-activity-card:hover {
   min-width: 0;
 }
 
+.share-row.chart-toggle-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
 .share-row.is-hidden-from-donut,
 .category-row.is-hidden-from-donut {
   border-style: dashed;
@@ -5040,6 +5057,45 @@ button.split-activity-card:hover {
   cursor: pointer;
 }
 
+.share-row-button strong,
+.share-row-button p,
+.share-row-button .share-row-meta,
+.category-row strong,
+.category-row p {
+  overflow-wrap: anywhere;
+}
+
+.share-row-secondary-action {
+  align-self: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+}
+
+.category-toggle-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chart-toggle-action,
+.filter-toggle-action {
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  line-height: 1;
+}
+
+.chart-toggle-action.is-active,
+.filter-toggle-action.is-active {
+  color: var(--accent-strong);
+  background: rgba(177, 94, 47, 0.08);
+  border-color: rgba(177, 94, 47, 0.2);
+}
+
 .share-row p,
 .account p,
 .import-card p {
@@ -5055,7 +5111,6 @@ button.split-activity-card:hover {
   line-height: 1.25;
 }
 
-.share-row-secondary-action,
 .donut-reset-action {
   white-space: nowrap;
 }
@@ -9117,8 +9172,28 @@ th {
   .share-row {
     flex: 0 0 min(246px, calc(100vw - 104px));
     min-width: min(246px, calc(100vw - 104px));
+    grid-template-columns: minmax(0, 1fr) 36px;
     gap: 12px;
     padding: 12px 10px 12px 12px;
+  }
+
+  .share-row .category-key {
+    gap: 10px;
+  }
+
+  .share-row .category-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .share-row-button strong {
+    display: block;
+    line-height: 1.15;
+  }
+
+  .share-row-button p,
+  .share-row-meta {
+    line-height: 1.18;
   }
 
   .entries-totals-strip {
@@ -9154,9 +9229,21 @@ th {
   .entries-breakdown-list .category-row {
     flex: 0 0 172px;
     min-width: 172px;
+    grid-template-columns: minmax(0, 1fr);
     padding: 9px 10px;
     gap: 8px;
     border-radius: 10px;
+  }
+
+  .entries-breakdown-list .category-toggle-actions {
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  .entries-breakdown-list .chart-toggle-action,
+  .entries-breakdown-list .filter-toggle-action {
+    padding: 5px 8px;
+    font-size: 0.74rem;
   }
 
   .entries-breakdown-list .category-key {

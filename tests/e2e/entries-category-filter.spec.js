@@ -125,6 +125,56 @@ test("date group refresh reloads entries without leaving the page", async ({ pag
   await expect(page.locator(".entries-page-loading")).toHaveCount(0);
 });
 
+test("entries breakdown category rows hide chart slices separately from multi-category filtering", async ({ page }) => {
+  const month = "2026-05";
+  const foodDescription = `Playwright multi food ${Date.now()}`;
+  const taxiDescription = `Playwright multi taxi ${Date.now()}`;
+
+  await reseedDemo(page);
+  await postJson(page, "/api/entries/create", {
+    date: `${month}-24`,
+    description: foodDescription,
+    accountName: "UOB One",
+    categoryName: "Food & Drinks",
+    amountMinor: 3210,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+  await postJson(page, "/api/entries/create", {
+    date: `${month}-24`,
+    description: taxiDescription,
+    accountName: "UOB One",
+    categoryName: "Taxi",
+    amountMinor: 4321,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+
+  await gotoPageAfterApi(
+    page,
+    `/entries?view=person-tim&month=${month}&entry_category=Food%20%26%20Drinks&entry_category=Taxi`,
+    "/api/entries-page",
+    () => page.locator(".entry-row").filter({ hasText: foodDescription })
+  );
+  await expect(page.locator(".entry-row").filter({ hasText: foodDescription })).toHaveCount(1);
+  await expect(page.locator(".entry-row").filter({ hasText: taxiDescription })).toHaveCount(1);
+  await expect(page.locator(".entries-filter").filter({ hasText: "By category" })).toContainText("2 categories");
+
+  await page.getByRole("button", { name: "Show expense breakdown" }).click();
+  const foodRow = page.locator(".entries-breakdown-list .category-row").filter({ hasText: "Food & Drinks" });
+  await expect(foodRow).toBeVisible();
+  await foodRow.getByRole("button", { name: "Shown" }).click();
+  await expect(page.getByRole("button", { name: "Show 1 hidden category" })).toBeVisible();
+  expect(new URL(page.url()).searchParams.getAll("entry_category").sort()).toEqual(["Food & Drinks", "Taxi"].sort());
+
+  await foodRow.getByRole("button", { name: "Filtered" }).click();
+  await expect(page.locator(".entry-row").filter({ hasText: foodDescription })).toHaveCount(0);
+  await expect(page.locator(".entry-row").filter({ hasText: taxiDescription })).toHaveCount(1);
+  expect(new URL(page.url()).searchParams.getAll("entry_category")).toEqual(["Taxi"]);
+});
+
 test("daily net ignores matched transfers that stay inside the visible scope", async ({ page }) => {
   const month = "2026-06";
   const transferOutDescription = `Playwright card payment out ${Date.now()}`;
