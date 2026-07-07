@@ -127,6 +127,7 @@ export function buildOptimisticExpenseActivityItem({
     linkedTransactionId: draft?.linkedTransactionId ?? existingItem?.linkedTransactionId,
     linkedTransactionDescription: existingItem?.linkedTransactionDescription,
     linkedTransactionNote: draft?.linkedTransactionNote ?? existingItem?.linkedTransactionNote,
+    linkedTransactionCategoryName: draft?.linkedTransactionCategoryName ?? existingItem?.linkedTransactionCategoryName,
     matched: Boolean(draft?.linkedTransactionId ?? existingItem?.linkedTransactionId),
     isPendingDerived: true
   };
@@ -162,6 +163,7 @@ export function buildOptimisticSettlementActivityItem({
     linkedTransactionId: draft?.linkedTransactionId ?? existingItem?.linkedTransactionId,
     linkedTransactionDescription: existingItem?.linkedTransactionDescription,
     linkedTransactionNote: draft?.linkedTransactionNote ?? existingItem?.linkedTransactionNote,
+    linkedTransactionCategoryName: draft?.linkedTransactionCategoryName ?? existingItem?.linkedTransactionCategoryName,
     matched: Boolean(draft?.linkedTransactionId ?? existingItem?.linkedTransactionId),
     isPendingDerived: true
   };

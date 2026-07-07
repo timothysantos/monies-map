@@ -60,13 +60,15 @@ export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthK
         payer.display_name AS payer_person_name,
         categories.name AS category_name,
         transactions.description AS linked_transaction_description,
-        transactions.note AS linked_transaction_note
+        transactions.note AS linked_transaction_note,
+        linked_categories.name AS linked_transaction_category_name
       FROM split_expenses
       LEFT JOIN split_groups ON split_groups.id = split_expenses.split_group_id
       LEFT JOIN split_batches ON split_batches.id = split_expenses.split_batch_id
       INNER JOIN people AS payer ON payer.id = split_expenses.payer_person_id
       LEFT JOIN categories ON categories.id = split_expenses.category_id
       LEFT JOIN transactions ON transactions.id = split_expenses.linked_transaction_id
+      LEFT JOIN categories AS linked_categories ON linked_categories.id = transactions.category_id
       WHERE split_expenses.household_id = ?
       ORDER BY split_expenses.expense_date DESC, split_expenses.created_at DESC
     `)
@@ -88,6 +90,7 @@ export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthK
       category_name: string | null;
       linked_transaction_description: string | null;
       linked_transaction_note: string | null;
+      linked_transaction_category_name: string | null;
     }>();
 
   const shares = await db
@@ -141,6 +144,7 @@ export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthK
     linkedTransactionId: row.linked_transaction_id ?? undefined,
     linkedTransactionDescription: row.linked_transaction_description ?? undefined,
     linkedTransactionNote: row.linked_transaction_note ?? undefined,
+    linkedTransactionCategoryName: row.linked_transaction_category_name ?? undefined,
     shares: shareMap.get(row.id) ?? []
   }));
 }
@@ -164,13 +168,15 @@ export async function loadSplitSettlements(db: D1Database, month = getCurrentMon
         to_person.id AS to_person_id,
         to_person.display_name AS to_person_name,
         transactions.description AS linked_transaction_description,
-        transactions.note AS linked_transaction_note
+        transactions.note AS linked_transaction_note,
+        linked_categories.name AS linked_transaction_category_name
       FROM split_settlements
       LEFT JOIN split_groups ON split_groups.id = split_settlements.split_group_id
       LEFT JOIN split_batches ON split_batches.id = split_settlements.split_batch_id
       INNER JOIN people AS from_person ON from_person.id = split_settlements.from_person_id
       INNER JOIN people AS to_person ON to_person.id = split_settlements.to_person_id
       LEFT JOIN transactions ON transactions.id = split_settlements.linked_transaction_id
+      LEFT JOIN categories AS linked_categories ON linked_categories.id = transactions.category_id
       WHERE split_settlements.household_id = ?
       ORDER BY split_settlements.settlement_date DESC, split_settlements.created_at DESC
     `)
@@ -192,6 +198,7 @@ export async function loadSplitSettlements(db: D1Database, month = getCurrentMon
       to_person_name: string;
       linked_transaction_description: string | null;
       linked_transaction_note: string | null;
+      linked_transaction_category_name: string | null;
     }>();
 
   return settlements.results.map((row) => ({
@@ -210,7 +217,8 @@ export async function loadSplitSettlements(db: D1Database, month = getCurrentMon
     note: row.note ?? undefined,
     linkedTransactionId: row.linked_transaction_id ?? undefined,
     linkedTransactionDescription: row.linked_transaction_description ?? undefined,
-    linkedTransactionNote: row.linked_transaction_note ?? undefined
+    linkedTransactionNote: row.linked_transaction_note ?? undefined,
+    linkedTransactionCategoryName: row.linked_transaction_category_name ?? undefined
   }));
 }
 

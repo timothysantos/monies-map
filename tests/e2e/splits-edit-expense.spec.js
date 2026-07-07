@@ -71,3 +71,47 @@ test("editing a linked split note can update the connected entry note", async ({
   const updatedEntry = entriesData.monthPage.entries.find((item) => item.id === entry.entryId);
   expect(updatedEntry?.note).toBe(syncedNote);
 });
+
+test("editing a linked split category can update the connected entry category", async ({ page }) => {
+  const month = "2026-04";
+  const description = `Playwright split linked category ${Date.now()}`;
+
+  await page.goto("/");
+  await reseedDemo(page);
+
+  const entry = await postJson(page, "/api/entries/create", {
+    date: `${month}-24`,
+    description,
+    accountName: "UOB One",
+    categoryName: "Food & Drinks",
+    amountMinor: 2550,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+  const splitData = await postJson(page, "/api/splits/expenses/from-entry", {
+    entryId: entry.entryId,
+    splitGroupId: null
+  });
+
+  await page.goto(`/splits?view=person-tim&month=${month}&editing_split_expense=${splitData.splitExpenseId}`);
+  const editDialog = page.getByRole("dialog", { name: "Edit split" });
+  await expect(editDialog).toBeVisible();
+  await editDialog.locator("select").nth(2).selectOption("Groceries");
+  await editDialog.getByRole("button", { name: "Save expense" }).click();
+
+  const syncDialog = page.getByRole("dialog", { name: "Update connected entry category?" });
+  await expect(syncDialog).toBeVisible();
+  await expect(syncDialog).toContainText("Food & Drinks");
+  await expect(syncDialog).toContainText("Groceries");
+  await syncDialog.getByRole("button", { name: "Update both" }).click();
+  await expect(syncDialog).toBeHidden({ timeout: 60_000 });
+
+  const splitsData = await loadSplitsPage(page, { view: "person-tim", month });
+  const updatedSplit = splitsData.splitsPage.activity.find((item) => item.id === splitData.splitExpenseId);
+  expect(updatedSplit?.categoryName).toBe("Groceries");
+
+  const entriesData = await loadEntriesPage(page, { view: "person-tim", month });
+  const updatedEntry = entriesData.monthPage.entries.find((item) => item.id === entry.entryId);
+  expect(updatedEntry?.categoryName).toBe("Groceries");
+});

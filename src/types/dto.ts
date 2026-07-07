@@ -264,6 +264,7 @@ export interface SplitActivityDto {
   linkedTransactionId?: string;
   linkedTransactionDescription?: string;
   linkedTransactionNote?: string;
+  linkedTransactionCategoryName?: string;
   matched: boolean;
 }
 
@@ -303,6 +304,7 @@ export interface SplitExpenseDto {
   linkedTransactionId?: string;
   linkedTransactionDescription?: string;
   linkedTransactionNote?: string;
+  linkedTransactionCategoryName?: string;
   shares: EntrySplitDto[];
 }
 
@@ -323,6 +325,7 @@ export interface SplitSettlementDto {
   linkedTransactionId?: string;
   linkedTransactionDescription?: string;
   linkedTransactionNote?: string;
+  linkedTransactionCategoryName?: string;
 }
 
 export interface SplitsPageDto {
@@ -696,6 +699,7 @@ export interface MonthPageDto {
 export interface ImportsPageDto {
   recentImports: ImportBatchDto[];
   rollbackPolicy: string;
+  pendingSplitMatchCount?: number;
 }
 
 export interface ContextViewDto {

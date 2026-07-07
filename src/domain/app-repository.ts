@@ -2262,6 +2262,69 @@ export async function updateEntryNoteRecord(
   return { entryId: input.entryId, updated: true };
 }
 
+export async function updateEntryCategoryRecord(
+  db: D1Database,
+  input: {
+    entryId: string;
+    categoryName: string;
+  }
+) {
+  const category = await db
+    .prepare("SELECT id FROM categories WHERE household_id = ? AND name = ?")
+    .bind(DEFAULT_HOUSEHOLD_ID, input.categoryName)
+    .first<{ id: string }>();
+
+  if (!category) {
+    throw new Error(`Unknown category: ${input.categoryName}`);
+  }
+
+  const transaction = await db
+    .prepare(`
+      SELECT
+        transactions.id,
+        transactions.description,
+        transactions.transaction_date,
+        categories.name AS category_name
+      FROM transactions
+      LEFT JOIN categories ON categories.id = transactions.category_id
+      WHERE transactions.household_id = ? AND transactions.id = ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
+    .first<{
+      id: string;
+      description: string;
+      transaction_date: string;
+      category_name: string | null;
+    }>();
+
+  if (!transaction) {
+    throw new Error("Entry not found.");
+  }
+
+  await db
+    .prepare("UPDATE transactions SET category_id = ?, updated_at = CURRENT_TIMESTAMP WHERE household_id = ? AND id = ?")
+    .bind(category.id, DEFAULT_HOUSEHOLD_ID, input.entryId)
+    .run();
+
+  await recalculateMonthlySnapshots(db, transaction.transaction_date.slice(0, 7));
+
+  await recordAuditEvent(db, {
+    entityType: "transaction",
+    entityId: input.entryId,
+    action: "entry_category_updated",
+    detail: `Updated entry category from linked split category sync to ${input.categoryName}.`
+  });
+
+  if (transaction.category_name && transaction.category_name !== input.categoryName) {
+    await recordCategoryMatchSuggestion(db, {
+      description: transaction.description,
+      categoryName: input.categoryName
+    });
+  }
+
+  return { entryId: input.entryId, updated: true };
+}
+
 export async function updateEntryPostDateRecord(
   db: D1Database,
   input: {

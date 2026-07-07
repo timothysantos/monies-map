@@ -97,6 +97,14 @@ export function updateLinkedEntryNote({ entryId, note }) {
   );
 }
 
+export function updateLinkedEntryCategory({ entryId, categoryName }) {
+  return postJson(
+    "/api/entries/update-category",
+    { entryId, categoryName },
+    "Failed to update linked entry category."
+  );
+}
+
 export function updateSplitExpenseNote({ splitExpenseId, note }) {
   return postJson(
     "/api/splits/expenses/update-note",

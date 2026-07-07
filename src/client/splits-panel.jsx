@@ -15,6 +15,7 @@ import {
   linkSplitMatch,
   saveSplitExpense,
   saveSplitSettlement,
+  updateLinkedEntryCategory,
   updateLinkedEntryNote
 } from "./splits-api";
 import {
@@ -51,6 +52,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [splitNoteSyncPrompt, setSplitNoteSyncPrompt] = useState(null);
   const [isSyncingSplitNote, setIsSyncingSplitNote] = useState(false);
+  const [splitCategorySyncPrompt, setSplitCategorySyncPrompt] = useState(null);
+  const [isSyncingSplitCategory, setIsSyncingSplitCategory] = useState(false);
   const [isRefreshingDerived, setIsRefreshingDerived] = useState(false);
   const [optimisticSplitsPage, setOptimisticSplitsPage] = useState(null);
   const [dismissedMatchIds, setDismissedMatchIds] = useState([]);
@@ -301,6 +304,45 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     };
   }
 
+  function buildSplitCategorySyncPrompt(draft, snapshot) {
+    if (draft?.kind !== "expense" || !draft.linkedTransactionId || !snapshot) {
+      return null;
+    }
+
+    const previousCategory = snapshot.categoryName ?? "";
+    const nextCategory = draft.categoryName ?? "";
+    const linkedCategory = draft.linkedTransactionCategoryName ?? "";
+    if (!nextCategory || previousCategory === nextCategory || linkedCategory === nextCategory) {
+      return null;
+    }
+
+    return {
+      draftKind: draft.kind,
+      categoryName: nextCategory,
+      editedValue: nextCategory,
+      connectedValue: linkedCategory || previousCategory,
+      title: "Update connected entry category?",
+      editedLabel: "Split category being saved",
+      connectedLabel: "Connected ledger entry current category",
+      description: `This split expense changed category from ${previousCategory || "Unassigned"} to ${nextCategory}. Apply the same category to the connected ledger entry too?`,
+      helpText: "Choose \"Update both\" when the ledger entry and split expense describe the same real-world item. Choose \"Save only this\" when the ledger entry should keep a different category.",
+      valueFormatter: (value) => value || "Unassigned"
+    };
+  }
+
+  function requestSplitCategorySync(draft, snapshot, saveKind) {
+    const prompt = buildSplitCategorySyncPrompt(draft, snapshot);
+    if (!prompt) {
+      return false;
+    }
+
+    setSplitCategorySyncPrompt({
+      ...prompt,
+      saveKind
+    });
+    return true;
+  }
+
   function requestSplitNoteSync(draft, snapshot, saveKind) {
     const prompt = buildSplitNoteSyncPrompt(draft, snapshot);
     if (!prompt) {
@@ -334,7 +376,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
   }
 
-  async function saveExpense({ syncLinkedNote = false } = {}) {
+  async function saveExpense({ syncLinkedNote = false, syncLinkedCategory = false } = {}) {
     const draft = expenseDialog;
     const validationError = validateSplitExpenseDraft(expenseDialog);
     if (validationError) {
@@ -367,6 +409,12 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         await updateLinkedEntryNote({
           entryId: draft.linkedTransactionId,
           note: draft.note ?? ""
+        });
+      }
+      if (syncLinkedCategory && draft?.linkedTransactionId) {
+        await updateLinkedEntryCategory({
+          entryId: draft.linkedTransactionId,
+          categoryName: draft.categoryName
         });
       }
       closeExpenseDialogAndReturn();
@@ -436,7 +484,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
   }
 
-  async function saveInlineSplit({ syncLinkedNote = false } = {}) {
+  async function saveInlineSplit({ syncLinkedNote = false, syncLinkedCategory = false } = {}) {
     if (!inlineSplitDraft) {
       return;
     }
@@ -492,6 +540,12 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
           note: draft.note ?? ""
         });
       }
+      if (syncLinkedCategory && draft.kind === "expense" && draft.linkedTransactionId) {
+        await updateLinkedEntryCategory({
+          entryId: draft.linkedTransactionId,
+          categoryName: draft.categoryName
+        });
+      }
       clearInlineSplitDraft();
       refreshAfterSplitMutation(
         draft.linkedTransactionId
@@ -508,6 +562,10 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   }
 
   function requestSaveExpense() {
+    if (requestSplitCategorySync(expenseDialog, expenseDialogSnapshot, "expense-dialog")) {
+      return;
+    }
+
     if (requestSplitNoteSync(expenseDialog, expenseDialogSnapshot, "expense-dialog")) {
       return;
     }
@@ -524,6 +582,10 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   }
 
   function requestSaveInlineSplit() {
+    if (requestSplitCategorySync(inlineSplitDraft, inlineSplitDraftSnapshot, "inline-split")) {
+      return;
+    }
+
     if (requestSplitNoteSync(inlineSplitDraft, inlineSplitDraftSnapshot, "inline-split")) {
       return;
     }
@@ -558,6 +620,31 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         : current);
     } finally {
       setIsSyncingSplitNote(false);
+    }
+  }
+
+  async function confirmSplitCategorySync({ updateLinked }) {
+    const prompt = splitCategorySyncPrompt;
+    if (!prompt) {
+      return;
+    }
+
+    setIsSyncingSplitCategory(true);
+    setSplitCategorySyncPrompt((current) => current ? { ...current, error: "" } : current);
+    try {
+      const saved = prompt.saveKind === "expense-dialog"
+        ? await saveExpense({ syncLinkedCategory: updateLinked })
+        : await saveInlineSplit({ syncLinkedCategory: updateLinked });
+      if (!saved) {
+        return;
+      }
+      setSplitCategorySyncPrompt(null);
+    } catch (error) {
+      setSplitCategorySyncPrompt((current) => current
+        ? { ...current, error: error instanceof Error ? error.message : "Failed to update connected entry category." }
+        : current);
+    } finally {
+      setIsSyncingSplitCategory(false);
     }
   }
 
@@ -787,6 +874,13 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onCancel={() => setSplitNoteSyncPrompt(null)}
         onSaveOnly={() => void confirmSplitNoteSync({ updateLinked: false })}
         onUpdateBoth={() => void confirmSplitNoteSync({ updateLinked: true })}
+      />
+      <LinkedNoteSyncDialog
+        prompt={splitCategorySyncPrompt}
+        isSubmitting={isSyncingSplitCategory || isSubmitting}
+        onCancel={() => setSplitCategorySyncPrompt(null)}
+        onSaveOnly={() => void confirmSplitCategorySync({ updateLinked: false })}
+        onUpdateBoth={() => void confirmSplitCategorySync({ updateLinked: true })}
       />
     </article>
   );
