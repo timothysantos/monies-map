@@ -2121,6 +2121,7 @@ export function App() {
     [appShell, pageView]
   );
   const isDetailMonthTab = renderedTabId === "month" || renderedTabId === "entries" || renderedTabId === "splits";
+  const selectedRouteIsDetailMonthTab = selectedTabId === "month" || selectedTabId === "entries" || selectedTabId === "splits";
   const isSplitsTab = renderedTabId === "splits";
   // Detail tabs use the current month index to decide whether the navigation
   // arrows should remain enabled.
@@ -2259,7 +2260,7 @@ export function App() {
           accounts={accounts}
           categories={categories}
           people={appShell.household.people}
-          shortcutSettings={pageView.settingsPage?.shortcutSettings}
+          shortcutSettings={appShell.settingsPage?.shortcutSettings}
           onCategoryAppearanceChange={handleCategoryAppearanceChange}
           onInvalidateAppShellCache={syncAppShellAfterMutation}
           onInvalidateEntryMutation={broadcastEntryMutation}
@@ -2593,6 +2594,20 @@ export function App() {
       return;
     }
 
+    if (selectedRouteIsDetailMonthTab) {
+      const routeMonth = currentPageView?.monthPage?.month;
+      if (!routeMonth || routeMonth === selectedMonth) {
+        return;
+      }
+
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        next.set("month", routeMonth);
+        return next;
+      }, { replace: true });
+      return;
+    }
+
     if (availableMonths.includes(selectedMonth)) {
       return;
     }
@@ -2602,7 +2617,7 @@ export function App() {
       next.set("month", availableMonths[availableMonths.length - 1]);
       return next;
     }, { replace: true });
-  }, [availableMonths, appShell, selectedMonth, setSearchParams]);
+  }, [availableMonths, appShell, currentPageView, selectedMonth, selectedRouteIsDetailMonthTab, setSearchParams]);
 
   // Initialize the summary range picker year buckets from the active summary
   // window.
