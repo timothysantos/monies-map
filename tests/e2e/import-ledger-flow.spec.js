@@ -1,6 +1,73 @@
 import { expect, test } from "@playwright/test";
-import { readFile, writeFile } from "node:fs/promises";
+import { access, readFile, writeFile } from "node:fs/promises";
+
 const currencyFormatter = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" });
+const HSBC_REAL_PDF_DIR = process.env.HSBC_REAL_PDF_DIR ?? "/Users/tim/Downloads/hsbc-tim";
+const HSBC_2026_CASES = [
+  {
+    month: "feb",
+    routeMonth: "2026-02",
+    readyText: "0 rows ready for review",
+    values: []
+  },
+  {
+    month: "mar",
+    routeMonth: "2026-03",
+    readyText: "2 rows ready for review",
+    values: [
+      "2026-02-23",
+      "IKEA SINGAPORE SG",
+      "683.00",
+      "txn date: 2026-02-20",
+      "2026-03-04",
+      "PAYMENT VIA UOB VISA DIRECT SG",
+      "683.00",
+      "txn date: 2026-03-03"
+    ]
+  },
+  {
+    month: "apr",
+    routeMonth: "2026-04",
+    readyText: "2 rows ready for review",
+    values: [
+      "2026-03-09",
+      "IKEA - ONLINE SINGAPORE",
+      "117.80",
+      "txn date: 2026-03-06",
+      "2026-04-04",
+      "PAYMENT VIA UOB VISA DIRECT SG",
+      "117.80",
+      "txn date: 2026-04-02"
+    ]
+  },
+  {
+    month: "may",
+    routeMonth: "2026-05",
+    readyText: "2 rows ready for review",
+    values: [
+      "2026-05-04",
+      "IKEA SINGAPORE SG",
+      "157.20",
+      "txn date: 2026-05-01",
+      "2026-05-05",
+      "PAYMENT VIA UOB VISA DIRECT SG",
+      "157.20",
+      "txn date: 2026-05-04"
+    ]
+  },
+  {
+    month: "jun",
+    routeMonth: "2026-06",
+    readyText: "0 rows ready for review",
+    values: []
+  },
+  {
+    month: "jul",
+    routeMonth: "2026-07",
+    readyText: "0 rows ready for review",
+    values: []
+  }
+];
 
 function findSummaryMonth(view, month) {
   const item = view.summaryPage.months.find((row) => row.month === month);
@@ -82,6 +149,35 @@ async function postJson(page, path, body) {
   }
 
   throw lastError ?? new Error(`POST ${path} failed`);
+}
+
+async function createHsbcVisaRevolutionAccount(page) {
+  await postJson(page, "/api/accounts/create", {
+    name: "HSBC Visa Revolution",
+    institution: "HSBC",
+    kind: "credit_card",
+    openingBalanceMinor: 0,
+    currency: "SGD",
+    ownerPersonId: "",
+    isJoint: false
+  });
+}
+
+async function expectHsbcPreviewValues(page, expectedValues) {
+  await expect(page.getByText("Unknown accounts need mapping before commit.")).toHaveCount(0);
+  const previewValues = await page
+    .locator(".import-preview-table input")
+    .evaluateAll((inputs) => inputs.map((input) => input.value));
+  expect(previewValues).toEqual(expectedValues);
+}
+
+async function pathExists(path) {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function loadEntriesPage(page, { view = "person-tim", month = "2025-10" } = {}) {
@@ -1189,43 +1285,47 @@ test.describe("import flow", () => {
     await expect(page.locator(".split-header-toolbar .split-matches-link")).toContainText(/Review matches \([1-9]/);
   });
 
-  test("local HSBC OCR package uploads through the statement preview path", async ({ page }, testInfo) => {
-    const tsv = await readFile("tests/fixtures/hsbc-ocr/hsbc-visa-revolution-apr-2026.tsv", "utf8");
-    const ocrPackagePath = testInfo.outputPath("hsbc-visa-revolution-apr-2026.hsbc-ocr.tsv");
-    await writeFile(ocrPackagePath, `__OCR_TSV__\n${tsv}`, "utf8");
-    await postJson(page, "/api/accounts/create", {
-      name: "HSBC Visa Revolution",
-      institution: "HSBC",
-      kind: "credit_card",
-      openingBalanceMinor: 0,
-      currency: "SGD",
-      ownerPersonId: "",
-      isJoint: false
-    });
+  test("local HSBC OCR packages upload Feb-Jul 2026 through the statement preview path", async ({ page }, testInfo) => {
+    await createHsbcVisaRevolutionAccount(page);
 
-    await page.goto("/imports?view=person-tim&month=2026-04");
-    await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
+    for (const item of HSBC_2026_CASES) {
+      const tsv = await readFile(`tests/fixtures/hsbc-ocr/browser-2026/hsbc-visa-revolution-${item.month}-2026.browser.tsv`, "utf8");
+      const ocrPackagePath = testInfo.outputPath(`hsbc-visa-revolution-${item.month}-2026.hsbc-ocr.tsv`);
+      await writeFile(ocrPackagePath, `__OCR_TSV__\n${tsv}`, "utf8");
 
-    await page.locator("input[type=\"file\"]").setInputFiles(ocrPackagePath);
+      await page.goto(`/imports?view=person-tim&month=${item.routeMonth}`);
+      await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
 
-    await expect(page.getByText("2 rows ready for review")).toBeVisible({ timeout: 60_000 });
-    await expect(page.getByText("Unknown accounts need mapping before commit.")).toHaveCount(0);
-    await expect(page.locator('.import-preview-table input[value="IKEA - ONLINE SINGAPORE"]')).toBeVisible();
-    await expect(page.locator('.import-preview-table input[value="PAYMENT VIA UOB VISA DIRECT SG"]')).toBeVisible();
+      await page.locator("input[type=\"file\"]").setInputFiles(ocrPackagePath);
+
+      await expect(page.getByText(item.readyText)).toBeVisible({ timeout: 60_000 });
+      await expectHsbcPreviewValues(page, item.values);
+    }
+  });
+
+  test("local real HSBC PDFs upload Feb-Jul 2026 through private browser OCR", async ({ page }) => {
+    test.skip(!(await pathExists(HSBC_REAL_PDF_DIR)), `Set HSBC_REAL_PDF_DIR to run real HSBC PDF upload coverage. Default not found: ${HSBC_REAL_PDF_DIR}`);
+    await createHsbcVisaRevolutionAccount(page);
+
+    for (const item of HSBC_2026_CASES) {
+      const pdfPath = `${HSBC_REAL_PDF_DIR}/4835-8500-2086-8155-${item.month}_2026.pdf`;
+      test.skip(!(await pathExists(pdfPath)), `Missing HSBC PDF fixture: ${pdfPath}`);
+
+      await page.goto(`/imports?view=person-tim&month=${item.routeMonth}`);
+      await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
+
+      await page.locator("input[type=\"file\"]").setInputFiles(pdfPath);
+
+      await expect(page.getByText(/Running private OCR in this browser/)).toBeVisible({ timeout: 60_000 });
+      await expect(page.getByText(item.readyText)).toBeVisible({ timeout: 120_000 });
+      await expectHsbcPreviewValues(page, item.values);
+    }
   });
 
   test("image-only HSBC PDF runs private browser OCR and opens statement preview", async ({ page }, testInfo) => {
     const pdfPath = testInfo.outputPath("hsbc-visa-revolution-image-only.pdf");
     await writeHsbcImagePdf(page, pdfPath);
-    await postJson(page, "/api/accounts/create", {
-      name: "HSBC Visa Revolution",
-      institution: "HSBC",
-      kind: "credit_card",
-      openingBalanceMinor: 0,
-      currency: "SGD",
-      ownerPersonId: "",
-      isJoint: false
-    });
+    await createHsbcVisaRevolutionAccount(page);
 
     await page.goto("/imports?view=person-tim&month=2026-04");
     await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
