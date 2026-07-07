@@ -432,15 +432,11 @@ Important distinction:
 
 - an entry share is not the source of truth for shared-expense settlement
 - new ledger rows should use direct ownership and a real owner
-- `transaction_splits` remains as a storage compatibility table for direct
-  person projection and legacy shared ledger rows
+- direct entry projection is derived from `transactions.owner_person_id`
 - new shared-expense allocation should live on `split expense shares`
 
 Canonical term:
 - `entry share`
-
-Storage alias:
-- `transaction_splits`
 
 Relationships:
 - belongs to one `ledger entry`

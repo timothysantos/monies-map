@@ -11,15 +11,9 @@ export function buildSafeSettingsPage(settingsPage) {
       defaultAccountPriorityIds: [],
       defaultParams: ""
     },
-    legacyLedgerOwnershipRepair: {
-      legacySharedCount: 0,
-      repairableCount: 0,
-      skippedCount: 0,
-      legacySplitCount: 0,
-      obsoleteDirectSplitCount: 0
-    },
     categoryMatchRules: [],
     categoryMatchRuleSuggestions: [],
+    ignoredCategoryMatchRuleIssueIds: [],
     unresolvedTransfers: [],
     reconciliationExceptions: [],
     recentAuditEvents: [],
@@ -97,7 +91,8 @@ function categoryRulePartsOverlap(leftParts, rightParts) {
   );
 }
 
-export function findDuplicateCategoryMatchRules(rules) {
+export function findDuplicateCategoryMatchRules(rules, ignoredIssueIds = []) {
+  const ignored = new Set(ignoredIssueIds);
   const activeRules = (rules ?? [])
     .filter((rule) => rule?.isActive !== false)
     .map((rule) => ({
@@ -136,10 +131,12 @@ export function findDuplicateCategoryMatchRules(rules) {
     }
   }
 
-  return issues.sort((left, right) => (
-    Number(right.kind === "conflict") - Number(left.kind === "conflict")
-    || left.rules[0].pattern.localeCompare(right.rules[0].pattern)
-  ));
+  return issues
+    .filter((issue) => !ignored.has(issue.id))
+    .sort((left, right) => (
+      Number(right.kind === "conflict") - Number(left.kind === "conflict")
+      || left.rules[0].pattern.localeCompare(right.rules[0].pattern)
+    ));
 }
 
 export function getVisibleSettingsAccounts(accounts, viewId) {

@@ -70,6 +70,7 @@ import {
   updateEntryPostDateRecord,
   updateEntryRecord
 } from "./domain/app-repository";
+import { ignoreCategoryMatchRuleIssue } from "./domain/app-repository-category-match-rules";
 import {
   dismissAllUnresolvedTransfers,
   dismissUnresolvedTransfer
@@ -79,7 +80,6 @@ import {
   resolveShortcutDefaultAccountId,
   saveShortcutSettings
 } from "./domain/app-repository-shortcuts";
-import { repairLegacySharedLedgerOwnership } from "./domain/app-repository-repairs";
 import { parseCsv } from "./lib/csv";
 import { getCurrentMonthKey } from "./lib/month";
 import { json } from "./server/json";
@@ -277,17 +277,6 @@ export default {
         });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to save shortcut settings" }, 400);
-      }
-    }
-
-    if (url.pathname === "/api/settings/ledger-ownership/repair" && request.method === "POST") {
-      try {
-        return json({
-          ok: true,
-          legacyLedgerOwnershipRepair: await repairLegacySharedLedgerOwnership(env.DB)
-        });
-      } catch (error) {
-        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to repair legacy ledger ownership." }, 400);
       }
     }
 
@@ -1358,6 +1347,23 @@ export default {
         });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to delete category match rule" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/category-match-rules/ignore-issue" && request.method === "POST") {
+      const body = await request.json<{ issueId?: string }>();
+
+      if (!body.issueId) {
+        return json({ ok: false, error: "Missing duplicate rule issue id" }, 400);
+      }
+
+      try {
+        return json({
+          ok: true,
+          ...(await ignoreCategoryMatchRuleIssue(env.DB, body.issueId))
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to ignore duplicate rule issue" }, 400);
       }
     }
 

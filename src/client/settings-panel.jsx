@@ -19,8 +19,8 @@ import {
   deleteSettingsCategory,
   dismissAllUnresolvedTransfers,
   dismissUnresolvedTransfer,
+  ignoreCategoryMatchRuleIssue,
   ignoreCategoryMatchRuleSuggestion,
-  repairLegacyLedgerOwnership,
   retainLatestErrorDiagnostics,
   resolveReconciliationException,
   runDemoAction,
@@ -39,7 +39,6 @@ import {
   SettingsCategoryMatchRulesSection,
   SettingsDemoSection,
   SettingsErrorDiagnosticsSection,
-  SettingsMaintenanceSection,
   SettingsPeopleSection,
   SettingsShortcutApiSection,
   SettingsTransfersSection,
@@ -108,7 +107,6 @@ export function SettingsPanel({
     trust: false,
     transfers: false,
     errorDiagnostics: false,
-    maintenance: false,
     activity: false
   });
   const [personDialog, setPersonDialog] = useState(null);
@@ -143,7 +141,6 @@ export function SettingsPanel({
   const canUseDemoControls = appEnvironment === "demo" || appEnvironment === "local";
   const [shortcutSettingsDraft, setShortcutSettingsDraft] = useState(() => buildShortcutSettingsDraft(safeSettingsPage.shortcutSettings, accounts));
   const [shortcutSettingsError, setShortcutSettingsError] = useState("");
-  const [legacyRepairError, setLegacyRepairError] = useState("");
 
   useEffect(() => {
     setShortcutSettingsDraft(buildShortcutSettingsDraft(safeSettingsPage.shortcutSettings, accounts));
@@ -583,6 +580,18 @@ export function SettingsPanel({
     }
   }
 
+  async function handleIgnoreCategoryRuleIssue(issue) {
+    setIsSubmitting(true);
+    try {
+      await ignoreCategoryMatchRuleIssue(issue.id);
+      await onRefresh(buildSettingsRefreshPlan("category_rule_issue_ignored"));
+    } catch (error) {
+      setSettingsActionError(error instanceof Error ? error.message : "Failed to ignore duplicate rule issue");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function handleDeleteCategoryRule(rule) {
     setIsSubmitting(true);
     try {
@@ -740,20 +749,6 @@ export function SettingsPanel({
     }
   }
 
-  async function handleRepairLegacyLedgerOwnership() {
-    setIsSubmitting(true);
-    setLegacyRepairError("");
-    try {
-      await repairLegacyLedgerOwnership();
-      await onRefresh(buildSettingsRefreshPlan("legacy_ledger_ownership_repaired"));
-    } catch (error) {
-      setLegacyRepairError(error instanceof Error ? error.message : "Failed to repair legacy ledger ownership.");
-      throw error;
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
   function toggleSettingsSection(sectionKey) {
     setSettingsSectionsOpen((current) => ({
       ...current,
@@ -851,6 +846,7 @@ export function SettingsPanel({
         rules={safeSettingsPage.categoryMatchRules ?? []}
         categories={categories}
         suggestions={safeSettingsPage.categoryMatchRuleSuggestions ?? []}
+        ignoredIssueIds={safeSettingsPage.ignoredCategoryMatchRuleIssueIds ?? []}
         isOpen={settingsSectionsOpen.categoryRules}
         onToggle={() => toggleSettingsSection("categoryRules")}
         onCreateRule={openCreateCategoryRuleDialog}
@@ -859,6 +855,7 @@ export function SettingsPanel({
         onAcceptSuggestion={handleAcceptCategoryRuleSuggestion}
         onEditSuggestion={openCategoryRuleSuggestionDialog}
         onIgnoreSuggestion={handleIgnoreCategoryRuleSuggestion}
+        onIgnoreIssue={handleIgnoreCategoryRuleIssue}
       />
 
       <SettingsTrustSection
@@ -887,15 +884,6 @@ export function SettingsPanel({
         isSubmitting={isSubmitting}
         onToggle={() => toggleSettingsSection("errorDiagnostics")}
         onRetainLatest={handleRetainLatestErrorDiagnostics}
-      />
-
-      <SettingsMaintenanceSection
-        error={legacyRepairError}
-        isOpen={settingsSectionsOpen.maintenance}
-        isSubmitting={isSubmitting}
-        repairStatus={safeSettingsPage.legacyLedgerOwnershipRepair}
-        onToggle={() => toggleSettingsSection("maintenance")}
-        onRepairLegacyLedgerOwnership={handleRepairLegacyLedgerOwnership}
       />
 
       <SettingsActivitySection

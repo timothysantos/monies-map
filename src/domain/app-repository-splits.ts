@@ -676,7 +676,7 @@ async function syncLinkedTransactionToSplitExpense(
   input: { transactionId: string; splitBasisPoints: number }
 ) {
   // Split allocation is owned by split_expense_shares. Linking a split expense
-  // must not rewrite the ledger entry owner or legacy transaction_splits.
+  // must not rewrite the ledger entry owner.
   void input.transactionId;
   void input.splitBasisPoints;
 }
@@ -944,4 +944,132 @@ export async function createSplitExpenseFromEntryRecord(
     splitExpenseMonth: entry.transaction_date.slice(0, 7),
     splitGroupId: input.splitGroupId || "split-group-none"
   };
+}
+
+export async function upsertLinkedSplitExpenseForEntryRecord(
+  db: D1Database,
+  input: { entryId: string; splitBasisPoints?: number; splitGroupId?: string | null }
+) {
+  const entry = await db
+    .prepare(`
+      SELECT
+        transactions.id,
+        transactions.transaction_date,
+        transactions.description,
+        transactions.amount_minor,
+        transactions.owner_person_id,
+        transactions.note,
+        transactions.category_id,
+        transactions.entry_type,
+        accounts.owner_person_id AS account_owner_person_id
+      FROM transactions
+      INNER JOIN accounts ON accounts.id = transactions.account_id
+      WHERE transactions.household_id = ?
+        AND transactions.id = ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
+    .first<{
+      id: string;
+      transaction_date: string;
+      description: string;
+      amount_minor: number;
+      owner_person_id: string | null;
+      note: string | null;
+      category_id: string | null;
+      entry_type: "expense" | "income" | "transfer";
+      account_owner_person_id: string | null;
+    }>();
+
+  if (!entry) {
+    throw new Error("Entry not found.");
+  }
+
+  if (entry.entry_type !== "expense") {
+    return { splitExpenseId: null, skipped: true };
+  }
+
+  const payerPersonId = entry.owner_person_id ?? entry.account_owner_person_id;
+  if (!payerPersonId) {
+    throw new Error("This entry does not have a clear payer. Assign an owner first.");
+  }
+
+  const existingSplit = await db
+    .prepare("SELECT id, split_group_id FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ?")
+    .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
+    .first<{ id: string; split_group_id: string | null }>();
+  const splitExpenseId = existingSplit?.id ?? `split-expense-${Date.now()}`;
+  const splitGroupId = input.splitGroupId === undefined ? existingSplit?.split_group_id ?? null : input.splitGroupId || null;
+  const batchId = await getOrCreateActiveSplitBatch(db, {
+    groupId: splitGroupId,
+    date: entry.transaction_date
+  });
+
+  if (existingSplit) {
+    await db
+      .prepare(`
+        UPDATE split_expenses
+        SET split_group_id = ?, split_batch_id = ?, payer_person_id = ?, expense_date = ?, description = ?,
+            category_id = ?, total_amount_minor = ?, note = ?
+        WHERE id = ? AND household_id = ?
+      `)
+      .bind(
+        splitGroupId,
+        batchId,
+        payerPersonId,
+        entry.transaction_date,
+        entry.description,
+        entry.category_id,
+        entry.amount_minor,
+        entry.note,
+        splitExpenseId,
+        DEFAULT_HOUSEHOLD_ID
+      )
+      .run();
+    await db.prepare("DELETE FROM split_expense_shares WHERE split_expense_id = ?").bind(splitExpenseId).run();
+  } else {
+    await db
+      .prepare(`
+        INSERT INTO split_expenses (
+          id, household_id, split_group_id, split_batch_id, payer_person_id, expense_date,
+          description, category_id, total_amount_minor, note, linked_transaction_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .bind(
+        splitExpenseId,
+        DEFAULT_HOUSEHOLD_ID,
+        splitGroupId,
+        batchId,
+        payerPersonId,
+        entry.transaction_date,
+        entry.description,
+        entry.category_id,
+        entry.amount_minor,
+        entry.note,
+        entry.id
+      )
+      .run();
+  }
+
+  const sharePeople = await loadSplitSharePeople(db);
+  const { firstBasisPoints, secondBasisPoints, firstAmount, secondAmount } = buildSplitShareAmounts(
+    entry.amount_minor,
+    input.splitBasisPoints
+  );
+  const shares = [
+    { personId: sharePeople[0].id, ratioBasisPoints: firstBasisPoints, amountMinor: firstAmount },
+    { personId: sharePeople[1].id, ratioBasisPoints: secondBasisPoints, amountMinor: secondAmount }
+  ];
+
+  for (const split of shares) {
+    await db
+      .prepare(`
+        INSERT INTO split_expense_shares (
+          id, split_expense_id, person_id, ratio_basis_points, amount_minor
+        ) VALUES (?, ?, ?, ?, ?)
+      `)
+      .bind(`${splitExpenseId}-${split.personId}`, splitExpenseId, split.personId, split.ratioBasisPoints, split.amountMinor)
+      .run();
+  }
+
+  return { splitExpenseId, skipped: false };
 }

@@ -143,7 +143,6 @@ Core entities in [`schema.sql`](schema.sql):
 - `imports`: each import batch
 - `import_rows`: raw row-level import traceability
 - `transactions`: normalized ledger entries
-- `transaction_splits`: split a charge between two people
 - `transfer_groups`: linked transfer pairs between accounts
 - `split_groups`, `split_batches`, `split_expenses`,
   `split_expense_shares`, and `split_settlements`: shared-expense workspace

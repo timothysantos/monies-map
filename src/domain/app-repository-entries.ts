@@ -99,7 +99,6 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
         transactions.description,
         transactions.entry_type,
         transactions.transfer_direction,
-        transactions.ownership_type,
         transactions.amount_minor,
         transactions.offsets_category,
         transactions.note,
@@ -114,6 +113,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
         split_groups.group_name AS linked_split_group_name,
         split_categories.name AS linked_split_category_name,
         split_expenses.note AS linked_split_note,
+        transactions.owner_person_id,
         people.display_name AS owner_name,
         accounts.account_name AS account_name,
         CASE
@@ -150,7 +150,6 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       description: string;
       entry_type: "expense" | "income" | "transfer";
       transfer_direction: "in" | "out" | null;
-      ownership_type: "direct" | "shared";
       amount_minor: number;
       offsets_category: number;
       note: string | null;
@@ -165,38 +164,13 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       linked_split_group_name: string | null;
       linked_split_category_name: string | null;
       linked_split_note: string | null;
+      owner_person_id: string | null;
       owner_name: string | null;
       account_name: string;
       account_owner_label: string | null;
       category_name: string | null;
     }>();
 
-  const splits = await db
-    .prepare(`
-      SELECT
-        transaction_splits.transaction_id,
-        transaction_splits.person_id,
-        transaction_splits.ratio_basis_points,
-        transaction_splits.amount_minor,
-        people.display_name
-      FROM transaction_splits
-      INNER JOIN people ON people.id = transaction_splits.person_id
-      INNER JOIN transactions ON transactions.id = transaction_splits.transaction_id
-      WHERE transactions.household_id = ?
-        AND transactions.transaction_date >= ?
-        AND transactions.transaction_date < ?
-      ORDER BY transaction_splits.created_at
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, monthStart, nextMonth)
-    .all<{
-      transaction_id: string;
-      person_id: string;
-      ratio_basis_points: number;
-      amount_minor: number;
-      display_name: string;
-    }>();
-
-  const splitMap = groupSplits(splits.results, "transaction_id");
   const linkedSplitShares = await db
     .prepare(`
       SELECT
@@ -265,7 +239,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       categoryName: row.category_name ?? "Other",
       entryType: row.entry_type,
       transferDirection: row.transfer_direction ?? undefined,
-      ownershipType: row.ownership_type,
+      ownershipType: "direct",
       ownerName: row.owner_name ?? undefined,
       amountMinor: row.amount_minor,
       offsetsCategory: Boolean(row.offsets_category),
@@ -283,7 +257,14 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       linkedSplitShares: row.linked_split_expense_id
         ? linkedSplitShareMap.get(row.id) ?? []
         : undefined,
-      splits: splitMap.get(row.id) ?? []
+      splits: row.owner_person_id
+        ? [{
+          personId: row.owner_person_id,
+          personName: row.owner_name ?? row.account_owner_label ?? "Owner",
+          ratioBasisPoints: 10000,
+          amountMinor: row.amount_minor
+        }]
+        : []
     };
   });
 }
