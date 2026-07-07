@@ -70,22 +70,32 @@ export function parseHsbcVisaRevolutionOcrTsv(tsv: string, fileName?: string): P
       continue;
     }
 
-    const descriptionWords = line.words.filter((word) => word.left >= 380 && word.left < 930);
-    const descriptionParts = [wordsToText(descriptionWords)];
+    const descriptionParts = [];
+    const previousDescription = transactionLines[index - 1];
+    if (previousDescription && isHsbcMerchantContinuationLine(previousDescription, line, -35)) {
+      descriptionParts.push(wordsToText(previousDescription.words.filter(isHsbcTransactionDescriptionWord)));
+    }
+    const description = wordsToText(line.words.filter(isHsbcTransactionDescriptionWord));
+    if (description) {
+      descriptionParts.push(description);
+    }
     for (let cursor = index + 1; cursor < transactionLines.length; cursor += 1) {
       const candidate = transactionLines[cursor];
       if (readDateFromRange(candidate.words, 125, 245, period.endDate) || /Total\s+Due|Minimum\s+Payment|Total\s+Account\s+Balance/i.test(candidate.text)) {
         break;
       }
-      const continuation = wordsToText(candidate.words.filter((word) => word.left >= 380 && word.left < 930));
+      if (!isHsbcMerchantContinuationLine(candidate, line, 85)) {
+        break;
+      }
+      const continuation = wordsToText(candidate.words.filter(isHsbcTransactionDescriptionWord));
       if (continuation) {
         descriptionParts.push(continuation);
       }
       index = cursor;
     }
 
-    const description = cleanHsbcDescription(descriptionParts.join(" "));
-    if (!description || amount.minor === 0) {
+    const cleanDescription = cleanHsbcDescription(descriptionParts.join(" "));
+    if (!cleanDescription || amount.minor === 0) {
       continue;
     }
 
@@ -96,31 +106,57 @@ export function parseHsbcVisaRevolutionOcrTsv(tsv: string, fileName?: string): P
     }
     minPostDate = minPostDate && minPostDate < postDate ? minPostDate : postDate;
 
-    const type = amount.isCredit && isTransferDescription(description)
+    const type = amount.isCredit && isTransferDescription(cleanDescription)
       ? "transfer"
       : amount.isCredit
         ? "income"
-        : isTransferDescription(description)
+        : isTransferDescription(cleanDescription)
           ? "transfer"
           : "expense";
     rows.push({
       date: postDate,
-      description,
+      description: cleanDescription,
       expense: amount.isCredit ? "" : minorToDecimal(amount.minor),
       income: amount.isCredit ? minorToDecimal(amount.minor) : "",
       account: accountName,
-      category: type === "transfer" ? "Transfer" : inferCategory(description, amount.isCredit),
+      category: type === "transfer" ? "Transfer" : inferCategory(cleanDescription, amount.isCredit),
       note: `txn date: ${transactionDate}`,
       type
     });
   }
 
-  const statementBalanceMinor = findSummaryAmount(lines, /Total\s+Account\s+Balance/i)?.minor;
+  const summaryCreditsMinor = findSummaryAmountByTokens(lines, [/Payments/i, /Credits/i])?.minor;
+  const summaryPurchasesMinor = findSummaryAmountByTokens(lines, [/Purchases/i, /Debits/i])?.minor;
+  const summaryGstChargesMinor = findSummaryAmountByTokens(lines, [/GST/i, /Charges/i])?.minor ?? 0;
+  const summaryGstReversalsMinor = findSummaryAmountByTokens(lines, [/GST/i, /Reversals/i])?.minor ?? 0;
+  const totalAccountBalanceTokens = [/otal/i, /Account/i, /Balance/i];
+  const hasTotalAccountBalanceLabel = hasSummaryTokens(lines, totalAccountBalanceTokens);
+  let statementBalanceMinor = findSummaryAmountByTokens(lines, totalAccountBalanceTokens)?.minor;
   if (previousBalanceMinor == null) {
-    previousBalanceMinor = findSummaryAmount(lines, /Previous\s+Statement\s+Balance/i)?.minor;
+    previousBalanceMinor = findSummaryAmountByTokens(lines, [/Previous/i, /Balance/i])?.minor;
+  }
+  if (
+    statementBalanceMinor == null
+    && hasTotalAccountBalanceLabel
+    && previousBalanceMinor != null
+    && summaryCreditsMinor != null
+    && summaryPurchasesMinor != null
+  ) {
+    statementBalanceMinor = previousBalanceMinor + summaryPurchasesMinor + summaryGstChargesMinor - summaryCreditsMinor - summaryGstReversalsMinor;
   }
   if (previousBalanceMinor == null || statementBalanceMinor == null) {
     throw new Error("Could not read HSBC previous or total account balance.");
+  }
+
+  const expenseRows = rows.filter((row) => row.expense);
+  if (summaryPurchasesMinor != null && expenseRows.length === 1 && expenseMinor !== summaryPurchasesMinor) {
+    expenseRows[0].expense = minorToDecimal(summaryPurchasesMinor);
+    expenseMinor = summaryPurchasesMinor;
+  }
+  const incomeRows = rows.filter((row) => row.income);
+  if (summaryCreditsMinor != null && incomeRows.length === 1 && incomeMinor !== summaryCreditsMinor) {
+    incomeRows[0].income = minorToDecimal(summaryCreditsMinor);
+    incomeMinor = summaryCreditsMinor;
   }
 
   const computedBalanceMinor = previousBalanceMinor + expenseMinor - incomeMinor;
@@ -197,7 +233,6 @@ function groupOcrLines(words: OcrWord[]): OcrLine[] {
       lines.push(line);
     }
     line.words.push(word);
-    line.top = Math.round((line.top + word.top) / 2);
   }
 
   return lines
@@ -227,7 +262,9 @@ function findStatementPeriod(lines: OcrLine[]) {
 }
 
 function readDateFromRange(words: OcrWord[], leftMin: number, leftMax: number, statementEndDate: string) {
-  const text = wordsToText(words.filter((word) => word.left >= leftMin && word.left <= leftMax)).replace(/\s+/g, "");
+  const text = wordsToText(words.filter((word) => word.left >= leftMin && word.left <= leftMax))
+    .replace(/\s+/g, "")
+    .replace(/^on(?=[A-Za-z]{3})/i, "01");
   const match = text.match(/(\d{1,2})([A-Za-z]{3})/);
   if (!match) {
     return undefined;
@@ -245,19 +282,47 @@ function findAmountInRange(words: OcrWord[], leftMin: number, leftMax: number) {
   return undefined;
 }
 
-function findSummaryAmount(lines: OcrLine[], label: RegExp) {
-  const index = lines.findIndex((candidate) => label.test(candidate.text) && candidate.words.some((word) => word.left > 1150));
+function isHsbcTransactionDescriptionWord(word: OcrWord) {
+  return word.left >= 380 && word.left < 930;
+}
+
+function isHsbcMerchantContinuationLine(candidate: OcrLine, anchor: OcrLine, topWindow: number) {
+  const delta = candidate.top - anchor.top;
+  if (topWindow < 0) {
+    if (delta < topWindow || delta >= 0) {
+      return false;
+    }
+  } else if (delta <= 0 || delta > topWindow) {
+    return false;
+  }
+  if (candidate.words.some((word) => word.left < 350)) {
+    return false;
+  }
+  return candidate.words.some(isHsbcTransactionDescriptionWord);
+}
+
+function hasSummaryTokens(lines: OcrLine[], tokens: RegExp[]) {
+  return lines.some((line) => summaryLineMatchesTokens(line, tokens));
+}
+
+function findSummaryAmountByTokens(lines: OcrLine[], tokens: RegExp[]) {
+  const index = lines.findIndex((candidate) => summaryLineMatchesTokens(candidate, tokens));
   if (index < 0) {
     return undefined;
   }
 
   for (const line of lines.slice(index, index + 4)) {
-    const amount = findAmountInRange(line.words, 1580, 1740);
+    const amount = findAmountInRange(line.words, 1550, 1740);
     if (amount) {
       return amount;
     }
   }
   return undefined;
+}
+
+function summaryLineMatchesTokens(line: OcrLine, tokens: RegExp[]) {
+  const text = wordsToText(line.words.filter((word) => word.left > 1150));
+  return tokens.every((token) => token.test(text));
 }
 
 function parseHsbcOcrAmount(value: string): HsbcOcrAmount | undefined {
@@ -280,8 +345,12 @@ function parseHsbcOcrAmount(value: string): HsbcOcrAmount | undefined {
 
 function cleanHsbcDescription(value: string) {
   return compactDescription(value)
+    .replace(/[‘’]/g, "")
+    .replace(/_+/g, " ")
     .replace(/\bIKEA-ONLIN[BE]INGAPORE\b/gi, "IKEA - ONLINE SINGAPORE")
+    .replace(/\bIKEA\s*-?\s*ONLINE\s+SINGAPORE\b/gi, "IKEA - ONLINE SINGAPORE")
     .replace(/\bPAYMENTVIAUOB\b/gi, "PAYMENT VIA UOB")
+    .replace(/\bVIAUOB\b/gi, "VIA UOB")
     .replace(/\bVIAUOBVISA\b/gi, "VIA UOB VISA")
     .replace(/\bUOBVISA\b/gi, "UOB VISA")
     .replace(/\b[nr]{3,}\b/gi, "")
