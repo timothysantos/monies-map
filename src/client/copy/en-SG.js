@@ -19,7 +19,12 @@ export const messages = {
     viewingDot: (label) => `Viewing • ${label}`,
     contextWithView: (left, right) => `${left} • ${right}`,
     triplet: (first, second, third) => `${first} • ${second} • ${third}`,
-    moneyAndPercent: (moneyValue, percentage) => `${moneyValue} • ${percentage}%`
+    moneyAndPercent: (moneyValue, percentage) => `${moneyValue} • ${percentage}%`,
+    shownInChart: "Shown",
+    hiddenFromChart: "Hidden",
+    clickToToggle: "Click to toggle",
+    resetHiddenCategories: (count) => `Show ${count} hidden ${count === 1 ? "category" : "categories"}`,
+    viewEntries: "View entries"
   },
   views: {
     household: "Household"
@@ -545,17 +550,6 @@ export const messages = {
     reloadDataDetail: "This reloads the latest accounts, entries, imports, checkpoints, plans, splits, categories, and settings from the current database. It does not reseed, delete, or import anything.",
     reloadDataPlaceholder: "Type 'reload data'",
     reloadDataConfirm: "Confirm reload",
-    maintenanceTitle: "Maintenance",
-    maintenanceDetail: "One-time data repairs that are shown only while legacy production data is being retired.",
-    legacyOwnershipTitle: "Legacy ledger ownership",
-    legacyOwnershipDetail: "Repair old ledger rows that used Shared as ownership. Rows with an account owner become direct entries for that account owner. Split-linked entries remain shared through the Splits record.",
-    legacyOwnershipCounts: (status) => `${status.legacySharedCount} legacy shared ledger row${status.legacySharedCount === 1 ? "" : "s"}; ${status.repairableCount} can be repaired from account owner; ${status.skippedCount} missing account owner; ${status.legacySplitCount} legacy ledger split row${status.legacySplitCount === 1 ? "" : "s"} total; ${status.obsoleteDirectSplitCount} obsolete direct-row split row${status.obsoleteDirectSplitCount === 1 ? "" : "s"}.`,
-    legacyOwnershipCompleted: (date) => `Last repair completed ${date}.`,
-    legacyOwnershipRepair: "Repair legacy ownership",
-    legacyOwnershipRepairTitle: "Repair legacy ledger ownership",
-    legacyOwnershipRepairDetail: "This changes old transactions from shared ledger ownership to direct ownership using each row's account owner, then removes obsolete ledger split rows for repaired direct entries. It does not delete split expenses.",
-    legacyOwnershipRepairPlaceholder: "Type 'repair ownership'",
-    legacyOwnershipRepairConfirm: "Confirm repair",
     emptyState: "Enter empty state",
     emptyStateDetail: "This clears accounts, entries, imports, checkpoints, month plans, snapshots, and splits. Only the household, people, categories, and category rules remain.",
     emptyStatePlaceholder: "Type 'empty state'",
@@ -772,6 +766,7 @@ export const messages = {
     categoryRuleDuplicatesTitle: "Duplicate and overlapping rules",
     categoryRuleDuplicatesDetail: "Active rules that can match the same merchant text are shown here first. Edit the more general rule, adjust priority, or delete the one you no longer need.",
     categoryRuleDuplicatesCount: (count) => `${count} to review`,
+    ignoreCategoryRuleIssue: "Ignore",
     categoryRuleDuplicateKind: (kind) => {
       if (kind === "conflict") {
         return "Different categories overlap";

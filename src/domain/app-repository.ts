@@ -33,11 +33,12 @@ import {
 } from "./app-repository-helpers";
 import { getCurrentMonthKey } from "../lib/month";
 import { backfillSplitBatches } from "./app-repository-split-batches";
-import { repairLegacyOcbcValueDatePostDates } from "./app-repository-repairs";
+import { repairLegacyOcbcValueDatePostDates } from "./app-repository-post-date-repairs";
 import { ensureDefaultCategoryMatchRules, recordCategoryMatchSuggestion } from "./app-repository-category-match-rules";
 import { recordAuditEvent } from "./app-repository-audit";
 import { resolveAccountId, resolveCategoryId, resolvePersonId } from "./app-repository-lookups";
-import { syncMonthlyPlanRowSplits, syncTransactionSplits } from "./app-repository-split-sync";
+import { syncMonthlyPlanRowSplits } from "./app-repository-split-sync";
+import { upsertLinkedSplitExpenseForEntryRecord } from "./app-repository-splits";
 import { loadEntries } from "./app-repository-entries";
 import { loadMonthIncomeRows, loadMonthPlanRows } from "./app-repository-months";
 export {
@@ -48,8 +49,10 @@ export {
 } from "./app-repository-checkpoints";
 export {
   deleteCategoryMatchRule,
+  ignoreCategoryMatchRuleIssue,
   ignoreCategoryMatchRuleSuggestion,
   loadCategoryMatchRules,
+  loadIgnoredCategoryMatchRuleIssueIds,
   loadCategoryMatchRuleSuggestions,
   matchCategoryRule,
   saveCategoryMatchRule
@@ -97,6 +100,7 @@ export {
   updateSplitExpenseCategoryRecord,
   updateSplitExpenseRecord,
   updateSplitExpenseNoteRecord,
+  upsertLinkedSplitExpenseForEntryRecord,
   updateSplitSettlementNoteRecord,
   updateSplitSettlementRecord
 } from "./app-repository-splits";
@@ -135,6 +139,19 @@ function findSeedAccountId(accountName?: string) {
   }
 
   return demoAccounts.find((account) => account.name === accountName)?.id ?? null;
+}
+
+function findSeedAccountOwnerId(accountName?: string) {
+  if (!accountName) {
+    return null;
+  }
+
+  const account = demoAccounts.find((item) => item.name === accountName);
+  if (!account || account.isJoint || !account.ownerLabel) {
+    return null;
+  }
+
+  return SEED_PERSON_IDS_BY_NAME.get(account.ownerLabel) ?? null;
 }
 
 function findSeedCategoryId(categoryName?: string) {
@@ -293,6 +310,18 @@ export async function ensureDemoSchema(db: D1Database) {
   `).run();
 
   await db.prepare(`
+    CREATE TABLE IF NOT EXISTS category_match_rule_issue_ignores (
+      id TEXT PRIMARY KEY,
+      household_id TEXT NOT NULL,
+      issue_key TEXT NOT NULL,
+      rule_ids_json TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (household_id) REFERENCES households(id),
+      UNIQUE (household_id, issue_key)
+    )
+  `).run();
+
+  await db.prepare(`
     CREATE TABLE IF NOT EXISTS login_identities (
       id TEXT PRIMARY KEY,
       household_id TEXT NOT NULL,
@@ -353,6 +382,8 @@ export async function ensureDemoSchema(db: D1Database) {
   const transactionColumns = await db
     .prepare("PRAGMA table_info(transactions)")
     .all<{ name: string }>();
+
+  await dropLegacyLedgerOwnershipStorage(db, transactionColumns.results);
 
   if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "bank_certification_status")) {
     await db.prepare("ALTER TABLE transactions ADD COLUMN bank_certification_status TEXT NOT NULL DEFAULT 'provisional'").run();
@@ -778,6 +809,67 @@ export async function ensureDemoSchema(db: D1Database) {
   await backfillSplitBatches(db);
 }
 
+async function dropLegacyLedgerOwnershipStorage(
+  db: D1Database,
+  transactionColumns: Array<{ name: string }>
+) {
+  const hasTransactionsTable = transactionColumns.length > 0;
+  const hasLegacyOwnershipColumn = transactionColumns.some((column) => column.name === "ownership_type");
+
+  if (hasTransactionsTable && hasLegacyOwnershipColumn) {
+    await db.prepare(`
+      UPDATE transactions
+      SET owner_person_id = (
+        SELECT owner_person_id
+        FROM accounts
+        WHERE accounts.id = transactions.account_id
+      )
+      WHERE household_id = ?
+        AND owner_person_id IS NULL
+        AND EXISTS (
+          SELECT 1
+          FROM accounts
+          WHERE accounts.id = transactions.account_id
+            AND accounts.owner_person_id IS NOT NULL
+        )
+    `).bind(DEFAULT_HOUSEHOLD_ID).run();
+
+    await db.prepare(`
+      UPDATE transactions
+      SET ownership_type = 'direct',
+        owner_person_id = (
+          SELECT owner_person_id
+          FROM accounts
+          WHERE accounts.id = transactions.account_id
+        )
+      WHERE household_id = ?
+        AND ownership_type = 'shared'
+        AND EXISTS (
+          SELECT 1
+          FROM accounts
+          WHERE accounts.id = transactions.account_id
+            AND accounts.owner_person_id IS NOT NULL
+        )
+    `).bind(DEFAULT_HOUSEHOLD_ID).run();
+
+    const unresolvedShared = await db
+      .prepare("SELECT COUNT(*) AS count FROM transactions WHERE household_id = ? AND ownership_type = 'shared'")
+      .bind(DEFAULT_HOUSEHOLD_ID)
+      .first<{ count: number }>();
+
+    if (Number(unresolvedShared?.count ?? 0) > 0) {
+      throw new Error("Legacy shared ledger rows still exist without an account owner. Repair or delete those rows before deploying the storage removal migration.");
+    }
+  }
+
+  await db.prepare("DROP INDEX IF EXISTS idx_transaction_splits_transaction").run();
+  await db.prepare("DROP TABLE IF EXISTS transaction_splits").run();
+
+  if (hasTransactionsTable && hasLegacyOwnershipColumn) {
+    await db.prepare("ALTER TABLE transactions DROP COLUMN ownership_type").run();
+  }
+}
+
 async function ensureHotReadIndexes(db: D1Database) {
   const indexStatements = [
     "CREATE INDEX IF NOT EXISTS idx_imports_household_imported_at ON imports (household_id, imported_at DESC)",
@@ -790,13 +882,13 @@ async function ensureHotReadIndexes(db: D1Database) {
     "CREATE INDEX IF NOT EXISTS idx_statement_reconciliation_certificates_account_period ON statement_reconciliation_certificates (account_id, statement_start_date, statement_end_date)",
     "CREATE INDEX IF NOT EXISTS idx_reconciliation_exceptions_household_status ON reconciliation_exceptions (household_id, status, updated_at DESC)",
     "CREATE INDEX IF NOT EXISTS idx_transactions_transfer_group ON transactions (transfer_group_id)",
-    "CREATE INDEX IF NOT EXISTS idx_transaction_splits_transaction ON transaction_splits (transaction_id)",
     "CREATE INDEX IF NOT EXISTS idx_monthly_snapshots_household_month ON monthly_snapshots (household_id, year, month, person_scope)",
     "CREATE INDEX IF NOT EXISTS idx_monthly_snapshots_household_scope_month ON monthly_snapshots (household_id, person_scope, year, month)",
     "CREATE INDEX IF NOT EXISTS idx_monthly_plan_rows_household_month ON monthly_plan_rows (household_id, year, month, section_key)",
     "CREATE INDEX IF NOT EXISTS idx_split_expenses_household_date ON split_expenses (household_id, expense_date)",
     "CREATE INDEX IF NOT EXISTS idx_split_settlements_household_date ON split_settlements (household_id, settlement_date)",
-    "CREATE INDEX IF NOT EXISTS idx_category_match_rules_household_active ON category_match_rules (household_id, is_active, priority)"
+    "CREATE INDEX IF NOT EXISTS idx_category_match_rules_household_active ON category_match_rules (household_id, is_active, priority)",
+    "CREATE INDEX IF NOT EXISTS idx_category_match_rule_issue_ignores_household ON category_match_rule_issue_ignores (household_id, issue_key)"
   ];
 
   await db.batch(indexStatements.map((statement) => db.prepare(statement)));
@@ -946,17 +1038,6 @@ async function reassignPersonReferences(db: D1Database, fromPersonId: string, to
   await db.prepare("UPDATE monthly_plan_match_hints SET person_id = ? WHERE household_id = ? AND person_id = ?").bind(toPersonId, defaultHousehold.id, fromPersonId).run();
   await db
     .prepare(`
-      UPDATE transaction_splits
-      SET person_id = ?
-      WHERE person_id = ?
-        AND transaction_id IN (
-          SELECT id FROM transactions WHERE household_id = ?
-        )
-    `)
-    .bind(toPersonId, fromPersonId, defaultHousehold.id)
-    .run();
-  await db
-    .prepare(`
       UPDATE split_expense_shares
       SET person_id = ?
       WHERE person_id = ?
@@ -987,7 +1068,6 @@ export async function clearDemoData(db: D1Database) {
     "DELETE FROM split_settlements",
     "DELETE FROM split_batches",
     "DELETE FROM split_groups",
-    "DELETE FROM transaction_splits",
     "DELETE FROM monthly_plan_entry_links",
     "DELETE FROM monthly_plan_match_hints",
     "DELETE FROM transactions",
@@ -1003,6 +1083,7 @@ export async function clearDemoData(db: D1Database) {
     "DELETE FROM account_balance_checkpoints",
     "DELETE FROM app_error_diagnostics",
     "DELETE FROM audit_events",
+    "DELETE FROM category_match_rule_issue_ignores",
     "DELETE FROM category_match_rule_suggestions",
     "DELETE FROM category_match_rules",
     "DELETE FROM login_identities",
@@ -1259,14 +1340,16 @@ async function seedDemoData(db: D1Database, settings: DemoSettings, seedMonth?: 
   }
 
   for (const entry of demoMonthEntries) {
-    const directOwnerId = entry.ownerName ? SEED_PERSON_IDS_BY_NAME.get(entry.ownerName) ?? null : null;
+    const directOwnerId = entry.ownerName
+      ? SEED_PERSON_IDS_BY_NAME.get(entry.ownerName) ?? null
+      : findSeedAccountOwnerId(entry.accountName);
     await db
       .prepare(`
         INSERT INTO transactions (
           id, household_id, account_id, transfer_group_id, transaction_date,
           description, amount_minor, currency, entry_type, transfer_direction,
-          category_id, ownership_type, owner_person_id, offsets_category, note
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          category_id, owner_person_id, offsets_category, note
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         entry.id,
@@ -1280,29 +1363,11 @@ async function seedDemoData(db: D1Database, settings: DemoSettings, seedMonth?: 
         entry.entryType,
         entry.transferDirection ?? null,
         findSeedCategoryId(entry.categoryName),
-        entry.ownershipType,
         directOwnerId,
         entry.offsetsCategory ? 1 : 0,
         entry.note ?? null
       )
       .run();
-
-    for (const split of entry.splits) {
-      await db
-        .prepare(`
-          INSERT INTO transaction_splits (
-            id, transaction_id, person_id, ratio_basis_points, amount_minor
-          ) VALUES (?, ?, ?, ?, ?)
-        `)
-        .bind(
-          `${entry.id}-${split.personId}`,
-          entry.id,
-          split.personId,
-          split.ratioBasisPoints,
-          split.amountMinor
-        )
-      .run();
-    }
   }
 
   await seedDemoSplitData(db);
@@ -1322,14 +1387,16 @@ async function backfillDemoPlannedItemSeedData(db: D1Database) {
       .first<{ id: string; transaction_date: string }>();
     const seededDate = resolveSeededDemoTransactionDate(entry.id, entry.date);
     if (!existingTransaction) {
-      const directOwnerId = entry.ownerName ? SEED_PERSON_IDS_BY_NAME.get(entry.ownerName) ?? null : null;
+      const directOwnerId = entry.ownerName
+        ? SEED_PERSON_IDS_BY_NAME.get(entry.ownerName) ?? null
+        : findSeedAccountOwnerId(entry.accountName);
       await db
         .prepare(`
           INSERT INTO transactions (
             id, household_id, account_id, transfer_group_id, transaction_date,
             description, amount_minor, currency, entry_type, transfer_direction,
-            category_id, ownership_type, owner_person_id, offsets_category, note
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            category_id, owner_person_id, offsets_category, note
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `)
         .bind(
           entry.id,
@@ -1343,29 +1410,11 @@ async function backfillDemoPlannedItemSeedData(db: D1Database) {
           entry.entryType,
           entry.transferDirection ?? null,
           findSeedCategoryId(entry.categoryName),
-          entry.ownershipType,
           directOwnerId,
           entry.offsetsCategory ? 1 : 0,
           entry.note ?? null
         )
         .run();
-
-      for (const split of entry.splits) {
-        await db
-          .prepare(`
-            INSERT INTO transaction_splits (
-              id, transaction_id, person_id, ratio_basis_points, amount_minor
-            ) VALUES (?, ?, ?, ?, ?)
-          `)
-          .bind(
-            `${entry.id}-${split.personId}`,
-            entry.id,
-            split.personId,
-            split.ratioBasisPoints,
-            split.amountMinor
-          )
-          .run();
-      }
 
       changed = true;
     } else if (existingTransaction.transaction_date !== seededDate) {
@@ -1538,14 +1587,16 @@ async function seedDemoSplitData(db: D1Database) {
   ];
 
   for (const transaction of importedTransactionSeeds) {
-    const directOwnerId = transaction.ownerName ? SEED_PERSON_IDS_BY_NAME.get(transaction.ownerName) ?? null : null;
+    const directOwnerId = transaction.ownerName
+      ? SEED_PERSON_IDS_BY_NAME.get(transaction.ownerName) ?? null
+      : findSeedAccountOwnerId(transaction.accountName);
     await db
       .prepare(`
         INSERT INTO transactions (
           id, household_id, import_id, account_id, transaction_date,
           description, amount_minor, currency, entry_type, transfer_direction,
-          category_id, ownership_type, owner_person_id, offsets_category, note
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          category_id, owner_person_id, offsets_category, note
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         transaction.id,
@@ -1559,20 +1610,11 @@ async function seedDemoSplitData(db: D1Database) {
         transaction.entryType,
         transaction.transferDirection ?? null,
         findSeedCategoryId(transaction.categoryName),
-        transaction.ownershipType,
         directOwnerId,
         0,
         transaction.note ?? null
       )
       .run();
-
-    await syncTransactionSplits(db, {
-      transactionId: transaction.id,
-      ownershipType: transaction.ownershipType,
-      amountMinor: transaction.amountMinor,
-      ownerName: transaction.ownershipType === "direct" ? transaction.ownerName : undefined,
-      splitBasisPoints: transaction.ownershipType === "shared" ? transaction.splitBasisPoints : undefined
-    });
   }
 
   const expenseSeeds = [
@@ -2024,13 +2066,13 @@ export async function updateEntryRecord(
 ) {
   const account = input.accountId
     ? await db
-      .prepare("SELECT id, account_name FROM accounts WHERE household_id = ? AND id = ?")
+      .prepare("SELECT id, account_name, owner_person_id FROM accounts WHERE household_id = ? AND id = ?")
       .bind(DEFAULT_HOUSEHOLD_ID, input.accountId)
-      .first<{ id: string; account_name: string }>()
+      .first<{ id: string; account_name: string; owner_person_id: string | null }>()
     : await db
-      .prepare("SELECT id, account_name FROM accounts WHERE household_id = ? AND account_name = ?")
+      .prepare("SELECT id, account_name, owner_person_id FROM accounts WHERE household_id = ? AND account_name = ?")
       .bind(DEFAULT_HOUSEHOLD_ID, input.accountName ?? "")
-      .first<{ id: string; account_name: string }>();
+      .first<{ id: string; account_name: string; owner_person_id: string | null }>();
 
   if (!account) {
     throw new Error(`Unknown account: ${input.accountName ?? input.accountId ?? "Unassigned"}`);
@@ -2045,15 +2087,15 @@ export async function updateEntryRecord(
     throw new Error(`Unknown category: ${input.categoryName}`);
   }
 
-  let ownerPersonId: string | null = null;
-  if (input.ownershipType === "direct") {
+  let ownerPersonId = account.owner_person_id;
+  if (input.ownerName) {
     const owner = await db
       .prepare("SELECT id FROM people WHERE household_id = ? AND display_name = ?")
-      .bind(DEFAULT_HOUSEHOLD_ID, input.ownerName ?? "")
+      .bind(DEFAULT_HOUSEHOLD_ID, input.ownerName)
       .first<{ id: string }>();
 
     if (!owner) {
-      throw new Error(`Unknown owner: ${input.ownerName ?? ""}`);
+      throw new Error(`Unknown owner: ${input.ownerName}`);
     }
 
     ownerPersonId = owner.id;
@@ -2125,7 +2167,6 @@ export async function updateEntryRecord(
         transfer_direction = ?,
         transfer_group_id = ?,
         category_id = ?,
-        ownership_type = ?,
         owner_person_id = ?,
         offsets_category = ?,
         note = ?,
@@ -2141,7 +2182,6 @@ export async function updateEntryRecord(
       resolvedTransferDirection,
       resolvedEntryType === "transfer" ? transaction.transfer_group_id : null,
       category.id,
-      input.ownershipType,
       ownerPersonId,
       input.offsetsCategory ? 1 : 0,
       input.note ?? null,
@@ -2158,62 +2198,6 @@ export async function updateEntryRecord(
     await db
       .prepare("DELETE FROM transfer_groups WHERE household_id = ? AND id = ?")
       .bind(DEFAULT_HOUSEHOLD_ID, transaction.transfer_group_id)
-      .run();
-  }
-
-  await db.prepare("DELETE FROM transaction_splits WHERE transaction_id = ?").bind(input.entryId).run();
-
-  if (input.ownershipType === "direct" && ownerPersonId && input.ownerName) {
-    await db
-      .prepare(`
-        INSERT INTO transaction_splits (
-          id, transaction_id, person_id, ratio_basis_points, amount_minor
-        ) VALUES (?, ?, ?, ?, ?)
-      `)
-      .bind(
-        `${input.entryId}-split-direct`,
-        input.entryId,
-        ownerPersonId,
-        10000,
-        resolvedAmountMinor
-      )
-      .run();
-  }
-
-  if (input.ownershipType === "shared") {
-    const people = await db
-      .prepare("SELECT id FROM people WHERE household_id = ? ORDER BY created_at LIMIT 2")
-      .bind(DEFAULT_HOUSEHOLD_ID)
-      .all<{ id: string }>();
-
-    const [firstPerson, secondPerson] = people.results;
-    if (!firstPerson || !secondPerson) {
-      throw new Error("Shared entries require two people");
-    }
-
-    const firstBasisPoints = Math.max(0, Math.min(10000, input.splitBasisPoints ?? 5000));
-    const secondBasisPoints = 10000 - firstBasisPoints;
-    const firstAmount = Math.round((resolvedAmountMinor * firstBasisPoints) / 10000);
-    const secondAmount = resolvedAmountMinor - firstAmount;
-
-    await db
-      .prepare(`
-        INSERT INTO transaction_splits (
-          id, transaction_id, person_id, ratio_basis_points, amount_minor
-        ) VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)
-      `)
-      .bind(
-        `${input.entryId}-split-1`,
-        input.entryId,
-        firstPerson.id,
-        firstBasisPoints,
-        firstAmount,
-        `${input.entryId}-split-2`,
-        input.entryId,
-        secondPerson.id,
-        secondBasisPoints,
-        secondAmount
-      )
       .run();
   }
 
@@ -2235,6 +2219,13 @@ export async function updateEntryRecord(
     await recordCategoryMatchSuggestion(db, {
       description: input.description || transaction.description,
       categoryName: input.categoryName
+    });
+  }
+
+  if (input.ownershipType === "shared" && resolvedEntryType === "expense") {
+    await upsertLinkedSplitExpenseForEntryRecord(db, {
+      entryId: input.entryId,
+      splitBasisPoints: input.splitBasisPoints
     });
   }
 
@@ -2471,11 +2462,15 @@ export async function createEntryRecord(
     throw new Error(`Unknown account: ${input.accountName ?? "Unassigned"}`);
   }
   const accountName = input.accountName ?? await loadAccountName(db, accountId);
+  const accountOwner = await db
+    .prepare("SELECT owner_person_id FROM accounts WHERE household_id = ? AND id = ?")
+    .bind(DEFAULT_HOUSEHOLD_ID, accountId)
+    .first<{ owner_person_id: string | null }>();
   const categoryName = input.entryType === "transfer" ? "Transfer" : input.categoryName;
   const categoryId = await resolveCategoryId(db, categoryName);
-  const ownerPersonId = input.ownershipType === "direct"
+  const ownerPersonId = input.ownerName
     ? await resolvePersonId(db, input.ownerName)
-    : null;
+    : accountOwner?.owner_person_id ?? null;
   const entryId = `txn-${crypto.randomUUID()}`;
 
   await db
@@ -2483,8 +2478,8 @@ export async function createEntryRecord(
       INSERT INTO transactions (
         id, household_id, account_id, transaction_date,
         description, amount_minor, currency, entry_type, transfer_direction,
-        category_id, ownership_type, owner_person_id, offsets_category, note
-      ) VALUES (?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, ?, ?, ?)
+        category_id, owner_person_id, offsets_category, note
+      ) VALUES (?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, ?, ?)
     `)
     .bind(
       entryId,
@@ -2496,20 +2491,11 @@ export async function createEntryRecord(
       input.entryType,
       input.entryType === "transfer" ? (input.transferDirection ?? "out") : null,
       categoryId,
-      input.ownershipType,
       ownerPersonId,
       input.offsetsCategory ? 1 : 0,
       input.note ?? null
     )
     .run();
-
-  await syncTransactionSplits(db, {
-    transactionId: entryId,
-    ownershipType: input.ownershipType,
-    amountMinor: input.amountMinor,
-    ownerName: input.ownershipType === "direct" ? input.ownerName : undefined,
-    splitBasisPoints: input.ownershipType === "shared" ? input.splitBasisPoints : undefined
-  });
 
   await recalculateMonthlySnapshots(db, input.date.slice(0, 7));
 
@@ -2519,6 +2505,13 @@ export async function createEntryRecord(
     action: "entry_created",
     detail: `Created ${input.entryType} entry ${input.description} on ${input.date} in ${accountName}.`
   });
+
+  if (input.ownershipType === "shared" && input.entryType === "expense") {
+    await upsertLinkedSplitExpenseForEntryRecord(db, {
+      entryId,
+      splitBasisPoints: input.splitBasisPoints
+    });
+  }
 
   return { entryId, created: true };
 }
@@ -2571,10 +2564,6 @@ export async function deleteEntryRecord(
 
   await db
     .prepare("DELETE FROM monthly_plan_entry_links WHERE transaction_id = ?")
-    .bind(input.entryId)
-    .run();
-  await db
-    .prepare("DELETE FROM transaction_splits WHERE transaction_id = ?")
     .bind(input.entryId)
     .run();
   await db
@@ -3259,20 +3248,6 @@ async function clearMonthData(db: D1Database, month: string, year: number, month
 
   await db
     .prepare(`
-      DELETE FROM transaction_splits
-      WHERE transaction_id IN (
-        SELECT id
-        FROM transactions
-        WHERE household_id = ?
-          AND transaction_date >= ?
-          AND transaction_date < ?
-      )
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, `${month}-01`, nextMonthKey(month) + "-01")
-    .run();
-
-  await db
-    .prepare(`
       DELETE FROM transactions
       WHERE household_id = ?
         AND transaction_date >= ?
@@ -3363,18 +3338,11 @@ type SupersededLedgerRowSnapshot = {
     entry_type: "expense" | "income" | "transfer";
     transfer_direction: "in" | "out" | null;
     category_id: string | null;
-    ownership_type: "direct" | "shared";
     owner_person_id: string | null;
     offsets_category: number;
     note: string | null;
     transfer_group_id: string | null;
   };
-  transactionSplits: Array<{
-    id: string;
-    person_id: string;
-    ratio_basis_points: number;
-    amount_minor: number;
-  }>;
   splitExpenseLinks: Array<{
     id: string;
   }>;
@@ -3420,7 +3388,7 @@ async function buildSupersededLedgerRowSnapshots(
   const importIds = [...new Set(supersededLedgerRows.map((row) => row.importId))];
   const placeholders = transactionIds.map(() => "?").join(", ");
   const importPlaceholders = importIds.map(() => "?").join(", ");
-  const [transactions, transactionSplits, splitExpenses, splitSettlements, importRows, accountRows, categoryRows] = await Promise.all([
+  const [transactions, splitExpenses, splitSettlements, importRows, accountRows, categoryRows] = await Promise.all([
     db
       .prepare(`
         SELECT
@@ -3436,7 +3404,6 @@ async function buildSupersededLedgerRowSnapshots(
           entry_type,
           transfer_direction,
           category_id,
-          ownership_type,
           owner_person_id,
           offsets_category,
           note,
@@ -3447,20 +3414,6 @@ async function buildSupersededLedgerRowSnapshots(
       `)
       .bind(DEFAULT_HOUSEHOLD_ID, ...transactionIds)
       .all<SupersededLedgerRowSnapshot["transaction"]>(),
-    db
-      .prepare(`
-        SELECT id, transaction_id, person_id, ratio_basis_points, amount_minor
-        FROM transaction_splits
-        WHERE transaction_id IN (${placeholders})
-      `)
-      .bind(...transactionIds)
-      .all<{
-        id: string;
-        transaction_id: string;
-        person_id: string;
-        ratio_basis_points: number;
-        amount_minor: number;
-      }>(),
     db
       .prepare(`
         SELECT id, linked_transaction_id
@@ -3532,22 +3485,9 @@ async function buildSupersededLedgerRowSnapshots(
   for (const transaction of transactions.results) {
     transactionSnapshotById.set(transaction.id, {
       transaction,
-      transactionSplits: [],
       splitExpenseLinks: [],
       splitSettlementLinks: []
     });
-  }
-
-  const splitRowsByTransactionId = new Map<string, SupersededLedgerRowSnapshot["transactionSplits"]>();
-  for (const row of transactionSplits.results) {
-    const current = splitRowsByTransactionId.get(row.transaction_id) ?? [];
-    current.push({
-      id: row.id,
-      person_id: row.person_id,
-      ratio_basis_points: row.ratio_basis_points,
-      amount_minor: row.amount_minor
-    });
-    splitRowsByTransactionId.set(row.transaction_id, current);
   }
 
   const splitExpenseLinksByTransactionId = new Map<string, SupersededLedgerRowSnapshot["splitExpenseLinks"]>();
@@ -3576,7 +3516,6 @@ async function buildSupersededLedgerRowSnapshots(
       if (directSnapshot) {
         return {
           ...directSnapshot,
-          transactionSplits: splitRowsByTransactionId.get(row.transactionId) ?? [],
           splitExpenseLinks: splitExpenseLinksByTransactionId.get(row.transactionId) ?? [],
           splitSettlementLinks: splitSettlementLinksByTransactionId.get(row.transactionId) ?? []
         };
@@ -3655,13 +3594,11 @@ async function buildSupersededLedgerRowSnapshots(
           entry_type: (rawEntryType === "income" || rawEntryType === "transfer" ? rawEntryType : "expense") as "expense" | "income" | "transfer",
           transfer_direction: rawTransferDirection === "in" || rawTransferDirection === "out" ? rawTransferDirection : null,
           category_id: categoryName ? (categoryIdByName.get(categoryName) ?? null) : null,
-          ownership_type: "direct" as const,
           owner_person_id: account?.owner_person_id ?? null,
           offsets_category: 0,
           note: typeof rawRow.note === "string" ? rawRow.note : null,
           transfer_group_id: null
         },
-        transactionSplits: [],
         splitExpenseLinks: [],
         splitSettlementLinks: []
       };
@@ -3669,7 +3606,6 @@ async function buildSupersededLedgerRowSnapshots(
     .filter((item): item is SupersededLedgerRowSnapshot => Boolean(item))
     .map((snapshot) => ({
       ...snapshot,
-      transactionSplits: splitRowsByTransactionId.get(snapshot.transaction.id) ?? [],
       splitExpenseLinks: splitExpenseLinksByTransactionId.get(snapshot.transaction.id) ?? [],
       splitSettlementLinks: splitSettlementLinksByTransactionId.get(snapshot.transaction.id) ?? []
     }));
@@ -3722,9 +3658,9 @@ export async function commitImportBatch(
   try {
     const [accountRows, categoryRows, personRows] = await Promise.all([
       db
-        .prepare("SELECT id, account_name, account_kind, opening_balance_minor FROM accounts WHERE household_id = ?")
+        .prepare("SELECT id, account_name, account_kind, owner_person_id, opening_balance_minor FROM accounts WHERE household_id = ?")
         .bind(DEFAULT_HOUSEHOLD_ID)
-        .all<{ id: string; account_name: string; account_kind: string; opening_balance_minor: number }>(),
+        .all<{ id: string; account_name: string; account_kind: string; owner_person_id: string | null; opening_balance_minor: number }>(),
       db
         .prepare("SELECT id, name FROM categories WHERE household_id = ?")
         .bind(DEFAULT_HOUSEHOLD_ID)
@@ -3743,7 +3679,6 @@ export async function commitImportBatch(
     }
     const categoryIdsByName = new Map(categoryRows.results.map((category) => [category.name, category.id]));
     const personIdsByName = new Map(personRows.results.map((person) => [person.display_name, person.id]));
-    const [firstPerson, secondPerson] = personRows.results;
     const statements: D1PreparedStatement[] = [];
     const supersededLedgerRows = collectStatementSupersededLedgerRows(input.statementReconciliations ?? []);
     const certifiedLedgerRowsByAccountId = new Map<string, CertifiedLedgerRowSnapshot[]>();
@@ -3755,9 +3690,6 @@ export async function commitImportBatch(
         db
           .prepare("UPDATE split_settlements SET linked_transaction_id = NULL WHERE household_id = ? AND linked_transaction_id = ?")
           .bind(DEFAULT_HOUSEHOLD_ID, row.transactionId),
-        db
-          .prepare("DELETE FROM transaction_splits WHERE transaction_id = ?")
-          .bind(row.transactionId),
         db
           .prepare(`
             DELETE FROM transactions
@@ -3780,7 +3712,7 @@ export async function commitImportBatch(
       const account = resolveImportAccount(accountsById, accountRowsByName, row.accountId, row.accountName);
       const accountId = account?.id ?? null;
 
-      if (!accountId) {
+      if (!account || !accountId) {
         throw new Error(`Unknown account: ${row.accountName ?? "Unassigned"}`);
       }
 
@@ -3790,8 +3722,10 @@ export async function commitImportBatch(
         throw new Error(`Unknown category: ${categoryName ?? "Unassigned"}`);
       }
 
-      const directOwnerId = row.ownershipType === "direct" ? personIdsByName.get(row.ownerName ?? "") : null;
-      if (row.ownershipType === "direct" && !directOwnerId) {
+      const directOwnerId = row.ownerName
+        ? personIdsByName.get(row.ownerName)
+        : account.owner_person_id;
+      if (row.ownerName && !directOwnerId) {
         throw new Error(`Unknown owner: ${row.ownerName ?? "Unassigned"}`);
       }
 
@@ -3967,9 +3901,9 @@ export async function commitImportBatch(
               id, household_id, import_id, import_row_id, account_id, transaction_date,
               post_date,
               description, amount_minor, currency, entry_type, transfer_direction,
-              category_id, ownership_type, owner_person_id, offsets_category, note,
+              category_id, owner_person_id, offsets_category, note,
               bank_certification_status, statement_certified_import_id, statement_certified_import_row_id, statement_certified_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
           `)
           .bind(
             transactionId,
@@ -3984,7 +3918,6 @@ export async function commitImportBatch(
             row.entryType,
             row.transferDirection ?? null,
             categoryId,
-            row.ownershipType,
             directOwnerId ?? null,
             row.note ?? null,
             isOfficialStatementImport ? "statement_certified" : "provisional",
@@ -3993,46 +3926,6 @@ export async function commitImportBatch(
             isOfficialStatementImport ? new Date().toISOString() : null
           )
       );
-
-      if (row.ownershipType === "direct") {
-        statements.push(
-          db
-            .prepare(`
-              INSERT INTO transaction_splits (
-                id, transaction_id, person_id, ratio_basis_points, amount_minor
-              ) VALUES (?, ?, ?, ?, ?)
-            `)
-            .bind(`${transactionId}-split-direct`, transactionId, directOwnerId, 10000, row.amountMinor)
-        );
-      } else {
-        if (!firstPerson || !secondPerson) {
-          throw new Error("Shared entries require two people");
-        }
-        const firstBasisPoints = Math.max(0, Math.min(10000, row.splitBasisPoints ?? 5000));
-        const secondBasisPoints = 10000 - firstBasisPoints;
-        const firstAmount = Math.round((row.amountMinor * firstBasisPoints) / 10000);
-        const secondAmount = row.amountMinor - firstAmount;
-        statements.push(
-          db
-            .prepare(`
-              INSERT INTO transaction_splits (
-                id, transaction_id, person_id, ratio_basis_points, amount_minor
-              ) VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)
-            `)
-            .bind(
-              `${transactionId}-split-1`,
-              transactionId,
-              firstPerson.id,
-              firstBasisPoints,
-              firstAmount,
-              `${transactionId}-split-2`,
-              transactionId,
-              secondPerson.id,
-              secondBasisPoints,
-              secondAmount
-            )
-        );
-      }
 
       monthsToRecalculate.add(row.date.slice(0, 7));
     }
@@ -4317,8 +4210,8 @@ async function saveStatementReconciliationCertificates(
 }
 
 function resolveImportAccount(
-  accountsById: Map<string, { id: string; account_name: string; account_kind: string; opening_balance_minor?: number }>,
-  accountRowsByName: Map<string, { id: string; account_name: string; account_kind: string; opening_balance_minor?: number }[]>,
+  accountsById: Map<string, { id: string; account_name: string; account_kind: string; owner_person_id?: string | null; opening_balance_minor?: number }>,
+  accountRowsByName: Map<string, { id: string; account_name: string; account_kind: string; owner_person_id?: string | null; opening_balance_minor?: number }[]>,
   accountId?: string,
   accountName?: string
 ) {
@@ -4335,8 +4228,8 @@ function resolveImportAccount(
 }
 
 function resolveImportCheckpointAccount(
-  accountsById: Map<string, { id: string; account_name: string; account_kind: string; opening_balance_minor?: number }>,
-  accountRowsByName: Map<string, { id: string; account_name: string; account_kind: string; opening_balance_minor?: number }[]>,
+  accountsById: Map<string, { id: string; account_name: string; account_kind: string; owner_person_id?: string | null; opening_balance_minor?: number }>,
+  accountRowsByName: Map<string, { id: string; account_name: string; account_kind: string; owner_person_id?: string | null; opening_balance_minor?: number }[]>,
   checkpoint: StatementCheckpointDraftDto,
   statementControlRows: ImportPreviewRowDto[] = []
 ) {
@@ -4346,7 +4239,7 @@ function resolveImportCheckpointAccount(
   }
 
   const detectedAccountName = checkpoint.detectedAccountName ?? checkpoint.accountName;
-  const rowAccounts = new Map<string, { id: string; account_name: string; account_kind: string; opening_balance_minor?: number }>();
+  const rowAccounts = new Map<string, { id: string; account_name: string; account_kind: string; owner_person_id?: string | null; opening_balance_minor?: number }>();
   for (const row of statementControlRows) {
     const rowStatementAccountName = getImportPreviewStatementAccountName(row);
     if (rowStatementAccountName !== detectedAccountName) {
@@ -4695,13 +4588,13 @@ async function restoreSupersededStatementRowsForRollback(db: D1Database, importI
             INSERT INTO transactions (
               id, household_id, import_id, import_row_id, account_id, transfer_group_id,
               transaction_date, post_date, description, amount_minor, currency,
-              entry_type, transfer_direction, category_id, ownership_type, owner_person_id,
+              entry_type, transfer_direction, category_id, owner_person_id,
               offsets_category, note, bank_certification_status, statement_certified_import_id,
               statement_certified_import_row_id, statement_certified_at,
               statement_certified_previous_import_id, statement_certified_previous_import_row_id,
               statement_certified_previous_transaction_date, statement_certified_previous_post_date,
               created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'provisional', NULL, NULL, NULL, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'provisional', NULL, NULL, NULL, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
           `)
           .bind(
             snapshot.transaction.id,
@@ -4718,31 +4611,11 @@ async function restoreSupersededStatementRowsForRollback(db: D1Database, importI
             snapshot.transaction.entry_type,
             snapshot.transaction.transfer_direction,
             snapshot.transaction.category_id,
-            snapshot.transaction.ownership_type,
             snapshot.transaction.owner_person_id,
             snapshot.transaction.offsets_category,
             snapshot.transaction.note
           )
           .run();
-      }
-
-      if (snapshot.transactionSplits.length) {
-        for (const splitRow of snapshot.transactionSplits) {
-          await db
-            .prepare(`
-              INSERT OR IGNORE INTO transaction_splits (
-                id, transaction_id, person_id, ratio_basis_points, amount_minor
-              ) VALUES (?, ?, ?, ?, ?)
-            `)
-            .bind(
-              splitRow.id,
-              snapshot.transaction.id,
-              splitRow.person_id,
-              splitRow.ratio_basis_points,
-              splitRow.amount_minor
-            )
-            .run();
-        }
       }
 
       if (snapshot.splitExpenseLinks.length) {
@@ -5195,16 +5068,6 @@ async function cleanupImportBatchRows(db: D1Database, importId: string) {
         )
     `)
     .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID, importId)
-    .run();
-
-  await db
-    .prepare(`
-      DELETE FROM transaction_splits
-      WHERE transaction_id IN (
-        SELECT id FROM transactions WHERE household_id = ? AND import_id = ?
-      )
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, importId)
     .run();
 
   await db

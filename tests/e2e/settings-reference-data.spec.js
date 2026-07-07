@@ -201,57 +201,6 @@ test.describe("settings reference data", () => {
     ).toBe(true);
   });
 
-  test("legacy ledger ownership repair restores direct account owners", async ({ page }) => {
-    const referenceData = await loadReferenceData(page);
-    const targetAccount = referenceData.accounts.find((account) => account.ownerPersonId && account.ownerLabel === "Tim")
-      ?? referenceData.accounts.find((account) => account.ownerPersonId)
-      ?? referenceData.accounts[0];
-    const description = uniqueLabel("Playwright legacy shared ownership");
-
-    const created = await postJson(page, "/api/entries/create", {
-      date: "2026-04-26",
-      description,
-      accountName: targetAccount.name,
-      categoryName: "Food & Drinks",
-      amountMinor: 3210,
-      entryType: "expense",
-      ownershipType: "shared",
-      splitBasisPoints: 5000
-    });
-    expect(created.entryId).toBeTruthy();
-
-    const beforeSettings = await loadSettingsPage(page);
-    expect(beforeSettings.settingsPage.legacyLedgerOwnershipRepair.legacySharedCount).toBeGreaterThanOrEqual(1);
-    expect(beforeSettings.settingsPage.legacyLedgerOwnershipRepair.repairableCount).toBeGreaterThanOrEqual(1);
-    expect(beforeSettings.settingsPage.legacyLedgerOwnershipRepair.legacySplitCount).toBeGreaterThanOrEqual(1);
-    expect(beforeSettings.settingsPage.legacyLedgerOwnershipRepair.obsoleteDirectSplitCount).toBeGreaterThanOrEqual(0);
-
-    await openSettingsPage(page);
-    await page.getByRole("button", { name: /Maintenance/ }).click();
-    await expect(page.getByText("Legacy ledger ownership")).toBeVisible();
-    await page.getByRole("button", { name: "Repair legacy ownership" }).click();
-    await page.getByPlaceholder("Type 'repair ownership'").fill("repair ownership");
-    const repairResponse = page.waitForResponse((response) => (
-      response.url().includes("/api/settings/ledger-ownership/repair") && response.ok()
-    ));
-    await page.getByRole("button", { name: "Confirm repair" }).click();
-    const repair = await (await repairResponse).json();
-    expect(repair.ok).toBe(true);
-    expect(repair.legacyLedgerOwnershipRepair.repairableCount).toBe(0);
-    expect(repair.legacyLedgerOwnershipRepair.obsoleteDirectSplitCount).toBe(0);
-
-    const afterSettings = await loadSettingsPage(page);
-    expect(afterSettings.settingsPage.legacyLedgerOwnershipRepair.repairableCount).toBe(0);
-    expect(afterSettings.settingsPage.legacyLedgerOwnershipRepair.detail).toContain("Repaired");
-
-    const entriesPage = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
-    const repairedEntry = entriesPage.monthPage.entries.find((entry) => entry.id === created.entryId);
-    expect(repairedEntry).toBeTruthy();
-    expect(repairedEntry.ownershipType).toBe("direct");
-    expect(repairedEntry.ownerName).toBe(targetAccount.ownerLabel);
-    expect(repairedEntry.linkedSplitExpenseId).toBeFalsy();
-  });
-
   test("category rename refreshes reference data plus month and summary downstream DTOs", async ({ page }) => {
     const beforeReferenceData = await loadReferenceData(page);
     const targetCategory = beforeReferenceData.categories.find((category) => !category.isSystem) ?? beforeReferenceData.categories[0];

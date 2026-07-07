@@ -22,18 +22,12 @@ test("buildSafeSettingsPage supplies empty collections for the settings route", 
 
   assert.deepEqual(result.categoryMatchRules, []);
   assert.deepEqual(result.categoryMatchRuleSuggestions, []);
+  assert.deepEqual(result.ignoredCategoryMatchRuleIssueIds, []);
   assert.deepEqual(result.unresolvedTransfers, []);
   assert.deepEqual(result.reconciliationExceptions, []);
   assert.deepEqual(result.recentAuditEvents, []);
   assert.deepEqual(result.shortcutSettings.defaultAccountPriorityIds, []);
   assert.equal(result.shortcutSettings.defaultParams, "");
-  assert.deepEqual(result.legacyLedgerOwnershipRepair, {
-    legacySharedCount: 0,
-    repairableCount: 0,
-    skippedCount: 0,
-    legacySplitCount: 0,
-    obsoleteDirectSplitCount: 0
-  });
   assert.equal(result.demo.emptyState, false);
 });
 
@@ -100,6 +94,20 @@ test("duplicate category match rules ignore inactive and unrelated rules", () =>
     ]),
     []
   );
+});
+
+test("duplicate category match rules hide ignored issue pairs only", () => {
+  const rules = [
+    { id: "food", pattern: "MA MUM", categoryId: "food", categoryName: "Food & Drinks", priority: 100, isActive: true },
+    { id: "other", pattern: "MA-MUM", categoryId: "other", categoryName: "Other", priority: 100, isActive: true },
+    { id: "coffee", pattern: "Coffee Bean", categoryId: "food", categoryName: "Food & Drinks", priority: 100, isActive: true },
+    { id: "coffee-short", pattern: "Coffee Bean SG", categoryId: "food", categoryName: "Food & Drinks", priority: 110, isActive: true }
+  ];
+
+  const issues = findDuplicateCategoryMatchRules(rules, ["food:other"]);
+
+  assert.equal(issues.length, 1);
+  assert.deepEqual(issues[0].rules.map((rule) => rule.id), ["coffee", "coffee-short"]);
 });
 
 test("getVisibleSettingsAccounts filters person views and keeps active accounts first", () => {

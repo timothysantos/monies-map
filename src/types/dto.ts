@@ -56,16 +56,6 @@ export interface ShortcutSettingsDto {
   defaultParams: string;
 }
 
-export interface LegacyLedgerOwnershipRepairDto {
-  legacySharedCount: number;
-  repairableCount: number;
-  skippedCount: number;
-  legacySplitCount: number;
-  obsoleteDirectSplitCount: number;
-  completedAt?: string;
-  detail?: string;
-}
-
 export interface AccountCheckpointDto {
   month: string;
   statementStartDate?: string;
@@ -714,10 +704,10 @@ export interface ContextViewDto {
 export interface SettingsPageDto {
   accounts: AccountDto[];
   shortcutSettings: ShortcutSettingsDto;
-  legacyLedgerOwnershipRepair: LegacyLedgerOwnershipRepairDto;
   demo: DemoSettingsDto;
   categoryMatchRules: CategoryMatchRuleDto[];
   categoryMatchRuleSuggestions: CategoryMatchRuleSuggestionDto[];
+  ignoredCategoryMatchRuleIssueIds: string[];
   unresolvedTransfers: TransferIssueDto[];
   reconciliationExceptions: ReconciliationExceptionDto[];
   recentAuditEvents: AuditEventDto[];

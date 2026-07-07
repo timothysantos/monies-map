@@ -265,6 +265,11 @@ export function sumVisibleExpenseMinor(entries: EntryDto[], personScope: string)
       return sum + entry.amountMinor;
     }
 
+    if (entry.linkedSplitExpenseId) {
+      const linkedShare = entry.linkedSplitShares?.find((item) => item.personId === personScope);
+      return linkedShare ? sum + linkedShare.amountMinor : sum;
+    }
+
     if (entry.ownershipType === "direct") {
       return entry.splits.some((split) => split.personId === personScope)
         ? sum + entry.amountMinor

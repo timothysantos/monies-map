@@ -81,6 +81,14 @@ export function deleteCategoryMatchRule(ruleId) {
   );
 }
 
+export function ignoreCategoryMatchRuleIssue(issueId) {
+  return postJson(
+    "/api/category-match-rules/ignore-issue",
+    { issueId },
+    "Failed to ignore duplicate rule issue"
+  );
+}
+
 export function dismissUnresolvedTransfer(entryId) {
   return postJson(
     "/api/transfers/dismiss-unresolved",
@@ -134,14 +142,6 @@ export function retainLatestErrorDiagnostics(keep = 50) {
     "/api/error-diagnostics/retain-latest",
     { keep },
     "Failed to clean up error diagnostics."
-  );
-}
-
-export function repairLegacyLedgerOwnership() {
-  return postJson(
-    "/api/settings/ledger-ownership/repair",
-    {},
-    "Failed to repair legacy ledger ownership."
   );
 }
 

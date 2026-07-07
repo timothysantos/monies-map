@@ -5,11 +5,11 @@ import {
   loadAppErrorDiagnostics,
   loadCategoryMatchRules,
   loadCategoryMatchRuleSuggestions,
+  loadIgnoredCategoryMatchRuleIssueIds,
   loadReconciliationExceptions,
   loadUnresolvedTransfers
 } from "../app-repository";
 import { loadShortcutSettings } from "../app-repository-shortcuts";
-import { loadLegacyLedgerOwnershipRepairStatus } from "../app-repository-repairs";
 import type { SettingsPageDto } from "../../types/dto";
 
 // Build the route-owned Settings page DTO.
@@ -22,30 +22,30 @@ export async function buildSettingsPageDto(
     accounts,
     categoryMatchRules,
     categoryMatchRuleSuggestions,
+    ignoredCategoryMatchRuleIssueIds,
     unresolvedTransfers,
     reconciliationExceptions,
     recentAuditEvents,
-    errorDiagnostics,
-    legacyLedgerOwnershipRepair
+    errorDiagnostics
   ] = await Promise.all([
     loadAccounts(db),
     loadCategoryMatchRules(db),
     loadCategoryMatchRuleSuggestions(db),
+    loadIgnoredCategoryMatchRuleIssueIds(db),
     loadUnresolvedTransfers(db),
     loadReconciliationExceptions(db),
     loadAuditEvents(db),
-    loadAppErrorDiagnostics(db),
-    loadLegacyLedgerOwnershipRepairStatus(db)
+    loadAppErrorDiagnostics(db)
   ]);
   const shortcutSettings = await loadShortcutSettings(db, accounts, environmentShortcutToken);
   return {
     settingsPage: {
       accounts,
       shortcutSettings,
-      legacyLedgerOwnershipRepair,
       demo,
       categoryMatchRules,
       categoryMatchRuleSuggestions,
+      ignoredCategoryMatchRuleIssueIds,
       unresolvedTransfers,
       reconciliationExceptions,
       recentAuditEvents,

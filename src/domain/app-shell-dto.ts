@@ -113,16 +113,10 @@ export async function buildEntriesShellDto(
         defaultAccountPriorityIds: [],
         defaultParams: ""
       },
-      legacyLedgerOwnershipRepair: {
-        legacySharedCount: 0,
-        repairableCount: 0,
-        skippedCount: 0,
-        legacySplitCount: 0,
-        obsoleteDirectSplitCount: 0
-      },
       demo,
       categoryMatchRules: [],
       categoryMatchRuleSuggestions: [],
+      ignoredCategoryMatchRuleIssueIds: [],
       unresolvedTransfers: [],
       reconciliationExceptions: [],
       recentAuditEvents: [],

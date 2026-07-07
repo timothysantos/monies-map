@@ -79,6 +79,66 @@ export async function loadCategoryMatchRules(db: D1Database): Promise<CategoryMa
   }));
 }
 
+export async function loadIgnoredCategoryMatchRuleIssueIds(db: D1Database): Promise<string[]> {
+  const result = await db
+    .prepare(`
+      SELECT issue_key
+      FROM category_match_rule_issue_ignores
+      WHERE household_id = ?
+      ORDER BY created_at DESC
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID)
+    .all<{ issue_key: string }>();
+
+  return result.results.map((row) => row.issue_key);
+}
+
+export async function ignoreCategoryMatchRuleIssue(db: D1Database, issueId: string) {
+  const ruleIds = issueId.split(":").filter(Boolean);
+  if (ruleIds.length !== 2) {
+    throw new Error("Unknown duplicate rule issue.");
+  }
+
+  const existingRules = await db
+    .prepare(`
+      SELECT id, pattern
+      FROM category_match_rules
+      WHERE household_id = ?
+        AND id IN (?, ?)
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, ruleIds[0], ruleIds[1])
+    .all<{ id: string; pattern: string }>();
+
+  if (existingRules.results.length !== 2) {
+    throw new Error("Unknown duplicate rule issue.");
+  }
+
+  const normalizedIssueId = [...ruleIds].sort().join(":");
+  await db
+    .prepare(`
+      INSERT INTO category_match_rule_issue_ignores (
+        id, household_id, issue_key, rule_ids_json
+      ) VALUES (?, ?, ?, ?)
+      ON CONFLICT(household_id, issue_key) DO NOTHING
+    `)
+    .bind(
+      `catruleissueignore-${crypto.randomUUID()}`,
+      DEFAULT_HOUSEHOLD_ID,
+      normalizedIssueId,
+      JSON.stringify([...ruleIds].sort())
+    )
+    .run();
+
+  await recordAuditEvent(db, {
+    entityType: "category_match_rule",
+    entityId: normalizedIssueId,
+    action: "category_match_rule_issue_ignored",
+    detail: `Ignored duplicate category match rule issue for ${existingRules.results.map((rule) => rule.pattern).join(" and ")}.`
+  });
+
+  return { issueId: normalizedIssueId, ignored: true };
+}
+
 export async function loadCategoryMatchRuleSuggestions(db: D1Database): Promise<CategoryMatchRuleSuggestionDto[]> {
   const [result, existingRules] = await Promise.all([
     db
@@ -455,6 +515,15 @@ export async function deleteCategoryMatchRule(db: D1Database, ruleId: string) {
   await db
     .prepare("DELETE FROM category_match_rules WHERE household_id = ? AND id = ?")
     .bind(DEFAULT_HOUSEHOLD_ID, ruleId)
+    .run();
+
+  await db
+    .prepare(`
+      DELETE FROM category_match_rule_issue_ignores
+      WHERE household_id = ?
+        AND rule_ids_json LIKE ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, `%"${ruleId}"%`)
     .run();
 
   await recordAuditEvent(db, {

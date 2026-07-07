@@ -216,7 +216,6 @@ export async function buildAccountCheckpointLedgerCsv(
         transactions.currency,
         transactions.entry_type,
         transactions.transfer_direction,
-        transactions.ownership_type,
         transactions.note,
         categories.name AS category_name,
         owner.display_name AS owner_name,
@@ -243,7 +242,6 @@ export async function buildAccountCheckpointLedgerCsv(
       currency: string;
       entry_type: "expense" | "income" | "transfer";
       transfer_direction: "in" | "out" | null;
-      ownership_type: "direct" | "shared";
       note: string | null;
       category_name: string | null;
       owner_name: string | null;
@@ -276,7 +274,6 @@ export async function buildAccountCheckpointLedgerCsv(
       "transfer_direction",
       "description",
       "category",
-      "ownership",
       "entry_owner",
       "amount",
       "signed_amount",
@@ -328,7 +325,6 @@ export async function buildAccountCheckpointLedgerCsv(
         row.transfer_direction ?? "",
         row.description,
         row.category_name ?? "",
-        row.ownership_type,
         row.owner_name ?? "",
         formatMoneyCsvMinor(row.amount_minor),
         formatMoneyCsvMinor(signedAmount),

@@ -177,6 +177,16 @@ CREATE TABLE IF NOT EXISTS category_match_rule_suggestions (
   UNIQUE (household_id, pattern, category_id)
 );
 
+CREATE TABLE IF NOT EXISTS category_match_rule_issue_ignores (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  issue_key TEXT NOT NULL,
+  rule_ids_json TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (household_id) REFERENCES households(id),
+  UNIQUE (household_id, issue_key)
+);
+
 CREATE TABLE IF NOT EXISTS imports (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL,
@@ -236,9 +246,6 @@ CREATE TABLE IF NOT EXISTS transactions (
   transfer_direction TEXT CHECK (transfer_direction IN ('in', 'out')),
   merchant TEXT,
   category_id TEXT,
-  ownership_type TEXT NOT NULL DEFAULT 'direct' CHECK (
-    ownership_type IN ('direct', 'shared')
-  ),
   owner_person_id TEXT,
   offsets_category INTEGER NOT NULL DEFAULT 0,
   note TEXT,
@@ -271,19 +278,6 @@ CREATE TABLE IF NOT EXISTS transactions (
   FOREIGN KEY (statement_certified_import_row_id) REFERENCES import_rows(id),
   FOREIGN KEY (statement_certified_previous_import_id) REFERENCES imports(id),
   FOREIGN KEY (statement_certified_previous_import_row_id) REFERENCES import_rows(id)
-);
-
-CREATE TABLE IF NOT EXISTS transaction_splits (
-  id TEXT PRIMARY KEY,
-  transaction_id TEXT NOT NULL,
-  person_id TEXT NOT NULL,
-  ratio_basis_points INTEGER NOT NULL CHECK (
-    ratio_basis_points BETWEEN 0 AND 10000
-  ),
-  amount_minor INTEGER NOT NULL,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,
-  FOREIGN KEY (person_id) REFERENCES people(id)
 );
 
 CREATE TABLE IF NOT EXISTS split_groups (
@@ -542,9 +536,6 @@ CREATE INDEX IF NOT EXISTS idx_transactions_transfer_group
 CREATE INDEX IF NOT EXISTS idx_import_rows_import
   ON import_rows (import_id);
 
-CREATE INDEX IF NOT EXISTS idx_transaction_splits_transaction
-  ON transaction_splits (transaction_id);
-
 CREATE INDEX IF NOT EXISTS idx_monthly_snapshots_household_month
   ON monthly_snapshots (household_id, year, month, person_scope);
 
@@ -562,3 +553,6 @@ CREATE INDEX IF NOT EXISTS idx_split_settlements_household_date
 
 CREATE INDEX IF NOT EXISTS idx_category_match_rules_household_active
   ON category_match_rules (household_id, is_active, priority);
+
+CREATE INDEX IF NOT EXISTS idx_category_match_rule_issue_ignores_household
+  ON category_match_rule_issue_ignores (household_id, issue_key);
