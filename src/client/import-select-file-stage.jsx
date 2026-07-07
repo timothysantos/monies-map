@@ -92,7 +92,7 @@ export function ImportSelectFileStage({
           />
         </label>
         <div className="import-sidecar">
-          <input ref={fileInputRef} type="file" accept=".csv,text/csv,.pdf,application/pdf,.xls,application/vnd.ms-excel" hidden onChange={onUploadImportFile} />
+          <input ref={fileInputRef} type="file" accept=".csv,text/csv,.pdf,application/pdf,.xls,application/vnd.ms-excel,.hsbc-ocr.tsv,.tsv,text/tab-separated-values" hidden onChange={onUploadImportFile} />
           <div
             className={`import-dropzone ${isDragActive ? "is-active" : ""} ${isParsingStatement ? "is-busy" : ""}`}
             role="button"

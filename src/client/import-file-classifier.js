@@ -1,4 +1,8 @@
 export function classifyImportFile({ fileName, fileType, text, activityContext }) {
+  if (/\.hsbc-ocr\.tsv$/i.test(fileName) || text.startsWith("__OCR_TSV__")) {
+    return "ocr-statement";
+  }
+
   if (/\.pdf$/i.test(fileName) || fileType === "application/pdf") {
     return "pdf";
   }

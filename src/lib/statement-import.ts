@@ -9,6 +9,7 @@ import {
   parseOcbcActivityCsv
 } from "./statement-import/ocbc-activity-csv";
 import { parseOcbc360Statement, parseOcbcCreditCardStatement, parseOcbcDepositStatement } from "./statement-import/ocbc";
+import { parseHsbcVisaRevolutionOcrTsv } from "./statement-import/hsbc-ocr";
 import {
   getPdfLayoutLines,
   getPdfSpacedLayoutLines,
@@ -32,6 +33,11 @@ export type { ParsedStatementImport, StatementCheckpointDraft };
 
 export function parseStatementText(text: string, fileName?: string): ParsedStatementImport {
   const normalizedText = text.replace(/\r/g, "\n");
+  const ocrTsvMarker = "__OCR_TSV__";
+  if (normalizedText.includes(ocrTsvMarker)) {
+    return parseHsbcVisaRevolutionOcrTsv(normalizedText.slice(normalizedText.indexOf(ocrTsvMarker) + ocrTsvMarker.length), fileName);
+  }
+
   const rawText = normalizedText.split("__PDF_LAYOUT_TEXT__")[0] ?? normalizedText;
   const layoutLines = getPdfLayoutLines(normalizedText);
   const spacedLayoutLines = getPdfSpacedLayoutLines(normalizedText);
@@ -59,5 +65,5 @@ export function parseStatementText(text: string, fileName?: string): ParsedState
     return parseUobSavingsStatement(rawText, fileName);
   }
 
-  throw new Error("Unsupported statement PDF. This importer currently recognizes UOB, Citi Rewards, Citi Miles, OCBC 365, OCBC Infinity Cashback, OCBC 360, and OCBC CDA statement text.");
+  throw new Error("Unsupported statement PDF. This importer currently recognizes UOB, Citi Rewards, Citi Miles, OCBC 365, OCBC Infinity Cashback, OCBC 360, OCBC CDA statement text, and local-OCR HSBC Visa Revolution statement text.");
 }

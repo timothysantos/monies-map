@@ -477,7 +477,24 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         }
       });
 
-    if (fileKind === "pdf") {
+      if (fileKind === "ocr-statement") {
+        setDismissedOverlapIds([]);
+        setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
+        const parsed = parseStatementText(await file.text(), file.name);
+        const parsedCheckpoints = withDetectedStatementAccounts(parsed.checkpoints);
+
+        await previewParsedImport({
+          parsed,
+          sourceType: "pdf",
+          nextStatementCheckpoints: parsedCheckpoints,
+          successMessage: parsed.checkpoints.length > 1
+            ? messages.imports.uploadStatementReady(parsed.rows.length, parsed.checkpoints.length)
+            : messages.imports.uploadReady(parsed.rows.length)
+        });
+        return;
+      }
+
+      if (fileKind === "pdf") {
         setDismissedOverlapIds([]);
         setUploadStatus({ tone: "active", message: messages.imports.uploadExtracting(file.name) });
         const text = await importService.extractPdfText(file);
