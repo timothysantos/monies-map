@@ -1,11 +1,13 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import {
-  countSharedTokens,
-  diffDays,
   groupSplits,
   slugify
 } from "./app-repository-helpers";
 import { closeSplitBatch, getOrCreateActiveSplitBatch } from "./app-repository-split-batches";
+import {
+  findBestSplitExpenseLedgerCandidate,
+  findBestSplitSettlementLedgerCandidate
+} from "./split-matching";
 import { splitAmountMinorWithRoundedRemainder } from "./split-allocation";
 import { getCurrentMonthKey } from "../lib/month";
 import type {
@@ -246,20 +248,7 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
   const matches: SplitMatchCandidateDto[] = [];
 
   for (const expense of expenses.filter((item) => !item.linkedTransactionId)) {
-    const candidate = transactionRows.results
-      .filter((row) => row.entry_type === "expense")
-      .map((row) => ({
-        row,
-        dateDelta: diffDays(expense.date, row.transaction_date),
-        amountDelta: Math.abs(expense.totalAmountMinor - row.amount_minor),
-        overlap: countSharedTokens(expense.description, row.description)
-      }))
-      .filter((item) => item.dateDelta <= 5 && item.amountDelta <= 150 && item.overlap > 0)
-      .sort((left, right) => (
-        left.amountDelta - right.amountDelta
-        || left.dateDelta - right.dateDelta
-        || right.overlap - left.overlap
-      ))[0];
+    const candidate = findBestSplitExpenseLedgerCandidate(expense, transactionRows.results);
 
     if (!candidate) {
       continue;
@@ -271,25 +260,22 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
       groupId: expense.groupId ?? "split-group-none",
       groupName: expense.groupName,
       splitRecordId: expense.id,
+      splitDate: expense.date,
+      splitDescription: expense.description,
+      splitAmountMinor: expense.totalAmountMinor,
       transactionId: candidate.row.id,
       transactionDate: candidate.row.transaction_date,
       transactionDescription: candidate.row.description,
       amountMinor: candidate.row.amount_minor,
+      amountDeltaMinor: candidate.amountDelta,
+      dateDeltaDays: candidate.dateDelta,
       confidenceLabel: candidate.amountDelta === 0 && candidate.dateDelta <= 1 ? "High" : "Medium",
       reviewLabel: "Imported transaction could match this split expense"
     });
   }
 
   for (const settlement of settlements.filter((item) => !item.linkedTransactionId)) {
-    const candidate = transactionRows.results
-      .filter((row) => row.entry_type === "transfer")
-      .map((row) => ({
-        row,
-        dateDelta: diffDays(settlement.date, row.transaction_date),
-        amountDelta: Math.abs(settlement.amountMinor - row.amount_minor)
-      }))
-      .filter((item) => item.dateDelta <= 7 && item.amountDelta <= 150)
-      .sort((left, right) => left.amountDelta - right.amountDelta || left.dateDelta - right.dateDelta)[0];
+    const candidate = findBestSplitSettlementLedgerCandidate(settlement, transactionRows.results);
 
     if (!candidate) {
       continue;
@@ -301,10 +287,15 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
       groupId: settlement.groupId ?? "split-group-none",
       groupName: settlement.groupName,
       splitRecordId: settlement.id,
+      splitDate: settlement.date,
+      splitDescription: `${settlement.fromPersonName} to ${settlement.toPersonName}`,
+      splitAmountMinor: settlement.amountMinor,
       transactionId: candidate.row.id,
       transactionDate: candidate.row.transaction_date,
       transactionDescription: candidate.row.description,
       amountMinor: candidate.row.amount_minor,
+      amountDeltaMinor: candidate.amountDelta,
+      dateDeltaDays: candidate.dateDelta,
       confidenceLabel: candidate.amountDelta === 0 && candidate.dateDelta <= 1 ? "High" : "Medium",
       reviewLabel: "Imported transfer could match this settle-up"
     });

@@ -273,10 +273,15 @@ export interface SplitMatchCandidateDto {
   groupId: string;
   groupName: string;
   splitRecordId: string;
+  splitDate: string;
+  splitDescription: string;
+  splitAmountMinor: number;
   transactionId: string;
   transactionDate: string;
   transactionDescription: string;
   amountMinor: number;
+  amountDeltaMinor: number;
+  dateDeltaDays: number;
   confidenceLabel: "High" | "Medium";
   reviewLabel: string;
 }

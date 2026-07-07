@@ -693,6 +693,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         inlineSplitError={inlineSplitError}
         isSubmitting={isSubmitting}
         onSelectGroup={(groupId) => updateSplitView({ groupId, mode: "entries" })}
+        onOpenMatches={openMatchesView}
         onCreateGroup={() => {
           setFormError("");
           setGroupDialog({ name: "" });

@@ -20,7 +20,16 @@ test("review matches links a split expense into entries and hides already-linked
   expect(beforeSplits.splitsPage.matches.some((match) => match.splitRecordId === "split-expense-baby-river-family")).toBe(false);
   const pantryMatch = beforeSplits.splitsPage.matches.find((match) => match.splitRecordId === "split-expense-nongroup-pantry-match");
   expect(pantryMatch).toBeTruthy();
+  expect(pantryMatch?.splitDescription).toBe("Pantry restock");
+  expect(pantryMatch?.splitAmountMinor).toBe(18640);
+  expect(pantryMatch?.amountDeltaMinor).toBe(0);
   expect(beforeSplits.splitsPage.matches.some((match) => match.splitRecordId === "split-settlement-nongroup-transfer-match")).toBe(true);
+
+  await page.goto("/splits?view=person-tim&month=2025-10");
+  const matchCallout = page.locator(".split-match-inbox-callout");
+  await expect(matchCallout).toContainText("possible split links");
+  await matchCallout.getByRole("button", { name: "Review matches" }).click();
+  await expect(page).toHaveURL(/split_mode=matches/);
 
   await page.goto("/splits?view=person-tim&month=2025-10&split_mode=matches");
   await expect(page).toHaveURL(/split_mode=matches/);
@@ -29,6 +38,9 @@ test("review matches links a split expense into entries and hides already-linked
     return data.splitsPage.matches.some((match) => match.splitRecordId === "split-expense-nongroup-pantry-match");
   }).toBe(true);
   await expect(page.getByText(pantryMatch?.transactionDescription ?? "", { exact: true })).toBeVisible();
+  await expect(page.getByText("Existing split", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Imported ledger row", { exact: true }).first()).toBeVisible();
+  await expect(page.locator(".split-match-deltas").filter({ hasText: "0 days apart" }).first()).toBeVisible();
   await expect(page.getByText("Joyce paynow settle up", { exact: true })).toBeVisible();
   await expect(page.getByText("Baby River family support import", { exact: true })).toHaveCount(0);
 
