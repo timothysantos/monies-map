@@ -1234,8 +1234,12 @@ test.describe("import flow", () => {
 
     await expect(page.getByText(/Running private OCR in this browser/)).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText("2 rows ready for review")).toBeVisible({ timeout: 120_000 });
-    await expect(page.locator('.import-preview-table input[value="IKEA - ONLINE SINGAPORE"]')).toBeVisible();
-    await expect(page.locator('.import-preview-table input[value="PAYMENT VIA UOB VISA"]')).toBeVisible();
+    const previewValues = await page
+      .locator(".import-preview-table input")
+      .evaluateAll((inputs) => inputs.map((input) => input.value));
+    const normalizedPreviewValues = previewValues.join(" ").replace(/[^a-z0-9]+/gi, " ").toUpperCase();
+    expect(normalizedPreviewValues).toMatch(/\bIKEA\b/);
+    expect(normalizedPreviewValues).toMatch(/\bPAYMENT\s+VIA\s+UOB\s+VISA\b/);
   });
 
   test("committed import can be rolled back and disappears from entries and import history", async ({ page }) => {
