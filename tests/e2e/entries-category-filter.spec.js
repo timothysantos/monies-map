@@ -165,6 +165,23 @@ test("entries breakdown category rows hide chart slices separately from multi-ca
   await page.getByRole("button", { name: "Show expense breakdown" }).click();
   const foodRow = page.locator(".entries-breakdown-list .category-row").filter({ hasText: "Food & Drinks" });
   await expect(foodRow).toBeVisible();
+  const firstBreakdownRowLayout = await page.locator(".entries-breakdown-list .category-row").first().evaluate((row) => {
+    const text = row.querySelector(".category-key > div");
+    const actions = row.querySelector(".category-toggle-actions");
+    const rowBox = row.getBoundingClientRect();
+    const textBox = text?.getBoundingClientRect();
+    const actionsBox = actions?.getBoundingClientRect();
+    return {
+      rowWidth: rowBox.width,
+      textWidth: textBox?.width ?? 0,
+      actionsTop: (actionsBox?.top ?? rowBox.top) - rowBox.top,
+      overflows: row.scrollWidth > row.clientWidth + 1 || row.scrollHeight > row.clientHeight + 1
+    };
+  });
+  expect(firstBreakdownRowLayout.rowWidth).toBeGreaterThanOrEqual(280);
+  expect(firstBreakdownRowLayout.textWidth).toBeGreaterThanOrEqual(160);
+  expect(firstBreakdownRowLayout.actionsTop).toBeGreaterThan(40);
+  expect(firstBreakdownRowLayout.overflows).toBe(false);
   await foodRow.getByRole("button", { name: "Shown" }).click();
   await expect(page.getByRole("button", { name: "Show 1 hidden category" })).toBeVisible();
   expect(new URL(page.url()).searchParams.getAll("entry_category").sort()).toEqual(["Food & Drinks", "Taxi"].sort());

@@ -107,6 +107,53 @@ test.describe("settings reference data", () => {
     await expect(dialog).toHaveCount(0);
   });
 
+  test("duplicate rule issue ignore action stays aligned with readable summary copy", async ({ page }) => {
+    const referenceData = await loadReferenceData(page);
+    const targetCategory = referenceData.categories[0];
+    const uniquePattern = uniqueLabel("Playwright duplicate layout");
+
+    await postJson(page, "/api/category-match-rules/save", {
+      pattern: uniquePattern,
+      categoryId: targetCategory.id,
+      priority: 40,
+      isActive: true,
+      note: "Layout test first rule"
+    });
+    await postJson(page, "/api/category-match-rules/save", {
+      pattern: `${uniquePattern} cafe`,
+      categoryId: targetCategory.id,
+      priority: 80,
+      isActive: true,
+      note: "Layout test second rule"
+    });
+
+    await openSettingsPage(page);
+    await page.getByRole("button", { name: /Category matching/ }).click();
+    const issueSummary = page.locator(".settings-duplicate-rule-summary").filter({ hasText: uniquePattern }).first();
+    await expect(issueSummary).toBeVisible();
+
+    const layout = await issueSummary.evaluate((row) => {
+      const copy = row.querySelector("p");
+      const button = row.querySelector("button");
+      const rowBox = row.getBoundingClientRect();
+      const copyBox = copy?.getBoundingClientRect();
+      const buttonBox = button?.getBoundingClientRect();
+      return {
+        copyWidth: copyBox?.width ?? 0,
+        buttonText: button?.textContent?.trim() ?? "",
+        buttonTop: (buttonBox?.top ?? rowBox.top) - rowBox.top,
+        buttonLeft: (buttonBox?.left ?? rowBox.left) - rowBox.left,
+        overflows: row.scrollWidth > row.clientWidth + 1 || row.scrollHeight > row.clientHeight + 1
+      };
+    });
+
+    expect(layout.copyWidth).toBeGreaterThan(240);
+    expect(layout.buttonText).toBe("Ignore");
+    expect(layout.buttonTop).toBeLessThan(8);
+    expect(layout.buttonLeft).toBeGreaterThan(layout.copyWidth);
+    expect(layout.overflows).toBe(false);
+  });
+
   test("account rename updates reference data plus summary and entries downstream DTOs", async ({ page }) => {
     const beforeReferenceData = await loadReferenceData(page);
     const beforeSummaryPills = await loadSummaryAccountPills(page, { view: "household" });
