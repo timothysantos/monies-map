@@ -3541,6 +3541,35 @@ body:has(.split-inline-editor-card) .splits-fab {
   gap: 12px;
 }
 
+.split-match-inbox-callout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 230, 216, 0.72);
+  border-radius: 14px;
+  background: rgba(251, 242, 236, 0.95);
+  color: var(--text);
+}
+
+.split-match-inbox-callout strong,
+.split-match-inbox-callout p {
+  margin: 0;
+}
+
+.split-match-inbox-callout p {
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+.panel-splits .split-match-inbox-callout .dialog-primary {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+  color: white;
+}
+
 .split-date-group {
   display: grid;
   gap: 10px;
@@ -3739,6 +3768,70 @@ button.split-activity-card:hover {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.split-match-copy {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.split-match-headline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.split-match-confidence {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(40, 135, 94, 0.12);
+  color: var(--positive);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.split-match-confidence.is-medium {
+  background: rgba(177, 94, 47, 0.12);
+  color: var(--accent-strong);
+}
+
+.split-match-compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.split-match-side {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(233, 204, 187, 0.72);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.56);
+}
+
+.split-match-side span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.split-match-side strong,
+.split-match-side p,
+.split-match-deltas {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.split-match-deltas {
+  margin: 0;
+  font-size: 0.88rem;
 }
 
 .split-card-actions {
@@ -4131,7 +4224,8 @@ button.split-activity-card:hover {
   .splits-groups-row,
   .split-breakdown-panel,
   .split-activity-card,
-  .split-match-card {
+  .split-match-card,
+  .split-match-inbox-callout {
     grid-template-columns: 1fr;
   }
 
@@ -4147,6 +4241,15 @@ button.split-activity-card:hover {
   .split-activity-trailing {
     justify-items: start;
     text-align: left;
+  }
+
+  .split-match-headline {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .split-match-compare {
+    grid-template-columns: 1fr;
   }
 }
 

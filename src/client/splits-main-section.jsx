@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import { messages } from "./copy/en-SG";
 import { SplitsActivitySection } from "./splits-activity-section";
 import { SplitsBreakdownSection } from "./splits-breakdown-section";
 import { SplitsGroupsNav } from "./splits-groups-nav";
@@ -28,6 +29,7 @@ export function SplitsMainSection({
   isSubmitting,
   hasInlineSplitChanges,
   onSelectGroup,
+  onOpenMatches,
   onCreateGroup,
   onToggleBreakdown,
   onAddExpense,
@@ -108,30 +110,43 @@ export function SplitsMainSection({
           onConfirmMatch={onConfirmMatch}
         />
       ) : (
-        <SplitsActivitySection
-          groupedCurrentActivity={groupedCurrentActivity}
-          archivedBatches={archivedBatches}
-          categories={categories}
-          groupOptions={groupOptions}
-          people={people}
-          categoryOptions={categoryOptions}
-          inlineSplitDraft={inlineSplitDraft}
-          inlineSplitError={inlineSplitError}
-          isSubmitting={isSubmitting}
-          hasInlineSplitChanges={hasInlineSplitChanges}
-          onAddExpense={onAddExpense}
-          onOpenArchive={onOpenArchive}
-          onEditExpense={onEditExpense}
-          onEditSettlement={onEditSettlement}
-          onChangeInlineSplitDraft={onChangeInlineSplitDraft}
-          onCancelInlineSplit={onCancelInlineSplit}
-          onSaveInlineSplit={onSaveInlineSplit}
-          onRequestDeleteSplit={onRequestDeleteSplit}
-          onViewLinkedEntry={onViewLinkedEntry}
-          onRefreshActivity={onRefreshActivity}
-          viewId={viewId}
-          readOnly={readOnly}
-        />
+        <>
+          {pendingMatchCount ? (
+            <section className="split-match-inbox-callout">
+              <div>
+                <strong>{messages.splits.matchInboxTitle(pendingMatchCount)}</strong>
+                <p>{messages.splits.matchInboxDetail}</p>
+              </div>
+              <button type="button" className="dialog-primary" onClick={onOpenMatches}>
+                {messages.splits.reviewMatches}
+              </button>
+            </section>
+          ) : null}
+          <SplitsActivitySection
+            groupedCurrentActivity={groupedCurrentActivity}
+            archivedBatches={archivedBatches}
+            categories={categories}
+            groupOptions={groupOptions}
+            people={people}
+            categoryOptions={categoryOptions}
+            inlineSplitDraft={inlineSplitDraft}
+            inlineSplitError={inlineSplitError}
+            isSubmitting={isSubmitting}
+            hasInlineSplitChanges={hasInlineSplitChanges}
+            onAddExpense={onAddExpense}
+            onOpenArchive={onOpenArchive}
+            onEditExpense={onEditExpense}
+            onEditSettlement={onEditSettlement}
+            onChangeInlineSplitDraft={onChangeInlineSplitDraft}
+            onCancelInlineSplit={onCancelInlineSplit}
+            onSaveInlineSplit={onSaveInlineSplit}
+            onRequestDeleteSplit={onRequestDeleteSplit}
+            onViewLinkedEntry={onViewLinkedEntry}
+            onRefreshActivity={onRefreshActivity}
+            viewId={viewId}
+            readOnly={readOnly}
+          />
+        </>
       )}
     </>
   );
