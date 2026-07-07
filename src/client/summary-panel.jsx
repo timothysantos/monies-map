@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { ChevronRight, SquarePen, X } from "lucide-react";
 import {
@@ -12,6 +12,12 @@ import {
   SpendingMixChart
 } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import {
+  getDonutItemId,
+  getVisibleDonutData,
+  sumDonutValueMinor,
+  toggleHiddenDonutItemIds
+} from "./donut-visibility";
 import { moniesClient } from "./monies-client-service";
 import {
   buildSummaryEntriesLocation,
@@ -170,6 +176,18 @@ function SummarySpendingMixSection({
   onOpenEntriesForCategory,
   summaryFocusParam
 }) {
+  const [hiddenCategoryIds, setHiddenCategoryIds] = useState(() => new Set());
+  const visibleDonutData = useMemo(
+    () => getVisibleDonutData(focusState.donutData, hiddenCategoryIds),
+    [focusState.donutData, hiddenCategoryIds]
+  );
+  const visibleTotalMinor = sumDonutValueMinor(visibleDonutData);
+  const hiddenCount = hiddenCategoryIds.size;
+
+  function toggleCategoryVisibility(item) {
+    setHiddenCategoryIds((current) => toggleHiddenDonutItemIds(current, getDonutItemId(item)));
+  }
+
   return (
     <section className="chart-card">
       <div className="chart-head">
@@ -198,17 +216,23 @@ function SummarySpendingMixSection({
           </div>
 
           <SpendingMixChart
-            data={focusState.donutData}
+            data={visibleDonutData}
             categories={categories}
-            totalMinor={focusState.totalSpendMinor}
+            totalMinor={visibleTotalMinor}
           />
+          {hiddenCount ? (
+            <button type="button" className="subtle-action donut-reset-action" onClick={() => setHiddenCategoryIds(new Set())}>
+              {messages.common.resetHiddenCategories(hiddenCount)}
+            </button>
+          ) : null}
 
           <div className="share-list">
             {focusState.donutData.map((item) => {
               const category = categoryService.get(categories, item);
               const categoryName = category?.name ?? item.label;
+              const isHidden = hiddenCategoryIds.has(getDonutItemId(item));
               return (
-                <div key={item.key} className="share-row">
+                <div key={item.key} className={`share-row ${isHidden ? "is-hidden-from-donut" : ""}`}>
                   <div className="category-key">
                     <CategoryAppearancePopover
                       category={category}
@@ -217,13 +241,17 @@ function SummarySpendingMixSection({
                     <button
                       type="button"
                       className="share-row-button"
-                      onClick={() => onOpenEntriesForCategory(categoryName)}
+                      aria-pressed={!isHidden}
+                      onClick={() => toggleCategoryVisibility(item)}
                     >
                       <strong>{categoryName}</strong>
                       <p>{formatService.money(item.valueMinor)}</p>
                       <span className="share-row-meta">
-                        {formatTransactionCount(item.entryCount)}
+                        {messages.common.triplet(formatTransactionCount(item.entryCount), isHidden ? messages.common.hiddenFromChart : messages.common.shownInChart, messages.common.clickToToggle)}
                       </span>
+                    </button>
+                    <button type="button" className="subtle-action share-row-secondary-action" onClick={() => onOpenEntriesForCategory(categoryName)}>
+                      {messages.common.viewEntries}
                     </button>
                   </div>
                 </div>

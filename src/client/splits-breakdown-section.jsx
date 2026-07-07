@@ -1,7 +1,14 @@
 import { ChevronRight } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { SpendingMixChart } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import {
+  getDonutItemId,
+  getVisibleDonutData,
+  sumDonutValueMinor,
+  toggleHiddenDonutItemIds
+} from "./donut-visibility";
 import { moniesClient } from "./monies-client-service";
 import { CategoryGlyph } from "./ui-components";
 
@@ -21,6 +28,17 @@ export function SplitsBreakdownSection({
   isRefreshingDerived = false,
   readOnly = false
 }) {
+  const [hiddenCategoryIds, setHiddenCategoryIds] = useState(() => new Set());
+  const visibleDonutChart = useMemo(
+    () => getVisibleDonutData(donutChart, hiddenCategoryIds),
+    [donutChart, hiddenCategoryIds]
+  );
+  const visibleTotalMinor = sumDonutValueMinor(visibleDonutChart);
+
+  function toggleCategoryVisibility(item) {
+    setHiddenCategoryIds((current) => toggleHiddenDonutItemIds(current, getDonutItemId(item)));
+  }
+
   return (
     <>
       <section className="entries-summary-strip splits-summary-strip">
@@ -64,28 +82,40 @@ export function SplitsBreakdownSection({
             <div className="entries-breakdown-panel split-breakdown-panel">
               <div className="entries-breakdown-chart">
                 <SpendingMixChart
-                  data={donutChart}
+                  data={visibleDonutChart}
                   categories={categories}
+                  totalMinor={visibleTotalMinor}
                   totalLabel={messages.entries.totalSpend}
                   compact
                   height={300}
                   innerRadius={58}
                   outerRadius={96}
                 />
+                {hiddenCategoryIds.size ? (
+                  <button type="button" className="subtle-action donut-reset-action" onClick={() => setHiddenCategoryIds(new Set())}>
+                    {messages.common.resetHiddenCategories(hiddenCategoryIds.size)}
+                  </button>
+                ) : null}
               </div>
               <div className="entries-breakdown-list category-list">
                 {donutRows.map((item) => (
-                  <div key={item.key} className="category-row">
+                  <button
+                    key={item.key}
+                    type="button"
+                    className={`category-row category-row-button ${hiddenCategoryIds.has(getDonutItemId(item)) ? "is-hidden-from-donut" : ""}`}
+                    aria-pressed={!hiddenCategoryIds.has(getDonutItemId(item))}
+                    onClick={() => toggleCategoryVisibility(item)}
+                  >
                     <div className="category-key">
                       <span className="category-icon category-icon-static" style={{ "--category-color": item.theme.color }}>
                         <CategoryGlyph iconKey={item.theme.iconKey} />
                       </span>
                       <div>
                         <strong>{item.label}</strong>
-                        <p>{messages.common.triplet(formatService.money(item.valueMinor), `${item.entryCount} ${item.entryCount === 1 ? "entry" : "entries"}`, `${((item.valueMinor / Math.max(totalExpenseMinor, 1)) * 100).toFixed(1)}%`)}</p>
+                        <p>{messages.common.triplet(formatService.money(item.valueMinor), `${item.entryCount} ${item.entryCount === 1 ? "entry" : "entries"}`, hiddenCategoryIds.has(getDonutItemId(item)) ? messages.common.hiddenFromChart : messages.common.shownInChart)}</p>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>

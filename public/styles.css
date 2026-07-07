@@ -5015,6 +5015,17 @@ button.split-activity-card:hover {
   min-width: 0;
 }
 
+.share-row.is-hidden-from-donut,
+.category-row.is-hidden-from-donut {
+  border-style: dashed;
+  opacity: 0.58;
+}
+
+.share-row.is-hidden-from-donut .category-icon,
+.category-row.is-hidden-from-donut .category-icon {
+  filter: grayscale(0.75);
+}
+
 .share-row-button {
   display: block;
   width: 100%;
@@ -5042,6 +5053,16 @@ button.split-activity-card:hover {
   color: color-mix(in srgb, var(--muted) 82%, white);
   font-size: 0.76rem;
   line-height: 1.25;
+}
+
+.share-row-secondary-action,
+.donut-reset-action {
+  white-space: nowrap;
+}
+
+.donut-reset-action {
+  align-self: center;
+  margin: 0 auto 8px;
 }
 
 .summary-accounts {
