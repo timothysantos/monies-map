@@ -5978,6 +5978,36 @@ button.split-activity-card:hover {
   margin-top: 10px;
 }
 
+.import-post-cleanup-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  margin: 16px 0 10px;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 230, 216, 0.78);
+  border-radius: 16px;
+  background: rgba(251, 242, 236, 0.95);
+}
+
+.import-post-cleanup-card h3,
+.import-post-cleanup-card p {
+  margin: 0;
+}
+
+.import-post-cleanup-card p {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.import-post-cleanup-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .import-header {
   display: flex;
   align-items: flex-start;
@@ -8180,6 +8210,7 @@ th {
 
   .import-workflow,
   .import-stage-card,
+  .import-post-cleanup-card,
   .import-warning,
   .import-column-card,
   .statement-checkpoint-grid,
@@ -8225,6 +8256,14 @@ th {
   .import-warning-head > div,
   .import-history-main {
     min-width: 0;
+  }
+
+  .import-post-cleanup-card {
+    grid-template-columns: 1fr;
+  }
+
+  .import-post-cleanup-actions {
+    justify-content: flex-start;
   }
 
   .import-stage-card .section-head h3,

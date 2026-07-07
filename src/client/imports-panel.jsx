@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
 import { commitImportBatch, previewImportBatch, rollbackImportBatch } from "./import-api";
@@ -94,8 +95,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   // minimal local shape instead of assuming the page slice is already present.
   const safeImportsPage = importsPage ?? {
     recentImports: [],
+    pendingSplitMatchCount: 0,
     rollbackPolicy: ""
   };
+  const navigate = useNavigate();
   // Draft metadata chosen by the user before preview.
   const [sourceLabel, setSourceLabel] = useState(DEFAULT_SOURCE_LABEL);
   const [importNote, setImportNote] = useState("");
@@ -129,6 +132,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [recentImportStatus, setRecentImportStatus] = useState(null);
   const [isRecentImportsRefreshing, setIsRecentImportsRefreshing] = useState(false);
   const [optimisticRecentImport, setOptimisticRecentImport] = useState(null);
+  const [postImportSplitMatchCount, setPostImportSplitMatchCount] = useState(null);
+  const [postImportSplitMatchMonth, setPostImportSplitMatchMonth] = useState("");
+  const [isSplitCleanupDismissed, setIsSplitCleanupDismissed] = useState(false);
   const [dismissedOverlapIds, setDismissedOverlapIds] = useState([]);
   const [jumpToSkippedRowsRequestKey, setJumpToSkippedRowsRequestKey] = useState(0);
   const fileInputRef = useRef(null);
@@ -141,6 +147,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const lastStatementPreviewSnapshotRef = useRef("");
   const lastImportActionRef = useRef("");
   const deletedDiagnosticLedgerIdsRef = useRef(new Set());
+  const pendingSplitMatchCount = Number(postImportSplitMatchCount ?? safeImportsPage.pendingSplitMatchCount ?? 0);
+  const showSplitCleanupNotice = pendingSplitMatchCount > 0 && !isSplitCleanupDismissed;
 
   const csvInspection = useMemo(() => inspectCsv(csvText), [csvText]);
   const headerSignature = csvInspection.headers.join("|");
@@ -197,6 +205,13 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       setOwnerName(matchedPerson.name);
     }
   }, [defaultAccountDirectOwnerName, ownerName, people, viewId]);
+
+  useEffect(() => {
+    if (!pendingSplitMatchCount) {
+      setIsSplitCleanupDismissed(false);
+      setPostImportSplitMatchCount(null);
+    }
+  }, [pendingSplitMatchCount]);
 
   useEffect(() => {
     setColumnMappings((current) => {
@@ -746,6 +761,14 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       await refreshRecentImportsUntilVisible({
         committedImportId,
         refreshOptions: { broadcast: true, invalidateImports: true }
+      }).then((latestPage) => {
+        setPostImportSplitMatchCount(Number(latestPage?.importsPage?.pendingSplitMatchCount ?? 0));
+        const commitMonths = rowsToCommit
+          .map((row) => row.date?.slice(0, 7))
+          .filter(Boolean)
+          .sort();
+        setPostImportSplitMatchMonth(commitMonths[commitMonths.length - 1] ?? "");
+        setIsSplitCleanupDismissed(false);
       });
       setRecentImportStatus({
         tone: "success",
@@ -826,6 +849,21 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         }
         : row
     )));
+  }
+
+  function openSplitMatchReview() {
+    const params = new URLSearchParams({
+      view: viewId || "household",
+      month: postImportSplitMatchMonth || previewRows[0]?.date?.slice(0, 7) || safeImportsPage.recentImports[0]?.endDate?.slice(0, 7) || "",
+      split_mode: "matches"
+    });
+    if (!params.get("month")) {
+      params.delete("month");
+    }
+    navigate({
+      pathname: "/splits",
+      search: `?${params.toString()}`
+    });
   }
 
   function updatePreviewRowAccount(rowId, patch) {
@@ -1423,6 +1461,23 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           )}
         </div>
       </section>
+
+      {showSplitCleanupNotice ? (
+        <section className="import-post-cleanup-card">
+          <div>
+            <h3>{messages.imports.splitCleanupTitle(pendingSplitMatchCount)}</h3>
+            <p>{messages.imports.splitCleanupDetail}</p>
+          </div>
+          <div className="import-post-cleanup-actions">
+            <button type="button" className="dialog-primary" onClick={openSplitMatchReview}>
+              {messages.imports.reviewSplitMatchesNow}
+            </button>
+            <button type="button" className="subtle-action" onClick={() => setIsSplitCleanupDismissed(true)}>
+              {messages.imports.reviewSplitMatchesLater}
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <ImportRecentHistorySection
         recentImports={filteredRecentImports}

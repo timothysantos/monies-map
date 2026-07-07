@@ -1048,6 +1048,49 @@ test.describe("import flow", () => {
     }
   });
 
+  test("post-import cleanup surfaces possible split links without forcing immediate review", async ({ page }) => {
+    const description = `Playwright split import cleanup ${Date.now()}`;
+
+    await postJson(page, "/api/splits/expenses/create", {
+      groupId: null,
+      date: "2025-10-18",
+      description,
+      categoryName: "Food & Drinks",
+      payerPersonName: "Tim",
+      amountMinor: 1234,
+      note: "manual split before bank import",
+      splitBasisPoints: 5000,
+      splitAmountMinor: 617
+    });
+
+    await page.goto("/imports?view=person-tim&month=2025-10");
+    await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
+
+    await page.getByLabel("Source label").fill("Playwright split cleanup import");
+    await page.getByLabel("CSV content").fill(
+      [
+        "category,account,note,amount,date,description",
+        `Food & Drinks,UOB One,official bank row,-12.34,2025-10-18,${description} official`
+      ].join("\n")
+    );
+
+    await page.getByRole("button", { name: "Preview import" }).click();
+    await expect(page.getByRole("button", { name: "Commit import" }).first()).toBeEnabled();
+
+    const commitResponse = page.waitForResponse((response) => response.url().includes("/api/imports/commit") && response.ok());
+    await page.getByRole("button", { name: "Commit import" }).first().click();
+    await commitResponse;
+
+    const cleanupCard = page.locator(".import-post-cleanup-card");
+    await expect(cleanupCard).toContainText("possible split link", { timeout: 60_000 });
+    await expect(cleanupCard.getByRole("button", { name: "Review split matches" })).toBeVisible();
+    await cleanupCard.getByRole("button", { name: "Later" }).click();
+    await expect(cleanupCard).toHaveCount(0);
+
+    await page.goto("/splits?view=person-tim&month=2025-10");
+    await expect(page.locator(".split-header-toolbar .split-matches-link")).toContainText(/Review matches \([1-9]/);
+  });
+
   test("committed import can be rolled back and disappears from entries and import history", async ({ page }) => {
     const description = `Playwright rollback import ${Date.now()}`;
     const month = "2025-10";
