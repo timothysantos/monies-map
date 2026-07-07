@@ -3650,10 +3650,10 @@ function areEntryFilterValuesEqual(current, next) {
     return current === next;
   }
   return (
-    current.category === next.category
-    && current.type === next.type
+    current.type === next.type
     && areStringArraysEqual(current.entryIds, next.entryIds)
     && areStringArraysEqual(current.wallets, next.wallets)
+    && areStringArraysEqual(current.categories, next.categories)
   );
 }
 

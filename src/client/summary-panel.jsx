@@ -232,7 +232,7 @@ function SummarySpendingMixSection({
               const categoryName = category?.name ?? item.label;
               const isHidden = hiddenCategoryIds.has(getDonutItemId(item));
               return (
-                <div key={item.key} className={`share-row ${isHidden ? "is-hidden-from-donut" : ""}`}>
+                <div key={item.key} className={`share-row chart-toggle-row ${isHidden ? "is-hidden-from-donut" : ""}`}>
                   <div className="category-key">
                     <CategoryAppearancePopover
                       category={category}
@@ -247,11 +247,17 @@ function SummarySpendingMixSection({
                       <strong>{categoryName}</strong>
                       <p>{formatService.money(item.valueMinor)}</p>
                       <span className="share-row-meta">
-                        {messages.common.triplet(formatTransactionCount(item.entryCount), isHidden ? messages.common.hiddenFromChart : messages.common.shownInChart, messages.common.clickToToggle)}
+                        {messages.common.triplet(formatTransactionCount(item.entryCount), isHidden ? messages.common.hiddenFromChart : messages.common.shownInChart)}
                       </span>
                     </button>
-                    <button type="button" className="subtle-action share-row-secondary-action" onClick={() => onOpenEntriesForCategory(categoryName)}>
-                      {messages.common.viewEntries}
+                    <button
+                      type="button"
+                      className="icon-action share-row-secondary-action"
+                      aria-label={messages.common.viewEntriesFor(categoryName)}
+                      title={messages.common.viewEntries}
+                      onClick={() => onOpenEntriesForCategory(categoryName)}
+                    >
+                      <ChevronRight size={18} />
                     </button>
                   </div>
                 </div>

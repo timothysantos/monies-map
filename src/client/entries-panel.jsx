@@ -12,6 +12,7 @@ import {
   useEntryComposerSplitOptions
 } from "./entry-composer-section";
 import { EntryEditorFields, EntryTransferTools } from "./entry-editor";
+import { normalizeEntryFilterValues } from "./entry-filter-values";
 import { EntriesDateGroups } from "./entries-list";
 import { EntriesBreakdownPanel, EntriesFilterStack, EntriesTotalsStrip } from "./entries-overview";
 import { EntryMobileEditExpenseFooter, EntryMobileSheet } from "./entry-mobile-sheet";
@@ -843,6 +844,11 @@ export function EntriesPanel({
         normalizeWalletFilterValues(value).forEach((wallet) => next.append(paramKey, wallet));
         return next;
       }
+      if (key === "category") {
+        next.delete(paramKey);
+        normalizeCategoryFilterValues(value).forEach((category) => next.append(paramKey, category));
+        return next;
+      }
       if (!value) {
         next.delete(paramKey);
       } else {
@@ -979,7 +985,8 @@ export function EntriesPanel({
         <EntriesBreakdownPanel
           expenseBreakdown={expenseBreakdown}
           categories={categories}
-          onSelectCategory={(categoryName) => updateEntryFilter("category", categoryName)}
+          selectedCategoryNames={entryFilters.categories}
+          onChangeCategories={(categoryNames) => updateEntryFilter("category", categoryNames)}
         />
       ) : null}
 
@@ -1523,19 +1530,23 @@ function useEntriesSearchFilters(searchParams, defaultScope) {
     [searchParamsKey, searchParams]
   );
   const walletFilterKey = walletFilters.join("\u0000");
+  const categoryFilters = useMemo(
+    () => getCategoryFilterValues(searchParams),
+    [searchParamsKey, searchParams]
+  );
+  const categoryFilterKey = categoryFilters.join("\u0000");
   const entryIdFilters = useMemo(
     () => searchParams.getAll("entry_id"),
     [searchParamsKey, searchParams]
   );
   const entryIdFilterKey = entryIdFilters.join("\u0000");
-  const categoryFilter = searchParams.get("entry_category") ?? "";
   const typeFilter = searchParams.get("entry_type") ?? "";
   const entryFilters = useMemo(() => ({
     entryIds: entryIdFilters,
     wallets: walletFilters,
-    category: categoryFilter,
+    categories: categoryFilters,
     type: typeFilter
-  }), [categoryFilter, entryIdFilterKey, typeFilter, walletFilterKey, walletFilters]);
+  }), [categoryFilterKey, categoryFilters, entryIdFilterKey, typeFilter, walletFilterKey, walletFilters]);
 
   return {
     searchParamsKey,
@@ -1563,10 +1574,29 @@ function getWalletFilterValues(searchParams) {
   );
 }
 
+function getCategoryFilterValues(searchParams) {
+  const values = searchParams.getAll("entry_category");
+  if (values.length > 1) {
+    return normalizeCategoryFilterValues(values);
+  }
+
+  const singleValue = values[0] ?? searchParams.get("entry_category") ?? "";
+  if (!singleValue) {
+    return [];
+  }
+
+  return normalizeCategoryFilterValues(singleValue
+    .split(",")
+    .map((value) => value.trim())
+  );
+}
+
 function normalizeWalletFilterValues(values) {
-  return Array.from(new Set((Array.isArray(values) ? values : [])
-    .map((value) => String(value ?? "").trim())
-    .filter(Boolean)));
+  return normalizeEntryFilterValues(values);
+}
+
+function normalizeCategoryFilterValues(values) {
+  return normalizeEntryFilterValues(values);
 }
 
 function getEntriesEmptyStateSuggestion({ accounts, people, walletFilters, filteredEntries, viewId, searchParams }) {
@@ -1574,7 +1604,7 @@ function getEntriesEmptyStateSuggestion({ accounts, people, walletFilters, filte
     viewId === "household"
     || filteredEntries.length
     || walletFilters.length !== 1
-    || searchParams.get("entry_category")
+    || searchParams.getAll("entry_category").length
     || searchParams.get("entry_type")
   ) {
     return null;
