@@ -499,7 +499,29 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         setUploadStatus({ tone: "active", message: messages.imports.uploadExtracting(file.name) });
         const text = await importService.extractPdfText(file);
         setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
-        const parsed = parseStatementText(text, file.name);
+        let parsed;
+        try {
+          parsed = parseStatementText(text, file.name);
+        } catch (error) {
+          if (!importService.isExtractedPdfTextEmpty?.(text)) {
+            throw error;
+          }
+          setUploadStatus({ tone: "active", message: messages.imports.uploadOcr(file.name) });
+          const ocrText = await importService.extractPdfOcrText(file, ({ pageNumber, pageCount, status, progress } = {}) => {
+            setUploadStatus({
+              tone: "active",
+              message: messages.imports.uploadOcrProgress({
+                fileName: file.name,
+                pageNumber,
+                pageCount,
+                status,
+                progress
+              })
+            });
+          });
+          setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
+          parsed = parseStatementText(ocrText, file.name);
+        }
         const parsedCheckpoints = withDetectedStatementAccounts(parsed.checkpoints);
 
         await previewParsedImport({

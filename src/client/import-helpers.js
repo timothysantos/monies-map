@@ -156,6 +156,64 @@ export async function extractPdfText(file) {
   return `${pages.join("\n")}\n__PDF_LAYOUT_TEXT__\n${layoutPages.join("\n")}\n__PDF_SPACED_LAYOUT_TEXT__\n${spacedLayoutPages.join("\n")}`;
 }
 
+export async function extractPdfOcrText(file, onProgress) {
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+  const tesseractModule = await importRuntimeModule("/vendor/tesseract/tesseract.esm.min.js");
+  const createWorker = resolveTesseractCreateWorker(tesseractModule);
+  if (typeof createWorker !== "function") {
+    throw new Error("Local OCR engine did not load. Try refreshing the app and uploading the PDF again.");
+  }
+  const data = new Uint8Array(await file.arrayBuffer());
+  const document = await pdfjs.getDocument({ data }).promise;
+  const worker = await createWorker("eng", 1, {
+    workerPath: "/vendor/tesseract/worker.min.js",
+    corePath: "/vendor/tesseract",
+    langPath: "/vendor/tesseract",
+    gzip: false,
+    logger: (message) => {
+      if (message?.status) {
+        onProgress?.({
+          status: message.status,
+          progress: typeof message.progress === "number" ? message.progress : undefined
+        });
+      }
+    }
+  });
+
+  try {
+    await worker.setParameters({ tessedit_pageseg_mode: "4" });
+    const tsvPages = [];
+    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+      onProgress?.({ status: "rendering page", pageNumber, pageCount: document.numPages });
+      const page = await document.getPage(pageNumber);
+      const viewport = page.getViewport({ scale: 220 / 72 });
+      const canvas = globalThis.document.createElement("canvas");
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+      const context = canvas.getContext("2d", { alpha: false });
+      if (!context) {
+        throw new Error("Could not create OCR canvas.");
+      }
+      context.fillStyle = "#fff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: context, viewport }).promise;
+      onProgress?.({ status: "recognizing text", pageNumber, pageCount: document.numPages });
+      const result = await worker.recognize(canvas, {}, { text: true, tsv: true });
+      tsvPages.push(result.data.tsv ?? "");
+    }
+
+    return `__OCR_TSV__\n${mergeOcrTsvPages(tsvPages)}`;
+  } finally {
+    await worker.terminate();
+  }
+}
+
+export function isExtractedPdfTextEmpty(text) {
+  const rawText = text.split("__PDF_LAYOUT_TEXT__")[0] ?? text;
+  return rawText.replace(/\s+/g, "").length < 20;
+}
+
 function extractPdfLayoutLines(items, chunkSeparator = "") {
   const lines = [];
   for (const item of items) {
@@ -183,6 +241,36 @@ function extractPdfLayoutLines(items, chunkSeparator = "") {
       .replace(/\s+/g, " ")
       .trim())
     .filter(Boolean);
+}
+
+function mergeOcrTsvPages(pages) {
+  return pages.map((page, index) => {
+    const lines = page.trim().split(/\r?\n/);
+    if (index === 0) {
+      return lines.map((line, lineIndex) => lineIndex === 0 ? line : withOcrPageNumber(line, index + 1)).join("\n");
+    }
+    return lines.slice(1).map((line) => withOcrPageNumber(line, index + 1)).join("\n");
+  }).join("\n");
+}
+
+function withOcrPageNumber(line, pageNumber) {
+  const columns = line.split("\t");
+  if (columns.length > 1) {
+    columns[1] = String(pageNumber);
+  }
+  return columns.join("\t");
+}
+
+function importRuntimeModule(path) {
+  return new Function("path", "return import(path)")(path);
+}
+
+function resolveTesseractCreateWorker(tesseractModule) {
+  return (
+    tesseractModule?.createWorker ??
+    tesseractModule?.default?.createWorker ??
+    globalThis.Tesseract?.createWorker
+  );
 }
 
 export function selectParsedStatementForCompare(parsed, target) {

@@ -33,6 +33,9 @@ interface HsbcOcrAmount {
   raw: string;
 }
 
+const HSBC_OCR_REFERENCE_WIDTH = 1820;
+const HSBC_OCR_REFERENCE_HEIGHT = 2572;
+
 export function parseHsbcVisaRevolutionOcrTsv(tsv: string, fileName?: string): ParsedStatementImport {
   const words = parseTsvWords(tsv);
   const lines = groupOcrLines(words);
@@ -60,21 +63,21 @@ export function parseHsbcVisaRevolutionOcrTsv(tsv: string, fileName?: string): P
       continue;
     }
 
-    const postDate = readDateFromRange(line.words, 150, 235, period.endDate);
+    const postDate = readDateFromRange(line.words, 125, 245, period.endDate);
     const transactionDate = readDateFromRange(line.words, 240, 390, period.endDate);
-    const amount = findAmountInRange(line.words, 980, 1140);
+    const amount = findAmountInRange(line.words, 930, 1140);
     if (!postDate || !transactionDate || !amount) {
       continue;
     }
 
-    const descriptionWords = line.words.filter((word) => word.left >= 380 && word.left < 980);
+    const descriptionWords = line.words.filter((word) => word.left >= 380 && word.left < 930);
     const descriptionParts = [wordsToText(descriptionWords)];
     for (let cursor = index + 1; cursor < transactionLines.length; cursor += 1) {
       const candidate = transactionLines[cursor];
-      if (readDateFromRange(candidate.words, 150, 235, period.endDate) || /Total\s+Due|Minimum\s+Payment|Total\s+Account\s+Balance/i.test(candidate.text)) {
+      if (readDateFromRange(candidate.words, 125, 245, period.endDate) || /Total\s+Due|Minimum\s+Payment|Total\s+Account\s+Balance/i.test(candidate.text)) {
         break;
       }
-      const continuation = wordsToText(candidate.words.filter((word) => word.left >= 380 && word.left < 980));
+      const continuation = wordsToText(candidate.words.filter((word) => word.left >= 380 && word.left < 930));
       if (continuation) {
         descriptionParts.push(continuation);
       }
@@ -145,20 +148,44 @@ export function parseHsbcVisaRevolutionOcrTsv(tsv: string, fileName?: string): P
 }
 
 function parseTsvWords(tsv: string): OcrWord[] {
-  return tsv.split(/\r?\n/).slice(1).flatMap((line) => {
+  const lines = tsv.split(/\r?\n/).slice(1);
+  const pageDimensions = new Map<number, { width: number; height: number }>();
+  for (const line of lines) {
+    const columns = line.split("\t");
+    if (columns[0] !== "1") {
+      continue;
+    }
+    const page = Number(columns[1]) || 1;
+    const width = Number(columns[8]) || HSBC_OCR_REFERENCE_WIDTH;
+    const height = Number(columns[9]) || HSBC_OCR_REFERENCE_HEIGHT;
+    pageDimensions.set(page, { width, height });
+  }
+
+  return lines.flatMap((line) => {
     const columns = line.split("\t");
     if (columns.length < 12 || columns[0] !== "5" || !columns[11]?.trim()) {
       return [];
     }
+    const page = Number(columns[1]) || 1;
+    const dimensions = pageDimensions.get(page) ?? {
+      width: HSBC_OCR_REFERENCE_WIDTH,
+      height: HSBC_OCR_REFERENCE_HEIGHT
+    };
+    const xScale = dimensions.width / HSBC_OCR_REFERENCE_WIDTH;
+    const yScale = dimensions.height / HSBC_OCR_REFERENCE_HEIGHT;
     return [{
-      page: Number(columns[1]) || 1,
-      left: Number(columns[6]) || 0,
-      top: Number(columns[7]) || 0,
-      width: Number(columns[8]) || 0,
-      height: Number(columns[9]) || 0,
+      page,
+      left: normalizeOcrCoordinate(Number(columns[6]) || 0, xScale),
+      top: normalizeOcrCoordinate(Number(columns[7]) || 0, yScale),
+      width: normalizeOcrCoordinate(Number(columns[8]) || 0, xScale),
+      height: normalizeOcrCoordinate(Number(columns[9]) || 0, yScale),
       text: columns.slice(11).join("\t").trim()
     }];
   });
+}
+
+function normalizeOcrCoordinate(value: number, scale: number) {
+  return Math.round(value / (scale || 1));
 }
 
 function groupOcrLines(words: OcrWord[]): OcrLine[] {
@@ -253,7 +280,10 @@ function parseHsbcOcrAmount(value: string): HsbcOcrAmount | undefined {
 
 function cleanHsbcDescription(value: string) {
   return compactDescription(value)
+    .replace(/\bIKEA-ONLIN[BE]INGAPORE\b/gi, "IKEA - ONLINE SINGAPORE")
     .replace(/\bPAYMENTVIAUOB\b/gi, "PAYMENT VIA UOB")
+    .replace(/\bVIAUOBVISA\b/gi, "VIA UOB VISA")
+    .replace(/\bUOBVISA\b/gi, "UOB VISA")
     .replace(/\b[nr]{3,}\b/gi, "")
     .replace(/\b_+\b/g, "")
     .replace(/\s+-\s+/g, " - ")
