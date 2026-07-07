@@ -1,6 +1,7 @@
 # HSBC Image PDF Import Audit
 
 Date: 2026-07-07
+Updated: 2026-07-08
 
 ## Scope
 
@@ -21,6 +22,10 @@ Date: 2026-07-07
 - The HSBC layout has stable column positions for post date, transaction date,
   description, amount, and account summary values. Coordinate parsing plus
   statement-balance reconciliation is reliable across different render scales.
+- Browser OCR is noisier than local Tesseract for the same PDFs. It can split a
+  transaction merchant onto the line above its dates, drop the first letter from
+  `Total Account Balance`, read `01 May` as `on May`, or misread a single
+  transaction amount while still reading the account-summary totals correctly.
 - A normal CSV conversion would import rows but lose statement checkpoint/certification semantics. OCR output must continue through the PDF statement preview and reconciliation flow.
 
 ## Decisions
@@ -40,10 +45,19 @@ Date: 2026-07-07
 - Keep the parser isolated in `src/lib/statement-import/hsbc-ocr.ts` so OCR
   source transport stays separate from HSBC statement rules.
 - Validate OCR imports by reconciling `previous balance + purchases - credits` against the printed total account balance before preview.
+- When browser OCR misses the printed total-account-balance amount but reads the
+  account-summary components, compute the checkpoint balance from the printed
+  summary components. When there is exactly one expense or one credit row and
+  its OCR amount conflicts with the printed summary total, correct that single
+  row to the summary amount before reconciliation.
 
 ## Tests
 
 - Unit parser coverage uses a sanitized near-real Tesseract TSV fixture from the HSBC statement layout.
+- Unit parser coverage also includes browser-OCR TSV fixtures generated from the
+  supplied February through July 2026 HSBC PDFs. These fixtures preserve the
+  actual in-browser OCR failure modes without requiring tests to read local
+  Downloads files.
 - Unit classifier coverage routes `.hsbc-ocr.tsv` and `__OCR_TSV__` content to statement parsing.
 - E2E upload coverage proves both direct image-only PDF OCR and the local OCR
   package reach the Imports statement preview, show account mapping, and display
