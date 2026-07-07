@@ -5111,7 +5111,7 @@ button.split-activity-card:hover {
 }
 
 .share-list {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   width: 100%;
 }
 
@@ -5146,8 +5146,15 @@ button.split-activity-card:hover {
 
 .share-row.chart-toggle-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
+}
+
+.share-row.chart-toggle-row .category-key {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  width: 100%;
 }
 
 .share-row.is-hidden-from-donut,
@@ -5164,6 +5171,7 @@ button.split-activity-card:hover {
 .share-row-button {
   display: block;
   width: 100%;
+  flex: 1 1 auto;
   min-width: 0;
   padding: 0;
   border: 0;
@@ -5181,6 +5189,13 @@ button.split-activity-card:hover {
 .category-row strong,
 .category-row p {
   overflow-wrap: anywhere;
+}
+
+.share-row.chart-toggle-row .share-row-button strong,
+.share-row.chart-toggle-row .share-row-button p,
+.share-row.chart-toggle-row .share-row-meta {
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .share-row-secondary-action {
