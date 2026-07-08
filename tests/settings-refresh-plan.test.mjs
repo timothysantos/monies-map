@@ -59,6 +59,15 @@ test("category-rule mutations stay narrow to settings and later imports", () => 
     invalidateSplits: false,
     invalidateSummary: false
   });
+  assert.deepEqual(buildSettingsRefreshPlan("category_rule_issue_ignored"), {
+    refreshShell: false,
+    refreshReferenceData: false,
+    invalidateEntries: false,
+    invalidateImports: true,
+    invalidateMonth: false,
+    invalidateSplits: false,
+    invalidateSummary: false
+  });
 });
 
 test("trust and reconciliation mutations avoid unrelated cache bursts", () => {
@@ -106,6 +115,27 @@ test("trust and reconciliation mutations avoid unrelated cache bursts", () => {
     invalidateMonth: false,
     invalidateSplits: false,
     invalidateSummary: false
+  });
+});
+
+test("settings transfer fixes refresh affected ledger route families", () => {
+  assert.deepEqual(buildSettingsRefreshPlan("unresolved_transfer_linked"), {
+    refreshShell: false,
+    refreshReferenceData: false,
+    invalidateEntries: true,
+    invalidateImports: false,
+    invalidateMonth: true,
+    invalidateSplits: false,
+    invalidateSummary: true
+  });
+  assert.deepEqual(buildSettingsRefreshPlan("unresolved_transfer_settled"), {
+    refreshShell: false,
+    refreshReferenceData: false,
+    invalidateEntries: true,
+    invalidateImports: false,
+    invalidateMonth: true,
+    invalidateSplits: false,
+    invalidateSummary: true
   });
 });
 

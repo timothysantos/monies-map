@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { LogOut } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
@@ -33,6 +33,7 @@ import { AccountDialog } from "./account-dialog";
 import { SettingsAccountsSection } from "./settings-accounts-section";
 import { SettingsCategoryDialog, SettingsCategoryMatchRuleDialog, SettingsPersonDialog } from "./settings-dialogs";
 import { SettingsReconciliationDialog } from "./settings-reconciliation-dialog";
+import { EntryTransferTools } from "./entry-editor";
 import {
   SettingsActivitySection,
   SettingsCategoriesSection,
@@ -119,13 +120,21 @@ export function SettingsPanel({
   const [statementComparePanel, setStatementComparePanel] = useState(null);
   const [statementCompareResult, setStatementCompareResult] = useState(null);
   const [statementCompareStatus, setStatementCompareStatus] = useState(null);
-  const navigate = useNavigate();
+  const [transferDialogEntryId, setTransferDialogEntryId] = useState(null);
+  const [transferDialogEntry, setTransferDialogEntry] = useState(null);
+  const [transferCandidates, setTransferCandidates] = useState([]);
+  const [transferCandidatesError, setTransferCandidatesError] = useState("");
+  const [refreshingTransferCandidatesEntryId, setRefreshingTransferCandidatesEntryId] = useState(null);
+  const [linkingTransferEntryId, setLinkingTransferEntryId] = useState(null);
+  const [settlingTransferEntryId, setSettlingTransferEntryId] = useState(null);
+  const [transferSettlementDrafts, setTransferSettlementDrafts] = useState({});
   const [searchParams] = useSearchParams();
   // Settings shows demo and reconciliation sections that expect a shaped page
   // slice, so keep the fallback DTO builder in the settings workflow module.
   const safeSettingsPage = useMemo(() => buildSafeSettingsPage(settingsPage), [settingsPage]);
   const visibleAccounts = useMemo(() => getVisibleSettingsAccounts(accounts, viewId), [accounts, viewId]);
   const visibleCategories = useMemo(() => getVisibleSettingsCategories(categories), [categories]);
+  const categoryOptions = useMemo(() => categories.map((category) => category.name), [categories]);
   const recentActivityGroups = useMemo(
     () => groupSettingsAuditEventsByDate(safeSettingsPage.recentAuditEvents),
     [safeSettingsPage.recentAuditEvents]
@@ -678,13 +687,153 @@ export function SettingsPanel({
     }
   }
 
-  function openTransferReview(entryId) {
+  function buildTransferReviewUrl(item) {
     const params = new URLSearchParams(searchParams);
     params.set("view", viewId);
-    params.set("month", searchParams.get("month") ?? DEFAULT_MONTH_KEY);
+    params.set("month", item?.date?.slice(0, 7) || searchParams.get("month") || DEFAULT_MONTH_KEY);
     params.set("entry_type", "transfer");
-    params.set("editing_entry", entryId);
-    navigate({ pathname: "/entries", search: params.toString() });
+    params.set("editing_entry", item.entryId);
+    return `/entries?${params.toString()}`;
+  }
+
+  function openTransferReview(item) {
+    const url = buildTransferReviewUrl(item);
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  function ensureTransferSettlementDraft(entry) {
+    setTransferSettlementDrafts((current) => {
+      if (current[entry.id]) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [entry.id]: {
+          currentCategoryName: "Other",
+          counterpartCategoryName: "Other"
+        }
+      };
+    });
+  }
+
+  function updateTransferSettlementDraft(entryId, patch) {
+    setTransferSettlementDrafts((current) => ({
+      ...current,
+      [entryId]: {
+        currentCategoryName: current[entryId]?.currentCategoryName ?? "Other",
+        counterpartCategoryName: current[entryId]?.counterpartCategoryName ?? "Other",
+        ...patch
+      }
+    }));
+  }
+
+  async function loadTransferManager(entryId, { open = false } = {}) {
+    setRefreshingTransferCandidatesEntryId(entryId);
+    setTransferCandidatesError("");
+    try {
+      const response = await fetch(`/api/transfers/candidates?entryId=${encodeURIComponent(entryId)}`, {
+        cache: "no-store"
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to load transfer matches.");
+      }
+      if (!data.entry) {
+        throw new Error("Transfer row no longer exists.");
+      }
+
+      setTransferDialogEntry(data.entry);
+      setTransferCandidates(Array.isArray(data.candidates) ? data.candidates : []);
+      ensureTransferSettlementDraft(data.entry);
+      if (open) {
+        setTransferDialogEntryId(data.entry.id);
+      }
+      return data.entry;
+    } catch (error) {
+      setTransferCandidatesError(error instanceof Error ? error.message : "Failed to load transfer matches.");
+      if (open) {
+        setTransferDialogEntryId(entryId);
+      }
+      return null;
+    } finally {
+      setRefreshingTransferCandidatesEntryId((current) => current === entryId ? null : current);
+    }
+  }
+
+  async function openTransferManager(entryId) {
+    await loadTransferManager(entryId, { open: true });
+  }
+
+  async function refreshTransferCandidates(entry) {
+    await loadTransferManager(entry.id);
+  }
+
+  async function linkTransferCandidate(entry, candidate) {
+    const fromEntryId = entry.transferDirection === "in" ? candidate.id : entry.id;
+    const toEntryId = entry.transferDirection === "in" ? entry.id : candidate.id;
+    setLinkingTransferEntryId(entry.id);
+    setSettingsActionError("");
+
+    try {
+      const response = await fetch("/api/transfers/link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ fromEntryId, toEntryId })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to link transfer.");
+      }
+
+      setTransferDialogEntryId(null);
+      setTransferDialogEntry(null);
+      setTransferCandidates([]);
+      await onRefresh(buildSettingsRefreshPlan("unresolved_transfer_linked"));
+    } catch (error) {
+      setTransferCandidatesError(error instanceof Error ? error.message : "Failed to link transfer.");
+    } finally {
+      setLinkingTransferEntryId(null);
+    }
+  }
+
+  async function settleTransfer(entry) {
+    const draft = transferSettlementDrafts[entry.id] ?? {
+      currentCategoryName: "Other",
+      counterpartCategoryName: "Other"
+    };
+    setSettlingTransferEntryId(entry.id);
+    setSettingsActionError("");
+
+    try {
+      const response = await fetch("/api/transfers/settle", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          entryId: entry.id,
+          counterpartEntryId: entry.linkedTransfer?.transactionId,
+          currentCategoryName: draft.currentCategoryName,
+          counterpartCategoryName: draft.counterpartCategoryName
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to convert transfer.");
+      }
+
+      setTransferDialogEntryId(null);
+      setTransferDialogEntry(null);
+      setTransferCandidates([]);
+      await onRefresh(buildSettingsRefreshPlan("unresolved_transfer_settled"));
+    } catch (error) {
+      setTransferCandidatesError(error instanceof Error ? error.message : "Failed to convert transfer.");
+    } finally {
+      setSettlingTransferEntryId(null);
+    }
   }
 
   function handleStatementCompareRowsMatched(statementRow, ledgerRow) {
@@ -876,7 +1025,42 @@ export function SettingsPanel({
         onDismissTransfer={handleDismissUnresolvedTransfer}
         onDismissAllTransfers={handleDismissAllUnresolvedTransfers}
         onOpenTransferReview={openTransferReview}
+        onManageTransfer={openTransferManager}
       />
+
+      {transferDialogEntry ? (
+        <EntryTransferTools
+          entry={transferDialogEntry}
+          categoryOptions={categoryOptions}
+          transferCandidates={transferCandidates}
+          transferDialogEntryId={transferDialogEntryId}
+          transferSettlementDrafts={transferSettlementDrafts}
+          linkingTransferEntryId={linkingTransferEntryId}
+          settlingTransferEntryId={settlingTransferEntryId}
+          refreshingTransferCandidatesEntryId={refreshingTransferCandidatesEntryId}
+          transferCandidatesError={transferCandidatesError}
+          onEnsureSettlementDraft={ensureTransferSettlementDraft}
+          onTransferDialogEntryChange={(next) => {
+            const nextValue = typeof next === "function" ? next(transferDialogEntryId) : next;
+            setTransferDialogEntryId(nextValue);
+            if (!nextValue) {
+              setTransferDialogEntry(null);
+              setTransferCandidates([]);
+              setTransferCandidatesError("");
+            }
+          }}
+          onSettlementDraftChange={updateTransferSettlementDraft}
+          onRefreshCandidates={refreshTransferCandidates}
+          onLinkCandidate={linkTransferCandidate}
+          onSettleTransfer={settleTransfer}
+          showLabel={false}
+          trigger={(
+            <button type="button" hidden aria-hidden="true" tabIndex={-1}>
+              {messages.settings.manageTransferReview}
+            </button>
+          )}
+        />
+      ) : null}
 
       <SettingsErrorDiagnosticsSection
         diagnostics={safeSettingsPage.errorDiagnostics ?? []}

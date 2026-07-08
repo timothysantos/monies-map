@@ -55,6 +55,16 @@ const DEMO_RESET_PLAN = Object.freeze({
   invalidateSummary: true
 });
 
+const TRANSFER_MUTATION_PLAN = Object.freeze({
+  refreshShell: false,
+  refreshReferenceData: false,
+  invalidateEntries: true,
+  invalidateImports: false,
+  invalidateMonth: true,
+  invalidateSplits: false,
+  invalidateSummary: true
+});
+
 // Settings mutations use named refresh plans so invalidation stays explicit and
 // the panel does not decide cache-burst behavior inline.
 export function buildSettingsRefreshPlan(kind) {
@@ -79,6 +89,7 @@ export function buildSettingsRefreshPlan(kind) {
     || kind === "category_rule_deleted"
     || kind === "category_rule_suggestion_accepted"
     || kind === "category_rule_suggestion_ignored"
+    || kind === "category_rule_issue_ignored"
   ) {
     return CATEGORY_RULE_PLAN;
   }
@@ -98,6 +109,13 @@ export function buildSettingsRefreshPlan(kind) {
     || kind === "mobile-sheet"
   ) {
     return SETTINGS_ONLY_PLAN;
+  }
+
+  if (
+    kind === "unresolved_transfer_linked"
+    || kind === "unresolved_transfer_settled"
+  ) {
+    return TRANSFER_MUTATION_PLAN;
   }
 
   if (kind === "demo_reseed" || kind === "demo_empty_state") {

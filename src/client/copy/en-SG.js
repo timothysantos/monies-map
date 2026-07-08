@@ -693,6 +693,7 @@ export const messages = {
     unresolvedTransfersDetail: "These transfer rows are not fully paired yet and can leave wallet balances looking wrong until reviewed.",
     unresolvedTransfersDetailWithCount: (count) => `${count} transfer rows are not fully paired yet and can leave wallet balances looking wrong until reviewed.`,
     openTransferReview: "Open in entries",
+    manageTransferReview: "Manage transfer",
     clearTransfer: "Clear",
     clearAllTransfers: "Clear all",
     transferPage: (page, pageCount, count) => `Page ${page} of ${pageCount} (${count} transfers)`,

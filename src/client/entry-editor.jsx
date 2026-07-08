@@ -356,7 +356,9 @@ export function EntryTransferTools({
   onSettlementDraftChange,
   onRefreshCandidates,
   onLinkCandidate,
-  onSettleTransfer
+  onSettleTransfer,
+  trigger = null,
+  showLabel = true
 }) {
   const [expandedCandidateId, setExpandedCandidateId] = useState(null);
 
@@ -375,7 +377,7 @@ export function EntryTransferTools({
 
   return (
     <div className="entry-edit-transfer-helper">
-      <span>Transfer match</span>
+      {showLabel ? <span>Transfer match</span> : null}
       <Dialog.Root
         open={transferDialogEntryId === entry.id}
         onOpenChange={(open) => {
@@ -391,9 +393,11 @@ export function EntryTransferTools({
         }}
       >
         <Dialog.Trigger asChild>
-          <button type="button" className="subtle-action">
-            Manage transfer
-          </button>
+          {trigger ?? (
+            <button type="button" className="subtle-action">
+              Manage transfer
+            </button>
+          )}
         </Dialog.Trigger>
         <Dialog.Portal>
           <Dialog.Overlay className="note-dialog-overlay" />

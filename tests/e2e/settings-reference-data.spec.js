@@ -152,6 +152,61 @@ test.describe("settings reference data", () => {
     expect(layout.buttonTop).toBeLessThan(8);
     expect(layout.buttonLeft).toBeGreaterThan(layout.copyWidth);
     expect(layout.overflows).toBe(false);
+
+    await issueSummary.getByRole("button", { name: "Ignore" }).click();
+    await expect(issueSummary).toHaveCount(0);
+  });
+
+  test("unresolved transfers can open entries in a new tab and be managed in settings", async ({ page }) => {
+    const stamp = Date.now();
+    const outDescription = `Playwright settings transfer out ${stamp}`;
+    const inDescription = `Playwright settings transfer in ${stamp}`;
+    const amountMinor = 91234;
+
+    await postJson(page, "/api/entries/create", {
+      date: "2026-07-08",
+      description: outDescription,
+      accountName: "UOB One",
+      categoryName: "Transfer",
+      amountMinor,
+      entryType: "transfer",
+      transferDirection: "out",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    await postJson(page, "/api/entries/create", {
+      date: "2026-07-08",
+      description: inDescription,
+      accountName: "Citi Rewards",
+      categoryName: "Transfer",
+      amountMinor,
+      entryType: "transfer",
+      transferDirection: "in",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+
+    await openSettingsPage(page);
+    await page.getByRole("button", { name: /Unresolved transfers/ }).click();
+    const transferRow = page.locator(".settings-transfer-row").filter({ hasText: outDescription });
+    await expect(transferRow).toBeVisible();
+
+    const popupPromise = page.waitForEvent("popup");
+    await transferRow.getByRole("button", { name: "Open in entries" }).click();
+    const popup = await popupPromise;
+    await popup.waitForLoadState("domcontentloaded");
+    const popupUrl = new URL(popup.url());
+    expect(popupUrl.pathname).toBe("/entries");
+    expect(popupUrl.searchParams.get("month")).toBe("2026-07");
+    await popup.close();
+
+    await transferRow.getByRole("button", { name: "Manage transfer" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: "Transfer details" })).toBeVisible();
+    await expect(dialog).toContainText(inDescription);
+    await dialog.getByRole("button", { name: "Use match" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(transferRow).toHaveCount(0);
   });
 
   test("account rename updates reference data plus summary and entries downstream DTOs", async ({ page }) => {
