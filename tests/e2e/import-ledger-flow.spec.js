@@ -1,8 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { access, readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 
 const currencyFormatter = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" });
-const HSBC_REAL_PDF_DIR = process.env.HSBC_REAL_PDF_DIR ?? "/Users/tim/Downloads/hsbc-tim";
 const HSBC_2026_CASES = [
   {
     month: "feb",
@@ -169,15 +168,6 @@ async function expectHsbcPreviewValues(page, expectedValues) {
     .locator(".import-preview-table input")
     .evaluateAll((inputs) => inputs.map((input) => input.value));
   expect(previewValues).toEqual(expectedValues);
-}
-
-async function pathExists(path) {
-  try {
-    await access(path);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 async function loadEntriesPage(page, { view = "person-tim", month = "2025-10" } = {}) {
@@ -1299,25 +1289,6 @@ test.describe("import flow", () => {
       await page.locator("input[type=\"file\"]").setInputFiles(ocrPackagePath);
 
       await expect(page.getByText(item.readyText)).toBeVisible({ timeout: 60_000 });
-      await expectHsbcPreviewValues(page, item.values);
-    }
-  });
-
-  test("local real HSBC PDFs upload Feb-Jul 2026 through private browser OCR", async ({ page }) => {
-    test.skip(!(await pathExists(HSBC_REAL_PDF_DIR)), `Set HSBC_REAL_PDF_DIR to run real HSBC PDF upload coverage. Default not found: ${HSBC_REAL_PDF_DIR}`);
-    await createHsbcVisaRevolutionAccount(page);
-
-    for (const item of HSBC_2026_CASES) {
-      const pdfPath = `${HSBC_REAL_PDF_DIR}/4835-8500-2086-8155-${item.month}_2026.pdf`;
-      test.skip(!(await pathExists(pdfPath)), `Missing HSBC PDF fixture: ${pdfPath}`);
-
-      await page.goto(`/imports?view=person-tim&month=${item.routeMonth}`);
-      await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
-
-      await page.locator("input[type=\"file\"]").setInputFiles(pdfPath);
-
-      await expect(page.getByText(/Running private OCR in this browser/)).toBeVisible({ timeout: 60_000 });
-      await expect(page.getByText(item.readyText)).toBeVisible({ timeout: 120_000 });
       await expectHsbcPreviewValues(page, item.values);
     }
   });

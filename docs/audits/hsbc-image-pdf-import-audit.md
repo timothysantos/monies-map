@@ -63,7 +63,8 @@ Updated: 2026-07-08
 - Unit parser coverage also includes browser-OCR TSV fixtures generated from the
   supplied February through July 2026 HSBC PDFs. These fixtures preserve the
   actual in-browser OCR failure modes without requiring tests to read local
-  Downloads files.
+  machine files. Header/footer cardholder details and card numbers are
+  sanitized in the committed fixtures.
 - Unit classifier coverage routes `.hsbc-ocr.tsv` and `__OCR_TSV__` content to statement parsing.
 - E2E upload coverage proves both direct image-only PDF OCR and local OCR
   packages reach the Imports statement preview, show account mapping, and
@@ -71,11 +72,8 @@ Updated: 2026-07-08
 - App-level E2E package coverage uploads the browser-OCR February through July
   2026 fixtures, including the May statement that previously failed in
   production.
-- Local real-PDF E2E coverage runs when `HSBC_REAL_PDF_DIR` points at the
-  supplied statements. It uploads February through July 2026 through the same
-  private browser OCR path the user uses in Imports. This test is intentionally
-  local-only unless sanitized PDFs are committed later; it is the regression
-  check that would have caught a May-specific browser OCR drift before deploy.
+- A self-contained test guard scans the test tree for hard-coded local paths so
+  tests cannot silently depend on files outside the repository checkout.
 - Local real-file checks confirmed the supplied February through July 2026 HSBC
   PDFs upload without sending files to a third-party OCR service. March, April,
   and May produced activity rows; February, June, and July produced valid empty
