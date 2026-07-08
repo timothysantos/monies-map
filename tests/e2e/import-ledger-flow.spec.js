@@ -427,7 +427,7 @@ async function writeHsbcImagePdf(page, path) {
           ctx.fillRect(120, 370, 1320, 52);
           ctx.fillStyle = "#fff";
           ctx.font = "30px Arial";
-          ctx.fillText("4835-XXXX-XXXX-8155", 130, 405);
+          ctx.fillText("4000-XXXX-XXXX-0000", 130, 405);
           ctx.fillStyle = "#000";
           ctx.font = "25px Arial";
           ctx.fillText("Statement period", 130, 470);
@@ -1289,6 +1289,23 @@ test.describe("import flow", () => {
       await page.locator("input[type=\"file\"]").setInputFiles(ocrPackagePath);
 
       await expect(page.getByText(item.readyText)).toBeVisible({ timeout: 60_000 });
+      await expectHsbcPreviewValues(page, item.values);
+    }
+  });
+
+  test("sanitized HSBC image PDFs upload Feb-Jul 2026 through private browser OCR", async ({ page }) => {
+    await createHsbcVisaRevolutionAccount(page);
+
+    for (const item of HSBC_2026_CASES) {
+      const pdfPath = `tests/fixtures/hsbc-ocr/image-pdf/hsbc-visa-revolution-${item.month}-2026.sanitized.pdf`;
+
+      await page.goto(`/imports?view=person-tim&month=${item.routeMonth}`);
+      await expect(page.getByRole("heading", { name: "Import and certify", exact: true })).toBeVisible({ timeout: 30_000 });
+
+      await page.locator("input[type=\"file\"]").setInputFiles(pdfPath);
+
+      await expect(page.getByText(/Running private OCR in this browser/)).toBeVisible({ timeout: 60_000 });
+      await expect(page.getByText(item.readyText)).toBeVisible({ timeout: 120_000 });
       await expectHsbcPreviewValues(page, item.values);
     }
   });

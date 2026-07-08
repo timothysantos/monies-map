@@ -136,6 +136,23 @@ test("HSBC browser OCR fixtures import Feb-Jul 2026 statements", async () => {
   }
 });
 
+test("HSBC browser OCR computes checkpoint when total account label is damaged", async () => {
+  const tsv = await readFile("tests/fixtures/hsbc-ocr/browser-2026/hsbc-visa-revolution-may-2026.browser.tsv", "utf8");
+  const damagedTotalLabelTsv = tsv
+    .replace(/(\t1261\t1088\t105\t20\t[^\t]+\t)Account/g, "$1Ascaunt")
+    .replace(/(\t1379\t1088\t99\t20\t[^\t]+\t)Balance/g, "$1Balanze");
+  const parsed = parseStatementText(`__OCR_TSV__\n${damagedTotalLabelTsv}`, "hsbc-visa-revolution-may-2026.sanitized.pdf");
+
+  assert.equal(parsed.checkpoints[0].statementBalanceMinor, 0);
+  assert.deepEqual(
+    parsed.rows.map((row) => [row.date, row.description, row.expense, row.income]),
+    [
+      ["2026-05-04", "IKEA SINGAPORE SG", "157.20", ""],
+      ["2026-05-05", "PAYMENT VIA UOB VISA DIRECT SG", "", "157.20"]
+    ]
+  );
+});
+
 test("HSBC OCR parser rejects unrelated OCR TSV", () => {
   assert.throws(
     () => parseStatementText("__OCR_TSV__\nlevel\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n5\t1\t1\t1\t1\t1\t0\t0\t10\t10\t90\tOther"),
