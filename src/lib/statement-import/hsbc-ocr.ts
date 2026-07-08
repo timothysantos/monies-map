@@ -130,14 +130,12 @@ export function parseHsbcVisaRevolutionOcrTsv(tsv: string, fileName?: string): P
   const summaryGstChargesMinor = findSummaryAmountByTokens(lines, [/GST/i, /Charges/i])?.minor ?? 0;
   const summaryGstReversalsMinor = findSummaryAmountByTokens(lines, [/GST/i, /Reversals/i])?.minor ?? 0;
   const totalAccountBalanceTokens = [/otal/i, /Account/i, /Balance/i];
-  const hasTotalAccountBalanceLabel = hasSummaryTokens(lines, totalAccountBalanceTokens);
   let statementBalanceMinor = findSummaryAmountByTokens(lines, totalAccountBalanceTokens)?.minor;
   if (previousBalanceMinor == null) {
     previousBalanceMinor = findSummaryAmountByTokens(lines, [/Previous/i, /Balance/i])?.minor;
   }
   if (
     statementBalanceMinor == null
-    && hasTotalAccountBalanceLabel
     && previousBalanceMinor != null
     && summaryCreditsMinor != null
     && summaryPurchasesMinor != null
@@ -301,10 +299,6 @@ function isHsbcMerchantContinuationLine(candidate: OcrLine, anchor: OcrLine, top
   return candidate.words.some(isHsbcTransactionDescriptionWord);
 }
 
-function hasSummaryTokens(lines: OcrLine[], tokens: RegExp[]) {
-  return lines.some((line) => summaryLineMatchesTokens(line, tokens));
-}
-
 function findSummaryAmountByTokens(lines: OcrLine[], tokens: RegExp[]) {
   const index = lines.findIndex((candidate) => summaryLineMatchesTokens(candidate, tokens));
   if (index < 0) {
@@ -349,6 +343,7 @@ function cleanHsbcDescription(value: string) {
     .replace(/_+/g, " ")
     .replace(/\bIKEA-ONLIN[BE]INGAPORE\b/gi, "IKEA - ONLINE SINGAPORE")
     .replace(/\bIKEA\s*-?\s*ONLINE\s+SINGAPORE\b/gi, "IKEA - ONLINE SINGAPORE")
+    .replace(/\bIKEA\s+SINGAPORE\s+s\s+S\b/gi, "IKEA SINGAPORE SG")
     .replace(/\bPAYMENTVIAUOB\b/gi, "PAYMENT VIA UOB")
     .replace(/\bVIAUOB\b/gi, "VIA UOB")
     .replace(/\bVIAUOBVISA\b/gi, "VIA UOB VISA")

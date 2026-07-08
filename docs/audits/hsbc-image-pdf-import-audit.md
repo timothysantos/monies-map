@@ -69,9 +69,12 @@ Updated: 2026-07-08
 - E2E upload coverage proves both direct image-only PDF OCR and local OCR
   packages reach the Imports statement preview, show account mapping, and
   display parsed HSBC rows.
-- App-level E2E package coverage uploads the browser-OCR February through July
-  2026 fixtures, including the May statement that previously failed in
-  production.
+- App-level E2E coverage uploads sanitized, image-only HSBC PDFs for February
+  through July 2026 through the same private browser OCR path used by drag/drop
+  imports. This includes the May statement that previously failed in production.
+- App-level E2E package coverage also uploads the matching browser-OCR February
+  through July 2026 TSV fixtures so parser behavior remains debuggable without
+  rerunning OCR.
 - A self-contained test guard scans the test tree for hard-coded local paths so
   tests cannot silently depend on files outside the repository checkout.
 - Local real-file checks confirmed the supplied February through July 2026 HSBC
