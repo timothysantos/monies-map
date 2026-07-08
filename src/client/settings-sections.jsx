@@ -701,9 +701,11 @@ export function SettingsTransfersSection({
   transfers,
   isOpen,
   isSubmitting,
+  isRefreshing,
   onToggle,
   onDismissTransfer,
   onDismissAllTransfers,
+  onRefreshTransfers,
   onOpenTransferReview,
   onManageTransfer
 }) {
@@ -728,6 +730,9 @@ export function SettingsTransfersSection({
               <div className="settings-actions settings-transfer-actions">
                 <button type="button" className="subtle-action" disabled={isSubmitting} onClick={onDismissAllTransfers}>
                   {messages.settings.clearAllTransfers}
+                </button>
+                <button type="button" className="subtle-action" disabled={isSubmitting || isRefreshing} onClick={onRefreshTransfers}>
+                  {isRefreshing ? messages.settings.refreshingTransfers : messages.settings.refreshTransfers}
                 </button>
               </div>
               {visibleTransfers.map((item) => (

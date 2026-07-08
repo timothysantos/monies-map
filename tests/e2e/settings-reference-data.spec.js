@@ -209,6 +209,47 @@ test.describe("settings reference data", () => {
     await expect(transferRow).toHaveCount(0);
   });
 
+  test("unresolved transfer refresh reloads rows changed outside settings", async ({ page }) => {
+    const amountMinor = 17429;
+    const outDescription = uniqueLabel("Settings refresh transfer out");
+    const inDescription = uniqueLabel("Settings refresh transfer in");
+    const transferOut = await postJson(page, "/api/entries/create", {
+      date: "2026-07-03",
+      description: outDescription,
+      accountName: "UOB One",
+      categoryName: "Transfer",
+      amountMinor,
+      entryType: "transfer",
+      transferDirection: "out",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    const transferIn = await postJson(page, "/api/entries/create", {
+      date: "2026-07-03",
+      description: inDescription,
+      accountName: "Citi Rewards",
+      categoryName: "Transfer",
+      amountMinor,
+      entryType: "transfer",
+      transferDirection: "in",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+
+    await openSettingsPage(page);
+    await page.getByRole("button", { name: /Unresolved transfers/ }).click();
+    const transferRow = page.locator(".settings-transfer-row").filter({ hasText: outDescription });
+    await expect(transferRow).toBeVisible();
+
+    await postJson(page, "/api/transfers/link", {
+      fromEntryId: transferOut.entryId,
+      toEntryId: transferIn.entryId
+    });
+
+    await page.getByRole("button", { name: "Refresh" }).click();
+    await expect(transferRow).toHaveCount(0);
+  });
+
   test("account rename updates reference data plus summary and entries downstream DTOs", async ({ page }) => {
     const beforeReferenceData = await loadReferenceData(page);
     const beforeSummaryPills = await loadSummaryAccountPills(page, { view: "household" });
