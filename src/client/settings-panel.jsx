@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { LogOut } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
@@ -128,6 +128,8 @@ export function SettingsPanel({
   const [linkingTransferEntryId, setLinkingTransferEntryId] = useState(null);
   const [settlingTransferEntryId, setSettlingTransferEntryId] = useState(null);
   const [transferSettlementDrafts, setTransferSettlementDrafts] = useState({});
+  const [isRefreshingTransfers, setIsRefreshingTransfers] = useState(false);
+  const shouldRefreshTransfersOnFocusRef = useRef(false);
   const [searchParams] = useSearchParams();
   // Settings shows demo and reconciliation sections that expect a shaped page
   // slice, so keep the fallback DTO builder in the settings workflow module.
@@ -179,6 +181,24 @@ export function SettingsPanel({
       setCheckpointHistoryYear(checkpointHistoryYears[0]);
     }
   }, [checkpointHistoryYear, checkpointHistoryYears, reconciliationDialog]);
+
+  useEffect(() => {
+    function refreshTransfersAfterExternalReview() {
+      if (!shouldRefreshTransfersOnFocusRef.current || document.visibilityState === "hidden") {
+        return;
+      }
+
+      shouldRefreshTransfersOnFocusRef.current = false;
+      void handleRefreshUnresolvedTransfers({ silent: true });
+    }
+
+    window.addEventListener("focus", refreshTransfersAfterExternalReview);
+    document.addEventListener("visibilitychange", refreshTransfersAfterExternalReview);
+    return () => {
+      window.removeEventListener("focus", refreshTransfersAfterExternalReview);
+      document.removeEventListener("visibilitychange", refreshTransfersAfterExternalReview);
+    };
+  }, [onRefresh]);
 
   async function handleReseed() {
     setIsSubmitting(true);
@@ -632,6 +652,22 @@ export function SettingsPanel({
     setDismissTransfersConfirmOpen(true);
   }
 
+  async function handleRefreshUnresolvedTransfers(options = {}) {
+    if (!options.silent) {
+      setSettingsActionError("");
+    }
+    setIsRefreshingTransfers(true);
+    try {
+      await onRefresh();
+    } catch (error) {
+      if (!options.silent) {
+        setSettingsActionError(error instanceof Error ? error.message : "Failed to refresh unresolved transfers");
+      }
+    } finally {
+      setIsRefreshingTransfers(false);
+    }
+  }
+
   async function confirmDismissAllUnresolvedTransfers() {
     setDismissTransfersConfirmOpen(false);
     setIsSubmitting(true);
@@ -698,6 +734,7 @@ export function SettingsPanel({
 
   function openTransferReview(item) {
     const url = buildTransferReviewUrl(item);
+    shouldRefreshTransfersOnFocusRef.current = true;
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
@@ -1024,8 +1061,10 @@ export function SettingsPanel({
         onToggle={() => toggleSettingsSection("transfers")}
         onDismissTransfer={handleDismissUnresolvedTransfer}
         onDismissAllTransfers={handleDismissAllUnresolvedTransfers}
+        onRefreshTransfers={() => handleRefreshUnresolvedTransfers()}
         onOpenTransferReview={openTransferReview}
         onManageTransfer={openTransferManager}
+        isRefreshing={isRefreshingTransfers}
       />
 
       {transferDialogEntry ? (

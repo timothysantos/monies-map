@@ -9,6 +9,8 @@ Updated: 2026-07-08
 - Cross-link from Settings unresolved transfers to Entries.
 - In-place transfer matching from Settings using the same transfer manager dialog
   as Entries.
+- Manual and focus-return refresh for unresolved transfer rows after the user
+  opens a matching row in another tab.
 
 ## Findings
 
@@ -21,6 +23,9 @@ Updated: 2026-07-08
   transfer row date.
 - The Entries transfer manager was already a reusable component, but Settings
   only exposed clear and open-in-entries actions.
+- Opening Entries in a new tab intentionally leaves Settings mounted. Without a
+  section-level refresh affordance, users had to reload the whole page to see
+  transfer links or clears completed in the other tab.
 
 ## Changes
 
@@ -31,6 +36,8 @@ Updated: 2026-07-08
 - Settings transfer rows now include a Manage transfer action that loads the
   full transfer row and candidates from `/api/transfers/candidates`, then opens
   the shared transfer manager dialog.
+- The unresolved transfers section now has a Refresh action, and Settings does
+  a one-shot refresh when the tab regains focus after Open in entries.
 - Transfer links or transfer settlements performed from Settings refresh the
   Settings list and invalidate affected Entries, Month, and Summary route
   families.
@@ -42,3 +49,6 @@ Updated: 2026-07-08
 - `tests/e2e/settings-reference-data.spec.js` covers immediate duplicate-rule
   issue removal, new-tab Entries navigation, and resolving a matching transfer
   directly from Settings.
+- `tests/e2e/settings-reference-data.spec.js` also covers the unresolved
+  transfer Refresh action reloading rows changed outside the mounted Settings
+  page.
