@@ -704,7 +704,8 @@ export function SettingsTransfersSection({
   onToggle,
   onDismissTransfer,
   onDismissAllTransfers,
-  onOpenTransferReview
+  onOpenTransferReview,
+  onManageTransfer
 }) {
   const [page, setPage] = useState(1);
   const pageCount = Math.max(1, Math.ceil(transfers.length / SETTINGS_TRANSFER_PAGE_SIZE));
@@ -744,8 +745,11 @@ export function SettingsTransfersSection({
                     <button type="button" className="subtle-action" disabled={isSubmitting} onClick={() => onDismissTransfer(item.entryId)}>
                       {messages.settings.clearTransfer}
                     </button>
-                    <button type="button" className="subtle-action" onClick={() => onOpenTransferReview(item.entryId)}>
+                    <button type="button" className="subtle-action" onClick={() => onOpenTransferReview(item)}>
                       {messages.settings.openTransferReview}
+                    </button>
+                    <button type="button" className="subtle-action" disabled={isSubmitting} onClick={() => onManageTransfer(item.entryId)}>
+                      {messages.settings.manageTransferReview}
                     </button>
                   </div>
                 </div>
