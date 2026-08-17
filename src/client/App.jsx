@@ -185,6 +185,15 @@ function describeRoutePageContractError(tabId) {
   return `The ${tabId} page response did not include the data needed to render this screen.`;
 }
 
+function getRoutePageRequestKey(request) {
+  if (!request) {
+    return "";
+  }
+
+  const query = request.params.toString();
+  return query ? `${request.path}?${query}` : request.path;
+}
+
 // Warm route bundles ahead of time so navigation stays fast without changing
 // which route data is actually rendered.
 function preloadRouteModule(routeId) {
@@ -324,6 +333,7 @@ export function App() {
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
   const isAppShellLoading = appShellLoadCount > 0;
   const [routePageData, setRoutePageData] = useState(null);
+  const [routePageDataRequestKey, setRoutePageDataRequestKey] = useState("");
   const [routePageError, setRoutePageError] = useState("");
   const [referenceData, setReferenceData] = useState(null);
   const [referenceDataError, setReferenceDataError] = useState("");
@@ -390,6 +400,10 @@ export function App() {
           summaryEnd: selectedSummaryEnd
         }),
     [canUseAppShellRoutePage, selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart, selectedTabId, selectedViewId]
+  );
+  const routePageRequestKey = useMemo(
+    () => getRoutePageRequestKey(routePageRequest),
+    [routePageRequest]
   );
 
   const updateLoadingStatus = useCallback((patch) => {
@@ -838,6 +852,7 @@ export function App() {
     clearAppShellCache();
     clearRoutePageCache();
     setRoutePageData(null);
+    setRoutePageDataRequestKey("");
     const finishAppShellLoad = beginAppShellLoad();
 
     try {
@@ -1007,11 +1022,12 @@ export function App() {
     try {
       const data = await fetchRoutePageData(routePageRequest, { bypassCache: true });
       setRoutePageData(data);
+      setRoutePageDataRequestKey(routePageRequestKey);
       return data;
     } finally {
       finishAppShellLoad();
     }
-  }, [beginAppShellLoad, clearEntriesPageCache, clearRoutePageCache, fetchRoutePageData, refreshAppShell, routePageRequest]);
+  }, [beginAppShellLoad, clearEntriesPageCache, clearRoutePageCache, fetchRoutePageData, refreshAppShell, routePageRequest, routePageRequestKey]);
 
   // Refresh the summary slice from its dedicated page and account-pill
   // queries without routing it back through the generic page loader.
@@ -1092,6 +1108,7 @@ export function App() {
       refreshShell ? refreshAppShellInBackground().catch(() => null) : Promise.resolve(null)
     ]);
     setRoutePageData(data);
+    setRoutePageDataRequestKey(getRoutePageRequestKey(request));
     return data;
   }, [
     clearSummaryPageCache,
@@ -1144,6 +1161,7 @@ export function App() {
     }
     const [data] = await Promise.all(tasks);
     setRoutePageData(data);
+    setRoutePageDataRequestKey(getRoutePageRequestKey(request));
 
     if (broadcast) {
       broadcastAppShellRefresh(syncChannelRef);
@@ -1299,9 +1317,10 @@ export function App() {
     }
 
     const [data, ...taskResults] = await Promise.all(tasks);
-    setRoutePageData((current) => (
-      selectedTabId === "settings" && current?.settingsPage ? data : current
-    ));
+    if (selectedTabId === "settings") {
+      setRoutePageData(data);
+      setRoutePageDataRequestKey(getRoutePageRequestKey(refreshDescription.routeRequest));
+    }
 
     if (broadcast && (refreshDescription.refreshShell || refreshDescription.refreshReferenceData)) {
       broadcastAppShellRefresh(syncChannelRef);
@@ -1328,6 +1347,7 @@ export function App() {
 
     const data = await fetchRoutePageData(request, { bypassCache: true });
     setRoutePageData(data);
+    setRoutePageDataRequestKey(getRoutePageRequestKey(request));
     return data;
   }, [fetchRoutePageData]);
 
@@ -1424,6 +1444,7 @@ export function App() {
     }
     const [data] = await Promise.all(tasks);
     setRoutePageData(data);
+    setRoutePageDataRequestKey(getRoutePageRequestKey(request));
 
     if (broadcast) {
       if (refreshShell && !invalidateEntries && !invalidateMonth && !invalidateSummary) {
@@ -2018,6 +2039,7 @@ export function App() {
         }
 
         setRoutePageData(data);
+        setRoutePageDataRequestKey(routePageRequestKey);
         setRoutePageError("");
       })
       .catch((error) => {
@@ -2026,6 +2048,7 @@ export function App() {
         }
 
         setRoutePageData(null);
+        setRoutePageDataRequestKey("");
         setRoutePageError(describeAppShellError(error));
         reportLoadingIssue("Page load failed", error);
       })
@@ -2035,11 +2058,14 @@ export function App() {
       controller.abort();
       finishAppShellLoad?.();
     };
-  }, [beginAppShellLoad, fetchRoutePageData, queryClient, reportLoadingIssue, routePageRequest, updateLoadingStatus]);
+  }, [beginAppShellLoad, fetchRoutePageData, queryClient, reportLoadingIssue, routePageRequest, routePageRequestKey, updateLoadingStatus]);
 
   // Keep only the last settled route snapshot in refs so hydration can fall
   // back to the previous screen without introducing a second render source of
   // truth.
+  const currentRoutePageData = routePageRequestKey && routePageDataRequestKey === routePageRequestKey
+    ? routePageData
+    : null;
   const currentPageView = useMemo(
     () => selectedTabId === "summary"
       ? buildSummaryPageView({
@@ -2048,8 +2074,8 @@ export function App() {
           summaryPageData,
           summaryAccountPillsData
         })
-      : buildPageViewFromRouteData(selectedTabId, routePageData, selectedViewId, appShell),
-    [appShell, routePageData, selectedTabId, selectedViewId, summaryAccountPillsData, summaryPageData]
+      : buildPageViewFromRouteData(selectedTabId, currentRoutePageData, selectedViewId, appShell),
+    [appShell, currentRoutePageData, selectedTabId, selectedViewId, summaryAccountPillsData, summaryPageData]
   );
   const lastSettledPageViewRef = useRef(null);
   const lastSettledTabIdRef = useRef(null);
@@ -2072,12 +2098,12 @@ export function App() {
       return;
     }
 
-    if (routePageData) {
+    if (currentRoutePageData) {
       setRoutePageError(describeRoutePageContractError(selectedTabId));
     }
   }, [
     currentPageView,
-    routePageData,
+    currentRoutePageData,
     routePageError,
     selectedTabId,
     summaryAccountPillsData,
@@ -2099,10 +2125,10 @@ export function App() {
   // overridden it yet.
   const selectedEntriesScope = searchParams.get("entries_scope") ?? pageView?.monthPage?.selectedScope ?? "direct_plus_shared";
   const householdMonthEntries = useMemo(
-    () => selectedTabId === "month" && Array.isArray(routePageData?.householdMonthEntries)
-      ? routePageData.householdMonthEntries
+    () => selectedTabId === "month" && Array.isArray(currentRoutePageData?.householdMonthEntries)
+      ? currentRoutePageData.householdMonthEntries
       : [],
-    [routePageData, selectedTabId]
+    [currentRoutePageData, selectedTabId]
   );
   const categories = useMemo(
     () => referenceData?.categories.map((category) => ({ ...category, ...(categoryOverrides[category.id] ?? {}) })) ?? [],
