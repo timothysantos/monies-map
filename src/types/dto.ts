@@ -698,8 +698,68 @@ export interface MonthPageDto {
 
 export interface ImportsPageDto {
   recentImports: ImportBatchDto[];
+  importInbox?: ImportInboxDto;
   rollbackPolicy: string;
   pendingSplitMatchCount?: number;
+}
+
+export interface ImportInboxDto {
+  generatedAt: string;
+  currentMonth: string;
+  summary: {
+    activeAccountCount: number;
+    currentAccountCount: number;
+    staleAccountCount: number;
+    requiredFileCount: number;
+    optionalFileCount: number;
+    institutionCount: number;
+    pendingSplitMatchCount: number;
+  };
+  sessions: ImportInboxSessionDto[];
+  reviewQueue: ImportInboxExpectedFileDto[];
+  cleanup: ImportInboxCleanupDto;
+}
+
+export interface ImportInboxSessionDto {
+  institution: string;
+  status: "current" | "needs_files" | "optional";
+  requiredFileCount: number;
+  optionalFileCount: number;
+  accounts: ImportInboxAccountDto[];
+  expectedFiles: ImportInboxExpectedFileDto[];
+}
+
+export interface ImportInboxAccountDto {
+  accountId: string;
+  accountName: string;
+  institution: string;
+  ownerLabel: string;
+  kind: string;
+  status: "current" | "statement_due" | "activity_optional" | "needs_setup";
+  latestCertifiedMonth?: string;
+  latestActivityImportAt?: string;
+  nextExpectedStatementMonth?: string;
+}
+
+export interface ImportInboxExpectedFileDto {
+  id: string;
+  institution: string;
+  accountId: string;
+  accountName: string;
+  ownerLabel: string;
+  sourceType: "pdf_statement" | "activity_export";
+  priority: "required" | "optional";
+  periodMonth: string;
+  label: string;
+  detail: string;
+  supportedFileTypes: string[];
+  reviewOrder: number;
+}
+
+export interface ImportInboxCleanupDto {
+  pendingSplitMatchCount: number;
+  status: "clear" | "needs_review";
+  detail: string;
 }
 
 export interface ContextViewDto {
