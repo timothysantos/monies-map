@@ -473,6 +473,17 @@ checkpoint is mismatched, the account card and checkpoint history show
 `Compare statement` so you can investigate the statement against rows already
 in the ledger.
 
+The Import Inbox at the top of Imports plans the bank run for you. It groups
+needed files by bank login session, shows the statements or activity exports to
+collect, links to the bank portal where configured, and keeps split cleanup as a
+separate after-import lane. You do not need to rename files.
+
+Dropping one file keeps the normal immediate preview flow. Dropping multiple
+files reads them in the browser and adds them to a temporary intake queue so you
+can load one file at a time into review. The app does not persist original PDFs,
+CSVs, XLS files, OCR images, or raw bank files. HSBC image-only PDFs still use
+private browser OCR before entering the normal statement preview.
+
 ### Supported files
 
 The app currently supports:

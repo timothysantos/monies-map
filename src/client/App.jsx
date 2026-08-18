@@ -334,6 +334,7 @@ export function App() {
   const isAppShellLoading = appShellLoadCount > 0;
   const [routePageData, setRoutePageData] = useState(null);
   const [routePageDataRequestKey, setRoutePageDataRequestKey] = useState("");
+  const [importInboxBanner, setImportInboxBanner] = useState(null);
   const [routePageError, setRoutePageError] = useState("");
   const [referenceData, setReferenceData] = useState(null);
   const [referenceDataError, setReferenceDataError] = useState("");
@@ -2378,6 +2379,50 @@ export function App() {
   const routeBody = pageView
     ? renderedRouteElement
     : <RouteChunkLoadingFallback status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />;
+  const showImportInboxBanner = Boolean(
+    importInboxBanner
+    && ["summary", "month"].includes(renderedTabId)
+    && importInboxBanner.summary.requiredFileCount > 0
+  );
+
+  useEffect(() => {
+    if (!["summary", "month"].includes(selectedTabId)) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    const cachedImportsPage = queryClient.getQueryData(queryKeys.importsPage());
+    if (cachedImportsPage?.importsPage?.importInbox) {
+      setImportInboxBanner(cachedImportsPage.importsPage.importInbox);
+    }
+
+    void queryClient.fetchQuery({
+      queryKey: queryKeys.importsPage(),
+      queryFn: async () => {
+        const response = await fetch("/api/imports-page", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Could not refresh import inbox banner.");
+        }
+        return response.json();
+      },
+      retry: false,
+      staleTime: 0
+    })
+      .then((data) => {
+        if (!cancelled) {
+          setImportInboxBanner(data?.importsPage?.importInbox ?? null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled && !cachedImportsPage?.importsPage?.importInbox) {
+          setImportInboxBanner(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [queryClient, selectedTabId]);
 
   // Prefetch adjacent routes once the shell is stable so fast navigation feels
   // instant without violating the current route's source of truth.
@@ -3540,6 +3585,16 @@ export function App() {
       <section className="grid app-route-grid" aria-busy={isAppShellLoading ? "true" : "false"}>
         {/* Route panels can hydrate lazily, so the fallback stays inside the
             routed region instead of replacing the whole shell. */}
+        {showImportInboxBanner ? (
+          <ImportInboxRouteBanner
+            inbox={importInboxBanner}
+            onOpenImports={() => navigate(buildTabPath("imports", {
+              viewId: selectedViewId,
+              month: selectedMonth,
+              scope: selectedScope
+            }))}
+          />
+        ) : null}
         {routeBody}
         {isAppShellLoading ? <AppLoadingOverlay status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} /> : null}
       </section>
@@ -3632,6 +3687,37 @@ export function App() {
         : null}
     </main>
   );
+}
+
+function ImportInboxRouteBanner({ inbox, onOpenImports }) {
+  return (
+    <section className="import-stale-banner" role="status">
+      <div>
+        <strong>{messages.imports.routeBannerTitle(inbox.summary.requiredFileCount)}</strong>
+        <span>{messages.imports.routeBannerDetail(inbox.summary.institutionCount, inbox.summary.pendingSplitMatchCount)}</span>
+      </div>
+      <button type="button" className="dialog-primary" onClick={onOpenImports}>
+        {messages.imports.routeBannerAction}
+      </button>
+    </section>
+  );
+}
+
+function buildTabPath(tabId, { viewId, month, scope }) {
+  const params = new URLSearchParams();
+  if (viewId) {
+    params.set("view", viewId);
+  }
+  if (month) {
+    params.set("month", month);
+  }
+  if (scope) {
+    params.set("scope", scope);
+  }
+  return {
+    pathname: `/${tabId}`,
+    search: `?${params.toString()}`
+  };
 }
 
 // Detect placeholder household names that should be replaced with the real

@@ -21,21 +21,24 @@ reviews only exceptions.
   split cleanup separation.
 - [x] Render Import Inbox at the top of Imports before the existing single-file
   composer.
-- [ ] Add a Summary/Month stale banner that links to Imports without showing the
+- [x] Add a Summary/Month stale banner that links to Imports without showing the
   full checklist on every page.
-- [ ] Add multi-file drop queueing so users can drop all files from one bank or
+- [x] Add multi-file drop queueing so users can drop all files from one bank or
   all banks at once.
-- [ ] Classify dropped files by content rather than filename, using parser
-  evidence, statement periods, account/card hints, transaction ranges, and file
-  hashes.
-- [ ] Detect duplicates by file/content hash and normalized parsed row evidence.
-- [ ] Add ambiguous-file confirmation that asks the user to choose only the
-  missing account/period when content cannot prove it.
-- [ ] Add bank portal URLs and per-institution download instructions.
-- [ ] Add snooze/not-available states for statements that banks have not
+- [x] Keep the empty intake queue visible with guidance that filename format is
+  not required and original files are not stored.
+- [x] Classify dropped files by content rather than filename, using parser
+  evidence, statement periods, account/card hints, transaction ranges, and
+  parsed-content fingerprints.
+- [x] Detect duplicates by normalized parsed row evidence inside the browser-only
+  intake queue.
+- [x] Add ambiguous-file indicators that tell the user which queued files need
+  account or period confirmation during review.
+- [x] Add bank portal URLs and per-institution download instructions.
+- [x] Add snooze/not-available states for statements that banks have not
   published yet.
-- [ ] Add local-private HSBC OCR confidence surfacing in the queued-file review
-  path.
+- [x] Keep HSBC image PDFs on the same private browser OCR path in both single
+  file and multi-file intake.
 - [ ] Evaluate bank aggregator sync as an optional activity-source spike, not as
   the statement-certification foundation.
 
@@ -43,6 +46,9 @@ reviews only exceptions.
 
 - Do not require filename conventions.
 - Do not ask users to organize local folders before importing.
+- Do not persist original PDFs, CSVs, XLS files, OCR images, or raw bank files.
+  Multi-file intake may keep parsed browser-memory objects only until the user
+  clears the queue, reloads, or loads one file into review.
 - Do not mix bank evidence catch-up with split allocation cleanup.
 - Optimize download collection around bank login sessions.
 - Optimize review order around statement chronology and trust level.

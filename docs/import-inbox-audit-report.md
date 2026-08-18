@@ -4,10 +4,10 @@ Date: 2026-08-18
 
 ## Scope
 
-This audit covers the Import Inbox foundation and first UI slice: server-side
-freshness modeling, task documentation, tests, and the top-of-Imports command
-center. It does not claim that multi-file queueing or global stale banners are
-complete yet.
+This audit covers the Import Inbox implementation: server-side freshness
+modeling, top-of-Imports command center, Summary/Month stale banner,
+browser-only multi-file intake, duplicate/ambiguous indicators, portal
+instructions, snooze/not-available handling, documentation, and tests.
 
 ## Findings
 
@@ -19,6 +19,8 @@ complete yet.
   order internally.
 - Filename conventions would create a new user chore and are explicitly out of
   scope for the intended UX. File matching should be content-first.
+- Original-file storage would create privacy, security, and retention concerns
+  that conflict with the app's current browser-private parsing model.
 - HSBC remains a special technical case because image-only PDFs require OCR, but
   it should stay a normal drop-file experience with local/private OCR status.
 - Split cleanup should be surfaced after bank files are current. It should not
@@ -41,6 +43,20 @@ complete yet.
 - The Imports page renders the Import Inbox above the existing composer.
 - Selecting an expected file pre-fills the current single-file import form with
   the matching account, source label, and note.
+- Summary and Month can show a compact stale banner that links to Imports,
+  without putting the full checklist in the shell payload.
+- Multi-file selection/drop parses files in the browser and creates an intake
+  queue. Queue items keep parsed rows/checkpoints or pasted CSV text in browser
+  memory only; they do not retain `File` objects or persist original PDFs,
+  CSVs, XLS files, OCR images, or raw bank files.
+- Intake matching compares parsed account/month/source evidence against expected
+  files and reports matched, ambiguous, unexpected, unknown, and duplicate
+  states.
+- Bank-session cards include portal links and short download instructions.
+- Expected files can be marked not available, which writes only a local
+  browser snooze marker for the expected-file id.
+- HSBC image PDFs continue through private browser OCR. Multi-file intake uses
+  the same parser path as single-file import.
 
 ## Test Coverage
 
@@ -51,23 +67,30 @@ complete yet.
   statement month across institutions.
 - `tests/import-inbox.test.mjs` proves pending split matches do not create
   required bank files.
-- Browser smoke screenshots confirmed the Import Inbox renders on desktop
-  (`1440x1100`) and mobile (`390x1000`) without blank or obviously broken
-  layout.
-- The standard e2e smoke bundle passed: `113 passed`.
+- `npm run typecheck` passed after the final intake/banner changes.
+- `npm run test:unit` passed: `161` tests, including browser-private HSBC OCR
+  fixtures and no-original-file intake coverage.
+- `npm run build` passed.
+- Focused Playwright screenshots passed for Summary stale-banner route,
+  desktop Imports, and mobile Imports:
+  `/tmp/import-banner-summary-desktop.png`,
+  `/tmp/import-inbox-finished-desktop.png`, and
+  `/tmp/import-inbox-finished-mobile.png`.
+- The focused browser check confirmed the Import Inbox renders, the File Intake
+  Queue guidance is visible before files are dropped, and the visible copy says
+  original files are not stored.
+- The standard e2e smoke bundle passed after the intake/banner implementation:
+  `113 passed (4.9m)`.
 
 ## Remaining Audit Gates
 
-- Add parser/file-classifier tests before claiming all-files-at-once drop is
-  content-first.
-- Add duplicate-detection tests before exposing folder-like multi-file drop.
-- Add copy review for a tech-averse path once the top-of-Imports UI exists.
-- Add documentation updates to FAQ and flow docs when the user-visible UI ships.
+- Bank aggregator sync remains a separate feasibility spike. It must not replace
+  PDF statement certification unless operational, security, consent/MFA, and
+  statement-proof risks are resolved.
 
 ## Status
 
-Foundation model and top-of-Imports UI: passed focused unit tests, full unit
-suite, typecheck, production build, browser smoke checks, and the standard e2e
-smoke bundle.
+Implementation: passed final verification for the non-sync Import Inbox path.
 
-Overall Import Inbox feature: in progress.
+Overall Import Inbox feature: implemented and audit-checked. The only remaining
+item is the separate bank aggregator sync feasibility spike.

@@ -5969,6 +5969,32 @@ button.split-activity-card:hover {
 }
 
 /* Import review flow: source defaults, upload sidecar, mapping, preview, and history. */
+.import-stale-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(177, 94, 47, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 250, 246, 0.94);
+}
+
+.import-stale-banner strong,
+.import-stale-banner span {
+  display: block;
+}
+
+.import-stale-banner strong {
+  color: var(--ink);
+}
+
+.import-stale-banner span {
+  margin-top: 3px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
 .import-inbox-section {
   display: grid;
   gap: 16px;
@@ -6086,6 +6112,27 @@ button.split-activity-card:hover {
   color: var(--ink);
 }
 
+.import-inbox-session-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.import-inbox-instructions {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 10px 12px 10px 30px;
+  border: 1px solid rgba(25, 64, 53, 0.08);
+  border-radius: 8px;
+  background: rgba(248, 252, 250, 0.72);
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
 .import-inbox-session-head span:not(.pill),
 .import-inbox-file-main span,
 .import-inbox-review-order span,
@@ -6111,8 +6158,20 @@ button.split-activity-card:hover {
   background: rgba(248, 252, 250, 0.72);
 }
 
+.import-inbox-file-row.is-snoozed {
+  background: rgba(246, 246, 244, 0.84);
+  opacity: 0.78;
+}
+
 .import-inbox-file-main {
   min-width: 0;
+}
+
+.import-inbox-file-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .import-inbox-optional-files {
@@ -6179,6 +6238,104 @@ button.split-activity-card:hover {
   font-weight: 700;
 }
 
+.import-intake-section {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 18px;
+  border: 1px solid rgba(25, 64, 53, 0.12);
+  border-radius: 16px;
+  background: rgba(248, 252, 250, 0.84);
+}
+
+.import-intake-summary {
+  width: fit-content;
+  padding: 8px 10px;
+  border: 1px solid rgba(31, 122, 99, 0.14);
+  border-radius: 8px;
+  background: rgba(233, 245, 239, 0.7);
+  color: var(--positive);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.import-intake-empty {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px dashed rgba(31, 122, 99, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.import-intake-empty strong {
+  color: var(--ink);
+}
+
+.import-intake-empty span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.import-intake-list {
+  display: grid;
+  gap: 8px;
+}
+
+.import-intake-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(25, 64, 53, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.import-intake-row.is-matched {
+  border-color: rgba(31, 122, 99, 0.18);
+}
+
+.import-intake-row.is-ambiguous {
+  border-color: rgba(177, 94, 47, 0.24);
+  background: rgba(255, 250, 246, 0.9);
+}
+
+.import-intake-row.is-duplicate {
+  opacity: 0.72;
+}
+
+.import-intake-main {
+  min-width: 0;
+}
+
+.import-intake-main strong,
+.import-intake-main span {
+  display: block;
+}
+
+.import-intake-main strong {
+  color: var(--ink);
+}
+
+.import-intake-main span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.import-intake-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 @media (max-width: 900px) {
   .import-inbox-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6190,6 +6347,14 @@ button.split-activity-card:hover {
 }
 
 @media (max-width: 620px) {
+  .import-stale-banner {
+    display: grid;
+  }
+
+  .import-stale-banner .dialog-primary {
+    justify-self: start;
+  }
+
   .import-inbox-section {
     padding: 14px;
   }
@@ -6200,12 +6365,28 @@ button.split-activity-card:hover {
     display: grid;
   }
 
+  .import-intake-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .import-intake-actions {
+    justify-content: flex-start;
+  }
+
+  .import-inbox-session-actions {
+    justify-content: flex-start;
+  }
+
   .import-inbox-summary {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .import-inbox-file-row .subtle-action {
     justify-self: start;
+  }
+
+  .import-inbox-file-actions {
+    justify-content: flex-start;
   }
 }
 
