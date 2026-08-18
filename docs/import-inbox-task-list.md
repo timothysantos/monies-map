@@ -19,7 +19,7 @@ reviews only exceptions.
   file collection.
 - [x] Add unit coverage for Citi-only lag, two-month all-account catch-up, and
   split cleanup separation.
-- [ ] Render Import Inbox at the top of Imports before the existing single-file
+- [x] Render Import Inbox at the top of Imports before the existing single-file
   composer.
 - [ ] Add a Summary/Month stale banner that links to Imports without showing the
   full checklist on every page.

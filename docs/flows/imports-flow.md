@@ -46,6 +46,12 @@ when the import changes shared ledger evidence or reference data.
 
 Imports owns:
 
+- import inbox planning at the top of the route. The inbox groups expected
+  downloads by bank session so a user can log into one bank and collect every
+  missing statement/activity file for that institution, while the review queue
+  remains ordered by statement chronology and trust level. This planning must
+  not depend on local filename conventions, and split cleanup remains a separate
+  post-bank-files lane
 - file upload and preview
 - account mapping
 - commit and rollback
