@@ -4,9 +4,10 @@ Date: 2026-08-18
 
 ## Scope
 
-This audit covers the first Import Inbox foundation slice: server-side freshness
-modeling for the Imports page, task documentation, and tests. It does not claim
-that multi-file queueing or global stale banners are complete yet.
+This audit covers the Import Inbox foundation and first UI slice: server-side
+freshness modeling, task documentation, tests, and the top-of-Imports command
+center. It does not claim that multi-file queueing or global stale banners are
+complete yet.
 
 ## Findings
 
@@ -37,6 +38,9 @@ that multi-file queueing or global stale banners are complete yet.
 - The review queue is sorted by statement period first, then institution/account,
   so users can collect by bank but review in accounting order.
 - Pending split matches are reported in a separate cleanup object.
+- The Imports page renders the Import Inbox above the existing composer.
+- Selecting an expected file pre-fills the current single-file import form with
+  the matching account, source label, and note.
 
 ## Test Coverage
 
@@ -47,10 +51,13 @@ that multi-file queueing or global stale banners are complete yet.
   statement month across institutions.
 - `tests/import-inbox.test.mjs` proves pending split matches do not create
   required bank files.
+- Browser smoke screenshots confirmed the Import Inbox renders on desktop
+  (`1440x1100`) and mobile (`390x1000`) without blank or obviously broken
+  layout.
+- The standard e2e smoke bundle passed: `113 passed`.
 
 ## Remaining Audit Gates
 
-- Add visual/browser proof after the Import Inbox UI is rendered.
 - Add parser/file-classifier tests before claiming all-files-at-once drop is
   content-first.
 - Add duplicate-detection tests before exposing folder-like multi-file drop.
@@ -59,6 +66,8 @@ that multi-file queueing or global stale banners are complete yet.
 
 ## Status
 
-Foundation model: passed focused unit tests.
+Foundation model and top-of-Imports UI: passed focused unit tests, full unit
+suite, typecheck, production build, browser smoke checks, and the standard e2e
+smoke bundle.
 
 Overall Import Inbox feature: in progress.

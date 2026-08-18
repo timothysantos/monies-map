@@ -5969,6 +5969,246 @@ button.split-activity-card:hover {
 }
 
 /* Import review flow: source defaults, upload sidecar, mapping, preview, and history. */
+.import-inbox-section {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.import-inbox-section.has-work {
+  border-color: rgba(177, 94, 47, 0.26);
+  background: linear-gradient(180deg, rgba(255, 250, 246, 0.94), rgba(255, 255, 255, 0.82));
+}
+
+.import-inbox-section.is-current {
+  border-color: rgba(31, 122, 99, 0.2);
+  background: rgba(248, 252, 250, 0.86);
+}
+
+.import-inbox-header,
+.import-inbox-session-head,
+.import-inbox-file-row,
+.import-inbox-review-order {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.import-inbox-header .section-head {
+  margin-bottom: 0;
+}
+
+.import-inbox-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.import-inbox-metric {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(25, 64, 53, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.import-inbox-metric-icon {
+  display: inline-flex;
+  grid-row: span 2;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(233, 245, 239, 0.86);
+  color: var(--positive);
+}
+
+.import-inbox-metric span:not(.import-inbox-metric-icon) {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.import-inbox-metric strong {
+  min-width: 0;
+  color: var(--ink);
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.import-inbox-guidance,
+.import-inbox-cleanup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(177, 94, 47, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 250, 246, 0.9);
+  color: var(--accent-strong);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.import-inbox-guidance.is-current {
+  border-color: rgba(31, 122, 99, 0.16);
+  background: rgba(233, 245, 239, 0.8);
+  color: var(--positive);
+}
+
+.import-inbox-sessions {
+  display: grid;
+  gap: 12px;
+}
+
+.import-inbox-session {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(25, 64, 53, 0.11);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.import-inbox-session-head strong,
+.import-inbox-file-main strong {
+  display: block;
+  color: var(--ink);
+}
+
+.import-inbox-session-head span:not(.pill),
+.import-inbox-file-main span,
+.import-inbox-review-order span,
+.import-inbox-current-list,
+.import-inbox-cleanup span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.import-inbox-file-list {
+  display: grid;
+  gap: 8px;
+}
+
+.import-inbox-file-row {
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid rgba(25, 64, 53, 0.09);
+  border-radius: 8px;
+  background: rgba(248, 252, 250, 0.72);
+}
+
+.import-inbox-file-main {
+  min-width: 0;
+}
+
+.import-inbox-optional-files {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0 0;
+}
+
+.import-inbox-optional-files summary,
+.import-inbox-current summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.import-inbox-review-order {
+  padding: 12px;
+  border: 1px solid rgba(25, 64, 53, 0.1);
+  border-radius: 8px;
+  background: rgba(248, 252, 250, 0.78);
+}
+
+.import-inbox-review-order > div {
+  min-width: 190px;
+}
+
+.import-inbox-review-order ol {
+  display: grid;
+  gap: 4px;
+  max-width: 520px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.import-inbox-cleanup {
+  align-items: flex-start;
+  color: var(--ink);
+}
+
+.import-inbox-cleanup strong {
+  white-space: nowrap;
+}
+
+.import-inbox-current {
+  padding-top: 2px;
+}
+
+.import-inbox-current-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.import-inbox-current-list span {
+  padding: 6px 8px;
+  border: 1px solid rgba(31, 122, 99, 0.13);
+  border-radius: 8px;
+  background: rgba(233, 245, 239, 0.64);
+  color: var(--positive);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .import-inbox-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .import-inbox-review-order {
+    display: grid;
+  }
+}
+
+@media (max-width: 620px) {
+  .import-inbox-section {
+    padding: 14px;
+  }
+
+  .import-inbox-header,
+  .import-inbox-session-head,
+  .import-inbox-file-row {
+    display: grid;
+  }
+
+  .import-inbox-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .import-inbox-file-row .subtle-action {
+    justify-self: start;
+  }
+}
+
 .import-workflow {
   display: grid;
   gap: 18px;

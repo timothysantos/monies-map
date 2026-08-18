@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { messages } from "./copy/en-SG";
 import { commitImportBatch, previewImportBatch, rollbackImportBatch } from "./import-api";
 import { ImportRecentHistorySection } from "./import-history";
+import { ImportInboxSection } from "./import-inbox";
 import { buildRecentImportModel, filterRecentImportsByAccount, getRecentImportAccountOptions } from "./import-history-model";
 import { classifyImportFile } from "./import-file-classifier";
 import { buildImportAccountCreationRefreshPlan } from "./import-refresh-plan";
@@ -95,6 +96,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   // minimal local shape instead of assuming the page slice is already present.
   const safeImportsPage = importsPage ?? {
     recentImports: [],
+    importInbox: null,
     pendingSplitMatchCount: 0,
     rollbackPolicy: ""
   };
@@ -350,6 +352,17 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     if (ownershipType === "direct" && nextOwnerName) {
       setOwnerName(nextOwnerName);
     }
+  }
+
+  function handleSelectExpectedFile(file) {
+    setDefaultAccountName(file.accountName);
+    const nextOwnerName = importService.getDirectOwnerForAccount(accounts, people, file.accountName, undefined);
+    if (ownershipType === "direct" && nextOwnerName) {
+      setOwnerName(nextOwnerName);
+    }
+    setSourceLabel(file.label);
+    setImportNote(file.detail);
+    fileInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   function resetImportForm({ preserveRecentImportStatus = false } = {}) {
@@ -1341,6 +1354,10 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           <span className="panel-context">{messages.imports.viewing(viewLabel)}</span>
         </div>
       </div>
+      <ImportInboxSection
+        inbox={safeImportsPage.importInbox}
+        onSelectExpectedFile={handleSelectExpectedFile}
+      />
       <section className="panel-subsection import-workflow">
         <div className="import-header">
           <div>
