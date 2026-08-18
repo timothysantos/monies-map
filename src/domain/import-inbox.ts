@@ -18,6 +18,8 @@ type BuildImportInboxInput = {
 type SupportedImportProfile = {
   statementFileTypes: string[];
   activityFileTypes: string[];
+  portalUrl?: string;
+  downloadInstructions: string[];
 };
 
 const STATEMENT_ACCOUNT_KINDS = new Set(["bank", "credit_card"]);
@@ -32,28 +34,52 @@ const SUPPORTED_IMPORT_PROFILES: Array<{
     institutionPattern: /citi|citibank/i,
     profile: {
       statementFileTypes: ["PDF statement"],
-      activityFileTypes: ["CSV current activity"]
+      activityFileTypes: ["CSV current activity"],
+      portalUrl: "https://www.citibank.com.sg/",
+      downloadInstructions: [
+        "Open Citi online banking.",
+        "Download each missing credit-card statement PDF.",
+        "Download current activity CSV only after required statements."
+      ]
     }
   },
   {
     institutionPattern: /uob/i,
     profile: {
       statementFileTypes: ["PDF statement"],
-      activityFileTypes: ["XLS current transactions"]
+      activityFileTypes: ["XLS current transactions"],
+      portalUrl: "https://pib.uob.com.sg/",
+      downloadInstructions: [
+        "Open UOB Personal Internet Banking.",
+        "Download each missing statement PDF for cards and accounts.",
+        "Download current transactions XLS only after required statements."
+      ]
     }
   },
   {
     institutionPattern: /ocbc/i,
     profile: {
       statementFileTypes: ["PDF statement"],
-      activityFileTypes: ["CSV current activity"]
+      activityFileTypes: ["CSV current activity"],
+      portalUrl: "https://internet.ocbc.com/",
+      downloadInstructions: [
+        "Open OCBC Digital Banking.",
+        "Download each missing card or account statement PDF.",
+        "Download current activity CSV only after required statements."
+      ]
     }
   },
   {
     institutionPattern: /hsbc/i,
     profile: {
       statementFileTypes: ["PDF statement with private OCR when image-only"],
-      activityFileTypes: []
+      activityFileTypes: [],
+      portalUrl: "https://www.hsbc.com.sg/online-banking/",
+      downloadInstructions: [
+        "Open HSBC Singapore online banking.",
+        "Download the missing Visa statement PDF.",
+        "Image-only PDFs are read with private browser OCR after drop."
+      ]
     }
   }
 ];
@@ -208,6 +234,7 @@ function buildInstitutionSessions(
       const sessionFiles = (filesByInstitution.get(institution) ?? []).sort(compareExpectedFileDownloadOrder);
       const requiredFileCount = sessionFiles.filter((file) => file.priority === "required").length;
       const optionalFileCount = sessionFiles.filter((file) => file.priority === "optional").length;
+      const profile = getSupportedImportProfile(institution);
       const status: ImportInboxSessionDto["status"] = requiredFileCount > 0
         ? "needs_files"
         : optionalFileCount > 0 ? "optional" : "current";
@@ -216,6 +243,8 @@ function buildInstitutionSessions(
         status,
         requiredFileCount,
         optionalFileCount,
+        portalUrl: profile.portalUrl,
+        downloadInstructions: profile.downloadInstructions,
         accounts: institutionAccounts.sort((left, right) => left.accountName.localeCompare(right.accountName)),
         expectedFiles: sessionFiles
       };
@@ -245,7 +274,12 @@ function normalizeAccountLabel(value: string) {
 function getSupportedImportProfile(institution: string): SupportedImportProfile {
   return SUPPORTED_IMPORT_PROFILES.find((item) => item.institutionPattern.test(institution))?.profile ?? {
     statementFileTypes: DEFAULT_STATEMENT_FILE_TYPES,
-    activityFileTypes: []
+    activityFileTypes: [],
+    downloadInstructions: [
+      `Open ${institution} online banking.`,
+      "Download the missing statement PDFs listed here.",
+      "Drop the files without renaming them."
+    ]
   };
 }
 

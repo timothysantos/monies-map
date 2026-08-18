@@ -4,7 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { messages } from "./copy/en-SG";
 import { commitImportBatch, previewImportBatch, rollbackImportBatch } from "./import-api";
 import { ImportRecentHistorySection } from "./import-history";
-import { ImportInboxSection } from "./import-inbox";
+import { ImportInboxSection, ImportIntakeQueueSection } from "./import-inbox";
+import { buildIntakeQueueItem, summarizeIntakeQueue } from "./import-intake-model";
 import { buildRecentImportModel, filterRecentImportsByAccount, getRecentImportAccountOptions } from "./import-history-model";
 import { classifyImportFile } from "./import-file-classifier";
 import { buildImportAccountCreationRefreshPlan } from "./import-refresh-plan";
@@ -138,6 +139,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [postImportSplitMatchMonth, setPostImportSplitMatchMonth] = useState("");
   const [isSplitCleanupDismissed, setIsSplitCleanupDismissed] = useState(false);
   const [dismissedOverlapIds, setDismissedOverlapIds] = useState([]);
+  const [intakeQueue, setIntakeQueue] = useState([]);
   const [jumpToSkippedRowsRequestKey, setJumpToSkippedRowsRequestKey] = useState(0);
   const fileInputRef = useRef(null);
   const mappingSectionRef = useRef(null);
@@ -151,6 +153,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const deletedDiagnosticLedgerIdsRef = useRef(new Set());
   const pendingSplitMatchCount = Number(postImportSplitMatchCount ?? safeImportsPage.pendingSplitMatchCount ?? 0);
   const showSplitCleanupNotice = pendingSplitMatchCount > 0 && !isSplitCleanupDismissed;
+  const intakeQueueSummary = useMemo(() => summarizeIntakeQueue(intakeQueue), [intakeQueue]);
 
   const csvInspection = useMemo(() => inspectCsv(csvText), [csvText]);
   const headerSignature = csvInspection.headers.join("|");
@@ -365,6 +368,31 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     fileInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
+  async function handleLoadIntakeItem(item) {
+    setDefaultAccountName(item.parsed?.checkpoints?.[0]?.accountName ?? item.parsed?.rows?.[0]?.accountName ?? defaultAccountName);
+    if (item.parsed) {
+      await loadParsedImport({
+        parsed: item.parsed,
+        sourceType: item.sourceType
+      });
+    } else {
+      await loadParsedImport({
+        parsed: null,
+        sourceType: item.sourceType,
+        csvText: item.csvText,
+        fileName: item.fileName
+      });
+    }
+  }
+
+  function handleRemoveIntakeItem(itemId) {
+    setIntakeQueue((current) => current.filter((item) => item.id !== itemId));
+  }
+
+  function handleClearIntakeQueue() {
+    setIntakeQueue([]);
+  }
+
   function resetImportForm({ preserveRecentImportStatus = false } = {}) {
     setSourceLabel(DEFAULT_SOURCE_LABEL);
     setImportNote("");
@@ -384,6 +412,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setIsParsingStatement(false);
     setIsDragActive(false);
     setDismissedOverlapIds([]);
+    setIntakeQueue([]);
     setJumpToSkippedRowsRequestKey(0);
     deletedDiagnosticLedgerIdsRef.current = new Set();
     if (!preserveRecentImportStatus) {
@@ -397,12 +426,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }
 
   async function handleUploadImportFile(event) {
-    const [file] = event.target.files ?? [];
-    if (!file) {
+    const files = Array.from(event.target.files ?? []);
+    if (!files.length) {
       return;
     }
 
-    await processImportFile(file);
+    await processImportFiles(files);
     event.target.value = "";
   }
 
@@ -472,6 +501,43 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       .finally(() => setIsSubmitting(false));
   }
 
+  async function processImportFiles(files) {
+    if (files.length === 1) {
+      await processImportFile(files[0]);
+      return;
+    }
+
+    setPreviewError("");
+    setUploadStatus({ tone: "active", message: messages.imports.intakeParsing(files.length) });
+    setIsParsingStatement(true);
+    const nextItems = [];
+    const existingFingerprints = new Set(intakeQueue.map((item) => item.fingerprint));
+    try {
+      for (const file of files) {
+        const parsedImport = await parseImportFileForIntake(file);
+        const item = buildIntakeQueueItem({
+          id: `${Date.now()}-${nextItems.length}-${file.name}`,
+          fileName: file.name,
+          parsed: parsedImport.parsed,
+          sourceType: parsedImport.sourceType,
+          csvText: parsedImport.csvText,
+          inbox: safeImportsPage.importInbox,
+          existingFingerprints
+        });
+        existingFingerprints.add(item.fingerprint);
+        nextItems.push(item);
+      }
+      setIntakeQueue((current) => [...current, ...nextItems]);
+      setUploadStatus({ tone: "success", message: messages.imports.intakeReady(nextItems.length) });
+    } catch (error) {
+      const previewErrorDetail = buildImportPreviewError(error, messages.imports.intakeFailed);
+      setPreviewError(previewErrorDetail);
+      setUploadStatus({ tone: "error", message: previewErrorDetail.message });
+    } finally {
+      setIsParsingStatement(false);
+    }
+  }
+
   async function processImportFile(file) {
     setPreviewError("");
     setUploadStatus({ tone: "active", message: messages.imports.uploadReading(file.name) });
@@ -479,135 +545,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setPreviewRows([]);
     setIsParsingStatement(true);
     try {
-      const fileKind = classifyImportFile({
-        fileName: file.name,
-        fileType: file.type,
-        text: "",
-        activityContext: {
-          accountName: defaultAccount?.name ?? "",
-          accountKind: defaultAccount?.kind,
-          institution: defaultAccount?.institution
-        }
-      });
-
-      if (fileKind === "ocr-statement") {
-        setDismissedOverlapIds([]);
-        setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
-        const parsed = parseStatementText(await file.text(), file.name);
-        const parsedCheckpoints = withDetectedStatementAccounts(parsed.checkpoints);
-
-        await previewParsedImport({
-          parsed,
-          sourceType: "pdf",
-          nextStatementCheckpoints: parsedCheckpoints,
-          successMessage: parsed.checkpoints.length > 1
-            ? messages.imports.uploadStatementReady(parsed.rows.length, parsed.checkpoints.length)
-            : messages.imports.uploadReady(parsed.rows.length)
-        });
-        return;
-      }
-
-      if (fileKind === "pdf") {
-        setDismissedOverlapIds([]);
-        setUploadStatus({ tone: "active", message: messages.imports.uploadExtracting(file.name) });
-        const text = await importService.extractPdfText(file);
-        setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
-        let parsed;
-        try {
-          parsed = parseStatementText(text, file.name);
-        } catch (error) {
-          if (!importService.isExtractedPdfTextEmpty?.(text)) {
-            throw error;
-          }
-          setUploadStatus({ tone: "active", message: messages.imports.uploadOcr(file.name) });
-          const ocrText = await importService.extractPdfOcrText(file, ({ pageNumber, pageCount, status, progress } = {}) => {
-            setUploadStatus({
-              tone: "active",
-              message: messages.imports.uploadOcrProgress({
-                fileName: file.name,
-                pageNumber,
-                pageCount,
-                status,
-                progress
-              })
-            });
-          });
-          setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
-          parsed = parseStatementText(ocrText, file.name);
-        }
-        const parsedCheckpoints = withDetectedStatementAccounts(parsed.checkpoints);
-
-        await previewParsedImport({
-          parsed,
-          sourceType: "pdf",
-          nextStatementCheckpoints: parsedCheckpoints,
-          successMessage: parsed.checkpoints.length > 1
-            ? messages.imports.uploadStatementReady(parsed.rows.length, parsed.checkpoints.length)
-            : messages.imports.uploadReady(parsed.rows.length)
-        });
-        return;
-      }
-
-      if (fileKind === "xls") {
-        setDismissedOverlapIds([]);
-        setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
-        const parsed = parseCurrentTransactionSpreadsheet(await file.arrayBuffer(), file.name);
-
-        await previewParsedImport({
-          parsed,
-          sourceType: "csv",
-          nextStatementCheckpoints: [],
-          successMessage: messages.imports.uploadReady(parsed.rows.length)
-        });
-        return;
-      }
-
-      const nextText = await file.text();
-      const activityContext = {
-        accountName: defaultAccount?.name ?? "",
-        accountKind: defaultAccount?.kind,
-        institution: defaultAccount?.institution
-      };
-      const csvKind = classifyImportFile({
-        fileName: file.name,
-        fileType: file.type,
-        text: nextText,
-        activityContext
-      });
-
-      if (csvKind === "citibank-activity-csv") {
-        setDismissedOverlapIds([]);
-        setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
-        const parsed = parseCitibankActivityCsv(nextText, file.name, activityContext);
-
-        await previewParsedImport({
-          parsed,
-          sourceType: "csv",
-          nextStatementCheckpoints: [],
-          successMessage: messages.imports.uploadReady(parsed.rows.length)
-        });
-        return;
-      }
-
-      if (csvKind === "ocbc-activity-csv") {
-        setDismissedOverlapIds([]);
-        setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
-        const parsed = parseOcbcActivityCsv(nextText, file.name, activityContext);
-
-        await previewParsedImport({
-          parsed,
-          sourceType: "csv",
-          nextStatementCheckpoints: [],
-          successMessage: messages.imports.uploadReady(parsed.rows.length)
-        });
-        return;
-      }
-
-      setDismissedOverlapIds([]);
-      setCsvText(nextText);
-      setStatementCheckpoints([]);
-      setStatementImportMeta(DEFAULT_STATEMENT_IMPORT_META);
-      setUploadStatus({ tone: "success", message: messages.imports.uploadCsvReady(file.name) });
+      const parsedImport = await parseImportFileForIntake(file);
+      await loadParsedImport(parsedImport);
     } catch (error) {
       setPreview(null);
       setPreviewRows([]);
@@ -617,6 +556,115 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     } finally {
       setIsParsingStatement(false);
     }
+  }
+
+  async function parseImportFileForIntake(file) {
+    const activityContext = {
+      accountName: defaultAccount?.name ?? "",
+      accountKind: defaultAccount?.kind,
+      institution: defaultAccount?.institution
+    };
+    const fileKind = classifyImportFile({
+      fileName: file.name,
+      fileType: file.type,
+      text: "",
+      activityContext
+    });
+
+    if (fileKind === "ocr-statement") {
+      setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
+      const parsed = parseStatementText(await file.text(), file.name);
+      return { parsed: { ...parsed, checkpoints: withDetectedStatementAccounts(parsed.checkpoints) }, sourceType: "pdf" };
+    }
+
+    if (fileKind === "pdf") {
+      setUploadStatus({ tone: "active", message: messages.imports.uploadExtracting(file.name) });
+      const text = await importService.extractPdfText(file);
+      setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
+      let parsed;
+      try {
+        parsed = parseStatementText(text, file.name);
+      } catch (error) {
+        if (!importService.isExtractedPdfTextEmpty?.(text)) {
+          throw error;
+        }
+        setUploadStatus({ tone: "active", message: messages.imports.uploadOcr(file.name) });
+        const ocrText = await importService.extractPdfOcrText(file, ({ pageNumber, pageCount, status, progress } = {}) => {
+          setUploadStatus({
+            tone: "active",
+            message: messages.imports.uploadOcrProgress({
+              fileName: file.name,
+              pageNumber,
+              pageCount,
+              status,
+              progress
+            })
+          });
+        });
+        setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
+        parsed = parseStatementText(ocrText, file.name);
+      }
+      return { parsed: { ...parsed, checkpoints: withDetectedStatementAccounts(parsed.checkpoints) }, sourceType: "pdf" };
+    }
+
+    if (fileKind === "xls") {
+      setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
+      return {
+        parsed: parseCurrentTransactionSpreadsheet(await file.arrayBuffer(), file.name),
+        sourceType: "csv"
+      };
+    }
+
+    const nextText = await file.text();
+    const csvKind = classifyImportFile({
+      fileName: file.name,
+      fileType: file.type,
+      text: nextText,
+      activityContext
+    });
+
+    if (csvKind === "citibank-activity-csv") {
+      setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
+      return {
+        parsed: parseCitibankActivityCsv(nextText, file.name, activityContext),
+        sourceType: "csv"
+      };
+    }
+
+    if (csvKind === "ocbc-activity-csv") {
+      setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
+      return {
+        parsed: parseOcbcActivityCsv(nextText, file.name, activityContext),
+        sourceType: "csv"
+      };
+    }
+
+    return {
+      parsed: null,
+      sourceType: "csv",
+      csvText: nextText,
+      fileName: file.name
+    };
+  }
+
+  async function loadParsedImport(parsedImport) {
+    setDismissedOverlapIds([]);
+    if (!parsedImport.parsed) {
+      setCsvText(parsedImport.csvText ?? "");
+      setStatementCheckpoints([]);
+      setStatementImportMeta(DEFAULT_STATEMENT_IMPORT_META);
+      setUploadStatus({ tone: "success", message: messages.imports.uploadCsvReady(parsedImport.fileName ?? "CSV") });
+      return;
+    }
+
+    await previewParsedImport({
+      parsed: parsedImport.parsed,
+      sourceType: parsedImport.sourceType,
+      nextStatementCheckpoints: parsedImport.sourceType === "pdf" ? parsedImport.parsed.checkpoints : [],
+      successMessage: parsedImport.sourceType === "pdf" && parsedImport.parsed.checkpoints.length > 1
+        ? messages.imports.uploadStatementReady(parsedImport.parsed.rows.length, parsedImport.parsed.checkpoints.length)
+        : messages.imports.uploadReady(parsedImport.parsed.rows.length)
+    });
   }
 
   async function previewImportRows({
@@ -743,9 +791,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     event.preventDefault();
     event.stopPropagation();
     setIsDragActive(false);
-    const [file] = event.dataTransfer.files ?? [];
-    if (file) {
-      void processImportFile(file);
+    const files = Array.from(event.dataTransfer.files ?? []);
+    if (files.length) {
+      void processImportFiles(files);
     }
   }
 
@@ -1357,6 +1405,13 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       <ImportInboxSection
         inbox={safeImportsPage.importInbox}
         onSelectExpectedFile={handleSelectExpectedFile}
+      />
+      <ImportIntakeQueueSection
+        items={intakeQueue}
+        summary={intakeQueueSummary}
+        onLoadItem={handleLoadIntakeItem}
+        onRemoveItem={handleRemoveIntakeItem}
+        onClear={handleClearIntakeQueue}
       />
       <section className="panel-subsection import-workflow">
         <div className="import-header">

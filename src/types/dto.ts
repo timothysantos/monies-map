@@ -725,6 +725,8 @@ export interface ImportInboxSessionDto {
   status: "current" | "needs_files" | "optional";
   requiredFileCount: number;
   optionalFileCount: number;
+  portalUrl?: string;
+  downloadInstructions: string[];
   accounts: ImportInboxAccountDto[];
   expectedFiles: ImportInboxExpectedFileDto[];
 }

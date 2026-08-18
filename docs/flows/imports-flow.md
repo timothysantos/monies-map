@@ -51,7 +51,9 @@ Imports owns:
   missing statement/activity file for that institution, while the review queue
   remains ordered by statement chronology and trust level. This planning must
   not depend on local filename conventions, and split cleanup remains a separate
-  post-bank-files lane
+  post-bank-files lane. Multi-file intake is browser-only: it may keep parsed
+  rows, checkpoints, and generic CSV text in transient UI state, but it must not
+  persist original PDFs, CSVs, XLS files, OCR images, or raw bank files
 - file upload and preview
 - account mapping
 - commit and rollback
