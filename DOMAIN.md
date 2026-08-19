@@ -212,6 +212,30 @@ Relationships:
 - may create or certify many `ledger entries`
 - may create many statement reconciliation records
 
+### Import Inbox
+
+A guided planning surface for manual bank importing. It derives stale account
+work from statement checkpoints, recent import activity, and split cleanup
+state, then groups expected downloads by bank login session while keeping
+statement review ordered by accounting chronology.
+
+Storage:
+- no direct storage for original files
+- may write local browser snooze markers for expected files that are not
+  available yet
+
+Relationships:
+- belongs to one `household`
+- summarizes many active bank/card `accounts`
+- references expected statement or activity files
+- keeps split cleanup as a separate after-bank-files lane
+
+Rules:
+- do not require filename conventions
+- do not persist original PDFs, CSVs, XLS files, OCR images, or raw bank files
+- multi-file intake may keep parsed rows, checkpoints, and generic CSV text in
+  browser memory only until cleared, reloaded, or loaded into review
+
 ### Error Diagnostic
 
 A bounded support record created when a browser request fails in a way the app

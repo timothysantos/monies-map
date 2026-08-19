@@ -152,7 +152,7 @@ Rules:
   - entries list
   - entry detail when needed
   - aggregates
-  - imports preview state
+  - imports inbox planning and preview state
   - splits workspace state
   - settings account diagnostics and reference management
 - let each slice own its query keys and query option builders
@@ -165,6 +165,10 @@ Rules:
 - route state should select the active screen and screen parameters
 - server state should live in TanStack Query
 - transient form state should stay local to the relevant feature
+- imports owns browser-only intake state for selected/dropped bank files. It may
+  keep parsed rows, checkpoints, and generic CSV text while the page is alive,
+  but it must not persist original PDFs, CSVs, XLS files, OCR images, or raw
+  bank files
 - derived view state should come from selectors or pure helpers, not effect
   chains
 
@@ -384,6 +388,10 @@ Every new feature or refactor stage should define scenarios in this shape:
 Examples of scenario families to define:
 
 - Imports:
+  - see stale accounts and expected bank files before logging into banks
+  - collect files by bank session while reviewing statements in chronology
+  - drop multiple downloaded files without filename conventions or original-file
+    storage
   - import a known file
   - review preview rows
   - commit rows
