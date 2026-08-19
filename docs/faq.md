@@ -1482,9 +1482,9 @@ account and date range.
   matching provisional rows to statement-certified, preserving user notes,
   categories, ownership, splits, and links instead of asking for duplicate
   decisions.
-- Citibank activity CSV filenames that end in `-rewards.csv` or `-miles.csv`
-  are treated as that card account even if another Citibank card is selected as
-  the default account.
+- Citibank activity CSV imports can use known filename suffixes such as
+  `-rewards.csv` or `-miles.csv` as an extra card hint in the single-file flow,
+  but the Import Inbox workflow does not require renaming downloaded files.
 - If two accounts share a name, choose the owner-qualified account in the import
   mapping. Overlap checks use that selected account, not just the display name.
 - Overlap warnings are date-range warnings; they do not remove rows by
@@ -1908,10 +1908,12 @@ the current draft without refreshing the page.
 - Citibank card PDFs use layout-aware parsing for compact card-section rows.
   Citi card PDFs currently expose one row date, so statement certification uses
   that date for both the ledger event date and posted date.
-- Citibank current-activity CSV files are headerless, so the app only applies
-  the Citi activity parser when the selected default account is a Citibank
-  credit card and the file name matches the Citi activity export pattern. The
-  trailing card number is reduced to the last four digits in the note.
+- Citibank current-activity CSV files are headerless. In the single-file flow,
+  the app applies the Citi activity parser when the selected default account is
+  a Citibank credit card and known Citi export clues are present; recognized
+  filename suffixes can still provide an extra card hint. In the Import Inbox
+  multi-file flow, the user does not need to rename files before dropping them.
+  The trailing card number is reduced to the last four digits in the note.
 - OCBC card and 360 current-activity CSV files use transaction-history headers
   with withdrawal and deposit columns, so the app can recognize them from
   either the filename or the OCBC account-details and transaction-history

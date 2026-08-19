@@ -82,3 +82,25 @@ Why:
 - Repeated overlapping bank exports should still auto-skip truly identical
   rows, even when those rows would be excluded from reconciliation by the
   promotion-lane source guards.
+
+## Import Inbox And Intake Boundary
+
+Import Inbox planning belongs to the Imports slice. It is route-level product
+state, not app-shell chrome: Summary and Month may show a compact stale banner,
+but the checklist, bank-session grouping, and review order live on Imports.
+
+Rules:
+
+- group download work by bank session so a user logs into one institution and
+  collects every needed file there
+- keep accounting review order separate from download order, with statements
+  reviewed oldest period first
+- do not require filename conventions for the guided workflow; classify queued
+  files from parsed account, period, source, row, and checkpoint evidence
+- keep multi-file intake browser-only. Queue items may retain parsed rows,
+  checkpoints, and generic CSV text in transient page state, but they must not
+  retain `File` objects or persist original PDFs, CSVs, XLS files, OCR images,
+  or raw bank files
+- keep HSBC image PDFs on the same private browser OCR path as single-file
+  import, then load the parsed statement into the normal preview/review flow
+- keep split cleanup separate from required bank-file collection
