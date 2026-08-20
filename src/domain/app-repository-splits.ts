@@ -9,6 +9,7 @@ import {
   findBestSplitSettlementLedgerCandidate
 } from "./split-matching";
 import { splitAmountMinorWithRoundedRemainder } from "./split-allocation";
+import { truncateReviewDescription } from "./review-description";
 import { getCurrentMonthKey } from "../lib/month";
 import type {
   SplitExpenseDto,
@@ -16,6 +17,8 @@ import type {
   SplitMatchCandidateDto,
   SplitSettlementDto
 } from "../types/dto";
+
+const SPLIT_MATCH_DESCRIPTION_MAX_LENGTH = 240;
 
 export async function loadSplitGroups(db: D1Database): Promise<SplitGroupDto[]> {
   const groups = await db
@@ -232,7 +235,7 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
       SELECT
         transactions.id,
         transactions.transaction_date,
-        transactions.description,
+        SUBSTR(transactions.description, 1, ${SPLIT_MATCH_DESCRIPTION_MAX_LENGTH + 1}) AS description,
         transactions.amount_minor,
         transactions.entry_type,
         transactions.import_id
@@ -273,7 +276,7 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
       splitAmountMinor: expense.totalAmountMinor,
       transactionId: candidate.row.id,
       transactionDate: candidate.row.transaction_date,
-      transactionDescription: candidate.row.description,
+      transactionDescription: truncateReviewDescription(candidate.row.description, SPLIT_MATCH_DESCRIPTION_MAX_LENGTH),
       amountMinor: candidate.row.amount_minor,
       amountDeltaMinor: candidate.amountDelta,
       dateDeltaDays: candidate.dateDelta,
@@ -300,7 +303,7 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
       splitAmountMinor: settlement.amountMinor,
       transactionId: candidate.row.id,
       transactionDate: candidate.row.transaction_date,
-      transactionDescription: candidate.row.description,
+      transactionDescription: truncateReviewDescription(candidate.row.description, SPLIT_MATCH_DESCRIPTION_MAX_LENGTH),
       amountMinor: candidate.row.amount_minor,
       amountDeltaMinor: candidate.amountDelta,
       dateDeltaDays: candidate.dateDelta,

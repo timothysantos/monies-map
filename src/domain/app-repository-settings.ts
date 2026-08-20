@@ -8,7 +8,16 @@ import {
   slugify
 } from "./app-repository-helpers";
 import { recordAuditEvent } from "./app-repository-audit";
+import { truncateReviewDescription } from "./review-description";
 import type { AccountDto, HouseholdDto } from "../types/dto";
+
+const TRANSFER_REVIEW_DESCRIPTION_MAX_LENGTH = 240;
+export const TRANSFER_REVIEW_PAGE_LIMIT = 500;
+
+type LoadUnresolvedTransfersOptions = {
+  limit?: number;
+  descriptionMaxLength?: number;
+};
 
 export async function loadHousehold(db: D1Database): Promise<HouseholdDto> {
   const row = await db
@@ -515,13 +524,19 @@ export async function archiveAccountRecord(
   return { accountId: input.accountId, archived: true };
 }
 
-export async function loadUnresolvedTransfers(db: D1Database) {
+export async function loadUnresolvedTransfers(db: D1Database, options: LoadUnresolvedTransfersOptions = {}) {
+  const limit = options.limit ? Math.max(1, Math.min(500, Math.trunc(options.limit))) : null;
+  const descriptionMaxLength = Math.max(
+    40,
+    Math.min(1000, Math.trunc(options.descriptionMaxLength ?? TRANSFER_REVIEW_DESCRIPTION_MAX_LENGTH))
+  );
+  const limitClause = limit ? "LIMIT ?" : "";
   const result = await db
     .prepare(`
       SELECT
         transactions.id,
         transactions.transaction_date,
-        transactions.description,
+        SUBSTR(transactions.description, 1, ?) AS description,
         transactions.amount_minor,
         transactions.transfer_direction,
         accounts.account_name
@@ -543,8 +558,9 @@ export async function loadUnresolvedTransfers(db: D1Database) {
           OR COALESCE(grouped.pair_count, 0) < 2
         )
       ORDER BY transactions.transaction_date DESC, transactions.created_at DESC
+      ${limitClause}
     `)
-    .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID)
+    .bind(descriptionMaxLength + 1, DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID, ...(limit ? [limit] : []))
     .all<{
       id: string;
       transaction_date: string;
@@ -557,7 +573,7 @@ export async function loadUnresolvedTransfers(db: D1Database) {
   return result.results.map((row) => ({
     entryId: row.id,
     date: row.transaction_date,
-    description: row.description,
+    description: truncateReviewDescription(row.description, descriptionMaxLength),
     accountName: row.account_name,
     amountMinor: Number(row.amount_minor),
     transferDirection: row.transfer_direction ?? undefined
