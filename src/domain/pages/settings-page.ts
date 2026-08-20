@@ -7,7 +7,8 @@ import {
   loadCategoryMatchRuleSuggestions,
   loadIgnoredCategoryMatchRuleIssueIds,
   loadReconciliationExceptions,
-  loadUnresolvedTransfers
+  loadUnresolvedTransfers,
+  TRANSFER_REVIEW_PAGE_LIMIT
 } from "../app-repository";
 import { loadShortcutSettings } from "../app-repository-shortcuts";
 import type { SettingsPageDto } from "../../types/dto";
@@ -32,7 +33,7 @@ export async function buildSettingsPageDto(
     loadCategoryMatchRules(db),
     loadCategoryMatchRuleSuggestions(db),
     loadIgnoredCategoryMatchRuleIssueIds(db),
-    loadUnresolvedTransfers(db),
+    loadUnresolvedTransfers(db, { limit: TRANSFER_REVIEW_PAGE_LIMIT }),
     loadReconciliationExceptions(db),
     loadAuditEvents(db),
     loadAppErrorDiagnostics(db)

@@ -2516,7 +2516,7 @@ export function App() {
         }
       }
 
-      for (const tabId of ["splits", "imports", "settings"]) {
+      for (const tabId of ["splits"]) {
         if (tabId === selectedTabId) {
           continue;
         }
