@@ -109,6 +109,16 @@ export function buildRoutePageRequest({ tabId, viewId, month, scope, summaryStar
 
 export function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appShell) {
   // Shape the route-page response into the minimal view object the UI needs.
+  if (tabId === "faq") {
+    const fallbackLabel = selectedViewId === "household"
+      ? "Household"
+      : appShell?.household?.people?.find((person) => person.id === selectedViewId)?.name ?? "Household";
+    return {
+      id: selectedViewId ?? appShell?.selectedViewId ?? "household",
+      label: fallbackLabel
+    };
+  }
+
   if (!pageData) {
     return null;
   }
@@ -163,10 +173,6 @@ export function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appS
       ...baseView,
       settingsPage: pageData.settingsPage
     };
-  }
-
-  if (tabId === "faq") {
-    return baseView;
   }
 
   return null;

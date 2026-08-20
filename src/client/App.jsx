@@ -318,6 +318,7 @@ export function App() {
   const [monthPickerYear, setMonthPickerYear] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const syncChannelRef = useRef(null);
   const queryEpochRef = useRef(0);
   const routePagePrefetchTimerRef = useRef(null);
