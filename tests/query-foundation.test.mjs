@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { queryKeys } from "../src/client/query-keys.js";
 import { buildAppShellParams } from "../src/client/app-shell-query.js";
+import { buildPageViewFromRouteData } from "../src/client/app-routing.js";
 import {
   invalidateAppShellQueries,
   invalidateImportMutationQueries,
@@ -126,6 +127,19 @@ test("queryKeys.routeRequestKey keeps unsupported route pages on route-page keys
     path: "/faq",
     params: new URLSearchParams()
   }), ["route-page", { path: "/faq", params: {} }]);
+});
+
+test("FAQ route view does not require a server page payload", () => {
+  assert.deepEqual(buildPageViewFromRouteData("faq", null, "person-tim", {
+    household: {
+      people: [
+        { id: "person-tim", name: "Tim" }
+      ]
+    }
+  }), {
+    id: "person-tim",
+    label: "Tim"
+  });
 });
 
 test("invalidateAppShellQueries only targets the app shell key", async () => {
