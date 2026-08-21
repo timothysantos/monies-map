@@ -39,6 +39,8 @@ reviews only exceptions.
   published yet.
 - [x] Keep HSBC image PDFs on the same private browser OCR path in both single
   file and multi-file intake.
+- [x] Block oversized or statement-boilerplate descriptions before import
+  preview/commit can write them to the ledger.
 - [ ] Evaluate bank aggregator sync as an optional activity-source spike, not as
   the statement-certification foundation.
 
@@ -49,6 +51,8 @@ reviews only exceptions.
 - Do not persist original PDFs, CSVs, XLS files, OCR images, or raw bank files.
   Multi-file intake may keep parsed browser-memory objects only until the user
   clears the queue, reloads, or loads one file into review.
+- Treat an unusually long parsed transaction description as a parser or file
+  quality failure, not as a ledger row the user should manually clean later.
 - Do not mix bank evidence catch-up with split allocation cleanup.
 - Optimize download collection around bank login sessions.
 - Optimize review order around statement chronology and trust level.

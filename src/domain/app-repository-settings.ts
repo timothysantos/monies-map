@@ -537,6 +537,7 @@ export async function loadUnresolvedTransfers(db: D1Database, options: LoadUnres
         transactions.id,
         transactions.transaction_date,
         SUBSTR(transactions.description, 1, ?) AS description,
+        LENGTH(transactions.description) AS description_length,
         transactions.amount_minor,
         transactions.transfer_direction,
         accounts.account_name
@@ -565,6 +566,7 @@ export async function loadUnresolvedTransfers(db: D1Database, options: LoadUnres
       id: string;
       transaction_date: string;
       description: string;
+      description_length: number;
       amount_minor: number;
       transfer_direction: "in" | "out" | null;
       account_name: string;
@@ -576,7 +578,8 @@ export async function loadUnresolvedTransfers(db: D1Database, options: LoadUnres
     description: truncateReviewDescription(row.description, descriptionMaxLength),
     accountName: row.account_name,
     amountMinor: Number(row.amount_minor),
-    transferDirection: row.transfer_direction ?? undefined
+    transferDirection: row.transfer_direction ?? undefined,
+    descriptionTruncated: Number(row.description_length ?? 0) > descriptionMaxLength
   }));
 }
 

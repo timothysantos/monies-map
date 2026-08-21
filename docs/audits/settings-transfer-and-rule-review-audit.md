@@ -1,6 +1,6 @@
 # Settings Transfer and Rule Review Audit
 
-Updated: 2026-07-08
+Updated: 2026-08-21
 
 ## Scope
 
@@ -11,6 +11,9 @@ Updated: 2026-07-08
   as Entries.
 - Manual and focus-return refresh for unresolved transfer rows after the user
   opens a matching row in another tab.
+- Month-scoped unresolved transfer review when the backlog is large.
+- Display-only warning for old oversized descriptions that were shortened in
+  the transfer review payload.
 
 ## Findings
 
@@ -26,6 +29,11 @@ Updated: 2026-07-08
 - Opening Entries in a new tab intentionally leaves Settings mounted. Without a
   section-level refresh affordance, users had to reload the whole page to see
   transfer links or clears completed in the other tab.
+- Six-row pagination alone was not enough once the backlog reached hundreds of
+  unresolved transfers; the user still had to think about one global pile.
+- Some old transfer rows had unusually long stored descriptions. The review
+  payload needed to stay bounded while still telling the user why text was
+  shortened.
 
 ## Changes
 
@@ -41,6 +49,10 @@ Updated: 2026-07-08
 - Transfer links or transfer settlements performed from Settings refresh the
   Settings list and invalidate affected Entries, Month, and Summary route
   families.
+- Settings transfer review now groups unresolved rows by transaction month and
+  paginates inside the selected month.
+- Settings transfer review shows a compact warning when returned rows include
+  shortened descriptions from old oversized stored text.
 
 ## Proof
 
@@ -52,3 +64,6 @@ Updated: 2026-07-08
 - `tests/e2e/settings-reference-data.spec.js` also covers the unresolved
   transfer Refresh action reloading rows changed outside the mounted Settings
   page.
+- `tests/settings-transfer-review-model.test.mjs` covers month grouping,
+  newest-month default selection, pagination, selected-month behavior, and
+  shortened-description counts.

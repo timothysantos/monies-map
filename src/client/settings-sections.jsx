@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
+import { buildSettingsTransferReviewModel, SETTINGS_TRANSFER_PAGE_SIZE } from "./settings-transfer-review-model";
 import { findDuplicateCategoryMatchRules } from "./settings-workflow";
 import { CategoryGlyph, DeleteRowButton } from "./ui-components";
 
@@ -695,8 +696,6 @@ function formatExceptionMeta(item) {
   );
 }
 
-const SETTINGS_TRANSFER_PAGE_SIZE = 6;
-
 export function SettingsTransfersSection({
   transfers,
   isOpen,
@@ -710,10 +709,12 @@ export function SettingsTransfersSection({
   onManageTransfer
 }) {
   const [page, setPage] = useState(1);
-  const pageCount = Math.max(1, Math.ceil(transfers.length / SETTINGS_TRANSFER_PAGE_SIZE));
-  const currentPage = Math.min(page, pageCount);
-  const pageStart = (currentPage - 1) * SETTINGS_TRANSFER_PAGE_SIZE;
-  const visibleTransfers = transfers.slice(pageStart, pageStart + SETTINGS_TRANSFER_PAGE_SIZE);
+  const [selectedMonth, setSelectedMonth] = useState(undefined);
+  const reviewModel = useMemo(
+    () => buildSettingsTransferReviewModel(transfers, selectedMonth, page, SETTINGS_TRANSFER_PAGE_SIZE),
+    [page, selectedMonth, transfers]
+  );
+  const { activeTransfers, currentPage, monthGroups, pageCount, truncatedDescriptionCount, visibleTransfers } = reviewModel;
 
   return (
     <section className="chart-card settings-card">
@@ -735,6 +736,27 @@ export function SettingsTransfersSection({
                   {isRefreshing ? messages.settings.refreshingTransfers : messages.settings.refreshTransfers}
                 </button>
               </div>
+              {monthGroups.length > 1 ? (
+                <div className="settings-transfer-months" role="list" aria-label={messages.settings.transferMonthQueueLabel}>
+                  {monthGroups.map((group) => (
+                    <button
+                      key={group.month}
+                      type="button"
+                      className={`settings-transfer-month${reviewModel.activeMonth === group.month ? " active" : ""}`}
+                      onClick={() => {
+                        setSelectedMonth(group.month);
+                        setPage(1);
+                      }}
+                    >
+                      <span>{formatService.formatMonthLabel(group.month)}</span>
+                      <strong>{group.count}</strong>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {truncatedDescriptionCount ? (
+                <p className="settings-warning">{messages.settings.transferTruncatedDescriptionWarning(truncatedDescriptionCount)}</p>
+              ) : null}
               {visibleTransfers.map((item) => (
                 <div key={item.entryId} className="settings-account-row settings-transfer-row">
                   <div className="settings-account-main settings-transfer-main">
@@ -761,7 +783,7 @@ export function SettingsTransfersSection({
               ))}
               {pageCount > 1 ? (
                 <div className="import-history-pagination settings-transfer-pagination">
-                  <span>{messages.settings.transferPage(currentPage, pageCount, transfers.length)}</span>
+                  <span>{messages.settings.transferPage(currentPage, pageCount, activeTransfers.length)}</span>
                   <div className="import-history-pagination-actions">
                     <button type="button" className="subtle-action" disabled={currentPage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
                       {messages.imports.previousPage}

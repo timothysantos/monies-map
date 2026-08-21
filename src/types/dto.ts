@@ -623,6 +623,7 @@ export interface TransferIssueDto {
   accountName: string;
   amountMinor: number;
   transferDirection?: TransferDirection;
+  descriptionTruncated?: boolean;
 }
 
 export interface AuditEventDto {

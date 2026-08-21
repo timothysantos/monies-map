@@ -19,6 +19,7 @@ import {
 import { loadCategories } from "./app-repository-categories";
 import { loadCategoryMatchRules, matchCategoryRule } from "./app-repository-category-match-rules";
 import { loadAccounts } from "./app-repository-settings";
+import { getImportDescriptionQualityIssue } from "./import-description-quality";
 import {
   canSuppressCertifiedStatementDuplicate,
   getDuplicateCandidateMaxDayDistance
@@ -105,6 +106,11 @@ export async function buildImportPreview(
       continue;
     }
     const normalizedDescription = normalized.description!;
+    const descriptionQualityIssue = getImportDescriptionQualityIssue(normalizedDescription);
+    if (descriptionQualityIssue) {
+      validationErrors.push(`Row ${index + 1}: ${descriptionQualityIssue}`);
+      continue;
+    }
     const inferredAccountName = normalized.accountName ?? input.defaultAccountName;
     let inferredEntryType = normalized.entryType;
     let inferredTransferDirection = normalized.transferDirection;

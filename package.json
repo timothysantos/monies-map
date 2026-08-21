@@ -48,14 +48,14 @@
     "db:empty-production": "node ./scripts/empty-production.mjs"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260402.0",
+    "@cloudflare/workers-types": "^5.20260821.1",
     "@playwright/test": "^1.59.1",
     "@vitejs/plugin-react": "^4.7.0",
-    "concurrently": "^10.0.3",
+    "concurrently": "^10.0.5",
     "tsx": "^4.22.4",
     "typescript": "^5.8.3",
     "vite": "^6.4.3",
-    "wrangler": "^4.99.0"
+    "wrangler": "^4.120.0"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -65,7 +65,7 @@
     "pdfjs-dist": "^4.10.38",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router-dom": "^7.17.0",
+    "react-router-dom": "^7.18.2",
     "recharts": "^3.8.1"
   }
 }

@@ -245,6 +245,14 @@ export function cleanUobSavingsDescription(value: string) {
 
 export function cleanOcbcDescription(value: string) {
   return compactDescription(value
+    .replace(/\s+\bOversea-Chinese Banking Corporation Limited\b.*$/i, "")
+    .replace(/\s+\bOCBC Bank\s+65 Chulia Street\b.*$/i, "")
+    .replace(/\s+\bDeposit Insurance Scheme\b.*$/i, "")
+    .replace(/\s+\bTRANSACTION CODE DESCRIPTION\b.*$/i, "")
+    .replace(/\s+\bAPPLICATIONS FOR (?:INDIVIDUALS|BUSINESSES)\b.*$/i, "")
+    .replace(/\s+\bContact for Consumer Banking\b.*$/i, "")
+    .replace(/\s+\bTransaction Value Date Date Description\b.*$/i, "")
+    .replace(/\s+\bSTATEMENT OF ACCOUNT\b.*$/i, "")
     .replace(/-\s*\d{4}\s+/g, "")
     .replace(/\bSINGAPORE\s+SG\b/gi, "")
     .replace(/\bSG\b$/i, ""));
