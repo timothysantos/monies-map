@@ -484,6 +484,13 @@ can load one file at a time into review. The app does not persist original PDFs,
 CSVs, XLS files, OCR images, or raw bank files. HSBC image-only PDFs still use
 private browser OCR before entering the normal statement preview.
 
+Before preview or commit, the server also checks parsed descriptions for
+statement-layout contamination. If a row description is unusually long or
+contains bank disclosure/page-header text, the import is blocked before the row
+can enter the ledger. That failure usually means the parser or OCR merged a
+statement footer into a transaction line; re-upload only after the parser
+mapping is fixed or the bank export is clean.
+
 ### Supported files
 
 The app currently supports:
@@ -745,6 +752,19 @@ If the bank statement uses a very different merchant description, the row may
 show as a near match or remain unmatched. In that case, compare account, amount,
 and date before deciding whether to skip the import row, certify the manual row,
 or keep both because they are genuinely different transactions.
+
+### How should I handle a large unresolved transfer count?
+
+Use Settings -> Unresolved transfers as a review queue, not as a single global
+to-do list. The section groups transfer reviews by transaction month and pages
+inside the selected month, so a backlog of hundreds can be worked one statement
+period at a time.
+
+If the section warns that transfer descriptions were shortened for review, those
+are older stored rows with unusually long bank text. The full original bank file
+is not stored by the app; the warning only means the displayed ledger
+description was bounded for review. Future imports now block this kind of
+description before commit.
 
 ### If you import UOB `.xls` or Citi `.csv` after adding manual splits
 

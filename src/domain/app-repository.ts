@@ -41,6 +41,7 @@ import { syncMonthlyPlanRowSplits } from "./app-repository-split-sync";
 import { upsertLinkedSplitExpenseForEntryRecord } from "./app-repository-splits";
 import { loadEntries } from "./app-repository-entries";
 import { loadMonthIncomeRows, loadMonthPlanRows } from "./app-repository-months";
+import { assertImportDescriptionQuality } from "./import-description-quality";
 export {
   buildAccountCheckpointLedgerCsv,
   compareAccountCheckpointStatementRows,
@@ -3771,6 +3772,8 @@ export async function commitImportBatch(
     }
 
     for (const row of input.rows) {
+      assertImportDescriptionQuality(row.description, row.rowIndex);
+
       const rowId = `import-row-${crypto.randomUUID()}`;
       const transactionId = `txn-${crypto.randomUUID()}`;
       const account = resolveImportAccount(accountsById, accountRowsByName, row.accountId, row.accountName);

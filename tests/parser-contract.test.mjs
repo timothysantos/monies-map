@@ -327,6 +327,25 @@ BALANCE C/F 1,821.82
   }
 });
 
+test("parseStatementText trims inline OCBC 360 disclosure contamination", () => {
+  const parsed = parseStatementText(`
+__PDF_SPACED_LAYOUT_TEXT__
+360 ACCOUNT 1 MAY 2026 TO 31 MAY 2026
+BALANCE B/F 52,811.40
+18 MAY 18 MAY BILL PAYMENT INB 791.72 52,019.68
+4524192012247528
+INTERNET BANKING
+SINGAPORE
+RNB05ESNI\\1 Oversea-Chinese Banking Corporation Limited Deposit Insurance Scheme TRANSACTION CODE DESCRIPTION Account No. 604271908001 Transaction Value Date Date Description Cheque Withdrawal Deposit Balance
+BALANCE C/F 52,019.68
+`, "360 ACCOUNT-8001-May-26.pdf");
+
+  assert.equal(parsed.parserKey, "ocbc_360_pdf");
+  assert.equal(parsed.rows.length, 1);
+  assert.equal(parsed.rows[0].description, "BILL PAYMENT INB 4524192012247528 INTERNET BANKING SINGAPORE");
+  assert.doesNotMatch(parsed.rows[0].description, /Deposit Insurance|TRANSACTION CODE|STATEMENT OF ACCOUNT|Oversea-Chinese/i);
+});
+
 test("parseCurrentTransactionSpreadsheet rejects empty or unreadable XLS buffers", () => {
   const emptyBuffer = new ArrayBuffer(0);
 
