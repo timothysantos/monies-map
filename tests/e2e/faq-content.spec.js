@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("FAQ explains Apple Shortcut ownership, replacement, and republishing", async ({ page }) => {
+test("FAQ explains Apple Shortcut ownership, replacement, and releases", async ({ page }) => {
   const consoleErrors = [];
   page.on("console", (message) => {
     if (message.type() === "error") {
@@ -13,7 +13,7 @@ test("FAQ explains Apple Shortcut ownership, replacement, and republishing", asy
 
   await expect(page.getByRole("heading", { name: "FAQ", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", {
-    name: "Is the shared iCloud shortcut the same as the copy on the owner's Mac or iPhone?",
+    name: "Is the downloaded shortcut tied to the owner's Mac, iPhone, or iCloud?",
     exact: true
   })).toBeVisible();
   await expect(page.getByRole("heading", {
@@ -21,12 +21,12 @@ test("FAQ explains Apple Shortcut ownership, replacement, and republishing", asy
     exact: true
   })).toBeVisible();
   await expect(page.getByRole("heading", {
-    name: "How is a new shortcut version published?",
+    name: "How is a new shortcut version released?",
     exact: true
   })).toBeVisible();
-  await expect(page.getByText(/durable source of truth is also committed in the repository/)).toBeVisible();
+  await expect(page.getByText(/repository contains the reviewable secret-free plist source/)).toBeVisible();
   await expect(page.getByText(/Replacement changes only the local copy on that device/)).toBeVisible();
-  await expect(page.getByText(/published as a new iCloud release/)).toBeVisible();
+  await expect(page.getByText(/sign the unsigned.*with Apple's.*--mode anyone/)).toBeVisible();
 
   const viewport = await page.evaluate(() => ({
     documentWidth: document.documentElement.scrollWidth,

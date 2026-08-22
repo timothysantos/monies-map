@@ -65,9 +65,9 @@ The Apple Pay shortcut install flow is ordered deliberately:
 1. create a private key if none exists
 2. build and copy the authenticated connection URL
 3. persist the settings
-4. open the verified, secret-free iCloud shortcut
+4. open the verified, secret-free Apple-signed shortcut file served by the app
 
-The iCloud artifact uses an Apple setup question targeting a plain Text action
+The signed artifact uses an Apple setup question targeting a plain Text action
 to receive the copied URL. The Text action then supplies the POST action's URL;
 using Apple's URL-list setup editor is prohibited because it can clear a full
 URL pasted on iPhone. The public artifact never owns the household key. Default
@@ -79,19 +79,23 @@ Dictionary input with `value`, `merchant`, and `name` keys. The automation's
 final action runs `Monies Map Apple Pay API` with that Dictionary. An older
 helper shortcut must not remain as an additional hop or a second target because
 that obscures ownership and can produce duplicate ledger rows.
-After a successful POST, the shortcut opens the response `openUrl` for optional
-entry edits and confirms the Wallet merchant and amount in a notification.
+The POST includes a per-run request ID so a network retry is idempotent. The API
+uses an exact active-account match from Wallet `name` before default account
+priority, validates named currency against that account, and reports the account
+resolution in its response. After a successful POST, the shortcut opens the
+response `openUrl` for optional entry edits and confirms the Wallet merchant,
+amount, and resolved account in a notification.
 In production the copied URL targets the public, shortcut-only gateway rather
 than the Cloudflare Access-protected app hostname. The gateway shares app
 settings through D1 and exposes no Settings, ledger, import, or static-app route.
 
 Artifact lifecycle is separate from installation state. The source plist,
-exact signed release, and iCloud/checksum manifest live under
-`shortcuts/apple-pay-api/`. The project owner's synced personal source copy is
-only an editing convenience. Apple's public URL serves a signed snapshot and
-does not follow local edits or replacements. Publishing a revision requires a
-new reviewed record plus aligned repository artifacts, Settings URL, browser
-test, FAQ, and deployment.
+exact signed release, public download, and checksum manifest live under
+`shortcuts/apple-pay-api/` and `public/shortcuts/`. The project owner's synced
+personal source copy is only an editing convenience. Existing installed copies
+do not follow local source edits or deployments. Releasing a revision requires
+Apple signing plus aligned repository artifacts, Settings path, browser test,
+FAQ, and deployment.
 
 ## Audit Status
 

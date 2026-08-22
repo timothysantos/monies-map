@@ -60,27 +60,30 @@ shortcut gateway. The client resolves relative local/test endpoints and that
 absolute production endpoint through the same URL constructor; it does not
 hard-code a second routing rule.
 
-The shared iCloud URL is a reviewed product artifact, not a source of household
-configuration. It must contain neither the API key nor a private connection
-URL. Apple's setup question injects that private URL only after the user opens
-the shared shortcut. The question targets a plain Text action whose output is
+The repository-owned Apple-signed file is a reviewed product artifact, not a
+source of household configuration. It must contain neither the API key nor a
+private connection URL. Apple's setup question injects that private URL only
+after the user opens the file. The question targets a plain Text action whose output is
 the POST destination; it must not target a URL action because Apple's URL-list
 editor can discard a pasted connection URL during setup. The direct-create
-route remains responsible for token validation, date normalization,
-default-account selection, and entry creation.
+route remains responsible for token validation, typed normalization, account
+selection, currency enforcement, idempotency, and entry creation.
 
 The artifact input is the device-local Transaction automation's Dictionary with
 `value`, `merchant`, and `name` keys. The automation calls the shared shortcut
 directly; a legacy helper shortcut is not part of the supported chain. After a
-successful POST, the shortcut reads `openUrl` from the response, opens the saved
-entry, and confirms the merchant and amount in a notification.
+successful POST, the shortcut reads `openUrl` and `accountName` from the
+response, opens the saved entry, and confirms the merchant, amount, and account
+in a notification. It sends a per-run request ID so the server can return the
+existing row after an HTTP retry.
 The production gateway exposes only that direct-create path, shares D1 with the
 protected app, and builds response deep links against the protected app origin.
 
 The reviewed source, exact signed release, and release manifest live under
-`shortcuts/apple-pay-api/`. The manifest URL must match the Settings install
-constant and browser contract. Automated tests verify the checksums, action
-count, setup question, POST behavior markers, and absence of authentication
+`shortcuts/apple-pay-api/`; a byte-identical signed download lives under
+`public/shortcuts/`. The manifest install path must match the Settings constant
+and browser contract. Automated tests verify the checksums, action count, setup
+question, POST and response behavior markers, and absence of authentication
 material. A personal Shortcuts copy can be used for editing, but it is not the
 only source and must never be treated as the release authority.
 
