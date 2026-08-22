@@ -9,7 +9,8 @@
   },
   "vars": {
     "APP_ENVIRONMENT": "test",
-    "DEMO_SEED_MONTH": "2026-05"
+    "DEMO_SEED_MONTH": "2026-05",
+    "SHORTCUT_PUBLIC_ENDPOINT": "https://monies-map-shortcuts.test/api/shortcuts/entries/create"
   },
   "d1_databases": [
     {

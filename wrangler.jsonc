@@ -3,6 +3,9 @@
   "name": "monies-map",
   "main": "src/index.ts",
   "compatibility_date": "2026-04-03",
+  "vars": {
+    "SHORTCUT_PUBLIC_ENDPOINT": "https://monies-map-shortcuts.timsantos-accts.workers.dev/api/shortcuts/entries/create"
+  },
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"

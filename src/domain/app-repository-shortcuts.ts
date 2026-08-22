@@ -3,7 +3,7 @@ import { recordAuditEvent } from "./app-repository-audit";
 import type { AccountDto, ShortcutSettingsDto } from "../types/dto";
 
 const SHORTCUT_SETTINGS_KEY = "shortcut_api";
-const SHORTCUT_ENDPOINT_PATH = "/api/shortcuts/entries/create";
+export const SHORTCUT_ENDPOINT_PATH = "/api/shortcuts/entries/create";
 
 interface StoredShortcutSettings {
   apiKey?: string;
@@ -36,7 +36,8 @@ export function buildDefaultShortcutAccountPriorityIds(accounts: AccountDto[]) {
 export async function loadShortcutSettings(
   db: D1Database,
   accounts: AccountDto[] = [],
-  environmentToken?: string | null
+  environmentToken?: string | null,
+  endpointPath = SHORTCUT_ENDPOINT_PATH
 ): Promise<ShortcutSettingsDto> {
   await ensureAppSettingsTable(db);
   const row = await db
@@ -55,7 +56,7 @@ export async function loadShortcutSettings(
   const fallbackToken = environmentToken?.trim() ?? "";
 
   return {
-    endpointPath: SHORTCUT_ENDPOINT_PATH,
+    endpointPath,
     apiKey: appApiKey || fallbackToken,
     apiKeySource: appApiKey ? "app" : fallbackToken ? "environment" : "none",
     defaultAccountPriorityIds: priorityIds,

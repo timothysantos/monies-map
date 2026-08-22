@@ -106,7 +106,7 @@ export function SettingsShortcutApiSection({
   const orderedAccounts = draft.defaultAccountPriorityIds
     .map((accountId) => accountsById.get(accountId))
     .filter(Boolean);
-  const endpoint = `${window.location.origin}${shortcutSettings.endpointPath}`;
+  const endpoint = new URL(shortcutSettings.endpointPath, window.location.origin).toString();
 
   async function handleInstallShortcut() {
     const installWindow = window.open("about:blank", "_blank");

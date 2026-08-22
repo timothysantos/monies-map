@@ -458,6 +458,7 @@ test.describe("settings reference data", () => {
     expect(popup.url()).toBe(shortcutUrl);
     const copiedConnection = await page.evaluate(() => window.sessionStorage.getItem("playwright-shortcut-clipboard"));
     const parsedConnection = new URL(copiedConnection);
+    expect(parsedConnection.origin).toBe("https://monies-map-shortcuts.test");
     expect(parsedConnection.pathname).toBe("/api/shortcuts/entries/create");
     expect(parsedConnection.searchParams.get("shortcut_token")).toBe(apiKey);
     expect(await loadSettingsPage(page)).toMatchObject({
