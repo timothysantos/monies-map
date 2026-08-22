@@ -85,6 +85,14 @@ In production the copied URL targets the public, shortcut-only gateway rather
 than the Cloudflare Access-protected app hostname. The gateway shares app
 settings through D1 and exposes no Settings, ledger, import, or static-app route.
 
+Artifact lifecycle is separate from installation state. The source plist,
+exact signed release, and iCloud/checksum manifest live under
+`shortcuts/apple-pay-api/`. The project owner's synced personal source copy is
+only an editing convenience. Apple's public URL serves a signed snapshot and
+does not follow local edits or replacements. Publishing a revision requires a
+new reviewed record plus aligned repository artifacts, Settings URL, browser
+test, FAQ, and deployment.
+
 ## Audit Status
 
 Current status: aligned with tests and runtime behavior.

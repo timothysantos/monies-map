@@ -203,7 +203,8 @@ configure one URL reliably without exposing blank header rows to the user.
 HTTPS protects the connection in transit, but a token embedded in a URL may be
 visible in the installed shortcut and infrastructure request logs. Do not share
 screenshots or exports that show it. Generate a new key and reinstall the
-shortcut if it is exposed.
+shortcut if it is exposed. Because one household key can be used by multiple
+devices, rotate and update every installed household shortcut together.
 
 ### How do I configure the server secret?
 
@@ -363,6 +364,62 @@ shared shortcut, so the final Transaction automation is the one required manual
 step on each iPhone. The shared shortcut itself is available at:
 
 - [Monies Map Apple Pay API](https://www.icloud.com/shortcuts/17ff3669eb4f4a519416d04eff8c2f11)
+
+### Is the shared iCloud shortcut the same as the copy on the owner's Mac or iPhone?
+
+No. There are three separate copies with different jobs:
+
+- The project owner's personal working copy can sync between the owner's Mac
+  and iPhone through the personal Shortcuts library.
+- Publishing creates an Apple-hosted, signed snapshot with its own iCloud
+  record and URL. The URL does not call back to the owner's Mac and the Mac
+  does not need to remain online.
+- Installing creates another local copy in that device's Shortcuts library.
+  The recipient can edit, rename, replace, or delete that copy without changing
+  the published snapshot or anyone else's installed copy.
+
+The project owner keeps an unmodified personal duplicate named `Monies Map
+Apple Pay API Source` for convenient editing. The durable source of truth is
+also committed in the repository under `shortcuts/apple-pay-api/`: a readable
+secret-free plist source, the exact Apple-signed release, and a manifest with
+the iCloud record ID and checksums. Losing or changing the personal source copy
+therefore does not lose the released shortcut.
+
+The published record is stable rather than absolutely immutable. Normal edits
+to a personal or installed copy do not update it. The owner can explicitly stop
+sharing it. A reviewed revision is published as a new iCloud release, and
+Monies Map must be updated to use that new URL; the old URL otherwise continues
+to serve its old snapshot.
+
+### What should I choose when Apple says the shortcut already exists?
+
+Choose `Replace` when upgrading the installed `Monies Map Apple Pay API`.
+Replacement changes only the local copy on that device. It does not overwrite
+the public iCloud release, the owner's source, or another person's shortcut.
+
+Choose `Keep Both` only when intentionally preserving the old local copy as a
+backup. A normal installation should keep one active shortcut with the exact
+name `Monies Map Apple Pay API`, because that is the shortcut selected by the
+Wallet automation.
+
+A first-time user, including another household member, sees `Add Shortcut`
+instead. Every iPhone installs its own copy, pastes the private connection, and
+configures its own device-local Wallet automation. If the household key is
+rotated, every device using that key must install or configure the new private
+connection.
+
+### How is a new shortcut version published?
+
+Start from the committed signed release or a duplicate of the trusted personal
+source. Make and test changes in a separate working copy, keep its setup Text
+action blank, and confirm no private connection or token is present. Publish it
+through Shortcuts to create a new Apple-reviewed iCloud record.
+
+Before changing the app's install link, commit the new readable source, exact
+signed release, record ID, and checksums under `shortcuts/apple-pay-api/`.
+Update the Settings install URL, browser test, FAQ, and artifact manifest in the
+same release. The old share can remain available for rollback or be stopped
+explicitly after existing devices have moved to the replacement.
 
 ### What does the installed direct-create shortcut contain?
 
