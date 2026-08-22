@@ -9,7 +9,7 @@ import { findDuplicateCategoryMatchRules } from "./settings-workflow";
 import { CategoryGlyph, DeleteRowButton } from "./ui-components";
 
 const { accounts: accountService, format: formatService } = moniesClient;
-const APPLE_PAY_SHORTCUT_URL = "https://www.icloud.com/shortcuts/5b5151bccd0d4d368ef17ee3c2270687";
+const APPLE_PAY_SHORTCUT_URL = "https://www.icloud.com/shortcuts/17ff3669eb4f4a519416d04eff8c2f11";
 
 function groupCategoryMatchRules(rules, categories) {
   const categoriesByName = new Map(categories.map((category) => [category.name, category]));
@@ -162,6 +162,7 @@ export function SettingsShortcutApiSection({
             <li>{messages.settings.shortcutInstallStep}</li>
             <li>{messages.settings.shortcutPasteStep}</li>
             <li>{messages.settings.shortcutAutomationStep}</li>
+            <li>{messages.settings.shortcutAutomationRunStep}</li>
           </ol>
           <details className="settings-shortcut-advanced">
             <summary>{messages.settings.shortcutAdvancedTitle}</summary>
