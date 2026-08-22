@@ -11,6 +11,13 @@ interface StoredShortcutSettings {
   defaultParams?: string;
 }
 
+export interface ShortcutAccountSelection {
+  id: string;
+  name: string;
+  currency: string;
+  resolution: "explicit" | "wallet_name" | "priority";
+}
+
 export async function ensureAppSettingsTable(db: D1Database) {
   await db.prepare(`
     CREATE TABLE IF NOT EXISTS app_settings (
@@ -121,6 +128,66 @@ export async function resolveShortcutDefaultAccountId(db: D1Database) {
   return settings.defaultAccountPriorityIds[0] ?? null;
 }
 
+export async function resolveShortcutAccountSelection(
+  db: D1Database,
+  input: {
+    accountId?: string;
+    accountName?: string;
+    walletName?: string;
+  }
+): Promise<ShortcutAccountSelection | null> {
+  const accounts = await loadShortcutAccountReferences(db);
+  const settings = await loadShortcutSettings(db, accounts);
+  const selected = selectShortcutAccount(
+    accounts,
+    settings.defaultAccountPriorityIds,
+    input
+  );
+  if (selected.error) {
+    throw new Error(selected.error);
+  }
+  return selected.account;
+}
+
+export function selectShortcutAccount(
+  accounts: AccountDto[],
+  defaultAccountPriorityIds: string[],
+  input: {
+    accountId?: string;
+    accountName?: string;
+    walletName?: string;
+  }
+): { account: ShortcutAccountSelection | null; error?: string } {
+  const activeAccounts = accounts.filter((account) => account.isActive);
+  if (input.accountId) {
+    const account = activeAccounts.find((candidate) => candidate.id === input.accountId);
+    return account
+      ? { account: toShortcutAccountSelection(account, "explicit") }
+      : { account: null, error: `Unknown or inactive account: ${input.accountId}` };
+  }
+
+  if (input.accountName) {
+    const account = findShortcutAccountByName(activeAccounts, input.accountName);
+    return account
+      ? { account: toShortcutAccountSelection(account, "explicit") }
+      : { account: null, error: `Unknown or inactive account: ${input.accountName}` };
+  }
+
+  const walletAccount = findShortcutAccountByName(activeAccounts, input.walletName);
+  if (walletAccount) {
+    return { account: toShortcutAccountSelection(walletAccount, "wallet_name") };
+  }
+
+  const priorityAccount = defaultAccountPriorityIds
+    .map((accountId) => activeAccounts.find((account) => account.id === accountId))
+    .find((account): account is AccountDto => Boolean(account));
+  return {
+    account: priorityAccount
+      ? toShortcutAccountSelection(priorityAccount, "priority")
+      : null
+  };
+}
+
 async function loadShortcutAccountReferences(db: D1Database): Promise<AccountDto[]> {
   const result = await db
     .prepare(`
@@ -169,6 +236,38 @@ async function loadShortcutAccountReferences(db: D1Database): Promise<AccountDto
     isJoint: Boolean(row.is_joint),
     isActive: Boolean(row.is_active)
   }));
+}
+
+function findShortcutAccountByName(accounts: AccountDto[], value?: string) {
+  const normalizedValue = normalizeShortcutAccountName(value);
+  if (!normalizedValue) {
+    return undefined;
+  }
+  const matches = accounts.filter((account) => (
+    normalizeShortcutAccountName(account.name) === normalizedValue
+    || normalizeShortcutAccountName(`${account.institution} ${account.name}`) === normalizedValue
+  ));
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
+function normalizeShortcutAccountName(value?: string) {
+  return value
+    ?.normalize("NFKC")
+    .toLocaleLowerCase("en-SG")
+    .replace(/[^\p{L}\p{N}]+/gu, "")
+    .trim();
+}
+
+function toShortcutAccountSelection(
+  account: AccountDto,
+  resolution: ShortcutAccountSelection["resolution"]
+): ShortcutAccountSelection {
+  return {
+    id: account.id,
+    name: account.name,
+    currency: account.currency.toUpperCase(),
+    resolution
+  };
 }
 
 function parseShortcutSettings(value?: string | null): StoredShortcutSettings {

@@ -78,10 +78,24 @@ import {
 } from "./domain/app-repository-settings";
 import {
   loadShortcutSettings,
-  resolveShortcutDefaultAccountId,
+  resolveShortcutAccountSelection,
   saveShortcutSettings,
   SHORTCUT_ENDPOINT_PATH
 } from "./domain/app-repository-shortcuts";
+import {
+  hasOversizedShortcutDescription,
+  isShortcutEntryType,
+  isShortcutOwnershipType,
+  isShortcutTransferDirection,
+  normalizeShortcutAmount,
+  normalizeShortcutCurrency,
+  normalizeShortcutDate,
+  normalizeShortcutDescription,
+  normalizeShortcutNote,
+  normalizeShortcutRequestId,
+  parseShortcutCreateBody,
+  SHORTCUT_NOTE_MAX_LENGTH
+} from "./domain/shortcut-entry-contract";
 import { parseCsv } from "./lib/csv";
 import { getCurrentMonthKey } from "./lib/month";
 import { json } from "./server/json";
@@ -834,51 +848,88 @@ export default {
         return json({ ok: false, error: shortcutAuth.error }, shortcutAuth.status);
       }
 
-      const body = await request.json<{
-        date?: string;
-        description?: string;
-        merchant?: string;
-        name?: string;
-        accountId?: string;
-        accountName?: string;
-        categoryName?: string;
-        amountMinor?: number;
-        amount?: number | string;
-        entryType?: "expense" | "income" | "transfer";
-        transferDirection?: "in" | "out";
-        ownershipType?: "direct" | "shared";
-        ownerName?: string;
-        offsetsCategory?: boolean;
-        note?: string;
-        splitBasisPoints?: number;
-        view?: string;
-      }>();
+      let rawBody: unknown;
+      try {
+        rawBody = await request.json();
+      } catch {
+        return json({ ok: false, error: "Shortcut request body must be valid JSON." }, 400);
+      }
+      const parsedBody = parseShortcutCreateBody(rawBody);
+      if (!parsedBody.ok) {
+        return json({ ok: false, error: parsedBody.error }, 400);
+      }
+      const body = parsedBody.body;
 
       const shortcutDefaults = await loadShortcutSettings(env.DB);
       const bodyWithDefaults = applyShortcutCreateDefaults(body, shortcutDefaults.defaultParams);
-      const amountMinor = normalizeShortcutAmountMinor(bodyWithDefaults.amountMinor, bodyWithDefaults.amount);
+      const amount = normalizeShortcutAmount(bodyWithDefaults.amountMinor, bodyWithDefaults.amount);
       const shortcutDate = normalizeShortcutDate(bodyWithDefaults.date);
-      const shortcutDescription = normalizeShortcutDescription(
+      const explicitCurrency = normalizeShortcutCurrency(bodyWithDefaults.currency);
+      const requestId = normalizeShortcutRequestId(bodyWithDefaults.requestId);
+      const entryType = bodyWithDefaults.entryType ?? "expense";
+      const ownershipType = bodyWithDefaults.ownershipType ?? "direct";
+      let account;
+      try {
+        account = await resolveShortcutAccountSelection(env.DB, {
+          accountId: bodyWithDefaults.accountId,
+          accountName: bodyWithDefaults.accountName,
+          walletName: bodyWithDefaults.name
+        });
+      } catch (error) {
+        return json({ ok: false, error: describeError(error) }, 400);
+      }
+      const descriptionValues = [
         bodyWithDefaults.description,
         bodyWithDefaults.merchant,
-        bodyWithDefaults.name
-      );
-      const accountId = bodyWithDefaults.accountId ?? (!bodyWithDefaults.accountName ? await resolveShortcutDefaultAccountId(env.DB) : undefined);
+        account?.resolution === "wallet_name" ? undefined : bodyWithDefaults.name
+      ];
+      const shortcutDescription = normalizeShortcutDescription(...descriptionValues);
+      const note = normalizeShortcutNote(bodyWithDefaults.note);
+      const amountCurrency = explicitCurrency ?? amount?.currency;
+      const invalidFields = [
+        !shortcutDate ? "date" : undefined,
+        !shortcutDescription ? "description" : undefined,
+        !account ? "account" : undefined,
+        !amount ? "amount" : undefined,
+        bodyWithDefaults.currency && !explicitCurrency ? "currency" : undefined,
+        explicitCurrency && amount?.currency && explicitCurrency !== amount.currency ? "currency" : undefined,
+        !isShortcutEntryType(entryType) ? "entryType" : undefined,
+        bodyWithDefaults.transferDirection != null && !isShortcutTransferDirection(bodyWithDefaults.transferDirection) ? "transferDirection" : undefined,
+        !isShortcutOwnershipType(ownershipType) ? "ownershipType" : undefined,
+        bodyWithDefaults.requestId != null && !requestId ? "requestId" : undefined,
+        bodyWithDefaults.note != null && bodyWithDefaults.note.trim().length > SHORTCUT_NOTE_MAX_LENGTH ? "note" : undefined,
+        bodyWithDefaults.splitBasisPoints != null && (
+          !Number.isInteger(bodyWithDefaults.splitBasisPoints)
+          || bodyWithDefaults.splitBasisPoints < 0
+          || bodyWithDefaults.splitBasisPoints > 10_000
+        ) ? "splitBasisPoints" : undefined
+      ].filter((field): field is string => Boolean(field));
       if (
-        !shortcutDate
+        invalidFields.length
+        || !shortcutDate
         || !shortcutDescription
-        || (!accountId && !bodyWithDefaults.accountName)
-        || amountMinor == null
+        || !account
+        || !amount
+        || !isShortcutEntryType(entryType)
+        || !isShortcutOwnershipType(ownershipType)
       ) {
-        const invalidFields = [
-          !shortcutDate ? "date" : undefined,
-          !shortcutDescription ? "description" : undefined,
-          !accountId && !bodyWithDefaults.accountName ? "account" : undefined,
-          amountMinor == null ? "amount" : undefined
-        ].filter((field): field is string => Boolean(field));
         return json({
           ok: false,
-          error: `Missing or invalid shortcut fields: ${invalidFields.join(", ")}.`
+          error: hasOversizedShortcutDescription(...descriptionValues)
+            ? "Shortcut description must be 500 characters or fewer. Nothing was saved."
+            : `Missing or invalid shortcut fields: ${invalidFields.join(", ")}.`
+        }, 400);
+      }
+      if (amountCurrency && amountCurrency !== account.currency) {
+        return json({
+          ok: false,
+          error: `Wallet amount is ${amountCurrency}, but ${account.name} uses ${account.currency}. Nothing was saved.`
+        }, 400);
+      }
+      if (requestId && ownershipType !== "direct") {
+        return json({
+          ok: false,
+          error: "Shortcut requestId is only supported for direct ownership entries. Nothing was saved."
         }, 400);
       }
 
@@ -886,34 +937,48 @@ export default {
         const created = await createEntryRecord(env.DB, {
           date: shortcutDate,
           description: shortcutDescription,
-          accountId,
-          accountName: bodyWithDefaults.accountName,
+          accountId: account.id,
           categoryName: bodyWithDefaults.categoryName ?? "Other",
-          amountMinor,
-          entryType: bodyWithDefaults.entryType ?? "expense",
+          amountMinor: amount.amountMinor,
+          entryType,
           transferDirection: bodyWithDefaults.transferDirection,
-          ownershipType: bodyWithDefaults.ownershipType ?? "direct",
+          ownershipType,
           ownerName: bodyWithDefaults.ownerName,
           offsetsCategory: bodyWithDefaults.offsetsCategory,
-          note: bodyWithDefaults.note,
-          splitBasisPoints: bodyWithDefaults.splitBasisPoints
+          note,
+          splitBasisPoints: bodyWithDefaults.splitBasisPoints,
+          externalReference: requestId ? `shortcut:${requestId}` : undefined
         });
         const openUrl = buildShortcutEntryOpenUrl(request, {
           entryId: created.entryId,
           date: shortcutDate,
           viewId: bodyWithDefaults.view,
-          accountId,
-          accountName: bodyWithDefaults.accountName
+          accountId: account.id
         }, env.SHORTCUT_APP_ORIGIN);
 
         return json({
           ok: true,
           entryId: created.entryId,
-          created: true,
+          created: created.created,
+          date: shortcutDate,
+          description: shortcutDescription,
+          amountMinor: amount.amountMinor,
+          currency: account.currency,
+          accountId: account.id,
+          accountName: account.name,
+          accountResolution: account.resolution,
           openUrl
         });
       } catch (error) {
-        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to create shortcut entry" }, 400);
+        const message = describeError(error);
+        if (message.includes("request ID was already used")) {
+          return json({ ok: false, error: message }, 409);
+        }
+        if (/^(Amount|Unknown|Missing)/.test(message)) {
+          return json({ ok: false, error: message }, 400);
+        }
+        console.error("Shortcut entry create failed", error);
+        return json({ ok: false, error: "Monies Map could not save this shortcut entry." }, 500);
       }
     }
 
@@ -1865,90 +1930,6 @@ async function constantTimeEqual(left: string, right: string) {
     mismatch |= (leftBytes[index] ?? 0) ^ (rightBytes[index] ?? 0);
   }
   return mismatch === 0;
-}
-
-function normalizeShortcutAmountMinor(amountMinor?: number, amount?: number | string) {
-  if (typeof amountMinor === "number" && Number.isFinite(amountMinor)) {
-    return Math.round(amountMinor);
-  }
-
-  if (typeof amount === "number" && Number.isFinite(amount)) {
-    return Math.round(amount * 100);
-  }
-
-  if (typeof amount === "string") {
-    const compact = amount.trim().normalize("NFKC").replace(/\s/gu, "");
-    const numberMatches = compact.match(/\d[\d,]*(?:\.\d+)?/g) ?? [];
-    if (numberMatches.length !== 1) {
-      return null;
-    }
-
-    const numericToken = numberMatches[0];
-    const affixes = compact.replace(numericToken, "");
-    const isParenthesized = compact.startsWith("(") && compact.endsWith(")");
-    if (
-      !/^[\p{L}\p{Sc}()+-]*$/u.test(affixes)
-      || affixes.replace(/[()+-]/g, "").length > 4
-      || ((affixes.includes("(") || affixes.includes(")")) && !isParenthesized)
-      || (affixes.includes("+") && affixes.includes("-"))
-      || (affixes.match(/-/g)?.length ?? 0) > 1
-    ) {
-      return null;
-    }
-
-    const normalized = Number(numericToken.replace(/,/g, ""));
-    if (Number.isFinite(normalized)) {
-      const sign = isParenthesized || affixes.includes("-") ? -1 : 1;
-      return Math.round(normalized * 100) * sign;
-    }
-  }
-
-  return null;
-}
-
-function normalizeShortcutDescription(...values: Array<string | undefined>) {
-  return values
-    .map((value) => value?.trim())
-    .find((value): value is string => Boolean(value));
-}
-
-function normalizeShortcutDate(value?: string) {
-  const trimmed = value?.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-
-  const isoDate = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/);
-  if (isoDate && isValidShortcutDateParts(Number(isoDate[1]), Number(isoDate[2]), Number(isoDate[3]))) {
-    return `${isoDate[1]}-${isoDate[2]}-${isoDate[3]}`;
-  }
-
-  const localizedDate = trimmed.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2}|\d{4})$/);
-  if (localizedDate) {
-    const yearValue = Number(localizedDate[3]);
-    const year = localizedDate[3].length === 2 ? 2000 + yearValue : yearValue;
-    const first = Number(localizedDate[1]);
-    const second = Number(localizedDate[2]);
-    const dateParts = [
-      { month: second, day: first },
-      { month: first, day: second }
-    ];
-    for (const { month, day } of dateParts) {
-      if (isValidShortcutDateParts(year, month, day)) {
-        return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      }
-    }
-  }
-
-  const parsed = Date.parse(trimmed);
-  return Number.isFinite(parsed) ? new Date(parsed).toISOString().slice(0, 10) : undefined;
-}
-
-function isValidShortcutDateParts(year: number, month: number, day: number) {
-  const candidate = new Date(Date.UTC(year, month - 1, day));
-  return candidate.getUTCFullYear() === year
-    && candidate.getUTCMonth() === month - 1
-    && candidate.getUTCDate() === day;
 }
 
 function applyShortcutCreateDefaults<
