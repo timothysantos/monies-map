@@ -23,8 +23,8 @@ Settings state is split between:
 - server state for the settings page DTO
 - workflow state for account, category, person, checkpoint, and reconciliation
   actions
-- workflow state for Shortcut API key edits, default shortcut params, and
-  default-account priority order
+- workflow state for Apple Pay shortcut installation, private key edits,
+  default shortcut params, and default-account priority order
 - transient UI state for dialogs and section disclosure
 
 Settings should stay lightweight. It should not become a hidden app-shell
@@ -57,7 +57,19 @@ Settings owns:
 - checkpoints
 - reconciliation exceptions
 - unresolved transfer review
-- Shortcut API key, default shortcut params, and default account fallback order
+- Apple Pay shortcut install state, private key, default shortcut params, and
+  default account fallback order
+
+The Apple Pay shortcut install flow is ordered deliberately:
+
+1. create a private key if none exists
+2. build and copy the authenticated connection URL
+3. persist the settings
+4. open the verified, secret-free iCloud shortcut
+
+The iCloud artifact uses an Apple setup question to receive the copied URL. The
+public artifact never owns the household key. Default account reordering saves
+immediately; advanced key and default-param text edits retain an explicit save.
 
 ## Audit Status
 

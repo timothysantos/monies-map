@@ -172,22 +172,39 @@ separate lookup redirect before the normal Entries page can render.
 
 ### Security model for the shortcut endpoint
 
-The shortcut endpoint is protected by:
+The verified shared shortcut is public, but it contains no API key and no
+household-specific connection URL. During installation, Apple asks for the
+private connection URL that Monies Map copied. That URL contains a token and
+must be treated like a password.
 
-- a shared secret in the `X-Monies-Shortcut-Token` header
-- a one-time nonce in the `X-Monies-Shortcut-Nonce` header
-- a recent timestamp in the `X-Monies-Shortcut-Timestamp` header
+The endpoint accepts the token in one of three places:
 
-The server rejects missing or invalid tokens, expired requests, and replayed
-nonces.
+- the verified install flow uses the `shortcut_token` query parameter in the
+  private connection URL
+- advanced clients can use the `X-Monies-Shortcut-Token` header
+- advanced clients can use a Bearer `Authorization` header
+
+Advanced clients may also send `X-Monies-Shortcut-Nonce` and
+`X-Monies-Shortcut-Timestamp`. They must send both or neither. When both are
+present, the server rejects expired requests and replayed nonces. The verified
+Apple shortcut uses token-only authentication because Apple setup questions can
+configure one URL reliably without exposing blank header rows to the user.
+
+HTTPS protects the connection in transit, but a token embedded in a URL may be
+visible in the installed shortcut and infrastructure request logs. Do not share
+screenshots or exports that show it. Generate a new key and reinstall the
+shortcut if it is exposed.
 
 ### How do I configure the server secret?
 
-Open Settings -> Shortcut API and save:
+Open Settings -> Apple Pay shortcut. The normal install flow generates a key
+when needed, saves it, and copies the private connection URL automatically.
+There are no header or JSON key names to type.
 
-- an API key for the Apple Shortcut to send
-- the default account priority order used when the shortcut omits account
-  fields
+Choose the default account priority used when Wallet does not identify the
+account. Moving an account saves the new order immediately and shows a status
+message. API key and default-param edits under Advanced API settings still use
+Save shortcut settings.
 
 The app-managed key is stored in app settings and takes priority over the
 Cloudflare environment token. Existing deployments can still use a Cloudflare
@@ -201,9 +218,8 @@ Example fallback setup:
 wrangler secret put SHORTCUT_INGEST_TOKEN
 ```
 
-Use a long random value. Do not put that value in URLs. Keep it only in the
-Shortcut headers. Saving a key in Settings lets you rotate the Shortcut key
-without logging in to Cloudflare.
+Use a long random value. Saving a key in Settings lets you rotate the Shortcut
+key without logging in to Cloudflare.
 
 Before using this in production, also apply the database migration so replay
 protection and app-managed shortcut settings storage exist:
@@ -223,17 +239,14 @@ Required fields:
 - either `amountMinor` or `amount`
 
 `accountId` or `accountName` is optional. If neither is sent, the API uses the
-first active account in Settings -> Shortcut API -> Default account priority.
-The endpoint also applies Settings -> Shortcut API -> Default shortcut params
-before the JSON body, so values sent by the shortcut always win.
+first active account in Settings -> Apple Pay shortcut -> Default account
+priority. The endpoint also applies Settings -> Apple Pay shortcut -> Advanced
+API settings -> Default shortcut params before the JSON body, so values sent by
+the shortcut always win.
 
-Important ownership rule:
-
-- if you omit `ownershipType`, the API defaults it to `direct`
-- `direct` entries require `ownerName`
-- send `ownerName` for the person who owns the ledger row
-- shared-expense allocation is managed by linking the saved ledger row to a
-  split expense, not by creating a shared ledger owner
+If `ownerName` is omitted, a direct entry uses the selected account's owner.
+Shared-expense allocation is managed by linking the saved ledger row to a split
+expense.
 
 Common payload:
 
@@ -287,8 +300,8 @@ Defaults and behavior:
   - optional
   - defaults to `direct`
 - `ownerName`
-  - required when `ownershipType` is `direct`, including when you rely on the
-    default `direct`
+  - optional
+  - defaults to the selected account's owner for direct entries
 - `note`
   - optional
   - defaults to empty / no note
@@ -302,72 +315,41 @@ Fields with no server default:
 If any of those are missing after Settings defaults are applied, the shortcut
 request is rejected.
 
-### How do I build the Apple Shortcut?
+### How do I install the Apple Shortcut?
 
-Apple documents `Get Contents of URL` as the API action for Shortcuts and
-`Open URLs` for opening returned links. See Apple Support:
+1. Open Settings -> Apple Pay shortcut.
+2. Put the card used most often first under Default account priority.
+3. Select Install Apple Shortcut. Monies Map saves the connection, copies it,
+   and opens the verified shared shortcut.
+4. Select Get Shortcut or Add Shortcut on Apple's page.
+5. When Apple asks for the Monies Map connection URL, paste the copied value.
+6. On the iPhone, open Shortcuts -> Automation, add a Transaction automation,
+   and make it run `Monies Map Apple Pay Direct`. Choose Run Immediately when
+   that option is available.
 
-- [Request your first API in Shortcuts on iPhone or iPad](https://support.apple.com/en-euro/guide/shortcuts/apd58d46713f/ios)
-- [Intro to URL schemes in Shortcuts on iPhone or iPad](https://support.apple.com/en-au/guide/shortcuts/apd621a1ad7a/ios)
-- [Open and create a shortcut using a URL scheme on iPhone or iPad](https://support.apple.com/guide/shortcuts/open-create-and-run-a-shortcut-apda283236d7/ios)
+The shared shortcut sends Wallet's transaction amount and merchant plus the
+current date directly to Monies Map, then shows a success notification. The
+server accepts ISO dates and Apple's day-first local date text such as
+`27/04/2026`.
 
-Settings -> Shortcut API includes a link to `shortcuts://create-shortcut`. Apple
-documents that link as a way to open the Shortcuts editor for a new blank
-shortcut. Apple does not document a URL that pre-fills all shortcut actions, so
-the app can open the editor and show the required parameters, but it cannot
-install the complete shortcut automatically unless you separately create and
-share an iCloud Shortcut link.
+Apple personal automations are device-local and are not part of an iCloud
+shared shortcut, so the final Transaction automation is the one required manual
+step on each iPhone. The shared shortcut itself is available at:
 
-The practical action flow is:
+- [Monies Map Apple Pay Direct](https://www.icloud.com/shortcuts/5b5151bccd0d4d368ef17ee3c2270687)
 
-1. `Current Date`
-2. `Format Date` as ISO 8601
-3. `Generate UUID`
-4. `Dictionary` for the JSON body
-5. `Text` for the endpoint URL:
-   `https://monies-map.timsantos-accts.workers.dev/api/shortcuts/entries/create`
-6. `Get Contents of URL`
-   - Method: `POST`
-   - Request Body: `JSON`
-   - Headers:
-     - `X-Monies-Shortcut-Token: <your secret>`
-     - `X-Monies-Shortcut-Nonce: <UUID>`
-     - `X-Monies-Shortcut-Timestamp: <formatted date>`
-7. `Get Dictionary Value` for `openUrl`
-8. `Open URLs`
+### What does the installed direct-create shortcut contain?
 
-If you want a safer review step, read the returned `entryId` and `openUrl`,
-show a quick result card, then open the URL only when the API says `ok: true`.
+The verified shortcut has no empty key rows and no embedded account secret. It
+contains a URL action configured by Apple's setup question, one POST
+`Get Contents of URL` action, and a JSON body with exactly these keys:
 
-### Step-by-step shortcut setup for the direct-create method
+- `amount`
+- `description`
+- `date`
 
-1. Create a Wallet transaction automation in Shortcuts.
-2. Add `Current Date`.
-3. Add `Format Date` and output ISO 8601 text.
-4. Add `Generate UUID`.
-5. Add `Dictionary` and set keys such as:
-   - `date`
-   - `description`
-   - `amount`
-   - `accountName`
-   - `categoryName`
-   - `ownershipType`
-   - `ownerName`
-   - `entryType`
-   - `note`
-6. Add `URL` with:
-   `https://monies-map.timsantos-accts.workers.dev/api/shortcuts/entries/create`
-7. Add `Get Contents of URL`:
-   - method: `POST`
-   - request body: `JSON`
-   - body: the Dictionary from step 5
-   - headers:
-     - `X-Monies-Shortcut-Token`
-     - `X-Monies-Shortcut-Nonce`
-     - `X-Monies-Shortcut-Timestamp`
-8. Add `Get Dictionary from Input` on the API response.
-9. Add `Get Dictionary Value` with key `openUrl`.
-10. Add `Open URLs`.
+Account, category, ownership, and owner are resolved from the Settings defaults.
+Advanced custom shortcuts can add any optional API fields documented above.
 
 Expected response shape:
 
@@ -681,9 +663,9 @@ Supported query parameters are:
 - `note`
 
 `account` or `account_id` is optional. If neither is sent, the app uses the
-first active account in Settings -> Shortcut API -> Default account priority.
-The quick-entry URL also applies Settings -> Shortcut API -> Default shortcut
-params first, then lets explicit URL parameters override them.
+first active account in Settings -> Apple Pay shortcut -> Default account
+priority. The quick-entry URL also applies the Default shortcut params under
+Advanced API settings first, then lets explicit URL parameters override them.
 
 After the app reads the parameters, it removes them from the URL so refreshing
 the page does not reopen the draft.

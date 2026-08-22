@@ -184,6 +184,20 @@ The backend should remain explicit about boundaries:
 The existing domain richness is an asset. The redesign should not flatten the
 domain model just to simplify the client.
 
+### Shortcut integration boundary
+
+The Apple Pay integration uses a dedicated direct-create route rather than the
+browser entry form. The public iCloud shortcut must remain secret-free. Settings
+owns key generation, connection-URL copy, the verified install link, and default
+account priority.
+
+The direct-create route accepts authenticated URL or header token transport.
+Nonce and timestamp headers are an optional complete pair for advanced clients;
+when present, replay and freshness checks remain mandatory. The shortcut body
+contains only transaction facts, while account and ownership defaults are
+resolved on the server. Personal Transaction automations remain device-local
+Apple configuration and are not represented as app state.
+
 ### Savings model
 
 The app should treat `savings target` as a first-class monthly planning input.

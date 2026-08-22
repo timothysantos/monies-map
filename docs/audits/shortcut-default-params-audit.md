@@ -1,6 +1,6 @@
 # Shortcut Default Params Audit
 
-Date: 2026-07-05
+Date: 2026-08-22
 
 ## Feature List
 
@@ -13,8 +13,8 @@ Date: 2026-07-05
   now a query-string style default-params field.
 - Account fallback: both the API and quick-entry URL use the first active
   account in the configured priority order when account fields are omitted.
-- Apple Shortcuts setup support: Settings exposes the parameter reference and a
-  `shortcuts://create-shortcut` link for opening Apple's shortcut editor.
+- Apple Shortcuts setup support: Settings exposes a verified shared shortcut
+  install action plus the advanced parameter reference.
 
 ## Existing-State Findings
 
@@ -26,9 +26,8 @@ Date: 2026-07-05
   API and URL parameter lists.
 - There was no place to save user-desired default params such as category,
   owner, shared/direct ownership, or view.
-- Apple documents `shortcuts://create-shortcut` for opening a blank shortcut
-  editor, but does not document a URL that pre-populates all actions in a
-  shortcut.
+- Opening Apple's blank shortcut editor did not satisfy the expected install
+  experience and left users to enter header and JSON keys manually.
 
 ## Implemented Contract
 
@@ -39,10 +38,12 @@ Date: 2026-07-05
   - system defaults as help text,
   - quick-entry URL parameter reference,
   - direct-create API JSON parameter reference,
-  - a link to open Apple's new-shortcut editor.
+  - a one-action verified Apple shortcut install flow.
 - Direct-create API merges default params first and request JSON second.
 - Quick-entry URL merges default params first and explicit URL params second.
 - Both flows use default account priority when no account is supplied.
+- Default-account priority moves save immediately from the reorder control;
+  API key and default-param text edits still use Save shortcut settings.
 
 ## Test Coverage
 
@@ -55,9 +56,8 @@ Date: 2026-07-05
 
 ## Residual Risks
 
-- The `shortcuts://create-shortcut` link can only open Apple's blank shortcut
-  editor. A true install experience requires a separately created shared
-  iCloud Shortcut URL.
+- The shared shortcut installs the API actions, but Apple requires each device
+  to create its own personal Transaction automation.
 - Default params are intentionally stored as a query string so users can copy
   Apple Shortcut URL fragments directly. Validation is lightweight; invalid
   keys are ignored unless the target flow already validates them.
