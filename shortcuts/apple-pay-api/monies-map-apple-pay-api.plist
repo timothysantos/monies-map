@@ -221,11 +221,13 @@
 											<dict>
 												<key>Aggrandizements</key>
 												<array>
-													<dict>
-														<key>Type</key>
-														<string>WFDateFormatVariableAggrandizement</string>
-														<key>WFDateFormatStyle</key>
-														<string>Short</string>
+												<dict>
+													<key>Type</key>
+													<string>WFDateFormatVariableAggrandizement</string>
+													<key>WFDateFormat</key>
+													<string>yyyy-MM-dd</string>
+													<key>WFDateFormatStyle</key>
+													<string>Custom</string>
 														<key>WFISO8601IncludeTime</key>
 														<false/>
 														<key>WFTimeFormatStyle</key>
@@ -238,6 +240,111 @@
 										</dict>
 										<key>string</key>
 										<string>￼</string>
+									</dict>
+									<key>WFSerializationType</key>
+									<string>WFTextTokenString</string>
+								</dict>
+							</dict>
+							<dict>
+								<key>WFItemType</key>
+								<integer>0</integer>
+								<key>WFKey</key>
+								<dict>
+									<key>Value</key>
+									<dict>
+										<key>string</key>
+										<string>name</string>
+									</dict>
+									<key>WFSerializationType</key>
+									<string>WFTextTokenString</string>
+								</dict>
+								<key>WFValue</key>
+								<dict>
+									<key>Value</key>
+									<dict>
+										<key>attachmentsByRange</key>
+										<dict>
+											<key>{0, 1}</key>
+											<dict>
+												<key>Type</key>
+												<string>Variable</string>
+												<key>VariableName</key>
+												<string>TransactionName</string>
+											</dict>
+										</dict>
+										<key>string</key>
+										<string>￼</string>
+									</dict>
+									<key>WFSerializationType</key>
+									<string>WFTextTokenString</string>
+								</dict>
+							</dict>
+							<dict>
+								<key>WFItemType</key>
+								<integer>0</integer>
+								<key>WFKey</key>
+								<dict>
+									<key>Value</key>
+									<dict>
+										<key>string</key>
+										<string>requestId</string>
+									</dict>
+									<key>WFSerializationType</key>
+									<string>WFTextTokenString</string>
+								</dict>
+								<key>WFValue</key>
+								<dict>
+									<key>Value</key>
+									<dict>
+										<key>attachmentsByRange</key>
+										<dict>
+											<key>{10, 1}</key>
+											<dict>
+												<key>Aggrandizements</key>
+												<array>
+													<dict>
+														<key>Type</key>
+														<string>WFDateFormatVariableAggrandizement</string>
+														<key>WFDateFormat</key>
+														<string>yyyyMMddHHmmssSSS</string>
+														<key>WFDateFormatStyle</key>
+														<string>Custom</string>
+														<key>WFISO8601IncludeTime</key>
+														<false/>
+														<key>WFTimeFormatStyle</key>
+														<string>None</string>
+													</dict>
+												</array>
+												<key>Type</key>
+												<string>CurrentDate</string>
+											</dict>
+										</dict>
+										<key>string</key>
+										<string>apple-pay-￼</string>
+									</dict>
+									<key>WFSerializationType</key>
+									<string>WFTextTokenString</string>
+								</dict>
+							</dict>
+							<dict>
+								<key>WFItemType</key>
+								<integer>0</integer>
+								<key>WFKey</key>
+								<dict>
+									<key>Value</key>
+									<dict>
+										<key>string</key>
+										<string>clientVersion</string>
+									</dict>
+									<key>WFSerializationType</key>
+									<string>WFTextTokenString</string>
+								</dict>
+								<key>WFValue</key>
+								<dict>
+									<key>Value</key>
+									<dict>
+										<key>string</key>
+										<string>apple-pay-api-2026-08-22-v2</string>
 									</dict>
 									<key>WFSerializationType</key>
 									<string>WFTextTokenString</string>
@@ -379,11 +486,13 @@
 											<dict>
 												<key>Aggrandizements</key>
 												<array>
-													<dict>
-														<key>Type</key>
-														<string>WFDateFormatVariableAggrandizement</string>
-														<key>WFDateFormatStyle</key>
-														<string>Short</string>
+												<dict>
+													<key>Type</key>
+													<string>WFDateFormatVariableAggrandizement</string>
+													<key>WFDateFormat</key>
+													<string>yyyy-MM-dd</string>
+													<key>WFDateFormatStyle</key>
+													<string>Custom</string>
 														<key>WFISO8601IncludeTime</key>
 														<false/>
 														<key>WFTimeFormatStyle</key>
@@ -396,6 +505,111 @@
 										</dict>
 										<key>string</key>
 										<string>￼</string>
+									</dict>
+									<key>WFSerializationType</key>
+									<string>WFTextTokenString</string>
+								</dict>
+							</dict>
+							<dict>
+								<key>WFItemType</key>
+								<integer>0</integer>
+								<key>WFKey</key>
+								<dict>
+									<key>Value</key>
+									<dict>
+										<key>string</key>
+										<string>name</string>
+									</dict>
+									<key>WFSerializationType</key>
+									<string>WFTextTokenString</string>
+								</dict>
+								<key>WFValue</key>
+								<dict>
+									<key>Value</key>
+									<dict>
+										<key>attachmentsByRange</key>
+										<dict>
+											<key>{0, 1}</key>
+											<dict>
+												<key>Type</key>
+												<string>Variable</string>
+												<key>VariableName</key>
+												<string>TransactionName</string>
+											</dict>
+										</dict>
+										<key>string</key>
+										<string>￼</string>
+									</dict>
+									<key>WFSerializationType</key>
+									<string>WFTextTokenString</string>
+								</dict>
+							</dict>
+							<dict>
+								<key>WFItemType</key>
+								<integer>0</integer>
+								<key>WFKey</key>
+								<dict>
+									<key>Value</key>
+									<dict>
+										<key>string</key>
+										<string>requestId</string>
+									</dict>
+									<key>WFSerializationType</key>
+									<string>WFTextTokenString</string>
+								</dict>
+								<key>WFValue</key>
+								<dict>
+									<key>Value</key>
+									<dict>
+										<key>attachmentsByRange</key>
+										<dict>
+											<key>{10, 1}</key>
+											<dict>
+												<key>Aggrandizements</key>
+												<array>
+													<dict>
+														<key>Type</key>
+														<string>WFDateFormatVariableAggrandizement</string>
+														<key>WFDateFormat</key>
+														<string>yyyyMMddHHmmssSSS</string>
+														<key>WFDateFormatStyle</key>
+														<string>Custom</string>
+														<key>WFISO8601IncludeTime</key>
+														<false/>
+														<key>WFTimeFormatStyle</key>
+														<string>None</string>
+													</dict>
+												</array>
+												<key>Type</key>
+												<string>CurrentDate</string>
+											</dict>
+										</dict>
+										<key>string</key>
+										<string>apple-pay-￼</string>
+									</dict>
+									<key>WFSerializationType</key>
+									<string>WFTextTokenString</string>
+								</dict>
+							</dict>
+							<dict>
+								<key>WFItemType</key>
+								<integer>0</integer>
+								<key>WFKey</key>
+								<dict>
+									<key>Value</key>
+									<dict>
+										<key>string</key>
+										<string>clientVersion</string>
+									</dict>
+									<key>WFSerializationType</key>
+									<string>WFTextTokenString</string>
+								</dict>
+								<key>WFValue</key>
+								<dict>
+									<key>Value</key>
+									<dict>
+										<key>string</key>
+										<string>apple-pay-api-2026-08-22-v2</string>
 									</dict>
 									<key>WFSerializationType</key>
 									<string>WFTextTokenString</string>
@@ -453,11 +667,63 @@
 					<key>WFSerializationType</key>
 					<string>WFTextTokenAttachment</string>
 				</dict>
+				</dict>
 			</dict>
-		</dict>
-		<dict>
-			<key>WFWorkflowActionIdentifier</key>
-			<string>is.workflow.actions.openurl</string>
+			<dict>
+				<key>WFWorkflowActionIdentifier</key>
+				<string>is.workflow.actions.getvalueforkey</string>
+				<key>WFWorkflowActionParameters</key>
+				<dict>
+					<key>UUID</key>
+					<string>DAF2F84B-0B6A-49E9-8450-E36AF1171EF6</string>
+					<key>WFDictionaryKey</key>
+					<string>accountName</string>
+					<key>WFInput</key>
+					<dict>
+						<key>Value</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Contents of URL</string>
+							<key>OutputUUID</key>
+							<string>8D3E3776-3E79-4959-A431-744E3497B699</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>WFSerializationType</key>
+						<string>WFTextTokenAttachment</string>
+					</dict>
+				</dict>
+			</dict>
+			<dict>
+				<key>WFWorkflowActionIdentifier</key>
+				<string>is.workflow.actions.conditional</string>
+				<key>WFWorkflowActionParameters</key>
+				<dict>
+					<key>GroupingIdentifier</key>
+					<string>FEAC062C-0CE8-450D-87A4-84B6BF4E7E02</string>
+					<key>WFCondition</key>
+					<integer>100</integer>
+					<key>WFControlFlowMode</key>
+					<integer>0</integer>
+					<key>WFInput</key>
+					<dict>
+						<key>Value</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Dictionary Value</string>
+							<key>OutputUUID</key>
+							<string>350CD2C6-8AA0-4B81-8523-E754D953FAD3</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>WFSerializationType</key>
+						<string>WFTextTokenAttachment</string>
+					</dict>
+				</dict>
+			</dict>
+			<dict>
+				<key>WFWorkflowActionIdentifier</key>
+				<string>is.workflow.actions.openurl</string>
 			<key>WFWorkflowActionParameters</key>
 			<dict>
 				<key>UUID</key>
@@ -491,6 +757,15 @@
 					<dict>
 						<key>attachmentsByRange</key>
 						<dict>
+							<key>{14, 1}</key>
+							<dict>
+								<key>OutputName</key>
+								<string>Dictionary Value</string>
+								<key>OutputUUID</key>
+								<string>DAF2F84B-0B6A-49E9-8450-E36AF1171EF6</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
 							<key>{10, 1}</key>
 							<dict>
 								<key>Type</key>
@@ -507,7 +782,7 @@
 							</dict>
 						</dict>
 						<key>string</key>
-						<string>Saved ￼ • ￼</string>
+						<string>Saved ￼ • ￼ • ￼</string>
 					</dict>
 					<key>WFSerializationType</key>
 					<string>WFTextTokenString</string>
@@ -542,10 +817,128 @@
 					</dict>
 					<key>WFSerializationType</key>
 					<string>WFTextTokenString</string>
+					</dict>
 				</dict>
 			</dict>
-		</dict>
-	</array>
+			<dict>
+				<key>WFWorkflowActionIdentifier</key>
+				<string>is.workflow.actions.conditional</string>
+				<key>WFWorkflowActionParameters</key>
+				<dict>
+					<key>GroupingIdentifier</key>
+					<string>FEAC062C-0CE8-450D-87A4-84B6BF4E7E02</string>
+					<key>WFControlFlowMode</key>
+					<integer>1</integer>
+				</dict>
+			</dict>
+			<dict>
+				<key>WFWorkflowActionIdentifier</key>
+				<string>is.workflow.actions.getvalueforkey</string>
+				<key>WFWorkflowActionParameters</key>
+				<dict>
+					<key>UUID</key>
+					<string>A907DE7C-453E-4494-9587-B9A287F7EE96</string>
+					<key>WFDictionaryKey</key>
+					<string>error</string>
+					<key>WFInput</key>
+					<dict>
+						<key>Value</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Contents of URL</string>
+							<key>OutputUUID</key>
+							<string>8D3E3776-3E79-4959-A431-744E3497B699</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>WFSerializationType</key>
+						<string>WFTextTokenAttachment</string>
+					</dict>
+				</dict>
+			</dict>
+			<dict>
+				<key>WFWorkflowActionIdentifier</key>
+				<string>is.workflow.actions.gettext</string>
+				<key>WFWorkflowActionParameters</key>
+				<dict>
+					<key>UUID</key>
+					<string>F256C5AE-0253-440D-B391-39778B180345</string>
+					<key>WFTextActionText</key>
+					<dict>
+						<key>Value</key>
+						<dict>
+							<key>attachmentsByRange</key>
+							<dict>
+								<key>{10, 1}</key>
+								<dict>
+									<key>Type</key>
+									<string>Variable</string>
+									<key>VariableName</key>
+									<string>TransactionMerchant</string>
+								</dict>
+								<key>{14, 1}</key>
+								<dict>
+									<key>OutputName</key>
+									<string>Dictionary Value</string>
+									<key>OutputUUID</key>
+									<string>A907DE7C-453E-4494-9587-B9A287F7EE96</string>
+									<key>Type</key>
+									<string>ActionOutput</string>
+								</dict>
+							</dict>
+							<key>string</key>
+							<string>Not saved ￼ • ￼</string>
+						</dict>
+						<key>WFSerializationType</key>
+						<string>WFTextTokenString</string>
+					</dict>
+				</dict>
+			</dict>
+			<dict>
+				<key>WFWorkflowActionIdentifier</key>
+				<string>is.workflow.actions.notification</string>
+				<key>WFWorkflowActionParameters</key>
+				<dict>
+					<key>UUID</key>
+					<string>83951382-3F35-4D20-8D5E-E670A416708C</string>
+					<key>WFNotificationActionBody</key>
+					<dict>
+						<key>Value</key>
+						<dict>
+							<key>attachmentsByRange</key>
+							<dict>
+								<key>{0, 1}</key>
+								<dict>
+									<key>OutputName</key>
+									<string>Text</string>
+									<key>OutputUUID</key>
+									<string>F256C5AE-0253-440D-B391-39778B180345</string>
+									<key>Type</key>
+									<string>ActionOutput</string>
+								</dict>
+							</dict>
+							<key>string</key>
+							<string>￼</string>
+						</dict>
+						<key>WFSerializationType</key>
+						<string>WFTextTokenString</string>
+					</dict>
+				</dict>
+			</dict>
+			<dict>
+				<key>WFWorkflowActionIdentifier</key>
+				<string>is.workflow.actions.conditional</string>
+				<key>WFWorkflowActionParameters</key>
+				<dict>
+					<key>GroupingIdentifier</key>
+					<string>FEAC062C-0CE8-450D-87A4-84B6BF4E7E02</string>
+					<key>UUID</key>
+					<string>62DDCEB2-7B76-4C0F-B0BF-66FA257CFDC5</string>
+					<key>WFControlFlowMode</key>
+					<integer>2</integer>
+				</dict>
+			</dict>
+		</array>
 	<key>WFWorkflowClientVersion</key>
 	<string>4610</string>
 	<key>WFWorkflowHasOutputFallback</key>

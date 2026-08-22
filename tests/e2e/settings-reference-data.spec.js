@@ -305,6 +305,7 @@ test.describe("settings reference data", () => {
       ?? referenceData.categories[0];
     const apiKey = `mm_playwright_${Date.now()}`;
     const description = uniqueLabel("Apple Shortcut fallback");
+    const requestId = `playwright-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
     await postJson(page, "/api/settings/shortcuts/save", {
       apiKey,
@@ -339,7 +340,9 @@ test.describe("settings reference data", () => {
       data: {
         date: "22/8/26",
         description,
-        amount: "SGD\u00a012.34"
+        amount: "SGD\u00a012.34",
+        requestId,
+        clientVersion: "playwright-contract-v2"
       }
     });
     expect(response.ok(), await response.text()).toBeTruthy();
@@ -349,6 +352,46 @@ test.describe("settings reference data", () => {
     expect(created.openUrl).toContain(`/entries`);
     expect(created.openUrl).toContain("month=2026-08");
     expect(created.openUrl).toContain(`entry_wallet=${encodeURIComponent(targetAccount.id)}`);
+    expect(created).toMatchObject({
+      created: true,
+      amountMinor: 1234,
+      currency: targetAccount.currency,
+      accountId: targetAccount.id,
+      accountName: targetAccount.name,
+      accountResolution: "priority"
+    });
+
+    const retryResponse = await page.request.post(`/api/shortcuts/entries/create?shortcut_token=${encodeURIComponent(apiKey)}`, {
+      data: {
+        date: "22/8/26",
+        description,
+        amount: "SGD\u00a012.34",
+        requestId,
+        clientVersion: "playwright-contract-v2"
+      }
+    });
+    expect(retryResponse.ok(), await retryResponse.text()).toBeTruthy();
+    expect(await retryResponse.json()).toMatchObject({
+      ok: true,
+      created: false,
+      entryId: created.entryId,
+      accountId: targetAccount.id,
+      amountMinor: 1234
+    });
+
+    const conflictingRetryResponse = await page.request.post(`/api/shortcuts/entries/create?shortcut_token=${encodeURIComponent(apiKey)}`, {
+      data: {
+        date: "22/8/26",
+        description,
+        amount: "SGD\u00a012.35",
+        requestId
+      }
+    });
+    expect(conflictingRetryResponse.status()).toBe(409);
+    expect(await conflictingRetryResponse.json()).toMatchObject({
+      ok: false,
+      error: "Shortcut request ID was already used for a different entry."
+    });
 
     const fallbackDescription = `${description} name fallback`;
     const fallbackResponse = await page.request.post(`/api/shortcuts/entries/create?shortcut_token=${encodeURIComponent(apiKey)}`, {
@@ -361,6 +404,28 @@ test.describe("settings reference data", () => {
     });
     expect(fallbackResponse.ok(), await fallbackResponse.text()).toBeTruthy();
 
+    expect(otherAccounts.length).toBeGreaterThan(0);
+    const walletNamedAccount = otherAccounts[0];
+    const walletNamedDescription = `${description} wallet account`;
+    const walletNamedResponse = await page.request.post(`/api/shortcuts/entries/create?shortcut_token=${encodeURIComponent(apiKey)}`, {
+      data: {
+        date: "23/8/26",
+        merchant: walletNamedDescription,
+        name: walletNamedAccount.name,
+        amount: `${walletNamedAccount.currency} 12.36`,
+        requestId: `playwright-wallet-account-${Date.now()}`
+      }
+    });
+    expect(walletNamedResponse.ok(), await walletNamedResponse.text()).toBeTruthy();
+    expect(await walletNamedResponse.json()).toMatchObject({
+      ok: true,
+      accountId: walletNamedAccount.id,
+      accountName: walletNamedAccount.name,
+      accountResolution: "wallet_name",
+      description: walletNamedDescription,
+      amountMinor: 1236
+    });
+
     const malformedAmountResponse = await page.request.post(`/api/shortcuts/entries/create?shortcut_token=${encodeURIComponent(apiKey)}`, {
       data: {
         date: "23/8/26",
@@ -372,6 +437,70 @@ test.describe("settings reference data", () => {
     expect(await malformedAmountResponse.json()).toMatchObject({
       ok: false,
       error: "Missing or invalid shortcut fields: amount."
+    });
+
+    const ambiguousAmountResponse = await page.request.post(`/api/shortcuts/entries/create?shortcut_token=${encodeURIComponent(apiKey)}`, {
+      data: {
+        date: "23/8/26",
+        description: `${description} ambiguous amount`,
+        amount: "SGD 12,34"
+      }
+    });
+    expect(ambiguousAmountResponse.status()).toBe(400);
+    expect(await ambiguousAmountResponse.json()).toMatchObject({
+      ok: false,
+      error: "Missing or invalid shortcut fields: amount."
+    });
+
+    const currencyMismatchResponse = await page.request.post(`/api/shortcuts/entries/create?shortcut_token=${encodeURIComponent(apiKey)}`, {
+      data: {
+        date: "23/8/26",
+        description: `${description} foreign currency`,
+        amount: "USD 12.34"
+      }
+    });
+    expect(currencyMismatchResponse.status()).toBe(400);
+    expect(await currencyMismatchResponse.json()).toMatchObject({
+      ok: false,
+      error: `Wallet amount is USD, but ${targetAccount.name} uses ${targetAccount.currency}. Nothing was saved.`
+    });
+
+    const oversizedDescriptionResponse = await page.request.post(`/api/shortcuts/entries/create?shortcut_token=${encodeURIComponent(apiKey)}`, {
+      data: {
+        date: "23/8/26",
+        description: "A".repeat(501),
+        amount: "SGD 12.34"
+      }
+    });
+    expect(oversizedDescriptionResponse.status()).toBe(400);
+    expect(await oversizedDescriptionResponse.json()).toMatchObject({
+      ok: false,
+      error: "Shortcut description must be 500 characters or fewer. Nothing was saved."
+    });
+
+    const sharedRetryResponse = await page.request.post(`/api/shortcuts/entries/create?shortcut_token=${encodeURIComponent(apiKey)}`, {
+      data: {
+        date: "23/8/26",
+        description: `${description} shared retry`,
+        amount: "SGD 12.34",
+        ownershipType: "shared",
+        requestId: `playwright-shared-${Date.now()}`
+      }
+    });
+    expect(sharedRetryResponse.status()).toBe(400);
+    expect(await sharedRetryResponse.json()).toMatchObject({
+      ok: false,
+      error: "Shortcut requestId is only supported for direct ownership entries. Nothing was saved."
+    });
+
+    const malformedJsonResponse = await page.request.post(`/api/shortcuts/entries/create?shortcut_token=${encodeURIComponent(apiKey)}`, {
+      headers: { "Content-Type": "application/json" },
+      data: Buffer.from("{not-json")
+    });
+    expect(malformedJsonResponse.status()).toBe(400);
+    expect(await malformedJsonResponse.json()).toMatchObject({
+      ok: false,
+      error: "Shortcut request body must be valid JSON."
     });
 
     const replayProtectedResponse = await page.request.post("/api/shortcuts/entries/create", {
@@ -393,6 +522,9 @@ test.describe("settings reference data", () => {
         && entry.amountMinor === 1234
       ))
     ).toBe(true);
+    expect(
+      entriesPage.monthPage.entries.filter((entry) => entry.description === description)
+    ).toHaveLength(1);
     expect(
       entriesPage.monthPage.entries.some((entry) => (
         entry.description === fallbackDescription
@@ -455,7 +587,7 @@ test.describe("settings reference data", () => {
 
   test("Apple shortcut install saves, copies the private connection, and opens the verified artifact", async ({ page }) => {
     const apiKey = `mm_playwright_install_${Date.now()}`;
-    const shortcutUrl = "https://www.icloud.com/shortcuts/17ff3669eb4f4a519416d04eff8c2f11";
+    const shortcutPath = "/shortcuts/monies-map-apple-pay-api.shortcut";
 
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "clipboard", {
@@ -465,18 +597,22 @@ test.describe("settings reference data", () => {
         }
       });
     });
-    await page.context().route(shortcutUrl, (route) => route.fulfill({
+    const artifactResponse = await page.request.get(shortcutPath);
+    expect(artifactResponse.ok()).toBeTruthy();
+    expect((await artifactResponse.body()).byteLength).toBe(24_341);
+    await page.context().route(`**${shortcutPath}`, (route) => route.fulfill({
       status: 200,
       contentType: "text/html",
       body: "<!doctype html><title>Verified Apple shortcut</title>"
     }));
 
     await openSettingsPage(page);
+    const shortcutUrl = new URL(shortcutPath, page.url()).toString();
     await page.getByRole("button", { name: /Apple Pay shortcut/ }).click();
     await expect(page.getByText("Paste the copied connection into Apple's plain-text setup field.")).toBeVisible();
     await expect(page.getByText(/keep the Dictionary with value, merchant, and name/)).toBeVisible();
     await expect(page.getByText(/replace Register Apple Pay Transaction with Monies Map Apple Pay API/)).toBeVisible();
-    await expect(page.getByText(/confirms the merchant and amount, then opens the saved entry/)).toBeVisible();
+    await expect(page.getByText(/confirms the merchant, amount, and account, then opens the saved entry/)).toBeVisible();
     await page.getByText("Advanced API settings", { exact: true }).click();
     const apiKeyInput = page.getByLabel("Private connection key", { exact: true });
     await expect(apiKeyInput).toHaveAttribute("type", "password");
