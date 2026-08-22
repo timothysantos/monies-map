@@ -385,6 +385,14 @@ export async function ensureDemoSchema(db: D1Database) {
     .prepare("PRAGMA table_info(transactions)")
     .all<{ name: string }>();
 
+  if (transactionColumns.results.some((column) => column.name === "external_reference")) {
+    await db.prepare(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_household_external_reference
+      ON transactions(household_id, external_reference)
+      WHERE external_reference IS NOT NULL
+    `).run();
+  }
+
   await dropLegacyLedgerOwnershipStorage(db, transactionColumns.results);
 
   if (transactionColumns.results.length > 0 && !transactionColumns.results.some((column) => column.name === "bank_certification_status")) {
@@ -2516,6 +2524,7 @@ export async function createEntryRecord(
     offsetsCategory?: boolean;
     note?: string;
     splitBasisPoints?: number;
+    externalReference?: string;
   }
 ) {
   if (typeof input.amountMinor !== "number" || input.amountMinor <= 0) {
@@ -2526,41 +2535,110 @@ export async function createEntryRecord(
   if (!accountId) {
     throw new Error(`Unknown account: ${input.accountName ?? "Unassigned"}`);
   }
-  const accountName = input.accountName ?? await loadAccountName(db, accountId);
-  const accountOwner = await db
-    .prepare("SELECT owner_person_id FROM accounts WHERE household_id = ? AND id = ?")
+  const account = await db
+    .prepare(`
+      SELECT account_name, owner_person_id, currency
+      FROM accounts
+      WHERE household_id = ? AND id = ?
+    `)
     .bind(DEFAULT_HOUSEHOLD_ID, accountId)
-    .first<{ owner_person_id: string | null }>();
+    .first<{ account_name: string; owner_person_id: string | null; currency: string }>();
+  if (!account) {
+    throw new Error(`Unknown account: ${input.accountName ?? accountId}`);
+  }
+  const accountName = account.account_name;
+  const currency = account.currency.toUpperCase();
   const categoryName = input.entryType === "transfer" ? "Transfer" : input.categoryName;
   const categoryId = await resolveCategoryId(db, categoryName);
   const ownerPersonId = input.ownerName
     ? await resolvePersonId(db, input.ownerName)
-    : accountOwner?.owner_person_id ?? null;
+    : account.owner_person_id ?? null;
+  const transferDirection = input.entryType === "transfer" ? (input.transferDirection ?? "out") : null;
+  const externalReference = input.externalReference?.trim() || null;
+
+  if (externalReference) {
+    const existing = await loadEntryByExternalReference(db, externalReference);
+    if (existing) {
+      assertIdempotentEntryMatches(existing, {
+        accountId,
+        date: input.date,
+        description: input.description,
+        amountMinor: input.amountMinor,
+        currency,
+        entryType: input.entryType,
+        transferDirection,
+        categoryId,
+        ownerPersonId,
+        offsetsCategory: input.offsetsCategory ? 1 : 0,
+        note: input.note ?? null
+      });
+      await recalculateMonthlySnapshots(db, input.date.slice(0, 7));
+      return {
+        entryId: existing.id,
+        created: false,
+        accountId,
+        accountName,
+        currency
+      };
+    }
+  }
   const entryId = `txn-${crypto.randomUUID()}`;
 
-  await db
-    .prepare(`
-      INSERT INTO transactions (
-        id, household_id, account_id, transaction_date,
-        description, amount_minor, currency, entry_type, transfer_direction,
-        category_id, owner_person_id, offsets_category, note
-      ) VALUES (?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, ?, ?)
-    `)
-    .bind(
-      entryId,
-      DEFAULT_HOUSEHOLD_ID,
+  try {
+    await db
+      .prepare(`
+        INSERT INTO transactions (
+          id, household_id, account_id, transaction_date,
+          description, amount_minor, currency, entry_type, transfer_direction,
+          category_id, owner_person_id, offsets_category, note, external_reference
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .bind(
+        entryId,
+        DEFAULT_HOUSEHOLD_ID,
+        accountId,
+        input.date,
+        input.description,
+        input.amountMinor,
+        currency,
+        input.entryType,
+        transferDirection,
+        categoryId,
+        ownerPersonId,
+        input.offsetsCategory ? 1 : 0,
+        input.note ?? null,
+        externalReference
+      )
+      .run();
+  } catch (error) {
+    const existing = externalReference
+      ? await loadEntryByExternalReference(db, externalReference)
+      : null;
+    if (!existing) {
+      throw error;
+    }
+    assertIdempotentEntryMatches(existing, {
       accountId,
-      input.date,
-      input.description,
-      input.amountMinor,
-      input.entryType,
-      input.entryType === "transfer" ? (input.transferDirection ?? "out") : null,
+      date: input.date,
+      description: input.description,
+      amountMinor: input.amountMinor,
+      currency,
+      entryType: input.entryType,
+      transferDirection,
       categoryId,
       ownerPersonId,
-      input.offsetsCategory ? 1 : 0,
-      input.note ?? null
-    )
-    .run();
+      offsetsCategory: input.offsetsCategory ? 1 : 0,
+      note: input.note ?? null
+    });
+    await recalculateMonthlySnapshots(db, input.date.slice(0, 7));
+    return {
+      entryId: existing.id,
+      created: false,
+      accountId,
+      accountName,
+      currency
+    };
+  }
 
   await recalculateMonthlySnapshots(db, input.date.slice(0, 7));
 
@@ -2578,7 +2656,80 @@ export async function createEntryRecord(
     });
   }
 
-  return { entryId, created: true };
+  return { entryId, created: true, accountId, accountName, currency };
+}
+
+interface IdempotentEntryRow {
+  id: string;
+  account_id: string;
+  transaction_date: string;
+  description: string;
+  amount_minor: number;
+  currency: string;
+  entry_type: string;
+  transfer_direction: string | null;
+  category_id: string | null;
+  owner_person_id: string | null;
+  offsets_category: number;
+  note: string | null;
+}
+
+interface IdempotentEntryExpected {
+  accountId: string;
+  date: string;
+  description: string;
+  amountMinor: number;
+  currency: string;
+  entryType: "expense" | "income" | "transfer";
+  transferDirection: "in" | "out" | null;
+  categoryId: string | null;
+  ownerPersonId: string | null;
+  offsetsCategory: number;
+  note: string | null;
+}
+
+async function loadEntryByExternalReference(db: D1Database, externalReference: string) {
+  return db
+    .prepare(`
+      SELECT
+        id,
+        account_id,
+        transaction_date,
+        description,
+        amount_minor,
+        currency,
+        entry_type,
+        transfer_direction,
+        category_id,
+        owner_person_id,
+        offsets_category,
+        note
+      FROM transactions
+      WHERE household_id = ? AND external_reference = ?
+      LIMIT 1
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, externalReference)
+    .first<IdempotentEntryRow>();
+}
+
+function assertIdempotentEntryMatches(
+  existing: IdempotentEntryRow,
+  expected: IdempotentEntryExpected
+) {
+  const matches = existing.account_id === expected.accountId
+    && existing.transaction_date === expected.date
+    && existing.description === expected.description
+    && Number(existing.amount_minor) === expected.amountMinor
+    && existing.currency === expected.currency
+    && existing.entry_type === expected.entryType
+    && existing.transfer_direction === expected.transferDirection
+    && existing.category_id === expected.categoryId
+    && existing.owner_person_id === expected.ownerPersonId
+    && Number(existing.offsets_category) === expected.offsetsCategory
+    && existing.note === expected.note;
+  if (!matches) {
+    throw new Error("Shortcut request ID was already used for a different entry.");
+  }
 }
 
 export async function deleteEntryRecord(

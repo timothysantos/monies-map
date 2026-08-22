@@ -280,6 +280,10 @@ CREATE TABLE IF NOT EXISTS transactions (
   FOREIGN KEY (statement_certified_previous_import_row_id) REFERENCES import_rows(id)
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_household_external_reference
+  ON transactions(household_id, external_reference)
+  WHERE external_reference IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS split_groups (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL,
