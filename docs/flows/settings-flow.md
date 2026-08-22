@@ -67,9 +67,20 @@ The Apple Pay shortcut install flow is ordered deliberately:
 3. persist the settings
 4. open the verified, secret-free iCloud shortcut
 
-The iCloud artifact uses an Apple setup question to receive the copied URL. The
-public artifact never owns the household key. Default account reordering saves
-immediately; advanced key and default-param text edits retain an explicit save.
+The iCloud artifact uses an Apple setup question targeting a plain Text action
+to receive the copied URL. The Text action then supplies the POST action's URL;
+using Apple's URL-list setup editor is prohibited because it can clear a full
+URL pasted on iPhone. The public artifact never owns the household key. Default
+account reordering saves immediately; advanced key and default-param text edits
+retain an explicit save.
+
+The shared shortcut accepts the device-local Transaction automation's
+Dictionary input with `value`, `merchant`, and `name` keys. The automation's
+final action runs `Monies Map Apple Pay API` with that Dictionary. An older
+helper shortcut must not remain as an additional hop or a second target because
+that obscures ownership and can produce duplicate ledger rows.
+After a successful POST, the shortcut opens the response `openUrl` for optional
+entry edits and confirms the Wallet merchant and amount in a notification.
 In production the copied URL targets the public, shortcut-only gateway rather
 than the Cloudflare Access-protected app hostname. The gateway shares app
 settings through D1 and exposes no Settings, ledger, import, or static-app route.

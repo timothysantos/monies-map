@@ -332,31 +332,52 @@ request is rejected.
 3. Select Install Apple Shortcut. Monies Map saves the connection, copies it,
    and opens the verified shared shortcut.
 4. Select Get Shortcut or Add Shortcut on Apple's page.
-5. When Apple asks for the Monies Map connection URL, paste the copied value.
-6. On the iPhone, open Shortcuts -> Automation, add a Transaction automation,
-   and make it run `Monies Map Apple Pay Direct`. Choose Run Immediately when
-   that option is available.
+5. When Apple shows the plain-text setup field for the Monies Map connection
+   URL, paste the copied value. The full URL should remain visible after the
+   paste.
+6. On the iPhone, open the existing When I tap Wallet Transaction automation.
+   Choose Run Immediately when that option is available. If no such automation
+   exists yet, create one first.
+7. In that automation, create a Dictionary with `value`, `merchant`, and `name`
+   populated from the Wallet transaction. If the existing automation already
+   creates this dictionary, leave it unchanged.
+8. In the automation's final Run Shortcut action, replace
+   `Register Apple Pay Transaction` with `Monies Map Apple Pay API`, and pass
+   that Dictionary as the shortcut input.
+
+This is one automation calling one shared shortcut. The older
+`Register Apple Pay transaction` shortcut is not an additional required step;
+once the new flow saves a test transaction successfully, remove or disable the
+old shortcut target so one Wallet tap cannot create two ledger entries.
 
 The shared shortcut sends Wallet's transaction amount and merchant plus the
-current date directly to Monies Map, then shows a success notification. The
-server accepts ISO dates and Apple's day-first local date text such as
-`27/04/2026`.
+current date directly to Monies Map. On success it shows `Saved <merchant> •
+<amount>`, reads the saved entry's `openUrl` from the API response, and opens the
+entry for optional edits. The server accepts ISO dates and Apple's day-first
+local date text such as `27/04/2026`. The private connection URL is the POST
+destination stored during shortcut setup; it is not part of the transaction
+payload.
 
 Apple personal automations are device-local and are not part of an iCloud
 shared shortcut, so the final Transaction automation is the one required manual
 step on each iPhone. The shared shortcut itself is available at:
 
-- [Monies Map Apple Pay Direct](https://www.icloud.com/shortcuts/5b5151bccd0d4d368ef17ee3c2270687)
+- [Monies Map Apple Pay API](https://www.icloud.com/shortcuts/17ff3669eb4f4a519416d04eff8c2f11)
 
 ### What does the installed direct-create shortcut contain?
 
-The verified shortcut has no empty key rows and no embedded account secret. It
-contains a URL action configured by Apple's setup question, one POST
-`Get Contents of URL` action, and a JSON body with exactly these keys:
+The verified shortcut has no empty key rows and no embedded account secret. Its
+setup question targets a plain Text action, whose output supplies the URL for
+one POST `Get Contents of URL` action. This avoids Apple's multi-item URL editor,
+which can clear a complete connection URL pasted during shortcut installation.
+The POST has a JSON body with exactly these keys:
 
 - `amount`
 - `description`
 - `date`
+
+After the POST succeeds, the shortcut extracts `openUrl`, opens that URL, and
+shows a notification containing the Wallet merchant and amount.
 
 Account, category, ownership, and owner are resolved from the Settings defaults.
 Advanced custom shortcuts can add any optional API fields documented above.

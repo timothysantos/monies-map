@@ -53,9 +53,17 @@ Date: 2026-08-22
   install action, masked key, collapsed advanced controls, drag-and-drop account
   reordering, and up/down controls.
 - Install generates a key when needed, saves it, copies the private connection
-  URL, and opens the verified `Monies Map Apple Pay Direct` iCloud artifact.
-- The public artifact contains no secret. Its setup question targets the URL
-  action and its POST body contains only `amount`, `description`, and `date`.
+  URL, and opens the verified `Monies Map Apple Pay API` iCloud artifact.
+- The replacement public artifact contains no secret. Its setup question
+  targets a plain Text action, that action's output supplies the POST URL, and
+  its body contains only `amount`, `description`, and `date`. This replaces the
+  URL-action setup field that cleared complete pasted URLs on iPhone.
+- On success, the artifact extracts `openUrl` from the POST response, opens the
+  saved entry for optional edits, and shows `Saved <merchant> • <amount>`.
+- The Settings instructions now expose the artifact's input contract: the
+  device-local Transaction automation creates a Dictionary with `value`,
+  `merchant`, and `name`, then runs `Monies Map Apple Pay API` with that
+  Dictionary. The older helper shortcut is not an additional required hop.
 - Production now deploys `monies-map-shortcuts` as a public shortcut-only
   Worker against the same D1 database. It rejects every non-shortcut path and
   returns protected-app origins in response deep links.
@@ -82,9 +90,15 @@ Date: 2026-08-22
 - `tests/e2e/settings-reference-data.spec.js` covers the install action saving
   the key, copying the authenticated connection URL, opening the verified
   iCloud URL, rejecting partial replay headers, and accepting a local date.
-- The downloaded signed iCloud artifact was decrypted and inspected: it has
-  nine actions, one setup question targeting action index 5, no token, and no
-  unexpected headers or JSON keys.
+- The replacement signed artifact and Apple's hosted payload were both
+  decrypted or downloaded and inspected: each has 11 actions, one setup
+  question targeting action index 5 and `WFTextActionText`, a Text action at
+  that index, a POST action reading its `Text` output, an `openUrl` extraction
+  tied to that POST response, an Open URLs action, a merchant-and-amount
+  notification, no token, and no unexpected headers or JSON keys.
+- The imported replacement was exercised in the real Apple setup UI. Its field
+  is a plain text area, and a complete connection URL remained present after
+  paste and validation instead of being cleared.
 - Closure verification passed TypeScript, the production build, all 173 unit
   and parser tests, all 116 smoke scenarios, and all 31 additional browser
   scenarios outside the smoke bundle.
@@ -128,6 +142,7 @@ Date: 2026-08-22
   high-entropy app key are mandatory controls; add edge rate limiting if this
   becomes a multi-household or high-volume endpoint.
 - Apple does not package a personal Transaction automation inside a shared
-  shortcut. Each iPhone still needs that final device-local automation step.
+  shortcut. Each iPhone still needs that final device-local automation and
+  Dictionary handoff step.
 - The drag-and-drop UI has button equivalents for accessibility, but mobile
   drag behavior should be checked whenever the Settings layout is redesigned.
