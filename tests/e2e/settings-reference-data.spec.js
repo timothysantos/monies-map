@@ -423,7 +423,7 @@ test.describe("settings reference data", () => {
 
   test("Apple shortcut install saves, copies the private connection, and opens the verified artifact", async ({ page }) => {
     const apiKey = `mm_playwright_install_${Date.now()}`;
-    const shortcutUrl = "https://www.icloud.com/shortcuts/5b5151bccd0d4d368ef17ee3c2270687";
+    const shortcutUrl = "https://www.icloud.com/shortcuts/17ff3669eb4f4a519416d04eff8c2f11";
 
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "clipboard", {
@@ -441,6 +441,10 @@ test.describe("settings reference data", () => {
 
     await openSettingsPage(page);
     await page.getByRole("button", { name: /Apple Pay shortcut/ }).click();
+    await expect(page.getByText("Paste the copied connection into Apple's plain-text setup field.")).toBeVisible();
+    await expect(page.getByText(/keep the Dictionary with value, merchant, and name/)).toBeVisible();
+    await expect(page.getByText(/replace Register Apple Pay Transaction with Monies Map Apple Pay API/)).toBeVisible();
+    await expect(page.getByText(/confirms the merchant and amount, then opens the saved entry/)).toBeVisible();
     await page.getByText("Advanced API settings", { exact: true }).click();
     const apiKeyInput = page.getByLabel("Private connection key", { exact: true });
     await expect(apiKeyInput).toHaveAttribute("type", "password");
