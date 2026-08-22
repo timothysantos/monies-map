@@ -1,0 +1,18 @@
+{
+  "name": "Monies Map Apple Pay API",
+  "releaseDate": "2026-08-22",
+  "icloudShareUrl": "https://www.icloud.com/shortcuts/17ff3669eb4f4a519416d04eff8c2f11",
+  "icloudRecordName": "17FF3669-EB4F-4A51-9416-D04EFF8C2F11",
+  "icloudSigningStatus": "APPROVED",
+  "sourceFile": "monies-map-apple-pay-api.plist",
+  "sourceSha256": "506ef0cfbdb5f3645cba3c5b8d3c5c88f2f548c2ef24af9d6348f7e550cfe63c",
+  "appleHostedUnsignedPayloadSha256": "fb5585a2e8c0ac8d2fb3fd23aafb10198c2211c43f342c72dd8643e20da6ea4e",
+  "signedReleaseFile": "releases/monies-map-apple-pay-api-2026-08-22.shortcut",
+  "signedReleaseSha256": "0ab531617028592e32fcd6a1905e510816e06063a6824fdd07f7563a9d006640",
+  "signedReleaseSize": 23521,
+  "actionCount": 11,
+  "setupQuestion": {
+    "actionIndex": 5,
+    "parameterKey": "WFTextActionText"
+  }
+}
