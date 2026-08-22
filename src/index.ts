@@ -839,9 +839,10 @@ export default {
       const shortcutDefaults = await loadShortcutSettings(env.DB);
       const bodyWithDefaults = applyShortcutCreateDefaults(body, shortcutDefaults.defaultParams);
       const amountMinor = normalizeShortcutAmountMinor(bodyWithDefaults.amountMinor, bodyWithDefaults.amount);
+      const shortcutDate = normalizeShortcutDate(bodyWithDefaults.date);
       const accountId = bodyWithDefaults.accountId ?? (!bodyWithDefaults.accountName ? await resolveShortcutDefaultAccountId(env.DB) : undefined);
       if (
-        !bodyWithDefaults.date
+        !shortcutDate
         || !bodyWithDefaults.description
         || (!accountId && !bodyWithDefaults.accountName)
         || amountMinor == null
@@ -851,7 +852,7 @@ export default {
 
       try {
         const created = await createEntryRecord(env.DB, {
-          date: bodyWithDefaults.date,
+          date: shortcutDate,
           description: bodyWithDefaults.description,
           accountId,
           accountName: bodyWithDefaults.accountName,
@@ -867,7 +868,7 @@ export default {
         });
         const openUrl = buildShortcutEntryOpenUrl(request, {
           entryId: created.entryId,
-          date: bodyWithDefaults.date,
+          date: shortcutDate,
           viewId: bodyWithDefaults.view,
           accountId,
           accountName: bodyWithDefaults.accountName
@@ -1740,6 +1741,7 @@ async function authenticateShortcutRequest(
 
   const providedToken = request.headers.get("X-Monies-Shortcut-Token")?.trim()
     || request.headers.get("Authorization")?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim()
+    || new URL(request.url).searchParams.get("shortcut_token")?.trim()
     || "";
   if (!providedToken) {
     return { ok: false, status: 401, error: "Missing shortcut token." };
@@ -1751,11 +1753,15 @@ async function authenticateShortcutRequest(
   }
 
   const nonce = request.headers.get("X-Monies-Shortcut-Nonce")?.trim();
+  const timestampHeader = request.headers.get("X-Monies-Shortcut-Timestamp")?.trim();
+  if (!nonce && !timestampHeader) {
+    return { ok: true };
+  }
+
   if (!nonce) {
     return { ok: false, status: 400, error: "Missing shortcut nonce." };
   }
 
-  const timestampHeader = request.headers.get("X-Monies-Shortcut-Timestamp")?.trim();
   const timestamp = parseShortcutTimestamp(timestampHeader);
   if (timestamp == null) {
     return { ok: false, status: 400, error: "Missing or invalid shortcut timestamp." };
@@ -1846,6 +1852,38 @@ function normalizeShortcutAmountMinor(amountMinor?: number, amount?: number | st
   }
 
   return null;
+}
+
+function normalizeShortcutDate(value?: string) {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const isoDate = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/);
+  if (isoDate && isValidShortcutDateParts(Number(isoDate[1]), Number(isoDate[2]), Number(isoDate[3]))) {
+    return `${isoDate[1]}-${isoDate[2]}-${isoDate[3]}`;
+  }
+
+  const dayFirstDate = trimmed.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})$/);
+  if (dayFirstDate) {
+    const year = Number(dayFirstDate[3]);
+    const month = Number(dayFirstDate[2]);
+    const day = Number(dayFirstDate[1]);
+    if (isValidShortcutDateParts(year, month, day)) {
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+  }
+
+  const parsed = Date.parse(trimmed);
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString().slice(0, 10) : undefined;
+}
+
+function isValidShortcutDateParts(year: number, month: number, day: number) {
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+  return candidate.getUTCFullYear() === year
+    && candidate.getUTCMonth() === month - 1
+    && candidate.getUTCDate() === day;
 }
 
 function applyShortcutCreateDefaults<
