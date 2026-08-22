@@ -337,7 +337,7 @@ test.describe("settings reference data", () => {
 
     const response = await page.request.post(`/api/shortcuts/entries/create?shortcut_token=${encodeURIComponent(apiKey)}`, {
       data: {
-        date: "27/04/2026",
+        date: "22/8/26",
         description,
         amount: "12.34"
       }
@@ -347,6 +347,7 @@ test.describe("settings reference data", () => {
     expect(created.ok).toBe(true);
     expect(created.entryId).toBeTruthy();
     expect(created.openUrl).toContain(`/entries`);
+    expect(created.openUrl).toContain("month=2026-08");
     expect(created.openUrl).toContain(`entry_wallet=${encodeURIComponent(targetAccount.id)}`);
 
     const replayProtectedResponse = await page.request.post("/api/shortcuts/entries/create", {
@@ -359,7 +360,7 @@ test.describe("settings reference data", () => {
     });
     expect(replayProtectedResponse.ok(), await replayProtectedResponse.text()).toBeTruthy();
 
-    const entriesPage = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
+    const entriesPage = await loadEntriesPage(page, { view: "person-tim", month: "2026-08" });
     expect(
       entriesPage.monthPage.entries.some((entry) => (
         entry.description === description

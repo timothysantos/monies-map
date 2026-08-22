@@ -863,7 +863,16 @@ export default {
         || (!accountId && !bodyWithDefaults.accountName)
         || amountMinor == null
       ) {
-        return json({ ok: false, error: "Missing shortcut entry fields" }, 400);
+        const invalidFields = [
+          !shortcutDate ? "date" : undefined,
+          !bodyWithDefaults.description ? "description" : undefined,
+          !accountId && !bodyWithDefaults.accountName ? "account" : undefined,
+          amountMinor == null ? "amount" : undefined
+        ].filter((field): field is string => Boolean(field));
+        return json({
+          ok: false,
+          error: `Missing or invalid shortcut fields: ${invalidFields.join(", ")}.`
+        }, 400);
       }
 
       try {
@@ -1881,13 +1890,20 @@ function normalizeShortcutDate(value?: string) {
     return `${isoDate[1]}-${isoDate[2]}-${isoDate[3]}`;
   }
 
-  const dayFirstDate = trimmed.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})$/);
-  if (dayFirstDate) {
-    const year = Number(dayFirstDate[3]);
-    const month = Number(dayFirstDate[2]);
-    const day = Number(dayFirstDate[1]);
-    if (isValidShortcutDateParts(year, month, day)) {
-      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const localizedDate = trimmed.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2}|\d{4})$/);
+  if (localizedDate) {
+    const yearValue = Number(localizedDate[3]);
+    const year = localizedDate[3].length === 2 ? 2000 + yearValue : yearValue;
+    const first = Number(localizedDate[1]);
+    const second = Number(localizedDate[2]);
+    const dateParts = [
+      { month: second, day: first },
+      { month: first, day: second }
+    ];
+    for (const { month, day } of dateParts) {
+      if (isValidShortcutDateParts(year, month, day)) {
+        return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      }
     }
   }
 
