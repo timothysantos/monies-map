@@ -318,10 +318,26 @@ test.describe("settings reference data", () => {
     expect(settingsPage.settingsPage.shortcutSettings.defaultAccountPriorityIds[0]).toBe(targetAccount.id);
     expect(settingsPage.settingsPage.shortcutSettings.defaultParams).toContain("ownerName=Tim");
 
-    const response = await page.request.post("/api/shortcuts/entries/create", {
-      headers: shortcutHeaders(apiKey),
+    const partialReplayHeaders = await page.request.post("/api/shortcuts/entries/create", {
+      headers: {
+        "X-Monies-Shortcut-Token": apiKey,
+        "X-Monies-Shortcut-Nonce": `partial-${Date.now()}`
+      },
       data: {
-        date: "2026-04-27",
+        date: "27/04/2026",
+        description,
+        amount: "12.34"
+      }
+    });
+    expect(partialReplayHeaders.status()).toBe(400);
+    expect(await partialReplayHeaders.json()).toMatchObject({
+      ok: false,
+      error: "Missing or invalid shortcut timestamp."
+    });
+
+    const response = await page.request.post(`/api/shortcuts/entries/create?shortcut_token=${encodeURIComponent(apiKey)}`, {
+      data: {
+        date: "27/04/2026",
         description,
         amount: "12.34"
       }
@@ -332,6 +348,16 @@ test.describe("settings reference data", () => {
     expect(created.entryId).toBeTruthy();
     expect(created.openUrl).toContain(`/entries`);
     expect(created.openUrl).toContain(`entry_wallet=${encodeURIComponent(targetAccount.id)}`);
+
+    const replayProtectedResponse = await page.request.post("/api/shortcuts/entries/create", {
+      headers: shortcutHeaders(apiKey),
+      data: {
+        date: "2026-04-28",
+        description: `${description} replay protected`,
+        amount: "1.00"
+      }
+    });
+    expect(replayProtectedResponse.ok(), await replayProtectedResponse.text()).toBeTruthy();
 
     const entriesPage = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
     expect(
@@ -358,6 +384,90 @@ test.describe("settings reference data", () => {
       && entry.accountName === targetAccount.name
       && entry.amountMinor === 789
     ))).toBe(true);
+  });
+
+  test("shortcut account priority move autosaves and survives refresh", async ({ page }) => {
+    const referenceData = await loadReferenceData(page);
+    const activeAccounts = referenceData.accounts.filter((account) => account.isActive);
+    expect(activeAccounts.length).toBeGreaterThanOrEqual(2);
+    const apiKey = `mm_playwright_priority_${Date.now()}`;
+    const initialPriorityIds = activeAccounts.map((account) => account.id);
+    const movedAccount = activeAccounts[1];
+
+    await postJson(page, "/api/settings/shortcuts/save", {
+      apiKey,
+      defaultAccountPriorityIds: initialPriorityIds,
+      defaultParams: "categoryName=Other&ownerName=Tim"
+    });
+
+    await openSettingsPage(page);
+    await page.getByRole("button", { name: /Apple Pay shortcut/ }).click();
+    await expect(page.locator(".settings-shortcut-account-row").first()).toContainText(activeAccounts[0].name);
+
+    const saveResponse = page.waitForResponse((response) => (
+      response.url().includes("/api/settings/shortcuts/save") && response.ok()
+    ));
+    await page.getByRole("button", { name: `Move ${movedAccount.name} up` }).click();
+    await saveResponse;
+    await expect(page.locator(".settings-shortcut-status")).toHaveText("Account priority saved.");
+
+    const settingsReload = page.waitForResponse((response) => response.url().includes("/api/settings-page") && response.ok());
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await settingsReload;
+    await page.getByRole("button", { name: /Apple Pay shortcut/ }).click();
+    await expect(page.locator(".settings-shortcut-account-row").first()).toContainText(movedAccount.name);
+
+    const settingsPage = await loadSettingsPage(page);
+    expect(settingsPage.settingsPage.shortcutSettings.defaultAccountPriorityIds[0]).toBe(movedAccount.id);
+  });
+
+  test("Apple shortcut install saves, copies the private connection, and opens the verified artifact", async ({ page }) => {
+    const apiKey = `mm_playwright_install_${Date.now()}`;
+    const shortcutUrl = "https://www.icloud.com/shortcuts/5b5151bccd0d4d368ef17ee3c2270687";
+
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: {
+          writeText: async (value) => window.sessionStorage.setItem("playwright-shortcut-clipboard", value)
+        }
+      });
+    });
+    await page.context().route(shortcutUrl, (route) => route.fulfill({
+      status: 200,
+      contentType: "text/html",
+      body: "<!doctype html><title>Verified Apple shortcut</title>"
+    }));
+
+    await openSettingsPage(page);
+    await page.getByRole("button", { name: /Apple Pay shortcut/ }).click();
+    await page.getByText("Advanced API settings", { exact: true }).click();
+    const apiKeyInput = page.getByLabel("Private connection key", { exact: true });
+    await expect(apiKeyInput).toHaveAttribute("type", "password");
+    await apiKeyInput.fill(apiKey);
+
+    const saveResponse = page.waitForResponse((response) => (
+      response.url().includes("/api/settings/shortcuts/save") && response.ok()
+    ));
+    const popupPromise = page.waitForEvent("popup");
+    await page.getByRole("button", { name: "Install Apple Shortcut" }).click();
+    await saveResponse;
+    const popup = await popupPromise;
+    await popup.waitForURL(shortcutUrl);
+
+    expect(popup.url()).toBe(shortcutUrl);
+    const copiedConnection = await page.evaluate(() => window.sessionStorage.getItem("playwright-shortcut-clipboard"));
+    const parsedConnection = new URL(copiedConnection);
+    expect(parsedConnection.pathname).toBe("/api/shortcuts/entries/create");
+    expect(parsedConnection.searchParams.get("shortcut_token")).toBe(apiKey);
+    expect(await loadSettingsPage(page)).toMatchObject({
+      settingsPage: {
+        shortcutSettings: {
+          apiKey
+        }
+      }
+    });
+    await popup.close();
   });
 
   test("category rename refreshes reference data plus month and summary downstream DTOs", async ({ page }) => {

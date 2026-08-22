@@ -75,6 +75,36 @@ import { parseStatementText } from "../lib/statement-import";
 const DEFAULT_MONTH_KEY = getCurrentMonthKey();
 const { format: formatService, imports: importService } = moniesClient;
 
+function createShortcutApiKey() {
+  const bytes = new Uint8Array(24);
+  window.crypto.getRandomValues(bytes);
+  return `mm_${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+}
+
+async function copyShortcutConnection(value) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return;
+    } catch {
+      // Fall through for browsers that expose Clipboard API but deny access.
+    }
+  }
+
+  const field = document.createElement("textarea");
+  field.value = value;
+  field.setAttribute("readonly", "");
+  field.style.position = "fixed";
+  field.style.opacity = "0";
+  document.body.appendChild(field);
+  field.select();
+  const copied = document.execCommand("copy");
+  field.remove();
+  if (!copied) {
+    throw new Error(messages.settings.shortcutCopyFailed);
+  }
+}
+
 export function SettingsPanel({
   settingsPage,
   accounts,
@@ -152,6 +182,7 @@ export function SettingsPanel({
   const canUseDemoControls = appEnvironment === "demo" || appEnvironment === "local";
   const [shortcutSettingsDraft, setShortcutSettingsDraft] = useState(() => buildShortcutSettingsDraft(safeSettingsPage.shortcutSettings, accounts));
   const [shortcutSettingsError, setShortcutSettingsError] = useState("");
+  const [shortcutSettingsStatus, setShortcutSettingsStatus] = useState("");
 
   useEffect(() => {
     setShortcutSettingsDraft(buildShortcutSettingsDraft(safeSettingsPage.shortcutSettings, accounts));
@@ -905,21 +936,68 @@ export function SettingsPanel({
   }
 
   function handleGenerateShortcutApiKey() {
-    const bytes = new Uint8Array(24);
-    window.crypto.getRandomValues(bytes);
-    const key = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-    setShortcutSettingsDraft((current) => ({ ...current, apiKey: `mm_${key}` }));
+    setShortcutSettingsDraft((current) => ({ ...current, apiKey: createShortcutApiKey() }));
+    setShortcutSettingsStatus("");
   }
 
-  function handleMoveShortcutAccount(fromIndex, toIndex) {
-    setShortcutSettingsDraft((current) => ({
-      ...current,
-      defaultAccountPriorityIds: reorderShortcutAccountPriorityIds(
-        current.defaultAccountPriorityIds,
-        fromIndex,
-        toIndex
-      )
-    }));
+  async function handleInstallShortcut() {
+    const apiKey = shortcutSettingsDraft.apiKey.trim() || createShortcutApiKey();
+    const nextDraft = { ...shortcutSettingsDraft, apiKey };
+    const connectionUrl = new URL(safeSettingsPage.shortcutSettings.endpointPath, window.location.origin);
+    connectionUrl.searchParams.set("shortcut_token", apiKey);
+
+    setShortcutSettingsDraft(nextDraft);
+    setShortcutSettingsError("");
+    setShortcutSettingsStatus(messages.settings.shortcutPreparingInstall);
+    setIsSubmitting(true);
+    try {
+      await copyShortcutConnection(connectionUrl.toString());
+      await saveShortcutSettings(nextDraft);
+      setShortcutSettingsStatus(messages.settings.shortcutConnectionCopied);
+      await onRefresh(buildSettingsRefreshPlan("shortcut_settings_saved"));
+    } catch (error) {
+      setShortcutSettingsError(error instanceof Error ? error.message : messages.settings.shortcutInstallFailed);
+      setShortcutSettingsStatus("");
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleMoveShortcutAccount(fromIndex, toIndex) {
+    const nextPriorityIds = reorderShortcutAccountPriorityIds(
+      shortcutSettingsDraft.defaultAccountPriorityIds,
+      fromIndex,
+      toIndex
+    );
+    if (nextPriorityIds === shortcutSettingsDraft.defaultAccountPriorityIds) {
+      return;
+    }
+
+    const nextDraft = {
+      ...shortcutSettingsDraft,
+      defaultAccountPriorityIds: nextPriorityIds
+    };
+    setShortcutSettingsDraft(nextDraft);
+    setShortcutSettingsError("");
+
+    if (!nextDraft.apiKey.trim()) {
+      setShortcutSettingsStatus(messages.settings.shortcutPriorityNeedsKey);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setShortcutSettingsStatus(messages.settings.shortcutPrioritySaving);
+    try {
+      await saveShortcutSettings(nextDraft);
+      setShortcutSettingsStatus(messages.settings.shortcutPrioritySaved);
+      await onRefresh(buildSettingsRefreshPlan("shortcut_settings_saved"));
+    } catch (error) {
+      setShortcutSettingsError(error instanceof Error ? error.message : "Failed to save shortcut settings.");
+      setShortcutSettingsStatus("");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   async function handleSaveShortcutSettings() {
@@ -927,9 +1005,11 @@ export function SettingsPanel({
     setShortcutSettingsError("");
     try {
       await saveShortcutSettings(shortcutSettingsDraft);
+      setShortcutSettingsStatus(messages.settings.shortcutSettingsSaved);
       await onRefresh(buildSettingsRefreshPlan("shortcut_settings_saved"));
     } catch (error) {
       setShortcutSettingsError(error instanceof Error ? error.message : "Failed to save shortcut settings.");
+      setShortcutSettingsStatus("");
     } finally {
       setIsSubmitting(false);
     }
@@ -1010,9 +1090,17 @@ export function SettingsPanel({
         isOpen={settingsSectionsOpen.shortcutApi}
         isSubmitting={isSubmitting}
         shortcutSettings={safeSettingsPage.shortcutSettings}
-        onApiKeyChange={(apiKey) => setShortcutSettingsDraft((current) => ({ ...current, apiKey }))}
-        onDefaultParamsChange={(defaultParams) => setShortcutSettingsDraft((current) => ({ ...current, defaultParams }))}
+        status={shortcutSettingsStatus}
+        onApiKeyChange={(apiKey) => {
+          setShortcutSettingsDraft((current) => ({ ...current, apiKey }));
+          setShortcutSettingsStatus("");
+        }}
+        onDefaultParamsChange={(defaultParams) => {
+          setShortcutSettingsDraft((current) => ({ ...current, defaultParams }));
+          setShortcutSettingsStatus("");
+        }}
         onGenerateApiKey={handleGenerateShortcutApiKey}
+        onInstallShortcut={handleInstallShortcut}
         onMoveAccount={handleMoveShortcutAccount}
         onToggle={() => toggleSettingsSection("shortcutApi")}
         onSave={handleSaveShortcutSettings}

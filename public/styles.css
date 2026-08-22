@@ -1820,13 +1820,129 @@ h3 {
   resize: vertical;
 }
 
+.settings-shortcut-status {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(37, 132, 95, 0.24);
+  border-radius: 8px;
+  background: rgba(37, 132, 95, 0.08);
+  color: var(--green);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.settings-shortcut-install {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-shortcut-install-copy {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.settings-shortcut-install-copy p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.settings-shortcut-install-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: rgba(37, 132, 95, 0.1);
+  color: var(--green);
+}
+
+.settings-shortcut-install-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--accent-strong);
+  border-radius: 8px;
+  background: var(--accent-strong);
+  color: white;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.settings-shortcut-install-button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+@media (max-width: 700px) {
+  .settings-shortcut-install {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-shortcut-install-button {
+    width: 100%;
+  }
+}
+
+.settings-shortcut-steps {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 24px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.settings-shortcut-advanced {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.settings-shortcut-advanced summary {
+  color: var(--accent-strong);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.settings-shortcut-advanced-content {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+}
+
+.settings-shortcut-secret-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 6px;
+  align-items: center;
+}
+
+.settings-shortcut-secret-input .icon-action {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+}
+
 .settings-shortcut-reference {
   display: grid;
   gap: 8px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.52);
+  padding: 4px 0;
 }
 
 .settings-shortcut-reference p {

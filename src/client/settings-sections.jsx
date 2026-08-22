@@ -1,5 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { ArrowDown, ArrowUp, ChevronRight, GripVertical, SquarePen, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, ExternalLink, Eye, EyeOff, GripVertical, ShieldCheck, SquarePen, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { messages } from "./copy/en-SG";
@@ -9,6 +9,7 @@ import { findDuplicateCategoryMatchRules } from "./settings-workflow";
 import { CategoryGlyph, DeleteRowButton } from "./ui-components";
 
 const { accounts: accountService, format: formatService } = moniesClient;
+const APPLE_PAY_SHORTCUT_URL = "https://www.icloud.com/shortcuts/5b5151bccd0d4d368ef17ee3c2270687";
 
 function groupCategoryMatchRules(rules, categories) {
   const categoriesByName = new Map(categories.map((category) => [category.name, category]));
@@ -90,18 +91,42 @@ export function SettingsShortcutApiSection({
   isOpen,
   isSubmitting,
   shortcutSettings,
+  status,
   onApiKeyChange,
   onDefaultParamsChange,
   onGenerateApiKey,
+  onInstallShortcut,
   onMoveAccount,
   onToggle,
   onSave
 }) {
+  const [isApiKeyVisible, setIsApiKeyVisible] = useState(false);
+  const [isInstalling, setIsInstalling] = useState(false);
   const accountsById = useMemo(() => new Map(accounts.map((account) => [account.id, account])), [accounts]);
   const orderedAccounts = draft.defaultAccountPriorityIds
     .map((accountId) => accountsById.get(accountId))
     .filter(Boolean);
   const endpoint = `${window.location.origin}${shortcutSettings.endpointPath}`;
+
+  async function handleInstallShortcut() {
+    const installWindow = window.open("about:blank", "_blank");
+    if (installWindow) {
+      installWindow.opener = null;
+    }
+    setIsInstalling(true);
+    try {
+      await onInstallShortcut();
+      if (installWindow) {
+        installWindow.location.replace(APPLE_PAY_SHORTCUT_URL);
+      } else {
+        window.location.assign(APPLE_PAY_SHORTCUT_URL);
+      }
+    } catch {
+      installWindow?.close();
+    } finally {
+      setIsInstalling(false);
+    }
+  }
 
   return (
     <section className="chart-card settings-card">
@@ -114,56 +139,96 @@ export function SettingsShortcutApiSection({
       {isOpen ? (
         <div className="settings-shortcut-grid">
           {error ? <p className="form-error" role="alert">{error}</p> : null}
-          <label className="table-edit-field settings-form-wide">
-            <span>{messages.settings.shortcutEndpoint}</span>
-            <input className="table-edit-input" value={endpoint} readOnly />
-          </label>
-          <label className="table-edit-field settings-form-wide">
-            <span>{messages.settings.shortcutApiKey}</span>
-            <input
-              className="table-edit-input"
-              value={draft.apiKey}
-              onChange={(event) => onApiKeyChange(event.target.value)}
-              autoComplete="off"
-            />
-            <small className="field-help">{messages.settings.shortcutApiKeyHelp(shortcutSettings.apiKeySource)}</small>
-          </label>
-          <label className="table-edit-field settings-form-wide">
-            <span>{messages.settings.shortcutDefaultParams}</span>
-            <textarea
-              className="table-edit-input settings-shortcut-params-input"
-              value={draft.defaultParams}
-              onChange={(event) => onDefaultParamsChange(event.target.value)}
-              placeholder={messages.settings.shortcutDefaultParamsPlaceholder}
-              rows={2}
-            />
-            <small className="field-help">{messages.settings.shortcutDefaultParamsHelp}</small>
-          </label>
-          <div className="settings-shortcut-reference">
-            <div>
-              <strong>{messages.settings.shortcutUrlParamsTitle}</strong>
-              <p>{messages.settings.shortcutUrlParamsList}</p>
+          {status ? <p className="settings-shortcut-status" role="status" aria-live="polite">{status}</p> : null}
+          <div className="settings-shortcut-install">
+            <div className="settings-shortcut-install-copy">
+              <span className="settings-shortcut-install-icon" aria-hidden="true"><ShieldCheck size={18} /></span>
+              <div>
+                <strong>{messages.settings.shortcutInstallTitle}</strong>
+                <p>{messages.settings.shortcutInstallDetail}</p>
+              </div>
             </div>
-            <div>
-              <strong>{messages.settings.shortcutApiParamsTitle}</strong>
-              <p>{messages.settings.shortcutApiParamsList}</p>
-            </div>
-            <div>
-              <strong>{messages.settings.shortcutSystemDefaultsTitle}</strong>
-              <p>{messages.settings.shortcutSystemDefaultsDetail}</p>
-            </div>
-            <a className="subtle-action" href="shortcuts://create-shortcut">
-              {messages.settings.shortcutOpenCreateShortcut}
-            </a>
-          </div>
-          <div className="settings-actions">
-            <button type="button" className="subtle-action" onClick={onGenerateApiKey} disabled={isSubmitting}>
-              {messages.settings.shortcutGenerateApiKey}
-            </button>
-            <button type="button" className="subtle-action" onClick={onSave} disabled={isSubmitting || !draft.apiKey.trim() || orderedAccounts.length === 0}>
-              {isSubmitting ? messages.common.saving : messages.settings.shortcutSave}
+            <button
+              type="button"
+              className="settings-shortcut-install-button"
+              disabled={isSubmitting || isInstalling || orderedAccounts.length === 0}
+              onClick={() => void handleInstallShortcut()}
+            >
+              <ExternalLink size={16} aria-hidden="true" />
+              {isInstalling ? messages.settings.shortcutInstalling : messages.settings.shortcutInstall}
             </button>
           </div>
+          <ol className="settings-shortcut-steps">
+            <li>{messages.settings.shortcutInstallStep}</li>
+            <li>{messages.settings.shortcutPasteStep}</li>
+            <li>{messages.settings.shortcutAutomationStep}</li>
+          </ol>
+          <details className="settings-shortcut-advanced">
+            <summary>{messages.settings.shortcutAdvancedTitle}</summary>
+            <div className="settings-shortcut-advanced-content">
+              <label className="table-edit-field settings-form-wide">
+                <span>{messages.settings.shortcutEndpoint}</span>
+                <input className="table-edit-input" value={endpoint} readOnly />
+              </label>
+              <div className="table-edit-field settings-form-wide">
+                <label htmlFor="shortcut-api-key">{messages.settings.shortcutApiKey}</label>
+                <div className="settings-shortcut-secret-input">
+                  <input
+                    id="shortcut-api-key"
+                    className="table-edit-input"
+                    type={isApiKeyVisible ? "text" : "password"}
+                    value={draft.apiKey}
+                    onChange={(event) => onApiKeyChange(event.target.value)}
+                    autoComplete="off"
+                    spellCheck="false"
+                  />
+                  <button
+                    type="button"
+                    className="icon-action"
+                    aria-label={isApiKeyVisible ? messages.settings.shortcutHideApiKey : messages.settings.shortcutShowApiKey}
+                    title={isApiKeyVisible ? messages.settings.shortcutHideApiKey : messages.settings.shortcutShowApiKey}
+                    onClick={() => setIsApiKeyVisible((current) => !current)}
+                  >
+                    {isApiKeyVisible ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                <small className="field-help">{messages.settings.shortcutApiKeyHelp(shortcutSettings.apiKeySource)}</small>
+              </div>
+              <label className="table-edit-field settings-form-wide">
+                <span>{messages.settings.shortcutDefaultParams}</span>
+                <textarea
+                  className="table-edit-input settings-shortcut-params-input"
+                  value={draft.defaultParams}
+                  onChange={(event) => onDefaultParamsChange(event.target.value)}
+                  placeholder={messages.settings.shortcutDefaultParamsPlaceholder}
+                  rows={2}
+                />
+                <small className="field-help">{messages.settings.shortcutDefaultParamsHelp}</small>
+              </label>
+              <div className="settings-shortcut-reference">
+                <div>
+                  <strong>{messages.settings.shortcutUrlParamsTitle}</strong>
+                  <p>{messages.settings.shortcutUrlParamsList}</p>
+                </div>
+                <div>
+                  <strong>{messages.settings.shortcutApiParamsTitle}</strong>
+                  <p>{messages.settings.shortcutApiParamsList}</p>
+                </div>
+                <div>
+                  <strong>{messages.settings.shortcutSystemDefaultsTitle}</strong>
+                  <p>{messages.settings.shortcutSystemDefaultsDetail}</p>
+                </div>
+              </div>
+              <div className="settings-actions">
+                <button type="button" className="subtle-action" onClick={onGenerateApiKey} disabled={isSubmitting}>
+                  {messages.settings.shortcutGenerateApiKey}
+                </button>
+                <button type="button" className="subtle-action" onClick={onSave} disabled={isSubmitting || !draft.apiKey.trim() || orderedAccounts.length === 0}>
+                  {isSubmitting ? messages.common.saving : messages.settings.shortcutSave}
+                </button>
+              </div>
+            </div>
+          </details>
           <div className="settings-shortcut-priority">
             <div className="chart-head">
               <h3>{messages.settings.shortcutDefaultAccountsTitle}</h3>
@@ -179,7 +244,7 @@ export function SettingsShortcutApiSection({
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={(event) => {
                     event.preventDefault();
-                    onMoveAccount(Number(event.dataTransfer.getData("text/plain")), index);
+                    void onMoveAccount(Number(event.dataTransfer.getData("text/plain")), index);
                   }}
                 >
                   <GripVertical size={16} aria-hidden="true" />
@@ -192,8 +257,8 @@ export function SettingsShortcutApiSection({
                       type="button"
                       className="icon-action"
                       aria-label={messages.settings.shortcutMoveAccountUp(account.name)}
-                      disabled={index === 0}
-                      onClick={() => onMoveAccount(index, index - 1)}
+                      disabled={isSubmitting || index === 0}
+                      onClick={() => void onMoveAccount(index, index - 1)}
                     >
                       <ArrowUp size={15} />
                     </button>
@@ -201,8 +266,8 @@ export function SettingsShortcutApiSection({
                       type="button"
                       className="icon-action"
                       aria-label={messages.settings.shortcutMoveAccountDown(account.name)}
-                      disabled={index === orderedAccounts.length - 1}
-                      onClick={() => onMoveAccount(index, index + 1)}
+                      disabled={isSubmitting || index === orderedAccounts.length - 1}
+                      onClick={() => void onMoveAccount(index, index + 1)}
                     >
                       <ArrowDown size={15} />
                     </button>
