@@ -48,6 +48,23 @@ How this relates to other docs:
   defines system-wide structure, staged refactor order, and data flow
 - this file defines practical implementation boundaries for client-side code
 
+## Apple Shortcut Install Boundary
+
+The Settings slice owns the Apple Pay shortcut install workflow. The display
+component renders progress and advanced controls, while the Settings panel
+creates the private key, builds and copies the authenticated connection URL,
+persists the settings, and refreshes the settings query.
+
+The shared iCloud URL is a reviewed product artifact, not a source of household
+configuration. It must contain neither the API key nor a private connection
+URL. Apple's setup question injects that private URL only after the user opens
+the shared shortcut. The direct-create route remains responsible for token
+validation, date normalization, default-account selection, and entry creation.
+
+The install action opens its target window synchronously before asynchronous
+save work so browser popup protection does not turn a successful setup into a
+dead button. Failure closes the placeholder window and leaves an inline error.
+
 ## Import Preview Matcher Boundary
 
 The canonical import-preview matcher lives in
