@@ -368,6 +368,13 @@ Relationships:
 - may link to one `split expense`
 - may link to one `split settlement`
 - may be referenced by reconciliation records
+- may have one external request reference for idempotent direct creation
+
+An external request reference identifies a caller's create attempt, not a bank
+transaction. It is unique within a household. Repeating the same reference with
+the same normalized ledger facts returns the existing entry; reusing it for
+different facts is a conflict. Bank imports continue to use import-row and
+reconciliation evidence rather than this API retry identity.
 
 ### Transaction Date & Reconciliation
 The system uses an event-first date model so planning and split workflows do

@@ -187,9 +187,9 @@ domain model just to simplify the client.
 ### Shortcut integration boundary
 
 The Apple Pay integration uses a dedicated direct-create route rather than the
-browser entry form. The public iCloud shortcut must remain secret-free. Settings
-owns key generation, connection-URL copy, the verified install link, and default
-account priority.
+browser entry form. The Apple-signed shortcut must remain secret-free. Settings
+owns key generation, connection-URL copy, the verified signed-file install path,
+and default account priority.
 
 Production serves that route through the `monies-map-shortcuts` Worker. It
 shares the production D1 database but has no static assets and returns `404` for
@@ -203,28 +203,35 @@ Text action and passes the action output to the POST request. A URL-action impor
 question is not used because Apple's URL-list setup editor can discard a pasted
 connection URL. Nonce and timestamp headers are an optional complete pair for
 advanced clients; when present, replay and freshness checks remain mandatory.
-The shortcut body contains only transaction facts, while account and ownership
-defaults are resolved on the server. Personal Transaction automations remain
+The shortcut body contains transaction facts plus `requestId` and
+`clientVersion`. The request ID is stored as a unique external reference so an
+HTTP retry returns the existing row. Personal Transaction automations remain
 device-local Apple configuration and are not represented as app state. The
 supported handoff is one Transaction automation creating a Dictionary with
 `value`, `merchant`, and `name`, then running `Monies Map Apple Pay API` with
-that Dictionary as input; no second helper shortcut belongs in the chain. The
-shortcut consumes the direct-create response by opening `openUrl` for optional
-edits and showing a merchant-and-amount success notification.
+that Dictionary as input; no second helper shortcut belongs in the chain.
+
+The API normalizes strict ISO or day-first dates, Wallet currency text, bounded
+descriptions, and typed optional fields before persistence. Explicit active
+accounts win. Otherwise an exact unique Wallet `name` match selects an account,
+then the configured active priority is the fallback. Named Wallet currency must
+match the selected account currency. The response returns normalized transaction
+facts, account identity and resolution, creation status, and `openUrl`. The
+shortcut opens `openUrl` only when present and shows merchant, amount, and
+resolved account in its success notification.
 
 The repository owns the durable shortcut source under
 `shortcuts/apple-pay-api/`. It stores a reviewable secret-free plist, the exact
-Apple-signed release, and a manifest binding both artifacts to the approved
-iCloud record and checksums. The project owner's personal `Monies Map Apple Pay
-API Source` duplicate is a convenient editing backup, not an architectural
-dependency or the canonical source.
+Apple-signed `anyone` release, and a manifest binding the source, versioned
+release, and byte-identical public file to checksums. The project owner's
+personal `Monies Map Apple Pay API Source` duplicate is a convenient editing
+backup, not an architectural dependency or the canonical source.
 
-An iCloud share is an Apple-hosted signed snapshot, not a live reference to the
-owner's synced personal shortcut. Local replacement affects only one installed
-copy. Shortcut revisions require a new reviewed share record and an atomic
-update to the repository artifacts, manifest, Settings install URL, browser
-contract, and user documentation. The old record remains independent until its
-owner explicitly stops sharing it.
+The app serves the signed file from `/shortcuts/monies-map-apple-pay-api.shortcut`.
+Local replacement affects only one installed copy. Shortcut revisions require
+Apple signing and an atomic update to the repository artifacts, manifest,
+Settings install path, browser contract, and user documentation. The superseded
+v1 iCloud record is not part of the active install path.
 
 ### Savings model
 

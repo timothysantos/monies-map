@@ -167,6 +167,9 @@ Entries composer. The shortcut endpoint actually creates the ledger row and
 returns:
 
 - `entryId`
+- `created` (`false` when a retry returns the already-created row)
+- normalized `date`, `description`, `amountMinor`, and `currency`
+- `accountId`, `accountName`, and `accountResolution`
 - `openUrl`
 
 `openUrl` deep-links back into Entries with the created row already opened in
@@ -246,14 +249,19 @@ Send JSON.
 Required fields:
 
 - `date`
-- `description`
+- `description` or `merchant`
 - either `amountMinor` or `amount`
 
-`accountId` or `accountName` is optional. If neither is sent, the API uses the
-first active account in Settings -> Apple Pay shortcut -> Default account
-priority. The endpoint also applies Settings -> Apple Pay shortcut -> Advanced
-API settings -> Default shortcut params before the JSON body, so values sent by
-the shortcut always win.
+`accountId` or `accountName` is optional. An explicit account must identify an
+active account. Without one, an exact, unique Wallet `name` match selects that
+active account; otherwise the API uses the first active account in Settings ->
+Apple Pay shortcut -> Default account priority. `accountResolution` in the
+response reports `explicit`, `wallet_name`, or `priority`, so the Shortcut can
+show what happened instead of silently guessing.
+
+The endpoint also applies Settings -> Apple Pay shortcut -> Advanced API
+settings -> Default shortcut params before the JSON body, so values sent by the
+shortcut always win.
 
 If `ownerName` is omitted, a direct entry uses the selected account's owner.
 Shared-expense allocation is managed by linking the saved ledger row to a split
@@ -265,8 +273,10 @@ Common payload:
 {
   "date": "2026-04-25",
   "description": "Bus fare",
-  "amount": "4.20",
+  "amount": "SGD 4.20",
   "accountName": "UOB One",
+  "requestId": "apple-pay-20260822190730123",
+  "clientVersion": "apple-pay-api-2026-08-22-v2",
   "categoryName": "Transport",
   "ownershipType": "direct",
   "ownerName": "Tim",
@@ -275,8 +285,17 @@ Common payload:
 }
 ```
 
-`amount` can be decimal text or number. `amountMinor` also works if the
-shortcut already uses cents.
+`amount` can be a positive decimal number or Wallet-style text such as `SGD
+12.34` or `S$1,234.56`. The API preserves cents and rejects ambiguous decimal
+or thousands separators and ambiguous bare currency symbols. If the amount
+names a currency, it must match the selected account. `amountMinor` also works
+if the caller already uses integer cents; when both forms are sent, they must
+agree.
+
+Dates should use `YYYY-MM-DD`. Strict ISO timestamps and legacy day-first dates
+such as `27/04/2026` remain accepted, but malformed ISO-looking text is rejected.
+Descriptions are normalized and limited to 500 characters; notes are limited to
+2,000. Rejected requests save nothing.
 
 ### Which shortcut payload fields are optional, and what are their defaults?
 
@@ -284,6 +303,9 @@ The shortcut endpoint accepts these optional fields:
 
 - `accountId`
 - `accountName`
+- `merchant`
+- `name`
+- `currency`
 - `categoryName`
 - `entryType`
 - `transferDirection`
@@ -291,6 +313,8 @@ The shortcut endpoint accepts these optional fields:
 - `ownerName`
 - `offsetsCategory`
 - `note`
+- `requestId`
+- `clientVersion`
 - `view`
 
 Defaults and behavior:
@@ -316,11 +340,21 @@ Defaults and behavior:
 - `note`
   - optional
   - defaults to empty / no note
+- `requestId`
+  - optional for custom clients
+  - sent by the verified Shortcut so a network retry returns the same entry
+    instead of inserting a duplicate
+  - supported only for direct ownership entries; shared-expense state has a
+    separate split lifecycle
+- `name`
+  - optional Wallet card context
+  - an exact active-account match selects that account; otherwise it can serve
+    as the description fallback when `description` and `merchant` are empty
 
 Fields with no server default:
 
 - `date`
-- `description`
+- `description` or `merchant`
 - `amountMinor` or `amount`
 
 If any of those are missing after Settings defaults are applied, the shortcut
@@ -331,8 +365,9 @@ request is rejected.
 1. Open Settings -> Apple Pay shortcut.
 2. Put the card used most often first under Default account priority.
 3. Select Install Apple Shortcut. Monies Map saves the connection, copies it,
-   and opens the verified shared shortcut.
-4. Select Get Shortcut or Add Shortcut on Apple's page.
+   and opens the repository-owned Apple-signed shortcut file.
+4. Select Add Shortcut. If this device already has `Monies Map Apple Pay API`,
+   choose Replace.
 5. When Apple shows the plain-text setup field for the Monies Map connection
    URL, paste the copied value. The full URL should remain visible after the
    paste.
@@ -351,51 +386,40 @@ This is one automation calling one shared shortcut. The older
 once the new flow saves a test transaction successfully, remove or disable the
 old shortcut target so one Wallet tap cannot create two ledger entries.
 
-The shared shortcut sends Wallet's transaction amount and merchant plus the
-current date directly to Monies Map. On success it shows `Saved <merchant> •
-<amount>`, reads the saved entry's `openUrl` from the API response, and opens the
-entry for optional edits. The server accepts ISO dates and Apple's day-first
-local date text such as `27/04/2026`. The private connection URL is the POST
-destination stored during shortcut setup; it is not part of the transaction
-payload.
+The shortcut sends Wallet amount, merchant, card `name`, ISO date, a client
+version, and a per-run request ID directly to Monies Map. On success it shows
+`Saved <merchant> • <amount> • <account>`, reads `openUrl` from the response,
+and opens the saved entry for optional edits. The request ID makes an HTTP retry
+idempotent. The private connection URL is the POST destination stored during
+setup; it is not included in the JSON body.
 
-Apple personal automations are device-local and are not part of an iCloud
-shared shortcut, so the final Transaction automation is the one required manual
-step on each iPhone. The shared shortcut itself is available at:
+Apple personal automations are device-local and cannot be packaged inside the
+downloaded shortcut, so the Transaction automation remains the one required
+manual step on each iPhone.
 
-- [Monies Map Apple Pay API](https://www.icloud.com/shortcuts/17ff3669eb4f4a519416d04eff8c2f11)
+### Is the downloaded shortcut tied to the owner's Mac, iPhone, or iCloud?
 
-### Is the shared iCloud shortcut the same as the copy on the owner's Mac or iPhone?
+No. There are three separate artifacts with different jobs:
 
-No. There are three separate copies with different jobs:
+- The repository contains the reviewable secret-free plist source.
+- The app serves a checksum-verified Apple-signed file that anyone can import.
+- Installation creates a local copy in that device's Shortcuts library.
 
-- The project owner's personal working copy can sync between the owner's Mac
-  and iPhone through the personal Shortcuts library.
-- Publishing creates an Apple-hosted, signed snapshot with its own iCloud
-  record and URL. The URL does not call back to the owner's Mac and the Mac
-  does not need to remain online.
-- Installing creates another local copy in that device's Shortcuts library.
-  The recipient can edit, rename, replace, or delete that copy without changing
-  the published snapshot or anyone else's installed copy.
+The project owner may keep `Monies Map Apple Pay API Source` in a personal
+Shortcuts library as an editing convenience, but the app does not read it and
+it is not needed for installation. Losing or changing that personal copy does
+not lose the source or release.
 
-The project owner keeps an unmodified personal duplicate named `Monies Map
-Apple Pay API Source` for convenient editing. The durable source of truth is
-also committed in the repository under `shortcuts/apple-pay-api/`: a readable
-secret-free plist source, the exact Apple-signed release, and a manifest with
-the iCloud record ID and checksums. Losing or changing the personal source copy
-therefore does not lose the released shortcut.
-
-The published record is stable rather than absolutely immutable. Normal edits
-to a personal or installed copy do not update it. The owner can explicitly stop
-sharing it. A reviewed revision is published as a new iCloud release, and
-Monies Map must be updated to use that new URL; the old URL otherwise continues
-to serve its old snapshot.
+The older iCloud link is a superseded v1 snapshot and is not used by Settings.
+The current signed file is replaced only by a reviewed repository release and
+deployment. Existing installed copies do not update automatically; local edits,
+renames, replacement, or deletion affect only that device.
 
 ### What should I choose when Apple says the shortcut already exists?
 
 Choose `Replace` when upgrading the installed `Monies Map Apple Pay API`.
 Replacement changes only the local copy on that device. It does not overwrite
-the public iCloud release, the owner's source, or another person's shortcut.
+the repository release, the owner's source, or another person's shortcut.
 
 Choose `Keep Both` only when intentionally preserving the old local copy as a
 backup. A normal installation should keep one active shortcut with the exact
@@ -408,18 +432,19 @@ configures its own device-local Wallet automation. If the household key is
 rotated, every device using that key must install or configure the new private
 connection.
 
-### How is a new shortcut version published?
+### How is a new shortcut version released?
 
-Start from the committed signed release or a duplicate of the trusted personal
-source. Make and test changes in a separate working copy, keep its setup Text
-action blank, and confirm no private connection or token is present. Publish it
-through Shortcuts to create a new Apple-reviewed iCloud record.
+Start from the committed plist source, keep its setup Text action blank, and
+confirm no private connection or token is present. After testing, sign the
+unsigned `.shortcut` with Apple's `shortcuts sign --mode anyone` command. Apple
+receives it for validation during signing.
 
-Before changing the app's install link, commit the new readable source, exact
-signed release, record ID, and checksums under `shortcuts/apple-pay-api/`.
-Update the Settings install URL, browser test, FAQ, and artifact manifest in the
-same release. The old share can remain available for rollback or be stopped
-explicitly after existing devices have moved to the replacement.
+Commit the readable source, exact signed release, byte-identical public download,
+size, action contract, and checksums under `shortcuts/apple-pay-api/`. Update the
+Settings install contract, browser test, FAQ, and manifest in the same release.
+Deploying changes the file offered to future installations; existing devices
+keep their local copy until the user installs the new version and chooses
+Replace.
 
 ### What does the installed direct-create shortcut contain?
 
@@ -432,9 +457,14 @@ The POST has a JSON body with exactly these keys:
 - `amount`
 - `description`
 - `date`
+- `name`
+- `requestId`
+- `clientVersion`
 
-After the POST succeeds, the shortcut extracts `openUrl`, opens that URL, and
-shows a notification containing the Wallet merchant and amount.
+After the POST succeeds, the shortcut extracts `openUrl` and `accountName`,
+opens the URL, and shows a notification containing the Wallet merchant, amount,
+and resolved account. If no `openUrl` is returned, it reads `error` and shows a
+not-saved notification instead of calling Open URLs with a blank value.
 
 Account, category, ownership, and owner are resolved from the Settings defaults.
 Advanced custom shortcuts can add any optional API fields documented above.
@@ -446,6 +476,13 @@ Expected response shape:
   "ok": true,
   "entryId": "txn-...",
   "created": true,
+  "date": "2026-04-25",
+  "description": "Bus fare",
+  "amountMinor": 420,
+  "currency": "SGD",
+  "accountId": "acct-uob-one",
+  "accountName": "UOB One",
+  "accountResolution": "wallet_name",
   "openUrl": "https://monies-map.timsantos-accts.workers.dev/entries?editing_entry=txn-...&month=2026-04&view=household"
 }
 ```
