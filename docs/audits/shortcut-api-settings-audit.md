@@ -31,6 +31,9 @@ Date: 2026-08-22
   send a card or account every time.
 - Settings did not expose a place to rotate the shortcut API key or express
   which card/account should be preferred.
+- Production verification found that Cloudflare Access intercepted the original
+  app-hostname shortcut URL before the Worker could authenticate it. A direct
+  iOS Shortcut could not use that route without an interactive Access session.
 
 ## Implemented Contract
 
@@ -53,6 +56,12 @@ Date: 2026-08-22
   URL, and opens the verified `Monies Map Apple Pay Direct` iCloud artifact.
 - The public artifact contains no secret. Its setup question targets the URL
   action and its POST body contains only `amount`, `description`, and `date`.
+- Production now deploys `monies-map-shortcuts` as a public shortcut-only
+  Worker against the same D1 database. It rejects every non-shortcut path and
+  returns protected-app origins in response deep links.
+- The Access-protected app Settings DTO supplies the dedicated absolute gateway
+  URL. Installing saves the app-managed key to shared D1, so no Cloudflare
+  Access cookie or duplicated gateway secret is required.
 - Shortcut dates normalize ISO and day-first local text before persistence.
 - Moving a default-account priority row saves immediately and shows an inline
   status, so refreshing Settings preserves the new first account without
@@ -76,7 +85,7 @@ Date: 2026-08-22
 - The downloaded signed iCloud artifact was decrypted and inspected: it has
   nine actions, one setup question targeting action index 5, no token, and no
   unexpected headers or JSON keys.
-- Closure verification passed TypeScript, the production build, all 170 unit
+- Closure verification passed TypeScript, the production build, all 173 unit
   and parser tests, all 116 smoke scenarios, and all 31 additional browser
   scenarios outside the smoke bundle.
 - Browser layout checks passed at 390 by 844 and 1280 by 720 with no document
@@ -86,6 +95,12 @@ Date: 2026-08-22
   local Wrangler proxy repeatedly ended with `Network connection lost` after
   roughly four minutes. The remaining 27 smoke scenarios and all 31 non-smoke
   scenarios passed in fresh bounded runs, covering the complete E2E inventory.
+- Dedicated-gateway tests prove route isolation, shared production D1 binding,
+  absence of static assets, and protected-app response links. The focused
+  install browser test proves Settings copies the configured public origin.
+- Live production probes return `404` for the gateway root and Settings route,
+  reach the Worker for the direct-create POST without a Cloudflare Access
+  redirect, and leave the main app protected by Access.
 
 ## Closure Result
 
@@ -109,6 +124,9 @@ Date: 2026-08-22
   rotation later.
 - The private connection URL can appear in the installed shortcut and request
   logs. Treat it as a password and rotate the key after accidental exposure.
+- The shortcut gateway is Internet-reachable by design. Its route allowlist and
+  high-entropy app key are mandatory controls; add edge rate limiting if this
+  becomes a multi-household or high-volume endpoint.
 - Apple does not package a personal Transaction automation inside a shared
   shortcut. Each iPhone still needs that final device-local automation step.
 - The drag-and-drop UI has button equivalents for accessibility, but mobile

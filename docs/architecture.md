@@ -191,6 +191,12 @@ browser entry form. The public iCloud shortcut must remain secret-free. Settings
 owns key generation, connection-URL copy, the verified install link, and default
 account priority.
 
+Production serves that route through the `monies-map-shortcuts` Worker. It
+shares the production D1 database but has no static assets and returns `404` for
+every path except `/api/shortcuts/entries/create`. This keeps the main
+`monies-map` Worker behind Cloudflare Access while allowing iOS Shortcuts to
+reach the app-owned token boundary without an interactive Access session.
+
 The direct-create route accepts authenticated URL or header token transport.
 Nonce and timestamp headers are an optional complete pair for advanced clients;
 when present, replay and freshness checks remain mandatory. The shortcut body

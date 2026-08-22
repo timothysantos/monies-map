@@ -55,11 +55,18 @@ component renders progress and advanced controls, while the Settings panel
 creates the private key, builds and copies the authenticated connection URL,
 persists the settings, and refreshes the settings query.
 
+The Settings DTO may supply an absolute endpoint for the dedicated production
+shortcut gateway. The client resolves relative local/test endpoints and that
+absolute production endpoint through the same URL constructor; it does not
+hard-code a second routing rule.
+
 The shared iCloud URL is a reviewed product artifact, not a source of household
 configuration. It must contain neither the API key nor a private connection
 URL. Apple's setup question injects that private URL only after the user opens
 the shared shortcut. The direct-create route remains responsible for token
 validation, date normalization, default-account selection, and entry creation.
+The production gateway exposes only that direct-create path, shares D1 with the
+protected app, and builds response deep links against the protected app origin.
 
 The install action opens its target window synchronously before asynchronous
 save work so browser popup protection does not turn a successful setup into a
