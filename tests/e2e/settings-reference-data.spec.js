@@ -339,7 +339,7 @@ test.describe("settings reference data", () => {
       data: {
         date: "22/8/26",
         description,
-        amount: "12.34"
+        amount: "SGD\u00a012.34"
       }
     });
     expect(response.ok(), await response.text()).toBeTruthy();
@@ -349,6 +349,30 @@ test.describe("settings reference data", () => {
     expect(created.openUrl).toContain(`/entries`);
     expect(created.openUrl).toContain("month=2026-08");
     expect(created.openUrl).toContain(`entry_wallet=${encodeURIComponent(targetAccount.id)}`);
+
+    const fallbackDescription = `${description} name fallback`;
+    const fallbackResponse = await page.request.post(`/api/shortcuts/entries/create?shortcut_token=${encodeURIComponent(apiKey)}`, {
+      data: {
+        date: "23/8/26",
+        description: " ",
+        name: fallbackDescription,
+        amount: "S$12.35"
+      }
+    });
+    expect(fallbackResponse.ok(), await fallbackResponse.text()).toBeTruthy();
+
+    const malformedAmountResponse = await page.request.post(`/api/shortcuts/entries/create?shortcut_token=${encodeURIComponent(apiKey)}`, {
+      data: {
+        date: "23/8/26",
+        description: `${description} malformed amount`,
+        amount: "SGD twelve"
+      }
+    });
+    expect(malformedAmountResponse.status()).toBe(400);
+    expect(await malformedAmountResponse.json()).toMatchObject({
+      ok: false,
+      error: "Missing or invalid shortcut fields: amount."
+    });
 
     const replayProtectedResponse = await page.request.post("/api/shortcuts/entries/create", {
       headers: shortcutHeaders(apiKey),
@@ -367,6 +391,13 @@ test.describe("settings reference data", () => {
         && entry.accountName === targetAccount.name
         && entry.categoryName === targetCategory.name
         && entry.amountMinor === 1234
+      ))
+    ).toBe(true);
+    expect(
+      entriesPage.monthPage.entries.some((entry) => (
+        entry.description === fallbackDescription
+        && entry.accountName === targetAccount.name
+        && entry.amountMinor === 1235
       ))
     ).toBe(true);
 
