@@ -63,8 +63,17 @@ hard-code a second routing rule.
 The shared iCloud URL is a reviewed product artifact, not a source of household
 configuration. It must contain neither the API key nor a private connection
 URL. Apple's setup question injects that private URL only after the user opens
-the shared shortcut. The direct-create route remains responsible for token
-validation, date normalization, default-account selection, and entry creation.
+the shared shortcut. The question targets a plain Text action whose output is
+the POST destination; it must not target a URL action because Apple's URL-list
+editor can discard a pasted connection URL during setup. The direct-create
+route remains responsible for token validation, date normalization,
+default-account selection, and entry creation.
+
+The artifact input is the device-local Transaction automation's Dictionary with
+`value`, `merchant`, and `name` keys. The automation calls the shared shortcut
+directly; a legacy helper shortcut is not part of the supported chain. After a
+successful POST, the shortcut reads `openUrl` from the response, opens the saved
+entry, and confirms the merchant and amount in a notification.
 The production gateway exposes only that direct-create path, shares D1 with the
 protected app, and builds response deep links against the protected app origin.
 

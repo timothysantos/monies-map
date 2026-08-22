@@ -198,11 +198,19 @@ every path except `/api/shortcuts/entries/create`. This keeps the main
 reach the app-owned token boundary without an interactive Access session.
 
 The direct-create route accepts authenticated URL or header token transport.
-Nonce and timestamp headers are an optional complete pair for advanced clients;
-when present, replay and freshness checks remain mandatory. The shortcut body
-contains only transaction facts, while account and ownership defaults are
-resolved on the server. Personal Transaction automations remain device-local
-Apple configuration and are not represented as app state.
+The shared shortcut receives that URL through an import question on a plain
+Text action and passes the action output to the POST request. A URL-action import
+question is not used because Apple's URL-list setup editor can discard a pasted
+connection URL. Nonce and timestamp headers are an optional complete pair for
+advanced clients; when present, replay and freshness checks remain mandatory.
+The shortcut body contains only transaction facts, while account and ownership
+defaults are resolved on the server. Personal Transaction automations remain
+device-local Apple configuration and are not represented as app state. The
+supported handoff is one Transaction automation creating a Dictionary with
+`value`, `merchant`, and `name`, then running `Monies Map Apple Pay API` with
+that Dictionary as input; no second helper shortcut belongs in the chain. The
+shortcut consumes the direct-create response by opening `openUrl` for optional
+edits and showing a merchant-and-amount success notification.
 
 ### Savings model
 
