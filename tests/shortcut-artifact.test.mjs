@@ -15,17 +15,27 @@ test("committed Apple Pay shortcut release is secret-free and matches its manife
   const manifest = JSON.parse(await readFile(path.join(artifactRoot, "manifest.json"), "utf8"));
   const source = await readFile(path.join(artifactRoot, manifest.sourceFile));
   const signedRelease = await readFile(path.join(artifactRoot, manifest.signedReleaseFile));
+  const publicRelease = await readFile(path.join(artifactRoot, manifest.publicFile));
   const sourceText = source.toString("utf8");
 
   assert.equal(sha256(source), manifest.sourceSha256);
   assert.equal(sha256(signedRelease), manifest.signedReleaseSha256);
   assert.equal(signedRelease.byteLength, manifest.signedReleaseSize);
-  assert.equal(manifest.icloudSigningStatus, "APPROVED");
+  assert.equal(sha256(publicRelease), manifest.signedReleaseSha256);
+  assert.equal(publicRelease.byteLength, manifest.signedReleaseSize);
+  assert.equal(manifest.appleSigningStatus, "APPROVED");
+  assert.equal(manifest.distribution, "self_hosted_apple_signed_file");
 
   const actionIdentifiers = sourceText.match(/<string>is\.workflow\.actions\.[^<]+<\/string>/g) ?? [];
   assert.equal(actionIdentifiers.length, manifest.actionCount);
   assert.match(sourceText, /<key>WFHTTPMethod<\/key>\s*<string>POST<\/string>/);
   assert.match(sourceText, /<string>openUrl<\/string>/);
+  assert.match(sourceText, /<string>accountName<\/string>/);
+  assert.match(sourceText, /<string>requestId<\/string>/);
+  assert.match(sourceText, /<string>clientVersion<\/string>/);
+  assert.match(sourceText, /<string>yyyy-MM-dd<\/string>/);
+  assert.match(sourceText, /<string>is\.workflow\.actions\.conditional<\/string>/);
+  assert.match(sourceText, /<string>error<\/string>/);
   assert.match(sourceText, /<key>WFWorkflowImportQuestions<\/key>/);
   assert.match(sourceText, /<key>ActionIndex<\/key>\s*<integer>5<\/integer>/);
   assert.match(sourceText, /<key>ParameterKey<\/key>\s*<string>WFTextActionText<\/string>/);
@@ -44,12 +54,12 @@ test("committed Apple Pay shortcut release is secret-free and matches its manife
   }
 });
 
-test("app install URL and committed shortcut release stay aligned", async () => {
+test("app install path and committed shortcut release stay aligned", async () => {
   const manifest = JSON.parse(await readFile(path.join(artifactRoot, "manifest.json"), "utf8"));
   const settingsSection = await readFile(path.join(repoRoot, "src/client/settings-sections.jsx"), "utf8");
   const browserTest = await readFile(path.join(repoRoot, "tests/e2e/settings-reference-data.spec.js"), "utf8");
 
-  assert.match(manifest.icloudShareUrl, /^https:\/\/www\.icloud\.com\/shortcuts\/[a-f0-9]+$/);
-  assert.equal(settingsSection.includes(manifest.icloudShareUrl), true);
-  assert.equal(browserTest.includes(manifest.icloudShareUrl), true);
+  assert.match(manifest.installPath, /^\/shortcuts\/[a-z0-9-]+\.shortcut$/);
+  assert.equal(settingsSection.includes(manifest.installPath), true);
+  assert.equal(browserTest.includes(manifest.installPath), true);
 });

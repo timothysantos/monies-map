@@ -9,7 +9,7 @@ import { findDuplicateCategoryMatchRules } from "./settings-workflow";
 import { CategoryGlyph, DeleteRowButton } from "./ui-components";
 
 const { accounts: accountService, format: formatService } = moniesClient;
-const APPLE_PAY_SHORTCUT_URL = "https://www.icloud.com/shortcuts/17ff3669eb4f4a519416d04eff8c2f11";
+const APPLE_PAY_SHORTCUT_URL = "/shortcuts/monies-map-apple-pay-api.shortcut";
 
 function groupCategoryMatchRules(rules, categories) {
   const categoriesByName = new Map(categories.map((category) => [category.name, category]));
@@ -109,6 +109,7 @@ export function SettingsShortcutApiSection({
   const endpoint = new URL(shortcutSettings.endpointPath, window.location.origin).toString();
 
   async function handleInstallShortcut() {
+    const shortcutUrl = new URL(APPLE_PAY_SHORTCUT_URL, window.location.origin).toString();
     const installWindow = window.open("about:blank", "_blank");
     if (installWindow) {
       installWindow.opener = null;
@@ -117,9 +118,9 @@ export function SettingsShortcutApiSection({
     try {
       await onInstallShortcut();
       if (installWindow) {
-        installWindow.location.replace(APPLE_PAY_SHORTCUT_URL);
+        installWindow.location.replace(shortcutUrl);
       } else {
-        window.location.assign(APPLE_PAY_SHORTCUT_URL);
+        window.location.assign(shortcutUrl);
       }
     } catch {
       installWindow?.close();
