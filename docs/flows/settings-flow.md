@@ -70,6 +70,9 @@ The Apple Pay shortcut install flow is ordered deliberately:
 The iCloud artifact uses an Apple setup question to receive the copied URL. The
 public artifact never owns the household key. Default account reordering saves
 immediately; advanced key and default-param text edits retain an explicit save.
+In production the copied URL targets the public, shortcut-only gateway rather
+than the Cloudflare Access-protected app hostname. The gateway shares app
+settings through D1 and exposes no Settings, ledger, import, or static-app route.
 
 ## Audit Status
 

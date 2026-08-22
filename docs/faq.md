@@ -154,9 +154,13 @@ Use this method when the shortcut should create the row immediately and then
 open the saved entry. Use the quick-entry URL method when you want a prefilled
 draft that the user still reviews before saving.
 
-The dedicated endpoint is:
+The production endpoint is:
 
-- `POST /api/shortcuts/entries/create`
+- `POST https://monies-map-shortcuts.timsantos-accts.workers.dev/api/shortcuts/entries/create`
+
+Use the connection copied by Settings rather than typing this URL. Local and
+test environments can still use the relative `/api/shortcuts/entries/create`
+route.
 
 It is separate from the existing quick-entry URL, which still only opens the
 Entries composer. The shortcut endpoint actually creates the ledger row and
@@ -176,6 +180,12 @@ The verified shared shortcut is public, but it contains no API key and no
 household-specific connection URL. During installation, Apple asks for the
 private connection URL that Monies Map copied. That URL contains a token and
 must be treated like a password.
+
+The main app remains behind Cloudflare Access. A separate public Worker accepts
+only the direct-create path, has no app assets, and returns `404` for every
+other route. The app-owned token is therefore the authentication boundary for
+shortcut requests, while Settings, imports, entries, and the rest of the app
+still require Cloudflare Access.
 
 The endpoint accepts the token in one of three places:
 
@@ -215,7 +225,7 @@ Worker secret named:
 Example fallback setup:
 
 ```bash
-wrangler secret put SHORTCUT_INGEST_TOKEN
+npx wrangler secret put SHORTCUT_INGEST_TOKEN --config wrangler.shortcuts.jsonc
 ```
 
 Use a long random value. Saving a key in Settings lets you rotate the Shortcut
