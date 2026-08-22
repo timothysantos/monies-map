@@ -54,6 +54,10 @@ Date: 2026-08-22
   reordering, and up/down controls.
 - Install generates a key when needed, saves it, copies the private connection
   URL, and opens the verified `Monies Map Apple Pay API` iCloud artifact.
+- `shortcuts/apple-pay-api/` preserves a reviewable secret-free plist, the
+  exact Apple-signed release, and a manifest with the approved record identity,
+  action contract, sizes, and checksums. The personal iCloud source copy is no
+  longer the only recoverable source.
 - The replacement public artifact contains no secret. Its setup question
   targets a plain Text action, that action's output supplies the POST URL, and
   its body contains only `amount`, `description`, and `date`. This replaces the
@@ -96,19 +100,27 @@ Date: 2026-08-22
   that index, a POST action reading its `Text` output, an `openUrl` extraction
   tied to that POST response, an Open URLs action, a merchant-and-amount
   notification, no token, and no unexpected headers or JSON keys.
+- `tests/shortcut-artifact.test.mjs` verifies both committed artifact hashes,
+  the signed release size, setup question, action count, POST and `openUrl`
+  markers, absence of authentication material, and alignment between the
+  manifest, Settings install URL, and browser contract.
+- `tests/e2e/faq-content.spec.js` verifies the ownership, replacement, and
+  republishing answers render in the app on mobile without overflow or console
+  errors.
 - The imported replacement was exercised in the real Apple setup UI. Its field
   is a plain text area, and a complete connection URL remained present after
   paste and validation instead of being cleared.
-- Closure verification passed TypeScript, the production build, all 173 unit
-  and parser tests, all 116 smoke scenarios, and all 31 additional browser
+- Closure verification passed TypeScript, the production build, all 175 unit
+  and parser tests, all 117 smoke scenarios, and all 31 additional browser
   scenarios outside the smoke bundle.
 - Browser layout checks passed at 390 by 844 and 1280 by 720 with no document
   overflow, no control overlap, a masked key by default, and no console errors
   or warnings while the advanced settings were open.
-- The single-process smoke command reached 89 passing scenarios before the
-  local Wrangler proxy repeatedly ended with `Network connection lost` after
-  roughly four minutes. The remaining 27 smoke scenarios and all 31 non-smoke
-  scenarios passed in fresh bounded runs, covering the complete E2E inventory.
+- `npm run verify` passes all 117 smoke scenarios under the bounded runner.
+  Each workflow starts in an isolated process group, the state-heavy month
+  workflow restarts after every six scenarios, and the 47-scenario import
+  ledger workflow runs last. This avoids the former long-lived local Wrangler
+  proxy failure without removing or skipping coverage.
 - Dedicated-gateway tests prove route isolation, shared production D1 binding,
   absence of static assets, and protected-app response links. The focused
   install browser test proves Settings copies the configured public origin.
@@ -121,6 +133,8 @@ Date: 2026-08-22
 - Status: passed.
 - The public iCloud artifact is secret-free and the private connection is
   generated, saved, and copied only inside the authenticated Settings flow.
+- The released source and Apple-signed payload are recoverable from the
+  repository without relying on the owner's synced personal Shortcuts library.
 - The default account order autosaves and survives a reload.
 - Missing or invalid authentication is rejected, partial replay headers are
   rejected, and valid header, Bearer, and private-URL authentication paths are

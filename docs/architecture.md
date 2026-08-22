@@ -212,6 +212,20 @@ that Dictionary as input; no second helper shortcut belongs in the chain. The
 shortcut consumes the direct-create response by opening `openUrl` for optional
 edits and showing a merchant-and-amount success notification.
 
+The repository owns the durable shortcut source under
+`shortcuts/apple-pay-api/`. It stores a reviewable secret-free plist, the exact
+Apple-signed release, and a manifest binding both artifacts to the approved
+iCloud record and checksums. The project owner's personal `Monies Map Apple Pay
+API Source` duplicate is a convenient editing backup, not an architectural
+dependency or the canonical source.
+
+An iCloud share is an Apple-hosted signed snapshot, not a live reference to the
+owner's synced personal shortcut. Local replacement affects only one installed
+copy. Shortcut revisions require a new reviewed share record and an atomic
+update to the repository artifacts, manifest, Settings install URL, browser
+contract, and user documentation. The old record remains independent until its
+owner explicitly stops sharing it.
+
 ### Savings model
 
 The app should treat `savings target` as a first-class monthly planning input.

@@ -77,6 +77,13 @@ entry, and confirms the merchant and amount in a notification.
 The production gateway exposes only that direct-create path, shares D1 with the
 protected app, and builds response deep links against the protected app origin.
 
+The reviewed source, exact signed release, and release manifest live under
+`shortcuts/apple-pay-api/`. The manifest URL must match the Settings install
+constant and browser contract. Automated tests verify the checksums, action
+count, setup question, POST behavior markers, and absence of authentication
+material. A personal Shortcuts copy can be used for editing, but it is not the
+only source and must never be treated as the release authority.
+
 The install action opens its target window synchronously before asynchronous
 save work so browser popup protection does not turn a successful setup into a
 dead button. Failure closes the placeholder window and leaves an inline error.
