@@ -1,14 +1,12 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "monies-map",
+  "name": "monies-map-shortcuts",
   "main": "src/index.ts",
   "compatibility_date": "2026-04-03",
   "vars": {
-    "SHORTCUT_PUBLIC_ENDPOINT": "https://monies-map-shortcuts.timsantos-accts.workers.dev/api/shortcuts/entries/create"
-  },
-  "assets": {
-    "directory": "./dist",
-    "not_found_handling": "single-page-application"
+    "APP_ENVIRONMENT": "production",
+    "SHORTCUT_API_ONLY": "true",
+    "SHORTCUT_APP_ORIGIN": "https://monies-map.timsantos-accts.workers.dev"
   },
   "d1_databases": [
     {

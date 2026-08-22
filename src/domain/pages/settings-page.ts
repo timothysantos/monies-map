@@ -16,7 +16,8 @@ import type { SettingsPageDto } from "../../types/dto";
 // Build the route-owned Settings page DTO.
 export async function buildSettingsPageDto(
   db: D1Database,
-  environmentShortcutToken?: string | null
+  environmentShortcutToken?: string | null,
+  shortcutEndpoint?: string | null
 ): Promise<{ settingsPage: SettingsPageDto }> {
   const demo = await ensureAppData(db);
   const [
@@ -38,7 +39,12 @@ export async function buildSettingsPageDto(
     loadAuditEvents(db),
     loadAppErrorDiagnostics(db)
   ]);
-  const shortcutSettings = await loadShortcutSettings(db, accounts, environmentShortcutToken);
+  const shortcutSettings = await loadShortcutSettings(
+    db,
+    accounts,
+    environmentShortcutToken,
+    shortcutEndpoint?.trim() || undefined
+  );
   return {
     settingsPage: {
       accounts,

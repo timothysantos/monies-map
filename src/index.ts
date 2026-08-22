@@ -79,17 +79,25 @@ import {
 import {
   loadShortcutSettings,
   resolveShortcutDefaultAccountId,
-  saveShortcutSettings
+  saveShortcutSettings,
+  SHORTCUT_ENDPOINT_PATH
 } from "./domain/app-repository-shortcuts";
 import { parseCsv } from "./lib/csv";
 import { getCurrentMonthKey } from "./lib/month";
 import { json } from "./server/json";
+import {
+  buildShortcutAppUrl,
+  isShortcutGatewayRequestAllowed
+} from "./server/shortcut-gateway";
 
 export interface Env {
   DB: D1Database;
   APP_ENVIRONMENT?: "demo" | "local" | "production" | "test";
   DEMO_SEED_MONTH?: string;
+  SHORTCUT_API_ONLY?: string;
+  SHORTCUT_APP_ORIGIN?: string;
   SHORTCUT_INGEST_TOKEN?: string;
+  SHORTCUT_PUBLIC_ENDPOINT?: string;
 }
 
 const API_PAGE_SLOW_MS = 750;
@@ -99,6 +107,10 @@ const SHORTCUT_NONCE_RETENTION_HOURS = 24;
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+
+    if (!isShortcutGatewayRequestAllowed(env.SHORTCUT_API_ONLY, url.pathname, SHORTCUT_ENDPOINT_PATH)) {
+      return new Response(null, { status: 404 });
+    }
 
     if (url.pathname === "/api/health") {
       return json({ ok: true, service: "monies-map" });
@@ -203,7 +215,11 @@ export default {
 
     if (url.pathname === "/api/settings-page") {
       return apiPageResponse("Settings page", request, url, () =>
-        buildSettingsPageDto(env.DB, env.SHORTCUT_INGEST_TOKEN)
+        buildSettingsPageDto(
+          env.DB,
+          env.SHORTCUT_INGEST_TOKEN,
+          env.SHORTCUT_PUBLIC_ENDPOINT
+        )
       );
     }
 
@@ -872,7 +888,7 @@ export default {
           viewId: bodyWithDefaults.view,
           accountId,
           accountName: bodyWithDefaults.accountName
-        });
+        }, env.SHORTCUT_APP_ORIGIN);
 
         return json({
           ok: true,
@@ -1973,9 +1989,10 @@ function buildShortcutEntryOpenUrl(
     viewId?: string;
     accountId?: string;
     accountName?: string;
-  }
+  },
+  appOrigin?: string
 ) {
-  const url = new URL("/entries", request.url);
+  const url = buildShortcutAppUrl("/entries", request.url, appOrigin);
   url.searchParams.set("editing_entry", input.entryId);
   if (input.date?.slice(0, 7)) {
     url.searchParams.set("month", input.date.slice(0, 7));
