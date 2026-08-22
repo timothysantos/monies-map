@@ -837,6 +837,8 @@ export default {
       const body = await request.json<{
         date?: string;
         description?: string;
+        merchant?: string;
+        name?: string;
         accountId?: string;
         accountName?: string;
         categoryName?: string;
@@ -856,16 +858,21 @@ export default {
       const bodyWithDefaults = applyShortcutCreateDefaults(body, shortcutDefaults.defaultParams);
       const amountMinor = normalizeShortcutAmountMinor(bodyWithDefaults.amountMinor, bodyWithDefaults.amount);
       const shortcutDate = normalizeShortcutDate(bodyWithDefaults.date);
+      const shortcutDescription = normalizeShortcutDescription(
+        bodyWithDefaults.description,
+        bodyWithDefaults.merchant,
+        bodyWithDefaults.name
+      );
       const accountId = bodyWithDefaults.accountId ?? (!bodyWithDefaults.accountName ? await resolveShortcutDefaultAccountId(env.DB) : undefined);
       if (
         !shortcutDate
-        || !bodyWithDefaults.description
+        || !shortcutDescription
         || (!accountId && !bodyWithDefaults.accountName)
         || amountMinor == null
       ) {
         const invalidFields = [
           !shortcutDate ? "date" : undefined,
-          !bodyWithDefaults.description ? "description" : undefined,
+          !shortcutDescription ? "description" : undefined,
           !accountId && !bodyWithDefaults.accountName ? "account" : undefined,
           amountMinor == null ? "amount" : undefined
         ].filter((field): field is string => Boolean(field));
@@ -878,7 +885,7 @@ export default {
       try {
         const created = await createEntryRecord(env.DB, {
           date: shortcutDate,
-          description: bodyWithDefaults.description,
+          description: shortcutDescription,
           accountId,
           accountName: bodyWithDefaults.accountName,
           categoryName: bodyWithDefaults.categoryName ?? "Other",
@@ -1870,13 +1877,39 @@ function normalizeShortcutAmountMinor(amountMinor?: number, amount?: number | st
   }
 
   if (typeof amount === "string") {
-    const normalized = Number(amount.trim().replace(/,/g, ""));
+    const compact = amount.trim().normalize("NFKC").replace(/\s/gu, "");
+    const numberMatches = compact.match(/\d[\d,]*(?:\.\d+)?/g) ?? [];
+    if (numberMatches.length !== 1) {
+      return null;
+    }
+
+    const numericToken = numberMatches[0];
+    const affixes = compact.replace(numericToken, "");
+    const isParenthesized = compact.startsWith("(") && compact.endsWith(")");
+    if (
+      !/^[\p{L}\p{Sc}()+-]*$/u.test(affixes)
+      || affixes.replace(/[()+-]/g, "").length > 4
+      || ((affixes.includes("(") || affixes.includes(")")) && !isParenthesized)
+      || (affixes.includes("+") && affixes.includes("-"))
+      || (affixes.match(/-/g)?.length ?? 0) > 1
+    ) {
+      return null;
+    }
+
+    const normalized = Number(numericToken.replace(/,/g, ""));
     if (Number.isFinite(normalized)) {
-      return Math.round(normalized * 100);
+      const sign = isParenthesized || affixes.includes("-") ? -1 : 1;
+      return Math.round(normalized * 100) * sign;
     }
   }
 
   return null;
+}
+
+function normalizeShortcutDescription(...values: Array<string | undefined>) {
+  return values
+    .map((value) => value?.trim())
+    .find((value): value is string => Boolean(value));
 }
 
 function normalizeShortcutDate(value?: string) {
