@@ -24,9 +24,10 @@ Date: 2026-08-22
   binary, and serve a checksum-identical copy from the app.
 - [x] Update Settings guidance, FAQ, architecture, flow documentation, release
   instructions, and integrity tests.
-- [ ] Run the complete merge gate and full browser suite.
-- [ ] Apply the production D1 migration, deploy both Workers and assets, and
+- [x] Run the complete merge gate and full browser suite.
+- [x] Apply the production D1 migration, deploy both Workers and assets, and
   complete production probes.
 
-The last two items are closed only after their commands pass; source inspection
-alone is not sufficient.
+All items are closed by executable contract tests, browser workflows, migration
+output, deployment receipts, and live production probes rather than source
+inspection alone.

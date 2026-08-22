@@ -68,13 +68,30 @@ failure feedback, artifact ownership, and installation.
   persistence.
 - A read-only production query found no duplicate non-null external references,
   so the unique index has no known data conflict.
+- The complete 148-case browser suite passed. `npm run verify` also passed zero
+  dependency findings, strict TypeScript, 184 unit/parser tests, the production
+  build, and the full desktop/mobile smoke bundle, including all 47 import
+  ledger cases.
+- Wrangler 4.120.0 and 4.125.0 reproduced
+  [Cloudflare workers-sdk issue 14926](https://github.com/cloudflare/workers-sdk/issues/14926)
+  by dropping the local ProxyWorker during longer suites. The project pins the
+  documented stable 4.113.0 workaround and overrides `sharp` and `undici` to
+  patched releases; the complete suite and `npm audit` pass on that lockfile.
+- The production D1 migration executed 52 statements successfully and created
+  the idempotency index without a data conflict.
+- The Shortcut gateway deployed as version
+  `0ca2e843-f75d-49bd-b801-dcb351243ea3`; the app and signed Shortcut asset
+  deployed as version `14ed7b03-5841-4fea-96fa-52f039ba406f`.
+- Live gateway probes returned `404` for a non-API route and `401 Missing
+  shortcut token` for an unauthenticated direct-create POST. The protected app
+  returned the expected Cloudflare Access redirect to an unauthenticated
+  browser session.
 
 ## Closure Status
 
-Implementation and focused verification pass. Final closure remains pending the
-complete merge gate, full browser suite, production migration, deployment, and
-production probes listed in
-`docs/apple-pay-api-hardening-task-list.md`.
+Closed. Implementation, dependency audit, contract tests, complete browser
+suite, merge gate, production migration, both deployments, and live boundary
+probes pass. The task list has no open item.
 
 ## Residual Boundaries
 
