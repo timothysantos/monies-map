@@ -64,6 +64,7 @@ export function mergeEntriesById(
 export function buildComparableEntryState(entry) {
   return {
     date: entry.date,
+    postDate: entry.postDate ?? null,
     description: entry.description,
     accountId: entry.accountId ?? null,
     accountName: entry.accountName ?? "",

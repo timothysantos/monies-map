@@ -72,6 +72,19 @@ data. At statement close, the PDF statement is the stronger proof. It can
 confirm rows, save a statement checkpoint, and explain whether the app balance
 matches the bank.
 
+## What should I do when a statement does not close?
+
+Use this order:
+
+1. Open the red `Already in ledger during this period` section first.
+2. Check whether each row belongs to the right card, date, and amount.
+3. If a row is wrong, delete it, remap it, or change its posted date, then
+   refresh the statement check.
+
+If that red section adds up to the full difference, that is usually the cause.
+It often means a prior mid-cycle import, a wrong-card posting, or a duplicate
+row is already in the ledger for that statement window.
+
 ## What can I still edit on a statement-certified row?
 
 Statement-certified rows keep the bank facts from the saved statement. That
@@ -1943,6 +1956,10 @@ In the import diagnostics, use:
    exact post date. The app sets a provisional posted date to the first day after
    the current statement end, moving the row out of this statement without
    deleting it. Replace it later with the exact posted date if you learn it.
+
+You can also edit the posted date later from the Entries editor. Use that when
+you have the bank evidence already and want the ledger row itself to carry the
+correct cleared date.
 
 Delete is only for rows that are absent, duplicated, or on the wrong
 card/account after checking the PDF and bank app.

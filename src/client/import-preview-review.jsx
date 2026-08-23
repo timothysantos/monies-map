@@ -705,6 +705,23 @@ function StatementReconciliationBreakdown({
           ? messages.imports.statementReconciliationMatchedAuthority
           : messages.imports.statementReconciliationAuthority}
       </p>
+      {!isMatched ? (
+        <div className="statement-reconciliation-quick-fix">
+          <strong>{messages.imports.statementReconciliationQuickFixTitle}</strong>
+          <p className="lede compact">
+            {existingRowsExplainMismatch
+              ? messages.imports.statementReconciliationQuickFixIntroExact(formatService.money(resultDeltaMinor))
+              : messages.imports.statementReconciliationQuickFixIntroGeneric}
+          </p>
+          <ol>
+            <li>{existingRowsExplainMismatch
+              ? messages.imports.statementReconciliationQuickFixStep1Exact
+              : messages.imports.statementReconciliationQuickFixStep1Generic}</li>
+            <li>{messages.imports.statementReconciliationQuickFixStep2}</li>
+            <li>{messages.imports.statementReconciliationQuickFixStep3}</li>
+          </ol>
+        </div>
+      ) : null}
       <div className={`statement-reconciliation-result ${isMatched ? "is-matched" : ""}`}>
         {isMatched
           ? messages.imports.statementReconciliationMatchedResult({
@@ -917,7 +934,7 @@ function StatementReconciliationDiagnosticRows({
         <div key={row.id} className="import-overlap-entry-row statement-reconciliation-diagnostic-row">
           <span className="import-overlap-entry-date statement-reconciliation-date-cell">
             <span>{formatService.formatDateOnly(row.date)}</span>
-            <small>{getDiagnosticRowDateDetail(row)}</small>
+            <small>{getDiagnosticRowDateDetail(row, statementEndDate)}</small>
           </span>
           <span className="import-overlap-entry-description">{row.description}</span>
           <span className="import-overlap-entry-account">{row.status || row.accountName}</span>
@@ -1214,7 +1231,7 @@ function PostedDateDialog({ row, initialDate, statementEndLabel, onSetPostDate }
   );
 }
 
-function getDiagnosticRowDateDetail(row) {
+function getDiagnosticRowDateDetail(row, statementEndDate) {
   if (row.source === "statement") {
     if (row.eventDate && row.eventDate !== row.date) {
       return messages.imports.statementReconciliationStatementDualDateDetail({
@@ -1223,6 +1240,14 @@ function getDiagnosticRowDateDetail(row) {
       });
     }
     return messages.imports.statementReconciliationStatementDateDetail;
+  }
+
+  if (row.postedDate && statementEndDate && row.postedDate > statementEndDate) {
+    return messages.imports.statementReconciliationLedgerPostedAfterCutoffDetail({
+      transactionDate: formatService.formatDateOnly(row.date),
+      postedDate: formatService.formatDateOnly(row.postedDate),
+      statementEndDate: formatService.formatDateOnly(statementEndDate)
+    });
   }
 
   if (row.postedDate && row.postedDate !== row.date) {

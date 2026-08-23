@@ -623,6 +623,7 @@ export default {
       const body = await request.json<{
         entryId?: string;
         date?: string;
+        postDate?: string | null;
         description?: string;
         accountId?: string;
         accountName?: string;
@@ -647,6 +648,7 @@ export default {
           ...(await updateEntryRecord(env.DB, {
             entryId: body.entryId,
             date: body.date,
+            postDate: body.postDate,
             description: body.description,
             accountId: body.accountId,
             accountName: body.accountName,
@@ -775,6 +777,7 @@ export default {
     if (url.pathname === "/api/entries/create" && request.method === "POST") {
       const body = await request.json<{
         date?: string;
+        postDate?: string | null;
         description?: string;
         accountId?: string;
         accountName?: string;
@@ -806,6 +809,7 @@ export default {
           ok: true,
           ...(await createEntryRecord(env.DB, {
             date: body.date,
+            postDate: body.postDate,
             description: body.description,
             accountId: body.accountId,
             accountName: body.accountName,

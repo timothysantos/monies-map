@@ -776,6 +776,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
 function buildPersistedEntryPayload(entry, primarySplit) {
   return {
     date: entry.date,
+    postDate: entry.postDate ?? null,
     description: entry.description,
     accountId: entry.accountId,
     accountName: entry.accountName,

@@ -1988,6 +1988,7 @@ async function assertUnlockedBankFactsForEntryUpdate(
     current: {
       account_id: string;
       transaction_date: string;
+      post_date: string | null;
       description: string;
       amount_minor: number;
       entry_type: "expense" | "income" | "transfer";
@@ -1997,6 +1998,7 @@ async function assertUnlockedBankFactsForEntryUpdate(
     next: {
       accountId: string;
       date: string;
+      postDate: string | null;
       description: string;
       amountMinor: number;
       entryType: "expense" | "income" | "transfer";
@@ -2010,6 +2012,7 @@ async function assertUnlockedBankFactsForEntryUpdate(
 
   const bankFactsChanged = input.current.account_id !== input.next.accountId
     || input.current.transaction_date !== input.next.date
+    || (input.current.post_date ?? null) !== (input.next.postDate ?? null)
     || input.current.description !== input.next.description
     || Number(input.current.amount_minor) !== Number(input.next.amountMinor)
     || input.current.entry_type !== input.next.entryType
@@ -2072,6 +2075,7 @@ export async function updateEntryRecord(
     offsetsCategory?: boolean;
     note?: string;
     splitBasisPoints?: number;
+    postDate?: string | null;
   }
 ) {
   const account = input.accountId
@@ -2117,6 +2121,7 @@ export async function updateEntryRecord(
         transactions.amount_minor,
         transactions.account_id,
         transactions.transaction_date,
+        transactions.post_date,
         transactions.transfer_group_id,
         transactions.transfer_direction,
         transactions.entry_type,
@@ -2132,6 +2137,7 @@ export async function updateEntryRecord(
       amount_minor: number;
       account_id: string;
       transaction_date: string;
+      post_date: string | null;
       transfer_group_id: string | null;
       transfer_direction: "in" | "out" | null;
       entry_type: "expense" | "income" | "transfer";
@@ -2151,6 +2157,7 @@ export async function updateEntryRecord(
   const resolvedTransferDirection = resolvedEntryType === "transfer"
     ? (input.transferDirection ?? transaction.transfer_direction ?? "out")
     : null;
+  const resolvedPostDate = input.postDate === undefined ? transaction.post_date : input.postDate;
 
   await assertUnlockedBankFactsForEntryUpdate(db, {
     transactionId: input.entryId,
@@ -2158,6 +2165,7 @@ export async function updateEntryRecord(
     next: {
       accountId: account.id,
       date: input.date,
+      postDate: resolvedPostDate ?? null,
       description: input.description,
       amountMinor: resolvedAmountMinor,
       entryType: resolvedEntryType,
@@ -2175,6 +2183,7 @@ export async function updateEntryRecord(
         amount_minor = ?,
         entry_type = ?,
         transfer_direction = ?,
+        post_date = ?,
         transfer_group_id = ?,
         category_id = ?,
         owner_person_id = ?,
@@ -2190,6 +2199,7 @@ export async function updateEntryRecord(
       resolvedAmountMinor,
       resolvedEntryType,
       resolvedTransferDirection,
+      resolvedPostDate ?? null,
       resolvedEntryType === "transfer" ? transaction.transfer_group_id : null,
       category.id,
       ownerPersonId,
@@ -2213,9 +2223,16 @@ export async function updateEntryRecord(
 
   const previousMonth = transaction.transaction_date.slice(0, 7);
   const nextMonth = input.date.slice(0, 7);
-  await recalculateMonthlySnapshots(db, previousMonth);
-  if (nextMonth !== previousMonth) {
-    await recalculateMonthlySnapshots(db, nextMonth);
+  const previousClearedDate = transaction.post_date ?? transaction.transaction_date;
+  const nextClearedDate = resolvedPostDate ?? input.date;
+  const monthsToRecalculate = new Set([
+    previousMonth,
+    nextMonth,
+    previousClearedDate.slice(0, 7),
+    nextClearedDate.slice(0, 7)
+  ]);
+  for (const month of monthsToRecalculate) {
+    await recalculateMonthlySnapshots(db, month);
   }
 
   await recordAuditEvent(db, {
@@ -2415,6 +2432,7 @@ export async function updateEntryClassificationRecord(
         transactions.transfer_group_id,
         transactions.entry_type,
         transactions.transfer_direction,
+        transactions.post_date,
         transactions.description,
         transactions.transaction_date,
         transactions.bank_certification_status,
@@ -2430,6 +2448,7 @@ export async function updateEntryClassificationRecord(
       transfer_group_id: string | null;
       entry_type: "expense" | "income" | "transfer";
       transfer_direction: "in" | "out" | null;
+      post_date: string | null;
       description: string;
       transaction_date: string;
       bank_certification_status: "provisional" | "statement_certified";
@@ -2458,6 +2477,7 @@ export async function updateEntryClassificationRecord(
     next: {
       accountId: transaction.account_id,
       date: transaction.transaction_date,
+      postDate: transaction.post_date ?? null,
       description: transaction.description,
       amountMinor: Number(transaction.amount_minor),
       entryType: input.entryType,
@@ -2512,6 +2532,7 @@ export async function createEntryRecord(
   db: D1Database,
   input: {
     date: string;
+    postDate?: string | null;
     description: string;
     accountId?: string;
     accountName?: string;
@@ -2562,6 +2583,7 @@ export async function createEntryRecord(
       assertIdempotentEntryMatches(existing, {
         accountId,
         date: input.date,
+        postDate: input.postDate ?? null,
         description: input.description,
         amountMinor: input.amountMinor,
         currency,
@@ -2572,7 +2594,13 @@ export async function createEntryRecord(
         offsetsCategory: input.offsetsCategory ? 1 : 0,
         note: input.note ?? null
       });
-      await recalculateMonthlySnapshots(db, input.date.slice(0, 7));
+      const monthsToRecalculate = new Set([
+        input.date.slice(0, 7),
+        (input.postDate ?? input.date).slice(0, 7)
+      ]);
+      for (const month of monthsToRecalculate) {
+        await recalculateMonthlySnapshots(db, month);
+      }
       return {
         entryId: existing.id,
         created: false,
@@ -2588,16 +2616,17 @@ export async function createEntryRecord(
     await db
       .prepare(`
         INSERT INTO transactions (
-          id, household_id, account_id, transaction_date,
+          id, household_id, account_id, transaction_date, post_date,
           description, amount_minor, currency, entry_type, transfer_direction,
           category_id, owner_person_id, offsets_category, note, external_reference
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         entryId,
         DEFAULT_HOUSEHOLD_ID,
         accountId,
         input.date,
+        input.postDate ?? null,
         input.description,
         input.amountMinor,
         currency,
@@ -2620,6 +2649,7 @@ export async function createEntryRecord(
     assertIdempotentEntryMatches(existing, {
       accountId,
       date: input.date,
+      postDate: input.postDate ?? null,
       description: input.description,
       amountMinor: input.amountMinor,
       currency,
@@ -2630,7 +2660,13 @@ export async function createEntryRecord(
       offsetsCategory: input.offsetsCategory ? 1 : 0,
       note: input.note ?? null
     });
-    await recalculateMonthlySnapshots(db, input.date.slice(0, 7));
+    const monthsToRecalculate = new Set([
+      input.date.slice(0, 7),
+      (input.postDate ?? input.date).slice(0, 7)
+    ]);
+    for (const month of monthsToRecalculate) {
+      await recalculateMonthlySnapshots(db, month);
+    }
     return {
       entryId: existing.id,
       created: false,
@@ -2640,7 +2676,13 @@ export async function createEntryRecord(
     };
   }
 
-  await recalculateMonthlySnapshots(db, input.date.slice(0, 7));
+  const monthsToRecalculate = new Set([
+    input.date.slice(0, 7),
+    (input.postDate ?? input.date).slice(0, 7)
+  ]);
+  for (const month of monthsToRecalculate) {
+    await recalculateMonthlySnapshots(db, month);
+  }
 
   await recordAuditEvent(db, {
     entityType: "transaction",
@@ -2663,6 +2705,7 @@ interface IdempotentEntryRow {
   id: string;
   account_id: string;
   transaction_date: string;
+  post_date: string | null;
   description: string;
   amount_minor: number;
   currency: string;
@@ -2677,6 +2720,7 @@ interface IdempotentEntryRow {
 interface IdempotentEntryExpected {
   accountId: string;
   date: string;
+  postDate: string | null;
   description: string;
   amountMinor: number;
   currency: string;
@@ -2695,6 +2739,7 @@ async function loadEntryByExternalReference(db: D1Database, externalReference: s
         id,
         account_id,
         transaction_date,
+        post_date,
         description,
         amount_minor,
         currency,
@@ -2718,6 +2763,7 @@ function assertIdempotentEntryMatches(
 ) {
   const matches = existing.account_id === expected.accountId
     && existing.transaction_date === expected.date
+    && (existing.post_date ?? null) === (expected.postDate ?? null)
     && existing.description === expected.description
     && Number(existing.amount_minor) === expected.amountMinor
     && existing.currency === expected.currency
