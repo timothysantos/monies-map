@@ -80,12 +80,15 @@ Imports owns:
   period but the bank PDF omits it because it posted after the statement cutoff,
   diagnostics expose two non-delete corrections: set the exact posted date when
   the bank app shows it, or defer the row to the next statement by setting a
-  provisional posted date to the day after the current statement end. Both
-  actions keep the event transaction date intact for spending history while
-  moving statement reconciliation to the cleared/post date. Deferral is
-  provisional only: a later official PDF remains the source of truth and can
-  certify the row in place, replacing both event and posted dates with the
-  statement dates while preserving user-owned annotations
+  provisional posted date to the day after the current statement end. The
+  diagnostic list shows the exact ledger rows, highlights rows whose posted date
+  is after the statement end, and gives direct links back to Entries so the user
+  can inspect and fix only the rows that matter. Both actions keep the event
+  transaction date intact for spending history while moving statement
+  reconciliation to the cleared/post date. Deferral is provisional only: a
+  later official PDF remains the source of truth and can certify the row in
+  place, replacing both event and posted dates with the statement dates while
+  preserving user-owned annotations
 - preview API failures preserve server detail. JSON errors are shown verbatim,
   while non-JSON failures such as edge 503s include HTTP status and a short
   cleaned response snippet instead of only a generic fallback

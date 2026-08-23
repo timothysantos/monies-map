@@ -140,6 +140,7 @@ export const messages = {
     editDescription: "Description",
     editWallet: "Wallet",
     editOwner: "Owner",
+    editPostDate: "Posted date",
     editSplit: "Split %",
     editNote: "Note",
     editTransferDirection: "Transfer direction",
@@ -417,6 +418,13 @@ export const messages = {
     statementReconciliationDelta: (amount) => `Difference ${amount}`,
     statementReconciliationBreakdownTitle: "Why this does not close",
     statementReconciliationMatchedBreakdownTitle: "Why this closes",
+    statementReconciliationQuickFixTitle: "What to do first",
+    statementReconciliationQuickFixIntroExact: (amount) => `This gap matches ${amount} already in the ledger for this statement period. Start there.`,
+    statementReconciliationQuickFixIntroGeneric: "Open the red mismatch rows and compare them with the PDF.",
+    statementReconciliationQuickFixStep1Exact: "Open 'Already in ledger during this period'.",
+    statementReconciliationQuickFixStep1Generic: "Open the rows highlighted in red.",
+    statementReconciliationQuickFixStep2: "Check the card, date, amount, and direction for each row.",
+    statementReconciliationQuickFixStep3: "If a row is wrong, delete it, remap it, or change the posted date, then refresh the check.",
     statementReconciliationAuthority: "If the PDF is mapped to the correct card account, treat the PDF as the stronger bank record. The ledger rows listed here are not automatically certified yet; some may still be present on the PDF but need a unique match before committing.",
     statementReconciliationMatchedAuthority: "The PDF is mapped to this account and the projected ledger balance equals the official statement balance. The rows listed here are context: they show which PDF rows will certify existing ledger entries or which PDF-only rows will be added.",
     statementReconciliationResult: ({ projectedBalance, statementBalance, delta }) => (
@@ -451,7 +459,7 @@ export const messages = {
     },
     statementReconciliationCausesTitle: "Recommended next checks",
     statementReconciliationExistingRowsTitle: "Ledger rows not automatically matched to this PDF",
-    statementReconciliationExistingRowsDetail: "These were picked because they are already in this account's ledger inside the statement period but this preview has not certified them against a unique PDF row. Repeated same-merchant charges can appear here even when matching rows exist on the PDF.",
+    statementReconciliationExistingRowsDetail: "These were picked because they are already in this account's ledger inside the statement period but this preview has not certified them against a unique PDF row. Repeated same-merchant charges can appear here even when matching rows exist on the PDF. If a ledger row shows a posted date after the statement end, use the row actions to set the exact posted date or defer it to the next statement.",
     statementReconciliationExistingRowsSummary: ({ shown, total, amount }) => (
       shown < total
         ? `Showing ${shown} of ${total} unresolved ledger rows. Together these rows net to ${amount}; the visible rows are only a sample, so they will not add up to the full total.`
@@ -483,6 +491,7 @@ export const messages = {
     },
     statementReconciliationLedgerDateDetail: "Date shown: transaction date from the ledger row.",
     statementReconciliationLedgerDualDateDetail: ({ transactionDate, postedDate }) => `Date shown: transaction date ${transactionDate}. Posted date saved on the ledger row: ${postedDate}.`,
+    statementReconciliationLedgerPostedAfterCutoffDetail: ({ transactionDate, postedDate, statementEndDate }) => `Date shown: transaction date ${transactionDate}. Posted date saved on the ledger row: ${postedDate}. Because ${postedDate} is after the statement end ${statementEndDate}, this row belongs to the next statement unless the bank shows a different posted date.`,
     statementReconciliationStatementDateDetail: "Date shown: posted date from the PDF statement.",
     statementReconciliationStatementDualDateDetail: ({ postedDate, eventDate }) => `Date shown: posted date ${postedDate}. Event/transaction date found on the PDF row: ${eventDate}.`,
     openDiagnosticEntry: "Open",

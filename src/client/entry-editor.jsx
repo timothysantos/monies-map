@@ -61,7 +61,7 @@ export function EntryEditorFields({
   const [categoryQuickSaveOpen, setCategoryQuickSaveOpen] = useState(false);
   const [quickSaveCategoryName, setQuickSaveCategoryName] = useState("");
   const quickSaveCategoryNameRef = useRef("");
-  const bankFactsLockMessage = "This row is statement certified. Description, date, wallet, amount, and type are locked to the saved statement. Use note, category, owner, or splits for annotations.";
+  const bankFactsLockMessage = "This row is statement certified. Description, date, posted date, wallet, amount, and type are locked to the saved statement. Use note, category, owner, or splits for annotations.";
 
   useEffect(() => {
     setAmountDraft(resolvedAmountInput);
@@ -192,6 +192,17 @@ export function EntryEditorFields({
             disabled={bankFactsLocked}
             enterKeyHint="next"
             onChange={(event) => onChange({ date: event.target.value })}
+          />
+        </label>
+        <label>
+          <span>{messages.entries.editPostDate}</span>
+          <input
+            className="table-edit-input"
+            type="date"
+            value={entry.postDate ?? ""}
+            disabled={bankFactsLocked}
+            enterKeyHint="next"
+            onChange={(event) => onChange({ postDate: event.target.value || undefined })}
           />
         </label>
         <label>

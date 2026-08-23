@@ -117,6 +117,37 @@ test.describe("money field editability", () => {
     }).toBe("receipt captured and itemized");
   });
 
+  test("entry posted date replaces the current value by typing and persists", async ({ page }) => {
+    const description = `Playwright post date edit ${Date.now()}`;
+    await postJson(page, "/api/entries/create", {
+      date: "2026-05-24",
+      postDate: "2026-05-25",
+      description,
+      accountName: "UOB One",
+      categoryName: "Groceries",
+      amountMinor: 3210,
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+
+    await page.goto("/entries?view=person-tim&month=2026-05");
+    await openEntryEditor(page, description);
+    const postDateInput = page.getByLabel("Posted date");
+    await postDateInput.fill("2026-05-26");
+    await expect(postDateInput).toHaveValue("2026-05-26");
+
+    const saveButton = page.getByRole("button", { name: "Done editing entry" });
+    const updateResponse = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());
+    await saveButton.click();
+    await updateResponse;
+
+    await expect.poll(async () => {
+      const entriesPage = await loadEntriesPage(page, { view: "person-tim", month: "2026-05" });
+      return entriesPage.monthPage.entries.find((entry) => entry.description === description)?.postDate ?? "";
+    }).toBe("2026-05-26");
+  });
+
   test("month budget amount replaces the formatted value by typing and persists", async ({ page }) => {
     const month = await loadMonthPage(page, { view: "person-tim", month: "2026-05", scope: "direct_plus_shared" });
     const entertainmentRow = month.monthPage.planSections

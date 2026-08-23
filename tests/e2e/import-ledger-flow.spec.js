@@ -883,6 +883,10 @@ test.describe("import flow", () => {
       const breakdown = page.locator(".statement-reconciliation-breakdown");
       await expect(breakdown).toContainText("Why this does not close");
       await expect(breakdown).toContainText("treat the PDF as the stronger bank record");
+      await expect(breakdown).toContainText("What to do first");
+      await expect(breakdown).toContainText("Open 'Already in ledger during this period'.");
+      await expect(breakdown).toContainText("Check the card, date, amount, and direction for each row.");
+      await expect(breakdown).toContainText("If a row is wrong, delete it, remap it, or change the posted date, then refresh the check.");
       await expect(breakdown).toContainText("After this preview, the ledger would show");
       await expect(breakdown).toContainText("Already in ledger during this period");
       await expect(breakdown).toContainText("adds $5.00 owed");
@@ -935,6 +939,134 @@ test.describe("import flow", () => {
     } finally {
       await page.unroute("**/api/imports/preview", mockedPreviewRoute);
       await page.unroute("**/api/entries/delete", mockedDeleteRoute);
+    }
+  });
+
+  test("statement mismatch UI flags ledger rows posted after the statement cutoff", async ({ page }) => {
+    const mockedPreviewRoute = async (route) => {
+      const request = route.request();
+      const body = JSON.parse(request.postData() ?? "{}");
+      await route.fulfill({
+        contentType: "application/json",
+        status: 200,
+        body: JSON.stringify({
+          ok: true,
+          preview: {
+            sourceLabel: body.sourceLabel ?? "Statement cutoff preview",
+            parserKey: "generic_csv",
+            importedRows: 1,
+            previewRows: [{
+              rowId: "preview-statement-cutoff-1",
+              rowIndex: 1,
+              date: "2026-04-16",
+              description: "PDF STATEMENT ROW",
+              amountMinor: 1000,
+              entryType: "expense",
+              accountId: "acct-statement-cutoff",
+              accountName: "Statement Cutoff Card",
+              statementAccountName: "Statement Cutoff Card",
+              categoryName: "Other",
+              ownershipType: "direct",
+              ownerName: "Tim",
+              splitBasisPoints: 10000,
+              rawRow: {
+                date: "2026-04-16",
+                description: "PDF STATEMENT ROW",
+                expense: "10.00",
+                account: "Statement Cutoff Card",
+                category: "Other",
+                note: "txn date: 2026-04-14"
+              },
+              reconciliationMatch: {
+                existingTransactionId: "txn-statement-cutoff-existing",
+                existingAccountId: "acct-statement-cutoff",
+                existingSourceType: "manual",
+                existingBankCertificationStatus: "provisional",
+                date: "2026-04-14",
+                postedDate: "2026-05-13",
+                description: "PDF STATEMENT ROW",
+                amountMinor: 1000,
+                accountName: "Statement Cutoff Card",
+                matchKind: "exact"
+              },
+              reconciliationMatchCount: 1,
+              commitStatus: "included",
+              commitStatusExplicit: false
+            }],
+            unknownAccounts: [],
+            unknownCategories: [],
+            reconciliationCandidateCount: 0,
+            overlappingImportCount: 0,
+            overlapImports: [],
+            startDate: "2026-04-16",
+            endDate: "2026-04-16",
+            accountNames: ["Statement Cutoff Card"],
+            reconciliationCandidates: [],
+            exceptionSummary: [],
+            statementReconciliations: [{
+              accountId: "acct-statement-cutoff",
+              accountName: "Statement Cutoff Card",
+              accountKind: "credit_card",
+              checkpointMonth: "2026-05",
+              statementStartDate: "2026-04-13",
+              statementEndDate: "2026-05-12",
+              statementBalanceMinor: -1000,
+              ledgerBalanceMinor: -1500,
+              deltaMinor: -500,
+              status: "mismatch",
+              reconciliationBreakdown: {
+                priorLedgerBalanceMinor: 0,
+                statementPeriodExistingRowsMinor: -500,
+                includedStatementRowsMinor: -1000,
+                matchedStatementRowsMinor: 0,
+                skippedStatementRowsMinor: 0,
+                supersededLedgerRowsMinor: 0,
+                projectedLedgerBalanceMinor: -1500,
+                statementBalanceMinor: -1000,
+                deltaMinor: -500,
+                periodExistingLedgerRowCount: 1,
+                skippedStatementRowCount: 0,
+                matchedStatementRowCount: 0,
+                suspectedCauses: [
+                  "Existing ledger rows inside this statement period total $5.00, matching the difference."
+                ],
+                periodExistingLedgerRows: [{
+                  id: "txn-statement-cutoff-existing",
+                  accountId: "acct-statement-cutoff",
+                  date: "2026-04-16",
+                  postedDate: "2026-05-13",
+                  dateRole: "transaction",
+                  description: "CUT-OFF ROW",
+                  signedAmountMinor: -500,
+                  accountName: "Statement Cutoff Card",
+                  source: "ledger",
+                  status: "manual / provisional"
+                }],
+                skippedStatementRows: [],
+                matchedStatementRows: []
+              }
+            }]
+          }
+        })
+      });
+    };
+
+    await page.route("**/api/imports/preview", mockedPreviewRoute);
+    try {
+      await page.getByLabel("Source label").fill("Statement cutoff preview");
+      await page.getByLabel("CSV content").fill(
+        [
+          "date,description,expense,account,category,note",
+          "2026-04-16,PDF STATEMENT ROW,10.00,Statement Cutoff Card,Other,txn date: 2026-04-14"
+        ].join("\n")
+      );
+
+      await page.getByRole("button", { name: "Preview import" }).click();
+      const ledgerRow = page.locator(".statement-reconciliation-diagnostic-row").filter({ hasText: "CUT-OFF ROW" });
+      await expect(ledgerRow).toContainText("Posted date saved on the ledger row: 13 May 2026");
+      await expect(ledgerRow).toContainText("this row belongs to the next statement");
+    } finally {
+      await page.unroute("**/api/imports/preview", mockedPreviewRoute);
     }
   });
 
