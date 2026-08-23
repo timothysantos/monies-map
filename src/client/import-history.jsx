@@ -1,10 +1,9 @@
 import * as Popover from "@radix-ui/react-popover";
 import { ChevronRight } from "lucide-react";
 import { messages } from "./copy/en-SG";
+import { RECENT_IMPORTS_PAGE_SIZE } from "./recent-imports-page-size";
 import { moniesClient } from "./monies-client-service";
 import { DeleteRowButton } from "./ui-components";
-
-export const RECENT_IMPORTS_PAGE_SIZE = 25;
 const { format: formatService } = moniesClient;
 
 // Recent history is read-only except rollback; pagination only changes which batches are visible.
