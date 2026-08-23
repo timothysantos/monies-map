@@ -1,7 +1,5 @@
-import { RECENT_IMPORTS_PAGE_SIZE } from "./import-history";
-import { moniesClient } from "./monies-client-service";
-
-const { accounts: accountService } = moniesClient;
+import { RECENT_IMPORTS_PAGE_SIZE } from "./recent-imports-page-size";
+import { getAccountSelectOptions } from "./account-display";
 
 export function buildRecentImportModel(recentImports, recentImportPage) {
   const pageCount = Math.max(1, Math.ceil(recentImports.length / RECENT_IMPORTS_PAGE_SIZE));
@@ -20,7 +18,7 @@ export function buildRecentImportModel(recentImports, recentImportPage) {
 
 export function getRecentImportAccountOptions(recentImports, accounts = []) {
   const accountLabels = new Set();
-  for (const option of accountService.getSelectOptions(accounts)) {
+  for (const option of getAccountSelectOptions(accounts)) {
     accountLabels.add(option.label);
   }
 
@@ -38,7 +36,20 @@ export function filterRecentImportsByAccount(recentImports, accountFilter) {
     return recentImports;
   }
 
-  return recentImports.filter((item) => item.accountNames?.includes(accountFilter));
+  const normalizedFilter = normalizeRecentImportAccountKey(accountFilter);
+  return recentImports.filter((item) => (
+    item.accountNames?.some((accountName) => (
+      normalizeRecentImportAccountKey(accountName) === normalizedFilter
+      || accountName.trim() === accountFilter.trim()
+    ))
+  ));
+}
+
+function normalizeRecentImportAccountKey(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s*[-•]\s*.+$/, "");
 }
 
 function groupRecentImportsByDate(recentImports) {
