@@ -6,7 +6,7 @@ independent of the project owner's personal Shortcuts library and iCloud.
 ## Files
 
 - `monies-map-apple-pay-api.plist` is the reviewable, secret-free source.
-- `releases/monies-map-apple-pay-api-2026-08-22-v2.shortcut` is the exact
+- `releases/monies-map-apple-pay-api-2026-08-22-v3.shortcut` is the exact
   Apple-signed release for anyone to import.
 - `../../public/shortcuts/monies-map-apple-pay-api.shortcut` is a byte-identical
   public copy served by the app.
