@@ -599,7 +599,7 @@ test.describe("settings reference data", () => {
     });
     const artifactResponse = await page.request.get(shortcutPath);
     expect(artifactResponse.ok()).toBeTruthy();
-    expect((await artifactResponse.body()).byteLength).toBe(24_341);
+    expect((await artifactResponse.body()).byteLength).toBe(24_344);
     await page.context().route(`**${shortcutPath}`, (route) => route.fulfill({
       status: 200,
       contentType: "text/html",

@@ -50,7 +50,7 @@ failure feedback, artifact ownership, and installation.
   idempotent transaction write.
 - Success responses include normalized values, selected account, account
   resolution, creation status, and `openUrl`.
-- The v2 Shortcut posts the token-bearing setup URL, ISO date, Wallet amount,
+- The v3 Shortcut posts the token-bearing setup URL, ISO date, Wallet amount,
   merchant, card name, request ID, and client version. It guards `openUrl`,
   reports API errors, and identifies the saved account in its notification.
 - The app serves an Apple-signed `anyone` file whose bytes are checked against

@@ -276,7 +276,7 @@ Common payload:
   "amount": "SGD 4.20",
   "accountName": "UOB One",
   "requestId": "apple-pay-20260822190730123",
-  "clientVersion": "apple-pay-api-2026-08-22-v2",
+  "clientVersion": "apple-pay-api-2026-08-22-v3",
   "categoryName": "Transport",
   "ownershipType": "direct",
   "ownerName": "Tim",
