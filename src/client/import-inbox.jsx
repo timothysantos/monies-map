@@ -98,11 +98,14 @@ export function ImportInboxSection({
           </div>
           <ol>
             {inbox.reviewQueue.slice(0, 6).map((file) => (
-              <li key={file.id}>{messages.imports.inboxReviewOrderItem(
-                formatService.formatMonthLabel(file.periodMonth),
-                file.accountName,
-                file.priority
-              )}</li>
+              <li key={file.id}>
+                <strong>{`${formatService.formatMonthLabel(file.periodMonth)} (${file.periodMonth})`}</strong>
+                <span>{messages.imports.inboxReviewOrderItemBody(
+                  file.accountName,
+                  file.ownerLabel,
+                  file.priority
+                )}</span>
+              </li>
             ))}
           </ol>
         </div>
@@ -120,7 +123,7 @@ export function ImportInboxSection({
           <summary>{messages.imports.inboxCurrentAccounts(currentSessions.length)}</summary>
           <div className="import-inbox-current-list">
             {currentSessions.flatMap((session) => session.accounts).map((account) => (
-              <span key={account.accountId}>{account.accountName}</span>
+              <span key={account.accountId}>{messages.common.triplet(account.accountName, account.ownerLabel)}</span>
             ))}
           </div>
         </details>
@@ -305,7 +308,9 @@ function ImportInboxFileRow({ file, isSnoozed, onSelectExpectedFile, onSnoozeFil
   return (
     <div className={`import-inbox-file-row ${isSnoozed ? "is-snoozed" : ""}`}>
       <div className="import-inbox-file-main">
-        <strong>{file.label}</strong>
+        <strong>{file.accountName}</strong>
+        <strong>{`${formatService.formatMonthLabel(file.periodMonth)} (${file.periodMonth})`}</strong>
+        <span>{messages.imports.inboxFileOwner(file.ownerLabel)}</span>
         <span>{messages.imports.inboxFileDetail(
           file.detail,
           file.supportedFileTypes.join(", ")
