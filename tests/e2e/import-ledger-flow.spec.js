@@ -162,6 +162,18 @@ async function createHsbcVisaRevolutionAccount(page) {
   });
 }
 
+async function createCitiRewardsAccount(page) {
+  await postJson(page, "/api/accounts/create", {
+    name: "Citi Rewards",
+    institution: "Citibank",
+    kind: "credit_card",
+    openingBalanceMinor: 0,
+    currency: "SGD",
+    ownerPersonId: "",
+    isJoint: false
+  });
+}
+
 async function expectHsbcPreviewValues(page, expectedValues) {
   await expect(page.getByText("Unknown accounts need mapping before commit.")).toHaveCount(0);
   const previewValues = await page
@@ -4782,5 +4794,23 @@ test.describe("import flow", () => {
     await expect(page).toHaveURL(/settings_section=errorDiagnostics/);
     await expect(page.getByRole("button", { name: /Error diagnostics/ })).toHaveAttribute("aria-expanded", "true");
     await expect(page.getByText("Commit import: Imported CSV (1 rows, csv)")).toBeVisible();
+  });
+
+  test("pasted Citi activity CSV is recognized without manual column mapping", async ({ page }) => {
+    await reseedDemo(page);
+    const referenceData = await loadReferenceData(page);
+    if (!referenceData.accounts.some((item) => item.name === "Citi Rewards")) {
+      await createCitiRewardsAccount(page);
+    }
+    await gotoImportsPage(page, "2026-08");
+
+    await page.getByLabel("Default account").selectOption({ label: "Citi Rewards - Joyce" });
+    await page.getByLabel("CSV content").fill([
+      `"23/08/2026","CLOUDFLARE             SAN FRANCISCO USA USD 3.34 USD 3.34","-4.25","","'5425503003296349'"`,
+      `"22/08/2026","HBOMax help.hbomax.com SG            SGP","-18.98","","'5425503003296349'"`,
+      `"20/08/2026","SHOPEE SG MP           SINGAPORE     SGP","-7.62","","'5425503003296349'"`
+    ].join("\n"));
+
+    await expect(page.getByText("3 rows ready for review.")).toBeVisible({ timeout: 30_000 });
   });
 });

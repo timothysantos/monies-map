@@ -26,12 +26,21 @@ export function canParseCitibankActivityCsv(fileName: string | undefined, contex
   return isCitibankCreditCardContext(context) && isCitibankActivityFileName(fileName);
 }
 
+export function canRecognizeCitibankActivityCsv(
+  text: string,
+  fileName?: string,
+  context?: CitibankActivityContext
+) {
+  return canParseCitibankActivityCsv(fileName, context)
+    || (isCitibankCreditCardContext(context) && hasCitibankActivitySignature(text));
+}
+
 export function parseCitibankActivityCsv(
   text: string,
   fileName?: string,
   context?: CitibankActivityContext
 ): ParsedStatementImport {
-  if (!canParseCitibankActivityCsv(fileName, context)) {
+  if (!canRecognizeCitibankActivityCsv(text, fileName, context)) {
     throw new Error("Citibank activity CSV needs a Citibank credit card account selected.");
   }
 
@@ -118,6 +127,24 @@ function cleanCitibankActivityDescription(value: string) {
   return compactDescription(cleanCsvCell(value)
     .replace(/\bSINGAPORE\s+SG\b/gi, "")
     .replace(/\bSG\b$/i, ""));
+}
+
+function hasCitibankActivitySignature(text: string) {
+  const rows = parseCsvMatrix(text);
+  const candidates = rows
+    .map((row) => parseCitibankActivityRow(row))
+    .filter((row): row is CitibankActivityCandidate => Boolean(row));
+
+  if (candidates.length < 2) {
+    return false;
+  }
+
+  const cardEndings = new Set(candidates.map((row) => row.cardEnding).filter(Boolean));
+  if (cardEndings.size !== 1) {
+    return false;
+  }
+
+  return candidates.every((row) => row.cardEnding);
 }
 
 function cleanCsvCell(value: string) {

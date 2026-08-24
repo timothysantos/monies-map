@@ -87,6 +87,7 @@ export function ImportSelectFileStage({
           <textarea
             className="table-edit-textarea import-textarea"
             value={csvText}
+            onInput={(event) => onCsvTextChange(event.currentTarget.value)}
             onChange={(event) => onCsvTextChange(event.target.value)}
             placeholder={messages.imports.csvPlaceholder}
           />

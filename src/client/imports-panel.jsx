@@ -28,6 +28,7 @@ import {
   parseCitibankActivityCsv,
   parseCurrentTransactionSpreadsheet,
   parseOcbcActivityCsv,
+  canRecognizeCitibankActivityCsv,
   parseStatementText,
   statementRowsToCsv
 } from "../lib/statement-import";
@@ -150,6 +151,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const lastStatementPreviewAutoRefreshRef = useRef({ key: "", at: 0 });
   const lastStatementPreviewSnapshotRef = useRef("");
   const lastImportActionRef = useRef("");
+  const lastAutoPreviewCitibankSignatureRef = useRef("");
   const deletedDiagnosticLedgerIdsRef = useRef(new Set());
   const pendingSplitMatchCount = Number(postImportSplitMatchCount ?? safeImportsPage.pendingSplitMatchCount ?? 0);
   const showSplitCleanupNotice = pendingSplitMatchCount > 0 && !isSplitCleanupDismissed;
@@ -346,7 +348,17 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setCsvText(nextText);
     setStatementCheckpoints([]);
     setStatementImportMeta(DEFAULT_STATEMENT_IMPORT_META);
+    setPreview(null);
+    setPreviewRows([]);
+    setPreviewError("");
     setUploadStatus(null);
+    lastAutoPreviewCitibankSignatureRef.current = "";
+    void maybeAutoPreviewCitibankActivityCsv(nextText, {
+      accountName: defaultAccount?.name ?? defaultAccountName,
+      accountKind: defaultAccount?.kind,
+      institution: defaultAccount?.institution,
+      ownerName
+    });
   }
 
   function handleDefaultAccountChange(nextAccountName) {
@@ -355,6 +367,22 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     if (ownershipType === "direct" && nextOwnerName) {
       setOwnerName(nextOwnerName);
     }
+    void maybeAutoPreviewCitibankActivityCsv(csvText, {
+      accountName: accounts.find((account) => account.name === nextAccountName || account.accountName === nextAccountName)?.name ?? nextAccountName,
+      accountKind: accounts.find((account) => account.name === nextAccountName || account.accountName === nextAccountName)?.kind,
+      institution: accounts.find((account) => account.name === nextAccountName || account.accountName === nextAccountName)?.institution,
+      ownerName: ownershipType === "direct" && nextOwnerName ? nextOwnerName : ownerName
+    });
+  }
+
+  function handleOwnerNameChange(nextOwnerName) {
+    setOwnerName(nextOwnerName);
+    void maybeAutoPreviewCitibankActivityCsv(csvText, {
+      accountName: defaultAccount?.name ?? defaultAccountName,
+      accountKind: defaultAccount?.kind,
+      institution: defaultAccount?.institution,
+      ownerName: nextOwnerName
+    });
   }
 
   function handleSelectExpectedFile(file) {
@@ -684,9 +712,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         sourceLabel: nextSourceLabel,
         sourceType: nextSourceType,
         rows,
-        ownershipType,
+        defaultAccountName,
         ownerName,
-        splitPercent,
         statementCheckpoints: nextStatementCheckpoints,
         diagnosticContext: {
           source: "import_preview",
@@ -777,9 +804,66 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       return;
     }
 
+    const activityContext = {
+      accountName: defaultAccount?.name ?? defaultAccountName,
+      accountKind: defaultAccount?.kind,
+      institution: defaultAccount?.institution
+    };
+    if (canRecognizeCitibankActivityCsv(csvText, undefined, activityContext)) {
+      const parsed = parseCitibankActivityCsv(csvText, undefined, activityContext);
+      setIsSubmitting(true);
+      try {
+        await previewParsedImport({
+          parsed,
+          sourceType: "csv",
+          nextStatementCheckpoints: [],
+          successMessage: messages.imports.uploadReady(parsed.rows.length)
+        });
+      } catch (error) {
+        setPreviewError(buildImportPreviewError(error));
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await previewImportRows({ rows: importWorkflowModel.mappedRows });
+    } catch (error) {
+      setPreviewError(buildImportPreviewError(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function maybeAutoPreviewCitibankActivityCsv(nextText, context) {
+    const activityContext = {
+      accountName: context?.accountName ?? defaultAccount?.name ?? defaultAccountName,
+      accountKind: context?.accountKind ?? defaultAccount?.kind,
+      institution: context?.institution ?? defaultAccount?.institution
+    };
+    const signature = `${activityContext.accountName ?? ""}::${activityContext.accountKind ?? ""}::${activityContext.institution ?? ""}::${nextText}`;
+
+    if (isSubmitting || isParsingStatement || importWorkflowModel.isWorkflowLocked || !nextText || !canRecognizeCitibankActivityCsv(nextText, undefined, activityContext)) {
+      lastAutoPreviewCitibankSignatureRef.current = "";
+      return;
+    }
+
+    if (lastAutoPreviewCitibankSignatureRef.current === signature) {
+      return;
+    }
+
+    lastAutoPreviewCitibankSignatureRef.current = signature;
+    const parsed = parseCitibankActivityCsv(nextText, undefined, activityContext);
+    setIsSubmitting(true);
+    try {
+      await previewParsedImport({
+        parsed,
+        sourceType: "csv",
+        nextStatementCheckpoints: [],
+        successMessage: messages.imports.uploadReady(parsed.rows.length)
+      });
     } catch (error) {
       setPreviewError(buildImportPreviewError(error));
     } finally {
@@ -1437,7 +1521,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           ownershipType={ownershipType}
           onOwnershipTypeChange={setOwnershipType}
           ownerName={ownerName}
-          onOwnerNameChange={setOwnerName}
+          onOwnerNameChange={handleOwnerNameChange}
           people={people}
           splitPercent={splitPercent}
           onSplitPercentChange={setSplitPercent}

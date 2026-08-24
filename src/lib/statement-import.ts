@@ -1,6 +1,7 @@
 import { parseCitibankCreditCardStatement } from "./statement-import/citibank";
 import {
   canParseCitibankActivityCsv,
+  canRecognizeCitibankActivityCsv,
   parseCitibankActivityCsv
 } from "./statement-import/citibank-activity-csv";
 import {
@@ -22,6 +23,7 @@ import { parseCurrentTransactionSpreadsheet } from "./statement-import/xls";
 
 export {
   canParseCitibankActivityCsv,
+  canRecognizeCitibankActivityCsv,
   canParseOcbcActivityCsv,
   canRecognizeOcbcActivityCsv,
   parseCitibankActivityCsv,

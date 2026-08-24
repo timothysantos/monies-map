@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { parseStatementText } from "../src/lib/statement-import.ts";
+import { parseCitibankActivityCsv, parseStatementText } from "../src/lib/statement-import.ts";
 import { parseOcbcActivityCsv } from "../src/lib/statement-import.ts";
 import { parseCurrentTransactionSpreadsheet } from "../src/lib/statement-import/xls.ts";
 
@@ -281,6 +281,32 @@ test("parseOcbcActivityCsv preserves a near-real OCBC 360 current-activity expor
   });
   assert.equal(parsed.rows[2]["transaction date"], "2026-05-31");
   assert.equal(parsed.rows[2]["value date"], "2026-06-02");
+});
+
+test("parseCitibankActivityCsv preserves a near-real Citi activity export even with a generic file name", () => {
+  const parsed = parseCitibankActivityCsv(
+    readTextFixture("./fixtures/citibank-activity/ACCT_349_06_07_2026-sanitized.csv"),
+    "ACCT_349_06_07_2026.csv",
+    {
+      accountName: "Citi Rewards",
+      accountKind: "credit_card",
+      institution: "Citibank"
+    }
+  );
+
+  assert.equal(parsed.parserKey, "citibank_credit_card_activity_csv");
+  assert.equal(parsed.sourceLabel, "ACCT_349_06_07_2026");
+  assert.equal(parsed.rows.length, 4);
+  assert.deepEqual(parsed.rows[0], {
+    date: "2026-08-20",
+    description: "SHOPEE SG MP SINGAPORE SGP",
+    expense: "7.62",
+    income: "",
+    account: "Citi Rewards",
+    category: "Shopping",
+    note: "card ending: 6349",
+    type: "expense"
+  });
 });
 
 test("parseStatementText keeps OCBC 360 disclosure text out of transaction descriptions", () => {
