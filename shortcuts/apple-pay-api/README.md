@@ -13,11 +13,10 @@ independent of the project owner's personal Shortcuts library and iCloud.
 - `manifest.json` records the release status, action contract, and SHA-256
   checksums.
 
-The source may temporarily be ahead of the signed release while a Mac produces
-the next Apple-approved `.shortcut` file. During that window the manifest uses
-`SOURCE_UPDATED_NEEDS_SIGNING`; the public download remains the last signed
-release until the new file is signed, checksummed, and copied into both release
-locations.
+The source and signed release are kept in lockstep. When the source changes,
+convert it to Apple's binary property-list format before signing with the macOS
+`shortcuts sign --mode anyone` command. The signed output is copied into both
+the versioned release and `public/shortcuts/` before deployment.
 
 The source and signed artifact must never contain a household API key, private
 connection URL, `shortcut_token`, or authorization header value. Installation
