@@ -166,14 +166,11 @@ function normalizeShortcutMajorAmount(
 
   const currency = detectShortcutAmountCurrency(affixes);
   const currencyAffix = affixes.replace(/[()+-]/g, "");
-  if (currencyAffix && !currency) {
+  if (currencyAffix && currencyAffix !== "$" && !currency) {
     return undefined;
   }
 
-  return {
-    ...result,
-    currency
-  };
+  return currency ? { ...result, currency } : result;
 }
 
 export function normalizeShortcutCurrency(value?: string) {
@@ -295,6 +292,9 @@ function detectShortcutAmountCurrency(affixes: string) {
   }
   if (currencyAffix === "S$" || currencyAffix === "SG$") {
     return "SGD";
+  }
+  if (currencyAffix === "$") {
+    return undefined;
   }
   if (currencyAffix === "US$") {
     return "USD";

@@ -354,7 +354,7 @@
 									<key>Value</key>
 									<dict>
 										<key>string</key>
-										<string>apple-pay-api-2026-08-22-v3</string>
+										<string>apple-pay-api-2026-08-24-v6</string>
 									</dict>
 									<key>WFSerializationType</key>
 									<string>WFTextTokenString</string>
@@ -619,7 +619,7 @@
 									<key>Value</key>
 									<dict>
 										<key>string</key>
-										<string>apple-pay-api-2026-08-22-v3</string>
+										<string>apple-pay-api-2026-08-24-v6</string>
 									</dict>
 									<key>WFSerializationType</key>
 									<string>WFTextTokenString</string>
