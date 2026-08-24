@@ -42,6 +42,10 @@ test("committed Apple Pay shortcut release is secret-free and matches its manife
   assert.match(sourceText, /<string>error<\/string>/);
   assert.match(
     sourceText,
+    /<string>amount<\/string>[\s\S]*?<key>WFItemType<\/key>\s*<integer>0<\/integer>/
+  );
+  assert.match(
+    sourceText,
     /<string>is\.workflow\.actions\.detect\.dictionary<\/string>[\s\S]*?<key>WFInput<\/key>[\s\S]*?<string>ExtensionInput<\/string>/
   );
   assert.match(sourceText, /<key>WFWorkflowImportQuestions<\/key>/);
