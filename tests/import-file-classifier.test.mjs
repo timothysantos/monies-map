@@ -58,6 +58,17 @@ test("classifyImportFile routes UOB/OCBC/Citi CSV variants explicitly", () => {
     activityContext: creditCardContext
   }), "citibank-activity-csv");
 
+  const genericCitiActivityText = readFileSync(
+    new URL("./fixtures/citibank-activity/ACCT_349_06_07_2026-sanitized.csv", import.meta.url),
+    "utf8"
+  );
+  assert.equal(classifyImportFile({
+    fileName: "ACCT_349_06_07_2026.csv",
+    fileType: "text/csv",
+    text: genericCitiActivityText,
+    activityContext: creditCardContext
+  }), "citibank-activity-csv");
+
   assert.equal(classifyImportFile({
     fileName: "TrxHistory_12345.csv",
     fileType: "text/csv",

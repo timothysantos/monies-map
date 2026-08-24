@@ -11,7 +11,7 @@ export function classifyImportFile({ fileName, fileType, text, activityContext }
     return "xls";
   }
 
-  if (/\.csv$/i.test(fileName) && canParseCitibankActivityCsv(fileName, activityContext)) {
+  if (/\.csv$/i.test(fileName) && canRecognizeCitibankActivityCsv(text, fileName, activityContext)) {
     return "citibank-activity-csv";
   }
 
@@ -22,5 +22,5 @@ export function classifyImportFile({ fileName, fileType, text, activityContext }
   return "unknown";
 }
 
-import { canParseCitibankActivityCsv } from "../lib/statement-import/citibank-activity-csv";
+import { canRecognizeCitibankActivityCsv } from "../lib/statement-import/citibank-activity-csv";
 import { canRecognizeOcbcActivityCsv } from "../lib/statement-import/ocbc-activity-csv";
