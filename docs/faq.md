@@ -411,6 +411,11 @@ and opens the saved entry for optional edits. The request ID makes an HTTP retry
 idempotent. The private connection URL is the POST destination stored during
 setup; it is not included in the JSON body.
 
+When the shortcut does not send an explicit category, the server applies the
+same active category-match rules used by imports. A matching rule can therefore
+classify a merchant such as `SUBWAY` before the entry is saved; if no rule
+matches, the entry uses `Other` and can be corrected in the editor.
+
 Apple personal automations are device-local and cannot be packaged inside the
 downloaded shortcut, so the Transaction automation remains the one required
 manual step on each iPhone.
