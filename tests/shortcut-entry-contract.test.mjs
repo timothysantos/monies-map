@@ -20,13 +20,15 @@ test("shortcut amount accepts Wallet currency text without losing cents", () => 
     amountMinor: 123456,
     currency: "SGD"
   });
+  assert.deepEqual(normalizeShortcutAmount(undefined, "$6.90"), {
+    amountMinor: 690
+  });
   assert.deepEqual(normalizeShortcutAmount(420), { amountMinor: 420 });
 });
 
 test("shortcut amount rejects ambiguous, negative, over-precise, and unsafe values", () => {
   assert.equal(normalizeShortcutAmount(undefined, "12,34"), undefined);
   assert.equal(normalizeShortcutAmount(undefined, "1.234,56"), undefined);
-  assert.equal(normalizeShortcutAmount(undefined, "$12.34"), undefined);
   assert.equal(normalizeShortcutAmount(undefined, "€12.34"), undefined);
   assert.equal(normalizeShortcutAmount(undefined, "SGD 12.345"), undefined);
   assert.equal(normalizeShortcutAmount(undefined, "-SGD 12.34"), undefined);
