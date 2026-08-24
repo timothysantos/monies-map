@@ -13,6 +13,12 @@ independent of the project owner's personal Shortcuts library and iCloud.
 - `manifest.json` records the release status, action contract, and SHA-256
   checksums.
 
+The source may temporarily be ahead of the signed release while a Mac produces
+the next Apple-approved `.shortcut` file. During that window the manifest uses
+`SOURCE_UPDATED_NEEDS_SIGNING`; the public download remains the last signed
+release until the new file is signed, checksummed, and copied into both release
+locations.
+
 The source and signed artifact must never contain a household API key, private
 connection URL, `shortcut_token`, or authorization header value. Installation
 injects the private connection URL into the blank Text action on each device.
@@ -36,7 +42,8 @@ button does not use it.
 ## Release Procedure
 
 1. Change the secret-free plist source and keep its setup Text action blank.
-2. Confirm the Shortcut still accepts a Dictionary containing `value`,
+2. Confirm the Shortcut still accepts a Dictionary through the explicit
+   `Shortcut Input` binding, containing `value`,
    `merchant`, and `name`; posts `amount`, `description`, `date`, `name`,
    `requestId`, and `clientVersion`; and handles `openUrl`, `accountName`, and
    `error` from the response.

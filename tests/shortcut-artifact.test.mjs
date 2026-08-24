@@ -23,8 +23,12 @@ test("committed Apple Pay shortcut release is secret-free and matches its manife
   assert.equal(signedRelease.byteLength, manifest.signedReleaseSize);
   assert.equal(sha256(publicRelease), manifest.signedReleaseSha256);
   assert.equal(publicRelease.byteLength, manifest.signedReleaseSize);
-  assert.equal(manifest.appleSigningStatus, "APPROVED");
+  assert.ok(["APPROVED", "SOURCE_UPDATED_NEEDS_SIGNING"].includes(manifest.appleSigningStatus));
   assert.equal(manifest.distribution, "self_hosted_apple_signed_file");
+
+  if (manifest.appleSigningStatus === "APPROVED") {
+    assert.equal(sha256(source), manifest.signedSourceSha256 ?? manifest.sourceSha256);
+  }
 
   const actionIdentifiers = sourceText.match(/<string>is\.workflow\.actions\.[^<]+<\/string>/g) ?? [];
   assert.equal(actionIdentifiers.length, manifest.actionCount);
@@ -36,6 +40,10 @@ test("committed Apple Pay shortcut release is secret-free and matches its manife
   assert.match(sourceText, /<string>yyyy-MM-dd<\/string>/);
   assert.match(sourceText, /<string>is\.workflow\.actions\.conditional<\/string>/);
   assert.match(sourceText, /<string>error<\/string>/);
+  assert.match(
+    sourceText,
+    /<string>is\.workflow\.actions\.detect\.dictionary<\/string>[\s\S]*?<key>WFInput<\/key>[\s\S]*?<string>ExtensionInput<\/string>/
+  );
   assert.match(sourceText, /<key>WFWorkflowImportQuestions<\/key>/);
   assert.match(sourceText, /<key>ActionIndex<\/key>\s*<integer>5<\/integer>/);
   assert.match(sourceText, /<key>ParameterKey<\/key>\s*<string>WFTextActionText<\/string>/);
