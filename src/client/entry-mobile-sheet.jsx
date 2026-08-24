@@ -93,33 +93,36 @@ export function EntryMobileEditExpenseFooter({
   if (mode === "linked") {
     return (
       <div className="entry-inline-actions entry-mobile-sheet-actions entry-mobile-sheet-linked-actions">
-        <button
-          type="button"
-          className="subtle-action entry-mobile-sheet-secondary"
-          disabled={isWorking}
-          onClick={onDeleteEntry}
-        >
-          {deleteEntryLabel}
-        </button>
-        <button
-          type="button"
-          className="subtle-action entry-mobile-sheet-secondary"
-          disabled={isWorking}
-          onClick={onViewSplit}
-        >
-          View split
-        </button>
-        <button
-          type="button"
-          className="subtle-action entry-mobile-sheet-secondary"
-          disabled={isWorking}
-          onClick={onDeleteSplit}
-        >
-          {deleteLabel}
-        </button>
-        <span className="entry-mobile-sheet-action-divider" aria-hidden="true">|</span>
-        <button type="button" className="subtle-cancel" onClick={onCancel}>Cancel</button>
-        <button type="submit" className="dialog-primary" disabled={isSaveDisabled}>{saveLabel}</button>
+        <div className="entry-mobile-sheet-secondary-row">
+          <button
+            type="button"
+            className="subtle-action entry-mobile-sheet-secondary"
+            disabled={isWorking}
+            onClick={onDeleteEntry}
+          >
+            {deleteEntryLabel}
+          </button>
+          <button
+            type="button"
+            className="subtle-action entry-mobile-sheet-secondary"
+            disabled={isWorking}
+            onClick={onViewSplit}
+          >
+            View split
+          </button>
+          <button
+            type="button"
+            className="subtle-action entry-mobile-sheet-secondary"
+            disabled={isWorking}
+            onClick={onDeleteSplit}
+          >
+            {deleteLabel}
+          </button>
+        </div>
+        <div className="entry-mobile-sheet-primary-row">
+          <button type="button" className="subtle-cancel" onClick={onCancel}>Cancel</button>
+          <button type="submit" className="dialog-primary" disabled={isSaveDisabled}>{saveLabel}</button>
+        </div>
       </div>
     );
   }
