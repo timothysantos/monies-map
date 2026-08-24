@@ -394,6 +394,11 @@ request is rejected.
    `Register Apple Pay Transaction` with `Monies Map Apple Pay API`, and pass
    that Dictionary as the shortcut input.
 
+The installed shortcut's first action must read from the named `Shortcut Input`
+variable. If Apple displays the source as the generic `Input`, open that action,
+tap its input, and select `Shortcut Input` explicitly. This is separate from the
+Wallet Dictionary's `value` field.
+
 This is one automation calling one shared shortcut. The older
 `Register Apple Pay transaction` shortcut is not an additional required step;
 once the new flow saves a test transaction successfully, remove or disable the
@@ -1624,7 +1629,9 @@ account and date range.
   decisions.
 - Citibank activity CSV imports can use known filename suffixes such as
   `-rewards.csv` or `-miles.csv` as an extra card hint in the single-file flow,
-  but the Import Inbox workflow does not require renaming downloaded files.
+  but the Import Inbox workflow does not require renaming downloaded files, and
+  the single-file paste flow can auto-preview recognized Citi activity rows
+  directly once the Citibank credit-card account is selected.
 - If two accounts share a name, choose the owner-qualified account in the import
   mapping. Overlap checks use that selected account, not just the display name.
 - Overlap warnings are date-range warnings; they do not remove rows by
@@ -2054,10 +2061,12 @@ the current draft without refreshing the page.
   that date for both the ledger event date and posted date.
 - Citibank current-activity CSV files are headerless. In the single-file flow,
   the app applies the Citi activity parser when the selected default account is
-  a Citibank credit card and known Citi export clues are present; recognized
-  filename suffixes can still provide an extra card hint. In the Import Inbox
-  multi-file flow, the user does not need to rename files before dropping them.
-  The trailing card number is reduced to the last four digits in the note.
+  a Citibank credit card and known Citi export clues are present, so a pasted
+  Citi activity export can jump straight to preview without manual column
+  mapping. Recognized filename suffixes can still provide an extra card hint,
+  but they are no longer required. In the Import Inbox multi-file flow, the
+  user does not need to rename files before dropping them. The trailing card
+  number is reduced to the last four digits in the note.
 - OCBC card and 360 current-activity CSV files use transaction-history headers
   with withdrawal and deposit columns, so the app can recognize them from
   either the filename or the OCBC account-details and transaction-history

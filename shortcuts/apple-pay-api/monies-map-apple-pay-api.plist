@@ -13,6 +13,16 @@
 			<dict>
 				<key>UUID</key>
 				<string>ED8BCEDF-5723-41F1-B1CB-21E45619AA34</string>
+				<key>WFInput</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>Type</key>
+						<string>ExtensionInput</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenAttachment</string>
+				</dict>
 			</dict>
 		</dict>
 		<dict>
