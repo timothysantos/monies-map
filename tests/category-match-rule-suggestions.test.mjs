@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  isCategoryMatchSuggestionCoveredByRule
+  isCategoryMatchSuggestionCoveredByRule,
+  matchCategoryRule
 } from "../src/domain/app-repository-category-match-rules.ts";
 
 function suggestion(overrides = {}) {
@@ -66,5 +67,14 @@ test("category suggestion keeps genuinely new merchant text visible", () => {
       [rule()]
     ),
     false
+  );
+});
+
+test("Shortcut merchant descriptions reuse active category rules", () => {
+  assert.equal(
+    matchCategoryRule("SUBWAY-GREAT WORLD CITY", [
+      rule({ pattern: "SUBWAY", categoryName: "Food & Drinks" })
+    ]),
+    "Food & Drinks"
   );
 });

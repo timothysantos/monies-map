@@ -18,6 +18,8 @@ import { enterEmptyState, reseedDemoSettings } from "./domain/demo-settings";
 import {
   archiveAccountRecord,
   loadTransferMatchCandidates,
+  loadCategoryMatchRules,
+  matchCategoryRule,
   recordAppErrorDiagnostic,
   buildAccountCheckpointLedgerCsv,
   buildImportPreview,
@@ -938,11 +940,14 @@ export default {
       }
 
       try {
+        const categoryName = bodyWithDefaults.categoryName
+          ?? matchCategoryRule(shortcutDescription, await loadCategoryMatchRules(env.DB))
+          ?? "Other";
         const created = await createEntryRecord(env.DB, {
           date: shortcutDate,
           description: shortcutDescription,
           accountId: account.id,
-          categoryName: bodyWithDefaults.categoryName ?? "Other",
+          categoryName,
           amountMinor: amount.amountMinor,
           entryType,
           transferDirection: bodyWithDefaults.transferDirection,
