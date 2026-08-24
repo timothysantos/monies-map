@@ -9239,8 +9239,10 @@ th {
   }
 
   .entry-mobile-sheet-linked-actions {
-    flex-wrap: nowrap;
-    gap: 6px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    width: 100%;
   }
 
   .entry-mobile-sheet .dialog-primary,
@@ -9256,14 +9258,40 @@ th {
     padding-left: 18px;
   }
 
+  .entry-mobile-sheet-secondary-row,
+  .entry-mobile-sheet-primary-row {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .entry-mobile-sheet-secondary-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .entry-mobile-sheet-primary-row {
+    grid-template-columns: minmax(0, 1fr) minmax(116px, 1.15fr);
+  }
+
+  .entry-mobile-sheet-primary-row .subtle-cancel,
+  .entry-mobile-sheet-primary-row .dialog-primary {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
   .entry-mobile-sheet-linked-actions .entry-mobile-sheet-secondary {
     min-height: 36px;
-    padding-right: 8px;
-    padding-left: 8px;
+    min-width: 0;
+    justify-content: center;
+    padding-right: 6px;
+    padding-left: 6px;
     margin-right: 0;
-    font-size: 0.92rem;
-    line-height: 1;
-    white-space: nowrap;
+    font-size: clamp(0.78rem, 3.3vw, 0.92rem);
+    line-height: 1.1;
+    text-align: center;
+    white-space: normal;
   }
 
   .entry-mobile-sheet-secondary {

@@ -1222,7 +1222,10 @@ export function App() {
     clearSplitsPageCacheByPredicate((query) => (
       query.queryKey?.[0] === "splits-page"
       && query.queryKey?.[1]?.month === month
-      && query.queryKey?.[1]?.viewId === selectedViewId
+      && (
+        query.queryKey?.[1]?.view === selectedViewId
+        || query.queryKey?.[1]?.viewId === selectedViewId
+      )
     ));
 
     if (invalidateEntries) {
