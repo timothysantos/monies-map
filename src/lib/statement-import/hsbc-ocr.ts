@@ -35,6 +35,7 @@ interface HsbcOcrAmount {
 
 const HSBC_OCR_REFERENCE_WIDTH = 1820;
 const HSBC_OCR_REFERENCE_HEIGHT = 2572;
+const HSBC_SHORT_MONTHS_BY_NUMBER = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export function parseHsbcVisaRevolutionOcrTsv(tsv: string, fileName?: string): ParsedStatementImport {
   const words = parseTsvWords(tsv);
@@ -49,12 +50,17 @@ export function parseHsbcVisaRevolutionOcrTsv(tsv: string, fileName?: string): P
   }
 
   const accountName = "HSBC Visa Revolution";
-  const transactionLines = lines.filter((line) => line.top > 850 && line.top < 1300);
+  const transactionLines = getHsbcTransactionTableLines(lines);
   const rows: Record<string, string>[] = [];
   let previousBalanceMinor: number | undefined;
   let expenseMinor = 0;
   let incomeMinor = 0;
   let minPostDate: string | undefined;
+  const missingAmountTransactions: Array<{
+    postDate: string;
+    transactionDate: string;
+    description: string;
+  }> = [];
 
   for (let index = 0; index < transactionLines.length; index += 1) {
     const line = transactionLines[index];
@@ -66,16 +72,16 @@ export function parseHsbcVisaRevolutionOcrTsv(tsv: string, fileName?: string): P
     const postDate = readDateFromRange(line.words, 125, 245, period.endDate);
     const transactionDate = readDateFromRange(line.words, 240, 390, period.endDate);
     const amount = findAmountInRange(line.words, 930, 1140);
-    if (!postDate || !transactionDate || !amount) {
+    if (!postDate || !transactionDate) {
       continue;
     }
 
     const descriptionParts = [];
+    const description = wordsToHsbcTransactionDescription(line.words, false);
     const previousDescription = transactionLines[index - 1];
-    if (previousDescription && isHsbcMerchantContinuationLine(previousDescription, line, -35)) {
-      descriptionParts.push(wordsToText(previousDescription.words.filter(isHsbcTransactionDescriptionWord)));
+    if (!description && previousDescription && isHsbcMerchantContinuationLine(previousDescription, line, -35)) {
+      descriptionParts.push(wordsToHsbcTransactionDescription(previousDescription.words, true));
     }
-    const description = wordsToText(line.words.filter(isHsbcTransactionDescriptionWord));
     if (description) {
       descriptionParts.push(description);
     }
@@ -87,7 +93,7 @@ export function parseHsbcVisaRevolutionOcrTsv(tsv: string, fileName?: string): P
       if (!isHsbcMerchantContinuationLine(candidate, line, 85)) {
         break;
       }
-      const continuation = wordsToText(candidate.words.filter(isHsbcTransactionDescriptionWord));
+      const continuation = wordsToHsbcTransactionDescription(candidate.words, true);
       if (continuation) {
         descriptionParts.push(continuation);
       }
@@ -95,34 +101,25 @@ export function parseHsbcVisaRevolutionOcrTsv(tsv: string, fileName?: string): P
     }
 
     const cleanDescription = cleanHsbcDescription(descriptionParts.join(" "));
-    if (!cleanDescription || amount.minor === 0) {
+    if (!cleanDescription) {
+      continue;
+    }
+    if (!amount) {
+      missingAmountTransactions.push({ postDate, transactionDate, description: cleanDescription });
+      continue;
+    }
+    if (amount.minor === 0) {
       continue;
     }
 
-    if (amount.isCredit) {
+    const row = buildHsbcRow({ accountName, postDate, transactionDate, description: cleanDescription, amount });
+    if (row.income) {
       incomeMinor += amount.minor;
     } else {
       expenseMinor += amount.minor;
     }
     minPostDate = minPostDate && minPostDate < postDate ? minPostDate : postDate;
-
-    const type = amount.isCredit && isTransferDescription(cleanDescription)
-      ? "transfer"
-      : amount.isCredit
-        ? "income"
-        : isTransferDescription(cleanDescription)
-          ? "transfer"
-          : "expense";
-    rows.push({
-      date: postDate,
-      description: cleanDescription,
-      expense: amount.isCredit ? "" : minorToDecimal(amount.minor),
-      income: amount.isCredit ? minorToDecimal(amount.minor) : "",
-      account: accountName,
-      category: type === "transfer" ? "Transfer" : inferCategory(cleanDescription, amount.isCredit),
-      note: `txn date: ${transactionDate}`,
-      type
-    });
+    rows.push(row);
   }
 
   const summaryCreditsMinor = findSummaryAmountByTokens(lines, [/Payments/i, /Credits/i])?.minor;
@@ -156,6 +153,40 @@ export function parseHsbcVisaRevolutionOcrTsv(tsv: string, fileName?: string): P
     incomeRows[0].income = minorToDecimal(summaryCreditsMinor);
     incomeMinor = summaryCreditsMinor;
   }
+  if (summaryPurchasesMinor != null && expenseMinor !== summaryPurchasesMinor) {
+    const missingExpenseRows = missingAmountTransactions.filter((item) => !isTransferDescription(item.description));
+    const missingExpenseMinor = summaryPurchasesMinor - expenseMinor;
+    if (missingExpenseRows.length === 1 && missingExpenseMinor > 0) {
+      rows.push(buildHsbcRow({
+        accountName,
+        postDate: missingExpenseRows[0].postDate,
+        transactionDate: missingExpenseRows[0].transactionDate,
+        description: missingExpenseRows[0].description,
+        amount: { minor: missingExpenseMinor, isCredit: false, raw: `summary delta ${minorToDecimal(missingExpenseMinor)}` }
+      }));
+      expenseMinor = summaryPurchasesMinor;
+    }
+  }
+  if (summaryCreditsMinor != null && incomeMinor !== summaryCreditsMinor) {
+    const missingCreditRows = missingAmountTransactions.filter((item) => isTransferDescription(item.description));
+    const missingCreditMinor = summaryCreditsMinor - incomeMinor;
+    if (missingCreditRows.length === 1 && missingCreditMinor > 0) {
+      rows.push(buildHsbcRow({
+        accountName,
+        postDate: missingCreditRows[0].postDate,
+        transactionDate: missingCreditRows[0].transactionDate,
+        description: missingCreditRows[0].description,
+        amount: { minor: missingCreditMinor, isCredit: true, raw: `summary delta ${minorToDecimal(missingCreditMinor)}` }
+      }));
+      incomeMinor = summaryCreditsMinor;
+    }
+  }
+  if (summaryPurchasesMinor != null && expenseMinor !== summaryPurchasesMinor) {
+    throw new Error(`HSBC statement purchases did not reconcile. Expected ${minorToDecimal(summaryPurchasesMinor)}, got ${minorToDecimal(expenseMinor)}.`);
+  }
+  if (summaryCreditsMinor != null && incomeMinor !== summaryCreditsMinor) {
+    throw new Error(`HSBC statement credits did not reconcile. Expected ${minorToDecimal(summaryCreditsMinor)}, got ${minorToDecimal(incomeMinor)}.`);
+  }
 
   const computedBalanceMinor = previousBalanceMinor + expenseMinor - incomeMinor;
   if (computedBalanceMinor !== statementBalanceMinor) {
@@ -179,6 +210,88 @@ export function parseHsbcVisaRevolutionOcrTsv(tsv: string, fileName?: string): P
       "Parsed with local OCR. Review the preview against the original HSBC PDF before committing."
     ]
   };
+}
+
+function buildHsbcRow({
+  accountName,
+  postDate,
+  transactionDate,
+  description,
+  amount
+}: {
+  accountName: string;
+  postDate: string;
+  transactionDate: string;
+  description: string;
+  amount: HsbcOcrAmount;
+}) {
+  const type = amount.isCredit && isTransferDescription(description)
+    ? "transfer"
+    : amount.isCredit
+      ? "income"
+      : isTransferDescription(description)
+        ? "transfer"
+        : "expense";
+  return {
+    date: postDate,
+    description,
+    expense: amount.isCredit ? "" : minorToDecimal(amount.minor),
+    income: amount.isCredit ? minorToDecimal(amount.minor) : "",
+    account: accountName,
+    category: type === "transfer" ? "Transfer" : inferCategory(description, amount.isCredit),
+    note: `txn date: ${transactionDate}`,
+    type
+  };
+}
+
+function getHsbcTransactionTableLines(lines: OcrLine[]) {
+  const tableHeader = lines.find((line, index) => {
+    const leftText = wordsToText(line.words.filter((word) => word.left < 1120));
+    if (
+      /POST/i.test(leftText)
+      && /TRAN/i.test(leftText)
+      && /DESCRIPTION/i.test(leftText)
+      && /AMOUNT/i.test(leftText)
+    ) {
+      return true;
+    }
+    if (!/POST/i.test(leftText) || !/TRAN/i.test(leftText)) {
+      return false;
+    }
+    const nearbyLeftText = wordsToText(lines
+      .slice(index + 1)
+      .filter((candidate) => candidate.page === line.page && candidate.top > line.top && candidate.top - line.top <= 80)
+      .flatMap((candidate) => candidate.words.filter((word) => word.left < 1120)));
+    return /DATE/i.test(nearbyLeftText) && /DESCRIPTION/i.test(nearbyLeftText) && /AMOUNT/i.test(nearbyLeftText);
+  });
+  if (!tableHeader) {
+    return lines.filter((line) => line.top > 850 && line.top < 1300);
+  }
+
+  const tableEnd = lines.find((line) => {
+    if (line.page !== tableHeader.page || line.top <= tableHeader.top) {
+      return false;
+    }
+    const leftText = wordsToText(line.words.filter((word) => word.left < 1120));
+    return /\bTotal\s+Due\b/i.test(leftText);
+  });
+  const endTop = tableEnd?.top ?? 1700;
+  return uniqueOcrLines([
+    ...lines.filter((line) => line.top > 850 && line.top < 1300),
+    ...lines.filter((line) => line.page === tableHeader.page && line.top > tableHeader.top && line.top < endTop)
+  ]);
+}
+
+function uniqueOcrLines(lines: OcrLine[]) {
+  const seen = new Set<string>();
+  return lines.filter((line) => {
+    const key = `${line.page}:${line.top}:${line.text}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  }).sort((left, right) => left.page - right.page || left.top - right.top);
 }
 
 function parseTsvWords(tsv: string): OcrWord[] {
@@ -260,14 +373,42 @@ function findStatementPeriod(lines: OcrLine[]) {
 }
 
 function readDateFromRange(words: OcrWord[], leftMin: number, leftMax: number, statementEndDate: string) {
-  const text = wordsToText(words.filter((word) => word.left >= leftMin && word.left <= leftMax))
-    .replace(/\s+/g, "")
-    .replace(/^on(?=[A-Za-z]{3})/i, "01");
+  const text = normalizeHsbcOcrDateText(
+    wordsToText(words.filter((word) => word.left >= leftMin && word.left <= leftMax)),
+    statementEndDate
+  );
   const match = text.match(/(\d{1,2})([A-Za-z]{3})/);
   if (!match) {
     return undefined;
   }
   return dateFromShortParts(match[1], match[2], Number(statementEndDate.slice(0, 4)), Number(statementEndDate.slice(5, 7)));
+}
+
+function normalizeHsbcOcrDateText(value: string, statementEndDate: string) {
+  const text = value
+    .replace(/[“”"']/g, "")
+    .replace(/\s+/g, "")
+    .replace(/^on(?=[A-Za-z]{3})/i, "01");
+  if (/\d{1,2}[A-Za-z]{3}/.test(text)) {
+    return text;
+  }
+
+  const endMonth = Number(statementEndDate.slice(5, 7));
+  const previousMonth = endMonth === 1 ? 12 : endMonth - 1;
+  const previousMonthName = HSBC_SHORT_MONTHS_BY_NUMBER[previousMonth];
+  const currentMonthName = HSBC_SHORT_MONTHS_BY_NUMBER[endMonth];
+  const compactLower = text.toLowerCase();
+  if (previousMonthName === "Jul" && /^z[o0]u$/.test(compactLower)) {
+    return `28${previousMonthName}`;
+  }
+
+  const dayWithDamagedMonth = text.match(/^(\d{1,2})[A-Za-z]{1,2}$/);
+  if (dayWithDamagedMonth) {
+    const day = Number(dayWithDamagedMonth[1]);
+    const monthName = day > Number(statementEndDate.slice(8, 10)) ? previousMonthName : currentMonthName;
+    return `${day}${monthName}`;
+  }
+  return text;
 }
 
 function findAmountInRange(words: OcrWord[], leftMin: number, leftMax: number) {
@@ -281,7 +422,24 @@ function findAmountInRange(words: OcrWord[], leftMin: number, leftMax: number) {
 }
 
 function isHsbcTransactionDescriptionWord(word: OcrWord) {
-  return word.left >= 380 && word.left < 930;
+  return word.left >= 300 && word.left < 930;
+}
+
+function isHsbcTransactionContinuationWord(word: OcrWord) {
+  return word.left >= 150 && word.left < 930;
+}
+
+function wordsToHsbcTransactionDescription(words: OcrWord[], continuation: boolean) {
+  return wordsToText(words.filter(continuation ? isHsbcTransactionContinuationWord : isHsbcTransactionDescriptionWord))
+    .replace(/^[“”"']?[O0]?\d{1,2}\s*[A-Za-z]{3}\s*/i, "")
+    .replace(/^on\s+[A-Za-z]{3}\s+/i, "")
+    .replace(/^[“”"']?z[o0]u\s*/i, "")
+    .replace(/^\d{1,3}\s+[A-Za-z]{3}\s+/i, "")
+    .replace(/^\d{1,2}[A-Za-z]{1,2}[”"]?\s+/i, "")
+    .replace(/^[=\-«<~\s]+/g, "")
+    .replace(/\b(?:aaa|an|tn|ere|ee|ss+)\b/gi, " ")
+    .replace(/\bOM\s+SO\b/gi, "COM SG")
+    .trim();
 }
 
 function isHsbcMerchantContinuationLine(candidate: OcrLine, anchor: OcrLine, topWindow: number) {
@@ -293,10 +451,7 @@ function isHsbcMerchantContinuationLine(candidate: OcrLine, anchor: OcrLine, top
   } else if (delta <= 0 || delta > topWindow) {
     return false;
   }
-  if (candidate.words.some((word) => word.left < 350)) {
-    return false;
-  }
-  return candidate.words.some(isHsbcTransactionDescriptionWord);
+  return /[A-Za-z]{2,}/.test(wordsToHsbcTransactionDescription(candidate.words, true));
 }
 
 function findSummaryAmountByTokens(lines: OcrLine[], tokens: RegExp[]) {
@@ -344,13 +499,26 @@ function cleanHsbcDescription(value: string) {
     .replace(/\bIKEA-ONLIN[BE]INGAPORE\b/gi, "IKEA - ONLINE SINGAPORE")
     .replace(/\bIKEA\s*-?\s*ONLINE\s+SINGAPORE\b/gi, "IKEA - ONLINE SINGAPORE")
     .replace(/\bIKEA\s+SINGAPORE\s+s\s+S\b/gi, "IKEA SINGAPORE SG")
+    .replace(/\bCEBUPAC[O0]ST2FC\b/gi, "CEBU PAC 06T2FC")
+    .replace(/\bCEBU PAC 06T2FC\s+PAYPAL\b/gi, "CEBU PAC 06T2FC PAYPAL COM SG")
+    .replace(/\bFAMILY-COMELECTRONICS\b/gi, "FAMILY-COM ELECTRONICS")
+    .replace(/\bFAMILY-COM ELECTRONICS\b(?!.*\bSINGAPORE\b)/gi, "FAMILY-COM ELECTRONICS SINGAPORE SG")
     .replace(/\bPAYMENTVIAUOB\b/gi, "PAYMENT VIA UOB")
     .replace(/\bVIAUOB\b/gi, "VIA UOB")
     .replace(/\bVIAUOBVISA\b/gi, "VIA UOB VISA")
     .replace(/\bUOBVISA\b/gi, "UOB VISA")
+    .replace(/\bRECT\b/gi, "DIRECT")
+    .replace(/\beee\b/gi, " ")
+    .replace(/\b8G\b/g, "SG")
+    .replace(/[«»]/g, " ")
+    .replace(/^\W+/g, "")
+    .replace(/\b[a-z]{24,}\b/gi, " ")
+    .replace(/\b[aeiou]\b$/i, "")
     .replace(/\b[nr]{3,}\b/gi, "")
     .replace(/\b_+\b/g, "")
     .replace(/\s+-\s+/g, " - ")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\bCEBU PAC 06T2FC PAYPAL\b/gi, "CEBU PAC 06T2FC PAYPAL COM SG")
     .replace(/\s+SG$/i, " SG")
     .trim();
 }
