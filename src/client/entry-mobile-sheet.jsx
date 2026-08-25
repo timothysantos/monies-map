@@ -7,6 +7,7 @@ export function EntryMobileSheet({
   description,
   errorMessage = "",
   saveLabel,
+  cancelLabel = "Cancel",
   isSaveDisabled = false,
   secondaryAction = null,
   footerContent = null,
@@ -52,7 +53,7 @@ export function EntryMobileSheet({
           {footerContent ?? (
             <div className="entry-inline-actions entry-mobile-sheet-actions">
               {secondaryAction}
-              <button type="button" className="subtle-cancel" onClick={onClose}>Cancel</button>
+              <button type="button" className="subtle-cancel" onClick={onClose}>{cancelLabel}</button>
               <button type="submit" className="dialog-primary" disabled={isSaveDisabled}>{saveLabel}</button>
             </div>
           )}
@@ -75,6 +76,7 @@ export function EntryMobileEditExpenseFooter({
   deleteEntryLabel,
   deleteLabel,
   saveLabel = "Save",
+  cancelLabel = "Cancel",
   isWorking = false,
   isSaveDisabled = false,
   splitGroupId = "",
@@ -120,7 +122,7 @@ export function EntryMobileEditExpenseFooter({
           </button>
         </div>
         <div className="entry-mobile-sheet-primary-row">
-          <button type="button" className="subtle-cancel" onClick={onCancel}>Cancel</button>
+          <button type="button" className="subtle-cancel" onClick={onCancel}>{cancelLabel}</button>
           <button type="submit" className="dialog-primary" disabled={isSaveDisabled}>{saveLabel}</button>
         </div>
       </div>
@@ -174,7 +176,7 @@ export function EntryMobileEditExpenseFooter({
         {deleteEntryLabel}
       </button>
       <span className="entry-mobile-sheet-action-divider" aria-hidden="true">|</span>
-      <button type="button" className="subtle-cancel" onClick={onCancel}>Cancel</button>
+      <button type="button" className="subtle-cancel" onClick={onCancel}>{cancelLabel}</button>
       <button type="submit" className="dialog-primary" disabled={isSaveDisabled}>{saveLabel}</button>
     </div>
   );
