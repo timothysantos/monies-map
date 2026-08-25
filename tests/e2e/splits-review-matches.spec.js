@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import {
   loadEntriesPage,
   loadSplitsPage,
+  postJson,
   reseedDemo
 } from "./helpers";
 
@@ -112,6 +113,63 @@ test("review matches links a settlement and the linked entry can be opened from 
   await expect(page).toHaveURL(/\/entries\?/);
   await expect(page).toHaveURL(/editing_entry=txn-import-split-settlement-match/);
   await expect(page.getByLabel("Description")).toHaveValue(settlementMatch?.transactionDescription ?? "");
+});
+
+test("mobile view entry from a split scrolls the background entries row into place", async ({ page }) => {
+  const month = "2026-05";
+  const targetDescription = `Mobile split linked row ${Date.now()}`;
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await reseedDemo(page);
+
+  const targetEntry = await postJson(page, "/api/entries/create", {
+    date: `${month}-01`,
+    description: targetDescription,
+    accountName: "UOB One",
+    categoryName: "Groceries",
+    amountMinor: 2440,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+
+  for (let index = 0; index < 16; index += 1) {
+    await postJson(page, "/api/entries/create", {
+      date: `${month}-${String(28 - index).padStart(2, "0")}`,
+      description: `Mobile split filler ${index} ${Date.now()}`,
+      accountName: "UOB One",
+      categoryName: "Groceries",
+      amountMinor: 1000 + index,
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+  }
+
+  const splitData = await postJson(page, "/api/splits/expenses/from-entry", {
+    entryId: targetEntry.entryId,
+    splitGroupId: null
+  });
+
+  await page.goto(`/splits?view=person-tim&month=${month}&split_group=split-group-none&editing_split_expense=${splitData.splitExpenseId}`);
+  const splitDialog = page.getByRole("dialog", { name: "Edit split" });
+  await expect(splitDialog).toBeVisible();
+  await splitDialog.getByRole("button", { name: "View entry" }).click();
+
+  await expect(page).toHaveURL(/\/entries\?/);
+  await expect(page).toHaveURL(new RegExp(`editing_entry=${targetEntry.entryId}`));
+  await expect(page.getByRole("dialog", { name: "Edit entry" })).toBeVisible();
+
+  const targetRow = page.locator(`#${targetEntry.entryId}`);
+  await expect(targetRow).toBeVisible();
+  await expect(targetRow).toHaveClass(/is-editing/);
+  await expect.poll(async () => targetRow.evaluate((element) => {
+    const sheet = document.querySelector(".entry-mobile-sheet");
+    const rowRect = element.getBoundingClientRect();
+    const sheetRect = sheet?.getBoundingClientRect();
+    return rowRect.top >= 0 && (!sheetRect || rowRect.top < sheetRect.top);
+  })).toBe(true);
 });
 
 test("archived linked split history can still open the linked entry", async ({ page }) => {

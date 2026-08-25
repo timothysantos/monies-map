@@ -8685,6 +8685,10 @@ th {
     overflow-x: clip;
   }
 
+  body:has(.entry-mobile-sheet) .shell {
+    padding-bottom: calc(100dvh - 82px + env(safe-area-inset-bottom, 0px));
+  }
+
   .environment-banner {
     margin-top: -12px;
     margin-bottom: 12px;
