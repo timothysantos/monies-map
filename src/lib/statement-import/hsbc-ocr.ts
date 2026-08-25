@@ -496,6 +496,8 @@ function cleanHsbcDescription(value: string) {
   return compactDescription(value)
     .replace(/[‘’]/g, "")
     .replace(/_+/g, " ")
+    .replace(/^(?:[O0]?\d{1,2}|on)\s*[A-Za-z]{3}\.?\s+/i, "")
+    .replace(/^\d{1,2}\s+[A-Za-z]{3}\.?\s+/i, "")
     .replace(/\bIKEA-ONLIN[BE]INGAPORE\b/gi, "IKEA - ONLINE SINGAPORE")
     .replace(/\bIKEA\s*-?\s*ONLINE\s+SINGAPORE\b/gi, "IKEA - ONLINE SINGAPORE")
     .replace(/\bIKEA\s+SINGAPORE\s+s\s+S\b/gi, "IKEA SINGAPORE SG")
