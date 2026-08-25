@@ -159,7 +159,10 @@ test("mobile view entry from a split scrolls the background entries row into pla
 
   await expect(page).toHaveURL(/\/entries\?/);
   await expect(page).toHaveURL(new RegExp(`editing_entry=${targetEntry.entryId}`));
-  await expect(page.getByRole("dialog", { name: "Edit entry" })).toBeVisible();
+  const entryDialog = page.getByRole("dialog", { name: "Edit entry" });
+  await expect(entryDialog).toBeVisible();
+  await expect(entryDialog.locator(".entry-mobile-sheet-actions .subtle-cancel")).toHaveText("Close");
+  await expect(entryDialog.getByRole("button", { name: "Save" })).toBeDisabled();
 
   const targetRow = page.locator(`#${targetEntry.entryId}`);
   await expect(targetRow).toBeVisible();
@@ -170,6 +173,10 @@ test("mobile view entry from a split scrolls the background entries row into pla
     const sheetRect = sheet?.getBoundingClientRect();
     return rowRect.top >= 0 && (!sheetRect || rowRect.top < sheetRect.top);
   })).toBe(true);
+
+  await entryDialog.getByLabel("Note").fill("Reviewed from split sheet");
+  await expect(entryDialog.locator(".entry-mobile-sheet-actions .subtle-cancel")).toHaveText("Cancel");
+  await expect(entryDialog.getByRole("button", { name: "Save" })).toBeEnabled();
 });
 
 test("archived linked split history can still open the linked entry", async ({ page }) => {

@@ -1051,6 +1051,7 @@ export function EntriesPanel({
           description="Update the row in a bottom sheet instead of editing inline."
           errorMessage={entrySubmitError || createdSplitActionError}
           saveLabel={savingEntryId === activeEditingEntry.id ? messages.common.saving : "Save"}
+          cancelLabel={hasEditingEntryChanges ? messages.entries.cancelEdit : messages.common.close}
           isSaveDisabled={Boolean(savingEntryId) || Boolean(deletingEntryId) || !hasEditingEntryChanges}
           secondaryAction={activeEditingEntry.entryType !== "expense"
             ? (
@@ -1072,6 +1073,7 @@ export function EntriesPanel({
                   deleteEntryLabel={deletingEntryId === activeEditingEntry.id ? messages.common.working : "Delete entry"}
                   deleteLabel={deletingCreatedSplitId === activeLinkedSplitExpenseId ? messages.common.working : "Delete split"}
                   saveLabel={savingEntryId === activeEditingEntry.id ? messages.common.saving : "Save"}
+                  cancelLabel={hasEditingEntryChanges ? messages.entries.cancelEdit : messages.common.close}
                   isWorking={
                     addingToSplitsEntryId === activeEditingEntry.id
                     || deletingCreatedSplitId === activeLinkedSplitExpenseId

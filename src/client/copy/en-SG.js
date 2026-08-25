@@ -3,6 +3,7 @@ export const messages = {
     loading: "Loading...",
     loadingLatest: "Loading latest data...",
     refresh: "Refresh",
+    close: "Close",
     saving: "Saving...",
     working: "Working...",
     appShellErrorTitle: "Dashboard data could not load.",
