@@ -27,6 +27,12 @@ function scrollInlineEditorIntoView(element) {
   window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
 }
 
+function scrollMobileEntryRowIntoView(element) {
+  const rect = element.getBoundingClientRect();
+  const targetTop = window.scrollY + rect.top - 82;
+  window.scrollTo({ top: Math.max(0, targetTop), behavior: "auto" });
+}
+
 // This renderer is intentionally "dumb": it receives already-grouped entries
 // and mostly maps them into row UI.
 export function EntriesDateGroups({
@@ -371,6 +377,7 @@ function EntryRow({
   hasEditingChanges = false,
   renderInlineEditor = true
 }) {
+  const rowRef = useRef(null);
   const inlineEditorRef = useRef(null);
   const category = categoryService.get(categories, entry);
   const transferCandidates = entry.entryType === "transfer"
@@ -389,21 +396,42 @@ function EntryRow({
   const isAddingToSplits = addingToSplitsEntryId === entry.id;
 
   useEffect(() => {
-    if (!renderInlineEditor || !isEditing) {
+    if (!isEditing) {
       return undefined;
     }
 
-    const frame = window.requestAnimationFrame(() => {
-      if (inlineEditorRef.current) {
-        scrollInlineEditorIntoView(inlineEditorRef.current);
+    let frame = 0;
+    let timeout = 0;
+    let attempts = 0;
+    let cancelled = false;
+    const scrollWhenReady = () => {
+      if (cancelled) {
+        return;
       }
-    });
 
-    return () => window.cancelAnimationFrame(frame);
+      attempts += 1;
+      if (renderInlineEditor && inlineEditorRef.current) {
+        scrollInlineEditorIntoView(inlineEditorRef.current);
+      } else if (window.matchMedia("(max-width: 760px)").matches && rowRef.current) {
+        scrollMobileEntryRowIntoView(rowRef.current);
+      }
+
+      if (attempts < 4) {
+        timeout = window.setTimeout(scrollWhenReady, 120);
+      }
+    };
+
+    frame = window.requestAnimationFrame(scrollWhenReady);
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timeout);
+    };
   }, [isEditing, renderInlineEditor]);
 
   return (
-    <div className={`entry-row ${isEditing ? "is-editing" : ""} ${renderInlineEditor && isEditing ? "is-inline-editing" : ""}`} id={entry.id}>
+    <div ref={rowRef} className={`entry-row ${isEditing ? "is-editing" : ""} ${renderInlineEditor && isEditing ? "is-inline-editing" : ""}`} id={entry.id}>
       {!isEditing || !renderInlineEditor ? (
         <div
           className={`entry-row-main has-owner-cue ${entry.isPendingDerived ? "is-pending" : ""}`}
