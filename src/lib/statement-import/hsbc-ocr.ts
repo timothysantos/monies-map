@@ -386,7 +386,7 @@ function readDateFromRange(words: OcrWord[], leftMin: number, leftMax: number, s
 
 function normalizeHsbcOcrDateText(value: string, statementEndDate: string) {
   const text = value
-    .replace(/[“”"']/g, "")
+    .replace(/[.“”"']/g, "")
     .replace(/\s+/g, "")
     .replace(/^on(?=[A-Za-z]{3})/i, "01");
   if (/\d{1,2}[A-Za-z]{3}/.test(text)) {
@@ -431,10 +431,10 @@ function isHsbcTransactionContinuationWord(word: OcrWord) {
 
 function wordsToHsbcTransactionDescription(words: OcrWord[], continuation: boolean) {
   return wordsToText(words.filter(continuation ? isHsbcTransactionContinuationWord : isHsbcTransactionDescriptionWord))
-    .replace(/^[“”"']?[O0]?\d{1,2}\s*[A-Za-z]{3}\s*/i, "")
+    .replace(/^[“”"']?[O0]?\d{1,2}\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Ju|Aug|Au|Sep|Se|Oct|Nov|Dec)\.?\s*/i, "")
     .replace(/^on\s+[A-Za-z]{3}\s+/i, "")
     .replace(/^[“”"']?z[o0]u\s*/i, "")
-    .replace(/^\d{1,3}\s+[A-Za-z]{3}\s+/i, "")
+    .replace(/^\d{1,3}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Ju|Aug|Au|Sep|Se|Oct|Nov|Dec)\.?\s+/i, "")
     .replace(/^\d{1,2}[A-Za-z]{1,2}[”"]?\s+/i, "")
     .replace(/^[=\-«<~\s]+/g, "")
     .replace(/\b(?:aaa|an|tn|ere|ee|ss+)\b/gi, " ")
@@ -496,8 +496,8 @@ function cleanHsbcDescription(value: string) {
   return compactDescription(value)
     .replace(/[‘’]/g, "")
     .replace(/_+/g, " ")
-    .replace(/^(?:[O0]?\d{1,2}|on)\s*[A-Za-z]{3}\.?\s+/i, "")
-    .replace(/^\d{1,2}\s+[A-Za-z]{3}\.?\s+/i, "")
+    .replace(/^(?:[O0]?\d{1,2}|on)\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Ju|Aug|Au|Sep|Se|Oct|Nov|Dec)\.?\s+/i, "")
+    .replace(/^\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Ju|Aug|Au|Sep|Se|Oct|Nov|Dec)\.?\s+/i, "")
     .replace(/\bIKEA-ONLIN[BE]INGAPORE\b/gi, "IKEA - ONLINE SINGAPORE")
     .replace(/\bIKEA\s*-?\s*ONLINE\s+SINGAPORE\b/gi, "IKEA - ONLINE SINGAPORE")
     .replace(/\bIKEA\s+SINGAPORE\s+s\s+S\b/gi, "IKEA SINGAPORE SG")
