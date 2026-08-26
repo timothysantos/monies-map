@@ -756,6 +756,17 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     );
   }
 
+  const splitSearchControl = (
+    <SearchFilterInput
+      className="split-summary-search"
+      label={messages.common.search}
+      value={splitSearchQuery}
+      placeholder={messages.splits.searchPlaceholder}
+      suggestions={searchSuggestions}
+      listId="splits-search-suggestions"
+      onChange={updateSplitSearch}
+    />
+  );
   const splitSummaryToolbar = renderSplitActions("split-head-actions split-summary-toolbar");
 
   return (
@@ -774,17 +785,6 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         {renderSplitActions("split-head-actions split-header-toolbar")}
       </div>
 
-      <section className="split-search-bar" aria-label="Split search controls">
-        <SearchFilterInput
-          label={messages.common.search}
-          value={splitSearchQuery}
-          placeholder={messages.splits.searchPlaceholder}
-          suggestions={searchSuggestions}
-          listId="splits-search-suggestions"
-          onChange={updateSplitSearch}
-        />
-      </section>
-
       <SplitsMainSection
         groups={groups}
         activeGroup={activeGroup}
@@ -800,6 +800,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         groupOptions={groupOptions}
         people={people}
         categoryOptions={categoryOptions}
+        searchControl={splitSearchControl}
         summaryToolbar={splitSummaryToolbar}
         visibleMatches={visibleMatches}
         groupedCurrentActivity={groupedCurrentActivity}
