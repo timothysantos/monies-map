@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 
 import {
   gotoPageAfterApi,
@@ -588,6 +589,7 @@ test.describe("settings reference data", () => {
   test("Apple shortcut install saves, copies the private connection, and opens the verified artifact", async ({ page }) => {
     const apiKey = `mm_playwright_install_${Date.now()}`;
     const shortcutPath = "/shortcuts/monies-map-apple-pay-api.shortcut";
+    const manifest = JSON.parse(await readFile("shortcuts/apple-pay-api/manifest.json", "utf8"));
 
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "clipboard", {
@@ -599,7 +601,7 @@ test.describe("settings reference data", () => {
     });
     const artifactResponse = await page.request.get(shortcutPath);
     expect(artifactResponse.ok()).toBeTruthy();
-    expect((await artifactResponse.body()).byteLength).toBe(24_344);
+    expect((await artifactResponse.body()).byteLength).toBe(manifest.signedReleaseSize);
     await page.context().route(`**${shortcutPath}`, (route) => route.fulfill({
       status: 200,
       contentType: "text/html",

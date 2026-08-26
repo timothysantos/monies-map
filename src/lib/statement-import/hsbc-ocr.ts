@@ -510,6 +510,7 @@ function cleanHsbcDescription(value: string) {
     .replace(/\bVIAUOBVISA\b/gi, "VIA UOB VISA")
     .replace(/\bUOBVISA\b/gi, "UOB VISA")
     .replace(/\bRECT\b/gi, "DIRECT")
+    .replace(/\b(PAYMENT VIA UOB VISA DIRECT SG)\b.*$/i, "$1")
     .replace(/\beee\b/gi, " ")
     .replace(/\b8G\b/g, "SG")
     .replace(/[«»]/g, " ")

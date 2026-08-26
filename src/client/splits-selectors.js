@@ -1,5 +1,12 @@
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
+import {
+  filterSplitActivityForSearch,
+  filterSplitMatchesForSearch,
+  getSplitSearchSuggestions,
+  splitActivityMatchesSearch,
+  splitMatchMatchesSearch
+} from "./split-search";
 
 const {
   categories: categoryService,
@@ -14,6 +21,7 @@ export function buildSplitsPanelModel({
   view,
   categories,
   selectedGroupId,
+  searchQuery = "",
   dismissedMatchIds,
   archiveBatchId
 }) {
@@ -31,14 +39,14 @@ export function buildSplitsPanelModel({
   const activeGroup = groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null;
   const activeGroupId = activeGroup?.id ?? "split-group-none";
   const activeGroupActivity = splitsPage.activity.filter((item) => item.groupId === activeGroupId);
-  const currentGroupActivity = activeGroupActivity.filter((item) => !item.isArchived);
+  const currentGroupActivity = filterSplitActivityForSearch(activeGroupActivity.filter((item) => !item.isArchived), searchQuery);
   const archivedGroupActivity = activeGroupActivity.filter((item) => item.isArchived);
   const groupedCurrentActivity = splitService.groupActivityByDate(currentGroupActivity);
   const archivedBatches = splitService.groupActivityByBatch(archivedGroupActivity);
   const selectedArchivedBatch = archiveBatchId
     ? archivedBatches.find((batch) => batch.batchId === archiveBatchId) ?? null
     : null;
-  const unresolvedMatches = splitsPage.matches.filter((item) => !dismissedMatchIds.includes(item.id));
+  const unresolvedMatches = filterSplitMatchesForSearch(splitsPage.matches.filter((item) => !dismissedMatchIds.includes(item.id)), searchQuery);
   const groupBalanceMinor = activeGroup?.balanceMinor ?? 0;
 
   return {
@@ -59,9 +67,12 @@ export function buildSplitsPanelModel({
     totalExpenseMinor: currentGroupActivity
       .filter((item) => item.kind === "expense")
       .reduce((sum, item) => sum + item.totalAmountMinor, 0),
-    visibleMatches: unresolvedMatches
+    visibleMatches: unresolvedMatches,
+    searchSuggestions: getSplitSearchSuggestions(activeGroupActivity, splitsPage.matches, searchQuery)
   };
 }
+
+export { getSplitSearchSuggestions, splitActivityMatchesSearch, splitMatchMatchesSearch };
 
 function getCategoryOptions(categories) {
   return categoryService.getNameOptions(categories);

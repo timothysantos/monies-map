@@ -3,6 +3,10 @@ import {
   categoryMatchesEntryFilter,
   countActiveEntryFilters
 } from "./entry-filter-values";
+import {
+  entryMatchesSearch,
+  getEntrySearchSuggestions
+} from "./entry-search";
 import { moniesClient } from "./monies-client-service";
 
 const {
@@ -65,9 +69,14 @@ export function getFilteredEntries({ entries, entryFilters, selectedScope, viewI
     if (entryFilters.type && entry.entryType !== entryFilters.type) {
       return false;
     }
+    if (entryFilters.search && !entryMatchesSearch(entry, entryFilters.search)) {
+      return false;
+    }
     return true;
   });
 }
+
+export { entryMatchesSearch, getEntrySearchSuggestions };
 
 export function getEntryTotals(entries) {
   return entries.reduce((totals, entry) => {

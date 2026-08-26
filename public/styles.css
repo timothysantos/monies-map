@@ -4265,6 +4265,12 @@ button.split-activity-card:hover {
   flex-wrap: wrap;
 }
 
+.split-search-bar {
+  display: grid;
+  grid-template-columns: minmax(240px, 420px);
+  margin: -4px 0 14px;
+}
+
 .split-summary-toolbar {
   display: none;
   margin-left: auto;
@@ -5874,6 +5880,49 @@ button.split-activity-card:hover {
 .entries-filter {
   display: grid;
   gap: 8px;
+}
+
+.search-filter {
+  min-width: min(100%, 220px);
+}
+
+.search-filter-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-filter-control > svg {
+  position: absolute;
+  left: 12px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.search-filter-input {
+  width: 100%;
+  padding-left: 36px;
+  padding-right: 38px;
+}
+
+.search-filter-clear {
+  position: absolute;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.search-filter-clear:hover {
+  background: rgba(177, 94, 47, 0.1);
+  color: var(--text);
 }
 
 .entries-filter-multiselect-trigger {
@@ -10332,6 +10381,10 @@ th {
     padding: 12px 14px;
   }
 
+  .search-filter {
+    min-width: 0;
+  }
+
   .mobile-context-dialog-filters-slot .entries-filter-bar {
     padding: 12px 0 0;
     border: 0;
@@ -10354,6 +10407,11 @@ th {
 
   .entries-filter-hide {
     display: inline-flex;
+  }
+
+  .split-search-bar {
+    grid-template-columns: 1fr;
+    margin: -2px 0 12px;
   }
 
   .splits-groups-row {

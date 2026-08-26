@@ -24,6 +24,7 @@ export function SplitsMainSection({
   visibleMatches,
   groupedCurrentActivity,
   archivedBatches,
+  searchQuery = "",
   inlineSplitDraft,
   inlineSplitError,
   isSubmitting,
@@ -125,6 +126,7 @@ export function SplitsMainSection({
           <SplitsActivitySection
             groupedCurrentActivity={groupedCurrentActivity}
             archivedBatches={archivedBatches}
+            searchQuery={searchQuery}
             categories={categories}
             groupOptions={groupOptions}
             people={people}

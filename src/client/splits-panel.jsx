@@ -28,6 +28,7 @@ import {
 import { SplitArchiveDialog } from "./splits-archive-dialog";
 import { splitActivityDomId } from "./splits-activity";
 import { SplitDeleteDialog, SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./splits-dialogs";
+import { SearchFilterInput } from "./entries-overview";
 import { SplitsMainSection } from "./splits-main-section";
 import { buildSplitsPanelModel } from "./splits-selectors";
 import {
@@ -64,6 +65,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const selectedGroupParam = searchParams.get("split_group");
   const selectedGroupId = selectedGroupParam ?? defaultGroupId;
   const selectedMode = searchParams.get("split_mode") ?? "entries";
+  const splitSearchQuery = searchParams.get("split_search") ?? "";
   const isHouseholdView = view.id === "household";
   const displayView = useMemo(
     () => (optimisticSplitsPage ? { ...view, splitsPage: optimisticSplitsPage } : { ...view, splitsPage }),
@@ -74,10 +76,11 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       view: displayView,
       categories,
       selectedGroupId,
+      searchQuery: splitSearchQuery,
       dismissedMatchIds,
       archiveBatchId: archiveDialog?.batchId
     }),
-    [archiveDialog?.batchId, categories, dismissedMatchIds, displayView, selectedGroupId]
+    [archiveDialog?.batchId, categories, dismissedMatchIds, displayView, selectedGroupId, splitSearchQuery]
   );
   const {
     activeGroup,
@@ -91,6 +94,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     groupSummaryLabel,
     pendingMatchCount,
     selectedArchivedBatch,
+    searchSuggestions,
     totalExpenseMinor,
     visibleMatches
   } = splitModel;
@@ -246,6 +250,19 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       }
       return next;
     });
+  }
+
+  function updateSplitSearch(value) {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      const normalizedValue = String(value ?? "").trim();
+      if (normalizedValue) {
+        next.set("split_search", normalizedValue);
+      } else {
+        next.delete("split_search");
+      }
+      return next;
+    }, { replace: true });
   }
 
   function openArchiveList() {
@@ -757,6 +774,17 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         {renderSplitActions("split-head-actions split-header-toolbar")}
       </div>
 
+      <section className="split-search-bar" aria-label="Split search controls">
+        <SearchFilterInput
+          label={messages.common.search}
+          value={splitSearchQuery}
+          placeholder={messages.splits.searchPlaceholder}
+          suggestions={searchSuggestions}
+          listId="splits-search-suggestions"
+          onChange={updateSplitSearch}
+        />
+      </section>
+
       <SplitsMainSection
         groups={groups}
         activeGroup={activeGroup}
@@ -776,6 +804,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         visibleMatches={visibleMatches}
         groupedCurrentActivity={groupedCurrentActivity}
         archivedBatches={archivedBatches}
+        searchQuery={splitSearchQuery}
         inlineSplitDraft={inlineSplitDraft}
         inlineSplitError={inlineSplitError}
         isSubmitting={isSubmitting}
