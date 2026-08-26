@@ -3764,6 +3764,31 @@ body:has(.split-inline-editor-card) .splits-fab {
   max-width: 280px;
 }
 
+.split-checkpoint-transfers {
+  display: grid;
+  gap: 6px;
+  min-width: min(100%, 320px);
+  margin: 8px 0;
+}
+
+.split-checkpoint-transfer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 9px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.split-checkpoint-transfer span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .split-checkpoint-panel p {
   margin-top: 4px;
 }
@@ -3786,6 +3811,10 @@ body:has(.split-inline-editor-card) .splits-fab {
 
   .split-checkpoint-actions {
     justify-content: flex-start;
+  }
+
+  .split-checkpoint-transfers {
+    width: 100%;
   }
 
   .split-checkpoint-actions select {

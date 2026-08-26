@@ -101,6 +101,7 @@ export {
   loadSplitSettlements,
   loadSplitSettlementCheckpoints,
   matchSplitSettlementCheckpoint,
+  unmatchSplitSettlementCheckpoint,
   reopenSplitSettlementCheckpoint,
   updateSplitExpenseCategoryRecord,
   updateSplitExpenseRecord,
@@ -832,6 +833,21 @@ export async function ensureDemoSchema(db: D1Database) {
     `)
     .run();
 
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS split_settlement_checkpoint_matches (
+        id TEXT PRIMARY KEY,
+        checkpoint_id TEXT NOT NULL,
+        transaction_id TEXT NOT NULL,
+        amount_minor INTEGER NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (checkpoint_id) REFERENCES split_settlement_checkpoints(id) ON DELETE CASCADE,
+        FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,
+        UNIQUE (checkpoint_id, transaction_id)
+      )
+    `)
+    .run();
+
   const snapshotColumns = await db
     .prepare("PRAGMA table_info(monthly_snapshots)")
     .all<{ name: string }>();
@@ -1115,6 +1131,7 @@ export async function clearDemoData(db: D1Database) {
   await db.prepare("PRAGMA defer_foreign_keys = ON").run();
   const deletions = [
     "DELETE FROM split_settlement_checkpoint_items",
+    "DELETE FROM split_settlement_checkpoint_matches",
     "DELETE FROM split_settlement_checkpoints",
     "DELETE FROM split_expense_shares",
     "DELETE FROM split_expenses",

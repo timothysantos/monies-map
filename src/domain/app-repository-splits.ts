@@ -16,8 +16,9 @@ import type {
   SplitExpenseDto,
   SplitGroupDto,
   SplitMatchCandidateDto,
-  SplitSettlementDto
-  , SplitSettlementCheckpointDto
+  SplitSettlementDto,
+  SplitSettlementCheckpointDto,
+  SplitSettlementCheckpointTransferDto
 } from "../types/dto";
 
 const SPLIT_MATCH_DESCRIPTION_MAX_LENGTH = 240;
@@ -247,13 +248,36 @@ export async function loadSplitSettlementCheckpoints(db: D1Database): Promise<Sp
     matched_transaction_id: string | null; matched_amount_minor: number;
     note: string | null;
   }>();
-  const items = await db.prepare(`
+  const [items, matches, legacyMatches] = await Promise.all([db.prepare(`
     SELECT checkpoint_id, record_id
     FROM split_settlement_checkpoint_items
     WHERE checkpoint_id IN (SELECT id FROM split_settlement_checkpoints WHERE household_id = ?)
-  `).bind(DEFAULT_HOUSEHOLD_ID).all<{ checkpoint_id: string; record_id: string }>();
+  `).bind(DEFAULT_HOUSEHOLD_ID).all<{ checkpoint_id: string; record_id: string }>(), db.prepare(`
+    SELECT matches.checkpoint_id, matches.transaction_id, matches.amount_minor,
+      transactions.transaction_date, transactions.description
+    FROM split_settlement_checkpoint_matches AS matches
+    INNER JOIN split_settlement_checkpoints AS checkpoints ON checkpoints.id = matches.checkpoint_id
+    INNER JOIN transactions ON transactions.id = matches.transaction_id
+    WHERE checkpoints.household_id = ?
+    ORDER BY matches.created_at, matches.id
+  `).bind(DEFAULT_HOUSEHOLD_ID).all<{ checkpoint_id: string; transaction_id: string; amount_minor: number; transaction_date: string; description: string }>(), db.prepare(`
+    SELECT checkpoints.id AS checkpoint_id, checkpoints.matched_transaction_id AS transaction_id,
+      checkpoints.matched_amount_minor AS amount_minor, transactions.transaction_date,
+      transactions.description
+    FROM split_settlement_checkpoints AS checkpoints
+    INNER JOIN transactions ON transactions.id = checkpoints.matched_transaction_id
+    WHERE checkpoints.household_id = ? AND checkpoints.matched_transaction_id IS NOT NULL
+  `).bind(DEFAULT_HOUSEHOLD_ID).all<{ checkpoint_id: string; transaction_id: string; amount_minor: number; transaction_date: string; description: string }>()]);
   const itemMap = new Map<string, string[]>();
   for (const item of items.results) itemMap.set(item.checkpoint_id, [...(itemMap.get(item.checkpoint_id) ?? []), item.record_id]);
+  const matchMap = new Map<string, SplitSettlementCheckpointTransferDto[]>();
+  for (const match of [...legacyMatches.results, ...matches.results]) {
+    const transfers = matchMap.get(match.checkpoint_id) ?? [];
+    if (!transfers.some((transfer) => transfer.transactionId === match.transaction_id)) {
+      transfers.push({ transactionId: match.transaction_id, transactionDate: match.transaction_date, description: match.description, amountMinor: match.amount_minor });
+    }
+    matchMap.set(match.checkpoint_id, transfers);
+  }
   return rows.results.map((row) => ({
     id: row.id,
     fromPersonId: row.from_person_id ?? undefined,
@@ -264,7 +288,8 @@ export async function loadSplitSettlementCheckpoints(db: D1Database): Promise<Sp
     settlementDate: row.settlement_date,
     status: row.status,
     matchedTransactionId: row.matched_transaction_id ?? undefined,
-    matchedAmountMinor: row.matched_amount_minor,
+    matchedAmountMinor: matchMap.get(row.id)?.reduce((total, transfer) => total + transfer.amountMinor, 0) ?? row.matched_amount_minor,
+    matchedTransfers: matchMap.get(row.id) ?? [],
     includedRecordCount: itemMap.get(row.id)?.length ?? 0,
     includedRecordIds: itemMap.get(row.id) ?? [],
     note: row.note ?? undefined
@@ -336,20 +361,49 @@ export async function reopenSplitSettlementCheckpoint(db: D1Database, checkpoint
 }
 
 export async function matchSplitSettlementCheckpoint(db: D1Database, input: { checkpointId: string; transactionId: string }) {
-  const checkpoint = await db.prepare("SELECT amount_minor, matched_transaction_id FROM split_settlement_checkpoints WHERE id = ? AND household_id = ?")
-    .bind(input.checkpointId, DEFAULT_HOUSEHOLD_ID).first<{ amount_minor: number; matched_transaction_id: string | null }>();
+  const checkpoint = await db.prepare("SELECT amount_minor, status, matched_transaction_id, matched_amount_minor FROM split_settlement_checkpoints WHERE id = ? AND household_id = ?")
+    .bind(input.checkpointId, DEFAULT_HOUSEHOLD_ID).first<{ amount_minor: number; status: SplitSettlementCheckpointDto["status"]; matched_transaction_id: string | null; matched_amount_minor: number }>();
   if (!checkpoint) throw new Error("Settlement checkpoint not found.");
-  if (checkpoint.matched_transaction_id) throw new Error("This settlement checkpoint already has a matched transfer.");
-  const alreadyUsed = await db.prepare("SELECT id FROM split_settlement_checkpoints WHERE household_id = ? AND matched_transaction_id = ? AND id != ?")
-    .bind(DEFAULT_HOUSEHOLD_ID, input.transactionId, input.checkpointId).first<{ id: string }>();
+  if (["reopened", "voided", "internally_offset"].includes(checkpoint.status)) throw new Error("This settlement checkpoint is not open for matching.");
+  const alreadyUsed = await db.prepare(`
+    SELECT checkpoint_id FROM split_settlement_checkpoint_matches WHERE transaction_id = ?
+    UNION ALL
+    SELECT id FROM split_settlement_checkpoints WHERE matched_transaction_id = ? AND id != ?
+    LIMIT 1
+  `).bind(input.transactionId, input.transactionId, input.checkpointId).first<{ checkpoint_id: string }>();
   if (alreadyUsed) throw new Error("This transfer is already matched to another settlement checkpoint.");
+  const alreadyMatched = await db.prepare("SELECT transaction_id FROM split_settlement_checkpoint_matches WHERE checkpoint_id = ? AND transaction_id = ?")
+    .bind(input.checkpointId, input.transactionId).first<{ transaction_id: string }>();
+  if (alreadyMatched || checkpoint.matched_transaction_id === input.transactionId) throw new Error("This transfer is already matched to this settlement checkpoint.");
   const row = await db.prepare("SELECT amount_minor, entry_type FROM transactions WHERE id = ? AND household_id = ?")
     .bind(input.transactionId, DEFAULT_HOUSEHOLD_ID).first<{ amount_minor: number; entry_type: string }>();
   if (!row || row.entry_type !== "transfer") throw new Error("Checkpoint matches require a transfer entry.");
-  const status = row.amount_minor === checkpoint.amount_minor ? "matched" : row.amount_minor < checkpoint.amount_minor ? "partially_matched" : "open";
+  const amountMinor = Math.abs(row.amount_minor);
+  const totalMatchedMinor = checkpoint.matched_amount_minor + amountMinor;
+  const status = totalMatchedMinor === checkpoint.amount_minor ? "matched" : totalMatchedMinor < checkpoint.amount_minor ? "partially_matched" : "open";
+  await db.prepare("INSERT INTO split_settlement_checkpoint_matches (id, checkpoint_id, transaction_id, amount_minor) VALUES (?, ?, ?, ?)")
+    .bind(`${input.checkpointId}-match-${input.transactionId}`, input.checkpointId, input.transactionId, amountMinor).run();
+  await db.prepare("UPDATE split_settlement_checkpoints SET matched_transaction_id = COALESCE(matched_transaction_id, ?), matched_amount_minor = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ?")
+    .bind(input.transactionId, totalMatchedMinor, status, input.checkpointId, DEFAULT_HOUSEHOLD_ID).run();
+  return { checkpointId: input.checkpointId, status, matchedAmountMinor: totalMatchedMinor, remainingMinor: Math.max(0, checkpoint.amount_minor - totalMatchedMinor) };
+}
+
+export async function unmatchSplitSettlementCheckpoint(db: D1Database, input: { checkpointId: string; transactionId: string }) {
+  const checkpoint = await db.prepare("SELECT amount_minor, status, matched_transaction_id, matched_amount_minor FROM split_settlement_checkpoints WHERE id = ? AND household_id = ?")
+    .bind(input.checkpointId, DEFAULT_HOUSEHOLD_ID).first<{ amount_minor: number; status: SplitSettlementCheckpointDto["status"]; matched_transaction_id: string | null; matched_amount_minor: number }>();
+  if (!checkpoint) throw new Error("Settlement checkpoint not found.");
+  if (["reopened", "voided", "internally_offset"].includes(checkpoint.status)) throw new Error("This settlement checkpoint cannot be changed.");
+  const match = await db.prepare("SELECT amount_minor FROM split_settlement_checkpoint_matches WHERE checkpoint_id = ? AND transaction_id = ?")
+    .bind(input.checkpointId, input.transactionId).first<{ amount_minor: number }>();
+  if (!match) throw new Error("This transfer is not matched to the settlement checkpoint.");
+  const totalMatchedMinor = Math.max(0, checkpoint.matched_amount_minor - match.amount_minor);
+  const status = totalMatchedMinor === checkpoint.amount_minor ? "matched" : totalMatchedMinor > 0 ? "partially_matched" : "open";
+  await db.prepare("DELETE FROM split_settlement_checkpoint_matches WHERE checkpoint_id = ? AND transaction_id = ?").bind(input.checkpointId, input.transactionId).run();
+  const nextLegacyTransactionId = await db.prepare("SELECT transaction_id FROM split_settlement_checkpoint_matches WHERE checkpoint_id = ? ORDER BY created_at, id LIMIT 1")
+    .bind(input.checkpointId).first<{ transaction_id: string }>();
   await db.prepare("UPDATE split_settlement_checkpoints SET matched_transaction_id = ?, matched_amount_minor = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ?")
-    .bind(input.transactionId, row.amount_minor, status, input.checkpointId, DEFAULT_HOUSEHOLD_ID).run();
-  return { checkpointId: input.checkpointId, status };
+    .bind(nextLegacyTransactionId?.transaction_id ?? null, totalMatchedMinor, status, input.checkpointId, DEFAULT_HOUSEHOLD_ID).run();
+  return { checkpointId: input.checkpointId, status, matchedAmountMinor: totalMatchedMinor, remainingMinor: Math.max(0, checkpoint.amount_minor - totalMatchedMinor) };
 }
 
 export async function loadSplitMatchCandidates(db: D1Database, month = getCurrentMonthKey()): Promise<SplitMatchCandidateDto[]> {
