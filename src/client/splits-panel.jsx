@@ -882,6 +882,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onClose={closeExpenseDialogAndReturn}
         onSave={requestSaveExpense}
         onViewLinkedEntry={openLinkedEntry}
+        onRequestDelete={requestDeleteSplit}
       />
 
       <SplitSettlementDialog
@@ -897,6 +898,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         }}
         onSave={requestSaveSettlement}
         onViewLinkedEntry={openLinkedEntry}
+        onRequestDelete={requestDeleteSplit}
       />
       <LinkedNoteSyncDialog
         prompt={splitNoteSyncPrompt}
