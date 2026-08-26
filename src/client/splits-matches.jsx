@@ -1,9 +1,11 @@
+import { ChevronLeft } from "lucide-react";
+
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 
 const { format: formatService } = moniesClient;
 
-export function SplitMatchesList({ matches, pendingMatchCount, onDismissMatch, onConfirmMatch }) {
+export function SplitMatchesList({ matches, pendingMatchCount, onBackToGroup, onDismissMatch, onConfirmMatch }) {
   return (
     <section className="split-list-section split-match-review-section">
       <div className="panel-subhead">
@@ -11,6 +13,10 @@ export function SplitMatchesList({ matches, pendingMatchCount, onDismissMatch, o
           <h2>{messages.splits.matches}</h2>
           <p className="lede compact">{pendingMatchCount ? messages.splits.matchReviewDetail(pendingMatchCount) : messages.splits.noMatches}</p>
         </div>
+        <button type="button" className="subtle-action split-match-back-action" aria-label={messages.splits.backToGroup} onClick={onBackToGroup}>
+          <ChevronLeft size={16} aria-hidden="true" />
+          <span>Back</span>
+        </button>
       </div>
       <div className="split-match-list">
         {matches.length ? matches.map((match) => (

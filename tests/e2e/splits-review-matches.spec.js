@@ -87,6 +87,46 @@ test("review matches links a split expense into entries and hides already-linked
   await expect(page.locator(".entry-chip-linked-split").first()).toContainText("On splits");
 });
 
+test("mobile split match review has readable actions and a clear back path", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await reseedDemo(page);
+
+  const beforeSplits = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
+  const pantryMatch = beforeSplits.splitsPage.matches.find((match) => match.splitRecordId === "split-expense-nongroup-pantry-match");
+  expect(pantryMatch).toBeTruthy();
+
+  await page.goto("/splits?view=person-tim&month=2025-10&split_mode=matches");
+  await page.waitForLoadState("networkidle");
+
+  const backButton = page.getByRole("button", { name: "Back to split group" }).first();
+  await expect(backButton).toBeVisible();
+
+  const matchCard = page.locator(".split-match-card").filter({ hasText: pantryMatch?.transactionDescription ?? "" }).first();
+  await expect(matchCard).toBeVisible();
+  const keepSeparate = matchCard.getByRole("button", { name: "Keep separate" });
+  const matchButton = matchCard.getByRole("button", { name: "Match", exact: true });
+  await expect(keepSeparate).toHaveCSS("color", "rgb(177, 94, 47)");
+  await expect(matchButton).toHaveCSS("background-color", "rgb(177, 94, 47)");
+
+  const layout = await matchCard.locator(".split-match-actions").evaluate((element) => {
+    const card = element.closest(".split-match-card");
+    const actions = element.getBoundingClientRect();
+    const cardBox = card?.getBoundingClientRect();
+    return {
+      actionsLeft: actions.left,
+      cardLeft: cardBox?.left ?? 0,
+      cardRight: cardBox?.right ?? 0
+    };
+  });
+  expect(layout.actionsLeft).toBeGreaterThanOrEqual(layout.cardLeft - 1);
+  expect(layout.actionsLeft).toBeLessThan(layout.cardRight);
+
+  await backButton.click();
+  await expect(page).not.toHaveURL(/split_mode=matches/);
+  await expect(page.locator(".split-match-inbox-callout")).toBeVisible();
+});
+
 test("review matches links a settlement and the linked entry can be opened from splits history", async ({ page }) => {
   await page.goto("/");
   await reseedDemo(page);

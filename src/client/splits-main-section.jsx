@@ -31,6 +31,7 @@ export function SplitsMainSection({
   hasInlineSplitChanges,
   onSelectGroup,
   onOpenMatches,
+  onBackToGroup,
   onCreateGroup,
   onToggleBreakdown,
   onAddExpense,
@@ -109,6 +110,7 @@ export function SplitsMainSection({
         <SplitMatchesList
           matches={visibleMatches}
           pendingMatchCount={pendingMatchCount}
+          onBackToGroup={onBackToGroup}
           onDismissMatch={onDismissMatch}
           onConfirmMatch={onConfirmMatch}
         />

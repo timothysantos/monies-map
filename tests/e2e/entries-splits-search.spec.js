@@ -23,12 +23,14 @@ async function expectInlineSearch(root) {
   const controlMidline = controlBox.y + controlBox.height / 2;
   const iconMidline = iconBox.y + iconBox.height / 2;
   const inputMidline = inputBox.y + inputBox.height / 2;
+  const inputPaddingLeft = Number.parseFloat(await input.evaluate((element) => getComputedStyle(element).paddingLeft));
 
   expect(Math.abs(labelMidline - controlMidline)).toBeLessThanOrEqual(12);
   expect(Math.abs(iconMidline - inputMidline)).toBeLessThanOrEqual(8);
   expect(controlBox.x).toBeGreaterThan(labelBox.x + labelBox.width);
   expect(iconBox.x).toBeGreaterThanOrEqual(controlBox.x);
   expect(iconBox.x + iconBox.width).toBeLessThanOrEqual(controlBox.x + controlBox.width);
+  expect(inputPaddingLeft).toBeGreaterThanOrEqual(44);
 }
 
 test("entries search filters visible rows and preserves the query in the URL", async ({ page }) => {
@@ -136,7 +138,7 @@ test("splits search filters activity and preserves the query in the URL", async 
   expect(new URL(page.url()).searchParams.get("split_search")).toBe("din 88.80");
 });
 
-test("manual split rows expose delete without first opening the editor", async ({ page }) => {
+test("manual split rows keep delete inside the editor", async ({ page }) => {
   const month = "2026-06";
   const description = `Playwright manual split delete ${Date.now()}`;
 
@@ -160,7 +162,12 @@ test("manual split rows expose delete without first opening the editor", async (
 
   const row = page.locator(".split-activity-card").filter({ hasText: description }).first();
   await expect(row).toContainText("Manual split");
-  await row.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(row.getByRole("button", { name: "Delete", exact: true })).toHaveCount(0);
+  await row.click();
+
+  const editor = page.locator(".split-inline-editor-card").filter({ hasText: description });
+  await expect(editor).toBeVisible();
+  await editor.getByRole("button", { name: "Delete" }).click();
 
   const deleteDialog = page.locator(".split-delete-dialog");
   await expect(deleteDialog).toBeVisible();
@@ -194,7 +201,7 @@ test("mobile split editor can delete an existing manual split", async ({ page })
     () => page.locator(".split-activity-card").filter({ hasText: description }).first()
   );
 
-  await page.locator(".split-activity-card").filter({ hasText: description }).first().locator(".split-activity-card-button").click();
+  await page.locator(".split-activity-card").filter({ hasText: description }).first().click();
   const editDialog = page.locator(".split-dialog-content").filter({ hasText: "Edit split" });
   await expect(editDialog).toBeVisible();
   await editDialog.getByRole("button", { name: "Delete" }).click();
