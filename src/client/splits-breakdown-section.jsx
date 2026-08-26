@@ -24,6 +24,7 @@ export function SplitsBreakdownSection({
   categories,
   onToggleBreakdown,
   onAddExpense,
+  searchControl = null,
   summaryToolbar = null,
   isRefreshingDerived = false,
   readOnly = false
@@ -50,6 +51,7 @@ export function SplitsBreakdownSection({
         >
           <ChevronRight size={18} />
         </button>
+        {searchControl}
         <div className="entries-summary-metrics">
           {!readOnly ? (
             <span>{groupSummaryLabel} <strong className={groupBalanceMinor >= 0 ? "tone-positive" : "tone-negative"}>{formatService.money(Math.abs(groupBalanceMinor))}</strong></span>

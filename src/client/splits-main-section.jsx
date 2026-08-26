@@ -34,6 +34,7 @@ export function SplitsMainSection({
   onCreateGroup,
   onToggleBreakdown,
   onAddExpense,
+  searchControl,
   summaryToolbar,
   onDismissMatch,
   onConfirmMatch,
@@ -97,6 +98,7 @@ export function SplitsMainSection({
         categories={categories}
         onToggleBreakdown={onToggleBreakdown}
         onAddExpense={onAddExpense}
+        searchControl={searchControl}
         summaryToolbar={summaryToolbar}
         readOnly={readOnly}
         isRefreshingDerived={isRefreshingDerived}

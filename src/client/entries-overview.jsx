@@ -271,10 +271,11 @@ export function SearchFilterInput({
   placeholder = "Search",
   suggestions = [],
   listId,
+  className = "",
   onChange
 }) {
   return (
-    <label className="entries-filter search-filter">
+    <label className={`entries-filter search-filter ${className}`.trim()}>
       <span className="entries-filter-label">{label}</span>
       <span className="search-filter-control">
         <Search size={16} aria-hidden="true" />
