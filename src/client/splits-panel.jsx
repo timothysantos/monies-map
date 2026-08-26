@@ -811,6 +811,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         isSubmitting={isSubmitting}
         onSelectGroup={(groupId) => updateSplitView({ groupId, mode: "entries" })}
         onOpenMatches={openMatchesView}
+        onBackToGroup={openActiveGroupView}
         onCreateGroup={() => {
           setFormError("");
           setGroupDialog({ name: "" });

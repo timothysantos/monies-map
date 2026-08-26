@@ -3785,28 +3785,6 @@ body:has(.split-inline-editor-card) .splits-fab {
   text-align: left;
 }
 
-.split-activity-card-button {
-  appearance: none;
-  -webkit-appearance: none;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 14px;
-  align-items: start;
-  width: 100%;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.split-activity-card-with-actions {
-  grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
-}
-
 button.split-activity-card {
   appearance: none;
   -webkit-appearance: none;
@@ -3944,6 +3922,7 @@ button.split-activity-card:hover {
 .split-match-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
 }
 
@@ -4011,16 +3990,19 @@ button.split-activity-card:hover {
   font-size: 0.88rem;
 }
 
+.split-match-back-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: end;
+  white-space: nowrap;
+}
+
 .split-card-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 10px;
-}
-
-.split-card-actions-current {
-  margin-top: -2px;
-  margin-left: 58px;
 }
 
 .split-dialog-delete-action {
@@ -4447,6 +4429,35 @@ button.split-activity-card:hover {
 
 .panel-splits .split-match-card p {
   color: var(--muted);
+}
+
+.panel-splits .split-match-card .subtle-action,
+.panel-splits .split-match-card .dialog-primary {
+  min-height: 38px;
+  border-radius: 999px;
+  box-shadow: 0 1px 0 rgba(90, 47, 25, 0.04);
+}
+
+.panel-splits .split-match-card .subtle-action {
+  border-color: rgba(177, 94, 47, 0.2);
+  background: rgba(255, 250, 246, 0.98);
+  color: var(--accent-strong);
+}
+
+.panel-splits .split-match-card .subtle-action:hover {
+  background: rgba(247, 236, 227, 0.98);
+  border-color: rgba(177, 94, 47, 0.32);
+}
+
+.panel-splits .split-match-card .dialog-primary {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+  color: white;
+}
+
+.panel-splits .split-match-card .dialog-primary:hover {
+  background: color-mix(in srgb, var(--accent-strong) 88%, black);
+  border-color: var(--accent-strong);
 }
 
 @media (max-width: 860px) {
@@ -5972,8 +5983,8 @@ button.split-activity-card:hover {
 
 .search-filter-input {
   width: 100%;
-  padding-left: 40px;
-  padding-right: 38px;
+  padding-left: 44px !important;
+  padding-right: 38px !important;
 }
 
 .search-filter-clear {
@@ -10531,16 +10542,6 @@ th {
     padding: 8px 0;
   }
 
-  .split-activity-card-button {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 8px 10px;
-  }
-
-  .split-activity-card-with-actions {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 4px;
-  }
-
   .split-activity-leading {
     gap: 4px;
   }
@@ -10602,11 +10603,6 @@ th {
     margin-top: 6px;
   }
 
-  .split-card-actions-current {
-    margin-top: -1px;
-    margin-left: 48px;
-  }
-
   .split-archive-trigger {
     padding-top: 10px;
   }
@@ -10646,7 +10642,8 @@ th {
   }
 
   .panel-splits .split-match-actions {
-    justify-content: flex-start;
+    width: 100%;
+    justify-content: flex-end;
     flex-wrap: wrap;
     gap: 8px;
   }

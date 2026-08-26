@@ -161,7 +161,6 @@ export function SplitActivityGroups({
           const isEditable = !archived && !readOnly;
           const isEditing = isEditable && editingDraft && splitItemKey(item) === `${editingDraft.kind}:${editingDraft.id}`;
           const isPendingDerived = item.isPendingDerived === true;
-          const canDeleteFromCard = isEditable && !item.linkedTransactionId;
           const showDirectionLabel = Boolean(item.viewerDirectionLabel) && !readOnly;
           const amountToneClass = showDirectionLabel
             ? (item.viewerDirectionLabel.includes("borrowed") || item.viewerDirectionLabel.includes("owe") ? "negative" : "positive")
@@ -295,32 +294,6 @@ export function SplitActivityGroups({
               </div>
             </>
           );
-
-          if (canDeleteFromCard) {
-            return (
-              <article
-                id={splitActivityDomId(item)}
-                key={splitItemKey(item)}
-                className={`split-activity-card split-activity-card-with-actions ${isPendingDerived ? "is-pending" : ""}`}
-              >
-                <button type="button" className="split-activity-card-button" onClick={openEditor}>
-                  {cardContent}
-                </button>
-                <div className="split-card-actions split-card-actions-current">
-                  <button
-                    type="button"
-                    className="subtle-action split-delete-action"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onRequestDelete?.(item);
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </article>
-            );
-          }
 
           const CardElement = isEditable ? "button" : "article";
           return (
