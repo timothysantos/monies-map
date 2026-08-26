@@ -266,6 +266,25 @@ export interface SplitActivityDto {
   linkedTransactionNote?: string;
   linkedTransactionCategoryName?: string;
   matched: boolean;
+  settlementCheckpointId?: string;
+  settlementCheckpointStatus?: "open" | "matched" | "partially_matched" | "internally_offset" | "reopened" | "voided";
+  settlementStatus?: "settled" | "open_after_settlement" | "open";
+}
+
+export interface SplitSettlementCheckpointDto {
+  id: string;
+  fromPersonId?: string;
+  fromPersonName?: string;
+  toPersonId?: string;
+  toPersonName?: string;
+  amountMinor: number;
+  settlementDate: string;
+  status: "open" | "matched" | "partially_matched" | "internally_offset" | "reopened" | "voided";
+  matchedTransactionId?: string;
+  matchedAmountMinor: number;
+  includedRecordCount: number;
+  note?: string;
+  includedRecordIds?: string[];
 }
 
 export interface SplitMatchCandidateDto {
@@ -334,6 +353,7 @@ export interface SplitsPageDto {
   activity: SplitActivityDto[];
   matches: SplitMatchCandidateDto[];
   donutChart: DonutChartDatumDto[];
+  settlementCheckpoints: SplitSettlementCheckpointDto[];
 }
 
 export interface MonthPlanRowDto {

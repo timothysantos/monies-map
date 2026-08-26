@@ -22,6 +22,7 @@ Splits state is split between:
 - route state for view and month
 - server state for the splits page DTO
 - workflow state for split creation, matching, settling, and archive behavior
+- settlement checkpoint state for simplification, transfer matching, and reopen
 - transient UI state for dialogs and responsive controls
 
 The page should preserve active matching state while freshness catches up,
@@ -48,6 +49,8 @@ Splits owns:
 - split creation
 - matching
 - settle-up behavior
+- settlement simplification across groups
+- checkpoint reopen and late/backdated activity handling
 - archive behavior
 - linked-entry handling
 
@@ -58,6 +61,7 @@ Current status: aligned with tests and runtime behavior.
 Watch area:
 
 - keep shell-refresh requests explicit and named
+- checkpoint membership is immutable until the user explicitly reopens it
 
 ## Known Exceptions / Watch Areas
 

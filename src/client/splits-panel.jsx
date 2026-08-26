@@ -10,9 +10,12 @@ import {
 } from "./split-editing";
 import {
   createSplitGroup,
+  createSettlementCheckpoint,
   deleteSplitExpense,
   deleteSplitSettlement,
   linkSplitMatch,
+  matchSettlementCheckpoint,
+  reopenSettlementCheckpoint,
   saveSplitExpense,
   saveSplitSettlement,
   updateLinkedEntryCategory,
@@ -58,6 +61,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [isRefreshingDerived, setIsRefreshingDerived] = useState(false);
   const [optimisticSplitsPage, setOptimisticSplitsPage] = useState(null);
   const [dismissedMatchIds, setDismissedMatchIds] = useState([]);
+  const [checkpointError, setCheckpointError] = useState("");
+  const [isCheckpointing, setIsCheckpointing] = useState(false);
+  const [checkpointTransferId, setCheckpointTransferId] = useState("");
   const refreshGuardRef = useRef(null);
   const latestSplitsPageRef = useRef(splitsPage);
   const returnToSplitIdRef = useRef("");
@@ -98,6 +104,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     totalExpenseMinor,
     visibleMatches
   } = splitModel;
+  const settlementCheckpoints = splitsPage.settlementCheckpoints ?? [];
+  const activeCheckpoint = settlementCheckpoints.find((checkpoint) => !["reopened", "voided"].includes(checkpoint.status));
+  const checkpointHasOverpayment = Boolean(activeCheckpoint && activeCheckpoint.matchedAmountMinor > activeCheckpoint.amountMinor);
   const {
     expenseDialog,
     settlementDialog,
@@ -690,6 +699,53 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     updateSplitView({ groupId: activeGroup?.id ?? defaultGroupId, mode: "entries" });
   }
 
+  async function simplifySettlement() {
+    if (isHouseholdView || isCheckpointing) return;
+    setCheckpointError("");
+    setIsCheckpointing(true);
+    try {
+      await createSettlementCheckpoint({
+        viewerPersonId: view.id,
+        date: new Date().toISOString().slice(0, 10),
+        note: "Simplified settlement"
+      });
+      refreshAfterSplitMutation({ broadcast: true });
+    } catch (error) {
+      setCheckpointError(error instanceof Error ? error.message : "Failed to simplify settlement.");
+    } finally {
+      setIsCheckpointing(false);
+    }
+  }
+
+  async function reopenSettlement() {
+    if (!activeCheckpoint || isCheckpointing) return;
+    setCheckpointError("");
+    setIsCheckpointing(true);
+    try {
+      await reopenSettlementCheckpoint(activeCheckpoint.id);
+      refreshAfterSplitMutation({ broadcast: true });
+    } catch (error) {
+      setCheckpointError(error instanceof Error ? error.message : "Failed to reopen settlement.");
+    } finally {
+      setIsCheckpointing(false);
+    }
+  }
+
+  async function matchCheckpoint() {
+    if (!activeCheckpoint || !checkpointTransferId || isCheckpointing) return;
+    setCheckpointError("");
+    setIsCheckpointing(true);
+    try {
+      await matchSettlementCheckpoint({ checkpointId: activeCheckpoint.id, transactionId: checkpointTransferId });
+      setCheckpointTransferId("");
+      refreshAfterSplitMutation({ broadcast: true, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
+    } catch (error) {
+      setCheckpointError(error instanceof Error ? error.message : "Failed to match settlement.");
+    } finally {
+      setIsCheckpointing(false);
+    }
+  }
+
   async function confirmDeleteSplit() {
     if (!deleteTarget) {
       return;
@@ -750,6 +806,11 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
             disabled={!activeGroup || groupBalanceMinor === 0}
           >
             {messages.splits.settleUp}
+          </button>
+        ) : null}
+        {!isHouseholdView && selectedMode !== "matches" && !activeCheckpoint ? (
+          <button type="button" className="subtle-action split-simplify-action" onClick={() => void simplifySettlement()} disabled={isCheckpointing}>
+            {isCheckpointing ? "Simplifying..." : "Simplify settlement"}
           </button>
         ) : null}
       </div>
@@ -838,6 +899,35 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         viewId={view.id}
         isRefreshingDerived={isRefreshingDerived}
       />
+
+      {activeCheckpoint ? (
+        <section className={`split-checkpoint-panel is-${activeCheckpoint.status}`} aria-live="polite">
+          <div>
+            <strong>{activeCheckpoint.status === "internally_offset" ? "Groups internally offset" : "Simplified settlement"}</strong>
+            <p>
+              {checkpointHasOverpayment
+                ? "The selected transfer is larger than the checkpoint. Review the difference before considering this settled."
+                : activeCheckpoint.amountMinor === 0
+                ? "The included groups now net to zero. No bank transfer is needed."
+                : `${activeCheckpoint.fromPersonName} pays ${activeCheckpoint.toPersonName} ${new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(activeCheckpoint.amountMinor / 100)}.`}
+            </p>
+            <small>{activeCheckpoint.includedRecordCount} included split records · {activeCheckpoint.status.replaceAll("_", " ")}</small>
+          </div>
+          {activeCheckpoint.amountMinor !== 0 && activeCheckpoint.status !== "matched" ? (
+            <div className="split-checkpoint-actions">
+              <select aria-label="Transfer to match" value={checkpointTransferId} onChange={(event) => setCheckpointTransferId(event.target.value)}>
+                <option value="">Match a transfer...</option>
+                {(view.monthPage?.entries ?? []).filter((entry) => entry.entryType === "transfer").map((entry) => (
+                  <option key={entry.id} value={entry.id}>{entry.description} · {new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(entry.amountMinor / 100)}</option>
+                ))}
+              </select>
+              <button type="button" className="subtle-action" onClick={() => void matchCheckpoint()} disabled={!checkpointTransferId || isCheckpointing}>Match transfer</button>
+            </div>
+          ) : null}
+          <button type="button" className="subtle-action" onClick={() => void reopenSettlement()} disabled={isCheckpointing}>Reopen settlement</button>
+        </section>
+      ) : null}
+      {checkpointError ? <p className="form-error" role="alert">{checkpointError}</p> : null}
 
       <SplitArchiveDialog
         archiveDialog={archiveDialog}

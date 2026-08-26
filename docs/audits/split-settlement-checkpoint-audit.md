@@ -12,32 +12,21 @@ Date: 2026-08-26
 
 ## Verdict
 
-The current app supports ordinary per-group split settlements and archival
-`split_batches`. It does not yet implement a person-level simplification
-checkpoint. The existing batch is therefore not sufficient as the future
-settlement contract: it has no net amount, included-record manifest, lifecycle
-state, undo event, or cross-group scope.
+The app now implements a person-level simplification checkpoint alongside the
+existing ordinary per-group split settlements and archival `split_batches`.
+The checkpoint stores a net amount, included-record manifest, lifecycle state,
+optional transfer match, and explicit reopen operation.
 
-The pure policy seam in
-`src/domain/split-settlement-policy.ts` and its tests document the invariants
-the feature should implement before it receives persistence or UI work.
+## Implemented Findings
 
-## Current Findings
-
-1. A settlement currently closes the active batch for one group. It does not
-   calculate a net obligation across groups such as Okaeri and B.River.
-2. Settlement matching currently searches for a transfer row by amount and
-   date. It has no concept of a checkpoint amount, partial payment, overpayment,
-   or an already-consumed ledger row.
-3. Deleting a settlement does not provide a semantic undo/reopen operation for
-   a previously closed batch. Reopening must be explicit and must preserve the
-   audit trail.
-4. The current chronological list can show archived batches, but it has no
-   required visual state for “settled in checkpoint”, “open after settlement”,
-   or “new open activity”.
-5. A date cannot identify checkpoint membership. A corrected or late-imported
-   row may have an older activity date but must remain outside an already
-   matched checkpoint when it belongs to a newer batch.
+1. A checkpoint calculates one person-level net obligation across all currently
+   open groups.
+2. Matching accepts one transfer, rejects reuse of a transfer, distinguishes
+   exact and partial matches, and surfaces overpayment for review.
+3. Reopen changes checkpoint lifecycle state while retaining the checkpoint
+   record and releasing its rows back into the open balance.
+4. Checkpoint membership is record-based. A corrected or late-imported row with
+   an older activity date stays outside the checkpoint.
 
 ## Required Future Contract
 
@@ -119,6 +108,7 @@ expense or fake ledger entry. If the result is non-zero, the next action is
 ## Test Proof
 
 `tests/split-settlement-checkpoint-audit.test.mjs` covers the pure netting and
-classification invariants, including negative and overpayment paths. It does
-not claim the feature is shipped. End-to-end tests must be added with the
-database/API implementation before calling the checkpoint feature complete.
+classification invariants, including negative and overpayment paths.
+`tests/e2e/splits-settlement-checkpoint.spec.js` proves the real D1/API flow for
+checkpoint creation, backdated additions, and reopen. Existing split settlement
+and match suites continue to pass.

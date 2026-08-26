@@ -3725,6 +3725,75 @@ body:has(.split-inline-editor-card) .splits-fab {
   color: white;
 }
 
+.split-checkpoint-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 12px 0 18px;
+  padding: 14px 16px;
+  border: 1px solid rgba(47, 125, 99, 0.28);
+  border-radius: 12px;
+  background: rgba(236, 248, 241, 0.9);
+  color: #245b49;
+}
+
+.split-checkpoint-panel.is-open {
+  border-color: rgba(177, 94, 47, 0.3);
+  background: rgba(255, 246, 233, 0.92);
+  color: #6f442e;
+}
+
+.split-checkpoint-panel strong,
+.split-checkpoint-panel p,
+.split-checkpoint-panel small {
+  display: block;
+  margin: 0;
+}
+
+.split-checkpoint-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.split-checkpoint-actions select {
+  min-width: 190px;
+  max-width: 280px;
+}
+
+.split-checkpoint-panel p {
+  margin-top: 4px;
+}
+
+.split-checkpoint-panel small {
+  margin-top: 6px;
+  opacity: 0.76;
+  text-transform: capitalize;
+}
+
+@media (max-width: 760px) {
+  .split-checkpoint-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .split-checkpoint-panel .subtle-action {
+    align-self: flex-start;
+  }
+
+  .split-checkpoint-actions {
+    justify-content: flex-start;
+  }
+
+  .split-checkpoint-actions select {
+    width: 100%;
+    max-width: none;
+  }
+}
+
 .split-date-group {
   display: grid;
   gap: 10px;

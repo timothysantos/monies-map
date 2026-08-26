@@ -628,6 +628,18 @@ Relationships:
 - has one `to person`
 - may link to one `ledger entry`
 
+### Settlement Checkpoint
+
+A person-level snapshot that simplifies open balances across multiple split
+groups. It records the exact split records included in the simplification and
+can be internally offset, matched to one real transfer, partially matched, or
+reopened. Its membership is record-based, not date-based, so a late or
+backdated split remains part of the next open batch.
+
+Storage:
+- `split_settlement_checkpoints`
+- `split_settlement_checkpoint_items`
+
 ### Monthly Note
 
 A note attached either to a summary scope or a specific month. Notes preserve
