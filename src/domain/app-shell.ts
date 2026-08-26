@@ -74,6 +74,7 @@ export async function loadAppShellContext(
   viewerEmail?: string,
   appEnvironment?: EntriesShellDto["appEnvironment"]
 ): Promise<AppShellDto> {
+  await ensureAppData(db);
   // Load the global shell metadata without pulling any route-specific page
   // payloads into the shell response.
   const [household, trackedMonths] = await Promise.all([
