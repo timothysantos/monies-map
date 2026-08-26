@@ -16,6 +16,7 @@ import {
   linkSplitMatch,
   matchSettlementCheckpoint,
   reopenSettlementCheckpoint,
+  unmatchSettlementCheckpoint,
   saveSplitExpense,
   saveSplitSettlement,
   updateLinkedEntryCategory,
@@ -746,6 +747,20 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
   }
 
+  async function unmatchCheckpoint(transactionId) {
+    if (!activeCheckpoint || isCheckpointing) return;
+    setCheckpointError("");
+    setIsCheckpointing(true);
+    try {
+      await unmatchSettlementCheckpoint({ checkpointId: activeCheckpoint.id, transactionId });
+      refreshAfterSplitMutation({ broadcast: true, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
+    } catch (error) {
+      setCheckpointError(error instanceof Error ? error.message : "Failed to remove settlement transfer.");
+    } finally {
+      setIsCheckpointing(false);
+    }
+  }
+
   async function confirmDeleteSplit() {
     if (!deleteTarget) {
       return;
@@ -906,18 +921,28 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
             <strong>{activeCheckpoint.status === "internally_offset" ? "Groups internally offset" : "Simplified settlement"}</strong>
             <p>
               {checkpointHasOverpayment
-                ? "The selected transfer is larger than the checkpoint. Review the difference before considering this settled."
+                ? "Matched transfers exceed the checkpoint. Review the difference before considering this settled."
                 : activeCheckpoint.amountMinor === 0
                 ? "The included groups now net to zero. No bank transfer is needed."
                 : `${activeCheckpoint.fromPersonName} pays ${activeCheckpoint.toPersonName} ${new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(activeCheckpoint.amountMinor / 100)}.`}
             </p>
-            <small>{activeCheckpoint.includedRecordCount} included split records · {activeCheckpoint.status.replaceAll("_", " ")}</small>
+            <small>{activeCheckpoint.includedRecordCount} included split records · {activeCheckpoint.matchedAmountMinor > 0 ? `${new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(activeCheckpoint.matchedAmountMinor / 100)} matched · ` : ""}{activeCheckpoint.status.replaceAll("_", " ")}</small>
           </div>
+          {activeCheckpoint.matchedTransfers?.length ? (
+            <div className="split-checkpoint-transfers" aria-label="Matched transfers">
+              {activeCheckpoint.matchedTransfers.map((transfer) => (
+                <div className="split-checkpoint-transfer" key={transfer.transactionId}>
+                  <span>{transfer.description} · {new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(transfer.amountMinor / 100)}</span>
+                  <button type="button" className="subtle-action" onClick={() => void unmatchCheckpoint(transfer.transactionId)} disabled={isCheckpointing}>Remove</button>
+                </div>
+              ))}
+            </div>
+          ) : null}
           {activeCheckpoint.amountMinor !== 0 && activeCheckpoint.status !== "matched" ? (
             <div className="split-checkpoint-actions">
               <select aria-label="Transfer to match" value={checkpointTransferId} onChange={(event) => setCheckpointTransferId(event.target.value)}>
                 <option value="">Match a transfer...</option>
-                {(view.monthPage?.entries ?? []).filter((entry) => entry.entryType === "transfer").map((entry) => (
+                {(view.monthPage?.entries ?? []).filter((entry) => entry.entryType === "transfer" && !(activeCheckpoint.matchedTransfers ?? []).some((transfer) => transfer.transactionId === entry.id)).map((entry) => (
                   <option key={entry.id} value={entry.id}>{entry.description} · {new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(entry.amountMinor / 100)}</option>
                 ))}
               </select>

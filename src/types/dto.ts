@@ -282,9 +282,17 @@ export interface SplitSettlementCheckpointDto {
   status: "open" | "matched" | "partially_matched" | "internally_offset" | "reopened" | "voided";
   matchedTransactionId?: string;
   matchedAmountMinor: number;
+  matchedTransfers: SplitSettlementCheckpointTransferDto[];
   includedRecordCount: number;
   note?: string;
   includedRecordIds?: string[];
+}
+
+export interface SplitSettlementCheckpointTransferDto {
+  transactionId: string;
+  transactionDate: string;
+  description: string;
+  amountMinor: number;
 }
 
 export interface SplitMatchCandidateDto {

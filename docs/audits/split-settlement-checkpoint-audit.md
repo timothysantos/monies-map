@@ -1,6 +1,6 @@
 # Split Settlement Checkpoint Audit
 
-Date: 2026-08-26
+Date: 2026-08-27
 
 ## Scope
 
@@ -15,20 +15,21 @@ Date: 2026-08-26
 The app now implements a person-level simplification checkpoint alongside the
 existing ordinary per-group split settlements and archival `split_batches`.
 The checkpoint stores a net amount, included-record manifest, lifecycle state,
-optional transfer match, and explicit reopen operation.
+multiple transfer matches, and explicit reopen operation.
 
 ## Implemented Findings
 
 1. A checkpoint calculates one person-level net obligation across all currently
    open groups.
-2. Matching accepts one transfer, rejects reuse of a transfer, distinguishes
-   exact and partial matches, and surfaces overpayment for review.
+2. Matching accepts multiple transfer rows, rejects reuse of a transfer,
+   accumulates exact and partial matches, and surfaces cumulative overpayment
+   for review.
 3. Reopen changes checkpoint lifecycle state while retaining the checkpoint
    record and releasing its rows back into the open balance.
 4. Checkpoint membership is record-based. A corrected or late-imported row with
    an older activity date stays outside the checkpoint.
 
-## Required Future Contract
+## Settlement Contract
 
 ### Checkpoint creation
 
@@ -45,7 +46,7 @@ On confirmation, persist an immutable inclusion manifest containing at least:
 - creation timestamp and effective settlement date
 - status: `draft`, `open`, `matched`, `partially_matched`, `internally_offset`,
   `reopened`, or `voided`
-- optional matched ledger transaction id and match metadata
+- matched ledger transfer rows and match metadata
 
 ### Matching
 
@@ -91,16 +92,23 @@ expense or fake ledger entry. If the result is non-zero, the next action is
 | Opposing balances across two groups | One person-level net amount | Pure policy test; persistence missing |
 | Exact cross-group offset | Internally offset; no ledger match | Pure policy test; persistence missing |
 | Payment direction reverses | Sender/receiver follow signed net | Pure policy test; persistence missing |
-| Exact transfer | Checkpoint becomes matched | Policy only; endpoint missing |
-| Partial transfer | Remainder stays open | Policy only; endpoint missing |
-| Overpayment | Exception, never silent close | Policy only; endpoint missing |
-| Duplicate reuse of same ledger row | Reject second match | Not implemented |
+| Exact transfer | Checkpoint becomes matched | Implemented; endpoint/UI |
+| Partial transfer | Remainder stays open | Implemented; endpoint/UI |
+| Multiple limited transfers | Cumulative total closes checkpoint | Implemented; endpoint/UI |
+| Overpayment across transfers | Exception, never silent close | Implemented; endpoint/UI |
+| Duplicate reuse of same ledger row | Reject second match | Implemented |
 | Unrelated same-amount transfer | Remains unmatched | Not implemented |
 | Backdated row in newer batch | Open after settlement | Pure policy test; UI label missing |
 | Same-date row added later | New batch membership wins | Not implemented end to end |
 | Edit included row after match | Require reopen/recompute | Not implemented |
 | Delete included row after match | Require reopen/recompute | Not implemented |
-| Undo/reopen | History retained; balance reopens | Not implemented |
+| Undo/reopen | History retained; balance reopens | Implemented |
+| Remove one of several matches | Remaining total and status recalculate | Implemented |
+| Transfer deleted after matching | Match disappears and checkpoint reopens/partials | FK cascade; should be monitored |
+| Two transfers with same amount | Each requires distinct ledger identity | Implemented |
+| Transfer series crosses months | Match remains attached to checkpoint | Implemented by ledger identity |
+| Transfer series has wrong direction | User sees selected row and can remove it | UI review; no direction inference |
+| Matching while another device matches | Unique constraints prevent duplicate row reuse | Database constraint |
 | Concurrent checkpoint creation | Prevent overlapping inclusion | Not implemented |
 | Multi-person scope | Reject or use explicit multi-party algorithm | Not implemented |
 | Currency mismatch | Reject before netting | Not implemented |
@@ -108,7 +116,8 @@ expense or fake ledger entry. If the result is non-zero, the next action is
 ## Test Proof
 
 `tests/split-settlement-checkpoint-audit.test.mjs` covers the pure netting and
-classification invariants, including negative and overpayment paths.
+classification invariants, including negative, cumulative, and overpayment
+paths.
 `tests/e2e/splits-settlement-checkpoint.spec.js` proves the real D1/API flow for
 checkpoint creation, backdated additions, and reopen. Existing split settlement
 and match suites continue to pass.

@@ -78,6 +78,27 @@ test("an overpaid ledger row is surfaced instead of silently closing the checkpo
   });
 });
 
+test("multiple bank-limit transfers accumulate until the checkpoint is fully paid", () => {
+  assert.deepEqual(applyExternalSettlement(767369, 300000), {
+    matched: false,
+    overpaid: false,
+    remainingMinor: 467369
+  });
+  assert.deepEqual(applyExternalSettlement(467369, 467369), {
+    matched: true,
+    overpaid: false,
+    remainingMinor: 0
+  });
+});
+
+test("a cumulative transfer series still surfaces an overpayment", () => {
+  assert.deepEqual(applyExternalSettlement(467369, 500000), {
+    matched: false,
+    overpaid: true,
+    remainingMinor: 0
+  });
+});
+
 test("a backdated item in a new batch remains open after an older checkpoint", () => {
   const checkpoint = { batchId: "batch-12", closedOn: "2026-08-20" };
 

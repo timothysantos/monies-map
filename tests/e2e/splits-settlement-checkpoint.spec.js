@@ -32,8 +32,40 @@ test("simplified settlement checkpoints preserve backdated additions and can reo
   const checkpoint = await (await checkpointResponse).json();
   expect(checkpoint.amountMinor).toBeGreaterThan(0);
 
+  const firstTransfer = await postJson(page, "/api/entries/create", {
+    date: `${month}-20`,
+    description: `Settlement transfer 1 ${Date.now()}`,
+    accountName: "UOB One",
+    categoryName: "Transfer",
+    amountMinor: checkpoint.amountMinor - 100,
+    entryType: "transfer",
+    transferDirection: "out",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+  const secondTransfer = await postJson(page, "/api/entries/create", {
+    date: `${month}-21`,
+    description: `Settlement transfer 2 ${Date.now()}`,
+    accountName: "UOB One",
+    categoryName: "Transfer",
+    amountMinor: 100,
+    entryType: "transfer",
+    transferDirection: "out",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+
   await page.reload();
   await expect(page.locator(".split-checkpoint-panel")).toContainText("Simplified settlement");
+  await page.locator("select[aria-label='Transfer to match']").selectOption(firstTransfer.entryId);
+  await page.getByRole("button", { name: "Match transfer" }).click();
+  await expect(page.locator(".split-checkpoint-panel")).toContainText("partially matched");
+  await page.locator("select[aria-label='Transfer to match']").selectOption(secondTransfer.entryId);
+  await page.getByRole("button", { name: "Match transfer" }).click();
+  await expect(page.locator(".split-checkpoint-panel")).toContainText("matched");
+  await expect(page.locator(".split-checkpoint-transfer")).toHaveCount(2);
+  await page.locator(".split-checkpoint-transfer").first().getByRole("button", { name: "Remove" }).click();
+  await expect(page.locator(".split-checkpoint-panel")).toContainText("partially matched");
   const checkpointed = await loadSplitsPage(page, { view: "person-tim", month });
   expect(checkpointed.splitsPage.settlementCheckpoints[0].id).toBe(checkpoint.checkpointId);
   expect(checkpointed.splitsPage.activity.filter((item) => item.settlementCheckpointId === checkpoint.checkpointId).length).toBeGreaterThan(0);

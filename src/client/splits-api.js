@@ -85,6 +85,10 @@ export function matchSettlementCheckpoint({ checkpointId, transactionId }) {
   return postJson("/api/splits/checkpoints/match", { checkpointId, transactionId }, "Failed to match settlement.");
 }
 
+export function unmatchSettlementCheckpoint({ checkpointId, transactionId }) {
+  return postJson("/api/splits/checkpoints/unmatch", { checkpointId, transactionId }, "Failed to remove settlement transfer.");
+}
+
 export function linkSplitMatch(match) {
   const endpoint = match.kind === "expense" ? "/api/splits/matches/link-expense" : "/api/splits/matches/link-settlement";
   const body = match.kind === "expense"

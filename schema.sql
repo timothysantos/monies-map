@@ -389,6 +389,17 @@ CREATE TABLE IF NOT EXISTS split_settlement_checkpoint_items (
   UNIQUE (checkpoint_id, record_kind, record_id)
 );
 
+CREATE TABLE IF NOT EXISTS split_settlement_checkpoint_matches (
+  id TEXT PRIMARY KEY,
+  checkpoint_id TEXT NOT NULL,
+  transaction_id TEXT NOT NULL,
+  amount_minor INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (checkpoint_id) REFERENCES split_settlement_checkpoints(id) ON DELETE CASCADE,
+  FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,
+  UNIQUE (checkpoint_id, transaction_id)
+);
+
 CREATE TABLE IF NOT EXISTS monthly_notes (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL,

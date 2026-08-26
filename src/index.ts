@@ -65,6 +65,7 @@ import {
   updateSplitSettlementNoteRecord,
   updateSplitSettlementRecord,
   matchSplitSettlementCheckpoint,
+  unmatchSplitSettlementCheckpoint,
   reopenSplitSettlementCheckpoint,
   updateAccountRecord,
   updateCategoryRecord,
@@ -1189,6 +1190,16 @@ export default {
         return json({ ok: true, ...(await matchSplitSettlementCheckpoint(env.DB, { checkpointId: body.checkpointId, transactionId: body.transactionId })) });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to match settlement" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/splits/checkpoints/unmatch" && request.method === "POST") {
+      const body = await request.json<{ checkpointId?: string; transactionId?: string }>();
+      if (!body.checkpointId || !body.transactionId) return json({ ok: false, error: "Missing checkpoint unmatch fields" }, 400);
+      try {
+        return json({ ok: true, ...(await unmatchSplitSettlementCheckpoint(env.DB, { checkpointId: body.checkpointId, transactionId: body.transactionId })) });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to unmatch settlement." }, 400);
       }
     }
 
