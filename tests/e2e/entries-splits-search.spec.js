@@ -136,6 +136,77 @@ test("splits search filters activity and preserves the query in the URL", async 
   expect(new URL(page.url()).searchParams.get("split_search")).toBe("din 88.80");
 });
 
+test("manual split rows expose delete without first opening the editor", async ({ page }) => {
+  const month = "2026-06";
+  const description = `Playwright manual split delete ${Date.now()}`;
+
+  await reseedDemo(page);
+  await postJson(page, "/api/splits/expenses/create", {
+    date: `${month}-12`,
+    description,
+    categoryName: "Food & Drinks",
+    payerPersonName: "Joyce",
+    amountMinor: 8880,
+    groupId: null,
+    note: "duplicate manual split"
+  });
+
+  await gotoPageAfterApi(
+    page,
+    `/splits?view=person-tim&month=${month}&split_group=split-group-none`,
+    "/api/splits-page",
+    () => page.locator(".split-activity-card").filter({ hasText: description }).first()
+  );
+
+  const row = page.locator(".split-activity-card").filter({ hasText: description }).first();
+  await expect(row).toContainText("Manual split");
+  await row.getByRole("button", { name: "Delete", exact: true }).click();
+
+  const deleteDialog = page.locator(".split-delete-dialog");
+  await expect(deleteDialog).toBeVisible();
+  await expect(deleteDialog).toContainText(description);
+  await deleteDialog.getByRole("button", { name: "Delete split row" }).click();
+
+  await expect(deleteDialog).toBeHidden();
+  await expect(page.locator(".split-activity-card").filter({ hasText: description })).toHaveCount(0);
+});
+
+test("mobile split editor can delete an existing manual split", async ({ page }) => {
+  const month = "2026-06";
+  const description = `Playwright mobile manual split delete ${Date.now()}`;
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await reseedDemo(page);
+  await postJson(page, "/api/splits/expenses/create", {
+    date: `${month}-12`,
+    description,
+    categoryName: "Food & Drinks",
+    payerPersonName: "Joyce",
+    amountMinor: 7250,
+    groupId: null,
+    note: "mobile duplicate manual split"
+  });
+
+  await gotoPageAfterApi(
+    page,
+    `/splits?view=person-tim&month=${month}&split_group=split-group-none`,
+    "/api/splits-page",
+    () => page.locator(".split-activity-card").filter({ hasText: description }).first()
+  );
+
+  await page.locator(".split-activity-card").filter({ hasText: description }).first().locator(".split-activity-card-button").click();
+  const editDialog = page.locator(".split-dialog-content").filter({ hasText: "Edit split" });
+  await expect(editDialog).toBeVisible();
+  await editDialog.getByRole("button", { name: "Delete" }).click();
+
+  const deleteDialog = page.locator(".split-delete-dialog");
+  await expect(deleteDialog).toBeVisible();
+  await deleteDialog.getByRole("button", { name: "Delete split row" }).click();
+
+  await expect(deleteDialog).toBeHidden();
+  await expect(page.locator(".split-activity-card").filter({ hasText: description })).toHaveCount(0);
+});
+
 test("splits search is integrated into the themed summary strip on desktop and mobile", async ({ page }) => {
   await reseedDemo(page);
 

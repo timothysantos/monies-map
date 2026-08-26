@@ -3785,6 +3785,28 @@ body:has(.split-inline-editor-card) .splits-fab {
   text-align: left;
 }
 
+.split-activity-card-button {
+  appearance: none;
+  -webkit-appearance: none;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.split-activity-card-with-actions {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
 button.split-activity-card {
   appearance: none;
   -webkit-appearance: none;
@@ -3994,6 +4016,15 @@ button.split-activity-card:hover {
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 10px;
+}
+
+.split-card-actions-current {
+  margin-top: -2px;
+  margin-left: 58px;
+}
+
+.split-dialog-delete-action {
+  margin-right: auto;
 }
 
 .panel-splits {
@@ -10500,6 +10531,16 @@ th {
     padding: 8px 0;
   }
 
+  .split-activity-card-button {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 8px 10px;
+  }
+
+  .split-activity-card-with-actions {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
   .split-activity-leading {
     gap: 4px;
   }
@@ -10559,6 +10600,11 @@ th {
   .split-card-actions {
     gap: 6px;
     margin-top: 6px;
+  }
+
+  .split-card-actions-current {
+    margin-top: -1px;
+    margin-left: 48px;
   }
 
   .split-archive-trigger {
