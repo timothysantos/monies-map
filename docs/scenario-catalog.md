@@ -941,6 +941,43 @@ Current weak coverage:
 6. Primary test level: `E2E`
 7. Form factor: `Both`
 
+### SP5a. Simplify open balances into a settlement checkpoint
+
+1. User intent: net opposing balances across split groups into one amount
+2. Starting state: the selected person has open split activity in one or more
+   groups
+3. Action: choose `Simplify settlement`
+4. Expected visible result: one checkpoint shows the net direction, amount,
+   included-record count, and open/matched/offset state
+5. Expected persisted or queried result: exact split record IDs are attached to
+   the checkpoint and excluded from open group balances
+6. Primary test level: `E2E`
+7. Form factor: `Both`
+
+### SP5b. Reopen a settlement checkpoint after new or corrected activity
+
+1. User intent: restore a settled batch for correction or review
+2. Starting state: an open or matched settlement checkpoint exists
+3. Action: choose `Reopen settlement`
+4. Expected visible result: checkpoint history remains visible as reopened and
+   its included rows return to open activity
+5. Expected persisted or queried result: a later backdated row remains outside
+   the old checkpoint because membership is record-based, not date-based
+6. Primary test level: `E2E`
+7. Form factor: `Both`
+
+### SP5c. Match, partially match, or reject a checkpoint transfer
+
+1. User intent: connect a real bank transfer to the simplified amount
+2. Starting state: an open checkpoint and candidate transfer ledger rows exist
+3. Action: select a transfer and choose `Match transfer`
+4. Expected visible result: exact match closes, partial match shows a remainder,
+   overpayment stays in review, and a reused transfer is rejected
+5. Expected persisted or queried result: checkpoint stores one matched transfer
+   and its matched amount without creating a fake split activity row
+6. Primary test level: `Integration` and `E2E`
+7. Form factor: `Both`
+
 ### SP6. Review match queue and link a split expense to an entry
 
 1. User intent: connect a split record to its real ledger evidence

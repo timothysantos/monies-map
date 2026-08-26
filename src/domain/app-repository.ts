@@ -90,6 +90,7 @@ export {
   createSplitExpenseRecord,
   createSplitGroupRecord,
   createSplitSettlementRecord,
+  createSplitSettlementCheckpoint,
   deleteSplitExpenseRecord,
   deleteSplitSettlementRecord,
   linkSplitExpenseMatch,
@@ -98,6 +99,9 @@ export {
   loadSplitGroups,
   loadSplitMatchCandidates,
   loadSplitSettlements,
+  loadSplitSettlementCheckpoints,
+  matchSplitSettlementCheckpoint,
+  reopenSplitSettlementCheckpoint,
   updateSplitExpenseCategoryRecord,
   updateSplitExpenseRecord,
   updateSplitExpenseNoteRecord,
@@ -791,6 +795,43 @@ export async function ensureDemoSchema(db: D1Database) {
     `)
     .run();
 
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS split_settlement_checkpoints (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL,
+        from_person_id TEXT,
+        to_person_id TEXT,
+        amount_minor INTEGER NOT NULL,
+        settlement_date TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('open', 'matched', 'partially_matched', 'internally_offset', 'reopened', 'voided')),
+        matched_transaction_id TEXT,
+        matched_amount_minor INTEGER NOT NULL DEFAULT 0,
+        note TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (household_id) REFERENCES households(id),
+        FOREIGN KEY (from_person_id) REFERENCES people(id),
+        FOREIGN KEY (to_person_id) REFERENCES people(id),
+        FOREIGN KEY (matched_transaction_id) REFERENCES transactions(id) ON DELETE SET NULL
+      )
+    `)
+    .run();
+
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS split_settlement_checkpoint_items (
+        id TEXT PRIMARY KEY,
+        checkpoint_id TEXT NOT NULL,
+        record_kind TEXT NOT NULL CHECK (record_kind IN ('expense', 'settlement')),
+        record_id TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (checkpoint_id) REFERENCES split_settlement_checkpoints(id) ON DELETE CASCADE,
+        UNIQUE (checkpoint_id, record_kind, record_id)
+      )
+    `)
+    .run();
+
   const snapshotColumns = await db
     .prepare("PRAGMA table_info(monthly_snapshots)")
     .all<{ name: string }>();
@@ -1073,6 +1114,8 @@ async function reassignPersonReferences(db: D1Database, fromPersonId: string, to
 export async function clearDemoData(db: D1Database) {
   await db.prepare("PRAGMA defer_foreign_keys = ON").run();
   const deletions = [
+    "DELETE FROM split_settlement_checkpoint_items",
+    "DELETE FROM split_settlement_checkpoints",
     "DELETE FROM split_expense_shares",
     "DELETE FROM split_expenses",
     "DELETE FROM split_settlements",

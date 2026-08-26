@@ -100,6 +100,12 @@ Target slices:
 - `splits`
 - `settings`
 
+The splits slice also owns settlement checkpoints. A checkpoint is an explicit
+snapshot of currently open split activity and its net household balance;
+matching a transfer records external settlement without rewriting the source
+split rows. Reopening a checkpoint releases its rows for a later checkpoint
+while preserving the historical checkpoint record.
+
 Rules:
 
 - each slice should expose a small public surface

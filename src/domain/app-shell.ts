@@ -47,6 +47,7 @@ import type {
   SplitGroupPillDto,
   SplitMatchCandidateDto,
   SplitSettlementDto,
+  SplitSettlementCheckpointDto,
   SplitsPageDto,
   PersonScope,
   SummaryAccountPillDto,
@@ -184,7 +185,8 @@ export function buildEntriesContextView(
       groups: buildEntriesSplitShellGroups(splitGroups),
       activity: [],
       matches: [],
-      donutChart: []
+      donutChart: [],
+      settlementCheckpoints: []
     }
   };
 }
@@ -417,12 +419,20 @@ export function buildSplitsPage(
   splitMatches: SplitMatchCandidateDto[],
   categories: CategoryDto[],
   selectedMonth: string,
-  personNameById: Record<string, string>
+  personNameById: Record<string, string>,
+  settlementCheckpoints: SplitSettlementCheckpointDto[] = []
 ) {
   const visibleExpenses = splitExpenses.filter((expense) => splitExpenseMatchesView(expense, viewId));
   const visibleSettlements = splitSettlements.filter((settlement) => splitSettlementMatchesView(settlement, viewId));
-  const openExpenses = visibleExpenses.filter((expense) => !expense.batchClosedAt);
-  const openSettlements = visibleSettlements.filter((settlement) => !settlement.batchClosedAt);
+  const checkpointByRecordId = new Map(
+    settlementCheckpoints
+      .filter((checkpoint) => !["reopened", "voided"].includes(checkpoint.status))
+      .flatMap((checkpoint) => (checkpoint.includedRecordIds ?? []).map((recordId) => [recordId, checkpoint] as const))
+  );
+  const checkpointedExpenses = visibleExpenses.map((expense) => ({ ...expense, settlementCheckpoint: checkpointByRecordId.get(expense.id) }));
+  const checkpointedSettlements = visibleSettlements.map((settlement) => ({ ...settlement, settlementCheckpoint: checkpointByRecordId.get(settlement.id) }));
+  const openExpenses = checkpointedExpenses.filter((expense) => !expense.batchClosedAt && !expense.settlementCheckpoint);
+  const openSettlements = checkpointedSettlements.filter((settlement) => !settlement.batchClosedAt && !settlement.settlementCheckpoint);
   const groupMap = new Map<string, { id: string; name: string; iconKey?: string; sortOrder?: number; balanceMinor: number; entryCount: number; pendingMatchCount: number }>();
 
   groupMap.set("split-group-none", {
@@ -542,7 +552,7 @@ export function buildSplitsPage(
     ?? (nonGroup && (nonGroup.entryCount > 0 || nonGroup.pendingMatchCount > 0) ? nonGroup.id : undefined)
     ?? "split-group-none";
 
-  const activity: SplitActivityDto[] = buildSplitActivity(viewId, visibleExpenses, visibleSettlements, personNameById);
+  const activity: SplitActivityDto[] = buildSplitActivity(viewId, checkpointedExpenses, checkpointedSettlements, personNameById);
   const donutChart = buildDonutChart(
     openExpenses.map((expense) => ({
       id: expense.id,
@@ -564,7 +574,8 @@ export function buildSplitsPage(
     groups: groups.map((group) => ({ ...group, isDefault: group.id === defaultGroupId })),
     activity,
     matches: splitMatches.filter((item) => splitMatchMatchesView(item, visibleExpenses, visibleSettlements, viewId)),
-    donutChart
+    donutChart,
+    settlementCheckpoints
   };
 }
 
@@ -1038,8 +1049,8 @@ function splitSettlementMatchesView(settlement: SplitSettlementDto, viewId: stri
 
 function splitMatchMatchesView(
   match: SplitMatchCandidateDto,
-  expenses: SplitExpenseDto[],
-  settlements: SplitSettlementDto[],
+  expenses: Array<SplitExpenseDto & { settlementCheckpoint?: SplitSettlementCheckpointDto }>,
+  settlements: Array<SplitSettlementDto & { settlementCheckpoint?: SplitSettlementCheckpointDto }>,
   viewId: string
 ) {
   if (viewId === "household") {
@@ -1111,8 +1122,8 @@ function getOrderedPersonIds(personNameById: Record<string, string>) {
 
 function buildSplitActivity(
   viewId: string,
-  expenses: SplitExpenseDto[],
-  settlements: SplitSettlementDto[],
+  expenses: Array<SplitExpenseDto & { settlementCheckpoint?: SplitSettlementCheckpointDto }>,
+  settlements: Array<SplitSettlementDto & { settlementCheckpoint?: SplitSettlementCheckpointDto }>,
   personNameById: Record<string, string>
 ): SplitActivityDto[] {
   const activity: SplitActivityDto[] = [];
@@ -1144,7 +1155,10 @@ function buildSplitActivity(
       linkedTransactionId: expense.linkedTransactionId,
       linkedTransactionDescription: expense.linkedTransactionDescription,
       linkedTransactionNote: expense.linkedTransactionNote,
-      matched: Boolean(expense.linkedTransactionId)
+      matched: Boolean(expense.linkedTransactionId),
+      settlementCheckpointId: expense.settlementCheckpoint?.id,
+      settlementCheckpointStatus: expense.settlementCheckpoint?.status,
+      settlementStatus: expense.settlementCheckpoint ? "settled" : expense.batchClosedAt ? "settled" : "open"
     });
   }
 
@@ -1168,7 +1182,10 @@ function buildSplitActivity(
       linkedTransactionId: settlement.linkedTransactionId,
       linkedTransactionDescription: settlement.linkedTransactionDescription,
       linkedTransactionNote: settlement.linkedTransactionNote,
-      matched: Boolean(settlement.linkedTransactionId)
+      matched: Boolean(settlement.linkedTransactionId),
+      settlementCheckpointId: settlement.settlementCheckpoint?.id,
+      settlementCheckpointStatus: settlement.settlementCheckpoint?.status,
+      settlementStatus: settlement.settlementCheckpoint ? "settled" : settlement.batchClosedAt ? "settled" : "open"
     });
   }
 

@@ -786,6 +786,19 @@ statement closes.
 Mid-month rows are useful, but they are not final proof. The final proof is still
 the next statement checkpoint.
 
+### How do I settle split groups without making an internal transfer?
+
+In a person view, choose `Simplify settlement`. The app creates a settlement
+checkpoint for the currently open split activity and removes those rows from
+the open balance. If the groups already offset each other, it records an
+internal offset and no bank transfer is needed. Otherwise, select the matching
+ledger transfer in the checkpoint and choose `Match transfer`.
+
+New split activity added after the checkpoint remains open, even when its date
+falls inside the earlier activity range. Use `Reopen settlement` to release a
+checkpoint's rows if the settlement was premature; the checkpoint remains in
+history and a later checkpoint can include the released rows.
+
 ### Can Apple Pay open a prefilled expense?
 
 Yes. iOS Shortcuts can use a Wallet transaction automation to open the Entries

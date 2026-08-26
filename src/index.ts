@@ -29,6 +29,7 @@ import {
   createSplitExpenseFromEntryRecord,
   createSplitGroupRecord,
   createSplitSettlementRecord,
+  createSplitSettlementCheckpoint,
   createEntryRecord,
   locateEntryDeepLinkContext,
   createCategoryRecord,
@@ -63,6 +64,8 @@ import {
   updateSplitExpenseNoteRecord,
   updateSplitSettlementNoteRecord,
   updateSplitSettlementRecord,
+  matchSplitSettlementCheckpoint,
+  reopenSplitSettlementCheckpoint,
   updateAccountRecord,
   updateCategoryRecord,
   updatePersonRecord,
@@ -1156,6 +1159,36 @@ export default {
         });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to create settlement" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/splits/checkpoints/create" && request.method === "POST") {
+      const body = await request.json<{ viewerPersonId?: string; date?: string; note?: string }>();
+      if (!body.viewerPersonId || !body.date) return json({ ok: false, error: "Missing settlement checkpoint fields" }, 400);
+      try {
+        return json({ ok: true, ...(await createSplitSettlementCheckpoint(env.DB, { viewerPersonId: body.viewerPersonId, date: body.date, note: body.note })) });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to simplify settlement" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/splits/checkpoints/reopen" && request.method === "POST") {
+      const body = await request.json<{ checkpointId?: string }>();
+      if (!body.checkpointId) return json({ ok: false, error: "Missing settlement checkpoint id" }, 400);
+      try {
+        return json({ ok: true, ...(await reopenSplitSettlementCheckpoint(env.DB, body.checkpointId)) });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to reopen settlement" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/splits/checkpoints/match" && request.method === "POST") {
+      const body = await request.json<{ checkpointId?: string; transactionId?: string }>();
+      if (!body.checkpointId || !body.transactionId) return json({ ok: false, error: "Missing checkpoint match fields" }, 400);
+      try {
+        return json({ ok: true, ...(await matchSplitSettlementCheckpoint(env.DB, { checkpointId: body.checkpointId, transactionId: body.transactionId })) });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to match settlement" }, 400);
       }
     }
 

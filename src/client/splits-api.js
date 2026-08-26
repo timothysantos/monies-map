@@ -73,6 +73,18 @@ export function deleteSplitSettlement(settlementId) {
   );
 }
 
+export function createSettlementCheckpoint({ viewerPersonId, date, note }) {
+  return postJson("/api/splits/checkpoints/create", { viewerPersonId, date, note }, "Failed to simplify settlement.");
+}
+
+export function reopenSettlementCheckpoint(checkpointId) {
+  return postJson("/api/splits/checkpoints/reopen", { checkpointId }, "Failed to reopen settlement.");
+}
+
+export function matchSettlementCheckpoint({ checkpointId, transactionId }) {
+  return postJson("/api/splits/checkpoints/match", { checkpointId, transactionId }, "Failed to match settlement.");
+}
+
 export function linkSplitMatch(match) {
   const endpoint = match.kind === "expense" ? "/api/splits/matches/link-expense" : "/api/splits/matches/link-settlement";
   const body = match.kind === "expense"
