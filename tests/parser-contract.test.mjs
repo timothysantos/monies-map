@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { parseCitibankActivityCsv, parseStatementText } from "../src/lib/statement-import.ts";
+import { canRecognizeCitibankActivityCsv, parseCitibankActivityCsv, parseStatementText } from "../src/lib/statement-import.ts";
 import { parseOcbcActivityCsv } from "../src/lib/statement-import.ts";
 import { parseCurrentTransactionSpreadsheet } from "../src/lib/statement-import/xls.ts";
 
@@ -307,6 +307,58 @@ test("parseCitibankActivityCsv preserves a near-real Citi activity export even w
     note: "card ending: 6349",
     type: "expense"
   });
+});
+
+test("parseCitibankActivityCsv recognizes pasted headerless Citi activity from selected account context", () => {
+  const csvText = [
+    `"23/08/2026","CLOUDFLARE             SAN FRANCISCO USA USD 3.34 USD 3.34","-4.25","","'5425503003296349'"`,
+    `"22/08/2026","HBOMax help.hbomax.com SG            SGP","-18.98","","'5425503003296349'"`,
+    `"20/08/2026","SHOPEE SG MP           SINGAPORE     SGP","-7.62","","'5425503003296349'"`
+  ].join("\n");
+  const context = {
+    accountName: "Citi Rewards",
+    institution: "Citibank"
+  };
+
+  assert.equal(canRecognizeCitibankActivityCsv(csvText, undefined, context), true);
+
+  const parsed = parseCitibankActivityCsv(csvText, undefined, context);
+
+  assert.equal(parsed.parserKey, "citibank_credit_card_activity_csv");
+  assert.equal(parsed.sourceLabel, "Citibank card activity");
+  assert.deepEqual(parsed.rows.map((row) => ({
+    date: row.date,
+    description: row.description,
+    expense: row.expense,
+    account: row.account,
+    note: row.note,
+    type: row.type
+  })), [
+    {
+      date: "2026-08-20",
+      description: "SHOPEE SG MP SINGAPORE SGP",
+      expense: "7.62",
+      account: "Citi Rewards",
+      note: "card ending: 6349",
+      type: "expense"
+    },
+    {
+      date: "2026-08-22",
+      description: "HBOMax help.hbomax.com SG SGP",
+      expense: "18.98",
+      account: "Citi Rewards",
+      note: "card ending: 6349",
+      type: "expense"
+    },
+    {
+      date: "2026-08-23",
+      description: "CLOUDFLARE SAN FRANCISCO USA USD 3.34 USD 3.34",
+      expense: "4.25",
+      account: "Citi Rewards",
+      note: "card ending: 6349",
+      type: "expense"
+    }
+  ]);
 });
 
 test("parseStatementText keeps OCBC 360 disclosure text out of transaction descriptions", () => {

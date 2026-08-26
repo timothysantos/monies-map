@@ -8,6 +8,7 @@ export function SplitsActivitySection({
   groupOptions,
   people,
   categoryOptions,
+  searchQuery = "",
   inlineSplitDraft,
   inlineSplitError,
   isSubmitting,
@@ -61,7 +62,8 @@ export function SplitsActivitySection({
             readOnly={readOnly}
           />
         ) : null}
-        {!groupedCurrentActivity.length && !archivedBatches.length ? <p className="lede compact">{messages.splits.noEntries}</p> : null}
+        {!groupedCurrentActivity.length && searchQuery ? <p className="lede compact">{messages.splits.noSearchResults}</p> : null}
+        {!groupedCurrentActivity.length && !searchQuery && !archivedBatches.length ? <p className="lede compact">{messages.splits.noEntries}</p> : null}
         <button
           type="button"
           className={`split-archive-trigger ${archivedBatches.length ? "" : "is-empty"}`}

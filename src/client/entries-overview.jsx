@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronRight, RefreshCw, Search, X } from "lucide-react";
 
 import { SpendingMixChart } from "./category-visuals";
 import { messages } from "./copy/en-SG";
@@ -175,10 +175,12 @@ export function EntriesFilterStack({
   entryFilters,
   wallets,
   entryCategoryOptions,
+  searchSuggestions = [],
   hideToggle = false,
   hideRefresh = false,
   onToggleMobileFilters,
   onChangeFilter,
+  onChangeSearch,
   onResetFilters,
   onRefresh,
   onDone
@@ -205,6 +207,14 @@ export function EntriesFilterStack({
             <RefreshCw size={18} />
           </button>
         ) : null}
+        <SearchFilterInput
+          label={messages.common.search}
+          value={entryFilters.search}
+          placeholder={messages.entries.searchPlaceholder}
+          suggestions={searchSuggestions}
+          listId="entries-search-suggestions"
+          onChange={(value) => onChangeSearch?.(value) ?? onChangeFilter("search", value)}
+        />
         <FilterMultiSelect
           label={messages.entries.wallet}
           values={entryFilters.wallets}
@@ -252,5 +262,49 @@ export function EntriesFilterStack({
         </div>
       </section>
     </section>
+  );
+}
+
+export function SearchFilterInput({
+  label,
+  value = "",
+  placeholder = "Search",
+  suggestions = [],
+  listId,
+  onChange
+}) {
+  return (
+    <label className="entries-filter search-filter">
+      <span className="entries-filter-label">{label}</span>
+      <span className="search-filter-control">
+        <Search size={16} aria-hidden="true" />
+        <input
+          className="table-edit-input search-filter-input"
+          value={value ?? ""}
+          placeholder={placeholder}
+          enterKeyHint="search"
+          autoComplete="off"
+          list={listId}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        {value ? (
+          <button
+            type="button"
+            className="search-filter-clear"
+            aria-label={`Clear ${label.toLowerCase()}`}
+            onClick={() => onChange("")}
+          >
+            <X size={15} />
+          </button>
+        ) : null}
+      </span>
+      {listId ? (
+        <datalist id={listId}>
+          {suggestions.map((suggestion) => (
+            <option key={suggestion} value={suggestion} />
+          ))}
+        </datalist>
+      ) : null}
+    </label>
   );
 }

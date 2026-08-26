@@ -12,5 +12,6 @@ export function countActiveEntryFilters(entryFilters) {
   return (entryFilters.wallets?.length ? 1 : 0)
     + (entryFilters.categories?.length ? 1 : 0)
     + (entryFilters.entryIds?.length ? 1 : 0)
-    + (entryFilters.type ? 1 : 0);
+    + (entryFilters.type ? 1 : 0)
+    + (entryFilters.search ? 1 : 0);
 }

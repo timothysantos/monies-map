@@ -174,5 +174,8 @@ function isCitibankActivityFileName(fileName?: string) {
 }
 
 function isCitibankCreditCardContext(context?: CitibankActivityContext) {
-  return context?.accountKind === "credit_card" && /citi/i.test(context.institution ?? context.accountName ?? "");
+  const accountName = context?.accountName ?? "";
+  const accountKind = context?.accountKind ?? "";
+  const isCreditCardAccount = accountKind === "credit_card" || /card|rewards|miles/i.test(accountName);
+  return isCreditCardAccount && /citi/i.test(context?.institution ?? accountName);
 }

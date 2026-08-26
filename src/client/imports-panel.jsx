@@ -168,6 +168,24 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     [accounts, defaultAccountName, people]
   );
 
+  function findAccountByName(accountName) {
+    return accounts.find((account) => (
+      account.name === accountName
+      || account.accountName === accountName
+      || account.id === accountName
+      || account.accountId === accountName
+    ));
+  }
+
+  function buildActivityContext(context = {}) {
+    const account = context.account ?? findAccountByName(context.accountName ?? defaultAccountName) ?? defaultAccount;
+    return {
+      accountName: context.accountName ?? account?.name ?? account?.accountName ?? defaultAccountName,
+      accountKind: context.accountKind ?? account?.kind ?? account?.accountKind,
+      institution: context.institution ?? account?.institution ?? account?.institutionName
+    };
+  }
+
   useEffect(() => {
     if (!defaultAccountName && accounts[0]?.name) {
       setDefaultAccountName(accounts[0].name);
@@ -285,6 +303,22 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     ]
   );
   const importDraftExists = importWorkflowModel.hasDraft;
+
+  useEffect(() => {
+    if (!csvText || isSubmitting || isParsingStatement || importWorkflowModel.isWorkflowLocked) {
+      return;
+    }
+    void maybeAutoPreviewCitibankActivityCsv(csvText);
+  }, [
+    csvText,
+    defaultAccountName,
+    importWorkflowModel.isWorkflowLocked,
+    isParsingStatement,
+    isSubmitting,
+    ownerName,
+    ownershipType
+  ]);
+
   const {
     accountMappingAccountNames,
     detectedPreviewAccountNames,
@@ -354,9 +388,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setUploadStatus(null);
     lastAutoPreviewCitibankSignatureRef.current = "";
     void maybeAutoPreviewCitibankActivityCsv(nextText, {
-      accountName: defaultAccount?.name ?? defaultAccountName,
-      accountKind: defaultAccount?.kind,
-      institution: defaultAccount?.institution,
+      ...buildActivityContext(),
       ownerName
     });
   }
@@ -367,10 +399,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     if (ownershipType === "direct" && nextOwnerName) {
       setOwnerName(nextOwnerName);
     }
+    const nextAccount = findAccountByName(nextAccountName);
     void maybeAutoPreviewCitibankActivityCsv(csvText, {
-      accountName: accounts.find((account) => account.name === nextAccountName || account.accountName === nextAccountName)?.name ?? nextAccountName,
-      accountKind: accounts.find((account) => account.name === nextAccountName || account.accountName === nextAccountName)?.kind,
-      institution: accounts.find((account) => account.name === nextAccountName || account.accountName === nextAccountName)?.institution,
+      ...buildActivityContext({
+        account: nextAccount,
+        accountName: nextAccount?.name ?? nextAccount?.accountName ?? nextAccountName
+      }),
       ownerName: ownershipType === "direct" && nextOwnerName ? nextOwnerName : ownerName
     });
   }
@@ -378,9 +412,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   function handleOwnerNameChange(nextOwnerName) {
     setOwnerName(nextOwnerName);
     void maybeAutoPreviewCitibankActivityCsv(csvText, {
-      accountName: defaultAccount?.name ?? defaultAccountName,
-      accountKind: defaultAccount?.kind,
-      institution: defaultAccount?.institution,
+      ...buildActivityContext(),
       ownerName: nextOwnerName
     });
   }
@@ -587,11 +619,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }
 
   async function parseImportFileForIntake(file) {
-    const activityContext = {
-      accountName: defaultAccount?.name ?? "",
-      accountKind: defaultAccount?.kind,
-      institution: defaultAccount?.institution
-    };
+    const activityContext = buildActivityContext();
     const fileKind = classifyImportFile({
       fileName: file.name,
       fileType: file.type,
@@ -804,11 +832,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
       return;
     }
 
-    const activityContext = {
-      accountName: defaultAccount?.name ?? defaultAccountName,
-      accountKind: defaultAccount?.kind,
-      institution: defaultAccount?.institution
-    };
+    const activityContext = buildActivityContext();
     if (canRecognizeCitibankActivityCsv(csvText, undefined, activityContext)) {
       const parsed = parseCitibankActivityCsv(csvText, undefined, activityContext);
       setIsSubmitting(true);
@@ -838,11 +862,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }
 
   async function maybeAutoPreviewCitibankActivityCsv(nextText, context) {
-    const activityContext = {
-      accountName: context?.accountName ?? defaultAccount?.name ?? defaultAccountName,
-      accountKind: context?.accountKind ?? defaultAccount?.kind,
-      institution: context?.institution ?? defaultAccount?.institution
-    };
+    const activityContext = buildActivityContext(context);
     const signature = `${activityContext.accountName ?? ""}::${activityContext.accountKind ?? ""}::${activityContext.institution ?? ""}::${nextText}`;
 
     if (isSubmitting || isParsingStatement || importWorkflowModel.isWorkflowLocked || !nextText || !canRecognizeCitibankActivityCsv(nextText, undefined, activityContext)) {

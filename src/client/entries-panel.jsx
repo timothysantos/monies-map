@@ -22,6 +22,7 @@ import {
   getEntryDerivedData,
   getEntryFilterOptions,
   getEntryFormOptions,
+  getEntrySearchSuggestions,
   getEntryWalletFilterOptions
 } from "./entry-selectors";
 import { moniesClient } from "./monies-client-service";
@@ -178,6 +179,7 @@ export function EntriesPanel({
     selectedScope,
     walletFilters,
     walletFilterKey,
+    searchQuery,
     entryFilters
   } = useEntriesSearchFilters(searchParams, entryView.monthPage.selectedScope);
 
@@ -484,6 +486,10 @@ export function EntriesPanel({
     : isMobileSplitPickerOpen
       ? "picker"
       : "default";
+  const entrySearchSuggestions = useMemo(
+    () => getEntrySearchSuggestions(entries, searchQuery),
+    [entries, searchQuery]
+  );
 
   useEffect(() => {
     if (!shouldShowComposerSplitOptions || !entryDraft.addToSplits) {
@@ -858,6 +864,19 @@ export function EntriesPanel({
     });
   }, [setSearchParams]);
 
+  const updateEntrySearch = useCallback((value) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      const normalizedValue = String(value ?? "").trim();
+      if (normalizedValue) {
+        next.set("entry_search", normalizedValue);
+      } else {
+        next.delete("entry_search");
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
   const resetEntryFilters = useCallback(() => {
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
@@ -865,6 +884,7 @@ export function EntriesPanel({
       next.delete("entry_wallet");
       next.delete("entry_category");
       next.delete("entry_type");
+      next.delete("entry_search");
       return next;
     });
   }, [setSearchParams]);
@@ -892,10 +912,12 @@ export function EntriesPanel({
     entryFilters,
     wallets,
     entryCategoryOptions,
+    searchSuggestions: entrySearchSuggestions,
     hideToggle: useMobileEntrySheet,
     hideRefresh: useMobileEntrySheet,
     onToggleMobileFilters: toggleMobileFilters,
     onChangeFilter: updateEntryFilter,
+    onChangeSearch: updateEntrySearch,
     onResetFilters: resetEntryFilters,
     onRefresh: refreshEntriesFilters,
     onDone: useMobileEntrySheet ? onCloseMobileContext : undefined
@@ -906,9 +928,11 @@ export function EntriesPanel({
     onCloseMobileContext,
     refreshEntriesFilters,
     resetEntryFilters,
+    entrySearchSuggestions,
     showMobileFilters,
     toggleMobileFilters,
     updateEntryFilter,
+    updateEntrySearch,
     useMobileEntrySheet,
     wallets
   ]);
@@ -1543,18 +1567,21 @@ function useEntriesSearchFilters(searchParams, defaultScope) {
   );
   const entryIdFilterKey = entryIdFilters.join("\u0000");
   const typeFilter = searchParams.get("entry_type") ?? "";
+  const searchQuery = searchParams.get("entry_search") ?? "";
   const entryFilters = useMemo(() => ({
     entryIds: entryIdFilters,
     wallets: walletFilters,
     categories: categoryFilters,
-    type: typeFilter
-  }), [categoryFilterKey, categoryFilters, entryIdFilterKey, typeFilter, walletFilterKey, walletFilters]);
+    type: typeFilter,
+    search: searchQuery
+  }), [categoryFilterKey, categoryFilters, entryIdFilterKey, searchQuery, typeFilter, walletFilterKey, walletFilters]);
 
   return {
     searchParamsKey,
     selectedScope,
     walletFilters,
     walletFilterKey,
+    searchQuery,
     entryFilters
   };
 }
