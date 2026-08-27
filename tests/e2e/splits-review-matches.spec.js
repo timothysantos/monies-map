@@ -206,6 +206,13 @@ test("mobile view entry from a split scrolls the background entries row into pla
   const entryActions = entryDialog.locator(".entry-mobile-sheet-actions");
   const entryActionBox = await entryActions.boundingBox();
   expect(entryActionBox).toMatchObject({ x: 0, width: 390 });
+  await expect.poll(async () => entryActions.evaluate((actions) => {
+    const rect = actions.getBoundingClientRect();
+    const sampleY = Math.min(window.innerHeight - 1, Math.floor(rect.top + 8));
+    return [1, window.innerWidth - 2].every((sampleX) => (
+      document.elementFromPoint(sampleX, sampleY)?.closest(".entry-mobile-sheet-actions") === actions
+    ));
+  })).toBe(true);
   const finalActionRow = entryActions.locator(".entry-mobile-sheet-primary-row");
   const finalActionRowBox = await finalActionRow.boundingBox();
   expect(entryActionBox.y + entryActionBox.height - (finalActionRowBox.y + finalActionRowBox.height)).toBeGreaterThanOrEqual(18);
