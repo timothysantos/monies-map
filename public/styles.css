@@ -4697,13 +4697,9 @@ button.split-activity-card:hover {
 }
 
 .panel-splits .split-activity-card.is-settlement-included {
-  box-shadow: inset 3px 0 0 #b15e2f;
-}
-
-.panel-splits .split-settlement-marker {
-  color: #8a4d2c;
-  font-size: 0.78rem;
-  font-weight: 700;
+  border-left: 5px solid #b15e2f;
+  border-radius: 8px 0 0 8px;
+  padding-left: 9px;
 }
 
 .panel-splits .split-payment-marker {

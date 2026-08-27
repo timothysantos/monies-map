@@ -252,7 +252,6 @@ export function SplitActivityGroups({
                 <strong>{item.description}</strong>
                 <p>{item.kind === "expense" ? formatExpensePaidLine(item, viewId) : `${item.fromPersonName} paid ${item.toPersonName}`}</p>
                 {item.note ? <span className="share-row-meta">{item.note}</span> : null}
-                {item.settlementCheckpointId ? <span className="split-settlement-marker">Included in simplified settlement</span> : null}
                 {item.paymentStatus === "awaiting_statement" ? <span className="split-payment-marker">Card statement pending</span> : null}
                 {item.paymentStatus === "certified" ? <span className="split-payment-marker is-certified">Statement certified</span> : null}
                 {archived && !readOnly ? (
@@ -309,6 +308,7 @@ export function SplitActivityGroups({
               key={splitItemKey(item)}
               type={isEditable ? "button" : undefined}
               className={`split-activity-card ${isPendingDerived ? "is-pending" : ""} ${item.settlementCheckpointId ? "is-settlement-included" : ""}`}
+              title={item.settlementCheckpointId ? "Included in simplified settlement" : undefined}
               onClick={isEditable ? openEditor : undefined}
             >
               {cardContent}

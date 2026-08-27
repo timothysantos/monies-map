@@ -10,6 +10,26 @@ import { CategoryGlyph } from "./ui-components";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 
+const SPLIT_CURRENCY_OPTIONS = [
+  ["SGD", "Singapore dollar"],
+  ["JPY", "Japanese yen"],
+  ["KRW", "South Korean won"],
+  ["PHP", "Philippine peso"],
+  ["USD", "US dollar"],
+  ["EUR", "Euro"],
+  ["GBP", "British pound"],
+  ["AUD", "Australian dollar"],
+  ["CAD", "Canadian dollar"],
+  ["CNY", "Chinese yuan"],
+  ["HKD", "Hong Kong dollar"],
+  ["TWD", "New Taiwan dollar"],
+  ["THB", "Thai baht"],
+  ["MYR", "Malaysian ringgit"],
+  ["IDR", "Indonesian rupiah"],
+  ["VND", "Vietnamese dong"],
+  ["INR", "Indian rupee"]
+];
+
 // SplitsPanel owns the draft state; these dialogs keep the long JSX out of the panel body.
 export function SplitGroupDialog({ dialog, formError, isSubmitting, onChange, onClose, onSave }) {
   return (
@@ -36,7 +56,9 @@ export function SplitGroupDialog({ dialog, formError, isSubmitting, onChange, on
             </label>
             <label className="split-dialog-field">
               <span>Group currency</span>
-              <input className="table-edit-input" inputMode="text" maxLength={3} value={dialog?.currency ?? "SGD"} onChange={(event) => onChange((current) => current ? { ...current, currency: event.target.value.toUpperCase() } : current)} />
+              <select className="table-edit-input" value={dialog?.currency ?? "SGD"} onChange={(event) => onChange((current) => current ? { ...current, currency: event.target.value } : current)}>
+                {SPLIT_CURRENCY_OPTIONS.map(([code, name]) => <option key={code} value={code}>{code} - {name}</option>)}
+              </select>
             </label>
             {formError ? <p className="form-error">{formError}</p> : null}
             <div className="dialog-actions">
