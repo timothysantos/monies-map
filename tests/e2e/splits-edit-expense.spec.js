@@ -110,7 +110,17 @@ test("mobile split drawer keeps actions visible and cues the scrollable fields",
   await expect(dialog).toBeVisible();
   await expect(dialog.locator(".split-dialog-scroll-cue")).toBeVisible();
   await expect(dialog.locator(".split-dialog-scroll")).toHaveCSS("overflow-y", "auto");
-  await expect(dialog.locator(".dialog-actions")).toHaveCSS("position", "sticky");
+  const actions = dialog.locator(".dialog-actions");
+  await expect(actions).toHaveCSS("position", "relative");
+  const actionBox = await actions.boundingBox();
+  expect(actionBox).toMatchObject({ x: 0, width: 390 });
+  for (const button of await actions.getByRole("button").all()) {
+    const buttonBox = await button.boundingBox();
+    expect(buttonBox).not.toBeNull();
+    expect(buttonBox.x).toBeGreaterThanOrEqual(0);
+    expect(buttonBox.x + buttonBox.width).toBeLessThanOrEqual(390);
+    expect(actionBox.y + actionBox.height - (buttonBox.y + buttonBox.height)).toBeGreaterThanOrEqual(18);
+  }
   await expect(dialog.getByRole("button", { name: "Save expense" })).toBeVisible();
 });
 

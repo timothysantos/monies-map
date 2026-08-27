@@ -50,14 +50,14 @@ export function EntryMobileSheet({
           </div>
           {errorMessage ? <p className="entry-submit-error">{errorMessage}</p> : null}
           {children}
-          {footerContent ?? (
-            <div className="entry-inline-actions entry-mobile-sheet-actions">
-              {secondaryAction}
-              <button type="button" className="subtle-cancel" onClick={onClose}>{cancelLabel}</button>
-              <button type="submit" className="dialog-primary" disabled={isSaveDisabled}>{saveLabel}</button>
-            </div>
-          )}
         </div>
+        {footerContent ?? (
+          <div className="entry-inline-actions entry-mobile-sheet-actions">
+            {secondaryAction}
+            <button type="button" className="subtle-cancel" onClick={onClose}>{cancelLabel}</button>
+            <button type="submit" className="dialog-primary" disabled={isSaveDisabled}>{saveLabel}</button>
+          </div>
+        )}
         </form>
       </section>
     </>
