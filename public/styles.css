@@ -9594,9 +9594,11 @@ th {
   }
 
   .entry-mobile-sheet-form {
+    flex: 1 1 auto;
     display: flex;
     flex-direction: column;
     min-height: 0;
+    overflow: hidden;
   }
 
   .entry-mobile-sheet-scroll {
@@ -9734,32 +9736,25 @@ th {
   }
 
   .entry-mobile-sheet .entry-inline-actions,
-  .split-dialog-content .dialog-actions {
-    margin-top: 10px;
-    padding: 14px 0 calc(14px + env(safe-area-inset-bottom, 0px));
-    border-top: 1px solid rgba(177, 94, 47, 0.1);
-    box-shadow: none;
-    z-index: 1;
-  }
-
-  .entry-mobile-sheet .entry-inline-actions,
-  .split-dialog-content .dialog-actions {
-    position: sticky;
-    bottom: 0;
-    left: 50%;
-    width: 100vw;
-    margin: 0;
-    transform: translateX(-50%);
+  .split-dialog-content > form > .dialog-actions {
+    position: relative;
+    bottom: auto;
+    flex: 0 0 auto;
+    width: calc(100% + 32px);
+    margin: 0 -16px;
+    transform: none;
     box-sizing: border-box;
     padding: 14px 16px max(18px, env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid rgba(177, 94, 47, 0.1);
     background: rgba(255, 252, 249, 0.98);
     box-shadow: 0 -10px 20px rgba(71, 45, 30, 0.08);
     border-left: 0;
     border-right: 0;
+    z-index: 2;
   }
 
   .entry-mobile-sheet .entry-mobile-sheet-actions {
-    width: 100vw;
+    width: calc(100% + 32px);
   }
 
   .entry-mobile-sheet .entry-mobile-sheet-actions button,
@@ -9771,10 +9766,7 @@ th {
     line-height: 1.15;
   }
 
-  .split-dialog-content .dialog-actions {
-    width: auto;
-    width: 100vw;
-    margin: 0;
+  .split-dialog-content > form > .dialog-actions {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
     gap: 8px;
@@ -9818,8 +9810,7 @@ th {
     width: 100%;
   }
 
-  .entry-mobile-sheet .dialog-primary,
-  .split-dialog-content .dialog-actions .dialog-primary {
+  .entry-mobile-sheet .dialog-primary {
     min-width: 116px;
     padding-right: 20px;
     padding-left: 20px;
