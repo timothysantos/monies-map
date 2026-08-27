@@ -42,6 +42,7 @@ import {
   buildRoutePageRequest,
   getAppShellAvailableViewIds,
   getSelectedTabId,
+  resolveRouteViewId,
   sanitizeTabParams
 } from "./app-routing";
 import { EntriesFilterStack } from "./entries-overview";
@@ -327,6 +328,7 @@ export function App() {
   const appEnvironment = appShell?.appEnvironment ?? getClientAppEnvironment();
   const explicitViewId = searchParams.get("view");
   const selectedViewId = explicitViewId ?? "household";
+  const routeViewId = resolveRouteViewId(selectedViewId, appShell);
   const selectedTabId = getSelectedTabId(location.pathname);
   const selectedMonth = searchParams.get("month") ?? DEFAULT_MONTH_KEY;
   const selectedScope = searchParams.get("scope") ?? "direct_plus_shared";
@@ -395,13 +397,13 @@ export function App() {
       ? null
       : buildRoutePageRequest({
           tabId: selectedTabId,
-          viewId: selectedViewId,
+          viewId: routeViewId,
           month: selectedMonth,
           scope: selectedScope,
           summaryStart: selectedSummaryStart,
           summaryEnd: selectedSummaryEnd
         }),
-    [canUseAppShellRoutePage, selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart, selectedTabId, selectedViewId]
+    [canUseAppShellRoutePage, routeViewId, selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart, selectedTabId]
   );
   const routePageRequestKey = useMemo(
     () => getRoutePageRequestKey(routePageRequest),

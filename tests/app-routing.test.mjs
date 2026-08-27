@@ -3,7 +3,8 @@ import test from "node:test";
 
 import {
   buildPageViewFromRouteData,
-  getAppShellAvailableViewIds
+  getAppShellAvailableViewIds,
+  resolveRouteViewId
 } from "../src/client/app-routing.js";
 
 test("getAppShellAvailableViewIds reads the explicit shell route list", () => {
@@ -21,6 +22,16 @@ test("getAppShellAvailableViewIds falls back to household people for partial cac
       ]
     }
   }), ["household", "person-tim", "person-sam"]);
+});
+
+test("resolveRouteViewId replaces stale placeholder views before a page request", () => {
+  const shell = {
+    selectedViewId: "household",
+    availableViewIds: ["household", "person-tim"]
+  };
+
+  assert.equal(resolveRouteViewId("person-primary", shell), "household");
+  assert.equal(resolveRouteViewId("person-tim", shell), "person-tim");
 });
 
 test("buildPageViewFromRouteData rejects malformed route page payloads", () => {

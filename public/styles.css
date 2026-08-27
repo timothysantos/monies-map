@@ -4756,6 +4756,12 @@ button.split-activity-card:hover {
   padding-left: 9px;
 }
 
+.panel-splits .split-settlement-marker {
+  color: #b15e2f;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .panel-splits .split-history-trigger { margin-left: auto; }
 .split-history-list { display: grid; gap: 8px; max-height: min(60vh, 520px); overflow: auto; }
 .split-history-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border: 1px solid rgba(177, 94, 47, 0.2); border-radius: 8px; background: rgba(255, 255, 255, 0.5); }
