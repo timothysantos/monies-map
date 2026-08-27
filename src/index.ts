@@ -1057,7 +1057,7 @@ export default {
     }
 
     if (url.pathname === "/api/splits/groups/create" && request.method === "POST") {
-      const body = await request.json<{ name?: string }>();
+      const body = await request.json<{ name?: string; currency?: string }>();
       if (!body.name?.trim()) {
         return json({ ok: false, error: "Missing split group name" }, 400);
       }
@@ -1065,7 +1065,7 @@ export default {
       try {
         return json({
           ok: true,
-          ...(await createSplitGroupRecord(env.DB, { name: body.name }))
+          ...(await createSplitGroupRecord(env.DB, { name: body.name, currency: body.currency }))
         });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to create split group" }, 400);
@@ -1083,6 +1083,11 @@ export default {
         note?: string;
         splitBasisPoints?: number;
         splitAmountMinor?: number;
+        currency?: string;
+        homeAmountMinor?: number;
+        fxRateBasisPoints?: number;
+        paymentMethod?: "cash" | "card" | "bank" | "other";
+        paymentStatus?: "recorded" | "awaiting_statement" | "certified";
       }>();
 
       if (!body.date || !body.description || !body.categoryName || !body.payerPersonName || typeof body.amountMinor !== "number") {
@@ -1101,7 +1106,12 @@ export default {
             amountMinor: body.amountMinor,
             note: body.note,
             splitBasisPoints: body.splitBasisPoints,
-            splitAmountMinor: body.splitAmountMinor
+            splitAmountMinor: body.splitAmountMinor,
+            currency: body.currency,
+            homeAmountMinor: body.homeAmountMinor,
+            fxRateBasisPoints: body.fxRateBasisPoints,
+            paymentMethod: body.paymentMethod,
+            paymentStatus: body.paymentStatus
           }))
         });
       } catch (error) {
@@ -1139,6 +1149,10 @@ export default {
         fromPersonName?: string;
         toPersonName?: string;
         amountMinor?: number;
+        currency?: string;
+        fxRateBasisPoints?: number | null;
+        paymentMethod?: "cash" | "card" | "bank" | "other";
+        paymentStatus?: "recorded" | "awaiting_statement" | "certified";
         note?: string;
       }>();
 
@@ -1155,7 +1169,11 @@ export default {
             fromPersonName: body.fromPersonName,
             toPersonName: body.toPersonName,
             amountMinor: body.amountMinor,
-            note: body.note
+            note: body.note,
+            currency: body.currency,
+            fxRateBasisPoints: body.fxRateBasisPoints,
+            paymentMethod: body.paymentMethod,
+            paymentStatus: body.paymentStatus
           }))
         });
       } catch (error) {
@@ -1164,10 +1182,10 @@ export default {
     }
 
     if (url.pathname === "/api/splits/checkpoints/create" && request.method === "POST") {
-      const body = await request.json<{ viewerPersonId?: string; date?: string; note?: string }>();
+      const body = await request.json<{ viewerPersonId?: string; date?: string; note?: string; currency?: string }>();
       if (!body.viewerPersonId || !body.date) return json({ ok: false, error: "Missing settlement checkpoint fields" }, 400);
       try {
-        return json({ ok: true, ...(await createSplitSettlementCheckpoint(env.DB, { viewerPersonId: body.viewerPersonId, date: body.date, note: body.note })) });
+        return json({ ok: true, ...(await createSplitSettlementCheckpoint(env.DB, { viewerPersonId: body.viewerPersonId, date: body.date, note: body.note, currency: body.currency })) });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to simplify settlement" }, 400);
       }
@@ -1184,10 +1202,10 @@ export default {
     }
 
     if (url.pathname === "/api/splits/checkpoints/match" && request.method === "POST") {
-      const body = await request.json<{ checkpointId?: string; transactionId?: string }>();
+      const body = await request.json<{ checkpointId?: string; transactionId?: string; fxRateBasisPoints?: number }>();
       if (!body.checkpointId || !body.transactionId) return json({ ok: false, error: "Missing checkpoint match fields" }, 400);
       try {
-        return json({ ok: true, ...(await matchSplitSettlementCheckpoint(env.DB, { checkpointId: body.checkpointId, transactionId: body.transactionId })) });
+        return json({ ok: true, ...(await matchSplitSettlementCheckpoint(env.DB, { checkpointId: body.checkpointId, transactionId: body.transactionId, fxRateBasisPoints: body.fxRateBasisPoints })) });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to match settlement" }, 400);
       }
@@ -1215,6 +1233,11 @@ export default {
         note?: string;
         splitBasisPoints?: number;
         splitAmountMinor?: number;
+        currency?: string;
+        homeAmountMinor?: number;
+        fxRateBasisPoints?: number;
+        paymentMethod?: "cash" | "card" | "bank" | "other";
+        paymentStatus?: "recorded" | "awaiting_statement" | "certified";
       }>();
 
       if (!body.splitExpenseId || !body.date || !body.description || !body.categoryName || !body.payerPersonName || typeof body.amountMinor !== "number") {
@@ -1234,7 +1257,12 @@ export default {
             amountMinor: body.amountMinor,
             note: body.note,
             splitBasisPoints: body.splitBasisPoints,
-            splitAmountMinor: body.splitAmountMinor
+            splitAmountMinor: body.splitAmountMinor,
+            currency: body.currency,
+            homeAmountMinor: body.homeAmountMinor,
+            fxRateBasisPoints: body.fxRateBasisPoints,
+            paymentMethod: body.paymentMethod,
+            paymentStatus: body.paymentStatus
           }))
         });
       } catch (error) {
@@ -1290,6 +1318,10 @@ export default {
         fromPersonName?: string;
         toPersonName?: string;
         amountMinor?: number;
+        currency?: string;
+        fxRateBasisPoints?: number | null;
+        paymentMethod?: "cash" | "card" | "bank" | "other";
+        paymentStatus?: "recorded" | "awaiting_statement" | "certified";
         note?: string;
       }>();
 
@@ -1307,6 +1339,10 @@ export default {
             fromPersonName: body.fromPersonName,
             toPersonName: body.toPersonName,
             amountMinor: body.amountMinor,
+            currency: body.currency,
+            fxRateBasisPoints: body.fxRateBasisPoints,
+            paymentMethod: body.paymentMethod,
+            paymentStatus: body.paymentStatus,
             note: body.note
           }))
         });

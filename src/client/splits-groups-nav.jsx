@@ -57,6 +57,7 @@ export function SplitsGroupsNav({
               <span className="split-group-pill-icon"><Icon size={18} strokeWidth={2.1} /></span>
               <span className="split-group-pill-content">
                 <strong>{group.name}</strong>
+                <span>{group.currency ?? "SGD"}</span>
                 <span>{group.entryCount} {messages.splits.entries}</span>
                 <span>{group.summaryText}</span>
               </span>

@@ -60,6 +60,11 @@ page hierarchy where the next user action is discoverable; long chronological
 lists must not hide status, archive access, or navigation actions below the
 fold.
 
+Travel split records use the same splits-owned visual tokens for currency,
+payment method, pending statement evidence, and FX review. Foreign amounts are
+shown as entered, with any home-currency estimate or converted ledger amount
+secondary and explicitly labeled.
+
 ## Apple Shortcut Install Boundary
 
 The Settings slice owns the Apple Pay shortcut install workflow. The display

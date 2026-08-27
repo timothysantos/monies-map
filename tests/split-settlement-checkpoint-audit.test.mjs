@@ -6,6 +6,19 @@ import {
   calculateNetSettlement,
   classifyCheckpointItem
 } from "../src/domain/split-settlement-policy.ts";
+import { calculateFxRateBasisPoints, convertMinorAmount, normalizeSplitCurrency } from "../src/domain/split-currency.ts";
+
+test("travel currency helpers normalize codes and preserve rounded minor units", () => {
+  assert.equal(normalizeSplitCurrency(" jpy "), "JPY");
+  assert.equal(normalizeSplitCurrency("not-a-currency"), "SGD");
+  assert.equal(convertMinorAmount(20000, 750), 1500);
+  assert.equal(calculateFxRateBasisPoints(20000, 1500), 750);
+});
+
+test("travel currency conversion rejects unsafe or non-positive rates", () => {
+  assert.throws(() => convertMinorAmount(20000, 0), /positive integer rate/);
+  assert.throws(() => calculateFxRateBasisPoints(0, 1500), /positive amounts/);
+});
 
 test("nets opposing group balances into one person-level settlement", () => {
   assert.deepEqual(

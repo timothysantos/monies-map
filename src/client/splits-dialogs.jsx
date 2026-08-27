@@ -34,6 +34,10 @@ export function SplitGroupDialog({ dialog, formError, isSubmitting, onChange, on
               <span>{messages.splits.groupName}</span>
             <input className="table-edit-input" value={dialog?.name ?? ""} enterKeyHint="done" onChange={(event) => onChange((current) => current ? { ...current, name: event.target.value } : current)} />
             </label>
+            <label className="split-dialog-field">
+              <span>Group currency</span>
+              <input className="table-edit-input" inputMode="text" maxLength={3} value={dialog?.currency ?? "SGD"} onChange={(event) => onChange((current) => current ? { ...current, currency: event.target.value.toUpperCase() } : current)} />
+            </label>
             {formError ? <p className="form-error">{formError}</p> : null}
             <div className="dialog-actions">
               <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
@@ -173,6 +177,10 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
             />
           </label>
           <label className="split-dialog-field">
+            <span>Currency</span>
+            <input className="table-edit-input" inputMode="text" maxLength={3} value={dialog?.currency ?? "SGD"} onChange={(event) => onChange((current) => current ? { ...current, currency: event.target.value.toUpperCase() } : current)} />
+          </label>
+          <label className="split-dialog-field">
             <span>{messages.splits.expenseDate}</span>
             <input className="table-edit-input" type="date" value={dialog?.date ?? ""} enterKeyHint="next" onChange={(event) => onChange((current) => current ? { ...current, date: event.target.value } : current)} />
           </label>
@@ -231,6 +239,18 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
                 amountInput: formatService.minorToDecimalString(current.amountMinor ?? 0)
               } : current)}
             />
+          </label>
+          <label className="split-dialog-field">
+            <span>Paid using</span>
+            <select className="table-edit-input" value={dialog?.paymentMethod ?? "cash"} onChange={(event) => onChange((current) => current ? { ...current, paymentMethod: event.target.value } : current)}>
+              <option value="cash">Cash</option><option value="card">Card</option><option value="bank">Bank</option><option value="other">Other</option>
+            </select>
+          </label>
+          <label className="split-dialog-field">
+            <span>Evidence</span>
+            <select className="table-edit-input" value={dialog?.paymentStatus ?? "recorded"} onChange={(event) => onChange((current) => current ? { ...current, paymentStatus: event.target.value } : current)}>
+              <option value="recorded">Recorded</option><option value="awaiting_statement">Awaiting statement</option><option value="certified">Statement certified</option>
+            </select>
           </label>
           <label className="split-dialog-field split-dialog-field-percent">
             <span>{messages.splits.expenseSplit(dialog?.sharePersonName ?? "First person")}</span>
@@ -386,6 +406,10 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
             <input className="table-edit-input" type="date" value={dialog?.date ?? ""} enterKeyHint="next" onChange={(event) => onChange((current) => current ? { ...current, date: event.target.value } : current)} />
           </label>
           <label className="split-dialog-field">
+            <span>Currency</span>
+            <input className="table-edit-input" inputMode="text" maxLength={3} value={dialog?.currency ?? "SGD"} onChange={(event) => onChange((current) => current ? { ...current, currency: event.target.value.toUpperCase() } : current)} />
+          </label>
+          <label className="split-dialog-field">
             <span>{messages.splits.settlementFrom}</span>
             <ResponsiveSelect
               className="table-edit-input"
@@ -432,6 +456,18 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
                 amountInput: formatService.minorToDecimalString(current.amountMinor ?? 0)
               } : current)}
             />
+          </label>
+          <label className="split-dialog-field">
+            <span>Paid using</span>
+            <select className="table-edit-input" value={dialog?.paymentMethod ?? "cash"} onChange={(event) => onChange((current) => current ? { ...current, paymentMethod: event.target.value } : current)}>
+              <option value="cash">Cash</option><option value="card">Card</option><option value="bank">Bank</option><option value="other">Other</option>
+            </select>
+          </label>
+          <label className="split-dialog-field">
+            <span>Evidence</span>
+            <select className="table-edit-input" value={dialog?.paymentStatus ?? "recorded"} onChange={(event) => onChange((current) => current ? { ...current, paymentStatus: event.target.value } : current)}>
+              <option value="recorded">Recorded</option><option value="awaiting_statement">Awaiting statement</option><option value="certified">Statement certified</option>
+            </select>
           </label>
         </div>
       </div>

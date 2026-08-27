@@ -706,6 +706,7 @@ export async function ensureDemoSchema(db: D1Database) {
         id TEXT PRIMARY KEY,
         household_id TEXT NOT NULL,
         group_name TEXT NOT NULL,
+        currency TEXT NOT NULL DEFAULT 'SGD',
         icon_key TEXT,
         sort_order INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -713,6 +714,11 @@ export async function ensureDemoSchema(db: D1Database) {
       )
     `)
     .run();
+
+  const splitGroupColumns = await db.prepare("PRAGMA table_info(split_groups)").all<{ name: string }>();
+  if (splitGroupColumns.results.length > 0 && !splitGroupColumns.results.some((column) => column.name === "currency")) {
+    await db.prepare("ALTER TABLE split_groups ADD COLUMN currency TEXT NOT NULL DEFAULT 'SGD'").run();
+  }
 
   await db
     .prepare(`
@@ -742,6 +748,11 @@ export async function ensureDemoSchema(db: D1Database) {
         description TEXT NOT NULL,
         category_id TEXT,
         total_amount_minor INTEGER NOT NULL,
+        currency TEXT NOT NULL DEFAULT 'SGD',
+        home_amount_minor INTEGER,
+        fx_rate_basis_points INTEGER,
+        payment_method TEXT NOT NULL DEFAULT 'cash',
+        payment_status TEXT NOT NULL DEFAULT 'recorded',
         note TEXT,
         linked_transaction_id TEXT,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -783,6 +794,10 @@ export async function ensureDemoSchema(db: D1Database) {
         to_person_id TEXT NOT NULL,
         settlement_date TEXT NOT NULL,
         amount_minor INTEGER NOT NULL,
+        currency TEXT NOT NULL DEFAULT 'SGD',
+        fx_rate_basis_points INTEGER,
+        payment_method TEXT NOT NULL DEFAULT 'cash',
+        payment_status TEXT NOT NULL DEFAULT 'recorded',
         note TEXT,
         linked_transaction_id TEXT,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -804,6 +819,7 @@ export async function ensureDemoSchema(db: D1Database) {
         from_person_id TEXT,
         to_person_id TEXT,
         amount_minor INTEGER NOT NULL,
+        currency TEXT NOT NULL DEFAULT 'SGD',
         settlement_date TEXT NOT NULL,
         status TEXT NOT NULL CHECK (status IN ('open', 'matched', 'partially_matched', 'internally_offset', 'reopened', 'voided')),
         matched_transaction_id TEXT,
@@ -840,6 +856,8 @@ export async function ensureDemoSchema(db: D1Database) {
         checkpoint_id TEXT NOT NULL,
         transaction_id TEXT NOT NULL,
         amount_minor INTEGER NOT NULL,
+        ledger_amount_minor INTEGER,
+        fx_rate_basis_points INTEGER,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (checkpoint_id) REFERENCES split_settlement_checkpoints(id) ON DELETE CASCADE,
         FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,
@@ -866,10 +884,48 @@ export async function ensureDemoSchema(db: D1Database) {
   if (splitExpenseColumns.results.length > 0 && !splitExpenseColumns.results.some((column) => column.name === "split_batch_id")) {
     await db.prepare("ALTER TABLE split_expenses ADD COLUMN split_batch_id TEXT").run();
   }
+  for (const column of [
+    ["currency", "TEXT NOT NULL DEFAULT 'SGD'"],
+    ["home_amount_minor", "INTEGER"],
+    ["fx_rate_basis_points", "INTEGER"],
+    ["payment_method", "TEXT NOT NULL DEFAULT 'cash'"],
+    ["payment_status", "TEXT NOT NULL DEFAULT 'recorded'"]
+  ]) {
+    if (splitExpenseColumns.results.length > 0 && !splitExpenseColumns.results.some((item) => item.name === column[0])) {
+      await db.prepare(`ALTER TABLE split_expenses ADD COLUMN ${column[0]} ${column[1]}`).run();
+    }
+  }
 
   const splitSettlementColumns = await db.prepare("PRAGMA table_info(split_settlements)").all<{ name: string }>();
   if (splitSettlementColumns.results.length > 0 && !splitSettlementColumns.results.some((column) => column.name === "split_batch_id")) {
     await db.prepare("ALTER TABLE split_settlements ADD COLUMN split_batch_id TEXT").run();
+  }
+  for (const column of [
+    ["currency", "TEXT NOT NULL DEFAULT 'SGD'"],
+    ["fx_rate_basis_points", "INTEGER"],
+    ["payment_method", "TEXT NOT NULL DEFAULT 'cash'"],
+    ["payment_status", "TEXT NOT NULL DEFAULT 'recorded'"]
+  ]) {
+    if (splitSettlementColumns.results.length > 0 && !splitSettlementColumns.results.some((item) => item.name === column[0])) {
+      await db.prepare(`ALTER TABLE split_settlements ADD COLUMN ${column[0]} ${column[1]}`).run();
+    }
+  }
+
+  const splitSettlementCheckpointColumns = await db.prepare("PRAGMA table_info(split_settlement_checkpoints)").all<{ name: string }>();
+  for (const column of [["currency", "TEXT NOT NULL DEFAULT 'SGD'"]]) {
+    if (splitSettlementCheckpointColumns.results.length > 0 && !splitSettlementCheckpointColumns.results.some((item) => item.name === column[0])) {
+      await db.prepare(`ALTER TABLE split_settlement_checkpoints ADD COLUMN ${column[0]} ${column[1]}`).run();
+    }
+  }
+
+  const checkpointMatchColumns = await db.prepare("PRAGMA table_info(split_settlement_checkpoint_matches)").all<{ name: string }>();
+  for (const column of [
+    ["ledger_amount_minor", "INTEGER"],
+    ["fx_rate_basis_points", "INTEGER"]
+  ]) {
+    if (checkpointMatchColumns.results.length > 0 && !checkpointMatchColumns.results.some((item) => item.name === column[0])) {
+      await db.prepare(`ALTER TABLE split_settlement_checkpoint_matches ADD COLUMN ${column[0]} ${column[1]}`).run();
+    }
   }
 
   await ensureHotReadIndexes(db);

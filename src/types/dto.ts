@@ -228,6 +228,7 @@ export interface SplitGroupPillDto {
   summaryText: string;
   entryCount: number;
   pendingMatchCount: number;
+  currency: string;
   isDefault?: boolean;
 }
 
@@ -236,6 +237,7 @@ export interface SplitGroupDto {
   name: string;
   iconKey?: string;
   sortOrder: number;
+  currency: string;
 }
 
 export interface SplitActivityDto {
@@ -254,6 +256,11 @@ export interface SplitActivityDto {
   fromPersonName?: string;
   toPersonName?: string;
   totalAmountMinor: number;
+  currency: string;
+  homeAmountMinor?: number;
+  fxRateBasisPoints?: number;
+  paymentMethod: "cash" | "card" | "bank" | "other";
+  paymentStatus: "recorded" | "awaiting_statement" | "certified";
   shares?: EntrySplitDto[];
   viewerAmountMinor?: number;
   editableSplitPersonName?: string;
@@ -278,6 +285,7 @@ export interface SplitSettlementCheckpointDto {
   toPersonId?: string;
   toPersonName?: string;
   amountMinor: number;
+  currency: string;
   settlementDate: string;
   status: "open" | "matched" | "partially_matched" | "internally_offset" | "reopened" | "voided";
   matchedTransactionId?: string;
@@ -293,6 +301,9 @@ export interface SplitSettlementCheckpointTransferDto {
   transactionDate: string;
   description: string;
   amountMinor: number;
+  currency: string;
+  ledgerAmountMinor?: number;
+  fxRateBasisPoints?: number;
 }
 
 export interface SplitMatchCandidateDto {
@@ -327,6 +338,11 @@ export interface SplitExpenseDto {
   payerPersonId: string;
   payerPersonName: string;
   totalAmountMinor: number;
+  currency: string;
+  homeAmountMinor?: number;
+  fxRateBasisPoints?: number;
+  paymentMethod: "cash" | "card" | "bank" | "other";
+  paymentStatus: "recorded" | "awaiting_statement" | "certified";
   note?: string;
   linkedTransactionId?: string;
   linkedTransactionDescription?: string;
@@ -348,6 +364,10 @@ export interface SplitSettlementDto {
   toPersonId: string;
   toPersonName: string;
   amountMinor: number;
+  currency: string;
+  fxRateBasisPoints?: number;
+  paymentMethod: "cash" | "card" | "bank" | "other";
+  paymentStatus: "recorded" | "awaiting_statement" | "certified";
   note?: string;
   linkedTransactionId?: string;
   linkedTransactionDescription?: string;

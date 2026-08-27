@@ -65,6 +65,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [checkpointError, setCheckpointError] = useState("");
   const [isCheckpointing, setIsCheckpointing] = useState(false);
   const [checkpointTransferId, setCheckpointTransferId] = useState("");
+  const [checkpointFxRateInput, setCheckpointFxRateInput] = useState("1");
   const refreshGuardRef = useRef(null);
   const latestSplitsPageRef = useRef(splitsPage);
   const returnToSplitIdRef = useRef("");
@@ -722,7 +723,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       await createSettlementCheckpoint({
         viewerPersonId: view.id,
         date: new Date().toISOString().slice(0, 10),
-        note: "Simplified settlement"
+        note: "Simplified settlement",
+        currency: activeGroup?.currency
       });
       refreshAfterSplitMutation({ broadcast: true });
     } catch (error) {
@@ -751,8 +753,13 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     setCheckpointError("");
     setIsCheckpointing(true);
     try {
-      await matchSettlementCheckpoint({ checkpointId: activeCheckpoint.id, transactionId: checkpointTransferId });
+      const selectedTransfer = (view.monthPage?.entries ?? []).find((entry) => entry.id === checkpointTransferId);
+      const fxRateBasisPoints = selectedTransfer && selectedTransfer.currency !== activeCheckpoint.currency
+        ? Math.round(Number(checkpointFxRateInput || 0) * 10000)
+        : 10000;
+      await matchSettlementCheckpoint({ checkpointId: activeCheckpoint.id, transactionId: checkpointTransferId, fxRateBasisPoints });
       setCheckpointTransferId("");
+      setCheckpointFxRateInput("1");
       refreshAfterSplitMutation({ broadcast: true, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
     } catch (error) {
       setCheckpointError(error instanceof Error ? error.message : "Failed to match settlement.");
@@ -870,9 +877,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
             ? "Matched transfers exceed the checkpoint. Review the difference before considering this settled."
             : activeCheckpoint.amountMinor === 0
             ? "The included groups now net to zero. No bank transfer is needed."
-            : `${activeCheckpoint.fromPersonName} pays ${activeCheckpoint.toPersonName} ${new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(activeCheckpoint.amountMinor / 100)}.`}
+            : `${activeCheckpoint.fromPersonName} pays ${activeCheckpoint.toPersonName} ${new Intl.NumberFormat("en-SG", { style: "currency", currency: activeCheckpoint.currency ?? "SGD" }).format(activeCheckpoint.amountMinor / 100)}.`}
         </p>
-        <small>{activeCheckpoint.includedRecordCount} included split records · {activeCheckpoint.matchedAmountMinor > 0 ? `${new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(activeCheckpoint.matchedAmountMinor / 100)} matched · ` : ""}{activeCheckpoint.status.replaceAll("_", " ")}</small>
+        <small>{activeCheckpoint.currency ?? "SGD"} · {activeCheckpoint.includedRecordCount} included split records · {activeCheckpoint.matchedAmountMinor > 0 ? `${new Intl.NumberFormat("en-SG", { style: "currency", currency: activeCheckpoint.currency ?? "SGD" }).format(activeCheckpoint.matchedAmountMinor / 100)} matched · ` : ""}{activeCheckpoint.status.replaceAll("_", " ")}</small>
       </div>
       <div className="split-checkpoint-navigation">
         <button type="button" className="split-checkpoint-view-action" onClick={scrollToSettlementActivity}>
@@ -884,7 +891,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         <div className="split-checkpoint-transfers" aria-label="Matched transfers">
           {activeCheckpoint.matchedTransfers.map((transfer) => (
             <div className="split-checkpoint-transfer" key={transfer.transactionId}>
-              <span>{transfer.description} · {new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(transfer.amountMinor / 100)}</span>
+              <span>{transfer.description} · {new Intl.NumberFormat("en-SG", { style: "currency", currency: transfer.currency ?? "SGD" }).format((transfer.ledgerAmountMinor ?? transfer.amountMinor) / 100)}{transfer.currency !== activeCheckpoint.currency ? ` · ${new Intl.NumberFormat("en-SG", { style: "currency", currency: activeCheckpoint.currency ?? "SGD" }).format(transfer.amountMinor / 100)}` : ""}</span>
               <button type="button" className="subtle-action" onClick={() => void unmatchCheckpoint(transfer.transactionId)} disabled={isCheckpointing}>Remove</button>
             </div>
           ))}
@@ -898,6 +905,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
               <option key={entry.id} value={entry.id}>{entry.description} · {new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(entry.amountMinor / 100)}</option>
             ))}
           </select>
+          {(view.monthPage?.entries ?? []).find((entry) => entry.id === checkpointTransferId)?.currency !== activeCheckpoint.currency && checkpointTransferId ? (
+            <input aria-label={`FX rate from ${(view.monthPage?.entries ?? []).find((entry) => entry.id === checkpointTransferId)?.currency ?? "ledger currency"} to ${activeCheckpoint.currency}`} inputMode="decimal" type="number" min="0.000001" step="0.000001" value={checkpointFxRateInput} onChange={(event) => setCheckpointFxRateInput(event.target.value)} />
+          ) : null}
           <button type="button" className="subtle-action" onClick={() => void matchCheckpoint()} disabled={!checkpointTransferId || isCheckpointing}>Match transfer</button>
         </div>
       ) : null}
@@ -950,7 +960,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onBackToGroup={openActiveGroupView}
         onCreateGroup={() => {
           setFormError("");
-          setGroupDialog({ name: "" });
+          setGroupDialog({ name: "", currency: "SGD" });
         }}
         onToggleBreakdown={() => setShowBreakdown((current) => !current)}
         onAddExpense={() => openNewExpenseDialog({ activeGroup, view })}

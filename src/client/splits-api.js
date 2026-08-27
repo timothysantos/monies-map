@@ -15,7 +15,7 @@ async function postJson(endpoint, body, fallbackError) {
 export function createSplitGroup(draft) {
   return postJson(
     "/api/splits/groups/create",
-    { name: draft.name },
+    { name: draft.name, currency: draft.currency },
     "Failed to create split group."
   );
 }
@@ -34,7 +34,12 @@ export function saveSplitExpense(draft) {
       amountMinor: Number(draft.amountMinor ?? 0),
       note: draft.note,
       splitBasisPoints: Number(draft.splitBasisPoints ?? 5000),
-      splitAmountMinor: Number(draft.splitAmountMinor ?? 0)
+      splitAmountMinor: Number(draft.splitAmountMinor ?? 0),
+      currency: draft.currency,
+      homeAmountMinor: draft.homeAmountMinor == null ? undefined : Number(draft.homeAmountMinor),
+      fxRateBasisPoints: draft.fxRateBasisPoints == null ? undefined : Number(draft.fxRateBasisPoints),
+      paymentMethod: draft.paymentMethod,
+      paymentStatus: draft.paymentStatus
     },
     "Failed to create split expense."
   );
@@ -51,7 +56,11 @@ export function saveSplitSettlement(draft) {
       fromPersonName: draft.fromPersonName,
       toPersonName: draft.toPersonName,
       amountMinor: Number(draft.amountMinor ?? 0),
-      note: draft.note
+      note: draft.note,
+      currency: draft.currency,
+      fxRateBasisPoints: draft.fxRateBasisPoints == null ? undefined : Number(draft.fxRateBasisPoints),
+      paymentMethod: draft.paymentMethod,
+      paymentStatus: draft.paymentStatus
     },
     "Failed to create settlement."
   );
@@ -73,16 +82,16 @@ export function deleteSplitSettlement(settlementId) {
   );
 }
 
-export function createSettlementCheckpoint({ viewerPersonId, date, note }) {
-  return postJson("/api/splits/checkpoints/create", { viewerPersonId, date, note }, "Failed to simplify settlement.");
+export function createSettlementCheckpoint({ viewerPersonId, date, note, currency }) {
+  return postJson("/api/splits/checkpoints/create", { viewerPersonId, date, note, currency }, "Failed to simplify settlement.");
 }
 
 export function reopenSettlementCheckpoint(checkpointId) {
   return postJson("/api/splits/checkpoints/reopen", { checkpointId }, "Failed to reopen settlement.");
 }
 
-export function matchSettlementCheckpoint({ checkpointId, transactionId }) {
-  return postJson("/api/splits/checkpoints/match", { checkpointId, transactionId }, "Failed to match settlement.");
+export function matchSettlementCheckpoint({ checkpointId, transactionId, fxRateBasisPoints }) {
+  return postJson("/api/splits/checkpoints/match", { checkpointId, transactionId, fxRateBasisPoints }, "Failed to match settlement.");
 }
 
 export function unmatchSettlementCheckpoint({ checkpointId, transactionId }) {
