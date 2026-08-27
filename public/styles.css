@@ -9758,6 +9758,15 @@ th {
     width: calc(100% + 32px);
   }
 
+  .entry-mobile-sheet .entry-mobile-sheet-actions button,
+  .split-dialog-content .dialog-actions button {
+    min-height: 44px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    line-height: 1.15;
+  }
+
   .split-dialog-content .dialog-actions {
     width: calc(100% - 16px);
     margin-right: -8px;
@@ -9844,13 +9853,13 @@ th {
   }
 
   .entry-mobile-sheet-linked-actions .entry-mobile-sheet-secondary {
-    min-height: 36px;
+    min-height: 44px;
     min-width: 0;
     justify-content: center;
     padding-right: 6px;
     padding-left: 6px;
     margin-right: 0;
-    font-size: clamp(0.78rem, 3.3vw, 0.92rem);
+    font-size: 0.82rem;
     line-height: 1.1;
     text-align: center;
     white-space: normal;
