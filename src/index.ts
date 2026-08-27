@@ -75,7 +75,8 @@ import {
   updateEntryClassificationRecord,
   updateEntryNoteRecord,
   updateEntryPostDateRecord,
-  updateEntryRecord
+  updateEntryRecord,
+  ensureDemoSchema
 } from "./domain/app-repository";
 import { ignoreCategoryMatchRuleIssue } from "./domain/app-repository-category-match-rules";
 import {
@@ -135,6 +136,10 @@ export default {
     if (url.pathname === "/api/health") {
       return json({ ok: true, service: "monies-map" });
     }
+
+    // Existing production databases may need additive columns before any page
+    // DTO reads the newer split schema.
+    await ensureDemoSchema(env.DB);
 
     if (url.pathname === "/api/app-shell") {
       return apiPageResponse("App shell", request, url, () =>
