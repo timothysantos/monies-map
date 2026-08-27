@@ -9747,13 +9747,23 @@ th {
     position: sticky;
     bottom: 0;
     margin: 0 -16px;
+    box-sizing: border-box;
     padding-right: 16px;
     padding-left: 16px;
     background: rgba(255, 252, 249, 0.98);
     box-shadow: 0 -10px 20px rgba(71, 45, 30, 0.08);
   }
 
+  .entry-mobile-sheet .entry-mobile-sheet-actions {
+    width: calc(100% + 32px);
+  }
+
   .split-dialog-content .dialog-actions {
+    width: calc(100% - 16px);
+    margin-right: -8px;
+    margin-left: -8px;
+    padding-right: 12px;
+    padding-left: 12px;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 8px;
