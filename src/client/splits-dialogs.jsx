@@ -63,7 +63,7 @@ export function SplitGroupDialog({ dialog, formError, isSubmitting, onChange, on
             </label>
             {formError ? <p className="form-error">{formError}</p> : null}
             <div className="dialog-actions">
-              <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
+              <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>{readOnly ? "Close" : "Cancel"}</button>
               <button type="submit" className="dialog-primary" disabled={isSubmitting}>
                 {isSubmitting ? messages.common.saving : messages.splits.saveGroup}
               </button>
@@ -337,7 +337,7 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
   );
 }
 
-export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, categories = [], formError, isSubmitting, isSaveDisabled = false, onChange, onClose, onSave, onViewLinkedEntry, onRequestDelete }) {
+export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, categories = [], formError, isSubmitting, isSaveDisabled = false, readOnly = false, onChange, onClose, onSave, onViewLinkedEntry, onRequestDelete }) {
   return (
     <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
@@ -353,16 +353,18 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
             }}
           >
             <div className="note-dialog-head split-dialog-head">
-              <Dialog.Title>{dialog?.id ? messages.splits.editSplit : messages.splits.createExpense}</Dialog.Title>
-              <Dialog.Description>Create or edit a split expense without touching the bank import workflow.</Dialog.Description>
+              <Dialog.Title>{readOnly ? "View split" : (dialog?.id ? messages.splits.editSplit : messages.splits.createExpense)}</Dialog.Title>
+              <Dialog.Description>{readOnly ? "Review the split and its linked ledger evidence." : "Create or edit a split expense without touching the bank import workflow."}</Dialog.Description>
             </div>
             <div className="split-dialog-scroll">
               <div className="split-dialog-scroll-cue"><ChevronDown size={15} /> More fields below</div>
-              <SplitExpenseFields dialog={dialog} groupOptions={groupOptions} people={people} categoryOptions={categoryOptions} categories={categories} onChange={onChange} autoFocusAmount />
+              <fieldset disabled={readOnly} className="split-dialog-fieldset">
+                <SplitExpenseFields dialog={dialog} groupOptions={groupOptions} people={people} categoryOptions={categoryOptions} categories={categories} onChange={onChange} autoFocusAmount={!readOnly} />
+              </fieldset>
               {formError ? <p className="form-error">{formError}</p> : null}
             </div>
             <div className="dialog-actions">
-              {dialog?.id ? (
+              {!readOnly && dialog?.id ? (
                 <button
                   type="button"
                   className="dialog-danger split-dialog-delete-action"
@@ -385,10 +387,10 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
                   <span className="split-dialog-actions-divider" aria-hidden="true">|</span>
                 </>
               ) : null}
-              <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
-              <button type="submit" className="dialog-primary" disabled={isSubmitting || isSaveDisabled}>
+              <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>{readOnly ? "Close" : "Cancel"}</button>
+              {!readOnly ? <button type="submit" className="dialog-primary" disabled={isSubmitting || isSaveDisabled}>
                 {isSubmitting ? messages.common.saving : messages.splits.saveExpense}
-              </button>
+              </button> : null}
             </div>
           </form>
         </Dialog.Content>
@@ -507,7 +509,7 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
   );
 }
 
-export function SplitSettlementDialog({ dialog, groupOptions, people, formError, isSubmitting, isSaveDisabled = false, onChange, onClose, onSave, onViewLinkedEntry, onRequestDelete }) {
+export function SplitSettlementDialog({ dialog, groupOptions, people, formError, isSubmitting, isSaveDisabled = false, readOnly = false, onChange, onClose, onSave, onViewLinkedEntry, onRequestDelete }) {
   return (
     <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
@@ -523,16 +525,18 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
             }}
           >
             <div className="note-dialog-head split-dialog-head">
-              <Dialog.Title>{dialog?.id ? messages.splits.editSplit : messages.splits.createSettlement}</Dialog.Title>
-              <Dialog.Description>Record or edit a settle-up and match the bank transfer later from the Matches view.</Dialog.Description>
+              <Dialog.Title>{readOnly ? "View split" : (dialog?.id ? messages.splits.editSplit : messages.splits.createSettlement)}</Dialog.Title>
+              <Dialog.Description>{readOnly ? "Review the split and its linked ledger evidence." : "Record or edit a settle-up and match the bank transfer later from the Matches view."}</Dialog.Description>
             </div>
             <div className="split-dialog-scroll">
               <div className="split-dialog-scroll-cue"><ChevronDown size={15} /> More fields below</div>
-              <SplitSettlementFields dialog={dialog} groupOptions={groupOptions} people={people} onChange={onChange} autoFocusAmount />
+              <fieldset disabled={readOnly} className="split-dialog-fieldset">
+                <SplitSettlementFields dialog={dialog} groupOptions={groupOptions} people={people} onChange={onChange} autoFocusAmount={!readOnly} />
+              </fieldset>
               {formError ? <p className="form-error">{formError}</p> : null}
             </div>
             <div className="dialog-actions">
-              {dialog?.id ? (
+              {!readOnly && dialog?.id ? (
                 <button
                   type="button"
                   className="dialog-danger split-dialog-delete-action"
@@ -556,9 +560,9 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
                 </>
               ) : null}
               <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
-              <button type="submit" className="dialog-primary" disabled={isSubmitting || isSaveDisabled}>
+              {!readOnly ? <button type="submit" className="dialog-primary" disabled={isSubmitting || isSaveDisabled}>
                 {isSubmitting ? messages.common.saving : messages.splits.saveSettlement}
-              </button>
+              </button> : null}
             </div>
           </form>
         </Dialog.Content>

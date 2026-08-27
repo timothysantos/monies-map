@@ -163,6 +163,7 @@ export function SplitActivityGroups({
         {group.items.map((item, index) => {
           const theme = categoryService.getTheme(categories, { categoryName: item.categoryName ?? "Other" }, index);
           const isEditable = !archived && !readOnly;
+          const canOpen = !archived && Boolean(item.kind === "expense" ? onEditExpense : onEditSettlement);
           const isEditing = isEditable && editingDraft && splitItemKey(item) === `${editingDraft.kind}:${editingDraft.id}`;
           const isPendingDerived = item.isPendingDerived === true;
           const showDirectionLabel = Boolean(item.viewerDirectionLabel) && !readOnly;
@@ -170,7 +171,7 @@ export function SplitActivityGroups({
             ? (item.viewerDirectionLabel.includes("borrowed") || item.viewerDirectionLabel.includes("owe") ? "negative" : "positive")
             : "";
           const openEditor = () => {
-            if (isEditable) {
+            if (canOpen) {
               item.kind === "expense" ? onEditExpense(item) : onEditSettlement(item);
             }
           };
@@ -302,15 +303,15 @@ export function SplitActivityGroups({
             </>
           );
 
-          const CardElement = isEditable ? "button" : "article";
+          const CardElement = canOpen ? "button" : "article";
           return (
             <CardElement
               id={splitActivityDomId(item)}
               key={splitItemKey(item)}
-              type={isEditable ? "button" : undefined}
+              type={canOpen ? "button" : undefined}
               className={`split-activity-card ${isPendingDerived ? "is-pending" : ""} ${item.settlementCheckpointId ? "is-settlement-included" : ""}`}
               title={item.settlementCheckpointId ? "Included in simplified settlement" : undefined}
-              onClick={isEditable ? openEditor : undefined}
+              onClick={canOpen ? openEditor : undefined}
             >
               {cardContent}
             </CardElement>

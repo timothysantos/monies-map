@@ -985,8 +985,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onConfirmMatch={confirmMatch}
         onOpenArchive={openArchiveList}
         readOnly={isHouseholdView}
-        onEditExpense={isHouseholdView ? undefined : (useMobileSplitSheet ? openExpenseEditor : openInlineExpenseEditor)}
-        onEditSettlement={isHouseholdView ? undefined : (useMobileSplitSheet ? openSettlementEditor : openInlineSettlementEditor)}
+        onEditExpense={isHouseholdView ? openExpenseEditor : (useMobileSplitSheet ? openExpenseEditor : openInlineExpenseEditor)}
+        onEditSettlement={isHouseholdView ? openSettlementEditor : (useMobileSplitSheet ? openSettlementEditor : openInlineSettlementEditor)}
         onChangeInlineSplitDraft={setInlineSplitDraft}
         onCancelInlineSplit={() => {
           setInlineSplitDraft(null);
@@ -1057,6 +1057,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onSave={requestSaveExpense}
         onViewLinkedEntry={openLinkedEntry}
         onRequestDelete={requestDeleteSplit}
+        readOnly={isHouseholdView}
       />
 
       <SplitSettlementDialog
@@ -1073,6 +1074,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onSave={requestSaveSettlement}
         onViewLinkedEntry={openLinkedEntry}
         onRequestDelete={requestDeleteSplit}
+        readOnly={isHouseholdView}
       />
       <LinkedNoteSyncDialog
         prompt={splitNoteSyncPrompt}
