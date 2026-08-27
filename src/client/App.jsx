@@ -328,8 +328,16 @@ export function App() {
   const appEnvironment = appShell?.appEnvironment ?? getClientAppEnvironment();
   const explicitViewId = searchParams.get("view");
   const selectedViewId = explicitViewId ?? "household";
-  const routeViewId = resolveRouteViewId(selectedViewId, appShell);
   const selectedTabId = getSelectedTabId(location.pathname);
+  const defaultSplitsViewId = appShell?.viewerPersonId
+    ?? appShell?.household?.people?.[0]?.id
+    ?? appShell?.selectedViewId
+    ?? "household";
+  const routeViewId = resolveRouteViewId(
+    selectedViewId,
+    appShell,
+    selectedTabId === "splits" ? defaultSplitsViewId : undefined
+  );
   const selectedMonth = searchParams.get("month") ?? DEFAULT_MONTH_KEY;
   const selectedScope = searchParams.get("scope") ?? "direct_plus_shared";
   const selectedSummaryStart = searchParams.get("summary_start") ?? undefined;
@@ -2124,10 +2132,6 @@ export function App() {
   // Summary-dependent helpers reuse the same optional page slice so the
   // summary-specific code stays isolated from detail tabs.
   const summaryPage = pageView?.summaryPage ?? null;
-  const defaultSplitsViewId = appShell?.viewerPersonId
-    ?? appShell?.household?.people?.[0]?.id
-    ?? appShell?.selectedViewId
-    ?? "household";
   // Entries scope falls back to the month view scope when the route has not
   // overridden it yet.
   const selectedEntriesScope = searchParams.get("entries_scope") ?? pageView?.monthPage?.selectedScope ?? "direct_plus_shared";
@@ -2631,7 +2635,7 @@ export function App() {
 
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
-      next.set("view", appShell.selectedViewId);
+      next.set("view", selectedTabId === "splits" ? defaultSplitsViewId : appShell.selectedViewId);
       return next;
     }, { replace: true });
   }, [appShell, defaultSplitsViewId, explicitViewId, selectedTabId, selectedViewId, setSearchParams]);

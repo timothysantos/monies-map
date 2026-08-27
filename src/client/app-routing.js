@@ -193,11 +193,11 @@ export function getAppShellAvailableViewIds(appShell) {
   ];
 }
 
-export function resolveRouteViewId(selectedViewId, appShell) {
+export function resolveRouteViewId(selectedViewId, appShell, fallbackViewId) {
   const availableViewIds = getAppShellAvailableViewIds(appShell);
   if (!availableViewIds.length || availableViewIds.includes(selectedViewId)) {
     return selectedViewId;
   }
 
-  return appShell?.selectedViewId ?? availableViewIds[0] ?? "household";
+  return fallbackViewId ?? appShell?.selectedViewId ?? availableViewIds[0] ?? "household";
 }
