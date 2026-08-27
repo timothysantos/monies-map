@@ -10,6 +10,7 @@ import {
 } from "./split-matching";
 import { splitAmountMinorWithRoundedRemainder } from "./split-allocation";
 import { calculateNetSettlement } from "./split-settlement-policy";
+import { convertMinorAmount, normalizeSplitCurrency } from "./split-currency";
 import { truncateReviewDescription } from "./review-description";
 import { getCurrentMonthKey } from "../lib/month";
 import type {
@@ -26,7 +27,7 @@ const SPLIT_MATCH_DESCRIPTION_MAX_LENGTH = 240;
 export async function loadSplitGroups(db: D1Database): Promise<SplitGroupDto[]> {
   const groups = await db
     .prepare(`
-      SELECT id, group_name, icon_key, sort_order
+      SELECT id, group_name, icon_key, sort_order, currency
       FROM split_groups
       WHERE household_id = ?
       ORDER BY sort_order, group_name
@@ -37,6 +38,7 @@ export async function loadSplitGroups(db: D1Database): Promise<SplitGroupDto[]> 
       group_name: string;
       icon_key: string | null;
       sort_order: number;
+      currency: string | null;
     }>();
 
   return groups.results.map((group) => ({
@@ -44,6 +46,7 @@ export async function loadSplitGroups(db: D1Database): Promise<SplitGroupDto[]> 
     name: group.group_name,
     iconKey: group.icon_key ?? undefined,
     sortOrder: group.sort_order
+    ,currency: normalizeSplitCurrency(group.currency)
   }));
 }
 
@@ -57,6 +60,11 @@ export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthK
         split_expenses.expense_date,
         split_expenses.description,
         split_expenses.total_amount_minor,
+        split_expenses.currency,
+        split_expenses.home_amount_minor,
+        split_expenses.fx_rate_basis_points,
+        split_expenses.payment_method,
+        split_expenses.payment_status,
         split_expenses.note,
         split_expenses.linked_transaction_id,
         split_groups.group_name,
@@ -86,6 +94,11 @@ export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthK
       expense_date: string;
       description: string;
       total_amount_minor: number;
+      currency: string | null;
+      home_amount_minor: number | null;
+      fx_rate_basis_points: number | null;
+      payment_method: SplitExpenseDto["paymentMethod"];
+      payment_status: SplitExpenseDto["paymentStatus"];
       note: string | null;
       linked_transaction_id: string | null;
       group_name: string | null;
@@ -146,6 +159,11 @@ export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthK
     payerPersonId: row.payer_person_id,
     payerPersonName: row.payer_person_name,
     totalAmountMinor: row.total_amount_minor,
+    currency: normalizeSplitCurrency(row.currency),
+    homeAmountMinor: row.home_amount_minor ?? undefined,
+    fxRateBasisPoints: row.fx_rate_basis_points ?? undefined,
+    paymentMethod: row.payment_method ?? "cash",
+    paymentStatus: row.payment_status ?? "recorded",
     note: row.note ?? undefined,
     linkedTransactionId: row.linked_transaction_id ?? undefined,
     linkedTransactionDescription: row.linked_transaction_description ?? undefined,
@@ -164,6 +182,10 @@ export async function loadSplitSettlements(db: D1Database, month = getCurrentMon
         split_settlements.split_batch_id,
         split_settlements.settlement_date,
         split_settlements.amount_minor,
+        split_settlements.currency,
+        split_settlements.fx_rate_basis_points,
+        split_settlements.payment_method,
+        split_settlements.payment_status,
         split_settlements.note,
         split_settlements.linked_transaction_id,
         split_groups.group_name,
@@ -193,6 +215,10 @@ export async function loadSplitSettlements(db: D1Database, month = getCurrentMon
       split_batch_id: string | null;
       settlement_date: string;
       amount_minor: number;
+      currency: string | null;
+      fx_rate_basis_points: number | null;
+      payment_method: SplitSettlementDto["paymentMethod"];
+      payment_status: SplitSettlementDto["paymentStatus"];
       note: string | null;
       linked_transaction_id: string | null;
       group_name: string | null;
@@ -220,6 +246,10 @@ export async function loadSplitSettlements(db: D1Database, month = getCurrentMon
     toPersonId: row.to_person_id,
     toPersonName: row.to_person_name,
     amountMinor: row.amount_minor,
+    currency: normalizeSplitCurrency(row.currency),
+    fxRateBasisPoints: row.fx_rate_basis_points ?? undefined,
+    paymentMethod: row.payment_method ?? "cash",
+    paymentStatus: row.payment_status ?? "recorded",
     note: row.note ?? undefined,
     linkedTransactionId: row.linked_transaction_id ?? undefined,
     linkedTransactionDescription: row.linked_transaction_description ?? undefined,
@@ -232,7 +262,7 @@ export async function loadSplitSettlementCheckpoints(db: D1Database): Promise<Sp
   const rows = await db.prepare(`
     SELECT
       checkpoints.id, checkpoints.from_person_id, checkpoints.to_person_id,
-      checkpoints.amount_minor, checkpoints.settlement_date, checkpoints.status,
+      checkpoints.amount_minor, checkpoints.currency, checkpoints.settlement_date, checkpoints.status,
       checkpoints.matched_transaction_id, checkpoints.matched_amount_minor,
       checkpoints.note, from_person.display_name AS from_person_name,
       to_person.display_name AS to_person_name
@@ -243,7 +273,7 @@ export async function loadSplitSettlementCheckpoints(db: D1Database): Promise<Sp
     ORDER BY checkpoints.settlement_date DESC, checkpoints.created_at DESC
   `).bind(DEFAULT_HOUSEHOLD_ID).all<{
     id: string; from_person_id: string | null; from_person_name: string | null;
-    to_person_id: string | null; to_person_name: string | null; amount_minor: number;
+    to_person_id: string | null; to_person_name: string | null; amount_minor: number; currency: string | null;
     settlement_date: string; status: SplitSettlementCheckpointDto["status"];
     matched_transaction_id: string | null; matched_amount_minor: number;
     note: string | null;
@@ -254,27 +284,29 @@ export async function loadSplitSettlementCheckpoints(db: D1Database): Promise<Sp
     WHERE checkpoint_id IN (SELECT id FROM split_settlement_checkpoints WHERE household_id = ?)
   `).bind(DEFAULT_HOUSEHOLD_ID).all<{ checkpoint_id: string; record_id: string }>(), db.prepare(`
     SELECT matches.checkpoint_id, matches.transaction_id, matches.amount_minor,
+      matches.ledger_amount_minor, matches.fx_rate_basis_points, transactions.currency,
       transactions.transaction_date, transactions.description
     FROM split_settlement_checkpoint_matches AS matches
     INNER JOIN split_settlement_checkpoints AS checkpoints ON checkpoints.id = matches.checkpoint_id
     INNER JOIN transactions ON transactions.id = matches.transaction_id
     WHERE checkpoints.household_id = ?
     ORDER BY matches.created_at, matches.id
-  `).bind(DEFAULT_HOUSEHOLD_ID).all<{ checkpoint_id: string; transaction_id: string; amount_minor: number; transaction_date: string; description: string }>(), db.prepare(`
+  `).bind(DEFAULT_HOUSEHOLD_ID).all<{ checkpoint_id: string; transaction_id: string; amount_minor: number; ledger_amount_minor: number | null; fx_rate_basis_points: number | null; currency: string; transaction_date: string; description: string }>(), db.prepare(`
     SELECT checkpoints.id AS checkpoint_id, checkpoints.matched_transaction_id AS transaction_id,
-      checkpoints.matched_amount_minor AS amount_minor, transactions.transaction_date,
+      checkpoints.matched_amount_minor AS amount_minor, transactions.amount_minor AS ledger_amount_minor,
+      NULL AS fx_rate_basis_points, transactions.currency, transactions.transaction_date,
       transactions.description
     FROM split_settlement_checkpoints AS checkpoints
     INNER JOIN transactions ON transactions.id = checkpoints.matched_transaction_id
     WHERE checkpoints.household_id = ? AND checkpoints.matched_transaction_id IS NOT NULL
-  `).bind(DEFAULT_HOUSEHOLD_ID).all<{ checkpoint_id: string; transaction_id: string; amount_minor: number; transaction_date: string; description: string }>()]);
+  `).bind(DEFAULT_HOUSEHOLD_ID).all<{ checkpoint_id: string; transaction_id: string; amount_minor: number; ledger_amount_minor: number | null; fx_rate_basis_points: number | null; currency: string; transaction_date: string; description: string }>()]);
   const itemMap = new Map<string, string[]>();
   for (const item of items.results) itemMap.set(item.checkpoint_id, [...(itemMap.get(item.checkpoint_id) ?? []), item.record_id]);
   const matchMap = new Map<string, SplitSettlementCheckpointTransferDto[]>();
   for (const match of [...legacyMatches.results, ...matches.results]) {
     const transfers = matchMap.get(match.checkpoint_id) ?? [];
     if (!transfers.some((transfer) => transfer.transactionId === match.transaction_id)) {
-      transfers.push({ transactionId: match.transaction_id, transactionDate: match.transaction_date, description: match.description, amountMinor: match.amount_minor });
+      transfers.push({ transactionId: match.transaction_id, transactionDate: match.transaction_date, description: match.description, amountMinor: match.amount_minor, currency: normalizeSplitCurrency(match.currency), ledgerAmountMinor: match.ledger_amount_minor ?? undefined, fxRateBasisPoints: match.fx_rate_basis_points ?? undefined });
     }
     matchMap.set(match.checkpoint_id, transfers);
   }
@@ -285,6 +317,7 @@ export async function loadSplitSettlementCheckpoints(db: D1Database): Promise<Sp
     toPersonId: row.to_person_id ?? undefined,
     toPersonName: row.to_person_name ?? undefined,
     amountMinor: row.amount_minor,
+    currency: normalizeSplitCurrency(row.currency),
     settlementDate: row.settlement_date,
     status: row.status,
     matchedTransactionId: row.matched_transaction_id ?? undefined,
@@ -308,7 +341,7 @@ async function loadCheckpointedRecordIds(db: D1Database) {
 
 export async function createSplitSettlementCheckpoint(
   db: D1Database,
-  input: { viewerPersonId: string; date: string; note?: string }
+  input: { viewerPersonId: string; date: string; note?: string; currency?: string }
 ) {
   const people = await db.prepare("SELECT id, display_name FROM people WHERE household_id = ? ORDER BY created_at, id LIMIT 2")
     .bind(DEFAULT_HOUSEHOLD_ID).all<{ id: string; display_name: string }>();
@@ -321,8 +354,17 @@ export async function createSplitSettlementCheckpoint(
   const existingCheckpoint = await db.prepare("SELECT id FROM split_settlement_checkpoints WHERE household_id = ? AND status IN ('open', 'partially_matched', 'matched', 'internally_offset') LIMIT 1")
     .bind(DEFAULT_HOUSEHOLD_ID).first<{ id: string }>();
   if (existingCheckpoint) throw new Error("An active settlement checkpoint already exists. Reopen it before creating another.");
-  const openExpenses = expenses.filter((row) => !row.batchClosedAt && !checkpointed.has(`expense:${row.id}`));
-  const openSettlements = settlements.filter((row) => !row.batchClosedAt && !checkpointed.has(`settlement:${row.id}`));
+  const requestedCurrency = input.currency ? normalizeSplitCurrency(input.currency) : undefined;
+  const allOpenExpenses = expenses.filter((row) => !row.batchClosedAt && !checkpointed.has(`expense:${row.id}`));
+  const allOpenSettlements = settlements.filter((row) => !row.batchClosedAt && !checkpointed.has(`settlement:${row.id}`));
+  const currencies = new Set([...allOpenExpenses, ...allOpenSettlements].map((row) => row.currency));
+  if (requestedCurrency && !currencies.has(requestedCurrency) && currencies.size > 0) {
+    throw new Error(`No open split records are available in ${requestedCurrency}.`);
+  }
+  if (!requestedCurrency && currencies.size > 1) throw new Error("Simplify settlement requires one currency. Select a currency-specific group before simplifying.");
+  const currency = requestedCurrency ?? [...currencies][0] ?? "SGD";
+  const openExpenses = allOpenExpenses.filter((row) => row.currency === currency);
+  const openSettlements = allOpenSettlements.filter((row) => row.currency === currency);
   const balances = new Map<string, number>();
   for (const row of openExpenses) {
     const primary = row.shares[0];
@@ -342,14 +384,14 @@ export async function createSplitSettlementCheckpoint(
   const status = net.amountMinor === 0 ? "internally_offset" : "open";
   await db.prepare(`
     INSERT INTO split_settlement_checkpoints
-      (id, household_id, from_person_id, to_person_id, amount_minor, settlement_date, status, note)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      (id, household_id, from_person_id, to_person_id, amount_minor, currency, settlement_date, status, note)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(id, DEFAULT_HOUSEHOLD_ID, net.fromPersonName ? (net.fromPersonName === viewer.display_name ? viewer.id : other.id) : null,
     net.toPersonName ? (net.toPersonName === viewer.display_name ? viewer.id : other.id) : null,
-    net.amountMinor, input.date, status, input.note ?? null).run();
+    net.amountMinor, currency, input.date, status, input.note ?? null).run();
   for (const row of openExpenses) await db.prepare("INSERT INTO split_settlement_checkpoint_items (id, checkpoint_id, record_kind, record_id) VALUES (?, ?, 'expense', ?)").bind(`${id}-expense-${row.id}`, id, row.id).run();
   for (const row of openSettlements) await db.prepare("INSERT INTO split_settlement_checkpoint_items (id, checkpoint_id, record_kind, record_id) VALUES (?, ?, 'settlement', ?)").bind(`${id}-settlement-${row.id}`, id, row.id).run();
-  return { checkpointId: id, amountMinor: net.amountMinor, status };
+  return { checkpointId: id, amountMinor: net.amountMinor, currency, status };
 }
 
 export async function reopenSplitSettlementCheckpoint(db: D1Database, checkpointId: string) {
@@ -360,9 +402,9 @@ export async function reopenSplitSettlementCheckpoint(db: D1Database, checkpoint
   return { checkpointId, status: "reopened" as const };
 }
 
-export async function matchSplitSettlementCheckpoint(db: D1Database, input: { checkpointId: string; transactionId: string }) {
-  const checkpoint = await db.prepare("SELECT amount_minor, status, matched_transaction_id, matched_amount_minor FROM split_settlement_checkpoints WHERE id = ? AND household_id = ?")
-    .bind(input.checkpointId, DEFAULT_HOUSEHOLD_ID).first<{ amount_minor: number; status: SplitSettlementCheckpointDto["status"]; matched_transaction_id: string | null; matched_amount_minor: number }>();
+export async function matchSplitSettlementCheckpoint(db: D1Database, input: { checkpointId: string; transactionId: string; fxRateBasisPoints?: number }) {
+  const checkpoint = await db.prepare("SELECT amount_minor, currency, status, matched_transaction_id, matched_amount_minor FROM split_settlement_checkpoints WHERE id = ? AND household_id = ?")
+    .bind(input.checkpointId, DEFAULT_HOUSEHOLD_ID).first<{ amount_minor: number; currency: string; status: SplitSettlementCheckpointDto["status"]; matched_transaction_id: string | null; matched_amount_minor: number }>();
   if (!checkpoint) throw new Error("Settlement checkpoint not found.");
   if (["reopened", "voided", "internally_offset"].includes(checkpoint.status)) throw new Error("This settlement checkpoint is not open for matching.");
   const alreadyUsed = await db.prepare(`
@@ -375,14 +417,19 @@ export async function matchSplitSettlementCheckpoint(db: D1Database, input: { ch
   const alreadyMatched = await db.prepare("SELECT transaction_id FROM split_settlement_checkpoint_matches WHERE checkpoint_id = ? AND transaction_id = ?")
     .bind(input.checkpointId, input.transactionId).first<{ transaction_id: string }>();
   if (alreadyMatched || checkpoint.matched_transaction_id === input.transactionId) throw new Error("This transfer is already matched to this settlement checkpoint.");
-  const row = await db.prepare("SELECT amount_minor, entry_type FROM transactions WHERE id = ? AND household_id = ?")
-    .bind(input.transactionId, DEFAULT_HOUSEHOLD_ID).first<{ amount_minor: number; entry_type: string }>();
+  const row = await db.prepare("SELECT amount_minor, currency, entry_type FROM transactions WHERE id = ? AND household_id = ?")
+    .bind(input.transactionId, DEFAULT_HOUSEHOLD_ID).first<{ amount_minor: number; currency: string; entry_type: string }>();
   if (!row || row.entry_type !== "transfer") throw new Error("Checkpoint matches require a transfer entry.");
-  const amountMinor = Math.abs(row.amount_minor);
+  const ledgerAmountMinor = Math.abs(row.amount_minor);
+  const ledgerCurrency = normalizeSplitCurrency(row.currency);
+  const checkpointCurrency = normalizeSplitCurrency(checkpoint.currency);
+  const fxRateBasisPoints = ledgerCurrency === checkpointCurrency ? 10000 : Number(input.fxRateBasisPoints ?? 0);
+  if (fxRateBasisPoints <= 0) throw new Error(`This transfer is ${ledgerCurrency}, but the checkpoint is ${checkpointCurrency}. Enter the agreed FX rate before matching.`);
+  const amountMinor = ledgerCurrency === checkpointCurrency ? ledgerAmountMinor : convertMinorAmount(ledgerAmountMinor, fxRateBasisPoints);
   const totalMatchedMinor = checkpoint.matched_amount_minor + amountMinor;
   const status = totalMatchedMinor === checkpoint.amount_minor ? "matched" : totalMatchedMinor < checkpoint.amount_minor ? "partially_matched" : "open";
-  await db.prepare("INSERT INTO split_settlement_checkpoint_matches (id, checkpoint_id, transaction_id, amount_minor) VALUES (?, ?, ?, ?)")
-    .bind(`${input.checkpointId}-match-${input.transactionId}`, input.checkpointId, input.transactionId, amountMinor).run();
+  await db.prepare("INSERT INTO split_settlement_checkpoint_matches (id, checkpoint_id, transaction_id, amount_minor, ledger_amount_minor, fx_rate_basis_points) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(`${input.checkpointId}-match-${input.transactionId}`, input.checkpointId, input.transactionId, amountMinor, ledgerAmountMinor, fxRateBasisPoints).run();
   await db.prepare("UPDATE split_settlement_checkpoints SET matched_transaction_id = COALESCE(matched_transaction_id, ?), matched_amount_minor = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ?")
     .bind(input.transactionId, totalMatchedMinor, status, input.checkpointId, DEFAULT_HOUSEHOLD_ID).run();
   return { checkpointId: input.checkpointId, status, matchedAmountMinor: totalMatchedMinor, remainingMinor: Math.max(0, checkpoint.amount_minor - totalMatchedMinor) };
@@ -418,6 +465,7 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
         transactions.transaction_date,
         SUBSTR(transactions.description, 1, ${SPLIT_MATCH_DESCRIPTION_MAX_LENGTH + 1}) AS description,
         transactions.amount_minor,
+        transactions.currency,
         transactions.entry_type,
         transactions.import_id
       FROM transactions
@@ -433,6 +481,7 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
       transaction_date: string;
       description: string;
       amount_minor: number;
+      currency: string;
       entry_type: "expense" | "income" | "transfer";
       import_id: string;
     }>();
@@ -440,7 +489,10 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
   const matches: SplitMatchCandidateDto[] = [];
 
   for (const expense of expenses.filter((item) => !item.linkedTransactionId)) {
-    const candidate = findBestSplitExpenseLedgerCandidate(expense, transactionRows.results);
+    const candidate = findBestSplitExpenseLedgerCandidate(
+      expense,
+      transactionRows.results.filter((row) => normalizeSplitCurrency(row.currency) === normalizeSplitCurrency(expense.currency))
+    );
 
     if (!candidate) {
       continue;
@@ -467,7 +519,10 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
   }
 
   for (const settlement of settlements.filter((item) => !item.linkedTransactionId)) {
-    const candidate = findBestSplitSettlementLedgerCandidate(settlement, transactionRows.results);
+    const candidate = findBestSplitSettlementLedgerCandidate(
+      settlement,
+      transactionRows.results.filter((row) => normalizeSplitCurrency(row.currency) === normalizeSplitCurrency(settlement.currency))
+    );
 
     if (!candidate) {
       continue;
@@ -498,16 +553,16 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
 
 export async function createSplitGroupRecord(
   db: D1Database,
-  input: { name: string }
+  input: { name: string; currency?: string }
 ) {
   const id = `split-group-${slugify(input.name)}-${Date.now()}`;
   await db
     .prepare(`
       INSERT INTO split_groups (
-        id, household_id, group_name, sort_order
-      ) VALUES (?, ?, ?, ?)
+        id, household_id, group_name, currency, sort_order
+      ) VALUES (?, ?, ?, ?, ?)
     `)
-    .bind(id, DEFAULT_HOUSEHOLD_ID, input.name.trim(), Date.now())
+    .bind(id, DEFAULT_HOUSEHOLD_ID, input.name.trim(), normalizeSplitCurrency(input.currency), Date.now())
     .run();
 
   return { groupId: id };
@@ -523,6 +578,11 @@ export async function createSplitExpenseRecord(
     payerPersonName: string;
     amountMinor: number;
     note?: string;
+    currency?: string;
+    homeAmountMinor?: number;
+    fxRateBasisPoints?: number | null;
+    paymentMethod?: SplitExpenseDto["paymentMethod"];
+    paymentStatus?: SplitExpenseDto["paymentStatus"];
     splitBasisPoints?: number;
     splitAmountMinor?: number;
   }
@@ -548,8 +608,9 @@ export async function createSplitExpenseRecord(
     .prepare(`
       INSERT INTO split_expenses (
         id, household_id, split_group_id, split_batch_id, payer_person_id, expense_date,
-        description, category_id, total_amount_minor, note
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        description, category_id, total_amount_minor, currency, home_amount_minor,
+        fx_rate_basis_points, payment_method, payment_status, note
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     .bind(
       id,
@@ -561,6 +622,11 @@ export async function createSplitExpenseRecord(
       input.description.trim(),
       categoryId,
       input.amountMinor,
+      normalizeSplitCurrency(input.currency),
+      input.homeAmountMinor ?? null,
+      input.fxRateBasisPoints ?? null,
+      input.paymentMethod ?? "cash",
+      input.paymentStatus ?? "recorded",
       input.note ?? null
     )
     .run();
@@ -654,6 +720,10 @@ export async function createSplitSettlementRecord(
     toPersonName: string;
     amountMinor: number;
     note?: string;
+    currency?: string;
+    fxRateBasisPoints?: number | null;
+    paymentMethod?: SplitSettlementDto["paymentMethod"];
+    paymentStatus?: SplitSettlementDto["paymentStatus"];
   }
 ) {
   const { fromPersonId, toPersonId } = await resolveSplitSettlementRefs(db, input.fromPersonName, input.toPersonName);
@@ -667,8 +737,8 @@ export async function createSplitSettlementRecord(
     .prepare(`
       INSERT INTO split_settlements (
         id, household_id, split_group_id, split_batch_id, from_person_id, to_person_id,
-        settlement_date, amount_minor, note
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        settlement_date, amount_minor, currency, fx_rate_basis_points, payment_method, payment_status, note
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     .bind(
       id,
@@ -679,6 +749,10 @@ export async function createSplitSettlementRecord(
       toPersonId,
       input.date,
       input.amountMinor,
+      normalizeSplitCurrency(input.currency),
+      input.fxRateBasisPoints ?? null,
+      input.paymentMethod ?? "cash",
+      input.paymentStatus ?? "recorded",
       input.note ?? null
     )
     .run();
@@ -700,6 +774,11 @@ export async function updateSplitExpenseRecord(
     note?: string;
     splitBasisPoints?: number;
     splitAmountMinor?: number;
+    currency?: string;
+    homeAmountMinor?: number;
+    fxRateBasisPoints?: number | null;
+    paymentMethod?: SplitExpenseDto["paymentMethod"];
+    paymentStatus?: SplitExpenseDto["paymentStatus"];
   }
 ) {
   const { categoryId, payerPersonId, sharePeople } = await resolveSplitExpenseRefs(
@@ -729,7 +808,8 @@ export async function updateSplitExpenseRecord(
     .prepare(`
       UPDATE split_expenses
       SET split_group_id = ?, split_batch_id = ?, payer_person_id = ?, expense_date = ?, description = ?,
-          category_id = ?, total_amount_minor = ?, note = ?
+          category_id = ?, total_amount_minor = ?, currency = ?, home_amount_minor = ?,
+          fx_rate_basis_points = ?, payment_method = ?, payment_status = ?, note = ?
       WHERE id = ? AND household_id = ?
     `)
     .bind(
@@ -740,6 +820,11 @@ export async function updateSplitExpenseRecord(
       input.description.trim(),
       categoryId,
       input.amountMinor,
+      normalizeSplitCurrency(input.currency),
+      input.homeAmountMinor ?? null,
+      input.fxRateBasisPoints ?? null,
+      input.paymentMethod ?? "cash",
+      input.paymentStatus ?? "recorded",
       input.note ?? null,
       input.splitExpenseId,
       DEFAULT_HOUSEHOLD_ID
@@ -874,6 +959,10 @@ export async function updateSplitSettlementRecord(
     toPersonName: string;
     amountMinor: number;
     note?: string;
+    currency?: string;
+    fxRateBasisPoints?: number | null;
+    paymentMethod?: SplitSettlementDto["paymentMethod"];
+    paymentStatus?: SplitSettlementDto["paymentStatus"];
   }
 ) {
   const { fromPersonId, toPersonId } = await resolveSplitSettlementRefs(db, input.fromPersonName, input.toPersonName);
@@ -899,7 +988,8 @@ export async function updateSplitSettlementRecord(
     .prepare(`
       UPDATE split_settlements
       SET split_group_id = ?, split_batch_id = ?, from_person_id = ?, to_person_id = ?,
-          settlement_date = ?, amount_minor = ?, note = ?
+          settlement_date = ?, amount_minor = ?, currency = ?, fx_rate_basis_points = ?,
+          payment_method = ?, payment_status = ?, note = ?
       WHERE id = ? AND household_id = ?
     `)
     .bind(
@@ -909,6 +999,10 @@ export async function updateSplitSettlementRecord(
       toPersonId,
       input.date,
       input.amountMinor,
+      normalizeSplitCurrency(input.currency),
+      input.fxRateBasisPoints ?? null,
+      input.paymentMethod ?? "cash",
+      input.paymentStatus ?? "recorded",
       input.note ?? null,
       input.settlementId,
       DEFAULT_HOUSEHOLD_ID
@@ -1036,6 +1130,7 @@ export async function createSplitExpenseFromEntryRecord(
         transactions.transaction_date,
         transactions.description,
         transactions.amount_minor,
+        transactions.currency,
         transactions.owner_person_id,
         transactions.note,
         transactions.category_id,
@@ -1052,6 +1147,7 @@ export async function createSplitExpenseFromEntryRecord(
       transaction_date: string;
       description: string;
       amount_minor: number;
+      currency: string;
       owner_person_id: string | null;
       note: string | null;
       category_id: string | null;
@@ -1140,6 +1236,7 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
         transactions.transaction_date,
         transactions.description,
         transactions.amount_minor,
+        transactions.currency,
         transactions.owner_person_id,
         transactions.note,
         transactions.category_id,
@@ -1156,6 +1253,7 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
       transaction_date: string;
       description: string;
       amount_minor: number;
+      currency: string;
       owner_person_id: string | null;
       note: string | null;
       category_id: string | null;
@@ -1192,7 +1290,8 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
       .prepare(`
         UPDATE split_expenses
         SET split_group_id = ?, split_batch_id = ?, payer_person_id = ?, expense_date = ?, description = ?,
-            category_id = ?, total_amount_minor = ?, note = ?
+            category_id = ?, total_amount_minor = ?, currency = ?, home_amount_minor = ?,
+            payment_method = ?, payment_status = ?, note = ?
         WHERE id = ? AND household_id = ?
       `)
       .bind(
@@ -1203,6 +1302,10 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
         entry.description,
         entry.category_id,
         entry.amount_minor,
+        entry.currency,
+        entry.amount_minor,
+        "card",
+        "certified",
         entry.note,
         splitExpenseId,
         DEFAULT_HOUSEHOLD_ID
@@ -1214,8 +1317,9 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
       .prepare(`
         INSERT INTO split_expenses (
           id, household_id, split_group_id, split_batch_id, payer_person_id, expense_date,
-          description, category_id, total_amount_minor, note, linked_transaction_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          description, category_id, total_amount_minor, currency, home_amount_minor,
+          payment_method, payment_status, note, linked_transaction_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         splitExpenseId,
@@ -1227,6 +1331,10 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
         entry.description,
         entry.category_id,
         entry.amount_minor,
+        entry.currency,
+        entry.amount_minor,
+        "card",
+        "certified",
         entry.note,
         entry.id
       )

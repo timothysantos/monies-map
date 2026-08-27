@@ -41,6 +41,14 @@ copy, or docs:
 - Use `bank certification status` for the trust state of a ledger entry's
   bank-facing facts across manual capture, working imports, and final statement
   proof.
+- Use `split currency` for the designated currency of a split group and the
+  original currency of its expenses and settlements. Preserve the original
+  amount; home-currency estimates are evidence only.
+- Use `payment evidence` for the method and trust state of a split payment.
+  Cash may remain unlinked, while a card expense may await statement
+  certification.
+- Use `FX evidence` for an explicit rate used to compare different currencies.
+  Never net currencies without it.
 
 ## Core Entities
 

@@ -8,6 +8,10 @@ import { CategoryGlyph } from "./ui-components";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 
+function formatSplitMoney(valueMinor, currency = "SGD") {
+  return new Intl.NumberFormat("en-SG", { style: "currency", currency }).format(Math.abs(Number(valueMinor ?? 0)) / 100);
+}
+
 function splitItemKey(item) {
   return `${item.kind}:${item.id}`;
 }
@@ -30,7 +34,7 @@ function scrollInlineEditorIntoView(element) {
 }
 
 function formatExpensePaidLine(item, viewId) {
-  const amount = formatService.money(item.totalAmountMinor);
+  const amount = formatSplitMoney(item.totalAmountMinor, item.currency);
   if (viewId && viewId !== "household" && item.shares?.some((share) => share.personId === viewId) && item.paidByPersonName) {
     const payerShare = item.shares.find((share) => share.personName === item.paidByPersonName);
     if (payerShare?.personId === viewId) {
@@ -249,6 +253,8 @@ export function SplitActivityGroups({
                 <p>{item.kind === "expense" ? formatExpensePaidLine(item, viewId) : `${item.fromPersonName} paid ${item.toPersonName}`}</p>
                 {item.note ? <span className="share-row-meta">{item.note}</span> : null}
                 {item.settlementCheckpointId ? <span className="split-settlement-marker">Included in simplified settlement</span> : null}
+                {item.paymentStatus === "awaiting_statement" ? <span className="split-payment-marker">Card statement pending</span> : null}
+                {item.paymentStatus === "certified" ? <span className="split-payment-marker is-certified">Statement certified</span> : null}
                 {archived && !readOnly ? (
                   <div className="split-card-actions">
                     <button
@@ -283,7 +289,7 @@ export function SplitActivityGroups({
                   </strong>
                 ) : null}
                 <span className="split-activity-amount-line">
-                  <span className={amountToneClass}>{formatService.money(item.viewerAmountMinor ?? item.totalAmountMinor)}</span>
+                  <span className={amountToneClass}>{formatSplitMoney(item.viewerAmountMinor ?? item.totalAmountMinor, item.currency)}</span>
                   <span className="share-row-meta">
                     {isPendingDerived
                       ? messages.common.loadingLatest

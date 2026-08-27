@@ -4706,6 +4706,16 @@ button.split-activity-card:hover {
   font-weight: 700;
 }
 
+.panel-splits .split-payment-marker {
+  color: #8a4d2c;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.panel-splits .split-payment-marker.is-certified {
+  color: #246b54;
+}
+
 @media (max-width: 760px) {
   .panel-splits .split-checkpoint-panel {
     grid-template-columns: 1fr;

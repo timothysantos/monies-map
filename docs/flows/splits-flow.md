@@ -51,6 +51,7 @@ Splits owns:
 - settle-up behavior
 - settlement simplification across groups
 - checkpoint reopen and late/backdated activity handling
+- travel currency and payment-evidence review
 - archive behavior
 - linked-entry handling
 
@@ -62,6 +63,11 @@ Watch area:
 
 - keep shell-refresh requests explicit and named
 - checkpoint membership is immutable until the user explicitly reopens it
+- a split group has one designated currency; original foreign amounts remain
+  authoritative and cross-currency checkpoint matches require explicit FX
+  evidence
+- cash records may remain unlinked; card records can remain awaiting statement
+  certification until the final ledger amount is imported
 
 ## Known Exceptions / Watch Areas
 

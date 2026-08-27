@@ -202,6 +202,7 @@ function buildEntriesSplitShellGroups(splitGroups: SplitGroupDto[]): SplitGroupP
       summaryText: "",
       entryCount: 0,
       pendingMatchCount: 0,
+      currency: "SGD",
       isDefault: false
     },
     ...splitGroups.map((group) => ({
@@ -212,6 +213,7 @@ function buildEntriesSplitShellGroups(splitGroups: SplitGroupDto[]): SplitGroupP
       summaryText: "",
       entryCount: 0,
       pendingMatchCount: 0,
+      currency: group.currency,
       isDefault: false
     }))
   ];
@@ -434,7 +436,7 @@ export function buildSplitsPage(
   const checkpointedSettlements = visibleSettlements.map((settlement) => ({ ...settlement, settlementCheckpoint: checkpointByRecordId.get(settlement.id) }));
   const openExpenses = checkpointedExpenses.filter((expense) => !expense.batchClosedAt && !expense.settlementCheckpoint);
   const openSettlements = checkpointedSettlements.filter((settlement) => !settlement.batchClosedAt && !settlement.settlementCheckpoint);
-  const groupMap = new Map<string, { id: string; name: string; iconKey?: string; sortOrder?: number; balanceMinor: number; entryCount: number; pendingMatchCount: number }>();
+  const groupMap = new Map<string, { id: string; name: string; iconKey?: string; sortOrder?: number; balanceMinor: number; entryCount: number; pendingMatchCount: number; currency: string }>();
 
   groupMap.set("split-group-none", {
     id: "split-group-none",
@@ -444,6 +446,7 @@ export function buildSplitsPage(
     balanceMinor: 0,
     entryCount: 0,
     pendingMatchCount: 0
+    ,currency: "SGD"
   });
 
   // Persisted groups must exist in the UI even before their first split entry.
@@ -455,7 +458,8 @@ export function buildSplitsPage(
       sortOrder: group.sortOrder,
       balanceMinor: 0,
       entryCount: 0,
-      pendingMatchCount: 0
+      pendingMatchCount: 0,
+      currency: group.currency
     });
   }
 
@@ -468,7 +472,8 @@ export function buildSplitsPage(
       sortOrder: Number.MAX_SAFE_INTEGER,
       balanceMinor: 0,
       entryCount: 0,
-      pendingMatchCount: 0
+      pendingMatchCount: 0,
+      currency: expense.currency
     };
     groupMap.set(groupId, current);
   }
@@ -482,7 +487,8 @@ export function buildSplitsPage(
       sortOrder: Number.MAX_SAFE_INTEGER,
       balanceMinor: 0,
       entryCount: 0,
-      pendingMatchCount: 0
+      pendingMatchCount: 0,
+      currency: settlement.currency
     };
     groupMap.set(groupId, current);
   }
@@ -515,7 +521,8 @@ export function buildSplitsPage(
       sortOrder: Number.MAX_SAFE_INTEGER,
       balanceMinor: 0,
       entryCount: 0,
-      pendingMatchCount: 0
+      pendingMatchCount: 0,
+      currency: "SGD"
     };
     current.pendingMatchCount += 1;
     groupMap.set(match.groupId, current);
@@ -541,6 +548,7 @@ export function buildSplitsPage(
       summaryText: formatSplitBalanceSummary(group.balanceMinor, viewId, personNameById),
       entryCount: group.entryCount,
       pendingMatchCount: group.pendingMatchCount,
+      currency: group.currency,
       isDefault: false
     }));
 
@@ -1160,6 +1168,11 @@ function buildSplitActivity(
       settlementCheckpointId: expense.settlementCheckpoint?.id,
       settlementCheckpointStatus: expense.settlementCheckpoint?.status,
       settlementStatus: expense.settlementCheckpoint ? "settled" : expense.batchClosedAt ? "settled" : "open"
+      ,currency: expense.currency
+      ,homeAmountMinor: expense.homeAmountMinor
+      ,fxRateBasisPoints: expense.fxRateBasisPoints
+      ,paymentMethod: expense.paymentMethod
+      ,paymentStatus: expense.paymentStatus
     });
   }
 
@@ -1187,6 +1200,10 @@ function buildSplitActivity(
       settlementCheckpointId: settlement.settlementCheckpoint?.id,
       settlementCheckpointStatus: settlement.settlementCheckpoint?.status,
       settlementStatus: settlement.settlementCheckpoint ? "settled" : settlement.batchClosedAt ? "settled" : "open"
+      ,currency: settlement.currency
+      ,fxRateBasisPoints: settlement.fxRateBasisPoints
+      ,paymentMethod: settlement.paymentMethod
+      ,paymentStatus: settlement.paymentStatus
     });
   }
 

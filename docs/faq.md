@@ -2129,3 +2129,16 @@ Large import commits are written in protected chunks in production. There is not
 deliberate 125-row product limit, but the UI warns when a preview is large
 because a rejected Cloudflare request should be retried as smaller batches
 rather than leaving a partial ledger import.
+# Splits and Travel
+
+## Can I record a foreign-currency trip?
+
+Yes. Create the split group in the trip currency and keep each original amount
+in that currency. Cash expenses can stay unlinked. For a card expense, mark it
+as awaiting statement until the final certified ledger row arrives; matching a
+different-currency settlement requires an explicit FX rate and keeps both
+amounts visible.
+
+The app does not currently treat children, babies, or guests as separate
+settlement people. Keep those labels in notes and shares until dependent
+participant roles are introduced, so they cannot accidentally become debtors.
