@@ -47,7 +47,7 @@ test("linked split rows keep the Splits workspace label and cue", () => {
   assert.equal(display.linkedSplitGroupName, "Okaeri");
   assert.equal(display.splitPercent, 50);
   assert.deepEqual(display.linkedSplitGroupStyle, getSplitGroupChipStyle("Okaeri"));
-  assert.match(ownerCue.style["--entry-owner-border-color"], /37, 99, 235/);
+  assert.match(ownerCue.style["--entry-owner-border-color"], /177, 94, 47/);
 });
 
 test("split group chip colors are stable per group name", () => {

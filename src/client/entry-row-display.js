@@ -180,7 +180,7 @@ function getOwnerCueColor(ownerKey) {
   }
 
   if (normalized === "linked-splits") {
-    return "#2563EB";
+    return "#B15E2F";
   }
 
   const palette = ["#6A7A73", "#7C8791", "#8FAE4B", "#C97B47", "#5EA89B", "#8B78E6"];
