@@ -9755,7 +9755,7 @@ th {
   }
 
   .entry-mobile-sheet .entry-mobile-sheet-actions {
-    width: calc(100% + 32px);
+    width: auto;
   }
 
   .entry-mobile-sheet .entry-mobile-sheet-actions button,
@@ -9768,13 +9768,13 @@ th {
   }
 
   .split-dialog-content .dialog-actions {
-    width: calc(100% - 16px);
-    margin-right: -8px;
-    margin-left: -8px;
-    padding-right: 12px;
-    padding-left: 12px;
+    width: auto;
+    margin-right: -16px;
+    margin-left: -16px;
+    padding-right: 16px;
+    padding-left: 16px;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
     gap: 8px;
     font-size: 0.92rem;
   }
@@ -9787,11 +9787,11 @@ th {
     width: 100%;
     min-height: 44px;
     justify-content: center;
-    overflow: hidden;
-    padding-right: 8px;
-    padding-left: 8px;
-    font-size: 0.82rem;
-    text-overflow: ellipsis;
+    overflow: visible;
+    padding-right: 4px;
+    padding-left: 4px;
+    font-size: 0.78rem;
+    text-overflow: clip;
   }
 
   .split-dialog-content .dialog-actions > .dialog-primary:last-child {
@@ -9803,10 +9803,10 @@ th {
   }
 
   .entry-mobile-sheet-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: stretch;
+    gap: 8px;
   }
 
   .entry-mobile-sheet-linked-actions {
@@ -9838,6 +9838,10 @@ th {
   }
 
   .entry-mobile-sheet-secondary-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .entry-mobile-sheet-linked-actions .entry-mobile-sheet-secondary-row {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 

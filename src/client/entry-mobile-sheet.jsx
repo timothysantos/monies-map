@@ -159,25 +159,28 @@ export function EntryMobileEditExpenseFooter({
 
   return (
     <div className="entry-inline-actions entry-mobile-sheet-actions">
-      <button
-        type="button"
-        className="subtle-action entry-mobile-sheet-secondary"
-        disabled={isWorking}
-        onClick={onOpenAddToSplits}
-      >
-        {addToSplitsLabel}
-      </button>
-      <button
-        type="button"
-        className="subtle-action entry-mobile-sheet-secondary"
-        disabled={isWorking}
-        onClick={onDeleteEntry}
-      >
-        {deleteEntryLabel}
-      </button>
-      <span className="entry-mobile-sheet-action-divider" aria-hidden="true">|</span>
-      <button type="button" className="subtle-cancel" onClick={onCancel}>{cancelLabel}</button>
-      <button type="submit" className="dialog-primary" disabled={isSaveDisabled}>{saveLabel}</button>
+      <div className="entry-mobile-sheet-secondary-row">
+        <button
+          type="button"
+          className="subtle-action entry-mobile-sheet-secondary"
+          disabled={isWorking}
+          onClick={onOpenAddToSplits}
+        >
+          {addToSplitsLabel}
+        </button>
+        <button
+          type="button"
+          className="subtle-action entry-mobile-sheet-secondary"
+          disabled={isWorking}
+          onClick={onDeleteEntry}
+        >
+          {deleteEntryLabel}
+        </button>
+      </div>
+      <div className="entry-mobile-sheet-primary-row">
+        <button type="button" className="subtle-cancel" onClick={onCancel}>{cancelLabel}</button>
+        <button type="submit" className="dialog-primary" disabled={isSaveDisabled}>{saveLabel}</button>
+      </div>
     </div>
   );
 }
