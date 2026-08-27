@@ -19,6 +19,7 @@ import type {
   SplitMatchCandidateDto,
   SplitSettlementDto,
   SplitSettlementCheckpointDto,
+  SplitActivityHistoryDto,
   SplitSettlementCheckpointTransferDto
 } from "../types/dto";
 
@@ -83,7 +84,7 @@ export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthK
       LEFT JOIN categories ON categories.id = split_expenses.category_id
       LEFT JOIN transactions ON transactions.id = split_expenses.linked_transaction_id
       LEFT JOIN categories AS linked_categories ON linked_categories.id = transactions.category_id
-      WHERE split_expenses.household_id = ?
+      WHERE split_expenses.household_id = ? AND split_expenses.deleted_at IS NULL
       ORDER BY split_expenses.expense_date DESC, split_expenses.created_at DESC
     `)
     .bind(DEFAULT_HOUSEHOLD_ID)
@@ -205,7 +206,7 @@ export async function loadSplitSettlements(db: D1Database, month = getCurrentMon
       INNER JOIN people AS to_person ON to_person.id = split_settlements.to_person_id
       LEFT JOIN transactions ON transactions.id = split_settlements.linked_transaction_id
       LEFT JOIN categories AS linked_categories ON linked_categories.id = transactions.category_id
-      WHERE split_settlements.household_id = ?
+      WHERE split_settlements.household_id = ? AND split_settlements.deleted_at IS NULL
       ORDER BY split_settlements.settlement_date DESC, split_settlements.created_at DESC
     `)
     .bind(DEFAULT_HOUSEHOLD_ID)
@@ -1043,18 +1044,23 @@ export async function deleteSplitExpenseRecord(
   input: { splitExpenseId: string }
 ) {
   const existing = await db
-    .prepare("SELECT id FROM split_expenses WHERE id = ? AND household_id = ?")
+    .prepare(`SELECT split_expenses.id, split_expenses.split_group_id, split_groups.group_name,
+        split_expenses.description, split_expenses.total_amount_minor, split_expenses.currency,
+        split_expenses.deleted_at
+      FROM split_expenses LEFT JOIN split_groups ON split_groups.id = split_expenses.split_group_id
+      WHERE split_expenses.id = ? AND split_expenses.household_id = ?`)
     .bind(input.splitExpenseId, DEFAULT_HOUSEHOLD_ID)
-    .first<{ id: string }>();
+    .first<{ id: string; split_group_id: string | null; group_name: string | null; description: string; total_amount_minor: number; currency: string | null; deleted_at: string | null }>();
   if (!existing) {
     throw new Error("Split expense not found.");
   }
+  if (existing.deleted_at) throw new Error("This split is already in activity history.");
 
-  await db.prepare("DELETE FROM split_expense_shares WHERE split_expense_id = ?").bind(input.splitExpenseId).run();
   await db
-    .prepare("DELETE FROM split_expenses WHERE id = ? AND household_id = ?")
+    .prepare("UPDATE split_expenses SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ? AND deleted_at IS NULL")
     .bind(input.splitExpenseId, DEFAULT_HOUSEHOLD_ID)
     .run();
+  await recordSplitHistory(db, { recordKind: "expense", recordId: existing.id, action: "deleted", groupId: existing.split_group_id, groupName: existing.group_name, description: existing.description, amountMinor: existing.total_amount_minor, currency: existing.currency });
 
   return { splitExpenseId: input.splitExpenseId, deleted: true };
 }
@@ -1064,19 +1070,53 @@ export async function deleteSplitSettlementRecord(
   input: { settlementId: string }
 ) {
   const existing = await db
-    .prepare("SELECT id FROM split_settlements WHERE id = ? AND household_id = ?")
+    .prepare(`SELECT split_settlements.id, split_settlements.split_group_id, split_groups.group_name,
+        split_settlements.amount_minor, split_settlements.currency, split_settlements.deleted_at,
+        'Settlement' AS description
+      FROM split_settlements LEFT JOIN split_groups ON split_groups.id = split_settlements.split_group_id
+      WHERE split_settlements.id = ? AND split_settlements.household_id = ?`)
     .bind(input.settlementId, DEFAULT_HOUSEHOLD_ID)
-    .first<{ id: string }>();
+    .first<{ id: string; split_group_id: string | null; group_name: string | null; amount_minor: number; currency: string | null; deleted_at: string | null; description: string }>();
   if (!existing) {
     throw new Error("Split settlement not found.");
   }
+  if (existing.deleted_at) throw new Error("This settlement is already in activity history.");
 
   await db
-    .prepare("DELETE FROM split_settlements WHERE id = ? AND household_id = ?")
+    .prepare("UPDATE split_settlements SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ? AND deleted_at IS NULL")
     .bind(input.settlementId, DEFAULT_HOUSEHOLD_ID)
     .run();
+  await recordSplitHistory(db, { recordKind: "settlement", recordId: existing.id, action: "deleted", groupId: existing.split_group_id, groupName: existing.group_name, description: existing.description, amountMinor: existing.amount_minor, currency: existing.currency });
 
   return { settlementId: input.settlementId, deleted: true };
+}
+
+async function recordSplitHistory(db: D1Database, input: { recordKind: "expense" | "settlement"; recordId: string; action: "created" | "updated" | "deleted" | "restored"; groupId?: string | null; groupName?: string | null; description: string; amountMinor: number; currency?: string | null; detail?: string }) {
+  await db.prepare(`INSERT INTO split_activity_history
+    (id, household_id, record_kind, record_id, action, group_id, group_name, description, amount_minor, currency, detail)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(`split-history-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, DEFAULT_HOUSEHOLD_ID, input.recordKind, input.recordId, input.action, input.groupId ?? null, input.groupName ?? null, input.description, input.amountMinor, normalizeSplitCurrency(input.currency), input.detail ?? null).run();
+}
+
+export async function loadSplitActivityHistory(db: D1Database): Promise<SplitActivityHistoryDto[]> {
+  const rows = await db.prepare(`SELECT id, record_kind, record_id, action, group_id, group_name,
+      description, amount_minor, currency, occurred_at, detail
+    FROM split_activity_history WHERE household_id = ? ORDER BY occurred_at DESC, id DESC LIMIT 200`)
+    .bind(DEFAULT_HOUSEHOLD_ID).all<{ id: string; record_kind: "expense" | "settlement"; record_id: string; action: SplitActivityHistoryDto["action"]; group_id: string | null; group_name: string | null; description: string; amount_minor: number; currency: string | null; occurred_at: string; detail: string | null }>();
+  const live = await db.prepare(`SELECT id FROM split_expenses WHERE household_id = ? AND deleted_at IS NULL UNION ALL SELECT id FROM split_settlements WHERE household_id = ? AND deleted_at IS NULL`).bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID).all<{ id: string }>();
+  const liveIds = new Set(live.results.map((row) => row.id));
+  return rows.results.map((row) => ({ id: row.id, recordKind: row.record_kind, recordId: row.record_id, action: row.action, groupId: row.group_id ?? undefined, groupName: row.group_name ?? undefined, description: row.description, amountMinor: row.amount_minor, currency: normalizeSplitCurrency(row.currency), occurredAt: row.occurred_at, detail: row.detail ?? undefined, canRestore: row.action === "deleted" && !liveIds.has(row.record_id) }));
+}
+
+export async function restoreSplitRecord(db: D1Database, input: { recordKind: "expense" | "settlement"; recordId: string }) {
+  const table = input.recordKind === "expense" ? "split_expenses" : "split_settlements";
+  const existing = await db.prepare(`SELECT id, split_group_id, description, ${input.recordKind === "expense" ? "total_amount_minor" : "amount_minor"} AS amount_minor, currency, deleted_at FROM ${table} WHERE id = ? AND household_id = ?`).bind(input.recordId, DEFAULT_HOUSEHOLD_ID).first<{ id: string; split_group_id: string | null; description: string; amount_minor: number; currency: string | null; deleted_at: string | null }>();
+  if (!existing) throw new Error("Split record not found.");
+  if (!existing.deleted_at) throw new Error("This split is already active.");
+  await db.prepare(`UPDATE ${table} SET deleted_at = NULL WHERE id = ? AND household_id = ? AND deleted_at IS NOT NULL`).bind(input.recordId, DEFAULT_HOUSEHOLD_ID).run();
+  const group = existing.split_group_id ? await db.prepare("SELECT group_name FROM split_groups WHERE id = ?").bind(existing.split_group_id).first<{ group_name: string }>() : null;
+  await recordSplitHistory(db, { recordKind: input.recordKind, recordId: existing.id, action: "restored", groupId: existing.split_group_id, groupName: group?.group_name, description: existing.description, amountMinor: existing.amount_minor, currency: existing.currency });
+  return { recordId: input.recordId, restored: true };
 }
 
 export async function linkSplitExpenseMatch(

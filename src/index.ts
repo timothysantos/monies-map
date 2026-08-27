@@ -76,7 +76,9 @@ import {
   updateEntryNoteRecord,
   updateEntryPostDateRecord,
   updateEntryRecord,
-  ensureDemoSchema
+  ensureDemoSchema,
+  loadSplitActivityHistory,
+  restoreSplitRecord
 } from "./domain/app-repository";
 import { ignoreCategoryMatchRuleIssue } from "./domain/app-repository-category-match-rules";
 import {
@@ -140,6 +142,22 @@ export default {
     // Existing production databases may need additive columns before any page
     // DTO reads the newer split schema.
     await ensureDemoSchema(env.DB);
+
+    if (url.pathname === "/api/splits/activity-history" && request.method === "GET") {
+      return json({ ok: true, activityHistory: await loadSplitActivityHistory(env.DB) });
+    }
+
+    if (url.pathname === "/api/splits/activity-history/restore" && request.method === "POST") {
+      const body = await request.json<{ recordKind?: "expense" | "settlement"; recordId?: string }>();
+      if (!body.recordKind || !["expense", "settlement"].includes(body.recordKind) || !body.recordId || body.recordId.length > 200) {
+        return json({ ok: false, error: "Invalid split history record fields" }, 400);
+      }
+      try {
+        return json({ ok: true, ...(await restoreSplitRecord(env.DB, { recordKind: body.recordKind, recordId: body.recordId })) });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to restore split" }, 400);
+      }
+    }
 
     if (url.pathname === "/api/app-shell") {
       return apiPageResponse("App shell", request, url, () =>

@@ -43,6 +43,13 @@ The core questions behind the app are:
 - entries view
 - splits view with group pills, manual split expenses, settle-up records, and a
   matches review mode
+
+## Can I recover a deleted split?
+
+Yes. Open **Activity history** from the splits page. Deleted expenses and
+settlements are archived, not physically removed, and can be restored with the
+same record ID, shares, group, currency, and ledger link. Restoring does not
+rewrite an existing settlement checkpoint.
 - split expense editing can be driven either by split percentage or by an exact
   per-person dollar amount
 - manual single-entry creation from the entries view

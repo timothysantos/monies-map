@@ -26,6 +26,7 @@ import {
   seedEmptyStateReferenceData,
   loadSummaryMonths,
 } from "./app-repository";
+import type { SplitActivityHistoryDto } from "../types/dto";
 import type {
   AccountDto,
   AppShellDto,
@@ -187,7 +188,8 @@ export function buildEntriesContextView(
       activity: [],
       matches: [],
       donutChart: [],
-      settlementCheckpoints: []
+      settlementCheckpoints: [],
+      activityHistory: []
     }
   };
 }
@@ -423,7 +425,8 @@ export function buildSplitsPage(
   categories: CategoryDto[],
   selectedMonth: string,
   personNameById: Record<string, string>,
-  settlementCheckpoints: SplitSettlementCheckpointDto[] = []
+  settlementCheckpoints: SplitSettlementCheckpointDto[] = [],
+  activityHistory: SplitActivityHistoryDto[] = []
 ) {
   const visibleExpenses = splitExpenses.filter((expense) => splitExpenseMatchesView(expense, viewId));
   const visibleSettlements = splitSettlements.filter((settlement) => splitSettlementMatchesView(settlement, viewId));
@@ -584,7 +587,8 @@ export function buildSplitsPage(
     activity,
     matches: splitMatches.filter((item) => splitMatchMatchesView(item, visibleExpenses, visibleSettlements, viewId)),
     donutChart,
-    settlementCheckpoints
+    settlementCheckpoints,
+    activityHistory
   };
 }
 

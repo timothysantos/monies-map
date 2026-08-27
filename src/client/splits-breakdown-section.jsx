@@ -26,6 +26,7 @@ export function SplitsBreakdownSection({
   onAddExpense,
   searchControl = null,
   summaryToolbar = null,
+  onOpenHistory,
   isRefreshingDerived = false,
   readOnly = false
 }) {
@@ -59,6 +60,7 @@ export function SplitsBreakdownSection({
           <span>{messages.entries.totalSpend} <strong>{formatService.money(totalExpenseMinor)}</strong></span>
         </div>
         {summaryToolbar}
+        <button type="button" className="subtle-action split-history-trigger" onClick={onOpenHistory}>Activity history</button>
         {!readOnly ? (
           <div className="splits-summary-actions">
             <button

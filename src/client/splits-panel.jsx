@@ -19,6 +19,7 @@ import {
   unmatchSettlementCheckpoint,
   saveSplitExpense,
   saveSplitSettlement,
+  restoreSplitRecord,
   updateLinkedEntryCategory,
   updateLinkedEntryNote
 } from "./splits-api";
@@ -30,6 +31,7 @@ import {
   upsertOptimisticSplitActivity
 } from "./splits-optimistic";
 import { SplitArchiveDialog } from "./splits-archive-dialog";
+import { SplitHistoryDialog } from "./splits-history-dialog";
 import { splitActivityDomId } from "./splits-activity";
 import { SplitDeleteDialog, SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./splits-dialogs";
 import { SearchFilterInput } from "./entries-overview";
@@ -53,6 +55,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [useMobileSplitSheet, setUseMobileSplitSheet] = useState(false);
   const [archiveDialog, setArchiveDialog] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
   const [groupDialog, setGroupDialog] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [splitNoteSyncPrompt, setSplitNoteSyncPrompt] = useState(null);
@@ -734,6 +737,19 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
   }
 
+  async function restoreSplitHistoryItem(item) {
+    setIsSubmitting(true);
+    try {
+      await restoreSplitRecord({ recordKind: item.recordKind, recordId: item.recordId });
+      setShowHistory(false);
+      onRefresh({ broadcast: true });
+    } catch (error) {
+      setCheckpointError(error instanceof Error ? error.message : "Failed to restore split.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function reopenSettlement() {
     if (!activeCheckpoint || isCheckpointing) return;
     setCheckpointError("");
@@ -957,6 +973,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         isSubmitting={isSubmitting}
         onSelectGroup={(groupId) => updateSplitView({ groupId, mode: "entries" })}
         onOpenMatches={openMatchesView}
+        onOpenHistory={() => setShowHistory(true)}
         onBackToGroup={openActiveGroupView}
         onCreateGroup={() => {
           setFormError("");
@@ -999,6 +1016,14 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onEditExpense={openExpenseEditor}
         onEditSettlement={openSettlementEditor}
         onViewLinkedEntry={openLinkedEntry}
+      />
+
+      <SplitHistoryDialog
+        open={showHistory}
+        history={splitsPage.activityHistory ?? []}
+        isSubmitting={isSubmitting}
+        onClose={() => setShowHistory(false)}
+        onRestore={restoreSplitHistoryItem}
       />
 
       <SplitDeleteDialog

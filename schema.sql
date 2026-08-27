@@ -322,6 +322,7 @@ CREATE TABLE IF NOT EXISTS split_expenses (
   fx_rate_basis_points INTEGER,
   payment_method TEXT NOT NULL DEFAULT 'cash' CHECK (payment_method IN ('cash', 'card', 'bank', 'other')),
   payment_status TEXT NOT NULL DEFAULT 'recorded' CHECK (payment_status IN ('recorded', 'awaiting_statement', 'certified')),
+  deleted_at TEXT,
   note TEXT,
   linked_transaction_id TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -359,6 +360,7 @@ CREATE TABLE IF NOT EXISTS split_settlements (
   fx_rate_basis_points INTEGER,
   payment_method TEXT NOT NULL DEFAULT 'cash' CHECK (payment_method IN ('cash', 'card', 'bank', 'other')),
   payment_status TEXT NOT NULL DEFAULT 'recorded' CHECK (payment_status IN ('recorded', 'awaiting_statement', 'certified')),
+  deleted_at TEXT,
   note TEXT,
   linked_transaction_id TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -412,6 +414,25 @@ CREATE TABLE IF NOT EXISTS split_settlement_checkpoint_matches (
   FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,
   UNIQUE (checkpoint_id, transaction_id)
 );
+
+CREATE TABLE IF NOT EXISTS split_activity_history (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  record_kind TEXT NOT NULL CHECK (record_kind IN ('expense', 'settlement')),
+  record_id TEXT NOT NULL,
+  action TEXT NOT NULL CHECK (action IN ('created', 'updated', 'deleted', 'restored')),
+  group_id TEXT,
+  group_name TEXT,
+  description TEXT NOT NULL,
+  amount_minor INTEGER NOT NULL,
+  currency TEXT NOT NULL DEFAULT 'SGD',
+  occurred_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  detail TEXT,
+  FOREIGN KEY (household_id) REFERENCES households(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_split_activity_history_household_time
+  ON split_activity_history (household_id, occurred_at DESC, id DESC);
 
 CREATE TABLE IF NOT EXISTS monthly_notes (
   id TEXT PRIMARY KEY,

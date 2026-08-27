@@ -65,6 +65,11 @@ payment method, pending statement evidence, and FX review. Foreign amounts are
 shown as entered, with any home-currency estimate or converted ledger amount
 secondary and explicitly labeled.
 
+Split activity history is an action-oriented recovery surface opened from the
+splits summary area. It uses the splits color contract, stays compact and
+newest-first, labels archived actions clearly, and places Restore beside a
+recoverable record without exposing destructive controls in the history list.
+
 ## Apple Shortcut Install Boundary
 
 The Settings slice owns the Apple Pay shortcut install workflow. The display

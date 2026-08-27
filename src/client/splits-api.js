@@ -82,6 +82,10 @@ export function deleteSplitSettlement(settlementId) {
   );
 }
 
+export function restoreSplitRecord({ recordKind, recordId }) {
+  return postJson("/api/splits/activity-history/restore", { recordKind, recordId }, "Failed to restore split.");
+}
+
 export function createSettlementCheckpoint({ viewerPersonId, date, note, currency }) {
   return postJson("/api/splits/checkpoints/create", { viewerPersonId, date, note, currency }, "Failed to simplify settlement.");
 }

@@ -49,6 +49,9 @@ copy, or docs:
   certification.
 - Use `FX evidence` for an explicit rate used to compare different currencies.
   Never net currencies without it.
+- Use `split activity history` for the household-scoped, chronological record of
+  reversible split changes. Deleted split records are archived rather than
+  destroyed so users can restore the original record and relationships.
 
 ## Core Entities
 
@@ -647,6 +650,23 @@ backdated split remains part of the next open batch.
 Storage:
 - `split_settlement_checkpoints`
 - `split_settlement_checkpoint_items`
+
+### Split Activity History
+
+A chronological audit trail for consequential split changes. Deleting a split
+expense or settlement archives it and records an event; restoring it reactivates
+the same record ID, shares, currency, group, and ledger link when present.
+
+Storage:
+- `split_activity_history`
+- `split_expenses.deleted_at`
+- `split_settlements.deleted_at`
+
+Rules:
+- active split projections exclude archived records
+- history is household-scoped and ordered newest first
+- restore is allowed only for an archived record and never creates a duplicate
+- checkpoint snapshots remain unchanged when a record is deleted or restored
 
 ### Monthly Note
 

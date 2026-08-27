@@ -31,6 +31,7 @@ export function SplitsMainSection({
   hasInlineSplitChanges,
   onSelectGroup,
   onOpenMatches,
+  onOpenHistory,
   onBackToGroup,
   onCreateGroup,
   onToggleBreakdown,
@@ -102,6 +103,7 @@ export function SplitsMainSection({
         onAddExpense={onAddExpense}
         searchControl={searchControl}
         summaryToolbar={summaryToolbar}
+        onOpenHistory={onOpenHistory}
         readOnly={readOnly}
         isRefreshingDerived={isRefreshingDerived}
       />

@@ -23,6 +23,7 @@ Splits state is split between:
 - server state for the splits page DTO
 - workflow state for split creation, matching, settling, and archive behavior
 - settlement checkpoint state for simplification, transfer matching, and reopen
+- split activity-history state for recovery and audit review
 - transient UI state for dialogs and responsive controls
 
 The page should preserve active matching state while freshness catches up,
@@ -51,6 +52,7 @@ Splits owns:
 - settle-up behavior
 - settlement simplification across groups
 - checkpoint reopen and late/backdated activity handling
+- reversible split deletion and restore from activity history
 - travel currency and payment-evidence review
 - archive behavior
 - linked-entry handling
@@ -68,6 +70,9 @@ Watch area:
   evidence
 - cash records may remain unlinked; card records can remain awaiting statement
   certification until the final ledger amount is imported
+- deleting a split archives it from active projections but keeps its ID,
+  shares, links, and currency available for restore
+- restoring an archived split does not alter an existing checkpoint snapshot
 
 ## Known Exceptions / Watch Areas
 
