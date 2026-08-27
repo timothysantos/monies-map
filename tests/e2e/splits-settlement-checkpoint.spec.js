@@ -89,6 +89,12 @@ test("simplified settlement checkpoints preserve backdated additions and can reo
   expect(lateRow?.settlementCheckpointId).toBeUndefined();
   expect(afterLate.splitsPage.groups.find((group) => group.id === "split-group-none")?.entryCount).toBeGreaterThan(0);
 
+  await page.reload();
+  const lateRowCard = page.locator(".split-activity-card").filter({ hasText: lateDescription }).first();
+  await expect(lateRowCard).toBeVisible();
+  await expect(lateRowCard).not.toHaveClass(/is-settlement-included/);
+  await expect(lateRowCard.locator(".split-settlement-marker")).toHaveCount(0);
+
   await postJson(page, "/api/splits/checkpoints/reopen", { checkpointId: checkpoint.checkpointId });
   const reopened = await loadSplitsPage(page, { view: "person-tim", month });
   expect(reopened.splitsPage.settlementCheckpoints[0].status).toBe("reopened");

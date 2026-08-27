@@ -192,3 +192,12 @@ export function getAppShellAvailableViewIds(appShell) {
     ...(appShell.household?.people ?? []).map((person) => person.id)
   ];
 }
+
+export function resolveRouteViewId(selectedViewId, appShell) {
+  const availableViewIds = getAppShellAvailableViewIds(appShell);
+  if (!availableViewIds.length || availableViewIds.includes(selectedViewId)) {
+    return selectedViewId;
+  }
+
+  return appShell?.selectedViewId ?? availableViewIds[0] ?? "household";
+}
