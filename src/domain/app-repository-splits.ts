@@ -5,12 +5,14 @@ import {
 } from "./app-repository-helpers";
 import { closeSplitBatch, getOrCreateActiveSplitBatch } from "./app-repository-split-batches";
 import {
+  findBestCrossCurrencySplitExpenseLedgerCandidate,
+  findBestCrossCurrencySplitSettlementLedgerCandidate,
   findBestSplitExpenseLedgerCandidate,
   findBestSplitSettlementLedgerCandidate
 } from "./split-matching";
 import { splitAmountMinorWithRoundedRemainder } from "./split-allocation";
 import { calculateNetSettlement } from "./split-settlement-policy";
-import { convertMinorAmount, normalizeSplitCurrency } from "./split-currency";
+import { calculateFxRateBasisPoints, convertMinorAmount, normalizeSplitCurrency } from "./split-currency";
 import { truncateReviewDescription } from "./review-description";
 import { getCurrentMonthKey } from "../lib/month";
 import type {
@@ -24,6 +26,19 @@ import type {
 } from "../types/dto";
 
 const SPLIT_MATCH_DESCRIPTION_MAX_LENGTH = 240;
+
+async function assertSplitGroupCurrency(db: D1Database, groupId: string | null | undefined, currency: unknown) {
+  if (!groupId) return normalizeSplitCurrency(currency);
+  const group = await db.prepare("SELECT currency FROM split_groups WHERE id = ? AND household_id = ?")
+    .bind(groupId, DEFAULT_HOUSEHOLD_ID).first<{ currency: string | null }>();
+  if (!group) throw new Error("Split group not found.");
+  const groupCurrency = normalizeSplitCurrency(group.currency);
+  const recordCurrency = normalizeSplitCurrency(currency);
+  if (groupCurrency !== recordCurrency) {
+    throw new Error(`This group uses ${groupCurrency}. Split records in the group must use the same currency.`);
+  }
+  return groupCurrency;
+}
 
 function paymentMethodForLinkedAccount(
   accountKind: "bank" | "credit_card" | "loan" | "cash" | "investment" | null | undefined,
@@ -369,9 +384,6 @@ export async function createSplitSettlementCheckpoint(
   const [expenses, settlements, checkpointed] = await Promise.all([
     loadSplitExpenses(db), loadSplitSettlements(db), loadCheckpointedRecordIds(db)
   ]);
-  const existingCheckpoint = await db.prepare("SELECT id FROM split_settlement_checkpoints WHERE household_id = ? AND status IN ('open', 'partially_matched', 'matched', 'internally_offset') LIMIT 1")
-    .bind(DEFAULT_HOUSEHOLD_ID).first<{ id: string }>();
-  if (existingCheckpoint) throw new Error("An active settlement checkpoint already exists. Reopen it before creating another.");
   const requestedCurrency = input.currency ? normalizeSplitCurrency(input.currency) : undefined;
   const allOpenExpenses = expenses.filter((row) => !row.batchClosedAt && !checkpointed.has(`expense:${row.id}`));
   const allOpenSettlements = settlements.filter((row) => !row.batchClosedAt && !checkpointed.has(`settlement:${row.id}`));
@@ -381,6 +393,9 @@ export async function createSplitSettlementCheckpoint(
   }
   if (!requestedCurrency && currencies.size > 1) throw new Error("Simplify settlement requires one currency. Select a currency-specific group before simplifying.");
   const currency = requestedCurrency ?? [...currencies][0] ?? "SGD";
+  const existingCheckpoint = await db.prepare("SELECT id FROM split_settlement_checkpoints WHERE household_id = ? AND currency = ? AND status IN ('open', 'partially_matched', 'matched', 'internally_offset') LIMIT 1")
+    .bind(DEFAULT_HOUSEHOLD_ID, currency).first<{ id: string }>();
+  if (existingCheckpoint) throw new Error(`An active ${currency} settlement checkpoint already exists. Reopen it before creating another.`);
   const openExpenses = allOpenExpenses.filter((row) => row.currency === currency);
   const openSettlements = allOpenSettlements.filter((row) => row.currency === currency);
   const balances = new Map<string, number>();
@@ -507,10 +522,12 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
   const matches: SplitMatchCandidateDto[] = [];
 
   for (const expense of expenses.filter((item) => !item.linkedTransactionId)) {
+    const sameCurrencyRows = transactionRows.results.filter((row) => normalizeSplitCurrency(row.currency) === normalizeSplitCurrency(expense.currency));
+    const crossCurrencyRows = transactionRows.results.filter((row) => normalizeSplitCurrency(row.currency) !== normalizeSplitCurrency(expense.currency));
     const candidate = findBestSplitExpenseLedgerCandidate(
       expense,
-      transactionRows.results.filter((row) => normalizeSplitCurrency(row.currency) === normalizeSplitCurrency(expense.currency))
-    );
+      sameCurrencyRows
+    ) ?? findBestCrossCurrencySplitExpenseLedgerCandidate(expense, crossCurrencyRows);
 
     if (!candidate) {
       continue;
@@ -525,22 +542,30 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
       splitDate: expense.date,
       splitDescription: expense.description,
       splitAmountMinor: expense.totalAmountMinor,
+      splitCurrency: normalizeSplitCurrency(expense.currency),
       transactionId: candidate.row.id,
       transactionDate: candidate.row.transaction_date,
       transactionDescription: truncateReviewDescription(candidate.row.description, SPLIT_MATCH_DESCRIPTION_MAX_LENGTH),
       amountMinor: candidate.row.amount_minor,
+      transactionCurrency: normalizeSplitCurrency(candidate.row.currency),
       amountDeltaMinor: candidate.amountDelta,
       dateDeltaDays: candidate.dateDelta,
-      confidenceLabel: candidate.amountDelta === 0 && candidate.dateDelta <= 1 ? "High" : "Medium",
-      reviewLabel: "Imported transaction could match this split expense"
+      confidenceLabel: normalizeSplitCurrency(candidate.row.currency) === normalizeSplitCurrency(expense.currency) && candidate.amountDelta === 0 && candidate.dateDelta <= 1 ? "High" : "Medium",
+      reviewLabel: "Imported transaction could match this split expense",
+      requiresFxReview: normalizeSplitCurrency(candidate.row.currency) !== normalizeSplitCurrency(expense.currency),
+      fxRateBasisPoints: normalizeSplitCurrency(candidate.row.currency) !== normalizeSplitCurrency(expense.currency)
+        ? calculateFxRateBasisPoints(Math.abs(expense.totalAmountMinor), Math.abs(candidate.row.amount_minor))
+        : undefined
     });
   }
 
   for (const settlement of settlements.filter((item) => !item.linkedTransactionId)) {
+    const sameCurrencyRows = transactionRows.results.filter((row) => normalizeSplitCurrency(row.currency) === normalizeSplitCurrency(settlement.currency));
+    const crossCurrencyRows = transactionRows.results.filter((row) => normalizeSplitCurrency(row.currency) !== normalizeSplitCurrency(settlement.currency));
     const candidate = findBestSplitSettlementLedgerCandidate(
       settlement,
-      transactionRows.results.filter((row) => normalizeSplitCurrency(row.currency) === normalizeSplitCurrency(settlement.currency))
-    );
+      sameCurrencyRows
+    ) ?? findBestCrossCurrencySplitSettlementLedgerCandidate(settlement, crossCurrencyRows);
 
     if (!candidate) {
       continue;
@@ -555,14 +580,20 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
       splitDate: settlement.date,
       splitDescription: `${settlement.fromPersonName} to ${settlement.toPersonName}`,
       splitAmountMinor: settlement.amountMinor,
+      splitCurrency: normalizeSplitCurrency(settlement.currency),
       transactionId: candidate.row.id,
       transactionDate: candidate.row.transaction_date,
       transactionDescription: truncateReviewDescription(candidate.row.description, SPLIT_MATCH_DESCRIPTION_MAX_LENGTH),
       amountMinor: candidate.row.amount_minor,
+      transactionCurrency: normalizeSplitCurrency(candidate.row.currency),
       amountDeltaMinor: candidate.amountDelta,
       dateDeltaDays: candidate.dateDelta,
-      confidenceLabel: candidate.amountDelta === 0 && candidate.dateDelta <= 1 ? "High" : "Medium",
-      reviewLabel: "Imported transfer could match this settle-up"
+      confidenceLabel: normalizeSplitCurrency(candidate.row.currency) === normalizeSplitCurrency(settlement.currency) && candidate.amountDelta === 0 && candidate.dateDelta <= 1 ? "High" : "Medium",
+      reviewLabel: "Imported transfer could match this settle-up",
+      requiresFxReview: normalizeSplitCurrency(candidate.row.currency) !== normalizeSplitCurrency(settlement.currency),
+      fxRateBasisPoints: normalizeSplitCurrency(candidate.row.currency) !== normalizeSplitCurrency(settlement.currency)
+        ? calculateFxRateBasisPoints(Math.abs(settlement.amountMinor), Math.abs(candidate.row.amount_minor))
+        : undefined
     });
   }
 
@@ -605,6 +636,7 @@ export async function createSplitExpenseRecord(
     splitAmountMinor?: number;
   }
 ) {
+  const currency = await assertSplitGroupCurrency(db, input.groupId, input.currency);
   const { categoryId, payerPersonId, sharePeople } = await resolveSplitExpenseRefs(
     db,
     input.categoryName,
@@ -640,7 +672,7 @@ export async function createSplitExpenseRecord(
       input.description.trim(),
       categoryId,
       input.amountMinor,
-      normalizeSplitCurrency(input.currency),
+      currency,
       input.homeAmountMinor ?? null,
       input.fxRateBasisPoints ?? null,
       input.paymentMethod ?? "cash",
@@ -744,6 +776,7 @@ export async function createSplitSettlementRecord(
     paymentStatus?: SplitSettlementDto["paymentStatus"];
   }
 ) {
+  const currency = await assertSplitGroupCurrency(db, input.groupId, input.currency);
   const { fromPersonId, toPersonId } = await resolveSplitSettlementRefs(db, input.fromPersonName, input.toPersonName);
 
   const id = `split-settlement-${Date.now()}`;
@@ -767,7 +800,7 @@ export async function createSplitSettlementRecord(
       toPersonId,
       input.date,
       input.amountMinor,
-      normalizeSplitCurrency(input.currency),
+      currency,
       input.fxRateBasisPoints ?? null,
       input.paymentMethod ?? "cash",
       input.paymentStatus ?? "recorded",
@@ -799,6 +832,7 @@ export async function updateSplitExpenseRecord(
     paymentStatus?: SplitExpenseDto["paymentStatus"];
   }
 ) {
+  const currency = await assertSplitGroupCurrency(db, input.groupId, input.currency);
   const { categoryId, payerPersonId, sharePeople } = await resolveSplitExpenseRefs(
     db,
     input.categoryName,
@@ -838,7 +872,7 @@ export async function updateSplitExpenseRecord(
       input.description.trim(),
       categoryId,
       input.amountMinor,
-      normalizeSplitCurrency(input.currency),
+      currency,
       input.homeAmountMinor ?? null,
       input.fxRateBasisPoints ?? null,
       input.paymentMethod ?? "cash",
@@ -983,6 +1017,7 @@ export async function updateSplitSettlementRecord(
     paymentStatus?: SplitSettlementDto["paymentStatus"];
   }
 ) {
+  const currency = await assertSplitGroupCurrency(db, input.groupId, input.currency);
   const { fromPersonId, toPersonId } = await resolveSplitSettlementRefs(db, input.fromPersonName, input.toPersonName);
 
   const existing = await db
@@ -1017,7 +1052,7 @@ export async function updateSplitSettlementRecord(
       toPersonId,
       input.date,
       input.amountMinor,
-      normalizeSplitCurrency(input.currency),
+      currency,
       input.fxRateBasisPoints ?? null,
       input.paymentMethod ?? "cash",
       input.paymentStatus ?? "recorded",
@@ -1140,9 +1175,35 @@ export async function linkSplitExpenseMatch(
   db: D1Database,
   input: { splitExpenseId: string; transactionId: string }
 ) {
+  const [expense, transaction, alreadyUsed] = await Promise.all([
+    db.prepare("SELECT total_amount_minor, currency, payment_method, payment_status FROM split_expenses WHERE id = ? AND household_id = ? AND linked_transaction_id IS NULL")
+      .bind(input.splitExpenseId, DEFAULT_HOUSEHOLD_ID)
+      .first<{ total_amount_minor: number; currency: string; payment_method: SplitExpenseDto["paymentMethod"]; payment_status: SplitExpenseDto["paymentStatus"] }>(),
+    db.prepare(`SELECT transactions.amount_minor, transactions.currency, transactions.entry_type
+      FROM transactions INNER JOIN imports ON imports.id = transactions.import_id
+      WHERE transactions.id = ? AND transactions.household_id = ? AND imports.status = 'completed'`)
+      .bind(input.transactionId, DEFAULT_HOUSEHOLD_ID)
+      .first<{ amount_minor: number; currency: string; entry_type: string }>(),
+    db.prepare(`SELECT id FROM split_expenses WHERE linked_transaction_id = ?
+      UNION ALL SELECT id FROM split_settlements WHERE linked_transaction_id = ?
+      UNION ALL SELECT checkpoint_id AS id FROM split_settlement_checkpoint_matches WHERE transaction_id = ?
+      LIMIT 1`).bind(input.transactionId, input.transactionId, input.transactionId).first<{ id: string }>()
+  ]);
+  if (!expense) throw new Error("This split expense is unavailable or already linked.");
+  if (!transaction || transaction.entry_type !== "expense") throw new Error("Split expense matches require an imported expense.");
+  if (alreadyUsed) throw new Error("This ledger row is already linked to another split record.");
+  const splitCurrency = normalizeSplitCurrency(expense.currency);
+  const transactionCurrency = normalizeSplitCurrency(transaction.currency);
+  if (splitCurrency !== transactionCurrency && (!["card", "bank"].includes(expense.payment_method) || expense.payment_status !== "awaiting_statement")) {
+    throw new Error("Cross-currency matching requires a card or bank expense awaiting its statement.");
+  }
+  const homeAmountMinor = Math.abs(transaction.amount_minor);
+  const fxRateBasisPoints = splitCurrency === transactionCurrency
+    ? 10000
+    : calculateFxRateBasisPoints(Math.abs(expense.total_amount_minor), homeAmountMinor);
   await db
-    .prepare("UPDATE split_expenses SET linked_transaction_id = ? WHERE id = ? AND household_id = ?")
-    .bind(input.transactionId, input.splitExpenseId, DEFAULT_HOUSEHOLD_ID)
+    .prepare("UPDATE split_expenses SET linked_transaction_id = ?, home_amount_minor = ?, fx_rate_basis_points = ?, payment_status = 'certified' WHERE id = ? AND household_id = ? AND linked_transaction_id IS NULL")
+    .bind(input.transactionId, homeAmountMinor, fxRateBasisPoints, input.splitExpenseId, DEFAULT_HOUSEHOLD_ID)
     .run();
 
   const primaryShare = await db
@@ -1168,9 +1229,34 @@ export async function linkSplitSettlementMatch(
   db: D1Database,
   input: { settlementId: string; transactionId: string }
 ) {
+  const [settlement, transaction, alreadyUsed] = await Promise.all([
+    db.prepare("SELECT amount_minor, currency, payment_method, payment_status FROM split_settlements WHERE id = ? AND household_id = ? AND linked_transaction_id IS NULL")
+      .bind(input.settlementId, DEFAULT_HOUSEHOLD_ID)
+      .first<{ amount_minor: number; currency: string; payment_method: SplitSettlementDto["paymentMethod"]; payment_status: SplitSettlementDto["paymentStatus"] }>(),
+    db.prepare(`SELECT transactions.amount_minor, transactions.currency, transactions.entry_type
+      FROM transactions INNER JOIN imports ON imports.id = transactions.import_id
+      WHERE transactions.id = ? AND transactions.household_id = ? AND imports.status = 'completed'`)
+      .bind(input.transactionId, DEFAULT_HOUSEHOLD_ID)
+      .first<{ amount_minor: number; currency: string; entry_type: string }>(),
+    db.prepare(`SELECT id FROM split_expenses WHERE linked_transaction_id = ?
+      UNION ALL SELECT id FROM split_settlements WHERE linked_transaction_id = ?
+      UNION ALL SELECT checkpoint_id AS id FROM split_settlement_checkpoint_matches WHERE transaction_id = ?
+      LIMIT 1`).bind(input.transactionId, input.transactionId, input.transactionId).first<{ id: string }>()
+  ]);
+  if (!settlement) throw new Error("This settle-up is unavailable or already linked.");
+  if (!transaction || transaction.entry_type !== "transfer") throw new Error("Settle-up matches require an imported transfer.");
+  if (alreadyUsed) throw new Error("This ledger row is already linked to another split record.");
+  const splitCurrency = normalizeSplitCurrency(settlement.currency);
+  const transactionCurrency = normalizeSplitCurrency(transaction.currency);
+  if (splitCurrency !== transactionCurrency && (settlement.payment_method !== "bank" || settlement.payment_status !== "awaiting_statement")) {
+    throw new Error("Cross-currency matching requires a bank settle-up awaiting its statement.");
+  }
+  const fxRateBasisPoints = splitCurrency === transactionCurrency
+    ? 10000
+    : calculateFxRateBasisPoints(Math.abs(settlement.amount_minor), Math.abs(transaction.amount_minor));
   await db
-    .prepare("UPDATE split_settlements SET linked_transaction_id = ? WHERE id = ? AND household_id = ?")
-    .bind(input.transactionId, input.settlementId, DEFAULT_HOUSEHOLD_ID)
+    .prepare("UPDATE split_settlements SET linked_transaction_id = ?, fx_rate_basis_points = ?, payment_status = 'certified' WHERE id = ? AND household_id = ? AND linked_transaction_id IS NULL")
+    .bind(input.transactionId, fxRateBasisPoints, input.settlementId, DEFAULT_HOUSEHOLD_ID)
     .run();
 
   return { ok: true };
@@ -1192,7 +1278,8 @@ export async function createSplitExpenseFromEntryRecord(
         transactions.note,
         transactions.category_id,
         transactions.entry_type,
-        accounts.owner_person_id AS account_owner_person_id
+        accounts.owner_person_id AS account_owner_person_id,
+        accounts.account_kind
       FROM transactions
       INNER JOIN accounts ON accounts.id = transactions.account_id
       WHERE transactions.household_id = ?
@@ -1210,6 +1297,7 @@ export async function createSplitExpenseFromEntryRecord(
       category_id: string | null;
       entry_type: "expense" | "income" | "transfer";
       account_owner_person_id: string | null;
+      account_kind: "bank" | "credit_card" | "loan" | "cash" | "investment";
     }>();
 
   if (!entry) {
@@ -1235,22 +1323,33 @@ export async function createSplitExpenseFromEntryRecord(
   }
 
   const id = `split-expense-${Date.now()}`;
+  const currency = await assertSplitGroupCurrency(db, input.splitGroupId, entry.currency);
+  const batchId = await getOrCreateActiveSplitBatch(db, {
+    groupId: input.splitGroupId || null,
+    date: entry.transaction_date
+  });
   await db
     .prepare(`
       INSERT INTO split_expenses (
-        id, household_id, split_group_id, payer_person_id, expense_date,
-        description, category_id, total_amount_minor, note, linked_transaction_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, household_id, split_group_id, split_batch_id, payer_person_id, expense_date,
+        description, category_id, total_amount_minor, currency, home_amount_minor,
+        payment_method, payment_status, note, linked_transaction_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     .bind(
       id,
       DEFAULT_HOUSEHOLD_ID,
       input.splitGroupId || null,
+      batchId,
       payerPersonId,
       entry.transaction_date,
       entry.description,
       entry.category_id,
       entry.amount_minor,
+      currency,
+      Math.abs(entry.amount_minor),
+      paymentMethodForLinkedAccount(entry.account_kind, "other"),
+      "certified",
       entry.note,
       entry.id
     )
@@ -1298,7 +1397,8 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
         transactions.note,
         transactions.category_id,
         transactions.entry_type,
-        accounts.owner_person_id AS account_owner_person_id
+        accounts.owner_person_id AS account_owner_person_id,
+        accounts.account_kind
       FROM transactions
       INNER JOIN accounts ON accounts.id = transactions.account_id
       WHERE transactions.household_id = ?
@@ -1316,6 +1416,7 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
       category_id: string | null;
       entry_type: "expense" | "income" | "transfer";
       account_owner_person_id: string | null;
+      account_kind: "bank" | "credit_card" | "loan" | "cash" | "investment";
     }>();
 
   if (!entry) {
@@ -1337,6 +1438,7 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
     .first<{ id: string; split_group_id: string | null }>();
   const splitExpenseId = existingSplit?.id ?? `split-expense-${Date.now()}`;
   const splitGroupId = input.splitGroupId === undefined ? existingSplit?.split_group_id ?? null : input.splitGroupId || null;
+  await assertSplitGroupCurrency(db, splitGroupId, entry.currency);
   const batchId = await getOrCreateActiveSplitBatch(db, {
     groupId: splitGroupId,
     date: entry.transaction_date
@@ -1361,7 +1463,7 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
         entry.amount_minor,
         entry.currency,
         entry.amount_minor,
-        "card",
+        paymentMethodForLinkedAccount(entry.account_kind, "other"),
         "certified",
         entry.note,
         splitExpenseId,
@@ -1390,7 +1492,7 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
         entry.amount_minor,
         entry.currency,
         entry.amount_minor,
-        "card",
+        paymentMethodForLinkedAccount(entry.account_kind, "other"),
         "certified",
         entry.note,
         entry.id

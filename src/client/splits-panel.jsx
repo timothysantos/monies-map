@@ -110,7 +110,10 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     visibleMatches
   } = splitModel;
   const settlementCheckpoints = splitsPage.settlementCheckpoints ?? [];
-  const activeCheckpoint = settlementCheckpoints.find((checkpoint) => !["reopened", "voided"].includes(checkpoint.status));
+  const activeCheckpoint = settlementCheckpoints.find((checkpoint) =>
+    !["reopened", "voided"].includes(checkpoint.status)
+    && checkpoint.currency === (activeGroup?.currency ?? "SGD")
+  );
   const checkpointHasOverpayment = Boolean(activeCheckpoint && activeCheckpoint.matchedAmountMinor > activeCheckpoint.amountMinor);
   const {
     expenseDialog,

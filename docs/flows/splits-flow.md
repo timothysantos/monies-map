@@ -50,7 +50,7 @@ Splits owns:
 - split creation
 - matching
 - settle-up behavior
-- settlement simplification across groups
+- settlement simplification across groups of the same currency
 - checkpoint reopen and late/backdated activity handling
 - reversible split deletion and restore from activity history
 - travel currency and payment-evidence review
@@ -80,3 +80,7 @@ Watch area:
   content rides the main splits payload
 - split settle and linked-entry flows should stay narrow unless the mutation
   truly changes shared ledger evidence
+- `Settle group` closes only the selected group's current batch and does not
+  create a checkpoint; simplification remains optional
+- active simplified checkpoints are scoped by currency, so an SGD checkpoint
+  does not block an independent JPY checkpoint

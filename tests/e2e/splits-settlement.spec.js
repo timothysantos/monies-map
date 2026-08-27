@@ -11,9 +11,14 @@ test("recording a settlement closes the open batch and archives it", async ({ pa
 
   const archiveTrigger = page.locator(".split-archive-trigger");
   await expect(archiveTrigger).toContainText("No settled batches yet");
+  await expect(page.getByRole("button", { name: "Settle group" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Simplify settlement" })).toBeVisible();
 
   await page.locator("article.panel-splits .panel-head .split-settle-header").click();
   const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("Record payment for this group only");
+  await expect(dialog).toContainText("Simplify settlement remains optional");
+  await expect(dialog).toContainText("open groups in the same currency");
   await dialog.getByLabel("Note").fill(note);
   await dialog.getByRole("button", { name: "Save settlement" }).click();
 

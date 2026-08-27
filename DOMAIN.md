@@ -49,6 +49,9 @@ copy, or docs:
   certification.
 - Use `FX evidence` for an explicit rate used to compare different currencies.
   Never net currencies without it.
+- Use `group settlement` for payment that closes only one split group's
+  current batch. Use `simplified settlement checkpoint` for the optional
+  netting of open groups in one currency; these are separate workflows.
 - Use `split activity history` for the household-scoped, chronological record of
   reversible split changes. Deleted split records are archived rather than
   destroyed so users can restore the original record and relationships.
@@ -585,6 +588,9 @@ Relationships:
 - may belong to one `split group`
 - has many `split expenses`
 - has many `split settlements`
+
+A group settlement closes only the selected group's current batch. It does not
+create a simplified settlement checkpoint or change another group's balance.
 
 ### Split Expense
 

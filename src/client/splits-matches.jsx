@@ -32,20 +32,28 @@ export function SplitMatchesList({ matches, pendingMatchCount, onBackToGroup, on
                   date={match.splitDate}
                   description={match.splitDescription}
                   amountMinor={match.splitAmountMinor}
+                  currency={match.splitCurrency}
                 />
                 <SplitMatchSide
                   label={messages.splits.importedLedgerRow}
                   date={match.transactionDate}
                   description={match.transactionDescription}
                   amountMinor={match.amountMinor}
+                  currency={match.transactionCurrency}
                 />
               </div>
-              <p className="split-match-deltas">
-                {messages.splits.matchDeltaSummary(
-                  match.dateDeltaDays,
-                  formatService.money(match.amountDeltaMinor)
-                )}
-              </p>
+              {match.requiresFxReview ? (
+                <p className="split-match-deltas">
+                  {match.dateDeltaDays} day{match.dateDeltaDays === 1 ? "" : "s"} apart. Confirm this conversion to store the final {match.transactionCurrency} ledger amount and FX evidence. The original {match.splitCurrency} split and shares will stay unchanged.
+                </p>
+              ) : (
+                <p className="split-match-deltas">
+                  {messages.splits.matchDeltaSummary(
+                    match.dateDeltaDays,
+                    formatService.money(match.amountDeltaMinor)
+                  )}
+                </p>
+              )}
             </div>
             <div className="split-match-actions">
               <button type="button" className="subtle-action" onClick={() => onDismissMatch(match.id)}>
@@ -64,12 +72,12 @@ export function SplitMatchesList({ matches, pendingMatchCount, onBackToGroup, on
   );
 }
 
-function SplitMatchSide({ label, date, description, amountMinor }) {
+function SplitMatchSide({ label, date, description, amountMinor, currency = "SGD" }) {
   return (
     <div className="split-match-side">
       <span>{label}</span>
       <strong>{description}</strong>
-      <p>{messages.common.triplet(formatService.formatDate(date), formatService.money(amountMinor))}</p>
+      <p>{messages.common.triplet(formatService.formatDate(date), new Intl.NumberFormat("en-SG", { style: "currency", currency }).format(amountMinor / 100))}</p>
     </div>
   );
 }

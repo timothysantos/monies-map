@@ -113,6 +113,11 @@ stored, user-supplied FX rate and records both the ledger amount and converted
 checkpoint amount. Foreign card expenses can remain awaiting statement
 certification, and cash expenses do not require a ledger link.
 
+Group settlement and simplification are separate commands. A group settlement
+closes only the selected group's active batch and creates no checkpoint.
+Simplification may create one active checkpoint per currency, allowing an SGD
+and JPY obligation to progress independently without cross-currency netting.
+
 Split deletion is reversible: the source expense or settlement is soft-deleted
 with `deleted_at`, and `split_activity_history` records the deletion and later
 restore. The history projection is household-scoped and available from the

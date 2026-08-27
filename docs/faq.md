@@ -2138,6 +2138,15 @@ because a rejected Cloudflare request should be retried as smaller batches
 rather than leaving a partial ledger import.
 # Splits and Travel
 
+A group can be settled by itself. Use **Settle group** to record payment and
+close only the selected group's current batch. This does not create a
+simplified checkpoint and does not touch balances in other groups.
+
+**Simplify settlement** is optional and only combines open groups that share
+the same currency. JPY and SGD obligations remain separate unless each is
+settled with its own evidence. A JPY settle-up can still be linked to an SGD
+bank transfer after reviewing the derived FX rate.
+
 ## Can I record a foreign-currency trip?
 
 Yes. Create the split group in the trip currency and keep each original amount
