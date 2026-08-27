@@ -333,8 +333,11 @@ export function App() {
     ?? appShell?.household?.people?.[0]?.id
     ?? appShell?.selectedViewId
     ?? "household";
+  const splitsViewNeedsPerson = selectedTabId === "splits"
+    && selectedViewId === "household"
+    && defaultSplitsViewId !== "household";
   const routeViewId = resolveRouteViewId(
-    selectedViewId,
+    splitsViewNeedsPerson ? defaultSplitsViewId : selectedViewId,
     appShell,
     selectedTabId === "splits" ? defaultSplitsViewId : undefined
   );
@@ -2614,7 +2617,7 @@ export function App() {
     }
 
     if (selectedTabId === "splits") {
-      if (!explicitViewId && defaultSplitsViewId && defaultSplitsViewId !== selectedViewId) {
+      if ((!explicitViewId || selectedViewId === "household") && defaultSplitsViewId && defaultSplitsViewId !== selectedViewId) {
         setSearchParams((current) => {
           const currentViewId = current.get("view");
           if (currentViewId && currentViewId !== "household") {
