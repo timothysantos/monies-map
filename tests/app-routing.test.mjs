@@ -31,6 +31,7 @@ test("resolveRouteViewId replaces stale placeholder views before a page request"
   };
 
   assert.equal(resolveRouteViewId("person-primary", shell), "household");
+  assert.equal(resolveRouteViewId("person-primary", shell, "person-tim"), "person-tim");
   assert.equal(resolveRouteViewId("person-tim", shell), "person-tim");
 });
 
