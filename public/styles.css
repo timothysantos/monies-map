@@ -4702,6 +4702,14 @@ button.split-activity-card:hover {
   padding-left: 9px;
 }
 
+.panel-splits .split-history-trigger { margin-left: auto; }
+.split-history-list { display: grid; gap: 8px; max-height: min(60vh, 520px); overflow: auto; }
+.split-history-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border: 1px solid rgba(177, 94, 47, 0.2); border-radius: 8px; background: rgba(255, 255, 255, 0.5); }
+.split-history-row div { min-width: 0; display: grid; gap: 4px; }
+.split-history-row strong { overflow: hidden; text-overflow: ellipsis; }
+.split-history-row small { color: var(--muted); }
+.split-history-row button { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+
 .panel-splits .split-payment-marker {
   color: #8a4d2c;
   font-size: 0.78rem;

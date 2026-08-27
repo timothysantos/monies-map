@@ -113,6 +113,13 @@ stored, user-supplied FX rate and records both the ledger amount and converted
 checkpoint amount. Foreign card expenses can remain awaiting statement
 certification, and cash expenses do not require a ledger link.
 
+Split deletion is reversible: the source expense or settlement is soft-deleted
+with `deleted_at`, and `split_activity_history` records the deletion and later
+restore. The history projection is household-scoped and available from the
+splits page; restoring reactivates the original record and relationships rather
+than creating a replacement. Settlement checkpoint membership is not rewritten
+by either operation.
+
 Rules:
 
 - each slice should expose a small public surface

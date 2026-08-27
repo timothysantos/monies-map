@@ -16,6 +16,7 @@ import {
   loadSplitMatchCandidates,
   loadSplitSettlements,
   loadSplitSettlementCheckpoints,
+  loadSplitActivityHistory,
   loadSummaryMonths
 } from "../app-repository";
 import {
@@ -32,12 +33,13 @@ export async function buildSplitsPageDto(
 ): Promise<{ viewId: string; label: string; monthPage: ReturnType<typeof buildMonthPage>; splitsPage: ReturnType<typeof buildSplitsPage> }> {
   const { categories, trackedMonths, viewId, label, personNameById } = await loadRoutePageContext(db, selectedViewId);
   const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
-  const [splitGroups, splitExpenses, splitSettlements, splitMatches, settlementCheckpoints, monthEntries, monthPlanRows, incomeRows, summaryMonths] = await Promise.all([
+  const [splitGroups, splitExpenses, splitSettlements, splitMatches, settlementCheckpoints, activityHistory, monthEntries, monthPlanRows, incomeRows, summaryMonths] = await Promise.all([
     loadSplitGroups(db),
     loadSplitExpenses(db, effectiveSelectedMonth),
     loadSplitSettlements(db, effectiveSelectedMonth),
     loadSplitMatchCandidates(db, effectiveSelectedMonth),
     loadSplitSettlementCheckpoints(db),
+    loadSplitActivityHistory(db),
     loadEntries(db, effectiveSelectedMonth),
     loadMonthPlanRows(db, effectiveSelectedMonth),
     loadMonthIncomeRows(db, viewId, effectiveSelectedMonth),
@@ -66,6 +68,6 @@ export async function buildSplitsPageDto(
       effectiveSelectedMonth,
       currentSummaryMonth
     ),
-    splitsPage: buildSplitsPage(viewId, splitGroups, splitExpenses, splitSettlements, splitMatches, categories, effectiveSelectedMonth, personNameById, settlementCheckpoints)
+    splitsPage: buildSplitsPage(viewId, splitGroups, splitExpenses, splitSettlements, splitMatches, categories, effectiveSelectedMonth, personNameById, settlementCheckpoints, activityHistory)
   };
 }

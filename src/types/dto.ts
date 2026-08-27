@@ -382,6 +382,22 @@ export interface SplitsPageDto {
   matches: SplitMatchCandidateDto[];
   donutChart: DonutChartDatumDto[];
   settlementCheckpoints: SplitSettlementCheckpointDto[];
+  activityHistory: SplitActivityHistoryDto[];
+}
+
+export interface SplitActivityHistoryDto {
+  id: string;
+  recordKind: "expense" | "settlement";
+  recordId: string;
+  action: "created" | "updated" | "deleted" | "restored";
+  groupId?: string;
+  groupName?: string;
+  description: string;
+  amountMinor: number;
+  currency: string;
+  occurredAt: string;
+  detail?: string;
+  canRestore: boolean;
 }
 
 export interface MonthPlanRowDto {

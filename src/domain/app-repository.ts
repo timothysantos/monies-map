@@ -100,6 +100,7 @@ export {
   loadSplitMatchCandidates,
   loadSplitSettlements,
   loadSplitSettlementCheckpoints,
+  loadSplitActivityHistory,
   matchSplitSettlementCheckpoint,
   unmatchSplitSettlementCheckpoint,
   reopenSplitSettlementCheckpoint,
@@ -108,7 +109,8 @@ export {
   updateSplitExpenseNoteRecord,
   upsertLinkedSplitExpenseForEntryRecord,
   updateSplitSettlementNoteRecord,
-  updateSplitSettlementRecord
+  updateSplitSettlementRecord,
+  restoreSplitRecord
 } from "./app-repository-splits";
 export {
   archiveAccountRecord,
@@ -866,6 +868,25 @@ export async function ensureDemoSchema(db: D1Database) {
     `)
     .run();
 
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS split_activity_history (
+      id TEXT PRIMARY KEY,
+      household_id TEXT NOT NULL,
+      record_kind TEXT NOT NULL CHECK (record_kind IN ('expense', 'settlement')),
+      record_id TEXT NOT NULL,
+      action TEXT NOT NULL CHECK (action IN ('created', 'updated', 'deleted', 'restored')),
+      group_id TEXT,
+      group_name TEXT,
+      description TEXT NOT NULL,
+      amount_minor INTEGER NOT NULL,
+      currency TEXT NOT NULL DEFAULT 'SGD',
+      occurred_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      detail TEXT,
+      FOREIGN KEY (household_id) REFERENCES households(id)
+    )
+  `).run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_split_activity_history_household_time ON split_activity_history (household_id, occurred_at DESC, id DESC)").run();
+
   const snapshotColumns = await db
     .prepare("PRAGMA table_info(monthly_snapshots)")
     .all<{ name: string }>();
@@ -895,6 +916,9 @@ export async function ensureDemoSchema(db: D1Database) {
       await db.prepare(`ALTER TABLE split_expenses ADD COLUMN ${column[0]} ${column[1]}`).run();
     }
   }
+  if (splitExpenseColumns.results.length > 0 && !splitExpenseColumns.results.some((item) => item.name === "deleted_at")) {
+    await db.prepare("ALTER TABLE split_expenses ADD COLUMN deleted_at TEXT").run();
+  }
 
   const splitSettlementColumns = await db.prepare("PRAGMA table_info(split_settlements)").all<{ name: string }>();
   if (splitSettlementColumns.results.length > 0 && !splitSettlementColumns.results.some((column) => column.name === "split_batch_id")) {
@@ -909,6 +933,9 @@ export async function ensureDemoSchema(db: D1Database) {
     if (splitSettlementColumns.results.length > 0 && !splitSettlementColumns.results.some((item) => item.name === column[0])) {
       await db.prepare(`ALTER TABLE split_settlements ADD COLUMN ${column[0]} ${column[1]}`).run();
     }
+  }
+  if (splitSettlementColumns.results.length > 0 && !splitSettlementColumns.results.some((item) => item.name === "deleted_at")) {
+    await db.prepare("ALTER TABLE split_settlements ADD COLUMN deleted_at TEXT").run();
   }
 
   const splitSettlementCheckpointColumns = await db.prepare("PRAGMA table_info(split_settlement_checkpoints)").all<{ name: string }>();
@@ -1186,6 +1213,7 @@ async function reassignPersonReferences(db: D1Database, fromPersonId: string, to
 export async function clearDemoData(db: D1Database) {
   await db.prepare("PRAGMA defer_foreign_keys = ON").run();
   const deletions = [
+    "DELETE FROM split_activity_history",
     "DELETE FROM split_settlement_checkpoint_items",
     "DELETE FROM split_settlement_checkpoint_matches",
     "DELETE FROM split_settlement_checkpoints",
