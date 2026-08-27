@@ -32,7 +32,7 @@ const SPLIT_CURRENCY_OPTIONS = [
 ];
 
 // SplitsPanel owns the draft state; these dialogs keep the long JSX out of the panel body.
-export function SplitGroupDialog({ dialog, formError, isSubmitting, onChange, onClose, onSave }) {
+export function SplitGroupDialog({ dialog, formError, isSubmitting, readOnly = false, onChange, onClose, onSave }) {
   return (
     <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
