@@ -85,6 +85,12 @@ expense or fake ledger entry. If the result is non-zero, the next action is
 `Match transfer` when a bank row exists, otherwise the checkpoint remains
 `Open`.
 
+The shipped splits layout keeps the settlement status layer immediately before
+the chronological activity list. It provides `View included activity`, keeps
+archive access beside the list, and marks included rows in the timeline. The
+status layer and all of its controls use the splits palette rather than global
+button styles, with a responsive stacked layout on mobile.
+
 ## Scenario Matrix
 
 | Scenario | Expected result | Current status |
@@ -98,8 +104,8 @@ expense or fake ledger entry. If the result is non-zero, the next action is
 | Overpayment across transfers | Exception, never silent close | Implemented; endpoint/UI |
 | Duplicate reuse of same ledger row | Reject second match | Implemented |
 | Unrelated same-amount transfer | Remains unmatched | Not implemented |
-| Backdated row in newer batch | Open after settlement | Pure policy test; UI label missing |
-| Same-date row added later | New batch membership wins | Not implemented end to end |
+| Backdated row in newer batch | Open after settlement | Implemented; record marker and batch membership |
+| Same-date row added later | New batch membership wins | Implemented by record membership |
 | Edit included row after match | Require reopen/recompute | Not implemented |
 | Delete included row after match | Require reopen/recompute | Not implemented |
 | Undo/reopen | History retained; balance reopens | Implemented |

@@ -57,6 +57,8 @@ test("simplified settlement checkpoints preserve backdated additions and can reo
 
   await page.reload();
   await expect(page.locator(".split-checkpoint-panel")).toContainText("Simplified settlement");
+  await expect(page.locator(".split-checkpoint-panel").locator(".split-checkpoint-view-action")).toBeVisible();
+  expect(await page.locator(".split-checkpoint-panel").evaluate((element) => element.compareDocumentPosition(document.querySelector(".split-activity-list")) & Node.DOCUMENT_POSITION_FOLLOWING)).toBeTruthy();
   await page.locator("select[aria-label='Transfer to match']").selectOption(firstTransfer.entryId);
   await page.getByRole("button", { name: "Match transfer" }).click();
   await expect(page.locator(".split-checkpoint-panel")).toContainText("partially matched");
@@ -64,6 +66,7 @@ test("simplified settlement checkpoints preserve backdated additions and can reo
   await page.getByRole("button", { name: "Match transfer" }).click();
   await expect(page.locator(".split-checkpoint-panel")).toContainText("matched");
   await expect(page.locator(".split-checkpoint-transfer")).toHaveCount(2);
+  await expect(page.locator(".split-settlement-marker").first()).toContainText("Included in simplified settlement");
   await page.locator(".split-checkpoint-transfer").first().getByRole("button", { name: "Remove" }).click();
   await expect(page.locator(".split-checkpoint-panel")).toContainText("partially matched");
   const checkpointed = await loadSplitsPage(page, { view: "person-tim", month });
