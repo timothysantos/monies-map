@@ -242,6 +242,20 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     });
   }
 
+  function scrollToSettlementActivity() {
+    const targetId = activeCheckpoint?.includedRecordIds?.find((recordId) => (
+      document.getElementById(splitActivityDomId("expense", recordId)) ||
+      document.getElementById(splitActivityDomId("settlement", recordId))
+    ));
+    if (!targetId || typeof window === "undefined") {
+      return;
+    }
+
+    const element = document.getElementById(splitActivityDomId("expense", targetId))
+      ?? document.getElementById(splitActivityDomId("settlement", targetId));
+    element?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+
   function closeExpenseDialogAndReturn() {
     const returnToSplitId = returnToSplitIdRef.current || expenseDialog?.id || "";
     closeExpenseDialog();
@@ -844,6 +858,52 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     />
   );
   const splitSummaryToolbar = renderSplitActions("split-head-actions split-summary-toolbar");
+  const splitSettlementStatus = activeCheckpoint ? (
+    <section className={`split-checkpoint-panel is-${activeCheckpoint.status}`} aria-live="polite">
+      <div className="split-checkpoint-summary">
+        <div className="split-checkpoint-heading">
+          <span className="split-checkpoint-kicker">Settlement status</span>
+          <strong>{activeCheckpoint.status === "internally_offset" ? "Groups internally offset" : "Simplified settlement"}</strong>
+        </div>
+        <p>
+          {checkpointHasOverpayment
+            ? "Matched transfers exceed the checkpoint. Review the difference before considering this settled."
+            : activeCheckpoint.amountMinor === 0
+            ? "The included groups now net to zero. No bank transfer is needed."
+            : `${activeCheckpoint.fromPersonName} pays ${activeCheckpoint.toPersonName} ${new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(activeCheckpoint.amountMinor / 100)}.`}
+        </p>
+        <small>{activeCheckpoint.includedRecordCount} included split records · {activeCheckpoint.matchedAmountMinor > 0 ? `${new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(activeCheckpoint.matchedAmountMinor / 100)} matched · ` : ""}{activeCheckpoint.status.replaceAll("_", " ")}</small>
+      </div>
+      <div className="split-checkpoint-navigation">
+        <button type="button" className="split-checkpoint-view-action" onClick={scrollToSettlementActivity}>
+          View included activity
+        </button>
+        <span className="split-checkpoint-navigation-hint">Included rows are marked in the timeline below.</span>
+      </div>
+      {activeCheckpoint.matchedTransfers?.length ? (
+        <div className="split-checkpoint-transfers" aria-label="Matched transfers">
+          {activeCheckpoint.matchedTransfers.map((transfer) => (
+            <div className="split-checkpoint-transfer" key={transfer.transactionId}>
+              <span>{transfer.description} · {new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(transfer.amountMinor / 100)}</span>
+              <button type="button" className="subtle-action" onClick={() => void unmatchCheckpoint(transfer.transactionId)} disabled={isCheckpointing}>Remove</button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {activeCheckpoint.amountMinor !== 0 && activeCheckpoint.status !== "matched" ? (
+        <div className="split-checkpoint-actions">
+          <select aria-label="Transfer to match" value={checkpointTransferId} onChange={(event) => setCheckpointTransferId(event.target.value)}>
+            <option value="">Match a transfer...</option>
+            {(view.monthPage?.entries ?? []).filter((entry) => entry.entryType === "transfer" && !(activeCheckpoint.matchedTransfers ?? []).some((transfer) => transfer.transactionId === entry.id)).map((entry) => (
+              <option key={entry.id} value={entry.id}>{entry.description} · {new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(entry.amountMinor / 100)}</option>
+            ))}
+          </select>
+          <button type="button" className="subtle-action" onClick={() => void matchCheckpoint()} disabled={!checkpointTransferId || isCheckpointing}>Match transfer</button>
+        </div>
+      ) : null}
+      <button type="button" className="subtle-action split-checkpoint-reopen" onClick={() => void reopenSettlement()} disabled={isCheckpointing}>Reopen settlement</button>
+    </section>
+  ) : null;
 
   return (
     <article className="panel panel-accent panel-splits">
@@ -913,45 +973,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onRefreshActivity={() => onRefresh()}
         viewId={view.id}
         isRefreshingDerived={isRefreshingDerived}
+        settlementStatus={splitSettlementStatus}
       />
-
-      {activeCheckpoint ? (
-        <section className={`split-checkpoint-panel is-${activeCheckpoint.status}`} aria-live="polite">
-          <div>
-            <strong>{activeCheckpoint.status === "internally_offset" ? "Groups internally offset" : "Simplified settlement"}</strong>
-            <p>
-              {checkpointHasOverpayment
-                ? "Matched transfers exceed the checkpoint. Review the difference before considering this settled."
-                : activeCheckpoint.amountMinor === 0
-                ? "The included groups now net to zero. No bank transfer is needed."
-                : `${activeCheckpoint.fromPersonName} pays ${activeCheckpoint.toPersonName} ${new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(activeCheckpoint.amountMinor / 100)}.`}
-            </p>
-            <small>{activeCheckpoint.includedRecordCount} included split records · {activeCheckpoint.matchedAmountMinor > 0 ? `${new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(activeCheckpoint.matchedAmountMinor / 100)} matched · ` : ""}{activeCheckpoint.status.replaceAll("_", " ")}</small>
-          </div>
-          {activeCheckpoint.matchedTransfers?.length ? (
-            <div className="split-checkpoint-transfers" aria-label="Matched transfers">
-              {activeCheckpoint.matchedTransfers.map((transfer) => (
-                <div className="split-checkpoint-transfer" key={transfer.transactionId}>
-                  <span>{transfer.description} · {new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(transfer.amountMinor / 100)}</span>
-                  <button type="button" className="subtle-action" onClick={() => void unmatchCheckpoint(transfer.transactionId)} disabled={isCheckpointing}>Remove</button>
-                </div>
-              ))}
-            </div>
-          ) : null}
-          {activeCheckpoint.amountMinor !== 0 && activeCheckpoint.status !== "matched" ? (
-            <div className="split-checkpoint-actions">
-              <select aria-label="Transfer to match" value={checkpointTransferId} onChange={(event) => setCheckpointTransferId(event.target.value)}>
-                <option value="">Match a transfer...</option>
-                {(view.monthPage?.entries ?? []).filter((entry) => entry.entryType === "transfer" && !(activeCheckpoint.matchedTransfers ?? []).some((transfer) => transfer.transactionId === entry.id)).map((entry) => (
-                  <option key={entry.id} value={entry.id}>{entry.description} · {new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(entry.amountMinor / 100)}</option>
-                ))}
-              </select>
-              <button type="button" className="subtle-action" onClick={() => void matchCheckpoint()} disabled={!checkpointTransferId || isCheckpointing}>Match transfer</button>
-            </div>
-          ) : null}
-          <button type="button" className="subtle-action" onClick={() => void reopenSettlement()} disabled={isCheckpointing}>Reopen settlement</button>
-        </section>
-      ) : null}
       {checkpointError ? <p className="form-error" role="alert">{checkpointError}</p> : null}
 
       <SplitArchiveDialog

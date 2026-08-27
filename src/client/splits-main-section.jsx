@@ -50,7 +50,8 @@ export function SplitsMainSection({
   onRefreshActivity,
   viewId,
   isRefreshingDerived = false,
-  readOnly = false
+  readOnly = false,
+  settlementStatus = null
 }) {
   // The group nav is rendered twice on desktop:
   // - inline inside the normal document flow
@@ -105,6 +106,8 @@ export function SplitsMainSection({
         isRefreshingDerived={isRefreshingDerived}
       />
 
+      {settlementStatus}
+
       {/* "matches" is a review mode; "entries" is the normal activity timeline. */}
       {selectedMode === "matches" ? (
         <SplitMatchesList
@@ -151,6 +154,21 @@ export function SplitsMainSection({
             onRefreshActivity={onRefreshActivity}
             viewId={viewId}
             readOnly={readOnly}
+            archiveControl={
+              <button
+                type="button"
+                className={`split-archive-trigger ${archivedBatches.length ? "" : "is-empty"}`}
+                onClick={archivedBatches.length ? onOpenArchive : undefined}
+                disabled={!archivedBatches.length}
+              >
+                <span>Archived batches</span>
+                <small>
+                  {archivedBatches.length
+                    ? `${archivedBatches.length} settled ${archivedBatches.length === 1 ? "batch" : "batches"}`
+                    : "No settled batches yet"}
+                </small>
+              </button>
+            }
           />
         </>
       )}

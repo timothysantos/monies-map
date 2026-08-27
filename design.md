@@ -48,6 +48,18 @@ How this relates to other docs:
   defines system-wide structure, staged refactor order, and data flow
 - this file defines practical implementation boundaries for client-side code
 
+## Splits Visual Contract
+
+The splits page owns a complete color contract for every new or updated
+surface. Keep section backgrounds, headings, body text, muted text, primary
+buttons, secondary buttons, link buttons, controls, focus states, status
+states, and disabled states scoped under `.panel-splits` (or a splits-owned
+component token). Every action must retain readable contrast against its
+actual background on desktop and mobile. New splits UI must be placed in the
+page hierarchy where the next user action is discoverable; long chronological
+lists must not hide status, archive access, or navigation actions below the
+fold.
+
 ## Apple Shortcut Install Boundary
 
 The Settings slice owns the Apple Pay shortcut install workflow. The display

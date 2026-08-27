@@ -24,7 +24,8 @@ export function SplitsActivitySection({
   onViewLinkedEntry,
   onRefreshActivity,
   viewId,
-  readOnly = false
+  readOnly = false,
+  archiveControl = null
 }) {
   return (
     <section className="split-list-section">
@@ -39,6 +40,7 @@ export function SplitsActivitySection({
         />
       ) : null}
       <div className="split-activity-list">
+        {archiveControl}
         {groupedCurrentActivity.length ? (
           <SplitActivityGroups
             groups={groupedCurrentActivity}
@@ -64,19 +66,6 @@ export function SplitsActivitySection({
         ) : null}
         {!groupedCurrentActivity.length && searchQuery ? <p className="lede compact">{messages.splits.noSearchResults}</p> : null}
         {!groupedCurrentActivity.length && !searchQuery && !archivedBatches.length ? <p className="lede compact">{messages.splits.noEntries}</p> : null}
-        <button
-          type="button"
-          className={`split-archive-trigger ${archivedBatches.length ? "" : "is-empty"}`}
-          onClick={archivedBatches.length ? onOpenArchive : undefined}
-          disabled={!archivedBatches.length}
-        >
-          <span>Archived batches</span>
-          <small>
-            {archivedBatches.length
-              ? `${archivedBatches.length} settled ${archivedBatches.length === 1 ? "batch" : "batches"}`
-              : "No settled batches yet"}
-          </small>
-        </button>
       </div>
     </section>
   );
