@@ -25,6 +25,17 @@ import type {
 
 const SPLIT_MATCH_DESCRIPTION_MAX_LENGTH = 240;
 
+function paymentMethodForLinkedAccount(
+  accountKind: "bank" | "credit_card" | "loan" | "cash" | "investment" | null | undefined,
+  fallback: SplitExpenseDto["paymentMethod"]
+): SplitExpenseDto["paymentMethod"] {
+  if (accountKind === "credit_card") return "card";
+  if (accountKind === "bank") return "bank";
+  if (accountKind === "cash") return "cash";
+  if (accountKind === "loan" || accountKind === "investment") return "other";
+  return fallback;
+}
+
 export async function loadSplitGroups(db: D1Database): Promise<SplitGroupDto[]> {
   const groups = await db
     .prepare(`
@@ -76,13 +87,15 @@ export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthK
         categories.name AS category_name,
         transactions.description AS linked_transaction_description,
         transactions.note AS linked_transaction_note,
-        linked_categories.name AS linked_transaction_category_name
+        linked_categories.name AS linked_transaction_category_name,
+        linked_accounts.account_kind AS linked_transaction_account_kind
       FROM split_expenses
       LEFT JOIN split_groups ON split_groups.id = split_expenses.split_group_id
       LEFT JOIN split_batches ON split_batches.id = split_expenses.split_batch_id
       INNER JOIN people AS payer ON payer.id = split_expenses.payer_person_id
       LEFT JOIN categories ON categories.id = split_expenses.category_id
       LEFT JOIN transactions ON transactions.id = split_expenses.linked_transaction_id
+      LEFT JOIN accounts AS linked_accounts ON linked_accounts.id = transactions.account_id
       LEFT JOIN categories AS linked_categories ON linked_categories.id = transactions.category_id
       WHERE split_expenses.household_id = ? AND split_expenses.deleted_at IS NULL
       ORDER BY split_expenses.expense_date DESC, split_expenses.created_at DESC
@@ -111,6 +124,7 @@ export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthK
       linked_transaction_description: string | null;
       linked_transaction_note: string | null;
       linked_transaction_category_name: string | null;
+      linked_transaction_account_kind: "bank" | "credit_card" | "loan" | "cash" | "investment" | null;
     }>();
 
   const shares = await db
@@ -163,7 +177,7 @@ export async function loadSplitExpenses(db: D1Database, month = getCurrentMonthK
     currency: normalizeSplitCurrency(row.currency),
     homeAmountMinor: row.home_amount_minor ?? undefined,
     fxRateBasisPoints: row.fx_rate_basis_points ?? undefined,
-    paymentMethod: row.payment_method ?? "cash",
+    paymentMethod: paymentMethodForLinkedAccount(row.linked_transaction_account_kind, row.payment_method ?? "cash"),
     paymentStatus: row.payment_status ?? "recorded",
     note: row.note ?? undefined,
     linkedTransactionId: row.linked_transaction_id ?? undefined,
@@ -198,13 +212,15 @@ export async function loadSplitSettlements(db: D1Database, month = getCurrentMon
         to_person.display_name AS to_person_name,
         transactions.description AS linked_transaction_description,
         transactions.note AS linked_transaction_note,
-        linked_categories.name AS linked_transaction_category_name
+        linked_categories.name AS linked_transaction_category_name,
+        linked_accounts.account_kind AS linked_transaction_account_kind
       FROM split_settlements
       LEFT JOIN split_groups ON split_groups.id = split_settlements.split_group_id
       LEFT JOIN split_batches ON split_batches.id = split_settlements.split_batch_id
       INNER JOIN people AS from_person ON from_person.id = split_settlements.from_person_id
       INNER JOIN people AS to_person ON to_person.id = split_settlements.to_person_id
       LEFT JOIN transactions ON transactions.id = split_settlements.linked_transaction_id
+      LEFT JOIN accounts AS linked_accounts ON linked_accounts.id = transactions.account_id
       LEFT JOIN categories AS linked_categories ON linked_categories.id = transactions.category_id
       WHERE split_settlements.household_id = ? AND split_settlements.deleted_at IS NULL
       ORDER BY split_settlements.settlement_date DESC, split_settlements.created_at DESC
@@ -232,6 +248,7 @@ export async function loadSplitSettlements(db: D1Database, month = getCurrentMon
       linked_transaction_description: string | null;
       linked_transaction_note: string | null;
       linked_transaction_category_name: string | null;
+      linked_transaction_account_kind: "bank" | "credit_card" | "loan" | "cash" | "investment" | null;
     }>();
 
   return settlements.results.map((row) => ({
@@ -249,7 +266,7 @@ export async function loadSplitSettlements(db: D1Database, month = getCurrentMon
     amountMinor: row.amount_minor,
     currency: normalizeSplitCurrency(row.currency),
     fxRateBasisPoints: row.fx_rate_basis_points ?? undefined,
-    paymentMethod: row.payment_method ?? "cash",
+    paymentMethod: paymentMethodForLinkedAccount(row.linked_transaction_account_kind, row.payment_method ?? "cash"),
     paymentStatus: row.payment_status ?? "recorded",
     note: row.note ?? undefined,
     linkedTransactionId: row.linked_transaction_id ?? undefined,

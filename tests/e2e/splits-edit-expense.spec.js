@@ -72,6 +72,48 @@ test("editing a linked split note can update the connected entry note", async ({
   expect(updatedEntry?.note).toBe(syncedNote);
 });
 
+test("linked split payment method is derived from the ledger account and locked", async ({ page }) => {
+  const month = "2026-04";
+
+  await page.goto("/");
+  await reseedDemo(page);
+  const entry = await postJson(page, "/api/entries/create", {
+    date: `${month}-24`,
+    description: `Linked payment method ${Date.now()}`,
+    accountName: "UOB One",
+    categoryName: "Food & Drinks",
+    amountMinor: 2550,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+  const splitData = await postJson(page, "/api/splits/expenses/from-entry", {
+    entryId: entry.entryId,
+    splitGroupId: null
+  });
+
+  await page.goto(`/splits?view=person-tim&month=${month}&editing_split_expense=${splitData.splitExpenseId}`);
+  const editDialog = page.getByRole("dialog", { name: "Edit split" });
+  await expect(editDialog.getByText("Paid using (ledger)")).toBeVisible();
+  const paymentMethod = editDialog.getByRole("combobox", { name: "Paid using (ledger)" });
+  await expect(paymentMethod).toBeDisabled();
+  await expect(paymentMethod).toHaveValue("card");
+});
+
+test("mobile split drawer keeps actions visible and cues the scrollable fields", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await reseedDemo(page);
+  await page.goto("/splits?view=person-tim&month=2025-10&editing_split_expense=split-expense-baby-river-family");
+
+  const dialog = page.getByRole("dialog", { name: "Edit split" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator(".split-dialog-scroll-cue")).toBeVisible();
+  await expect(dialog.locator(".split-dialog-scroll")).toHaveCSS("overflow-y", "auto");
+  await expect(dialog.locator(".dialog-actions")).toHaveCSS("position", "sticky");
+  await expect(dialog.getByRole("button", { name: "Save expense" })).toBeVisible();
+});
+
 test("editing a linked split category can update the connected entry category", async ({ page }) => {
   const month = "2026-04";
   const description = `Playwright split linked category ${Date.now()}`;

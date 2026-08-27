@@ -3062,6 +3062,49 @@ body:has(.split-inline-editor-card) .splits-fab {
   box-shadow: 0 24px 58px rgba(27, 24, 21, 0.16);
 }
 
+.split-dialog-content:has(> form) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.split-dialog-content > form {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.split-dialog-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 2px 8px 0;
+  scrollbar-gutter: stable;
+}
+
+.split-dialog-scroll-cue {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin: -2px 0 8px;
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.split-dialog-content > form > .dialog-actions {
+  position: sticky;
+  bottom: -22px;
+  z-index: 2;
+  margin: 8px -22px -22px;
+  padding: 14px 22px calc(14px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(177, 94, 47, 0.14);
+  background: rgba(255, 252, 249, 0.98);
+  box-shadow: 0 -10px 20px rgba(71, 45, 30, 0.08);
+}
+
 .entry-split-picker-dialog {
   width: min(460px, calc(100vw - 40px));
   overflow: visible;
@@ -9428,7 +9471,7 @@ th {
     right: 12px;
     width: auto;
     max-height: calc(100dvh - 128px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-    overflow-y: auto;
+    overflow: hidden;
     transform: translateY(-50%);
     padding: 18px;
   }
@@ -9443,7 +9486,7 @@ th {
     display: flex;
     flex-direction: column;
     overflow-x: hidden;
-    overflow-y: auto;
+    overflow: hidden;
     transform: none;
     padding: 18px 16px 0;
     border-radius: 24px 24px 0 0;
@@ -9453,6 +9496,21 @@ th {
     background:
       linear-gradient(180deg, rgba(255, 252, 249, 0.995), rgba(255, 255, 255, 0.99) 56%, rgba(250, 239, 230, 0.96)),
       radial-gradient(circle at top right, rgba(177, 94, 47, 0.08), transparent 42%);
+  }
+
+  .split-dialog-content > form {
+    flex: 1 1 auto;
+  }
+
+  .split-dialog-scroll {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 0 2px calc(12px + env(safe-area-inset-bottom, 0px)) 0;
+    box-shadow: inset 0 -16px 18px -22px rgba(71, 45, 30, 0.7);
+  }
+
+  .split-dialog-scroll-cue {
+    display: flex;
   }
 
   .note-dialog-content textarea.table-edit-textarea,
@@ -9669,8 +9727,13 @@ th {
 
   .entry-mobile-sheet .entry-inline-actions,
   .split-dialog-content .dialog-actions {
-    position: static;
-    background: transparent;
+    position: sticky;
+    bottom: 0;
+    margin: 0 -16px;
+    padding-right: 16px;
+    padding-left: 16px;
+    background: rgba(255, 252, 249, 0.98);
+    box-shadow: 0 -10px 20px rgba(71, 45, 30, 0.08);
   }
 
   .entry-mobile-sheet-actions {

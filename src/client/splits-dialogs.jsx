@@ -1,4 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
+import { ChevronDown } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { messages } from "./copy/en-SG";
@@ -263,8 +264,8 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
             />
           </label>
           <label className="split-dialog-field">
-            <span>Paid using</span>
-            <select className="table-edit-input" value={dialog?.paymentMethod ?? "cash"} onChange={(event) => onChange((current) => current ? { ...current, paymentMethod: event.target.value } : current)}>
+            <span>{dialog?.linkedTransactionId ? "Paid using (ledger)" : "Paid using"}</span>
+            <select className="table-edit-input" value={dialog?.paymentMethod ?? "cash"} disabled={Boolean(dialog?.linkedTransactionId)} onChange={(event) => onChange((current) => current ? { ...current, paymentMethod: event.target.value } : current)}>
               <option value="cash">Cash</option><option value="card">Card</option><option value="bank">Bank</option><option value="other">Other</option>
             </select>
           </label>
@@ -355,8 +356,11 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
               <Dialog.Title>{dialog?.id ? messages.splits.editSplit : messages.splits.createExpense}</Dialog.Title>
               <Dialog.Description>Create or edit a split expense without touching the bank import workflow.</Dialog.Description>
             </div>
-            <SplitExpenseFields dialog={dialog} groupOptions={groupOptions} people={people} categoryOptions={categoryOptions} categories={categories} onChange={onChange} autoFocusAmount />
-            {formError ? <p className="form-error">{formError}</p> : null}
+            <div className="split-dialog-scroll">
+              <div className="split-dialog-scroll-cue"><ChevronDown size={15} /> More fields below</div>
+              <SplitExpenseFields dialog={dialog} groupOptions={groupOptions} people={people} categoryOptions={categoryOptions} categories={categories} onChange={onChange} autoFocusAmount />
+              {formError ? <p className="form-error">{formError}</p> : null}
+            </div>
             <div className="dialog-actions">
               {dialog?.id ? (
                 <button
@@ -480,8 +484,8 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
             />
           </label>
           <label className="split-dialog-field">
-            <span>Paid using</span>
-            <select className="table-edit-input" value={dialog?.paymentMethod ?? "cash"} onChange={(event) => onChange((current) => current ? { ...current, paymentMethod: event.target.value } : current)}>
+            <span>{dialog?.linkedTransactionId ? "Paid using (ledger)" : "Paid using"}</span>
+            <select className="table-edit-input" value={dialog?.paymentMethod ?? "cash"} disabled={Boolean(dialog?.linkedTransactionId)} onChange={(event) => onChange((current) => current ? { ...current, paymentMethod: event.target.value } : current)}>
               <option value="cash">Cash</option><option value="card">Card</option><option value="bank">Bank</option><option value="other">Other</option>
             </select>
           </label>
@@ -522,8 +526,11 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
               <Dialog.Title>{dialog?.id ? messages.splits.editSplit : messages.splits.createSettlement}</Dialog.Title>
               <Dialog.Description>Record or edit a settle-up and match the bank transfer later from the Matches view.</Dialog.Description>
             </div>
-            <SplitSettlementFields dialog={dialog} groupOptions={groupOptions} people={people} onChange={onChange} autoFocusAmount />
-            {formError ? <p className="form-error">{formError}</p> : null}
+            <div className="split-dialog-scroll">
+              <div className="split-dialog-scroll-cue"><ChevronDown size={15} /> More fields below</div>
+              <SplitSettlementFields dialog={dialog} groupOptions={groupOptions} people={people} onChange={onChange} autoFocusAmount />
+              {formError ? <p className="form-error">{formError}</p> : null}
+            </div>
             <div className="dialog-actions">
               {dialog?.id ? (
                 <button
