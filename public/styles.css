@@ -9598,7 +9598,6 @@ th {
     display: flex;
     flex-direction: column;
     min-height: 0;
-    overflow: hidden;
   }
 
   .entry-mobile-sheet-scroll {
