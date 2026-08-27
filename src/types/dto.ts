@@ -315,14 +315,18 @@ export interface SplitMatchCandidateDto {
   splitDate: string;
   splitDescription: string;
   splitAmountMinor: number;
+  splitCurrency?: string;
   transactionId: string;
   transactionDate: string;
   transactionDescription: string;
   amountMinor: number;
+  transactionCurrency?: string;
   amountDeltaMinor: number;
   dateDeltaDays: number;
   confidenceLabel: "High" | "Medium";
   reviewLabel: string;
+  requiresFxReview?: boolean;
+  fxRateBasisPoints?: number;
 }
 
 export interface SplitExpenseDto {

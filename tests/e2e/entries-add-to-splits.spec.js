@@ -202,7 +202,9 @@ test("newly added split can be viewed immediately and preserves the entries scop
   await splitsPageReady;
 
   await expect(page).toHaveURL(/\/splits\?/);
-  expect(new URL(page.url()).searchParams.get("view")).toBe("household");
+  // Splits intentionally has no household projection, so the route recovers to
+  // the primary person while preserving the rest of the entries handoff.
+  expect(new URL(page.url()).searchParams.get("view")).toBe("person-tim");
   expect(new URL(page.url()).searchParams.get("month")).toBe(month);
   expect(new URL(page.url()).searchParams.get("scope")).toBe("direct_plus_shared");
   await expect(page.getByRole("dialog")).toBeVisible({ timeout: 60_000 });
@@ -211,7 +213,7 @@ test("newly added split can be viewed immediately and preserves the entries scop
   await page.getByRole("dialog").getByRole("button", { name: "View entry" }).click();
   await expect(page).toHaveURL(/\/entries\?/);
   const returnUrl = new URL(page.url());
-  expect(returnUrl.searchParams.get("view")).toBe("household");
+  expect(returnUrl.searchParams.get("view")).toBe("person-tim");
   expect(returnUrl.searchParams.get("month")).toBe(month);
   expect(returnUrl.searchParams.get("entries_scope")).toBe("direct_plus_shared");
   expect(returnUrl.searchParams.get("editing_entry")).toBe(createdEntry.entryId);

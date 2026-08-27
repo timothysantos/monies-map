@@ -1432,13 +1432,17 @@ export default {
         return json({ ok: false, error: "Missing split expense match fields" }, 400);
       }
 
-      return json({
-        ...(await linkSplitExpenseMatch(env.DB, {
-          splitExpenseId: body.splitExpenseId,
-          transactionId: body.transactionId
-        })),
-        ok: true
-      });
+      try {
+        return json({
+          ...(await linkSplitExpenseMatch(env.DB, {
+            splitExpenseId: body.splitExpenseId,
+            transactionId: body.transactionId
+          })),
+          ok: true
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to link split expense" }, 400);
+      }
     }
 
     if (url.pathname === "/api/splits/matches/link-settlement" && request.method === "POST") {
@@ -1447,13 +1451,17 @@ export default {
         return json({ ok: false, error: "Missing split settlement match fields" }, 400);
       }
 
-      return json({
-        ...(await linkSplitSettlementMatch(env.DB, {
-          settlementId: body.settlementId,
-          transactionId: body.transactionId
-        })),
-        ok: true
-      });
+      try {
+        return json({
+          ...(await linkSplitSettlementMatch(env.DB, {
+            settlementId: body.settlementId,
+            transactionId: body.transactionId
+          })),
+          ok: true
+        });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to link split settlement" }, 400);
+      }
     }
 
     if (url.pathname === "/api/categories/update" && request.method === "POST") {

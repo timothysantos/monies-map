@@ -526,7 +526,9 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
           >
             <div className="note-dialog-head split-dialog-head">
               <Dialog.Title>{readOnly ? "View split" : (dialog?.id ? messages.splits.editSplit : messages.splits.createSettlement)}</Dialog.Title>
-              <Dialog.Description>{readOnly ? "Review the split and its linked ledger evidence." : "Record or edit a settle-up and match the bank transfer later from the Matches view."}</Dialog.Description>
+              <Dialog.Description>{readOnly
+                ? "Review the split and its linked ledger evidence."
+                : messages.splits.groupSettlementDetail(groupOptions.find((group) => group.value === dialog?.groupId)?.label)}</Dialog.Description>
             </div>
             <div className="split-dialog-scroll">
               <div className="split-dialog-scroll-cue"><ChevronDown size={15} /> More fields below</div>

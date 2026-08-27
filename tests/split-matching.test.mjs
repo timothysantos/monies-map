@@ -3,7 +3,9 @@ import test from "node:test";
 
 import {
   findBestSplitExpenseLedgerCandidate,
-  findBestSplitSettlementLedgerCandidate
+  findBestSplitSettlementLedgerCandidate,
+  findBestCrossCurrencySplitExpenseLedgerCandidate,
+  findBestCrossCurrencySplitSettlementLedgerCandidate
 } from "../src/domain/split-matching.ts";
 
 test("split expense matching prefers same amount, close date, and shared merchant words", () => {
@@ -95,4 +97,51 @@ test("split settlement matching accepts close transfer rows without merchant tex
   assert.equal(match?.row.id, "transfer");
   assert.equal(match?.dateDelta, 1);
   assert.equal(match?.amountDelta, 0);
+});
+
+test("cross-currency card matching uses merchant and date without comparing unlike amounts", () => {
+  const match = findBestCrossCurrencySplitExpenseLedgerCandidate(
+    {
+      id: "tokyo-meal",
+      date: "2026-08-10",
+      description: "Family ramen Ichiran",
+      totalAmountMinor: 20000,
+      paymentMethod: "card",
+      paymentStatus: "awaiting_statement"
+    },
+    [
+      { id: "too-far", transaction_date: "2026-08-18", description: "ICHIRAN TOKYO", amount_minor: 18250, entry_type: "expense" },
+      { id: "best", transaction_date: "2026-08-12", description: "ICHIRAN SHINJUKU JP", amount_minor: 18250, entry_type: "expense" }
+    ]
+  );
+
+  assert.equal(match?.row.id, "best");
+  assert.equal(match?.dateDelta, 2);
+  assert.equal(match?.overlap, 1);
+  assert.equal(match?.amountDelta, 0);
+});
+
+test("cross-currency expense matching rejects cash and already certified evidence", () => {
+  const row = [{ id: "ledger", transaction_date: "2026-08-10", description: "ICHIRAN TOKYO", amount_minor: 18250, entry_type: "expense" }];
+  assert.equal(findBestCrossCurrencySplitExpenseLedgerCandidate({
+    id: "cash", date: "2026-08-10", description: "Ichiran", totalAmountMinor: 20000,
+    paymentMethod: "cash", paymentStatus: "recorded"
+  }, row), undefined);
+  assert.equal(findBestCrossCurrencySplitExpenseLedgerCandidate({
+    id: "certified", date: "2026-08-10", description: "Ichiran", totalAmountMinor: 20000,
+    paymentMethod: "card", paymentStatus: "certified"
+  }, row), undefined);
+});
+
+test("cross-currency group settle-up matching requires pending bank evidence and a nearby transfer", () => {
+  const match = findBestCrossCurrencySplitSettlementLedgerCandidate(
+    { id: "tokyo-settle", date: "2026-08-20", amountMinor: 30000, paymentMethod: "bank", paymentStatus: "awaiting_statement" },
+    [
+      { id: "expense", transaction_date: "2026-08-20", description: "PAYNOW", amount_minor: 28000, entry_type: "expense" },
+      { id: "transfer", transaction_date: "2026-08-22", description: "PAYNOW JOYCE", amount_minor: 28000, entry_type: "transfer" }
+    ]
+  );
+
+  assert.equal(match?.row.id, "transfer");
+  assert.equal(match?.dateDelta, 2);
 });

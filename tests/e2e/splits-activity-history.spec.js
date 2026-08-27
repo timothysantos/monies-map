@@ -5,8 +5,12 @@ import { loadSplitsPage, postJson, reseedDemo } from "./helpers";
 test("deleted split expenses remain in history and restore with their original record", async ({ page }) => {
   await reseedDemo(page);
   const description = `History split ${Date.now()}`;
+  const group = await postJson(page, "/api/splits/groups/create", {
+    name: `History travel ${Date.now()}`,
+    currency: "JPY"
+  });
   const created = await postJson(page, "/api/splits/expenses/create", {
-    groupId: "split-group-okaeri",
+    groupId: group.splitGroupId,
     date: "2026-08-20",
     description,
     categoryName: "Food & Drinks",
