@@ -9746,16 +9746,20 @@ th {
   .split-dialog-content .dialog-actions {
     position: sticky;
     bottom: 0;
-    margin: 0 -16px;
+    left: 50%;
+    width: 100vw;
+    margin: 0;
+    transform: translateX(-50%);
     box-sizing: border-box;
-    padding-right: 16px;
-    padding-left: 16px;
+    padding: 14px 16px max(18px, env(safe-area-inset-bottom, 0px));
     background: rgba(255, 252, 249, 0.98);
     box-shadow: 0 -10px 20px rgba(71, 45, 30, 0.08);
+    border-left: 0;
+    border-right: 0;
   }
 
   .entry-mobile-sheet .entry-mobile-sheet-actions {
-    width: auto;
+    width: 100vw;
   }
 
   .entry-mobile-sheet .entry-mobile-sheet-actions button,
@@ -9769,10 +9773,8 @@ th {
 
   .split-dialog-content .dialog-actions {
     width: auto;
-    margin-right: -16px;
-    margin-left: -16px;
-    padding-right: 16px;
-    padding-left: 16px;
+    width: 100vw;
+    margin: 0;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
     gap: 8px;
