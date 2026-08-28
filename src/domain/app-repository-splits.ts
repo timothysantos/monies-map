@@ -51,10 +51,29 @@ function paymentMethodForLinkedAccount(
   return fallback;
 }
 
+async function assertSplitGroupExpenseSource(
+  db: D1Database,
+  groupId: string | null | undefined,
+  paymentMethod: SplitExpenseDto["paymentMethod"]
+) {
+  if (!groupId) return;
+  const group = await db.prepare("SELECT expense_source FROM split_groups WHERE id = ? AND household_id = ?")
+    .bind(groupId, DEFAULT_HOUSEHOLD_ID)
+    .first<{ expense_source: SplitGroupDto["expenseSource"] | null }>();
+  if (!group) throw new Error("Split group not found.");
+  const source = group.expense_source ?? "mixed";
+  if (source === "cash" && paymentMethod !== "cash") {
+    throw new Error("This group is Cash only. Record bank or card purchases in a Bank/card group.");
+  }
+  if (source === "ledger" && !["bank", "card"].includes(paymentMethod)) {
+    throw new Error("This group is for Bank/card purchases. Record cash purchases in a Cash-only group.");
+  }
+}
+
 export async function loadSplitGroups(db: D1Database): Promise<SplitGroupDto[]> {
   const groups = await db
     .prepare(`
-      SELECT id, group_name, icon_key, sort_order, currency
+      SELECT id, group_name, icon_key, sort_order, currency, expense_source
       FROM split_groups
       WHERE household_id = ?
       ORDER BY sort_order, group_name
@@ -66,6 +85,7 @@ export async function loadSplitGroups(db: D1Database): Promise<SplitGroupDto[]> 
       icon_key: string | null;
       sort_order: number;
       currency: string | null;
+      expense_source: SplitGroupDto["expenseSource"] | null;
     }>();
 
   return groups.results.map((group) => ({
@@ -74,6 +94,7 @@ export async function loadSplitGroups(db: D1Database): Promise<SplitGroupDto[]> 
     iconKey: group.icon_key ?? undefined,
     sortOrder: group.sort_order
     ,currency: normalizeSplitCurrency(group.currency)
+    ,expenseSource: group.expense_source ?? "mixed"
   }));
 }
 
@@ -602,16 +623,16 @@ export async function loadSplitMatchCandidates(db: D1Database, month = getCurren
 
 export async function createSplitGroupRecord(
   db: D1Database,
-  input: { name: string; currency?: string }
+  input: { name: string; currency?: string; expenseSource?: SplitGroupDto["expenseSource"] }
 ) {
   const id = `split-group-${slugify(input.name)}-${Date.now()}`;
   await db
     .prepare(`
       INSERT INTO split_groups (
-        id, household_id, group_name, currency, sort_order
-      ) VALUES (?, ?, ?, ?, ?)
+        id, household_id, group_name, currency, expense_source, sort_order
+      ) VALUES (?, ?, ?, ?, ?, ?)
     `)
-    .bind(id, DEFAULT_HOUSEHOLD_ID, input.name.trim(), normalizeSplitCurrency(input.currency), Date.now())
+    .bind(id, DEFAULT_HOUSEHOLD_ID, input.name.trim(), normalizeSplitCurrency(input.currency), input.expenseSource ?? "mixed", Date.now())
     .run();
 
   return { groupId: id };
@@ -637,6 +658,7 @@ export async function createSplitExpenseRecord(
   }
 ) {
   const currency = await assertSplitGroupCurrency(db, input.groupId, input.currency);
+  await assertSplitGroupExpenseSource(db, input.groupId, input.paymentMethod ?? "cash");
   const { categoryId, payerPersonId, sharePeople } = await resolveSplitExpenseRefs(
     db,
     input.categoryName,
@@ -833,6 +855,7 @@ export async function updateSplitExpenseRecord(
   }
 ) {
   const currency = await assertSplitGroupCurrency(db, input.groupId, input.currency);
+  await assertSplitGroupExpenseSource(db, input.groupId, input.paymentMethod ?? "cash");
   const { categoryId, payerPersonId, sharePeople } = await resolveSplitExpenseRefs(
     db,
     input.categoryName,

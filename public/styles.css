@@ -3307,6 +3307,14 @@ body:has(.split-inline-editor-card) .splits-fab {
   line-height: 1.2;
 }
 
+.split-dialog-help {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted-text, #717379);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
 .split-dialog-grid .split-dialog-field span,
 .split-dialog-inline .split-dialog-field span {
   text-align: left;

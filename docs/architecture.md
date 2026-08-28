@@ -106,7 +106,7 @@ matching a transfer records external settlement without rewriting the source
 split rows. Reopening a checkpoint releases its rows for a later checkpoint
 while preserving the historical checkpoint record.
 
-Split groups carry a designated currency, while expenses and settlements retain
+Split groups carry a designated currency and optional expense source, while expenses and settlements retain
 their original currency and payment evidence. Checkpoint netting only sums one
 currency at a time; matching a ledger transfer in another currency requires a
 stored, user-supplied FX rate and records both the ledger amount and converted

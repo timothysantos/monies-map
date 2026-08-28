@@ -61,6 +61,15 @@ export function SplitGroupDialog({ dialog, formError, isSubmitting, readOnly = f
                 {SPLIT_CURRENCY_OPTIONS.map(([code, name]) => <option key={code} value={code}>{code} - {name}</option>)}
               </select>
             </label>
+            <label className="split-dialog-field">
+              <span>Purchase source</span>
+              <select className="table-edit-input" value={dialog?.expenseSource ?? "mixed"} onChange={(event) => onChange((current) => current ? { ...current, expenseSource: event.target.value } : current)}>
+                <option value="cash">Cash only</option>
+                <option value="ledger">Bank/card</option>
+                <option value="mixed">Cash and bank/card</option>
+              </select>
+              <small className="split-dialog-help">Use Cash only and Bank/card as separate groups for a holiday when you want settlements to stay easy to reconcile.</small>
+            </label>
             {formError ? <p className="form-error">{formError}</p> : null}
             <div className="dialog-actions">
               <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>{readOnly ? "Close" : "Cancel"}</button>
@@ -171,6 +180,12 @@ function SplitSharePreview({ dialog, people }) {
 
 export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptions, categories = [], onChange, autoFocusAmount = false }) {
   const amountInputRef = useRef(null);
+  const selectedGroup = groupOptions.find((group) => group.id === dialog?.groupId);
+  const allowedPaymentMethods = selectedGroup?.expenseSource === "cash"
+    ? ["cash"]
+    : selectedGroup?.expenseSource === "ledger"
+      ? ["card", "bank"]
+      : ["cash", "card", "bank", "other"];
 
   useEffect(() => {
     if (!autoFocusAmount || !dialog) {
@@ -196,7 +211,16 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
               title="Group"
               value={dialog?.groupId ?? "split-group-none"}
               options={groupOptions.map((option) => ({ value: option.id, label: option.name }))}
-              onValueChange={(nextValue) => onChange((current) => current ? { ...current, groupId: nextValue } : current)}
+              onValueChange={(nextValue) => onChange((current) => {
+                if (!current) return current;
+                const nextGroup = groupOptions.find((option) => option.id === nextValue);
+                const nextPaymentMethod = nextGroup?.expenseSource === "cash"
+                  ? "cash"
+                  : nextGroup?.expenseSource === "ledger" && !["card", "bank"].includes(current.paymentMethod)
+                    ? "card"
+                    : current.paymentMethod;
+                return { ...current, groupId: nextValue, currency: nextGroup?.currency ?? current.currency, paymentMethod: nextPaymentMethod };
+              })}
             />
           </label>
           <label className="split-dialog-field">
@@ -266,8 +290,10 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
           <label className="split-dialog-field">
             <span>{dialog?.linkedTransactionId ? "Paid using (ledger)" : "Paid using"}</span>
             <select className="table-edit-input" value={dialog?.paymentMethod ?? "cash"} disabled={Boolean(dialog?.linkedTransactionId)} onChange={(event) => onChange((current) => current ? { ...current, paymentMethod: event.target.value } : current)}>
-              <option value="cash">Cash</option><option value="card">Card</option><option value="bank">Bank</option><option value="other">Other</option>
+              {allowedPaymentMethods.map((method) => <option key={method} value={method}>{method === "cash" ? "Cash" : method === "card" ? "Card" : method === "bank" ? "Bank" : "Other"}</option>)}
             </select>
+            {selectedGroup?.expenseSource === "cash" ? <small className="split-dialog-help">Cash-only group: no bank or card match is expected.</small> : null}
+            {selectedGroup?.expenseSource === "ledger" ? <small className="split-dialog-help">Bank/card group: cash purchases belong in a separate cash group.</small> : null}
           </label>
           <label className="split-dialog-field">
             <span>Evidence</span>

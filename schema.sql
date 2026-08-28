@@ -289,6 +289,7 @@ CREATE TABLE IF NOT EXISTS split_groups (
   household_id TEXT NOT NULL,
   group_name TEXT NOT NULL,
   currency TEXT NOT NULL DEFAULT 'SGD',
+  expense_source TEXT NOT NULL DEFAULT 'mixed' CHECK (expense_source IN ('cash', 'ledger', 'mixed')),
   icon_key TEXT,
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,

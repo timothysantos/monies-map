@@ -205,6 +205,7 @@ function buildEntriesSplitShellGroups(splitGroups: SplitGroupDto[]): SplitGroupP
       entryCount: 0,
       pendingMatchCount: 0,
       currency: "SGD",
+      expenseSource: "mixed",
       isDefault: false
     },
     ...splitGroups.map((group) => ({
@@ -216,6 +217,7 @@ function buildEntriesSplitShellGroups(splitGroups: SplitGroupDto[]): SplitGroupP
       entryCount: 0,
       pendingMatchCount: 0,
       currency: group.currency,
+      expenseSource: group.expenseSource,
       isDefault: false
     }))
   ];
@@ -439,7 +441,7 @@ export function buildSplitsPage(
   const checkpointedSettlements = visibleSettlements.map((settlement) => ({ ...settlement, settlementCheckpoint: checkpointByRecordId.get(settlement.id) }));
   const openExpenses = checkpointedExpenses.filter((expense) => !expense.batchClosedAt && !expense.settlementCheckpoint);
   const openSettlements = checkpointedSettlements.filter((settlement) => !settlement.batchClosedAt && !settlement.settlementCheckpoint);
-  const groupMap = new Map<string, { id: string; name: string; iconKey?: string; sortOrder?: number; balanceMinor: number; entryCount: number; pendingMatchCount: number; currency: string }>();
+  const groupMap = new Map<string, { id: string; name: string; iconKey?: string; sortOrder?: number; balanceMinor: number; entryCount: number; pendingMatchCount: number; currency: string; expenseSource: SplitGroupDto["expenseSource"] }>();
 
   groupMap.set("split-group-none", {
     id: "split-group-none",
@@ -449,7 +451,8 @@ export function buildSplitsPage(
     balanceMinor: 0,
     entryCount: 0,
     pendingMatchCount: 0
-    ,currency: "SGD"
+    ,currency: "SGD",
+    expenseSource: "mixed"
   });
 
   // Persisted groups must exist in the UI even before their first split entry.
@@ -462,7 +465,8 @@ export function buildSplitsPage(
       balanceMinor: 0,
       entryCount: 0,
       pendingMatchCount: 0,
-      currency: group.currency
+      currency: group.currency,
+      expenseSource: group.expenseSource
     });
   }
 
@@ -476,7 +480,8 @@ export function buildSplitsPage(
       balanceMinor: 0,
       entryCount: 0,
       pendingMatchCount: 0,
-      currency: expense.currency
+      currency: expense.currency,
+      expenseSource: "mixed"
     };
     groupMap.set(groupId, current);
   }
@@ -491,7 +496,8 @@ export function buildSplitsPage(
       balanceMinor: 0,
       entryCount: 0,
       pendingMatchCount: 0,
-      currency: settlement.currency
+      currency: settlement.currency,
+      expenseSource: "mixed"
     };
     groupMap.set(groupId, current);
   }
@@ -525,7 +531,8 @@ export function buildSplitsPage(
       balanceMinor: 0,
       entryCount: 0,
       pendingMatchCount: 0,
-      currency: "SGD"
+      currency: "SGD",
+      expenseSource: "mixed"
     };
     current.pendingMatchCount += 1;
     groupMap.set(match.groupId, current);
@@ -552,6 +559,7 @@ export function buildSplitsPage(
       entryCount: group.entryCount,
       pendingMatchCount: group.pendingMatchCount,
       currency: group.currency,
+      expenseSource: group.expenseSource,
       isDefault: false
     }));
 

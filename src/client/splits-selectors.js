@@ -35,7 +35,7 @@ export function buildSplitsPanelModel({
     donutChart: []
   };
   const groups = splitsPage.groups;
-  const groupOptions = [{ id: "split-group-none", name: messages.splits.nonGroup, currency: "SGD" }, ...groups.filter((group) => group.id !== "split-group-none")];
+  const groupOptions = [{ id: "split-group-none", name: messages.splits.nonGroup, currency: "SGD", expenseSource: "mixed" }, ...groups.filter((group) => group.id !== "split-group-none")];
   const activeGroup = groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null;
   const activeGroupId = activeGroup?.id ?? "split-group-none";
   const activeGroupActivity = splitsPage.activity.filter((item) => item.groupId === activeGroupId);

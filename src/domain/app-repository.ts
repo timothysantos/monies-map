@@ -709,6 +709,7 @@ export async function ensureDemoSchema(db: D1Database) {
         household_id TEXT NOT NULL,
         group_name TEXT NOT NULL,
         currency TEXT NOT NULL DEFAULT 'SGD',
+        expense_source TEXT NOT NULL DEFAULT 'mixed' CHECK (expense_source IN ('cash', 'ledger', 'mixed')),
         icon_key TEXT,
         sort_order INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -720,6 +721,9 @@ export async function ensureDemoSchema(db: D1Database) {
   const splitGroupColumns = await db.prepare("PRAGMA table_info(split_groups)").all<{ name: string }>();
   if (splitGroupColumns.results.length > 0 && !splitGroupColumns.results.some((column) => column.name === "currency")) {
     await db.prepare("ALTER TABLE split_groups ADD COLUMN currency TEXT NOT NULL DEFAULT 'SGD'").run();
+  }
+  if (splitGroupColumns.results.length > 0 && !splitGroupColumns.results.some((column) => column.name === "expense_source")) {
+    await db.prepare("ALTER TABLE split_groups ADD COLUMN expense_source TEXT NOT NULL DEFAULT 'mixed'").run();
   }
 
   await db

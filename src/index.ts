@@ -1080,7 +1080,7 @@ export default {
     }
 
     if (url.pathname === "/api/splits/groups/create" && request.method === "POST") {
-      const body = await request.json<{ name?: string; currency?: string }>();
+      const body = await request.json<{ name?: string; currency?: string; expenseSource?: "cash" | "ledger" | "mixed" }>();
       if (!body.name?.trim()) {
         return json({ ok: false, error: "Missing split group name" }, 400);
       }
@@ -1088,7 +1088,7 @@ export default {
       try {
         return json({
           ok: true,
-          ...(await createSplitGroupRecord(env.DB, { name: body.name, currency: body.currency }))
+          ...(await createSplitGroupRecord(env.DB, { name: body.name, currency: body.currency, expenseSource: body.expenseSource }))
         });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to create split group" }, 400);

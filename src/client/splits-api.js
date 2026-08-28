@@ -15,7 +15,7 @@ async function postJson(endpoint, body, fallbackError) {
 export function createSplitGroup(draft) {
   return postJson(
     "/api/splits/groups/create",
-    { name: draft.name, currency: draft.currency },
+    { name: draft.name, currency: draft.currency, expenseSource: draft.expenseSource },
     "Failed to create split group."
   );
 }
