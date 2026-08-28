@@ -197,3 +197,45 @@ test("foreign group settle-up links to an imported SGD transfer with certified F
   expect(linked.paymentStatus).toBe("certified");
   expect(linked.fxRateBasisPoints).toBeGreaterThan(0);
 });
+
+test("holiday cash and bank/card groups keep purchase sources separate", async ({ page }) => {
+  await page.goto("/");
+  await reseedDemo(page);
+  const cashGroup = await postJson(page, "/api/splits/groups/create", {
+    name: `Tokyo cash ${Date.now()}`, currency: "JPY", expenseSource: "cash"
+  });
+  const ledgerGroup = await postJson(page, "/api/splits/groups/create", {
+    name: `Tokyo cards ${Date.now()}`, currency: "JPY", expenseSource: "ledger"
+  });
+
+  const cashExpense = await postJson(page, "/api/splits/expenses/create", {
+    groupId: cashGroup.groupId, date: "2026-08-10", description: "Cash ramen",
+    categoryName: "Food & Drinks", payerPersonName: "Tim", amountMinor: 3000,
+    currency: "JPY", paymentMethod: "cash", paymentStatus: "recorded"
+  });
+  expect(cashExpense.splitExpenseId).toBeTruthy();
+
+  const rejectedCashInLedgerGroup = await page.request.post("/api/splits/expenses/create", {
+    data: {
+      groupId: ledgerGroup.groupId, date: "2026-08-10", description: "Untracked cash",
+      categoryName: "Food & Drinks", payerPersonName: "Tim", amountMinor: 3000,
+      currency: "JPY", paymentMethod: "cash", paymentStatus: "recorded"
+    }
+  });
+  expect(rejectedCashInLedgerGroup.status()).toBe(400);
+  expect(await rejectedCashInLedgerGroup.text()).toContain("Bank/card purchases");
+
+  const rejectedCardInCashGroup = await page.request.post("/api/splits/expenses/create", {
+    data: {
+      groupId: cashGroup.groupId, date: "2026-08-10", description: "Card in cash group",
+      categoryName: "Food & Drinks", payerPersonName: "Tim", amountMinor: 3000,
+      currency: "JPY", paymentMethod: "card", paymentStatus: "awaiting_statement"
+    }
+  });
+  expect(rejectedCardInCashGroup.status()).toBe(400);
+  expect(await rejectedCardInCashGroup.text()).toContain("Cash only");
+
+  const loaded = await loadSplitsPage(page, { view: "person-tim", month: "2026-08" });
+  expect(loaded.splitsPage.groups.find((group) => group.id === cashGroup.groupId).expenseSource).toBe("cash");
+  expect(loaded.splitsPage.groups.find((group) => group.id === ledgerGroup.groupId).expenseSource).toBe("ledger");
+});

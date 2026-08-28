@@ -229,6 +229,7 @@ export interface SplitGroupPillDto {
   entryCount: number;
   pendingMatchCount: number;
   currency: string;
+  expenseSource: "cash" | "ledger" | "mixed";
   isDefault?: boolean;
 }
 
@@ -238,6 +239,7 @@ export interface SplitGroupDto {
   iconKey?: string;
   sortOrder: number;
   currency: string;
+  expenseSource: "cash" | "ledger" | "mixed";
 }
 
 export interface SplitActivityDto {

@@ -2155,6 +2155,13 @@ as awaiting statement until the final certified ledger row arrives; matching a
 different-currency settlement requires an explicit FX rate and keeps both
 amounts visible.
 
+For a simpler holiday workflow, create two groups in the trip currency: one
+with purchase source `Cash only` and one with `Bank/card`. The cash group keeps
+offline purchases out of ledger matching, while the Bank/card group is ready
+for later statement links. Existing groups remain `Mixed`. This setting only
+guards purchase records; a repayment for either group may still be cash or
+bank transfer.
+
 The app does not currently treat children, babies, or guests as separate
 settlement people. Keep those labels in notes and shares until dependent
 participant roles are introduced, so they cannot accidentally become debtors.

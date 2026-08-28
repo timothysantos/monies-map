@@ -7,6 +7,13 @@ Date: 2026-08-28
 Travel groups keep one authoritative currency. A JPY trip stays JPY even when
 the eventual card charge or repayment appears in the SGD ledger.
 
+For a low-memory holiday workflow, users may create two groups in the trip
+currency: `Cash only` for offline cash purchases and `Bank/card` for purchases
+that should later be matched to imported ledger rows. Existing groups remain
+`Mixed` so this is additive and does not change their meaning. The source mode
+constrains purchase records only; repayments can still be cash or bank for any
+group.
+
 There are two distinct settlement workflows:
 
 - **Settle group** records payment for the selected group and closes only that
@@ -73,6 +80,9 @@ ledger amount and derived FX rate are evidence of what was actually paid.
 | Odd-cent or FX rounding | Stored minor units remain authoritative and residual differences stay visible |
 | Offline/retried confirmation | Idempotency/reuse guard prevents a second link to the same ledger row |
 | Reissued card or closed account | Matching relies on imported transaction evidence, not a permanent card identifier |
+| Cash-only group receives a card or bank purchase | Rejected with guidance to use the Bank/card group |
+| Bank/card group receives a cash purchase | Rejected with guidance to use the Cash-only group |
+| Existing group has no source mode | Treated as Mixed during migration; no data is rewritten |
 
 ## Stop Conditions
 

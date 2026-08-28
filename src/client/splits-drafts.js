@@ -89,7 +89,7 @@ export function buildNewExpenseDraft({ activeGroup, categoryOptions, people, vie
       : people[0]?.name) ?? "",
     amountMinor: 0,
     note: "",
-    paymentMethod: "cash",
+    paymentMethod: activeGroup?.expenseSource === "ledger" ? "card" : "cash",
     paymentStatus: "recorded",
     sharePersonName: people[0]?.name ?? "",
     ...shareState

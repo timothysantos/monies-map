@@ -980,7 +980,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onBackToGroup={openActiveGroupView}
         onCreateGroup={() => {
           setFormError("");
-          setGroupDialog({ name: "", currency: "SGD" });
+          setGroupDialog({ name: "", currency: "SGD", expenseSource: "mixed" });
         }}
         onToggleBreakdown={() => setShowBreakdown((current) => !current)}
         onAddExpense={() => openNewExpenseDialog({ activeGroup, view })}
