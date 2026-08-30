@@ -177,6 +177,14 @@ CREATE TABLE IF NOT EXISTS category_match_rule_suggestions (
   UNIQUE (household_id, pattern, category_id)
 );
 
+CREATE TABLE IF NOT EXISTS ai_assist_daily_usage (
+  household_id TEXT NOT NULL,
+  usage_day TEXT NOT NULL,
+  used_units INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (household_id, usage_day)
+);
+
 CREATE TABLE IF NOT EXISTS category_match_rule_issue_ignores (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL,

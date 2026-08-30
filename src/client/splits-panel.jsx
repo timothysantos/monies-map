@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
+import { FinancialInsight } from "./financial-insight";
 import { LinkedNoteSyncDialog } from "./linked-note-sync-dialog";
 import {
   useSplitEditState,
@@ -37,10 +38,14 @@ import { SplitDeleteDialog, SplitExpenseDialog, SplitGroupDialog, SplitSettlemen
 import { SearchFilterInput } from "./entries-overview";
 import { SplitsMainSection } from "./splits-main-section";
 import { buildSplitsPanelModel } from "./splits-selectors";
+import { moniesClient } from "./monies-client-service";
 import {
   buildLinkedSplitRefreshOptions,
   createSplitRefreshGuard
 } from "./splits-workflow";
+import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
+
+const { format: formatService } = moniesClient;
 
 export function SplitsPanel({ view, categories, people, onRefresh }) {
   const splitsPage = view.splitsPage ?? {
@@ -97,6 +102,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     activeGroup,
     archivedBatches,
     categoryOptions,
+    currentGroupActivity,
     donutRows,
     groupedCurrentActivity,
     groupBalanceMinor,
@@ -109,6 +115,28 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     totalExpenseMinor,
     visibleMatches
   } = splitModel;
+  const financialInsightFacts = useMemo(() => buildFinancialInsightFacts({
+    contextLabel: `${activeGroup?.name ?? "Split"} group${splitSearchQuery ? " search" : ""}`,
+    records: currentGroupActivity.map((item) => ({
+      amountMinor: item.totalAmountMinor,
+      entryType: item.kind === "expense" ? "expense" : "transfer",
+      categoryName: item.categoryName ?? "Split expense",
+      description: item.description
+    })),
+    formatMoney: formatService.money,
+    perspective: "split_obligation",
+    accountingAdvice: splitSearchQuery
+      ? "This is a filtered group view, so check the matching split record before treating the displayed amount as the full group balance."
+      : pendingMatchCount
+        ? "Review possible bank matches before creating another split record. Treat the group balance as a settlement obligation, not new spending."
+        : groupBalanceMinor
+          ? "Treat the group balance as a settlement obligation between people, not new spending; record or match the settlement when it happens."
+          : "The group is settled. Keep bank-linked expenses and settlements matched so the audit trail stays complete."
+  }), [activeGroup?.name, currentGroupActivity, groupBalanceMinor, pendingMatchCount, splitSearchQuery]);
+  const financialInsightActions = useMemo(() => pendingMatchCount ? [{
+    label: `Review ${pendingMatchCount} bank ${pendingMatchCount === 1 ? "match" : "matches"}`,
+    onClick: () => openMatchesView()
+  }] : [], [pendingMatchCount, activeGroup?.id, defaultGroupId]);
   const settlementCheckpoints = splitsPage.settlementCheckpoints ?? [];
   const activeCheckpoint = settlementCheckpoints.find((checkpoint) =>
     !["reopened", "voided"].includes(checkpoint.status)
@@ -949,6 +977,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         </div>
         {renderSplitActions("split-head-actions split-header-toolbar")}
       </div>
+
+      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-splits" />
 
       <SplitsMainSection
         groups={groups}

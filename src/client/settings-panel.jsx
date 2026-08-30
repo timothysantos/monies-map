@@ -22,6 +22,7 @@ import {
   ignoreCategoryMatchRuleIssue,
   ignoreCategoryMatchRuleSuggestion,
   retainLatestErrorDiagnostics,
+  requestAiCategoryRuleSuggestions,
   resolveReconciliationException,
   runDemoAction,
   saveCategoryMatchRule,
@@ -150,11 +151,14 @@ export function SettingsPanel({
   const [statementComparePanel, setStatementComparePanel] = useState(null);
   const [statementCompareResult, setStatementCompareResult] = useState(null);
   const [statementCompareStatus, setStatementCompareStatus] = useState(null);
+  const [aiCategoryRuleStatus, setAiCategoryRuleStatus] = useState("");
   const [transferDialogEntryId, setTransferDialogEntryId] = useState(null);
   const [transferDialogEntry, setTransferDialogEntry] = useState(null);
   const [transferCandidates, setTransferCandidates] = useState([]);
   const [transferCandidatesError, setTransferCandidatesError] = useState("");
   const [refreshingTransferCandidatesEntryId, setRefreshingTransferCandidatesEntryId] = useState(null);
+  const [rankingTransferCandidatesEntryId, setRankingTransferCandidatesEntryId] = useState(null);
+  const [transferAiScores, setTransferAiScores] = useState({});
   const [linkingTransferEntryId, setLinkingTransferEntryId] = useState(null);
   const [settlingTransferEntryId, setSettlingTransferEntryId] = useState(null);
   const [transferSettlementDrafts, setTransferSettlementDrafts] = useState({});
@@ -664,6 +668,22 @@ export function SettingsPanel({
     }
   }
 
+  async function handleRequestAiCategoryRules() {
+    setIsSubmitting(true);
+    setAiCategoryRuleStatus("Preparing review-only suggestions...");
+    try {
+      const result = await requestAiCategoryRuleSuggestions();
+      setAiCategoryRuleStatus(result.proposed
+        ? `${result.proposed} suggestion${result.proposed === 1 ? "" : "s"} added for review.`
+        : (result.reason ?? "No new safe suggestions were found."));
+      await onRefresh(buildSettingsRefreshPlan("category_rule_suggestions_requested"));
+    } catch (error) {
+      setAiCategoryRuleStatus(error instanceof Error ? error.message : "Could not prepare category rule suggestions.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function handleDismissUnresolvedTransfer(entryId) {
     setIsSubmitting(true);
     try {
@@ -696,6 +716,32 @@ export function SettingsPanel({
       }
     } finally {
       setIsRefreshingTransfers(false);
+    }
+  }
+
+  async function rankTransferCandidates(entry) {
+    setRankingTransferCandidatesEntryId(entry.id);
+    try {
+      const response = await fetch("/api/ai-assist/transfer-match-ranking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entryId: entry.id })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error ?? "Could not rank transfer candidates.");
+      }
+      setTransferAiScores((current) => ({
+        ...current,
+        [entry.id]: Object.fromEntries((data.scores ?? []).map((score) => [score.entryId, score.similarity]))
+      }));
+      if (data.reason) {
+        setTransferCandidatesError(data.reason);
+      }
+    } catch (error) {
+      setTransferCandidatesError(error instanceof Error ? error.message : "Could not rank transfer candidates.");
+    } finally {
+      setRankingTransferCandidatesEntryId(null);
     }
   }
 
@@ -1130,6 +1176,9 @@ export function SettingsPanel({
         onEditSuggestion={openCategoryRuleSuggestionDialog}
         onIgnoreSuggestion={handleIgnoreCategoryRuleSuggestion}
         onIgnoreIssue={handleIgnoreCategoryRuleIssue}
+        aiStatus={aiCategoryRuleStatus}
+        isAiWorking={isSubmitting}
+        onRequestAiSuggestions={() => void handleRequestAiCategoryRules()}
       />
 
       <SettingsTrustSection
@@ -1165,6 +1214,8 @@ export function SettingsPanel({
           linkingTransferEntryId={linkingTransferEntryId}
           settlingTransferEntryId={settlingTransferEntryId}
           refreshingTransferCandidatesEntryId={refreshingTransferCandidatesEntryId}
+          rankingTransferCandidatesEntryId={rankingTransferCandidatesEntryId}
+          transferAiScores={transferAiScores[transferDialogEntry.id] ?? {}}
           transferCandidatesError={transferCandidatesError}
           onEnsureSettlementDraft={ensureTransferSettlementDraft}
           onTransferDialogEntryChange={(next) => {
@@ -1178,6 +1229,7 @@ export function SettingsPanel({
           }}
           onSettlementDraftChange={updateTransferSettlementDraft}
           onRefreshCandidates={refreshTransferCandidates}
+          onRankCandidates={rankTransferCandidates}
           onLinkCandidate={linkTransferCandidate}
           onSettleTransfer={settleTransfer}
           showLabel={false}

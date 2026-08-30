@@ -201,6 +201,8 @@ export function MonthNotesAndAccounts({
   monthNote,
   visibleAccounts,
   onEditMonthNote,
+  onDraftMonthNote,
+  isDraftingMonthNote = false,
   onOpenEntriesForAccount
 }) {
   return (
@@ -210,14 +212,19 @@ export function MonthNotesAndAccounts({
           <h3>{messages.month.notesTitle}</h3>
           <p>{messages.month.notesDetail}</p>
         </div>
-        <button
-          type="button"
-          className="note-card note-card-button"
-          onClick={onEditMonthNote}
-        >
-          <p>{monthNote || messages.common.emptyValue}</p>
-          <SquarePen size={16} />
-        </button>
+        <div className="note-card-actions">
+          <button
+            type="button"
+            className="note-card note-card-button"
+            onClick={onEditMonthNote}
+          >
+            <p>{monthNote || messages.common.emptyValue}</p>
+            <SquarePen size={16} />
+          </button>
+          <button type="button" className="subtle-action" onClick={onDraftMonthNote} disabled={isDraftingMonthNote}>
+            {isDraftingMonthNote ? "Drafting..." : "Draft a summary"}
+          </button>
+        </div>
       </section>
 
       <section>

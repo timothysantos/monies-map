@@ -28,6 +28,8 @@ import {
   BarLine,
   MetricCard
 } from "./ui-components";
+import { FinancialInsight } from "./financial-insight";
+import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
 const {
   accounts: accountService,
   categories: categoryService,
@@ -48,7 +50,7 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
   const [monthNoteError, setMonthNoteError] = useState("");
   // Summary can mount while the route payload is still hydrating, so keep a
   // fully shaped local summary slice instead of reading nested fields directly.
-  const safeSummaryPage = {
+  const safeSummaryPage = useMemo(() => ({
     metricCards: [],
     rangeMonths: [],
     categoryShareByMonth: [],
@@ -56,10 +58,39 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
     months: [],
     accountPills: [],
     ...view.summaryPage
-  };
+  }), [view.summaryPage]);
 
   const summaryFocusParam = searchParams.get("summary_focus");
   const focusState = buildSummaryFocusState(safeSummaryPage, summaryFocusParam);
+  const financialInsightFacts = useMemo(
+    () => buildSummaryFinancialInsightFacts(safeSummaryPage, focusState, summaryFocusParam),
+    [focusState, safeSummaryPage, summaryFocusParam]
+  );
+  const financialInsightActions = useMemo(() => {
+    const months = summaryFocusParam === SUMMARY_FOCUS_OVERALL
+      ? safeSummaryPage.months
+      : safeSummaryPage.months.filter((month) => month.month === focusState.selectedFocusMonth);
+    const plannedSpendMinor = months.reduce((total, month) => total + (month.estimatedExpensesMinor ?? 0), 0);
+    const actualSpendMinor = months.reduce((total, month) => total + (month.realExpensesMinor ?? 0), 0);
+    const actions = [];
+    if (
+      plannedSpendMinor > 0
+      && actualSpendMinor > plannedSpendMinor
+      && financialInsightFacts.topCategoryName !== "No spending category"
+    ) {
+      actions.push({
+        label: `Review ${financialInsightFacts.topCategoryName}`,
+        onClick: () => handleOpenEntriesForCategory(financialInsightFacts.topCategoryName)
+      });
+    }
+    if (financialInsightFacts.decisionMap.needsReview) {
+      actions.push({
+        label: "Review bank-record gaps",
+        onClick: handleOpenImports
+      });
+    }
+    return actions;
+  }, [financialInsightFacts.decisionMap.needsReview, financialInsightFacts.topCategoryName, focusState.selectedFocusMonth, location.search, safeSummaryPage.months, summaryFocusParam]);
 
   function navigateToEntries(nextFilters) {
     navigate(buildSummaryEntriesLocation(location.search, nextFilters));
@@ -84,6 +115,13 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
     navigateToEntries({
       entry_wallet: accountId,
       month: focusState.selectedFocusMonth || selectedMonth
+    });
+  }
+
+  function handleOpenImports() {
+    navigate({
+      pathname: "/imports",
+      search: location.search
     });
   }
 
@@ -125,6 +163,8 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
         </div>
       </div>
 
+      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-summary" />
+
       <div className="summary-top-grid">
         <SummarySpendingMixSection
           rangeMonths={safeSummaryPage.rangeMonths}
@@ -165,6 +205,80 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
       />
     </article>
   );
+}
+
+function buildSummaryFinancialInsightFacts(summaryPage, focusState, summaryFocusParam) {
+  const isRangeOverall = summaryFocusParam === SUMMARY_FOCUS_OVERALL;
+  const months = isRangeOverall
+    ? summaryPage.months
+    : summaryPage.months.filter((month) => month.month === focusState.selectedFocusMonth);
+  const plannedSpendMinor = months.reduce((total, month) => total + (month.estimatedExpensesMinor ?? 0), 0);
+  const actualSpendMinor = months.reduce((total, month) => total + (month.realExpensesMinor ?? 0), 0);
+  const sameSeasonMonth = summaryFocusParam === SUMMARY_FOCUS_OVERALL
+    ? undefined
+    : summaryPage.months.find((month) => month.month === previousYearMonth(focusState.selectedFocusMonth));
+  const startMonth = summaryPage.rangeMonths[0];
+  const endMonth = summaryPage.rangeMonths.at(-1);
+  const contextLabel = isRangeOverall
+    ? startMonth && endMonth
+      ? `Summary from ${formatService.formatMonthLabel(startMonth)} to ${formatService.formatMonthLabel(endMonth)}`
+      : "Summary for the selected range"
+    : `${formatService.formatMonthLabel(focusState.selectedFocusMonth)} summary`;
+  const accountingAdvice = actualSpendMinor > plannedSpendMinor && plannedSpendMinor > 0
+    ? "Actual spending is above the plan. Review the largest category before changing the budget or treating the difference as a one-off."
+    : "Keep planned and actual spending aligned before reallocating an unused budget or judging the month as settled.";
+
+  return buildFinancialInsightFacts({
+    contextLabel,
+    records: [
+      ...focusState.donutData.map((item) => ({
+        amountMinor: item.valueMinor ?? 0,
+        entryType: "expense",
+        categoryName: item.label,
+        description: item.label
+      })),
+      ...months
+        .filter((month) => (month.actualIncomeMinor ?? 0) > 0)
+        .map((month) => ({
+          amountMinor: month.actualIncomeMinor ?? 0,
+          entryType: "income",
+          description: "Recorded income"
+        }))
+    ],
+    entryCount: focusState.donutData.reduce((total, item) => total + Number(item.entryCount ?? 0), 0),
+    formatMoney: formatService.money,
+    perspective: "cash_flow",
+    accountingAdvice,
+    decisionMapContext: {
+      plannedSpendMinor,
+      sameSeason: sameSeasonMonth ? {
+        label: formatService.formatMonthLabel(sameSeasonMonth.month),
+        spendMinor: sameSeasonMonth.realExpensesMinor ?? 0,
+        incomeMinor: sameSeasonMonth.actualIncomeMinor ?? 0
+      } : undefined,
+      confidence: buildSummaryConfidence(summaryPage.accountPills)
+    }
+  });
+}
+
+function previousYearMonth(month) {
+  const [year, monthNumber] = String(month ?? "").split("-").map(Number);
+  return year && monthNumber ? `${year - 1}-${String(monthNumber).padStart(2, "0")}` : "";
+}
+
+function buildSummaryConfidence(accountPills = []) {
+  const evaluated = accountPills.length > 0;
+  return accountPills.reduce((result, account) => ({
+    evaluated,
+    reconciliationMismatchCount: result.reconciliationMismatchCount + (account.reconciliationStatus === "mismatch" ? 1 : 0),
+    needsCheckpointCount: result.needsCheckpointCount + (account.reconciliationStatus === "needs_checkpoint" ? 1 : 0),
+    unresolvedTransferCount: result.unresolvedTransferCount + Number(account.unresolvedTransferCount ?? 0)
+  }), {
+    evaluated,
+    reconciliationMismatchCount: 0,
+    needsCheckpointCount: 0,
+    unresolvedTransferCount: 0
+  });
 }
 
 function SummarySpendingMixSection({

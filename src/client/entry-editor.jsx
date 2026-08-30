@@ -361,11 +361,14 @@ export function EntryTransferTools({
   linkingTransferEntryId,
   settlingTransferEntryId,
   refreshingTransferCandidatesEntryId,
+  rankingTransferCandidatesEntryId,
+  transferAiScores = {},
   transferCandidatesError = "",
   onEnsureSettlementDraft,
   onTransferDialogEntryChange,
   onSettlementDraftChange,
   onRefreshCandidates,
+  onRankCandidates,
   onLinkCandidate,
   onSettleTransfer,
   trigger = null,
@@ -379,6 +382,7 @@ export function EntryTransferTools({
 
   const isLinkedTransfer = Boolean(entry.linkedTransfer);
   const isRefreshingCandidates = refreshingTransferCandidatesEntryId === entry.id;
+  const isRankingCandidates = rankingTransferCandidatesEntryId === entry.id;
   const entryWalletLabel = entry.accountOwnerLabel
     ? `${entry.accountName} - ${entry.accountOwnerLabel}`
     : entry.accountName;
@@ -481,6 +485,14 @@ export function EntryTransferTools({
                   >
                     {isRefreshingCandidates ? "Checking..." : "Recheck matches"}
                   </button>
+                  <button
+                    type="button"
+                    className="subtle-action"
+                    disabled={isRankingCandidates || !transferCandidates.length}
+                    onClick={() => void onRankCandidates?.(entry)}
+                  >
+                    {isRankingCandidates ? "Ranking..." : "Rank descriptions"}
+                  </button>
                 </div>
                 <div className="transfer-match-stack">
                   {transferCandidatesError ? (
@@ -506,6 +518,9 @@ export function EntryTransferTools({
                           <div className="transfer-match-card-body">
                             <strong>{candidateWalletLabel}</strong>
                             <p>{formatService.formatDateOnly(candidate.date)} • {candidate.description}</p>
+                            {typeof transferAiScores[candidate.id] === "number" ? (
+                              <p className="transfer-match-label">Optional description similarity: {transferAiScores[candidate.id]}%</p>
+                            ) : null}
                             {isExpanded ? (
                               <div className="transfer-match-detail-grid">
                                 <span>

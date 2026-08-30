@@ -53,6 +53,7 @@ export function buildSplitsPanelModel({
     activeGroup,
     archivedBatches,
     categoryOptions: getCategoryOptions(categories),
+    currentGroupActivity,
     donutRows: buildDonutRows(splitsPage.donutChart, categories),
     expenseMatchCount: unresolvedMatches.filter((item) => item.kind === "expense").length,
     groupBalanceMinor,

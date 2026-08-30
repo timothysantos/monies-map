@@ -113,6 +113,14 @@ export function ignoreCategoryMatchRuleSuggestion(suggestionId) {
   );
 }
 
+export function requestAiCategoryRuleSuggestions() {
+  return postJson(
+    "/api/ai-assist/category-rule-suggestions",
+    {},
+    "Could not prepare category rule suggestions"
+  );
+}
+
 export function createReconciliationException({
   accountId,
   transactionId,

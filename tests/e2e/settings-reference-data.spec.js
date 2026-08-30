@@ -68,6 +68,15 @@ test.describe("settings reference data", () => {
     expect(afterDelete.settingsPage.categoryMatchRules.length).toBe(before.settingsPage.categoryMatchRules.length);
   });
 
+  test("optional AI category suggestions leave the existing rule queue unchanged when AI is unavailable", async ({ page }) => {
+    const before = await loadSettingsPage(page);
+    const response = await postJson(page, "/api/ai-assist/category-rule-suggestions", {});
+    expect(response).toMatchObject({ ok: true, available: false, proposed: 0 });
+
+    const after = await loadSettingsPage(page);
+    expect(after.settingsPage.categoryMatchRuleSuggestions).toEqual(before.settingsPage.categoryMatchRuleSuggestions);
+  });
+
   test("category rule save shows pending state and keeps the dialog stable", async ({ page }) => {
     const before = await loadSettingsPage(page);
     const referenceData = await loadReferenceData(page);

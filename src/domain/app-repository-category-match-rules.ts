@@ -469,6 +469,81 @@ export async function recordCategoryMatchSuggestion(
     .run();
 }
 
+// An AI proposal follows the same review-only path as observations from manual
+// category corrections. It cannot create or activate a rule by itself.
+export async function recordVerifiedAiCategoryMatchSuggestion(
+  db: D1Database,
+  input: { pattern: string; categoryName: string; sampleDescriptions: string[] }
+) {
+  const pattern = input.pattern
+    .toUpperCase()
+    .replace(/[^A-Z0-9 ,&'/-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+  const samples = input.sampleDescriptions.map((value) => value.trim()).filter(Boolean).slice(0, 3);
+  if (pattern.length < 4 || samples.length < 2 || ["Other", "Other - Income", "Transfer"].includes(input.categoryName)) {
+    return false;
+  }
+
+  const category = await db
+    .prepare("SELECT id FROM categories WHERE household_id = ? AND name = ?")
+    .bind(DEFAULT_HOUSEHOLD_ID, input.categoryName)
+    .first<{ id: string }>();
+  if (!category) {
+    return false;
+  }
+  const rules = await loadCategoryMatchRules(db);
+  if (isCategoryMatchSuggestionCoveredByRule({ pattern, categoryName: input.categoryName, sampleDescriptions: samples }, rules)) {
+    return false;
+  }
+
+  const existing = await db
+    .prepare(`
+      SELECT id, status, source_count, sample_descriptions_json
+      FROM category_match_rule_suggestions
+      WHERE household_id = ? AND pattern = ? AND category_id = ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, pattern, category.id)
+    .first<{ id: string; status: string; source_count: number; sample_descriptions_json: string }>();
+  if (existing?.status === "ignored") {
+    return false;
+  }
+  const samplesJson = JSON.stringify([
+    ...parseSuggestionSamples(existing?.sample_descriptions_json),
+    ...samples
+  ].filter((value, index, list) => list.indexOf(value) === index).slice(0, 3));
+
+  if (existing) {
+    await db
+      .prepare(`
+        UPDATE category_match_rule_suggestions
+        SET source_count = ?, sample_descriptions_json = ?, status = 'pending', updated_at = CURRENT_TIMESTAMP
+        WHERE household_id = ? AND id = ?
+      `)
+      .bind(Math.max(2, Number(existing.source_count ?? 0)), samplesJson, DEFAULT_HOUSEHOLD_ID, existing.id)
+      .run();
+    return true;
+  }
+
+  const suggestionId = `catrulesug-ai-${slugify(pattern)}-${crypto.randomUUID().slice(0, 8)}`;
+  await db
+    .prepare(`
+      INSERT INTO category_match_rule_suggestions (
+        id, household_id, pattern, category_id, source_count, sample_descriptions_json
+      ) VALUES (?, ?, ?, ?, ?, ?)
+    `)
+    .bind(suggestionId, DEFAULT_HOUSEHOLD_ID, pattern, category.id, Math.max(2, samples.length), samplesJson)
+    .run();
+  await recordAuditEvent(db, {
+    entityType: "category_match_rule_suggestion",
+    entityId: suggestionId,
+    action: "category_match_rule_suggestion_ai_proposed",
+    detail: `AI proposed a review-only category rule ${pattern} -> ${input.categoryName}.`
+  });
+  return true;
+}
+
 export async function ignoreCategoryMatchRuleSuggestion(db: D1Database, suggestionId: string) {
   const existing = await db
     .prepare(`

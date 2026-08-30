@@ -16,6 +16,7 @@ import { normalizeEntryFilterValues } from "./entry-filter-values";
 import { EntriesDateGroups } from "./entries-list";
 import { EntriesBreakdownPanel, EntriesFilterStack, EntriesTotalsStrip } from "./entries-overview";
 import { EntryMobileEditExpenseFooter, EntryMobileSheet } from "./entry-mobile-sheet";
+import { FinancialInsight } from "./financial-insight";
 import { LinkedNoteSyncDialog } from "./linked-note-sync-dialog";
 import {
   getActiveEntryFilterCount,
@@ -34,6 +35,7 @@ import {
 } from "./quick-entry-url";
 import { buildRequestErrorMessage } from "./request-errors";
 import { deleteSplitExpense, updateSplitExpenseCategory, updateSplitExpenseNote } from "./splits-api";
+import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
 
 const ENTRIES_PAGE_PREFETCH_DELAY_MS = 1200;
 const ENTRIES_PAGE_PREFETCH_SPACING_MS = 650;
@@ -426,6 +428,7 @@ export function EntriesPanel({
     [entryFilters]
   );
   const {
+    aggregateEntries,
     filteredEntries,
     groupedEntries,
     entryTotals,
@@ -443,6 +446,35 @@ export function EntriesPanel({
     }),
     [editingEntryId, entries, entryFilters, selectedScope, entryView.id]
   );
+  const financialInsightFacts = useMemo(() => buildFinancialInsightFacts({
+    contextLabel: `${activeEntryFilterCount ? "Filtered" : "All"} entries for ${formatService.formatMonthLabel(entryView.monthPage.month)}`,
+    records: aggregateEntries.map((entry) => ({
+      ...entry,
+      amountMinor: entry.visibleAmountMinor ?? entry.amountMinor
+    })),
+    formatMoney: formatService.money,
+    perspective: activeEntryFilterCount ? "partial_view" : "cash_flow",
+    accountingAdvice: activeEntryFilterCount
+      ? "Use this filtered view to investigate the selected account, category, type, or search result; do not use it as the whole-month budget total."
+      : "Review provisional or imported entries against the bank record before treating the month as closed or deciding that the remaining cash is available to spend."
+  }), [activeEntryFilterCount, aggregateEntries, entryView.monthPage.month]);
+  const financialInsightActions = useMemo(() => {
+    const largestExpense = [...aggregateEntries]
+      .filter((entry) => entry.entryType === "expense")
+      .sort((left, right) => Math.abs(right.visibleAmountMinor ?? right.amountMinor) - Math.abs(left.visibleAmountMinor ?? left.amountMinor))[0];
+    if (!largestExpense) {
+      return [];
+    }
+    return [{
+      label: "Review largest expense",
+      onClick: () => setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        next.delete("entry_id");
+        next.append("entry_id", largestExpense.id);
+        return next;
+      })
+    }];
+  }, [aggregateEntries, setSearchParams]);
   const entriesEmptyStateSuggestion = useMemo(
     () => getEntriesEmptyStateSuggestion({
       accounts,
@@ -995,6 +1027,8 @@ export function EntriesPanel({
         onToggleExpenseBreakdown={() => setShowExpenseBreakdown((current) => !current)}
         onAddEntry={openEntryComposer}
       />
+
+      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-entries" />
 
       <button
         type="button"
