@@ -623,6 +623,17 @@ test.describe("import flow", () => {
       source: "ledger"
     });
     expect(reconciliation.reconciliationBreakdown.suspectedCauses.join(" ")).toContain("Existing ledger rows inside this statement period");
+
+    const explanation = await postJson(page, "/api/ai-assist/import-explanation", {
+      preview: preview.preview
+    });
+    expect(explanation.available).toBe(false);
+    expect(explanation.explanations).toHaveLength(1);
+    expect(explanation.explanations[0]).toMatchObject({
+      accountName,
+      source: "deterministic"
+    });
+    expect(explanation.explanations[0].message).toContain(accountName);
   });
 
   test("UOB PDF foreign-currency descriptions certify matching provisional card rows", async ({ page }) => {

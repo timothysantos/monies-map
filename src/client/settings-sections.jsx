@@ -356,7 +356,10 @@ export function SettingsCategoryMatchRulesSection({
   onAcceptSuggestion,
   onEditSuggestion,
   onIgnoreSuggestion,
-  onIgnoreIssue
+  onIgnoreIssue,
+  aiStatus = "",
+  isAiWorking = false,
+  onRequestAiSuggestions
 }) {
   const ruleGroups = useMemo(() => groupCategoryMatchRules(rules, categories), [categories, rules]);
   const duplicateRuleIssues = useMemo(() => findDuplicateCategoryMatchRules(rules, ignoredIssueIds), [ignoredIssueIds, rules]);
@@ -455,6 +458,9 @@ export function SettingsCategoryMatchRulesSection({
             </section>
           ) : null}
           <div className="settings-actions">
+            <button type="button" className="subtle-action" onClick={onRequestAiSuggestions} disabled={isAiWorking}>
+              {isAiWorking ? "Preparing suggestions..." : "Suggest rules from history"}
+            </button>
             <button type="button" className="subtle-action" onClick={onCreateRule}>
               {messages.settings.addCategoryRule}
             </button>
@@ -468,6 +474,7 @@ export function SettingsCategoryMatchRulesSection({
               </button>
             ) : null}
           </div>
+          {aiStatus ? <p className="lede compact" aria-live="polite">{aiStatus}</p> : null}
           <div className="settings-rule-list">
             {ruleGroups.length ? ruleGroups.map((group) => (
               <details key={`${group.categoryName}-${areRuleGroupsExpanded ? "open" : "closed"}`} className="settings-rule-group" open={areRuleGroupsExpanded}>

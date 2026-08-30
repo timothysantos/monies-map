@@ -169,3 +169,30 @@ Rules:
 - keep HSBC image PDFs on the same private browser OCR path as single-file
   import, then load the parsed statement into the normal preview/review flow
 - keep split cleanup separate from required bank-file collection
+
+## Optional AI Assistance Boundary
+
+The optional Workers AI surface is a small client-to-Worker boundary. It is
+never loaded as part of route bootstrap, import preview, import commit,
+reconciliation refresh, or freshness calculation. The client exposes explicit
+actions for narrative drafting, category-rule proposals, candidate ranking,
+and a per-file statement-text fallback. Summary, Month, Entries, and Splits
+also render a deterministic Financial insight immediately and may make one
+debounced, cache-missed wording request after the view is stable. That cache is
+memory-only and short-lived. The Worker validates every response against
+existing DTO data and returns an unavailable result when the binding, quota, or
+model is unavailable. The shared insight labels whether it is looking at full
+cash flow, a filtered investigation, or split obligations, then gives a bounded
+next-spend consideration from those already-computed facts. When deterministic
+evidence warrants it, the component exposes a Review action that opens the
+existing filtered Entries or split-match surface; model output never supplies
+the target. No AI result bypasses the existing editor, preview, or review
+controls.
+
+Full-cash-flow insights also render a deterministic Money consequence map. It
+uses only already-loaded summary/month facts: recorded surplus, actual spending
+against the plan, a same-season month only when it is already present in the
+loaded range, wallet proof gaps, and an explicitly labelled one-repeat
+scenario. Summary and Month can route proof gaps to Imports. Entries and Splits
+state when their narrower view cannot assess wallet confidence or household
+cash flow.

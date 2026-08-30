@@ -148,6 +148,42 @@ team conventions evolve.
   views will evolve over time.
 - Optimize for maintainability over short-term convenience.
 
+## Optional AI Assistance
+
+- Treat Workers AI as a separate, optional assistance layer, never as part of
+  the finance engine or a required dependency for any core workflow.
+- Core page loads, import parsing and preview, import commit, ledger writes,
+  reconciliation, transfer matching, category application, freshness planning,
+  and account prioritization must work identically when the AI binding is
+  missing, disabled, rate-limited, malformed, or unavailable.
+- Default to explicit user actions for AI. A financial-insight surface may make
+  one debounced, non-blocking wording request after a stable page or filter
+  change when the same computed-facts key is not in its short-lived in-memory
+  cache. It must render deterministic wording immediately, must not persist
+  its cache, and must never run during initial data loading, a mutation,
+  preview, commit, or reconciliation refresh. Do not add scheduled or hidden
+  inference.
+- Keep deterministic data and existing review controls authoritative. AI may
+  phrase, rank, or propose a draft, but must not certify, import, categorize,
+  skip, merge, delete, or link finance records by itself.
+- A Money consequence map is a deterministic, read-only projection. It may
+  show recorded cash flow, plan variance, a same-season comparison that is
+  already loaded, a clearly labelled one-repeat scenario, and explicit bank
+  proof gaps. It must never present a forecast, safe-to-spend promise, or
+  savings target as an AI conclusion.
+- Never send credentials, Shortcut tokens, original bank files, raw PDF/image
+  binaries, full account/card numbers, or unbounded notes to AI. For a
+  statement fallback, require explicit consent and send only bounded,
+  redacted browser-extracted text after local parsers and in-browser OCR fail.
+- Constrain and validate every AI input and output. Persist only the minimum
+  aggregate allowance state needed for cost control, never prompts, responses,
+  files, or embeddings unless a separately reviewed design explicitly changes
+  that rule.
+- Keep the configured AI allowance conservative enough for the intended free
+  tier. Each AI slice must include no-AI/failure coverage proving the normal
+  workflow remains usable, plus an audit note of its privacy, cost, and write
+  boundaries.
+
 ## Code structure
 
 - Prefer typed DTOs between layers instead of passing raw database rows straight

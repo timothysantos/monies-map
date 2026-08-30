@@ -7,6 +7,7 @@ import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
 import { selectAllOnFocus } from "./focus-utils";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
+import { FinancialInsight } from "./financial-insight";
 import { moniesClient } from "./monies-client-service";
 import { MonthMetricRow, MonthNotesAndAccounts, MonthPanelHeader } from "./month-overview";
 import {
@@ -25,6 +26,7 @@ import {
 import { buildMonthMutationRefreshPlan } from "./month-workflow";
 import { ResponsiveSelect } from "./responsive-select";
 import { getRowDateValue } from "./table-helpers";
+import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
 
 const MONTH_SECTION_STATE_CACHE = new Map();
 const MOBILE_ADD_DIALOG_QUERY = "(max-width: 760px), (max-width: 1024px) and (orientation: portrait)";
@@ -57,6 +59,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   const [monthNoteDialog, setMonthNoteDialog] = useState(null);
   const [isSavingMonthNote, setIsSavingMonthNote] = useState(false);
   const [monthNoteError, setMonthNoteError] = useState("");
+  const [isDraftingMonthNote, setIsDraftingMonthNote] = useState(false);
   const [isSavingMonthRow, setIsSavingMonthRow] = useState(false);
   const [monthRowError, setMonthRowError] = useState("");
   const [mobileAddDialog, setMobileAddDialog] = useState(null);
@@ -183,6 +186,45 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     () => monthService.getVisibleAccounts(accounts, view.id),
     [accounts, view.id]
   );
+  const financialInsightFacts = useMemo(() => {
+    const plannedSpendMinor = selectedMonthSummary?.estimatedExpensesMinor ?? 0;
+    const actualSpendMinor = selectedMonthSummary?.realExpensesMinor ?? 0;
+    return buildFinancialInsightFacts({
+      contextLabel: `${formatService.formatMonthLabel(view.monthPage.month)} month`,
+      records: view.monthPage.entries,
+      formatMoney: formatService.money,
+      perspective: "cash_flow",
+      accountingAdvice: actualSpendMinor > plannedSpendMinor && plannedSpendMinor > 0
+        ? "Actual spending is above the planned budget. Check the largest category and any pending bank rows before changing the plan or assuming the overspend is a one-off."
+        : "Keep the plan, actual entries, and any pending bank rows current before reallocating unused budget or treating the remaining amount as free to spend.",
+      decisionMapContext: {
+        plannedSpendMinor,
+        confidence: buildMonthConfidence(visibleAccounts)
+      }
+    });
+  }, [selectedMonthSummary?.estimatedExpensesMinor, selectedMonthSummary?.realExpensesMinor, view.monthPage.entries, view.monthPage.month, visibleAccounts]);
+  const financialInsightActions = useMemo(() => {
+    const plannedSpendMinor = selectedMonthSummary?.estimatedExpensesMinor ?? 0;
+    const actualSpendMinor = selectedMonthSummary?.realExpensesMinor ?? 0;
+    const actions = [];
+    if (
+      plannedSpendMinor > 0
+      && actualSpendMinor > plannedSpendMinor
+      && financialInsightFacts.topCategoryName !== "No spending category"
+    ) {
+      actions.push({
+        label: `Review ${financialInsightFacts.topCategoryName}`,
+        onClick: () => handleOpenEntriesForActual({ categoryName: financialInsightFacts.topCategoryName })
+      });
+    }
+    if (financialInsightFacts.decisionMap.needsReview) {
+      actions.push({
+        label: "Review bank-record gaps",
+        onClick: () => navigate("/imports")
+      });
+    }
+    return actions;
+  }, [financialInsightFacts.decisionMap.needsReview, financialInsightFacts.topCategoryName, navigate, selectedMonthSummary?.estimatedExpensesMinor, selectedMonthSummary?.realExpensesMinor]);
   const visibleAccountOptions = useMemo(
     () => accountService.getSelectOptions(visibleAccounts),
     [visibleAccounts]
@@ -857,6 +899,37 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     }
   }
 
+  async function handleDraftMonthNote() {
+    if (isDraftingMonthNote) {
+      return;
+    }
+    setIsDraftingMonthNote(true);
+    setMonthNoteError("");
+    try {
+      const response = await fetch("/api/ai-assist/monthly-narrative", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          viewId: view.id,
+          month: view.monthPage.month,
+          scope: view.monthPage.selectedScope
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error ?? "Could not draft a monthly summary.");
+      }
+      setMonthNoteDialog({ draft: data.narrative ?? view.monthPage.monthNote ?? "" });
+      if (data.reason) {
+        setMonthNoteError(`${data.reason} A deterministic draft was used instead.`);
+      }
+    } catch (error) {
+      setMonthNoteError(error instanceof Error ? error.message : "Could not draft a monthly summary.");
+    } finally {
+      setIsDraftingMonthNote(false);
+    }
+  }
+
   function handleOpenEntriesForAccount(account) {
     const next = new URLSearchParams();
     next.set("view", view.id);
@@ -1262,6 +1335,8 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
 
       <MonthMetricRow cards={monthMetricCards} isRefreshing={isMonthDataRefreshing || hasPendingDerivedMonthData} />
 
+      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-month" />
+
       <MonthPlanStack
         view={view}
         categories={categories}
@@ -1304,6 +1379,8 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         monthNote={view.monthPage.monthNote}
         visibleAccounts={visibleAccounts}
         onEditMonthNote={() => setMonthNoteDialog({ draft: view.monthPage.monthNote ?? "" })}
+        onDraftMonthNote={() => void handleDraftMonthNote()}
+        isDraftingMonthNote={isDraftingMonthNote}
         onOpenEntriesForAccount={handleOpenEntriesForAccount}
       />
 
@@ -1680,4 +1757,20 @@ function getPreviousMonthKey(monthKey) {
   const [year, month] = monthKey.split("-").map(Number);
   const date = new Date(year, month - 2, 1);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function buildMonthConfidence(accounts) {
+  const visibleAccounts = accounts ?? [];
+  const evaluated = visibleAccounts.length > 0;
+  return visibleAccounts.reduce((result, account) => ({
+    evaluated,
+    reconciliationMismatchCount: result.reconciliationMismatchCount + (account.reconciliationStatus === "mismatch" ? 1 : 0),
+    needsCheckpointCount: result.needsCheckpointCount + (account.reconciliationStatus === "needs_checkpoint" ? 1 : 0),
+    unresolvedTransferCount: result.unresolvedTransferCount + Number(account.unresolvedTransferCount ?? 0)
+  }), {
+    evaluated,
+    reconciliationMismatchCount: 0,
+    needsCheckpointCount: 0,
+    unresolvedTransferCount: 0
+  });
 }

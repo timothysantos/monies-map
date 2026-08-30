@@ -4,7 +4,12 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-04-03",
   "vars": {
-    "SHORTCUT_PUBLIC_ENDPOINT": "https://monies-map-shortcuts.timsantos-accts.workers.dev/api/shortcuts/entries/create"
+    "SHORTCUT_PUBLIC_ENDPOINT": "https://monies-map-shortcuts.timsantos-accts.workers.dev/api/shortcuts/entries/create",
+    "AI_ASSIST_ENABLED": "true",
+    "AI_ASSIST_DAILY_LIMIT": "12"
+  },
+  "ai": {
+    "binding": "AI"
   },
   "assets": {
     "directory": "./dist",

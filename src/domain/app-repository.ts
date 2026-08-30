@@ -42,6 +42,10 @@ import { upsertLinkedSplitExpenseForEntryRecord } from "./app-repository-splits"
 import { loadEntries } from "./app-repository-entries";
 import { loadMonthIncomeRows, loadMonthPlanRows } from "./app-repository-months";
 import { assertImportDescriptionQuality } from "./import-description-quality";
+
+// A Worker isolate can serve concurrent first requests. Keep additive schema
+// checks single-filed so two requests cannot attempt the same D1 migration.
+const schemaInitializationByDatabase = new WeakMap<D1Database, Promise<void>>();
 export {
   buildAccountCheckpointLedgerCsv,
   compareAccountCheckpointStatementRows,
@@ -56,6 +60,7 @@ export {
   loadIgnoredCategoryMatchRuleIssueIds,
   loadCategoryMatchRuleSuggestions,
   matchCategoryRule,
+  recordVerifiedAiCategoryMatchSuggestion,
   saveCategoryMatchRule
 } from "./app-repository-category-match-rules";
 export {
@@ -234,6 +239,24 @@ export async function ensureSeedData(db: D1Database, settings: DemoSettings) {
 }
 
 export async function ensureDemoSchema(db: D1Database) {
+  const pending = schemaInitializationByDatabase.get(db);
+  if (pending) {
+    return pending;
+  }
+
+  const initialization = ensureDemoSchemaOnce(db);
+  schemaInitializationByDatabase.set(db, initialization);
+
+  try {
+    await initialization;
+  } catch (error) {
+    // A transient D1 error must be retryable on the next request.
+    schemaInitializationByDatabase.delete(db);
+    throw error;
+  }
+}
+
+async function ensureDemoSchemaOnce(db: D1Database) {
   let shouldBackfillImportedPostDates = false;
   let shouldResetRolledBackStatementCertifications = false;
 
@@ -315,6 +338,18 @@ export async function ensureDemoSchema(db: D1Database) {
       FOREIGN KEY (household_id) REFERENCES households(id),
       FOREIGN KEY (category_id) REFERENCES categories(id),
       UNIQUE (household_id, pattern, category_id)
+    )
+  `).run();
+
+  // These counters enforce the optional Workers AI allowance without retaining
+  // prompts, statement text, model output, or financial records.
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS ai_assist_daily_usage (
+      household_id TEXT NOT NULL,
+      usage_day TEXT NOT NULL,
+      used_units INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (household_id, usage_day)
     )
   `).run();
 

@@ -26,6 +26,8 @@ export function ImportSelectFileStage({
   onDragLeaveImportFile,
   onDropImportFile,
   uploadStatus,
+  allowAiStatementFallback,
+  onAllowAiStatementFallbackChange,
   rollbackPolicy
 }) {
   const stageClassName = currentStage === 1 ? "is-current" : currentStage > 1 ? "is-complete" : "";
@@ -124,6 +126,14 @@ export function ImportSelectFileStage({
             <p>{messages.imports.selectFileNextPaste}</p>
           </div>
           <p className="lede compact">{messages.imports.defaultsHint}</p>
+          <label className="checkbox-field import-ai-consent">
+            <input
+              type="checkbox"
+              checked={allowAiStatementFallback}
+              onChange={(event) => onAllowAiStatementFallbackChange(event.target.checked)}
+            />
+            <span>Allow optional AI fallback for an unsupported PDF using extracted text only. Original files are not uploaded or stored.</span>
+          </label>
           <p className="lede compact">{messages.imports.trustHint}</p>
           <p className="lede compact">{rollbackPolicy}</p>
         </div>

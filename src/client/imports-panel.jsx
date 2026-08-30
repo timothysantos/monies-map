@@ -119,8 +119,14 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [preview, setPreview] = useState(null);
   const [previewRows, setPreviewRows] = useState([]);
   const [previewError, setPreviewError] = useState("");
+  const [aiMismatchExplanations, setAiMismatchExplanations] = useState([]);
+  const [isExplainingMismatch, setIsExplainingMismatch] = useState(false);
+  const [aiDuplicateScores, setAiDuplicateScores] = useState([]);
+  const [isRankingDuplicates, setIsRankingDuplicates] = useState(false);
   const [statementCheckpoints, setStatementCheckpoints] = useState([]);
   const [statementImportMeta, setStatementImportMeta] = useState(DEFAULT_STATEMENT_IMPORT_META);
+  const [statementWarnings, setStatementWarnings] = useState([]);
+  const [allowAiStatementFallback, setAllowAiStatementFallback] = useState(false);
 
   // UI-only workflow state: upload progress, modal dialogs, and navigation aids.
   const [uploadStatus, setUploadStatus] = useState(null);
@@ -153,6 +159,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const lastImportActionRef = useRef("");
   const lastAutoPreviewCitibankSignatureRef = useRef("");
   const deletedDiagnosticLedgerIdsRef = useRef(new Set());
+  // Mapping several statement account labels can fire back-to-back preview
+  // requests. Keep an immediate source of truth for the mapping handlers and
+  // ignore any response superseded by a newer preview request.
+  const previewRowsRef = useRef(previewRows);
+  const statementCheckpointsRef = useRef(statementCheckpoints);
+  const previewRequestSequenceRef = useRef(0);
   const pendingSplitMatchCount = Number(postImportSplitMatchCount ?? safeImportsPage.pendingSplitMatchCount ?? 0);
   const showSplitCleanupNotice = pendingSplitMatchCount > 0 && !isSplitCleanupDismissed;
   const intakeQueueSummary = useMemo(() => summarizeIntakeQueue(intakeQueue), [intakeQueue]);
@@ -355,6 +367,14 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }, [recentImportAccountFilter]);
 
   useEffect(() => {
+    previewRowsRef.current = previewRows;
+  }, [previewRows]);
+
+  useEffect(() => {
+    statementCheckpointsRef.current = statementCheckpoints;
+  }, [statementCheckpoints]);
+
+  useEffect(() => {
     if (!importWorkflowModel.readyForMapping) {
       hasAutoScrolledMappingRef.current = false;
       return;
@@ -382,6 +402,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setCsvText(nextText);
     setStatementCheckpoints([]);
     setStatementImportMeta(DEFAULT_STATEMENT_IMPORT_META);
+    setStatementWarnings([]);
+    setAllowAiStatementFallback(false);
     setPreview(null);
     setPreviewRows([]);
     setPreviewError("");
@@ -468,6 +490,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setPreviewError("");
     setStatementCheckpoints([]);
     setStatementImportMeta(DEFAULT_STATEMENT_IMPORT_META);
+    setStatementWarnings([]);
     setUploadStatus(null);
     setIsParsingStatement(false);
     setIsDragActive(false);
@@ -503,7 +526,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }) {
     setSourceLabel(parsed.sourceLabel);
     setStatementCheckpoints(nextStatementCheckpoints);
+    statementCheckpointsRef.current = nextStatementCheckpoints;
     setStatementImportMeta({ sourceType, parserKey: parsed.parserKey });
+    setStatementWarnings(parsed.warnings ?? []);
     setCsvText(statementRowsToCsv(parsed.rows));
 
     setUploadStatus({ tone: "active", message: messages.imports.uploadPreviewing(parsed.rows.length) });
@@ -642,7 +667,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         parsed = parseStatementText(text, file.name);
       } catch (error) {
         if (!importService.isExtractedPdfTextEmpty?.(text)) {
-          throw error;
+          parsed = await tryAiStatementTextFallback(text, file.name, error);
+          return { parsed: { ...parsed, checkpoints: withDetectedStatementAccounts(parsed.checkpoints) }, sourceType: "pdf" };
         }
         setUploadStatus({ tone: "active", message: messages.imports.uploadOcr(file.name) });
         const ocrText = await importService.extractPdfOcrText(file, ({ pageNumber, pageCount, status, progress } = {}) => {
@@ -658,7 +684,11 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           });
         });
         setUploadStatus({ tone: "active", message: messages.imports.uploadParsing(file.name) });
-        parsed = parseStatementText(ocrText, file.name);
+        try {
+          parsed = parseStatementText(ocrText, file.name);
+        } catch (error) {
+          parsed = await tryAiStatementTextFallback(ocrText, file.name, error);
+        }
       }
       return { parsed: { ...parsed, checkpoints: withDetectedStatementAccounts(parsed.checkpoints) }, sourceType: "pdf" };
     }
@@ -703,12 +733,36 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     };
   }
 
+  async function tryAiStatementTextFallback(text, fileName, parseError) {
+    if (!allowAiStatementFallback) {
+      throw parseError;
+    }
+    setUploadStatus({ tone: "active", message: "Preparing optional review rows from extracted statement text..." });
+    const response = await fetch("/api/ai-assist/statement-text-fallback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileName, text })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.available || !Array.isArray(data.rows)) {
+      throw new Error(data.reason ?? parseError?.message ?? "The optional statement fallback could not extract review rows.");
+    }
+    return {
+      parserKey: data.parserKey,
+      sourceLabel: data.sourceLabel,
+      rows: data.rows,
+      checkpoints: data.checkpoints ?? [],
+      warnings: data.warnings ?? []
+    };
+  }
+
   async function loadParsedImport(parsedImport) {
     setDismissedOverlapIds([]);
     if (!parsedImport.parsed) {
       setCsvText(parsedImport.csvText ?? "");
       setStatementCheckpoints([]);
       setStatementImportMeta(DEFAULT_STATEMENT_IMPORT_META);
+      setStatementWarnings([]);
       setUploadStatus({ tone: "success", message: messages.imports.uploadCsvReady(parsedImport.fileName ?? "CSV") });
       return;
     }
@@ -732,6 +786,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }) {
     // All source formats eventually converge here so the server only has one
     // preview path to reason about.
+    const requestSequence = previewRequestSequenceRef.current + 1;
+    previewRequestSequenceRef.current = requestSequence;
     setPreviewError("");
     const currentAction = `Preview import: ${nextSourceLabel || DEFAULT_SOURCE_LABEL} (${rows.length} rows, ${nextSourceType})`;
     const previousAction = lastImportActionRef.current;
@@ -758,19 +814,27 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           }
         }
       });
+      if (requestSequence !== previewRequestSequenceRef.current) {
+        return;
+      }
       setDismissedOverlapIds((current) => current.filter((id) => data.preview?.overlapImports?.some((item) => item.id === id)));
       const filteredPreview = filterDeletedDiagnosticLedgerRowsFromPreview(data.preview, deletedDiagnosticLedgerIdsRef.current);
       setPreview(filteredPreview);
       setPreviewRows(filteredPreview?.previewRows ?? []);
+      previewRowsRef.current = filteredPreview?.previewRows ?? [];
       lastPreviewHydratedAtRef.current = Date.now();
       lastStatementPreviewSnapshotRef.current = buildStatementPreviewSnapshot(
         filteredPreview?.previewRows ?? [],
         nextStatementCheckpoints
       );
     } catch (error) {
+      if (requestSequence !== previewRequestSequenceRef.current) {
+        return;
+      }
       if (!preservePreviewOnError) {
         setPreview(null);
         setPreviewRows([]);
+        previewRowsRef.current = [];
       }
       throw error;
     } finally {
@@ -994,6 +1058,64 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     }
   }
 
+  async function handleExplainMismatch() {
+    if (!preview || isExplainingMismatch) {
+      return;
+    }
+    setIsExplainingMismatch(true);
+    try {
+      const response = await fetch("/api/ai-assist/import-explanation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preview })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error ?? "Could not explain the statement mismatch.");
+      }
+      setAiMismatchExplanations(data.explanations ?? []);
+    } catch (error) {
+      setPreviewError(buildImportPreviewError(error, "Could not explain the statement mismatch."));
+    } finally {
+      setIsExplainingMismatch(false);
+    }
+  }
+
+  async function handleRankDuplicateCandidates() {
+    if (isRankingDuplicates) {
+      return;
+    }
+    const pairs = previewRows.flatMap((row) => (row.reconciliationMatches ?? []).map((match) => ({
+      rowId: row.rowId,
+      existingTransactionId: match.existingTransactionId,
+      incomingDescription: row.description,
+      existingDescription: match.description
+    }))).filter((pair) => pair.existingTransactionId).slice(0, 12);
+    if (!pairs.length) {
+      return;
+    }
+    setIsRankingDuplicates(true);
+    try {
+      const response = await fetch("/api/ai-assist/import-match-ranking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pairs })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error ?? "Could not rank duplicate candidates.");
+      }
+      setAiDuplicateScores(data.scores ?? []);
+      if (data.reason) {
+        setPreviewError({ message: data.reason });
+      }
+    } catch (error) {
+      setPreviewError(buildImportPreviewError(error, "Could not rank duplicate candidates."));
+    } finally {
+      setIsRankingDuplicates(false);
+    }
+  }
+
   async function refreshRecentImportsUntilVisible({
     committedImportId,
     refreshOptions
@@ -1210,7 +1332,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
     // Statement account labels are parser hints. This remap replaces that hint
     // with a real app account across both preview rows and checkpoints.
-    const nextRows = previewRows.map((row) => (
+    const nextRows = previewRowsRef.current.map((row) => (
       getPreviewRowStatementAccountName(row) === fromAccountName
         ? {
           ...row,
@@ -1221,13 +1343,15 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         }
         : row
     ));
-    const nextCheckpoints = statementCheckpoints.map((checkpoint) => (
+    const nextCheckpoints = statementCheckpointsRef.current.map((checkpoint) => (
       getCheckpointDetectedAccountName(checkpoint) === fromAccountName
         ? { ...checkpoint, detectedAccountName: fromAccountName, accountId: nextAccount.id, accountName: nextAccount.name }
         : checkpoint
     ));
     setPreviewRows(nextRows);
     setStatementCheckpoints(nextCheckpoints);
+    previewRowsRef.current = nextRows;
+    statementCheckpointsRef.current = nextCheckpoints;
     void refreshPreviewFromRows({
       rows: nextRows.map(importService.buildRawRowFromPreviewRow),
       nextStatementCheckpoints: nextCheckpoints,
@@ -1237,7 +1361,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   }
 
   async function applyStatementAccountMapping(fromAccountName, nextAccount) {
-    const nextRows = previewRows.map((row) => (
+    const nextRows = previewRowsRef.current.map((row) => (
       getPreviewRowStatementAccountName(row) === fromAccountName
         ? {
           ...row,
@@ -1248,7 +1372,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         }
         : row
     ));
-    const nextCheckpoints = statementCheckpoints.map((checkpoint) => (
+    const nextCheckpoints = statementCheckpointsRef.current.map((checkpoint) => (
       getCheckpointDetectedAccountName(checkpoint) === fromAccountName
         ? { ...checkpoint, detectedAccountName: fromAccountName, accountId: nextAccount.id, accountName: nextAccount.name }
         : checkpoint
@@ -1256,6 +1380,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
 
     setPreviewRows(nextRows);
     setStatementCheckpoints(nextCheckpoints);
+    previewRowsRef.current = nextRows;
+    statementCheckpointsRef.current = nextCheckpoints;
     try {
       await refreshPreviewFromRows({
         rows: nextRows.map(importService.buildRawRowFromPreviewRow),
@@ -1557,6 +1683,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           onDragLeaveImportFile={handleDragLeaveImportFile}
           onDropImportFile={handleDropImportFile}
           uploadStatus={uploadStatus}
+          allowAiStatementFallback={allowAiStatementFallback}
+          onAllowAiStatementFallbackChange={setAllowAiStatementFallback}
           rollbackPolicy={safeImportsPage.rollbackPolicy}
         />
 
@@ -1610,6 +1738,12 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           {previewRows.length > 100 ? (
             <p className="import-stage-note">{messages.imports.largeImportNotice(previewRows.length)}</p>
           ) : null}
+          {statementWarnings.length ? (
+            <section className="import-warning import-warning-attention" aria-live="polite">
+              <strong>Review before importing</strong>
+              {statementWarnings.map((warning) => <p key={warning} className="lede compact">{warning}</p>)}
+            </section>
+          ) : null}
 
           <ImportPreviewReview
             preview={preview}
@@ -1647,6 +1781,36 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             onSetDiagnosticLedgerPostDate={handleSetDiagnosticLedgerPostDate}
             onUpdateStatementCheckpoint={updateStatementCheckpoint}
           />
+
+          {hasStatementReconciliationMismatch ? (
+            <section className="import-warning import-warning-attention" aria-live="polite">
+              <strong>Plain-language check</strong>
+              <p className="lede compact">This is optional guidance. The exact ledger rows and statement controls above remain the source of truth.</p>
+              {aiMismatchExplanations.length ? (
+                <div className="stack compact-stack">
+                  {aiMismatchExplanations.map((item) => <p key={item.accountName}><strong>{item.accountName}:</strong> {item.message}</p>)}
+                </div>
+              ) : (
+                <button type="button" className="subtle-action" onClick={() => void handleExplainMismatch()} disabled={isExplainingMismatch}>
+                  {isExplainingMismatch ? "Explaining..." : "Explain what to check"}
+                </button>
+              )}
+            </section>
+          ) : null}
+
+          {previewReconciliationRowCount ? (
+            <section className="import-warning import-warning-attention" aria-live="polite">
+              <strong>Possible duplicate rows</strong>
+              <p className="lede compact">These are already constrained by account, amount, and date. Optional ranking only compares merchant descriptions and never changes a skip or certification decision.</p>
+              {aiDuplicateScores.length ? (
+                <p className="lede compact">Top optional description similarity: {aiDuplicateScores[0].similarity}% for a row already shown in the reconciliation review.</p>
+              ) : (
+                <button type="button" className="subtle-action" onClick={() => void handleRankDuplicateCandidates()} disabled={isRankingDuplicates}>
+                  {isRankingDuplicates ? "Ranking..." : "Rank descriptions"}
+                </button>
+              )}
+            </section>
+          ) : null}
 
           {preview ? (
             <ImportPreviewRowsTable

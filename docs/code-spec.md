@@ -89,6 +89,33 @@ Budget rules:
   `appShell`; they refresh slice queries only and rely on split/entry mutation
   events for cross-tab freshness
 
+## Optional AI Contract
+
+Workers AI belongs outside the normal query and mutation graph. Most actions
+are explicit. A Financial insight may make one debounced, non-blocking wording
+request after a stable page/filter state when the computed-facts key is absent
+from a short-lived in-memory cache. It must render deterministic wording first,
+must not persist that cache, and must return an ordinary unavailable result
+when disabled, unconfigured, quota-limited, or invalid. No visible page query,
+import preview or commit, accounting calculation, reconciliation, category
+application, duplicate decision, transfer decision, or Import Inbox plan may
+await it.
+
+An AI response is a bounded draft, explanation, or ranking over deterministic
+evidence already selected by the app. The existing editor or review action is
+the only way to persist a change. Keep request payloads redacted and bounded;
+do not persist prompts, model responses, original bank files, raw OCR images,
+or embeddings. Each AI change needs a no-AI test and a failure-path test in
+addition to the normal behavior test. Financial insight wording must distinguish
+full cash flow from a filtered investigation view and from split-settlement
+obligations. It may give a deterministic next-spend consideration based only on
+computed facts, but must not invent forecasts, savings targets, or comparisons.
+The Money consequence map is deterministic UI evidence, not model output. A
+same-season lane requires an already-loaded matching calendar month; a
+one-repeat lane must identify itself as a scenario rather than a forecast; and
+bank-confidence wording requires explicit reconciliation/transfer signals from
+the page rather than inference from a filtered ledger view.
+
 ## Query State Chart
 
 ```text

@@ -884,3 +884,23 @@ These boundaries are important enough to preserve explicitly:
   `month plan row` != `ledger entry`
 - Proof vs balance anchor:
   `statement reconciliation certificate` != `statement checkpoint`
+- AI assistance vs financial fact:
+  an `AI suggestion` is an optional, non-authoritative draft or ranking. It is
+  never a ledger entry, category rule, statement checkpoint, reconciliation
+  certificate, or transfer group until the user completes the existing review
+  workflow.
+- Financial insight vs monthly note:
+  a `Financial insight` is a transient explanation of the already-visible
+  Summary, Month, Entries, or Splits figures. It updates with that view's
+  filters and may use optional AI wording, but it is not saved as a Monthly
+  Note, does not recalculate totals, and never changes the ledger or plan. A
+  financial insight must identify whether its figures are full cash flow, a
+  filtered investigation, or a split-settlement obligation. It may give an
+  app-computed next-spend consideration, but it is never a forecast or a
+  savings target.
+- Money consequence map:
+  a `Money consequence map` is the deterministic evidence inside a
+  Financial insight. It separates recorded surplus from free cash, actual
+  spending from the plan, an already-loaded same-season comparison, bank-proof
+  confidence, and a transparent one-repeat scenario. It does not project the
+  future, determine a savings target, or certify the ledger.

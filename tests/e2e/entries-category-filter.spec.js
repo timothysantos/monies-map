@@ -367,7 +367,10 @@ test("entry date headers stick on mobile while scrolling through a date group", 
   expect(headerTop).toBeLessThanOrEqual(1);
 
   for (const extraOffset of [520, 640, 760]) {
-    await page.evaluate((offset) => window.scrollTo({ top: offset, behavior: "instant" }), extraOffset);
+    await page.evaluate(({ element, offset }) => {
+      const documentTop = element.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top: documentTop + offset, behavior: "instant" });
+    }, { element: await dateHeader.elementHandle(), offset: extraOffset });
     const box = await dateHeader.boundingBox();
     expect(box).not.toBeNull();
     expect(Math.abs((box?.x ?? 0) - (initialBox?.x ?? 0))).toBeLessThanOrEqual(1);

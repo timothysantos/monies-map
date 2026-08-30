@@ -449,6 +449,38 @@ Exit criteria:
 - module names match user workflows
 - average changes touch one slice more often than many unrelated helpers
 
+## Optional AI Assistance
+
+Workers AI is a non-authoritative assistance boundary. It is never on the
+page-load, import-preview, import-commit, reconciliation, or freshness critical
+path. Summary, Month, Entries, and Splits render a deterministic Financial
+insight from their already-loaded figures immediately, then may request a
+wording variation only after a stable page/filter state and an in-memory cache
+miss. Each request is capped by a shared D1 daily usage counter and returns an
+ordinary unavailable response when the binding is disabled, the allowance is
+exhausted, or a model response fails validation.
+
+The Worker receives bounded, redacted text only. Financial-insight wording sends
+the model placeholder names rather than actual amounts, merchants, accounts, or
+ledger rows; the app substitutes its already-computed figures after template
+validation. Statement fallback begins with
+browser-local PDF extraction and OCR; it sends extracted text after explicit
+consent and never uploads or stores the original binary. Model output is
+validated into drafts only: monthly note wording, pending category-rule
+suggestions, review-only statement rows, or semantic scores for candidates that
+the deterministic matchers already selected. The ledger, D1 data, category
+rules, checkpoints, reconciliation calculations, and import inbox stay
+authoritative.
+
+The same component carries a deterministic Money consequence map for
+full-cash-flow views. The map separates the recorded surplus from free cash,
+shows planned-versus-actual spend, compares the same calendar month only when
+that matching month is already loaded, exposes reconciliation and transfer
+proof gaps, and can show one clearly labelled repeat-expense scenario. It never
+creates a forecast or a safe-to-spend guarantee. Summary and Month own the
+confidence inputs and can route bank-record gaps to Imports; Entries and Splits
+explicitly state when that evidence is outside their page payload.
+
 ## Scenario Planning Standard
 
 Every new feature or refactor stage should define scenarios in this shape:

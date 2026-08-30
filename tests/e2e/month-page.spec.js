@@ -108,6 +108,21 @@ test.describe("month page", () => {
     await reseedDemo(page);
   });
 
+  test("optional monthly narrative opens the normal note editor without changing the ledger or saved note", async ({ page }) => {
+    const before = await loadMonthPageData(page);
+    await gotoMonthPage(page);
+
+    await page.getByRole("button", { name: "Draft a summary" }).click();
+    const dialog = page.locator(".note-dialog-content");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("textbox")).not.toHaveValue("");
+    await expect(dialog.getByRole("alert")).toContainText("AI assistance is turned off");
+    await dialog.getByRole("button", { name: "Close month note editor" }).click();
+
+    const after = await loadMonthPageData(page);
+    expect(after.monthPage.monthNote).toBe(before.monthPage.monthNote);
+  });
+
   test("desktop keeps person-owned rows stable across scopes and only shows delete while editing", async ({ page }) => {
     const expectedPlannedValues = new Map();
     const rowLabels = ["Public Transport", "Food", "Sports & Hobbies"];
