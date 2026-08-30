@@ -801,6 +801,25 @@ the open balance. If the groups already offset each other, it records an
 internal offset and no bank transfer is needed. Otherwise, select the matching
 ledger transfer in the checkpoint and choose `Match transfer`.
 
+If the people have already paid each other but the transfer has not appeared in
+the ledger, choose `Mark paid`. The active settlement collapses into `Settled,
+awaiting bank match`, so it stops competing with current work but remains
+available for later proof. Open that section when the bank transfer appears,
+select the transfer for the relevant month, and choose `Match transfer`.
+The collapsed follow-up section retains paid settlements in every currency, so
+switching split groups cannot hide a repayment that still needs bank proof.
+`Mark paid` never creates or certifies a ledger entry. Choose `Undo paid` if
+the confirmation was premature; use `Undo simplification` only when the
+included split activity itself must return to the open balance.
+
+## Can I keep Financial insight brief?
+
+Yes. Every Financial insight starts as a two-line preview with an ellipsis.
+Choose `Read full insight` to reveal the complete narrative, consequence map,
+and links to the specific records worth reviewing. It returns to the concise
+preview when the page or filters change, and expanding it never makes another
+AI request.
+
 New split activity added after the checkpoint remains open, even when its date
 falls inside the earlier activity range. Use `Reopen settlement` to release a
 checkpoint's rows if the settlement was premature; the checkpoint remains in

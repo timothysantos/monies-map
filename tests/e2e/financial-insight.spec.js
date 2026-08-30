@@ -62,11 +62,26 @@ test.describe("financial insights", () => {
     await expect(summaryInsight).toBeVisible();
     await expect(summaryInsight).toContainText("Financial insight");
     await expect(summaryInsight).toContainText("May 2026 summary");
+    await expect(summaryInsight.getByRole("button", { name: "Read full insight" })).toHaveAttribute("aria-expanded", "false");
+    await expect(summaryInsight.locator(".financial-insight-narrative")).toHaveClass(/is-collapsed/);
+    await expect(summaryInsight.getByLabel("Money consequence map")).toBeHidden();
+    await summaryInsight.getByRole("button", { name: "Read full insight" }).click();
+    await expect(summaryInsight.getByRole("button", { name: "Show less" })).toHaveAttribute("aria-expanded", "true");
     await expect(summaryInsight).toContainText("Before the next discretionary spend");
     await expect(summaryInsight.getByLabel("Money consequence map")).toBeVisible();
     await expect(summaryInsight).toContainText("Recorded surplus");
     await expect(summaryInsight).toContainText("Income not in this view");
     await expect(summaryInsight).not.toContainText("One-repeat scenario");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(summaryInsight.getByRole("button", { name: "Show less" })).toBeVisible();
+    const mobileWidth = await page.evaluate(() => ({
+      viewportWidth: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth
+    }));
+    expect(mobileWidth.documentWidth).toBeLessThanOrEqual(mobileWidth.viewportWidth + 1);
+    await summaryInsight.getByRole("button", { name: "Show less" }).click();
+    await expect(summaryInsight.getByRole("button", { name: "Read full insight" })).toHaveAttribute("aria-expanded", "false");
+    await page.setViewportSize({ width: 1280, height: 720 });
 
     await gotoPageAfterApi(
       page,
@@ -86,6 +101,7 @@ test.describe("financial insights", () => {
     );
     const entriesInsight = page.locator(".financial-insight-entries");
     await expect(entriesInsight).toContainText("All entries for May 2026");
+    await entriesInsight.getByRole("button", { name: "Read full insight" }).click();
     await expect(entriesInsight.getByLabel("Money consequence map")).toContainText("Check the full month");
     await entriesInsight.getByRole("button", { name: "Review largest expense" }).click();
     await expect(page).toHaveURL(/entry_id=/);

@@ -67,6 +67,8 @@ import {
   updateSplitSettlementRecord,
   matchSplitSettlementCheckpoint,
   unmatchSplitSettlementCheckpoint,
+  markSplitSettlementCheckpointPaid,
+  undoSplitSettlementCheckpointPaid,
   reopenSplitSettlementCheckpoint,
   updateAccountRecord,
   updateCategoryRecord,
@@ -1425,6 +1427,26 @@ export default {
         return json({ ok: true, ...(await reopenSplitSettlementCheckpoint(env.DB, body.checkpointId)) });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to reopen settlement" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/splits/checkpoints/mark-paid" && request.method === "POST") {
+      const body = await request.json<{ checkpointId?: string }>();
+      if (!body.checkpointId) return json({ ok: false, error: "Missing settlement checkpoint id" }, 400);
+      try {
+        return json({ ok: true, ...(await markSplitSettlementCheckpointPaid(env.DB, body.checkpointId)) });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to mark settlement paid" }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/splits/checkpoints/undo-paid" && request.method === "POST") {
+      const body = await request.json<{ checkpointId?: string }>();
+      if (!body.checkpointId) return json({ ok: false, error: "Missing settlement checkpoint id" }, 400);
+      try {
+        return json({ ok: true, ...(await undoSplitSettlementCheckpointPaid(env.DB, body.checkpointId)) });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to undo paid settlement" }, 400);
       }
     }
 

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { useEffect, useId, useMemo, useState } from "react";
 
 import {
   buildDeterministicFinancialInsight,
@@ -17,9 +18,15 @@ export function FinancialInsight({ facts, actions = [], className = "" }) {
   const cacheKey = useMemo(() => buildFinancialInsightCacheKey(facts), [facts]);
   const deterministicNarrative = useMemo(() => buildDeterministicFinancialInsight(facts), [facts]);
   const [response, setResponse] = useState(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const narrativeId = useId();
   const visibleNarrative = response?.key === cacheKey
     ? response.narrative
     : deterministicNarrative;
+
+  useEffect(() => {
+    setIsExpanded(false);
+  }, [cacheKey]);
 
   useEffect(() => {
     const cached = insightCache.get(cacheKey);
@@ -71,9 +78,25 @@ export function FinancialInsight({ facts, actions = [], className = "" }) {
     <section className={`financial-insight ${className}`.trim()} aria-label="Financial insight">
       <span className="financial-insight-label">Financial insight</span>
       <div className="financial-insight-content">
-        <p aria-live="polite">{visibleNarrative}</p>
-        {facts.decisionMap?.enabled ? <FinancialDecisionMap decisionMap={facts.decisionMap} /> : null}
-        {actions.length ? (
+        <p
+          id={narrativeId}
+          className={isExpanded ? "financial-insight-narrative" : "financial-insight-narrative is-collapsed"}
+          aria-live="polite"
+        >
+          {visibleNarrative}
+        </p>
+        <button
+          type="button"
+          className="financial-insight-toggle"
+          aria-expanded={isExpanded}
+          aria-controls={narrativeId}
+          onClick={() => setIsExpanded((expanded) => !expanded)}
+        >
+          {isExpanded ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+          {isExpanded ? "Show less" : "Read full insight"}
+        </button>
+        {isExpanded && facts.decisionMap?.enabled ? <FinancialDecisionMap decisionMap={facts.decisionMap} /> : null}
+        {isExpanded && actions.length ? (
           <div className="financial-insight-actions" aria-label="Review related records">
             {actions.map((action) => (
               <button key={action.label} type="button" className="subtle-action" onClick={action.onClick}>

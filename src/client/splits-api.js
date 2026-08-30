@@ -94,6 +94,14 @@ export function reopenSettlementCheckpoint(checkpointId) {
   return postJson("/api/splits/checkpoints/reopen", { checkpointId }, "Failed to reopen settlement.");
 }
 
+export function markSettlementCheckpointPaid(checkpointId) {
+  return postJson("/api/splits/checkpoints/mark-paid", { checkpointId }, "Failed to mark settlement paid.");
+}
+
+export function undoSettlementCheckpointPaid(checkpointId) {
+  return postJson("/api/splits/checkpoints/undo-paid", { checkpointId }, "Failed to undo paid settlement.");
+}
+
 export function matchSettlementCheckpoint({ checkpointId, transactionId, fxRateBasisPoints }) {
   return postJson("/api/splits/checkpoints/match", { checkpointId, transactionId, fxRateBasisPoints }, "Failed to match settlement.");
 }

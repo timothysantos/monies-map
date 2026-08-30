@@ -70,6 +70,21 @@ splits summary area. It uses the splits color contract, stays compact and
 newest-first, labels archived actions clearly, and places Restore beside a
 recoverable record without exposing destructive controls in the history list.
 
+Simplified settlement uses two distinct user facts: `Mark paid` records the
+people's confirmation and collapses the checkpoint into a follow-up queue;
+`Match bank transfer` records the independent ledger evidence. The queue is
+collapsed by default, retains the included-record manifest, supports `Undo
+paid`, and shows paid follow-ups across currencies so changing split groups
+cannot hide one. The user can expand one item to match a transfer from the
+currently selected ledger month. It must never style a paid confirmation as a
+bank match.
+
+Financial insight is deliberately compact by default. It shows a two-line,
+visually ellipsized narrative preview and a clear `Read full insight` control;
+the full narrative, money consequence map, and record actions are revealed
+only on demand. Expanding is local presentation state and must not trigger an
+additional AI request.
+
 ## Apple Shortcut Install Boundary
 
 The Settings slice owns the Apple Pay shortcut install workflow. The display

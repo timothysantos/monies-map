@@ -103,8 +103,10 @@ Target slices:
 The splits slice also owns settlement checkpoints. A checkpoint is an explicit
 snapshot of currently open split activity and its net household balance;
 matching a transfer records external settlement without rewriting the source
-split rows. Reopening a checkpoint releases its rows for a later checkpoint
-while preserving the historical checkpoint record.
+split rows. A paid confirmation can move an unmatched checkpoint out of the
+active workspace, but it is deliberately separate from a bank match and does
+not write or certify any ledger evidence. Reopening a checkpoint releases its
+rows for a later checkpoint while preserving the historical checkpoint record.
 
 Split groups carry a designated currency and optional expense source, while expenses and settlements retain
 their original currency and payment evidence. Checkpoint netting only sums one

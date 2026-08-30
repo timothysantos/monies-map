@@ -316,7 +316,7 @@ export async function loadSplitSettlementCheckpoints(db: D1Database): Promise<Sp
   const rows = await db.prepare(`
     SELECT
       checkpoints.id, checkpoints.from_person_id, checkpoints.to_person_id,
-      checkpoints.amount_minor, checkpoints.currency, checkpoints.settlement_date, checkpoints.status,
+      checkpoints.amount_minor, checkpoints.currency, checkpoints.settlement_date, checkpoints.settled_at, checkpoints.status,
       checkpoints.matched_transaction_id, checkpoints.matched_amount_minor,
       checkpoints.note, from_person.display_name AS from_person_name,
       to_person.display_name AS to_person_name
@@ -328,7 +328,7 @@ export async function loadSplitSettlementCheckpoints(db: D1Database): Promise<Sp
   `).bind(DEFAULT_HOUSEHOLD_ID).all<{
     id: string; from_person_id: string | null; from_person_name: string | null;
     to_person_id: string | null; to_person_name: string | null; amount_minor: number; currency: string | null;
-    settlement_date: string; status: SplitSettlementCheckpointDto["status"];
+    settlement_date: string; settled_at: string | null; status: SplitSettlementCheckpointDto["status"];
     matched_transaction_id: string | null; matched_amount_minor: number;
     note: string | null;
   }>();
@@ -373,6 +373,7 @@ export async function loadSplitSettlementCheckpoints(db: D1Database): Promise<Sp
     amountMinor: row.amount_minor,
     currency: normalizeSplitCurrency(row.currency),
     settlementDate: row.settlement_date,
+    settledAt: row.settled_at ?? undefined,
     status: row.status,
     matchedTransactionId: row.matched_transaction_id ?? undefined,
     matchedAmountMinor: matchMap.get(row.id)?.reduce((total, transfer) => total + transfer.amountMinor, 0) ?? row.matched_amount_minor,
@@ -414,7 +415,7 @@ export async function createSplitSettlementCheckpoint(
   }
   if (!requestedCurrency && currencies.size > 1) throw new Error("Simplify settlement requires one currency. Select a currency-specific group before simplifying.");
   const currency = requestedCurrency ?? [...currencies][0] ?? "SGD";
-  const existingCheckpoint = await db.prepare("SELECT id FROM split_settlement_checkpoints WHERE household_id = ? AND currency = ? AND status IN ('open', 'partially_matched', 'matched', 'internally_offset') LIMIT 1")
+  const existingCheckpoint = await db.prepare("SELECT id FROM split_settlement_checkpoints WHERE household_id = ? AND currency = ? AND settled_at IS NULL AND status IN ('open', 'partially_matched') LIMIT 1")
     .bind(DEFAULT_HOUSEHOLD_ID, currency).first<{ id: string }>();
   if (existingCheckpoint) throw new Error(`An active ${currency} settlement checkpoint already exists. Reopen it before creating another.`);
   const openExpenses = allOpenExpenses.filter((row) => row.currency === currency);
@@ -454,6 +455,36 @@ export async function reopenSplitSettlementCheckpoint(db: D1Database, checkpoint
   if (!existing) throw new Error("Settlement checkpoint not found.");
   await db.prepare("UPDATE split_settlement_checkpoints SET status = 'reopened', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ?").bind(checkpointId, DEFAULT_HOUSEHOLD_ID).run();
   return { checkpointId, status: "reopened" as const };
+}
+
+// A household can confirm the real-world repayment before the bank transaction
+// is available. This deliberately does not change reconciliation status.
+export async function markSplitSettlementCheckpointPaid(db: D1Database, checkpointId: string) {
+  const checkpoint = await db.prepare("SELECT id, status, settled_at FROM split_settlement_checkpoints WHERE id = ? AND household_id = ?")
+    .bind(checkpointId, DEFAULT_HOUSEHOLD_ID)
+    .first<{ id: string; status: SplitSettlementCheckpointDto["status"]; settled_at: string | null }>();
+  if (!checkpoint) throw new Error("Settlement checkpoint not found.");
+  if (["reopened", "voided", "internally_offset", "matched"].includes(checkpoint.status)) {
+    throw new Error("Only an unmatched settlement can be marked paid.");
+  }
+  if (checkpoint.settled_at) return { checkpointId, settledAt: checkpoint.settled_at };
+  await db.prepare("UPDATE split_settlement_checkpoints SET settled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ?")
+    .bind(checkpointId, DEFAULT_HOUSEHOLD_ID).run();
+  const marked = await db.prepare("SELECT settled_at FROM split_settlement_checkpoints WHERE id = ? AND household_id = ?")
+    .bind(checkpointId, DEFAULT_HOUSEHOLD_ID).first<{ settled_at: string | null }>();
+  return { checkpointId, settledAt: marked?.settled_at ?? undefined };
+}
+
+export async function undoSplitSettlementCheckpointPaid(db: D1Database, checkpointId: string) {
+  const checkpoint = await db.prepare("SELECT id, status, settled_at FROM split_settlement_checkpoints WHERE id = ? AND household_id = ?")
+    .bind(checkpointId, DEFAULT_HOUSEHOLD_ID)
+    .first<{ id: string; status: SplitSettlementCheckpointDto["status"]; settled_at: string | null }>();
+  if (!checkpoint) throw new Error("Settlement checkpoint not found.");
+  if (!checkpoint.settled_at) throw new Error("This settlement is not marked paid.");
+  if (checkpoint.status === "matched") throw new Error("Remove the bank match before undoing a paid settlement.");
+  await db.prepare("UPDATE split_settlement_checkpoints SET settled_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ?")
+    .bind(checkpointId, DEFAULT_HOUSEHOLD_ID).run();
+  return { checkpointId };
 }
 
 export async function matchSplitSettlementCheckpoint(db: D1Database, input: { checkpointId: string; transactionId: string; fxRateBasisPoints?: number }) {
