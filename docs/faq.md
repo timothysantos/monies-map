@@ -815,6 +815,10 @@ included split activity itself must return to the open balance.
 ## Can I keep Financial insight brief?
 
 Yes. Every Financial insight starts as a two-line preview with an ellipsis.
+The preview also calls out one computed pattern from the visible records, such
+as a concentrated category, the largest expense, or a repeated merchant. The
+wording can differ when the visible facts differ, but it never invents a
+transaction or changes the app's calculations.
 Choose `Read full insight` to reveal the complete narrative, consequence map,
 and links to the specific records worth reviewing. It returns to the concise
 preview when the page or filters change, and expanding it never makes another
@@ -2150,6 +2154,8 @@ from the app's own calculations, then may improve its wording in the background
 after a short pause. Changing a month, account, category, search, scope, or
 split group creates a different insight; the app keeps same-view wording in a
 short-lived in-memory cache so it does not keep calling AI while you work.
+Its compact preview includes one deterministic pattern from the visible entries
+before any optional AI wording returns.
 
 Those insights are guidance, not a recalculation. A filtered Entries or Splits
 view says so and should be used to investigate that subset, not as a full-month

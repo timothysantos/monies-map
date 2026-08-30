@@ -32,6 +32,7 @@ export interface FinancialInsightFacts {
   topCategoryAmount: string;
   topMerchantName: string;
   topMerchantAmount: string;
+  notableFact: string;
   cashFlowPrinciple: string;
   nextSpendConsideration: string;
   accountingAdvice: string;
@@ -139,9 +140,10 @@ export function buildFinancialInsightFacts(input: {
   const perspective = input.perspective ?? "cash_flow";
   const topMerchantName = redactAiText(topMerchant?.description, 100) || "No expense recorded";
   const topMerchantMinor = Math.abs(topMerchant?.amountMinor ?? 0);
+  const contextLabel = redactAiText(input.contextLabel, 120) || "Current view";
 
   return {
-    contextLabel: redactAiText(input.contextLabel, 120) || "Current view",
+    contextLabel,
     entryCount: Math.max(0, Math.round(input.entryCount ?? input.records.length)),
     spend: input.formatMoney(spendMinor),
     income: input.formatMoney(incomeMinor),
@@ -150,6 +152,16 @@ export function buildFinancialInsightFacts(input: {
     topCategoryAmount: input.formatMoney(topCategoryMinor),
     topMerchantName,
     topMerchantAmount: input.formatMoney(topMerchantMinor),
+    notableFact: buildNotableEntryFact({
+      expenses,
+      spendMinor,
+      topCategoryName,
+      topCategoryMinor,
+      topMerchantName,
+      topMerchantMinor,
+      formatMoney: input.formatMoney,
+      contextLabel
+    }),
     ...buildFinancialDecisionPrompts({
       perspective,
       spendMinor,
@@ -175,7 +187,16 @@ export function buildDeterministicFinancialInsight(facts: FinancialInsightFacts)
   if (!facts.entryCount) {
     return `${facts.contextLabel} has no visible entries. ${facts.accountingAdvice}`;
   }
-  return `${facts.contextLabel} has ${facts.entryCount} visible ${facts.entryCount === 1 ? "entry" : "entries"}: ${facts.spend} of spending, ${facts.income} of income, and a net of ${facts.net}. ${facts.topCategoryName} is the largest expense category at ${facts.topCategoryAmount}. ${facts.cashFlowPrinciple} ${facts.nextSpendConsideration} ${facts.accountingAdvice}`;
+  const snapshot = `${facts.contextLabel} has ${facts.entryCount} visible ${facts.entryCount === 1 ? "entry" : "entries"}: ${facts.spend} of spending, ${facts.income} of income, and a net of ${facts.net}.`;
+  const notableFact = facts.notableFact || `${facts.topCategoryName} is the largest expense category at ${facts.topCategoryAmount}.`;
+  const openings = [
+    `Worth noticing: ${notableFact}`,
+    `A useful signal: ${notableFact}`,
+    `One entry pattern: ${notableFact}`,
+    `At a glance, ${notableFact.charAt(0).toLowerCase()}${notableFact.slice(1)}`
+  ];
+  const opening = openings[stableInsightIndex(`${facts.contextLabel}|${facts.entryCount}|${facts.spend}|${facts.income}|${facts.topCategoryName}`) % openings.length];
+  return `${opening} ${snapshot} ${facts.cashFlowPrinciple} ${facts.nextSpendConsideration} ${facts.accountingAdvice}`;
 }
 
 export function buildFinancialInsightCacheKey(facts: FinancialInsightFacts) {
@@ -189,6 +210,7 @@ export function buildFinancialInsightCacheKey(facts: FinancialInsightFacts) {
     facts.topCategoryAmount,
     facts.topMerchantName,
     facts.topMerchantAmount,
+    facts.notableFact,
     facts.cashFlowPrinciple,
     facts.nextSpendConsideration,
     facts.accountingAdvice,
@@ -241,6 +263,7 @@ export function parseFinancialInsightTemplate(value: unknown, facts: FinancialIn
     topCategoryAmount: facts.topCategoryAmount,
     topMerchantName: facts.topMerchantName,
     topMerchantAmount: facts.topMerchantAmount,
+    notableFact: facts.notableFact,
     cashFlowPrinciple: facts.cashFlowPrinciple,
     nextSpendConsideration: facts.nextSpendConsideration,
     accountingAdvice: facts.accountingAdvice
@@ -248,12 +271,58 @@ export function parseFinancialInsightTemplate(value: unknown, facts: FinancialIn
   if (
     !hasOnlyKnownTokens(template, replacements)
     || !template.includes("{{contextLabel}}")
+    || !template.includes("{{notableFact}}")
     || !template.includes("{{cashFlowPrinciple}}")
     || !template.includes("{{nextSpendConsideration}}")
   ) {
     return null;
   }
   return replaceTokens(template, replacements);
+}
+
+function buildNotableEntryFact(input: {
+  expenses: FinancialInsightRecord[];
+  spendMinor: number;
+  topCategoryName: string;
+  topCategoryMinor: number;
+  topMerchantName: string;
+  topMerchantMinor: number;
+  formatMoney: (amountMinor: number) => string;
+  contextLabel: string;
+}) {
+  if (!input.expenses.length || input.spendMinor <= 0) {
+    return "There is no visible expense pattern to compare yet.";
+  }
+
+  const merchantCounts = new Map<string, number>();
+  for (const expense of input.expenses) {
+    const merchant = redactAiText(expense.description, 100) || "Unlabelled expense";
+    merchantCounts.set(merchant, (merchantCounts.get(merchant) ?? 0) + 1);
+  }
+  const [mostFrequentMerchant, mostFrequentMerchantCount] = [...merchantCounts.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0] ?? ["", 0];
+  const largestExpensesMinor = [...input.expenses]
+    .map((expense) => Math.abs(expense.amountMinor))
+    .sort((left, right) => right - left)
+    .slice(0, 3)
+    .reduce((total, amountMinor) => total + amountMinor, 0);
+  const categoryShare = Math.round((input.topCategoryMinor / input.spendMinor) * 100);
+  const topThreeShare = Math.round((largestExpensesMinor / input.spendMinor) * 100);
+  const candidates = [
+    `${input.topCategoryName} accounts for ${categoryShare}% of visible spending.`,
+    `${input.topMerchantName} is the largest visible expense at ${input.formatMoney(input.topMerchantMinor)}.`,
+    input.expenses.length >= 3 ? `The three largest expenses account for ${topThreeShare}% of visible spending.` : null,
+    mostFrequentMerchantCount >= 2 ? `${mostFrequentMerchant} appears ${mostFrequentMerchantCount} times among the visible expenses.` : null
+  ].filter((candidate): candidate is string => Boolean(candidate));
+  return candidates[stableInsightIndex(`${input.contextLabel}|${input.spendMinor}|${input.topCategoryName}|${mostFrequentMerchant}`) % candidates.length];
+}
+
+function stableInsightIndex(value: string) {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = ((hash << 5) - hash + value.charCodeAt(index)) | 0;
+  }
+  return Math.abs(hash);
 }
 
 function buildFinancialDecisionPrompts(input: {

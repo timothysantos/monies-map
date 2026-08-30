@@ -964,6 +964,18 @@ h3 {
   -webkit-line-clamp: 2;
 }
 
+.financial-insight-pattern {
+  margin-top: 7px !important;
+  color: var(--accent-strong) !important;
+  font-size: 0.84rem !important;
+  font-weight: 600;
+  line-height: 1.45 !important;
+}
+
+.financial-insight-pattern strong {
+  font-weight: 800;
+}
+
 .financial-insight-toggle {
   display: inline-flex;
   align-items: center;
@@ -1094,6 +1106,10 @@ h3 {
 .panel-splits .financial-insight-label,
 .panel-splits .financial-insight p {
   color: #fff8f3;
+}
+
+.panel-splits .financial-insight-pattern {
+  color: #fff8f3 !important;
 }
 
 .panel-splits .financial-insight-toggle {
@@ -4984,6 +5000,59 @@ button.split-activity-card:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* Follow-up cards sit on a light surface inside the dark Splits workspace. */
+.panel-splits .split-settlement-follow-up .subtle-action {
+  min-height: 38px;
+  border-color: #b4603c;
+  background: #fffaf6;
+  color: #713819;
+}
+
+.panel-splits .split-settlement-follow-up .subtle-action:hover:not(:disabled) {
+  border-color: #8f401e;
+  background: #f7e4d7;
+  color: #5a2b15;
+}
+
+.panel-splits .split-settlement-follow-up .subtle-action:focus-visible {
+  outline: 2px solid #8f401e;
+  outline-offset: 2px;
+}
+
+.panel-splits .split-settlement-follow-up .split-settlement-follow-up-undo-action {
+  border-color: #bc7467;
+  background: #fce9e4;
+  color: #912d20;
+}
+
+.panel-splits .split-settlement-follow-up .split-settlement-follow-up-undo-action:hover:not(:disabled) {
+  border-color: #962f22;
+  background: #f6d7cf;
+  color: #762318;
+}
+
+.panel-splits .split-settlement-follow-up .split-settlement-follow-up-match-action {
+  width: 100%;
+  border-color: #a94920;
+  background: #a94920;
+  color: #fffaf6;
+  font-weight: 800;
+}
+
+.panel-splits .split-settlement-follow-up .split-settlement-follow-up-match-action:hover:not(:disabled) {
+  border-color: #843716;
+  background: #843716;
+  color: #fffaf6;
+}
+
+.panel-splits .split-settlement-follow-up .subtle-action:disabled {
+  border-color: #ddc9bd;
+  background: #f3ebe6;
+  color: #92776a;
+  cursor: not-allowed;
+  opacity: 1;
 }
 
 .panel-splits .split-checkpoint-panel .split-checkpoint-actions select {

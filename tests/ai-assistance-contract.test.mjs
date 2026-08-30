@@ -63,6 +63,7 @@ test("view insights substitute computed facts and reject model-supplied figures"
     topCategoryAmount: "$50.00",
     topMerchantName: "Cold Storage",
     topMerchantAmount: "$20.00",
+    notableFact: "The three largest expenses account for 75% of visible spending.",
     cashFlowPrinciple: "Recorded spending is higher than recorded income in this view.",
     nextSpendConsideration: "Before the next discretionary spend, check the available budget.",
     accountingAdvice: "Review provisional entries before closing the month.",
@@ -79,13 +80,34 @@ test("view insights substitute computed facts and reject model-supplied figures"
     }
   };
   const insight = parseFinancialInsightTemplate({
-    template: "{{contextLabel}} has {{entryCount}} entries with spending of {{spend}}. {{cashFlowPrinciple}} {{nextSpendConsideration}}"
+    template: "{{notableFact}} {{contextLabel}} has {{entryCount}} entries with spending of {{spend}}. {{cashFlowPrinciple}} {{nextSpendConsideration}}"
   }, facts);
 
-  assert.equal(insight, "August 2026 entries has 7 entries with spending of $120.00. Recorded spending is higher than recorded income in this view. Before the next discretionary spend, check the available budget.");
+  assert.equal(insight, "The three largest expenses account for 75% of visible spending. August 2026 entries has 7 entries with spending of $120.00. Recorded spending is higher than recorded income in this view. Before the next discretionary spend, check the available budget.");
   assert.equal(parseFinancialInsightTemplate({ template: "{{contextLabel}} is up 34%." }, facts), null);
-  assert.match(buildDeterministicFinancialInsight(facts), /Food & Drinks/);
+  assert.match(buildDeterministicFinancialInsight(facts), /The three largest expenses account for 75% of visible spending/);
   assert.notEqual(buildFinancialInsightCacheKey(facts), buildFinancialInsightCacheKey({ ...facts, contextLabel: "Filtered entries" }));
+});
+
+test("financial insight leads with a deterministic pattern from the visible entries", () => {
+  const facts = buildFinancialInsightFacts({
+    contextLabel: "August 2026 entries",
+    records: [
+      { entryType: "expense", amountMinor: 6_000, categoryName: "Food & Drinks", description: "Restaurant A" },
+      { entryType: "expense", amountMinor: 2_000, categoryName: "Food & Drinks", description: "Restaurant B" },
+      { entryType: "expense", amountMinor: 1_000, categoryName: "Transport", description: "Taxi" },
+      { entryType: "income", amountMinor: 20_000, description: "Salary" }
+    ],
+    formatMoney: (amountMinor) => `$${(amountMinor / 100).toFixed(2)}`,
+    accountingAdvice: "Keep the bank record current.",
+    perspective: "cash_flow"
+  });
+
+  assert.match(facts.notableFact, /Food & Drinks accounts for 89% of visible spending|Restaurant A is the largest visible expense at \$60\.00|The three largest expenses account for 100% of visible spending/);
+  const narrative = buildDeterministicFinancialInsight(facts);
+  assert.match(narrative, /Worth noticing:|A useful signal:|One entry pattern:|At a glance,/);
+  assert.match(narrative, new RegExp(facts.notableFact.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.equal(narrative, buildDeterministicFinancialInsight(facts));
 });
 
 test("financial insight converts computed cash flow into conservative next-spend guidance", () => {

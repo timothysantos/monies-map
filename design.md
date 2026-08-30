@@ -83,7 +83,15 @@ Financial insight is deliberately compact by default. It shows a two-line,
 visually ellipsized narrative preview and a clear `Read full insight` control;
 the full narrative, money consequence map, and record actions are revealed
 only on demand. Expanding is local presentation state and must not trigger an
-additional AI request.
+additional AI request. The preview also surfaces one stable, computed entry
+pattern such as spending concentration or repeated merchant activity. Its
+wording varies deterministically with the visible facts, so it stays specific
+without changing on a rerender or relying on AI.
+
+The Splits workspace uses a dark surface but paid-settlement follow-ups use a
+light proof card. Controls on that card must use an explicit light-card theme:
+readable dark secondary actions, a distinct caution treatment for `Undo paid`,
+and a high-contrast primary treatment for the later bank-transfer match.
 
 ## Apple Shortcut Install Boundary
 
