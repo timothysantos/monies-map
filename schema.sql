@@ -389,6 +389,7 @@ CREATE TABLE IF NOT EXISTS split_settlement_checkpoints (
   amount_minor INTEGER NOT NULL,
   currency TEXT NOT NULL DEFAULT 'SGD',
   settlement_date TEXT NOT NULL,
+  settled_at TEXT,
   status TEXT NOT NULL CHECK (status IN ('open', 'matched', 'partially_matched', 'internally_offset', 'reopened', 'voided')),
   matched_transaction_id TEXT,
   matched_amount_minor INTEGER NOT NULL DEFAULT 0,

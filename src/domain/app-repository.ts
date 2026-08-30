@@ -108,6 +108,8 @@ export {
   loadSplitActivityHistory,
   matchSplitSettlementCheckpoint,
   unmatchSplitSettlementCheckpoint,
+  markSplitSettlementCheckpointPaid,
+  undoSplitSettlementCheckpointPaid,
   reopenSplitSettlementCheckpoint,
   updateSplitExpenseCategoryRecord,
   updateSplitExpenseRecord,
@@ -862,6 +864,7 @@ async function ensureDemoSchemaOnce(db: D1Database) {
         amount_minor INTEGER NOT NULL,
         currency TEXT NOT NULL DEFAULT 'SGD',
         settlement_date TEXT NOT NULL,
+        settled_at TEXT,
         status TEXT NOT NULL CHECK (status IN ('open', 'matched', 'partially_matched', 'internally_offset', 'reopened', 'voided')),
         matched_transaction_id TEXT,
         matched_amount_minor INTEGER NOT NULL DEFAULT 0,
@@ -978,7 +981,10 @@ async function ensureDemoSchemaOnce(db: D1Database) {
   }
 
   const splitSettlementCheckpointColumns = await db.prepare("PRAGMA table_info(split_settlement_checkpoints)").all<{ name: string }>();
-  for (const column of [["currency", "TEXT NOT NULL DEFAULT 'SGD'"]]) {
+  for (const column of [
+    ["currency", "TEXT NOT NULL DEFAULT 'SGD'"],
+    ["settled_at", "TEXT"]
+  ]) {
     if (splitSettlementCheckpointColumns.results.length > 0 && !splitSettlementCheckpointColumns.results.some((item) => item.name === column[0])) {
       await db.prepare(`ALTER TABLE split_settlement_checkpoints ADD COLUMN ${column[0]} ${column[1]}`).run();
     }

@@ -55,6 +55,10 @@ copy, or docs:
 - Use `group settlement` for payment that closes only one split group's
   current batch. Use `simplified settlement checkpoint` for the optional
   netting of open groups in one currency; these are separate workflows.
+- Use `paid confirmation` for a household's statement that a simplified
+  settlement happened outside the ledger. It is not `bank match`: paid
+  confirmation may hide an obligation from the active workspace, while a bank
+  match still requires a distinct transfer entry as evidence.
 - Use `split activity history` for the household-scoped, chronological record of
   reversible split changes. Deleted split records are archived rather than
   destroyed so users can restore the original record and relationships.
@@ -653,12 +657,21 @@ Relationships:
 A person-level snapshot that simplifies open balances across multiple split
 groups. It records the exact split records included in the simplification and
 can be internally offset, matched to one real transfer, partially matched, or
-reopened. Its membership is record-based, not date-based, so a late or
-backdated split remains part of the next open batch.
+reopened. A paid confirmation records that the people completed the repayment,
+but it does not create, certify, or match a ledger transfer. Its membership is
+record-based, not date-based, so a late or backdated split remains part of the
+next open batch.
 
 Storage:
 - `split_settlement_checkpoints`
 - `split_settlement_checkpoint_items`
+
+Rules:
+- a paid confirmation moves an unmatched checkpoint to follow-up, not to a
+  bank-matched state
+- a later bank match remains required before the payment has ledger evidence
+- undoing paid confirmation returns the same checkpoint to the active workspace
+  without releasing its included rows
 
 ### Split Activity History
 

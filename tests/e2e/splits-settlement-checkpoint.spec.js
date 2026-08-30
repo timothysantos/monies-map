@@ -57,18 +57,23 @@ test("simplified settlement checkpoints preserve backdated additions and can reo
 
   await page.reload();
   await expect(page.locator(".split-checkpoint-panel")).toContainText("Simplified settlement");
-  await expect(page.locator(".split-checkpoint-panel").locator(".split-checkpoint-view-action")).toBeVisible();
+  await expect(page.locator(".split-checkpoint-panel").getByRole("button", { name: "View included activity" })).toBeVisible();
   expect(await page.locator(".split-checkpoint-panel").evaluate((element) => element.compareDocumentPosition(document.querySelector(".split-activity-list")) & Node.DOCUMENT_POSITION_FOLLOWING)).toBeTruthy();
-  await page.locator("select[aria-label='Transfer to match']").selectOption(firstTransfer.entryId);
+  await page.getByLabel(/Transfer to match/).selectOption(firstTransfer.entryId);
   await page.getByRole("button", { name: "Match transfer" }).click();
   await expect(page.locator(".split-checkpoint-panel")).toContainText("partially matched");
-  await page.locator("select[aria-label='Transfer to match']").selectOption(secondTransfer.entryId);
+  await page.getByLabel(/Transfer to match/).selectOption(secondTransfer.entryId);
   await page.getByRole("button", { name: "Match transfer" }).click();
-  await expect(page.locator(".split-checkpoint-panel")).toContainText("matched");
-  await expect(page.locator(".split-checkpoint-transfer")).toHaveCount(2);
+  await expect(page.locator(".split-checkpoint-panel")).toHaveCount(0);
+  const fullyMatched = await loadSplitsPage(page, { view: "person-tim", month });
+  expect(fullyMatched.splitsPage.settlementCheckpoints[0].status).toBe("matched");
+  await postJson(page, "/api/splits/checkpoints/unmatch", { checkpointId: checkpoint.checkpointId, transactionId: secondTransfer.entryId });
+  await page.reload();
+  await expect(page.locator(".split-checkpoint-panel")).toContainText("partially matched");
+  await expect(page.locator(".split-checkpoint-transfer")).toHaveCount(1);
   await expect(page.locator(".split-settlement-marker").first()).toContainText("Included in simplified settlement");
   await page.locator(".split-checkpoint-transfer").first().getByRole("button", { name: "Remove" }).click();
-  await expect(page.locator(".split-checkpoint-panel")).toContainText("partially matched");
+  await expect(page.locator(".split-checkpoint-panel")).toContainText("open");
   const checkpointed = await loadSplitsPage(page, { view: "person-tim", month });
   expect(checkpointed.splitsPage.settlementCheckpoints[0].id).toBe(checkpoint.checkpointId);
   expect(checkpointed.splitsPage.activity.filter((item) => item.settlementCheckpointId === checkpoint.checkpointId).length).toBeGreaterThan(0);
@@ -99,4 +104,88 @@ test("simplified settlement checkpoints preserve backdated additions and can reo
   const reopened = await loadSplitsPage(page, { view: "person-tim", month });
   expect(reopened.splitsPage.settlementCheckpoints[0].status).toBe("reopened");
   expect(reopened.splitsPage.activity.some((item) => item.description === firstDescription && !item.settlementCheckpointId)).toBe(true);
+});
+
+test("a paid simplified settlement collapses until its later bank transfer is matched", async ({ page }) => {
+  const month = "2026-05";
+  const firstDescription = `Paid checkpoint first ${Date.now()}`;
+  const nextDescription = `Paid checkpoint next ${Date.now()}`;
+
+  await reseedDemo(page);
+  await postJson(page, "/api/splits/expenses/create", {
+    date: `${month}-10`,
+    description: firstDescription,
+    categoryName: "Food & Drinks",
+    payerPersonName: "Joyce",
+    amountMinor: 2000,
+    groupId: null,
+    note: "paid settlement follow-up"
+  });
+
+  await gotoPageAfterApi(
+    page,
+    `/splits?view=person-tim&month=${month}&split_group=split-group-none`,
+    "/api/splits-page",
+    () => page.locator(".split-activity-card").filter({ hasText: firstDescription }).first()
+  );
+  const checkpoint = await postJson(page, "/api/splits/checkpoints/create", {
+    viewerPersonId: "person-tim",
+    date: `${month}-11`,
+    currency: "SGD"
+  });
+  await page.reload();
+  await expect(page.locator(".split-checkpoint-panel")).toContainText("Simplified settlement");
+  await page.getByRole("button", { name: "Mark paid" }).click();
+  await expect(page.locator(".split-checkpoint-panel")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Settled, awaiting bank match \(1\)/ })).toBeVisible();
+
+  const paid = await loadSplitsPage(page, { view: "person-tim", month });
+  expect(paid.splitsPage.settlementCheckpoints[0].settledAt).toBeTruthy();
+  expect(paid.splitsPage.settlementCheckpoints[0].status).toBe("open");
+
+  await page.getByRole("button", { name: /Settled, awaiting bank match \(1\)/ }).click();
+  await page.getByRole("button", { name: "Undo paid" }).click();
+  await expect(page.locator(".split-checkpoint-panel")).toContainText("Simplified settlement");
+  await page.getByRole("button", { name: "Mark paid" }).click();
+  await expect(page.locator(".split-checkpoint-panel")).toHaveCount(0);
+
+  await postJson(page, "/api/splits/expenses/create", {
+    date: `${month}-12`,
+    description: nextDescription,
+    categoryName: "Food & Drinks",
+    payerPersonName: "Joyce",
+    amountMinor: 1000,
+    groupId: null,
+    note: "activity after paid settlement"
+  });
+  const nextCheckpoint = await postJson(page, "/api/splits/checkpoints/create", {
+    viewerPersonId: "person-tim",
+    date: `${month}-12`,
+    currency: "SGD"
+  });
+  expect(nextCheckpoint.checkpointId).not.toBe(checkpoint.checkpointId);
+
+  const transfer = await postJson(page, "/api/entries/create", {
+    date: `${month}-13`,
+    description: `Later settlement transfer ${Date.now()}`,
+    accountName: "UOB One",
+    categoryName: "Transfer",
+    amountMinor: checkpoint.amountMinor,
+    entryType: "transfer",
+    transferDirection: "out",
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+  await page.reload();
+  await page.getByRole("button", { name: /Settled, awaiting bank match \(1\)/ }).click();
+  const followUp = page.locator(".split-settlement-follow-up").filter({ hasText: "Marked paid" });
+  await followUp.getByRole("button", { name: "Match bank transfer" }).click();
+  await followUp.getByLabel(/Transfer to match/).selectOption(transfer.entryId);
+  await followUp.getByRole("button", { name: "Match transfer" }).click();
+  await expect(page.getByRole("button", { name: /Settled, awaiting bank match/ })).toHaveCount(0);
+
+  const matched = await loadSplitsPage(page, { view: "person-tim", month });
+  const original = matched.splitsPage.settlementCheckpoints.find((item) => item.id === checkpoint.checkpointId);
+  expect(original?.status).toBe("matched");
+  expect(original?.settledAt).toBeTruthy();
 });

@@ -15,8 +15,10 @@ import {
   deleteSplitExpense,
   deleteSplitSettlement,
   linkSplitMatch,
+  markSettlementCheckpointPaid,
   matchSettlementCheckpoint,
   reopenSettlementCheckpoint,
+  undoSettlementCheckpointPaid,
   unmatchSettlementCheckpoint,
   saveSplitExpense,
   saveSplitSettlement,
@@ -71,9 +73,12 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [optimisticSplitsPage, setOptimisticSplitsPage] = useState(null);
   const [dismissedMatchIds, setDismissedMatchIds] = useState([]);
   const [checkpointError, setCheckpointError] = useState("");
+  const [checkpointNotice, setCheckpointNotice] = useState("");
   const [isCheckpointing, setIsCheckpointing] = useState(false);
   const [checkpointTransferId, setCheckpointTransferId] = useState("");
   const [checkpointFxRateInput, setCheckpointFxRateInput] = useState("1");
+  const [checkpointMatchTargetId, setCheckpointMatchTargetId] = useState(null);
+  const [showSettlementFollowUps, setShowSettlementFollowUps] = useState(false);
   const refreshGuardRef = useRef(null);
   const latestSplitsPageRef = useRef(splitsPage);
   const returnToSplitIdRef = useRef("");
@@ -138,9 +143,15 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     onClick: () => openMatchesView()
   }] : [], [pendingMatchCount, activeGroup?.id, defaultGroupId]);
   const settlementCheckpoints = splitsPage.settlementCheckpoints ?? [];
+  const activeCheckpointStatuses = ["open", "partially_matched"];
   const activeCheckpoint = settlementCheckpoints.find((checkpoint) =>
-    !["reopened", "voided"].includes(checkpoint.status)
+    !checkpoint.settledAt
+    && activeCheckpointStatuses.includes(checkpoint.status)
     && checkpoint.currency === (activeGroup?.currency ?? "SGD")
+  );
+  const paidCheckpointsAwaitingBankMatch = settlementCheckpoints.filter((checkpoint) =>
+    Boolean(checkpoint.settledAt)
+    && activeCheckpointStatuses.includes(checkpoint.status)
   );
   const checkpointHasOverpayment = Boolean(activeCheckpoint && activeCheckpoint.matchedAmountMinor > activeCheckpoint.amountMinor);
   const {
@@ -277,8 +288,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     });
   }
 
-  function scrollToSettlementActivity() {
-    const targetId = activeCheckpoint?.includedRecordIds?.find((recordId) => (
+  function scrollToSettlementActivity(checkpoint = activeCheckpoint) {
+    const targetId = checkpoint?.includedRecordIds?.find((recordId) => (
       document.getElementById(splitActivityDomId("expense", recordId)) ||
       document.getElementById(splitActivityDomId("settlement", recordId))
     ));
@@ -784,9 +795,11 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   async function reopenSettlement() {
     if (!activeCheckpoint || isCheckpointing) return;
     setCheckpointError("");
+    setCheckpointNotice("");
     setIsCheckpointing(true);
     try {
       await reopenSettlementCheckpoint(activeCheckpoint.id);
+      setCheckpointNotice("Simplified settlement undone. Its included activity is open again.");
       refreshAfterSplitMutation({ broadcast: true });
     } catch (error) {
       setCheckpointError(error instanceof Error ? error.message : "Failed to reopen settlement.");
@@ -795,18 +808,57 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
   }
 
-  async function matchCheckpoint() {
-    if (!activeCheckpoint || !checkpointTransferId || isCheckpointing) return;
+  async function markCheckpointPaid(checkpoint) {
+    if (!checkpoint || isCheckpointing) return;
     setCheckpointError("");
+    setCheckpointNotice("");
+    setIsCheckpointing(true);
+    try {
+      await markSettlementCheckpointPaid(checkpoint.id);
+      setCheckpointMatchTargetId(null);
+      setCheckpointTransferId("");
+      setCheckpointNotice("Marked paid. It is now in Settled, awaiting bank match until you link the transfer.");
+      refreshAfterSplitMutation({ broadcast: true });
+    } catch (error) {
+      setCheckpointError(error instanceof Error ? error.message : "Failed to mark settlement paid.");
+    } finally {
+      setIsCheckpointing(false);
+    }
+  }
+
+  async function undoCheckpointPaid(checkpoint) {
+    if (!checkpoint || isCheckpointing) return;
+    setCheckpointError("");
+    setCheckpointNotice("");
+    setIsCheckpointing(true);
+    try {
+      await undoSettlementCheckpointPaid(checkpoint.id);
+      setCheckpointMatchTargetId(null);
+      setCheckpointTransferId("");
+      setCheckpointNotice("Payment confirmation undone. The settlement is active again.");
+      refreshAfterSplitMutation({ broadcast: true });
+    } catch (error) {
+      setCheckpointError(error instanceof Error ? error.message : "Failed to undo paid settlement.");
+    } finally {
+      setIsCheckpointing(false);
+    }
+  }
+
+  async function matchCheckpoint(checkpoint) {
+    if (!checkpoint || !checkpointTransferId || isCheckpointing) return;
+    setCheckpointError("");
+    setCheckpointNotice("");
     setIsCheckpointing(true);
     try {
       const selectedTransfer = (view.monthPage?.entries ?? []).find((entry) => entry.id === checkpointTransferId);
-      const fxRateBasisPoints = selectedTransfer && selectedTransfer.currency !== activeCheckpoint.currency
+      const fxRateBasisPoints = selectedTransfer && selectedTransfer.currency !== checkpoint.currency
         ? Math.round(Number(checkpointFxRateInput || 0) * 10000)
         : 10000;
-      await matchSettlementCheckpoint({ checkpointId: activeCheckpoint.id, transactionId: checkpointTransferId, fxRateBasisPoints });
+      await matchSettlementCheckpoint({ checkpointId: checkpoint.id, transactionId: checkpointTransferId, fxRateBasisPoints });
       setCheckpointTransferId("");
       setCheckpointFxRateInput("1");
+      setCheckpointMatchTargetId(null);
+      setCheckpointNotice("Bank transfer matched to the settlement.");
       refreshAfterSplitMutation({ broadcast: true, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
     } catch (error) {
       setCheckpointError(error instanceof Error ? error.message : "Failed to match settlement.");
@@ -815,12 +867,14 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
   }
 
-  async function unmatchCheckpoint(transactionId) {
-    if (!activeCheckpoint || isCheckpointing) return;
+  async function unmatchCheckpoint(checkpoint, transactionId) {
+    if (!checkpoint || isCheckpointing) return;
     setCheckpointError("");
+    setCheckpointNotice("");
     setIsCheckpointing(true);
     try {
-      await unmatchSettlementCheckpoint({ checkpointId: activeCheckpoint.id, transactionId });
+      await unmatchSettlementCheckpoint({ checkpointId: checkpoint.id, transactionId });
+      setCheckpointNotice("Bank transfer removed from the settlement.");
       refreshAfterSplitMutation({ broadcast: true, invalidateEntries: true, invalidateMonth: true, invalidateSummary: true });
     } catch (error) {
       setCheckpointError(error instanceof Error ? error.message : "Failed to remove settlement transfer.");
@@ -912,6 +966,52 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     />
   );
   const splitSummaryToolbar = renderSplitActions("split-head-actions split-summary-toolbar");
+  const formatCheckpointMoney = (amountMinor, currency) => new Intl.NumberFormat("en-SG", {
+    style: "currency",
+    currency: currency ?? "SGD"
+  }).format(amountMinor / 100);
+  const selectedCheckpointForMatching = settlementCheckpoints.find((checkpoint) => checkpoint.id === checkpointMatchTargetId);
+  const renderCheckpointTransfers = (checkpoint) => checkpoint.matchedTransfers?.length ? (
+    <div className="split-checkpoint-transfers" aria-label="Matched transfers">
+      {checkpoint.matchedTransfers.map((transfer) => (
+        <div className="split-checkpoint-transfer" key={transfer.transactionId}>
+          <span>{transfer.description} · {formatCheckpointMoney(transfer.ledgerAmountMinor ?? transfer.amountMinor, transfer.currency)}{transfer.currency !== checkpoint.currency ? ` · ${formatCheckpointMoney(transfer.amountMinor, checkpoint.currency)}` : ""}</span>
+          <button type="button" className="subtle-action" onClick={() => void unmatchCheckpoint(checkpoint, transfer.transactionId)} disabled={isCheckpointing}>Remove</button>
+        </div>
+      ))}
+    </div>
+  ) : null;
+  const renderCheckpointMatchControls = (checkpoint, { collapsed = false } = {}) => {
+    const isExpanded = !collapsed || selectedCheckpointForMatching?.id === checkpoint.id;
+    const availableTransfers = (view.monthPage?.entries ?? []).filter((entry) => (
+      entry.entryType === "transfer" && !(checkpoint.matchedTransfers ?? []).some((transfer) => transfer.transactionId === entry.id)
+    ));
+    if (!isExpanded) {
+      return (
+        <button type="button" className="subtle-action" onClick={() => {
+          setCheckpointMatchTargetId(checkpoint.id);
+          setCheckpointTransferId("");
+          setCheckpointFxRateInput("1");
+        }} disabled={isCheckpointing}>Match bank transfer</button>
+      );
+    }
+    return (
+      <div className="split-checkpoint-actions">
+        <select aria-label={`Transfer to match ${checkpoint.fromPersonName} to ${checkpoint.toPersonName}`} value={checkpointTransferId} onChange={(event) => setCheckpointTransferId(event.target.value)}>
+          <option value="">Match a transfer...</option>
+          {availableTransfers.map((entry) => (
+            <option key={entry.id} value={entry.id}>{entry.description} · {formatCheckpointMoney(entry.amountMinor, entry.currency ?? "SGD")}</option>
+          ))}
+        </select>
+        {(view.monthPage?.entries ?? []).find((entry) => entry.id === checkpointTransferId)?.currency !== checkpoint.currency && checkpointTransferId ? (
+          <input aria-label={`FX rate from ${(view.monthPage?.entries ?? []).find((entry) => entry.id === checkpointTransferId)?.currency ?? "ledger currency"} to ${checkpoint.currency}`} inputMode="decimal" type="number" min="0.000001" step="0.000001" value={checkpointFxRateInput} onChange={(event) => setCheckpointFxRateInput(event.target.value)} />
+        ) : null}
+        <button type="button" className="subtle-action" onClick={() => void matchCheckpoint(checkpoint)} disabled={!checkpointTransferId || isCheckpointing}>Match transfer</button>
+        {collapsed ? <button type="button" className="subtle-action" onClick={() => setCheckpointMatchTargetId(null)} disabled={isCheckpointing}>Hide</button> : null}
+        {!availableTransfers.length ? <small className="split-checkpoint-match-hint">No transfers in this month yet. When the bank posts it, return here with that month selected.</small> : null}
+      </div>
+    );
+  };
   const splitSettlementStatus = activeCheckpoint ? (
     <section className={`split-checkpoint-panel is-${activeCheckpoint.status}`} aria-live="polite">
       <div className="split-checkpoint-summary">
@@ -924,9 +1024,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
             ? "Matched transfers exceed the checkpoint. Review the difference before considering this settled."
             : activeCheckpoint.amountMinor === 0
             ? "The included groups now net to zero. No bank transfer is needed."
-            : `${activeCheckpoint.fromPersonName} pays ${activeCheckpoint.toPersonName} ${new Intl.NumberFormat("en-SG", { style: "currency", currency: activeCheckpoint.currency ?? "SGD" }).format(activeCheckpoint.amountMinor / 100)}.`}
+            : `${activeCheckpoint.fromPersonName} pays ${activeCheckpoint.toPersonName} ${formatCheckpointMoney(activeCheckpoint.amountMinor, activeCheckpoint.currency)}.`}
         </p>
-        <small>{activeCheckpoint.currency ?? "SGD"} · {activeCheckpoint.includedRecordCount} included split records · {activeCheckpoint.matchedAmountMinor > 0 ? `${new Intl.NumberFormat("en-SG", { style: "currency", currency: activeCheckpoint.currency ?? "SGD" }).format(activeCheckpoint.matchedAmountMinor / 100)} matched · ` : ""}{activeCheckpoint.status.replaceAll("_", " ")}</small>
+        <small>{activeCheckpoint.currency ?? "SGD"} · {activeCheckpoint.includedRecordCount} included split records · {activeCheckpoint.matchedAmountMinor > 0 ? `${formatCheckpointMoney(activeCheckpoint.matchedAmountMinor, activeCheckpoint.currency)} matched · ` : ""}{activeCheckpoint.status.replaceAll("_", " ")}</small>
       </div>
       <div className="split-checkpoint-navigation">
         <button type="button" className="split-checkpoint-view-action" onClick={scrollToSettlementActivity}>
@@ -934,31 +1034,44 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         </button>
         <span className="split-checkpoint-navigation-hint">Included rows are marked in the timeline below.</span>
       </div>
-      {activeCheckpoint.matchedTransfers?.length ? (
-        <div className="split-checkpoint-transfers" aria-label="Matched transfers">
-          {activeCheckpoint.matchedTransfers.map((transfer) => (
-            <div className="split-checkpoint-transfer" key={transfer.transactionId}>
-              <span>{transfer.description} · {new Intl.NumberFormat("en-SG", { style: "currency", currency: transfer.currency ?? "SGD" }).format((transfer.ledgerAmountMinor ?? transfer.amountMinor) / 100)}{transfer.currency !== activeCheckpoint.currency ? ` · ${new Intl.NumberFormat("en-SG", { style: "currency", currency: activeCheckpoint.currency ?? "SGD" }).format(transfer.amountMinor / 100)}` : ""}</span>
-              <button type="button" className="subtle-action" onClick={() => void unmatchCheckpoint(transfer.transactionId)} disabled={isCheckpointing}>Remove</button>
-            </div>
+      {renderCheckpointTransfers(activeCheckpoint)}
+      {activeCheckpoint.amountMinor !== 0 ? renderCheckpointMatchControls(activeCheckpoint) : null}
+      <div className="split-checkpoint-completion-actions">
+        <button type="button" className="split-checkpoint-view-action" onClick={() => void markCheckpointPaid(activeCheckpoint)} disabled={isCheckpointing}>Mark paid</button>
+        <small>Moves this repayment out of the active view. It remains awaiting a bank transfer match.</small>
+        <button type="button" className="subtle-action split-checkpoint-reopen" onClick={() => void reopenSettlement()} disabled={isCheckpointing}>Undo simplification</button>
+      </div>
+    </section>
+  ) : null;
+  const settlementFollowUps = paidCheckpointsAwaitingBankMatch.length ? (
+    <section className="split-settlement-follow-ups" aria-live="polite">
+      <button
+        type="button"
+        className="split-settlement-follow-up-trigger"
+        aria-expanded={showSettlementFollowUps}
+        onClick={() => setShowSettlementFollowUps((current) => !current)}
+      >
+        <span>Settled, awaiting bank match ({paidCheckpointsAwaitingBankMatch.length})</span>
+        <small>{showSettlementFollowUps ? "Hide follow-up" : "Review when the transfer reaches the ledger"}</small>
+      </button>
+      {showSettlementFollowUps ? (
+        <div className="split-settlement-follow-up-list">
+          {paidCheckpointsAwaitingBankMatch.map((checkpoint) => (
+            <section className="split-settlement-follow-up" key={checkpoint.id}>
+              <div>
+                <strong>{checkpoint.fromPersonName} paid {checkpoint.toPersonName} {formatCheckpointMoney(checkpoint.amountMinor, checkpoint.currency)}</strong>
+                <small>Marked paid {checkpoint.settledAt?.slice(0, 10)} · {checkpoint.includedRecordCount} included split records · {checkpoint.matchedAmountMinor ? `${formatCheckpointMoney(checkpoint.matchedAmountMinor, checkpoint.currency)} bank-matched so far` : "No bank transfer matched yet"}</small>
+              </div>
+              <div className="split-settlement-follow-up-actions">
+                <button type="button" className="subtle-action" onClick={() => scrollToSettlementActivity(checkpoint)}>View included activity</button>
+                <button type="button" className="subtle-action" onClick={() => void undoCheckpointPaid(checkpoint)} disabled={isCheckpointing}>Undo paid</button>
+              </div>
+              {renderCheckpointTransfers(checkpoint)}
+              {renderCheckpointMatchControls(checkpoint, { collapsed: true })}
+            </section>
           ))}
         </div>
       ) : null}
-      {activeCheckpoint.amountMinor !== 0 && activeCheckpoint.status !== "matched" ? (
-        <div className="split-checkpoint-actions">
-          <select aria-label="Transfer to match" value={checkpointTransferId} onChange={(event) => setCheckpointTransferId(event.target.value)}>
-            <option value="">Match a transfer...</option>
-            {(view.monthPage?.entries ?? []).filter((entry) => entry.entryType === "transfer" && !(activeCheckpoint.matchedTransfers ?? []).some((transfer) => transfer.transactionId === entry.id)).map((entry) => (
-              <option key={entry.id} value={entry.id}>{entry.description} · {new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(entry.amountMinor / 100)}</option>
-            ))}
-          </select>
-          {(view.monthPage?.entries ?? []).find((entry) => entry.id === checkpointTransferId)?.currency !== activeCheckpoint.currency && checkpointTransferId ? (
-            <input aria-label={`FX rate from ${(view.monthPage?.entries ?? []).find((entry) => entry.id === checkpointTransferId)?.currency ?? "ledger currency"} to ${activeCheckpoint.currency}`} inputMode="decimal" type="number" min="0.000001" step="0.000001" value={checkpointFxRateInput} onChange={(event) => setCheckpointFxRateInput(event.target.value)} />
-          ) : null}
-          <button type="button" className="subtle-action" onClick={() => void matchCheckpoint()} disabled={!checkpointTransferId || isCheckpointing}>Match transfer</button>
-        </div>
-      ) : null}
-      <button type="button" className="subtle-action split-checkpoint-reopen" onClick={() => void reopenSettlement()} disabled={isCheckpointing}>Reopen settlement</button>
     </section>
   ) : null;
 
@@ -1033,9 +1146,10 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onRefreshActivity={() => onRefresh()}
         viewId={view.id}
         isRefreshingDerived={isRefreshingDerived}
-        settlementStatus={splitSettlementStatus}
+        settlementStatus={<>{splitSettlementStatus}{settlementFollowUps}</>}
       />
       {checkpointError ? <p className="form-error" role="alert">{checkpointError}</p> : null}
+      {checkpointNotice ? <p className="form-success" role="status">{checkpointNotice}</p> : null}
 
       <SplitArchiveDialog
         archiveDialog={archiveDialog}

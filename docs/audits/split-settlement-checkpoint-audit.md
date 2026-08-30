@@ -1,12 +1,13 @@
 # Split Settlement Checkpoint Audit
 
-Date: 2026-08-27
+Date: 2026-08-30
 
 ## Scope
 
 - Splitwise-style netting across split groups.
 - External ledger matching for the resulting net payment.
 - Undo/reopen behavior and checkpoint immutability.
+- Paid confirmation separate from later bank-transfer evidence.
 - Backdated entries added after a settlement.
 - Chronological activity presentation and settled/open distinction.
 
@@ -15,7 +16,8 @@ Date: 2026-08-27
 The app now implements a person-level simplification checkpoint alongside the
 existing ordinary per-group split settlements and archival `split_batches`.
 The checkpoint stores a net amount, included-record manifest, lifecycle state,
-multiple transfer matches, and explicit reopen operation.
+paid-confirmation timestamp, multiple transfer matches, and explicit reopen
+operation.
 
 ## Implemented Findings
 
@@ -28,6 +30,12 @@ multiple transfer matches, and explicit reopen operation.
    record and releasing its rows back into the open balance.
 4. Checkpoint membership is record-based. A corrected or late-imported row with
    an older activity date stays outside the checkpoint.
+5. `Mark paid` stores a separate confirmation timestamp and moves the
+   checkpoint into a collapsed `Settled, awaiting bank match` queue. It does
+   not create a transfer, change reconciliation status, or certify evidence.
+6. A paid checkpoint does not block the next checkpoint for later split
+   activity. `Undo paid` restores its active workspace position without
+   releasing the included records.
 
 ## Settlement Contract
 
@@ -46,6 +54,7 @@ On confirmation, persist an immutable inclusion manifest containing at least:
 - creation timestamp and effective settlement date
 - status: `draft`, `open`, `matched`, `partially_matched`, `internally_offset`,
   `reopened`, or `voided`
+- optional paid-confirmation timestamp, distinct from all status values
 - matched ledger transfer rows and match metadata
 
 ### Matching
@@ -61,6 +70,15 @@ Undo/reopen must reopen the checkpoint as a new lifecycle state rather than
 deleting history. It must release its included records from the settled view,
 unlink or retain the ledger evidence according to an explicit confirmation,
 and make the resulting balance visible again.
+
+### Paid confirmation
+
+The people can confirm that the repayment occurred before the bank has posted
+or imported the transfer. That confirmation must collapse the checkpoint out of
+the active workspace while preserving its inclusion manifest and matching
+controls in a dedicated follow-up queue. The queue must say that it awaits bank
+evidence. It must not display the checkpoint as bank-matched, create a ledger
+entry, or alter an existing transfer.
 
 ### Backdated activity
 
@@ -98,7 +116,7 @@ button styles, with a responsive stacked layout on mobile.
 | Opposing balances across two groups | One person-level net amount | Pure policy test; persistence missing |
 | Exact cross-group offset | Internally offset; no ledger match | Pure policy test; persistence missing |
 | Payment direction reverses | Sender/receiver follow signed net | Pure policy test; persistence missing |
-| Exact transfer | Checkpoint becomes matched | Implemented; endpoint/UI |
+| Exact transfer | Checkpoint becomes matched and leaves active workspace | Implemented; endpoint/UI |
 | Partial transfer | Remainder stays open | Implemented; endpoint/UI |
 | Multiple limited transfers | Cumulative total closes checkpoint | Implemented; endpoint/UI |
 | Overpayment across transfers | Exception, never silent close | Implemented; endpoint/UI |
@@ -109,6 +127,10 @@ button styles, with a responsive stacked layout on mobile.
 | Edit included row after match | Require reopen/recompute | Not implemented |
 | Delete included row after match | Require reopen/recompute | Not implemented |
 | Undo/reopen | History retained; balance reopens | Implemented |
+| Mark paid before transfer posts | Collapsed follow-up; no ledger state changed | Implemented; endpoint/UI |
+| Undo paid | Same checkpoint returns active; included rows remain frozen | Implemented; endpoint/UI |
+| New activity after paid confirmation | Can create a new checkpoint without reusing old rows | Implemented; endpoint/API |
+| Later bank transfer | Paid follow-up can match it from the selected ledger month | Implemented; endpoint/UI |
 | Remove one of several matches | Remaining total and status recalculate | Implemented |
 | Transfer deleted after matching | Match disappears and checkpoint reopens/partials | FK cascade; should be monitored |
 | Two transfers with same amount | Each requires distinct ledger identity | Implemented |
@@ -125,5 +147,6 @@ button styles, with a responsive stacked layout on mobile.
 classification invariants, including negative, cumulative, and overpayment
 paths.
 `tests/e2e/splits-settlement-checkpoint.spec.js` proves the real D1/API flow for
-checkpoint creation, backdated additions, and reopen. Existing split settlement
-and match suites continue to pass.
+checkpoint creation, paid confirmation, undo paid, later ledger matching,
+backdated additions, and reopen. Existing split settlement and match suites
+continue to pass.

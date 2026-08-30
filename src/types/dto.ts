@@ -289,6 +289,7 @@ export interface SplitSettlementCheckpointDto {
   amountMinor: number;
   currency: string;
   settlementDate: string;
+  settledAt?: string;
   status: "open" | "matched" | "partially_matched" | "internally_offset" | "reopened" | "voided";
   matchedTransactionId?: string;
   matchedAmountMinor: number;
