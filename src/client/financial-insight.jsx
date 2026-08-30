@@ -85,6 +85,9 @@ export function FinancialInsight({ facts, actions = [], className = "" }) {
         >
           {visibleNarrative}
         </p>
+        {!isExpanded && facts.notableFact ? (
+          <p className="financial-insight-pattern"><strong>Worth noticing:</strong> {facts.notableFact}</p>
+        ) : null}
         <button
           type="button"
           className="financial-insight-toggle"

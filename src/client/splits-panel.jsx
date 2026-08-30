@@ -988,7 +988,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     ));
     if (!isExpanded) {
       return (
-        <button type="button" className="subtle-action" onClick={() => {
+        <button type="button" className={collapsed ? "subtle-action split-settlement-follow-up-match-action" : "subtle-action"} onClick={() => {
           setCheckpointMatchTargetId(checkpoint.id);
           setCheckpointTransferId("");
           setCheckpointFxRateInput("1");
@@ -1063,8 +1063,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
                 <small>Marked paid {checkpoint.settledAt?.slice(0, 10)} · {checkpoint.includedRecordCount} included split records · {checkpoint.matchedAmountMinor ? `${formatCheckpointMoney(checkpoint.matchedAmountMinor, checkpoint.currency)} bank-matched so far` : "No bank transfer matched yet"}</small>
               </div>
               <div className="split-settlement-follow-up-actions">
-                <button type="button" className="subtle-action" onClick={() => scrollToSettlementActivity(checkpoint)}>View included activity</button>
-                <button type="button" className="subtle-action" onClick={() => void undoCheckpointPaid(checkpoint)} disabled={isCheckpointing}>Undo paid</button>
+                <button type="button" className="subtle-action split-settlement-follow-up-view-action" onClick={() => scrollToSettlementActivity(checkpoint)}>View included activity</button>
+                <button type="button" className="subtle-action split-settlement-follow-up-undo-action" onClick={() => void undoCheckpointPaid(checkpoint)} disabled={isCheckpointing}>Undo paid</button>
               </div>
               {renderCheckpointTransfers(checkpoint)}
               {renderCheckpointMatchControls(checkpoint, { collapsed: true })}

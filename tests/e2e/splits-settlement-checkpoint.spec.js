@@ -179,6 +179,10 @@ test("a paid simplified settlement collapses until its later bank transfer is ma
   await page.reload();
   await page.getByRole("button", { name: /Settled, awaiting bank match \(1\)/ }).click();
   const followUp = page.locator(".split-settlement-follow-up").filter({ hasText: "Marked paid" });
+  await expect(followUp.getByRole("button", { name: "View included activity" })).toHaveCSS("color", "rgb(113, 56, 25)");
+  await expect(followUp.getByRole("button", { name: "Undo paid" })).toHaveCSS("color", "rgb(145, 45, 32)");
+  await expect(followUp.getByRole("button", { name: "Match bank transfer" })).toHaveCSS("background-color", "rgb(169, 73, 32)");
+  await expect(followUp.getByRole("button", { name: "Match bank transfer" })).toHaveCSS("color", "rgb(255, 250, 246)");
   await followUp.getByRole("button", { name: "Match bank transfer" }).click();
   await followUp.getByLabel(/Transfer to match/).selectOption(transfer.entryId);
   await followUp.getByRole("button", { name: "Match transfer" }).click();

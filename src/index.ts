@@ -315,7 +315,7 @@ export default {
         capability: "financial_insight",
         units: 1,
         maxTokens: 180,
-        prompt: "Write a concise, practical two-sentence finance insight using ONLY these placeholders. Choose wording only; do not add facts, numbers, money, dates, actions, or other placeholders. Include {{contextLabel}}, {{cashFlowPrinciple}}, and {{nextSpendConsideration}} exactly once. Keep the accounting guidance factual and conservative. Return JSON: {\"template\":\"...\"}. Context {{contextLabel}}, visible entries {{entryCount}}, spending {{spend}}, income {{income}}, net {{net}}, largest category {{topCategoryName}} at {{topCategoryAmount}}, largest expense {{topMerchantName}} at {{topMerchantAmount}}, cash-flow principle {{cashFlowPrinciple}}, next-spend consideration {{nextSpendConsideration}}, accounting guidance {{accountingAdvice}}.",
+        prompt: "Write a concise, practical two-sentence finance insight using ONLY these placeholders. Choose wording only; do not add facts, numbers, money, dates, actions, or other placeholders. Start with the notable entry pattern so changing filters feels specific. Include {{notableFact}}, {{contextLabel}}, {{cashFlowPrinciple}}, and {{nextSpendConsideration}} exactly once. Keep the accounting guidance factual and conservative. Return JSON: {\"template\":\"...\"}. Context {{contextLabel}}, visible entries {{entryCount}}, spending {{spend}}, income {{income}}, net {{net}}, largest category {{topCategoryName}} at {{topCategoryAmount}}, largest expense {{topMerchantName}} at {{topMerchantAmount}}, notable entry pattern {{notableFact}}, cash-flow principle {{cashFlowPrinciple}}, next-spend consideration {{nextSpendConsideration}}, accounting guidance {{accountingAdvice}}.",
         parse: (response) => parseFinancialInsightTemplate(response, facts)
       });
       return json({
@@ -2471,6 +2471,7 @@ function parseFinancialInsightFacts(value: unknown): FinancialInsightFacts | nul
     topCategoryAmount: readText("topCategoryAmount", 40),
     topMerchantName: readText("topMerchantName", 100),
     topMerchantAmount: readText("topMerchantAmount", 40),
+    notableFact: readText("notableFact", 220) || "No entry pattern is available in this view.",
     cashFlowPrinciple: readText("cashFlowPrinciple", 320),
     nextSpendConsideration: readText("nextSpendConsideration", 320),
     accountingAdvice: readText("accountingAdvice", 260),

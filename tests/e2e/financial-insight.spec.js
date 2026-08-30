@@ -27,6 +27,7 @@ test.describe("financial insights", () => {
           topCategoryAmount: "$20.00",
           topMerchantName: "Cold Storage",
           topMerchantAmount: "$20.00",
+          notableFact: "Food & Drinks accounts for all visible spending.",
           cashFlowPrinciple: "The recorded surplus is $80.00 before future bills are accounted for.",
           nextSpendConsideration: "Before the next discretionary spend, reserve money for planned obligations.",
           accountingAdvice: "Review provisional entries before closing the month.",
@@ -101,6 +102,8 @@ test.describe("financial insights", () => {
     );
     const entriesInsight = page.locator(".financial-insight-entries");
     await expect(entriesInsight).toContainText("All entries for May 2026");
+    await expect(entriesInsight.locator(".financial-insight-pattern")).toBeVisible();
+    await expect(entriesInsight.locator(".financial-insight-pattern")).toContainText("Worth noticing");
     await entriesInsight.getByRole("button", { name: "Read full insight" }).click();
     await expect(entriesInsight.getByLabel("Money consequence map")).toContainText("Check the full month");
     await entriesInsight.getByRole("button", { name: "Review largest expense" }).click();
