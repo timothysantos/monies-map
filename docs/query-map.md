@@ -780,6 +780,11 @@ reuse a fresh Imports query cache, but it must not begin its Imports request
 until the current route has usable content. It must never block, retry, or
 refetch on every Summary-to-Month transition merely to update banner wording.
 
+The initial shell must also avoid importing controls that only render on a
+detail route. Entries filters, editing helpers, import parsing, and category
+editing belong in the Entries or Imports chunks; the shell imports only the
+small formatting and routing functions it needs for top-level navigation.
+
 Examples:
 
 - on `Summary`, warm:

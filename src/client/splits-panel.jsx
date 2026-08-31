@@ -38,7 +38,7 @@ import { SplitArchiveDialog } from "./splits-archive-dialog";
 import { SplitHistoryDialog } from "./splits-history-dialog";
 import { splitActivityDomId } from "./splits-activity";
 import { SplitDeleteDialog, SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./splits-dialogs";
-import { SearchFilterInput } from "./entries-overview";
+import { SearchFilterInput } from "./entries-filter-stack";
 import { SplitsMainSection } from "./splits-main-section";
 import { buildSplitsPanelModel } from "./splits-selectors";
 import { moniesClient } from "./monies-client-service";

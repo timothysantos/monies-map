@@ -198,6 +198,10 @@ Rules:
   bank files
 - derived view state should come from selectors or pure helpers, not effect
   chains
+- the app shell should import only its route-neutral controls and the small
+  shared helpers it renders directly. Page editing controls, filter stacks,
+  import parsers, and broad facades that retain them belong in lazy
+  slice-owned modules so the first screen does not pay for inactive workflows
 
 ### Backend shape
 

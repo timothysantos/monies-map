@@ -45,9 +45,9 @@ import {
   resolveRouteViewId,
   sanitizeTabParams
 } from "./app-routing";
-import { EntriesFilterStack } from "./entries-overview";
+import { slugify } from "./category-utils";
+import { formatMonthLabel } from "./formatters";
 import { TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
-import { moniesClient } from "./monies-client-service";
 import {
   buildAppShellErrorMessage,
   buildRequestErrorMessage,
@@ -124,6 +124,7 @@ async function fetchTextWithTransientWorkerRetry(url, options = {}) {
 }
 
 const EntriesPanel = lazy(() => routeModuleLoaders.entries().then((module) => ({ default: module.EntriesPanel })));
+const EntriesFilterStack = lazy(() => import("./entries-filter-stack.jsx").then((module) => ({ default: module.EntriesFilterStack })));
 const FaqPanel = lazy(() => routeModuleLoaders.faq().then((module) => ({ default: module.FaqPanel })));
 const ImportsPanel = lazy(() => routeModuleLoaders.imports().then((module) => ({ default: module.ImportsPanel })));
 const MonthPanel = lazy(() => routeModuleLoaders.month().then((module) => ({ default: module.MonthPanel })));
@@ -135,8 +136,6 @@ const SummaryPanel = lazy(() => routeModuleLoaders.summary().then((module) => ({
 const SUMMARY_FOCUS_OVERALL = "overall";
 const MONTH_PICKER_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DEFAULT_MONTH_KEY = getCurrentMonthKey();
-const { categories: categoryService, format: formatService } = moniesClient;
-
 // Canonical route registry for the top navigation and route-based prefetching.
 const routeTabs = [
   { id: "summary", path: "/summary", label: messages.tabs.summary },
@@ -2929,9 +2928,9 @@ export function App() {
   // The top chrome reflects the active period semantics of the current route.
   const periodMode = isDetailMonthTab ? messages.period.month : messages.period.year;
   const periodLabel = isDetailMonthTab
-    ? formatService.formatMonthLabel(selectedMonth)
+    ? formatMonthLabel(selectedMonth)
     : pageView?.summaryPage?.rangeStartMonth && pageView?.summaryPage?.rangeEndMonth
-      ? `${formatService.formatMonthLabel(pageView.summaryPage.rangeStartMonth)} - ${formatService.formatMonthLabel(pageView.summaryPage.rangeEndMonth)}`
+      ? `${formatMonthLabel(pageView.summaryPage.rangeStartMonth)} - ${formatMonthLabel(pageView.summaryPage.rangeEndMonth)}`
       : pageView.label;
   // The settings badge reads from the settings page cache so the shell stays a
   // reference-data payload instead of reabsorbing settings-page state.
@@ -3123,7 +3122,7 @@ export function App() {
   async function handleCategoryAppearanceChange(categoryId, nextAppearance) {
     const normalizedAppearance = { ...nextAppearance };
     if (typeof nextAppearance.name === "string") {
-      normalizedAppearance.slug = categoryService.slugify(nextAppearance.name);
+      normalizedAppearance.slug = slugify(nextAppearance.name);
     }
 
     setCategoryOverrides((current) => ({
@@ -3382,7 +3381,7 @@ export function App() {
                   <Popover.Root>
                     <Popover.Trigger asChild>
                       <button type="button" className="period-range-segment">
-                        {formatService.formatMonthLabel(pageView.summaryPage.rangeStartMonth)}
+                        {formatMonthLabel(pageView.summaryPage.rangeStartMonth)}
                       </button>
                     </Popover.Trigger>
                     <Popover.Portal>
@@ -3429,7 +3428,7 @@ export function App() {
                   <Popover.Root>
                     <Popover.Trigger asChild>
                       <button type="button" className="period-range-segment">
-                        {formatService.formatMonthLabel(pageView.summaryPage.rangeEndMonth)}
+                        {formatMonthLabel(pageView.summaryPage.rangeEndMonth)}
                       </button>
                     </Popover.Trigger>
                     <Popover.Portal>
@@ -3581,7 +3580,9 @@ export function App() {
 
                   {renderedTabId === "entries" && entriesMobileFilterProps ? (
                     <section className="mobile-context-dialog-section mobile-context-dialog-filters-slot" aria-label="Filters">
-                      <EntriesFilterStack {...entriesMobileFilterProps} />
+                      <Suspense fallback={null}>
+                        <EntriesFilterStack {...entriesMobileFilterProps} />
+                      </Suspense>
                     </section>
                   ) : null}
                 </Dialog.Content>

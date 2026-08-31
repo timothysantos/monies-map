@@ -14,7 +14,8 @@ import {
 import { EntryEditorFields, EntryTransferTools } from "./entry-editor";
 import { normalizeEntryFilterValues } from "./entry-filter-values";
 import { EntriesDateGroups } from "./entries-list";
-import { EntriesBreakdownPanel, EntriesFilterStack, EntriesTotalsStrip } from "./entries-overview";
+import { EntriesBreakdownPanel, EntriesTotalsStrip } from "./entries-overview";
+import { EntriesFilterStack } from "./entries-filter-stack";
 import { EntryMobileEditExpenseFooter, EntryMobileSheet } from "./entry-mobile-sheet";
 import { FinancialInsight } from "./financial-insight";
 import { LinkedNoteSyncDialog } from "./linked-note-sync-dialog";

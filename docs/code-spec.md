@@ -88,6 +88,9 @@ Budget rules:
 - entry-row edits and split-link actions from `Entries` must not invalidate
   `appShell`; they refresh slice queries only and rely on split/entry mutation
   events for cross-tab freshness
+- the app shell must not statically import route-only UI, page editing controls,
+  or a broad client facade that retains those modules; use route-owned lazy
+  modules and direct shared helper imports for the few shell-level operations
 
 ## Optional AI Contract
 
