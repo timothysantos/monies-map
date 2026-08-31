@@ -63,16 +63,16 @@ test("view insights substitute computed facts and reject model-supplied figures"
     topCategoryAmount: "$50.00",
     topMerchantName: "Cold Storage",
     topMerchantAmount: "$20.00",
-    notableFact: "The three largest expenses account for 75% of visible spending.",
-    cashFlowPrinciple: "Recorded spending is higher than recorded income in this view.",
-    nextSpendConsideration: "Before the next discretionary spend, check the available budget.",
+    notableFact: "The three largest expenses make up 75% of the spending in this list.",
+    cashFlowPrinciple: "More money has gone out than come in so far.",
+    nextSpendConsideration: "Before buying something non-essential, check the available budget.",
     accountingAdvice: "Review provisional entries before closing the month.",
     decisionMap: {
       enabled: true,
       needsReview: false,
       lanes: [{
         id: "surplus",
-        label: "Recorded surplus",
+        label: "Money left so far",
         value: "$1,880.00",
         detail: "This is not automatically free cash.",
         tone: "positive"
@@ -83,13 +83,13 @@ test("view insights substitute computed facts and reject model-supplied figures"
     template: "{{notableFact}} {{contextLabel}} has {{entryCount}} entries with spending of {{spend}}. {{cashFlowPrinciple}} {{nextSpendConsideration}}"
   }, facts);
 
-  assert.equal(insight, "The three largest expenses account for 75% of visible spending. August 2026 entries has 7 entries with spending of $120.00. Recorded spending is higher than recorded income in this view. Before the next discretionary spend, check the available budget.");
+  assert.equal(insight, "The three largest expenses make up 75% of the spending in this list. August 2026 entries has 7 entries with spending of $120.00. More money has gone out than come in so far. Before buying something non-essential, check the available budget.");
   assert.equal(parseFinancialInsightTemplate({ template: "{{contextLabel}} is up 34%." }, facts), null);
-  assert.match(buildDeterministicFinancialInsight(facts), /The three largest expenses account for 75% of visible spending/);
+  assert.match(buildDeterministicFinancialInsight(facts), /The three largest expenses make up 75% of the spending in this list/);
   assert.notEqual(buildFinancialInsightCacheKey(facts), buildFinancialInsightCacheKey({ ...facts, contextLabel: "Filtered entries" }));
 });
 
-test("financial insight leads with a deterministic pattern from the visible entries", () => {
+test("financial insight leads with a deterministic pattern from the current entries", () => {
   const facts = buildFinancialInsightFacts({
     contextLabel: "August 2026 entries",
     records: [
@@ -103,7 +103,7 @@ test("financial insight leads with a deterministic pattern from the visible entr
     perspective: "cash_flow"
   });
 
-  assert.match(facts.notableFact, /Food & Drinks accounts for 89% of visible spending|Restaurant A is the largest visible expense at \$60\.00|The three largest expenses account for 100% of visible spending/);
+  assert.match(facts.notableFact, /Food & Drinks makes up 89% of the spending in this list|Restaurant A is the largest expense here at \$60\.00|The three largest expenses make up 100% of the spending in this list/);
   const narrative = buildDeterministicFinancialInsight(facts);
   assert.match(narrative, /Worth noticing:|A useful signal:|One entry pattern:|At a glance,/);
   assert.match(narrative, new RegExp(facts.notableFact.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
@@ -122,9 +122,9 @@ test("financial insight converts computed cash flow into conservative next-spend
     perspective: "cash_flow"
   });
 
-  assert.match(facts.cashFlowPrinciple, /higher than recorded income/);
-  assert.match(facts.nextSpendConsideration, /next discretionary spend/);
-  assert.match(buildDeterministicFinancialInsight(facts), /reduces cash available for savings/);
+  assert.match(facts.cashFlowPrinciple, /More money has gone out than come in/);
+  assert.match(facts.nextSpendConsideration, /buying something non-essential/);
+  assert.match(buildDeterministicFinancialInsight(facts), /less left for savings/);
 });
 
 test("money consequence map grounds surplus, plan, same-season, and proof gaps in computed evidence", () => {
