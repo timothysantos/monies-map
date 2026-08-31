@@ -4,6 +4,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { messages } from "./copy/en-SG";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
+import { useMoneyPrivacy } from "./money-privacy";
 
 const {
   accounts: accountService,
@@ -35,6 +36,7 @@ export function ImportPreviewRowsTable({
   onPromotePreviewRowReconciliationTarget,
   getPreviewAccountOwnerPatch
 }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
   const accountOptions = accountService.getSelectOptions(accounts, { valueKey: "id" });
   const categorySelectOptions = categoryService.listForSelect(categories);
   const visibleRows = previewRows.filter((row) => (
@@ -90,6 +92,7 @@ export function ImportPreviewRowsTable({
           onUpdatePreviewRowCommitStatus={onUpdatePreviewRowCommitStatus}
           onPromotePreviewRowReconciliationTarget={onPromotePreviewRowReconciliationTarget}
           getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
+          areTotalsVisible={areTotalsVisible}
         />
       ) : (
         <p className="lede compact">
@@ -116,6 +119,7 @@ export function ImportPreviewRowsTable({
             onUpdatePreviewRowCommitStatus={onUpdatePreviewRowCommitStatus}
             onPromotePreviewRowReconciliationTarget={onPromotePreviewRowReconciliationTarget}
             getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
+            areTotalsVisible={areTotalsVisible}
             isSkippedTable
           />
         </details>
@@ -140,6 +144,7 @@ function PreviewRowsTable({
   onUpdatePreviewRowCommitStatus,
   onPromotePreviewRowReconciliationTarget,
   getPreviewAccountOwnerPatch,
+  areTotalsVisible,
   isSkippedTable = false
 }) {
   const [restoreTarget, setRestoreTarget] = useState(null);
@@ -218,7 +223,7 @@ function PreviewRowsTable({
                   </td>
                   <td className={entryService.getAmountToneClass(row.entryType === "expense" || row.transferDirection === "out" ? -row.amountMinor : row.amountMinor)}>
                     <input
-                      className="table-edit-input import-amount-input"
+                      className={`table-edit-input import-amount-input${areTotalsVisible ? "" : " is-screened"}`}
                       value={formatService.formatMinorInput(row.amountMinor)}
                       onMouseDown={selectAllOnFocus}
                       onFocus={selectAllOnFocus}

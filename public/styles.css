@@ -7668,6 +7668,21 @@ button.split-activity-card:hover {
   min-height: 170px;
 }
 
+.import-privacy-notice {
+  display: block;
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+html[data-money-privacy="hidden"] .import-textarea.is-screened,
+html[data-money-privacy="hidden"] .import-amount-input.is-screened {
+  -webkit-text-security: disc;
+  color: var(--muted);
+  caret-color: var(--ink);
+}
+
 .import-mapping-topline {
   display: flex;
   align-items: end;

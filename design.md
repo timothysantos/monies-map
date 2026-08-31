@@ -226,7 +226,9 @@ Money privacy is a display layer, not a financial-state change. A new browser
 starts with every displayed monetary value masked on Summary, Month, Entries,
 and Splits, including individual ledger and split-activity rows. The shared
 top-toolbar eye control reveals or hides those figures everywhere at once and
-persists only the browser-local preference. On mobile, the same control floats
+persists only the browser-local preference. Imports use the same display rule:
+the raw CSV source field and editable preview amount cells are screened while
+hidden, without blocking paste, drag-and-drop, parsing, mapping, or commit. On mobile, the same control floats
 above the bottom navigation, and stacks above the Entries or Splits add button
 when one is present. Financial Insight stays hidden while totals are masked
 because its prose can expose the same figures.

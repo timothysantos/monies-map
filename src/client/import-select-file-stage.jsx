@@ -1,5 +1,6 @@
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
+import { useMoneyPrivacy } from "./money-privacy";
 
 const { accounts: accountService } = moniesClient;
 
@@ -30,6 +31,7 @@ export function ImportSelectFileStage({
   onAllowAiStatementFallbackChange,
   rollbackPolicy
 }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
   const stageClassName = currentStage === 1 ? "is-current" : currentStage > 1 ? "is-complete" : "";
   const accountOptions = accountService.getSelectOptions(accounts);
 
@@ -86,8 +88,13 @@ export function ImportSelectFileStage({
       <div className="import-csv-grid">
         <label className="entries-filter import-csv-field">
           <span className="entries-filter-label">{messages.imports.csvInput}</span>
+          {!areTotalsVisible ? (
+            <span className="import-privacy-notice">
+              {messages.imports.csvScreenedWhileHidden}
+            </span>
+          ) : null}
           <textarea
-            className="table-edit-textarea import-textarea"
+            className={`table-edit-textarea import-textarea${areTotalsVisible ? "" : " is-screened"}`}
             value={csvText}
             onInput={(event) => onCsvTextChange(event.currentTarget.value)}
             onChange={(event) => onCsvTextChange(event.target.value)}

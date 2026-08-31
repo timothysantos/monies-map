@@ -69,7 +69,8 @@ Yes. Totals are hidden by default in a new browser. Summary, Month, Entries,
 and Splits replace every displayed currency amount with `••••`, including
 individual transaction, split-activity, settlement, reconciliation, chart, and
 plan amounts. Editable numeric fields are also visually masked until totals are
-revealed.
+revealed. Imports follow the same rule: raw CSV text and editable preview
+amounts are screened while hidden, but you can still paste or drop a bank file.
 
 Use the eye button in the top toolbar on desktop to reveal or hide totals
 everywhere at once. On mobile, it is a floating control: Summary and Month

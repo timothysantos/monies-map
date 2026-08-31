@@ -56,6 +56,21 @@ test("money values start hidden, reveal together, and cover individual activity"
   await page.getByRole("button", { name: "Hide money totals" }).click();
   await expect(page.locator(".entry-row-amount").first()).toContainText("••••");
 
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await gotoPageAfterApi(
+    page,
+    "/imports?view=household&month=2026-05",
+    "/api/imports-page",
+    () => page.getByLabel("CSV content")
+  );
+  const csvSource = page.getByLabel("CSV content");
+  await expect(page.locator(".import-privacy-notice")).toBeVisible();
+  await expect(csvSource).toHaveClass(/is-screened/);
+  await expect(csvSource).toHaveCSS("-webkit-text-security", "disc");
+  await page.getByRole("button", { name: "Show money totals" }).click();
+  await expect(csvSource).not.toHaveClass(/is-screened/);
+  await page.getByRole("button", { name: "Hide money totals" }).click();
+
   await gotoPageAfterApi(
     page,
     "/splits?view=person-tim&month=2026-05&split_group=split-group-none",
