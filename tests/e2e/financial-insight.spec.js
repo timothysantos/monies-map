@@ -28,16 +28,16 @@ test.describe("financial insights", () => {
           topCategoryAmount: "$20.00",
           topMerchantName: "Cold Storage",
           topMerchantAmount: "$20.00",
-          notableFact: "Food & Drinks accounts for all visible spending.",
-          cashFlowPrinciple: "The recorded surplus is $80.00 before future bills are accounted for.",
-          nextSpendConsideration: "Before the next discretionary spend, reserve money for planned obligations.",
+          notableFact: "Food & Drinks makes up all spending in this list.",
+          cashFlowPrinciple: "$80.00 is left after the spending recorded so far.",
+          nextSpendConsideration: "Before buying something non-essential, set aside money for planned bills.",
           accountingAdvice: "Review provisional entries before closing the month.",
           decisionMap: {
             enabled: true,
             needsReview: false,
             lanes: [{
               id: "surplus",
-              label: "Recorded surplus",
+              label: "Money left so far",
               value: "$80.00",
               detail: "This is not automatically free cash.",
               tone: "positive"
@@ -69,9 +69,9 @@ test.describe("financial insights", () => {
     await expect(summaryInsight.getByLabel("Money consequence map")).toBeHidden();
     await summaryInsight.getByRole("button", { name: "Read full insight" }).click();
     await expect(summaryInsight.getByRole("button", { name: "Show less" })).toHaveAttribute("aria-expanded", "true");
-    await expect(summaryInsight).toContainText("Before the next discretionary spend");
+    await expect(summaryInsight).toContainText("Before buying something non-essential");
     await expect(summaryInsight.getByLabel("Money consequence map")).toBeVisible();
-    await expect(summaryInsight).toContainText("Recorded surplus");
+    await expect(summaryInsight).toContainText("Money left so far");
     await expect(summaryInsight).toContainText("Income not in this view");
     await expect(summaryInsight).not.toContainText("One-repeat scenario");
     await page.setViewportSize({ width: 390, height: 844 });
@@ -102,7 +102,7 @@ test.describe("financial insights", () => {
       () => page.getByRole("heading", { name: "Entries", exact: true })
     );
     const entriesInsight = page.locator(".financial-insight-entries");
-    await expect(entriesInsight).toContainText("All entries for May 2026");
+    await expect(entriesInsight).toContainText("May 2026");
     await expect(entriesInsight.locator(".financial-insight-pattern")).toBeVisible();
     await expect(entriesInsight.locator(".financial-insight-pattern")).toContainText("Worth noticing");
     await entriesInsight.getByRole("button", { name: "Read full insight" }).click();

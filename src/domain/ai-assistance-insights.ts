@@ -185,9 +185,9 @@ export function buildFinancialInsightFacts(input: {
 
 export function buildDeterministicFinancialInsight(facts: FinancialInsightFacts) {
   if (!facts.entryCount) {
-    return `${facts.contextLabel} has no visible entries. ${facts.accountingAdvice}`;
+    return `${facts.contextLabel} has no entries yet. ${facts.accountingAdvice}`;
   }
-  const snapshot = `${facts.contextLabel} has ${facts.entryCount} visible ${facts.entryCount === 1 ? "entry" : "entries"}: ${facts.spend} of spending, ${facts.income} of income, and a net of ${facts.net}.`;
+  const snapshot = `${facts.contextLabel}: ${facts.entryCount} ${facts.entryCount === 1 ? "entry" : "entries"}. You spent ${facts.spend} and received ${facts.income}.`;
   const notableFact = facts.notableFact || `${facts.topCategoryName} is the largest expense category at ${facts.topCategoryAmount}.`;
   const openings = [
     `Worth noticing: ${notableFact}`,
@@ -291,7 +291,7 @@ function buildNotableEntryFact(input: {
   contextLabel: string;
 }) {
   if (!input.expenses.length || input.spendMinor <= 0) {
-    return "There is no visible expense pattern to compare yet.";
+    return "There are not enough expenses here to spot a pattern yet.";
   }
 
   const merchantCounts = new Map<string, number>();
@@ -309,10 +309,10 @@ function buildNotableEntryFact(input: {
   const categoryShare = Math.round((input.topCategoryMinor / input.spendMinor) * 100);
   const topThreeShare = Math.round((largestExpensesMinor / input.spendMinor) * 100);
   const candidates = [
-    `${input.topCategoryName} accounts for ${categoryShare}% of visible spending.`,
-    `${input.topMerchantName} is the largest visible expense at ${input.formatMoney(input.topMerchantMinor)}.`,
-    input.expenses.length >= 3 ? `The three largest expenses account for ${topThreeShare}% of visible spending.` : null,
-    mostFrequentMerchantCount >= 2 ? `${mostFrequentMerchant} appears ${mostFrequentMerchantCount} times among the visible expenses.` : null
+    `${input.topCategoryName} makes up ${categoryShare}% of the spending in this list.`,
+    `${input.topMerchantName} is the largest expense here at ${input.formatMoney(input.topMerchantMinor)}.`,
+    input.expenses.length >= 3 ? `The three largest expenses make up ${topThreeShare}% of the spending in this list.` : null,
+    mostFrequentMerchantCount >= 2 ? `${mostFrequentMerchant} was paid ${mostFrequentMerchantCount} times.` : null
   ].filter((candidate): candidate is string => Boolean(candidate));
   return candidates[stableInsightIndex(`${input.contextLabel}|${input.spendMinor}|${input.topCategoryName}|${mostFrequentMerchant}`) % candidates.length];
 }
@@ -341,35 +341,35 @@ function buildFinancialDecisionPrompts(input: {
 
   if (input.perspective === "partial_view") {
     return {
-      cashFlowPrinciple: "This filtered view is evidence for an investigation, not a complete measure of the month or household savings.",
-      nextSpendConsideration: "Before the next discretionary spend, check the unfiltered month or summary view for income, planned obligations, and remaining budget."
+      cashFlowPrinciple: "This is a selected list of entries, not the whole month. Do not use it alone to decide what you can spend or save.",
+      nextSpendConsideration: "Before buying something non-essential, check the full month or summary for income, planned bills, and budget left."
     };
   }
 
   if (input.incomeMinor === 0 && input.spendMinor > 0) {
     return {
-      cashFlowPrinciple: "This view records spending but no income, so it cannot by itself show whether the household is saving.",
-      nextSpendConsideration: "Before the next discretionary spend, check the month or range summary to confirm that total income still covers planned bills, transfers, and savings."
+      cashFlowPrinciple: "This list has spending but no income, so it cannot show whether the household is saving.",
+      nextSpendConsideration: "Before buying something non-essential, check the month or summary to make sure income still covers bills, transfers, and savings."
     };
   }
 
   if (input.netMinor < 0) {
     return {
-      cashFlowPrinciple: "Recorded spending is higher than recorded income in this view. Repeating that pattern across the month reduces cash available for savings.",
-      nextSpendConsideration: "Before the next discretionary spend, pause and check whether it can be delayed, reduced, or covered by an existing budget category."
+      cashFlowPrinciple: "More money has gone out than come in so far. If that continues, there will be less left for savings.",
+      nextSpendConsideration: "Before buying something non-essential, pause and decide whether it can wait, cost less, or fit an existing budget."
     };
   }
 
   if (input.netMinor === 0 && input.incomeMinor > 0) {
     return {
-      cashFlowPrinciple: "There is no recorded surplus in this view, so none of this income is yet available to save after the recorded spending.",
-      nextSpendConsideration: "Before the next discretionary spend, confirm it is covered by unspent budget or income that has not already been committed."
+      cashFlowPrinciple: "Income and spending are even so far, so there is nothing left from these records to save.",
+      nextSpendConsideration: "Before buying something non-essential, make sure it is covered by money that has not already been set aside."
     };
   }
 
   return {
-    cashFlowPrinciple: `The recorded surplus is ${input.formatMoney(input.netMinor)} before future bills, transfers, and savings contributions are accounted for.`,
-    nextSpendConsideration: "Before the next discretionary spend, reserve what is needed for planned obligations and an intentional savings transfer rather than treating all remaining cash as available."
+    cashFlowPrinciple: `${input.formatMoney(input.netMinor)} is left after the spending recorded so far. Bills, transfers, and savings may still need to come out of it.`,
+    nextSpendConsideration: "Before buying something non-essential, set aside money for planned bills and savings first."
   };
 }
 
@@ -433,26 +433,26 @@ function buildSurplusLane(input: {
   if (input.incomeMinor <= 0 && input.spendMinor > 0) {
     return {
       id: "surplus",
-      label: "Recorded surplus",
+      label: "Money left so far",
       value: "Income not in this view",
-      detail: "Spending alone cannot establish whether there is money left to save or spend. Use the complete month or range before deciding.",
+      detail: "Spending on its own cannot show what is left to save or spend. Check the full month or range before deciding.",
       tone: "caution"
     };
   }
   if (input.netMinor < 0) {
     return {
       id: "surplus",
-      label: "Recorded cash flow",
+      label: "Money in vs out so far",
       value: `${input.formatMoney(Math.abs(input.netMinor))} deficit`,
-      detail: "Recorded spending exceeds recorded income. This is not a safe-to-spend position; first identify what can be delayed, reduced, or funded from a stated plan.",
+      detail: "More money has gone out than come in. First decide what can wait, cost less, or be covered by the plan.",
       tone: "caution"
     };
   }
   return {
     id: "surplus",
-    label: "Recorded surplus",
+    label: "Money left so far",
     value: input.formatMoney(input.netMinor),
-    detail: "This is before future bills, transfers, debt payments, and intentional savings are reserved. It is not automatically free cash.",
+    detail: "This is before future bills, transfers, debt payments, and savings are set aside. It is not automatically money to spend.",
     tone: input.netMinor > 0 ? "positive" : "caution"
   };
 }
@@ -467,7 +467,7 @@ function buildPlanLane(input: {
       id: "plan",
       label: "Plan position",
       value: "No spend plan set",
-      detail: "A recorded surplus is easier to protect when expected bills and flexible category limits are recorded before spending happens.",
+      detail: "Money left is easier to protect when expected bills and flexible category limits are written down before spending happens.",
       tone: "default"
     };
   }

@@ -447,7 +447,9 @@ export function EntriesPanel({
     [editingEntryId, entries, entryFilters, selectedScope, entryView.id]
   );
   const financialInsightFacts = useMemo(() => buildFinancialInsightFacts({
-    contextLabel: `${activeEntryFilterCount ? "Filtered" : "All"} entries for ${formatService.formatMonthLabel(entryView.monthPage.month)}`,
+    contextLabel: activeEntryFilterCount
+      ? `Selected entries in ${formatService.formatMonthLabel(entryView.monthPage.month)}`
+      : formatService.formatMonthLabel(entryView.monthPage.month),
     records: aggregateEntries.map((entry) => ({
       ...entry,
       amountMinor: entry.visibleAmountMinor ?? entry.amountMinor
@@ -456,7 +458,7 @@ export function EntriesPanel({
     perspective: activeEntryFilterCount ? "partial_view" : "cash_flow",
     accountingAdvice: activeEntryFilterCount
       ? "Use this filtered view to investigate the selected account, category, type, or search result; do not use it as the whole-month budget total."
-      : "Review provisional or imported entries against the bank record before treating the month as closed or deciding that the remaining cash is available to spend."
+      : "Before closing the month, compare imported or pending entries with the bank record."
   }), [activeEntryFilterCount, aggregateEntries, entryView.monthPage.month]);
   const financialInsightActions = useMemo(() => {
     const largestExpense = [...aggregateEntries]
