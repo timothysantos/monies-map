@@ -775,6 +775,11 @@ For each route:
 4. render usable content
 5. then warm adjacent queries in the background
 
+The compact stale-file banner on Summary and Month is also warmup work. It may
+reuse a fresh Imports query cache, but it must not begin its Imports request
+until the current route has usable content. It must never block, retry, or
+refetch on every Summary-to-Month transition merely to update banner wording.
+
 Examples:
 
 - on `Summary`, warm:

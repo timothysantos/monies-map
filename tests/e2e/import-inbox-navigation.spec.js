@@ -35,3 +35,29 @@ test("stale import banner opens Imports and FAQ remains reachable", async ({ pag
 
   expect(pageErrors, pageErrors.join("\n")).toEqual([]);
 });
+
+test("Summary and Month reuse the optional import-banner warmup instead of refetching Imports", async ({ page }) => {
+  await reseedDemo(page);
+  const importsPageRequests = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/api/imports-page") {
+      importsPageRequests.push(request);
+    }
+  });
+
+  const importsPageReady = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/api/imports-page" && response.ok(),
+    { timeout: 10_000 }
+  );
+  await page.goto("/summary?view=household&month=2026-08&summary_start=2025-09&summary_end=2026-08", {
+    waitUntil: "domcontentloaded"
+  });
+  await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
+  await importsPageReady;
+
+  await page.getByRole("link", { name: "Month", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Month", exact: true })).toBeVisible();
+  await page.waitForTimeout(1_500);
+
+  expect(importsPageRequests).toHaveLength(1);
+});
