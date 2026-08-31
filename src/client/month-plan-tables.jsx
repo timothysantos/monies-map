@@ -6,6 +6,7 @@ import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
+import { PrivateMoney } from "./money-privacy";
 import {
   canInlineEditMonthPlanRow,
   canInlineEditMonthRow,
@@ -289,7 +290,7 @@ function IncomePlanSection({
                           onChange={(event) => onEditingDraftChange({ plannedMinor: event.target.value })}
                           onClick={(event) => event.stopPropagation()}
                         />
-                        ) : formatService.money(row.plannedMinor)}
+                        ) : <PrivateMoney>{formatService.money(row.plannedMinor)}</PrivateMoney>}
                       </td>
                       <td>
                         <div className="month-actual-cell">
@@ -305,12 +306,12 @@ function IncomePlanSection({
                               });
                             }}
                           >
-                            {formatService.money(row.actualMinor)}
+                            <PrivateMoney>{formatService.money(row.actualMinor)}</PrivateMoney>
                           </button>
                           {row.isPendingDerived ? <span className="month-row-pending-hint">Updating...</span> : null}
                         </div>
                       </td>
-                      <td {...rowOpenProps} className={variance <= 0 ? "positive" : "negative"}>{formatService.money(variance)}</td>
+                      <td {...rowOpenProps} className={variance <= 0 ? "positive" : "negative"}><PrivateMoney>{formatService.money(variance)}</PrivateMoney></td>
                       <td>
                         <div className="table-note-actions">
                           <button
@@ -613,7 +614,7 @@ function PlanningRow({
               ) : null}
               {sharedEditHint ? <p className="month-shared-edit-hint">{sharedEditHint}</p> : null}
             </div>
-          ) : formatService.money(row.plannedMinor)}
+          ) : <PrivateMoney>{formatService.money(row.plannedMinor)}</PrivateMoney>}
         </td>
         <td>
           <div className="month-actual-cell">
@@ -629,7 +630,7 @@ function PlanningRow({
                 });
               }}
             >
-              {formatService.money(row.actualMinor)}
+              <PrivateMoney>{formatService.money(row.actualMinor)}</PrivateMoney>
             </button>
             {row.isPendingDerived ? <span className="month-row-pending-hint">Updating...</span> : null}
             {isPlannedItemsSection(section.key) ? (
@@ -649,7 +650,7 @@ function PlanningRow({
             ) : null}
           </div>
         </td>
-        <td {...rowOpenProps} className={variance >= 0 ? "positive" : "negative"}>{formatService.money(variance)}</td>
+        <td {...rowOpenProps} className={variance >= 0 ? "positive" : "negative"}><PrivateMoney>{formatService.money(variance)}</PrivateMoney></td>
         {isPlannedItemsSection(section.key) ? (
           <td {...rowOpenProps}>
             {isEditing ? (
@@ -756,9 +757,9 @@ function IncomeTotalsFooter({ rows }) {
       <tr className="table-total-row">
         <td>{messages.month.table.total}</td>
         <td>{messages.common.emptyValue}</td>
-        <td>{formatService.money(totals.plannedMinor)}</td>
-        <td>{formatService.money(totals.actualMinor)}</td>
-        <td className={totals.varianceMinor >= 0 ? "positive" : "negative"}>{formatService.money(totals.varianceMinor)}</td>
+        <td><PrivateMoney>{formatService.money(totals.plannedMinor)}</PrivateMoney></td>
+        <td><PrivateMoney>{formatService.money(totals.actualMinor)}</PrivateMoney></td>
+        <td className={totals.varianceMinor >= 0 ? "positive" : "negative"}><PrivateMoney>{formatService.money(totals.varianceMinor)}</PrivateMoney></td>
         <td>{messages.common.emptyValue}</td>
       </tr>
     </tfoot>
@@ -774,9 +775,9 @@ function PlanningTotalsFooter({ section }) {
         <td>{messages.month.table.total}</td>
         {section.key === "planned_items" ? <td>{messages.common.emptyValue}</td> : null}
         <td>{messages.common.emptyValue}</td>
-        <td>{formatService.money(totals.plannedMinor)}</td>
-        <td>{formatService.money(totals.actualMinor)}</td>
-        <td className={totals.varianceMinor >= 0 ? "positive" : "negative"}>{formatService.money(totals.varianceMinor)}</td>
+        <td><PrivateMoney>{formatService.money(totals.plannedMinor)}</PrivateMoney></td>
+        <td><PrivateMoney>{formatService.money(totals.actualMinor)}</PrivateMoney></td>
+        <td className={totals.varianceMinor >= 0 ? "positive" : "negative"}><PrivateMoney>{formatService.money(totals.varianceMinor)}</PrivateMoney></td>
         {section.key === "planned_items" ? <td>{messages.common.emptyValue}</td> : null}
         <td>{messages.common.emptyValue}</td>
       </tr>
@@ -798,9 +799,9 @@ export function LastPeriodBudgetHint({ actualMinor, month }) {
           <button
             type="button"
             className="month-budget-default-trigger"
-            aria-label={`Last month's total ${formatService.money(actualMinor)}. More about this default`}
+            aria-label="Last month's total. More about this default"
           >
-            <span className="month-budget-default-text">Last month&apos;s total: {formatService.money(actualMinor)}</span>
+            <span className="month-budget-default-text">Last month&apos;s total: <PrivateMoney>{formatService.money(actualMinor)}</PrivateMoney></span>
           </button>
         </Popover.Trigger>
         <Popover.Portal>

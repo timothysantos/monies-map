@@ -4,6 +4,7 @@ import { gotoPageAfterApi, reseedDemo } from "./helpers";
 
 test.describe("financial insights", () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
     await reseedDemo(page);
     await page.route("**/api/ai-assist/financial-insight", async (route) => {
       await route.fulfill({

@@ -4,6 +4,7 @@ import { CategoryEditDialog } from "./category-edit-dialog";
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { CategoryGlyph } from "./ui-components";
+import { PrivateMoney } from "./money-privacy";
 
 const LazySpendingMixRecharts = lazy(() => import("./spending-mix-recharts.jsx"));
 const { categories: categoryService, format: formatService } = moniesClient;
@@ -58,7 +59,7 @@ function SpendingMixChartFallback({ total, totalLabel, compact, resolvedHeight }
       <span className="chart-spinner" />
       <div className={`donut-center recharts-donut-center ${compact ? "is-compact" : ""}`}>
         <span>{totalLabel}</span>
-        <strong>{formatService.money(total)}</strong>
+        <strong><PrivateMoney>{formatService.money(total)}</PrivateMoney></strong>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 
 import { moniesClient } from "./monies-client-service";
 import { getIconComponent } from "./ui-components";
+import { PrivateMoney } from "./money-privacy";
 
 const { format: formatService } = moniesClient;
 
@@ -40,7 +41,7 @@ export default function SpendingMixRecharts({
       </ResponsiveContainer>
       <div className={`donut-center recharts-donut-center ${compact ? "is-compact" : ""}`}>
         <span>{totalLabel}</span>
-        <strong>{formatService.money(total)}</strong>
+        <strong><PrivateMoney>{formatService.money(total)}</PrivateMoney></strong>
       </div>
     </div>
   );

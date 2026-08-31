@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 
 import { messages } from "./copy/en-SG";
 import { getIconComponent } from "./ui-components";
+import { useMoneyPrivacy } from "./money-privacy";
 
 export function SplitsGroupsNav({
   groups,
@@ -12,6 +13,7 @@ export function SplitsGroupsNav({
   readOnly = false,
   floating = false
 }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
   const pillsRef = useRef(null);
   const activePillRef = useRef(null);
 
@@ -59,7 +61,7 @@ export function SplitsGroupsNav({
                 <strong>{group.name}</strong>
                 <span>{group.currency ?? "SGD"} · {group.expenseSource === "cash" ? "Cash only" : group.expenseSource === "ledger" ? "Bank/card" : "Mixed"}</span>
                 <span>{group.entryCount} {messages.splits.entries}</span>
-                <span>{group.summaryText}</span>
+                <span>{areTotalsVisible ? group.summaryText : "Balance hidden"}</span>
               </span>
             </button>
           );

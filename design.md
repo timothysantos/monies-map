@@ -219,3 +219,13 @@ loaded range, wallet proof gaps, and an explicitly labelled one-repeat
 scenario. Summary and Month can route proof gaps to Imports. Entries and Splits
 state when their narrower view cannot assess wallet confidence or household
 cash flow.
+
+## Money Privacy Display Preference
+
+Totals are a display layer, not a financial-state change. A new browser starts
+with aggregate money masked on Summary, Month, Entries, and Splits. The shared
+top-toolbar eye control reveals or hides those figures everywhere at once and
+persists only the browser-local preference. Individual ledger and split
+activity rows remain visible so normal review work is still possible. Financial
+Insight stays hidden while totals are masked because its prose can expose the
+same figures.

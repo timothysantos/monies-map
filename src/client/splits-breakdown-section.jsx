@@ -11,6 +11,7 @@ import {
 } from "./donut-visibility";
 import { moniesClient } from "./monies-client-service";
 import { CategoryGlyph } from "./ui-components";
+import { PrivateMoney } from "./money-privacy";
 
 const { format: formatService } = moniesClient;
 
@@ -55,9 +56,9 @@ export function SplitsBreakdownSection({
         {searchControl}
         <div className="entries-summary-metrics">
           {!readOnly ? (
-            <span>{groupSummaryLabel} <strong className={groupBalanceMinor >= 0 ? "tone-positive" : "tone-negative"}>{formatService.money(Math.abs(groupBalanceMinor))}</strong></span>
+            <span>{groupSummaryLabel} <strong className={groupBalanceMinor >= 0 ? "tone-positive" : "tone-negative"}><PrivateMoney>{formatService.money(Math.abs(groupBalanceMinor))}</PrivateMoney></strong></span>
           ) : null}
-          <span>{messages.entries.totalSpend} <strong>{formatService.money(totalExpenseMinor)}</strong></span>
+          <span>{messages.entries.totalSpend} <strong><PrivateMoney>{formatService.money(totalExpenseMinor)}</PrivateMoney></strong></span>
         </div>
         {summaryToolbar}
         <button type="button" className="subtle-action split-history-trigger" onClick={onOpenHistory}>Activity history</button>
@@ -116,7 +117,7 @@ export function SplitsBreakdownSection({
                       </span>
                       <div>
                         <strong>{item.label}</strong>
-                        <p>{messages.common.triplet(formatService.money(item.valueMinor), `${item.entryCount} ${item.entryCount === 1 ? "entry" : "entries"}`, hiddenCategoryIds.has(getDonutItemId(item)) ? messages.common.hiddenFromChart : messages.common.shownInChart)}</p>
+                        <p><PrivateMoney>{formatService.money(item.valueMinor)}</PrivateMoney> • {item.entryCount} {item.entryCount === 1 ? "entry" : "entries"} • {hiddenCategoryIds.has(getDonutItemId(item)) ? messages.common.hiddenFromChart : messages.common.shownInChart}</p>
                       </div>
                     </div>
                   </button>

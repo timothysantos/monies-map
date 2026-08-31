@@ -63,6 +63,30 @@ rewrite an existing settlement checkpoint.
 - React + Vite frontend talking to the existing Worker API
 - category colors and icons as first-class metadata for charts and category cards
 
+## Can I hide totals before opening the app around other people?
+
+Yes. Totals are hidden by default in a new browser. Summary, Month, Entries,
+and Splits replace roll-ups, balances, chart totals, plan totals, and settlement
+amounts with `••••`, while individual transaction and split-activity amounts
+remain readable.
+
+Use the eye button in the top toolbar to reveal or hide totals everywhere at
+once. The choice is stored only in that browser, so a different browser or a
+cleared browser profile starts hidden again. Financial Insight stays hidden
+while totals are hidden because its text can otherwise reveal the same figures.
+
+## Can I stay signed in for a week?
+
+Yes, when the production app is protected with Cloudflare Access. This is an
+Access setting, not an app setting: set the Monie's Map application's session
+duration to `7 days`, then ensure every Access policy that can match the app
+uses the same duration or inherits the application duration. A shorter matching
+policy wins, so check that no one-time-PIN, device, or identity policy overrides
+it with a shorter session.
+
+Use a week only on a personal, locked device. Shorten the Access session again
+for shared devices or if the sign-in context should expire sooner.
+
 ## What is the basic workflow?
 
 The everyday workflow is:

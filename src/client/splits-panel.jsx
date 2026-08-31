@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
 import { FinancialInsight } from "./financial-insight";
+import { PrivateMoney } from "./money-privacy";
 import { LinkedNoteSyncDialog } from "./linked-note-sync-dialog";
 import {
   useSplitEditState,
@@ -1024,9 +1025,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
             ? "Matched transfers exceed the checkpoint. Review the difference before considering this settled."
             : activeCheckpoint.amountMinor === 0
             ? "The included groups now net to zero. No bank transfer is needed."
-            : `${activeCheckpoint.fromPersonName} pays ${activeCheckpoint.toPersonName} ${formatCheckpointMoney(activeCheckpoint.amountMinor, activeCheckpoint.currency)}.`}
+            : <>{activeCheckpoint.fromPersonName} pays {activeCheckpoint.toPersonName} <PrivateMoney>{formatCheckpointMoney(activeCheckpoint.amountMinor, activeCheckpoint.currency)}</PrivateMoney>.</>}
         </p>
-        <small>{activeCheckpoint.currency ?? "SGD"} · {activeCheckpoint.includedRecordCount} included split records · {activeCheckpoint.matchedAmountMinor > 0 ? `${formatCheckpointMoney(activeCheckpoint.matchedAmountMinor, activeCheckpoint.currency)} matched · ` : ""}{activeCheckpoint.status.replaceAll("_", " ")}</small>
+        <small>{activeCheckpoint.currency ?? "SGD"} · {activeCheckpoint.includedRecordCount} included split records · {activeCheckpoint.matchedAmountMinor > 0 ? <><PrivateMoney>{formatCheckpointMoney(activeCheckpoint.matchedAmountMinor, activeCheckpoint.currency)}</PrivateMoney> matched · </> : null}{activeCheckpoint.status.replaceAll("_", " ")}</small>
       </div>
       <div className="split-checkpoint-navigation">
         <button type="button" className="split-checkpoint-view-action" onClick={scrollToSettlementActivity}>
@@ -1059,8 +1060,8 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
           {paidCheckpointsAwaitingBankMatch.map((checkpoint) => (
             <section className="split-settlement-follow-up" key={checkpoint.id}>
               <div>
-                <strong>{checkpoint.fromPersonName} paid {checkpoint.toPersonName} {formatCheckpointMoney(checkpoint.amountMinor, checkpoint.currency)}</strong>
-                <small>Marked paid {checkpoint.settledAt?.slice(0, 10)} · {checkpoint.includedRecordCount} included split records · {checkpoint.matchedAmountMinor ? `${formatCheckpointMoney(checkpoint.matchedAmountMinor, checkpoint.currency)} bank-matched so far` : "No bank transfer matched yet"}</small>
+                <strong>{checkpoint.fromPersonName} paid {checkpoint.toPersonName} <PrivateMoney>{formatCheckpointMoney(checkpoint.amountMinor, checkpoint.currency)}</PrivateMoney></strong>
+                <small>Marked paid {checkpoint.settledAt?.slice(0, 10)} · {checkpoint.includedRecordCount} included split records · {checkpoint.matchedAmountMinor ? <><PrivateMoney>{formatCheckpointMoney(checkpoint.matchedAmountMinor, checkpoint.currency)}</PrivateMoney> bank-matched so far</> : "No bank transfer matched yet"}</small>
               </div>
               <div className="split-settlement-follow-up-actions">
                 <button type="button" className="subtle-action split-settlement-follow-up-view-action" onClick={() => scrollToSettlementActivity(checkpoint)}>View included activity</button>

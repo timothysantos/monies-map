@@ -11,6 +11,7 @@ import {
 } from "./donut-visibility";
 import { moniesClient } from "./monies-client-service";
 import { CategoryGlyph, FilterMultiSelect, FilterSelect } from "./ui-components";
+import { PrivateMoney } from "./money-privacy";
 
 const { categories: categoryService, entries: entryService, format: formatService } = moniesClient;
 
@@ -38,31 +39,31 @@ export function EntriesTotalsStrip({
       </button>
       <span className="entries-totals-item">
         <span className="entries-totals-label">{messages.entries.totalSpend}</span>
-        <strong className={entryService.getAmountToneClass(-entryTotals.grossSpendMinor)}>{formatService.money(entryTotals.grossSpendMinor)}</strong>
+        <strong className={entryService.getAmountToneClass(-entryTotals.grossSpendMinor)}><PrivateMoney>{formatService.money(entryTotals.grossSpendMinor)}</PrivateMoney></strong>
         {entryTotals.grossSpendMinor !== entryTotals.spendMinor ? (
-          <span className="entries-totals-secondary">({formatService.money(entryTotals.spendMinor)})</span>
+          <span className="entries-totals-secondary">(<PrivateMoney>{formatService.money(entryTotals.spendMinor)}</PrivateMoney>)</span>
         ) : null}
       </span>
       <span className="entries-totals-item">
         <span className="entries-totals-label">{messages.entries.totalIncome}</span>
-        <strong className={entryService.getAmountToneClass(entryTotals.incomeMinor)}>{formatService.money(entryTotals.incomeMinor)}</strong>
+        <strong className={entryService.getAmountToneClass(entryTotals.incomeMinor)}><PrivateMoney>{formatService.money(entryTotals.incomeMinor)}</PrivateMoney></strong>
       </span>
       <span className="entries-totals-item">
         <span className="entries-totals-label">{messages.entries.totalDifference}</span>
-        <strong className={entryService.getAmountToneClass(entryNetMinor)}>{formatService.money(entryNetMinor)}</strong>
+        <strong className={entryService.getAmountToneClass(entryNetMinor)}><PrivateMoney>{formatService.money(entryNetMinor)}</PrivateMoney></strong>
       </span>
       <span className="entries-totals-item">
         <span className="entries-totals-label">{messages.entries.totalTransfersOut}</span>
-        <strong className={entryService.getAmountToneClass(-entryTotals.grossTransferOutMinor)}>{formatService.money(entryTotals.grossTransferOutMinor)}</strong>
+        <strong className={entryService.getAmountToneClass(-entryTotals.grossTransferOutMinor)}><PrivateMoney>{formatService.money(entryTotals.grossTransferOutMinor)}</PrivateMoney></strong>
         {entryTotals.grossTransferOutMinor !== entryTotals.transferOutMinor ? (
-          <span className="entries-totals-secondary">({formatService.money(entryTotals.transferOutMinor)})</span>
+          <span className="entries-totals-secondary">(<PrivateMoney>{formatService.money(entryTotals.transferOutMinor)}</PrivateMoney>)</span>
         ) : null}
       </span>
       <span className="entries-totals-item">
         <span className="entries-totals-label">{messages.entries.totalOutflow}</span>
-        <strong className={entryService.getAmountToneClass(-entryGrossOutflowMinor)}>{formatService.money(entryGrossOutflowMinor)}</strong>
+        <strong className={entryService.getAmountToneClass(-entryGrossOutflowMinor)}><PrivateMoney>{formatService.money(entryGrossOutflowMinor)}</PrivateMoney></strong>
         {entryGrossOutflowMinor !== entryOutflowMinor ? (
-          <span className="entries-totals-secondary">({formatService.money(entryOutflowMinor)})</span>
+          <span className="entries-totals-secondary">(<PrivateMoney>{formatService.money(entryOutflowMinor)}</PrivateMoney>)</span>
         ) : null}
       </span>
       <div className="entries-totals-spacer" />
@@ -138,7 +139,7 @@ export function EntriesBreakdownPanel({
                 </span>
                 <div>
                   <strong>{item.label}</strong>
-                  <p>{formatService.money(item.valueMinor)} • {item.entryCount} {item.entryCount === 1 ? "entry" : "entries"}</p>
+                  <p><PrivateMoney>{formatService.money(item.valueMinor)}</PrivateMoney> • {item.entryCount} {item.entryCount === 1 ? "entry" : "entries"}</p>
                 </div>
               </div>
               <div className="category-toggle-actions">
