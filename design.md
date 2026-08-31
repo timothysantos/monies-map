@@ -39,6 +39,9 @@ Rules:
   simplest form until the right abstraction is clear
 - a deep module should be easy to use and hard to misuse. Its public API should
   be shorter than the internal work it hides
+- the global app shell must not import a broad deep-module facade when it only
+  needs a small shared formatter or normalizer. Import that leaf directly, and
+  keep route-only components in their owning lazy route chunk.
 
 How this relates to other docs:
 
