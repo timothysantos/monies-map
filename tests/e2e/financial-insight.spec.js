@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, postJson, reseedDemo } from "./helpers";
 
 test.describe("financial insights", () => {
   test.beforeEach(async ({ page }) => {
@@ -62,7 +62,7 @@ test.describe("financial insights", () => {
     );
     const summaryInsight = page.locator(".financial-insight-summary");
     await expect(summaryInsight).toBeVisible();
-    await expect(summaryInsight).toContainText("Financial insight");
+    await expect(summaryInsight).toContainText("Household money check-in");
     await expect(summaryInsight).toContainText("May 2026 summary");
     await expect(summaryInsight.getByRole("button", { name: "Read full insight" })).toHaveAttribute("aria-expanded", "false");
     await expect(summaryInsight.locator(".financial-insight-narrative")).toHaveClass(/is-collapsed/);
@@ -95,6 +95,16 @@ test.describe("financial insights", () => {
   });
 
   test("entries and splits scope their advice to current filters", async ({ page }) => {
+    await postJson(page, "/api/entries/create", {
+      date: "2026-05-23",
+      description: "Playwright May salary",
+      accountName: "UOB One",
+      categoryName: "Salary",
+      amountMinor: 32_109,
+      entryType: "income",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
     await gotoPageAfterApi(
       page,
       "/entries?view=person-tim&month=2026-05&scope=direct_plus_shared",
@@ -102,12 +112,31 @@ test.describe("financial insights", () => {
       () => page.getByRole("heading", { name: "Entries", exact: true })
     );
     const entriesInsight = page.locator(".financial-insight-entries");
+    await expect(entriesInsight).toContainText("Tim's money check-in");
+    await expect(entriesInsight).toContainText("Tim, you received");
     await expect(entriesInsight).toContainText("May 2026");
     await expect(entriesInsight.locator(".financial-insight-pattern")).toBeVisible();
-    await expect(entriesInsight.locator(".financial-insight-pattern")).toContainText("Worth noticing");
+    await expect(entriesInsight.locator(".financial-insight-pattern")).not.toContainText("Worth noticing");
+    await expect(entriesInsight).not.toContainText("A useful signal");
     await entriesInsight.getByRole("button", { name: "Read full insight" }).click();
     await expect(entriesInsight.getByLabel("Money consequence map")).toContainText("Check the full month");
-    await entriesInsight.getByRole("button", { name: "Review largest expense" }).click();
+    const incomeAction = entriesInsight.getByRole("button", { name: /See income entries/ });
+    const incomeActionLabel = await incomeAction.textContent();
+    const incomeAmount = incomeActionLabel?.match(/\(([^)]+)\)/)?.[1] ?? "";
+    await expect(incomeAction).toBeVisible();
+    await incomeAction.click();
+    await expect(page).toHaveURL(/entry_type=income/);
+    await expect(page.locator(".entries-totals-item").filter({ hasText: "Income" })).toContainText(incomeAmount);
+
+    await gotoPageAfterApi(
+      page,
+      "/entries?view=person-tim&month=2026-05&scope=direct_plus_shared",
+      "/api/entries-page",
+      () => page.getByRole("heading", { name: "Entries", exact: true })
+    );
+    const resetEntriesInsight = page.locator(".financial-insight-entries");
+    await resetEntriesInsight.getByRole("button", { name: "Read full insight" }).click();
+    await resetEntriesInsight.getByRole("button", { name: "Review largest expense" }).click();
     await expect(page).toHaveURL(/entry_id=/);
 
     await gotoPageAfterApi(

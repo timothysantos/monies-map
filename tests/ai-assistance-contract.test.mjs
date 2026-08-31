@@ -10,6 +10,7 @@ import {
 import {
   buildDeterministicFinancialInsight,
   buildFinancialInsightFacts,
+  buildInterestingWeekdayPattern,
   buildDeterministicImportExplanation,
   buildFinancialInsightCacheKey,
   buildDeterministicMonthlyNarrative,
@@ -89,7 +90,7 @@ test("view insights substitute computed facts and reject model-supplied figures"
   assert.notEqual(buildFinancialInsightCacheKey(facts), buildFinancialInsightCacheKey({ ...facts, contextLabel: "Filtered entries" }));
 });
 
-test("financial insight leads with a deterministic pattern from the current entries", () => {
+test("financial insight uses plain deterministic wording from the current entries", () => {
   const facts = buildFinancialInsightFacts({
     contextLabel: "August 2026 entries",
     records: [
@@ -103,11 +104,48 @@ test("financial insight leads with a deterministic pattern from the current entr
     perspective: "cash_flow"
   });
 
-  assert.match(facts.notableFact, /Food & Drinks makes up 89% of the spending in this list|Restaurant A is the largest expense here at \$60\.00|The three largest expenses make up 100% of the spending in this list/);
+  assert.match(facts.notableFact, /Food & Drinks accounted for 89% of household spending|The largest household purchase was Restaurant A at \$60\.00|The three largest household purchases made up 100% of spending/);
   const narrative = buildDeterministicFinancialInsight(facts);
-  assert.match(narrative, /Worth noticing:|A useful signal:|One entry pattern:|At a glance,/);
+  assert.match(narrative, /^The household received \$200\.00 and spent \$90\.00/);
+  assert.doesNotMatch(narrative, /Worth noticing:|A useful signal:|One entry pattern:|At a glance,/);
   assert.match(narrative, new RegExp(facts.notableFact.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.equal(narrative, buildDeterministicFinancialInsight(facts));
+});
+
+test("person check-ins use the selected name locally and recognize strong weekday patterns", () => {
+  const records = [
+    { entryType: "income", amountMinor: 300_000, description: "Salary", date: "2026-08-01" },
+    { entryType: "expense", amountMinor: 1_200, categoryName: "Food & Drinks", description: "Lunch", date: "2026-08-03" },
+    { entryType: "expense", amountMinor: 1_500, categoryName: "Food & Drinks", description: "Lunch", date: "2026-08-10" },
+    { entryType: "expense", amountMinor: 1_800, categoryName: "Food & Drinks", description: "Lunch", date: "2026-08-17" }
+  ];
+  const facts = buildFinancialInsightFacts({
+    contextLabel: "August 2026",
+    audienceKind: "person",
+    audienceName: "Tim",
+    records,
+    formatMoney: (amountMinor) => `$${(amountMinor / 100).toFixed(2)}`,
+    accountingAdvice: "Keep the bank record current.",
+    perspective: "cash_flow"
+  });
+
+  assert.equal(
+    buildInterestingWeekdayPattern(records, "person", "Tim"),
+    "3 of your Food & Drinks purchases landed on Mondays."
+  );
+  assert.equal(buildInterestingWeekdayPattern(records.slice(0, 3), "person", "Tim"), null);
+  assert.match(buildDeterministicFinancialInsight(facts), /^Tim, you received \$3000\.00 and spent \$45\.00/);
+  const template = "{{audienceName}}, {{notableFact}} In {{contextLabel}}, {{cashFlowPrinciple}} {{nextSpendConsideration}}";
+  const workerSafeFacts = { ...facts, audienceName: "[selected person]" };
+  assert.match(parseFinancialInsightTemplate({ template }, workerSafeFacts), /^\[selected person\],/);
+  assert.equal(
+    parseFinancialInsightTemplate({ template: "{{notableFact}} {{contextLabel}} {{cashFlowPrinciple}} {{nextSpendConsideration}}" }, workerSafeFacts),
+    null
+  );
+  assert.equal(
+    parseFinancialInsightTemplate({ template: "{{audienceName}} and {{audienceName}}: {{notableFact}} {{contextLabel}} {{cashFlowPrinciple}} {{nextSpendConsideration}}" }, workerSafeFacts),
+    null
+  );
 });
 
 test("financial insight converts computed cash flow into conservative next-spend guidance", () => {

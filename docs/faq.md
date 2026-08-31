@@ -841,17 +841,26 @@ switching split groups cannot hide a repayment that still needs bank proof.
 the confirmation was premature; use `Undo simplification` only when the
 included split activity itself must return to the open balance.
 
-## Can I keep Financial insight brief?
+## Can I keep the Money check-in brief?
 
-Yes. Every Financial insight starts as a two-line preview with an ellipsis.
+Yes. Every Money check-in starts as a two-line preview with an ellipsis.
 The preview also calls out one computed pattern from the visible records, such
-as a concentrated category, the largest expense, or a repeated merchant. The
+as a concentrated category, the largest expense, a repeated merchant, or a
+well-supported weekday pattern. In a person view, it addresses the selected
+person directly; in Household, it uses household language. The
 wording can differ when the visible facts differ, but it never invents a
 transaction or changes the app's calculations.
 Choose `Read full insight` to reveal the complete narrative, consequence map,
 and links to the specific records worth reviewing. It returns to the concise
 preview when the page or filters change, and expanding it never makes another
 AI request.
+
+When a full-month Month or Entries check-in shows `See income entries
+($X)`, that link opens the same month, view, and scope with the Income filter
+applied. The Income total on Entries is the same computed `$X`, so you can
+verify exactly what contributed to the check-in. It is not shown for a range
+or a partial filtered list because that would not represent one checkable
+month total.
 
 New split activity added after the checkpoint remains open, even when its date
 falls inside the earlier activity range. Use `Reopen settlement` to release a
@@ -2178,13 +2187,15 @@ You can ask it to draft a Monthly Note, phrase a statement mismatch in simpler
 language, suggest category-rule drafts from existing categorized history, or
 rank descriptions among candidates that the app has already constrained by
 account, amount, and date. Summary, Month, Entries, and Splits also show a
-Financial insight for the figures already on screen. It appears immediately
+Money check-in for the figures already on screen. It appears immediately
 from the app's own calculations, then may improve its wording in the background
 after a short pause. Changing a month, account, category, search, scope, or
 split group creates a different insight; the app keeps same-view wording in a
 short-lived in-memory cache so it does not keep calling AI while you work.
 Its compact preview includes one deterministic pattern from the entries on the
-current screen before any optional AI wording returns.
+current screen before any optional AI wording returns. When a person view is
+selected, the app addresses that person in the final browser wording, but sends
+only a placeholder rather than their name to Workers AI.
 
 Those insights are guidance, not a recalculation. A filtered Entries or Splits
 view says so and should be used to investigate that subset, not as a full-month

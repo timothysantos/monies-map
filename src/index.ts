@@ -311,11 +311,14 @@ export default {
         return json({ ok: true, available: false, reason: "There is not enough computed information for an insight." });
       }
       const fallback = buildDeterministicFinancialInsight(facts);
+      const audienceInstruction = facts.audienceKind === "person"
+        ? "Address the selected person naturally with {{audienceName}} exactly once."
+        : "Write for the household without naming people.";
       const result = await runAiJson(env.DB, env, {
         capability: "financial_insight",
         units: 1,
         maxTokens: 180,
-        prompt: "Write a concise, practical two-sentence finance insight using ONLY these placeholders. Choose wording only; do not add facts, numbers, money, dates, actions, or other placeholders. Use plain everyday language and avoid accounting jargon such as visible spending, recorded surplus, cash flow, discretionary spend, or provisional. Start with the notable entry pattern so changing filters feels specific. Include {{notableFact}}, {{contextLabel}}, {{cashFlowPrinciple}}, and {{nextSpendConsideration}} exactly once. Keep the guidance factual and conservative. Return JSON: {\"template\":\"...\"}. Context {{contextLabel}}, entries {{entryCount}}, spending {{spend}}, income {{income}}, net {{net}}, largest category {{topCategoryName}} at {{topCategoryAmount}}, largest expense {{topMerchantName}} at {{topMerchantAmount}}, notable entry pattern {{notableFact}}, plain-language explanation {{cashFlowPrinciple}}, next-step suggestion {{nextSpendConsideration}}, bank-record reminder {{accountingAdvice}}.",
+        prompt: `Write a concise, practical two-sentence money check-in using ONLY these placeholders. Choose wording only; do not add facts, numbers, money, dates, actions, or other placeholders. Use warm, direct everyday language and avoid headings or phrases such as "A useful signal", "visible spending", "recorded surplus", "cash flow", "discretionary spend", or "provisional". ${audienceInstruction} Start with the income-and-spending snapshot for a person view, or with the notable entry pattern for a household view. Include {{notableFact}}, {{contextLabel}}, {{cashFlowPrinciple}}, and {{nextSpendConsideration}} exactly once. Keep guidance factual and conservative. Return JSON: {"template":"..."}. Context {{contextLabel}}, entries {{entryCount}}, spending {{spend}}, income {{income}}, net {{net}}, largest category {{topCategoryName}} at {{topCategoryAmount}}, largest expense {{topMerchantName}} at {{topMerchantAmount}}, notable entry pattern {{notableFact}}, plain-language explanation {{cashFlowPrinciple}}, next-step suggestion {{nextSpendConsideration}}, bank-record reminder {{accountingAdvice}}.`,
         parse: (response) => parseFinancialInsightTemplate(response, facts)
       });
       return json({
@@ -2463,6 +2466,8 @@ function parseFinancialInsightFacts(value: unknown): FinancialInsightFacts | nul
   };
   const facts = {
     contextLabel: readText("contextLabel", 120),
+    audienceKind: input.audienceKind === "person" ? "person" : "household",
+    audienceName: readText("audienceName", 80),
     entryCount,
     spend: readText("spend", 40),
     income: readText("income", 40),
@@ -2484,6 +2489,7 @@ function parseFinancialInsightFacts(value: unknown): FinancialInsightFacts | nul
     && facts.cashFlowPrinciple
     && facts.nextSpendConsideration
     && facts.accountingAdvice
+    && (facts.audienceKind !== "person" || facts.audienceName)
     ? facts
     : null;
 }

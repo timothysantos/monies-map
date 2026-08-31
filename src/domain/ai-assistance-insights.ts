@@ -24,6 +24,8 @@ export interface ImportExplanationFacts {
 
 export interface FinancialInsightFacts {
   contextLabel: string;
+  audienceKind?: "person" | "household";
+  audienceName?: string;
   entryCount: number;
   spend: string;
   income: string;
@@ -44,6 +46,7 @@ export interface FinancialInsightRecord {
   entryType: "expense" | "income" | "transfer";
   categoryName?: string;
   description?: string;
+  date?: string;
 }
 
 export interface FinancialDecisionMapLane {
@@ -119,6 +122,8 @@ export function buildFinancialInsightFacts(input: {
   formatMoney: (amountMinor: number) => string;
   accountingAdvice: string;
   perspective?: "cash_flow" | "partial_view" | "split_obligation";
+  audienceKind?: "person" | "household";
+  audienceName?: string;
   entryCount?: number;
   decisionMapContext?: FinancialDecisionMapContext;
 }) : FinancialInsightFacts {
@@ -141,9 +146,13 @@ export function buildFinancialInsightFacts(input: {
   const topMerchantName = redactAiText(topMerchant?.description, 100) || "No expense recorded";
   const topMerchantMinor = Math.abs(topMerchant?.amountMinor ?? 0);
   const contextLabel = redactAiText(input.contextLabel, 120) || "Current view";
+  const audienceName = redactAiText(input.audienceName, 80);
+  const audienceKind = input.audienceKind === "person" && audienceName ? "person" : "household";
 
   return {
     contextLabel,
+    audienceKind,
+    audienceName,
     entryCount: Math.max(0, Math.round(input.entryCount ?? input.records.length)),
     spend: input.formatMoney(spendMinor),
     income: input.formatMoney(incomeMinor),
@@ -160,7 +169,9 @@ export function buildFinancialInsightFacts(input: {
       topMerchantName,
       topMerchantMinor,
       formatMoney: input.formatMoney,
-      contextLabel
+      contextLabel,
+      audienceKind,
+      audienceName
     }),
     ...buildFinancialDecisionPrompts({
       perspective,
@@ -184,24 +195,25 @@ export function buildFinancialInsightFacts(input: {
 }
 
 export function buildDeterministicFinancialInsight(facts: FinancialInsightFacts) {
+  const isPersonView = facts.audienceKind === "person" && Boolean(facts.audienceName);
+  const entryLabel = facts.entryCount === 1 ? "entry" : "entries";
   if (!facts.entryCount) {
-    return `${facts.contextLabel} has no entries yet. ${facts.accountingAdvice}`;
+    return isPersonView
+      ? `${facts.audienceName}, there are no entries in ${facts.contextLabel} yet. ${facts.accountingAdvice}`
+      : `There are no entries in ${facts.contextLabel} yet. ${facts.accountingAdvice}`;
   }
-  const snapshot = `${facts.contextLabel}: ${facts.entryCount} ${facts.entryCount === 1 ? "entry" : "entries"}. You spent ${facts.spend} and received ${facts.income}.`;
+  const snapshot = isPersonView
+    ? `${facts.audienceName}, you received ${facts.income} and spent ${facts.spend} across ${facts.entryCount} ${entryLabel} in ${facts.contextLabel}.`
+    : `The household received ${facts.income} and spent ${facts.spend} across ${facts.entryCount} ${entryLabel} in ${facts.contextLabel}.`;
   const notableFact = facts.notableFact || `${facts.topCategoryName} is the largest expense category at ${facts.topCategoryAmount}.`;
-  const openings = [
-    `Worth noticing: ${notableFact}`,
-    `A useful signal: ${notableFact}`,
-    `One entry pattern: ${notableFact}`,
-    `At a glance, ${notableFact.charAt(0).toLowerCase()}${notableFact.slice(1)}`
-  ];
-  const opening = openings[stableInsightIndex(`${facts.contextLabel}|${facts.entryCount}|${facts.spend}|${facts.income}|${facts.topCategoryName}`) % openings.length];
-  return `${opening} ${snapshot} ${facts.cashFlowPrinciple} ${facts.nextSpendConsideration} ${facts.accountingAdvice}`;
+  return `${snapshot} ${notableFact} ${facts.cashFlowPrinciple} ${facts.nextSpendConsideration} ${facts.accountingAdvice}`;
 }
 
 export function buildFinancialInsightCacheKey(facts: FinancialInsightFacts) {
   return JSON.stringify([
     facts.contextLabel,
+    facts.audienceKind,
+    facts.audienceName,
     facts.entryCount,
     facts.spend,
     facts.income,
@@ -255,6 +267,7 @@ export function parseFinancialInsightTemplate(value: unknown, facts: FinancialIn
   }
   const replacements: Record<string, string> = {
     contextLabel: facts.contextLabel,
+    audienceName: facts.audienceName ?? "",
     entryCount: String(facts.entryCount),
     spend: facts.spend,
     income: facts.income,
@@ -274,6 +287,7 @@ export function parseFinancialInsightTemplate(value: unknown, facts: FinancialIn
     || !template.includes("{{notableFact}}")
     || !template.includes("{{cashFlowPrinciple}}")
     || !template.includes("{{nextSpendConsideration}}")
+    || (facts.audienceKind === "person" && template.split("{{audienceName}}").length !== 2)
   ) {
     return null;
   }
@@ -289,6 +303,8 @@ function buildNotableEntryFact(input: {
   topMerchantMinor: number;
   formatMoney: (amountMinor: number) => string;
   contextLabel: string;
+  audienceKind: "person" | "household";
+  audienceName: string;
 }) {
   if (!input.expenses.length || input.spendMinor <= 0) {
     return "There are not enough expenses here to spot a pattern yet.";
@@ -308,13 +324,62 @@ function buildNotableEntryFact(input: {
     .reduce((total, amountMinor) => total + amountMinor, 0);
   const categoryShare = Math.round((input.topCategoryMinor / input.spendMinor) * 100);
   const topThreeShare = Math.round((largestExpensesMinor / input.spendMinor) * 100);
+  const weekdayFact = buildInterestingWeekdayPattern(input.expenses, input.audienceKind, input.audienceName);
   const candidates = [
-    `${input.topCategoryName} makes up ${categoryShare}% of the spending in this list.`,
-    `${input.topMerchantName} is the largest expense here at ${input.formatMoney(input.topMerchantMinor)}.`,
-    input.expenses.length >= 3 ? `The three largest expenses make up ${topThreeShare}% of the spending in this list.` : null,
-    mostFrequentMerchantCount >= 2 ? `${mostFrequentMerchant} was paid ${mostFrequentMerchantCount} times.` : null
+    input.audienceKind === "person"
+      ? `Your ${input.topCategoryName} spending accounted for ${categoryShare}% of what you spent.`
+      : `${input.topCategoryName} accounted for ${categoryShare}% of household spending.`,
+    input.audienceKind === "person"
+      ? `Your largest purchase was ${input.topMerchantName} at ${input.formatMoney(input.topMerchantMinor)}.`
+      : `The largest household purchase was ${input.topMerchantName} at ${input.formatMoney(input.topMerchantMinor)}.`,
+    input.expenses.length >= 3
+      ? input.audienceKind === "person"
+        ? `Your three largest purchases made up ${topThreeShare}% of what you spent.`
+        : `The three largest household purchases made up ${topThreeShare}% of spending.`
+      : null,
+    mostFrequentMerchantCount >= 2
+      ? input.audienceKind === "person"
+        ? `You paid ${mostFrequentMerchant} ${mostFrequentMerchantCount} times.`
+        : `${mostFrequentMerchant} was paid ${mostFrequentMerchantCount} times by the household.`
+      : null,
+    weekdayFact
   ].filter((candidate): candidate is string => Boolean(candidate));
-  return candidates[stableInsightIndex(`${input.contextLabel}|${input.spendMinor}|${input.topCategoryName}|${mostFrequentMerchant}`) % candidates.length];
+  return candidates[stableInsightIndex(`${input.contextLabel}|${input.spendMinor}|${input.topCategoryName}|${mostFrequentMerchant}|${weekdayFact ?? ""}`) % candidates.length];
+}
+
+export function buildInterestingWeekdayPattern(expenses: FinancialInsightRecord[], audienceKind: "person" | "household", audienceName: string) {
+  const datedExpenses = expenses.filter((expense) => /^\d{4}-\d{2}-\d{2}$/.test(String(expense.date ?? "")));
+  const foodAndDiningExpenses = datedExpenses.filter((expense) => /(?:food|dining|restaurant|cafe|coffee|drink)/i.test(String(expense.categoryName ?? "")));
+  const candidates = foodAndDiningExpenses.length >= 3 ? foodAndDiningExpenses : datedExpenses;
+  if (candidates.length < 3) {
+    return null;
+  }
+
+  const weekdayCounts = new Map<number, number>();
+  for (const expense of candidates) {
+    const date = new Date(`${expense.date}T00:00:00Z`);
+    if (!Number.isFinite(date.getTime())) {
+      continue;
+    }
+    const weekday = date.getUTCDay();
+    weekdayCounts.set(weekday, (weekdayCounts.get(weekday) ?? 0) + 1);
+  }
+  const [weekday, count] = [...weekdayCounts.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0] - right[0])[0] ?? [-1, 0];
+  if (count < 3 || count / candidates.length < 0.4) {
+    return null;
+  }
+
+  const weekdayName = new Intl.DateTimeFormat("en-SG", { weekday: "long", timeZone: "UTC" })
+    .format(new Date(Date.UTC(2026, 5, 7 + weekday)));
+  const categoryLabel = foodAndDiningExpenses.length >= 3
+    ? redactAiText(foodAndDiningExpenses[0]?.categoryName, 80) || "Food & Drinks"
+    : "expenses";
+  const purchaseLabel = categoryLabel === "expenses" ? "purchases" : `${categoryLabel} purchases`;
+  if (audienceKind === "person" && audienceName) {
+    return `${count} of your ${purchaseLabel} landed on ${weekdayName}s.`;
+  }
+  return `${count} household ${purchaseLabel} landed on ${weekdayName}s.`;
 }
 
 function stableInsightIndex(value: string) {

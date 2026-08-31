@@ -123,11 +123,14 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   } = splitModel;
   const financialInsightFacts = useMemo(() => buildFinancialInsightFacts({
     contextLabel: `${activeGroup?.name ?? "Split"} group${splitSearchQuery ? " search" : ""}`,
+    audienceKind: view.id === "household" ? "household" : "person",
+    audienceName: view.id === "household" ? "" : view.label,
     records: currentGroupActivity.map((item) => ({
       amountMinor: item.totalAmountMinor,
       entryType: item.kind === "expense" ? "expense" : "transfer",
       categoryName: item.categoryName ?? "Split expense",
-      description: item.description
+      description: item.description,
+      date: item.date
     })),
     formatMoney: formatService.money,
     perspective: "split_obligation",
@@ -138,7 +141,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         : groupBalanceMinor
           ? "Treat the group balance as a settlement obligation between people, not new spending; record or match the settlement when it happens."
           : "The group is settled. Keep bank-linked expenses and settlements matched so the audit trail stays complete."
-  }), [activeGroup?.name, currentGroupActivity, groupBalanceMinor, pendingMatchCount, splitSearchQuery]);
+  }), [activeGroup?.name, currentGroupActivity, groupBalanceMinor, pendingMatchCount, splitSearchQuery, view.id, view.label]);
   const financialInsightActions = useMemo(() => pendingMatchCount ? [{
     label: `Review ${pendingMatchCount} bank ${pendingMatchCount === 1 ? "match" : "matches"}`,
     onClick: () => openMatchesView()
