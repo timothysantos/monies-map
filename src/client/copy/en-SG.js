@@ -299,6 +299,7 @@ export const messages = {
     importNote: "Batch note",
     importNotePlaceholder: "Optional note for this import batch.",
     csvInput: "CSV content",
+    csvScreenedWhileHidden: "Raw source data is screened while money is hidden. You can still paste or drop a file; reveal money only when you need to inspect it.",
     csvPlaceholder: "Paste CSV rows here, or upload a CSV/PDF/XLS below.",
     uploadFile: "Upload CSV, PDF, or XLS",
     dropzoneTitle: "Drop a CSV, PDF, or XLS here",
