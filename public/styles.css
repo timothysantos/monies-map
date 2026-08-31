@@ -137,6 +137,26 @@ h3 {
   min-width: 0;
 }
 
+.totals-visibility-toggle {
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--accent-strong);
+}
+
+.totals-visibility-toggle[aria-pressed="false"] {
+  background: rgba(177, 94, 47, 0.1);
+}
+
+.private-money {
+  white-space: nowrap;
+}
+
 .period-nav-cluster {
   display: contents;
 }
@@ -957,6 +977,10 @@ h3 {
   line-height: 1.55;
 }
 
+.financial-insight-private-copy {
+  color: var(--muted) !important;
+}
+
 .financial-insight-narrative.is-collapsed {
   display: -webkit-box;
   overflow: hidden;
@@ -1109,6 +1133,10 @@ h3 {
 }
 
 .panel-splits .financial-insight-pattern {
+  color: #fff8f3 !important;
+}
+
+.panel-splits .financial-insight-private-copy {
   color: #fff8f3 !important;
 }
 

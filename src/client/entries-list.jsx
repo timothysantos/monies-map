@@ -7,6 +7,7 @@ import { messages } from "./copy/en-SG";
 import { EntryEditorFields, EntryTransferTools } from "./entry-editor";
 import { buildEntryRowDisplay, getEntryOwnerCue } from "./entry-row-display";
 import { moniesClient } from "./monies-client-service";
+import { PrivateMoney } from "./money-privacy";
 
 const {
   categories: categoryService,
@@ -196,7 +197,7 @@ export function EntriesDateGroups({
           <div className="entries-date-head">
             <strong>{formatService.formatDateOnly(group.date)}</strong>
             <div className="entries-date-actions">
-              <span>{messages.entries.dateNet}: {formatService.money(group.netMinor)}</span>
+              <span>{messages.entries.dateNet}: <PrivateMoney>{formatService.money(group.netMinor)}</PrivateMoney></span>
               {onRefreshEntries ? (
                 <button
                   type="button"

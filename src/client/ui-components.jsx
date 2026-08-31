@@ -7,6 +7,7 @@ import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { ResponsiveSelect } from "./responsive-select";
 import { ICON_REGISTRY } from "./ui-options";
+import { PrivateMoney } from "./money-privacy";
 
 const { format: formatService } = moniesClient;
 
@@ -293,7 +294,7 @@ export function MetricCard({ card }) {
   return (
     <div className={`metric ${card.tone ? `metric-${card.tone}` : ""}`}>
       <span>{card.label}</span>
-      <strong>{value}</strong>
+      <strong>{card.amountMinor == null ? value : <PrivateMoney>{value}</PrivateMoney>}</strong>
       {card.detail ? (
         card.detailPopover ? (
           <Popover.Root>
@@ -340,7 +341,7 @@ export function BarLine({ label, valueMinor, maxMinor, tone }) {
       <div className="plan-bar-track">
         <span className={`plan-bar-fill ${tone}`} style={{ width: `${percent}%` }} />
       </div>
-      <strong>{formatService.money(valueMinor)}</strong>
+      <strong><PrivateMoney>{formatService.money(valueMinor)}</PrivateMoney></strong>
     </div>
   );
 }

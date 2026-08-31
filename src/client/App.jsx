@@ -46,6 +46,7 @@ import {
   sanitizeTabParams
 } from "./app-routing";
 import { EntriesFilterStack } from "./entries-overview";
+import { TotalsVisibilityToggle } from "./money-privacy";
 import { moniesClient } from "./monies-client-service";
 import {
   buildAppShellErrorMessage,
@@ -3463,6 +3464,7 @@ export function App() {
             </div>
             <button className="period-button" type="button" aria-label={messages.period.nextAriaLabel} onClick={() => handleMonthChange(1)} disabled={isSplitsTab}>›</button>
           </div>
+          <TotalsVisibilityToggle />
         </div>
       </section>
 

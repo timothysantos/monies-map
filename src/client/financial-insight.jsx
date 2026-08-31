@@ -5,6 +5,7 @@ import {
   buildDeterministicFinancialInsight,
   buildFinancialInsightCacheKey
 } from "../domain/ai-assistance-insights";
+import { useMoneyPrivacy } from "./money-privacy";
 
 const INSIGHT_DEBOUNCE_MS = 700;
 const INSIGHT_CACHE_TTL_MS = 15 * 60 * 1000;
@@ -15,6 +16,7 @@ const insightCache = new Map();
 // This is deliberately in-memory only: it avoids repeat requests while the
 // app is open without retaining financial wording or merchant data in storage.
 export function FinancialInsight({ facts, actions = [], className = "" }) {
+  const { areTotalsVisible } = useMoneyPrivacy();
   const cacheKey = useMemo(() => buildFinancialInsightCacheKey(facts), [facts]);
   const deterministicNarrative = useMemo(() => buildDeterministicFinancialInsight(facts), [facts]);
   const [response, setResponse] = useState(null);
@@ -29,6 +31,10 @@ export function FinancialInsight({ facts, actions = [], className = "" }) {
   }, [cacheKey]);
 
   useEffect(() => {
+    if (!areTotalsVisible) {
+      setResponse(null);
+      return undefined;
+    }
     const cached = insightCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
       setResponse({ key: cacheKey, narrative: cached.narrative });
@@ -72,7 +78,18 @@ export function FinancialInsight({ facts, actions = [], className = "" }) {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [cacheKey, deterministicNarrative, facts]);
+  }, [areTotalsVisible, cacheKey, deterministicNarrative, facts]);
+
+  if (!areTotalsVisible) {
+    return (
+      <section className={`financial-insight ${className}`.trim()} aria-label="Financial insight">
+        <span className="financial-insight-label">Financial insight</span>
+        <div className="financial-insight-content">
+          <p className="financial-insight-private-copy">Reveal money totals to read this insight.</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className={`financial-insight ${className}`.trim()} aria-label="Financial insight">

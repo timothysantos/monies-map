@@ -104,6 +104,7 @@ async function gotoMonthPage(page, {
 
 test.describe("month page", () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
     await page.goto("/");
     await reseedDemo(page);
   });

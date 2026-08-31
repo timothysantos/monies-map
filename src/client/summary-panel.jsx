@@ -29,6 +29,7 @@ import {
   MetricCard
 } from "./ui-components";
 import { FinancialInsight } from "./financial-insight";
+import { PrivateMoney } from "./money-privacy";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
 const {
   accounts: accountService,
@@ -359,7 +360,7 @@ function SummarySpendingMixSection({
                       onClick={() => toggleCategoryVisibility(item)}
                     >
                       <strong>{categoryName}</strong>
-                      <p>{formatService.money(item.valueMinor)}</p>
+                      <p><PrivateMoney>{formatService.money(item.valueMinor)}</PrivateMoney></p>
                       <span className="share-row-meta">
                         {messages.common.triplet(formatTransactionCount(item.entryCount), isHidden ? messages.common.hiddenFromChart : messages.common.shownInChart)}
                       </span>
@@ -433,14 +434,11 @@ function SummaryMonthPlanCard({ month, monthPlanReview, isInitiallyOpen, onOpenM
               >
                 {formatService.formatMonthLabel(month.month)}
               </button>
-              <p>{messages.summary.incomeLabel(
-                formatService.money(month.plannedIncomeMinor),
-                formatService.money(month.actualIncomeMinor)
-              )}</p>
+              <p>Planned income <PrivateMoney>{formatService.money(month.plannedIncomeMinor)}</PrivateMoney> • Actual income <PrivateMoney>{formatService.money(month.actualIncomeMinor)}</PrivateMoney></p>
             </div>
           </div>
           <span className={monthPlanReview.spendVarianceMinor >= 0 ? "positive" : "negative"}>
-            {formatService.money(monthPlanReview.spendVarianceMinor)}
+            <PrivateMoney>{formatService.money(monthPlanReview.spendVarianceMinor)}</PrivateMoney>
           </span>
         </div>
       </summary>
@@ -472,28 +470,28 @@ function SummaryMonthPlanCard({ month, monthPlanReview, isInitiallyOpen, onOpenM
             <tbody>
               <tr>
                 <td>{messages.summary.table.income}</td>
-                <td>{formatService.money(month.plannedIncomeMinor)}</td>
-                <td>{formatService.money(month.actualIncomeMinor)}</td>
+                <td><PrivateMoney>{formatService.money(month.plannedIncomeMinor)}</PrivateMoney></td>
+                <td><PrivateMoney>{formatService.money(month.actualIncomeMinor)}</PrivateMoney></td>
                 <td className={monthPlanReview.incomeVarianceMinor >= 0 ? "positive" : "negative"}>
-                  {formatService.money(monthPlanReview.incomeVarianceMinor)}
+                  <PrivateMoney>{formatService.money(monthPlanReview.incomeVarianceMinor)}</PrivateMoney>
                 </td>
               </tr>
               <tr>
                 <td>{messages.summary.table.expectedExpenses}</td>
-                <td>{formatService.money(month.estimatedExpensesMinor)}</td>
-                <td>{formatService.money(month.realExpensesMinor)}</td>
+                <td><PrivateMoney>{formatService.money(month.estimatedExpensesMinor)}</PrivateMoney></td>
+                <td><PrivateMoney>{formatService.money(month.realExpensesMinor)}</PrivateMoney></td>
                 <td className={monthPlanReview.spendVarianceMinor >= 0 ? "positive" : "negative"}>
-                  {formatService.money(monthPlanReview.spendVarianceMinor)}
+                  <PrivateMoney>{formatService.money(monthPlanReview.spendVarianceMinor)}</PrivateMoney>
                 </td>
               </tr>
               <tr>
                 <td>{messages.summary.table.expectedSavings}</td>
-                <td>{formatService.money(month.savingsGoalMinor)}</td>
+                <td><PrivateMoney>{formatService.money(month.savingsGoalMinor)}</PrivateMoney></td>
                 <td className={month.realizedSavingsMinor >= 0 ? "positive" : "negative"}>
-                  {formatService.money(month.realizedSavingsMinor)}
+                  <PrivateMoney>{formatService.money(month.realizedSavingsMinor)}</PrivateMoney>
                 </td>
                 <td className={monthPlanReview.savingsVarianceMinor >= 0 ? "positive" : "negative"}>
-                  {formatService.money(monthPlanReview.savingsVarianceMinor)}
+                  <PrivateMoney>{formatService.money(monthPlanReview.savingsVarianceMinor)}</PrivateMoney>
                 </td>
               </tr>
               <tr className="summary-context-row">
@@ -536,7 +534,7 @@ function SummaryAccountsSection({ accountPills, onOpenEntriesForAccount }) {
             onClick={() => onOpenEntriesForAccount(account.accountId)}
           >
             <span className="summary-account-pill-name">{accountService.formatDisplayName(account)}</span>
-            <span className="summary-account-pill-amount">{formatService.money(account.balanceMinor)}</span>
+            <span className="summary-account-pill-amount"><PrivateMoney>{formatService.money(account.balanceMinor)}</PrivateMoney></span>
             <span className="summary-account-pill-meta">{accountService.describeHealth(account)}</span>
           </button>
         ))}

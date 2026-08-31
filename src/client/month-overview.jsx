@@ -6,6 +6,7 @@ import { useState } from "react";
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { MetricCard } from "./ui-components";
+import { PrivateMoney } from "./money-privacy";
 
 const { accounts: accountService, format: formatService } = moniesClient;
 
@@ -241,7 +242,7 @@ export function MonthNotesAndAccounts({
               onClick={() => onOpenEntriesForAccount(account)}
             >
               <span className="summary-account-pill-name">{accountService.formatDisplayName(account)}</span>
-              <span className="summary-account-pill-amount">{formatService.money(account.balanceMinor ?? 0)}</span>
+              <span className="summary-account-pill-amount"><PrivateMoney>{formatService.money(account.balanceMinor ?? 0)}</PrivateMoney></span>
               <span className="summary-account-pill-meta">{accountService.describeHealth(account)}</span>
             </button>
           ))}
