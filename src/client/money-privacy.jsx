@@ -1,5 +1,5 @@
 import { Eye, EyeOff } from "lucide-react";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 const MONEY_TOTALS_VISIBILITY_STORAGE_KEY = "monies-map:money-totals-visible";
 const MoneyPrivacyContext = createContext(null);
@@ -12,10 +12,26 @@ function readInitialVisibility() {
   return window.localStorage.getItem(MONEY_TOTALS_VISIBILITY_STORAGE_KEY) === "true";
 }
 
+function writeMoneyPrivacyDocumentState(areTotalsVisible) {
+  if (typeof document !== "undefined") {
+    document.documentElement.dataset.moneyPrivacy = areTotalsVisible ? "visible" : "hidden";
+  }
+}
+
 // Privacy is a display preference. It deliberately starts hidden on each new
-// browser and never changes financial data, filters, or individual entry rows.
+// browser and never changes financial data, filters, or stored entry rows.
 export function MoneyPrivacyProvider({ children }) {
   const [areTotalsVisible, setAreTotalsVisible] = useState(readInitialVisibility);
+
+  // Shared formatters read this state during descendant rendering, not after a
+  // later effect, so the toggle changes every money label in the same frame.
+  writeMoneyPrivacyDocumentState(areTotalsVisible);
+
+  // Set this before the browser paints child pages so shared money formatters
+  // cannot briefly reveal a value during the first render.
+  useLayoutEffect(() => {
+    writeMoneyPrivacyDocumentState(areTotalsVisible);
+  }, [areTotalsVisible]);
 
   useEffect(() => {
     window.localStorage.setItem(MONEY_TOTALS_VISIBILITY_STORAGE_KEY, String(areTotalsVisible));

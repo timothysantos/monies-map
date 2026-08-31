@@ -967,10 +967,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     />
   );
   const splitSummaryToolbar = renderSplitActions("split-head-actions split-summary-toolbar");
-  const formatCheckpointMoney = (amountMinor, currency) => new Intl.NumberFormat("en-SG", {
-    style: "currency",
-    currency: currency ?? "SGD"
-  }).format(amountMinor / 100);
+  const formatCheckpointMoney = (amountMinor, currency) => formatService.moneyWithCurrency(amountMinor, currency ?? "SGD");
   const selectedCheckpointForMatching = settlementCheckpoints.find((checkpoint) => checkpoint.id === checkpointMatchTargetId);
   const renderCheckpointTransfers = (checkpoint) => checkpoint.matchedTransfers?.length ? (
     <div className="split-checkpoint-transfers" aria-label="Matched transfers">

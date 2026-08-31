@@ -9,7 +9,7 @@ import { CategoryGlyph } from "./ui-components";
 const { categories: categoryService, format: formatService } = moniesClient;
 
 function formatSplitMoney(valueMinor, currency = "SGD") {
-  return new Intl.NumberFormat("en-SG", { style: "currency", currency }).format(Math.abs(Number(valueMinor ?? 0)) / 100);
+  return formatService.moneyWithCurrency(Math.abs(Number(valueMinor ?? 0)), currency);
 }
 
 function splitItemKey(item) {

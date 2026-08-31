@@ -5,8 +5,24 @@ const moneyFormatter = new Intl.NumberFormat("en-SG", {
 const APP_TIME_ZONE = "Asia/Singapore";
 const SQL_DATETIME_WITHOUT_ZONE = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?$/;
 
+function isMoneyPrivacyHidden() {
+  return typeof document !== "undefined" && document.documentElement.dataset.moneyPrivacy === "hidden";
+}
+
 export function money(valueMinor) {
+  if (isMoneyPrivacyHidden()) {
+    return "••••";
+  }
+
   return moneyFormatter.format(valueMinor / 100);
+}
+
+export function moneyWithCurrency(valueMinor, currency = "SGD") {
+  if (isMoneyPrivacyHidden()) {
+    return "••••";
+  }
+
+  return new Intl.NumberFormat("en-SG", { style: "currency", currency }).format(valueMinor / 100);
 }
 
 export function minorToDecimalString(valueMinor) {

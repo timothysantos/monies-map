@@ -249,6 +249,7 @@ test("daily net ignores matched transfers that stay inside the visible scope", a
     () => page.locator(".entry-row").filter({ hasText: transferInDescription }).first()
   );
 
+  await page.getByRole("button", { name: "Show money totals" }).click();
   const dateHeader = page.locator(".entries-date-head").filter({ hasText: "8 Jun 2026" }).first();
   await expect(dateHeader).toContainText("Daily net: $100.00");
 });
