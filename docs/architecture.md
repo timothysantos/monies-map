@@ -459,17 +459,18 @@ Exit criteria:
 
 Workers AI is a non-authoritative assistance boundary. It is never on the
 page-load, import-preview, import-commit, reconciliation, or freshness critical
-path. Summary, Month, Entries, and Splits render a deterministic Financial
-insight from their already-loaded figures immediately, then may request a
+path. Summary, Month, Entries, and Splits render a deterministic Money
+check-in from their already-loaded figures immediately, then may request a
 wording variation only after a stable page/filter state and an in-memory cache
 miss. Each request is capped by a shared D1 daily usage counter and returns an
 ordinary unavailable response when the binding is disabled, the allowance is
 exhausted, or a model response fails validation.
 
-The Worker receives bounded, redacted text only. Financial-insight wording sends
-the model placeholder names rather than actual amounts, merchants, accounts, or
-ledger rows; the app substitutes its already-computed figures after template
-validation. Statement fallback begins with
+The Worker receives bounded, redacted text only. Money-check-in wording sends
+the model placeholder names, including the selected person, rather than actual
+amounts, merchants, accounts, or ledger rows; the browser substitutes its
+already-computed figures and local person label after template validation.
+Statement fallback begins with
 browser-local PDF extraction and OCR; it sends extracted text after explicit
 consent and never uploads or stores the original binary. Model output is
 validated into drafts only: monthly note wording, pending category-rule

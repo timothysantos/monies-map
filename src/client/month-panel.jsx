@@ -191,6 +191,8 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     const actualSpendMinor = selectedMonthSummary?.realExpensesMinor ?? 0;
     return buildFinancialInsightFacts({
       contextLabel: `${formatService.formatMonthLabel(view.monthPage.month)} month`,
+      audienceKind: view.id === "household" ? "household" : "person",
+      audienceName: view.id === "household" ? "" : view.label,
       records: view.monthPage.entries,
       formatMoney: formatService.money,
       perspective: "cash_flow",
@@ -202,11 +204,17 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
         confidence: buildMonthConfidence(visibleAccounts)
       }
     });
-  }, [selectedMonthSummary?.estimatedExpensesMinor, selectedMonthSummary?.realExpensesMinor, view.monthPage.entries, view.monthPage.month, visibleAccounts]);
+  }, [selectedMonthSummary?.estimatedExpensesMinor, selectedMonthSummary?.realExpensesMinor, view.id, view.label, view.monthPage.entries, view.monthPage.month, visibleAccounts]);
   const financialInsightActions = useMemo(() => {
     const plannedSpendMinor = selectedMonthSummary?.estimatedExpensesMinor ?? 0;
     const actualSpendMinor = selectedMonthSummary?.realExpensesMinor ?? 0;
     const actions = [];
+    if (view.monthPage.entries.some((entry) => entry.entryType === "income")) {
+      actions.push({
+        label: `See income entries (${financialInsightFacts.income})`,
+        onClick: () => handleOpenEntriesForActual({ entryType: "income" })
+      });
+    }
     if (
       plannedSpendMinor > 0
       && actualSpendMinor > plannedSpendMinor
@@ -224,7 +232,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       });
     }
     return actions;
-  }, [financialInsightFacts.decisionMap.needsReview, financialInsightFacts.topCategoryName, navigate, selectedMonthSummary?.estimatedExpensesMinor, selectedMonthSummary?.realExpensesMinor]);
+  }, [financialInsightFacts.decisionMap.needsReview, financialInsightFacts.income, financialInsightFacts.topCategoryName, navigate, selectedMonthSummary?.estimatedExpensesMinor, selectedMonthSummary?.realExpensesMinor, view.monthPage.entries]);
   const visibleAccountOptions = useMemo(
     () => accountService.getSelectOptions(visibleAccounts),
     [visibleAccounts]
@@ -950,7 +958,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
     });
   }
 
-  function handleOpenEntriesForActual({ categoryName, entryIds = [] }) {
+  function handleOpenEntriesForActual({ categoryName, entryIds = [], entryType = "" }) {
     const next = new URLSearchParams();
     next.set("view", view.id);
     next.set("month", view.monthPage.month);
@@ -963,6 +971,8 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
 
     if (entryIds.length) {
       entryIds.forEach((entryId) => next.append("entry_id", entryId));
+    } else if (entryType) {
+      next.set("entry_type", entryType);
     } else if (categoryName) {
       next.set("entry_category", categoryName);
     }

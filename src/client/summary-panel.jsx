@@ -64,8 +64,8 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
   const summaryFocusParam = searchParams.get("summary_focus");
   const focusState = buildSummaryFocusState(safeSummaryPage, summaryFocusParam);
   const financialInsightFacts = useMemo(
-    () => buildSummaryFinancialInsightFacts(safeSummaryPage, focusState, summaryFocusParam),
-    [focusState, safeSummaryPage, summaryFocusParam]
+    () => buildSummaryFinancialInsightFacts(safeSummaryPage, focusState, summaryFocusParam, view),
+    [focusState, safeSummaryPage, summaryFocusParam, view.id, view.label]
   );
   const financialInsightActions = useMemo(() => {
     const months = summaryFocusParam === SUMMARY_FOCUS_OVERALL
@@ -208,7 +208,7 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
   );
 }
 
-function buildSummaryFinancialInsightFacts(summaryPage, focusState, summaryFocusParam) {
+function buildSummaryFinancialInsightFacts(summaryPage, focusState, summaryFocusParam, view) {
   const isRangeOverall = summaryFocusParam === SUMMARY_FOCUS_OVERALL;
   const months = isRangeOverall
     ? summaryPage.months
@@ -231,6 +231,8 @@ function buildSummaryFinancialInsightFacts(summaryPage, focusState, summaryFocus
 
   return buildFinancialInsightFacts({
     contextLabel,
+    audienceKind: view.id === "household" ? "household" : "person",
+    audienceName: view.id === "household" ? "" : view.label,
     records: [
       ...focusState.donutData.map((item) => ({
         amountMinor: item.valueMinor ?? 0,

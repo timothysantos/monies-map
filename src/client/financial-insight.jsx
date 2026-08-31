@@ -11,6 +11,7 @@ const INSIGHT_DEBOUNCE_MS = 700;
 const INSIGHT_CACHE_TTL_MS = 15 * 60 * 1000;
 const UNAVAILABLE_CACHE_TTL_MS = 5 * 60 * 1000;
 const MAX_INSIGHT_CACHE_ENTRIES = 48;
+const AI_PERSON_PLACEHOLDER = "[selected person]";
 const insightCache = new Map();
 
 // This is deliberately in-memory only: it avoids repeat requests while the
@@ -19,6 +20,14 @@ export function FinancialInsight({ facts, actions = [], className = "" }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const cacheKey = useMemo(() => buildFinancialInsightCacheKey(facts), [facts]);
   const deterministicNarrative = useMemo(() => buildDeterministicFinancialInsight(facts), [facts]);
+  const aiFacts = useMemo(() => (
+    facts.audienceKind === "person"
+      ? { ...facts, audienceName: AI_PERSON_PLACEHOLDER }
+      : facts
+  ), [facts]);
+  const insightLabel = facts.audienceKind === "person" && facts.audienceName
+    ? `${facts.audienceName}'s money check-in`
+    : "Household money check-in";
   const [response, setResponse] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const narrativeId = useId();
@@ -49,19 +58,20 @@ export function FinancialInsight({ facts, actions = [], className = "" }) {
         const fetchResponse = await fetch("/api/ai-assist/financial-insight", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ facts }),
+          body: JSON.stringify({ facts: aiFacts }),
           signal: controller.signal
         });
         const payload = await fetchResponse.json();
         const narrative = typeof payload?.narrative === "string" && payload.narrative.trim()
           ? payload.narrative.trim()
           : deterministicNarrative;
+        const localNarrative = localizeFinancialInsightNarrative(narrative, facts);
         setInsightCache(cacheKey, {
-          narrative,
+          narrative: localNarrative,
           expiresAt: Date.now() + (payload?.available ? INSIGHT_CACHE_TTL_MS : UNAVAILABLE_CACHE_TTL_MS)
         });
         if (!cancelled) {
-          setResponse({ key: cacheKey, narrative });
+          setResponse({ key: cacheKey, narrative: localNarrative });
         }
       } catch {
         if (!controller.signal.aborted) {
@@ -78,12 +88,12 @@ export function FinancialInsight({ facts, actions = [], className = "" }) {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [areTotalsVisible, cacheKey, deterministicNarrative, facts]);
+  }, [aiFacts, areTotalsVisible, cacheKey, deterministicNarrative, facts]);
 
   if (!areTotalsVisible) {
     return (
       <section className={`financial-insight ${className}`.trim()} aria-label="Financial insight">
-        <span className="financial-insight-label">Financial insight</span>
+        <span className="financial-insight-label">{insightLabel}</span>
         <div className="financial-insight-content">
           <p className="financial-insight-private-copy">Reveal money totals to read this insight.</p>
         </div>
@@ -93,7 +103,7 @@ export function FinancialInsight({ facts, actions = [], className = "" }) {
 
   return (
     <section className={`financial-insight ${className}`.trim()} aria-label="Financial insight">
-      <span className="financial-insight-label">Financial insight</span>
+      <span className="financial-insight-label">{insightLabel}</span>
       <div className="financial-insight-content">
         <p
           id={narrativeId}
@@ -103,7 +113,7 @@ export function FinancialInsight({ facts, actions = [], className = "" }) {
           {visibleNarrative}
         </p>
         {!isExpanded && facts.notableFact ? (
-          <p className="financial-insight-pattern"><strong>Worth noticing:</strong> {facts.notableFact}</p>
+          <p className="financial-insight-pattern">{facts.notableFact}</p>
         ) : null}
         <button
           type="button"
@@ -128,6 +138,13 @@ export function FinancialInsight({ facts, actions = [], className = "" }) {
       </div>
     </section>
   );
+}
+
+function localizeFinancialInsightNarrative(narrative, facts) {
+  if (facts.audienceKind !== "person" || !facts.audienceName) {
+    return narrative;
+  }
+  return narrative.split(AI_PERSON_PLACEHOLDER).join(facts.audienceName);
 }
 
 function FinancialDecisionMap({ decisionMap }) {
