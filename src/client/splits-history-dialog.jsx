@@ -1,8 +1,11 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { RotateCcw } from "lucide-react";
+import { moniesClient } from "./monies-client-service";
+
+const { format: formatService } = moniesClient;
 
 function formatHistoryMoney(item) {
-  return new Intl.NumberFormat("en-SG", { style: "currency", currency: item.currency ?? "SGD" }).format(Math.abs(item.amountMinor) / 100);
+  return formatService.moneyWithCurrency(Math.abs(item.amountMinor), item.currency ?? "SGD");
 }
 
 export function SplitHistoryDialog({ open, history = [], isSubmitting = false, onClose, onRestore }) {

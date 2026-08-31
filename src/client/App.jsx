@@ -46,7 +46,7 @@ import {
   sanitizeTabParams
 } from "./app-routing";
 import { EntriesFilterStack } from "./entries-overview";
-import { TotalsVisibilityToggle } from "./money-privacy";
+import { TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
 import { moniesClient } from "./monies-client-service";
 import {
   buildAppShellErrorMessage,
@@ -292,6 +292,9 @@ function getInactivePersonViewLabel(name) {
 }
 
 export function App() {
+  // Plain text currency labels use the shared formatter, so the shell also
+  // observes privacy changes and redraws the active route without resetting it.
+  useMoneyPrivacy();
   // App-level shell state and caches live here; everything below derives the
   // active route from that data instead of maintaining a second store.
   const queryClient = useQueryClient();
@@ -3464,7 +3467,7 @@ export function App() {
             </div>
             <button className="period-button" type="button" aria-label={messages.period.nextAriaLabel} onClick={() => handleMonthChange(1)} disabled={isSplitsTab}>›</button>
           </div>
-          <TotalsVisibilityToggle />
+          <TotalsVisibilityToggle className="totals-visibility-toggle--header" />
         </div>
       </section>
 
@@ -3683,6 +3686,17 @@ export function App() {
             }} aria-label={messages.entries.addEntry} title={messages.entries.addEntry}>
               <Plus size={24} />
             </button>,
+            document.body
+          )
+        : null}
+
+      {["summary", "month", "entries", "splits"].includes(renderedTabId) && typeof document !== "undefined"
+        ? createPortal(
+            <TotalsVisibilityToggle
+              className={`totals-visibility-toggle--floating totals-visibility-toggle--${renderedTabId}${
+                renderedTabId === "splits" && pageView.id === "household" ? " totals-visibility-toggle--splits-standalone" : ""
+              }`}
+            />,
             document.body
           )
         : null}

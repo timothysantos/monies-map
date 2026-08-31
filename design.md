@@ -222,10 +222,11 @@ cash flow.
 
 ## Money Privacy Display Preference
 
-Totals are a display layer, not a financial-state change. A new browser starts
-with aggregate money masked on Summary, Month, Entries, and Splits. The shared
+Money privacy is a display layer, not a financial-state change. A new browser
+starts with every displayed monetary value masked on Summary, Month, Entries,
+and Splits, including individual ledger and split-activity rows. The shared
 top-toolbar eye control reveals or hides those figures everywhere at once and
-persists only the browser-local preference. Individual ledger and split
-activity rows remain visible so normal review work is still possible. Financial
-Insight stays hidden while totals are masked because its prose can expose the
-same figures.
+persists only the browser-local preference. On mobile, the same control floats
+above the bottom navigation, and stacks above the Entries or Splits add button
+when one is present. Financial Insight stays hidden while totals are masked
+because its prose can expose the same figures.

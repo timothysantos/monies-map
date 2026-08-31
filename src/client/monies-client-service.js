@@ -59,6 +59,7 @@ export const moniesClient = Object.freeze({
     getContentDispositionFilename: formatters.getContentDispositionFilename,
     minorToDecimalString: formatters.minorToDecimalString,
     money: formatters.money,
+    moneyWithCurrency: formatters.moneyWithCurrency,
     parseDraftMoneyInput: formatters.parseDraftMoneyInput,
     parseMoneyInput: formatters.parseMoneyInput
   }),

@@ -77,7 +77,7 @@ function SplitMatchSide({ label, date, description, amountMinor, currency = "SGD
     <div className="split-match-side">
       <span>{label}</span>
       <strong>{description}</strong>
-      <p>{messages.common.triplet(formatService.formatDate(date), new Intl.NumberFormat("en-SG", { style: "currency", currency }).format(amountMinor / 100))}</p>
+      <p>{messages.common.triplet(formatService.formatDate(date), formatService.moneyWithCurrency(amountMinor, currency))}</p>
     </div>
   );
 }

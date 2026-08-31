@@ -66,14 +66,18 @@ rewrite an existing settlement checkpoint.
 ## Can I hide totals before opening the app around other people?
 
 Yes. Totals are hidden by default in a new browser. Summary, Month, Entries,
-and Splits replace roll-ups, balances, chart totals, plan totals, and settlement
-amounts with `••••`, while individual transaction and split-activity amounts
-remain readable.
+and Splits replace every displayed currency amount with `••••`, including
+individual transaction, split-activity, settlement, reconciliation, chart, and
+plan amounts. Editable numeric fields are also visually masked until totals are
+revealed.
 
-Use the eye button in the top toolbar to reveal or hide totals everywhere at
-once. The choice is stored only in that browser, so a different browser or a
-cleared browser profile starts hidden again. Financial Insight stays hidden
-while totals are hidden because its text can otherwise reveal the same figures.
+Use the eye button in the top toolbar on desktop to reveal or hide totals
+everywhere at once. On mobile, it is a floating control: Summary and Month
+keep it above the bottom navigation, while Entries and Splits stack it above
+their add button. The choice is stored only in that browser, so a different
+browser or a cleared browser profile starts hidden again. Financial Insight
+stays hidden while totals are hidden because its text can otherwise reveal the
+same figures.
 
 ## Can I stay signed in for a week?
 
