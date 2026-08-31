@@ -155,6 +155,8 @@ const secondaryRouteTabs = routeTabs.slice(4);
 const PAGE_PREFETCH_DELAY_MS = 1200;
 const PAGE_PREFETCH_SPACING_MS = 1500;
 const PAGE_PREFETCH_STAGE_DELAY_MS = 5000;
+const IMPORT_INBOX_BANNER_STALE_TIME_MS = 5 * 60 * 1000;
+const IMPORT_INBOX_BANNER_WARMUP_TIMEOUT_MS = 1200;
 const APP_DOCUMENT_TITLE = "Monie's Map";
 const LOADING_STATUS_POLL_MS = 500;
 function createLoadingStatus(overrides = {}) {
@@ -2403,7 +2405,12 @@ export function App() {
   );
 
   useEffect(() => {
-    if (!["summary", "month"].includes(selectedTabId)) {
+    if (
+      !["summary", "month"].includes(selectedTabId)
+      || !currentPageView
+      || isAppShellLoading
+      || typeof window === "undefined"
+    ) {
       return undefined;
     }
 
@@ -2413,33 +2420,38 @@ export function App() {
       setImportInboxBanner(cachedImportsPage.importsPage.importInbox);
     }
 
-    void queryClient.fetchQuery({
-      queryKey: queryKeys.importsPage(),
-      queryFn: async () => {
-        const response = await fetch("/api/imports-page", { cache: "no-store" });
-        if (!response.ok) {
-          throw new Error("Could not refresh import inbox banner.");
-        }
-        return response.json();
-      },
-      retry: false,
-      staleTime: 0
-    })
-      .then((data) => {
-        if (!cancelled) {
-          setImportInboxBanner(data?.importsPage?.importInbox ?? null);
-        }
+    // This banner is helpful, but it is not part of the Summary or Month
+    // contract. Only warm its Imports query after the active route is usable.
+    const idleHandle = scheduleIdleTask(() => {
+      void queryClient.fetchQuery({
+        queryKey: queryKeys.importsPage(),
+        queryFn: async () => {
+          const response = await fetch("/api/imports-page", { cache: "no-store" });
+          if (!response.ok) {
+            throw new Error("Could not refresh import inbox banner.");
+          }
+          return response.json();
+        },
+        retry: false,
+        staleTime: IMPORT_INBOX_BANNER_STALE_TIME_MS
       })
-      .catch(() => {
-        if (!cancelled && !cachedImportsPage?.importsPage?.importInbox) {
-          setImportInboxBanner(null);
-        }
-      });
+        .then((data) => {
+          if (!cancelled) {
+            setImportInboxBanner(data?.importsPage?.importInbox ?? null);
+          }
+        })
+        .catch(() => {
+          if (!cancelled && !cachedImportsPage?.importsPage?.importInbox) {
+            setImportInboxBanner(null);
+          }
+        });
+    }, IMPORT_INBOX_BANNER_WARMUP_TIMEOUT_MS);
 
     return () => {
       cancelled = true;
+      cancelIdleTask(idleHandle);
     };
-  }, [queryClient, selectedTabId]);
+  }, [currentPageView, isAppShellLoading, queryClient, selectedTabId]);
 
   // Prefetch adjacent routes once the shell is stable so fast navigation feels
   // instant without violating the current route's source of truth.

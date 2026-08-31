@@ -30,4 +30,9 @@ test("seeded page APIs stay below the slow-log budget", async ({ page }) => {
     "Summary account pills",
     "/api/summary-account-pills?view=household"
   );
+  await expectEndpointWithinBudget(
+    page,
+    "Imports page",
+    "/api/imports-page"
+  );
 });

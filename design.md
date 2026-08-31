@@ -177,6 +177,10 @@ Import Inbox planning belongs to the Imports slice. It is route-level product
 state, not app-shell chrome: Summary and Month may show a compact stale banner,
 but the checklist, bank-session grouping, and review order live on Imports.
 
+The compact stale banner is optional warmup work. It reuses the Imports cache
+when fresh and only starts after Summary or Month is usable; it never delays or
+re-fetches the active route merely to update banner wording.
+
 Rules:
 
 - group download work by bank session so a user logs into one institution and
