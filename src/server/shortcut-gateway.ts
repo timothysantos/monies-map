@@ -6,6 +6,14 @@ export function isShortcutGatewayRequestAllowed(
   return shortcutApiOnly !== "true" || pathname === shortcutEndpointPath;
 }
 
+export function isShortcutCreateRequestAllowed(
+  pathname: string,
+  method: string,
+  shortcutEndpointPath: string
+) {
+  return pathname !== shortcutEndpointPath || method === "POST";
+}
+
 export function buildShortcutAppUrl(
   pathname: string,
   requestUrl: string,

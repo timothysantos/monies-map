@@ -40,6 +40,17 @@ test.describe("settings reference data", () => {
     await reseedDemo(page);
   });
 
+  test("shortcut direct-create route rejects every non-POST request", async ({ page }) => {
+    const response = await page.request.get("/api/shortcuts/entries/create");
+
+    expect(response.status()).toBe(405);
+    expect(response.headers().allow).toBe("POST");
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: "Shortcut direct-create endpoint only accepts POST."
+    });
+  });
+
   test("category rule CRUD stays inside the settings page DTO", async ({ page }) => {
     const before = await loadSettingsPage(page);
     const referenceData = await loadReferenceData(page);

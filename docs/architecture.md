@@ -228,6 +228,14 @@ every path except `/api/shortcuts/entries/create`. This keeps the main
 `monies-map` Worker behind Cloudflare Access while allowing iOS Shortcuts to
 reach the app-owned token boundary without an interactive Access session.
 
+The application route itself is also hardened for a staged move to a single
+Worker: it accepts only `POST` at `/api/shortcuts/entries/create` and returns
+`405` before schema or page work for every other method. The legacy Shortcut
+Worker remains the live endpoint until an exact-path Cloudflare Access Bypass
+application is configured and verified. Only then may Settings switch its
+published connection URL to the main Worker; the legacy Worker must remain
+deployed until installed shortcuts have migrated.
+
 The direct-create route accepts authenticated URL or header token transport.
 The shared shortcut receives that URL through an import question on a plain
 Text action and passes the action output to the POST request. A URL-action import

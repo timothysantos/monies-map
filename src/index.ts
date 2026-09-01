@@ -127,6 +127,7 @@ import type { ImportPreviewDto, PersonScope } from "./types/dto";
 import { json } from "./server/json";
 import {
   buildShortcutAppUrl,
+  isShortcutCreateRequestAllowed,
   isShortcutGatewayRequestAllowed
 } from "./server/shortcut-gateway";
 
@@ -153,6 +154,10 @@ export default {
 
     if (!isShortcutGatewayRequestAllowed(env.SHORTCUT_API_ONLY, url.pathname, SHORTCUT_ENDPOINT_PATH)) {
       return new Response(null, { status: 404 });
+    }
+
+    if (!isShortcutCreateRequestAllowed(url.pathname, request.method, SHORTCUT_ENDPOINT_PATH)) {
+      return json({ ok: false, error: "Shortcut direct-create endpoint only accepts POST." }, 405, { Allow: "POST" });
     }
 
     if (url.pathname === "/api/health") {
