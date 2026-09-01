@@ -246,6 +246,9 @@ The endpoint accepts the token in one of three places:
 - advanced clients can use the `X-Monies-Shortcut-Token` header
 - advanced clients can use a Bearer `Authorization` header
 
+It accepts only `POST`; other methods return `405 Method Not Allowed` and do
+not reach the shortcut creation workflow.
+
 Advanced clients may also send `X-Monies-Shortcut-Nonce` and
 `X-Monies-Shortcut-Timestamp`. They must send both or neither. When both are
 present, the server rejects expired requests and replayed nonces. The verified

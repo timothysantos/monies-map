@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   buildShortcutAppUrl,
+  isShortcutCreateRequestAllowed,
   isShortcutGatewayRequestAllowed
 } from "../src/server/shortcut-gateway.ts";
 
@@ -16,6 +17,13 @@ test("shortcut-only gateway rejects every route except the direct-create endpoin
   assert.equal(isShortcutGatewayRequestAllowed(undefined, "/api/settings-page", SHORTCUT_ENDPOINT_PATH), true);
 });
 
+test("direct-create endpoint only accepts POST before route orchestration", () => {
+  assert.equal(isShortcutCreateRequestAllowed(SHORTCUT_ENDPOINT_PATH, "POST", SHORTCUT_ENDPOINT_PATH), true);
+  assert.equal(isShortcutCreateRequestAllowed(SHORTCUT_ENDPOINT_PATH, "GET", SHORTCUT_ENDPOINT_PATH), false);
+  assert.equal(isShortcutCreateRequestAllowed(SHORTCUT_ENDPOINT_PATH, "OPTIONS", SHORTCUT_ENDPOINT_PATH), false);
+  assert.equal(isShortcutCreateRequestAllowed("/api/settings-page", "GET", SHORTCUT_ENDPOINT_PATH), true);
+});
+
 test("shortcut gateway response links resolve against the protected app origin", () => {
   const url = buildShortcutAppUrl(
     "/entries",
@@ -25,7 +33,7 @@ test("shortcut gateway response links resolve against the protected app origin",
   assert.equal(url.toString(), "https://monies-map.example/entries");
 });
 
-test("production shortcut worker shares D1 but exposes no static assets", async () => {
+test("legacy shortcut worker remains deployed while the main-path Access migration is staged", async () => {
   const [appConfig, shortcutConfig] = await Promise.all([
     readFile(new URL("../wrangler.jsonc", import.meta.url), "utf8").then(JSON.parse),
     readFile(new URL("../wrangler.shortcuts.jsonc", import.meta.url), "utf8").then(JSON.parse)
