@@ -71,6 +71,7 @@ test("money values start hidden, reveal together, and cover individual activity"
   await expect(csvSource).not.toHaveClass(/is-screened/);
   await page.getByRole("button", { name: "Hide money totals" }).click();
 
+  await page.setViewportSize({ width: 390, height: 844 });
   await gotoPageAfterApi(
     page,
     "/splits?view=person-tim&month=2026-05&split_group=split-group-none",
@@ -91,4 +92,41 @@ test("money values start hidden, reveal together, and cover individual activity"
     () => page.locator(".totals-visibility-toggle--month")
   );
   await expect(page.locator(".totals-visibility-toggle--month")).toBeVisible();
+});
+
+test("entry and split editors include a local money visibility toggle", async ({ page }) => {
+  await reseedDemo(page);
+
+  await gotoPageAfterApi(
+    page,
+    "/entries?view=person-tim&month=2026-05&scope=direct_plus_shared",
+    "/api/entries-page",
+    () => page.getByRole("heading", { name: "Entries", exact: true })
+  );
+  await expect(page.getByRole("button", { name: "Show money totals" }).first()).toBeVisible();
+
+  await page.locator(".entry-row").first().click();
+  const entryEditor = page.locator(".entry-inline-editor").first();
+  await expect(entryEditor).toBeVisible();
+  const entryAmountInput = entryEditor.getByLabel("Amount");
+  await expect(entryAmountInput).toHaveCSS("-webkit-text-security", "disc");
+  await entryEditor.locator(".totals-visibility-toggle--form").click();
+  await expect(entryAmountInput).not.toHaveCSS("-webkit-text-security", "disc");
+
+  await page.getByRole("button", { name: "Hide money totals" }).first().click();
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await gotoPageAfterApi(
+    page,
+    "/splits?view=person-tim&month=2025-10&split_group=split-group-baby-river",
+    "/api/splits-page",
+    () => page.getByRole("heading", { name: "Splits", exact: true })
+  );
+
+  await page.locator(".split-activity-card").filter({ hasText: "Family support" }).first().click();
+  const splitEditor = page.locator(".split-inline-editor-card").first();
+  await expect(splitEditor).toBeVisible();
+  const splitAmountInput = splitEditor.locator(".table-edit-input-money").first();
+  await expect(splitAmountInput).toHaveCSS("-webkit-text-security", "disc");
+  await splitEditor.locator(".totals-visibility-toggle--form").first().click();
+  await expect(splitAmountInput).not.toHaveCSS("-webkit-text-security", "disc");
 });

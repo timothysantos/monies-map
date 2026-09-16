@@ -156,6 +156,7 @@ test.describe("money field editability", () => {
     expect(entertainmentRow).toBeTruthy();
 
     await page.goto("/month?view=person-tim&month=2026-05&scope=direct_plus_shared");
+    await page.getByRole("button", { name: "Show money totals" }).click();
     const row = await openMonthBudgetEditor(page, "Entertainment");
     const amountInput = row.locator(".table-edit-input-money");
     await replaceInputValue(amountInput, "88.40");
@@ -249,6 +250,7 @@ test.describe("money field editability", () => {
       "/api/settings-page",
       () => page.getByRole("heading", { name: "Settings" })
     );
+    await page.getByRole("button", { name: "Show money totals" }).click();
     await page.locator("button").filter({ hasText: "Accounts" }).first().click();
 
     await page.locator(".settings-account-row").filter({ hasText: "UOB One" }).first().getByRole("button", { name: "Edit account" }).click();

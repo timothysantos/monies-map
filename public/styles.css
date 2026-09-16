@@ -3163,6 +3163,22 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   max-width: 120px;
 }
 
+.money-input-with-visibility {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.money-input-with-visibility .table-edit-input-money {
+  flex: 1 1 96px;
+}
+
+.totals-visibility-toggle--form {
+  width: 36px;
+  height: 36px;
+}
+
 .responsive-select-trigger {
   display: flex;
   align-items: center;
