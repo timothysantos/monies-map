@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { messages } from "./copy/en-SG";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
+import { TotalsVisibilityToggle } from "./money-privacy";
 import { ResponsiveSelect } from "./responsive-select";
 import { updateSplitExpenseDraft } from "./split-editing";
 import { CategoryGlyph } from "./ui-components";
@@ -266,6 +267,7 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
         <div className="split-dialog-inline">
           <label className="split-dialog-field">
             <span>{messages.splits.expenseAmount}</span>
+            <div className="money-input-with-visibility">
               <input
                 ref={amountInputRef}
                 className="table-edit-input table-edit-input-money"
@@ -286,6 +288,8 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
                 amountInput: formatService.minorToDecimalString(current.amountMinor ?? 0)
               } : current)}
             />
+              <TotalsVisibilityToggle className="totals-visibility-toggle--form" />
+            </div>
           </label>
           <label className="split-dialog-field">
             <span>{dialog?.linkedTransactionId ? "Paid using (ledger)" : "Paid using"}</span>
@@ -324,6 +328,7 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
           </label>
           <label className="split-dialog-field split-dialog-field-exact-amount">
             <span>{messages.splits.expenseExactAmount(dialog?.sharePersonName ?? "First person")}</span>
+            <div className="money-input-with-visibility">
               <input
                 className="table-edit-input table-edit-input-money"
                 type="text"
@@ -342,6 +347,8 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
                 splitAmountInput: formatService.minorToDecimalString(current.splitAmountMinor ?? 0)
               }, "amount", { commit: true }) : current)}
             />
+              <TotalsVisibilityToggle className="totals-visibility-toggle--form" />
+            </div>
           </label>
         </div>
         <SplitSharePreview dialog={dialog} people={people} />
@@ -489,6 +496,7 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
         <div className="split-dialog-inline">
           <label className="split-dialog-field">
             <span>{messages.splits.settlementAmount}</span>
+            <div className="money-input-with-visibility">
               <input
                 ref={amountInputRef}
                 className="table-edit-input table-edit-input-money"
@@ -510,6 +518,8 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
                 amountInput: formatService.minorToDecimalString(current.amountMinor ?? 0)
               } : current)}
             />
+              <TotalsVisibilityToggle className="totals-visibility-toggle--form" />
+            </div>
           </label>
           <label className="split-dialog-field">
             <span>{dialog?.linkedTransactionId ? "Paid using (ledger)" : "Paid using"}</span>

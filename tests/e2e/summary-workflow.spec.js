@@ -50,6 +50,7 @@ test.describe("summary workflow", () => {
 
     await page.goto("/summary?view=household&month=2026-05&scope=direct_plus_shared&summary_start=2026-05&summary_end=2026-05");
     await expect(page.getByRole("heading", { name: "Spending Mix" })).toBeVisible();
+    await page.getByRole("button", { name: "Show money totals" }).click();
     const firstCard = page.locator(".share-list .share-row").first();
     await expect(firstCard).toBeVisible();
 

@@ -903,6 +903,7 @@ test.describe("import flow", () => {
       );
 
       await page.getByRole("button", { name: "Preview import" }).click();
+      await page.getByRole("button", { name: "Show money totals" }).first().click();
       const breakdown = page.locator(".statement-reconciliation-breakdown");
       await expect(breakdown).toContainText("Why this does not close");
       await expect(breakdown).toContainText("treat the PDF as the stronger bank record");
@@ -1206,6 +1207,7 @@ test.describe("import flow", () => {
       );
 
       await page.getByRole("button", { name: "Preview import" }).click();
+      await page.getByRole("button", { name: "Show money totals" }).first().click();
 
       const breakdown = page.locator(".statement-reconciliation-breakdown");
       await expect(breakdown).toContainText("Why this closes");
@@ -1313,6 +1315,7 @@ test.describe("import flow", () => {
 
     await page.goto("/summary?view=person-tim&month=2025-10");
     await expect(page.getByRole("heading", { name: "Summary" })).toBeVisible();
+    await page.getByRole("button", { name: "Show money totals" }).click();
     await expect(page.getByRole("button", { name: "Oct 2025" }).first()).toBeVisible();
     await expect(page.getByText(formatMoney(afterFoodDonut)).first()).toBeVisible({ timeout: 30_000 });
   });

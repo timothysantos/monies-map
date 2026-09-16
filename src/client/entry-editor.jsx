@@ -7,6 +7,7 @@ import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
+import { TotalsVisibilityToggle } from "./money-privacy";
 import { ResponsiveSelect } from "./responsive-select";
 import { CategoryGlyph } from "./ui-components";
 
@@ -238,31 +239,34 @@ export function EntryEditorFields({
         </label>
         <label>
           <span>{messages.entries.editAmount}</span>
-          <input
-            className={`table-edit-input table-edit-input-money ${amountToneClass}`}
-            type="text"
-            inputMode="decimal"
-            value={amountDraft}
-            disabled={bankFactsLocked}
-            enterKeyHint="next"
-            onMouseDown={selectAllOnFocus}
-            onFocus={selectAllOnFocus}
-            onInput={(event) => handleAmountDraftChange(event.target.value)}
-            onChange={(event) => handleAmountDraftChange(event.target.value)}
-            onBlur={(event) => {
-              const blurAmountMinor = Math.max(0, formatService.parseMoneyInput(event.target.value, resolvedAmountMinor));
-              const formattedAmountInput = formatService.formatEditableMinorInput(blurAmountMinor);
-              setAmountDraft(formattedAmountInput);
-              if (onAmountChange) {
-                onAmountChange({
-                  amountInput: formattedAmountInput,
-                  amountMinor: blurAmountMinor
-                });
-              } else {
-                onChange({ amountInput: formattedAmountInput });
-              }
-            }}
-          />
+          <div className="money-input-with-visibility">
+            <input
+              className={`table-edit-input table-edit-input-money ${amountToneClass}`}
+              type="text"
+              inputMode="decimal"
+              value={amountDraft}
+              disabled={bankFactsLocked}
+              enterKeyHint="next"
+              onMouseDown={selectAllOnFocus}
+              onFocus={selectAllOnFocus}
+              onInput={(event) => handleAmountDraftChange(event.target.value)}
+              onChange={(event) => handleAmountDraftChange(event.target.value)}
+              onBlur={(event) => {
+                const blurAmountMinor = Math.max(0, formatService.parseMoneyInput(event.target.value, resolvedAmountMinor));
+                const formattedAmountInput = formatService.formatEditableMinorInput(blurAmountMinor);
+                setAmountDraft(formattedAmountInput);
+                if (onAmountChange) {
+                  onAmountChange({
+                    amountInput: formattedAmountInput,
+                    amountMinor: blurAmountMinor
+                  });
+                } else {
+                  onChange({ amountInput: formattedAmountInput });
+                }
+              }}
+            />
+            <TotalsVisibilityToggle className="totals-visibility-toggle--form" />
+          </div>
         </label>
         <label>
           <span>{messages.entries.editType}</span>
