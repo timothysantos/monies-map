@@ -472,3 +472,141 @@ mobile 1). No measurable change, as expected for a key-shape fix.
 
 Next eligible step: H03. H07 must not treat `isInvalidated` or the
 `route-page` clears as reliable until mismatches 2–4 above are addressed.
+
+## H03: Readiness and busy reporting
+
+Date: 2026-09-23. Baseline `19e0471` (H02); resulting commits `1d9524b`
+(shell contract) and `d30d4f0` (owner reports), branch `macro-performance`.
+`703cb87` (a background session's two-line test fix for the odd-cent splits
+E2E) sits between them. Status: **complete**; the `npm audit` gate still
+fails on the pre-existing advisories, and one cold-load interaction is
+recorded below.
+
+### Changed files and public contracts
+
+| File | Contract |
+| --- | --- |
+| `src/client/route-work-status.js` (new, pure) | `buildRouteIdentity`, `buildRouteWorkKey` (`tab|view|month|scope|summaryStart|summaryEnd`; non-month routes blank their fields), `createRouteWorkRegistry` (`report`, `release`, `subscribe`, `version`, `snapshot(routeKey)`), `createRequiredWorkCounter`, `withRequiredWork`, `deriveRouteWork` → `{ routeKey, ready, busy, requiredCount, usable, reason }` |
+| `src/client/use-route-work-status.js` (new) | `RouteWorkProvider({ registry, routeKey })` (memoized value), `useRouteWorkReport({ ready, busy })` for panels, `useRouteWorkBusy(busy)` for delegated children, `useRouteWorkSnapshot`, `useRequiredWorkCount` |
+| `src/client/App.jsx` | `activeRouteKey`; registry and counter; `summaryPageDataRequestKey` (Summary data readiness); `withRequiredWork` around the Summary, Month, Imports, Settings, Splits and background route refreshes; memoized `routeWork`; provider around the rendered route (`null` key while a previous page is shown); development-only `window.__MONIES_MAP_ROUTE_WORK__` |
+| Panels | Summary, Month, Entries (ready + busy), Splits, Imports, Settings, FAQ report once each. Month gains `isRemovingMonthRow` (only feeds busy) |
+| Delegated children | `CategoryAppearancePopover`, `ResponsiveSelect`, `MonthPanelHeader`, `EntriesDateGroups`, `EntryEditorFields`, `SplitActivityGroups`, `SettingsShortcutApiSection`, `SettingsTrustSection`, both statement-compare row editors |
+| `design.md` | New "Route Work Status Boundary" section |
+
+No request, draft, freshness lock or deferred-refresh rule changed. No
+scheduler consumes `routeWork` yet (H05/H07/H08 will).
+
+### Owner expressions (as built)
+
+Busy = OR of: **Summary** `monthNoteDialog`, `isSavingMonthNote`.
+**Month** `editingRowId`, `noteDialog`, `planLinkDialog`, `monthNoteDialog`,
+`mobileAddDialog`, `actionsOpen`, `isSavingMonthNote`, `isDraftingMonthNote`,
+`isSavingMonthRow`, `isRemovingMonthRow`, `isMonthDataRefreshing`,
+`hasPendingDerivedMonthData`, `isDuplicating`, `isResettingMonth`,
+`isDeletingMonth`, non-empty reset/delete confirmation text. **Entries** mobile
+filters, quick-expense saving/pending, pending linked editor, created-split
+delete, delete confirmation, note/category sync prompts and syncs, mobile split
+pickers, `editingEntryId`, composer, entry save/delete/link/settle/transfer
+dialog/candidate refresh/add-to-splits. **Splits** archive, history and group
+dialogs, `isSubmitting`, sync prompts and syncs, `isRefreshingDerived`,
+`isCheckpointing`, expense/settlement dialogs, inline draft, delete target.
+**Imports** `importDraftExists`, `isWorkflowLocked`, parsing, submitting,
+recent-imports refresh, AI explain/rank, account dialog, intake queue.
+**Settings** `isSubmitting`, demo confirmations, dismiss-transfers
+confirmation, person/account/category/rule/reconciliation dialogs, active
+statement compare, transfer dialog and candidate/ranking/link/settle, transfer
+refresh. **Shell** `mobileContextOpen`, login registration draft, registering,
+unregistering.
+
+Ready: App route data for the active request (Summary compares
+`summaryPageDataRequestKey`, other routes `currentRoutePageData`, FAQ always)
+and, for Entries, `!isEntriesPageLoading` with the page month and view
+matching the request. Deviations from the handoff inventory are listed in the
+implementation doc's "H03 as built".
+
+### Tests
+
+Unit (`tests/route-work-status.test.mjs`, 22): key fields and separation
+(person, month, scope), identity blanks unused fields and ignores
+`summaryFocus`, no report means not ready, all owners must be ready, one idle
+owner cannot clear another's busy state, a stale-route report cannot make the
+new route ready but its busy state blocks, identical reports do not notify,
+StrictMode report/release/report, counter nesting/idempotence/failure, and
+every `deriveRouteWork` reason (12) plus ready-over-busy precedence.
+
+E2E (`tests/e2e/route-work-status.spec.js`, 6, Vite dev with StrictMode):
+Summary → Entries with `entries-page` held: Summary still visible, route key
+is Entries and not usable, then usable after release; Entries editor busy →
+cancel → usable; failed save (500) keeps editor, draft `12.34` and busy, then
+retry saves and clears busy; Summary category dialog (shared child) busy; an
+Imports batch note makes the route busy and clearing it releases; Settings
+account dialog busy; FAQ ready with no data; mobile Month add sheet busy and
+mobile context sheet `mobile-context-open`. Performance harness asserts the
+hook is absent from `dist`.
+
+### Commands and results (Node 22.12.0)
+
+Parallel sessions were using 5173/8787 (and later 5183/8797, 5193/8807) from
+other worktrees; functional Playwright would have reused THEIR servers. All
+functional E2E below therefore ran with a temporary, untracked config
+(Vite 5311, test Worker 8911, inspector 9311, `reuseExistingServer:false`,
+separate `--persist-to` D1), deleted afterwards. The smoke runner hard-codes
+5173, so `npm run test:e2e:smoke` was not run; the full suite contains every
+smoke file.
+
+| Command | Result |
+| --- | --- |
+| `node --import tsx --test tests/route-work-status.test.mjs` | Pass 22/22 |
+| `npm run test:unit` | Pass 270/270 |
+| `npm run typecheck`, `npm run build`, `git diff --check` | Pass |
+| `route-work-status.spec.js` | Pass 6/6 (after fixing the test's pipe count and a backdrop-vs-button close target) |
+| Full functional E2E (isolated config) | **Pass 188/188** (includes `703cb87`) |
+| `npm run test:performance` | Pass 2/2 on every run |
+| `npm run audit` | Fail — same 5 pre-existing advisories |
+| `npm run test:e2e:smoke` | Not run (port collision; smoke files covered by the full run) |
+
+### Performance (interleaved A/B, same machine and harness)
+
+The machine was shared with two other sessions (load average 6–27), so the
+first unpaired H03 cohort (mobile warm ≈128 ms) was not trusted. Review then
+found two real costs, both fixed before the final numbers: the provider value
+was a new object each render (every reporting panel re-rendered with App), and
+every row-level child registered a report and every report re-rendered App.
+Final cohort: `19e0471` vs this code, desktop 4 rounds / mobile 2 rounds,
+alternating order.
+
+| Pooled | Base (H02) | H03 |
+| --- | ---: | ---: |
+| Desktop warm Summary→Entries median/p95 (n=80) | 61 / 91 ms | 59 / 81 ms |
+| Desktop warm Entries→Summary (n=80) | 65 / 88 ms | 66 / 86 ms |
+| Mobile warm Summary→Entries (n=40) | 106 / 216 ms | 100 / 178 ms |
+| Mobile warm Entries→Summary (n=40) | 111 / 135 ms | 103 / 124 ms |
+| Desktop cold median (n=20) | 464 ms | 565 ms |
+| Mobile cold median (n=10) | 2,590 ms | 2,652 ms |
+| Idle API at 30 s (desktop / mobile) | 3 / 1 | 3 / 1 |
+
+Desktop cold is **bimodal in both builds**: ≈455 ms when the pre-existing
+all-route idle warmup has not fired before Summary is usable (15–17 JS files),
+≈555–600 ms when it has (20 files). Base hit the fast mode 11/20 times, H03
+4/20; within each mode H03 is ≈5–15 ms slower (one extra App render when the
+panel's report arrives). So H03 shifts the race with the H01-documented
+warmup rather than adding ≈100 ms itself. This exceeds the plan's provisional
+10% cold-median limit for this cohort and is left open deliberately: H05
+gates automatic warmup on `routeWork.usable`, which removes the race. H05 must
+show the bimodal distribution gone; if H05 is delayed, revisit.
+
+### Protected workflow evidence and remaining risk
+
+- Drafts: the failed-save E2E keeps the typed amount; smoke files for money
+  editability and mobile continuity pass in the full run.
+- Person separation: route keys differ per person/month/scope (unit).
+- A page kept on screen during a transition never makes the new route ready,
+  but an editor still open on it keeps blocking.
+- Not covered by E2E: Splits, Settings statement-compare and Month
+  reset/delete confirmations (unit-level registry semantics plus code review
+  only); `ResponsiveSelect` mobile picker busy.
+- Summary readiness requires both summary and pills data for the active
+  request; a pills failure makes Summary not ready (fail-safe for warmup).
+- Rollback: revert `d30d4f0` then `1d9524b`.
+
+Next eligible step: H04 (pure policy).
