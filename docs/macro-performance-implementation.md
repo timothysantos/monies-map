@@ -19,8 +19,8 @@ verified on 2026-09-23 only.
 | H01b | P0 | Seeded 1k/10k scale fixtures + measurement | Open (prerequisite for mobile data admission only) | — |
 | H02 | Prereq | Query identity characterization and repair | Done (`403bb63`, `a8176fc`) | audit §H02 |
 | H03 | Prereq | Ready/busy reporting from workflow owners | Done (`1d9524b`, `d30d4f0`) | audit §H03 |
-| H04 | P1/P2m | Pure warmup policy | **Next** | — |
-| H05 | P1/P2m | Shared module loader, code-only scheduler | Open | — |
+| H04 | P1/P2m | Pure warmup policy | Done (`0adf7a4`) | audit §H04 |
+| H05 | P1/P2m | Shared module loader, code-only scheduler | **Next** | — |
 | H06 | P2/P2m | Cancellation, leases, promotion | Open | — |
 | H07 | P2/P2m | One bounded optional data queue | Open | — |
 | H08 | P3 | Optional AI readiness | Open | — |
@@ -718,6 +718,25 @@ real builders. Order:
    per-visit data budget, so later items are opportunistic.
 5. Mobile: no candidate for Entries/Splits routes without matching
    `recentDestination`; never imports/settings/faq/PDF/OCR automatic.
+
+As built (`route-warmup-policy.js`):
+
+- Invalid or incomplete input returns `{ allowed:false, reason:"invalid-input" }`
+  (fails closed) instead of throwing.
+- `selectWarmupMode` returns desktop only when both signals are exactly
+  `false`; any `true`, `null` or missing signal is mobile.
+- `selectWarmupCandidates` takes an extra `summaryRange` (the RESOLVED
+  `{ startMonth, endMonth }` from the Summary DTO). Without it, no shifted-range
+  candidates are produced; months are never guessed.
+- No Summary pills candidate: pills depend only on the view, so a shifted
+  range reuses the pills already loaded for the page.
+- The current staged prefetch's low-priority Splits page is NOT retained
+  (not in this list); H07 must not re-add it without a measured reason.
+- Module candidates dedupe by route (code is the same for every month/view);
+  data candidates dedupe by exact destination. Module purpose is
+  `route-module`; data purposes are `entries-page`, `month-page`,
+  `summary-page`, `imports-page`.
+- An unknown `mode` in the selector is treated as mobile.
 
 Tests: every numbered denial alone (table-driven, one row per reason);
 unknown connection mobile (code allowed, data `connection-not-4g`); hybrid

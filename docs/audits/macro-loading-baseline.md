@@ -610,3 +610,62 @@ show the bimodal distribution gone; if H05 is delayed, revisit.
 - Rollback: revert `d30d4f0` then `1d9524b`.
 
 Next eligible step: H04 (pure policy).
+
+## H04: Pure warmup policy
+
+Date: 2026-09-23. Baseline `0283259` (H03); resulting commit: see the Status
+Board (`Add pure route warmup policy`). Status: **complete**. No runtime
+behavior changed: nothing imports the module yet (H05 is the first consumer).
+
+### Changed files and public contract
+
+`src/client/route-warmup-policy.js` (new, imports nothing):
+`WARMUP_LIMITS`, `selectWarmupMode`, `evaluateWarmup` → `{ allowed, reason }`,
+`selectWarmupCandidates` → abstract `{ kind, routeId, identity, trigger,
+purpose }` in priority order, and `buildVisitKey(identity, workflowContext)`.
+Decision order and reasons are exactly those in the implementation doc's H04
+section. Its "As built" notes record the interpretations: fail-closed
+`invalid-input`, conservative mode selection, the `summaryRange` input, no
+pills candidate, Splits prefetch not retained, and route-level module dedupe.
+
+### Tests
+
+`tests/route-warmup-policy.test.mjs`, 48 tests: allowed baseline for both
+modes and kinds; one row for each of the 26 denial reasons, changing a
+single field from an allowed input; malformed input; safety gates still
+applying to intent; unknown connection (code allowed, data denied);
+hybrid/unknown devices; boundaries 49,999/50,000/50,001 bytes,
+249/250/251 ms handler, 500/501 ms recent required, 59,999/60,000 ms rolling
+window, 1,999/2,000 and 1,199/1,200 ms quiet, 1,499/1,500 ms data spacing;
+intent bypass limits; `already-loaded` ahead of every budget; forbidden
+routes automatic-only; candidates person-safe (Tim stays Tim, other person's
+recent destination ignored), URL month only, no guessed range, mobile
+Entries/Splits empty without a recent destination, desktop adjacent months
+and banner; visit keys ignore cosmetic fields; the module has no imports or
+browser globals.
+
+Mutation check: flipping each boundary operator (quiet, rolling window, byte
+cap, handler cap, recent required, data spacing) and removing each guard
+(hover-on-mobile, already-loaded, 4g requirement, same-view recent
+destination, desktop mode selection) fails at least one test: 11/11 caught.
+
+### Commands and results (Node 22.12.0)
+
+| Command | Result |
+| --- | --- |
+| `npx tsx --test tests/route-warmup-policy.test.mjs` | Pass 48/48 |
+| `rg -n "^import" src/client/route-warmup-policy.js` | Empty |
+| `npm run test:unit` | Pass 318/318 |
+| `npm run typecheck`, `npm run build`, `git diff --check` | Pass |
+| E2E / performance | Not applicable: no consumer, no runtime change |
+| `npm run audit` | Not rerun; same pre-existing advisories (no dependency change) |
+
+### Remaining risk
+
+- Limits are the plan's tuning hypotheses, not measured optima. H10 compares
+  them, and H01b supplies the mobile data admission numbers.
+- The candidate list is abstract. H05/H07 adapters must build loaders and
+  keys with the real route builders and `queryKeys`/H02 helpers.
+- Rollback: revert the H04 commit (no callers).
+
+Next eligible step: H05.
