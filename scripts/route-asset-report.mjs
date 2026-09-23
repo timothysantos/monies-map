@@ -1,6 +1,9 @@
 import { gzipSync } from "node:zlib";
 import { createHash } from "node:crypto";
 
+// The parser lives with the browser code that reads the block; scripts reuse it.
+export { parseWarmupCosts } from "../src/client/route-warmup-costs.js";
+
 const ROUTE_ENTRIES = {
   summary: "summary-panel.jsx",
   month: "month-panel.jsx",
@@ -10,7 +13,6 @@ const ROUTE_ENTRIES = {
   settings: "settings-panel.jsx",
   faq: "faq-panel.jsx"
 };
-const REQUIRED_ROUTES = Object.keys(ROUTE_ENTRIES);
 
 // The build-only JSON block in dist/index.html. Group 1 is the JSON body.
 export const WARMUP_COSTS_BLOCK_PATTERN = /<script\b(?=[^>]*\bid=["']monies-warmup-costs["'])(?=[^>]*\btype=["']application\/json["'])[^>]*>([\s\S]*?)<\/script\s*>/gi;
@@ -176,18 +178,4 @@ export function buildWarmupCosts(manifest, readAsset, { revision = "unknown", ht
   }
   const buildId = createHash("sha256").update(JSON.stringify(manifest)).digest("hex").slice(0, 16);
   return { schemaVersion: 1, buildId, revision, routes };
-}
-
-export function parseWarmupCosts(value) {
-  try {
-    const parsed = typeof value === "string" ? JSON.parse(value) : value;
-    if (!parsed || parsed.schemaVersion !== 1 || typeof parsed.buildId !== "string" || !parsed.routes || typeof parsed.routes !== "object") return null;
-    if (REQUIRED_ROUTES.some((routeName) => !Object.hasOwn(parsed.routes, routeName))) return null;
-    for (const route of Object.values(parsed.routes)) {
-      if (!route || !Array.isArray(route.chunks) || !route.chunks.length || !Number.isFinite(route.estimatedGzipBytes) || route.estimatedGzipBytes <= 0 || route.chunks.some((chunk) => typeof chunk.file !== "string" || !Number.isFinite(chunk.estimatedGzipBytes) || chunk.estimatedGzipBytes <= 0)) return null;
-    }
-    return parsed;
-  } catch {
-    return null;
-  }
 }
