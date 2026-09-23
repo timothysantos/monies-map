@@ -175,7 +175,7 @@ intermittent (see Commands). Step 7 scale fixtures remain open.
 | `scripts/write-warmup-costs.mjs` | `postbuild`: replaces (never appends) `<script id="monies-warmup-costs" type="application/json">` in `dist/index.html`; `<` escaped; source `index.html` untouched; git-less builds use revision `unknown` |
 | `scripts/report-route-assets.mjs` | `npm run report:route-assets` (builds, then writes `docs/audits/route-assets-baseline.json`). No longer run on every build |
 | `scripts/run-performance-worker.mjs` | Isolated Worker runner (details below) |
-| `scripts/performance-preflight.sql` | Test-only workaround for the fresh-database initialization defect below |
+| `scripts/performance-preflight.sql` | Test-only workaround for the fresh-database initialization defect below. Removed once that defect was fixed (finding 4) |
 | `playwright.performance.config.js` | Separate config: one worker, `reuseExistingServer:false`, `testMatch: **/*.spec.js`, `wait.stdout` ready marker, `gracefulShutdown` SIGTERM |
 | `tests/performance/built-client.spec.js` | Browser harness (measures; asserts validity only, no timing budgets) |
 | `tests/performance/performance-stats.mjs` + test | Nearest-rank median/p95, typed byte totals, Server-Timing parser |
@@ -211,7 +211,7 @@ wrong range. Both were harness defects:
 Refuse unless `wrangler.test.jsonc` has `APP_ENVIRONMENT=test` and
 `DEMO_SEED_MONTH=2026-05`, and `dist/` contains `index.html` and the manifest
 → refuse an occupied port (never connects to an existing server) → unique
-`mkdtemp` directory used for `--persist-to` by schema setup, preflight and
+`mkdtemp` directory used for `--persist-to` by schema setup and
 `wrangler dev --local` (never `--remote`) → poll health → require the running
 Worker's `/api/app-shell` to report `appEnvironment: "test"` → one reseed →
 require tracked months `2025-06…2025-10, 2026-05` and a six-month Summary →
@@ -291,6 +291,16 @@ Run 2 (same build) agreed within noise: desktop cold 592/772, mobile
    repair that creates it. `performance-preflight.sql` pre-creates the table
    and default household in the isolated database only. Tracked separately;
    delete the preflight when fixed.
+   **Fixed:** the failing statement was `recordAuditEvent`'s
+   `INSERT INTO audit_events` from `repairLegacyOcbcValueDatePostDates`, which
+   ran before `CREATE TABLE IF NOT EXISTS audit_events` and, once reordered,
+   also hit the `households` foreign key because a fresh database has no
+   default household. Initialization now creates `audit_events` before any
+   repair, the repair audits only when the default household exists, and it
+   audits before marking itself complete so a failed audit retries. The retry
+   used to succeed only because the repair was already marked complete, which
+   silently dropped the audit. `tests/fresh-schema-initialization.test.mjs`
+   covers a fresh `schema.sql` database; the preflight is deleted.
 5. **Query identity defect for H02 — proven user-visible wrong-person data:**
    in the built client, open `/month?view=household&month=2026-05`, then click
    "Tim". The URL becomes `view=person-tim` but no `month-page` request is
