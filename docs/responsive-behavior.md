@@ -45,6 +45,17 @@ These should remain consistent across desktop and mobile:
 
 These are allowed and expected.
 
+### Planned Loading Policy
+
+The proposed [mobile warmup task P2m](./macro-performance-plan.md#p2m-mobile-warmup-with-a-separate-policy)
+uses a smaller, separately tested speculation policy than desktop, while sharing
+route loaders, query keys, cache, invalidation and workflow protection. It allows
+bounded likely-next code warming and conditionally one measured data query after
+the active page settles. Missing connection hints default to code-only warmup;
+editing, hidden tabs and restricted connections suppress speculation. Required
+navigation and freshness remain immediate. This is planned behavior, not yet
+implemented; P2m defines measurement and acceptance gates.
+
 ### Desktop patterns
 
 - inline table editing

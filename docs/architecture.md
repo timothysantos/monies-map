@@ -57,6 +57,12 @@ system.
 
 ## Current Problem
 
+The 2026-09-22 [macro audit and execution plan](./macro-performance-plan.md)
+distinguishes current evidence from the historical migration goals below.
+Retain the existing framework and finance/workflow contracts. Measure built
+route loading, optional work, and full request initialization before changing
+state ownership or persistence. No runtime redesign was implemented by the audit.
+
 The app works, but the code is hard to follow because too much behavior is
 spread across broad client helpers, page components, query wiring, and implicit
 state flow. The main problems are:

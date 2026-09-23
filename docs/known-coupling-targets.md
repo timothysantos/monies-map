@@ -12,8 +12,19 @@ Use it together with:
 
 ## Target List
 
+The [2026-09-22 macro plan](./macro-performance-plan.md) adds task-scoped tests
+for all-route bundle warmup (P1), banner cancellation versus active Imports
+ownership (P2), AI readiness during protected workflows (P3), initialization
+outside API timing (P4), and cache/snapshot ownership races (P6). These are open
+targets, not claims that runtime regressions have already been reproduced.
+The [detailed handoff](./macro-performance-implementation.md) additionally requires
+URL-parameter/query-key identity characterization (H02), complete panel-local
+busy reporting (H03), and shared query cancellation/promotion race tests (H06)
+before broadening warmup cache reuse.
+
 | Risk area | What should be tested | Primary slice | Test level |
 | --- | --- | --- | --- |
+| Month route query identity (`query-keys.js` `routeRequestKey`) | Switching Month from Household to a person issues a new `month-page` request and shows that person's figures; the fetched key equals the key `invalidateMonthQueries` targets. Proven broken on 2026-09-23 (audit §H01 finding 5); repair is H02 | `month` | `Unit` (real QueryClient) and `E2E` |
 | `src/client/App.jsx` app-shell coupling | Shell state, route fallback, cache reset, and cross-tab restore stay coherent while the shell is being retired | `app shell` then `summary`, `month`, `entries` | `Integration` and `E2E` |
 | `src/client/query-mutations.js` broad invalidation | Mutation invalidation hits only the affected queries and does not fan out to broad buckets unless the docs allow it | `entries`, `month`, `summary`, `imports`, `settings` | `Integration` |
 | `src/client/focus-utils.js`, `src/client/splits-dialogs.jsx`, `src/client/splits-linked-entry-dialog.jsx`, `src/client/account-dialog.jsx`, `src/client/settings-reconciliation-dialog.jsx` amount focus/select behavior | Money inputs do not force select-all just to replace a value; focus should not create a keyboard trap, and the replacement contract stays consistent across core workflows | `entries`, `month`, `splits`, `imports`, `settings` | `E2E` |
