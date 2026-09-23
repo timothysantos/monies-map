@@ -1,0 +1,1343 @@
+{
+  "schemaVersion": 1,
+  "transferLabel": "gzip sizes are estimates from local assets; browser transfer must be measured separately",
+  "entry": {
+    "key": "index.html",
+    "files": [
+      {
+        "file": "assets/index-U9ckWwmG.js",
+        "rawBytes": 476644,
+        "estimatedGzipBytes": 148420,
+        "kind": "js"
+      },
+      {
+        "file": "styles.css",
+        "rawBytes": 227878,
+        "estimatedGzipBytes": 33333,
+        "kind": "css"
+      }
+    ],
+    "estimatedGzipBytes": 181753,
+    "jsEstimatedGzipBytes": 148420,
+    "cssEstimatedGzipBytes": 33333,
+    "otherEstimatedGzipBytes": 0,
+    "dynamicAssets": [
+      {
+        "file": "assets/category-visuals-D0V0pnJx.js",
+        "rawBytes": 6681,
+        "estimatedGzipBytes": 2145,
+        "kind": "js"
+      },
+      {
+        "file": "assets/chevron-right-cIER9G2Q.js",
+        "rawBytes": 301,
+        "estimatedGzipBytes": 247,
+        "kind": "js"
+      },
+      {
+        "file": "assets/donut-visibility-CHWGCzCa.js",
+        "rawBytes": 351,
+        "estimatedGzipBytes": 236,
+        "kind": "js"
+      },
+      {
+        "file": "assets/entries-filter-stack-CPaXHjga.js",
+        "rawBytes": 3584,
+        "estimatedGzipBytes": 1457,
+        "kind": "js"
+      },
+      {
+        "file": "assets/entries-panel-DkQLV85u.js",
+        "rawBytes": 72821,
+        "estimatedGzipBytes": 20784,
+        "kind": "js"
+      },
+      {
+        "file": "assets/entry-editor-Cx-0Zn1f.js",
+        "rawBytes": 14124,
+        "estimatedGzipBytes": 3848,
+        "kind": "js"
+      },
+      {
+        "file": "assets/entry-mobile-sheet-qKf6ixkt.js",
+        "rawBytes": 3779,
+        "estimatedGzipBytes": 1041,
+        "kind": "js"
+      },
+      {
+        "file": "assets/faq-panel-Bl0hKhBo.js",
+        "rawBytes": 149868,
+        "estimatedGzipBytes": 45444,
+        "kind": "js"
+      },
+      {
+        "file": "assets/financial-insight-JIhvuB1f.js",
+        "rawBytes": 15849,
+        "estimatedGzipBytes": 5633,
+        "kind": "js"
+      },
+      {
+        "file": "assets/focus-utils-BqRdCYxF.js",
+        "rawBytes": 173,
+        "estimatedGzipBytes": 157,
+        "kind": "js"
+      },
+      {
+        "file": "assets/imports-panel-dkIg22Kp.js",
+        "rawBytes": 134635,
+        "estimatedGzipBytes": 34062,
+        "kind": "js"
+      },
+      {
+        "file": "assets/month-panel-BaSqpRj7.js",
+        "rawBytes": 56917,
+        "estimatedGzipBytes": 14182,
+        "kind": "js"
+      },
+      {
+        "file": "assets/pdf-VJcNm7C7.js",
+        "rawBytes": 409518,
+        "estimatedGzipBytes": 123058,
+        "kind": "js"
+      },
+      {
+        "file": "assets/pdf.worker-BgryrOlp.mjs",
+        "rawBytes": 2209730,
+        "estimatedGzipBytes": 486636,
+        "kind": "js"
+      },
+      {
+        "file": "assets/settings-panel-gpb5Fz5Z.js",
+        "rawBytes": 91508,
+        "estimatedGzipBytes": 20079,
+        "kind": "js"
+      },
+      {
+        "file": "assets/spending-mix-recharts-CuTUjjnZ.js",
+        "rawBytes": 299177,
+        "estimatedGzipBytes": 93024,
+        "kind": "js"
+      },
+      {
+        "file": "assets/splits-api-B9qIXCbg.js",
+        "rawBytes": 6284,
+        "estimatedGzipBytes": 2044,
+        "kind": "js"
+      },
+      {
+        "file": "assets/splits-panel-BEtMbbq0.js",
+        "rawBytes": 81264,
+        "estimatedGzipBytes": 19864,
+        "kind": "js"
+      },
+      {
+        "file": "assets/square-pen-CNl_xd-j.js",
+        "rawBytes": 491,
+        "estimatedGzipBytes": 343,
+        "kind": "js"
+      },
+      {
+        "file": "assets/statement-import-CDwy2YJr.js",
+        "rawBytes": 41197,
+        "estimatedGzipBytes": 13629,
+        "kind": "js"
+      },
+      {
+        "file": "assets/summary-panel-sakrVncT.js",
+        "rawBytes": 13363,
+        "estimatedGzipBytes": 4256,
+        "kind": "js"
+      },
+      {
+        "file": "assets/ui-components-CocuWdiR.js",
+        "rawBytes": 29446,
+        "estimatedGzipBytes": 9523,
+        "kind": "js"
+      }
+    ],
+    "associatedAssets": []
+  },
+  "routes": {
+    "summary": {
+      "entry": "src/client/summary-panel.jsx",
+      "files": [
+        {
+          "file": "assets/category-visuals-D0V0pnJx.js",
+          "rawBytes": 6681,
+          "estimatedGzipBytes": 2145,
+          "kind": "js"
+        },
+        {
+          "file": "assets/chevron-right-cIER9G2Q.js",
+          "rawBytes": 301,
+          "estimatedGzipBytes": 247,
+          "kind": "js"
+        },
+        {
+          "file": "assets/donut-visibility-CHWGCzCa.js",
+          "rawBytes": 351,
+          "estimatedGzipBytes": 236,
+          "kind": "js"
+        },
+        {
+          "file": "assets/financial-insight-JIhvuB1f.js",
+          "rawBytes": 15849,
+          "estimatedGzipBytes": 5633,
+          "kind": "js"
+        },
+        {
+          "file": "assets/index-U9ckWwmG.js",
+          "rawBytes": 476644,
+          "estimatedGzipBytes": 148420,
+          "kind": "js"
+        },
+        {
+          "file": "assets/square-pen-CNl_xd-j.js",
+          "rawBytes": 491,
+          "estimatedGzipBytes": 343,
+          "kind": "js"
+        },
+        {
+          "file": "assets/summary-panel-sakrVncT.js",
+          "rawBytes": 13363,
+          "estimatedGzipBytes": 4256,
+          "kind": "js"
+        },
+        {
+          "file": "assets/ui-components-CocuWdiR.js",
+          "rawBytes": 29446,
+          "estimatedGzipBytes": 9523,
+          "kind": "js"
+        },
+        {
+          "file": "styles.css",
+          "rawBytes": 227878,
+          "estimatedGzipBytes": 33333,
+          "kind": "css"
+        }
+      ],
+      "estimatedGzipBytes": 204136,
+      "jsEstimatedGzipBytes": 170803,
+      "cssEstimatedGzipBytes": 33333,
+      "incrementalFiles": [
+        {
+          "file": "assets/category-visuals-D0V0pnJx.js",
+          "rawBytes": 6681,
+          "estimatedGzipBytes": 2145,
+          "kind": "js"
+        },
+        {
+          "file": "assets/chevron-right-cIER9G2Q.js",
+          "rawBytes": 301,
+          "estimatedGzipBytes": 247,
+          "kind": "js"
+        },
+        {
+          "file": "assets/donut-visibility-CHWGCzCa.js",
+          "rawBytes": 351,
+          "estimatedGzipBytes": 236,
+          "kind": "js"
+        },
+        {
+          "file": "assets/financial-insight-JIhvuB1f.js",
+          "rawBytes": 15849,
+          "estimatedGzipBytes": 5633,
+          "kind": "js"
+        },
+        {
+          "file": "assets/square-pen-CNl_xd-j.js",
+          "rawBytes": 491,
+          "estimatedGzipBytes": 343,
+          "kind": "js"
+        },
+        {
+          "file": "assets/summary-panel-sakrVncT.js",
+          "rawBytes": 13363,
+          "estimatedGzipBytes": 4256,
+          "kind": "js"
+        },
+        {
+          "file": "assets/ui-components-CocuWdiR.js",
+          "rawBytes": 29446,
+          "estimatedGzipBytes": 9523,
+          "kind": "js"
+        }
+      ],
+      "incrementalEstimatedGzipBytes": 22383,
+      "dynamicAssets": [
+        {
+          "file": "assets/pdf-VJcNm7C7.js",
+          "rawBytes": 409518,
+          "estimatedGzipBytes": 123058,
+          "kind": "js"
+        },
+        {
+          "file": "assets/pdf.worker-BgryrOlp.mjs",
+          "rawBytes": 2209730,
+          "estimatedGzipBytes": 486636,
+          "kind": "js"
+        },
+        {
+          "file": "assets/spending-mix-recharts-CuTUjjnZ.js",
+          "rawBytes": 299177,
+          "estimatedGzipBytes": 93024,
+          "kind": "js"
+        }
+      ],
+      "associatedAssets": [
+        {
+          "file": "assets/pdf.worker-BgryrOlp.mjs",
+          "rawBytes": 2209730,
+          "estimatedGzipBytes": 486636,
+          "kind": "js"
+        }
+      ],
+      "costKnown": true,
+      "incrementalCostKnown": true
+    },
+    "month": {
+      "entry": "src/client/month-panel.jsx",
+      "files": [
+        {
+          "file": "assets/category-visuals-D0V0pnJx.js",
+          "rawBytes": 6681,
+          "estimatedGzipBytes": 2145,
+          "kind": "js"
+        },
+        {
+          "file": "assets/chevron-right-cIER9G2Q.js",
+          "rawBytes": 301,
+          "estimatedGzipBytes": 247,
+          "kind": "js"
+        },
+        {
+          "file": "assets/entry-mobile-sheet-qKf6ixkt.js",
+          "rawBytes": 3779,
+          "estimatedGzipBytes": 1041,
+          "kind": "js"
+        },
+        {
+          "file": "assets/financial-insight-JIhvuB1f.js",
+          "rawBytes": 15849,
+          "estimatedGzipBytes": 5633,
+          "kind": "js"
+        },
+        {
+          "file": "assets/focus-utils-BqRdCYxF.js",
+          "rawBytes": 173,
+          "estimatedGzipBytes": 157,
+          "kind": "js"
+        },
+        {
+          "file": "assets/index-U9ckWwmG.js",
+          "rawBytes": 476644,
+          "estimatedGzipBytes": 148420,
+          "kind": "js"
+        },
+        {
+          "file": "assets/month-panel-BaSqpRj7.js",
+          "rawBytes": 56917,
+          "estimatedGzipBytes": 14182,
+          "kind": "js"
+        },
+        {
+          "file": "assets/square-pen-CNl_xd-j.js",
+          "rawBytes": 491,
+          "estimatedGzipBytes": 343,
+          "kind": "js"
+        },
+        {
+          "file": "assets/ui-components-CocuWdiR.js",
+          "rawBytes": 29446,
+          "estimatedGzipBytes": 9523,
+          "kind": "js"
+        },
+        {
+          "file": "styles.css",
+          "rawBytes": 227878,
+          "estimatedGzipBytes": 33333,
+          "kind": "css"
+        }
+      ],
+      "estimatedGzipBytes": 215024,
+      "jsEstimatedGzipBytes": 181691,
+      "cssEstimatedGzipBytes": 33333,
+      "incrementalFiles": [
+        {
+          "file": "assets/category-visuals-D0V0pnJx.js",
+          "rawBytes": 6681,
+          "estimatedGzipBytes": 2145,
+          "kind": "js"
+        },
+        {
+          "file": "assets/chevron-right-cIER9G2Q.js",
+          "rawBytes": 301,
+          "estimatedGzipBytes": 247,
+          "kind": "js"
+        },
+        {
+          "file": "assets/entry-mobile-sheet-qKf6ixkt.js",
+          "rawBytes": 3779,
+          "estimatedGzipBytes": 1041,
+          "kind": "js"
+        },
+        {
+          "file": "assets/financial-insight-JIhvuB1f.js",
+          "rawBytes": 15849,
+          "estimatedGzipBytes": 5633,
+          "kind": "js"
+        },
+        {
+          "file": "assets/focus-utils-BqRdCYxF.js",
+          "rawBytes": 173,
+          "estimatedGzipBytes": 157,
+          "kind": "js"
+        },
+        {
+          "file": "assets/month-panel-BaSqpRj7.js",
+          "rawBytes": 56917,
+          "estimatedGzipBytes": 14182,
+          "kind": "js"
+        },
+        {
+          "file": "assets/square-pen-CNl_xd-j.js",
+          "rawBytes": 491,
+          "estimatedGzipBytes": 343,
+          "kind": "js"
+        },
+        {
+          "file": "assets/ui-components-CocuWdiR.js",
+          "rawBytes": 29446,
+          "estimatedGzipBytes": 9523,
+          "kind": "js"
+        }
+      ],
+      "incrementalEstimatedGzipBytes": 33271,
+      "dynamicAssets": [
+        {
+          "file": "assets/pdf-VJcNm7C7.js",
+          "rawBytes": 409518,
+          "estimatedGzipBytes": 123058,
+          "kind": "js"
+        },
+        {
+          "file": "assets/pdf.worker-BgryrOlp.mjs",
+          "rawBytes": 2209730,
+          "estimatedGzipBytes": 486636,
+          "kind": "js"
+        },
+        {
+          "file": "assets/spending-mix-recharts-CuTUjjnZ.js",
+          "rawBytes": 299177,
+          "estimatedGzipBytes": 93024,
+          "kind": "js"
+        }
+      ],
+      "associatedAssets": [
+        {
+          "file": "assets/pdf.worker-BgryrOlp.mjs",
+          "rawBytes": 2209730,
+          "estimatedGzipBytes": 486636,
+          "kind": "js"
+        }
+      ],
+      "costKnown": true,
+      "incrementalCostKnown": true
+    },
+    "entries": {
+      "entry": "src/client/entries-panel.jsx",
+      "files": [
+        {
+          "file": "assets/category-visuals-D0V0pnJx.js",
+          "rawBytes": 6681,
+          "estimatedGzipBytes": 2145,
+          "kind": "js"
+        },
+        {
+          "file": "assets/chevron-right-cIER9G2Q.js",
+          "rawBytes": 301,
+          "estimatedGzipBytes": 247,
+          "kind": "js"
+        },
+        {
+          "file": "assets/donut-visibility-CHWGCzCa.js",
+          "rawBytes": 351,
+          "estimatedGzipBytes": 236,
+          "kind": "js"
+        },
+        {
+          "file": "assets/entries-filter-stack-CPaXHjga.js",
+          "rawBytes": 3584,
+          "estimatedGzipBytes": 1457,
+          "kind": "js"
+        },
+        {
+          "file": "assets/entries-panel-DkQLV85u.js",
+          "rawBytes": 72821,
+          "estimatedGzipBytes": 20784,
+          "kind": "js"
+        },
+        {
+          "file": "assets/entry-editor-Cx-0Zn1f.js",
+          "rawBytes": 14124,
+          "estimatedGzipBytes": 3848,
+          "kind": "js"
+        },
+        {
+          "file": "assets/entry-mobile-sheet-qKf6ixkt.js",
+          "rawBytes": 3779,
+          "estimatedGzipBytes": 1041,
+          "kind": "js"
+        },
+        {
+          "file": "assets/financial-insight-JIhvuB1f.js",
+          "rawBytes": 15849,
+          "estimatedGzipBytes": 5633,
+          "kind": "js"
+        },
+        {
+          "file": "assets/focus-utils-BqRdCYxF.js",
+          "rawBytes": 173,
+          "estimatedGzipBytes": 157,
+          "kind": "js"
+        },
+        {
+          "file": "assets/index-U9ckWwmG.js",
+          "rawBytes": 476644,
+          "estimatedGzipBytes": 148420,
+          "kind": "js"
+        },
+        {
+          "file": "assets/splits-api-B9qIXCbg.js",
+          "rawBytes": 6284,
+          "estimatedGzipBytes": 2044,
+          "kind": "js"
+        },
+        {
+          "file": "assets/ui-components-CocuWdiR.js",
+          "rawBytes": 29446,
+          "estimatedGzipBytes": 9523,
+          "kind": "js"
+        },
+        {
+          "file": "styles.css",
+          "rawBytes": 227878,
+          "estimatedGzipBytes": 33333,
+          "kind": "css"
+        }
+      ],
+      "estimatedGzipBytes": 228868,
+      "jsEstimatedGzipBytes": 195535,
+      "cssEstimatedGzipBytes": 33333,
+      "incrementalFiles": [
+        {
+          "file": "assets/category-visuals-D0V0pnJx.js",
+          "rawBytes": 6681,
+          "estimatedGzipBytes": 2145,
+          "kind": "js"
+        },
+        {
+          "file": "assets/chevron-right-cIER9G2Q.js",
+          "rawBytes": 301,
+          "estimatedGzipBytes": 247,
+          "kind": "js"
+        },
+        {
+          "file": "assets/donut-visibility-CHWGCzCa.js",
+          "rawBytes": 351,
+          "estimatedGzipBytes": 236,
+          "kind": "js"
+        },
+        {
+          "file": "assets/entries-filter-stack-CPaXHjga.js",
+          "rawBytes": 3584,
+          "estimatedGzipBytes": 1457,
+          "kind": "js"
+        },
+        {
+          "file": "assets/entries-panel-DkQLV85u.js",
+          "rawBytes": 72821,
+          "estimatedGzipBytes": 20784,
+          "kind": "js"
+        },
+        {
+          "file": "assets/entry-editor-Cx-0Zn1f.js",
+          "rawBytes": 14124,
+          "estimatedGzipBytes": 3848,
+          "kind": "js"
+        },
+        {
+          "file": "assets/entry-mobile-sheet-qKf6ixkt.js",
+          "rawBytes": 3779,
+          "estimatedGzipBytes": 1041,
+          "kind": "js"
+        },
+        {
+          "file": "assets/financial-insight-JIhvuB1f.js",
+          "rawBytes": 15849,
+          "estimatedGzipBytes": 5633,
+          "kind": "js"
+        },
+        {
+          "file": "assets/focus-utils-BqRdCYxF.js",
+          "rawBytes": 173,
+          "estimatedGzipBytes": 157,
+          "kind": "js"
+        },
+        {
+          "file": "assets/splits-api-B9qIXCbg.js",
+          "rawBytes": 6284,
+          "estimatedGzipBytes": 2044,
+          "kind": "js"
+        },
+        {
+          "file": "assets/ui-components-CocuWdiR.js",
+          "rawBytes": 29446,
+          "estimatedGzipBytes": 9523,
+          "kind": "js"
+        }
+      ],
+      "incrementalEstimatedGzipBytes": 47115,
+      "dynamicAssets": [
+        {
+          "file": "assets/pdf-VJcNm7C7.js",
+          "rawBytes": 409518,
+          "estimatedGzipBytes": 123058,
+          "kind": "js"
+        },
+        {
+          "file": "assets/pdf.worker-BgryrOlp.mjs",
+          "rawBytes": 2209730,
+          "estimatedGzipBytes": 486636,
+          "kind": "js"
+        },
+        {
+          "file": "assets/spending-mix-recharts-CuTUjjnZ.js",
+          "rawBytes": 299177,
+          "estimatedGzipBytes": 93024,
+          "kind": "js"
+        }
+      ],
+      "associatedAssets": [
+        {
+          "file": "assets/pdf.worker-BgryrOlp.mjs",
+          "rawBytes": 2209730,
+          "estimatedGzipBytes": 486636,
+          "kind": "js"
+        }
+      ],
+      "costKnown": true,
+      "incrementalCostKnown": true
+    },
+    "splits": {
+      "entry": "src/client/splits-panel.jsx",
+      "files": [
+        {
+          "file": "assets/category-visuals-D0V0pnJx.js",
+          "rawBytes": 6681,
+          "estimatedGzipBytes": 2145,
+          "kind": "js"
+        },
+        {
+          "file": "assets/chevron-right-cIER9G2Q.js",
+          "rawBytes": 301,
+          "estimatedGzipBytes": 247,
+          "kind": "js"
+        },
+        {
+          "file": "assets/donut-visibility-CHWGCzCa.js",
+          "rawBytes": 351,
+          "estimatedGzipBytes": 236,
+          "kind": "js"
+        },
+        {
+          "file": "assets/entries-filter-stack-CPaXHjga.js",
+          "rawBytes": 3584,
+          "estimatedGzipBytes": 1457,
+          "kind": "js"
+        },
+        {
+          "file": "assets/financial-insight-JIhvuB1f.js",
+          "rawBytes": 15849,
+          "estimatedGzipBytes": 5633,
+          "kind": "js"
+        },
+        {
+          "file": "assets/focus-utils-BqRdCYxF.js",
+          "rawBytes": 173,
+          "estimatedGzipBytes": 157,
+          "kind": "js"
+        },
+        {
+          "file": "assets/index-U9ckWwmG.js",
+          "rawBytes": 476644,
+          "estimatedGzipBytes": 148420,
+          "kind": "js"
+        },
+        {
+          "file": "assets/splits-api-B9qIXCbg.js",
+          "rawBytes": 6284,
+          "estimatedGzipBytes": 2044,
+          "kind": "js"
+        },
+        {
+          "file": "assets/splits-panel-BEtMbbq0.js",
+          "rawBytes": 81264,
+          "estimatedGzipBytes": 19864,
+          "kind": "js"
+        },
+        {
+          "file": "assets/ui-components-CocuWdiR.js",
+          "rawBytes": 29446,
+          "estimatedGzipBytes": 9523,
+          "kind": "js"
+        },
+        {
+          "file": "styles.css",
+          "rawBytes": 227878,
+          "estimatedGzipBytes": 33333,
+          "kind": "css"
+        }
+      ],
+      "estimatedGzipBytes": 223059,
+      "jsEstimatedGzipBytes": 189726,
+      "cssEstimatedGzipBytes": 33333,
+      "incrementalFiles": [
+        {
+          "file": "assets/category-visuals-D0V0pnJx.js",
+          "rawBytes": 6681,
+          "estimatedGzipBytes": 2145,
+          "kind": "js"
+        },
+        {
+          "file": "assets/chevron-right-cIER9G2Q.js",
+          "rawBytes": 301,
+          "estimatedGzipBytes": 247,
+          "kind": "js"
+        },
+        {
+          "file": "assets/donut-visibility-CHWGCzCa.js",
+          "rawBytes": 351,
+          "estimatedGzipBytes": 236,
+          "kind": "js"
+        },
+        {
+          "file": "assets/entries-filter-stack-CPaXHjga.js",
+          "rawBytes": 3584,
+          "estimatedGzipBytes": 1457,
+          "kind": "js"
+        },
+        {
+          "file": "assets/financial-insight-JIhvuB1f.js",
+          "rawBytes": 15849,
+          "estimatedGzipBytes": 5633,
+          "kind": "js"
+        },
+        {
+          "file": "assets/focus-utils-BqRdCYxF.js",
+          "rawBytes": 173,
+          "estimatedGzipBytes": 157,
+          "kind": "js"
+        },
+        {
+          "file": "assets/splits-api-B9qIXCbg.js",
+          "rawBytes": 6284,
+          "estimatedGzipBytes": 2044,
+          "kind": "js"
+        },
+        {
+          "file": "assets/splits-panel-BEtMbbq0.js",
+          "rawBytes": 81264,
+          "estimatedGzipBytes": 19864,
+          "kind": "js"
+        },
+        {
+          "file": "assets/ui-components-CocuWdiR.js",
+          "rawBytes": 29446,
+          "estimatedGzipBytes": 9523,
+          "kind": "js"
+        }
+      ],
+      "incrementalEstimatedGzipBytes": 41306,
+      "dynamicAssets": [
+        {
+          "file": "assets/pdf-VJcNm7C7.js",
+          "rawBytes": 409518,
+          "estimatedGzipBytes": 123058,
+          "kind": "js"
+        },
+        {
+          "file": "assets/pdf.worker-BgryrOlp.mjs",
+          "rawBytes": 2209730,
+          "estimatedGzipBytes": 486636,
+          "kind": "js"
+        },
+        {
+          "file": "assets/spending-mix-recharts-CuTUjjnZ.js",
+          "rawBytes": 299177,
+          "estimatedGzipBytes": 93024,
+          "kind": "js"
+        }
+      ],
+      "associatedAssets": [
+        {
+          "file": "assets/pdf.worker-BgryrOlp.mjs",
+          "rawBytes": 2209730,
+          "estimatedGzipBytes": 486636,
+          "kind": "js"
+        }
+      ],
+      "costKnown": true,
+      "incrementalCostKnown": true
+    },
+    "imports": {
+      "entry": "src/client/imports-panel.jsx",
+      "files": [
+        {
+          "file": "assets/chevron-right-cIER9G2Q.js",
+          "rawBytes": 301,
+          "estimatedGzipBytes": 247,
+          "kind": "js"
+        },
+        {
+          "file": "assets/focus-utils-BqRdCYxF.js",
+          "rawBytes": 173,
+          "estimatedGzipBytes": 157,
+          "kind": "js"
+        },
+        {
+          "file": "assets/imports-panel-dkIg22Kp.js",
+          "rawBytes": 134635,
+          "estimatedGzipBytes": 34062,
+          "kind": "js"
+        },
+        {
+          "file": "assets/index-U9ckWwmG.js",
+          "rawBytes": 476644,
+          "estimatedGzipBytes": 148420,
+          "kind": "js"
+        },
+        {
+          "file": "assets/statement-import-CDwy2YJr.js",
+          "rawBytes": 41197,
+          "estimatedGzipBytes": 13629,
+          "kind": "js"
+        },
+        {
+          "file": "assets/ui-components-CocuWdiR.js",
+          "rawBytes": 29446,
+          "estimatedGzipBytes": 9523,
+          "kind": "js"
+        },
+        {
+          "file": "styles.css",
+          "rawBytes": 227878,
+          "estimatedGzipBytes": 33333,
+          "kind": "css"
+        }
+      ],
+      "estimatedGzipBytes": 239371,
+      "jsEstimatedGzipBytes": 206038,
+      "cssEstimatedGzipBytes": 33333,
+      "incrementalFiles": [
+        {
+          "file": "assets/chevron-right-cIER9G2Q.js",
+          "rawBytes": 301,
+          "estimatedGzipBytes": 247,
+          "kind": "js"
+        },
+        {
+          "file": "assets/focus-utils-BqRdCYxF.js",
+          "rawBytes": 173,
+          "estimatedGzipBytes": 157,
+          "kind": "js"
+        },
+        {
+          "file": "assets/imports-panel-dkIg22Kp.js",
+          "rawBytes": 134635,
+          "estimatedGzipBytes": 34062,
+          "kind": "js"
+        },
+        {
+          "file": "assets/statement-import-CDwy2YJr.js",
+          "rawBytes": 41197,
+          "estimatedGzipBytes": 13629,
+          "kind": "js"
+        },
+        {
+          "file": "assets/ui-components-CocuWdiR.js",
+          "rawBytes": 29446,
+          "estimatedGzipBytes": 9523,
+          "kind": "js"
+        }
+      ],
+      "incrementalEstimatedGzipBytes": 57618,
+      "dynamicAssets": [
+        {
+          "file": "assets/pdf-VJcNm7C7.js",
+          "rawBytes": 409518,
+          "estimatedGzipBytes": 123058,
+          "kind": "js"
+        },
+        {
+          "file": "assets/pdf.worker-BgryrOlp.mjs",
+          "rawBytes": 2209730,
+          "estimatedGzipBytes": 486636,
+          "kind": "js"
+        }
+      ],
+      "associatedAssets": [
+        {
+          "file": "assets/pdf.worker-BgryrOlp.mjs",
+          "rawBytes": 2209730,
+          "estimatedGzipBytes": 486636,
+          "kind": "js"
+        }
+      ],
+      "costKnown": true,
+      "incrementalCostKnown": true
+    },
+    "settings": {
+      "entry": "src/client/settings-panel.jsx",
+      "files": [
+        {
+          "file": "assets/category-visuals-D0V0pnJx.js",
+          "rawBytes": 6681,
+          "estimatedGzipBytes": 2145,
+          "kind": "js"
+        },
+        {
+          "file": "assets/chevron-right-cIER9G2Q.js",
+          "rawBytes": 301,
+          "estimatedGzipBytes": 247,
+          "kind": "js"
+        },
+        {
+          "file": "assets/entry-editor-Cx-0Zn1f.js",
+          "rawBytes": 14124,
+          "estimatedGzipBytes": 3848,
+          "kind": "js"
+        },
+        {
+          "file": "assets/focus-utils-BqRdCYxF.js",
+          "rawBytes": 173,
+          "estimatedGzipBytes": 157,
+          "kind": "js"
+        },
+        {
+          "file": "assets/index-U9ckWwmG.js",
+          "rawBytes": 476644,
+          "estimatedGzipBytes": 148420,
+          "kind": "js"
+        },
+        {
+          "file": "assets/settings-panel-gpb5Fz5Z.js",
+          "rawBytes": 91508,
+          "estimatedGzipBytes": 20079,
+          "kind": "js"
+        },
+        {
+          "file": "assets/square-pen-CNl_xd-j.js",
+          "rawBytes": 491,
+          "estimatedGzipBytes": 343,
+          "kind": "js"
+        },
+        {
+          "file": "assets/statement-import-CDwy2YJr.js",
+          "rawBytes": 41197,
+          "estimatedGzipBytes": 13629,
+          "kind": "js"
+        },
+        {
+          "file": "assets/ui-components-CocuWdiR.js",
+          "rawBytes": 29446,
+          "estimatedGzipBytes": 9523,
+          "kind": "js"
+        },
+        {
+          "file": "styles.css",
+          "rawBytes": 227878,
+          "estimatedGzipBytes": 33333,
+          "kind": "css"
+        }
+      ],
+      "estimatedGzipBytes": 231724,
+      "jsEstimatedGzipBytes": 198391,
+      "cssEstimatedGzipBytes": 33333,
+      "incrementalFiles": [
+        {
+          "file": "assets/category-visuals-D0V0pnJx.js",
+          "rawBytes": 6681,
+          "estimatedGzipBytes": 2145,
+          "kind": "js"
+        },
+        {
+          "file": "assets/chevron-right-cIER9G2Q.js",
+          "rawBytes": 301,
+          "estimatedGzipBytes": 247,
+          "kind": "js"
+        },
+        {
+          "file": "assets/entry-editor-Cx-0Zn1f.js",
+          "rawBytes": 14124,
+          "estimatedGzipBytes": 3848,
+          "kind": "js"
+        },
+        {
+          "file": "assets/focus-utils-BqRdCYxF.js",
+          "rawBytes": 173,
+          "estimatedGzipBytes": 157,
+          "kind": "js"
+        },
+        {
+          "file": "assets/settings-panel-gpb5Fz5Z.js",
+          "rawBytes": 91508,
+          "estimatedGzipBytes": 20079,
+          "kind": "js"
+        },
+        {
+          "file": "assets/square-pen-CNl_xd-j.js",
+          "rawBytes": 491,
+          "estimatedGzipBytes": 343,
+          "kind": "js"
+        },
+        {
+          "file": "assets/statement-import-CDwy2YJr.js",
+          "rawBytes": 41197,
+          "estimatedGzipBytes": 13629,
+          "kind": "js"
+        },
+        {
+          "file": "assets/ui-components-CocuWdiR.js",
+          "rawBytes": 29446,
+          "estimatedGzipBytes": 9523,
+          "kind": "js"
+        }
+      ],
+      "incrementalEstimatedGzipBytes": 49971,
+      "dynamicAssets": [
+        {
+          "file": "assets/pdf-VJcNm7C7.js",
+          "rawBytes": 409518,
+          "estimatedGzipBytes": 123058,
+          "kind": "js"
+        },
+        {
+          "file": "assets/pdf.worker-BgryrOlp.mjs",
+          "rawBytes": 2209730,
+          "estimatedGzipBytes": 486636,
+          "kind": "js"
+        },
+        {
+          "file": "assets/spending-mix-recharts-CuTUjjnZ.js",
+          "rawBytes": 299177,
+          "estimatedGzipBytes": 93024,
+          "kind": "js"
+        }
+      ],
+      "associatedAssets": [
+        {
+          "file": "assets/pdf.worker-BgryrOlp.mjs",
+          "rawBytes": 2209730,
+          "estimatedGzipBytes": 486636,
+          "kind": "js"
+        }
+      ],
+      "costKnown": true,
+      "incrementalCostKnown": true
+    },
+    "faq": {
+      "entry": "src/client/faq-panel.jsx",
+      "files": [
+        {
+          "file": "assets/faq-panel-Bl0hKhBo.js",
+          "rawBytes": 149868,
+          "estimatedGzipBytes": 45444,
+          "kind": "js"
+        },
+        {
+          "file": "assets/index-U9ckWwmG.js",
+          "rawBytes": 476644,
+          "estimatedGzipBytes": 148420,
+          "kind": "js"
+        },
+        {
+          "file": "assets/ui-components-CocuWdiR.js",
+          "rawBytes": 29446,
+          "estimatedGzipBytes": 9523,
+          "kind": "js"
+        },
+        {
+          "file": "styles.css",
+          "rawBytes": 227878,
+          "estimatedGzipBytes": 33333,
+          "kind": "css"
+        }
+      ],
+      "estimatedGzipBytes": 236720,
+      "jsEstimatedGzipBytes": 203387,
+      "cssEstimatedGzipBytes": 33333,
+      "incrementalFiles": [
+        {
+          "file": "assets/faq-panel-Bl0hKhBo.js",
+          "rawBytes": 149868,
+          "estimatedGzipBytes": 45444,
+          "kind": "js"
+        },
+        {
+          "file": "assets/ui-components-CocuWdiR.js",
+          "rawBytes": 29446,
+          "estimatedGzipBytes": 9523,
+          "kind": "js"
+        }
+      ],
+      "incrementalEstimatedGzipBytes": 54967,
+      "dynamicAssets": [
+        {
+          "file": "assets/pdf-VJcNm7C7.js",
+          "rawBytes": 409518,
+          "estimatedGzipBytes": 123058,
+          "kind": "js"
+        },
+        {
+          "file": "assets/pdf.worker-BgryrOlp.mjs",
+          "rawBytes": 2209730,
+          "estimatedGzipBytes": 486636,
+          "kind": "js"
+        }
+      ],
+      "associatedAssets": [
+        {
+          "file": "assets/pdf.worker-BgryrOlp.mjs",
+          "rawBytes": 2209730,
+          "estimatedGzipBytes": 486636,
+          "kind": "js"
+        }
+      ],
+      "costKnown": true,
+      "incrementalCostKnown": true
+    }
+  },
+  "sharedAcrossRoutes": [
+    {
+      "file": "assets/category-visuals-D0V0pnJx.js",
+      "rawBytes": 6681,
+      "estimatedGzipBytes": 2145,
+      "kind": "js"
+    },
+    {
+      "file": "assets/chevron-right-cIER9G2Q.js",
+      "rawBytes": 301,
+      "estimatedGzipBytes": 247,
+      "kind": "js"
+    },
+    {
+      "file": "assets/donut-visibility-CHWGCzCa.js",
+      "rawBytes": 351,
+      "estimatedGzipBytes": 236,
+      "kind": "js"
+    },
+    {
+      "file": "assets/entries-filter-stack-CPaXHjga.js",
+      "rawBytes": 3584,
+      "estimatedGzipBytes": 1457,
+      "kind": "js"
+    },
+    {
+      "file": "assets/entry-editor-Cx-0Zn1f.js",
+      "rawBytes": 14124,
+      "estimatedGzipBytes": 3848,
+      "kind": "js"
+    },
+    {
+      "file": "assets/entry-mobile-sheet-qKf6ixkt.js",
+      "rawBytes": 3779,
+      "estimatedGzipBytes": 1041,
+      "kind": "js"
+    },
+    {
+      "file": "assets/financial-insight-JIhvuB1f.js",
+      "rawBytes": 15849,
+      "estimatedGzipBytes": 5633,
+      "kind": "js"
+    },
+    {
+      "file": "assets/focus-utils-BqRdCYxF.js",
+      "rawBytes": 173,
+      "estimatedGzipBytes": 157,
+      "kind": "js"
+    },
+    {
+      "file": "assets/index-U9ckWwmG.js",
+      "rawBytes": 476644,
+      "estimatedGzipBytes": 148420,
+      "kind": "js"
+    },
+    {
+      "file": "assets/splits-api-B9qIXCbg.js",
+      "rawBytes": 6284,
+      "estimatedGzipBytes": 2044,
+      "kind": "js"
+    },
+    {
+      "file": "assets/square-pen-CNl_xd-j.js",
+      "rawBytes": 491,
+      "estimatedGzipBytes": 343,
+      "kind": "js"
+    },
+    {
+      "file": "assets/statement-import-CDwy2YJr.js",
+      "rawBytes": 41197,
+      "estimatedGzipBytes": 13629,
+      "kind": "js"
+    },
+    {
+      "file": "assets/ui-components-CocuWdiR.js",
+      "rawBytes": 29446,
+      "estimatedGzipBytes": 9523,
+      "kind": "js"
+    },
+    {
+      "file": "styles.css",
+      "rawBytes": 227878,
+      "estimatedGzipBytes": 33333,
+      "kind": "css"
+    }
+  ],
+  "routeFilesCountedOnce": [
+    {
+      "file": "assets/category-visuals-D0V0pnJx.js",
+      "rawBytes": 6681,
+      "estimatedGzipBytes": 2145,
+      "kind": "js"
+    },
+    {
+      "file": "assets/chevron-right-cIER9G2Q.js",
+      "rawBytes": 301,
+      "estimatedGzipBytes": 247,
+      "kind": "js"
+    },
+    {
+      "file": "assets/donut-visibility-CHWGCzCa.js",
+      "rawBytes": 351,
+      "estimatedGzipBytes": 236,
+      "kind": "js"
+    },
+    {
+      "file": "assets/entries-filter-stack-CPaXHjga.js",
+      "rawBytes": 3584,
+      "estimatedGzipBytes": 1457,
+      "kind": "js"
+    },
+    {
+      "file": "assets/entries-panel-DkQLV85u.js",
+      "rawBytes": 72821,
+      "estimatedGzipBytes": 20784,
+      "kind": "js"
+    },
+    {
+      "file": "assets/entry-editor-Cx-0Zn1f.js",
+      "rawBytes": 14124,
+      "estimatedGzipBytes": 3848,
+      "kind": "js"
+    },
+    {
+      "file": "assets/entry-mobile-sheet-qKf6ixkt.js",
+      "rawBytes": 3779,
+      "estimatedGzipBytes": 1041,
+      "kind": "js"
+    },
+    {
+      "file": "assets/faq-panel-Bl0hKhBo.js",
+      "rawBytes": 149868,
+      "estimatedGzipBytes": 45444,
+      "kind": "js"
+    },
+    {
+      "file": "assets/financial-insight-JIhvuB1f.js",
+      "rawBytes": 15849,
+      "estimatedGzipBytes": 5633,
+      "kind": "js"
+    },
+    {
+      "file": "assets/focus-utils-BqRdCYxF.js",
+      "rawBytes": 173,
+      "estimatedGzipBytes": 157,
+      "kind": "js"
+    },
+    {
+      "file": "assets/imports-panel-dkIg22Kp.js",
+      "rawBytes": 134635,
+      "estimatedGzipBytes": 34062,
+      "kind": "js"
+    },
+    {
+      "file": "assets/index-U9ckWwmG.js",
+      "rawBytes": 476644,
+      "estimatedGzipBytes": 148420,
+      "kind": "js"
+    },
+    {
+      "file": "assets/month-panel-BaSqpRj7.js",
+      "rawBytes": 56917,
+      "estimatedGzipBytes": 14182,
+      "kind": "js"
+    },
+    {
+      "file": "assets/settings-panel-gpb5Fz5Z.js",
+      "rawBytes": 91508,
+      "estimatedGzipBytes": 20079,
+      "kind": "js"
+    },
+    {
+      "file": "assets/splits-api-B9qIXCbg.js",
+      "rawBytes": 6284,
+      "estimatedGzipBytes": 2044,
+      "kind": "js"
+    },
+    {
+      "file": "assets/splits-panel-BEtMbbq0.js",
+      "rawBytes": 81264,
+      "estimatedGzipBytes": 19864,
+      "kind": "js"
+    },
+    {
+      "file": "assets/square-pen-CNl_xd-j.js",
+      "rawBytes": 491,
+      "estimatedGzipBytes": 343,
+      "kind": "js"
+    },
+    {
+      "file": "assets/statement-import-CDwy2YJr.js",
+      "rawBytes": 41197,
+      "estimatedGzipBytes": 13629,
+      "kind": "js"
+    },
+    {
+      "file": "assets/summary-panel-sakrVncT.js",
+      "rawBytes": 13363,
+      "estimatedGzipBytes": 4256,
+      "kind": "js"
+    },
+    {
+      "file": "assets/ui-components-CocuWdiR.js",
+      "rawBytes": 29446,
+      "estimatedGzipBytes": 9523,
+      "kind": "js"
+    },
+    {
+      "file": "styles.css",
+      "rawBytes": 227878,
+      "estimatedGzipBytes": 33333,
+      "kind": "css"
+    }
+  ],
+  "html": {
+    "warmupMetadataBytes": 4285,
+    "gzipDeltaBytes": 723,
+    "metadataValid": true,
+    "missingReason": null
+  },
+  "revision": "718e708",
+  "buildId": "b3f5ff77264c201f"
+}
