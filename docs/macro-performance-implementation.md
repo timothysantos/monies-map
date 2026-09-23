@@ -15,10 +15,10 @@ verified on 2026-09-23 only.
 | Step | Parent | Delivery | Status | Evidence |
 | --- | --- | --- | --- | --- |
 | H00 | P0 | Ownership matrix and baseline | Done | audit §H00 |
-| H01 | P0 | Built-client harness and asset-cost report | Done (verify gate blocked by baseline advisories) | audit §H01 |
+| H01 | P0 | Built-client harness and asset-cost report | Done (`506f3fd`; verify gate blocked by baseline advisories) | audit §H01 |
 | H01b | P0 | Seeded 1k/10k scale fixtures + measurement | Open (prerequisite for mobile data admission only) | — |
-| H02 | Prereq | Query identity characterization and repair | **Next. Proven wrong-person bug** | audit §H01 finding 5 |
-| H03 | Prereq | Ready/busy reporting from workflow owners | Open | — |
+| H02 | Prereq | Query identity characterization and repair | Done (`403bb63`, `a8176fc`) | audit §H02 |
+| H03 | Prereq | Ready/busy reporting from workflow owners | **Next** | — |
 | H04 | P1/P2m | Pure warmup policy | Open | — |
 | H05 | P1/P2m | Shared module loader, code-only scheduler | Open | — |
 | H06 | P2/P2m | Cancellation, leases, promotion | Open | — |
@@ -89,6 +89,7 @@ Known baseline failures (record, do not "fix" inside unrelated tasks):
 | Failure | Status |
 | --- | --- |
 | `npm run verify` stops at `npm audit`: 5 advisories (browserslist, sharp via miniflare/wrangler) | Pre-existing; dependency upgrades are out of scope. Run the remaining verify steps individually and record both facts |
+| Full E2E: `splits-viewer-amounts` › odd-cent recipient fails deterministically | Pre-existing at `506f3fd` (money masked; created card absent); separate task |
 | `money-field-editability` › settings opening balance intermittently loses typed characters | Pre-existing flake; separate task. Rerun the file alone once; record both results |
 | Fresh `schema.sql` database: first data request returns 500, retry succeeds | Pre-existing app defect; separate task. `scripts/performance-preflight.sql` works around it only in the harness |
 
@@ -214,7 +215,12 @@ TanStack Query 5.100.5 behavior (verified with a probe script):
 - `hashKey`, `isCancelledError`, `matchQuery` are exported by
   `@tanstack/react-query`.
 
-Query identity (`query-keys.js`) — see H02:
+Query identity (`query-keys.js`) — as found before H02; Month/Summary
+mapping and the import-mutation Entries params are FIXED (audit §H02). Still
+true after H02: invalidation is inert (helpers ignore `isInvalidated`),
+`route-page` family clears miss specialized keys, the route-load
+`hasCachedPage` check uses the wrong key, Summary implicit-range invalidation
+does not match, `invalidateSplitsPageQueries` is dead:
 
 - `routeRequestKey` maps `/api/month-page` to `monthPage(params)` with URL
   names (`view`), but `monthPage` destructures `{ viewId, month, scope }`, so
@@ -902,6 +908,12 @@ Allowed files: scheduler/hook, `App.jsx` (remove old effects),
 `entries-panel.jsx` (remove adjacent prefetch effect; expose nothing new),
 `app-routing.js` (`buildEntriesPageParams` export),
 new `src/client/route-warmup-admissions.js`, tests.
+
+Prerequisite check: audit §H02 "Related mismatches" 2–4. Freshness below
+must be computed from `getQueryState` directly, never from assuming a
+mutation invalidated the key. If a candidate family's invalidation is known
+to miss (Summary implicit range), treat its cached data as fresh only
+within `staleTime` from `dataUpdatedAt`, and record the choice.
 
 1. `route-warmup-admissions.js`: checked-in table
    `{ family, fixture, revision, maxParams, responseBytes, handlerMs }` from

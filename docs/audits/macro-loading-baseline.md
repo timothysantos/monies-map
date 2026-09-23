@@ -345,3 +345,130 @@ Run 2 (same build) agreed within noise: desktop cold 592/772, mobile
 Next eligible step: H02 (query identity), starting from finding 5. Because
 finding 5 shows another person's figures under Tim's view, H02's repair
 should not wait behind unrelated work.
+
+## H02: Query identity before additional cache reuse
+
+Date: 2026-09-23. Baseline `506f3fd` (H01); resulting commits `403bb63`
+(Month/Summary key translation) and `a8176fc` (import-mutation Entries
+params), branch `macro-performance`. Status: **complete**; one pre-existing
+full-E2E failure and the audit advisories recorded below.
+
+### Changed files and public contracts
+
+| File | Contract |
+| --- | --- |
+| `src/client/query-keys.js` | New exports `monthPageKeyFromParams(params)` and `summaryPageKeyFromParams(params)` — the only URL→key translation (`view`→`viewId`, `summary_start`→`startMonth`, `summary_end`→`endMonth`; defaults `household`, `""`, `direct_plus_shared`, `""`, `""`). Accept `URLSearchParams` or a normalized record. `routeRequestKey` uses them for Month and Summary |
+| `src/client/summary-query.js` | Private `getSummaryPageKeyFromParams` removed; uses the shared helper (byte-identical keys) |
+| `src/client/App.jsx` | `prefetchSummaryPage` uses the shared helper (identical key); import-mutation invalidation passes `buildEntriesPageParams(...)` instead of `{ viewId, month }` |
+| `tests/query-foundation.test.mjs` | +8 tests (see below); misleading `viewId` URL-param test now uses `view` |
+| `tests/e2e/month-page.spec.js` | Wrong-person regression test |
+| `docs/code-spec.md` | Query Ownership Contract: single translation point and fetch/invalidation equality rule |
+
+Fetched Month key changed from `["month-page",{month,scope}]` to
+`["month-page",{month,scope,viewId}]`. No DTO, endpoint, URL, TTL or
+which-cache-is-cleared behavior changed. TanStack caches are in-memory, so
+no persisted state is affected.
+
+### Equality / separation matrix (as of `a8176fc`)
+
+"Fetch" = key used by the route's actual fetch path; "invalidate" = key built
+by the mutation owner that is supposed to refresh it.
+
+| Route | Fetch key | Invalidation owner and key | Result |
+| --- | --- | --- | --- |
+| Month | `routeRequestKey` → `month-page {month,scope,viewId}` | `invalidateMonthQueries` / `invalidateEntriesMutationQueries` / `invalidateImportMutationQueries` → same | **Equal** (was: person dropped, never equal) — unit matrix for household and Tim |
+| Month, per person | household ≠ Tim ≠ Joyce; month and scope separate | — | **Separate** (was: household = Tim) |
+| Entries | `routeRequestKey` → `entries-page {month,view}` | entry/month mutations pass route params → same | Equal |
+| Entries after import mutation | same | was `{month,viewId}` object (never matched); now `buildEntriesPageParams` → same | **Equal** (fixed in `a8176fc`) |
+| Summary, explicit range | `summaryPageKeyFromParams` → `summary-page {viewId,month,scope,startMonth,endMonth}` | mutation helpers with the same range → same | Equal; separate per person and per range |
+| Summary via `routeRequestKey` | now same as `summary-query.js` | — | Equal (was: view and range dropped; latent, Summary does not fetch through it) |
+| Summary, implicit range (URL has no `summary_start/end`) | `startMonth:"" endMonth:""` | mutations pass a resolved range (e.g. `2026-05..2026-05` or the page's range) | **Not equal — recorded, not fixed** (range semantics, not a naming bug) |
+| Splits | `splits-page {month,view}` | App predicate matches `view` or `viewId` | Equal in practice. `invalidateSplitsPageQueries({viewId,month})` would never match but has **no production caller** (dead helper) |
+| Imports / Settings | `imports-page` / `settings-page` | exact | Equal |
+
+Real-QueryClient proof: household `{v:100}` and Tim `{v:200}` cached under
+their fetched keys; `invalidateMonthQueries` for Tim marks only Tim
+invalidated; both values unchanged.
+
+### Related mismatches found and deliberately left unchanged
+
+These are not URL→key mapping defects and showed no user-visible staleness,
+so H02's rule (repair only proven mapping defects; no key renames) leaves
+them. They matter once H07 relies on invalidation/freshness.
+
+1. **Invalidation is inert today.** Every fetch helper returns
+   `getQueryData(key)` when data exists, ignoring `isInvalidated`, and there
+   are no query observers, so `query-mutations.js` invalidation changes no
+   visible behavior; freshness comes from `bypassCache` refetches and
+   `removeQueries` clears. H02's Month repair changes behavior only through
+   the fetch key (the wrong-person fix).
+2. **`route-page` family clears miss specialized keys.** `clearRoutePageCache`,
+   `clearRoutePageCacheByPath` (Settings plans) and the Splits mutation's
+   `invalidateMonth` predicate match `["route-page", {path}]`, but Month,
+   Splits, Imports and Settings data live under `month-page`, `splits-page`,
+   `imports-page`, `settings-page`. Probe: Settings account rename → Month at
+   the same identity still refetched and showed the new name (another path
+   refreshes it), so no stale UI was observed on that path.
+3. **Route-load `hasCachedPage` check** (`App.jsx` route-page effect) uses
+   `queryKeys.routePage(...)`, while the fetch uses `routeRequestKey`, so it is
+   always false for specialized routes: cached navigations still show the
+   loading label and bump `appShellLoadCount`. Cosmetic/readiness only.
+4. Summary implicit-range invalidation and the dead Splits helper (matrix).
+
+### Tests
+
+Unit (`tests/query-foundation.test.mjs`): "month route keys keep each
+person's page separate"; "a Month mutation for Tim invalidates only Tim's
+cached month page" (real QueryClient); "summary route keys translate view and
+range params like the summary query"; "implicit summary ranges stay keyed by
+the selected month"; "URL-to-key helpers accept URL params and normalized
+records alike"; "fetch and mutation invalidation build the same keys for
+household" / "… for person-tim" (month, entries, summary, import); "Entries
+keys use URL param names, so domain-named params cannot invalidate them";
+updated "routeRequestKey routes month to the dedicated month key". Against
+the old mapping (helpers kept, `routeRequestKey` reverted) 6 of these fail.
+
+E2E (`month-page.spec.js`) "switching the Month view to a person loads that
+person's page instead of the cached household page": reads Tim's figures from
+a direct load, guards that household differs, loads household, clicks Tim,
+requires a `month-page?view=person-tim` request, Tim label and Tim's planned
+and actual spend; negative: back to Household shows household figures.
+Against the old mapping it fails (no Tim request).
+
+### Commands and results (Node 22.12.0)
+
+| Command | Result |
+| --- | --- |
+| `node --import tsx --test tests/query-foundation.test.mjs` | Pass 29/29 |
+| `npm run test:unit` | Pass 248/248 |
+| `npm run typecheck` | Pass |
+| `npm run build` | Pass |
+| `month-page.spec.js` | Pass 20/20 |
+| `import-inbox-navigation`, `import-preview-auto-refresh`, `import-ledger-flow` | Pass 2, 6, 49 |
+| `npm run test:e2e` (full) | 181 passed, **1 failed**: `splits-viewer-amounts` › "split editor can choose the odd-cent recipient explicitly". Fails deterministically alone (2/2) and **identically at `506f3fd`** (pre-H02 worktree), so pre-existing: money is masked by default and the created card is absent from the snapshot. Tracked as a separate task |
+| `npm run test:e2e:smoke` | Pass, all 15 workflows |
+| `npm run audit` | Fail (the same 5 pre-existing advisories); therefore `npm run verify` as one command fails at step 1; its remaining steps were run individually above |
+| `npm run test:performance` | Pass 2/2 |
+| `git diff --check` | Pass |
+
+Performance (same harness/profiles as H01 run 3; not a budget): desktop cold
+median/p95 540/659 ms (H01: 557/689), warm Summary→Entries 44/75 ms (58/73),
+Entries→Summary 67/84 ms (63/79); mobile cold 2,590/2,655 ms (2,603/2,655),
+warm 99/166 and 103/119 ms (98/159, 98/115). Idle API unchanged (desktop 3,
+mobile 1). No measurable change, as expected for a key-shape fix.
+
+### Protected workflow evidence and remaining risk
+
+- Person separation: proven for Month (unit + E2E). Entries, Splits and
+  Summary keys were already per person.
+- Transition: while Tim's Month loads, the previous Household page stays on
+  screen with its own "Household" label (existing continuity for every
+  route; readiness is H03). It is never labelled Tim.
+- Drafts, privacy and URL contracts: unchanged (no panel code touched; smoke
+  money-field-editability and mobile continuity pass).
+- Behavior change to watch: Month now issues a request on the first switch to
+  each person instead of reusing household data — correct and expected.
+- Rollback: revert `a8176fc` then `403bb63`; they are independent.
+
+Next eligible step: H03. H07 must not treat `isInvalidated` or the
+`route-page` clears as reliable until mismatches 2–4 above are addressed.
