@@ -48,6 +48,8 @@ test("person splits view tones lent and borrowed amounts with income and expense
 test("split editor can choose the odd-cent recipient explicitly", async ({ page }) => {
   const description = `M1 recurring ${Date.now()}`;
 
+  // Money is hidden by default; this scenario asserts visible dollar amounts.
+  await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
   await page.goto("/");
   await reseedDemo(page);
 
