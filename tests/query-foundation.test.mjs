@@ -233,8 +233,23 @@ for (const viewId of ["household", "person-tim"]) {
       viewId
     });
     assert.deepEqual(invalidatedKeys(entriesClient.calls), [hashKey(entriesKey), hashKey(monthKey), hashKey(summaryKey)]);
+
+    const importClient = createFakeQueryClient();
+    await invalidateImportMutationQueries(importClient, {
+      entriesParams: entriesRequest.params,
+      monthKeys: [month],
+      scope,
+      viewId
+    });
+    assert.deepEqual(invalidatedKeys(importClient.calls), [hashKey(queryKeys.importsPage()), hashKey(entriesKey), hashKey(monthKey)]);
   });
 }
+
+test("Entries keys use URL param names, so domain-named params cannot invalidate them", () => {
+  const fetched = queryKeys.routeRequestKey(buildRoutePageRequest({ tabId: "entries", viewId: "person-tim", month: "2026-05" }));
+  assert.deepEqual(fetched, ["entries-page", { month: "2026-05", view: "person-tim" }]);
+  assert.notEqual(hashKey(queryKeys.entriesPage({ viewId: "person-tim", month: "2026-05" })), hashKey(fetched));
+});
 
 test("queryKeys.routeRequestKey keeps unsupported route pages on route-page keys", () => {
   assert.deepEqual(queryKeys.routeRequestKey({
