@@ -262,6 +262,23 @@ async function ensureDemoSchemaOnce(db: D1Database) {
   let shouldBackfillImportedPostDates = false;
   let shouldResetRolledBackStatementCertifications = false;
 
+  // Legacy repairs below record audit events, so the table must exist before
+  // any of them run. schema.sql does not create it.
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS audit_events (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        action TEXT NOT NULL,
+        detail TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (household_id) REFERENCES households(id)
+      )
+    `)
+    .run();
+
   await db.prepare(`
     CREATE TABLE IF NOT EXISTS monthly_plan_row_splits (
       id TEXT PRIMARY KEY,
@@ -692,21 +709,6 @@ async function ensureDemoSchemaOnce(db: D1Database) {
   ) {
     await db.prepare("ALTER TABLE statement_reconciliation_certificates ADD COLUMN certified_ledger_rows_json TEXT").run();
   }
-
-  await db
-    .prepare(`
-      CREATE TABLE IF NOT EXISTS audit_events (
-        id TEXT PRIMARY KEY,
-        household_id TEXT NOT NULL,
-        entity_type TEXT NOT NULL,
-        entity_id TEXT NOT NULL,
-        action TEXT NOT NULL,
-        detail TEXT NOT NULL,
-        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (household_id) REFERENCES households(id)
-      )
-    `)
-    .run();
 
   await db
     .prepare(`
