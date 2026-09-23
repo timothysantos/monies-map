@@ -52,13 +52,27 @@ export async function repairLegacyOcbcValueDatePostDates(db: D1Database) {
   `).bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID).run();
 
   const detail = `Updated ${result.meta?.changes ?? 0} legacy OCBC rows.`;
+  // Audit events belong to the household. A freshly migrated database has no
+  // household yet, so it has no ledger rows to repair and nothing to attribute.
+  // Audit before marking complete so a failed audit retries the repair on the
+  // next request instead of being skipped.
+  if (await hasDefaultHousehold(db)) {
+    await recordAuditEvent(db, {
+      entityType: "system",
+      entityId: OCBC_VALUE_DATE_REPAIR_KEY,
+      action: "post_date_repair",
+      detail
+    });
+  }
   await markRepairComplete(db, OCBC_VALUE_DATE_REPAIR_KEY, detail);
-  await recordAuditEvent(db, {
-    entityType: "system",
-    entityId: OCBC_VALUE_DATE_REPAIR_KEY,
-    action: "post_date_repair",
-    detail
-  });
+}
+
+async function hasDefaultHousehold(db: D1Database) {
+  const household = await db
+    .prepare("SELECT id FROM households WHERE id = ?")
+    .bind(DEFAULT_HOUSEHOLD_ID)
+    .first<{ id: string }>();
+  return Boolean(household);
 }
 
 async function markRepairComplete(db: D1Database, key: string, detail: string) {
