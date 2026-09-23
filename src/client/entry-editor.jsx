@@ -10,6 +10,7 @@ import { moniesClient } from "./monies-client-service";
 import { TotalsVisibilityToggle } from "./money-privacy";
 import { ResponsiveSelect } from "./responsive-select";
 import { CategoryGlyph } from "./ui-components";
+import { useRouteWorkBusy } from "./use-route-work-status";
 
 const {
   categories: categoryService,
@@ -60,6 +61,7 @@ export function EntryEditorFields({
     ?? formatService.formatEditableMinorInput(resolvedAmountMinor);
   const [amountDraft, setAmountDraft] = useState(resolvedAmountInput);
   const [categoryQuickSaveOpen, setCategoryQuickSaveOpen] = useState(false);
+  useRouteWorkBusy(categoryQuickSaveOpen);
   const [quickSaveCategoryName, setQuickSaveCategoryName] = useState("");
   const quickSaveCategoryNameRef = useRef("");
   const bankFactsLockMessage = "This row is statement certified. Description, date, posted date, wallet, amount, and type are locked to the saved statement. Use note, category, owner, or splits for annotations.";

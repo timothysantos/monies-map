@@ -37,6 +37,7 @@ import {
 import { buildRequestErrorMessage } from "./request-errors";
 import { deleteSplitExpense, updateSplitExpenseCategory, updateSplitExpenseNote } from "./splits-api";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
+import { useRouteWorkReport } from "./use-route-work-status";
 
 const ENTRIES_PAGE_PREFETCH_DELAY_MS = 1200;
 const ENTRIES_PAGE_PREFETCH_SPACING_MS = 650;
@@ -173,6 +174,35 @@ export function EntriesPanel({
     onRefresh: () => refreshEntriesPage({ bypassCache: true }),
     onEntryMutation: onInvalidateEntryMutation,
     onSplitMutation: onBroadcastSplitMutation
+  });
+  // Entries owns its page DTO, so it reports readiness for the requested
+  // month and view as well as every open editor or in-flight write.
+  useRouteWorkReport({
+    ready: !isEntriesPageLoading
+      && entriesPage.monthPage.month === selectedMonth
+      && entriesPage.viewId === entriesSourceView.id,
+    busy: showMobileFilters
+      || isQuickExpenseSaving
+      || quickExpensePendingKey !== ""
+      || pendingLinkedEntryId !== ""
+      || deletingCreatedSplitId !== ""
+      || Boolean(deleteConfirmation)
+      || Boolean(entryNoteSyncPrompt)
+      || isSyncingEntryNote
+      || Boolean(entryCategorySyncPrompt)
+      || isSyncingEntryCategory
+      || isMobileSplitPickerOpen
+      || isMobileSplitSelectorOpen
+      || Boolean(editingEntryId)
+      || showEntryComposer
+      || isSavingEntryDraft
+      || Boolean(savingEntryId)
+      || Boolean(deletingEntryId)
+      || Boolean(linkingTransferEntryId)
+      || Boolean(settlingTransferEntryId)
+      || Boolean(transferDialogEntryId)
+      || Boolean(refreshingTransferCandidatesEntryId)
+      || Boolean(addingToSplitsEntryId)
   });
   const openEntryComposerRef = useRef(openEntryComposer);
   const entryComposerEditorRef = useRef(null);

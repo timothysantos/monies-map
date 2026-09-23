@@ -30,6 +30,7 @@ import {
 } from "./ui-components";
 import { FinancialInsight } from "./financial-insight";
 import { PrivateMoney } from "./money-privacy";
+import { useRouteWorkReport } from "./use-route-work-status";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
 const {
   accounts: accountService,
@@ -49,6 +50,7 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
   const [monthNoteDialog, setMonthNoteDialog] = useState(null);
   const [isSavingMonthNote, setIsSavingMonthNote] = useState(false);
   const [monthNoteError, setMonthNoteError] = useState("");
+  useRouteWorkReport({ busy: Boolean(monthNoteDialog) || isSavingMonthNote });
   // Summary can mount while the route payload is still hydrating, so keep a
   // fully shaped local summary slice instead of reading nested fields directly.
   const safeSummaryPage = useMemo(() => ({

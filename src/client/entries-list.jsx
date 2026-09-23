@@ -8,6 +8,7 @@ import { EntryEditorFields, EntryTransferTools } from "./entry-editor";
 import { buildEntryRowDisplay, getEntryOwnerCue } from "./entry-row-display";
 import { moniesClient } from "./monies-client-service";
 import { PrivateMoney } from "./money-privacy";
+import { useRouteWorkBusy } from "./use-route-work-status";
 
 const {
   categories: categoryService,
@@ -92,6 +93,7 @@ export function EntriesDateGroups({
   const [splitPickerOptions, setSplitPickerOptions] = useState(splitGroupOptions);
   const splitPickerRefreshIdRef = useRef(0);
   const [refreshingDate, setRefreshingDate] = useState("");
+  useRouteWorkBusy(Boolean(splitPickerEntry) || refreshingDate !== "");
 
   async function handleAddEntryToSplits(entry, splitGroupId) {
     await onAddEntryToSplits(entry, splitGroupId === NON_GROUP_SPLIT_VALUE ? null : splitGroupId);

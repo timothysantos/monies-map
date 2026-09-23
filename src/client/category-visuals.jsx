@@ -5,6 +5,7 @@ import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { CategoryGlyph } from "./ui-components";
 import { PrivateMoney } from "./money-privacy";
+import { useRouteWorkBusy } from "./use-route-work-status";
 
 const LazySpendingMixRecharts = lazy(() => import("./spending-mix-recharts.jsx"));
 const { categories: categoryService, format: formatService } = moniesClient;
@@ -68,6 +69,7 @@ function SpendingMixChartFallback({ total, totalLabel, compact, resolvedHeight }
 export function CategoryAppearancePopover({ category, onChange }) {
   const [dialog, setDialog] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  useRouteWorkBusy(Boolean(dialog) || isSubmitting);
   const categoryDialog = useMemo(() => {
     if (!dialog || !category || dialog.categoryId !== category.id) {
       return dialog;

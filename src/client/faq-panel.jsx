@@ -3,8 +3,11 @@ import { messages } from "./copy/en-SG";
 import { CategoryGlyph } from "./ui-components";
 import { categories as defaultCategories } from "../domain/demo-data";
 import faqMarkdown from "../../docs/faq.md?raw";
+import { useRouteWorkReport } from "./use-route-work-status";
 
 export function FaqPanel({ viewLabel }) {
+  // Static content: ready as soon as it renders, never busy.
+  useRouteWorkReport();
   const sections = useMemo(() => parseFaqMarkdown(faqMarkdown), []);
   const faqCategories = useMemo(
     () => defaultCategories.slice().sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name)),

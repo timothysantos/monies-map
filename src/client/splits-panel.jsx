@@ -47,6 +47,7 @@ import {
   createSplitRefreshGuard
 } from "./splits-workflow";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
+import { useRouteWorkReport } from "./use-route-work-status";
 
 const { format: formatService } = moniesClient;
 
@@ -192,6 +193,24 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     clearSettlementDialogSnapshot,
     clearInlineSplitSnapshot
   } = useSplitEditState({ categoryOptions, people });
+  // The optimistic overlay alone is not counted: it can outlive a failed
+  // refresh, and isRefreshingDerived already covers the in-flight window.
+  useRouteWorkReport({
+    busy: Boolean(archiveDialog)
+      || showHistory
+      || Boolean(groupDialog)
+      || isSubmitting
+      || Boolean(splitNoteSyncPrompt)
+      || isSyncingSplitNote
+      || Boolean(splitCategorySyncPrompt)
+      || isSyncingSplitCategory
+      || isRefreshingDerived
+      || isCheckpointing
+      || Boolean(expenseDialog)
+      || Boolean(settlementDialog)
+      || Boolean(inlineSplitDraft)
+      || Boolean(deleteTarget)
+  });
 
   useEffect(() => {
     refreshGuardRef.current = refreshGuardRef.current ?? createSplitRefreshGuard();

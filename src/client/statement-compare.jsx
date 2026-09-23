@@ -4,6 +4,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { messages } from "./copy/en-SG";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
+import { useRouteWorkBusy } from "./use-route-work-status";
 
 const {
   accounts: accountService,
@@ -131,6 +132,7 @@ function StatementCompareDirectionMismatch({ candidate, categories, categorySele
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
+  useRouteWorkBusy(open || isSaving);
 
   function updateDraft(patch) {
     setDraft((current) => {
@@ -278,6 +280,7 @@ function StatementCompareMissingRow({ row, result, accounts, categories, categor
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
+  useRouteWorkBusy(open || isSaving);
 
   function updateDraft(patch) {
     setDraft((current) => {
