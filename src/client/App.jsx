@@ -57,7 +57,8 @@ import {
 import { fetchWithTimeout } from "./request-timeout";
 import { installMobileFocusVisibility } from "./mobile-focus-visibility";
 import { queryKeys, summaryPageKeyFromParams } from "./query-keys";
-import { loadRouteModule, warmRouteModule } from "./route-modules";
+import { loadRouteModule } from "./route-modules";
+import { useRouteWarmup } from "./use-route-warmup";
 import {
   buildRouteIdentity,
   buildRouteWorkKey,
@@ -416,17 +417,18 @@ export function App() {
   );
   // One key per active route and data context. Panels report readiness and
   // busy state against it; later warmup work reads the derived route work.
-  const activeRouteKey = useMemo(
-    () => buildRouteWorkKey(buildRouteIdentity({
+  const activeRouteIdentity = useMemo(
+    () => buildRouteIdentity({
       tabId: selectedTabId,
       viewId: selectedTabId === "summary" ? selectedViewId : routeViewId,
       month: selectedMonth,
       scope: selectedScope,
       summaryStart: selectedSummaryStart,
       summaryEnd: selectedSummaryEnd
-    })),
+    }),
     [routeViewId, selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart, selectedTabId, selectedViewId]
   );
+  const activeRouteKey = useMemo(() => buildRouteWorkKey(activeRouteIdentity), [activeRouteIdentity]);
   const [routeWorkRegistry] = useState(createRouteWorkRegistry);
   const [requiredWork] = useState(createRequiredWorkCounter);
 
@@ -542,8 +544,12 @@ export function App() {
 
   // Bump the local query epoch so stale responses cannot overwrite the latest
   // shell or page state.
+  // The state copy lets route warmup start a new generation on invalidation;
+  // existing readers keep using the ref.
+  const [queryEpoch, setQueryEpoch] = useState(0);
   const bumpQueryEpoch = useCallback(() => {
     queryEpochRef.current += 1;
+    setQueryEpoch((value) => value + 1);
   }, []);
 
   // Clear the shell cache and persisted shell payload when shell-relevant data
@@ -2187,6 +2193,9 @@ export function App() {
       window.__MONIES_MAP_ROUTE_WORK__ = routeWork;
     }
   }, [routeWork]);
+  // Route code warms only once this route is usable and quiet, plus on exact
+  // link intent; the click itself always loads through loadRouteModule.
+  const getNavIntentProps = useRouteWarmup({ routeIdentity: activeRouteIdentity, routeWork, queryEpoch });
   // Summary-dependent helpers reuse the same optional page slice so the
   // summary-specific code stays isolated from detail tabs.
   const summaryPage = pageView?.summaryPage ?? null;
@@ -2653,29 +2662,6 @@ export function App() {
     selectedScope,
     selectedTabId,
     selectedViewId
-  ]);
-
-  // Idle-time route module warming keeps tab switches fast without blocking
-  // the active screen.
-  useEffect(() => {
-    if (!appShell || appShellError || typeof window === "undefined" || window.navigator?.connection?.saveData) {
-      return undefined;
-    }
-
-    const idleHandle = scheduleIdleTask(() => {
-      const warmRouteIds = routeTabs.map((tab) => tab.id);
-      for (const routeId of warmRouteIds) {
-        if (routeId !== selectedTabId) {
-          warmRouteModule(routeId);
-        }
-      }
-    }, 900);
-
-    return () => cancelIdleTask(idleHandle);
-  }, [
-    appShell,
-    appShellError,
-    selectedTabId
   ]);
 
   // Keep the splits view pinned to a sensible default person when no explicit
@@ -3336,6 +3322,7 @@ export function App() {
             {primaryRouteTabs.map((tab) => (
               <NavLink
                 key={tab.id}
+                {...getNavIntentProps(tab.id)}
                 className={({ isActive }) => `tab ${isActive ? "is-active" : ""}`}
                 to={buildTabTarget(tab)}
                 title={tab.id === "settings" && pendingCategorySuggestionCount ? messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount) : undefined}
@@ -3346,6 +3333,7 @@ export function App() {
             {secondaryRouteTabs.map((tab) => (
               <NavLink
                 key={tab.id}
+                {...getNavIntentProps(tab.id)}
                 className={({ isActive }) => `tab tab-secondary ${isActive ? "is-active" : ""}`}
                 to={buildTabTarget(tab)}
                 title={tab.id === "settings" && pendingCategorySuggestionCount ? messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount) : undefined}
@@ -3365,6 +3353,7 @@ export function App() {
                     {secondaryRouteTabs.map((tab) => (
                       <NavLink
                         key={tab.id}
+                        {...getNavIntentProps(tab.id)}
                         className={({ isActive }) => `tab-overflow-link ${isActive ? "is-active" : ""}`}
                         to={buildTabTarget(tab)}
                         title={tab.id === "settings" && pendingCategorySuggestionCount ? messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount) : undefined}

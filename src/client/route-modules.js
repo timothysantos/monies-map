@@ -46,9 +46,3 @@ export function getRouteModuleState(routeId) {
   }
   return pending.has(routeId) ? "pending" : "idle";
 }
-
-// Speculative callers never surface a rejection; navigation will retry
-// through loadRouteModule and show the normal error boundary if it fails.
-export function warmRouteModule(routeId) {
-  return loadRouteModule(routeId).catch(() => undefined);
-}
