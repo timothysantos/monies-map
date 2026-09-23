@@ -18,8 +18,8 @@ verified on 2026-09-23 only.
 | H01 | P0 | Built-client harness and asset-cost report | Done (`506f3fd`; verify gate blocked by baseline advisories) | audit §H01 |
 | H01b | P0 | Seeded 1k/10k scale fixtures + measurement | Open (prerequisite for mobile data admission only) | — |
 | H02 | Prereq | Query identity characterization and repair | Done (`403bb63`, `a8176fc`) | audit §H02 |
-| H03 | Prereq | Ready/busy reporting from workflow owners | **Next** | — |
-| H04 | P1/P2m | Pure warmup policy | Open | — |
+| H03 | Prereq | Ready/busy reporting from workflow owners | Done (`1d9524b`, `d30d4f0`) | audit §H03 |
+| H04 | P1/P2m | Pure warmup policy | **Next** | — |
 | H05 | P1/P2m | Shared module loader, code-only scheduler | Open | — |
 | H06 | P2/P2m | Cancellation, leases, promotion | Open | — |
 | H07 | P2/P2m | One bounded optional data queue | Open | — |
@@ -89,7 +89,8 @@ Known baseline failures (record, do not "fix" inside unrelated tasks):
 | Failure | Status |
 | --- | --- |
 | `npm run verify` stops at `npm audit`: 5 advisories (browserslist, sharp via miniflare/wrangler) | Pre-existing; dependency upgrades are out of scope. Run the remaining verify steps individually and record both facts |
-| Full E2E: `splits-viewer-amounts` › odd-cent recipient fails deterministically | Pre-existing at `506f3fd` (money masked; created card absent); separate task |
+| Full E2E: `splits-viewer-amounts` › odd-cent recipient failed deterministically | Fixed by `703cb87` (test now reveals money) |
+| Functional Playwright uses fixed ports 5173/8787 with `reuseExistingServer`, and every worktree's Worker shares its own `.wrangler` D1 | Parallel sessions silently test each other's servers. Check the port owner (`lsof -a -p <pid> -d cwd`) first; if taken, use a temporary untracked config on free ports with `reuseExistingServer:false` and a separate `--persist-to` directory (see audit §H03) |
 | `money-field-editability` › settings opening balance intermittently loses typed characters | Pre-existing flake; separate task. Rerun the file alone once; record both results |
 | Fresh `schema.sql` database: first data request returns 500, retry succeeds | Pre-existing app defect; separate task. `scripts/performance-preflight.sql` works around it only in the harness |
 
@@ -511,6 +512,26 @@ Integration checklist: no new requests (compare request lists of
 Gates: unit, typecheck, smoke, full E2E.
 Exit: audit lists each owner, its busy/ready expressions, and test names.
 
+### H03 as built (differences from the design above)
+
+- `deriveRouteWork` has one more ready reason, `route-data-pending` (App's
+  own route data not yet fetched for the active request), between
+  `no-reference-data` and `no-report`.
+- Delegated children use `useRouteWorkBusy(busy)` (reports only while busy)
+  instead of `useRouteWorkReport`; panels keep `useRouteWorkReport`. A page
+  kept on screen reports under an inactive key, so its open editor still
+  blocks while it cannot make the new route ready.
+- `useRouteWorkSnapshot` encodes the aggregate as a string, so App re-renders
+  only when readiness/busy for the active key changes.
+- Month needed only `isRemovingMonthRow`: the note and plan-link dialogs stay
+  open until their saves finish, so the open dialog already covers them.
+- Splits does not count `optimisticSplitsPage` (it can outlive a failed
+  refresh); `isRefreshingDerived` covers the in-flight window.
+- Imports preview-review children are not wired: they only exist while a
+  preview draft exists, which already makes the panel busy.
+- Reference data is not counted as required work; the route element is not
+  rendered without it and `no-reference-data` gates readiness.
+
 ### H03 owner inventory
 
 (Filled from the 2026-09-23 code survey; re-verify names before use.)
@@ -789,6 +810,10 @@ export function createRouteWarmupScheduler({
 
 Step D: `use-route-warmup.js` + App wiring
 
+- H03 measured that the existing all-route warmup often fires before Summary
+  is usable and then costs ≈100 ms of desktop cold load (audit §H03). Gating
+  automatic warmup on `routeWork.usable` is the fix; verify the bimodal cold
+  distribution disappears.
 - Inputs from App: `routeWork` (H03), route identity, `queryEpoch`. Add
   `const [queryEpoch, setQueryEpoch] = useState(0)` and make
   `bumpQueryEpoch` also call `setQueryEpoch((value) => value + 1)`; keep

@@ -239,3 +239,21 @@ hidden, without blocking paste, drag-and-drop, parsing, mapping, or commit. On m
 above the bottom navigation, and stacks above the Entries or Splits add button
 when one is present. Financial Insight stays hidden while totals are masked
 because its prose can expose the same figures.
+
+## Route Work Status Boundary
+
+The shell knows whether the active route is ready and whether any protected
+workflow is open, from the owners themselves, never from DOM queries, network
+idle or an old page left on screen. `route-work-status.js` is pure: the route
+key (`buildRouteIdentity` → `buildRouteWorkKey`), an owner registry, a
+required-fetch counter and `deriveRouteWork`, which returns
+`{ routeKey, ready, busy, requiredCount, usable, reason }`.
+`use-route-work-status.js` holds the React bindings. App wraps the rendered
+route in `RouteWorkProvider` with the active key, or `null` while a previous
+page is still shown. Route panels call `useRouteWorkReport({ ready, busy })`;
+only Entries reports real readiness because it owns its page DTO, and App
+checks its own route data against the active request. Delegated editors and
+list rows call `useRouteWorkBusy(busy)`, which registers nothing until they
+are busy. Required refreshes the shell awaits outside its loading counter run
+inside `withRequiredWork`. Optional prefetch, banner and AI work is never
+counted. Owners keep their drafts; the registry holds only booleans.
