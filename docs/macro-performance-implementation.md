@@ -91,7 +91,7 @@ Known baseline failures (record, do not "fix" inside unrelated tasks):
 | `npm run verify` stops at `npm audit`: 5 advisories (browserslist, sharp via miniflare/wrangler) | Pre-existing; dependency upgrades are out of scope. Run the remaining verify steps individually and record both facts |
 | Full E2E: `splits-viewer-amounts` › odd-cent recipient fails deterministically | Pre-existing at `506f3fd` (money masked; created card absent); separate task |
 | `money-field-editability` › settings opening balance intermittently loses typed characters | Pre-existing flake; separate task. Rerun the file alone once; record both results |
-| Fresh `schema.sql` database: first data request returns 500, retry succeeds | Pre-existing app defect; separate task. `scripts/performance-preflight.sql` works around it only in the harness |
+| Fresh `schema.sql` database: first data request returns 500, retry succeeds | Fixed: `audit_events` is created before legacy repairs and the OCBC repair skips its audit without a default household. `scripts/performance-preflight.sql` is deleted; regression in `tests/fresh-schema-initialization.test.mjs` |
 
 ## Global Rules
 
