@@ -58,6 +58,19 @@ import { fetchWithTimeout } from "./request-timeout";
 import { installMobileFocusVisibility } from "./mobile-focus-visibility";
 import { queryKeys, summaryPageKeyFromParams } from "./query-keys";
 import {
+  buildRouteIdentity,
+  buildRouteWorkKey,
+  createRequiredWorkCounter,
+  createRouteWorkRegistry,
+  deriveRouteWork,
+  withRequiredWork
+} from "./route-work-status";
+import {
+  RouteWorkProvider,
+  useRequiredWorkCount,
+  useRouteWorkSnapshot
+} from "./use-route-work-status";
+import {
   invalidateImportMutationQueries,
   invalidateEntriesMutationQueries,
   invalidateImportsPageQueries,
@@ -359,6 +372,9 @@ export function App() {
   const [referenceDataError, setReferenceDataError] = useState("");
   const [summaryPageData, setSummaryPageData] = useState(null);
   const [summaryAccountPillsData, setSummaryAccountPillsData] = useState(null);
+  // Summary data is not replaced until the next response arrives, so keep the
+  // request it belongs to; readiness compares it with the active request.
+  const [summaryPageDataRequestKey, setSummaryPageDataRequestKey] = useState("");
   const [entriesExternalRefreshToken, setEntriesExternalRefreshToken] = useState(0);
   const [loginRegistrationDraft, setLoginRegistrationDraft] = useState(null);
   const [loginRegistrationError, setLoginRegistrationError] = useState("");
@@ -425,6 +441,21 @@ export function App() {
     () => getRoutePageRequestKey(routePageRequest),
     [routePageRequest]
   );
+  // One key per active route and data context. Panels report readiness and
+  // busy state against it; later warmup work reads the derived route work.
+  const activeRouteKey = useMemo(
+    () => buildRouteWorkKey(buildRouteIdentity({
+      tabId: selectedTabId,
+      viewId: selectedTabId === "summary" ? selectedViewId : routeViewId,
+      month: selectedMonth,
+      scope: selectedScope,
+      summaryStart: selectedSummaryStart,
+      summaryEnd: selectedSummaryEnd
+    })),
+    [routeViewId, selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart, selectedTabId, selectedViewId]
+  );
+  const [routeWorkRegistry] = useState(createRouteWorkRegistry);
+  const [requiredWork] = useState(createRequiredWorkCounter);
 
   const updateLoadingStatus = useCallback((patch) => {
     setLoadingStatus((current) => ({
@@ -1057,13 +1088,15 @@ export function App() {
       clearSummaryAccountPillsCache();
     }
 
-    const [nextSummaryPage, nextSummaryAccountPills] = await Promise.all([
+    const requestKey = summaryPageParams.toString();
+    const [nextSummaryPage, nextSummaryAccountPills] = await withRequiredWork(requiredWork, "summary refresh", () => Promise.all([
       fetchSummaryPageData(summaryPageParams, { bypassCache }),
       fetchSummaryAccountPillsData(summaryAccountPillsParams, { bypassCache })
-    ]);
+    ]));
 
     setSummaryPageData(nextSummaryPage);
     setSummaryAccountPillsData(nextSummaryAccountPills);
+    setSummaryPageDataRequestKey(requestKey);
     return {
       summaryPage: nextSummaryPage,
       summaryAccountPills: nextSummaryAccountPills
@@ -1073,6 +1106,7 @@ export function App() {
     clearSummaryPageCache,
     fetchSummaryAccountPillsData,
     fetchSummaryPageData,
+    requiredWork,
     summaryAccountPillsParams,
     summaryPageParams
   ]);
@@ -1123,10 +1157,10 @@ export function App() {
       params?.startMonth,
       params?.endMonth
     ));
-    const [data] = await Promise.all([
+    const [data] = await withRequiredWork(requiredWork, "month refresh", () => Promise.all([
       fetchRoutePageData(request, { bypassCache: true }),
       refreshShell ? refreshAppShellInBackground().catch(() => null) : Promise.resolve(null)
-    ]);
+    ]));
     setRoutePageData(data);
     setRoutePageDataRequestKey(getRoutePageRequestKey(request));
     return data;
@@ -1134,6 +1168,7 @@ export function App() {
     clearSummaryPageCache,
     fetchRoutePageData,
     refreshAppShellInBackground,
+    requiredWork,
     selectedMonth,
     selectedScope,
     selectedViewId
@@ -1178,7 +1213,7 @@ export function App() {
     if (refreshShell) {
       tasks.push(refreshReferenceDataInBackground().catch(() => null));
     }
-    const [data] = await Promise.all(tasks);
+    const [data] = await withRequiredWork(requiredWork, "imports refresh", () => Promise.all(tasks));
     setRoutePageData(data);
     setRoutePageDataRequestKey(getRoutePageRequestKey(request));
 
@@ -1191,6 +1226,7 @@ export function App() {
     fetchRoutePageData,
     queryClient,
     refreshReferenceDataInBackground,
+    requiredWork,
     selectedMonth,
     selectedScope,
     selectedViewId
@@ -1338,7 +1374,7 @@ export function App() {
       tasks.push(refreshReferenceDataInBackground().catch(() => null));
     }
 
-    const [data, ...taskResults] = await Promise.all(tasks);
+    const [data, ...taskResults] = await withRequiredWork(requiredWork, "settings refresh", () => Promise.all(tasks));
     if (selectedTabId === "settings") {
       setRoutePageData(data);
       setRoutePageDataRequestKey(getRoutePageRequestKey(refreshDescription.routeRequest));
@@ -1357,6 +1393,7 @@ export function App() {
     queryClient,
     refreshAppShellInBackground,
     refreshReferenceDataInBackground,
+    requiredWork,
     selectedTabId
   ]);
 
@@ -1367,11 +1404,11 @@ export function App() {
       return null;
     }
 
-    const data = await fetchRoutePageData(request, { bypassCache: true });
+    const data = await withRequiredWork(requiredWork, "route background refresh", () => fetchRoutePageData(request, { bypassCache: true }));
     setRoutePageData(data);
     setRoutePageDataRequestKey(getRoutePageRequestKey(request));
     return data;
-  }, [fetchRoutePageData]);
+  }, [fetchRoutePageData, requiredWork]);
 
   // Broadcast split invalidation details to other tabs after the local cache
   // has already been cleared.
@@ -1464,7 +1501,7 @@ export function App() {
     if (refreshShell || invalidateEntries || invalidateMonth || invalidateSummary) {
       tasks.push(refreshAppShellInBackground().catch(() => null));
     }
-    const [data] = await Promise.all(tasks);
+    const [data] = await withRequiredWork(requiredWork, "splits refresh", () => Promise.all(tasks));
     setRoutePageData(data);
     setRoutePageDataRequestKey(getRoutePageRequestKey(request));
 
@@ -1487,6 +1524,7 @@ export function App() {
     clearSplitMutationCaches,
     fetchRoutePageData,
     refreshAppShellInBackground,
+    requiredWork,
     selectedMonth,
     selectedScope,
     selectedViewId
@@ -1995,6 +2033,7 @@ export function App() {
 
         setSummaryPageData(nextSummaryPage);
         setSummaryAccountPillsData(nextSummaryAccountPills);
+        setSummaryPageDataRequestKey(summaryPageParams.toString());
         setRoutePageError("");
       })
       .catch((error) => {
@@ -2004,6 +2043,7 @@ export function App() {
 
         setSummaryPageData(null);
         setSummaryAccountPillsData(null);
+        setSummaryPageDataRequestKey("");
         setRoutePageError(describeAppShellError(error));
         reportLoadingIssue("Summary load failed", error);
       })
@@ -2130,6 +2170,50 @@ export function App() {
   // back to the last settled route only while the next page hydrates.
   const pageView = currentPageView ?? lastSettledPageViewRef.current;
   const renderedTabId = currentPageView ? selectedTabId : lastSettledTabIdRef.current ?? selectedTabId;
+  // Route data held by the shell counts as ready only when it was fetched for
+  // the active request; a previous page kept on screen never does.
+  const routeDataReady = selectedTabId === "summary"
+    ? Boolean(summaryPageData && summaryAccountPillsData) && summaryPageDataRequestKey === summaryPageParams.toString()
+    : selectedTabId === "faq" || Boolean(currentRoutePageData);
+  const routeWorkSnapshot = useRouteWorkSnapshot(routeWorkRegistry, activeRouteKey);
+  const requiredWorkCount = useRequiredWorkCount(requiredWork);
+  const loginRegistrationBlocking = Boolean(loginRegistrationDraft) || isRegisteringLogin || isUnregisteringLogin;
+  const routeWork = useMemo(
+    () => deriveRouteWork({
+      routeKey: activeRouteKey,
+      hasPageView: Boolean(currentPageView),
+      isAppShellLoading,
+      hasShellError: Boolean(appShellError),
+      hasRouteError: Boolean(routePageError),
+      hasReferenceData: Boolean(referenceData),
+      routeDataReady,
+      snapshot: routeWorkSnapshot,
+      requiredCount: requiredWorkCount,
+      mobileContextOpen,
+      loginRegistrationBlocking
+    }),
+    [
+      activeRouteKey,
+      appShellError,
+      currentPageView,
+      isAppShellLoading,
+      loginRegistrationBlocking,
+      mobileContextOpen,
+      referenceData,
+      requiredWorkCount,
+      routeDataReady,
+      routePageError,
+      routeWorkSnapshot.busy,
+      routeWorkSnapshot.hasReport,
+      routeWorkSnapshot.ready
+    ]
+  );
+  useEffect(() => {
+    // Test/development read hook only; absent from production builds.
+    if (import.meta.env.MODE !== "production") {
+      window.__MONIES_MAP_ROUTE_WORK__ = routeWork;
+    }
+  }, [routeWork]);
   // Summary-dependent helpers reuse the same optional page slice so the
   // summary-specific code stays isolated from detail tabs.
   const summaryPage = pageView?.summaryPage ?? null;
@@ -2388,7 +2472,11 @@ export function App() {
     syncAppShellAfterMutation
   ]);
   const routeBody = pageView
-    ? renderedRouteElement
+    ? (
+        <RouteWorkProvider registry={routeWorkRegistry} routeKey={currentPageView ? activeRouteKey : null}>
+          {renderedRouteElement}
+        </RouteWorkProvider>
+      )
     : <RouteChunkLoadingFallback status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />;
   const showImportInboxBanner = Boolean(
     importInboxBanner

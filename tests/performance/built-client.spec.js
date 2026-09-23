@@ -156,6 +156,8 @@ test("built Summary cold load, Summary/Entries warm navigation and idle traffic"
       warmupMetadata = parseWarmupCosts(await page.locator("script#monies-warmup-costs").textContent());
       expect(warmupMetadata, "built HTML must carry valid warmup cost metadata").not.toBeNull();
       expect(paths.some((pathname) => pathname.includes("warmup-costs"))).toBe(false);
+      // The route-work read hook is development-only.
+      expect(await page.evaluate(() => "__MONIES_MAP_ROUTE_WORK__" in window)).toBe(false);
     }
 
     const vitals = await page.evaluate(() => window.__macroPerf);
