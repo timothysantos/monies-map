@@ -1161,10 +1161,9 @@ export function App() {
 
     if (invalidateImports) {
       await invalidateImportMutationQueries(queryClient, {
-        entriesParams: invalidateEntries ? {
-          viewId: selectedViewId,
-          month: selectedMonth
-        } : undefined,
+        entriesParams: invalidateEntries
+          ? buildEntriesPageParams({ viewId: selectedViewId, month: selectedMonth })
+          : undefined,
         invalidateSummaryAccountPills: true,
         monthKeys: invalidateMonth ? [selectedMonth] : [],
         scope: selectedScope,
