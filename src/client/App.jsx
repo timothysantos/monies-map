@@ -57,6 +57,7 @@ import {
 import { fetchWithTimeout } from "./request-timeout";
 import { installMobileFocusVisibility } from "./mobile-focus-visibility";
 import { queryKeys, summaryPageKeyFromParams } from "./query-keys";
+import { loadRouteModule, warmRouteModule } from "./route-modules";
 import {
   buildRouteIdentity,
   buildRouteWorkKey,
@@ -89,20 +90,6 @@ import {
 import { buildSummaryMutationRefreshPlan } from "./summary-workflow";
 import { getCurrentMonthKey } from "../lib/month";
 
-// Lazy route loaders keep the initial shell small while still splitting each
-// feature panel into its own bundle.
-const routeModuleLoaders = {
-  entries: () => import("./entries-panel.jsx"),
-  faq: () => import("./faq-panel.jsx"),
-  imports: () => import("./imports-panel.jsx"),
-  month: () => import("./month-panel.jsx"),
-  settings: () => import("./settings-panel.jsx"),
-  splits: () => import("./splits-panel.jsx"),
-  summary: () => import("./summary-panel.jsx")
-};
-// Track preloaded route bundles so the app does not request the same chunk
-// repeatedly during idle warmup.
-const routeModulePreloads = new Map();
 const TRANSIENT_WORKER_RESPONSE_SNIPPETS = [
   "worker restarted mid-request",
   "socket hang up",
@@ -136,14 +123,14 @@ async function fetchTextWithTransientWorkerRetry(url, options = {}) {
   return lastResult;
 }
 
-const EntriesPanel = lazy(() => routeModuleLoaders.entries().then((module) => ({ default: module.EntriesPanel })));
+const EntriesPanel = lazy(() => loadRouteModule("entries").then((module) => ({ default: module.EntriesPanel })));
 const EntriesFilterStack = lazy(() => import("./entries-filter-stack.jsx").then((module) => ({ default: module.EntriesFilterStack })));
-const FaqPanel = lazy(() => routeModuleLoaders.faq().then((module) => ({ default: module.FaqPanel })));
-const ImportsPanel = lazy(() => routeModuleLoaders.imports().then((module) => ({ default: module.ImportsPanel })));
-const MonthPanel = lazy(() => routeModuleLoaders.month().then((module) => ({ default: module.MonthPanel })));
-const SettingsPanel = lazy(() => routeModuleLoaders.settings().then((module) => ({ default: module.SettingsPanel })));
-const SplitsPanel = lazy(() => routeModuleLoaders.splits().then((module) => ({ default: module.SplitsPanel })));
-const SummaryPanel = lazy(() => routeModuleLoaders.summary().then((module) => ({ default: module.SummaryPanel })));
+const FaqPanel = lazy(() => loadRouteModule("faq").then((module) => ({ default: module.FaqPanel })));
+const ImportsPanel = lazy(() => loadRouteModule("imports").then((module) => ({ default: module.ImportsPanel })));
+const MonthPanel = lazy(() => loadRouteModule("month").then((module) => ({ default: module.MonthPanel })));
+const SettingsPanel = lazy(() => loadRouteModule("settings").then((module) => ({ default: module.SettingsPanel })));
+const SplitsPanel = lazy(() => loadRouteModule("splits").then((module) => ({ default: module.SplitsPanel })));
+const SummaryPanel = lazy(() => loadRouteModule("summary").then((module) => ({ default: module.SummaryPanel })));
 
 // Shared UI constants used by the month and summary pickers.
 const SUMMARY_FOCUS_OVERALL = "overall";
@@ -208,20 +195,6 @@ function getRoutePageRequestKey(request) {
 
   const query = request.params.toString();
   return query ? `${request.path}?${query}` : request.path;
-}
-
-// Warm route bundles ahead of time so navigation stays fast without changing
-// which route data is actually rendered.
-function preloadRouteModule(routeId) {
-  const loader = routeModuleLoaders[routeId];
-  if (!loader) {
-    return;
-  }
-  if (!routeModulePreloads.has(routeId)) {
-    routeModulePreloads.set(routeId, loader().catch(() => {
-      routeModulePreloads.delete(routeId);
-    }));
-  }
 }
 
 // Schedule a small idle task so speculative work never competes with the
@@ -2693,7 +2666,7 @@ export function App() {
       const warmRouteIds = routeTabs.map((tab) => tab.id);
       for (const routeId of warmRouteIds) {
         if (routeId !== selectedTabId) {
-          preloadRouteModule(routeId);
+          warmRouteModule(routeId);
         }
       }
     }, 900);
