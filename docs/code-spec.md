@@ -150,6 +150,14 @@ Each slice owns:
 - selectors that shape query data for UI
 - tests for route contract and invalidation behavior
 
+URL parameter names (`view`, `summary_start`, `summary_end`) differ from key
+field names (`viewId`, `startMonth`, `endMonth`). Translate them only in
+`query-keys.js` (`monthPageKeyFromParams`, `summaryPageKeyFromParams`), never
+inline. A route's fetch key and its mutation invalidation key must be equal
+for every person; `tests/query-foundation.test.mjs` holds that matrix. Keys
+that still use URL names (Entries, Splits) must be built from the same URL
+params on both sides.
+
 Each slice must not own:
 
 - another slice's hidden query dependencies
