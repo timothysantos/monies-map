@@ -56,7 +56,7 @@ import {
 } from "./request-errors";
 import { fetchWithTimeout } from "./request-timeout";
 import { installMobileFocusVisibility } from "./mobile-focus-visibility";
-import { queryKeys } from "./query-keys";
+import { queryKeys, summaryPageKeyFromParams } from "./query-keys";
 import {
   invalidateImportMutationQueries,
   invalidateEntriesMutationQueries,
@@ -1680,13 +1680,7 @@ export function App() {
   // Summary prefetch warms the range DTO and account pills together because
   // both are needed for the tab to render without fallback gaps.
   const prefetchSummaryPage = useCallback(async ({ pageParams, accountPillsParams }) => {
-    const summaryQueryKey = queryKeys.summaryPage({
-      viewId: pageParams.get("view") ?? "household",
-      month: pageParams.get("month") ?? "",
-      scope: pageParams.get("scope") ?? "direct_plus_shared",
-      startMonth: pageParams.get("summary_start") ?? "",
-      endMonth: pageParams.get("summary_end") ?? ""
-    });
+    const summaryQueryKey = summaryPageKeyFromParams(pageParams);
     const pillsQueryKey = queryKeys.summaryAccountPills({
       viewId: accountPillsParams.get("view") ?? "household"
     });

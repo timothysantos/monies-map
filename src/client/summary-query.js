@@ -1,16 +1,6 @@
-import { queryKeys } from "./query-keys.js";
+import { queryKeys, summaryPageKeyFromParams } from "./query-keys.js";
 import { buildRequestErrorMessage } from "./request-errors.js";
 import { fetchWithTimeout } from "./request-timeout.js";
-
-function getSummaryPageKeyFromParams(params) {
-  return queryKeys.summaryPage({
-    viewId: params.get("view") ?? "household",
-    month: params.get("month") ?? "",
-    scope: params.get("scope") ?? "direct_plus_shared",
-    startMonth: params.get("summary_start") ?? "",
-    endMonth: params.get("summary_end") ?? ""
-  });
-}
 
 function getSummaryAccountPillsKeyFromParams(params) {
   return queryKeys.summaryAccountPills({
@@ -100,7 +90,7 @@ export async function fetchSummaryPageQuery(queryClient, params, options = {}) {
     ...options,
     params,
     path: "/api/summary-page",
-    queryKey: getSummaryPageKeyFromParams(params)
+    queryKey: summaryPageKeyFromParams(params)
   });
 }
 

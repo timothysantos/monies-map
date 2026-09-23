@@ -109,6 +109,47 @@ test.describe("month page", () => {
     await reseedDemo(page);
   });
 
+  test("switching the Month view to a person loads that person's page instead of the cached household page", async ({ page }) => {
+    const metricValue = (label) => page.locator(".metric").filter({ hasText: label }).first();
+    const readMetrics = async () => ({
+      plannedSpend: (await metricValue("Planned spend").innerText()).replace(/^PLANNED SPEND\s*/i, "").trim(),
+      actualSpend: (await metricValue("Actual spend").innerText()).replace(/^ACTUAL SPEND\s*/i, "").trim()
+    });
+
+    // Tim's figures as a direct load shows them, before any household cache exists.
+    await gotoMonthPage(page, { view: "person-tim" });
+    await expect(page.locator(".month-label-view")).toHaveText("Tim");
+    const timMetrics = await readMetrics();
+
+    await page.goto("about:blank");
+    await gotoMonthPage(page, { view: "household" });
+    await expect(page.locator(".month-label-view")).toHaveText("Household");
+    const householdMetrics = await readMetrics();
+    // Guard: the fixture must give the two views different figures, or this
+    // test could not detect household data shown under Tim.
+    expect(householdMetrics.plannedSpend).not.toBe(timMetrics.plannedSpend);
+
+    const timRequest = page.waitForRequest((request) => {
+      const url = new URL(request.url());
+      return url.pathname === "/api/month-page"
+        && url.searchParams.get("view") === "person-tim"
+        && url.searchParams.get("month") === "2026-05";
+    }, { timeout: 15_000 });
+    await page.getByRole("button", { name: "Tim", exact: true }).first().click();
+    await timRequest;
+    await expect(page).toHaveURL(/view=person-tim/);
+    await expect(page.locator(".month-label-view")).toHaveText("Tim");
+    await expect(metricValue("Planned spend")).toContainText(timMetrics.plannedSpend);
+    await expect(metricValue("Actual spend")).toContainText(timMetrics.actualSpend);
+
+    // Switching back may reuse the household cache, but must never show Tim's figures.
+    await page.getByRole("button", { name: "Household", exact: true }).first().click();
+    await expect(page).toHaveURL(/view=household/);
+    await expect(page.locator(".month-label-view")).toHaveText("Household");
+    await expect(metricValue("Planned spend")).toContainText(householdMetrics.plannedSpend);
+    await expect(metricValue("Actual spend")).toContainText(householdMetrics.actualSpend);
+  });
+
   test("optional monthly narrative opens the normal note editor without changing the ledger or saved note", async ({ page }) => {
     const before = await loadMonthPageData(page);
     await gotoMonthPage(page);
