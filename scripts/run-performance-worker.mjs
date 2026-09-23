@@ -103,8 +103,6 @@ function runD1File(file, label) {
 
 const schemaError = runD1File(path.join(root, "schema.sql"), "schema setup");
 if (schemaError) await fail(schemaError);
-const preflightError = runD1File(path.join(root, "scripts", "performance-preflight.sql"), "preflight");
-if (preflightError) await fail(preflightError);
 
 server = spawn(process.execPath, [wrangler, "dev", "--config", configPath, "--local", "--ip", "127.0.0.1", "--port", String(port), "--persist-to", persistencePath, "--log-level", "error", "--show-interactive-dev-session=false"], {
   cwd: root,
