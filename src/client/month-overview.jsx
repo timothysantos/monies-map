@@ -7,6 +7,7 @@ import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { MetricCard } from "./ui-components";
 import { PrivateMoney } from "./money-privacy";
+import { useRouteWorkBusy } from "./use-route-work-status";
 
 const { accounts: accountService, format: formatService } = moniesClient;
 
@@ -28,6 +29,7 @@ export function MonthPanelHeader({
 }) {
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  useRouteWorkBusy(resetDialogOpen || deleteDialogOpen);
 
   return (
     <div className="panel-head month-panel-head">

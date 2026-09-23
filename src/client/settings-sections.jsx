@@ -7,6 +7,7 @@ import { moniesClient } from "./monies-client-service";
 import { buildSettingsTransferReviewModel, SETTINGS_TRANSFER_PAGE_SIZE } from "./settings-transfer-review-model";
 import { findDuplicateCategoryMatchRules } from "./settings-workflow";
 import { CategoryGlyph, DeleteRowButton } from "./ui-components";
+import { useRouteWorkBusy } from "./use-route-work-status";
 
 const { accounts: accountService, format: formatService } = moniesClient;
 const APPLE_PAY_SHORTCUT_URL = "/shortcuts/monies-map-apple-pay-api.shortcut";
@@ -102,6 +103,7 @@ export function SettingsShortcutApiSection({
 }) {
   const [isApiKeyVisible, setIsApiKeyVisible] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
+  useRouteWorkBusy(isInstalling);
   const accountsById = useMemo(() => new Map(accounts.map((account) => [account.id, account])), [accounts]);
   const orderedAccounts = draft.defaultAccountPriorityIds
     .map((accountId) => accountsById.get(accountId))
@@ -560,6 +562,7 @@ export function SettingsTrustSection({
   onResolveException
 }) {
   const [draftOpen, setDraftOpen] = useState(false);
+  useRouteWorkBusy(draftOpen);
   const [draft, setDraft] = useState(() => buildEmptyExceptionDraft(accounts));
   const visibleExceptions = exceptions.slice(0, 12);
   const openExceptionCount = exceptions.filter((item) => item.status === "open").length;

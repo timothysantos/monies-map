@@ -72,6 +72,7 @@ import {
 import { inspectCsv } from "../lib/csv";
 import { getCurrentMonthKey } from "../lib/month";
 import { parseStatementText } from "../lib/statement-import";
+import { useRouteWorkReport } from "./use-route-work-status";
 
 const DEFAULT_MONTH_KEY = getCurrentMonthKey();
 const { format: formatService, imports: importService } = moniesClient;
@@ -187,6 +188,24 @@ export function SettingsPanel({
   const [shortcutSettingsDraft, setShortcutSettingsDraft] = useState(() => buildShortcutSettingsDraft(safeSettingsPage.shortcutSettings, accounts));
   const [shortcutSettingsError, setShortcutSettingsError] = useState("");
   const [shortcutSettingsStatus, setShortcutSettingsStatus] = useState("");
+  useRouteWorkReport({
+    busy: isSubmitting
+      || emptyStateDialogOpen
+      || reloadDialogOpen
+      || dismissTransfersConfirmOpen
+      || Boolean(personDialog)
+      || Boolean(accountDialog)
+      || Boolean(categoryDialog)
+      || Boolean(categoryRuleDialog)
+      || Boolean(reconciliationDialog)
+      || statementCompareStatus?.tone === "active"
+      || Boolean(transferDialogEntryId)
+      || Boolean(refreshingTransferCandidatesEntryId)
+      || Boolean(rankingTransferCandidatesEntryId)
+      || Boolean(linkingTransferEntryId)
+      || Boolean(settlingTransferEntryId)
+      || isRefreshingTransfers
+  });
 
   useEffect(() => {
     setShortcutSettingsDraft(buildShortcutSettingsDraft(safeSettingsPage.shortcutSettings, accounts));

@@ -32,6 +32,7 @@ import {
   parseStatementText,
   statementRowsToCsv
 } from "../lib/statement-import";
+import { useRouteWorkReport } from "./use-route-work-status";
 
 const DEFAULT_SOURCE_LABEL = "Imported CSV";
 const DEFAULT_STATEMENT_IMPORT_META = { sourceType: "csv", parserKey: "generic_csv" };
@@ -315,6 +316,18 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     ]
   );
   const importDraftExists = importWorkflowModel.hasDraft;
+  // Any import draft, preview edit or write in flight is protected work.
+  useRouteWorkReport({
+    busy: importDraftExists
+      || importWorkflowModel.isWorkflowLocked
+      || isParsingStatement
+      || isSubmitting
+      || isRecentImportsRefreshing
+      || isExplainingMismatch
+      || isRankingDuplicates
+      || Boolean(accountDialog)
+      || intakeQueue.length > 0
+  });
 
   useEffect(() => {
     if (!csvText || isSubmitting || isParsingStatement || importWorkflowModel.isWorkflowLocked) {

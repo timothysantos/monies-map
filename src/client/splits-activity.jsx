@@ -5,6 +5,7 @@ import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { SplitExpenseFields, SplitSettlementFields } from "./splits-dialogs";
 import { CategoryGlyph } from "./ui-components";
+import { useRouteWorkBusy } from "./use-route-work-status";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 
@@ -71,6 +72,7 @@ export function SplitActivityGroups({
   const inlineEditorRef = useRef(null);
   const editingDraftKey = editingDraft ? `${editingDraft.kind}:${editingDraft.id}` : "";
   const [refreshingDate, setRefreshingDate] = useState("");
+  useRouteWorkBusy(refreshingDate !== "");
 
   useEffect(() => {
     if (!editingDraft || archived) {

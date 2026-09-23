@@ -27,6 +27,7 @@ import { buildMonthMutationRefreshPlan } from "./month-workflow";
 import { ResponsiveSelect } from "./responsive-select";
 import { getRowDateValue } from "./table-helpers";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
+import { useRouteWorkReport } from "./use-route-work-status";
 
 const MONTH_SECTION_STATE_CACHE = new Map();
 const MOBILE_ADD_DIALOG_QUERY = "(max-width: 760px), (max-width: 1024px) and (orientation: portrait)";
@@ -66,6 +67,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   const [actionsOpen, setActionsOpen] = useState(false);
   const [useMobileMonthSheet, setUseMobileMonthSheet] = useState(false);
   const [isMonthDataRefreshing, setIsMonthDataRefreshing] = useState(false);
+  const [isRemovingMonthRow, setIsRemovingMonthRow] = useState(false);
   const previousMonthActualCacheRef = useRef(new Map());
   const [tableSorts, setTableSorts] = useState({
     income: null,
@@ -812,14 +814,19 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       return;
     }
 
-    await fetch("/api/month-plan/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        rowId,
-        month: view.monthPage.month
-      })
-    });
+    setIsRemovingMonthRow(true);
+    try {
+      await fetch("/api/month-plan/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rowId,
+          month: view.monthPage.month
+        })
+      });
+    } finally {
+      setIsRemovingMonthRow(false);
+    }
     setPlanSections((current) => current.map((item) => (
       item.key === sectionKey
         ? { ...item, rows: item.rows.filter((planRow) => planRow.id !== rowId) }
@@ -1162,14 +1169,19 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       return;
     }
 
-    await fetch("/api/month-plan/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        rowId,
-        month: view.monthPage.month
-      })
-    });
+    setIsRemovingMonthRow(true);
+    try {
+      await fetch("/api/month-plan/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rowId,
+          month: view.monthPage.month
+        })
+      });
+    } finally {
+      setIsRemovingMonthRow(false);
+    }
     setIncomeRows((current) => current.filter((item) => item.id !== rowId));
     setEditingRowId((current) => (current === rowId ? null : current));
     refreshMonthDataInBackground();
@@ -1278,6 +1290,27 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [isResettingMonth, setIsResettingMonth] = useState(false);
   const [isDeletingMonth, setIsDeletingMonth] = useState(false);
+  // Every open editor, typed confirmation or in-flight write blocks optional
+  // background work while it is open.
+  useRouteWorkReport({
+    busy: Boolean(editingRowId)
+      || Boolean(noteDialog)
+      || Boolean(planLinkDialog)
+      || Boolean(monthNoteDialog)
+      || Boolean(mobileAddDialog)
+      || actionsOpen
+      || isSavingMonthNote
+      || isDraftingMonthNote
+      || isSavingMonthRow
+      || isRemovingMonthRow
+      || isMonthDataRefreshing
+      || hasPendingDerivedMonthData
+      || isDuplicating
+      || isResettingMonth
+      || isDeletingMonth
+      || resetMonthText !== ""
+      || deleteMonthText !== ""
+  });
 
   async function handleDuplicateMonth() {
     setIsDuplicating(true);

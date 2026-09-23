@@ -1,6 +1,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { Check, ChevronDown, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useRouteWorkBusy } from "./use-route-work-status";
 
 export function ResponsiveSelect({
   value,
@@ -21,6 +22,8 @@ export function ResponsiveSelect({
   );
   const isControlledOpen = typeof open === "boolean";
   const isOpen = isControlledOpen ? open : isOpenInternal;
+  // An open mobile picker sheet covers the page, so it blocks optional work.
+  useRouteWorkBusy(isOpen);
 
   function updateOpen(nextOpen) {
     if (!isControlledOpen) {
