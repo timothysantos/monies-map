@@ -92,7 +92,7 @@ Known baseline failures (record, do not "fix" inside unrelated tasks):
 | Full E2E: `splits-viewer-amounts` › odd-cent recipient failed deterministically | Fixed by `703cb87` (test now reveals money) |
 | Functional Playwright uses fixed ports 5173/8787 with `reuseExistingServer`, and every worktree's Worker shares its own `.wrangler` D1 | Parallel sessions silently test each other's servers. Check the port owner (`lsof -a -p <pid> -d cwd`) first; if taken, use a temporary untracked config on free ports with `reuseExistingServer:false` and a separate `--persist-to` directory (see audit §H03) |
 | `money-field-editability` › settings opening balance intermittently loses typed characters | Pre-existing flake; separate task. Rerun the file alone once; record both results |
-| Fresh `schema.sql` database: first data request returns 500, retry succeeds | Pre-existing app defect; separate task. `scripts/performance-preflight.sql` works around it only in the harness |
+| Fresh `schema.sql` database: first data request returns 500, retry succeeds | Fixed: `audit_events` is created before legacy repairs and the OCBC repair skips its audit without a default household. `scripts/performance-preflight.sql` is deleted; regression in `tests/fresh-schema-initialization.test.mjs` |
 
 ## Global Rules
 
