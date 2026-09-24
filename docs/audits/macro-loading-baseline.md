@@ -669,3 +669,100 @@ destination, desktop mode selection) fails at least one test: 11/11 caught.
 - Rollback: revert the H04 commit (no callers).
 
 Next eligible step: H05.
+
+## H05: Shared loader and code-only scheduler
+
+Date: 2026-09-23/24. Baseline `5d94362` (H04). Commits: `176509c` (route
+loaders moved to `route-modules.js`, same 23 chunk names), `f464bac` (shared
+cost parser + `missingRouteBytes`), `d21fbe4` (scheduler), `23a5109` (hook,
+App wiring, all-route idle warmup removed). Status: **complete**.
+
+### Changed files and public contracts
+
+| File | Contract |
+| --- | --- |
+| `src/client/route-modules.js` | `ROUTE_IDS`, `loadRouteModule(routeId)` (one promise per route; failed load forgotten so the next caller retries), `getRouteModuleState` (`idle`/`pending`/`loaded`). App's `lazy()` adapters use it; `routeModuleLoaders`/`routeModulePreloads`/`preloadRouteModule` deleted |
+| `src/client/route-warmup-costs.js` | `parseWarmupCosts` (moved; `scripts/route-asset-report.mjs` re-exports it), `readWarmupCosts(doc)` (memoized per document, null when absent/invalid), `missingRouteBytes(costs, routeId, loadedRouteIds)` (null = unknown) |
+| `src/client/route-warmup-scheduler.js` | `createRouteWarmupScheduler({ clock, idle, loadModule, readInput, evaluate, selectCandidates, costFor })` → `updateContext`, `offerIntent`, `dispose`, `inspect` |
+| `src/client/use-route-warmup.js` | `useRouteWarmup({ routeIdentity, routeWork, queryEpoch })` → `getNavIntentProps(routeId)` (`onPointerEnter`, `onPointerLeave`, `onFocus`, `onPointerDown`) |
+| `src/client/App.jsx` | `activeRouteIdentity`; `queryEpoch` state bumped with the ref; hook call; intent props on all three NavLink sites (`to`, class, title unchanged); all-route idle effect removed (banner/staged-prefetch data effects untouched until H07) |
+
+Differences from the handoff are listed in the implementation doc's "H05 as
+built". No API request or data effect changed.
+
+### Tests
+
+- `tests/route-warmup-scheduler.test.mjs` (22, fake clock + deferred
+  imports): W01, W02, W03, W04 (unit), W05, W06, W07, W08, W09, W16, W17,
+  W20, StrictMode create/dispose/create, intent replaces automatic, epoch
+  generation without budget refill, already-loaded not charged, unknown cost
+  mobile vs desktop, off/intent-only overrides (including override read at
+  fire time), synchronous loader throw, quiet-retry floor.
+- `tests/route-warmup-costs.test.mjs` (7): route IDs match `ROUTE_IDS`, one
+  shared parser, shared chunk counted once and subtracted when loaded, zero
+  only when all loaded, unknown → null, document read once, malformed →
+  null.
+- `tests/e2e/route-warmup.spec.js` (9, Vite dev): mobile — only Entries after
+  usable + quiet; unknown cost → none; open editor blocks, closing restarts
+  quiet; touch pointer-down loads before tap; save-data blocks speculation
+  but click loads. Desktop — one route after 1.2 s, never the route set;
+  hover and keyboard focus warm exact routes; a fast mouse sweep warms
+  nothing; `off` leaves navigation working. Against `5d94362` (old all-route
+  warmup) 7/9 fail; save-data passes on both (preserved behavior).
+- Mutation testing of the scheduler: every non-equivalent mutation fails or
+  hangs a test (the hang found the busy-loop hazard fixed with the 250 ms
+  retry floor); survivors are the timer's redundant generation check and the
+  equivalent "continue after global denial" mutant. Removing the hover dwell
+  fails the sweep E2E (4 routes warmed).
+
+### Commands and results (Node 22.12.0)
+
+| Command | Result |
+| --- | --- |
+| `npm run test:unit` | Pass 346/346 |
+| `npm run typecheck`, `npm run build`, `git diff --check` | Pass |
+| `tests/client-route-chunks.test.mjs` | Pass (no change needed) |
+| Build chunk set before/after Step A | Same 23 chunk names (hashes cascade from the entry change) |
+| Full functional E2E (isolated ports 5311/8911, own D1) | Run 1: 194 passed, 2 failed (`splits-edit-expense` 2 tests); both pass alone (2×) and in the same file order (41/41). Run 2 after the hover change: **197/197** |
+| `npm run test:performance` | Pass in every quiet run |
+| `npm run audit` | Not rerun; same pre-existing advisories (no dependency change) |
+| `npm run test:e2e:smoke` | Not run (fixed port 5173 used by other sessions); the full run contains every smoke file |
+
+### Performance (interleaved A/B vs `5d94362`, quiet machine, load ≈8–10)
+
+Cohorts: base ×2, H05 ×3, alternating (an earlier overnight A/B was discarded:
+the machine slept mid-run and mobile cohorts timed out on both sides).
+
+| Measure | Base (H04) | H05 |
+| --- | ---: | ---: |
+| Desktop cold median / p95 (n=10 / 15) | 553 / 790 ms | **474** / 933 ms |
+| Desktop cold raw | 711, 553, 455, 457, 567, 790, 579, 630, 467, 491 | 933, 475, 474, 462, 463, 695, 630, 450, 464, 462, 557, 467, 536, 474, 467 |
+| Mobile cold median / p95 | 2,671 / 2,890 ms | **2,192** / 2,693 ms |
+| JS before usable, desktop | 20 files / 355 KB (median) | 8 files / 179 KB |
+| JS before usable, mobile | 18 files / 275 KB | 8 files / 179 KB |
+| Other route panels before usable (per sample) | 2–6 | 0 in all 30 H05 samples |
+| Warm Summary→Entries median / p95, desktop | 62 / 97 ms | 55 / 81 ms |
+| Warm Entries→Summary, desktop | 65 / 85 ms | 67 / 88 ms |
+| Warm Summary→Entries, mobile | 108 / 185 ms | 109 / 188 ms |
+| Warm Entries→Summary, mobile | 109 / 133 ms | 111 / 167 ms |
+| Idle 30 s JS | 0 (all loaded before usable) | 6 files / 31 KB (Entries, after usable) |
+| Idle 30 s API (desktop / mobile) | 3 / 1 | 3, 3, 1 / 1 (data effects unchanged; the H07 target) |
+
+The H03 bimodal cold distribution came from the all-route warmup racing
+Summary readiness; with warmup gated on `routeWork.usable`, desktop cold
+samples cluster at ≈465 ms and mobile cold falls ≈480 ms (−18%). The
+remaining desktop outliers (557–933 ms) are not explained by route chunks
+(zero other panels load before usable) and stay open for H10.
+
+### Remaining risk
+
+- Real devices and WebKit are not measured (Chromium emulation only).
+- Automatic mobile warmup depends on the build cost block; if it is missing
+  or invalid, mobile falls back to intent-only by design.
+- Scroll events re-arm the timer on every event (cheap clear/set); throttling
+  was not needed in tests but is unmeasured on low-end devices.
+- Rollback: revert `23a5109` (restores the old behaviour only if the old
+  effect is also restored; simplest is reverting `23a5109`, `d21fbe4`,
+  `f464bac`, `176509c` in that order).
+
+Next eligible step: H06.
