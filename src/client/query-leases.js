@@ -55,6 +55,26 @@ export function createRequiredLeases() {
 
 export const requiredLeases = createRequiredLeases();
 
+// How long the latest required fetch that reached the network took. Mobile
+// data warmup reads it as a recent network-health signal; a reading older
+// than maxAgeMs is unknown, and unknown never admits data.
+export function createRequiredTiming({ now = () => performance.now(), maxAgeMs = 5 * 60 * 1000 } = {}) {
+  let latest = null;
+  return {
+    start() {
+      const startedAt = now();
+      return () => {
+        latest = { durationMs: now() - startedAt, at: now() };
+      };
+    },
+    read() {
+      return latest && now() - latest.at <= maxAgeMs ? latest.durationMs : null;
+    }
+  };
+}
+
+export const requiredTiming = createRequiredTiming();
+
 function abortError(message) {
   return new DOMException(message, "AbortError");
 }
@@ -71,6 +91,7 @@ export async function fetchQueryWithLease(queryClient, {
   bypassCache = false,
   signal,
   leases = requiredLeases,
+  timing = requiredTiming,
   abortMessage = "Request aborted.",
   retry = false
 }) {
@@ -88,7 +109,14 @@ export async function fetchQueryWithLease(queryClient, {
 
     const options = {
       queryKey,
-      queryFn: ({ signal: querySignal }) => fetcher({ signal: querySignal }),
+      // Only successful network fetches are timed: cache hits and failures
+      // say nothing about how fast the network is right now.
+      queryFn: async ({ signal: querySignal }) => {
+        const finish = timing.start();
+        const data = await fetcher({ signal: querySignal });
+        finish();
+        return data;
+      },
       retry
     };
     let data;
