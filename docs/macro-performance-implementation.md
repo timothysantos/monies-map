@@ -22,7 +22,7 @@ verified on 2026-09-23 only.
 | H04 | P1/P2m | Pure warmup policy | Done (`0adf7a4`) | audit §H04 |
 | H05 | P1/P2m | Shared module loader, code-only scheduler | Done (`176509c`, `f464bac`, `d21fbe4`, `23a5109`) | audit §H05 |
 | H06 | P2/P2m | Cancellation, leases, promotion | Done (`dc3c229`..`8770a06`); draft flake resolved (`6573bdc`) | audit §H06 |
-| H07 | P2/P2m | One bounded optional data queue | Done (`6d998d2`..`9fb2bc9`); mobile data off until H01b | audit §H07 |
+| H07 | P2/P2m | One bounded optional data queue | Done (`6d998d2`..`9fb2bc9`); mobile Entries data admitted after H01b (`a009cd1`, `fd5fbfb`) | audit §H07, §Mobile data admission |
 | H08 | P3 | Optional AI readiness | Done | `22f2840`, `f87ae55` |
 | H09 | P4 | Full request/initialization timing | Done | `94a02f6`, `c1dd539` |
 | H10 | Closure | Measured comparison, first delivery | Done (`d2ec630`); no regression limit exceeded | audit §H10 |
@@ -1053,7 +1053,7 @@ As built:
 - The banner is read from the Imports query cache through a cache
   subscription; it never fetches by itself (mobile shows it only after an
   Imports visit or when an import mutation refreshes the cache).
-- `WARMUP_ADMISSIONS` is empty until H01b, so no mobile data warmup yet.
+- `WARMUP_ADMISSIONS` was empty until H01b. Since `fd5fbfb` it admits the Entries page (gzip bytes), and required fetches are timed for `recentRequiredDurationMs` (`a009cd1`).
 
 Tests: W14, W15, W19 plus: mobile eligible → exactly one data request per
 visit; mobile without connection info → zero data; desktop → at most two
