@@ -3,6 +3,7 @@ import { ChevronDown } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { messages } from "./copy/en-SG";
+import { focusFieldUnlessEditing } from "./deferred-focus";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 import { TotalsVisibilityToggle } from "./money-privacy";
@@ -194,8 +195,7 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
     }
 
     const timeout = window.setTimeout(() => {
-      amountInputRef.current?.focus({ preventScroll: true });
-      amountInputRef.current?.select?.();
+      focusFieldUnlessEditing(amountInputRef.current, { select: true });
     }, 80);
 
     return () => window.clearTimeout(timeout);
@@ -441,8 +441,7 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
     }
 
     const timeout = window.setTimeout(() => {
-      amountInputRef.current?.focus({ preventScroll: true });
-      amountInputRef.current?.select?.();
+      focusFieldUnlessEditing(amountInputRef.current, { select: true });
     }, 80);
 
     return () => window.clearTimeout(timeout);
