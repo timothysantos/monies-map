@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
+import { isEditableElement } from "./deferred-focus.js";
 import { ROUTE_IDS, getRouteModuleState, loadRouteModule } from "./route-modules.js";
 import { missingRouteBytes, readWarmupCosts } from "./route-warmup-costs.js";
 import { buildVisitKey, evaluateWarmup, selectWarmupCandidates, selectWarmupMode } from "./route-warmup-policy.js";
@@ -10,19 +11,10 @@ import { createRouteWarmupScheduler } from "./route-warmup-scheduler.js";
 // context lives in refs, so unrelated rerenders never reset the quiet period.
 // Test override: window.__MONIES_MAP_WARMUP_MODE__ = "off" | "intent-only".
 
-const NON_TEXT_INPUT_TYPES = new Set(["button", "checkbox", "color", "file", "image", "radio", "range", "reset", "submit"]);
 const INTERACTION_EVENTS = ["pointerdown", "keydown", "wheel", "touchstart"];
 // A mouse sweeping across the tab strip is not intent; warm only after the
 // pointer rests on a link this long.
 const HOVER_INTENT_DELAY_MS = 100;
-
-function isEditableTarget(target) {
-  const element = target?.closest?.("input, textarea, select, [contenteditable]");
-  if (!element || element.getAttribute?.("contenteditable") === "false") {
-    return false;
-  }
-  return element.tagName !== "INPUT" || !NON_TEXT_INPUT_TYPES.has((element.type ?? "").toLowerCase());
-}
 
 function matchQuery(query) {
   return typeof window !== "undefined" && typeof window.matchMedia === "function" ? window.matchMedia(query) : null;
@@ -129,13 +121,13 @@ export function useRouteWarmup({ routeIdentity, routeWork, queryEpoch }) {
       notify();
     };
     const onFocusIn = (event) => {
-      if (isEditableTarget(event.target)) {
+      if (isEditableElement(event.target)) {
         editableFocusedRef.current = true;
         notify();
       }
     };
     const onFocusOut = (event) => {
-      if (editableFocusedRef.current && isEditableTarget(event.target) && !isEditableTarget(event.relatedTarget)) {
+      if (editableFocusedRef.current && isEditableElement(event.target) && !isEditableElement(event.relatedTarget)) {
         editableFocusedRef.current = false;
         lastInteractionAtRef.current = now();
         notify();
