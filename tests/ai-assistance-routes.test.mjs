@@ -33,26 +33,32 @@ const FACTS = {
 
 // Every statement succeeds. `quotaChanges` is what the daily-usage upsert
 // reports (0 = allowance used up); `usedUnits` is read back afterwards.
-function createFakeDb({ quotaChanges = 1, usedUnits = 1 } = {}) {
+// `rows(text, args)` may return rows for all()/first(); `bound` records each
+// executed statement with its bound values.
+function createFakeDb({ quotaChanges = 1, usedUnits = 1, rows = () => undefined } = {}) {
   const sql = [];
+  const bound = [];
   const statement = (text) => {
+    let args = [];
+    const record = () => { sql.push(text); bound.push({ text, args }); };
     const self = {
-      bind() { return self; },
+      bind(...values) { args = values; return self; },
       async run() {
-        sql.push(text);
+        record();
         return { success: true, meta: { changes: /ai_assist_daily_usage/.test(text) ? quotaChanges : 1 } };
       },
-      async all() { sql.push(text); return { results: [] }; },
+      async all() { record(); return { results: rows(text, args) ?? [] }; },
       async first() {
-        sql.push(text);
-        return /ai_assist_daily_usage/.test(text) ? { used_units: usedUnits } : null;
+        record();
+        return /ai_assist_daily_usage/.test(text) ? { used_units: usedUnits } : rows(text, args)?.[0] ?? null;
       },
-      async raw() { sql.push(text); return []; }
+      async raw() { record(); return []; }
     };
     return self;
   };
   return {
     sql,
+    bound,
     prepare: (text) => statement(text),
     async batch(statements) { return statements.map(() => ({ results: [] })); },
     async exec() { return {}; }
@@ -188,6 +194,49 @@ test("import ranking scores complete pairs by embedding similarity", async () =>
 test("category rule suggestions with no categorized evidence propose nothing", async () => {
   const payload = await (await post({ DB: createFakeDb() }, "/api/ai-assist/category-rule-suggestions", {})).json();
   assert.deepEqual(payload, { ok: true, available: false, proposed: 0, reason: "There are not enough categorized expenses to propose a rule." });
+});
+
+test("category rule suggestions read the real household's examples and record only verified proposals", async () => {
+  const examples = [
+    { description: "GRAB RIDE 1", category_name: "Transport" },
+    { description: "GRAB RIDE 2", category_name: "Transport" },
+    { description: "COLD STORAGE CLEMENTI", category_name: "Groceries" },
+    { description: "COLD STORAGE BUGIS", category_name: "Groceries" }
+  ];
+  const db = createFakeDb({
+    rows: (text, args) => {
+      if (/FROM transactions/.test(text)) {
+        return args[0] === "household-1" ? examples : [];
+      }
+      if (/SELECT id FROM categories/.test(text)) {
+        // Only Transport exists, so a Groceries proposal cannot be verified.
+        return args[1] === "Transport" ? [{ id: "cat-transport" }] : [];
+      }
+      return undefined;
+    }
+  });
+  const ai = stubAi({ response: JSON.stringify({ proposals: [
+    { pattern: "GRAB", categoryName: "Transport", indexes: [0, 1] },
+    // Rejected by the route: the indexes point at another category's evidence.
+    { pattern: "COLD", categoryName: "Transport", indexes: [1, 2] },
+    // Passes the evidence check, but verification finds no such category and refuses it.
+    { pattern: "COLD STORAGE", categoryName: "Groceries", indexes: [2, 3] }
+  ] }) });
+
+  const payload = await (await post({ DB: db, AI: ai, AI_ASSIST_ENABLED: "true", AI_ASSIST_DAILY_LIMIT: "12" }, "/api/ai-assist/category-rule-suggestions", {})).json();
+
+  const examplesQuery = db.bound.find((call) => /FROM transactions/.test(call.text));
+  const verifiedLookups = db.bound.filter((call) => /SELECT id FROM categories/.test(call.text)).map((call) => call.args);
+  assert.deepEqual(verifiedLookups, [["household-1", "Transport"], ["household-1", "Groceries"]]);
+  assert.deepEqual(examplesQuery.args, ["household-1"]);
+  assert.deepEqual(payload, { ok: true, available: true, proposed: 1, remaining: 11 });
+  const inserts = db.bound.filter((call) => /INSERT INTO category_match_rule_suggestions/.test(call.text));
+  assert.equal(inserts.length, 1);
+  assert.deepEqual(inserts[0].args.slice(1), ["household-1", "GRAB", "cat-transport", 2, JSON.stringify(["GRAB RIDE 1", "GRAB RIDE 2"])]);
+  // A proposal is only ever a pending suggestion: nothing writes a live rule.
+  assert.equal(db.bound.some((call) => /INSERT INTO category_match_rules\b/.test(call.text)), false);
+  const audit = db.bound.find((call) => /INSERT INTO audit_events/.test(call.text));
+  assert.equal(audit.args[4], "category_match_rule_suggestion_ai_proposed");
 });
 
 test("import explanation without a mismatch explains nothing", async () => {
