@@ -26,6 +26,7 @@ import {
   type FinancialInsightFacts
 } from "../domain/ai-assistance-insights";
 import { loadTransferMatchCandidates, recordVerifiedAiCategoryMatchSuggestion } from "../domain/app-repository";
+import { DEFAULT_HOUSEHOLD_ID } from "../domain/app-repository-constants";
 import { buildMonthPageDto } from "../domain/pages/month-page";
 import { getCurrentMonthKey } from "../lib/month";
 import type { ImportPreviewDto, PersonScope } from "../types/dto";
@@ -122,7 +123,7 @@ export async function handleAiAssistRoute(request: Request, url: URL, env: AiAss
         ORDER BY transactions.transaction_date DESC
         LIMIT 120
       `)
-      .bind("household-default")
+      .bind(DEFAULT_HOUSEHOLD_ID)
       .all<{ description: string; category_name: string }>();
     const grouped = groupAiCategoryExamples(examples.results);
     if (!grouped.length) {

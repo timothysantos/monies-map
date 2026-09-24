@@ -1677,6 +1677,16 @@ All 12 Worker-level tests passed before the move and after it.
 household id is `"household-1"`, so it never finds examples. The move kept
 it byte-identical.
 
+Fixed after H13: the examples query now binds `DEFAULT_HOUSEHOLD_ID`. A
+route contract test checks that the query uses the real household id, and
+that a valid AI proposal only becomes a pending suggestion after
+`recordVerifiedAiCategoryMatchSuggestion` accepts it (it refuses an unknown
+category). The daily allowance counter in `reserveDailyAiBudget` keeps its
+`"household-default"` key on purpose, now named `AI_ALLOWANCE_COUNTER_KEY`.
+It is one cost guard for the whole deployment, not a household record.
+Nothing joins on it, and changing it would reset the day's used units on
+deploy.
+
 ### H12a and H13 gates
 
 | Check | Result |
