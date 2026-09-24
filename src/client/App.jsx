@@ -16,9 +16,6 @@ import {
   useSearchParams
 } from "react-router-dom";
 import {
-  APP_SYNC_CHANNEL,
-  APP_SYNC_EVENT_TYPES,
-  APP_SYNC_STORAGE_KEY,
   broadcastAppShellRefresh,
   buildEntryMutationSyncEvent,
   buildSummaryMutationSyncEvent,
@@ -67,6 +64,8 @@ import { installMobileFocusVisibility } from "./mobile-focus-visibility";
 import { queryKeys, summaryPageKeyFromParams } from "./query-keys";
 import { fetchQueryWithLease } from "./query-leases";
 import { loadRouteModule } from "./route-modules";
+import { useAppShellState } from "./use-app-shell-state";
+import { useAppSyncSubscription } from "./use-app-sync-subscription";
 import { useReferenceData } from "./use-reference-data";
 import { useRouteData } from "./use-route-data";
 import { useSummaryData } from "./use-summary-data";
@@ -198,8 +197,7 @@ export function App() {
   // App-level shell state and caches live here; everything below derives the
   // active route from that data instead of maintaining a second store.
   const queryClient = useQueryClient();
-  const [appShell, setAppShell] = useState(null);
-  const [appShellError, setAppShellError] = useState("");
+  const { appShell, appShellError, appShellOwner } = useAppShellState();
   const [appShellLoadCount, setAppShellLoadCount] = useState(0);
   // Loading state is separate from shell state so route and shell fetches can
   // report progress without mutating the active payloads.
@@ -655,25 +653,31 @@ export function App() {
   // previous shell error. Page errors stay: a page that failed before the
   // shell arrived must still reach its error screen.
   const loadAppShell = useCallback(async (signal, { bypassCache = false } = {}) => {
-    const data = await fetchAppShellData(appShellParams, { bypassCache, signal });
-
-    setAppShellError("");
-    setAppShell(data);
-    return data;
-  }, [appShellParams, fetchAppShellData]);
+    const token = appShellOwner.begin();
+    try {
+      const data = await fetchAppShellData(appShellParams, { bypassCache, signal });
+      appShellOwner.apply(token, data);
+      return data;
+    } catch (error) {
+      throw appShellOwner.markIfSuperseded(token, error);
+    }
+  }, [appShellOwner, appShellParams, fetchAppShellData]);
 
   // Normalize shell fetch failures into the app-shell error banner and the
   // loading status tracker.
   const handleAppShellFailure = useCallback((error) => {
-    setAppShell(null);
-    setAppShellError(describeAppShellError(error));
+    // A shell request that a newer one already replaced is not a failure.
+    if (appShellOwner.isSuperseded(error)) {
+      return;
+    }
+    appShellOwner.failLatest(describeAppShellError(error));
     reportLoadingIssue("Load failed", error);
     updateLoadingStatus({
       label: "Dashboard load failed",
       detail: "App shell request did not complete",
       percent: 100
     });
-  }, [reportLoadingIssue, updateLoadingStatus]);
+  }, [appShellOwner, reportLoadingIssue, updateLoadingStatus]);
 
   // Reload the shell from the network and optionally broadcast the refresh to
   // other tabs once the new payload is ready.
@@ -700,12 +704,12 @@ export function App() {
   // Refresh the shell in the background without surfacing a full loading state
   // to the user.
   const refreshAppShellInBackground = useCallback(async () => {
+    const token = appShellOwner.begin();
     clearAppShellCache();
     const data = await fetchAppShellData(appShellParams, { bypassCache: true });
-    setAppShellError("");
-    setAppShell(data);
+    appShellOwner.apply(token, data);
     return data;
-  }, [appShellParams, clearAppShellCache, fetchAppShellData]);
+  }, [appShellOwner, appShellParams, clearAppShellCache, fetchAppShellData]);
 
   // Fetch the active route page and shape it into the current screen payload.
   const fetchRoutePageData = useCallback(async (request, { bypassCache = false, signal } = {}) => {
@@ -1489,6 +1493,8 @@ export function App() {
     const shouldUseEntriesShell = !hasCachedAppShell && selectedTabId === "entries";
     const finishAppShellLoad = hasCachedAppShell ? null : beginAppShellLoad();
 
+    // The Entries warm start applies twice under one shell token.
+    const warmStartToken = shouldUseEntriesShell ? appShellOwner.begin() : null;
     void (async () => {
       try {
         if (shouldUseEntriesShell) {
@@ -1496,8 +1502,7 @@ export function App() {
             signal: controller.signal
           });
           if (!controller.signal.aborted) {
-            setAppShellError("");
-            setAppShell(shellData);
+            appShellOwner.apply(warmStartToken, shellData);
           }
 
           const fullData = await fetchAppShellData(appShellParams, {
@@ -1505,8 +1510,7 @@ export function App() {
             signal: controller.signal
           });
           if (!controller.signal.aborted) {
-            setAppShellError("");
-            setAppShell(fullData);
+            appShellOwner.apply(warmStartToken, fullData);
           }
           return;
         }
@@ -1528,15 +1532,14 @@ export function App() {
               signal: controller.signal
             });
             if (!controller.signal.aborted) {
-              setAppShellError("");
-              setAppShell(fallbackData);
+              appShellOwner.apply(warmStartToken, fallbackData);
             }
             return;
           } catch (fallbackError) {
             if (fallbackError instanceof DOMException && fallbackError.name === "AbortError") {
               return;
             }
-            handleAppShellFailure(fallbackError);
+            handleAppShellFailure(appShellOwner.markIfSuperseded(warmStartToken, fallbackError));
             return;
           }
         }
@@ -1556,6 +1559,7 @@ export function App() {
   }, [
     beginAppShellLoad,
     appShellCacheKey,
+    appShellOwner,
     appShellParams,
     fetchAppShellData,
     fetchEntriesShellData,
@@ -1569,109 +1573,27 @@ export function App() {
   ]);
 
   // Listen for cross-tab shell refreshes and split mutations so every open tab
-  // converges on the same canonical state.
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    let channel = null;
-    if ("BroadcastChannel" in window) {
-      channel = new window.BroadcastChannel(APP_SYNC_CHANNEL);
-      syncChannelRef.current = channel;
-      channel.onmessage = (event) => {
-        if (event.data?.type === APP_SYNC_EVENT_TYPES.appShellRefresh) {
-          clearAppShellCache();
-          clearRoutePageCache();
-          const finishAppShellLoad = beginAppShellLoad();
-          void Promise.all([
-            loadAppShell().catch(handleAppShellFailure),
-            referenceDataOwner.refreshOrShowError("Reference data refresh failed")
-          ])
-            .finally(finishAppShellLoad);
-          return;
-        }
-
-        if (event.data?.type === APP_SYNC_EVENT_TYPES.splitMutation) {
-          void handleRemoteSplitMutation(event.data);
-          return;
-        }
-
-        if (event.data?.type === APP_SYNC_EVENT_TYPES.entryMutation) {
-          void handleRemoteEntryMutation(event.data);
-          return;
-        }
-
-        if (event.data?.type === APP_SYNC_EVENT_TYPES.summaryMutation) {
-          void handleRemoteSummaryMutation(event.data);
-        }
-      };
-    }
-
-    const handleStorage = (event) => {
-      if (event.key !== APP_SYNC_STORAGE_KEY || !event.newValue) {
-        return;
-      }
-
-      let payload = null;
-      try {
-        payload = JSON.parse(event.newValue);
-      } catch {
-        return;
-      }
-
-      if (payload?.type === APP_SYNC_EVENT_TYPES.appShellRefresh) {
-        clearAppShellCache();
-        clearRoutePageCache();
+  // converges on the same canonical state. A shell refresh arriving through
+  // the storage fallback also clears the Summary caches.
+  useAppSyncSubscription(syncChannelRef, {
+    onShellRefresh: (source) => {
+      clearAppShellCache();
+      clearRoutePageCache();
+      if (source === "storage") {
         clearSummaryPageCache();
         clearSummaryAccountPillsCache();
-        const finishAppShellLoad = beginAppShellLoad();
-        void Promise.all([
-          loadAppShell().catch(handleAppShellFailure),
-          referenceDataOwner.refreshOrShowError("Reference data refresh failed")
-        ])
-          .finally(finishAppShellLoad);
-        return;
       }
-
-      if (payload?.type === APP_SYNC_EVENT_TYPES.splitMutation) {
-        void handleRemoteSplitMutation(payload);
-        return;
-      }
-
-      if (payload?.type === APP_SYNC_EVENT_TYPES.entryMutation) {
-        void handleRemoteEntryMutation(payload);
-        return;
-      }
-
-      if (payload?.type === APP_SYNC_EVENT_TYPES.summaryMutation) {
-        void handleRemoteSummaryMutation(payload);
-      }
-    };
-
-    window.addEventListener("storage", handleStorage);
-
-    return () => {
-      window.removeEventListener("storage", handleStorage);
-      if (channel) {
-        channel.close();
-        syncChannelRef.current = null;
-      }
-    };
-  }, [
-    beginAppShellLoad,
-    clearAppShellCache,
-    clearRoutePageCache,
-    clearSummaryAccountPillsCache,
-    clearSummaryPageCache,
-    handleAppShellFailure,
-    handleRemoteEntryMutation,
-    handleRemoteSplitMutation,
-    handleRemoteSummaryMutation,
-    loadAppShell,
-    reportLoadingIssue,
-    referenceDataOwner
-  ]);
+      const finishAppShellLoad = beginAppShellLoad();
+      void Promise.all([
+        loadAppShell().catch(handleAppShellFailure),
+        referenceDataOwner.refreshOrShowError("Reference data refresh failed")
+      ])
+        .finally(finishAppShellLoad);
+    },
+    onSplitMutation: (payload) => { void handleRemoteSplitMutation(payload); },
+    onEntryMutation: (payload) => { void handleRemoteEntryMutation(payload); },
+    onSummaryMutation: (payload) => { void handleRemoteSummaryMutation(payload); }
+  });
 
   // Summary owns its own page query plus wallet-pill query, so the summary tab
   // hydrates from those slice caches instead of the generic route-page family.
