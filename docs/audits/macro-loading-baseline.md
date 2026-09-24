@@ -1391,3 +1391,17 @@ bottlenecks left:
 H11–H13 and H15 are maintainability work and claim no speed.
 
 Status: complete. All servers stopped and no harness processes left (checked with `pgrep` and `lsof` on 5173/8787/5191/5311/8911/9311).
+
+### Post-closure: fresh-database fix merged
+
+The fresh-database initialization fix (`claude/sharp-kepler-4efdb7`:
+`647ca50`, `fd841b1`, `7c9ef02`, `0d04eba`, `4a64103`) was merged as
+`545f21f` on 2026-09-24. The merge was clean. After it:
+- typecheck passes and unit tests pass 403/403;
+- on a new `schema.sql` database the first request (the reseed) returns
+  200 and nothing logs `API init failed`;
+- `npm run test:performance` passes (3 passed, 1 skipped), now without
+  the removed preflight;
+- the full functional E2E passes 216/216 on isolated ports.
+
+This closes the pre-existing issue noted under H09 and H10.
