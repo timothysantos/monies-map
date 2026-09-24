@@ -1405,3 +1405,79 @@ The fresh-database initialization fix (`claude/sharp-kepler-4efdb7`:
 - the full functional E2E passes 216/216 on isolated ports.
 
 This closes the pre-existing issue noted under H09 and H10.
+
+## Mobile data admission (after H10)
+
+Date: 2026-09-24. Commits: `a009cd1` (required fetch timing), `fd5fbfb`
+(admission row and tests).
+
+### What was missing
+
+Filling `WARMUP_ADMISSIONS` alone would not have enabled anything:
+`use-route-warmup.js` always passed `recentRequiredDurationMs: null`, and
+the policy denies mobile data when that value is unknown.
+
+`fetchQueryWithLease` now times its own network fetches through
+`createRequiredTiming`:
+- cache hits, failures and speculative reads are not recorded;
+- a reading expires after 5 minutes.
+
+The hook reads the latest value.
+
+### The byte measure
+
+`maxDataBytes` (50,000) is now defined as **gzip bytes of the JSON body**:
+- that's what a phone downloads from Cloudflare, which compresses JSON;
+- it's the same measure the module cap already uses.
+
+The plan's wording said "response body"; this is the interpretation chosen.
+Mobile's only data candidate is the Entries page, so the table holds one
+row: the 10k fixture, the largest of the household and Tim views,
+44,784 gzip bytes and 25 ms p95 (1.43 MB uncompressed).
+
+Caveat: synthetic rows compress better than real ledgers, so a real
+2,000-row month could exceed the cap. Typical household months are far
+smaller.
+
+Mobile preloads data only when all of these hold:
+- 4g, and not data saver;
+- a recent required fetch of 500 ms or less;
+- after its code has loaded;
+- one request per visit.
+
+Without `navigator.connection` (iPhone Safari) mobile stays code-only by
+the existing rule "missing connection information is not permission".
+
+### Tests
+
+- Unit:
+  - required timing records only successful network fetches, not a cache
+    hit, a failure or a speculative read, and readings expire;
+  - the admission table holds exactly the measured row, within the caps,
+    and other families are unknown;
+  - the adapter reports the Entries admission.
+- E2E (`route-warmup-data.spec.js`, mobile):
+  - 4g: exactly one `entries-page` (household, 2026-05) after the Entries
+    code, the tap to Entries makes no new request and shows the rows, and
+    no Imports request;
+  - 3g and data saver: no code and no data;
+  - no connection information: code only.
+  - With the timing mutated back to `null`, the 4g test fails.
+- `npm run test:unit`: 404/404.
+- Full functional E2E (isolated ports): 219/219.
+
+### Measurement (built harness, mobile profile, same build)
+
+| Mobile | Warmup off | Normal |
+| --- | --- | --- |
+| First Summary → Entries | 851 ms, 7 requests | 395 ms (−54%), 0 requests |
+| Idle bytes by 30 s | 0 | 32,347 (Entries code + 1,652 B Entries data) |
+| Idle requests used by the first round trip | — | 7/7 (100%) |
+| Cold usable median | 2,158 ms | 2,157 ms |
+
+Against the H10 round-2 normal cohort (before admission), the first mobile
+navigation went from 1 request to 0 (446 → 395 ms). Desktop is unchanged,
+because desktop does not consult admission.
+
+Rollback: revert `fd5fbfb` (or empty the table) to return to code-only
+mobile warmup.

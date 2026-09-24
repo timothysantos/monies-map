@@ -257,3 +257,32 @@ list rows call `useRouteWorkBusy(busy)`, which registers nothing until they
 are busy. Required refreshes the shell awaits outside its loading counter run
 inside `withRequiredWork`. Optional prefetch, banner and AI work is never
 counted. Owners keep their drafts; the registry holds only booleans.
+
+## Route Warmup Boundary
+
+Optional work (route code, speculative page data, AI wording) starts only
+when the active route is usable, and it never delays a navigation or a
+required read.
+
+- `route-warmup-policy.js` (pure) decides whether one candidate may start and
+  which exact destinations are worth considering. Desktop and mobile have
+  separate limits; hybrid or unknown devices get the mobile policy.
+- `route-warmup-scheduler.js` owns the quiet period, the per-visit budgets
+  and the one-at-a-time queue, with an injected clock. `use-route-warmup.js`
+  feeds it browser signals: visibility, connection, interaction, editable
+  focus and route work.
+- `route-modules.js` is the only route-code loader, shared by navigation and
+  warmup, so a warmed chunk is the one the route uses.
+- `query-leases.js` keeps the two fetch paths. Required reads take a lease
+  before touching the cache. Speculative reads are cancelled at their
+  deadline unless a required reader joins them (promotion). It also times
+  required network fetches: mobile data warmup needs a recent reading of
+  500 ms or less.
+- `route-warmup-data.js` builds speculative requests with the same key
+  builders as the required readers. `route-warmup-admissions.js` lists the
+  data families measured cheap enough for mobile, currently only the Entries
+  page (gzip bytes and handler p95 on the 10k fixture). Mobile preloads data
+  only on a 4g connection without data saver; a browser that reports no
+  connection (iPhone Safari) stays code-only.
+- Financial Insight asks for AI wording only while the route is usable
+  (`canRequestWording`), and keeps a response only if it is still current.
