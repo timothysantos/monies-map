@@ -16,7 +16,7 @@ verified on 2026-09-23 only.
 | --- | --- | --- | --- | --- |
 | H00 | P0 | Ownership matrix and baseline | Done | audit §H00 |
 | H01 | P0 | Built-client harness and asset-cost report | Done (`506f3fd`; verify gate blocked by baseline advisories) | audit §H01 |
-| H01b | P0 | Seeded 1k/10k scale fixtures + measurement | Open (prerequisite for mobile data admission only) | — |
+| H01b | P0 | Seeded 1k/10k scale fixtures + measurement | Done (`41838ad`, `e3cd00b`); admission table not filled (app-code decision) | audit §H01b |
 | H02 | Prereq | Query identity characterization and repair | Done (`403bb63`, `a8176fc`) | audit §H02 |
 | H03 | Prereq | Ready/busy reporting from workflow owners | Done (`1d9524b`, `d30d4f0`) | audit §H03 |
 | H04 | P1/P2m | Pure warmup policy | Done (`0adf7a4`) | audit §H04 |
@@ -25,7 +25,7 @@ verified on 2026-09-23 only.
 | H07 | P2/P2m | One bounded optional data queue | Done (`6d998d2`..`9fb2bc9`); mobile data off until H01b | audit §H07 |
 | H08 | P3 | Optional AI readiness | Done | `22f2840`, `f87ae55` |
 | H09 | P4 | Full request/initialization timing | Done | `94a02f6`, `c1dd539` |
-| H10 | Closure | Measured comparison, first delivery | Open | — |
+| H10 | Closure | Measured comparison, first delivery | **Next** | — |
 | H11–H17 | P5–P11 | Gated architecture work | Not funded until H10 | — |
 
 Order is strict: H02 → H03 → H04 → H05 → H06 → H07 → H10. H08 needs only H03.
