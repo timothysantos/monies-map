@@ -22,8 +22,8 @@ verified on 2026-09-23 only.
 | H04 | P1/P2m | Pure warmup policy | Done (`0adf7a4`) | audit §H04 |
 | H05 | P1/P2m | Shared module loader, code-only scheduler | Done (`176509c`, `f464bac`, `d21fbe4`, `23a5109`) | audit §H05 |
 | H06 | P2/P2m | Cancellation, leases, promotion | Done (`dc3c229`..`8770a06`); open draft flake tracked separately | audit §H06 |
-| H07 | P2/P2m | One bounded optional data queue | **Next** | — |
-| H08 | P3 | Optional AI readiness | Open | — |
+| H07 | P2/P2m | One bounded optional data queue | Done (`6d998d2`..`9fb2bc9`); mobile data off until H01b | audit §H07 |
+| H08 | P3 | Optional AI readiness | **Next** | — |
 | H09 | P4 | Full request/initialization timing | Open | — |
 | H10 | Closure | Measured comparison, first delivery | Open | — |
 | H11–H17 | P5–P11 | Gated architecture work | Not funded until H10 | — |
@@ -1032,6 +1032,28 @@ within `staleTime` from `dataUpdatedAt`, and record the choice.
    effect and its constants — after `rg` confirms no other reader.
 6. Charged starts include failed/aborted attempts; no refunds; resume never
    refills.
+
+As built:
+
+- Adapters live in a new `src/client/route-warmup-data.js`
+  (`buildSpeculativeRequest`, `isFresh`, `fetchSpeculativeJson`,
+  `createWarmupDataAdapter`); the scheduler takes `dataFor(candidate)` →
+  `{ key, fresh, admission, start }`. Stale times: route pages Infinity
+  (present and not invalidated), Summary ranges 30 s (implicit-range
+  invalidation misses), Imports banner 5 min.
+- Each data key is attempted at most once per visit whatever the outcome
+  (found by a unit test: without it a failed request was retried).
+- Module-only limits (`module-in-flight`, `visit-module-budget`,
+  `rate-limit`) skip further modules but let data candidates run; a settled
+  module or data request re-arms the queue; `data-spacing` reschedules at
+  the exact spacing boundary.
+- Policy change: on desktop Summary/Month the Imports banner candidate now
+  comes right after the Entries pair (before adjacent-month/range guesses),
+  otherwise the two-per-visit budget would stop the banner loading on Month.
+- The banner is read from the Imports query cache through a cache
+  subscription; it never fetches by itself (mobile shows it only after an
+  Imports visit or when an import mutation refreshes the cache).
+- `WARMUP_ADMISSIONS` is empty until H01b, so no mobile data warmup yet.
 
 Tests: W14, W15, W19 plus: mobile eligible → exactly one data request per
 visit; mobile without connection info → zero data; desktop → at most two
