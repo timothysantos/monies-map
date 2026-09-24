@@ -44,7 +44,7 @@ const {
 // - background refreshes so derived totals settle after saves
 // - route-level dialogs such as notes, plan links, and mobile editors
 //
-export function MonthPanel({ view, accounts, people, categories, householdMonthEntries, onCategoryAppearanceChange, onRefresh, canRequestWording = false }) {
+export function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceChange, onRefresh, canRequestWording = false }) {
   const navigate = useNavigate();
   const monthUiKey = `${view.id}:${view.monthPage.month}:${view.monthPage.selectedScope}`;
   const [planSections, setPlanSections] = useState(view.monthPage.planSections ?? []);
@@ -141,7 +141,6 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
 
     const allCandidates = monthService.buildPlanLinkCandidates({
       row: planLinkTargetRow,
-      householdMonthEntries,
       monthEntries: view.monthPage.entries,
       monthKey: view.monthPage.month
     });
@@ -178,7 +177,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
       candidates,
       selectedIds
     };
-  }, [householdMonthEntries, planLinkDialog, planLinkTargetRow, view.monthPage.entries, view.monthPage.month]);
+  }, [planLinkDialog, planLinkTargetRow, view.monthPage.entries, view.monthPage.month]);
 
   const monthMetricCards = useMemo(
     () => monthService.buildMetricCards({ planSections, incomeRows, currentMonthSummary: selectedMonthSummary }),

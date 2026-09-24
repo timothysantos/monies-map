@@ -12,7 +12,7 @@ import {
   loadMonthPlanRows,
   loadSummaryMonths
 } from "../app-repository";
-import type { EntryDto, MonthPageDto, PersonScope, SummaryMonthDto } from "../../types/dto";
+import type { MonthPageDto, PersonScope, SummaryMonthDto } from "../../types/dto";
 import {
   loadRoutePageContext,
   resolveEffectiveMonth
@@ -24,7 +24,7 @@ export async function buildMonthPageDto(
   selectedViewId = "household",
   selectedMonth = getCurrentMonthKey(),
   selectedScope: PersonScope = "direct_plus_shared"
-): Promise<{ viewId: string; label: string; summaryPage: Pick<{ months: SummaryMonthDto[] }, "months">; monthPage: MonthPageDto; householdMonthEntries: EntryDto[] }> {
+): Promise<{ viewId: string; label: string; summaryPage: Pick<{ months: SummaryMonthDto[] }, "months">; monthPage: MonthPageDto }> {
   const { categories, trackedMonths, viewId, label } = await loadRoutePageContext(db, selectedViewId);
   const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
   const [monthEntries, monthPlanRows, incomeRows, summaryMonths] = await Promise.all([
@@ -57,7 +57,9 @@ export async function buildMonthPageDto(
       categories,
       effectiveSelectedMonth,
       currentSummaryMonth
-    ),
-    householdMonthEntries: monthEntries
+    )
+    // No separate household entry list: monthPage.entries already holds
+    // every household entry (adjusted for the view), which is all plan
+    // linking needs. Sending both doubled the response (H14).
   };
 }
