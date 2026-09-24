@@ -79,7 +79,7 @@ import {
   updateEntryNoteRecord,
   updateEntryPostDateRecord,
   updateEntryRecord,
-  ensureDemoSchema,
+  ensureDemoSchemaTimed,
   loadSplitActivityHistory,
   restoreSplitRecord
 } from "./domain/app-repository";
@@ -124,7 +124,8 @@ import {
   type FinancialInsightFacts
 } from "./domain/ai-assistance-insights";
 import type { ImportPreviewDto, PersonScope } from "./types/dto";
-import { json } from "./server/json";
+import { json, jsonFromText, serializeJson } from "./server/json";
+import { buildServerTimingHeader, timeInitialization } from "./server/server-timing";
 import {
   buildShortcutAppUrl,
   isShortcutCreateRequestAllowed,
@@ -151,6 +152,7 @@ const SHORTCUT_NONCE_RETENTION_HOURS = 24;
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    const requestStartedAt = Date.now();
 
     if (!isShortcutGatewayRequestAllowed(env.SHORTCUT_API_ONLY, url.pathname, SHORTCUT_ENDPOINT_PATH)) {
       return new Response(null, { status: 404 });
@@ -166,7 +168,25 @@ export default {
 
     // Existing production databases may need additive columns before any page
     // DTO reads the newer split schema.
-    await ensureDemoSchema(env.DB);
+    const initialization = await timeInitialization(() => ensureDemoSchemaTimed(env.DB), Date.now);
+    if (!initialization.ok) {
+      const requestId = crypto.randomUUID();
+      console.error("API init failed", {
+        requestId,
+        method: request.method,
+        path: url.pathname,
+        initMs: initialization.initMs,
+        error: describeError(initialization.error)
+      });
+      return json({ ok: false, error: "Initialization failed", requestId }, 500, {
+        "server-timing": buildServerTimingHeader({
+          initMs: initialization.initMs,
+          initCold: initialization.cold,
+          totalMs: Date.now() - requestStartedAt
+        })
+      });
+    }
+    const timing: RequestTiming = { requestStartedAt, initMs: initialization.initMs, initCold: initialization.cold };
 
     if (url.pathname === "/api/splits/activity-history" && request.method === "GET") {
       return json({ ok: true, activityHistory: await loadSplitActivityHistory(env.DB) });
@@ -190,13 +210,15 @@ export default {
           env.DB,
           getAuthenticatedEmail(request),
           getAppEnvironment(env, url)
-        )
+        ),
+        timing
       );
     }
 
     if (url.pathname === "/api/reference-data") {
       return apiPageResponse("Reference data", request, url, () =>
-        buildReferenceDataDto(env.DB)
+        buildReferenceDataDto(env.DB),
+        timing
       );
     }
 
@@ -208,7 +230,8 @@ export default {
           url.searchParams.get("month") ?? getCurrentMonthKey(),
           getAuthenticatedEmail(request),
           getAppEnvironment(env, url)
-        )
+        ),
+        timing
       );
     }
 
@@ -218,7 +241,8 @@ export default {
           env.DB,
           url.searchParams.get("view") ?? "household",
           url.searchParams.get("month") ?? getCurrentMonthKey()
-        )
+        ),
+        timing
       );
     }
 
@@ -243,7 +267,8 @@ export default {
           (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared",
           url.searchParams.get("summary_start") ?? undefined,
           url.searchParams.get("summary_end") ?? undefined
-        )
+        ),
+        timing
       );
     }
 
@@ -252,7 +277,8 @@ export default {
         buildSummaryAccountPillsDto(
           env.DB,
           url.searchParams.get("view") ?? "household"
-        )
+        ),
+        timing
       );
     }
 
@@ -263,7 +289,8 @@ export default {
           url.searchParams.get("view") ?? "household",
           url.searchParams.get("month") ?? getCurrentMonthKey(),
           (url.searchParams.get("scope") as "direct" | "shared" | "direct_plus_shared" | null) ?? "direct_plus_shared"
-        )
+        ),
+        timing
       );
     }
 
@@ -273,12 +300,13 @@ export default {
           env.DB,
           url.searchParams.get("view") ?? "household",
           url.searchParams.get("month") ?? getCurrentMonthKey()
-        )
+        ),
+        timing
       );
     }
 
     if (url.pathname === "/api/imports-page") {
-      return apiPageResponse("Imports page", request, url, () => buildImportsPageDto(env.DB));
+      return apiPageResponse("Imports page", request, url, () => buildImportsPageDto(env.DB), timing);
     }
 
     if (url.pathname === "/api/ai-assist/monthly-narrative" && request.method === "POST") {
@@ -476,7 +504,8 @@ export default {
           env.DB,
           env.SHORTCUT_INGEST_TOKEN,
           env.SHORTCUT_PUBLIC_ENDPOINT
-        )
+        ),
+        timing
       );
     }
 
@@ -2390,11 +2419,14 @@ function buildShortcutEntryOpenUrl(
   return url.toString();
 }
 
+type RequestTiming = { requestStartedAt: number; initMs: number; initCold: boolean };
+
 async function apiPageResponse<T>(
   label: string,
   request: Request,
   url: URL,
-  handler: () => Promise<T>
+  handler: () => Promise<T>,
+  timing?: RequestTiming
 ) {
   const requestId = crypto.randomUUID();
   const startedAt = Date.now();
@@ -2405,8 +2437,16 @@ async function apiPageResponse<T>(
     if (durationMs >= API_PAGE_SLOW_MS) {
       console.warn("API page slow", buildApiDiagnostic(label, request, url, requestId, durationMs));
     }
-    return json(payload, 200, {
-      "server-timing": `app;dur=${durationMs}`
+    const body = serializeJson(payload);
+    return jsonFromText(body, 200, {
+      "server-timing": timing
+        ? buildServerTimingHeader({
+          appMs: durationMs,
+          initMs: timing.initMs,
+          initCold: timing.initCold,
+          totalMs: Date.now() - timing.requestStartedAt
+        })
+        : `app;dur=${durationMs}`
     });
   } catch (error) {
     const durationMs = Date.now() - startedAt;

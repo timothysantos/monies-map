@@ -258,6 +258,14 @@ export async function ensureDemoSchema(db: D1Database) {
   }
 }
 
+// Same as ensureDemoSchema, and reports whether this call started the
+// initialization (cold) or found it already done or in flight (warm).
+export async function ensureDemoSchemaTimed(db: D1Database) {
+  const cold = !schemaInitializationByDatabase.has(db);
+  await ensureDemoSchema(db);
+  return { cold };
+}
+
 async function ensureDemoSchemaOnce(db: D1Database) {
   let shouldBackfillImportedPostDates = false;
   let shouldResetRolledBackStatementCertifications = false;
