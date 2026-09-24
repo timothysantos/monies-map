@@ -867,7 +867,47 @@ export function App() {
     }
 
     const queryKey = queryKeys.routeRequestKey(request);
-    const queryState = queryClient.getQueryState(queryKey);
+    const query = request.params.toString();
+    const requestUrl = query ? `${request.path}?${query}` : request.path;
+    const readPage = () => fetchQueryWithLease(queryClient, {
+      queryKey,
+      bypassCache,
+      signal,
+      abortMessage: "Page request aborted.",
+      // Route-page responses are parsed manually for the same reason as the
+      // shell fetch: server errors still need to surface useful context.
+      fetcher: async ({ signal: requestSignal }) => {
+        const { response, responseText } = await fetchTextWithTransientWorkerRetry(requestUrl, {
+          cache: "no-store",
+          requestLabel: "Page request",
+          signal: requestSignal
+        });
+        updateLoadingStatus({
+          label: "Reading page response",
+          detail: "Parsing page...",
+          percent: 92
+        });
+        let data = null;
+
+        if (responseText) {
+          try {
+            data = JSON.parse(responseText);
+          } catch {
+            if (!response.ok) {
+              throw new Error(buildAppShellErrorMessage(response.status, responseText));
+            }
+
+            throw new Error("Page request returned invalid JSON.");
+          }
+        }
+
+        if (!response.ok) {
+          throw new Error(buildAppShellErrorMessage(response.status, data?.message ?? responseText));
+        }
+
+        return data;
+      }
+    });
     if (signal?.aborted) {
       throw new DOMException("Page request aborted.", "AbortError");
     }
@@ -878,10 +918,10 @@ export function App() {
         detail: "Cached page...",
         percent: 84
       });
-      return queryClient.getQueryData(queryKey);
+      return readPage();
     }
 
-    if (!bypassCache && queryState?.fetchStatus === "fetching") {
+    if (!bypassCache && queryClient.getQueryState(queryKey)?.fetchStatus === "fetching") {
       updateLoadingStatus({
         label: "Waiting for page data",
         detail: "Waiting for page...",
@@ -889,63 +929,12 @@ export function App() {
       });
     }
 
-    const query = request.params.toString();
-    const requestUrl = query ? `${request.path}?${query}` : request.path;
     updateLoadingStatus({
       label: "Loading current page",
       detail: "Loading page...",
       percent: 88
     });
-    // Route-page responses are parsed manually for the same reason as the
-    // shell fetch: server errors still need to surface useful context.
-    const fetcher = async () => {
-      const { response, responseText } = await fetchTextWithTransientWorkerRetry(requestUrl, {
-        cache: "no-store",
-        requestLabel: "Page request"
-      });
-      updateLoadingStatus({
-        label: "Reading page response",
-        detail: "Parsing page...",
-        percent: 92
-      });
-      let data = null;
-
-      if (responseText) {
-        try {
-          data = JSON.parse(responseText);
-        } catch {
-          if (!response.ok) {
-            throw new Error(buildAppShellErrorMessage(response.status, responseText));
-          }
-
-          throw new Error("Page request returned invalid JSON.");
-        }
-      }
-
-      if (!response.ok) {
-        throw new Error(buildAppShellErrorMessage(response.status, data?.message ?? responseText));
-      }
-
-      return data;
-    };
-
-    const data = bypassCache
-      ? await queryClient.fetchQuery({
-          queryKey,
-          queryFn: fetcher,
-          retry: false,
-          staleTime: 0
-        })
-      : await queryClient.ensureQueryData({
-          queryKey,
-          queryFn: fetcher,
-          retry: false,
-          revalidateIfStale: true
-        });
-
-    if (signal?.aborted) {
-      throw new DOMException("Page request aborted.", "AbortError");
-    }
+    const data = await readPage();
     updateLoadingStatus({
       label: "Current page ready",
       detail: "Applying page...",
