@@ -1,4 +1,5 @@
 import { queryKeys, summaryPageKeyFromParams } from "./query-keys.js";
+import { fetchQueryWithLease } from "./query-leases.js";
 import { buildRequestErrorMessage } from "./request-errors.js";
 import { fetchWithTimeout } from "./request-timeout.js";
 
@@ -36,53 +37,29 @@ export function buildSummaryAccountPillsParams({ viewId }) {
   return new URLSearchParams({ view: viewId });
 }
 
-async function fetchSummaryJson(queryClient, {
+function fetchSummaryJson(queryClient, {
   params,
   queryKey,
   path,
   bypassCache = false,
   signal
 }) {
-  if (signal?.aborted) {
-    throw new DOMException("Summary request aborted.", "AbortError");
-  }
-
-  if (!bypassCache) {
-    const cachedData = queryClient.getQueryData(queryKey);
-    if (cachedData) {
-      return cachedData;
+  return fetchQueryWithLease(queryClient, {
+    queryKey,
+    bypassCache,
+    signal,
+    abortMessage: "Summary request aborted.",
+    fetcher: async ({ signal: requestSignal }) => {
+      const response = await fetchWithTimeout(`${path}?${params.toString()}`, {
+        cache: "no-store",
+        signal: requestSignal
+      }, "Summary request");
+      if (!response.ok) {
+        throw new Error(await buildRequestErrorMessage(response, `${path} failed.`));
+      }
+      return response.json();
     }
-  }
-
-  const fetcher = async () => {
-    const response = await fetchWithTimeout(`${path}?${params.toString()}`, {
-      cache: "no-store"
-    }, "Summary request");
-    if (!response.ok) {
-      throw new Error(await buildRequestErrorMessage(response, `${path} failed.`));
-    }
-    return response.json();
-  };
-
-  const data = bypassCache
-    ? await queryClient.fetchQuery({
-        queryKey,
-        queryFn: fetcher,
-        retry: false,
-        staleTime: 0
-      })
-    : await queryClient.ensureQueryData({
-        queryKey,
-        queryFn: fetcher,
-        retry: false,
-        revalidateIfStale: true
-      });
-
-  if (signal?.aborted) {
-    throw new DOMException("Summary request aborted.", "AbortError");
-  }
-
-  return data;
+  });
 }
 
 export async function fetchSummaryPageQuery(queryClient, params, options = {}) {
