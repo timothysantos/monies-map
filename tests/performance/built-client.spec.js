@@ -11,6 +11,7 @@ import { parseServerTiming, summarizeSamples, totalsByType } from "./performance
 // budgets, so noise cannot fail it and budgets cannot be inflated to pass it.
 
 const SUMMARY_URL = "/summary?view=household&month=2026-05";
+const FIXTURE = process.env.PERFORMANCE_FIXTURE || "demo";
 const COLD_SAMPLES = Number(process.env.PERFORMANCE_COLD_SAMPLES ?? 5);
 const WARM_SAMPLES_PER_DIRECTION = Number(process.env.PERFORMANCE_WARM_SAMPLES ?? 20);
 const IDLE_CHECKPOINTS_S = [2, 10, 30];
@@ -127,6 +128,8 @@ function apiDetail(requests) {
 }
 
 test("built Summary cold load, Summary/Entries warm navigation and idle traffic", async ({ browser }, testInfo) => {
+  // Its readiness predicates read demo values (e.g. Bills with 4 transactions).
+  test.skip(FIXTURE !== "demo", "browser readiness is defined on the demo fixture; scale fixtures are measured by api-admission.spec.js");
   const profile = profileFor(testInfo.project.name);
   const coldSamples = [];
   let idle = null;
@@ -221,7 +224,8 @@ test("built Summary cold load, Summary/Entries warm navigation and idle traffic"
     revision: execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" }).trim(),
     workingTreeDirty: execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim().length > 0,
     buildId: warmupMetadata?.buildId ?? null,
-    fixture: "existing demo reseed (DEMO_SEED_MONTH=2026-05); seeded once for this Worker cohort",
+    fixture: FIXTURE,
+    fixtureNote: "existing demo reseed (DEMO_SEED_MONTH=2026-05); seeded once for this Worker cohort",
     browser: { engine: "chromium", version: browser.version() },
     project: testInfo.project.name,
     viewport: testInfo.project.use.viewport,
