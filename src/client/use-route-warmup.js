@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { ROUTE_IDS, getRouteModuleState, loadRouteModule } from "./route-modules.js";
 import { missingRouteBytes, readWarmupCosts } from "./route-warmup-costs.js";
+import { createWarmupDataAdapter } from "./route-warmup-data.js";
 import { buildVisitKey, evaluateWarmup, selectWarmupCandidates, selectWarmupMode } from "./route-warmup-policy.js";
 import { createRouteWarmupScheduler } from "./route-warmup-scheduler.js";
 
@@ -46,11 +47,11 @@ function createBrowserIdle() {
   };
 }
 
-export function useRouteWarmup({ routeIdentity, routeWork, queryEpoch }) {
+export function useRouteWarmup({ routeIdentity, routeWork, queryEpoch, queryClient, availableMonths, summaryRange }) {
   const visitKey = useMemo(() => buildVisitKey(routeIdentity), [routeIdentity]);
   const schedulerRef = useRef(null);
-  const latestRef = useRef({ routeIdentity, routeWork, visitKey });
-  latestRef.current = { routeIdentity, routeWork, visitKey };
+  const latestRef = useRef({ routeIdentity, routeWork, visitKey, availableMonths, summaryRange });
+  latestRef.current = { routeIdentity, routeWork, visitKey, availableMonths, summaryRange };
   const lastInteractionAtRef = useRef(0);
   const usableSinceRef = useRef(0);
   const editableFocusedRef = useRef(false);
@@ -74,12 +75,13 @@ export function useRouteWarmup({ routeIdentity, routeWork, queryEpoch }) {
       coarsePointer: coarsePointer ? coarsePointer.matches : null
     });
 
+    const clock = {
+      now,
+      setTimeout: (callback, delay) => window.setTimeout(callback, delay),
+      clearTimeout: (id) => window.clearTimeout(id)
+    };
     const scheduler = createRouteWarmupScheduler({
-      clock: {
-        now,
-        setTimeout: (callback, delay) => window.setTimeout(callback, delay),
-        clearTimeout: (id) => window.clearTimeout(id)
-      },
+      clock,
       idle: createBrowserIdle(),
       loadModule: loadRouteModule,
       readInput: () => {
@@ -105,13 +107,16 @@ export function useRouteWarmup({ routeIdentity, routeWork, queryEpoch }) {
       },
       evaluate: evaluateWarmup,
       selectCandidates: () => {
-        const { routeIdentity: identity, visitKey: key } = latestRef.current;
+        const { routeIdentity: identity, visitKey: key, availableMonths: months, summaryRange: range } = latestRef.current;
         return selectWarmupCandidates({
           mode: readMode(),
           identity,
+          availableMonths: months ?? [],
+          summaryRange: range ?? null,
           recentDestination: recentDestinationsRef.current.get(key) ?? null
         });
       },
+      dataFor: createWarmupDataAdapter({ queryClient, clock }),
       costFor: (routeId) => {
         const state = getRouteModuleState(routeId);
         const loadedRouteIds = ROUTE_IDS.filter((id) => getRouteModuleState(id) === "loaded");
@@ -184,7 +189,7 @@ export function useRouteWarmup({ routeIdentity, routeWork, queryEpoch }) {
       narrowViewport?.removeEventListener?.("change", onSignalChange);
       coarsePointer?.removeEventListener?.("change", onSignalChange);
     };
-  }, [notify]);
+  }, [notify, queryClient]);
 
   // A new visit or a change in readiness re-evaluates. Becoming usable (page
   // loaded, or the last editor closed) starts a full quiet interval.

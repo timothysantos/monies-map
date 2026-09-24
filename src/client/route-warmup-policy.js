@@ -234,6 +234,10 @@ export function selectWarmupCandidates({
   }
 
   // 4: desktop keeps the useful current prefetch choices, in priority order.
+  // The import banner is shown on this page, so it comes before guesses.
+  if (identity.tabId === "summary" || identity.tabId === "month") {
+    add(data("imports", { tabId: "imports", viewId: "", month: "", scope: "", summaryStart: "", summaryEnd: "" }, "imports-page"));
+  }
   if (identity.tabId === "month") {
     for (const month of adjacentMonths(availableMonths, identity.month)) {
       add(data("month", { ...identity, month }, "month-page"));
@@ -259,9 +263,5 @@ export function selectWarmupCandidates({
       add(data("entries", entriesIdentity({ ...identity, month }), "entries-page"));
     }
   }
-  if (identity.tabId === "summary" || identity.tabId === "month") {
-    add(data("imports", { tabId: "imports", viewId: "", month: "", scope: "", summaryStart: "", summaryEnd: "" }, "imports-page"));
-  }
-
   return candidates;
 }

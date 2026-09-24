@@ -41,8 +41,6 @@ import { useRouteWorkReport } from "./use-route-work-status";
 import { fetchQueryWithLease } from "./query-leases";
 import { buildEntriesPageParams } from "./app-routing";
 
-const ENTRIES_PAGE_PREFETCH_DELAY_MS = 1200;
-const ENTRIES_PAGE_PREFETCH_SPACING_MS = 650;
 const QUICK_EXPENSE_DRAFT_STORAGE_KEY = "monies.quickExpenseDraft";
 const QUICK_EXPENSE_DRAFT_STORAGE_TTL_MS = 15 * 60 * 1000;
 const NON_GROUP_SPLIT_VALUE = "__split_group_none__";
@@ -55,12 +53,6 @@ const { entries: entryService, format: formatService } = moniesClient;
 // - "quick expense": a draft launched from an external shortcut/URL that should open the composer.
 // - "split group": the shared-expense bucket an expense can be attached to from the Entries page.
 // - "linked entry": an entry id carried in the URL so mobile edit state survives route changes.
-function waitFor(ms) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
-}
-
 export function EntriesPanel({
   view,
   entriesSourceView = view,
@@ -69,7 +61,6 @@ export function EntriesPanel({
   onCloseMobileContext,
   onMobileFilterStateChange,
   externalRefreshToken = 0,
-  availableMonths,
   accounts,
   categories,
   people,
@@ -112,7 +103,6 @@ export function EntriesPanel({
     view,
     entriesSourceView,
     selectedMonth,
-    availableMonths,
     externalRefreshToken,
     onInvalidateAppShellCache
   });
@@ -1457,14 +1447,12 @@ function useEntriesPageData({
   view,
   entriesSourceView,
   selectedMonth,
-  availableMonths,
   externalRefreshToken,
   onInvalidateAppShellCache
 }) {
   const [entriesPage, setEntriesPage] = useState(() => buildInitialEntriesPage(view));
   const [isEntriesPageLoading, setIsEntriesPageLoading] = useState(false);
   const entriesQueryEpochRef = useRef(0);
-  const entriesPagePrefetchTimerRef = useRef(null);
   const entriesPageParams = useMemo(
     () => buildEntriesPageParams({
       viewId: entriesSourceView.id,
@@ -1558,54 +1546,6 @@ function useEntriesPageData({
 
     void refreshEntriesPage({ bypassCache: true });
   }, [externalRefreshToken, refreshEntriesPage]);
-
-  // Prefetch adjacent months on desktop so moving month-to-month feels instant.
-  useEffect(() => {
-    if (
-      !availableMonths.length
-      || typeof window === "undefined"
-      || window.navigator?.connection?.saveData
-      || window.matchMedia?.("(pointer: coarse)")?.matches
-    ) {
-      return undefined;
-    }
-
-    let isCancelled = false;
-    const entriesQueryEpoch = entriesQueryEpochRef.current;
-
-    entriesPagePrefetchTimerRef.current = window.setTimeout(() => {
-      const currentIndex = availableMonths.indexOf(selectedMonth);
-      if (currentIndex === -1) {
-        return;
-      }
-
-      void (async () => {
-        for (const offset of [-1, 1]) {
-          if (isCancelled || entriesQueryEpochRef.current !== entriesQueryEpoch) {
-            return;
-          }
-
-          const adjacentMonth = availableMonths[currentIndex + offset];
-          if (!adjacentMonth) {
-            continue;
-          }
-
-          await fetchEntriesPage(buildEntriesPageParams({ viewId: entriesSourceView.id, month: adjacentMonth })).catch(() => {});
-          if (!isCancelled) {
-            await waitFor(ENTRIES_PAGE_PREFETCH_SPACING_MS);
-          }
-        }
-      })();
-    }, ENTRIES_PAGE_PREFETCH_DELAY_MS);
-
-    return () => {
-      isCancelled = true;
-      if (entriesPagePrefetchTimerRef.current) {
-        window.clearTimeout(entriesPagePrefetchTimerRef.current);
-        entriesPagePrefetchTimerRef.current = null;
-      }
-    };
-  }, [availableMonths, entriesSourceView.id, fetchEntriesPage, selectedMonth]);
 
   return {
     entriesPage,
