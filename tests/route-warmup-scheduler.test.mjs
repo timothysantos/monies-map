@@ -22,17 +22,22 @@ function createFakeClock() {
     },
     pending: () => timers.size,
     async advanceTo(target) {
+      // Run every due timer, letting promise chains settle between timers,
+      // until no timer at or before the target remains.
       for (;;) {
         const due = [...timers.entries()].filter(([, timer]) => timer.at <= target).sort((a, b) => a[1].at - b[1].at || a[0] - b[0]);
-        if (!due.length) break;
+        if (!due.length) {
+          await flush();
+          if (![...timers.values()].some((timer) => timer.at <= target)) break;
+          continue;
+        }
         const [id, timer] = due[0];
         timers.delete(id);
         now = timer.at;
         timer.callback();
-        await Promise.resolve();
+        await flush();
       }
       now = target;
-      await flush();
     }
   };
 }
@@ -399,4 +404,188 @@ test("the warmup override is read when the timer fires, not only when it is arme
   host.state.warmupMode = "intent-only";
   await host.clock.advanceTo(10_000);
   assert.deepEqual(host.loads, []);
+});
+
+// Data path (H07): a host whose data candidates are deferred requests with
+// a cancel spy, like startSpeculativeQuery.
+function createDataHost({ mode = "desktop", fresh = new Set(), admitted = false, effectiveType = null, recentRequiredDurationMs = null, identity: startIdentity } = {}) {
+  const host = createHost({ mode });
+  const dataStarts = [];
+  const cancels = [];
+  const handles = [];
+  host.state.page = { ...host.state.page, effectiveType };
+  host.state.identity = startIdentity ?? { tabId: "month", viewId: "person-tim", month: "2025-08", scope: "direct_plus_shared", summaryStart: "", summaryEnd: "" };
+  const months = ["2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2026-05"];
+  const scheduler = createRouteWarmupScheduler({
+    clock: host.clock,
+    idle: { request: (callback) => host.clock.setTimeout(callback, 0), cancel: (handle) => host.clock.clearTimeout(handle) },
+    loadModule(routeId) {
+      host.loads.push({ routeId, at: host.clock.now() });
+      return Promise.resolve({ routeId }).then((module) => { host.loaded.add(routeId); return module; });
+    },
+    readInput: () => ({
+      mode: host.state.mode,
+      page: host.state.page,
+      work: host.state.work,
+      quietSince: host.state.quietSince,
+      recentRequiredDurationMs,
+      warmupMode: host.state.warmupMode
+    }),
+    evaluate: evaluateWarmup,
+    selectCandidates: () => selectWarmupCandidates({ mode: host.state.mode, identity: host.state.identity, availableMonths: months }),
+    costFor: (routeId) => ({ alreadyLoaded: host.loaded.has(routeId), pending: false, missingBytes: 10_000 }),
+    dataFor: (candidate) => {
+      const id = `${candidate.purpose}:${candidate.identity.viewId}:${candidate.identity.month}`;
+      return {
+        key: id,
+        fresh: fresh.has(id),
+        admission: admitted ? { responseBytes: 10_000, handlerMs: 100 } : null,
+        start: () => {
+          dataStarts.push({ id, at: host.clock.now() });
+          const handle = deferred();
+          handles.push(handle);
+          return { promise: handle.promise, cancel: () => { cancels.push(id); handle.resolve({ status: "cancelled" }); return true; } };
+        }
+      };
+    }
+  });
+  const visitKey = () => `${host.state.identity.tabId}|${host.state.identity.viewId}|${host.state.identity.month}`;
+  return {
+    ...host,
+    scheduler,
+    dataStarts,
+    cancels,
+    settleData: async (index = handles.length - 1) => { handles[index].resolve({ status: "fulfilled" }); await flush(); },
+    failData: async (index = handles.length - 1) => { handles[index].resolve({ status: "failed" }); await flush(); },
+    update: (options = {}) => scheduler.updateContext({ visitKey: visitKey(), ...options })
+  };
+}
+
+test("desktop: code first, then at most two data requests, sequential and 1,500 ms apart", async () => {
+  const host = createDataHost();
+  host.update();
+  await host.clock.advanceTo(1_200);
+  assert.deepEqual(host.loads.map((load) => load.routeId), ["entries"], "Month's likely-next code");
+  assert.deepEqual(host.dataStarts.map((start) => start.id), ["entries-page:person-tim:2025-08"], "then Entries data for the same view and month");
+  await host.clock.advanceTo(5_000);
+  assert.equal(host.dataStarts.length, 1, "never concurrent: the first is still in flight");
+  await host.settleData();
+  await host.clock.advanceTo(5_000);
+  assert.equal(host.dataStarts.length, 2, "spacing already elapsed, so the next starts once the first settles");
+  assert.equal(host.dataStarts[1].id, "month-page:person-tim:2025-07");
+  await host.settleData();
+  await host.clock.advanceTo(60_000);
+  assert.equal(host.dataStarts.length, 2, "two per visit");
+});
+
+test("W15: the second data request waits for the first to settle AND for the 1,500 ms spacing", async () => {
+  const host = createDataHost();
+  host.update();
+  await host.clock.advanceTo(1_200);
+  await host.settleData();
+  await host.clock.advanceTo(2_699);
+  assert.equal(host.dataStarts.length, 1);
+  await host.clock.advanceTo(2_700);
+  assert.deepEqual(host.dataStarts.map((start) => start.at), [1_200, 2_700]);
+});
+
+test("W14: fresh data is skipped without spending a slot; stale data is charged", async () => {
+  const host = createDataHost({ fresh: new Set(["entries-page:person-tim:2025-08"]) });
+  host.update();
+  await host.clock.advanceTo(1_200);
+  assert.deepEqual(host.dataStarts.map((start) => start.id), ["month-page:person-tim:2025-07"]);
+  assert.equal(host.scheduler.inspect().visit.dataStarts, 1);
+});
+
+test("a failed data request stays charged and is not retried in the visit", async () => {
+  const host = createDataHost();
+  host.update();
+  await host.clock.advanceTo(1_200);
+  await host.failData();
+  await host.clock.advanceTo(3_000);
+  await host.failData();
+  await host.clock.advanceTo(60_000);
+  assert.equal(host.dataStarts.length, 2);
+  assert.equal(new Set(host.dataStarts.map((start) => start.id)).size, 2, "never the same request twice");
+});
+
+test("hide, busy, a new generation and dispose cancel an in-flight speculative request", async () => {
+  for (const change of ["hide", "busy", "generation", "visit", "dispose"]) {
+    const host = createDataHost();
+    host.update();
+    await host.clock.advanceTo(1_200);
+    assert.equal(host.dataStarts.length, 1);
+    if (change === "hide") host.state.page = { ...host.state.page, visible: false };
+    if (change === "busy") host.state.work = { ...host.state.work, busy: true };
+    if (change === "visit") host.state.identity = { ...host.state.identity, month: "2025-09" };
+    if (change === "dispose") host.scheduler.dispose();
+    else host.update({ newGeneration: change === "generation" });
+    assert.deepEqual(host.cancels, ["entries-page:person-tim:2025-08"], change);
+  }
+});
+
+test("resume after hide keeps the visit's data budget: no catch-up burst", async () => {
+  const host = createDataHost();
+  host.update();
+  await host.clock.advanceTo(1_200);
+  await host.settleData();
+  await host.clock.advanceTo(2_700);
+  await host.settleData();
+  for (let round = 0; round < 3; round += 1) {
+    host.state.page = { ...host.state.page, visible: false };
+    host.update();
+    host.state.page = { ...host.state.page, visible: true };
+    host.state.quietSince = host.clock.now();
+    host.update();
+    await host.clock.advanceTo(host.clock.now() + 5_000);
+  }
+  assert.equal(host.dataStarts.length, 2);
+});
+
+test("mobile without admission or without 4g starts no data at all", async () => {
+  for (const options of [{ admitted: false, effectiveType: "4g", recentRequiredDurationMs: 200 }, { admitted: true, effectiveType: null, recentRequiredDurationMs: 200 }]) {
+    const host = createDataHost({ mode: "mobile", ...options });
+    host.update();
+    await host.clock.advanceTo(30_000);
+    assert.deepEqual(host.dataStarts, [], JSON.stringify(options));
+  }
+});
+
+test("mobile with admission, 4g and a fast recent request: one data request, after the code settles", async () => {
+  const host = createDataHost({ mode: "mobile", admitted: true, effectiveType: "4g", recentRequiredDurationMs: 200 });
+  host.update();
+  await host.clock.advanceTo(2_000);
+  assert.deepEqual(host.loads.map((load) => load.routeId), ["entries"]);
+  assert.deepEqual(host.dataStarts.map((start) => start.id), ["entries-page:person-tim:2025-08"]);
+  await host.settleData();
+  await host.clock.advanceTo(60_000);
+  assert.equal(host.dataStarts.length, 1, "mobile allows one data request per visit");
+});
+
+test("Tim's Summary warms Tim's Entries only, never the household", async () => {
+  const host = createDataHost({ identity: { tabId: "summary", viewId: "person-tim", month: "2026-05", scope: "direct_plus_shared", summaryStart: "", summaryEnd: "" } });
+  host.update();
+  await host.clock.advanceTo(1_200);
+  await host.settleData();
+  await host.clock.advanceTo(10_000);
+  assert.equal(host.dataStarts.every((start) => !start.id.includes("household")), true);
+  assert.equal(host.dataStarts[0].id, "entries-page:person-tim:2026-05");
+});
+
+test("an editor open before launch prevents data; one opened during a request cancels it", async () => {
+  const host = createDataHost();
+  host.state.work = { ...host.state.work, busy: true };
+  host.update();
+  await host.clock.advanceTo(10_000);
+  assert.deepEqual([host.loads.length, host.dataStarts.length], [0, 0]);
+  host.state.work = { ...host.state.work, busy: false };
+  host.state.quietSince = 10_000;
+  host.update();
+  await host.clock.advanceTo(11_200);
+  assert.equal(host.dataStarts.length, 1);
+  host.state.work = { ...host.state.work, busy: true };
+  host.update();
+  assert.equal(host.cancels.length, 1);
+  await host.clock.advanceTo(30_000);
+  assert.equal(host.dataStarts.length, 1, "no new work while busy");
 });
