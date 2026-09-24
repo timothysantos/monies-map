@@ -2,13 +2,21 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { WARMUP_ADMISSIONS, admissionFor } from "../src/client/route-warmup-admissions.js";
+import { WARMUP_LIMITS } from "../src/client/route-warmup-policy.js";
 
 const summary = (summaryStart, summaryEnd) => ({ tabId: "summary", viewId: "household", month: "2026-05", scope: "direct_plus_shared", summaryStart, summaryEnd });
 
-test("until H01b measures the families, nothing is admitted for mobile", () => {
-  assert.deepEqual(WARMUP_ADMISSIONS, []);
-  for (const family of ["entries-page", "month-page", "summary-page", "imports-page"]) {
-    assert.equal(admissionFor(family, summary("2025-06", "2026-05")), null);
+test("mobile admits only the measured Entries page, within the mobile data caps", () => {
+  assert.deepEqual(WARMUP_ADMISSIONS, [
+    { family: "entries-page", fixture: "scale-10k", revision: "e3cd00b", responseBytes: 44_784, handlerMs: 25 }
+  ]);
+  const entries = admissionFor("entries-page", { tabId: "entries", viewId: "person-tim", month: "2026-05" });
+  assert.deepEqual(entries, { responseBytes: 44_784, handlerMs: 25 });
+  assert.ok(entries.responseBytes <= WARMUP_LIMITS.mobile.maxDataBytes);
+  assert.ok(entries.handlerMs <= WARMUP_LIMITS.mobile.maxDataHandlerMs);
+  // Families that were measured over the cap, or never offered on mobile, stay unknown.
+  for (const family of ["month-page", "summary-page", "imports-page", "splits-page"]) {
+    assert.equal(admissionFor(family, summary("2025-06", "2026-05")), null, family);
   }
 });
 
