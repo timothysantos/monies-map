@@ -226,9 +226,9 @@ test("Month proposes Entries for the same month, view and scope; desktop adds ad
   assert.deepEqual(describeCandidates(selectWarmupCandidates({ mode: "desktop", identity: { ...monthHousehold, month: "2025-08" }, availableMonths: months })), [
     "module:route-module:entries:auto:household:2025-08:direct:-",
     "data:entries-page:entries:auto:household:2025-08:direct:-",
+    "data:imports-page:imports:auto::::-",
     "data:month-page:month:auto:household:2025-07:direct:-",
-    "data:month-page:month:auto:household:2025-09:direct:-",
-    "data:imports-page:imports:auto::::-"
+    "data:month-page:month:auto:household:2025-09:direct:-"
   ]);
 });
 

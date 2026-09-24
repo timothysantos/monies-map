@@ -472,7 +472,7 @@ test("desktop: code first, then at most two data requests, sequential and 1,500 
   await host.settleData();
   await host.clock.advanceTo(5_000);
   assert.equal(host.dataStarts.length, 2, "spacing already elapsed, so the next starts once the first settles");
-  assert.equal(host.dataStarts[1].id, "month-page:person-tim:2025-07");
+  assert.equal(host.dataStarts[1].id, "imports-page::", "the banner shown on this page before adjacent-month guesses");
   await host.settleData();
   await host.clock.advanceTo(60_000);
   assert.equal(host.dataStarts.length, 2, "two per visit");
@@ -493,7 +493,7 @@ test("W14: fresh data is skipped without spending a slot; stale data is charged"
   const host = createDataHost({ fresh: new Set(["entries-page:person-tim:2025-08"]) });
   host.update();
   await host.clock.advanceTo(1_200);
-  assert.deepEqual(host.dataStarts.map((start) => start.id), ["month-page:person-tim:2025-07"]);
+  assert.deepEqual(host.dataStarts.map((start) => start.id), ["imports-page::"]);
   assert.equal(host.scheduler.inspect().visit.dataStarts, 1);
 });
 

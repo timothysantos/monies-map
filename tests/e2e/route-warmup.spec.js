@@ -51,11 +51,12 @@ async function waitUsable(page) {
 async function newPage(browser, options) {
   const context = await browser.newContext(options);
   const page = await context.newPage();
-  await page.goto("/");
-  // Let the setup page finish loading, so none of its late module requests
-  // are counted by a test that starts recording afterwards.
-  await waitUsable(page);
+  // Reseed first (a fresh test database answers its first page request with
+  // an error), then let the setup page finish loading so none of its late
+  // requests are counted by a test that starts recording afterwards.
   await reseedDemo(page);
+  await page.goto("/");
+  await waitUsable(page);
   return { context, page };
 }
 

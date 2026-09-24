@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { hashKey, useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
@@ -119,13 +119,6 @@ const routeTabs = [
 // Split the tabs so the primary shell keeps the highest-frequency routes in view.
 const primaryRouteTabs = routeTabs.slice(0, 4);
 const secondaryRouteTabs = routeTabs.slice(4);
-// Prefetch timing is intentionally staggered so warmup does not compete with
-// the visible render path.
-const PAGE_PREFETCH_DELAY_MS = 1200;
-const PAGE_PREFETCH_SPACING_MS = 1500;
-const PAGE_PREFETCH_STAGE_DELAY_MS = 5000;
-const IMPORT_INBOX_BANNER_STALE_TIME_MS = 5 * 60 * 1000;
-const IMPORT_INBOX_BANNER_WARMUP_TIMEOUT_MS = 1200;
 const APP_DOCUMENT_TITLE = "Monie's Map";
 const LOADING_STATUS_POLL_MS = 500;
 function createLoadingStatus(overrides = {}) {
@@ -165,38 +158,6 @@ function getRoutePageRequestKey(request) {
 
   const query = request.params.toString();
   return query ? `${request.path}?${query}` : request.path;
-}
-
-// Schedule a small idle task so speculative work never competes with the
-// visible render path.
-function scheduleIdleTask(callback, timeout = 1000) {
-  if (typeof window === "undefined") {
-    return undefined;
-  }
-  if (typeof window.requestIdleCallback === "function") {
-    return { type: "idle", id: window.requestIdleCallback(callback, { timeout }) };
-  }
-  return { type: "timeout", id: window.setTimeout(callback, timeout) };
-}
-
-// Cancel idle work when route or shell state changes before the task runs.
-function cancelIdleTask(handle) {
-  if (!handle || typeof window === "undefined") {
-    return;
-  }
-  if (handle.type === "idle" && typeof window.cancelIdleCallback === "function") {
-    window.cancelIdleCallback(handle.id);
-    return;
-  }
-  window.clearTimeout(handle.id);
-}
-
-// Wrap `setTimeout` in a promise so route work can be staged with explicit
-// pauses during warmup and prefetching.
-function waitFor(ms) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
 }
 
 // Detect the current runtime so the shell can label local/demo builds without
@@ -283,7 +244,6 @@ export function App() {
   const navigate = useNavigate();
   const syncChannelRef = useRef(null);
   const queryEpochRef = useRef(0);
-  const routePagePrefetchTimerRef = useRef(null);
   // Route identity is derived from the browser location and query string, and
   // that route drives which page payload we fetch next.
   const appEnvironment = appShell?.appEnvironment ?? getClientAppEnvironment();
@@ -1610,52 +1570,6 @@ export function App() {
     clearSummaryAccountPillsCache();
   }, [clearSummaryAccountPillsCache, clearSummaryPageCache]);
 
-  // Prefetch the next likely route page without replacing the current active
-  // page state.
-  const prefetchRoutePage = useCallback(async (request) => {
-    if (!request) {
-      return;
-    }
-
-    const queryKey = queryKeys.routeRequestKey(request);
-    const queryState = queryClient.getQueryState(queryKey);
-    if (queryClient.getQueryData(queryKey) || queryState?.fetchStatus === "fetching") {
-      return;
-    }
-
-    await fetchRoutePageData(request).catch(() => {});
-  }, [fetchRoutePageData, queryClient]);
-
-  // Summary prefetch warms the range DTO and account pills together because
-  // both are needed for the tab to render without fallback gaps.
-  const prefetchSummaryPage = useCallback(async ({ pageParams, accountPillsParams }) => {
-    const summaryQueryKey = summaryPageKeyFromParams(pageParams);
-    const pillsQueryKey = queryKeys.summaryAccountPills({
-      viewId: accountPillsParams.get("view") ?? "household"
-    });
-    const summaryState = queryClient.getQueryState(summaryQueryKey);
-    const pillsState = queryClient.getQueryState(pillsQueryKey);
-    const shouldFetchSummary = !queryClient.getQueryData(summaryQueryKey) && summaryState?.fetchStatus !== "fetching";
-    const shouldFetchPills = !queryClient.getQueryData(pillsQueryKey) && pillsState?.fetchStatus !== "fetching";
-
-    await Promise.all([
-      shouldFetchSummary ? fetchSummaryPageData(pageParams).catch(() => {}) : null,
-      shouldFetchPills ? fetchSummaryAccountPillsData(accountPillsParams).catch(() => {}) : null
-    ]);
-  }, [fetchSummaryAccountPillsData, fetchSummaryPageData, queryClient]);
-
-  // Prefetch the entries page using the same exact key that the entries route
-  // will later consume.
-  const prefetchEntriesPage = useCallback(async (params) => {
-    const queryKey = queryKeys.entriesPage(params);
-    const queryState = queryClient.getQueryState(queryKey);
-    if (queryClient.getQueryData(queryKey) || queryState?.fetchStatus === "fetching") {
-      return;
-    }
-
-    await fetchEntriesPageData(params).catch(() => {});
-  }, [fetchEntriesPageData, queryClient]);
-
   useEffect(() => {
     const controller = new AbortController();
 
@@ -2126,9 +2040,6 @@ export function App() {
       window.__MONIES_MAP_ROUTE_WORK__ = routeWork;
     }
   }, [routeWork]);
-  // Route code warms only once this route is usable and quiet, plus on exact
-  // link intent; the click itself always loads through loadRouteModule.
-  const getNavIntentProps = useRouteWarmup({ routeIdentity: activeRouteIdentity, routeWork, queryEpoch });
   // Summary-dependent helpers reuse the same optional page slice so the
   // summary-specific code stays isolated from detail tabs.
   const summaryPage = pageView?.summaryPage ?? null;
@@ -2157,6 +2068,23 @@ export function App() {
     () => pageView?.summaryPage?.availableMonths?.slice().sort() ?? appShell?.trackedMonths ?? [],
     [appShell, pageView]
   );
+  // Summary range shifts are only proposed from the range the server resolved.
+  const warmupSummaryRange = useMemo(
+    () => (selectedTabId === "summary" && currentPageView?.summaryPage?.rangeStartMonth
+      ? { startMonth: currentPageView.summaryPage.rangeStartMonth, endMonth: currentPageView.summaryPage.rangeEndMonth }
+      : null),
+    [currentPageView, selectedTabId]
+  );
+  // Route code, then a few optional data requests, warm only once this route
+  // is usable and quiet, plus exact link intent. Clicks always load normally.
+  const getNavIntentProps = useRouteWarmup({
+    routeIdentity: activeRouteIdentity,
+    routeWork,
+    queryEpoch,
+    queryClient,
+    availableMonths,
+    summaryRange: warmupSummaryRange
+  });
   const isDetailMonthTab = renderedTabId === "month" || renderedTabId === "entries" || renderedTabId === "splits";
   const selectedRouteIsDetailMonthTab = selectedTabId === "month" || selectedTabId === "entries" || selectedTabId === "splits";
   const isSplitsTab = renderedTabId === "splits";
@@ -2293,7 +2221,6 @@ export function App() {
           onCloseMobileContext={closeMobileContext}
           onMobileFilterStateChange={handleEntriesMobileFilterStateChange}
           externalRefreshToken={entriesExternalRefreshToken}
-          availableMonths={availableMonths}
           accounts={accounts}
           categories={categories}
           people={appShell.household.people}
@@ -2361,7 +2288,6 @@ export function App() {
     accounts,
     appShell?.household?.people,
     appShell?.viewerIdentity,
-    availableMonths,
     broadcastSplitMutation,
     categories,
     closeMobileContext,
@@ -2399,203 +2325,22 @@ export function App() {
     && importInboxBanner.summary.requiredFileCount > 0
   );
 
+  // The import banner shows whatever the Imports query cache holds: filled by
+  // visiting Imports, by desktop warmup, or by import mutations that refresh
+  // it. The banner itself never fetches, so mobile never downloads the
+  // Imports page just for it.
   useEffect(() => {
-    if (
-      !["summary", "month"].includes(selectedTabId)
-      || !currentPageView
-      || isAppShellLoading
-      || typeof window === "undefined"
-    ) {
-      return undefined;
-    }
-
-    let cancelled = false;
-    const cachedImportsPage = queryClient.getQueryData(queryKeys.importsPage());
-    if (cachedImportsPage?.importsPage?.importInbox) {
-      setImportInboxBanner(cachedImportsPage.importsPage.importInbox);
-    }
-
-    // This banner is helpful, but it is not part of the Summary or Month
-    // contract. Only warm its Imports query after the active route is usable.
-    const idleHandle = scheduleIdleTask(() => {
-      void queryClient.fetchQuery({
-        queryKey: queryKeys.importsPage(),
-        queryFn: async ({ signal }) => {
-          const response = await fetch("/api/imports-page", { cache: "no-store", signal });
-          if (!response.ok) {
-            throw new Error("Could not refresh import inbox banner.");
-          }
-          return response.json();
-        },
-        retry: false,
-        staleTime: IMPORT_INBOX_BANNER_STALE_TIME_MS
-      })
-        .then((data) => {
-          if (!cancelled) {
-            setImportInboxBanner(data?.importsPage?.importInbox ?? null);
-          }
-        })
-        .catch(() => {
-          if (!cancelled && !cachedImportsPage?.importsPage?.importInbox) {
-            setImportInboxBanner(null);
-          }
-        });
-    }, IMPORT_INBOX_BANNER_WARMUP_TIMEOUT_MS);
-
-    return () => {
-      cancelled = true;
-      cancelIdleTask(idleHandle);
+    const importsKeyHash = hashKey(queryKeys.importsPage());
+    const readBanner = () => {
+      setImportInboxBanner(queryClient.getQueryData(queryKeys.importsPage())?.importsPage?.importInbox ?? null);
     };
-  }, [currentPageView, isAppShellLoading, queryClient, selectedTabId]);
-
-  // Prefetch adjacent routes once the shell is stable so fast navigation feels
-  // instant without violating the current route's source of truth.
-  useEffect(() => {
-    if (
-      !appShell
-      || appShellError
-      || isAppShellLoading
-      || typeof window === "undefined"
-      || window.navigator?.connection?.saveData
-      || window.matchMedia?.("(pointer: coarse)")?.matches
-    ) {
-      return undefined;
-    }
-
-    let isCancelled = false;
-    const queryEpoch = queryEpochRef.current;
-    const isStable = () => !isCancelled
-      && queryEpochRef.current === queryEpoch
-      && document.visibilityState === "visible";
-    const runPrefetchTasks = async (tasks) => {
-      const seenKeys = new Set();
-      for (const task of tasks) {
-        if (!task || seenKeys.has(task.key)) {
-          continue;
-        }
-        seenKeys.add(task.key);
-        if (!isStable()) {
-          return false;
-        }
-        await task.run();
-        if (!isStable()) {
-          return false;
-        }
-        await waitFor(PAGE_PREFETCH_SPACING_MS);
+    readBanner();
+    return queryClient.getQueryCache().subscribe((event) => {
+      if (event?.query?.queryHash === importsKeyHash) {
+        readBanner();
       }
-      return isStable();
-    };
-
-    routePagePrefetchTimerRef.current = window.setTimeout(() => {
-      // High-priority tasks are the next months or summary windows the user is
-      // most likely to visit immediately.
-      const highPriorityTasks = [];
-      // Low-priority tasks warm the rest of the route set and the entries page.
-      const lowPriorityTasks = [];
-
-      if (selectedTabId === "month") {
-        const currentIndex = availableMonths.indexOf(selectedMonth);
-        if (currentIndex !== -1) {
-          for (const offset of [-1, 1]) {
-            const adjacentMonth = availableMonths[currentIndex + offset];
-            if (adjacentMonth) {
-              const request = buildRoutePageRequest({
-                tabId: "month",
-                viewId: selectedViewId,
-                month: adjacentMonth,
-                scope: selectedScope
-              });
-              highPriorityTasks.push({
-                key: `${request.path}?${request.params.toString()}`,
-                run: () => prefetchRoutePage(request)
-              });
-            }
-          }
-        }
-      } else if (selectedTabId === "summary" && summaryPage?.availableMonths?.length) {
-        const summaryMonths = summaryPage.availableMonths;
-        const startIndex = summaryMonths.indexOf(summaryPage.rangeStartMonth);
-        const endIndex = summaryMonths.indexOf(summaryPage.rangeEndMonth);
-        if (startIndex !== -1 && endIndex !== -1) {
-          for (const offset of [-1, 1]) {
-            const nextStartIndex = startIndex + offset;
-            const nextEndIndex = endIndex + offset;
-            if (nextStartIndex >= 0 && nextEndIndex < summaryMonths.length) {
-              highPriorityTasks.push({
-                key: `/api/summary-page?view=${selectedViewId}&scope=${selectedScope}&summary_start=${summaryMonths[nextStartIndex]}&summary_end=${summaryMonths[nextEndIndex]}`,
-                run: () => prefetchSummaryPage({
-                  pageParams: buildSummaryPageParams({
-                    viewId: selectedViewId,
-                    month: selectedMonth,
-                    scope: selectedScope,
-                    summaryStart: summaryMonths[nextStartIndex],
-                    summaryEnd: summaryMonths[nextEndIndex]
-                  }),
-                  accountPillsParams: buildSummaryAccountPillsParams({ viewId: selectedViewId })
-                })
-              });
-            }
-          }
-        }
-      }
-
-      for (const tabId of ["splits"]) {
-        if (tabId === selectedTabId) {
-          continue;
-        }
-        const request = buildRoutePageRequest({
-          tabId,
-          viewId: selectedViewId,
-          month: selectedMonth,
-          scope: selectedScope
-        });
-        if (request) {
-          lowPriorityTasks.push({
-            key: `${request.path}?${request.params.toString()}`,
-            run: () => prefetchRoutePage(request)
-          });
-        }
-      }
-
-      if (selectedTabId !== "entries") {
-        const params = buildEntriesPageParams({ viewId: "household", month: selectedMonth });
-        lowPriorityTasks.push({
-          key: `/api/entries-page?${params.toString()}`,
-          run: () => prefetchEntriesPage(params)
-        });
-      }
-
-      void (async () => {
-        const highPriorityComplete = await runPrefetchTasks(highPriorityTasks.slice(0, 2));
-        if (!highPriorityComplete) {
-          return;
-        }
-        await waitFor(PAGE_PREFETCH_STAGE_DELAY_MS);
-        await runPrefetchTasks(lowPriorityTasks);
-      })();
-    }, PAGE_PREFETCH_DELAY_MS);
-
-    return () => {
-      isCancelled = true;
-      if (routePagePrefetchTimerRef.current) {
-        window.clearTimeout(routePagePrefetchTimerRef.current);
-        routePagePrefetchTimerRef.current = null;
-      }
-    };
-  }, [
-    availableMonths,
-    appShell,
-    appShellError,
-    isAppShellLoading,
-    pageView,
-    prefetchEntriesPage,
-    prefetchRoutePage,
-    prefetchSummaryPage,
-    selectedMonth,
-    selectedScope,
-    selectedTabId,
-    selectedViewId
-  ]);
+    });
+  }, [queryClient]);
 
   // Keep the splits view pinned to a sensible default person when no explicit
   // selection is available in the URL.
