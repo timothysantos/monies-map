@@ -21,7 +21,7 @@ verified on 2026-09-23 only.
 | H03 | Prereq | Ready/busy reporting from workflow owners | Done (`1d9524b`, `d30d4f0`) | audit §H03 |
 | H04 | P1/P2m | Pure warmup policy | Done (`0adf7a4`) | audit §H04 |
 | H05 | P1/P2m | Shared module loader, code-only scheduler | Done (`176509c`, `f464bac`, `d21fbe4`, `23a5109`) | audit §H05 |
-| H06 | P2/P2m | Cancellation, leases, promotion | Done (`dc3c229`..`8770a06`); open draft flake tracked separately | audit §H06 |
+| H06 | P2/P2m | Cancellation, leases, promotion | Done (`dc3c229`..`8770a06`); draft flake resolved (`6573bdc`) | audit §H06 |
 | H07 | P2/P2m | One bounded optional data queue | Done (`6d998d2`..`9fb2bc9`); mobile data off until H01b | audit §H07 |
 | H08 | P3 | Optional AI readiness | **Next** | — |
 | H09 | P4 | Full request/initialization timing | Open | — |
