@@ -690,12 +690,12 @@ export function App() {
   }, [updateLoadingStatus]);
 
   // Hydrate the client shell state from the app-shell query and clear any
-  // previous shell error before rendering.
+  // previous shell error. Page errors stay: a page that failed before the
+  // shell arrived must still reach its error screen.
   const loadAppShell = useCallback(async (signal, { bypassCache = false } = {}) => {
     const data = await fetchAppShellData(appShellParams, { bypassCache, signal });
 
     setAppShellError("");
-    setRoutePageError("");
     setAppShell(data);
     return data;
   }, [appShellParams, fetchAppShellData]);
@@ -705,7 +705,6 @@ export function App() {
   const handleAppShellFailure = useCallback((error) => {
     setAppShell(null);
     setAppShellError(describeAppShellError(error));
-    setRoutePageError("");
     reportLoadingIssue("Load failed", error);
     updateLoadingStatus({
       label: "Dashboard load failed",
@@ -1537,7 +1536,6 @@ export function App() {
           });
           if (!controller.signal.aborted) {
             setAppShellError("");
-            setRoutePageError("");
             setAppShell(shellData);
           }
 
@@ -1547,7 +1545,6 @@ export function App() {
           });
           if (!controller.signal.aborted) {
             setAppShellError("");
-            setRoutePageError("");
             setAppShell(fullData);
           }
           return;
@@ -1571,7 +1568,6 @@ export function App() {
             });
             if (!controller.signal.aborted) {
               setAppShellError("");
-              setRoutePageError("");
               setAppShell(fallbackData);
             }
             return;
@@ -1862,8 +1858,11 @@ export function App() {
     }
   }, [currentPageView, selectedTabId]);
 
+  // A page failure belongs to the page: shell loads never clear it, so the
+  // contract check waits for the shell instead of flagging Summary data that
+  // simply arrived first (the Summary view cannot be built without the shell).
   useEffect(() => {
-    if (currentPageView || routePageError) {
+    if (!appShell || currentPageView || routePageError) {
       return;
     }
 
@@ -1878,6 +1877,7 @@ export function App() {
       setRoutePageError(describeRoutePageContractError(selectedTabId));
     }
   }, [
+    appShell,
     currentPageView,
     currentRoutePageData,
     routePageError,
