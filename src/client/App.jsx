@@ -5,11 +5,9 @@ import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import {
   Receipt,
-  Ellipsis,
   Plus
 } from "lucide-react";
 import {
-  NavLink,
   Navigate,
   Route,
   Routes,
@@ -53,6 +51,7 @@ import {
   ShellErrorScreen,
   ShellLoadingScreen
 } from "./app-shell-status";
+import { ShellRouteTabs } from "./app-shell-navigation";
 import { slugify } from "./category-utils";
 import { formatMonthLabel } from "./formatters";
 import { TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
@@ -2627,16 +2626,6 @@ export function App() {
 
     return { pathname: tab.path, search: params.toString() ? `?${params.toString()}` : "" };
   };
-  const renderTabLabel = (tab) => (
-    <span className="tab-label-with-badge">
-      <span>{tab.label}</span>
-      {tab.id === "settings" && pendingCategorySuggestionCount ? (
-        <span className="tab-badge" title={messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount)}>
-          {pendingCategorySuggestionCount}
-        </span>
-      ) : null}
-    </span>
-  );
   // Route-driven view changes need to keep the month and entries tabs
   // internally consistent when the active household member changes.
   function handleViewChange(nextViewId) {
@@ -2956,55 +2945,14 @@ export function App() {
         </div>
 
         <div className="period-inline">
-          <nav className="tab-strip" aria-label={messages.tabs.ariaLabel}>
-            {primaryRouteTabs.map((tab) => (
-              <NavLink
-                key={tab.id}
-                {...getNavIntentProps(tab.id)}
-                className={({ isActive }) => `tab ${isActive ? "is-active" : ""}`}
-                to={buildTabTarget(tab)}
-                title={tab.id === "settings" && pendingCategorySuggestionCount ? messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount) : undefined}
-              >
-                {renderTabLabel(tab)}
-              </NavLink>
-            ))}
-            {secondaryRouteTabs.map((tab) => (
-              <NavLink
-                key={tab.id}
-                {...getNavIntentProps(tab.id)}
-                className={({ isActive }) => `tab tab-secondary ${isActive ? "is-active" : ""}`}
-                to={buildTabTarget(tab)}
-                title={tab.id === "settings" && pendingCategorySuggestionCount ? messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount) : undefined}
-              >
-                {renderTabLabel(tab)}
-              </NavLink>
-            ))}
-            <Popover.Root>
-              <Popover.Trigger asChild>
-                <button type="button" className={`tab tab-overflow-trigger ${secondaryRouteTabs.some((tab) => tab.id === selectedTabId) ? "is-active" : ""}`} aria-label="More pages">
-                  <Ellipsis size={18} />
-                </button>
-              </Popover.Trigger>
-              <Popover.Portal>
-                <Popover.Content className="tab-overflow-popover" sideOffset={10} align="end">
-                  <div className="tab-overflow-list">
-                    {secondaryRouteTabs.map((tab) => (
-                      <NavLink
-                        key={tab.id}
-                        {...getNavIntentProps(tab.id)}
-                        className={({ isActive }) => `tab-overflow-link ${isActive ? "is-active" : ""}`}
-                        to={buildTabTarget(tab)}
-                        title={tab.id === "settings" && pendingCategorySuggestionCount ? messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount) : undefined}
-                      >
-                        {renderTabLabel(tab)}
-                      </NavLink>
-                    ))}
-                  </div>
-                  <Popover.Arrow className="category-popover-arrow" />
-                </Popover.Content>
-              </Popover.Portal>
-            </Popover.Root>
-          </nav>
+          <ShellRouteTabs
+            primaryTabs={primaryRouteTabs}
+            secondaryTabs={secondaryRouteTabs}
+            selectedTabId={selectedTabId}
+            buildTabTarget={buildTabTarget}
+            getNavIntentProps={getNavIntentProps}
+            pendingCategorySuggestionCount={pendingCategorySuggestionCount}
+          />
           <div className={`period-nav-cluster ${isSplitsTab ? "is-passive" : ""}`}>
             <button className="period-button" type="button" aria-label={messages.period.previousAriaLabel} onClick={() => handleMonthChange(-1)} disabled={isSplitsTab}>‹</button>
             <div className="period-display">
