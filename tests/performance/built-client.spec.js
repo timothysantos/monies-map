@@ -12,6 +12,8 @@ import { parseServerTiming, summarizeSamples, totalsByType } from "./performance
 
 const SUMMARY_URL = "/summary?view=household&month=2026-05";
 const FIXTURE = process.env.PERFORMANCE_FIXTURE || "demo";
+// off | intent-only | normal (absent = normal). Builds before H05 ignore it.
+const WARMUP_MODE = process.env.PERFORMANCE_WARMUP_MODE || "normal";
 const COLD_SAMPLES = Number(process.env.PERFORMANCE_COLD_SAMPLES ?? 5);
 const WARM_SAMPLES_PER_DIRECTION = Number(process.env.PERFORMANCE_WARM_SAMPLES ?? 20);
 const IDLE_CHECKPOINTS_S = [2, 10, 30];
@@ -66,6 +68,9 @@ async function preparePage(context, profile, origin) {
   await cdp.send("Network.enable");
   await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: profile.latency, downloadThroughput: profile.downloadThroughput, uploadThroughput: profile.uploadThroughput });
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: profile.cpuRate });
+  if (WARMUP_MODE !== "normal") {
+    await page.addInitScript((mode) => { window.__MONIES_MAP_WARMUP_MODE__ = mode; }, WARMUP_MODE);
+  }
   await page.addInitScript(() => {
     const perf = { lcp: null, cls: null, longTasks: [], supported: { lcp: false, cls: false, longTasks: false } };
     window.__macroPerf = perf;
@@ -186,7 +191,11 @@ test("built Summary cold load, Summary/Entries warm navigation and idle traffic"
       for (const seconds of IDLE_CHECKPOINTS_S) {
         await page.waitForTimeout(Math.max(0, usableWall + seconds * 1000 - Date.now()));
         const after = requests.filter((request) => request.startedAtMs > usableWall && request.startedAtMs <= usableWall + seconds * 1000);
-        idle[`${seconds}s`] = { byType: totalsByType(after), paths: after.map((request) => request.path) };
+        idle[`${seconds}s`] = {
+          byType: totalsByType(after),
+          paths: after.map((request) => request.path),
+          items: after.map((request) => ({ path: request.path, bytes: request.bytes }))
+        };
       }
     }
     coldSamples.push(coldSample);
@@ -199,7 +208,12 @@ test("built Summary cold load, Summary/Entries warm navigation and idle traffic"
         const before = requests.length;
         await link(target === "entries" ? "Entries" : "Summary").click();
         const ready = await waitUsable(page, target);
-        return { usableMs: ready - started, apiRequests: apiDetail(requests.slice(before)) };
+        const made = requests.slice(before);
+        return {
+          usableMs: ready - started,
+          apiRequests: apiDetail(made),
+          items: made.map((request) => ({ path: request.path, bytes: request.bytes }))
+        };
       };
       const priming = [await navigate("entries"), await navigate("summary")];
       const toEntries = [];
@@ -225,6 +239,7 @@ test("built Summary cold load, Summary/Entries warm navigation and idle traffic"
     workingTreeDirty: execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim().length > 0,
     buildId: warmupMetadata?.buildId ?? null,
     fixture: FIXTURE,
+    warmupMode: WARMUP_MODE,
     fixtureNote: "existing demo reseed (DEMO_SEED_MONTH=2026-05); seeded once for this Worker cohort",
     browser: { engine: "chromium", version: browser.version() },
     project: testInfo.project.name,
