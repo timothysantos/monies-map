@@ -1015,3 +1015,100 @@ a ref.
 - Rollback: revert `f87ae55`, `22f2840`.
 
 Next eligible step: H09 (H01b also eligible).
+
+## H09: Full API timing
+
+Date: 2026-09-24. Baseline `096e0e6` (H08 evidence). Commits: `94a02f6`
+(timing module, timed initialization, Worker wiring, unit tests),
+`c1dd539` (all ten page APIs in `api-performance.spec.js`).
+
+### Contract
+
+- Page API header: `app;dur=<handler>, init;dur=<ms>;desc="cold|warm", total;dur=<ms>`.
+  `app` keeps its meaning and stays first, because existing budget checks
+  read the first `dur`. `total` runs from the top of `fetch` until the body
+  string is serialized, and the body is serialized once
+  (`serializeJson` + `jsonFromText` in `src/server/json.ts`; `json()` is
+  unchanged in output).
+- `ensureDemoSchemaTimed(db) -> { cold }`: cold only for the call that
+  starts initialization. A joined or finished initialization is warm.
+  `ensureDemoSchema` is unchanged for its other callers, including the
+  retry-after-failure path.
+- An initialization failure is caught. It logs `API init failed` (request
+  ID, method, path, `initMs`, error) and returns
+  `500 {"ok":false,"error":"Initialization failed","requestId"}` with
+  `init` and `total`. No internal error text is returned. Before, the throw
+  was uncaught.
+- Health, the shortcut-gateway 404 and the create-endpoint 405 still answer
+  before initialization, with no timing header.
+- A handler failure keeps today's 500 body without Server-Timing.
+
+### Tests
+
+`tests/api-timing.test.mjs` (7) calls the real Worker `fetch` under tsx with
+a fake D1 (no Wrangler):
+- header format, including when the app metric is missing;
+- `timeInitialization` with an injected clock (ok, warm, failure);
+- `ensureDemoSchemaTimed` is cold once, joined while pending as warm, runs
+  no statements when warm, and after a failure is cold again, then warm;
+- Imports page cold → warm: metric order, `init` > 0 with a 2 ms D1 delay,
+  `total ≥ init + app`, first `dur` is `app`, body is pretty-printed JSON
+  and identical between calls apart from `generatedAt`, headers unchanged;
+- all ten page APIs return 200 with the three metrics;
+- an initialization failure returns a 500 with `init`/`total` and no
+  message, and the next request initializes again (cold);
+- health and gateway 404/405 run no statement and carry no timing.
+
+Mutations checked:
+- dropping `timing` from one call site fails 3 tests;
+- disabling the failure branch fails 1.
+
+Against the old code the file cannot import the new exports.
+
+### Real local Worker (`wrangler.test.jsonc`, isolated port 8911)
+
+Three restarts, first request a page API:
+
+| Request | app | init | total |
+| --- | --- | --- | --- |
+| 1st `imports-page` (cold) | 234 / 131 / 134 | 36 / 27 / 33 cold | 271 / 158 / 167 |
+| 2nd `imports-page` | 6 / 6 / 7 | 0 warm | 6 / 6 / 7 |
+| `summary-page` (May) | 21 / 21 / 22 | 0 warm | 21 / 21 / 22 |
+
+Finding: after a restart the first handler costs ≈130–230 ms more than a
+warm one, on top of ≈30 ms initialization. The whole cold cost is now
+visible, where `app` alone used to hide `init`.
+
+Seeded warm run over all ten APIs (`api-performance.spec.js`), app/total ms:
+- app-shell 2/2, reference-data 1/1;
+- entries-shell 12/12, entries-page 5/5;
+- summary-page 18/18, account pills 5/5;
+- month-page 9/9, splits-page 20/20;
+- imports-page 6/7, settings-page 11/12.
+
+`init` is 0 (warm) for all ten.
+
+### Pre-existing issue surfaced (not fixed here)
+
+On a fresh `schema.sql` database the first request (the reseed) now logs
+`API init failed … no such table: audit_events` and returns the new 500.
+The next request succeeds. The fix (`647ca50`, `fd841b1`, branch
+`claude/sharp-kepler-4efdb7`) was never merged into `macro-performance`;
+an earlier note implied otherwise. Out of H09 scope.
+
+### Commands and results (Node 22.12.0)
+
+| Command | Result |
+| --- | --- |
+| `npm run typecheck` | Pass |
+| `npm run test:unit` | Pass 392/392 (385 + 7 new) |
+| `npm run build` | Pass |
+| `node --import tsx --test tests/shortcut-gateway.test.mjs` | Pass |
+| Full functional E2E (isolated ports 5311/8911/9311, own D1 dir) | **Pass 216/216** (8.1 min) |
+| `npm run test:e2e:smoke` | Not run separately (fixed shared port); every smoke file is in the full run |
+| `npm run test:performance` | Not run: the browser harness reads only `app` budgets; the real-Worker numbers above were taken directly |
+
+Remaining risk: `total` excludes time spent streaming the Response after
+the handler returns. Rollback: revert `c1dd539`, `94a02f6`.
+
+Status: complete. Next eligible step: H01b, then H10.

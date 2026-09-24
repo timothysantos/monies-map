@@ -24,7 +24,7 @@ verified on 2026-09-23 only.
 | H06 | P2/P2m | Cancellation, leases, promotion | Done (`dc3c229`..`8770a06`); draft flake resolved (`6573bdc`) | audit §H06 |
 | H07 | P2/P2m | One bounded optional data queue | Done (`6d998d2`..`9fb2bc9`); mobile data off until H01b | audit §H07 |
 | H08 | P3 | Optional AI readiness | Done | `22f2840`, `f87ae55` |
-| H09 | P4 | Full request/initialization timing | **Next** | — |
+| H09 | P4 | Full request/initialization timing | Done | `94a02f6`, `c1dd539` |
 | H10 | Closure | Measured comparison, first delivery | Open | — |
 | H11–H17 | P5–P11 | Gated architecture work | Not funded until H10 | — |
 
@@ -1165,6 +1165,18 @@ on failure (retry path).
 5. Extend `api-performance.spec.js` to all 10 page APIs, asserting only the
    existing `app` budget; record `init`/`total` in the audit.
 Exit: initialization visible in a new metric; responses byte-identical.
+
+### H09 as built
+
+- `total` stops once the body string is serialized, before the Response is
+  built. `json()` is now `jsonFromText(serializeJson(payload))`, with
+  byte-identical output.
+- The unit tests call the real Worker `fetch` under tsx with a fake D1, so
+  cold, warm, failure and gateway order are tested without Wrangler.
+- An initialization failure on a non-page route returns the same 500 JSON
+  with timing. Before, it was an uncaught Worker error.
+- The fresh-database first-request failure is pre-existing and still
+  unmerged here (see the H09 audit).
 
 ## H10: First Delivery Closure
 
