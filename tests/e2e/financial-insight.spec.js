@@ -150,3 +150,195 @@ test.describe("financial insights", () => {
     await expect(splitsInsight).toContainText("filtered group view");
   });
 });
+
+// H08: optional AI wording waits for a usable route (loaded, no editor or
+// save in progress) and a quiet 700 ms. Requests are counted and held with
+// page.route; deterministic wording is always on screen meanwhile.
+test.describe("financial insight wording readiness", () => {
+  const SUMMARY_URL = "/summary?view=household&month=2026-05&scope=direct_plus_shared";
+  const AI_WORDING = "Playwright AI wording for this check-in.";
+
+  function controlInsightRequests(page, { respond = "ai" } = {}) {
+    const state = { requests: [], held: [], failed: [], hold: false };
+    page.on("requestfailed", (request) => {
+      if (new URL(request.url()).pathname === "/api/ai-assist/financial-insight") state.failed.push(Date.now());
+    });
+    const fulfill = async (route) => {
+      if (respond === "malformed") {
+        await route.fulfill({ status: 200, contentType: "application/json", body: "{not json" }).catch(() => {});
+        return;
+      }
+      if (respond === "error-with-wording") {
+        await route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({ available: true, source: "ai", narrative: AI_WORDING })
+        }).catch(() => {});
+        return;
+      }
+      if (respond === "unavailable") {
+        await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ ok: false }) }).catch(() => {});
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ available: true, source: "ai", narrative: AI_WORDING })
+      }).catch(() => {});
+    };
+    return page.route("**/api/ai-assist/financial-insight", async (route) => {
+      state.requests.push(Date.now());
+      if (state.hold) {
+        await new Promise((resolve) => state.held.push(resolve));
+      }
+      await fulfill(route);
+    }).then(() => ({
+      state,
+      releaseAll: () => state.held.splice(0).forEach((resolve) => resolve())
+    }));
+  }
+
+  async function waitUsable(page) {
+    await expect.poll(() => page.evaluate(() => window.__MONIES_MAP_ROUTE_WORK__?.usable ?? false), { timeout: 30_000 }).toBe(true);
+  }
+
+  async function openSummary(page, { moneyVisible = true } = {}) {
+    await page.addInitScript((visible) => window.localStorage.setItem("monies-map:money-totals-visible", String(visible)), moneyVisible);
+    await reseedDemo(page);
+    await page.goto(SUMMARY_URL);
+    await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
+    await waitUsable(page);
+  }
+
+  test("an editor open blocks the request; closing it starts one request after a full quiet period", async ({ page }) => {
+    const control = await controlInsightRequests(page);
+    await openSummary(page, { moneyVisible: false });
+    await page.getByRole("button", { name: "Edit Bills" }).first().click();
+    await expect(page.getByText("Edit category")).toBeVisible();
+    // Reveal money behind the open dialog: facts are ready but the route is busy.
+    // The dialog hides the page from the accessibility tree, so use the class.
+    await page.locator(".totals-visibility-toggle").first().dispatchEvent("click");
+    await expect(page.locator("html")).toHaveAttribute("data-money-privacy", "visible");
+    await page.waitForTimeout(2_000);
+    expect(control.state.requests).toEqual([]);
+
+    await page.keyboard.press("Escape");
+    await expect(page.getByText("Edit category")).toBeHidden();
+    const closedAt = Date.now();
+    await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(1);
+    expect(control.state.requests[0] - closedAt).toBeGreaterThanOrEqual(650);
+    await expect(page.locator(".financial-insight-summary")).toContainText(AI_WORDING);
+    await page.waitForTimeout(2_000);
+    expect(control.state.requests).toHaveLength(1);
+  });
+
+  test("opening an editor during an in-flight request aborts it and nothing is cached", async ({ page }) => {
+    const control = await controlInsightRequests(page);
+    control.state.hold = true;
+    await openSummary(page);
+    await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(1);
+    await page.getByRole("button", { name: "Edit Bills" }).first().click();
+    await expect(page.getByText("Edit category")).toBeVisible();
+    await expect.poll(() => control.state.failed.length).toBe(1);
+    control.state.hold = false;
+    control.releaseAll();
+    await page.waitForTimeout(1_000);
+    await expect(page.locator(".financial-insight-summary")).not.toContainText(AI_WORDING);
+    expect(control.state.requests).toHaveLength(1);
+
+    // The aborted response was not cached, so the next usable state asks again.
+    await page.keyboard.press("Escape");
+    await expect(page.getByText("Edit category")).toBeHidden();
+    await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(2);
+    await expect(page.locator(".financial-insight-summary")).toContainText(AI_WORDING);
+  });
+
+  test("a facts change ignores the old response and asks for the new facts", async ({ page }) => {
+    const control = await controlInsightRequests(page);
+    control.state.hold = true;
+    await openSummary(page);
+    await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(1);
+    const insight = page.locator(".financial-insight-summary");
+    const before = await insight.locator(".financial-insight-narrative").textContent();
+    await page.locator(".summary-focus-button").filter({ hasText: "Range overall" }).click();
+    await expect(page).toHaveURL(/summary_focus=/);
+    await expect(insight.locator(".financial-insight-narrative")).not.toHaveText(before ?? "");
+    await expect.poll(() => control.state.failed.length).toBe(1);
+    control.state.hold = false;
+    control.releaseAll();
+    await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(2);
+    await expect(insight).toContainText(AI_WORDING);
+
+    // The cancelled request cached nothing for the first facts, so going back
+    // asks again instead of pinning the computed wording for five minutes.
+    await page.locator(".summary-focus-button").filter({ hasText: "May 2026" }).click();
+    await expect(insight.locator(".financial-insight-narrative")).toHaveText(before ?? "");
+    await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(3);
+    await expect(insight).toContainText(AI_WORDING);
+  });
+
+  test("hiding money aborts the request and makes no new one", async ({ page }) => {
+    const control = await controlInsightRequests(page);
+    control.state.hold = true;
+    await openSummary(page);
+    await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(1);
+    await page.getByRole("button", { name: "Hide money totals" }).first().click();
+    await expect(page.locator(".financial-insight-summary")).toContainText("Reveal money totals to read this insight.");
+    await expect.poll(() => control.state.failed.length).toBe(1);
+    control.releaseAll();
+    await page.waitForTimeout(2_000);
+    expect(control.state.requests).toHaveLength(1);
+  });
+
+  for (const respond of ["unavailable", "malformed", "error-with-wording"]) {
+    test(`a response that is ${respond} keeps the computed wording and is not retried on return`, async ({ page }) => {
+      const control = await controlInsightRequests(page, { respond });
+      await openSummary(page);
+      const narrative = page.locator(".financial-insight-summary .financial-insight-narrative");
+      await expect(narrative).toContainText("May 2026");
+      const computed = await narrative.textContent();
+      await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(1);
+      await page.waitForTimeout(500);
+      await expect(narrative).toHaveText(computed ?? "");
+      await expect(narrative).not.toContainText(AI_WORDING);
+
+      // Readiness drops and returns; the 5-minute fallback cache answers.
+      await page.getByRole("button", { name: "Edit Bills" }).first().click();
+      await expect(page.getByText("Edit category")).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByText("Edit category")).toBeHidden();
+      await page.waitForTimeout(1_500);
+      await expect(narrative).toHaveText(computed ?? "");
+      expect(control.state.requests).toHaveLength(1);
+    });
+  }
+
+  test("month, entries and splits each receive wording once their page is usable", async ({ page }) => {
+    const control = await controlInsightRequests(page);
+    await openSummary(page);
+    await expect(page.locator(".financial-insight-summary")).toContainText(AI_WORDING);
+    for (const [path, heading, className] of [
+      ["/month?view=household&month=2026-05&scope=direct_plus_shared", "Month", ".financial-insight-month"],
+      ["/entries?view=household&month=2026-05&scope=direct_plus_shared", "Entries", ".financial-insight-entries"],
+      ["/splits?view=household&month=2026-05", "Splits", ".financial-insight-splits"]
+    ]) {
+      await page.goto(path);
+      await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+      await expect(page.locator(className)).toContainText(AI_WORDING);
+    }
+  });
+
+  test("rerenders without a facts change make one request in total", async ({ page }) => {
+    const control = await controlInsightRequests(page);
+    await openSummary(page);
+    const insight = page.locator(".financial-insight-summary");
+    // Interactions that rerender the page but leave the facts alone.
+    await page.mouse.move(200, 200);
+    await insight.getByRole("button", { name: "Read full insight" }).click();
+    await insight.getByRole("button", { name: "Show less" }).click();
+    await page.mouse.move(400, 300);
+    await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(1);
+    await page.waitForTimeout(2_500);
+    expect(control.state.requests).toHaveLength(1);
+  });
+});
