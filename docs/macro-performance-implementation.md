@@ -29,7 +29,8 @@ verified on 2026-09-23 only.
 | H11 | P5 | Shell presentation extraction | Done (`e80fe6f`, `b895d99`, `6d60cbf`, `d31995f`, `9905b8a`) | audit §H11 |
 | H12 | P6 | Server-state owners | Done: H12a (`0c8d28d`, `18a4c2b`), H12b (`7dfcd99`, `d53d581`), H12c (`cdfeae3`, `8a2f314`), H12d (`cf85382`, `df86191`) | audit §H12a, §H12b–d |
 | H13 | P7 | Worker AI route extraction | Done (`ccdc464`, `2205621`) | audit §H13 |
-| H14–H17 | P8–P11 | Gated architecture work | Awaiting a decision (inputs in audit §H10) | — |
+| H14 | P8 | Endpoint optimization | Done: Month page duplicate entries removed (`ebc8f64`, `92eb369`) | audit §H14 |
+| H15–H17 | P9–P11 | Gated architecture work | Awaiting a decision | — |
 
 Order is strict: H02 → H03 → H04 → H05 → H06 → H07 → H10. H08 needs only H03.
 H09 needs only H01 and may run any time after H01. H01b must precede enabling

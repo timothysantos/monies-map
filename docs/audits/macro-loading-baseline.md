@@ -1794,3 +1794,83 @@ Rollback, newest first:
 - H12b: `d53d581`, `7dfcd99`.
 
 Each owner module can stay unused if its wiring commit is reverted.
+
+## H14: Month page duplicate entry list
+
+Date: 2026-09-25. Commits: `ebc8f64` (invariant and parity tests, passing
+before the change), `92eb369` (change).
+
+### Choosing the bottleneck
+
+At 10k rows, H01b measured Month at 2.9 MB (97 KB gzip), the largest page.
+Breaking the DTO down by key:
+- `monthPage.entries`: 1,255,520 bytes (2,018 entries);
+- `householdMonthEntries`: 1,255,520 bytes, **identical for the
+  household view**;
+- `planSections`: 115 KB.
+
+No extra query was involved: the server serialized the same array twice.
+Entries and Splits carry one copy each and were not changed.
+
+### Why the copy is redundant (proved, not assumed)
+
+- `buildMonthPage` returns `entries: monthEntries`, the full household list
+  mapped by `adjustEntriesForView`. It is never filtered by person or
+  scope, so it holds every household entry id, in order, with the viewer's
+  amounts.
+- `householdMonthEntries` was read only by `buildPlanLinkCandidates`, which
+  merged it with the page list by id, with the page's copy winning. It
+  could therefore never add a candidate or change one, and the stable sort
+  kept the order.
+- Tests (`tests/month-page-entries.test.mjs`):
+  - the page lists all household ids in order for household, Tim
+    direct/shared/combined and Joyce, keeping Tim's share of a
+    split-linked entry;
+  - candidates from the page list alone equal candidates from the old
+    merged input, for three plan rows (including a linked row and a hinted
+    row) in all five views.
+- Real-data parity: at 10k, the 6 captured before-DTOs (household, Tim ×3
+  scopes, Joyce, and demo month 2025-10 with split-linked entries) cover
+  143 plan rows, with **0 candidate differences**.
+- After the change, each of the 6 live responses **deep-equals its
+  before-DTO with `householdMonthEntries` removed**.
+
+### Result
+
+| Month page (household, 2026-05) | Before | After |
+| --- | --- | --- |
+| demo: bytes, gzip, handler median | 68,146 / 4,889 / 9 ms | 54,794 / 4,226 / 10 ms |
+| 1k | 125,853 / 7,557 / 10 ms | 85,551 / 5,569 / 11 ms |
+| 10k | 2,902,361 / 96,823 / 28 ms | 1,560,034 / 55,284 / 31 ms |
+| 10k serialization (total − app) | ≈4–5 ms | ≈2–3 ms |
+| 10k browser cold load to usable, desktop (median of 5) | 627 ms | 583 / 581 ms |
+| 10k browser cold load to usable, mobile profile | 3,052 ms | 2,826 / 2,803 ms |
+| 10k compressed transfer seen by Chromium | 97,061 B | 55,414 B |
+
+Handler time is unchanged within noise (machine load ≈10), since the
+duplicate cost serialization, not queries. Person views shrink the same way
+(−47% bytes, −45% gzip).
+
+Mobile admission is unaffected: Month is not a mobile data candidate, and
+55 KB gzip would still exceed the 50 KB cap.
+
+### Not done (separate measured decisions if wanted)
+
+- Pretty-printed JSON (`JSON.stringify(payload, null, 2)`) adds ≈30%
+  uncompressed and ≈12% gzip to every API. Changing it affects every
+  response, so it is not part of this one-bottleneck task.
+- Splits carries the whole `monthPage` (1.47 MB at 10k). Whether the
+  Splits panel needs all of it is unverified.
+
+### H14 gates
+
+| Check | Result |
+| --- | --- |
+| `npm run typecheck` | Pass |
+| `npm run test:unit` | Pass 448/448 |
+| `npm run build` | Pass |
+| Full functional E2E, isolated ports (includes the Month plan-link matcher tests, among them viewer split amounts) | **Pass 243/243** |
+| `api-admission.spec.js` for demo, 1k and 10k | Pass (numbers above) |
+
+Rollback: revert `92eb369` (the tests can stay; they only pin the
+invariant).
