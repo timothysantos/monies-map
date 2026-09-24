@@ -1112,3 +1112,124 @@ Remaining risk: `total` excludes time spent streaming the Response after
 the handler returns. Rollback: revert `c1dd539`, `94a02f6`.
 
 Status: complete. Next eligible step: H01b, then H10.
+
+## H01b: Seeded scale fixtures and admission measurements
+
+Date: 2026-09-24. Baseline `4e571c1` (H09 evidence). Commits: `41838ad`
+(fixture on real references, SQL builder, loader, runner switch),
+`e3cd00b` (`api-admission.spec.js`, fixture name in reports). No
+application code changed. Status: **complete**.
+
+### Fixture and loading
+
+- `createScaleFixture(1000|10000, reference)` places rows on the demo's real
+  people, accounts and categories, which the loader reads from
+  `/api/reference-data` and `/api/app-shell`:
+  - Groceries and Public Transport expenses;
+  - Transfer pairs from person A's account into the joint account;
+  - joint-account rows have no owner (shared); others are owned by the
+    account's owner.
+- 24 months, 2024-06 … 2026-05. The 10k fixture puts 2,000 rows in 2026-05.
+  Amounts are integer minor units and every row is provisional.
+- Missing references throw, so a changed seed cannot skew a cohort.
+- Loading happens after the demo reseed and validation, before the ready
+  marker:
+  - All rows but one per month go in as one SQL file with **the same
+    transaction columns as the demo reseed insert**, plus one
+    `transfer_groups` row per pair.
+  - The last row per month (a direct expense) goes through
+    `/api/entries/create`, so the app itself recalculates that month's
+    snapshots. The fixture months then become tracked: 24 months,
+    2024-06 … 2026-05, and a 12-month Summary returns 12 months.
+- The load is proven through `/api/entries-page` for 2024-06, 2025-10 and
+  2026-05: fixture row count and expense total must equal the generator's.
+  It refuses to load twice.
+- Load times: 1k in 1.2 s, 10k in 2.3 s.
+- Not reproduced: the create path's split-expense linking for *shared*
+  entries (the demo reseed doesn't do it either), so Splits rows come from
+  the demo's split data only.
+- Switch: `PERFORMANCE_FIXTURE=demo|scale-1k|scale-10k` (default demo;
+  anything else fails before starting). Every report records `fixture`.
+- `built-client.spec.js` skips on scale fixtures, because its readiness
+  predicates read demo values; scale fixtures are measured by API only
+  (no browser budgets).
+
+### Admission measurements
+
+`api-admission.spec.js`: one unmeasured request per family, then 20.
+- Bytes are the uncompressed JSON body; gzip is gzip of that body (the
+  local Worker does not compress).
+- Handler time is Server-Timing `app` median/p95.
+- Local wrangler dev, machine load ≈20, revision `e3cd00b`. Absolute
+  numbers are local; the ratios between fixtures are the useful part.
+
+| Family (params) | Fixture | Bytes | Gzip | app median / p95 ms |
+| --- | --- | ---: | ---: | --- |
+| entries-page (household, 2026-05) | demo | 14,777 | 1,423 | 3 / 4 |
+| | scale-1k | 43,471 | 2,586 | 4 / 5 |
+| | scale-10k | 1,429,624 | 44,765 | 20 / 23 |
+| entries-page (Tim, 2026-05) | demo / 1k / 10k | 14,926 / 43,620 / 1,429,773 | 1,436 / 2,602 / 44,784 | 3/4 · 4/5 · 21/25 |
+| month-page (household, 2026-05) | demo | 68,146 | 4,889 | 9 / 11 |
+| | scale-1k | 125,853 | 7,557 | 10 / 12 |
+| | scale-10k | 2,902,361 | 96,823 | 28 / 31 |
+| summary-page (6 months) | demo | 16,361 | 1,914 | 16 / 20 |
+| | scale-1k | 10,951 | 1,505 | 17 / 20 |
+| | scale-10k | 10,992 | 1,513 | 42 / 47 |
+| summary-page (12 months) | demo* | 16,361 | 1,914 | 16 / 18 |
+| | scale-1k | 23,498 | 2,377 | 27 / 30 |
+| | scale-10k | 23,566 | 2,409 | 66 / 71 |
+| summary-account-pills | demo / 1k / 10k | 1,174 / 1,232 / 1,235 | 328 / 324 / 327 | 4/5 · 6/8 · 30/33 |
+| splits-page (household, 2026-05) | demo | 64,825 | 5,457 | 14 / 18 |
+| | scale-1k | 95,584 | 6,897 | 15 / 20 |
+| | scale-10k | 1,570,064 | 56,852 | 34 / 37 |
+| imports-page | demo / 1k / 10k | 16,060 (all) | ≈1,762 | 5/6 · 7/9 · 28/31 |
+
+\* The demo has six tracked months, so both ranges return the same body.
+The demo's 6-month Summary is larger than scale-1k's: it covers demo months
+with plan rows and notes, while scale-1k's 6-month window adds only
+fixture months.
+
+### Findings
+
+- The month-scoped payloads (Entries, Month, Splits) grow with the rows in
+  the month: 2,000 rows give 1.4–2.9 MB uncompressed (45–97 KB gzip).
+  Summary stays small (≈11–24 KB) but its handler time grows with
+  history: 66 ms for 12 months at 10k.
+- Account pills and Imports keep constant bytes, but their handler time
+  grows with the total row count (≈6×): they scan the ledger.
+- Against today's mobile limits (`maxDataBytes` 50,000,
+  `maxDataHandlerMs` 250):
+  - within both limits at every size, if bytes mean the uncompressed body:
+    summary-page (≤12 months), summary-account-pills, imports-page;
+  - within the limits at demo and 1k only: entries-page;
+  - over the byte limit at 1k: month-page and splits-page.
+  - At 10k, Entries, Month and Splits are far over by uncompressed body.
+    Measured by gzip size, all would pass at 10k except Month (97 KB).
+- Choosing which byte measure `maxDataBytes` means, and filling
+  `WARMUP_ADMISSIONS`, changes application code. It is not done here and
+  is left as an explicit decision (H10 or a follow-up). Mobile data warmup
+  stays off until then.
+
+### Commands and results (Node 22.12.0)
+
+| Command | Result |
+| --- | --- |
+| `npm run test:unit` | Pass 396/396 (the scale-fixture file grew from 1 to 5 tests) |
+| `npm run build` | Pass |
+| `PERFORMANCE_FIXTURE=demo\|scale-1k\|scale-10k … api-admission.spec.js` | Pass ×3 (mobile project skipped by design) |
+| `npm run test:performance` (demo, all specs) | Pass 3, 1 skipped. Desktop cold median 483 ms, mobile 2,142 ms (load ≈20, not compared) |
+| Manual loader run on a separate Worker | 1k and 10k loaded and validated; a second load was refused |
+
+The scale-fixture unit test was rewritten, not weakened:
+- The old shape checks (counts, totals, 2,000-row month, transfer pairing,
+  provisional, a negative total) are kept.
+- The unused import-row IDs and supplemental split groups were removed,
+  because nothing loaded them.
+- New checks: real references, ownership follows the account, anchors,
+  missing-reference errors, SQL row counts, columns and escaping, and the
+  fixture switch.
+
+Remaining risk: local SQLite timings are not production D1. Rollback:
+revert `e3cd00b`, `41838ad`.
+
+Next eligible step: H10.
