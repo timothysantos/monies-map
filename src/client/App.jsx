@@ -68,6 +68,7 @@ import { queryKeys, summaryPageKeyFromParams } from "./query-keys";
 import { fetchQueryWithLease } from "./query-leases";
 import { loadRouteModule } from "./route-modules";
 import { useReferenceData } from "./use-reference-data";
+import { useRouteData } from "./use-route-data";
 import { useSummaryData } from "./use-summary-data";
 import { useRouteWarmup } from "./use-route-warmup";
 import {
@@ -248,8 +249,6 @@ export function App() {
   const selectedSummaryStart = searchParams.get("summary_start") ?? undefined;
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
   const isAppShellLoading = appShellLoadCount > 0;
-  const [routePageData, setRoutePageData] = useState(null);
-  const [routePageDataRequestKey, setRoutePageDataRequestKey] = useState("");
   const [importInboxBanner, setImportInboxBanner] = useState(null);
   const [routePageError, setRoutePageError] = useState("");
   // Summary data is not replaced until the next response arrives, so keep the
@@ -473,11 +472,12 @@ export function App() {
 
   // Clear the route-page cache so the next navigation or refresh rebuilds the
   // active screen from fresh server data.
-  const clearRoutePageCache = useCallback(() => {
-    bumpQueryEpoch();
-    queryClient.cancelQueries({ queryKey: ["route-page"] });
-    queryClient.removeQueries({ queryKey: ["route-page"] });
-  }, [bumpQueryEpoch, queryClient]);
+  const { routePageData, routePageDataRequestKey, routeDataOwner } = useRouteData({
+    queryClient,
+    onCacheCleared: bumpQueryEpoch,
+    requestKeyOf: getRoutePageRequestKey
+  });
+  const clearRoutePageCache = routeDataOwner.clearCache;
 
   // Clear the entries-page cache when entry mutations should be reflected in
   // the dedicated entries workflow.
@@ -680,8 +680,7 @@ export function App() {
   const refreshAppShell = useCallback(async ({ broadcast = false } = {}) => {
     clearAppShellCache();
     clearRoutePageCache();
-    setRoutePageData(null);
-    setRoutePageDataRequestKey("");
+    routeDataOwner.reset();
     const finishAppShellLoad = beginAppShellLoad();
 
     try {
@@ -696,7 +695,7 @@ export function App() {
     } finally {
       finishAppShellLoad();
     }
-  }, [beginAppShellLoad, clearAppShellCache, clearRoutePageCache, loadAppShell]);
+  }, [beginAppShellLoad, clearAppShellCache, clearRoutePageCache, loadAppShell, routeDataOwner]);
 
   // Refresh the shell in the background without surfacing a full loading state
   // to the user.
@@ -842,14 +841,15 @@ export function App() {
 
     const finishAppShellLoad = beginAppShellLoad();
     try {
-      const data = await fetchRoutePageData(routePageRequest, { bypassCache: true });
-      setRoutePageData(data);
-      setRoutePageDataRequestKey(routePageRequestKey);
-      return data;
+      const result = await routeDataOwner.refresh({
+        request: routePageRequest,
+        run: () => Promise.all([fetchRoutePageData(routePageRequest, { bypassCache: true })])
+      });
+      return result?.[0] ?? null;
     } finally {
       finishAppShellLoad();
     }
-  }, [beginAppShellLoad, clearEntriesPageCache, clearRoutePageCache, fetchRoutePageData, refreshAppShell, routePageRequest, routePageRequestKey]);
+  }, [beginAppShellLoad, clearEntriesPageCache, clearRoutePageCache, fetchRoutePageData, refreshAppShell, routeDataOwner, routePageRequest]);
 
   // Refresh the summary slice from its dedicated page and account-pill
   // queries without routing it back through the generic page loader.
@@ -907,18 +907,20 @@ export function App() {
       params?.startMonth,
       params?.endMonth
     ));
-    const [data] = await withRequiredWork(requiredWork, "month refresh", () => Promise.all([
-      fetchRoutePageData(request, { bypassCache: true }),
-      refreshShell ? refreshAppShellInBackground().catch(() => null) : Promise.resolve(null)
-    ]));
-    setRoutePageData(data);
-    setRoutePageDataRequestKey(getRoutePageRequestKey(request));
-    return data;
+    const result = await withRequiredWork(requiredWork, "month refresh", () => routeDataOwner.refresh({
+      request,
+      run: () => Promise.all([
+        fetchRoutePageData(request, { bypassCache: true }),
+        refreshShell ? refreshAppShellInBackground().catch(() => null) : Promise.resolve(null)
+      ])
+    }));
+    return result?.[0] ?? null;
   }, [
     clearSummaryPageCache,
     fetchRoutePageData,
     refreshAppShellInBackground,
     requiredWork,
+    routeDataOwner,
     selectedMonth,
     selectedScope,
     selectedViewId
@@ -963,9 +965,8 @@ export function App() {
     if (refreshShell) {
       tasks.push(referenceDataOwner.refresh().catch(() => null));
     }
-    const [data] = await withRequiredWork(requiredWork, "imports refresh", () => Promise.all(tasks));
-    setRoutePageData(data);
-    setRoutePageDataRequestKey(getRoutePageRequestKey(request));
+    const result = await withRequiredWork(requiredWork, "imports refresh", () => routeDataOwner.refresh({ request, run: () => Promise.all(tasks) }));
+    const data = result?.[0] ?? null;
 
     if (broadcast) {
       broadcastAppShellRefresh(syncChannelRef);
@@ -977,6 +978,7 @@ export function App() {
     queryClient,
     referenceDataOwner,
     requiredWork,
+    routeDataOwner,
     selectedMonth,
     selectedScope,
     selectedViewId
@@ -1124,11 +1126,15 @@ export function App() {
       tasks.push(referenceDataOwner.refresh().catch(() => null));
     }
 
-    const [data, ...taskResults] = await withRequiredWork(requiredWork, "settings refresh", () => Promise.all(tasks));
-    if (selectedTabId === "settings") {
-      setRoutePageData(data);
-      setRoutePageDataRequestKey(getRoutePageRequestKey(refreshDescription.routeRequest));
+    const result = await withRequiredWork(requiredWork, "settings refresh", () => routeDataOwner.refresh({
+      request: refreshDescription.routeRequest,
+      run: () => Promise.all(tasks),
+      apply: selectedTabId === "settings"
+    }));
+    if (!result) {
+      return null;
     }
+    const [data, ...taskResults] = result;
 
     if (broadcast && (refreshDescription.refreshShell || refreshDescription.refreshReferenceData)) {
       broadcastAppShellRefresh(syncChannelRef);
@@ -1144,6 +1150,7 @@ export function App() {
     refreshAppShellInBackground,
     referenceDataOwner,
     requiredWork,
+    routeDataOwner,
     selectedTabId
   ]);
 
@@ -1154,11 +1161,12 @@ export function App() {
       return null;
     }
 
-    const data = await withRequiredWork(requiredWork, "route background refresh", () => fetchRoutePageData(request, { bypassCache: true }));
-    setRoutePageData(data);
-    setRoutePageDataRequestKey(getRoutePageRequestKey(request));
-    return data;
-  }, [fetchRoutePageData, requiredWork]);
+    const result = await withRequiredWork(requiredWork, "route background refresh", () => routeDataOwner.refresh({
+      request,
+      run: () => Promise.all([fetchRoutePageData(request, { bypassCache: true })])
+    }));
+    return result?.[0] ?? null;
+  }, [fetchRoutePageData, requiredWork, routeDataOwner]);
 
   // Broadcast split invalidation details to other tabs after the local cache
   // has already been cleared.
@@ -1251,9 +1259,8 @@ export function App() {
     if (refreshShell || invalidateEntries || invalidateMonth || invalidateSummary) {
       tasks.push(refreshAppShellInBackground().catch(() => null));
     }
-    const [data] = await withRequiredWork(requiredWork, "splits refresh", () => Promise.all(tasks));
-    setRoutePageData(data);
-    setRoutePageDataRequestKey(getRoutePageRequestKey(request));
+    const result = await withRequiredWork(requiredWork, "splits refresh", () => routeDataOwner.refresh({ request, run: () => Promise.all(tasks) }));
+    const data = result?.[0] ?? null;
 
     if (broadcast) {
       if (refreshShell && !invalidateEntries && !invalidateMonth && !invalidateSummary) {
@@ -1275,6 +1282,7 @@ export function App() {
     fetchRoutePageData,
     refreshAppShellInBackground,
     requiredWork,
+    routeDataOwner,
     selectedMonth,
     selectedScope,
     selectedViewId
@@ -1743,23 +1751,15 @@ export function App() {
     }
     const finishAppShellLoad = hasCachedPage ? null : beginAppShellLoad();
 
-    void fetchRoutePageData(routePageRequest, { signal: controller.signal })
-      .then(async (data) => {
-        if (controller.signal.aborted) {
-          return;
+    // The owner ignores aborted and superseded loads; only a failure of
+    // the latest load reaches the page error screen.
+    void routeDataOwner.load({ request: routePageRequest, fetchPage: fetchRoutePageData, signal: controller.signal })
+      .then((applied) => {
+        if (applied) {
+          setRoutePageError("");
         }
-
-        setRoutePageData(data);
-        setRoutePageDataRequestKey(routePageRequestKey);
-        setRoutePageError("");
       })
       .catch((error) => {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
-
-        setRoutePageData(null);
-        setRoutePageDataRequestKey("");
         setRoutePageError(describeAppShellError(error));
         reportLoadingIssue("Page load failed", error);
       })
@@ -1769,7 +1769,7 @@ export function App() {
       controller.abort();
       finishAppShellLoad?.();
     };
-  }, [beginAppShellLoad, fetchRoutePageData, queryClient, reportLoadingIssue, routePageRequest, routePageRequestKey, updateLoadingStatus]);
+  }, [beginAppShellLoad, fetchRoutePageData, queryClient, reportLoadingIssue, routeDataOwner, routePageRequest, updateLoadingStatus]);
 
   // Keep only the last settled route snapshot in refs so hydration can fall
   // back to the previous screen without introducing a second render source of
