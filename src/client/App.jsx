@@ -2419,8 +2419,8 @@ export function App() {
     const idleHandle = scheduleIdleTask(() => {
       void queryClient.fetchQuery({
         queryKey: queryKeys.importsPage(),
-        queryFn: async () => {
-          const response = await fetch("/api/imports-page", { cache: "no-store" });
+        queryFn: async ({ signal }) => {
+          const response = await fetch("/api/imports-page", { cache: "no-store", signal });
           if (!response.ok) {
             throw new Error("Could not refresh import inbox banner.");
           }
