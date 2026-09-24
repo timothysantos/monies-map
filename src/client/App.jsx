@@ -67,6 +67,7 @@ import { installMobileFocusVisibility } from "./mobile-focus-visibility";
 import { queryKeys, summaryPageKeyFromParams } from "./query-keys";
 import { fetchQueryWithLease } from "./query-leases";
 import { loadRouteModule } from "./route-modules";
+import { useReferenceData } from "./use-reference-data";
 import { useRouteWarmup } from "./use-route-warmup";
 import {
   buildRouteIdentity,
@@ -250,8 +251,6 @@ export function App() {
   const [routePageDataRequestKey, setRoutePageDataRequestKey] = useState("");
   const [importInboxBanner, setImportInboxBanner] = useState(null);
   const [routePageError, setRoutePageError] = useState("");
-  const [referenceData, setReferenceData] = useState(null);
-  const [referenceDataError, setReferenceDataError] = useState("");
   const [summaryPageData, setSummaryPageData] = useState(null);
   const [summaryAccountPillsData, setSummaryAccountPillsData] = useState(null);
   // Summary data is not replaced until the next response arrives, so keep the
@@ -459,6 +458,11 @@ export function App() {
     queryEpochRef.current += 1;
     setQueryEpoch((value) => value + 1);
   }, []);
+  const { referenceData, referenceDataError, referenceDataOwner } = useReferenceData({
+    queryClient,
+    onCacheCleared: bumpQueryEpoch,
+    reportIssue: reportLoadingIssue
+  });
 
   // Clear the shell cache and persisted shell payload when shell-relevant data
   // changes.
@@ -467,12 +471,6 @@ export function App() {
     queryClient.cancelQueries({ queryKey: queryKeys.appShell() });
     queryClient.removeQueries({ queryKey: queryKeys.appShell() });
     clearPersistedAppShell();
-  }, [bumpQueryEpoch, queryClient]);
-
-  const clearReferenceDataCache = useCallback(() => {
-    bumpQueryEpoch();
-    queryClient.cancelQueries({ queryKey: queryKeys.referenceData() });
-    queryClient.removeQueries({ queryKey: queryKeys.referenceData() });
   }, [bumpQueryEpoch, queryClient]);
 
   // Clear the route-page cache so the next navigation or refresh rebuilds the
@@ -547,49 +545,6 @@ export function App() {
       }
     })
   ), [queryClient]);
-
-  const fetchReferenceData = useCallback(async ({ bypassCache = false, signal } = {}) => {
-    const queryKey = queryKeys.referenceData();
-    if (signal?.aborted) {
-      throw new DOMException("Reference data request aborted.", "AbortError");
-    }
-
-    if (!bypassCache) {
-      const cachedData = queryClient.getQueryData(queryKey);
-      if (cachedData) {
-        return cachedData;
-      }
-    }
-
-    const fetcher = async () => {
-      const response = await fetchWithTimeout("/api/reference-data", {
-        cache: "no-store"
-      }, "Reference data request");
-      if (!response.ok) {
-        throw new Error(await buildRequestErrorMessage(response, "Reference data failed."));
-      }
-      return response.json();
-    };
-
-    const data = bypassCache
-      ? await queryClient.fetchQuery({
-          queryKey,
-          queryFn: fetcher,
-          retry: false,
-          staleTime: 0
-        })
-      : await queryClient.ensureQueryData({
-          queryKey,
-          queryFn: fetcher,
-          retry: false,
-          revalidateIfStale: true
-        });
-
-    if (signal?.aborted) {
-      throw new DOMException("Reference data request aborted.", "AbortError");
-    }
-    return data;
-  }, [queryClient]);
 
   // Fetch the app shell payload and persist it so the next render can reuse
   // global metadata immediately.
@@ -791,14 +746,6 @@ export function App() {
     setAppShell(data);
     return data;
   }, [appShellParams, clearAppShellCache, fetchAppShellData]);
-
-  const refreshReferenceDataInBackground = useCallback(async () => {
-    clearReferenceDataCache();
-    const data = await fetchReferenceData({ bypassCache: true });
-    setReferenceDataError("");
-    setReferenceData(data);
-    return data;
-  }, [clearReferenceDataCache, fetchReferenceData]);
 
   // Fetch the active route page and shape it into the current screen payload.
   const fetchRoutePageData = useCallback(async (request, { bypassCache = false, signal } = {}) => {
@@ -1062,7 +1009,7 @@ export function App() {
     }
     const tasks = [fetchRoutePageData(request, { bypassCache: true })];
     if (refreshShell) {
-      tasks.push(refreshReferenceDataInBackground().catch(() => null));
+      tasks.push(referenceDataOwner.refresh().catch(() => null));
     }
     const [data] = await withRequiredWork(requiredWork, "imports refresh", () => Promise.all(tasks));
     setRoutePageData(data);
@@ -1076,7 +1023,7 @@ export function App() {
   }, [
     fetchRoutePageData,
     queryClient,
-    refreshReferenceDataInBackground,
+    referenceDataOwner,
     requiredWork,
     selectedMonth,
     selectedScope,
@@ -1222,7 +1169,7 @@ export function App() {
     }
 
     if (refreshDescription.refreshReferenceData) {
-      tasks.push(refreshReferenceDataInBackground().catch(() => null));
+      tasks.push(referenceDataOwner.refresh().catch(() => null));
     }
 
     const [data, ...taskResults] = await withRequiredWork(requiredWork, "settings refresh", () => Promise.all(tasks));
@@ -1243,7 +1190,7 @@ export function App() {
     fetchRoutePageData,
     queryClient,
     refreshAppShellInBackground,
-    refreshReferenceDataInBackground,
+    referenceDataOwner,
     requiredWork,
     selectedTabId
   ]);
@@ -1549,29 +1496,6 @@ export function App() {
     clearSummaryAccountPillsCache();
   }, [clearSummaryAccountPillsCache, clearSummaryPageCache]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    void fetchReferenceData({ signal: controller.signal })
-      .then((data) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        setReferenceData(data);
-        setReferenceDataError("");
-      })
-      .catch((error) => {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
-        setReferenceData(null);
-        setReferenceDataError(describeAppShellError(error));
-        reportLoadingIssue("Reference data load failed", error);
-      });
-
-    return () => controller.abort();
-  }, [fetchReferenceData, reportLoadingIssue]);
-
   // Hydrate the shell from persisted cache first, then replace it with fresh
   // server data and an optional entries-shell warm start when the entries tab
   // is the active route.
@@ -1701,15 +1625,11 @@ export function App() {
       channel.onmessage = (event) => {
         if (event.data?.type === APP_SYNC_EVENT_TYPES.appShellRefresh) {
           clearAppShellCache();
-          clearReferenceDataCache();
           clearRoutePageCache();
           const finishAppShellLoad = beginAppShellLoad();
           void Promise.all([
             loadAppShell().catch(handleAppShellFailure),
-            refreshReferenceDataInBackground().catch((error) => {
-              setReferenceDataError(describeAppShellError(error));
-              reportLoadingIssue("Reference data refresh failed", error);
-            })
+            referenceDataOwner.refreshOrShowError("Reference data refresh failed")
           ])
             .finally(finishAppShellLoad);
           return;
@@ -1745,17 +1665,13 @@ export function App() {
 
       if (payload?.type === APP_SYNC_EVENT_TYPES.appShellRefresh) {
         clearAppShellCache();
-        clearReferenceDataCache();
         clearRoutePageCache();
         clearSummaryPageCache();
         clearSummaryAccountPillsCache();
         const finishAppShellLoad = beginAppShellLoad();
         void Promise.all([
           loadAppShell().catch(handleAppShellFailure),
-          refreshReferenceDataInBackground().catch((error) => {
-            setReferenceDataError(describeAppShellError(error));
-            reportLoadingIssue("Reference data refresh failed", error);
-          })
+          referenceDataOwner.refreshOrShowError("Reference data refresh failed")
         ])
           .finally(finishAppShellLoad);
         return;
@@ -1788,7 +1704,6 @@ export function App() {
   }, [
     beginAppShellLoad,
     clearAppShellCache,
-    clearReferenceDataCache,
     clearRoutePageCache,
     clearSummaryAccountPillsCache,
     clearSummaryPageCache,
@@ -1798,7 +1713,7 @@ export function App() {
     handleRemoteSummaryMutation,
     loadAppShell,
     reportLoadingIssue,
-    refreshReferenceDataInBackground
+    referenceDataOwner
   ]);
 
   // Summary owns its own page query plus wallet-pill query, so the summary tab
@@ -2574,10 +2489,7 @@ export function App() {
         )}
         issue={loadingStatus.issue}
         retryLabel={messages.common.referenceDataRetry}
-        onRetry={() => { void refreshReferenceDataInBackground().catch((error) => {
-          setReferenceDataError(describeAppShellError(error));
-          reportLoadingIssue("Reference data retry failed", error);
-        }); }}
+        onRetry={() => { void referenceDataOwner.refreshOrShowError("Reference data retry failed"); }}
       />
     );
   }
