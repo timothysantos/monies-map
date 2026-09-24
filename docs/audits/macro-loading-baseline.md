@@ -1233,3 +1233,151 @@ Remaining risk: local SQLite timings are not production D1. Rollback:
 revert `e3cd00b`, `41838ad`.
 
 Next eligible step: H10.
+
+## H10: First delivery closure
+
+Date: 2026-09-24. Candidate `d2ec630`, with application code as of H09
+`94a02f6`. Baseline `506f3fd` (the H01 commit, before H02). Harness commit
+`d2ec630`:
+- `PERFORMANCE_WARMUP_MODE` sets `__MONIES_MAP_WARMUP_MODE__` and is
+  recorded as `warmupMode`;
+- per-request detail for idle traffic and the first round trip;
+- `scripts/compare-performance.mjs` with 4 unit tests.
+
+### Method
+
+- Baseline worktree at `506f3fd` with `npm ci`, and the **current** harness
+  copied in so both sides measure identically: `built-client.spec.js`,
+  `performance-stats.mjs`, `run-performance-worker.mjs`,
+  `load-performance-fixture.mjs`, `fixtures/scale-fixture.mjs`. The
+  baseline kept its own `route-asset-report.mjs`, which already had
+  `parseWarmupCosts`. The worktree was removed afterwards.
+- Both sides built with `npm run build`.
+- Two interleaved rounds of four cohorts each (baseline, normal, off,
+  intent-only), all on port 5191, sequential, with separate artifact dirs.
+  Settings: 5 cold samples, 20 warm per direction.
+- Profiles:
+  - desktop: CDP 40 ms RTT, 10 Mbps, CPU 1×;
+  - mobile: Pixel 7 emulation, 150 ms RTT, 1.6 Mbps, CPU 4×.
+- Machine load climbed from ≈25 to ≈73 during the runs (other work on the
+  machine), so single timing deltas under ≈15% are noise. Byte and request
+  counts are deterministic.
+
+### Baseline → candidate (normal warmup), rounds 1 / 2
+
+| Metric | Desktop baseline | Desktop candidate | Mobile baseline | Mobile candidate |
+| --- | --- | --- | --- | --- |
+| Cold usable median (ms) | 675 / 480 | 541 / 470 | 2,709 / 2,581 | 2,140 / 2,126 |
+| Cold usable p95 (ms) | 959 / 565 | 775 / 472 | 2,772 / 2,610 | 2,187 / 2,138 |
+| Bytes before usable | 278,382 | 219,904 (−21.0%) | 292,286 | 219,901 (−24.8%) |
+| JS files before usable | 16 | 8 | 17 | 8 |
+| JS bytes before usable | 238,756 | 180,119 (−24.6%) | 252,665 | 180,125 (−28.7%) |
+| API requests before usable | 4 | 4 | 4 | 4 |
+| First Summary → Entries (ms) | 138 / 115 | 118 / 125 | 556 / 453 | 491 / 446 |
+| Warm Summary → Entries median (ms) | 55 / 56 | 54 / 55 | 94 / 90 | 97 / 90 |
+| Warm Entries → Summary median (ms) | 52 / 54 | 52 / 49 | 107 / 96 | 113 / 103 |
+| Idle requests / bytes by 2 s | 1 / 1,955 | 7 / 32,347 | 1 / 1,953 | 0 / 0 |
+| Idle requests / bytes by 30 s | 3 / 9,221 | 8 / 34,339 | 1 / 1,953 | 6 / 30,695 |
+
+No row exceeds the plan's regression limits: initial bytes +5%,
+median/p95 +10%. Initial bytes went down by 21–25%. The baseline's first
+navigation made 0 requests on desktop because it idle-imported every route
+and prefetched pages; the candidate reaches the same with 5 fewer idle
+requests than the old all-route import plus prefetch.
+
+### Warmup modes on the candidate (versus off), rounds 1 / 2
+
+| Mode | Desktop first Summary → Entries | Requests | Mobile first Summary → Entries | Requests | Idle bytes by 30 s (desktop / mobile) |
+| --- | --- | --- | --- | --- | --- |
+| off | 206 / 198 ms | 7 | 780 / 796 ms | 7 | 0 / 0 |
+| intent-only | 197 / 186 ms | — | 809 / 790 ms | — | 0 / 0 |
+| normal | 118 / 125 ms (−37 to −43%) | 0 | 491 / 446 ms (−37 to −44%) | 1 | 34,339 / 30,695 |
+
+Cold load, initial bytes and warm navigation are identical across modes
+within noise. One outlier: round 1 desktop normal versus off showed a +17%
+cold median, while round 2 showed −1% with the same bytes. Intent-only
+matches off here because the harness clicks without resting on links, so
+the 100 ms hover dwell never fires. That is expected: intent warms on
+hover, focus or touch-down.
+
+### Speculative use
+
+Hit = an idle-fetched path that the unwarmed (off) first round trip
+requested.
+
+| | Desktop | Mobile |
+| --- | --- | --- |
+| Idle requests needed by the first round trip | 7/8 (88%), both rounds | 6/6 (100%), both rounds |
+| Completed but unused | 1,992 bytes: `/api/imports-page` | 0 |
+
+The desktop `imports-page` request is not needed by the round trip, but it
+feeds the Summary import banner. It counts as unused only under this narrow
+definition. Unknown or failed candidates fall back to intent-only by
+construction (H07: no retry in the same visit, and mobile data stays off
+without admission).
+
+### Gates
+
+| Check | Result |
+| --- | --- |
+| `npm run verify` | Stops at step 1, `npm audit`: 5 pre-existing advisories (sharp via miniflare/wrangler, browserslist); unchanged baseline failure |
+| `npm run typecheck` | Pass |
+| `npm run test:unit` | Pass 400/400 |
+| `npm run build` | Pass |
+| `npm run test:e2e:smoke` (5173/8787, confirmed free) | Pass (6 + 7 + 1 + 13 + 49) |
+| Full functional E2E (isolated ports 5311/8911/9311, own D1 dir) | **Pass 216/216** (8.4 min) |
+| Screenshots 1440×900 and 390×844: Summary, Month, Entries | Taken after usable; no horizontal scroll at either size. Not committed; they are local artifacts |
+| Keyboard-only navigation (Tab/Enter to Entries, Shift+Tab/Enter back to Summary) | Pass |
+| Chromium touch emulation (tap Entries → Month → Summary at 390×844) | Pass |
+| WebKit functional smoke | Not run: WebKit is not installed |
+| Real-device testing | Not done |
+
+Observation: the Summary donut still shows its spinner at the moment the
+page is usable, because the Recharts chunk is lazy-loaded. That was already
+true at the baseline (`506f3fd`), and readiness deliberately does not wait
+for the decorative chart.
+
+### Limitations
+
+- Local wrangler dev and CDP-emulated networks, not production or devices.
+- The cold Worker isolate is outside the browser harness; H09 measured it
+  separately (≈30 ms init plus a 130–230 ms first handler).
+- Timings were taken under heavy machine load; the byte and request
+  results are the robust ones.
+- Mobile data warmup is still off: `WARMUP_ADMISSIONS` is empty until
+  someone decides which byte measure the limit uses (H01b findings).
+- The fresh-database first-request failure (`audit_events`) is still
+  unmerged here (H09 audit).
+
+### Rollback per task
+
+| Task | Revert |
+| --- | --- |
+| H01b | `e3cd00b`, `41838ad` (harness only) |
+| H09 | `c1dd539`, `94a02f6` |
+| H08 | `f87ae55`, `22f2840` |
+| H07 | `9fb2bc9`, `a5c00bd`, `1a867ca`, `6d998d2` |
+| H06 | `dc3c229`..`8770a06` |
+| H05 | `23a5109`, `d21fbe4`, `f464bac`, `176509c` |
+| H04 | `0adf7a4` |
+| H03 | `d30d4f0`, `1d9524b` |
+| H02 | `a8176fc`, `403bb63` |
+| H10 harness | `d2ec630` |
+
+Later tasks build on earlier ones, so revert newest first.
+
+### Decision input for H11–H17
+
+The first delivery met its goals without regressions. The measured
+bottlenecks left:
+1. Month-scoped payloads at scale: Entries 1.4 MB, Month 2.9 MB and Splits
+   1.6 MB uncompressed for a 2,000-row month, plus account pills and
+   Imports scanning the whole ledger (≈30 ms at 10k). This is the H14
+   candidate.
+2. Cold-isolate first handler (H09).
+3. The mobile admission decision, which is a small app-code change once
+   the byte measure is chosen.
+
+H11–H13 and H15 are maintainability work and claim no speed.
+
+Status: complete. All servers stopped and no harness processes left (checked with `pgrep` and `lsof` on 5173/8787/5191/5311/8911/9311).
