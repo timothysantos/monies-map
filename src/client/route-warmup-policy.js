@@ -13,6 +13,7 @@ export const WARMUP_LIMITS = Object.freeze({
     maxModuleBytes: 50_000,
     autoModulesPerWindow: 2,
     windowMs: 60_000,
+    // Compressed (gzip) bytes, like maxModuleBytes; see route-warmup-admissions.js.
     maxDataBytes: 50_000,
     maxDataHandlerMs: 250,
     maxRecentRequiredMs: 500

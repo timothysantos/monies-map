@@ -1,12 +1,20 @@
 // Which speculative data requests are cheap enough for mobile, from measured
-// stress-fixture numbers (H01b). A query family or parameter range that is
-// not in this table is unknown, and unknown is never admitted: the table is
-// empty until H01b measures the families, so mobile warmup stays code-only.
-// Desktop does not consult admission.
+// stress-fixture numbers (H01b, audit "Admission measurements"). A query
+// family or parameter range that is not in this table is unknown, and
+// unknown is never admitted. Desktop does not consult admission.
+//
+// responseBytes is the gzip size of the JSON body: what a phone downloads
+// from Cloudflare, which compresses JSON, and the same measure the module
+// cap uses. handlerMs is the Server-Timing app p95. Synthetic rows compress
+// better than real ledgers, so this is an estimate, not a guarantee.
 //
 // Row shape: { family, fixture, revision, maxRangeMonths, responseBytes, handlerMs }
 // maxRangeMonths applies to summary-page only (longest measured range).
-export const WARMUP_ADMISSIONS = Object.freeze([]);
+export const WARMUP_ADMISSIONS = Object.freeze([
+  // Mobile's only data candidate. Largest of the household and Tim views for
+  // the 2,000-row month at 10k rows (1.43 MB uncompressed).
+  Object.freeze({ family: "entries-page", fixture: "scale-10k", revision: "e3cd00b", responseBytes: 44_784, handlerMs: 25 })
+]);
 
 function rangeMonths(identity) {
   if (!identity?.summaryStart || !identity?.summaryEnd) {

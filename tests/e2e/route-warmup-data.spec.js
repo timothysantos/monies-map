@@ -139,23 +139,69 @@ test.describe("optional data warmup on desktop", () => {
 });
 
 test.describe("optional data warmup on mobile", () => {
-  test("no speculative data without measured admission, and no Imports request for the banner", async ({ browser }) => {
+  function setConnection(page, connection) {
+    return page.addInitScript((value) => {
+      Object.defineProperty(navigator, "connection", {
+        configurable: true,
+        value: value ? { ...value, addEventListener() {}, removeEventListener() {} } : undefined
+      });
+    }, connection);
+  }
+
+  function recordEntriesModule(page) {
+    const loads = [];
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname.endsWith("entries-panel.jsx")) loads.push(Date.now());
+    });
+    return loads;
+  }
+
+  test("on 4g with a fast recent page load, the admitted Entries page warms once after its code, and navigation uses it", async ({ browser }) => {
     const { context, page } = await newPage(browser, MOBILE);
     await injectWarmupCosts(page);
-    await page.addInitScript(() => {
-      Object.defineProperty(navigator, "connection", { configurable: true, value: { saveData: false, effectiveType: "4g", addEventListener() {}, removeEventListener() {} } });
-    });
-    const panels = [];
-    page.on("request", (request) => {
-      if (new URL(request.url()).pathname.endsWith("entries-panel.jsx")) panels.push("entries");
-    });
+    await setConnection(page, { saveData: false, effectiveType: "4g" });
+    const moduleLoads = recordEntriesModule(page);
     const recorder = recordDataRequests(page);
     await openUsable(page, "/summary?view=household&month=2026-05", recorder);
-    await expect.poll(() => panels, { timeout: 10_000 }).toEqual(["entries"]);
-    await page.waitForTimeout(8_000);
-    expect(recorder.requests).toEqual([]);
+    await expect.poll(() => recorder.requests.length, { timeout: 15_000 }).toBe(1);
+    await page.waitForTimeout(6_000);
+    expect(recorder.requests.map((entry) => `${entry.path}${entry.search}`)).toEqual(["/api/entries-page?view=household&month=2026-05"]);
+    expect(moduleLoads).toHaveLength(1);
+    expect(recorder.requests[0].at).toBeGreaterThanOrEqual(moduleLoads[0]);
+
+    await page.locator(".mobile-nav, nav").getByRole("link", { name: "Entries", exact: true }).first().click();
+    await expect(page.locator(".entry-row").filter({ hasText: "Vivify" }).first()).toBeVisible();
+    await waitUsable(page);
+    expect(recorder.requests.filter((entry) => entry.path === "/api/entries-page")).toHaveLength(1);
+    expect(recorder.requests.some((entry) => entry.path === "/api/imports-page")).toBe(false);
     await context.close();
   });
+
+  // Slow connections and data saver block automatic code too; missing
+  // connection information still allows code, never data.
+  for (const [label, connection, codeWarms] of [
+    ["a 3g connection", { saveData: false, effectiveType: "3g" }, false],
+    ["data saver", { saveData: true, effectiveType: "4g" }, false],
+    ["no connection information (as on iPhone)", null, true]
+  ]) {
+    test(`${label} warms no data`, async ({ browser }) => {
+      const { context, page } = await newPage(browser, MOBILE);
+      await injectWarmupCosts(page);
+      await setConnection(page, connection);
+      const moduleLoads = recordEntriesModule(page);
+      const recorder = recordDataRequests(page);
+      await openUsable(page, "/summary?view=household&month=2026-05", recorder);
+      if (codeWarms) {
+        await expect.poll(() => moduleLoads.length, { timeout: 10_000 }).toBe(1);
+        await page.waitForTimeout(8_000);
+      } else {
+        await page.waitForTimeout(8_000);
+        expect(moduleLoads).toEqual([]);
+      }
+      expect(recorder.requests).toEqual([]);
+      await context.close();
+    });
+  }
 
   test("the mobile banner uses the cached Imports page after an Imports visit, never its own request", async ({ browser }) => {
     const { context, page } = await newPage(browser, MOBILE);
