@@ -1555,3 +1555,141 @@ task, and the contract suite does not pin that screen.
 
 Rollback: revert `9905b8a`, `d31995f`, `6d60cbf`, `b895d99` (newest
 first); the contract tests can stay.
+
+## H12a: Reference data owner
+
+Date: 2026-09-24. Commits: `0c8d28d` (owner and unit tests), `18a4c2b`
+(App wiring and E2E).
+
+### State inventory (before)
+
+| State or ref | Writers | Readers | Role | Replacement guard |
+| --- | --- | --- | --- | --- |
+| `referenceData` (useState) | first-load effect, `refreshReferenceDataInBackground` | categories/accounts memos, route element, route work (`hasReferenceData`), loading gate | Protected snapshot: the last good DTO kept on screen during a refresh | Owner `data`, set only by the latest generation |
+| `referenceDataError` (useState) | first-load failure, cross-tab and retry failures | error screen | Error screen trigger | Owner `error`, set only by the latest generation; aborts and cancellations are not errors |
+| Query `["reference-data"]` | `fetchReferenceData` (ensure or fetch) | same | Authoritative cache | Unchanged key, `retry: false`, `revalidateIfStale` |
+| `clearReferenceDataCache` | cross-tab refresh | — | Cache reset plus query epoch bump | Owner `clearCache` (still bumps the epoch through `onCacheCleared`) |
+
+### After
+
+`reference-data-owner.js` (plain JS, no React) holds the snapshot, the
+generation counter and the fetch. `use-reference-data.js` binds it with
+`useSyncExternalStore` and starts the first load. App keeps the loading and
+error gates and calls:
+- `refresh()` from the mutation refresh plans;
+- `refreshOrShowError(label)` from cross-tab refresh and the retry button.
+
+There is no second DTO store: the React state moved into the owner, and
+nothing else holds it.
+
+### Behaviour change (a bug fix)
+
+Before, two quick cross-tab refreshes cancelled the first request, and its
+`CancelledError` was stored as the reference-data error. The **whole shell
+was replaced by the error screen**, which unmounted any open editor and
+lost its draft, until the second refresh cleared it. Now a superseded load
+or refresh is ignored.
+
+### Tests
+
+- `tests/reference-data-owner.test.mjs` (8), with a real QueryClient and a
+  deferred transport:
+  - the first load and cache reuse;
+  - a first-load failure;
+  - an aborted load;
+  - a refresh keeps the snapshot;
+  - a superseded refresh never shows an error;
+  - a late older success is ignored;
+  - a cancelled first load is not an error;
+  - a failing latest refresh shows the error while plain `refresh` rethrows.
+- `tests/e2e/reference-data-owner.spec.js` (2):
+  - a cross-tab category rename reaches the other tab without the loading
+    or error screen ever appearing, and an open entry draft keeps its
+    text;
+  - two quick cross-tab refreshes with the first request held: no error
+    screen, and the newest name wins. **This fails on the old code**,
+    where the error screen replaced the shell and the composer.
+
+## H13: Worker AI routes
+
+Date: 2026-09-24. Commits: `ccdc464` (contract tests, passing on the old
+code), `2205621` (move).
+
+### Inventory
+
+Seven POST routes under `/api/ai-assist/`:
+- `monthly-narrative`
+- `financial-insight`
+- `import-explanation`
+- `category-rule-suggestions`
+- `statement-text-fallback`
+- `transfer-match-ranking`
+- `import-match-ranking`
+
+Their private helpers:
+- `parseFinancialInsightFacts`
+- `parseFinancialDecisionMap`
+- `formatAiMoney`
+- `groupAiCategoryExamples`
+- `parseAiCategoryRuleProposals`
+- `parseAiStatementRows`
+
+Environment: `DB`, `AI`, `AI_ASSIST_ENABLED`, `AI_ASSIST_DAILY_LIMIT`.
+No identity or caller-specific permission is read.
+
+### After
+
+- `src/server/ai-assistance-routes.ts` exports
+  `handleAiAssistRoute(request, url, env) → Response | null` and
+  `AiAssistRouteEnv`. It returns null for any other path or method.
+- `src/index.ts` calls it at the old position, after the gateway checks,
+  health, schema initialization and the page routes, and before settings.
+  It is guarded by the `/api/ai-assist/` prefix.
+- Gateway rejection still happens first.
+- No router framework was added.
+- `src/index.ts` went from about 2,700 to 2,309 lines; the new module is
+  396 lines.
+- The route bodies and helpers moved unchanged (re-indented only).
+
+### Tests (`tests/ai-assistance-routes.test.mjs`, 13, through `worker.fetch`)
+
+- A GET on an AI route ends in a 404.
+- Untrusted facts are rejected without an AI call.
+- AI turned off, and binding missing: computed wording with the exact
+  reasons.
+- A used-up allowance: no AI call, `remaining: 0`.
+- A valid template renders from computed facts only (model and
+  `max_tokens` checked).
+- A template with its own figures is refused.
+- Statement fallback: empty text, bounded review rows, and account-number
+  redaction.
+- Transfer ranking needs an id (400); import ranking needs complete pairs,
+  and scores similarity.
+- Empty category evidence, and no mismatch to explain.
+- The shortcut-only gateway hides AI routes before any statement runs.
+- The handler returns null for non-matches, with no statements run.
+
+All 12 Worker-level tests passed before the move and after it.
+
+### Found, not fixed (filed separately)
+
+`category-rule-suggestions` binds `"household-default"`, but the
+household id is `"household-1"`, so it never finds examples. The move kept
+it byte-identical.
+
+### H12a and H13 gates
+
+| Check | Result |
+| --- | --- |
+| `npm run typecheck` | Pass |
+| `npm run test:unit` | Pass 425/425 |
+| `npm run build` | Pass |
+| Full functional E2E on isolated ports, final code (`2205621`) | **Pass 231/231** |
+
+Rollback:
+- H13: revert `2205621` (the contract tests can stay).
+- H12a: revert `18a4c2b` and `0c8d28d`.
+
+H12b–d (Summary, generic route data, shell hydration and cross-tab) are
+deliberately held until the separate first-load failure fix lands, because
+both change the same Summary and route-page load effects in `App.jsx`.

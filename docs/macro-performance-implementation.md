@@ -27,7 +27,9 @@ verified on 2026-09-23 only.
 | H09 | P4 | Full request/initialization timing | Done | `94a02f6`, `c1dd539` |
 | H10 | Closure | Measured comparison, first delivery | Done (`d2ec630`); no regression limit exceeded | audit §H10 |
 | H11 | P5 | Shell presentation extraction | Done (`e80fe6f`, `b895d99`, `6d60cbf`, `d31995f`, `9905b8a`) | audit §H11 |
-| H12–H17 | P6–P11 | Gated architecture work | Awaiting a decision (inputs in audit §H10) | — |
+| H12 | P6 | Server-state owners | H12a done (`0c8d28d`, `18a4c2b`); H12b–d wait for the first-load failure fix | audit §H12a |
+| H13 | P7 | Worker AI route extraction | Done (`ccdc464`, `2205621`) | audit §H13 |
+| H14–H17 | P8–P11 | Gated architecture work | Awaiting a decision (inputs in audit §H10) | — |
 
 Order is strict: H02 → H03 → H04 → H05 → H06 → H07 → H10. H08 needs only H03.
 H09 needs only H01 and may run any time after H01. H01b must precede enabling

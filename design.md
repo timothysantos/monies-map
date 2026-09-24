@@ -268,6 +268,16 @@ chrome is presentation in four modules, all in the entry chunk:
 and both range ends) and `login-registration-dialog.jsx`. They take
 explicit props, never App state wholesale.
 
+## Reference Data Owner
+
+`reference-data-owner.js` owns accounts and categories: the query cache is
+authoritative, and the owner keeps the last good DTO on screen while a
+refresh runs. Every load and refresh takes a generation, so a superseded
+request (for example one cancelled by a cross-tab refresh) never overwrites
+newer data or shows the error screen. `use-reference-data.js` is its React
+binding; App calls `refresh()` from mutation plans and
+`refreshOrShowError(label)` from cross-tab refresh and the retry button.
+
 ## Route Warmup Boundary
 
 Optional work (route code, speculative page data, AI wording) starts only
