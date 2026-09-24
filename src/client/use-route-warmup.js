@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { isEditableElement } from "./deferred-focus.js";
+import { requiredTiming } from "./query-leases.js";
 import { ROUTE_IDS, getRouteModuleState, loadRouteModule } from "./route-modules.js";
 import { missingRouteBytes, readWarmupCosts } from "./route-warmup-costs.js";
 import { createWarmupDataAdapter } from "./route-warmup-data.js";
@@ -93,7 +94,7 @@ export function useRouteWarmup({ routeIdentity, routeWork, queryEpoch, queryClie
             requiredCount: work.requiredCount
           },
           quietSince: Math.max(lastInteractionAtRef.current, usableSinceRef.current),
-          recentRequiredDurationMs: null,
+          recentRequiredDurationMs: requiredTiming.read(),
           warmupMode: window.__MONIES_MAP_WARMUP_MODE__
         };
       },

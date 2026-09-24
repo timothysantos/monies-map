@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { QueryClient } from "@tanstack/react-query";
 
-import { createRequiredLeases, fetchQueryWithLease, startSpeculativeQuery } from "../src/client/query-leases.js";
+import { createRequiredLeases, createRequiredTiming, fetchQueryWithLease, startSpeculativeQuery } from "../src/client/query-leases.js";
 import { queryKeys } from "../src/client/query-keys.js";
 
 // Real QueryClient, deferred transport, manual deadline clock.
@@ -320,4 +320,44 @@ test("an explicit cancel after promotion (hide, busy or a new generation) leaves
   calls[0].resolve(DTO);
   assert.deepEqual(await required, DTO);
   assert.equal(calls.length, 1);
+});
+
+test("required fetches that reach the network are timed; cache hits, failures and speculative reads are not", async () => {
+  const { queryClient, leases, clock, calls, fetcher } = setup();
+  let now = 1_000;
+  const timing = createRequiredTiming({ now: () => now, maxAgeMs: 60_000 });
+  assert.equal(timing.read(), null, "unknown before any required fetch");
+
+  const read = fetchQueryWithLease(queryClient, { queryKey: entriesKey("person-tim"), fetcher: fetcher("required"), leases, timing });
+  await flush();
+  now += 320;
+  calls[0].resolve(DTO);
+  assert.deepEqual(await read, DTO);
+  assert.equal(timing.read(), 320);
+
+  // A cache hit makes no request and keeps the last reading.
+  now += 5;
+  await fetchQueryWithLease(queryClient, { queryKey: entriesKey("person-tim"), fetcher: fetcher("cached"), leases, timing });
+  assert.equal(calls.length, 1);
+  assert.equal(timing.read(), 320);
+
+  // A failure is not a reading.
+  const failing = fetchQueryWithLease(queryClient, { queryKey: entriesKey("person-joyce"), fetcher: fetcher("failing"), leases, timing });
+  await flush();
+  now += 900;
+  calls[1].reject(new Error("offline"));
+  await assert.rejects(failing, /offline/);
+  assert.equal(timing.read(), 320);
+
+  // A speculative read does not go through the required timer.
+  const attempt = startSpeculativeQuery(queryClient, { queryKey: entriesKey("household"), fetcher: fetcher("warm"), leases, clock });
+  await flush();
+  now += 2_000;
+  calls[2].resolve(DTO);
+  await attempt.promise;
+  assert.equal(timing.read(), 320);
+
+  // Old readings expire into unknown.
+  now += 60_000;
+  assert.equal(timing.read(), null);
 });
