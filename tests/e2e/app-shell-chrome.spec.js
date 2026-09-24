@@ -209,3 +209,103 @@ test.describe("login registration", () => {
     await context.close();
   });
 });
+
+// A first-load page failure must reach the page error screen even when the
+// app shell resolves after the page request has already failed, and Retry
+// must make exactly one new page request per attempt.
+test.describe("first-load page failures", () => {
+  const cases = [
+    { name: "Summary", api: "/api/summary-page", path: "/summary?view=household&month=2026-05" },
+    { name: "Month", api: "/api/month-page", path: "/month?view=household&month=2026-05&scope=direct_plus_shared" },
+    { name: "Splits", api: "/api/splits-page", path: "/splits?view=person-tim&month=2026-05" },
+    { name: "Imports", api: "/api/imports-page", path: "/imports?view=household&month=2026-05" },
+    { name: "Settings", api: "/api/settings-page", path: "/settings?view=household&month=2026-05" }
+  ];
+
+  test.beforeEach(async ({ page }) => {
+    await reseedDemo(page);
+  });
+
+  for (const { name, api, path } of cases) {
+    test(`a ${name} page failure shows the page error and retry renders the page`, async ({ page }) => {
+      let fail = true;
+      let requests = 0;
+      // Hold the first shell response until the page request has failed, so
+      // the shell always lands after the failure (the order that used to wipe
+      // the page error and leave the loading panel up).
+      let releaseShell;
+      const pageFailed = new Promise((resolve) => { releaseShell = resolve; });
+      await page.route("**/api/app-shell**", async (route) => {
+        await pageFailed;
+        await route.continue();
+      });
+      await page.route(`**${api}**`, async (route) => {
+        requests += 1;
+        if (!fail) {
+          await route.continue();
+          return;
+        }
+        await route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ ok: false, error: `${name} exploded` }) });
+        releaseShell();
+      });
+      await page.goto(path);
+
+      const panel = page.locator(".app-loading-panel-error");
+      await expect(panel).toBeVisible({ timeout: 30_000 });
+      await expect(panel.locator(".app-loading-error-copy")).not.toBeEmpty();
+      const retry = panel.getByRole("button", { name: "Try loading again" });
+      await expect(retry).toBeVisible();
+      // The error must stick: no silent re-request and no fallback to the
+      // loading panel once the shell and reference data settle.
+      await page.waitForTimeout(1_500);
+      await expect(panel).toBeVisible();
+      expect(requests).toBe(1);
+
+      // A retry that fails again keeps the error screen and costs one request.
+      await retry.click();
+      await expect.poll(() => requests).toBe(2);
+      await expect(panel).toBeVisible();
+      await expect(retry).toBeEnabled();
+
+      fail = false;
+      await retry.click();
+      await waitUsable(page);
+      await expect(page.locator(".app-loading-panel")).toHaveCount(0);
+      await expect(page).toHaveURL(new RegExp(`/${name.toLowerCase()}\\?`));
+      await page.waitForTimeout(1_000);
+      expect(requests).toBe(3);
+    });
+  }
+
+  test("a shell and page failure together recover through both error screens", async ({ page }) => {
+    let failShell = true;
+    let failPage = true;
+    let pageRequests = 0;
+    await page.route("**/api/app-shell**", (route) => (failShell
+      ? route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ ok: false, error: "Shell exploded" }) })
+      : route.continue()));
+    await page.route("**/api/month-page**", (route) => {
+      pageRequests += 1;
+      return failPage
+        ? route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ ok: false, error: "Month exploded" }) })
+        : route.continue();
+    });
+    await page.goto("/month?view=household&month=2026-05&scope=direct_plus_shared");
+
+    const panel = page.locator(".app-loading-panel-error");
+    await expect(panel.getByRole("button", { name: "Try loading dashboard again" })).toBeVisible({ timeout: 30_000 });
+    failShell = false;
+    await panel.getByRole("button").click();
+
+    // The shell recovered but the page never loaded: its own error must show
+    // instead of an endless loading panel.
+    const retryPage = panel.getByRole("button", { name: "Try loading again" });
+    await expect(retryPage).toBeVisible();
+    expect(pageRequests).toBe(1);
+    failPage = false;
+    await retryPage.click();
+    await waitUsable(page);
+    await expect(page.locator(".app-loading-panel")).toHaveCount(0);
+    expect(pageRequests).toBe(2);
+  });
+});
