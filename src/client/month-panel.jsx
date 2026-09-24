@@ -44,7 +44,7 @@ const {
 // - background refreshes so derived totals settle after saves
 // - route-level dialogs such as notes, plan links, and mobile editors
 //
-export function MonthPanel({ view, accounts, people, categories, householdMonthEntries, onCategoryAppearanceChange, onRefresh }) {
+export function MonthPanel({ view, accounts, people, categories, householdMonthEntries, onCategoryAppearanceChange, onRefresh, canRequestWording = false }) {
   const navigate = useNavigate();
   const monthUiKey = `${view.id}:${view.monthPage.month}:${view.monthPage.selectedScope}`;
   const [planSections, setPlanSections] = useState(view.monthPage.planSections ?? []);
@@ -1378,7 +1378,7 @@ export function MonthPanel({ view, accounts, people, categories, householdMonthE
 
       <MonthMetricRow cards={monthMetricCards} isRefreshing={isMonthDataRefreshing || hasPendingDerivedMonthData} />
 
-      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-month" />
+      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-month" canRequestWording={canRequestWording} />
 
       <MonthPlanStack
         view={view}

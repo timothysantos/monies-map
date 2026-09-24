@@ -68,7 +68,8 @@ export function EntriesPanel({
   onCategoryAppearanceChange,
   onInvalidateAppShellCache,
   onInvalidateEntryMutation,
-  onBroadcastSplitMutation
+  onBroadcastSplitMutation,
+  canRequestWording = false
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -1071,7 +1072,7 @@ export function EntriesPanel({
         onAddEntry={openEntryComposer}
       />
 
-      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-entries" />
+      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-entries" canRequestWording={canRequestWording} />
 
       <button
         type="button"
