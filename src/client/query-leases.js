@@ -71,7 +71,8 @@ export async function fetchQueryWithLease(queryClient, {
   bypassCache = false,
   signal,
   leases = requiredLeases,
-  abortMessage = "Request aborted."
+  abortMessage = "Request aborted.",
+  retry = false
 }) {
   if (signal?.aborted) {
     throw abortError(abortMessage);
@@ -88,7 +89,7 @@ export async function fetchQueryWithLease(queryClient, {
     const options = {
       queryKey,
       queryFn: ({ signal: querySignal }) => fetcher({ signal: querySignal }),
-      retry: false
+      retry
     };
     let data;
     try {

@@ -57,6 +57,7 @@ import {
 import { fetchTextWithTransientWorkerRetry, fetchWithTimeout } from "./request-timeout";
 import { installMobileFocusVisibility } from "./mobile-focus-visibility";
 import { queryKeys, summaryPageKeyFromParams } from "./query-keys";
+import { fetchQueryWithLease } from "./query-leases";
 import { loadRouteModule } from "./route-modules";
 import { useRouteWarmup } from "./use-route-warmup";
 import {
@@ -588,49 +589,24 @@ export function App() {
 
   // Fetch the entries page with exact caching semantics so the dedicated
   // entries workflow can reuse data without rebuilding the shell.
-  const fetchEntriesPageData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
-    const queryKey = queryKeys.entriesPage(params);
-    const queryState = queryClient.getQueryState(queryKey);
-    if (signal?.aborted) {
-      throw new DOMException("Entries page request aborted.", "AbortError");
-    }
-
-    if (!bypassCache) {
-      const cachedData = queryClient.getQueryData(queryKey);
-      if (cachedData) {
-        return cachedData;
+  const fetchEntriesPageData = useCallback((params, { bypassCache = false, signal } = {}) => (
+    fetchQueryWithLease(queryClient, {
+      queryKey: queryKeys.entriesPage(params),
+      bypassCache,
+      signal,
+      abortMessage: "Entries page request aborted.",
+      fetcher: async ({ signal: requestSignal }) => {
+        const response = await fetchWithTimeout(`/api/entries-page?${params.toString()}`, {
+          cache: "no-store",
+          signal: requestSignal
+        }, "Entries page request");
+        if (!response.ok) {
+          throw new Error(await buildRequestErrorMessage(response, "Entries page failed."));
+        }
+        return response.json();
       }
-    }
-
-    const fetcher = async () => {
-      const response = await fetchWithTimeout(`/api/entries-page?${params.toString()}`, {
-        cache: "no-store"
-      }, "Entries page request");
-      if (!response.ok) {
-        throw new Error(await buildRequestErrorMessage(response, "Entries page failed."));
-      }
-      return response.json();
-    };
-
-    const data = bypassCache
-      ? await queryClient.fetchQuery({
-          queryKey,
-          queryFn: fetcher,
-          retry: false,
-          staleTime: 0
-        })
-      : await queryClient.ensureQueryData({
-          queryKey,
-          queryFn: fetcher,
-          retry: false,
-          revalidateIfStale: true
-        });
-
-    if (signal?.aborted) {
-      throw new DOMException("Entries page request aborted.", "AbortError");
-    }
-    return data;
-  }, [queryClient]);
+    })
+  ), [queryClient]);
 
   const fetchReferenceData = useCallback(async ({ bypassCache = false, signal } = {}) => {
     const queryKey = queryKeys.referenceData();

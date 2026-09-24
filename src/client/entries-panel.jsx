@@ -38,6 +38,7 @@ import { buildRequestErrorMessage } from "./request-errors";
 import { deleteSplitExpense, updateSplitExpenseCategory, updateSplitExpenseNote } from "./splits-api";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
 import { useRouteWorkReport } from "./use-route-work-status";
+import { fetchQueryWithLease } from "./query-leases";
 
 const ENTRIES_PAGE_PREFETCH_DELAY_MS = 1200;
 const ENTRIES_PAGE_PREFETCH_SPACING_MS = 650;
@@ -1480,44 +1481,23 @@ function useEntriesPageData({
 
   // This is the single network boundary for the panel. Everything else reads
   // from local state or react-query cache.
-  const fetchEntriesPage = useCallback(async (params, { bypassCache = false, signal } = {}) => {
-    const queryKey = queryKeys.entriesPage(params);
-    if (signal?.aborted) {
-      throw new DOMException("Entries page request aborted.", "AbortError");
-    }
-
-    if (!bypassCache) {
-      const cachedData = queryClient.getQueryData(queryKey);
-      if (cachedData) {
-        return cachedData;
+  const fetchEntriesPage = useCallback((params, { bypassCache = false, signal } = {}) => (
+    fetchQueryWithLease(queryClient, {
+      queryKey: queryKeys.entriesPage(params),
+      bypassCache,
+      signal,
+      abortMessage: "Entries page request aborted.",
+      // This panel has always used the client's default retry policy.
+      retry: queryClient.getDefaultOptions().queries?.retry,
+      fetcher: async ({ signal: requestSignal }) => {
+        const response = await fetch(`/api/entries-page?${params.toString()}`, { cache: "no-store", signal: requestSignal });
+        if (!response.ok) {
+          throw new Error(await buildRequestErrorMessage(response, "Entries page failed."));
+        }
+        return response.json();
       }
-    }
-
-    const fetcher = async () => {
-      const response = await fetch(`/api/entries-page?${params.toString()}`, { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error(await buildRequestErrorMessage(response, "Entries page failed."));
-      }
-      return response.json();
-    };
-
-    const data = bypassCache
-      ? await queryClient.fetchQuery({
-          queryKey,
-          queryFn: fetcher,
-          staleTime: 0
-        })
-      : await queryClient.ensureQueryData({
-          queryKey,
-          queryFn: fetcher,
-          revalidateIfStale: true
-        });
-
-    if (signal?.aborted) {
-      throw new DOMException("Entries page request aborted.", "AbortError");
-    }
-    return data;
-  }, [queryClient]);
+    })
+  ), [queryClient]);
 
   const refreshEntriesPage = useCallback(async ({ bypassCache = false, invalidateAppShell = false } = {}) => {
     if (bypassCache) {
