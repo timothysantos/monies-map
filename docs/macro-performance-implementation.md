@@ -21,8 +21,8 @@ verified on 2026-09-23 only.
 | H03 | Prereq | Ready/busy reporting from workflow owners | Done (`1d9524b`, `d30d4f0`) | audit §H03 |
 | H04 | P1/P2m | Pure warmup policy | Done (`0adf7a4`) | audit §H04 |
 | H05 | P1/P2m | Shared module loader, code-only scheduler | Done (`176509c`, `f464bac`, `d21fbe4`, `23a5109`) | audit §H05 |
-| H06 | P2/P2m | Cancellation, leases, promotion | **Next** | — |
-| H07 | P2/P2m | One bounded optional data queue | Open | — |
+| H06 | P2/P2m | Cancellation, leases, promotion | Done (`dc3c229`..`8770a06`); open draft flake tracked separately | audit §H06 |
+| H07 | P2/P2m | One bounded optional data queue | **Next** | — |
 | H08 | P3 | Optional AI readiness | Open | — |
 | H09 | P4 | Full request/initialization timing | Open | — |
 | H10 | Closure | Measured comparison, first delivery | Open | — |
@@ -949,6 +949,28 @@ Design:
    otherwise leave it running (promoted). `promote(key)` (new scheduler
    method, called by lease acquisition through an injected callback) clears
    the deadline. Never prefix-cancel.
+
+As built:
+
+- The shared helpers live in `src/client/query-leases.js`:
+  `createRequiredLeases` / `requiredLeases`, `fetchQueryWithLease`
+  (lease before the cache read, TanStack signal forwarded, one recovery
+  `fetchQuery` on `CancelledError` while the caller's own signal is live,
+  optional `retry` for the Entries panel's client-default policy) and
+  `startSpeculativeQuery` (refuses to start when the key is required or
+  already fetching; cancels only while exclusively speculative; promotion
+  via `leases.onAcquire` clears the deadline; promise never rejects).
+- Promotion is inside `startSpeculativeQuery`, not a new scheduler method;
+  H07 wires the runner into the scheduler.
+- The `purpose: "speculative"` option on App's helpers was NOT added (no
+  caller until H07). H07 must build speculative fetchers that skip
+  `updateLoadingStatus` and use `maxAttempts: 1`.
+- `fetchTextWithTransientWorkerRetry` moved to `request-timeout.js` with
+  `maxAttempts` (default 3).
+- TanStack trap (verified): when the LAST observer of a query unsubscribes
+  and the query function consumed its signal, TanStack cancels the fetch
+  itself. The recovery in `fetchQueryWithLease` covers imperative readers;
+  any future `useQuery` adoption must keep that in mind.
 
 Tests (real `QueryClient`, deferred mocked `fetch`): W10, W11, W12, W13, W14,
 W18, W20; lease released on failure; `maxAttempts:1` makes exactly one

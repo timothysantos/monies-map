@@ -766,3 +766,81 @@ remaining desktop outliers (557–933 ms) are not explained by route chunks
   `f464bac`, `176509c` in that order).
 
 Next eligible step: H06.
+
+## H06: Cancellation, leases and promotion
+
+Date: 2026-09-24. Baseline `84f05c7` (H05 evidence). Commits: `dc3c229`
+(abort through body reading; bounded transient retries), `20011cb` (leases,
+recoverable required reads, cancellable speculative reads), `de6d3eb`
+(Entries), `4e40640` (generic route pages), `e2db6f9` (Summary + pills),
+`8770a06` (Imports banner signal), `a72ca22` (route-warmup E2E made
+independent of setup-page timing and load). Status: **complete for the H06
+contract**, with one open draft-loss flake tracked separately (below).
+
+### Changed files and contracts
+
+| File | Contract |
+| --- | --- |
+| `src/client/request-timeout.js` | `fetchWithTimeout` passes `AbortSignal.any([timeout, upstream])` to `fetch`, so an upstream abort during body reading rejects; header-phase timeout unchanged. `fetchTextWithTransientWorkerRetry(url, { maxAttempts = 3 })` (moved from App) |
+| `src/client/query-leases.js` (new) | `createRequiredLeases`, `requiredLeases`, `fetchQueryWithLease`, `startSpeculativeQuery` (see the implementation doc's "H06 as built") |
+| `src/client/App.jsx` | `fetchEntriesPageData`, `fetchRoutePageData` read through `fetchQueryWithLease` with the TanStack signal forwarded (loading labels and the cached early return preserved); Imports banner query forwards its signal |
+| `src/client/entries-panel.jsx` | `fetchEntriesPage` through `fetchQueryWithLease`, keeping the client default retry policy |
+| `src/client/summary-query.js` | `fetchSummaryJson` through `fetchQueryWithLease` |
+
+No speculative data request is issued yet (H07). Behavior change: a cache
+clear that cancels an in-flight required read now refetches once instead of
+rejecting the loader with `CancelledError` (which the route effect used to
+surface as a page error).
+
+### Tests
+
+- `tests/query-leases.test.mjs` (18, real QueryClient, deferred transport):
+  W10 promotion (one request, not aborted, exact DTO), W11 deadline abort
+  without error state, W12 abort just before required → route loads, W13
+  another key unaffected, W14 invalidated data still fetches, W18 person
+  separation, recovery after a cancel under a live caller, second
+  cancellation propagates with the lease released, no start when required
+  or already fetching, observed query not cancelled, last-observer TanStack
+  cancel recovered, cancel after settle is a no-op, failed speculative read
+  resolves "failed" without retry, lease released on failure, caller abort
+  never reaches the shared network request, cached vs bypass, idempotent
+  lease release, explicit cancel after promotion leaves the request running.
+- `tests/request-timeout.test.mjs` (+3): upstream abort during body read
+  rejects (hangs without `AbortSignal.any`), timeout-only signal, transient
+  body retries 3× required / 1× speculative.
+- Mutation checks: 8/8 targeted `query-leases.js` mutations fail a test
+  (one survivor fixed by adding the explicit-cancel-after-promotion test).
+
+### Commands and results (Node 22.12.0)
+
+| Command | Result |
+| --- | --- |
+| `npm run test:unit` | Pass 367/367 |
+| `npm run typecheck`, `npm run build` | Pass |
+| Entries specs; Month/Splits/Settings/Imports/app-shell specs; Summary/insight/privacy; import inbox + ledger (isolated ports) | Pass 28, 49, 8, 51 |
+| Full functional E2E run 1 | 196 passed, 1 failed: `splits-edit-expense` › linked note (draft reverted; see below) |
+| Full functional E2E run 2 (traces on failure) | 196 passed, 1 failed: `route-warmup` › save-data — a test-harness race (the setup page's late `summary-panel` import counted); fixed in `a72ca22` together with a load-dependent sweep test (now in-page timers; verified to fail with the dwell removed). `splits-edit-expense` passed in this run |
+| `route-warmup.spec.js` after the fix | Pass 9/9 (and the sweep test fails with dwell 0, passes 3/3 with it) |
+| `npm run audit` | Fail — same 5 pre-existing advisories (browserslist, baseline-browser-mapping, sharp via miniflare/wrangler); none in Vite 6.4.3 |
+| `npm run test:e2e:smoke` | Not run (fixed port 5173 shared with other sessions); covered by the full runs |
+| `npm run test:performance` | Not rerun for H06 (no warmup or bundle change; request paths identical) |
+
+### Open issue: split note draft reverts in some full runs
+
+`splits-edit-expense` failed in 2 of 4 full runs since `23a5109` (H05 run 1
+also failed the inline-editor test the same way): the typed note reverts to
+the saved note before Save. It passes 15/15 in isolation, passed in the same
+file order (41/41), and did not reproduce with any single delayed API
+response. Full runs at H02/H03 passed it, so H05/H06 may have widened an
+existing race, but no failing trace exists yet. Tracked as a separate
+investigation task with the full evidence; H07 must not start speculative
+data on Splits before that is resolved.
+
+### Remaining risk
+
+- The flake above (protected draft).
+- Rollback: revert `8770a06`, `e2db6f9`, `4e40640`, `de6d3eb`, `20011cb`,
+  `dc3c229` in that order.
+
+Next eligible step: H07 (after the split draft investigation, or with Splits
+excluded from speculative data until it is resolved).
