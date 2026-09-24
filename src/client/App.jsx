@@ -1801,12 +1801,6 @@ export function App() {
   // Entries scope falls back to the month view scope when the route has not
   // overridden it yet.
   const selectedEntriesScope = searchParams.get("entries_scope") ?? pageView?.monthPage?.selectedScope ?? "direct_plus_shared";
-  const householdMonthEntries = useMemo(
-    () => selectedTabId === "month" && Array.isArray(currentRoutePageData?.householdMonthEntries)
-      ? currentRoutePageData.householdMonthEntries
-      : [],
-    [currentRoutePageData, selectedTabId]
-  );
   const categories = useMemo(
     () => referenceData?.categories.map((category) => ({ ...category, ...(categoryOverrides[category.id] ?? {}) })) ?? [],
     [referenceData, categoryOverrides]
@@ -1960,7 +1954,6 @@ export function App() {
           accounts={accounts}
           people={appShell.household.people}
           categories={categories}
-          householdMonthEntries={householdMonthEntries}
           onCategoryAppearanceChange={handleCategoryAppearanceChange}
           onRefresh={refreshCurrentMonthPage}
           canRequestWording={routeWork.usable}
@@ -2055,7 +2048,6 @@ export function App() {
     handleEntriesMobileFilterStateChange,
     handleLogout,
     handleUnregisterLogin,
-    householdMonthEntries,
     isUnregisteringLogin,
     loginIdentityError,
     mobileContextOpen,
