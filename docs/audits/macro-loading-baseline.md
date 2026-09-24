@@ -844,3 +844,70 @@ data on Splits before that is resolved.
 
 Next eligible step: H07 (after the split draft investigation, or with Splits
 excluded from speculative data until it is resolved).
+
+## H07: One optional data queue
+
+Date: 2026-09-24. Baseline `6192fc4` (H06 evidence). Commits: `6d998d2`
+(`buildEntriesPageParams` shared via `app-routing.js`), `1a867ca` (admission
+table, empty), `a5c00bd` (scheduler data path), `9fb2bc9` (data adapters,
+hook wiring, banner from cache, old effects removed). Status: **complete**;
+mobile data warmup deliberately stays off until H01b fills the admission
+table.
+
+### Removed
+
+App: the Imports banner idle-fetch effect, the staged route-page prefetch
+effect, `prefetchRoutePage` / `prefetchSummaryPage` / `prefetchEntriesPage`,
+`PAGE_PREFETCH_*`, `IMPORT_INBOX_BANNER_*`, `routePagePrefetchTimerRef`,
+`scheduleIdleTask` / `cancelIdleTask` / `waitFor`. Entries panel: the
+adjacent-month prefetch effect, its constants, timer ref, `waitFor`, and the
+now-unused `availableMonths` prop. App.jsx: ≈290 lines fewer. The old
+staged prefetch warmed household Entries even for a person view; the queue
+uses the selected view.
+
+### Tests
+
+- `tests/route-warmup-scheduler.test.mjs` (+10 data-path tests): code then
+  ≤2 data per desktop visit; W15 settle AND 1,500 ms spacing (starts at
+  1,200 and 2,700 ms); W14 fresh skipped without charge; failed attempts
+  charged and never retried; hide / busy / generation / visit / dispose
+  cancel the in-flight attempt; resume ×3 without refill; mobile without
+  admission or 4g → none; mobile with admission → one, after code; Tim
+  Summary never warms household; editor before/after launch.
+- `tests/route-warmup-data.test.mjs` (4): speculative keys equal the
+  required readers' keys for Entries, Month (with person), Summary range,
+  Imports; freshness from query state (absent, aged, Infinity,
+  invalidated); adapter key/fresh/admission/start; single attempt and
+  non-OK failure.
+- `tests/route-warmup-admissions.test.mjs` (3) and `app-routing` (+1).
+- `tests/e2e/route-warmup-data.spec.js` (7): desktop Summary → exactly
+  Entries (household, 2026-05) then Imports ≥1.4 s later and nothing more;
+  Tim Summary → Tim Entries only; navigating during a held warming Entries
+  request → one request, not aborted past the 1.5 s deadline, correct rows;
+  opening an editor aborts the speculative request and starts nothing new;
+  warmup off → none; mobile → no data and no Imports request for the
+  banner; mobile banner appears from cache after an Imports visit without
+  another request. Against `6192fc4`, 6/7 fail (the join test passes there
+  too).
+
+### Commands and results (Node 22.12.0)
+
+| Command | Result |
+| --- | --- |
+| `npm run test:unit` | Pass 385/385 |
+| `npm run build` | Pass |
+| Full functional E2E (isolated ports, traces on failure) | **Pass 204/204** |
+| `npm run test:performance` | Pass 2/2 (machine load ≈55–66, so timings not compared) |
+| Idle API at 2/10/30 s after usable | Desktop 1/2/2 (`entries-page`, `imports-page`; was 3 incl. `splits-page` and household Entries); mobile 0/0/0 (was 1, the banner) |
+| Warm Summary↔Entries API per step | 0 (unchanged) |
+| `npm run audit` | Same 5 pre-existing advisories (none in Vite) |
+| `npm run test:e2e:smoke` | Not run (shared fixed port); every smoke file is in the full run |
+
+### Remaining risk
+
+- Mobile data warmup is inactive until H01b measurements are checked in.
+- The split-note draft flake (H06) did not reproduce in this full run; its
+  investigation task is still open. Splits has no data candidates.
+- Rollback: revert `9fb2bc9`, `a5c00bd`, `1a867ca`, `6d998d2`.
+
+Next eligible step: H08 (H09 and H01b are also eligible).
