@@ -68,6 +68,7 @@ import { queryKeys, summaryPageKeyFromParams } from "./query-keys";
 import { fetchQueryWithLease } from "./query-leases";
 import { loadRouteModule } from "./route-modules";
 import { useReferenceData } from "./use-reference-data";
+import { useSummaryData } from "./use-summary-data";
 import { useRouteWarmup } from "./use-route-warmup";
 import {
   buildRouteIdentity,
@@ -251,11 +252,8 @@ export function App() {
   const [routePageDataRequestKey, setRoutePageDataRequestKey] = useState("");
   const [importInboxBanner, setImportInboxBanner] = useState(null);
   const [routePageError, setRoutePageError] = useState("");
-  const [summaryPageData, setSummaryPageData] = useState(null);
-  const [summaryAccountPillsData, setSummaryAccountPillsData] = useState(null);
   // Summary data is not replaced until the next response arrives, so keep the
   // request it belongs to; readiness compares it with the active request.
-  const [summaryPageDataRequestKey, setSummaryPageDataRequestKey] = useState("");
   const [entriesExternalRefreshToken, setEntriesExternalRefreshToken] = useState(0);
   const [loginRegistrationDraft, setLoginRegistrationDraft] = useState(null);
   const [loginRegistrationError, setLoginRegistrationError] = useState("");
@@ -479,42 +477,6 @@ export function App() {
     bumpQueryEpoch();
     queryClient.cancelQueries({ queryKey: ["route-page"] });
     queryClient.removeQueries({ queryKey: ["route-page"] });
-  }, [bumpQueryEpoch, queryClient]);
-
-  // Summary page DTOs are owned by dedicated slice queries, so they clear
-  // separately from generic route-page caches.
-  const clearSummaryPageCache = useCallback((predicate) => {
-    bumpQueryEpoch();
-    queryClient.cancelQueries({
-      predicate: (query) => (
-        query.queryKey?.[0] === "summary-page"
-        && (!predicate || predicate(query.queryKey?.[1] ?? {}))
-      )
-    });
-    queryClient.removeQueries({
-      predicate: (query) => (
-        query.queryKey?.[0] === "summary-page"
-        && (!predicate || predicate(query.queryKey?.[1] ?? {}))
-      )
-    });
-  }, [bumpQueryEpoch, queryClient]);
-
-  // Wallet pills use their own slice cache so reference-data changes do not
-  // force the whole summary range DTO to refetch.
-  const clearSummaryAccountPillsCache = useCallback((predicate) => {
-    bumpQueryEpoch();
-    queryClient.cancelQueries({
-      predicate: (query) => (
-        query.queryKey?.[0] === "summary-account-pills"
-        && (!predicate || predicate(query.queryKey?.[1] ?? {}))
-      )
-    });
-    queryClient.removeQueries({
-      predicate: (query) => (
-        query.queryKey?.[0] === "summary-account-pills"
-        && (!predicate || predicate(query.queryKey?.[1] ?? {}))
-      )
-    });
   }, [bumpQueryEpoch, queryClient]);
 
   // Clear the entries-page cache when entry mutations should be reflected in
@@ -851,6 +813,18 @@ export function App() {
   const fetchSummaryAccountPillsData = useCallback(async (params, { bypassCache = false, signal } = {}) => (
     fetchSummaryAccountPillsQuery(queryClient, params, { bypassCache, signal })
   ), [queryClient]);
+  const {
+    summaryPageData,
+    summaryAccountPillsData,
+    summaryPageDataRequestKey,
+    summaryOwner
+  } = useSummaryData({
+    queryClient,
+    onCacheCleared: bumpQueryEpoch,
+    fetchPage: fetchSummaryPageData,
+    fetchPills: fetchSummaryAccountPillsData
+  });
+  const { clearPageCache: clearSummaryPageCache, clearPillsCache: clearSummaryAccountPillsCache } = summaryOwner;
 
   // Refresh the active route page, and optionally refresh shell state when the
   // mutation affected shared metadata.
@@ -879,34 +853,13 @@ export function App() {
 
   // Refresh the summary slice from its dedicated page and account-pill
   // queries without routing it back through the generic page loader.
-  const refreshCurrentSummaryPage = useCallback(async ({ bypassCache = true } = {}) => {
-    if (bypassCache) {
-      clearSummaryPageCache();
-      clearSummaryAccountPillsCache();
-    }
-
-    const requestKey = summaryPageParams.toString();
-    const [nextSummaryPage, nextSummaryAccountPills] = await withRequiredWork(requiredWork, "summary refresh", () => Promise.all([
-      fetchSummaryPageData(summaryPageParams, { bypassCache }),
-      fetchSummaryAccountPillsData(summaryAccountPillsParams, { bypassCache })
-    ]));
-
-    setSummaryPageData(nextSummaryPage);
-    setSummaryAccountPillsData(nextSummaryAccountPills);
-    setSummaryPageDataRequestKey(requestKey);
-    return {
-      summaryPage: nextSummaryPage,
-      summaryAccountPills: nextSummaryAccountPills
-    };
-  }, [
-    clearSummaryAccountPillsCache,
-    clearSummaryPageCache,
-    fetchSummaryAccountPillsData,
-    fetchSummaryPageData,
-    requiredWork,
-    summaryAccountPillsParams,
-    summaryPageParams
-  ]);
+  const refreshCurrentSummaryPage = useCallback(({ bypassCache = true } = {}) => (
+    withRequiredWork(requiredWork, "summary refresh", () => summaryOwner.refresh({
+      pageParams: summaryPageParams,
+      pillsParams: summaryAccountPillsParams,
+      bypassCache
+    }))
+  ), [requiredWork, summaryAccountPillsParams, summaryOwner, summaryPageParams]);
 
   const retryActivePageLoad = useCallback(async () => {
     setRoutePageError("");
@@ -1738,28 +1691,15 @@ export function App() {
     }
     const finishAppShellLoad = hasCachedPage ? null : beginAppShellLoad();
 
-    void Promise.all([
-      fetchSummaryPageData(summaryPageParams, { signal: controller.signal }),
-      fetchSummaryAccountPillsData(summaryAccountPillsParams, { signal: controller.signal })
-    ])
-      .then(([nextSummaryPage, nextSummaryAccountPills]) => {
-        if (controller.signal.aborted) {
-          return;
+    // The owner ignores aborted and superseded loads; only a failure of
+    // the latest load reaches the page error screen.
+    void summaryOwner.load({ pageParams: summaryPageParams, pillsParams: summaryAccountPillsParams, signal: controller.signal })
+      .then((applied) => {
+        if (applied) {
+          setRoutePageError("");
         }
-
-        setSummaryPageData(nextSummaryPage);
-        setSummaryAccountPillsData(nextSummaryAccountPills);
-        setSummaryPageDataRequestKey(summaryPageParams.toString());
-        setRoutePageError("");
       })
       .catch((error) => {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
-
-        setSummaryPageData(null);
-        setSummaryAccountPillsData(null);
-        setSummaryPageDataRequestKey("");
         setRoutePageError(describeAppShellError(error));
         reportLoadingIssue("Summary load failed", error);
       })
@@ -1771,8 +1711,6 @@ export function App() {
     };
   }, [
     beginAppShellLoad,
-    fetchSummaryAccountPillsData,
-    fetchSummaryPageData,
     queryClient,
     reportLoadingIssue,
     selectedScope,
@@ -1781,6 +1719,7 @@ export function App() {
     selectedTabId,
     selectedViewId,
     summaryAccountPillsParams,
+    summaryOwner,
     summaryPageParams,
     updateLoadingStatus
   ]);
