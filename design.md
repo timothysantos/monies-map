@@ -278,6 +278,20 @@ newer data or shows the error screen. `use-reference-data.js` is its React
 binding; App calls `refresh()` from mutation plans and
 `refreshOrShowError(label)` from cross-tab refresh and the retry button.
 
+## Page, Summary And Shell Owners
+
+Summary (`summary-owner.js`), generic route pages (`route-data-owner.js`)
+and the app shell (`app-shell-owner.js`) follow the reference-data pattern:
+each owner keeps the last applied snapshot (with its request key) and a
+generation, so a superseded load or refresh never overwrites newer data,
+clears it or raises an error screen. A route-data refresh with
+`apply: false` (Settings refreshed while another route is open) takes no
+generation. Hooks (`use-summary-data.js`, `use-route-data.js`,
+`use-app-shell-state.js`) bind them; App keeps loading status, required
+work, the page error screen and the mutation refresh plans.
+`use-app-sync-subscription.js` owns the cross-tab BroadcastChannel and
+storage listeners; its parse and dispatch helpers are pure.
+
 ## Route Warmup Boundary
 
 Optional work (route code, speculative page data, AI wording) starts only
