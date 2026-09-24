@@ -46,6 +46,13 @@ import {
   resolveRouteViewId,
   sanitizeTabParams
 } from "./app-routing";
+import {
+  AppLoadingOverlay,
+  EnvironmentBanner,
+  RouteChunkLoadingFallback,
+  ShellErrorScreen,
+  ShellLoadingScreen
+} from "./app-shell-status";
 import { slugify } from "./category-utils";
 import { formatMonthLabel } from "./formatters";
 import { TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
@@ -134,19 +141,6 @@ function createLoadingStatus(overrides = {}) {
   };
 }
 
-// Trim long route labels and status text so loading chrome stays readable
-// without expanding into the whole shell.
-function ellipsizeText(value, maxLength = 52) {
-  const normalized = String(value ?? "").replace(/\s+/g, " ").trim();
-  if (!normalized) {
-    return "";
-  }
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-  return `${normalized.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
-}
-
 function describeRoutePageContractError(tabId) {
   return `The ${tabId} page response did not include the data needed to render this screen.`;
 }
@@ -175,20 +169,6 @@ function getClientAppEnvironment() {
     return "demo";
   }
   return "production";
-}
-
-// Show a small environment badge only when the app is running locally or in
-// the demo environment.
-function EnvironmentBanner({ environment }) {
-  if (environment !== "demo" && environment !== "local") {
-    return null;
-  }
-
-  return (
-    <div className={`environment-banner environment-banner-${environment}`}>
-      {environment}
-    </div>
-  );
 }
 
 // Keep the browser title aligned with the active environment.
@@ -2563,89 +2543,64 @@ export function App() {
   if (appShellError) {
     const isResourceLimitError = isAppShellResourceLimitError(appShellError);
     return (
-      <main className="shell">
-        <EnvironmentBanner environment={appEnvironment} />
-        <section className="panel app-loading-panel app-loading-panel-error">
-          <div>
-            <p>{messages.common.appShellErrorTitle}</p>
-            <p className="app-loading-error-copy">{appShellError}</p>
-            {isResourceLimitError ? (
-              <div className="app-loading-diagnosis">
-                <strong>{messages.common.appShellResourceLimitTitle}</strong>
-                <p>{messages.common.appShellResourceLimitDetail}</p>
-                <p>{messages.common.appShellDiagnosticsUnavailable}</p>
-              </div>
-            ) : null}
+      <ShellErrorScreen
+        environment={appEnvironment}
+        title={messages.common.appShellErrorTitle}
+        message={appShellError}
+        diagnosis={isResourceLimitError ? (
+          <div className="app-loading-diagnosis">
+            <strong>{messages.common.appShellResourceLimitTitle}</strong>
+            <p>{messages.common.appShellResourceLimitDetail}</p>
+            <p>{messages.common.appShellDiagnosticsUnavailable}</p>
           </div>
-          {loadingStatus.issue ? <p className="app-loading-issue-inline">{loadingStatus.issue}</p> : null}
-          <button
-            type="button"
-            className="button-primary"
-            onClick={() => { void refreshAppShell({ broadcast: false }).catch(handleAppShellFailure); }}
-          >
-            {messages.common.appShellRetry}
-          </button>
-        </section>
-      </main>
+        ) : null}
+        issue={loadingStatus.issue}
+        retryLabel={messages.common.appShellRetry}
+        onRetry={() => { void refreshAppShell({ broadcast: false }).catch(handleAppShellFailure); }}
+      />
     );
   }
 
   if (referenceDataError) {
     return (
-      <main className="shell">
-        <EnvironmentBanner environment={appEnvironment} />
-        <section className="panel app-loading-panel app-loading-panel-error">
-          <div>
-            <p>{messages.common.referenceDataErrorTitle}</p>
-            <p className="app-loading-error-copy">{referenceDataError}</p>
-            <div className="app-loading-diagnosis">
-              <strong>{messages.common.referenceDataErrorTitle}</strong>
-              <p>{messages.common.referenceDataErrorDetail}</p>
-            </div>
+      <ShellErrorScreen
+        environment={appEnvironment}
+        title={messages.common.referenceDataErrorTitle}
+        message={referenceDataError}
+        diagnosis={(
+          <div className="app-loading-diagnosis">
+            <strong>{messages.common.referenceDataErrorTitle}</strong>
+            <p>{messages.common.referenceDataErrorDetail}</p>
           </div>
-          {loadingStatus.issue ? <p className="app-loading-issue-inline">{loadingStatus.issue}</p> : null}
-          <button
-            type="button"
-            className="button-primary"
-            onClick={() => { void refreshReferenceDataInBackground().catch((error) => {
-              setReferenceDataError(describeAppShellError(error));
-              reportLoadingIssue("Reference data retry failed", error);
-            }); }}
-          >
-            {messages.common.referenceDataRetry}
-          </button>
-        </section>
-      </main>
+        )}
+        issue={loadingStatus.issue}
+        retryLabel={messages.common.referenceDataRetry}
+        onRetry={() => { void refreshReferenceDataInBackground().catch((error) => {
+          setReferenceDataError(describeAppShellError(error));
+          reportLoadingIssue("Reference data retry failed", error);
+        }); }}
+      />
     );
   }
 
   if (appShell && !pageView && routePageError) {
     return (
-      <main className="shell">
-        <EnvironmentBanner environment={appEnvironment} />
-        <section className="panel app-loading-panel app-loading-panel-error">
-          <div>
-            <p>{messages.common.pageLoadErrorTitle}</p>
-            <p className="app-loading-error-copy">{routePageError}</p>
-            {loadingStatus.issue ? <p className="app-loading-issue-inline">{loadingStatus.issue}</p> : null}
-          </div>
-          <button type="button" className="button-primary" onClick={retryActivePageLoad}>
-            {messages.common.retryPageLoad}
-          </button>
-        </section>
-      </main>
+      <ShellErrorScreen
+        environment={appEnvironment}
+        title={messages.common.pageLoadErrorTitle}
+        message={routePageError}
+        issue={loadingStatus.issue}
+        issuePlacement="inside"
+        retryLabel={messages.common.retryPageLoad}
+        onRetry={retryActivePageLoad}
+      />
     );
   }
 
   // Render the loading state while either the shell or the active page is
   // still being resolved.
   if (!appShell || !referenceData || !pageView) {
-    return (
-      <main className="shell">
-        <EnvironmentBanner environment={appEnvironment} />
-        <AppLoadingPanel status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />
-      </main>
-    );
+    return <ShellLoadingScreen environment={appEnvironment} status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />;
   }
 
   // The top chrome reflects the active period semantics of the current route.
@@ -3494,22 +3449,6 @@ function isPlaceholderPersonName(name) {
   return ["primary", "partner"].includes(String(name ?? "").trim().toLowerCase());
 }
 
-// Compact the loading copy and status line so the startup panel stays readable
-// while the shell is still assembling.
-function AppLoadingStatusText({ status, elapsedSeconds, compact = false }) {
-  const percentText = typeof status?.percent === "number" ? `${Math.max(0, Math.min(100, Math.round(status.percent)))}%` : null;
-  const elapsedText = elapsedSeconds > 0 ? `${elapsedSeconds}s` : null;
-  const detailText = ellipsizeText(status?.detail ?? "");
-  const meta = [percentText, detailText, elapsedText].filter(Boolean).join(" · ");
-
-  return (
-    <div className={`app-loading-status ${compact ? "is-compact" : ""}`}>
-      <small title={status?.detail ?? ""}>{meta}</small>
-      {status?.issue ? <small className="is-error" title={status.issue}>{ellipsizeText(status.issue, compact ? 64 : 84)}</small> : null}
-    </div>
-  );
-}
-
 // Compare the mobile entries filter props deeply enough to avoid rerender
 // loops while still updating when the filter stack actually changes.
 function areEntriesMobileFilterPropsEqual(current, next) {
@@ -3561,46 +3500,6 @@ function areStringArraysEqual(current, next) {
     return false;
   }
   return current.every((value, index) => value === next[index]);
-}
-
-// Full-screen startup state used before the shell or route payload is ready.
-function AppLoadingPanel({ status, elapsedSeconds }) {
-  return (
-    <section className="panel app-loading-panel" role="status" aria-live="polite">
-      <div className="app-loading-main">
-        <span className="app-spinner" aria-hidden="true" />
-        <p>{messages.common.loading}</p>
-      </div>
-      <AppLoadingStatusText status={status} elapsedSeconds={elapsedSeconds} />
-    </section>
-  );
-}
-
-// Overlay status used while a route fetch is still hydrating the current
-// screen.
-function AppLoadingOverlay({ status, elapsedSeconds }) {
-  return (
-    <div className="app-loading-overlay" role="status" aria-live="polite">
-      <div className="app-loading-overlay-main">
-        <span className="app-spinner" aria-hidden="true" />
-        <span>{messages.common.loadingLatest}</span>
-      </div>
-      <AppLoadingStatusText status={status} elapsedSeconds={elapsedSeconds} compact />
-    </div>
-  );
-}
-
-// In-panel fallback for route hydration, separate from the full startup state.
-function RouteChunkLoadingFallback({ status, elapsedSeconds }) {
-  return (
-    <section className="route-loading-panel" role="status" aria-live="polite">
-      <div className="app-loading-main">
-        <span className="app-spinner" aria-hidden="true" />
-        <p>{messages.common.loadingLatest}</p>
-      </div>
-      <AppLoadingStatusText status={status} elapsedSeconds={elapsedSeconds} compact />
-    </section>
-  );
 }
 
 // Build the query string used by the deep-link route that jumps directly to
