@@ -2,7 +2,6 @@ import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useStat
 import { hashKey, useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import * as Dialog from "@radix-ui/react-dialog";
-import * as Popover from "@radix-ui/react-popover";
 import {
   Receipt,
   Plus
@@ -52,6 +51,7 @@ import {
   ShellLoadingScreen
 } from "./app-shell-status";
 import { ShellRouteTabs } from "./app-shell-navigation";
+import { PeriodMonthPicker } from "./app-shell-period-pickers";
 import { slugify } from "./category-utils";
 import { formatMonthLabel } from "./formatters";
 import { TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
@@ -110,7 +110,6 @@ const SummaryPanel = lazy(() => loadRouteModule("summary").then((module) => ({ d
 
 // Shared UI constants used by the month and summary pickers.
 const SUMMARY_FOCUS_OVERALL = "overall";
-const MONTH_PICKER_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DEFAULT_MONTH_KEY = getCurrentMonthKey();
 // Canonical route registry for the top navigation and route-based prefetching.
 const routeTabs = [
@@ -2959,147 +2958,50 @@ export function App() {
               <span className="period-mode">{periodMode}</span>
               {isDetailMonthTab ? (
                 <strong className="period-range-value">
-                  <Popover.Root>
-                    <Popover.Trigger asChild>
-                      <button type="button" className="period-range-segment" disabled={isSplitsTab}>
-                        {periodLabel}
-                      </button>
-                    </Popover.Trigger>
-                    <Popover.Portal>
-                      <Popover.Content className="period-picker-popover" sideOffset={10} align="center">
-                        <div className="period-picker-head">
-                          <strong>Month</strong>
-                          <span>Choose a single month for this view.</span>
-                        </div>
-                        <div className="period-picker-years" role="tablist" aria-label="Available years">
-                          {detailAvailableYears.map((year) => (
-                            <button
-                              key={year}
-                              type="button"
-                              className={`period-picker-year ${monthPickerYear === year ? "is-active" : ""}`}
-                              onClick={() => setMonthPickerYear(year)}
-                            >
-                              {year}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="period-picker-months">
-                          {detailAvailableMonthsForPickerYear.map((month) => {
-                            const monthIndex = Number(month.slice(5, 7)) - 1;
-                            const isSelected = month === selectedMonth;
-                            return (
-                              <Popover.Close key={month} asChild>
-                                <button
-                                  type="button"
-                                  className={`period-picker-month ${isSelected ? "is-active" : ""}`}
-                                  onClick={() => handleDetailMonthSelect(month)}
-                                >
-                                  {MONTH_PICKER_LABELS[monthIndex]}
-                                </button>
-                              </Popover.Close>
-                            );
-                          })}
-                        </div>
-                        <Popover.Arrow className="category-popover-arrow" />
-                      </Popover.Content>
-                    </Popover.Portal>
-                  </Popover.Root>
+                  <PeriodMonthPicker
+                    triggerLabel={periodLabel}
+                    disabled={isSplitsTab}
+                    title="Month"
+                    hint="Choose a single month for this view."
+                    yearsAriaLabel="Available years"
+                    years={detailAvailableYears}
+                    activeYear={monthPickerYear}
+                    onYearChange={setMonthPickerYear}
+                    months={detailAvailableMonthsForPickerYear}
+                    selectedMonth={selectedMonth}
+                    closeOnSelect
+                    onSelect={handleDetailMonthSelect}
+                  />
                 </strong>
               ) : summaryPage?.rangeStartMonth && summaryPage?.rangeEndMonth ? (
                 <strong className="period-range-value">
-                  <Popover.Root>
-                    <Popover.Trigger asChild>
-                      <button type="button" className="period-range-segment">
-                        {formatMonthLabel(pageView.summaryPage.rangeStartMonth)}
-                      </button>
-                    </Popover.Trigger>
-                    <Popover.Portal>
-                      <Popover.Content className="period-picker-popover" sideOffset={10} align="center">
-                        <div className="period-picker-head">
-                          <strong>Start month</strong>
-                          <span>Choose the first month in the summary range.</span>
-                        </div>
-                        <div className="period-picker-years" role="tablist" aria-label="Available start years">
-                          {summaryAvailableYears.map((year) => (
-                            <button
-                              key={year}
-                              type="button"
-                              className={`period-picker-year ${rangePickerStartYear === year ? "is-active" : ""}`}
-                              onClick={() => setRangePickerStartYear(year)}
-                            >
-                              {year}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="period-picker-months">
-                          {summaryAvailableMonthsForPickerYear.map((month) => {
-                            const monthIndex = Number(month.slice(5, 7)) - 1;
-                            const isSelected = month === pageView.summaryPage.rangeStartMonth;
-                            const isDisabled = month > pageView.summaryPage.rangeEndMonth;
-                            return (
-                              <button
-                                key={month}
-                                type="button"
-                                className={`period-picker-month ${isSelected ? "is-active" : ""}`}
-                                disabled={isDisabled}
-                                onClick={() => handleSummaryStartMonthSelect(month)}
-                              >
-                                {MONTH_PICKER_LABELS[monthIndex]}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <Popover.Arrow className="category-popover-arrow" />
-                      </Popover.Content>
-                    </Popover.Portal>
-                  </Popover.Root>
+                  <PeriodMonthPicker
+                    triggerLabel={formatMonthLabel(pageView.summaryPage.rangeStartMonth)}
+                    title="Start month"
+                    hint="Choose the first month in the summary range."
+                    yearsAriaLabel="Available start years"
+                    years={summaryAvailableYears}
+                    activeYear={rangePickerStartYear}
+                    onYearChange={setRangePickerStartYear}
+                    months={summaryAvailableMonthsForPickerYear}
+                    selectedMonth={pageView.summaryPage.rangeStartMonth}
+                    isMonthDisabled={(month) => month > pageView.summaryPage.rangeEndMonth}
+                    onSelect={handleSummaryStartMonthSelect}
+                  />
                   <span className="period-range-separator" aria-hidden="true">-</span>
-                  <Popover.Root>
-                    <Popover.Trigger asChild>
-                      <button type="button" className="period-range-segment">
-                        {formatMonthLabel(pageView.summaryPage.rangeEndMonth)}
-                      </button>
-                    </Popover.Trigger>
-                    <Popover.Portal>
-                      <Popover.Content className="period-picker-popover" sideOffset={10} align="center">
-                        <div className="period-picker-head">
-                          <strong>End month</strong>
-                          <span>Choose the last month in the summary range.</span>
-                        </div>
-                        <div className="period-picker-years" role="tablist" aria-label="Available end years">
-                          {summaryAvailableYears.map((year) => (
-                            <button
-                              key={year}
-                              type="button"
-                              className={`period-picker-year ${rangePickerEndYear === year ? "is-active" : ""}`}
-                              onClick={() => setRangePickerEndYear(year)}
-                            >
-                              {year}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="period-picker-months">
-                          {summaryAvailableMonthsForEndPickerYear.map((month) => {
-                            const monthIndex = Number(month.slice(5, 7)) - 1;
-                            const isSelected = month === pageView.summaryPage.rangeEndMonth;
-                            const isDisabled = month < pageView.summaryPage.rangeStartMonth;
-                            return (
-                              <button
-                                key={month}
-                                type="button"
-                                className={`period-picker-month ${isSelected ? "is-active" : ""}`}
-                                disabled={isDisabled}
-                                onClick={() => handleSummaryEndMonthSelect(month)}
-                              >
-                                {MONTH_PICKER_LABELS[monthIndex]}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <Popover.Arrow className="category-popover-arrow" />
-                      </Popover.Content>
-                    </Popover.Portal>
-                  </Popover.Root>
+                  <PeriodMonthPicker
+                    triggerLabel={formatMonthLabel(pageView.summaryPage.rangeEndMonth)}
+                    title="End month"
+                    hint="Choose the last month in the summary range."
+                    yearsAriaLabel="Available end years"
+                    years={summaryAvailableYears}
+                    activeYear={rangePickerEndYear}
+                    onYearChange={setRangePickerEndYear}
+                    months={summaryAvailableMonthsForEndPickerYear}
+                    selectedMonth={pageView.summaryPage.rangeEndMonth}
+                    isMonthDisabled={(month) => month < pageView.summaryPage.rangeStartMonth}
+                    onSelect={handleSummaryEndMonthSelect}
+                  />
                 </strong>
               ) : (
                 <strong className="period-range-value">{periodLabel}</strong>
