@@ -1703,3 +1703,16 @@ Rollback:
 H12b–d (Summary, generic route data, shell hydration and cross-tab) are
 deliberately held until the separate first-load failure fix lands, because
 both change the same Summary and route-page load effects in `App.jsx`.
+
+### Follow-up fixes landed (2026-09-25)
+
+- `80b29b5`: merged the late select-all fix for money fields
+  (`claude/sad-hopper-477535`). `money-field-editability` passes 8/8.
+- `662de4e`: AI category-rule suggestions now read `DEFAULT_HOUSEHOLD_ID`
+  (`household-1`). The allowance counter keeps its original key on purpose.
+- `e66b5d2`, `db094ee`: a first-load page failure keeps its error screen
+  when the shell arrives later. Covered for Summary, Month, Splits, Imports
+  and Settings, plus a combined shell-and-page failure.
+- Combined gates: typecheck and build pass, unit tests 426/426, full
+  functional E2E on isolated ports 238/238.
+- H12b–d are unblocked.
