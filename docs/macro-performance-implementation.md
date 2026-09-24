@@ -26,7 +26,8 @@ verified on 2026-09-23 only.
 | H08 | P3 | Optional AI readiness | Done | `22f2840`, `f87ae55` |
 | H09 | P4 | Full request/initialization timing | Done | `94a02f6`, `c1dd539` |
 | H10 | Closure | Measured comparison, first delivery | Done (`d2ec630`); no regression limit exceeded | audit §H10 |
-| H11–H17 | P5–P11 | Gated architecture work | Awaiting a funding decision (inputs in audit §H10) | — |
+| H11 | P5 | Shell presentation extraction | Done (`e80fe6f`, `b895d99`, `6d60cbf`, `d31995f`, `9905b8a`) | audit §H11 |
+| H12–H17 | P6–P11 | Gated architecture work | Awaiting a decision (inputs in audit §H10) | — |
 
 Order is strict: H02 → H03 → H04 → H05 → H06 → H07 → H10. H08 needs only H03.
 H09 needs only H01 and may run any time after H01. H01b must precede enabling

@@ -1481,3 +1481,77 @@ because desktop does not consult admission.
 
 Rollback: revert `fd5fbfb` (or empty the table) to return to code-only
 mobile warmup.
+
+## H11: Shell presentation
+
+Date: 2026-09-24. Baseline `8d21800`. Commits:
+- `e80fe6f`: contract tests first;
+- `b895d99`: H11a, loading and error screens → `app-shell-status.jsx`;
+- `6d60cbf`: H11b, route tabs and "More pages" → `app-shell-navigation.jsx`;
+- `d31995f`: H11c, month and range pickers → `app-shell-period-pickers.jsx`;
+- `9905b8a`: H11d, login registration → `login-registration-dialog.jsx`.
+
+A behaviour-preserving extraction with no speed claimed. `App.jsx` went
+from 3,675 to 3,386 lines.
+
+### Boundaries kept
+
+- Query ownership, URL normalization (`buildTabTarget`, the tab lists,
+  `sanitizeTabParams`), retry handlers and warmup intent props stay in App
+  and are passed down.
+- Login submit, draft state and the placeholder-name rule stay with App (the
+  identity owner); the dialog gets `onPersonChange` and `onNameChange`.
+- No component receives App state wholesale.
+- The three period pickers became one `PeriodMonthPicker`: `closeOnSelect`
+  for the single month, disabled months for the range ends.
+
+### Contract tests (written first, pass on the old and new code)
+
+`tests/e2e/app-shell-chrome.spec.js`, 10 tests (none of these surfaces
+had browser coverage before):
+- shell error and reference-data error screens, each with a working retry;
+- the slow-shell loading panel;
+- desktop tabs keep the view and month and mark the active tab;
+- "More pages" opens by keyboard, lists Imports/Settings/FAQ, Escape
+  returns focus, and it navigates and marks itself active;
+- the month picker: year strip, keyboard pick, closes, returns focus;
+- the range pickers: disabled months, stay open, Escape returns focus;
+- Splits period controls are passive;
+- login registration: profile, name suggestion, save, linked view on
+  Splits, and no dialog after reload;
+- a failed login save keeps the dialog, the draft and the error.
+
+### Proof
+
+- Screenshots: 13 states captured before (two runs; 12 byte-identical run
+  to run) and after each subtask:
+  - error screens;
+  - Summary, Month, Splits and Settings chrome;
+  - each picker open;
+  - mobile Summary and the open "More pages" menu;
+  - the login dialog, with and without its error.
+- After H11a, b, c and d, every deterministic shot was byte-identical. The
+  exceptions:
+  - the reference-data error screen (varies between runs of the old code
+    too);
+  - one start-picker shot where the lazy donut chart had not rendered yet
+    (the picker pixels match).
+- Chunks: the four modules are bundled into the entry chunk, the chunk
+  count is unchanged, and `client-route-chunks` passes. The raw entry
+  bundle is 1,029 bytes smaller. Gzip is +1.4 KB, from different minifier
+  names and module order, not added code. JS before usable is 181.5 KB
+  versus 180.3 KB (+0.7%, within the 5% limit).
+- Gates:
+  - unit tests 404/404, typecheck and build pass;
+  - the contract spec passes after every subtask;
+  - full functional E2E on isolated ports passes 229/229 (219 + 10 new).
+
+### Found, not fixed (out of scope)
+
+A first-load page failure (Summary or Month returning 500) never shows the
+page error screen: the app stays on the loading panel with an issue line
+and no retry button. Only one request is made. It is filed as a separate
+task, and the contract suite does not pin that screen.
+
+Rollback: revert `9905b8a`, `d31995f`, `6d60cbf`, `b895d99` (newest
+first); the contract tests can stay.

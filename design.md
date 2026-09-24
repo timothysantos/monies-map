@@ -258,6 +258,16 @@ are busy. Required refreshes the shell awaits outside its loading counter run
 inside `withRequiredWork`. Optional prefetch, banner and AI work is never
 counted. Owners keep their drafts; the registry holds only booleans.
 
+## Shell Presentation Boundary
+
+App owns shell state, queries, URL normalization and every handler. Its
+chrome is presentation in four modules, all in the entry chunk:
+`app-shell-status.jsx` (environment badge, loading and error screens),
+`app-shell-navigation.jsx` (route tabs and the "More pages" menu),
+`app-shell-period-pickers.jsx` (`PeriodMonthPicker` for the single month
+and both range ends) and `login-registration-dialog.jsx`. They take
+explicit props, never App state wholesale.
+
 ## Route Warmup Boundary
 
 Optional work (route code, speculative page data, AI wording) starts only
