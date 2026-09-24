@@ -11,6 +11,8 @@ import net from "node:net";
 import path from "node:path";
 import process from "node:process";
 
+import { loadScaleFixture, readFixtureName } from "./load-performance-fixture.mjs";
+
 const PERFORMANCE_READY_MARKER = "PERFORMANCE_FIXTURE_READY";
 // Demo seed months for DEMO_SEED_MONTH=2026-05 (see reseed-contract E2E).
 const EXPECTED_TRACKED_MONTHS = ["2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2026-05"];
@@ -28,6 +30,9 @@ const seedMonth = config.vars?.DEMO_SEED_MONTH;
 if (seedMonth !== EXPECTED_TRACKED_MONTHS.at(-1)) {
   throw new Error(`Performance fixture expects DEMO_SEED_MONTH=${EXPECTED_TRACKED_MONTHS.at(-1)}, found ${seedMonth}.`);
 }
+
+// demo (default), scale-1k or scale-10k; scale rows load after the demo reseed.
+const fixtureName = readFixtureName(process.env.PERFORMANCE_FIXTURE);
 
 const port = Number(process.env.PERFORMANCE_PORT ?? 5191);
 if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error("PERFORMANCE_PORT must be a valid unprivileged port.");
@@ -163,7 +168,15 @@ if (
   await fail(`Reseed did not produce the expected demo fixture (tracked ${JSON.stringify(trackedMonths)}, summary ${summary?.rangeStartMonth}..${summary?.rangeEndMonth}); refusing to measure incomplete data.`);
 }
 
-console.log(`${PERFORMANCE_READY_MARKER} ${baseUrl}`);
+if (fixtureName !== "demo") {
+  try {
+    await loadScaleFixture({ baseUrl, fixtureName, seedMonth, workDir: tempRoot, runSqlFile: runD1File });
+  } catch (error) {
+    await fail(`Scale fixture ${fixtureName} did not load: ${error instanceof Error ? error.message : error}`);
+  }
+}
+
+console.log(`${PERFORMANCE_READY_MARKER} ${baseUrl} fixture=${fixtureName}`);
 const { code, signal } = await serverExit;
 if (!stopping) {
   await stop();
