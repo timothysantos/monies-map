@@ -27,7 +27,7 @@ verified on 2026-09-23 only.
 | H09 | P4 | Full request/initialization timing | Done | `94a02f6`, `c1dd539` |
 | H10 | Closure | Measured comparison, first delivery | Done (`d2ec630`); no regression limit exceeded | audit §H10 |
 | H11 | P5 | Shell presentation extraction | Done (`e80fe6f`, `b895d99`, `6d60cbf`, `d31995f`, `9905b8a`) | audit §H11 |
-| H12 | P6 | Server-state owners | H12a done (`0c8d28d`, `18a4c2b`); H12b–d **Next** (first-load failure fix landed as `e66b5d2`) | audit §H12a |
+| H12 | P6 | Server-state owners | Done: H12a (`0c8d28d`, `18a4c2b`), H12b (`7dfcd99`, `d53d581`), H12c (`cdfeae3`, `8a2f314`), H12d (`cf85382`, `df86191`) | audit §H12a, §H12b–d |
 | H13 | P7 | Worker AI route extraction | Done (`ccdc464`, `2205621`) | audit §H13 |
 | H14–H17 | P8–P11 | Gated architecture work | Awaiting a decision (inputs in audit §H10) | — |
 

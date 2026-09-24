@@ -1716,3 +1716,81 @@ both change the same Summary and route-page load effects in `App.jsx`.
 - Combined gates: typecheck and build pass, unit tests 426/426, full
   functional E2E on isolated ports 238/238.
 - H12b–d are unblocked.
+
+## H12b–d: Summary, route data and app shell owners
+
+Date: 2026-09-25. Commits:
+- H12b: `7dfcd99` (owner and tests), `d53d581` (wiring and E2E);
+- H12c: `cdfeae3`, `8a2f314`;
+- H12d: `cf85382`, `df86191`.
+
+`App.jsx` went from 3,386 lines (after H11) to 3,159.
+
+All three follow the H12a shape:
+- a plain-JS owner (`subscribe` / `getSnapshot`) holds the snapshot and a
+  generation counter;
+- a small hook binds it with `useSyncExternalStore`;
+- App keeps the shell concerns: loading status, the required-work counter,
+  the page error screen, and which caches a mutation plan clears.
+
+There is no second DTO store: each React `useState` moved into its owner.
+
+### State inventory (before → owner)
+
+| State | Writers before | Role | Owner and guard |
+| --- | --- | --- | --- |
+| `summaryPageData`, `summaryAccountPillsData`, `summaryPageDataRequestKey` | Summary load effect, `refreshCurrentSummaryPage` | Protected snapshot of the last range pair plus its key | `summary-owner.js`: `load` / `refresh` by generation; the latest failure clears it; `clearPageCache` / `clearPillsCache` moved in |
+| `routePageData`, `routePageDataRequestKey` | route load effect; `refreshRoutePage`; Month, Imports, Settings and Splits refreshes; background refresh; `refreshAppShell` reset | Protected snapshot plus the key the shell compares with the active request | `route-data-owner.js`: `load` / `refresh` by generation; `apply: false` (Settings while another route is open) takes no generation; `reset`; `clearCache` |
+| `appShell`, `appShellError` | first load (Entries warm start, fallback), `loadAppShell`, background refresh, failure handler | Authoritative shell for rendering, plus the shell error screen | `app-shell-owner.js`: tokens from `begin()`; `apply` / `fail` only for the latest; superseded failures are wrapped and skipped by the shared handler |
+| Cross-tab listener effect (BroadcastChannel and storage) | — | Subscription | `use-app-sync-subscription.js`: `parseAppSyncStorageEvent` and `dispatchAppSyncEvent` are pure; a storage shell refresh still also clears the Summary caches |
+
+### Behaviour changes (bug fixes)
+
+- **H12c:** if you moved to another month while a background refresh of
+  the old month was running (another tab's entry change), the late refresh
+  overwrote the route data with the old month's request key. The new month
+  then **never became usable** (stuck past 30 s).
+  `route-data-owner.spec.js` fails on the old code and passes now.
+- **H12d:** a slow older shell request can no longer replace a newer shell
+  or raise the shell error screen after a newer request succeeded (unit
+  tests only; not driven in a browser).
+
+### Guards (pass before and after)
+
+- `summary-owner.spec.js`: another tab's Summary change during a note
+  save. The save succeeds and the note shows (H06's lease recovery already
+  prevented the failure I predicted, so this is a guard). Switching to Tim
+  while a household range change is held shows only Tim.
+- `app-sync-subscription.spec.js`: a BroadcastChannel shell refresh and a
+  storage entry change each update the other tab without a reload.
+
+### Caught during the work
+
+The first H12d wiring marked the error object shared by two callers joined
+to one query. The StrictMode duplicate load then hid the real shell failure
+from the latest caller, and the app-shell-chrome contract tests failed. The
+owner now wraps superseded failures instead, with a unit test.
+
+### Unit tests
+
+- `summary-owner.test.mjs` (8)
+- `route-data-owner.test.mjs` (7)
+- `app-shell-owner.test.mjs` (5, including sync parsing and dispatch)
+
+Each covers out-of-order results, two rapid refreshes, person or route
+changes during a refresh, failures and aborts.
+
+### H12b–d gates
+
+| Check | Result |
+| --- | --- |
+| `npm run test:unit` | Pass 446/446 |
+| `npm run build` | Pass |
+| Full functional E2E after each subtask (isolated ports) | H12b 240/240, H12c 241/241, H12d **243/243** |
+
+Rollback, newest first:
+- H12d: `df86191`, `cf85382`;
+- H12c: `8a2f314`, `cdfeae3`;
+- H12b: `d53d581`, `7dfcd99`.
+
+Each owner module can stay unused if its wiring commit is reverted.
