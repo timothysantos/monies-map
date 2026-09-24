@@ -20,8 +20,8 @@ verified on 2026-09-23 only.
 | H02 | Prereq | Query identity characterization and repair | Done (`403bb63`, `a8176fc`) | audit §H02 |
 | H03 | Prereq | Ready/busy reporting from workflow owners | Done (`1d9524b`, `d30d4f0`) | audit §H03 |
 | H04 | P1/P2m | Pure warmup policy | Done (`0adf7a4`) | audit §H04 |
-| H05 | P1/P2m | Shared module loader, code-only scheduler | **Next** | — |
-| H06 | P2/P2m | Cancellation, leases, promotion | Open | — |
+| H05 | P1/P2m | Shared module loader, code-only scheduler | Done (`176509c`, `f464bac`, `d21fbe4`, `23a5109`) | audit §H05 |
+| H06 | P2/P2m | Cancellation, leases, promotion | **Next** | — |
 | H07 | P2/P2m | One bounded optional data queue | Open | — |
 | H08 | P3 | Optional AI readiness | Open | — |
 | H09 | P4 | Full request/initialization timing | Open | — |
@@ -857,6 +857,29 @@ Step D: `use-route-warmup.js` + App wiring
   only. Keep data effects (banner, staged prefetch, Entries adjacent) until H07.
 - Test override: `window.__MONIES_MAP_WARMUP_MODE__` = `"off"` |
   `"intent-only"` | undefined (normal), read at evaluation time; used by H10.
+
+As built (differences from the steps above):
+
+- `warmRouteModule` was not kept: the scheduler contains rejections itself,
+  so it had no caller. Navigation calls `loadRouteModule`.
+- Scheduler denials `already-loaded`, `already-pending` (its own pending set
+  or `getRouteModuleState === "pending"`), `forbidden-route`, `unknown-cost`
+  and `over-byte-cap` skip to the next candidate; every other denial ends the
+  pass. `updateContext({ visitKey, newGeneration })` — a query-epoch change
+  passes `newGeneration: true` (new generation, same visit budget).
+- A `quiet-period` denial at idle time retries after at least 250 ms, so a
+  clock or limit mismatch can never busy-loop (found by mutation testing).
+- `warmupMode` `"off"` / `"intent-only"` is applied in the scheduler at
+  evaluation time (the pure policy has no such concept).
+- Mouse hover warms only after a 100 ms dwell (`onPointerLeave` cancels), so
+  sweeping across the tab strip does not warm every route. Keyboard focus
+  warms only when `:focus-visible` matches; touch/pen pointer-down warms
+  synchronously.
+- `quietSince = max(last interaction, time the route last became usable)`;
+  focusing a text-like editable blocks until focus leaves editables; returning
+  to a visible tab restarts the quiet interval; `performance.now()` clock.
+- Development builds have no cost block, so automatic MOBILE warmup is off in
+  Vite dev (unknown cost); E2E injects a block where needed.
 
 Tests (scheduler, fake clock + deferred promises, no real timers): W01, W02,
 W03, W05, W06, W07, W08, W09, W16, W17, W20 from the table below; plus
