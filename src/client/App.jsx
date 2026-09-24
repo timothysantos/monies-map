@@ -54,7 +54,7 @@ import {
   describeAppShellError,
   isAppShellResourceLimitError
 } from "./request-errors";
-import { fetchWithTimeout } from "./request-timeout";
+import { fetchTextWithTransientWorkerRetry, fetchWithTimeout } from "./request-timeout";
 import { installMobileFocusVisibility } from "./mobile-focus-visibility";
 import { queryKeys, summaryPageKeyFromParams } from "./query-keys";
 import { loadRouteModule } from "./route-modules";
@@ -90,39 +90,6 @@ import {
 } from "./summary-query";
 import { buildSummaryMutationRefreshPlan } from "./summary-workflow";
 import { getCurrentMonthKey } from "../lib/month";
-
-const TRANSIENT_WORKER_RESPONSE_SNIPPETS = [
-  "worker restarted mid-request",
-  "socket hang up",
-  "Your worker"
-];
-
-function isTransientWorkerResponse(responseText) {
-  return TRANSIENT_WORKER_RESPONSE_SNIPPETS.some((snippet) => responseText.includes(snippet));
-}
-
-async function waitForTransientWorkerRetry(attempt) {
-  await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
-}
-
-async function fetchTextWithTransientWorkerRetry(url, options = {}) {
-  let lastResult = null;
-
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const response = await fetchWithTimeout(url, options, options.requestLabel ?? "App request");
-    const responseText = await response.text();
-    lastResult = { response, responseText };
-
-    if (attempt < 2 && isTransientWorkerResponse(responseText)) {
-      await waitForTransientWorkerRetry(attempt);
-      continue;
-    }
-
-    return lastResult;
-  }
-
-  return lastResult;
-}
 
 const EntriesPanel = lazy(() => loadRouteModule("entries").then((module) => ({ default: module.EntriesPanel })));
 const EntriesFilterStack = lazy(() => import("./entries-filter-stack.jsx").then((module) => ({ default: module.EntriesFilterStack })));
