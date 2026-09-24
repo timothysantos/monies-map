@@ -43,7 +43,7 @@ const {
 // 1. Range-level metrics and spending mix.
 // 2. Month-by-month "intent vs outcome" plan review.
 // 3. Account health pills that stay independent from the selected range.
-export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppearanceChange, onRefresh }) {
+export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppearanceChange, onRefresh, canRequestWording = false }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -64,7 +64,12 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
   }), [view.summaryPage]);
 
   const summaryFocusParam = searchParams.get("summary_focus");
-  const focusState = buildSummaryFocusState(safeSummaryPage, summaryFocusParam);
+  // Memoized so the insight facts, and their cache key, stay stable across
+  // unrelated rerenders.
+  const focusState = useMemo(
+    () => buildSummaryFocusState(safeSummaryPage, summaryFocusParam),
+    [safeSummaryPage, summaryFocusParam]
+  );
   const financialInsightFacts = useMemo(
     () => buildSummaryFinancialInsightFacts(safeSummaryPage, focusState, summaryFocusParam, view),
     [focusState, safeSummaryPage, summaryFocusParam, view.id, view.label]
@@ -166,7 +171,7 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
         </div>
       </div>
 
-      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-summary" />
+      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-summary" canRequestWording={canRequestWording} />
 
       <div className="summary-top-grid">
         <SummarySpendingMixSection

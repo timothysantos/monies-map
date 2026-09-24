@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import {
   buildDeterministicFinancialInsight,
@@ -16,7 +16,10 @@ const insightCache = new Map();
 
 // This is deliberately in-memory only: it avoids repeat requests while the
 // app is open without retaining financial wording or merchant data in storage.
-export function FinancialInsight({ facts, actions = [], className = "" }) {
+// canRequestWording is the route's "usable" state (loaded, no editor or save
+// in progress): optional AI wording never competes with protected work, and
+// the deterministic wording is shown until a valid response arrives.
+export function FinancialInsight({ facts, actions = [], className = "", canRequestWording = false }) {
   const { areTotalsVisible } = useMoneyPrivacy();
   const cacheKey = useMemo(() => buildFinancialInsightCacheKey(facts), [facts]);
   const deterministicNarrative = useMemo(() => buildDeterministicFinancialInsight(facts), [facts]);
@@ -34,6 +37,10 @@ export function FinancialInsight({ facts, actions = [], className = "" }) {
   const visibleNarrative = response?.key === cacheKey
     ? response.narrative
     : deterministicNarrative;
+  // Latest values for the request, read when it starts, so a new facts object
+  // with the same content never restarts the debounce.
+  const latestRef = useRef({ facts, aiFacts, deterministicNarrative, cacheKey });
+  latestRef.current = { facts, aiFacts, deterministicNarrative, cacheKey };
 
   useEffect(() => {
     setIsExpanded(false);
@@ -49,34 +56,50 @@ export function FinancialInsight({ facts, actions = [], className = "" }) {
       setResponse({ key: cacheKey, narrative: cached.narrative });
       return undefined;
     }
-
     setResponse(null);
+    if (!canRequestWording) {
+      return undefined;
+    }
+
+    const requestKey = cacheKey;
+    const { facts: requestFacts, aiFacts: requestAiFacts, deterministicNarrative: fallbackNarrative } = latestRef.current;
     let cancelled = false;
     const controller = new AbortController();
+    // Only a response for these exact facts, from a request that was not
+    // cancelled by an edit, a privacy change or new facts, is kept.
+    const isCurrent = () => !cancelled && latestRef.current.cacheKey === requestKey;
     const timer = window.setTimeout(async () => {
       try {
         const fetchResponse = await fetch("/api/ai-assist/financial-insight", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ facts: aiFacts }),
+          body: JSON.stringify({ facts: requestAiFacts }),
           signal: controller.signal
         });
-        const payload = await fetchResponse.json();
-        const narrative = typeof payload?.narrative === "string" && payload.narrative.trim()
-          ? payload.narrative.trim()
-          : deterministicNarrative;
-        const localNarrative = localizeFinancialInsightNarrative(narrative, facts);
-        setInsightCache(cacheKey, {
-          narrative: localNarrative,
-          expiresAt: Date.now() + (payload?.available ? INSIGHT_CACHE_TTL_MS : UNAVAILABLE_CACHE_TTL_MS)
-        });
-        if (!cancelled) {
-          setResponse({ key: cacheKey, narrative: localNarrative });
+        let payload = null;
+        if (fetchResponse.ok) {
+          try {
+            payload = await fetchResponse.json();
+          } catch {
+            payload = null;
+          }
         }
+        if (!isCurrent()) {
+          return;
+        }
+        const aiNarrative = typeof payload?.narrative === "string" && payload.narrative.trim()
+          ? payload.narrative.trim()
+          : null;
+        const localNarrative = localizeFinancialInsightNarrative(aiNarrative ?? fallbackNarrative, requestFacts);
+        setInsightCache(requestKey, {
+          narrative: localNarrative,
+          expiresAt: Date.now() + (aiNarrative && payload?.available ? INSIGHT_CACHE_TTL_MS : UNAVAILABLE_CACHE_TTL_MS)
+        });
+        setResponse({ key: requestKey, narrative: localNarrative });
       } catch {
-        if (!controller.signal.aborted) {
-          setInsightCache(cacheKey, {
-            narrative: deterministicNarrative,
+        if (isCurrent() && !controller.signal.aborted) {
+          setInsightCache(requestKey, {
+            narrative: fallbackNarrative,
             expiresAt: Date.now() + UNAVAILABLE_CACHE_TTL_MS
           });
         }
@@ -88,7 +111,7 @@ export function FinancialInsight({ facts, actions = [], className = "" }) {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [aiFacts, areTotalsVisible, cacheKey, deterministicNarrative, facts]);
+  }, [areTotalsVisible, cacheKey, canRequestWording]);
 
   if (!areTotalsVisible) {
     return (

@@ -2193,6 +2193,7 @@ export function App() {
           categories={categories}
           onCategoryAppearanceChange={handleCategoryAppearanceChange}
           onRefresh={saveSummaryMonthNote}
+          canRequestWording={routeWork.usable}
         />
       );
     }
@@ -2207,6 +2208,7 @@ export function App() {
           householdMonthEntries={householdMonthEntries}
           onCategoryAppearanceChange={handleCategoryAppearanceChange}
           onRefresh={refreshCurrentMonthPage}
+          canRequestWording={routeWork.usable}
         />
       );
     }
@@ -2229,6 +2231,7 @@ export function App() {
           onInvalidateAppShellCache={syncAppShellAfterMutation}
           onInvalidateEntryMutation={broadcastEntryMutation}
           onBroadcastSplitMutation={broadcastSplitMutation}
+          canRequestWording={routeWork.usable}
         />
       );
     }
@@ -2240,6 +2243,7 @@ export function App() {
           categories={categories}
           people={appShell.household.people}
           onRefresh={(options) => refreshCurrentSplitsPage(options)}
+          canRequestWording={routeWork.usable}
         />
       );
     }
@@ -2308,6 +2312,7 @@ export function App() {
     refreshCurrentSplitsPage,
     renderedTabId,
     routePageData,
+    routeWork.usable,
     saveSummaryMonthNote,
     selectedMonth,
     syncAppShellAfterMutation

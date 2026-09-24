@@ -51,7 +51,7 @@ import { useRouteWorkReport } from "./use-route-work-status";
 
 const { format: formatService } = moniesClient;
 
-export function SplitsPanel({ view, categories, people, onRefresh }) {
+export function SplitsPanel({ view, categories, people, onRefresh, canRequestWording = false }) {
   const splitsPage = view.splitsPage ?? {
     groups: [],
     activity: [],
@@ -1111,7 +1111,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         {renderSplitActions("split-head-actions split-header-toolbar")}
       </div>
 
-      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-splits" />
+      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-splits" canRequestWording={canRequestWording} />
 
       <SplitsMainSection
         groups={groups}
