@@ -932,3 +932,86 @@ uses the selected view.
 Next eligible step: H08 (H09 and H01b are also eligible).
 
 The fix was merged into `macro-performance` after H07.
+
+## H08: Optional insight readiness
+
+Date: 2026-09-24. Baseline `bb8d8d8` (H07 plus the merged split-draft fix).
+Commits: `22f2840` (readiness gate, response validation, panel wiring,
+Summary `focusState` memo), `f87ae55` (E2E). Status: **complete**.
+
+### Starting facts
+
+All confirmed as stated. One addition: `money-privacy.jsx` reads the
+visibility preference once at start and has no storage listener, so the
+"editor open before the debounce ends" test reveals money behind the open
+dialog by dispatching a click on `.totals-visibility-toggle` (the dialog
+hides the page from role queries).
+
+### Contract
+
+- `FinancialInsight` takes `canRequestWording = false`. App passes
+  `routeWork.usable` to Summary, Month, Entries and Splits, and each
+  panel forwards it. A missing prop means no AI request, never a request
+  during work.
+- The request effect depends only on `cacheKey`, `areTotalsVisible` and
+  `canRequestWording`. Facts, AI facts and the fallback narrative are read
+  through a ref, so a new facts object with the same content keeps the
+  debounce and the request running.
+- A cached narrative is still shown while the route is not usable. No
+  request is scheduled while it is not usable.
+- A response is applied and cached only when the request was not cancelled
+  and its `cacheKey` is still current. A non-OK status (even one carrying a
+  narrative) or a malformed body falls back to the computed narrative,
+  cached for 5 minutes. A network failure caches that fallback only when it
+  was not an abort.
+- Summary memoizes `focusState` on `[safeSummaryPage, summaryFocusParam]`.
+- No change to prompts, the AI endpoint, facts, deterministic wording or
+  finance math.
+
+### Tests (`tests/e2e/financial-insight.spec.js`, "financial insight wording readiness")
+
+| Test | Against `bb8d8d8` |
+| --- | --- |
+| Editor open (money revealed behind it) → 0 requests in 2 s; close → exactly 1 request ≥650 ms after close; AI wording shown; still 1 after 2 s | Fails |
+| Editor opened during a held request → request aborted; released response not shown; close → second request (nothing cached) and AI wording | Fails |
+| Facts change (Summary focus → Range overall) during a held request → aborted, new request for the new facts; back to May → asks again | Passes (guard) |
+| Hide money during a held request → aborted, no new request | Passes (guard) |
+| 503, malformed 200, and 500 carrying a narrative → computed wording kept; editor open/close afterwards → no retry (5-minute fallback cache) | 500-with-narrative fails; the other two pass (guards) |
+| Month, Entries and Splits each get AI wording once usable | Passes; with the Splits forward removed, fails |
+| Rerenders without a facts change (hover, expand/collapse) → 1 request in total | Passes (guard) |
+
+The old code's "cache written after cancel" needs an abort to land in the
+microtask between the body resolving and the cache write, so it cannot be
+driven reliably from a browser test; it is closed by construction
+(`isCurrent()` before any cache write). Changing the effect's dependencies
+back to object identities is not caught by an E2E test either (the
+debounce restart only delays the one request). No React unit test harness
+exists in this repository, so this is recorded rather than tested.
+
+### Commands and results (Node 22.12.0)
+
+| Command | Result |
+| --- | --- |
+| `npm run typecheck` | Pass |
+| `npm run test:unit` (includes the AI assistance unit tests) | Pass 385/385 |
+| `npm run build` | Pass |
+| `financial-insight`, `money-privacy`, `money-field-editability` E2E | Pass |
+| Full functional E2E (isolated ports 5311/8911/9311, own D1 dir) | **Pass 216/216** (8.1 min) |
+| `npm run test:e2e:smoke` | Not run separately (fixed shared port); every smoke file is in the full run |
+| `npm run test:performance` | Not run: H08 changes no loading path. The gate only delays an optional POST that already came after the page was usable |
+
+### Protected workflow evidence
+
+No draft, person-separation or finance change. Privacy: hiding money still
+aborts the request and shows the private copy. The person name is still
+replaced before sending, since `aiFacts` is unchanged and only read through
+a ref.
+
+### Remaining risk
+
+- One extra route-element rerender when an editor opens or closes.
+- The debounce-restart fix and the race-only "cache after cancel" fix have
+  no browser test (see Tests).
+- Rollback: revert `f87ae55`, `22f2840`.
+
+Next eligible step: H09 (H01b also eligible).

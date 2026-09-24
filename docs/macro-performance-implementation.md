@@ -23,8 +23,8 @@ verified on 2026-09-23 only.
 | H05 | P1/P2m | Shared module loader, code-only scheduler | Done (`176509c`, `f464bac`, `d21fbe4`, `23a5109`) | audit §H05 |
 | H06 | P2/P2m | Cancellation, leases, promotion | Done (`dc3c229`..`8770a06`); draft flake resolved (`6573bdc`) | audit §H06 |
 | H07 | P2/P2m | One bounded optional data queue | Done (`6d998d2`..`9fb2bc9`); mobile data off until H01b | audit §H07 |
-| H08 | P3 | Optional AI readiness | **Next** | — |
-| H09 | P4 | Full request/initialization timing | Open | — |
+| H08 | P3 | Optional AI readiness | Done | `22f2840`, `f87ae55` |
+| H09 | P4 | Full request/initialization timing | **Next** | — |
 | H10 | Closure | Measured comparison, first delivery | Open | — |
 | H11–H17 | P5–P11 | Gated architecture work | Not funded until H10 | — |
 
@@ -1103,6 +1103,17 @@ old response ignored; hide money → abort, no request; 503/malformed →
 deterministic text; rerender without facts change → one request total
 (count requests via `page.route`). Run AI unit, financial-insight, privacy,
 money-editability E2E.
+
+### H08 as built
+
+- Matches the design. The Summary focus memo, the `canRequestWording` prop
+  and the ref-read facts landed together in `22f2840`.
+- A non-OK response is treated as unavailable even when its body carries a
+  narrative, and an aborted body read never writes the cache.
+- The route element now rerenders once when `usable` flips (editor open or
+  close), because the prop is part of the memoized route element.
+- The debounce-restart fix (string dependencies) has no browser test; the
+  repository has no React unit harness. See the H08 audit.
 
 ## H09: Full API Timing
 
