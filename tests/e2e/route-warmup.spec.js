@@ -52,6 +52,9 @@ async function newPage(browser, options) {
   const context = await browser.newContext(options);
   const page = await context.newPage();
   await page.goto("/");
+  // Let the setup page finish loading, so none of its late module requests
+  // are counted by a test that starts recording afterwards.
+  await waitUsable(page);
   await reseedDemo(page);
   return { context, page };
 }
@@ -180,15 +183,21 @@ test.describe("route warmup on desktop", () => {
     const requests = recordPanelRequests(page);
     await page.goto("/summary?view=household&month=2026-05");
     await waitUsable(page);
-    const box = async (name) => page.getByRole("link", { name, exact: true }).boundingBox();
-    const month = await box("Month");
-    const splits = await box("Splits");
-    // Cross Month, Entries and Splits in one fast move, ending away from the tabs.
-    await page.mouse.move(month.x - 20, month.y + month.height / 2);
-    await page.mouse.move(splits.x + splits.width + 20, splits.y + splits.height / 2, { steps: 6 });
-    await page.mouse.move(splits.x + splits.width + 20, splits.y + 300);
+    // Pointer events and in-page timers, so the order of "leave" and the
+    // 100 ms dwell holds however loaded the machine is.
+    const hover = (name, stayMs) => page.evaluate(async ({ name, stayMs }) => {
+      const link = [...document.querySelectorAll("a")].find((anchor) => anchor.textContent.trim() === name);
+      link.dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }));
+      await new Promise((resolve) => setTimeout(resolve, stayMs));
+      link.dispatchEvent(new PointerEvent("pointerout", { bubbles: true, pointerType: "mouse", relatedTarget: document.body }));
+    }, { name, stayMs });
+    for (const name of ["Month", "Entries", "Splits"]) {
+      await hover(name, 50);
+    }
     await page.waitForTimeout(1_500);
     expect(requests).toEqual(["summary"]);
+    await hover("Splits", 250);
+    await expect.poll(() => requests).toEqual(["summary", "splits"]);
     await context.close();
   });
 
