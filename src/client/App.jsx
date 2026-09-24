@@ -38,6 +38,7 @@ import {
   writePersistedAppShell
 } from "./app-shell-query";
 import {
+  buildEntriesPageParams,
   buildPageViewFromRouteData,
   buildRoutePageRequest,
   getAppShellAvailableViewIds,
@@ -3854,12 +3855,6 @@ function RouteChunkLoadingFallback({ status, elapsedSeconds }) {
 
 // Build the query string used by the deep-link route that jumps directly to
 // the Entries page.
-function buildEntriesPageParams({ viewId, month }) {
-  return new URLSearchParams({
-    view: viewId,
-    month
-  });
-}
 
 // Resolve an entry deep link by looking up the owning month and redirecting to
 // the correct Entries route with the matching edit context.

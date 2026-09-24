@@ -107,6 +107,15 @@ export function buildRoutePageRequest({ tabId, viewId, month, scope, summaryStar
   return null;
 }
 
+// Entries page request params. The Entries API has no scope parameter; scope
+// stays in the route intent only.
+export function buildEntriesPageParams({ viewId, month }) {
+  return new URLSearchParams({
+    view: viewId,
+    month
+  });
+}
+
 export function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appShell) {
   // Shape the route-page response into the minimal view object the UI needs.
   if (tabId === "faq") {

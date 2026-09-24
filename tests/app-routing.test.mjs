@@ -47,3 +47,9 @@ test("buildPageViewFromRouteData rejects malformed route page payloads", () => {
     }
   );
 });
+
+test("buildEntriesPageParams keeps the Entries request to view and month", async () => {
+  const { buildEntriesPageParams } = await import("../src/client/app-routing.js");
+  assert.equal(buildEntriesPageParams({ viewId: "person-tim", month: "2026-05" }).toString(), "view=person-tim&month=2026-05");
+  assert.equal(buildEntriesPageParams({ viewId: "household", month: "2026-04" }).toString(), "view=household&month=2026-04");
+});

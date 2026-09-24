@@ -39,6 +39,7 @@ import { deleteSplitExpense, updateSplitExpenseCategory, updateSplitExpenseNote 
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { fetchQueryWithLease } from "./query-leases";
+import { buildEntriesPageParams } from "./app-routing";
 
 const ENTRIES_PAGE_PREFETCH_DELAY_MS = 1200;
 const ENTRIES_PAGE_PREFETCH_SPACING_MS = 650;
@@ -1840,9 +1841,3 @@ function buildInitialEntriesPage(view) {
   };
 }
 
-function buildEntriesPageParams({ viewId, month }) {
-  return new URLSearchParams({
-    view: viewId,
-    month
-  });
-}
