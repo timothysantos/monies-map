@@ -825,22 +825,40 @@ surface as a page error).
 | `npm run test:e2e:smoke` | Not run (fixed port 5173 shared with other sessions); covered by the full runs |
 | `npm run test:performance` | Not rerun for H06 (no warmup or bundle change; request paths identical) |
 
-### Open issue: split note draft reverts in some full runs
+### Resolved: split note draft reverts in some full runs
 
 `splits-edit-expense` failed in 2 of 4 full runs since `23a5109` (H05 run 1
-also failed the inline-editor test the same way): the typed note reverts to
-the saved note before Save. It passes 15/15 in isolation, passed in the same
-file order (41/41), and did not reproduce with any single delayed API
-response. Full runs at H02/H03 passed it, so H05/H06 may have widened an
-existing race, but no failing trace exists yet. Tracked as a separate
-investigation task with the full evidence; H07 must not start speculative
-data on Splits before that is resolved.
+also failed the inline-editor test the same way): the typed note reverted to
+the saved note before Save.
+
+Root cause (reproduced 1/9 with a repeated throttled copy of the linked-note
+flow, trace retained): not a remount, reopen, or re-added
+`editing_split_expense`. `SplitExpenseFields` (and `SplitSettlementFields`)
+focus and select the amount 80 ms after an editor opens. When the dialog
+became visible inside that window, Playwright's `fill` focused Note, the
+timer moved focus to Expense total, and the note text was typed into the
+amount (the failing snapshot shows Expense total `[active]` holding the note
+and Tim's share at 0.00). H05/H06 only shifted load timing into the window. A
+person who clicks Note right after opening hits the same bug.
+
+Fix: `src/client/deferred-focus.js` `focusFieldUnlessEditing` skips the
+delayed focus when another editable control already has focus; both split
+editors use it, and `use-route-warmup.js` now shares its `isEditableElement`
+check. Regressions in `splits-edit-expense.spec.js` hold the short timer,
+type into Note, release it mid-typing and keep typing through the keyboard
+(dialog and inline editor; both failed before the fix), plus a guarded-path
+test that the amount is still focused when nothing else was.
+
+| Command | Result |
+| --- | --- |
+| New regressions before the fix | 2 failed (Note lost focus), guarded path passed |
+| `splits-edit-expense` + `route-warmup` after the fix | Pass 17/17 |
+| Throttled repro (CPU ×1/×4/×8) after the fix | Pass 15/15 |
+| `npm run typecheck`, `npm run test:unit` | Pass, 367/367 |
 
 ### Remaining risk
 
-- The flake above (protected draft).
 - Rollback: revert `8770a06`, `e2db6f9`, `4e40640`, `de6d3eb`, `20011cb`,
   `dc3c229` in that order.
 
-Next eligible step: H07 (after the split draft investigation, or with Splits
-excluded from speculative data until it is resolved).
+Next eligible step: H07 (the split draft investigation is resolved above).
