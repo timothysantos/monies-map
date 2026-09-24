@@ -52,6 +52,7 @@ import {
 } from "./app-shell-status";
 import { ShellRouteTabs } from "./app-shell-navigation";
 import { PeriodMonthPicker } from "./app-shell-period-pickers";
+import { LoginRegistrationDialog } from "./login-registration-dialog";
 import { slugify } from "./category-utils";
 import { formatMonthLabel } from "./formatters";
 import { TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
@@ -3163,61 +3164,22 @@ export function App() {
 
       {/* Login registration is modal because it must interrupt the flow only when the shell has no stable identity mapping. */}
       {loginRegistrationDraft ? (
-        <Dialog.Root open>
-          <Dialog.Portal>
-            <Dialog.Overlay className="note-dialog-overlay" />
-            <Dialog.Content className="note-dialog-content login-registration-dialog" onOpenAutoFocus={(event) => event.preventDefault()}>
-              <form onSubmit={handleRegisterLogin}>
-                <div className="note-dialog-head">
-                  <div>
-                    <Dialog.Title>Set up this login</Dialog.Title>
-                    <Dialog.Description>
-                      Link {loginRegistrationDraft.email} to one household profile. This lets Splits open on your view next time.
-                    </Dialog.Description>
-                  </div>
-                </div>
-                <div className="login-registration-form">
-                  <label>
-                    <span>Household profile</span>
-                    <select
-                      className="table-edit-input"
-                      value={loginRegistrationDraft.personId}
-                      enterKeyHint="next"
-                      onChange={(event) => {
-                        const person = appShell.household.people.find((item) => item.id === event.target.value);
-                        setLoginRegistrationDraft((current) => current ? {
-                          ...current,
-                          personId: event.target.value,
-                          name: isPlaceholderPersonName(person?.name) ? "" : person?.name ?? current.name
-                        } : current);
-                      }}
-                    >
-                      {appShell.household.people.map((person) => (
-                        <option key={person.id} value={person.id}>{person.name}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>Display name</span>
-                    <input
-                      className="table-edit-input"
-                      value={loginRegistrationDraft.name}
-                      placeholder="Name for this household profile"
-                      enterKeyHint="done"
-                      onChange={(event) => setLoginRegistrationDraft((current) => current ? { ...current, name: event.target.value } : current)}
-                    />
-                  </label>
-                </div>
-                {loginRegistrationError ? <p className="form-error">{loginRegistrationError}</p> : null}
-                <div className="note-dialog-actions">
-                  <button type="submit" className="dialog-primary" disabled={isRegisteringLogin}>
-                    {isRegisteringLogin ? "Saving..." : "Save login"}
-                  </button>
-                </div>
-              </form>
-            </Dialog.Content>
-          </Dialog.Portal>
-        </Dialog.Root>
+        <LoginRegistrationDialog
+          draft={loginRegistrationDraft}
+          people={appShell.household.people}
+          error={loginRegistrationError}
+          isSubmitting={isRegisteringLogin}
+          onSubmit={handleRegisterLogin}
+          onPersonChange={(personId) => {
+            const person = appShell.household.people.find((item) => item.id === personId);
+            setLoginRegistrationDraft((current) => current ? {
+              ...current,
+              personId,
+              name: isPlaceholderPersonName(person?.name) ? "" : person?.name ?? current.name
+            } : current);
+          }}
+          onNameChange={(name) => setLoginRegistrationDraft((current) => current ? { ...current, name } : current)}
+        />
       ) : null}
 
       {renderedTabId === "entries" && typeof document !== "undefined"
