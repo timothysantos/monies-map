@@ -1,15 +1,19 @@
-// Optional route-code warmup scheduler. Owns only bookkeeping for optional
-// work: the current visit and generation, per-visit budgets, the rolling
-// start list, one timer and one idle handle. Everything else is injected, so
-// tests drive it with a fake clock and deferred promises. Actual navigation
-// never goes through here; it calls loadRouteModule directly and shares the
-// same promise.
+// Optional route warmup scheduler: route code first, then at most a few
+// speculative data requests. Owns only bookkeeping for optional work: the
+// current visit and generation, per-visit budgets, the rolling start list,
+// one module and one data request in flight, one timer and one idle handle.
+// Everything else is injected, so tests drive it with a fake clock and
+// deferred promises. Actual navigation and required reads never go through
+// here and are never blocked by it.
 
 import { WARMUP_LIMITS } from "./route-warmup-policy.js";
 
 // Denials that apply to this candidate only; the next candidate may still be
 // eligible. Every other denial is a global gate and ends the pass.
-const CANDIDATE_SPECIFIC_DENIALS = new Set(["already-loaded", "already-pending", "forbidden-route", "unknown-cost", "over-byte-cap"]);
+const CANDIDATE_SPECIFIC_DENIALS = new Set(["already-loaded", "already-pending", "forbidden-route", "unknown-cost", "over-byte-cap", "not-admitted", "over-data-cap"]);
+// Module-only limits: they stop further module candidates in this pass, but
+// data candidates may still run.
+const MODULE_LIMIT_DENIALS = new Set(["module-in-flight", "visit-module-budget", "rate-limit"]);
 // If the quiet period is still running when the idle callback fires, retry
 // no sooner than this, so a clock or limit mismatch can never busy-loop.
 const QUIET_RETRY_MIN_DELAY_MS = 250;
@@ -21,13 +25,19 @@ export function createRouteWarmupScheduler({
   readInput,
   evaluate,
   selectCandidates,
-  costFor
+  costFor,
+  // (candidate) -> { key, fresh, admission, start() -> { promise, cancel } } | null
+  dataFor = () => null
 }) {
   let generation = 0;
   let visitKey = null;
   let visit = { moduleStarts: 0, dataStarts: 0, lastDataStartAt: null };
   let recentModuleStarts = [];
   let moduleInFlight = false;
+  let dataAttempt = null;
+  // Data keys already attempted in this visit: never retried, whatever the
+  // outcome, until the visit changes.
+  let attemptedDataKeys = new Set();
   const pendingRoutes = new Set();
   let timer = null;
   let idleHandle = null;
@@ -62,7 +72,7 @@ export function createRouteWarmupScheduler({
       visit,
       recentModuleStarts,
       moduleInFlight,
-      dataInFlight: false,
+      dataInFlight: dataAttempt !== null,
       recentRequiredDurationMs: input.recentRequiredDurationMs ?? null,
       candidate
     };
@@ -105,15 +115,55 @@ export function createRouteWarmupScheduler({
 
   function startAutomatic(routeId) {
     const now = clock.now();
+    const startedGeneration = generation;
     // Reserve the slot before the import starts; a failure keeps it spent.
     visit = { ...visit, moduleStarts: visit.moduleStarts + 1 };
     recentModuleStarts = [...recentModuleStarts.filter((startedAt) => now - startedAt < WARMUP_LIMITS.mobile.windowMs), now];
     moduleInFlight = true;
-    // Settling never enqueues more work: one automatic module per visit, and
-    // an import from an older generation or a disposed scheduler just ends.
+    // Code settles before data may follow in the same visit. An import from
+    // an older generation or a disposed scheduler just ends.
     return track(routeId).then(() => {
       moduleInFlight = false;
+      if (!disposed && startedGeneration === generation) {
+        schedule();
+      }
     });
+  }
+
+  function startData(candidateData) {
+    const startedGeneration = generation;
+    // Reserve the slot before the request starts. Failed and aborted
+    // attempts stay charged: no refunds, so nothing can retry in a loop.
+    visit = { ...visit, dataStarts: visit.dataStarts + 1, lastDataStartAt: clock.now() };
+    attemptedDataKeys.add(candidateData.key);
+    let handle;
+    try {
+      handle = candidateData.start();
+    } catch {
+      handle = null;
+    }
+    if (!handle) {
+      return;
+    }
+    const attempt = { generation: startedGeneration, cancel: handle.cancel };
+    dataAttempt = attempt;
+    Promise.resolve(handle.promise).catch(() => undefined).then(() => {
+      if (dataAttempt === attempt) {
+        dataAttempt = null;
+      }
+      if (!disposed && startedGeneration === generation) {
+        schedule();
+      }
+    });
+  }
+
+  // Stop an exclusively speculative request when the visit or generation
+  // changes, the tab hides, or protected work starts. A request that a
+  // required reader joined is left running by its own cancel().
+  function cancelDataAttempt() {
+    if (dataAttempt) {
+      dataAttempt.cancel();
+    }
   }
 
   function runAutomatic(runGeneration) {
@@ -124,14 +174,45 @@ export function createRouteWarmupScheduler({
     if (!input || input.warmupMode === "intent-only") {
       return;
     }
+    let modulesBlocked = false;
     for (const candidate of selectCandidates()) {
-      if (candidate.kind !== "module") {
-        continue;
-      }
-      const decision = evaluateModule(input, candidate.routeId, "auto");
-      if (decision.allowed) {
-        startAutomatic(candidate.routeId);
-        return;
+      let decision;
+      let candidateData = null;
+      if (candidate.kind === "module") {
+        if (modulesBlocked) {
+          continue;
+        }
+        decision = evaluateModule(input, candidate.routeId, "auto");
+        if (decision.allowed) {
+          startAutomatic(candidate.routeId);
+          return;
+        }
+        if (MODULE_LIMIT_DENIALS.has(decision.reason)) {
+          modulesBlocked = true;
+          continue;
+        }
+      } else {
+        candidateData = dataFor(candidate);
+        if (!candidateData || attemptedDataKeys.has(candidateData.key)) {
+          continue;
+        }
+        decision = evaluate(policyInput(input, {
+          kind: "data",
+          routeId: candidate.routeId,
+          trigger: "auto",
+          alreadyLoaded: Boolean(candidateData.fresh),
+          missingBytes: null,
+          admission: candidateData.admission ?? null
+        }));
+        if (decision.allowed) {
+          startData(candidateData);
+          return;
+        }
+        if (decision.reason === "data-spacing") {
+          const spacingMs = WARMUP_LIMITS[input.mode]?.dataSpacingMs ?? 0;
+          schedule(Math.max(QUIET_RETRY_MIN_DELAY_MS, visit.lastDataStartAt + spacingMs - clock.now()));
+          return;
+        }
       }
       if (decision.reason === "quiet-period") {
         // Interaction moved quietSince after the timer was armed.
@@ -182,8 +263,16 @@ export function createRouteWarmupScheduler({
         visitKey = nextVisitKey;
         generation += 1;
         visit = { moduleStarts: 0, dataStarts: 0, lastDataStartAt: null };
+        attemptedDataKeys = new Set();
+        cancelDataAttempt();
       } else if (newGeneration) {
         generation += 1;
+        cancelDataAttempt();
+      } else {
+        const input = readInput();
+        if (!input || !input.page?.visible || input.work?.busy || input.warmupMode === "off") {
+          cancelDataAttempt();
+        }
       }
       schedule();
     },
@@ -210,6 +299,7 @@ export function createRouteWarmupScheduler({
     dispose() {
       disposed = true;
       clearScheduled();
+      cancelDataAttempt();
     },
 
     // Diagnostics for tests and development only.
@@ -220,6 +310,7 @@ export function createRouteWarmupScheduler({
         visit: { ...visit },
         recentModuleStarts: [...recentModuleStarts],
         moduleInFlight,
+        dataInFlight: dataAttempt !== null,
         pendingRoutes: [...pendingRoutes],
         hasTimer: timer !== null,
         hasIdle: idleHandle !== null,
