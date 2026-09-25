@@ -803,7 +803,15 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     try {
       await restoreSplitRecord({ recordKind: item.recordKind, recordId: item.recordId });
       setShowHistory(false);
-      onRefresh({ broadcast: true });
+      // A restored expense may link its entry again, which changes Entries
+      // and person-view totals; history items do not say whether it has one.
+      const mayRelinkEntry = item.recordKind === "expense";
+      onRefresh({
+        broadcast: true,
+        invalidateEntries: mayRelinkEntry,
+        invalidateMonth: mayRelinkEntry,
+        invalidateSummary: mayRelinkEntry
+      });
     } catch (error) {
       setCheckpointError(error instanceof Error ? error.message : "Failed to restore split.");
     } finally {
