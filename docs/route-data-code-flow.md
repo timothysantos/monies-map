@@ -527,8 +527,13 @@ They should not become:
 
 ### Repository/database layer
 
-[`src/domain/app-repository.ts`](../src/domain/app-repository.ts) and related
-repository files own database access.
+[`src/domain/app-repository.ts`](../src/domain/app-repository.ts) re-exports
+the repository modules, which own database access: loaders
+(`app-repository-entries.ts`, `-months.ts`, `-splits.ts`, …) and, since H15,
+the write commands (`app-repository-entry-commands.ts`,
+`-month-commands.ts`, `-import-commit.ts`), runtime schema
+(`-schema.ts`), seeding (`-seed.ts`) and snapshot recalculation
+(`-snapshots.ts`).
 
 Conceptually:
 

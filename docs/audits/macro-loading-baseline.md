@@ -1874,3 +1874,94 @@ Mobile admission is unaffected: Month is not a mobile data candidate, and
 
 Rollback: revert `92eb369` (the tests can stay; they only pin the
 invariant).
+
+## H15: Persistence and projections split
+
+Date: 2026-09-25. Commits:
+- `7cab9dd`, `cdbc8c4`: the harness;
+- `c4f0f01`: snapshots;
+- `bb65316`, `3e37ec8`: H15a (schema, seed);
+- `8bc71a9`: H15b (entry commands);
+- `3d30661`: H15c (month commands);
+- `915030a`: H15d (import commit and rollback);
+- `afaed9b`: H15e (projections), plus the doc and import-path follow-up.
+
+A mechanical move with no logic change. Initialization optimization is not
+part of this task.
+
+### Result
+
+| Module | Lines | Contents |
+| --- | ---: | --- |
+| `app-repository.ts` | 5,854 → 214 | Re-export hub, plus login identities (not in H15's list) and `loadAccountName` (already dead code before H15) |
+| `app-repository-snapshots.ts` | 102 | `recalculateMonthlySnapshots`, `loadPersonScopes`: the only helpers every command shares |
+| `app-repository-schema.ts` | 900 | `ensureDemoSchema` (and the timed variant), the once-per-binding memo, legacy repairs, hot-read indexes |
+| `app-repository-seed.ts` | 997 | Demo reseed, empty state, clear, demo backfills |
+| `app-repository-entry-commands.ts` | 1,173 | Entry create, update (5 paths) and delete, deep link, transfer link and settle |
+| `app-repository-month-commands.ts` | 630 | Plan rows, links, notes, duplicate / reset / delete month |
+| `app-repository-import-commit.ts` | 1,895 | Commit (checkpoints, certificates, superseded snapshots) and rollback (certified and superseded restore, chain breaks, cleanup) |
+| `app-shell.ts` | 1,310 → 191 | Shell context and loading only |
+| `month-projection.ts` / `summary-projection.ts` / `splits-projection.ts` / `donut-chart-projection.ts` | 406 / 278 / 420 / 31 | Page projections |
+
+Dependency direction:
+- commands depend on snapshots, constants and loaders;
+- seed depends on schema and snapshots;
+- projections depend on loaders and each other (Summary uses Month's
+  plan-row view; all three use the donut chart);
+- no new module imports the `app-repository.ts` hub or another command
+  module.
+
+Callers (`src/index.ts`, the page builders, `app-shell-dto.ts`,
+`demo-settings.ts`, tests) import the specific modules; the hub no longer
+re-exports moved symbols.
+
+### How it was proven
+
+- **Mechanical move.** Top-level declarations were extracted with their
+  leading comments. A check confirmed that **every non-import line of each
+  new module exists verbatim in the old file** (the only allowed change is
+  an added `export` on helpers the remaining code calls), and that no
+  declaration was lost. Result: 0 differing lines for every step.
+- **Persisted-state harness** (`scripts/persisted-state-snapshot.mjs`,
+  committed):
+  - starts a fresh local D1 and Worker;
+  - runs a fixed scenario: reseed; create direct, shared and doomed
+    entries; every edit path; delete; a transfer pair and link; plan row
+    save, link and delete; month note; duplicate, reset and delete month;
+    two CSV imports with one rolled back; a split expense and settlement;
+    category and rule create;
+  - dumps every table in rowid order, with UUIDs, short random suffixes,
+    epoch-millisecond ids and wall-clock timestamps normalized;
+  - since `cdbc8c4` it also records 14 page API responses.
+  - Three runs of the same code are byte-identical.
+  - Only one field is excluded: the Settings "recent 12 audit events" list,
+    which cuts through events that share a second. `audit_events` itself
+    is compared in full.
+  - Sensitivity check: appending "!" to saved notes produced a diff.
+- **Result:** after every step (snapshots, schema, seed, entry, month and
+  import commands) the table dump was **identical to the pre-H15 baseline**.
+  After H15e the tables **and all 14 page DTOs** were identical to the
+  baseline taken just before H15e.
+- Typecheck, and `--noUnusedLocals` for the touched modules (only the
+  pre-existing dead `loadAccountName` is reported). Unit tests pass 448/448
+  after every step.
+
+### Caught during the work
+
+The first scripted schema move pulled the facade's type-import block into
+the new module, because a header constant's span ran to the next
+declaration. Typecheck caught it; spans now end at the statement's `;`.
+A later generalization briefly broke caller repointing; that was also
+caught by typecheck before anything was committed.
+
+### H15 gates
+
+| Check | Result |
+| --- | --- |
+| `npm run typecheck` | Pass |
+| `npm run test:unit` | Pass 448/448 |
+| State and page-DTO snapshot on the final code | Identical to the baseline |
+| Full functional E2E, isolated ports (includes the import-ledger statement, rollback, split and transfer flows) | **Pass 243/243** |
+
+Rollback: revert the H15 commits newest first (`afaed9b` … `c4f0f01`). The
+harness can stay.
