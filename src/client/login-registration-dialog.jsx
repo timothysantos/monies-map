@@ -1,4 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
+import { InlineError } from "./ui-states";
 
 // Asks an unlinked login which household profile it belongs to. Modal
 // because it interrupts only when the shell has no identity mapping. App,
@@ -44,7 +45,7 @@ export function LoginRegistrationDialog({ draft, people, error, isSubmitting, on
                 />
               </label>
             </div>
-            {error ? <p className="form-error">{error}</p> : null}
+            <InlineError message={error} />
             <div className="note-dialog-actions">
               <button type="submit" className="dialog-primary" disabled={isSubmitting}>
                 {isSubmitting ? "Saving..." : "Save login"}

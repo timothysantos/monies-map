@@ -2,6 +2,7 @@ import { useRef } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { ResponsiveSelect } from "./responsive-select";
+import { InlineError } from "./ui-states";
 
 // The mobile bottom sheet shared by Entries and Month. It is a modal Radix
 // dialog like the desktop dialogs: focus moves into the sheet on open and
@@ -86,7 +87,7 @@ export function EntryMobileSheet({
                 <X size={16} />
               </button>
             </div>
-            {errorMessage ? <p className="entry-submit-error">{errorMessage}</p> : null}
+            <InlineError message={errorMessage} className="entry-submit-error" />
             {children}
           </div>
           {footerContent ?? (

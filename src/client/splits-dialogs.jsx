@@ -10,6 +10,7 @@ import { TotalsVisibilityToggle } from "./money-privacy";
 import { ResponsiveSelect } from "./responsive-select";
 import { updateSplitExpenseDraft } from "./split-editing";
 import { CategoryGlyph } from "./ui-components";
+import { InlineError } from "./ui-states";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 
@@ -72,7 +73,7 @@ export function SplitGroupDialog({ dialog, formError, isSubmitting, readOnly = f
               </select>
               <small className="split-dialog-help">Use Cash only and Bank/card as separate groups for a holiday when you want settlements to stay easy to reconcile.</small>
             </label>
-            {formError ? <p className="form-error">{formError}</p> : null}
+            <InlineError message={formError} />
             <div className="dialog-actions">
               <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>{readOnly ? "Close" : "Cancel"}</button>
               <button type="submit" className="dialog-primary" disabled={isSubmitting}>
@@ -394,7 +395,7 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
               <fieldset disabled={readOnly} className="split-dialog-fieldset">
                 <SplitExpenseFields dialog={dialog} groupOptions={groupOptions} people={people} categoryOptions={categoryOptions} categories={categories} onChange={onChange} autoFocusAmount={!readOnly} />
               </fieldset>
-              {formError ? <p className="form-error">{formError}</p> : null}
+              <InlineError message={formError} />
             </div>
             <div className="dialog-actions">
               {!readOnly && dialog?.id ? (
@@ -570,7 +571,7 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
               <fieldset disabled={readOnly} className="split-dialog-fieldset">
                 <SplitSettlementFields dialog={dialog} groupOptions={groupOptions} people={people} onChange={onChange} autoFocusAmount={!readOnly} />
               </fieldset>
-              {formError ? <p className="form-error">{formError}</p> : null}
+              <InlineError message={formError} />
             </div>
             <div className="dialog-actions">
               {!readOnly && dialog?.id ? (
@@ -631,7 +632,7 @@ export function SplitDeleteDialog({ target, formError, isSubmitting, onClose, on
                 Delete {label}? This removes the split record only. Any linked bank ledger row stays in entries.
               </Dialog.Description>
             </div>
-            {formError ? <p className="form-error">{formError}</p> : null}
+            <InlineError message={formError} />
             <div className="dialog-actions">
               <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
               <button type="submit" className="dialog-danger" disabled={isSubmitting}>
