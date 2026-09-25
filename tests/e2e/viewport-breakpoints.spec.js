@@ -29,7 +29,7 @@ test.describe("layout breakpoint switching", () => {
     await reseedDemo(page);
   });
 
-  test("a Month plan row opens inline on desktop and in the sheet on phone and portrait tablet", async ({ page }) => {
+  test("Month rows and entry matching use the sheet on phone and portrait tablet and inline on desktop", async ({ page }) => {
     await page.setViewportSize(DESKTOP);
     await gotoPageAfterApi(
       page,
@@ -60,7 +60,28 @@ test.describe("layout breakpoint switching", () => {
       await expect(sheets).toHaveCount(0);
     };
 
+    // The match picker is chosen at render time, so it proves the subscribed
+    // Month hook, not only the open handler's fresh read.
+    const savingsRow = page.locator("tr").filter({ hasText: "Savings" }).first();
+    const matchDialog = page.locator(".planned-link-dialog");
+    const matchSheet = page.locator('.entry-mobile-sheet[aria-label="Match planned item"]');
+    const expectMatchPicker = async (kind) => {
+      await savingsRow.getByRole("button", { name: "Link entries" }).click();
+      if (kind === "sheet") {
+        await expect(matchSheet).toBeVisible();
+        await expect(matchDialog).toHaveCount(0);
+        await matchSheet.getByRole("button", { name: "Cancel", exact: true }).click();
+        await expect(matchSheet).toHaveCount(0);
+      } else {
+        await expect(matchDialog).toBeVisible();
+        await expect(matchSheet).toHaveCount(0);
+        await page.keyboard.press("Escape");
+        await expect(matchDialog).toHaveCount(0);
+      }
+    };
+
     await openInline();
+    await expectMatchPicker("dialog");
 
     await page.setViewportSize(PHONE);
     await openSheet();
@@ -68,9 +89,11 @@ test.describe("layout breakpoint switching", () => {
     // The Month sheet query is wider than the phone layout on purpose.
     await page.setViewportSize(PORTRAIT_TABLET);
     await openSheet();
+    await expectMatchPicker("sheet");
 
     await page.setViewportSize(DESKTOP);
     await openInline();
+    await expectMatchPicker("dialog");
     await expectSamePage(page);
   });
 
