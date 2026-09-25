@@ -27,6 +27,12 @@ Entries state is split between:
 The page should keep rows visible while draft edits are in progress and only
 apply the final contract on save.
 
+Empty views use the shared `EmptyState` ("No entries match this view.", or
+the wallet-view mismatch block with its two view buttons). The mobile add
+and edit sheets are modal dialogs. Escape closes them, except while a save
+or delete is in flight, and focus returns to the opener. Sheet errors are
+announced as alerts.
+
 ## Data Flow
 
 Entries data comes from:
@@ -65,3 +71,6 @@ Watch area:
 - draft-only row edits should remain visible until the user saves
 - add-to-splits and transfer-link behavior may fan out to month and summary
   refreshes when ledger evidence changes
+- A failed Entries page load inside the Entries owner (`entries-data-owner.js`)
+  still ends loading silently and keeps the last page. When the route-level
+  page load fails, the shell shows the page error panel instead.
