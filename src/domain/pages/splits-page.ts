@@ -1,72 +1,48 @@
 import { getCurrentMonthKey } from "../../lib/month";
 import { buildSplitsPage } from "../splits-projection";
-import {
-  applyActualsFromEntries,
-  buildEmptySummaryMonth,
-  loadPlannedSummaryMonthsForViews
-} from "../summary-projection";
-import { adjustEntriesForView, buildMonthPage } from "../month-projection";
+import { adjustEntriesForView } from "../month-projection";
 import {
   loadEntries,
-  loadMonthIncomeRows,
-  loadMonthPlanRows,
   loadSplitExpenses,
   loadSplitGroups,
   loadSplitMatchCandidates,
   loadSplitSettlements,
   loadSplitSettlementCheckpoints,
-  loadSplitActivityHistory,
-  loadSummaryMonths
+  loadSplitActivityHistory
 } from "../app-repository";
+import type { EntryDto } from "../../types/dto";
 import {
   loadRoutePageContext,
   resolveEffectiveMonth
 } from "../route-context";
 
-// Build the route-owned Splits page DTO and keep the linked month slice local
-// to this route module.
+// Build the route-owned Splits page DTO. Its month slice carries only what the
+// Splits screen reads: the month key and the month's transfers (for matching
+// a settlement checkpoint to a bank transfer), adjusted for the person view.
+// Plan rows, income rows and summary figures belong to the Month page and are
+// neither loaded nor sent here.
 export async function buildSplitsPageDto(
   db: D1Database,
   selectedViewId = "household",
   selectedMonth = getCurrentMonthKey()
-): Promise<{ viewId: string; label: string; monthPage: ReturnType<typeof buildMonthPage>; splitsPage: ReturnType<typeof buildSplitsPage> }> {
+): Promise<{ viewId: string; label: string; monthPage: { month: string; entries: EntryDto[] }; splitsPage: ReturnType<typeof buildSplitsPage> }> {
   const { categories, trackedMonths, viewId, label, personNameById } = await loadRoutePageContext(db, selectedViewId);
   const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
-  const [splitGroups, splitExpenses, splitSettlements, splitMatches, settlementCheckpoints, activityHistory, monthEntries, monthPlanRows, incomeRows, summaryMonths] = await Promise.all([
+  const [splitGroups, splitExpenses, splitSettlements, splitMatches, settlementCheckpoints, activityHistory, monthEntries] = await Promise.all([
     loadSplitGroups(db),
     loadSplitExpenses(db, effectiveSelectedMonth),
     loadSplitSettlements(db, effectiveSelectedMonth),
     loadSplitMatchCandidates(db, effectiveSelectedMonth),
     loadSplitSettlementCheckpoints(db),
     loadSplitActivityHistory(db),
-    loadEntries(db, effectiveSelectedMonth),
-    loadMonthPlanRows(db, effectiveSelectedMonth),
-    loadMonthIncomeRows(db, viewId, effectiveSelectedMonth),
-    loadSummaryMonths(db, viewId)
+    loadEntries(db, effectiveSelectedMonth)
   ]);
-  const plannedSummaryMonthsByView = await loadPlannedSummaryMonthsForViews(db, [viewId], [effectiveSelectedMonth]);
-  const adjustedMonthEntries = adjustEntriesForView(monthEntries, viewId);
-  const currentSnapshotMonth = summaryMonths.find((month) => month.month === effectiveSelectedMonth) ?? null;
-  const currentPlannedSummaryMonth = (plannedSummaryMonthsByView[viewId] ?? []).find((month) => month.month === effectiveSelectedMonth) ?? null;
-  const currentSummaryMonth = applyActualsFromEntries(
-    currentSnapshotMonth ?? currentPlannedSummaryMonth ?? buildEmptySummaryMonth(effectiveSelectedMonth),
-    adjustedMonthEntries,
-    effectiveSelectedMonth
-  );
+  const monthTransfers = adjustEntriesForView(monthEntries, viewId).filter((entry) => entry.entryType === "transfer");
 
   return {
     viewId,
     label,
-    monthPage: buildMonthPage(
-      viewId,
-      "direct_plus_shared",
-      incomeRows,
-      adjustedMonthEntries,
-      monthPlanRows,
-      categories,
-      effectiveSelectedMonth,
-      currentSummaryMonth
-    ),
+    monthPage: { month: effectiveSelectedMonth, entries: monthTransfers },
     splitsPage: buildSplitsPage(viewId, splitGroups, splitExpenses, splitSettlements, splitMatches, categories, effectiveSelectedMonth, personNameById, settlementCheckpoints, activityHistory)
   };
 }
