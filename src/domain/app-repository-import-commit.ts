@@ -1172,7 +1172,22 @@ export async function rollbackImportBatch(
   // Every read happens here, before the single batch below.
   const certifiedRestore = await buildStatementCertifiedRowRestore(db, input.importId);
   const supersededRestore = await buildSupersededStatementRowRestore(db, input.importId);
-  const transactionMonths = new Set([...certifiedRestore.months, ...supersededRestore.months]);
+  // The months of the entries this rollback removes change too.
+  const removedEntryMonths = await db
+    .prepare(`
+      SELECT DISTINCT
+        substr(transaction_date, 1, 7) AS event_month,
+        substr(COALESCE(post_date, transaction_date), 1, 7) AS cleared_month
+      FROM transactions
+      WHERE household_id = ? AND import_id = ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.importId)
+    .all<{ event_month: string; cleared_month: string }>();
+  const transactionMonths = new Set([
+    ...certifiedRestore.months,
+    ...supersededRestore.months,
+    ...removedEntryMonths.results.flatMap((row) => [row.event_month, row.cleared_month])
+  ]);
   const chainBreakStatements = importRecord.source_type === "pdf"
     ? await buildStatementChainBreakStatementsForRollback(db, input.importId)
     : [];
