@@ -47,6 +47,7 @@ import {
   ShellErrorScreen,
   ShellLoadingScreen
 } from "./app-shell-status";
+import { ScreenErrorBoundary } from "./screen-error-boundary";
 import { ShellRouteTabs } from "./app-shell-navigation";
 import { PeriodMonthPicker } from "./app-shell-period-pickers";
 import { LoginRegistrationDialog } from "./login-registration-dialog";
@@ -2064,6 +2065,9 @@ export function App() {
     selectedMonth,
     syncAppShellAfterMutation
   ]);
+  // The previous page stays on screen while the next one loads, so a crashed
+  // screen retries both when a navigation starts and when its page settles.
+  const screenErrorResetKey = `${activeRouteKey}:${currentPageView ? "current" : "previous"}`;
   const routeBody = pageView
     ? (
         <RouteWorkProvider registry={routeWorkRegistry} routeKey={currentPageView ? activeRouteKey : null}>
@@ -2923,7 +2927,9 @@ export function App() {
             }))}
           />
         ) : null}
-        {routeBody}
+        <ScreenErrorBoundary resetKey={screenErrorResetKey} onRetry={retryActivePageLoad}>
+          {routeBody}
+        </ScreenErrorBoundary>
         {isAppShellLoading ? <AppLoadingOverlay status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} /> : null}
       </section>
 

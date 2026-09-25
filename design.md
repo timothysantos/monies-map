@@ -268,6 +268,14 @@ chrome is presentation in four modules, all in the entry chunk:
 and both range ends) and `login-registration-dialog.jsx`. They take
 explicit props, never App state wholesale.
 
+Render crashes are contained by `screen-error-boundary.jsx`. One boundary
+wraps only the active page, so navigation keeps working: it shows an in-app
+fallback with "Try again" (reloads the page data through
+`retryActivePageLoad`, then redraws) and "Reload app". It clears itself when
+a navigation starts and again when the requested page settles, because the
+previous page stays on screen while the next one loads. A second boundary in
+`main.jsx` wraps the whole app and can only offer a reload.
+
 ## Reference Data Owner
 
 `reference-data-owner.js` owns accounts and categories: the query cache is
