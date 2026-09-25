@@ -390,6 +390,12 @@ Create an Access policy that allows only the two household emails above. Use
 the one-time PIN identity provider at first, or use the Google OAuth setup above
 after the Google identity provider has been tested.
 
+Keep `workers_dev` on: the `workers.dev` address is the production URL that
+Access protects. `wrangler.jsonc` sets `"preview_urls": false` so no
+per-version preview address exists outside that Access setting. After a
+deploy, open the app in a private window and confirm it asks for the Access
+login before showing anything.
+
 ### Demo Deploy
 
 The public demo runs as a separate Worker and D1 database so it can be shared
