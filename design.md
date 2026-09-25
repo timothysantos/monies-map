@@ -289,6 +289,21 @@ clears it or raises an error screen. A route-data refresh with
 generation. Hooks (`use-summary-data.js`, `use-route-data.js`,
 `use-app-shell-state.js`) bind them; App keeps loading status, required
 work, the page error screen and the mutation refresh plans.
+
+The Entries panel's page DTO has its own owner (`entries-data-owner.js`,
+bound inside `useEntriesPageData`): loads and refreshes take a generation,
+and a refresh whose month and view are no longer active does not run, so
+an edit's late refresh cannot overwrite the month the person moved to.
+
+Refreshes after a save go through `runBackgroundRefresh` from
+`use-refresh-notice.js` (owner: `refresh-notice.js`). App uses it for every
+background shell, reference-data, route-page and Summary refresh in its
+refresh plans, and passes it to the Month, Splits and Entries panels. A
+failure resolves to `null`, keeps the saved data on screen and shows the
+inline refresh notice with "Refresh now" (it reruns the failed refresh) and
+"Dismiss". Aborted and cancelled requests, a shell request overtaken by a
+newer one, and failures that land after a route change are silent; a route
+change clears the notice.
 `use-app-sync-subscription.js` owns the cross-tab BroadcastChannel and
 storage listeners; its parse and dispatch helpers are pure.
 

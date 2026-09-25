@@ -1445,8 +1445,10 @@ Mobile preloads data only when all of these hold:
 - after its code has loaded;
 - one request per visit.
 
-Without `navigator.connection` (iPhone Safari) mobile stays code-only by
-the existing rule "missing connection information is not permission".
+Without `navigator.connection` (iPhone Safari) mobile stayed code-only by
+the rule "missing connection information is not permission". Superseded on
+2026-09-25: an unknown connection now needs the measured fast required
+request instead (see "Refresh visibility, Entries owner and iPhone warmup").
 
 ### Tests
 

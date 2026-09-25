@@ -103,6 +103,21 @@ Budget rules:
 - mobile speculative data needs a row in `route-warmup-admissions.js`
   measured with `tests/performance/api-admission.spec.js` on the 10k
   fixture; `maxDataBytes` is compared with gzip bytes
+- mobile speculative data also needs a reported `4g` connection, or an
+  unknown one (`navigator.connection` missing, as on iPhone) together with a
+  measured recent required request of at most `maxRecentRequiredMs`
+  (500 ms); a missing or slower measurement, `slow-2g`/`2g`/`3g`, data
+  saver, the quiet period, one request per visit, open editors and in-flight
+  work still deny it
+- a refresh after a save runs through `runBackgroundRefresh`
+  (`use-refresh-notice.js`); never swallow it with `.catch(() => null)`. A
+  failure keeps the saved data on screen and shows the inline refresh
+  notice with "Refresh now"; aborted, cancelled, superseded or left-route
+  failures stay silent, and a background refresh never raises the page
+  error screen
+- the Entries page DTO is written only through `entries-data-owner.js`, so
+  a refresh started before a month or view change cannot overwrite the new
+  month or end its loading state
 - a page DTO carries only what its route reads; do not embed another route's
   page DTO (Splits carries the month key and transfers, not the Month page)
 - page APIs report `Server-Timing: app;dur, init;dur;desc, total;dur`; keep
