@@ -365,27 +365,143 @@ showed `-$80.50 (-$40.25)`, 50%, daily net −$40.25, and in-app Splits showed
 
 Not changed, noted for follow-up:
 
-- Adding an entry to splits (and other split workspace writes) does not
-  refresh month snapshots, so Tim's Summary total counts the full 60.00 until
-  something recalculates the month (seen in the D1 test baseline).
-- Other entry edits (date, description, owner/payer, category) are not copied
-  to a linked split by the entry save; note and category have their own sync
-  dialogs.
+- Closed 2026-09-26 (next section): adding an entry to splits did not refresh
+  month snapshots.
+- Closed 2026-09-26 (next section): entry date, description and payer edits
+  were not copied to the linked split. Category keeps its own sync dialog.
 - Settlement checkpoints: an amount edit of a linked expense that is already
   in a checkpoint changes that expense's shares without reopening the
   checkpoint (the checkpoint audit lists "edit included row after match" as
-  not implemented; Splits editor edits behave the same).
-- Entries treats an archived (deleted) split as still linked because its join
-  does not filter `deleted_at`.
+  not implemented; Splits editor edits behave the same). Owned by the
+  `checkpoint-reopen` branch; the date, description and payer copy below has
+  the same gap.
+- Closed 2026-09-26 (next section): Entries treated an archived (deleted)
+  split as still linked.
+
+## Linked split sync with its entry (2026-09-26)
+
+Branch `linked-split-sync`, based on `macro-performance` at `c97dd63`, Node
+v22.23.3. Closes three of the follow-ups above.
+
+Verified first, on the base code:
+
+- Add to splits wrote the split, then each share, then nothing else: no month
+  refresh marker, and a failure between them left a split without shares (or a
+  new Okaeri split batch with nothing in it). The stored `monthly_snapshots`
+  for Tim kept the full amount. The Summary and Month pages were not wrong:
+  they recompute actual spend from the entries on every read (and the stored
+  person totals already differ from that page math for other reasons), so the
+  stale value lived only in the stored totals. Matching a split to an imported
+  entry had the same gap.
+- An entry edit copied only the amount to its split (`buildLinkedSplitAmountStatements`).
+- The link state comes from one place, `loadEntriesForDateRange`: its join and
+  shares query read `split_expenses.linked_transaction_id` without
+  `deleted_at`, so an archived split still linked the entry in Entries, Month,
+  Summary and the month totals, and "Add to splits" then failed with "already
+  linked". The reference is not dangling: `deleted_at` archives the split and
+  `DOMAIN.md` says a restore brings the ledger link back, and the amount
+  follow-up already updates archived links for that reason. So the link is
+  kept and every reader ignores archived splits, instead of clearing it in the
+  delete. The client had a second copy: `mergeEntriesById` spread the server
+  row over the local one, so split fields the server stopped sending stayed on
+  the row, and the open editor ignores refreshes until it closes.
+
+Rules (in `DOMAIN.md`, split-linked ledger entry):
+
+- the split mirrors the entry's event date, description and payer (owner,
+  else account owner). An entry edit copies a change to each of them in the
+  entry's own batch while the split still holds the entry's previous value;
+  a value that already differs (edited in Splits, or recorded before a bank
+  match, where the split description is the user's wording and the bank text
+  is shown beside it) is kept. Archived links follow too, as for the amount.
+- note, category, group, share basis and travel-currency conversion are
+  split-owned and never touched by an entry edit.
+- an archived split does not hold its entry: the entry can be added to or
+  matched with a new split, and restoring the archived one is refused while
+  another active split record or checkpoint match holds the row.
+
+Write path: add to splits, match, delete and restore each read first and then
+commit their rows, history event, any new split batch
+(`resolveActiveSplitBatch` returns the insert instead of running it) and the
+entry's event-month refresh marker in one `db.batch()`, then refresh.
+`buildLinkedSplitMirrorStatements` runs inside `updateEntryRecord`'s batch
+next to the amount statements. Client: `mergeEntriesById` drops the split
+fields when the server row is unlinked; deleting a split from the editor
+clears the link on the open entry and its snapshot (`clearEntrySplitLink`) and
+clears the Month and Summary caches; a linked entry's date, description,
+owner or account edit clears the Splits cache; restoring a split expense
+clears the Entries, Month and Summary caches.
+
+Tests (each run against the base code in a scratch copy of `macro-performance`
+with the new test files):
+
+- `tests/atomic-writes-linked-split-sync.test.mjs` (13, real Miniflare D1):
+  12 fail on base, and the negative "income entry is rejected and changes
+  nothing" passes on both. Base failures: Tim's total moved 0 instead of
+  −3,000; a failed add left a `split_batches` and a `split_expenses` row; the
+  split kept `2026-05-16` / the old description / `person-tim`; the copy
+  failure test's statement never ran; Entries still returned the archived
+  split id; re-adding returned 400; a failed delete left the split archived
+  without history; a failed restore likewise; the match moved the owner's
+  total 0 instead of −9,320; the match failure's marker statement never ran.
+- `tests/entry-workflow-contract.test.mjs` (+2) and
+  `tests/entry-refresh-plan.test.mjs` (+1): all 3 fail on base.
+- `tests/e2e/entries-linked-split-sync.spec.js` (2, Chromium against a real
+  `wrangler dev` Worker): both fail on base (after "Delete split" the editor
+  still offered "View split"; Splits never showed the renamed split).
+
+Persisted state (`scripts/persisted-state-snapshot.mjs`): new steps add three
+entries to splits, edit the first one's date, description and owner, delete
+the second's split and leave the third's add as the last write to May. The
+normalizer now keys epoch ids with their prefix, drops the random tails of
+split batch and history ids, and sorts lists tied on `importedAt` (the base
+itself ordered three same-second imports differently from run to run of
+different speed). With the old scenario, base and branch are byte-identical;
+two branch runs of the new scenario are byte-identical. Base vs branch with
+the new scenario differ only in: the first split's `expense_date`,
+`description` and `payer_person_id`; the 2026-05 `person-tim` (+399) and
+`person-joyce` (−399) `monthly_snapshots` (snack counted in full, +1,000 for
+Tim; coffee at its 6.01 share, −6.01); the snack entry unlinked in the Entries
+and Month DTOs (Tim's row 10.00 → 20.00, Summary and Month +1,000 for Tim);
+the Splits balance and the first split's date, description, payer and
+direction. Household totals are unchanged.
+
+Independent review (pass 3), fixed in `3a98287`:
+
+- Medium: a Shared owner save (`upsertLinkedSplitExpenseForEntryRecord`)
+  looked up the linked split without `deleted_at`, so it rewrote an archived
+  split's shares; after a re-add (newly possible here) the active split kept
+  its old shares. It now updates the active split or links a new one. Test
+  added; it fails on base, where the archived split was rewritten.
+- Low: clearing the link in the open editor ran a full normalize, which
+  gave an ownerless joint-account row the first person as owner. It now only
+  drops the split fields.
+- Low: the restore guard is now scoped to the household. Tests added for an
+  archived split following entry edits (14 of the file's 15 tests fail on
+  base).
+
+Noted, not changed: the restore guard and the add-to-splits "already
+linked" check are reads before the batch, so two concurrent writes can still
+give one entry two active splits; restoring from history clears the Entries,
+Month and Summary caches only for the month the Splits page shows (as delete
+already did); `linkSplitExpenseMatch` can link an archived split the UI never
+offers; the Shared upsert still runs after the entry's batch without a month
+marker; copying the payer or date to a split in a closed batch or checkpoint
+changes its balance the same way the amount follow-up does (checkpoint
+reopening is the `checkpoint-reopen` branch's work).
 
 ## Open items
 
 - Closed 2026-09-25 (section above): rolling back a CSV import deleted a
   manual entry that the import had promoted.
-- Not yet converted (still sequential writes): the split workspace
-  (`app-repository-splits.ts`), including the linked split expense a
-  shared-ownership entry save upserts after its own batch (the amount
-  follow-up on an entry amount edit is converted, section above); category
+- Not yet converted (still sequential writes): the rest of the split
+  workspace (`app-repository-splits.ts`: split create and edit, note and
+  category edits, settlements, checkpoints), including the linked split
+  expense a shared-ownership entry save upserts after its own batch (add to
+  splits, match, delete, restore and the entry-edit follow-ups are converted,
+  sections above). A Splits-editor share edit of a linked split still leaves
+  the stored person month totals stale until the month is next refreshed;
+  category
   match rule suggestions recorded
   after an entry edit; settings, categories, statement checkpoint edits,
   reconciliation exceptions, Shortcut requests (parked on purpose) and the demo
