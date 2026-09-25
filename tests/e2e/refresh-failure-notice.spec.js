@@ -128,3 +128,42 @@ test("a refresh superseded by moving to another month stays silent", async ({ pa
   await expect(page.locator(".app-loading-panel-error")).toHaveCount(0);
   await other.close();
 });
+
+test("an entry edit whose refresh fails stays saved and raises the notice instead of a save error", async ({ page }) => {
+  const description = `Playwright refresh notice entry ${Date.now()}`;
+  const created = await page.request.post("/api/entries/create", {
+    data: {
+      date: "2026-05-24",
+      description,
+      accountName: "UOB One",
+      categoryName: "Other",
+      amountMinor: 3210,
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    }
+  });
+  expect(created.ok(), await created.text()).toBeTruthy();
+
+  await page.goto("/entries?view=person-tim&month=2026-05");
+  await waitUsable(page);
+  const entryRow = page.locator(".entry-row").filter({ hasText: description });
+  await entryRow.first().click();
+  const entryEditor = page.locator(".entry-edit-grid").first();
+  await expect(entryEditor).toBeVisible();
+  await entryEditor.locator("select").first().selectOption("Groceries");
+
+  await page.route("**/api/entries-page**", failJson);
+  const updateResponse = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());
+  await page.getByRole("button", { name: "Save category" }).click();
+  await updateResponse;
+
+  await expect(notice(page)).toBeVisible();
+  await expect(page.locator(".app-loading-panel-error")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/entries\?.*month=2026-05/);
+  await expect(page.locator(".entry-row").filter({ hasText: description })).toContainText("Groceries");
+
+  const saved = await page.request.get("/api/entries-page?view=person-tim&month=2026-05");
+  const savedEntry = (await saved.json()).monthPage.entries.find((entry) => entry.description === description);
+  expect(savedEntry?.categoryName).toBe("Groceries");
+});
