@@ -1,8 +1,14 @@
 // Month plan commands (H15c): save, link and delete plan rows, month notes,
 // and duplicating, resetting or deleting a month's plan. Each keeps its
-// original SQL order and recalculates the month's snapshots.
+// original SQL order. Reads and checks run first and every write of a command
+// commits in one db.batch(); plan-row edits then refresh the month's
+// snapshots (see app-repository-snapshots.ts).
 
-import { loadPersonScopes, recalculateMonthlySnapshots } from "./app-repository-snapshots";
+import {
+  buildMonthlySnapshotRefreshMarkers,
+  loadPersonScopes,
+  refreshMonthlySnapshotsAfterWrite
+} from "./app-repository-snapshots";
 import {
   buildSnapshotRowsForScope,
   nextMonthKey,
@@ -11,7 +17,7 @@ import {
   slugify
 } from "./app-repository-helpers";
 import { resolveAccountId, resolveCategoryId, resolvePersonId } from "./app-repository-lookups";
-import { syncMonthlyPlanRowSplits } from "./app-repository-split-sync";
+import { buildMonthlyPlanRowSplitStatements } from "./app-repository-split-sync";
 import { loadMonthIncomeRows, loadMonthPlanRows } from "./app-repository-months";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 
@@ -81,12 +87,26 @@ export async function duplicateMonthPlan(db: D1Database, sourceMonth: string) {
     }
   }
 
-  const idMap = new Map<string, string>();
+  // The new month is an exact copy of the source month's plan, so its
+  // planned totals are the source month's. Computing them now lets the copy
+  // and its totals commit together.
+  const personScopes = await loadPersonScopes(db);
+  const sourcePlanRows = await loadMonthPlanRows(db, sourceMonth);
+  const plannedTotalsByScope = await Promise.all(personScopes.map(async (personScope) => {
+    const incomeRows = await loadMonthIncomeRows(db, personScope, sourceMonth);
+    const visibleRows = buildSnapshotRowsForScope(sourcePlanRows, personScope);
+    return {
+      personScope,
+      plannedExpenseMinor: visibleRows.reduce((sum, row) => sum + row.plannedMinor, 0),
+      incomeMinor: incomeRows.reduce((sum, row) => sum + row.plannedMinor, 0),
+      savingsGoalMinor: visibleRows.filter((row) => row.label === "Savings").reduce((sum, row) => sum + row.plannedMinor, 0)
+    };
+  }));
 
+  const statements: D1PreparedStatement[] = [];
   for (const row of rows.results) {
     const nextId = `${row.id}-dup-${targetMonth}`;
-    idMap.set(row.id, nextId);
-    await db
+    statements.push(db
       .prepare(`
         INSERT INTO monthly_plan_rows (
           id, household_id, year, month, person_id, ownership_type,
@@ -109,11 +129,10 @@ export async function duplicateMonthPlan(db: D1Database, sourceMonth: string) {
         row.planned_amount_minor,
         0,
         row.notes
-      )
-      .run();
+      ));
 
     for (const split of splitMap.get(row.id) ?? []) {
-      await db
+      statements.push(db
         .prepare(`
           INSERT INTO monthly_plan_row_splits (
             id, monthly_plan_row_id, person_id, ratio_basis_points, amount_minor
@@ -125,21 +144,12 @@ export async function duplicateMonthPlan(db: D1Database, sourceMonth: string) {
           split.person_id,
           split.ratio_basis_points,
           0
-        )
-        .run();
+        ));
     }
   }
 
-  const personScopes = await loadPersonScopes(db);
-  for (const personScope of personScopes) {
-    const incomeRows = await loadMonthIncomeRows(db, personScope, targetMonth);
-    const planRows = await loadMonthPlanRows(db, targetMonth);
-    const visibleRows = buildSnapshotRowsForScope(planRows, personScope);
-    const plannedExpenseMinor = visibleRows.reduce((sum, row) => sum + row.plannedMinor, 0);
-    const incomeMinor = incomeRows.reduce((sum, row) => sum + row.plannedMinor, 0);
-    const savingsGoalMinor = visibleRows.filter((row) => row.label === "Savings").reduce((sum, row) => sum + row.plannedMinor, 0);
-
-    await db
+  for (const { personScope, plannedExpenseMinor, incomeMinor, savingsGoalMinor } of plannedTotalsByScope) {
+    statements.push(db
       .prepare(`
         INSERT INTO monthly_snapshots (
           id, household_id, year, month, person_scope,
@@ -160,20 +170,20 @@ export async function duplicateMonthPlan(db: D1Database, sourceMonth: string) {
         incomeMinor - plannedExpenseMinor,
         0,
         `Created from ${sourceMonth} planning template.`
-      )
-      .run();
+      ));
   }
 
+  await db.batch(statements);
   return { targetMonth, created: true };
 }
 
 export async function resetMonthPlan(db: D1Database, month: string) {
   const [year, monthNumber] = month.split("-").map(Number);
-  await clearMonthData(db, month, year, monthNumber);
+  const statements = buildClearMonthDataStatements(db, month, year, monthNumber);
 
   const personScopes = await loadPersonScopes(db);
   for (const personScope of personScopes) {
-    await db
+    statements.push(db
       .prepare(`
         INSERT INTO monthly_snapshots (
           id, household_id, year, month, person_scope,
@@ -202,26 +212,26 @@ export async function resetMonthPlan(db: D1Database, month: string) {
         0,
         0,
         "Month reset to empty."
-      )
-      .run();
+      ));
   }
 
+  await db.batch(statements);
   return { month, reset: true };
 }
 
 export async function deleteMonthPlan(db: D1Database, month: string) {
   const [year, monthNumber] = month.split("-").map(Number);
-  await clearMonthData(db, month, year, monthNumber);
-
-  await db
-    .prepare(`
-      DELETE FROM monthly_snapshots
-      WHERE household_id = ?
-        AND year = ?
-        AND month = ?
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber)
-    .run();
+  await db.batch([
+    ...buildClearMonthDataStatements(db, month, year, monthNumber),
+    db
+      .prepare(`
+        DELETE FROM monthly_snapshots
+        WHERE household_id = ?
+          AND year = ?
+          AND month = ?
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber)
+  ]);
 
   return { month, deleted: true };
 }
@@ -311,8 +321,16 @@ export async function saveMonthPlanRow(
     .bind(DEFAULT_HOUSEHOLD_ID, input.rowId)
     .first<{ actual_amount_minor: number }>();
 
-  if (existing) {
-    await db
+  const splitStatements = await buildMonthlyPlanRowSplitStatements(db, {
+    rowId: input.rowId,
+    ownershipType: input.ownershipType,
+    plannedMinor: input.plannedMinor,
+    ownerName: input.ownerName,
+    splitBasisPoints: input.splitBasisPoints
+  });
+
+  const rowStatement = existing
+    ? db
       .prepare(`
         UPDATE monthly_plan_rows
         SET
@@ -344,9 +362,7 @@ export async function saveMonthPlanRow(
         DEFAULT_HOUSEHOLD_ID,
         input.rowId
       )
-      .run();
-  } else {
-    await db
+    : db
       .prepare(`
         INSERT INTO monthly_plan_rows (
           id, household_id, year, month, person_id, ownership_type,
@@ -369,19 +385,10 @@ export async function saveMonthPlanRow(
         input.plannedMinor,
         0,
         input.note ?? null
-      )
-      .run();
-  }
+      );
 
-  await syncMonthlyPlanRowSplits(db, {
-    rowId: input.rowId,
-    ownershipType: input.ownershipType,
-    plannedMinor: input.plannedMinor,
-    ownerName: input.ownerName,
-    splitBasisPoints: input.splitBasisPoints
-  });
-
-  await recalculateMonthlySnapshots(db, input.month);
+  await db.batch([rowStatement, ...splitStatements, ...buildMonthlySnapshotRefreshMarkers(db, [input.month])]);
+  await refreshMonthlySnapshotsAfterWrite(db, [input.month]);
   return { rowId: input.rowId, updated: true, created: !existing };
 }
 
@@ -461,17 +468,16 @@ export async function saveMonthPlanEntryLinks(
         }>()
     : { results: [] as Array<{ id: string; description: string; amount_minor: number; account_id: string | null; category_id: string | null }> };
 
-  await db.prepare("DELETE FROM monthly_plan_entry_links WHERE monthly_plan_row_id = ?").bind(input.rowId).run();
+  const statements = [db.prepare("DELETE FROM monthly_plan_entry_links WHERE monthly_plan_row_id = ?").bind(input.rowId)];
 
   for (const transactionId of uniqueTransactionIds) {
-    await db
+    statements.push(db
       .prepare(`
         INSERT INTO monthly_plan_entry_links (
           id, monthly_plan_row_id, transaction_id
         ) VALUES (?, ?, ?)
       `)
-      .bind(`mple-${input.rowId}-${transactionId}`, input.rowId, transactionId)
-      .run();
+      .bind(`mple-${input.rowId}-${transactionId}`, input.rowId, transactionId));
   }
 
   const labelNormalized = normalizePlanMatchHint(row.label);
@@ -481,7 +487,7 @@ export async function saveMonthPlanEntryLinks(
       continue;
     }
 
-    await db
+    statements.push(db
       .prepare(`
         INSERT INTO monthly_plan_match_hints (
           id, household_id, person_id, category_id, account_id,
@@ -499,11 +505,12 @@ export async function saveMonthPlanEntryLinks(
         labelNormalized,
         descriptionPattern,
         transaction.amount_minor
-      )
-      .run();
+      ));
   }
 
-  await recalculateMonthlySnapshots(db, input.month);
+  statements.push(...buildMonthlySnapshotRefreshMarkers(db, [input.month]));
+  await db.batch(statements);
+  await refreshMonthlySnapshotsAfterWrite(db, [input.month]);
   return { rowId: input.rowId, linkedEntryCount: uniqueTransactionIds.length };
 }
 
@@ -514,117 +521,106 @@ export async function deleteMonthPlanRow(
     month: string;
   }
 ) {
-  await db
-    .prepare("DELETE FROM monthly_plan_entry_links WHERE monthly_plan_row_id = ?")
-    .bind(input.rowId)
-    .run();
-
-  await db
-    .prepare("DELETE FROM monthly_plan_row_splits WHERE monthly_plan_row_id = ?")
-    .bind(input.rowId)
-    .run();
-
-  await db
-    .prepare("DELETE FROM monthly_plan_rows WHERE household_id = ? AND id = ?")
-    .bind(DEFAULT_HOUSEHOLD_ID, input.rowId)
-    .run();
-
-  await recalculateMonthlySnapshots(db, input.month);
+  await db.batch([
+    db
+      .prepare("DELETE FROM monthly_plan_entry_links WHERE monthly_plan_row_id = ?")
+      .bind(input.rowId),
+    db
+      .prepare("DELETE FROM monthly_plan_row_splits WHERE monthly_plan_row_id = ?")
+      .bind(input.rowId),
+    db
+      .prepare("DELETE FROM monthly_plan_rows WHERE household_id = ? AND id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, input.rowId),
+    ...buildMonthlySnapshotRefreshMarkers(db, [input.month])
+  ]);
+  await refreshMonthlySnapshotsAfterWrite(db, [input.month]);
   return { rowId: input.rowId, deleted: true };
 }
 
-async function clearMonthData(db: D1Database, month: string, year: number, monthNumber: number) {
-  await db
-    .prepare(`
-      UPDATE split_expenses
-      SET linked_transaction_id = NULL
-      WHERE household_id = ?
-        AND linked_transaction_id IN (
+// Removes a month's entries and plan (and the links into them).
+function buildClearMonthDataStatements(db: D1Database, month: string, year: number, monthNumber: number) {
+  const monthStart = `${month}-01`;
+  const nextMonthStart = nextMonthKey(month) + "-01";
+  return [
+    db
+      .prepare(`
+        UPDATE split_expenses
+        SET linked_transaction_id = NULL
+        WHERE household_id = ?
+          AND linked_transaction_id IN (
+            SELECT id
+            FROM transactions
+            WHERE household_id = ?
+              AND transaction_date >= ?
+              AND transaction_date < ?
+          )
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID, monthStart, nextMonthStart),
+    db
+      .prepare(`
+        UPDATE split_settlements
+        SET linked_transaction_id = NULL
+        WHERE household_id = ?
+          AND linked_transaction_id IN (
+            SELECT id
+            FROM transactions
+            WHERE household_id = ?
+              AND transaction_date >= ?
+              AND transaction_date < ?
+          )
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID, monthStart, nextMonthStart),
+    db
+      .prepare(`
+        DELETE FROM monthly_plan_entry_links
+        WHERE transaction_id IN (
           SELECT id
           FROM transactions
           WHERE household_id = ?
             AND transaction_date >= ?
             AND transaction_date < ?
         )
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID, `${month}-01`, nextMonthKey(month) + "-01")
-    .run();
-
-  await db
-    .prepare(`
-      UPDATE split_settlements
-      SET linked_transaction_id = NULL
-      WHERE household_id = ?
-        AND linked_transaction_id IN (
-          SELECT id
-          FROM transactions
-          WHERE household_id = ?
-            AND transaction_date >= ?
-            AND transaction_date < ?
-        )
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID, `${month}-01`, nextMonthKey(month) + "-01")
-    .run();
-
-  await db
-    .prepare(`
-      DELETE FROM monthly_plan_entry_links
-      WHERE transaction_id IN (
-        SELECT id
-        FROM transactions
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, monthStart, nextMonthStart),
+    db
+      .prepare(`
+        DELETE FROM transactions
         WHERE household_id = ?
           AND transaction_date >= ?
           AND transaction_date < ?
-      )
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, `${month}-01`, nextMonthKey(month) + "-01")
-    .run();
-
-  await db
-    .prepare(`
-      DELETE FROM transactions
-      WHERE household_id = ?
-        AND transaction_date >= ?
-        AND transaction_date < ?
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, `${month}-01`, nextMonthKey(month) + "-01")
-    .run();
-
-  await db
-    .prepare(`
-      DELETE FROM monthly_plan_entry_links
-      WHERE monthly_plan_row_id IN (
-        SELECT id
-        FROM monthly_plan_rows
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, monthStart, nextMonthStart),
+    db
+      .prepare(`
+        DELETE FROM monthly_plan_entry_links
+        WHERE monthly_plan_row_id IN (
+          SELECT id
+          FROM monthly_plan_rows
+          WHERE household_id = ?
+            AND year = ?
+            AND month = ?
+        )
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber),
+    db
+      .prepare(`
+        DELETE FROM monthly_plan_row_splits
+        WHERE monthly_plan_row_id IN (
+          SELECT id
+          FROM monthly_plan_rows
+          WHERE household_id = ?
+            AND year = ?
+            AND month = ?
+        )
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber),
+    db
+      .prepare(`
+        DELETE FROM monthly_plan_rows
         WHERE household_id = ?
           AND year = ?
           AND month = ?
-      )
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber)
-    .run();
-
-  await db
-    .prepare(`
-      DELETE FROM monthly_plan_row_splits
-      WHERE monthly_plan_row_id IN (
-        SELECT id
-        FROM monthly_plan_rows
-        WHERE household_id = ?
-          AND year = ?
-          AND month = ?
-      )
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber)
-    .run();
-
-  await db
-    .prepare(`
-      DELETE FROM monthly_plan_rows
-      WHERE household_id = ?
-        AND year = ?
-        AND month = ?
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber)
-    .run();
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, year, monthNumber)
+  ];
 }
