@@ -107,6 +107,10 @@ Budget rules:
   page DTO (Splits carries the month key and transfers, not the Month page)
 - page APIs report `Server-Timing: app;dur, init;dur;desc, total;dur`; keep
   `app` first because budget checks read the first `dur`
+- enforced budgets: `npm run check:bundle` (first-screen JS and CSS, gzip,
+  +5% of `scripts/initial-bundle-budget.json`, run by `npm run verify`) and
+  the page-response size test in `tests/e2e/api-performance.spec.js` (+10% of
+  `tests/e2e/api-payload-budget.json`, run by the smoke bundle)
 
 ## Optional AI Contract
 

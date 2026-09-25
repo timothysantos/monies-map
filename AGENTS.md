@@ -154,6 +154,48 @@ team conventions evolve.
   views will evolve over time.
 - Optimize for maintainability over short-term convenience.
 
+## Loading and data guardrails
+
+These keep the measured loading, payload and reliability gains from drifting.
+Details and the reasons are in `docs/code-spec.md` and
+`docs/audits/macro-loading-baseline.md`.
+
+- Load the active screen first. Optional work (route code warmup, speculative
+  data, AI wording) starts only when `routeWork.usable` is true and goes
+  through the warmup scheduler (`src/client/use-route-warmup.js`). Never add
+  idle prefetch effects or eager imports of other routes to `App.jsx`.
+- Keep the first screen within budget. `npm run check:bundle` (part of
+  `npm run verify`) fails when the entry chunk plus the Summary route grows
+  more than 5% past `scripts/initial-bundle-budget.json`. New code for other
+  screens belongs behind a lazy route or a dynamic import.
+- A page API sends only what its screen reads: no second copy of a list and
+  no other route's DTO. `tests/e2e/api-performance.spec.js` fails when a page
+  response grows more than 10% past `tests/e2e/api-payload-budget.json`.
+- Raise either budget only for a deliberate, measured reason
+  (`node scripts/check-initial-bundle.mjs --update`,
+  `UPDATE_API_PAYLOAD_BUDGET=1`), and say why in the commit.
+- Server data has one owner per kind (`reference-data-owner.js`,
+  `summary-owner.js`, `route-data-owner.js`, `app-shell-owner.js`). Write
+  through the owner so a superseded response can never overwrite newer
+  data or raise an error screen; do not add a parallel `useState` copy of
+  server data in `App.jsx`.
+- Required reads go through `fetchQueryWithLease`, and speculative reads
+  through `startSpeculativeQuery` (`src/client/query-leases.js`), so a
+  navigation joins warm data instead of repeating or breaking it.
+- Mobile speculative data needs a measured row in
+  `src/client/route-warmup-admissions.js` (gzip bytes and handler p95 on the
+  10k fixture, `tests/performance/api-admission.spec.js`). Unmeasured means
+  not preloaded.
+- Persistence writes live in the focused `app-repository-*` command modules
+  and page projections in `*-projection.ts`. New code imports the specific
+  module, never the `app-repository.ts` hub, and command modules never import
+  each other.
+- Keep `Server-Timing` as `app, init, total` with `app` first; budget checks
+  read the first `dur`.
+- Work in three passes: tests first, then runtime and failure behaviour in a
+  real browser or Worker, then review and gates. A bug-fix test must fail on
+  the old code before the fix counts.
+
 ## Optional AI Assistance
 
 - Treat Workers AI as a separate, optional assistance layer, never as part of
@@ -164,8 +206,9 @@ team conventions evolve.
   missing, disabled, rate-limited, malformed, or unavailable.
 - Default to explicit user actions for AI. A financial-insight surface may make
   one debounced, non-blocking wording request after a stable page or filter
-  change when the same computed-facts key is not in its short-lived in-memory
-  cache. It must render deterministic wording immediately, must not persist
+  change, only while the route is usable (no editor or save open), when the
+  same computed-facts key is not in its short-lived in-memory cache. Keep a
+  response only if it is OK, valid and still matches the facts on screen. It must render deterministic wording immediately, must not persist
   its cache, and must never run during initial data loading, a mutation,
   preview, commit, or reconciliation refresh. Do not add scheduled or hidden
   inference.
