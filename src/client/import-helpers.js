@@ -197,7 +197,7 @@ export async function extractPdfOcrText(file, onProgress) {
       }
       context.fillStyle = "#fff";
       context.fillRect(0, 0, canvas.width, canvas.height);
-      await page.render({ canvas, canvasContext: context, viewport }).promise;
+      await page.render({ canvasContext: context, viewport }).promise;
       onProgress?.({ status: "recognizing text", pageNumber, pageCount: document.numPages });
       const result = await worker.recognize(canvas, {}, { text: true, tsv: true });
       tsvPages.push(result.data.tsv ?? "");
