@@ -129,7 +129,7 @@ function interactionReport({ project = "desktop-chromium-emulated-network", sear
       searchType: { rawSettledMs: searchType, rawEventMs: searchType.map((value) => value - 20) },
       openEditor: { rawSettledMs: openEditor, rawEventMs: [0, 0] }
     },
-    renders: { searchType: { entryRowRenders: rows }, openEditor: { entryRowRenders: rows * 2 } }
+    renders: { searchType: { entryRowRenders: rows, componentRenders: rows * 12 }, openEditor: { entryRowRenders: rows * 2, componentRenders: rows * 24 } }
   };
 }
 
@@ -147,7 +147,8 @@ test("interaction cohorts pool samples and keep the spread of per-run medians", 
     runMedianMaxMs: 210,
     eventMedianMs: 120,
     eventP95Ms: 200,
-    entryRowRenders: 2
+    entryRowRenders: 2,
+    componentRenders: 24
   });
   assert.equal(summary.openEditor.eventMedianMs, 0);
   assert.equal(summary.openEditor.entryRowRenders, 4);
@@ -164,20 +165,25 @@ test("a cohort is only called faster or slower when per-run medians do not overl
     summarizeInteractionCohort([interactionReport({ searchType: [200, 220, 240] })]),
     summarizeInteractionCohort([interactionReport({ searchType: [40, 50, 60], rows: 12 })])
   );
-  assert.match(markdown, /\| searchType \| 220 → 50 \| -170 \(-77\.3%\) \| 240 → 60 \| 220–220 → 50–50 \| 200 → 30 \| 2,018 → 12 \| faster \|/);
+  assert.match(markdown, /\| searchType \| 220 → 50 \| -170 \(-77\.3%\) \| 240 → 60 \| 220–220 → 50–50 \| 200 → 30 \| 2,018 → 12 \| 24,216 → 144 \| faster \|/);
 });
 
-test("only entries-interaction reports are read, every run per project", async () => {
+test("only interaction reports are read, every run per task and project", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "interaction-reports-"));
   try {
     await writeFile(path.join(directory, "1-a.json"), JSON.stringify(interactionReport()));
     await writeFile(path.join(directory, "2-b.json"), JSON.stringify(interactionReport({ project: "mobile" })));
     await writeFile(path.join(directory, "3-c.json"), JSON.stringify(interactionReport()));
     await writeFile(path.join(directory, "4-built.json"), JSON.stringify(report()));
+    await writeFile(path.join(directory, "5-month.json"), JSON.stringify({ ...interactionReport(), task: "month-interaction" }));
     const reports = await readInteractionReports(directory);
-    assert.deepEqual([...reports.keys()].sort(), ["desktop-chromium-emulated-network", "mobile"]);
-    assert.equal(reports.get("desktop-chromium-emulated-network").length, 2);
-    assert.equal(reports.get("mobile").length, 1);
+    assert.deepEqual([...reports.keys()].sort(), [
+      "entries-interaction · desktop-chromium-emulated-network",
+      "entries-interaction · mobile",
+      "month-interaction · desktop-chromium-emulated-network"
+    ]);
+    assert.equal(reports.get("entries-interaction · desktop-chromium-emulated-network").length, 2);
+    assert.equal(reports.get("entries-interaction · mobile").length, 1);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
