@@ -348,8 +348,10 @@ Converted (2026-09, `docs/audits/atomic-writes.md`): import commit and
 rollback, entry create/edit/delete, transfer link and settle, month-plan
 commands and the month snapshot recalculation. Not yet converted, so still
 written statement by statement: the split workspace
-(`app-repository-splits.ts`, including the linked split an entry save
-upserts after its own batch), category match rules, settings, categories,
+(`app-repository-splits.ts`, including the linked split a shared-ownership
+entry save upserts after its own batch; the linked split's amount follow-up
+on an entry amount edit is in the entry's batch), category match rules,
+settings, categories,
 statement checkpoint edits, Shortcut requests (parked on purpose) and the
 demo seed. Convert a module the next time its writes change.
 

@@ -67,6 +67,9 @@ async function runScenario() {
   await call("/api/entries/update-post-date", { entryId: direct.entryId, postDate: "2026-05-13" });
   await call("/api/entries/update-classification", { entryId: doomed.entryId, entryType: "expense", categoryName: "Home" });
   await call("/api/entries/delete", { entryId: doomed.entryId });
+  // A split-linked entry's amount edit, saved the way the Entries editor
+  // sends it (every loaded entry is direct).
+  await call("/api/entries/update", { entryId: shared.entryId, date: "2026-05-11", description: "State shared dinner", accountName: "Household Float", categoryName: "Food & Drinks", amountMinor: 8_051, entryType: "expense", ownershipType: "direct", ownerName: "Tim", note: "shared note" });
 
   // Transfers: two halves, linked.
   const out = await call("/api/entries/create", { date: "2026-05-14", description: "State transfer out", accountName: "UOB Savings", categoryName: "Transfer", amountMinor: 20_000, entryType: "transfer", transferDirection: "out", ownershipType: "direct", ownerName: "Tim" });

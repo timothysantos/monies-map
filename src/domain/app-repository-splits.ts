@@ -10,7 +10,7 @@ import {
   findBestSplitExpenseLedgerCandidate,
   findBestSplitSettlementLedgerCandidate
 } from "./split-matching";
-import { splitAmountMinorWithRoundedRemainder } from "./split-allocation";
+import { rebalanceSplitSharesForTotal, splitAmountMinorWithRoundedRemainder } from "./split-allocation";
 import { calculateNetSettlement } from "./split-settlement-policy";
 import { calculateFxRateBasisPoints, convertMinorAmount, normalizeSplitCurrency } from "./split-currency";
 import { truncateReviewDescription } from "./review-description";
@@ -1433,6 +1433,70 @@ export async function createSplitExpenseFromEntryRecord(
     splitExpenseMonth: entry.transaction_date.slice(0, 7),
     splitGroupId: input.splitGroupId || "split-group-none"
   };
+}
+
+// Statements that move the split expense linked to a ledger entry onto the
+// entry's new amount, for the entry update's own batch. Reads happen here,
+// before that batch. A same-currency split takes the new amount as its total
+// and rebalances its shares by the stored basis; a cross-currency split keeps
+// its own total and shares and only updates the home amount and FX rate.
+export async function buildLinkedSplitAmountStatements(
+  db: D1Database,
+  input: { entryId: string; entryCurrency: string; amountMinor: number }
+) {
+  const linkedSplits = await db
+    .prepare(`
+      SELECT id, total_amount_minor, currency
+      FROM split_expenses
+      WHERE household_id = ? AND linked_transaction_id = ?
+      ORDER BY id
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
+    .all<{ id: string; total_amount_minor: number; currency: string }>();
+  const statements: D1PreparedStatement[] = [];
+  const homeAmountMinor = Math.abs(input.amountMinor);
+
+  for (const split of linkedSplits.results) {
+    if (normalizeSplitCurrency(split.currency) !== normalizeSplitCurrency(input.entryCurrency)) {
+      statements.push(
+        db
+          .prepare("UPDATE split_expenses SET home_amount_minor = ?, fx_rate_basis_points = ? WHERE id = ? AND household_id = ?")
+          .bind(homeAmountMinor, calculateFxRateBasisPoints(Math.abs(split.total_amount_minor), homeAmountMinor), split.id, DEFAULT_HOUSEHOLD_ID)
+      );
+      continue;
+    }
+
+    // Shares in split-share people order, so the remainder lands on the same
+    // person as when the split was created.
+    const shares = await db
+      .prepare(`
+        SELECT split_expense_shares.id, split_expense_shares.ratio_basis_points, split_expense_shares.amount_minor
+        FROM split_expense_shares
+        INNER JOIN people ON people.id = split_expense_shares.person_id
+        WHERE split_expense_shares.split_expense_id = ?
+        ORDER BY
+          CASE people.role WHEN 'owner' THEN 0 WHEN 'partner' THEN 1 ELSE 2 END,
+          people.created_at,
+          people.id
+      `)
+      .bind(split.id)
+      .all<{ id: string; ratio_basis_points: number; amount_minor: number }>();
+    const nextShares = rebalanceSplitSharesForTotal(
+      shares.results.map((share) => ({ ratioBasisPoints: share.ratio_basis_points, amountMinor: share.amount_minor })),
+      input.amountMinor
+    );
+
+    statements.push(
+      db
+        .prepare("UPDATE split_expenses SET total_amount_minor = ?, home_amount_minor = ? WHERE id = ? AND household_id = ?")
+        .bind(input.amountMinor, homeAmountMinor, split.id, DEFAULT_HOUSEHOLD_ID),
+      ...shares.results.map((share, index) => db
+        .prepare("UPDATE split_expense_shares SET ratio_basis_points = ?, amount_minor = ? WHERE id = ?")
+        .bind(nextShares[index].ratioBasisPoints, nextShares[index].amountMinor, share.id))
+    );
+  }
+
+  return statements;
 }
 
 export async function upsertLinkedSplitExpenseForEntryRecord(
