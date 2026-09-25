@@ -1,11 +1,10 @@
 import { getCurrentMonthKey } from "../../lib/month";
 import {
-  adjustEntriesForView,
   applyActualsFromEntries,
-  buildMonthPage,
   buildEmptySummaryMonth,
   loadPlannedSummaryMonthsForViews
-} from "../app-shell";
+} from "../summary-projection";
+import { adjustEntriesForView, buildMonthPage } from "../month-projection";
 import {
   loadEntries,
   loadMonthIncomeRows,

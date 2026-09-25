@@ -1,10 +1,6 @@
 import { getCurrentMonthKey } from "../../lib/month";
-import {
-  adjustEntriesForView,
-  buildSummaryPage,
-  buildSummaryRange,
-  loadPlannedSummaryMonthsForViews
-} from "../app-shell";
+import { buildSummaryPage, buildSummaryRange, loadPlannedSummaryMonthsForViews } from "../summary-projection";
+import { adjustEntriesForView } from "../month-projection";
 import {
   loadEntriesForMonths,
   loadSummaryMonths
