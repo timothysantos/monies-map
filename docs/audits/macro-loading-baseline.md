@@ -2163,3 +2163,30 @@ decision:
 - the remaining large modules (code-spec table);
 - the 482 KB (gzip) PDF worker, loaded only for PDF import;
 - CDP-emulated measurements rather than real devices.
+
+## Dependency advisories fixed (2026-09-25)
+
+`npm audit` reported 5 advisories: `sharp` <0.35.4 through
+miniflare/wrangler, `browserslist` <=4.28.6, and `baseline-browser-mapping`
+<2.11.0. They blocked `npm run verify` at its first step for the whole of
+H01–H17.
+
+- **`sharp`.** `npm audit fix --force` wanted wrangler 4.136.3, which brings
+  miniflare 5 (alpha) and undoes the deliberate `wrangler: 4.113.0` pin from
+  "Stabilize Cloudflare browser test runtime" (`856c5c7`). Instead, the
+  existing `sharp` override moved from 0.35.2 to **0.35.4**, the patch
+  release that the newer miniflare itself depends on.
+- **The rest.** `npm audit fix` updated `browserslist` 4.28.2 → 4.29.0,
+  `baseline-browser-mapping` → 2.11.25, `update-browserslist-db`,
+  `caniuse-lite`, `electron-to-chromium` and `node-releases`, all within
+  their existing ranges.
+- **Lockfile check.** Only the `sharp` / `@img/*` packages and those
+  browserslist data packages changed. Wrangler, miniflare, workerd and
+  undici are unchanged.
+
+Result: `npm audit` reports 0 vulnerabilities, and **`npm run verify`
+passes end to end**: audit, typecheck, unit tests 448/448, build, and every
+smoke group.
+
+Also on the new lockfile: full functional E2E on isolated ports **244/244**,
+and `npm run test:performance` passes (3 passed, 1 skipped by design).
