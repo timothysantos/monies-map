@@ -2264,10 +2264,20 @@ Refreshing the page or choosing Start over clears the in-browser draft state,
 including the parsed rows produced from the PDF. The browser's selected local
 file reference is not retained by the app after that draft is cleared.
 
-Large import commits are written in protected chunks in production. There is not a
-deliberate 125-row product limit, but the UI warns when a preview is large
-because a rejected Cloudflare request should be retried as smaller batches
-rather than leaving a partial ledger import.
+An import commit saves every row or none of them. The rows, any statement
+checkpoint and certificate, and the change to the import's status are written
+as one database transaction, so a failure partway (for example Cloudflare
+rejecting the request) leaves no partial import, and the same file can be
+committed again. Very large imports (over about 245 rows) write their new rows
+first while the import is still hidden as a draft, then make every visible
+change in one final step; if any step fails the hidden rows are removed. There
+is not a deliberate 125-row product limit, but the UI warns when a preview is
+large so a rejected commit can be retried as smaller batches.
+
+Rolling back an import is also all-or-nothing, and an import that has already
+been rolled back cannot be rolled back a second time. Month totals on Summary
+are refreshed right after a commit or rollback; if that refresh is interrupted,
+the next Summary or Month page load finishes it.
 # Splits and Travel
 
 A group can be settled by itself. Use **Settle group** to record payment and

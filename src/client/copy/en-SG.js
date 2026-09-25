@@ -358,7 +358,7 @@ export const messages = {
     previewEmpty: "No preview yet.",
     previewRows: "Preview rows",
     previewReady: "Preview ready. Matching rows can be reconciled in place before commit instead of creating duplicate ledger entries.",
-    largeImportNotice: (count) => `Large import: ${count} rows will be committed in protected chunks. If Cloudflare still rejects the request, split the CSV into smaller batches.`,
+    largeImportNotice: (count) => `Large import: ${count} rows. The commit saves every row or none of them. If Cloudflare rejects it, nothing is saved; split the file into smaller batches and try again.`,
     reconciliationCandidates: (count) => `${count} entry reconciliation match${count === 1 ? "" : "es"} need a decision`,
     reconciledExistingRows: (count, sourceType) => sourceType === "pdf"
       ? `${count} provisional row${count === 1 ? "" : "s"} will be certified by the statement`
