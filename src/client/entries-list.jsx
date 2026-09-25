@@ -28,13 +28,21 @@ function scrollInlineEditorIntoView(element) {
 
   const rect = element.getBoundingClientRect();
   const targetTop = window.scrollY + rect.top - ((window.innerHeight - rect.height) / 2) - 48;
-  window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+  window.scrollTo({ top: Math.max(0, targetTop), behavior: longJumpOr(targetTop, "smooth") });
 }
 
 function scrollMobileEntryRowIntoView(element) {
   const rect = element.getBoundingClientRect();
   const targetTop = window.scrollY + rect.top - 82;
-  window.scrollTo({ top: Math.max(0, targetTop), behavior: "auto" });
+  window.scrollTo({ top: Math.max(0, targetTop), behavior: longJumpOr(targetTop, "auto") });
+}
+
+// Off-screen rows use an estimated height until they render
+// (content-visibility). A long smooth scroll renders rows on the way and
+// ends off target, so a jump of more than two screens (a deep link to a row
+// far down the month) is instant; the retries then correct it.
+function longJumpOr(targetTop, behavior) {
+  return Math.abs(targetTop - window.scrollY) > window.innerHeight * 2 ? "instant" : behavior;
 }
 
 // This renderer is intentionally "dumb": it receives already-grouped entries
