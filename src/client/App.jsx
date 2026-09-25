@@ -48,6 +48,7 @@ import {
   ShellLoadingScreen
 } from "./app-shell-status";
 import { ScreenErrorBoundary } from "./screen-error-boundary";
+import { ErrorPanel } from "./ui-states";
 import { ShellRouteTabs } from "./app-shell-navigation";
 import { PeriodMonthPicker } from "./app-shell-period-pickers";
 import { LoginRegistrationDialog } from "./login-registration-dialog";
@@ -2092,7 +2093,22 @@ export function App() {
   // The previous page stays on screen while the next one loads, so a crashed
   // screen retries both when a navigation starts and when its page settles.
   const screenErrorResetKey = `${activeRouteKey}:${currentPageView ? "current" : "previous"}`;
-  const routeBody = pageView
+  // A page that failed to load after the person navigated must not leave the
+  // previous page on screen under the new tab or period: its figures would
+  // read as the new period's. The error takes the page's place inside the
+  // shell, so navigation and the period picker keep working.
+  const routeBody = routePageError && !currentPageView && pageView
+    ? (
+        <ErrorPanel
+          className="route-page-error"
+          title={messages.common.pageLoadErrorTitle}
+          detail={messages.common.loadFailedDetail}
+          actions={[{ label: messages.common.retryPageLoad, onClick: () => void retryActivePageLoad(), primary: true }]}
+        >
+          <p className="app-loading-issue-inline">{routePageError}</p>
+        </ErrorPanel>
+      )
+    : pageView
     ? (
         <RouteWorkProvider registry={routeWorkRegistry} routeKey={currentPageView ? activeRouteKey : null}>
           {renderedRouteElement}
@@ -2364,7 +2380,6 @@ export function App() {
         message={referenceDataError}
         diagnosis={(
           <div className="app-loading-diagnosis">
-            <strong>{messages.common.referenceDataErrorTitle}</strong>
             <p>{messages.common.referenceDataErrorDetail}</p>
           </div>
         )}
@@ -2382,7 +2397,6 @@ export function App() {
         title={messages.common.pageLoadErrorTitle}
         message={routePageError}
         issue={loadingStatus.issue}
-        issuePlacement="inside"
         retryLabel={messages.common.retryPageLoad}
         onRetry={retryActivePageLoad}
       />
