@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
+import { EmptyState } from "./ui-states";
 import { commitImportBatch, previewImportBatch, rollbackImportBatch } from "./import-api";
 import { ImportRecentHistorySection } from "./import-history";
 import { ImportInboxSection, ImportIntakeQueueSection } from "./import-inbox";
@@ -1849,7 +1850,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
               getPreviewAccountOwnerPatch={getPreviewAccountOwnerPatch}
             />
           ) : (
-            <p className="lede compact">{messages.imports.previewEmpty}</p>
+            <EmptyState>{messages.imports.previewEmpty}</EmptyState>
           )}
         </div>
       </section>

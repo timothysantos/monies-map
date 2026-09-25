@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { SpendingMixChart } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import { EmptyState } from "./ui-states";
 import {
   getDonutItemId,
   getVisibleDonutData,
@@ -121,7 +122,7 @@ export function EntriesBreakdownPanel({
             ) : null}
           </>
         ) : (
-          <p className="lede compact">{messages.entries.noSpendBreakdown}</p>
+          <EmptyState>{messages.entries.noSpendBreakdown}</EmptyState>
         )}
       </div>
       <div className="entries-breakdown-list category-list">
