@@ -32,7 +32,7 @@ state container.
 
 Empty sections say what is missing instead of showing a bare dash:
 - category rules: "No category rules yet. …"
-- unresolved transfers: "No unresolved transfers. …"
+- unresolved transfers: "No transfers need review right now."
 - recent activity: "No balance activity recorded yet."
 
 They use the shared `EmptyState`. Form errors are `InlineError` alerts.

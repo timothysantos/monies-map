@@ -296,11 +296,15 @@ every retry handler.
   (`common.loadFailedDetail`); the technical reason sits in the smaller
   issue line below it.
 
-A page load that fails after the person navigated replaces the previous
-page with the page `ErrorPanel` inside the shell. Otherwise the previous
-page's figures would stay on screen under the new tab or period. Navigation
-and the period picker stay usable, and "Try loading again" runs
-`retryActivePageLoad`.
+A page load that fails after the person navigated shows the page
+`ErrorPanel` inside the shell, and hides the previous page. Otherwise the
+previous page's figures would stay on screen under the new tab or period.
+
+- Navigation and the period picker stay usable.
+- "Try loading again" runs `retryActivePageLoad`, and the panel stays up
+  (showing "Working...") until the retry settles.
+- The previous page is hidden (`display: none` on `.route-page-body`), not
+  unmounted, so a draft on it survives the failure and the retry.
 
 ## Mobile Sheet
 
@@ -318,6 +322,9 @@ dialog, like the desktop dialogs:
   taps are ignored, so the pending result and the draft are kept.
 - Nested Radix layers (a category editor, the mobile select) close first on
   Escape, leaving the sheet open.
+- Limitation: iOS Safari does not focus a tapped button. When the opener was
+  never focused (tapped on iOS, or a table row), focus is not restored, and
+  the browser default applies.
 
 ## Reference Data Owner
 
