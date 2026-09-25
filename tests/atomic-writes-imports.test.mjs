@@ -177,6 +177,59 @@ test("an import rollback that fails partway leaves the import and its rows in pl
   assertSameDatabase(await dumpDatabase(db), before);
 });
 
+// An import above the single-batch limit (500 statements, about 245 CSV
+// rows) is staged: the draft and its new rows first, then one final batch.
+const BULK_ROW_COUNT = 300;
+
+async function previewBulkCsvImport(api) {
+  const lines = ["date,description,amount,account,category,note"];
+  for (let index = 1; index <= BULK_ROW_COUNT; index += 1) {
+    const day = String(1 + (index % 28)).padStart(2, "0");
+    lines.push(`2026-05-${day},ATOMIC BULK ROW ${String(index).padStart(3, "0")},-${index}.01,UOB One,Groceries,bulk`);
+  }
+  const { status, payload } = await api("/api/imports/preview", {
+    sourceLabel: "Atomic bulk CSV",
+    sourceType: "csv",
+    csv: lines.join("\n"),
+    ownershipType: "direct",
+    ownerName: "Tim"
+  });
+  assert.equal(status, 200, JSON.stringify(payload));
+  assert.equal(payload.preview.previewRows.length, BULK_ROW_COUNT);
+  return { sourceLabel: "Atomic bulk CSV", sourceType: "csv", parserKey: "generic_csv", rows: payload.preview.previewRows };
+}
+
+test("a staged bulk import commits every row and completes", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const commitBody = await previewBulkCsvImport(api);
+
+  const { status, payload } = await api("/api/imports/commit", commitBody);
+
+  assert.equal(status, 200, JSON.stringify(payload));
+  assert.equal(payload.importedRows, BULK_ROW_COUNT);
+  assert.deepEqual(await rows(db, "SELECT status FROM imports WHERE id = ?", payload.importId), [{ status: "completed" }]);
+  assert.deepEqual(await rows(db, "SELECT COUNT(*) AS count, SUM(amount_minor) AS total FROM transactions WHERE import_id = ?", payload.importId), [
+    // 1.01 + 2.01 + ... + 300.01
+    { count: BULK_ROW_COUNT, total: (BULK_ROW_COUNT * (BULK_ROW_COUNT + 1) / 2) * 100 + BULK_ROW_COUNT }
+  ]);
+  assert.equal((await rows(db, "SELECT id FROM import_rows WHERE import_id = ?", payload.importId)).length, BULK_ROW_COUNT);
+  assert.deepEqual(await rows(db, "SELECT month_key FROM monthly_snapshot_refreshes"), []);
+});
+
+test("a staged bulk import that fails in a later chunk or the final batch leaves nothing", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const commitBody = await previewBulkCsvImport(api);
+  const before = await dumpDatabase(db);
+
+  for (const [pattern, skip] of [[/INSERT INTO transactions/, 200], [/UPDATE imports SET status = 'completed'/, 0]]) {
+    const faulty = failingStatement(db, pattern, { skip });
+    const { status } = await api("/api/imports/commit", commitBody, { database: faulty.db });
+    assert.equal(faulty.state.fired, true, String(pattern));
+    assert.equal(status, 400);
+    assertSameDatabase(await dumpDatabase(db), before);
+  }
+});
+
 // ------------------------------------------------- statement certification
 
 async function prepareStatementImport(api) {
