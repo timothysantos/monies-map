@@ -292,8 +292,9 @@ work, the page error screen and the mutation refresh plans.
 
 The Entries panel's page DTO has its own owner (`entries-data-owner.js`,
 bound inside `useEntriesPageData`): loads and refreshes take a generation,
-and a refresh whose month and view are no longer active does not run, so
-an edit's late refresh cannot overwrite the month the person moved to.
+and a refresh whose month and view are no longer active returns before it
+clears any cache or fetches, so an edit's late refresh can neither
+overwrite nor stall the month the person moved to.
 
 Refreshes after a save go through `runBackgroundRefresh` from
 `use-refresh-notice.js` (owner: `refresh-notice.js`). App uses it for every
@@ -303,7 +304,9 @@ failure resolves to `null`, keeps the saved data on screen and shows the
 inline refresh notice with "Refresh now" (it reruns the failed refresh) and
 "Dismiss". Aborted and cancelled requests, a shell request overtaken by a
 newer one, and failures that land after a route change are silent; a route
-change clears the notice.
+change clears the notice. When several refreshes fail together (a page and
+its shell), "Refresh now" reruns each of them.
+
 `use-app-sync-subscription.js` owns the cross-tab BroadcastChannel and
 storage listeners; its parse and dispatch helpers are pure.
 

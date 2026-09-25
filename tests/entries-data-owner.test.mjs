@@ -117,3 +117,22 @@ test("a cached revisit loads without the loading state, and a warm start does no
   assert.equal(await load, true);
   assert.equal(owner.getSnapshot().page.monthPage.entries[0].description, "server page");
 });
+
+test("isActive tells a stale refresh apart before it clears any cache", async () => {
+  const { owner, calls, fetchPage } = setup();
+  const load = owner.load({ params: params("2025-10"), fetchPage });
+  assert.equal(owner.isActive(params("2025-10")), true);
+  assert.equal(owner.isActive(params("2026-05")), false);
+  calls[0].resolve(page("2025-10"));
+  await load;
+});
+
+test("a cache clear that cancels the latest load still ends its loading state", async () => {
+  const { owner, calls, fetchPage } = setup();
+  const load = owner.load({ params: params("2025-10"), fetchPage, showLoading: true });
+  assert.equal(owner.getSnapshot().isLoading, true);
+  const { CancelledError } = await import("@tanstack/react-query");
+  calls[0].reject(new CancelledError());
+  assert.equal(await load, false);
+  assert.equal(owner.getSnapshot().isLoading, false);
+});

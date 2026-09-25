@@ -58,18 +58,27 @@ export function createRefreshNoticeOwner() {
         .then(task)
         .catch((error) => {
           if (!isQuietRefreshFailure(error) && startedFor === routeKey) {
-            nextId += 1;
-            setState({ notice: { id: nextId, retry: retry ?? null } });
+            // Nested refreshes (a page and its shell) can both fail; the
+            // notice keeps every distinct retry so one click reruns them all.
+            const current = state.notice;
+            const retries = current ? [...current.retries] : [];
+            if (retry && !retries.includes(retry)) {
+              retries.push(retry);
+            }
+            if (!current) {
+              nextId += 1;
+            }
+            setState({ notice: { id: current ? current.id : nextId, retries } });
           }
           return null;
         });
     },
 
-    // Hides the notice and runs the failed refresh again.
+    // Hides the notice and runs every failed refresh again.
     retry() {
-      const retry = state.notice?.retry;
+      const retries = state.notice?.retries ?? [];
       clear();
-      if (retry) {
+      for (const retry of retries) {
         void owner.settle(retry, { retry });
       }
     },

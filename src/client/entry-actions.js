@@ -112,7 +112,11 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   async function refreshEntriesFromServerTruth() {
     preferServerEntriesOnNextMergeRef.current = true;
     try {
-      await onRefresh();
+      // A refresh that failed or was superseded resolves to null and brings
+      // no server truth, so the next unrelated merge must not prefer it.
+      if (!(await onRefresh())) {
+        preferServerEntriesOnNextMergeRef.current = false;
+      }
     } catch (error) {
       preferServerEntriesOnNextMergeRef.current = false;
       throw error;
