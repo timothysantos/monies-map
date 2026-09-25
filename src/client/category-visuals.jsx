@@ -120,7 +120,7 @@ export function CategoryAppearancePopover({ category, onChange }) {
             mode: "edit",
             categoryId: category.id,
             name: category.name,
-            slug: category.slug ?? slugify(category.name),
+            slug: category.slug ?? categoryService.slugify(category.name),
             iconKey: category.iconKey,
             colorHex: category.colorHex
           });
