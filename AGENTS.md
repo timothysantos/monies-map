@@ -105,6 +105,8 @@ team conventions evolve.
   need to verify the core desktop and mobile workflows together.
 - Use `npm run verify` as the local merge gate. It must pass strict TypeScript,
   unit and parser contracts, the production build, and the smoke bundle.
+- Keep `npm run lint` (correctness-only ESLint) and `npm run typecheck:client`
+  (checkJs over `src/client`) at zero errors; both run in `verify`.
 - Run `npm run test:e2e` before merging a large refactor branch or a change that
   affects shared route, settings, import, entry, month, or split orchestration.
 - Prove persistence or projection refactors with
