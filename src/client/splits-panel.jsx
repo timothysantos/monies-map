@@ -53,7 +53,7 @@ import { todayInAppTimeZone } from "./app-dates";
 const { format: formatService } = moniesClient;
 
 // Without the shell's notice (isolated renders), a failed refresh is dropped.
-function runQuietly(task) {
+function runQuietly(task, _retry) {
   return Promise.resolve().then(task).catch(() => null);
 }
 

@@ -147,6 +147,10 @@ export async function fetchQueryWithLease(queryClient, {
 // (hide, busy, generation change). A required consumer arriving promotes it,
 // which clears the deadline so the shared request finishes. The promise
 // always resolves to { status } and never rejects.
+/**
+ * @param {any} queryClient
+ * @param {{ queryKey: any, fetcher: any, leases?: any, clock?: Pick<typeof globalThis, "setTimeout" | "clearTimeout">, deadlineMs?: number }} options
+ */
 export function startSpeculativeQuery(queryClient, {
   queryKey,
   fetcher,

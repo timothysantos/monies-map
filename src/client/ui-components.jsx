@@ -212,7 +212,7 @@ export function DeleteRowButton({
   triggerLabel,
   confirmLabel = "Confirm",
   destructive = true,
-  prompt,
+  prompt = undefined,
   buttonClassName = "",
   children = null
 }) {

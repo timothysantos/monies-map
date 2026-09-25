@@ -9,7 +9,8 @@ export function buildEntryDraft(view, accounts, categories, people) {
   const defaultOwnerName = view.id !== "household"
     ? people.find((person) => person.id === view.id)?.name ?? people[0]?.name ?? ""
     : people[0]?.name ?? "";
-  const ownershipType = "direct";
+  // Drafts start direct; the union keeps the shared branches below typed.
+  const ownershipType = /** @type {"direct" | "shared"} */ ("direct");
   const defaultAccount = accounts.find((account) => account.isActive !== false) ?? accounts[0];
   const preferredCategoryName = categories.find((category) => category.name === "Other")?.name ?? categories[0]?.name ?? "";
   const draft = {
