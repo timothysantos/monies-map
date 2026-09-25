@@ -1965,3 +1965,83 @@ caught by typecheck before anything was committed.
 
 Rollback: revert the H15 commits newest first (`afaed9b` … `c4f0f01`). The
 harness can stay.
+
+## Follow-ups to H14: compact JSON and the Splits month slice
+
+Date: 2026-09-25. Commits:
+- `30397a6`: compact JSON;
+- `01aa640`: updated mobile Entries admission;
+- `d93f7c4`: Splits contract test, failing before the change;
+- `1e29237`: Splits change.
+
+### Compact JSON (`src/server/json.ts`)
+
+`serializeJson` now uses `JSON.stringify(payload)` instead of the
+two-space indented form. It applies to every API.
+
+Proof:
+- the persisted-state harness shows tables and all 14 page DTOs
+  (compared parsed) **identical** to the baseline;
+- the H09 timing test now asserts compact bodies (no newlines, equal to
+  their re-serialization). It failed before the change.
+
+No client reads the raw text: all readers call `response.json()` /
+`JSON.parse`.
+
+| API | Before (bytes / gzip) | After |
+| --- | --- | --- |
+| 10k Entries (household) | 1,429,624 / 44,765 | 984,434 / 37,956 |
+| 10k Month (after H14) | 1,560,034 / 55,284 | 1,067,743 / 47,368 |
+| 10k Splits | 1,570,064 / 56,852 | 1,074,794 / 48,896 |
+| 12-month Summary, 10k | 23,566 / 2,409 | 14,043 / 2,064 |
+| demo Month | 54,794 / 4,226 | 32,259 / 3,664 |
+| demo Imports | 16,060 / 1,762 | 10,365 / 1,440 |
+
+That is about 31–40% less uncompressed and 9–18% less gzip. The mobile
+Entries admission row now records the compact measurement: 37,975 gzip
+bytes, still within the 50,000 cap.
+
+### Splits month slice (`src/domain/pages/splits-page.ts`)
+
+The Splits page used to embed a full `buildMonthPage` result: plan
+sections, income rows, metric cards, the donut chart and every month
+entry. That meant 1.47 MB at 10k, and it also loaded plan rows, income
+rows and summary months.
+
+The Splits client reads only:
+- `monthPage.month` (App's month normalization);
+- the month's **transfers**, for "Match bank transfer" on a settlement
+  checkpoint.
+
+`linkedEntriesById` in `splits-selectors.js` was built but never read, so
+it was removed. The slice is now
+`{ month, entries: adjustEntriesForView(entries).filter(transfer) }`.
+
+Proof:
+- `tests/e2e/splits-page-payload.spec.js` checks, for Tim and the
+  household, that the slice has exactly `month` and `entries`, and that
+  the entries are the same transfers, in the same order and with the same
+  values, that the Entries page shows. It failed before the change.
+- Harness: tables identical; every non-Splits DTO identical. Each Splits
+  DTO's `monthPage` equals the old `monthPage` filtered to transfers
+  (4 of 23 and 1 of 4 entries), and the rest of the Splits DTO is
+  identical.
+- The Splits browser specs (settlement checkpoint matching, travel
+  currency, edits, cross-tab, review matches), financial insight and
+  entries-to-splits: 61/61.
+
+| Splits page | Before (compact) | After |
+| --- | --- | --- |
+| demo: bytes, gzip, handler median | 39,311 / 4,805 / 16 ms | 8,857 / 1,789 / 9 ms |
+| 10k (2,000-row month) | 1,074,794 / 48,896 / 38 ms | 35,117 / 2,901 / 31 ms |
+
+The handler got faster because it no longer loads plan rows, income rows,
+summary months or planned summary months (machine load ≈14–21, so the
+figures are indicative).
+
+Rollback:
+- revert `1e29237` (Splits) or `30397a6` (compact JSON);
+- `01aa640` only updates the admission number.
+
+Gates: typecheck passes; unit tests 448/448; build passes; full functional E2E
+on isolated ports **244/244** (243 plus the new Splits payload spec).
