@@ -8,10 +8,10 @@ const summary = (summaryStart, summaryEnd) => ({ tabId: "summary", viewId: "hous
 
 test("mobile admits only the measured Entries page, within the mobile data caps", () => {
   assert.deepEqual(WARMUP_ADMISSIONS, [
-    { family: "entries-page", fixture: "scale-10k", revision: "e3cd00b", responseBytes: 44_784, handlerMs: 25 }
+    { family: "entries-page", fixture: "scale-10k", revision: "compact-json", responseBytes: 37_975, handlerMs: 25 }
   ]);
   const entries = admissionFor("entries-page", { tabId: "entries", viewId: "person-tim", month: "2026-05" });
-  assert.deepEqual(entries, { responseBytes: 44_784, handlerMs: 25 });
+  assert.deepEqual(entries, { responseBytes: 37_975, handlerMs: 25 });
   assert.ok(entries.responseBytes <= WARMUP_LIMITS.mobile.maxDataBytes);
   assert.ok(entries.handlerMs <= WARMUP_LIMITS.mobile.maxDataHandlerMs);
   // Families that were measured over the cap, or never offered on mobile, stay unknown.
