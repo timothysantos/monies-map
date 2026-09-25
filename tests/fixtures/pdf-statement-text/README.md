@@ -46,3 +46,21 @@ contact lines are kept because the parsers recognize them.
 When a real statement shows a layout these fixtures do not cover, add a new
 sanitized fixture from the extracted text of that statement. Do not stretch an
 existing fixture to fit it.
+
+## Real-statement fixtures
+
+`*-real-sanitized.pdf-text.txt` were extracted from real statements with
+pdf.js 4.10.38, the version the app ships, and masked item by item with
+same-length placeholders before the three views were built, so they keep the
+exact item boundaries the parsers see. Row amounts are multiplied by an
+undisclosed per-file factor and rounded, and every balance, subtotal and total
+is recomputed from them, so each statement still reconciles without real
+amounts; other money on the page (summaries, limits, payment slips) is zeroed.
+Each fixture parses to the same rows, dates and descriptions as its original
+(docs/audits/real-statement-imports.md). The hand-written fixtures above did
+not match real OCBC card and Citi layouts, so prefer real extracted text.
+
+pdf.js item boundaries are part of the parser contract: pdf.js 6 merges words
+into phrases and breaks the Citi and OCBC card parsers. Upgrade pdf.js only
+with new fixtures extracted from real statements with that version.
+
