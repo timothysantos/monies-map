@@ -1445,8 +1445,10 @@ Mobile preloads data only when all of these hold:
 - after its code has loaded;
 - one request per visit.
 
-Without `navigator.connection` (iPhone Safari) mobile stays code-only by
-the existing rule "missing connection information is not permission".
+Without `navigator.connection` (iPhone Safari) mobile stayed code-only by
+the rule "missing connection information is not permission". Superseded on
+2026-09-25: an unknown connection now needs the measured fast required
+request instead (see "Refresh visibility, Entries owner and iPhone warmup").
 
 ### Tests
 
@@ -2190,3 +2192,107 @@ smoke group.
 
 Also on the new lockfile: full functional E2E on isolated ports **244/244**,
 and `npm run test:performance` passes (3 passed, 1 skipped by design).
+
+## Refresh visibility, Entries owner and iPhone warmup (2026-09-25)
+
+Branch `refresh-visibility`, from `macro-performance` (steps 3 and 4 of the
+app evaluation). Each change started with a test that failed on the old
+code.
+
+### A. Refresh failures after a save are no longer hidden
+
+- **Before.** 15 `.catch(() => null)` handlers in `App.jsx` refresh plans
+  and the `.catch(() => {})` in `month-panel.jsx` and `splits-panel.jsx`
+  hid refresh failures. After a save the screen kept stale figures with no
+  message. An Entries save whose refresh failed was reported as a save
+  error.
+- **Now.** Every refresh goes through `runBackgroundRefresh`
+  (`use-refresh-notice.js`, owner `refresh-notice.js`).
+  - A failure keeps the saved data on screen.
+  - An inline notice ("This page could not refresh. Saved changes are
+    kept.") offers **Refresh now**, which reruns every refresh that
+    failed, and **Dismiss**.
+  - Aborted, cancelled, superseded (newer shell request) and left-route
+    failures stay silent. A route change clears the notice.
+  - The page error screen is never raised.
+- **Failing first:** `refresh-failure-notice.spec.js`.
+  - Month save + failed `month-page`: 2 tests failed on the old code.
+  - Cross-tab refresh with failed `month-page` and `app-shell`.
+  - Entry save + failed `entries-page`: failed on the old Entries panel.
+  - The superseded-silent test passes on both old and new code, by design.
+  - Unit: `refresh-notice.test.mjs` has 10 tests.
+
+### B. Entries has a data owner
+
+- **Before.** `refreshEntriesPage` had no generation guard. Reproduced: a
+  May refresh held until after the move to October put the May-only entry
+  on the October screen (`entries-data-owner.spec.js` failed on the old
+  code).
+- **Now.** `entries-data-owner.js` guards every load and refresh with a
+  generation (reads still use `fetchQueryWithLease`).
+  - A superseded refresh neither applies nor ends the newer load's loading
+    state.
+  - A refresh for a month or view that is no longer active returns before
+    it clears any cache.
+  - A cancelled latest load still ends its loading state.
+- **Unit:** `entries-data-owner.test.mjs` has 8 tests.
+
+### C. iPhones warm Entries data
+
+- **Policy.** On mobile, an unknown connection (`effectiveType` null, no
+  `navigator.connection`) may warm data only when
+  `recentRequiredDurationMs <= 500`. Every other gate is unchanged: save-data,
+  reported slow-2g/2g/3g, quiet period, one per visit, busy/in-flight, the
+  admission row and the 50 KB cap.
+- **Unit tests** fail on the old policy: 2 policy tests and 1 scheduler test.
+  - Null + fast is allowed.
+  - Null + 501 ms, null timing, or no timing is denied as
+    `recent-required-slow`.
+  - 3g is still `slow-connection`.
+- **E2E** (`route-warmup-data.spec.js`, mobile, `navigator.connection`
+  removed): Entries code, then one `entries-page`, and the tap makes no new
+  request. This test failed on the old policy. With slow required reads
+  (700 ms), only code warms.
+
+Built app (8802), iPhone user agent, 390×844, `navigator.connection`
+removed:
+
+| Case | Warmed before tap | Requests after tap | Tap → first row |
+| --- | --- | --- | --- |
+| Fast required reads | entries-panel chunk at 2.46 s, `entries-page` at 2.53 s | 0 | 337 ms |
+| Required reads delayed 700 ms | entries-panel chunk only | 1 (`entries-page`) | 188 ms (local) |
+
+The in-app browser pane reported `visibilityState: hidden`, so warmup
+correctly denied `hidden` there. The iPhone proof above used headless
+Chromium.
+
+### Review and gates
+
+An independent review found 2 medium and 3 low issues:
+- **Fixed.** Nested failures retried only the last one to fail.
+- **Fixed.** A stale Entries refresh cleared the new month's cache, which
+  could leave it loading.
+- **Fixed.** The notice wording now fits cross-tab and manual refreshes.
+- **Fixed.** A failed server-truth refresh left the merge preference set.
+- **Fixed.** A missing doc section.
+- **Not changed.** A later successful refresh does not clear an existing
+  notice. Two refreshes that run in parallel could otherwise hide a
+  failure; Dismiss or a route change clears it.
+
+`macro-performance` (error boundary, Singapore dates) was merged in. Two
+conflicts were resolved: the notice now sits above the new
+`ScreenErrorBoundary`, and both sets of copy were kept.
+
+Ports 5173/8787 were held by another session, so `npm run verify` was run
+as its steps: the audit, typecheck, unit and build steps as-is, and the
+smoke bundle on isolated ports (the same script with only the health URL
+and `--config` changed).
+
+| Check | Result |
+| --- | --- |
+| `npm run audit` | 0 vulnerabilities |
+| `npm run typecheck` | Pass |
+| `npm run test:unit` (after merge) | 482/482 |
+| `npm run build` + `npm run check:bundle` | Pass: 181,757 B JS / 31,981 B CSS gzip against the 180,337 / 31,961 budget (+0.8%, under +5%); budget unchanged |
+| Smoke bundle, isolated 5402/8802 | Every group passes (127 tests) |
+| Full `npm run test:e2e` suite, isolated 5402/8802 | **258/258** |

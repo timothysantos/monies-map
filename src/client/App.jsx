@@ -68,6 +68,7 @@ import { loadRouteModule } from "./route-modules";
 import { useAppShellState } from "./use-app-shell-state";
 import { useAppSyncSubscription } from "./use-app-sync-subscription";
 import { useReferenceData } from "./use-reference-data";
+import { useRefreshNotice } from "./use-refresh-notice";
 import { useRouteData } from "./use-route-data";
 import { useSummaryData } from "./use-summary-data";
 import { useRouteWarmup } from "./use-route-warmup";
@@ -331,6 +332,7 @@ export function App() {
     [routeViewId, selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart, selectedTabId, selectedViewId]
   );
   const activeRouteKey = useMemo(() => buildRouteWorkKey(activeRouteIdentity), [activeRouteIdentity]);
+  const { refreshNotice, refreshNoticeOwner, runBackgroundRefresh } = useRefreshNotice(activeRouteKey);
   const [routeWorkRegistry] = useState(createRouteWorkRegistry);
   const [requiredWork] = useState(createRequiredWorkCounter);
 
@@ -710,9 +712,17 @@ export function App() {
   const refreshAppShellInBackground = useCallback(async () => {
     const token = appShellOwner.begin();
     clearAppShellCache();
-    const data = await fetchAppShellData(appShellParams, { bypassCache: true });
-    appShellOwner.apply(token, data);
-    return data;
+    try {
+      const data = await fetchAppShellData(appShellParams, { bypassCache: true });
+      appShellOwner.apply(token, data);
+      return data;
+    } catch (error) {
+      // A newer shell request owns the screen now; this failure is moot.
+      if (!appShellOwner.isLatest(token)) {
+        return null;
+      }
+      throw error;
+    }
   }, [appShellOwner, appShellParams, clearAppShellCache, fetchAppShellData]);
 
   // Fetch the active route page and shape it into the current screen payload.
@@ -919,7 +929,7 @@ export function App() {
       request,
       run: () => Promise.all([
         fetchRoutePageData(request, { bypassCache: true }),
-        refreshShell ? refreshAppShellInBackground().catch(() => null) : Promise.resolve(null)
+        refreshShell ? runBackgroundRefresh(refreshAppShellInBackground) : Promise.resolve(null)
       ])
     }));
     return result?.[0] ?? null;
@@ -929,6 +939,7 @@ export function App() {
     refreshAppShellInBackground,
     requiredWork,
     routeDataOwner,
+    runBackgroundRefresh,
     selectedMonth,
     selectedScope,
     selectedViewId
@@ -971,7 +982,7 @@ export function App() {
     }
     const tasks = [fetchRoutePageData(request, { bypassCache: true })];
     if (refreshShell) {
-      tasks.push(referenceDataOwner.refresh().catch(() => null));
+      tasks.push(runBackgroundRefresh(referenceDataOwner.refresh));
     }
     const result = await withRequiredWork(requiredWork, "imports refresh", () => routeDataOwner.refresh({ request, run: () => Promise.all(tasks) }));
     const data = result?.[0] ?? null;
@@ -987,6 +998,7 @@ export function App() {
     referenceDataOwner,
     requiredWork,
     routeDataOwner,
+    runBackgroundRefresh,
     selectedMonth,
     selectedScope,
     selectedViewId
@@ -1127,11 +1139,11 @@ export function App() {
     }
 
     if (refreshDescription.refreshShell) {
-      tasks.push(refreshAppShellInBackground().catch(() => null));
+      tasks.push(runBackgroundRefresh(refreshAppShellInBackground));
     }
 
     if (refreshDescription.refreshReferenceData) {
-      tasks.push(referenceDataOwner.refresh().catch(() => null));
+      tasks.push(runBackgroundRefresh(referenceDataOwner.refresh));
     }
 
     const result = await withRequiredWork(requiredWork, "settings refresh", () => routeDataOwner.refresh({
@@ -1159,6 +1171,7 @@ export function App() {
     referenceDataOwner,
     requiredWork,
     routeDataOwner,
+    runBackgroundRefresh,
     selectedTabId
   ]);
 
@@ -1265,7 +1278,7 @@ export function App() {
 
     const tasks = [fetchRoutePageData(request, { bypassCache: true })];
     if (refreshShell || invalidateEntries || invalidateMonth || invalidateSummary) {
-      tasks.push(refreshAppShellInBackground().catch(() => null));
+      tasks.push(runBackgroundRefresh(refreshAppShellInBackground));
     }
     const result = await withRequiredWork(requiredWork, "splits refresh", () => routeDataOwner.refresh({ request, run: () => Promise.all(tasks) }));
     const data = result?.[0] ?? null;
@@ -1291,6 +1304,7 @@ export function App() {
     refreshAppShellInBackground,
     requiredWork,
     routeDataOwner,
+    runBackgroundRefresh,
     selectedMonth,
     selectedScope,
     selectedViewId
@@ -1319,12 +1333,12 @@ export function App() {
     }
 
     if (selectedTabId === "splits" && selectedMonth === month) {
-      tasks.push(refreshActiveRoutePageInBackground(routePageRequest).catch(() => null));
+      tasks.push(runBackgroundRefresh(() => refreshActiveRoutePageInBackground(routePageRequest)));
     } else if (selectedTabId === "month" && invalidateMonth && selectedMonth === month) {
       if (canUseAppShellRoutePage) {
-        tasks.push(refreshAppShellInBackground().catch(() => null));
+        tasks.push(runBackgroundRefresh(refreshAppShellInBackground));
       } else {
-        tasks.push(refreshActiveRoutePageInBackground(routePageRequest).catch(() => null));
+        tasks.push(runBackgroundRefresh(() => refreshActiveRoutePageInBackground(routePageRequest)));
       }
     } else if (
       selectedTabId === "summary"
@@ -1335,7 +1349,7 @@ export function App() {
         selectedSummaryEnd ?? appShellSummaryEnd
       )
     ) {
-      tasks.push(refreshCurrentSummaryPage({ bypassCache: true }).catch(() => null));
+      tasks.push(runBackgroundRefresh(() => refreshCurrentSummaryPage({ bypassCache: true })));
     }
 
     await Promise.all(tasks);
@@ -1347,6 +1361,7 @@ export function App() {
     refreshAppShellInBackground,
     refreshCurrentSummaryPage,
     routePageRequest,
+    runBackgroundRefresh,
     selectedMonth,
     selectedSummaryEnd,
     selectedSummaryStart,
@@ -1381,9 +1396,9 @@ export function App() {
 
     if (selectedTabId === "month" && invalidateMonth && selectedMonth === month) {
       if (canUseAppShellRoutePage) {
-        tasks.push(refreshAppShellInBackground().catch(() => null));
+        tasks.push(runBackgroundRefresh(refreshAppShellInBackground));
       } else {
-        tasks.push(refreshActiveRoutePageInBackground(routePageRequest).catch(() => null));
+        tasks.push(runBackgroundRefresh(() => refreshActiveRoutePageInBackground(routePageRequest)));
       }
     } else if (
       selectedTabId === "summary"
@@ -1394,7 +1409,7 @@ export function App() {
         selectedSummaryEnd ?? appShellSummaryEnd
       )
     ) {
-      tasks.push(refreshCurrentSummaryPage({ bypassCache: true }).catch(() => null));
+      tasks.push(runBackgroundRefresh(() => refreshCurrentSummaryPage({ bypassCache: true })));
     }
 
     await Promise.all(tasks);
@@ -1407,6 +1422,7 @@ export function App() {
     refreshAppShellInBackground,
     refreshCurrentSummaryPage,
     routePageRequest,
+    runBackgroundRefresh,
     selectedMonth,
     selectedScope,
     selectedSummaryEnd,
@@ -1426,9 +1442,9 @@ export function App() {
 
     if (selectedTabId === "month" && invalidateMonth && selectedMonth === month) {
       if (canUseAppShellRoutePage) {
-        tasks.push(refreshAppShellInBackground().catch(() => null));
+        tasks.push(runBackgroundRefresh(refreshAppShellInBackground));
       } else {
-        tasks.push(refreshActiveRoutePageInBackground(routePageRequest).catch(() => null));
+        tasks.push(runBackgroundRefresh(() => refreshActiveRoutePageInBackground(routePageRequest)));
       }
     } else if (
       selectedTabId === "summary"
@@ -1439,7 +1455,7 @@ export function App() {
         selectedSummaryEnd ?? appShellSummaryEnd
       )
     ) {
-      tasks.push(refreshCurrentSummaryPage({ bypassCache: true }).catch(() => null));
+      tasks.push(runBackgroundRefresh(() => refreshCurrentSummaryPage({ bypassCache: true })));
     }
 
     await Promise.all(tasks);
@@ -1451,6 +1467,7 @@ export function App() {
     refreshAppShellInBackground,
     refreshCurrentSummaryPage,
     routePageRequest,
+    runBackgroundRefresh,
     selectedMonth,
     selectedSummaryEnd,
     selectedSummaryStart,
@@ -1960,6 +1977,7 @@ export function App() {
           categories={categories}
           onCategoryAppearanceChange={handleCategoryAppearanceChange}
           onRefresh={refreshCurrentMonthPage}
+          runBackgroundRefresh={runBackgroundRefresh}
           canRequestWording={routeWork.usable}
         />
       );
@@ -1983,6 +2001,7 @@ export function App() {
           onInvalidateAppShellCache={syncAppShellAfterMutation}
           onInvalidateEntryMutation={broadcastEntryMutation}
           onBroadcastSplitMutation={broadcastSplitMutation}
+          runBackgroundRefresh={runBackgroundRefresh}
           canRequestWording={routeWork.usable}
         />
       );
@@ -1995,6 +2014,7 @@ export function App() {
           categories={categories}
           people={appShell.household.people}
           onRefresh={(options) => refreshCurrentSplitsPage(options)}
+          runBackgroundRefresh={runBackgroundRefresh}
           canRequestWording={routeWork.usable}
         />
       );
@@ -2064,6 +2084,7 @@ export function App() {
     renderedTabId,
     routePageData,
     routeWork.usable,
+    runBackgroundRefresh,
     saveSummaryMonthNote,
     selectedMonth,
     syncAppShellAfterMutation
@@ -2930,6 +2951,12 @@ export function App() {
             }))}
           />
         ) : null}
+        {refreshNotice ? (
+          <RefreshFailureNotice
+            onRetry={refreshNoticeOwner.retry}
+            onDismiss={refreshNoticeOwner.dismiss}
+          />
+        ) : null}
         <ScreenErrorBoundary resetKey={screenErrorResetKey} onRetry={retryActivePageLoad} onReset={clearLoadingIssue}>
           {routeBody}
         </ScreenErrorBoundary>
@@ -2995,6 +3022,27 @@ export function App() {
           )
         : null}
     </main>
+  );
+}
+
+// A background refresh after a save failed: the saved result stays on
+// screen, and the person can refresh again without losing their place.
+function RefreshFailureNotice({ onRetry, onDismiss }) {
+  return (
+    <section className="import-stale-banner refresh-failure-notice" role="status">
+      <div>
+        <strong>{messages.common.refreshFailedTitle}</strong>
+        <span>{messages.common.refreshFailedDetail}</span>
+      </div>
+      <div className="refresh-failure-notice-actions">
+        <button type="button" className="dialog-primary" onClick={onRetry}>
+          {messages.common.refreshFailedRetry}
+        </button>
+        <button type="button" className="subtle-action" onClick={onDismiss}>
+          {messages.common.refreshFailedDismiss}
+        </button>
+      </div>
+    </section>
   );
 }
 

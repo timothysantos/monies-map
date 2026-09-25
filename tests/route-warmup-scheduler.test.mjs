@@ -542,8 +542,14 @@ test("resume after hide keeps the visit's data budget: no catch-up burst", async
   assert.equal(host.dataStarts.length, 2);
 });
 
-test("mobile without admission or without 4g starts no data at all", async () => {
-  for (const options of [{ admitted: false, effectiveType: "4g", recentRequiredDurationMs: 200 }, { admitted: true, effectiveType: null, recentRequiredDurationMs: 200 }]) {
+test("mobile without admission, on a slow connection, or on an unknown connection without a fast measured request starts no data at all", async () => {
+  for (const options of [
+    { admitted: false, effectiveType: "4g", recentRequiredDurationMs: 200 },
+    { admitted: true, effectiveType: "3g", recentRequiredDurationMs: 200 },
+    { admitted: true, effectiveType: null, recentRequiredDurationMs: 501 },
+    { admitted: true, effectiveType: null, recentRequiredDurationMs: null },
+    { admitted: false, effectiveType: null, recentRequiredDurationMs: 200 }
+  ]) {
     const host = createDataHost({ mode: "mobile", ...options });
     host.update();
     await host.clock.advanceTo(30_000);
@@ -553,6 +559,17 @@ test("mobile without admission or without 4g starts no data at all", async () =>
 
 test("mobile with admission, 4g and a fast recent request: one data request, after the code settles", async () => {
   const host = createDataHost({ mode: "mobile", admitted: true, effectiveType: "4g", recentRequiredDurationMs: 200 });
+  host.update();
+  await host.clock.advanceTo(2_000);
+  assert.deepEqual(host.loads.map((load) => load.routeId), ["entries"]);
+  assert.deepEqual(host.dataStarts.map((start) => start.id), ["entries-page:person-tim:2025-08"]);
+  await host.settleData();
+  await host.clock.advanceTo(60_000);
+  assert.equal(host.dataStarts.length, 1, "mobile allows one data request per visit");
+});
+
+test("mobile on an unknown connection (iPhone) with admission and a fast recent request: one data request, after the code settles", async () => {
+  const host = createDataHost({ mode: "mobile", admitted: true, effectiveType: null, recentRequiredDurationMs: 200 });
   host.update();
   await host.clock.advanceTo(2_000);
   assert.deepEqual(host.loads.map((load) => load.routeId), ["entries"]);

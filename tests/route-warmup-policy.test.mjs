@@ -72,7 +72,7 @@ for (const [reason, patch] of [
   ["module-before-data", { mode: "mobile", candidate: dataCandidate(), moduleInFlight: true }],
   ["visit-data-budget", { candidate: dataCandidate(), visit: { dataStarts: 2 } }],
   ["data-spacing", { candidate: dataCandidate(), visit: { dataStarts: 1, lastDataStartAt: NOW - 1_000 } }],
-  ["connection-not-4g", { mode: "mobile", candidate: dataCandidate(), page: { effectiveType: null } }],
+  ["connection-not-4g", { mode: "mobile", candidate: dataCandidate(), page: { effectiveType: "unlisted-type" } }],
   ["recent-required-slow", { mode: "mobile", candidate: dataCandidate(), recentRequiredDurationMs: 501 }],
   ["not-admitted", { mode: "mobile", candidate: dataCandidate({ admission: null }) }],
   ["over-data-cap", { mode: "mobile", candidate: dataCandidate({ admission: { responseBytes: 50_001, handlerMs: 100 } }) }]
@@ -97,12 +97,54 @@ test("safety gates apply to link intent too; actual navigation never asks this p
   }
 });
 
-test("mobile treats missing connection information as code-only", () => {
-  const unknownConnection = { mode: "mobile", page: { effectiveType: null } };
-  assert.deepEqual(evaluateWarmup(input(unknownConnection)), { allowed: true, reason: "ok" });
-  assert.equal(evaluateWarmup(input({ ...unknownConnection, candidate: dataCandidate() })).reason, "connection-not-4g");
-  assert.equal(evaluateWarmup(input({ mode: "mobile", page: { effectiveType: "slow-2g" } })).reason, "slow-connection");
-  assert.equal(evaluateWarmup(input({ mode: "mobile", page: { effectiveType: "2g" } })).reason, "slow-connection");
+test("mobile allows data on an unknown connection only after a measured fast required request", () => {
+  // iPhone browsers expose no navigator.connection, so effectiveType is null.
+  const unknownConnection = (recentRequiredDurationMs) => evaluateWarmup(input({
+    mode: "mobile",
+    page: { effectiveType: null },
+    candidate: dataCandidate(),
+    recentRequiredDurationMs
+  }));
+  assert.deepEqual(unknownConnection(200), { allowed: true, reason: "ok" });
+  assert.deepEqual(unknownConnection(500), { allowed: true, reason: "ok" });
+  assert.deepEqual(unknownConnection(501), { allowed: false, reason: "recent-required-slow" });
+  assert.deepEqual(unknownConnection(null), { allowed: false, reason: "recent-required-slow" });
+  assert.deepEqual(unknownConnection(undefined), { allowed: false, reason: "recent-required-slow" });
+  assert.deepEqual(
+    evaluateWarmup(input({ mode: "mobile", page: { effectiveType: undefined }, candidate: dataCandidate(), recentRequiredDurationMs: 200 })),
+    { allowed: true, reason: "ok" }
+  );
+  // Code warmup on an unknown connection was already allowed.
+  assert.deepEqual(evaluateWarmup(input({ mode: "mobile", page: { effectiveType: null } })), { allowed: true, reason: "ok" });
+});
+
+test("an unknown connection keeps every other mobile data gate", () => {
+  const unknown = (patch) => evaluateWarmup(input({
+    mode: "mobile",
+    candidate: dataCandidate(),
+    ...patch,
+    page: { effectiveType: null, ...patch.page }
+  })).reason;
+  assert.equal(unknown({ page: { saveData: true } }), "save-data");
+  assert.equal(unknown({ visit: { dataStarts: 1 } }), "visit-data-budget");
+  assert.equal(unknown({ quietSince: NOW - 1_999 }), "quiet-period");
+  assert.equal(unknown({ work: { busy: true } }), "busy");
+  assert.equal(unknown({ work: { requiredCount: 1 } }), "required-work");
+  assert.equal(unknown({ dataInFlight: true }), "data-in-flight");
+  assert.equal(unknown({ moduleInFlight: true }), "module-before-data");
+  assert.equal(unknown({ candidate: dataCandidate({ admission: null }) }), "not-admitted");
+  assert.equal(unknown({ candidate: dataCandidate({ admission: { responseBytes: 50_001, handlerMs: 100 } }) }), "over-data-cap");
+});
+
+test("reported slow connections are still denied on mobile, for code and data", () => {
+  for (const effectiveType of ["slow-2g", "2g", "3g"]) {
+    for (const candidate of [moduleCandidate(), dataCandidate()]) {
+      assert.deepEqual(
+        evaluateWarmup(input({ mode: "mobile", page: { effectiveType }, candidate, recentRequiredDurationMs: 100 })),
+        { allowed: false, reason: "slow-connection" }
+      );
+    }
+  }
   // Desktop does not read connection type at all.
   assert.equal(evaluateWarmup(input({ page: { effectiveType: "3g" }, candidate: dataCandidate() })).allowed, true);
 });

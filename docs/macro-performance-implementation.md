@@ -697,7 +697,10 @@ Decision order (first match wins; exact reason strings):
    `module-before-data`; `visit.dataStarts >= dataPerVisit` →
    `visit-data-budget`; desktop `lastDataStartAt!==null && now -
    lastDataStartAt < dataSpacingMs` → `data-spacing`;
-   mobile: `effectiveType !== "4g"` → `connection-not-4g` (null included);
+   mobile: a reported `effectiveType` other than `"4g"` →
+   `connection-not-4g`; an unknown one (`null`, as on iPhone) goes on to the
+   next check (changed 2026-09-25, see the audit's refresh-visibility
+   section);
    `recentRequiredDurationMs===null || > 500` → `recent-required-slow`;
    `admission===null` → `not-admitted`; `responseBytes > 50,000` or
    `handlerMs > 250` → `over-data-cap` (equality passes).
@@ -745,7 +748,8 @@ As built (`route-warmup-policy.js`):
 - An unknown `mode` in the selector is treated as mobile.
 
 Tests: every numbered denial alone (table-driven, one row per reason);
-unknown connection mobile (code allowed, data `connection-not-4g`); hybrid
+unknown connection mobile (code allowed; data only with a recent required
+request of at most 500 ms, else `recent-required-slow`); hybrid
 (`narrowViewport:false, coarsePointer:true` → mobile; null → mobile); bytes
 49,999/50,000/50,001; handler 249/250/251; recent required 500/501; rate
 window 59,999/60,000; quiet 1,999/2,000 (mobile) and 1,199/1,200 (desktop);

@@ -6676,6 +6676,12 @@ button.split-activity-card:hover {
   line-height: 1.35;
 }
 
+.refresh-failure-notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .import-inbox-section {
   display: grid;
   gap: 16px;

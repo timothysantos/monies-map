@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -39,12 +39,18 @@ import { deleteSplitExpense, updateSplitExpenseCategory, updateSplitExpenseNote 
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { fetchQueryWithLease } from "./query-leases";
+import { createEntriesDataOwner } from "./entries-data-owner";
 import { buildEntriesPageParams } from "./app-routing";
 
 const QUICK_EXPENSE_DRAFT_STORAGE_KEY = "monies.quickExpenseDraft";
 const QUICK_EXPENSE_DRAFT_STORAGE_TTL_MS = 15 * 60 * 1000;
 const NON_GROUP_SPLIT_VALUE = "__split_group_none__";
 const { entries: entryService, format: formatService } = moniesClient;
+
+// Without the shell's notice (isolated renders), a failed refresh is dropped.
+function runQuietly(task) {
+  return Promise.resolve().then(task).catch(() => null);
+}
 
 // Entries page glossary:
 // - "entries source view": the person/household view that owns the server payload for this page.
@@ -69,6 +75,7 @@ export function EntriesPanel({
   onInvalidateAppShellCache,
   onInvalidateEntryMutation,
   onBroadcastSplitMutation,
+  runBackgroundRefresh = runQuietly,
   canRequestWording = false
 }) {
   const queryClient = useQueryClient();
@@ -105,7 +112,8 @@ export function EntriesPanel({
     entriesSourceView,
     selectedMonth,
     externalRefreshToken,
-    onInvalidateAppShellCache
+    onInvalidateAppShellCache,
+    runBackgroundRefresh
   });
   const entryView = useMemo(
     () => ({
@@ -164,7 +172,9 @@ export function EntriesPanel({
     accounts,
     categories,
     people,
-    onRefresh: () => refreshEntriesPage({ bypassCache: true }),
+    // The server already accepted the edit; a failed refresh afterwards keeps
+    // it on screen and raises the refresh notice instead of failing the save.
+    onRefresh: () => runBackgroundRefresh(() => refreshEntriesPage({ bypassCache: true })),
     onEntryMutation: onInvalidateEntryMutation,
     onSplitMutation: onBroadcastSplitMutation
   });
@@ -1449,11 +1459,15 @@ function useEntriesPageData({
   entriesSourceView,
   selectedMonth,
   externalRefreshToken,
-  onInvalidateAppShellCache
+  onInvalidateAppShellCache,
+  runBackgroundRefresh
 }) {
-  const [entriesPage, setEntriesPage] = useState(() => buildInitialEntriesPage(view));
-  const [isEntriesPageLoading, setIsEntriesPageLoading] = useState(false);
-  const entriesQueryEpochRef = useRef(0);
+  const [owner] = useState(() => createEntriesDataOwner({ initialPage: buildInitialEntriesPage(view) }));
+  const { page: entriesPage, isLoading: isEntriesPageLoading } = useSyncExternalStore(
+    owner.subscribe,
+    owner.getSnapshot,
+    owner.getSnapshot
+  );
   const entriesPageParams = useMemo(
     () => buildEntriesPageParams({
       viewId: entriesSourceView.id,
@@ -1464,13 +1478,12 @@ function useEntriesPageData({
   const entriesPageCacheKey = entriesPageParams.toString();
 
   const clearEntriesPageCache = useCallback(() => {
-    entriesQueryEpochRef.current += 1;
     queryClient.cancelQueries({ queryKey: ["entries-page"] });
     queryClient.removeQueries({ queryKey: ["entries-page"] });
   }, [queryClient]);
 
   // This is the single network boundary for the panel. Everything else reads
-  // from local state or react-query cache.
+  // from the owner or the react-query cache.
   const fetchEntriesPage = useCallback((params, { bypassCache = false, signal } = {}) => (
     fetchQueryWithLease(queryClient, {
       queryKey: queryKeys.entriesPage(params),
@@ -1489,22 +1502,22 @@ function useEntriesPageData({
     })
   ), [queryClient]);
 
+  // Refreshes the month and view this callback was made for. The owner drops
+  // it when the person has since moved on, so it cannot replace the newer
+  // month's entries.
   const refreshEntriesPage = useCallback(async ({ bypassCache = false, invalidateAppShell = false } = {}) => {
+    // A stale callback must not clear the new month's cache mid-load.
+    if (!owner.isActive(entriesPageParams)) {
+      return null;
+    }
     if (bypassCache) {
       clearEntriesPageCache();
     }
     if (invalidateAppShell) {
       onInvalidateAppShellCache?.();
     }
-    setIsEntriesPageLoading(true);
-    try {
-      const data = await fetchEntriesPage(entriesPageParams, { bypassCache });
-      setEntriesPage(data);
-      return data;
-    } finally {
-      setIsEntriesPageLoading(false);
-    }
-  }, [clearEntriesPageCache, entriesPageParams, fetchEntriesPage, onInvalidateAppShellCache]);
+    return owner.refresh({ params: entriesPageParams, fetchPage: fetchEntriesPage, bypassCache });
+  }, [clearEntriesPageCache, entriesPageParams, fetchEntriesPage, onInvalidateAppShellCache, owner]);
 
   useEffect(() => {
     const initialPage = buildInitialEntriesPage(entriesSourceView);
@@ -1512,41 +1525,33 @@ function useEntriesPageData({
       return;
     }
 
-    setEntriesPage(initialPage);
-  }, [entriesPageCacheKey, entriesSourceView, selectedMonth]);
+    owner.seed(initialPage);
+  }, [entriesPageCacheKey, entriesSourceView, owner, selectedMonth]);
 
   useEffect(() => {
     const controller = new AbortController();
     const hasCachedPage = Boolean(queryClient.getQueryData(queryKeys.entriesPage(entriesPageParams)));
-    setIsEntriesPageLoading(!hasCachedPage);
-
-    void fetchEntriesPage(entriesPageParams, { signal: controller.signal })
-      .then((data) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        setEntriesPage(data);
-        setIsEntriesPageLoading(false);
-      })
-      .catch((error) => {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
-        setIsEntriesPageLoading(false);
-      });
+    void owner.load({
+      params: entriesPageParams,
+      fetchPage: fetchEntriesPage,
+      signal: controller.signal,
+      showLoading: !hasCachedPage
+    });
 
     return () => {
       controller.abort();
     };
-  }, [entriesPageCacheKey, entriesPageParams, fetchEntriesPage, queryClient]);
+  }, [entriesPageCacheKey, entriesPageParams, fetchEntriesPage, owner, queryClient]);
 
+  // Another tab changed this month's entries: refresh in the background and
+  // raise the refresh notice if that fails.
   useEffect(() => {
     if (!externalRefreshToken) {
       return;
     }
 
-    void refreshEntriesPage({ bypassCache: true });
-  }, [externalRefreshToken, refreshEntriesPage]);
+    void runBackgroundRefresh(() => refreshEntriesPage({ bypassCache: true }));
+  }, [externalRefreshToken, refreshEntriesPage, runBackgroundRefresh]);
 
   return {
     entriesPage,

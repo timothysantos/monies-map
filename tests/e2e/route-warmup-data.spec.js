@@ -177,12 +177,51 @@ test.describe("optional data warmup on mobile", () => {
     await context.close();
   });
 
-  // Slow connections and data saver block automatic code too; missing
-  // connection information still allows code, never data.
+  // iPhone browsers expose no navigator.connection. A measured fast page
+  // load stands in for the missing 4g report, so Entries opens from warm data.
+  test("with no connection information (as on iPhone) and a fast recent page load, Entries warms once and navigation uses it", async ({ browser }) => {
+    const { context, page } = await newPage(browser, MOBILE);
+    await injectWarmupCosts(page);
+    await setConnection(page, null);
+    const moduleLoads = recordEntriesModule(page);
+    const recorder = recordDataRequests(page);
+    await openUsable(page, "/summary?view=household&month=2026-05", recorder);
+    expect(await page.evaluate(() => "connection" in navigator && navigator.connection !== undefined)).toBe(false);
+    await expect.poll(() => recorder.requests.length, { timeout: 15_000 }).toBe(1);
+    await page.waitForTimeout(6_000);
+    expect(recorder.requests.map((entry) => `${entry.path}${entry.search}`)).toEqual(["/api/entries-page?view=household&month=2026-05"]);
+    expect(moduleLoads).toHaveLength(1);
+    expect(recorder.requests[0].at).toBeGreaterThanOrEqual(moduleLoads[0]);
+
+    await page.locator(".mobile-nav, nav").getByRole("link", { name: "Entries", exact: true }).first().click();
+    await expect(page.locator(".entry-row").filter({ hasText: "Vivify" }).first()).toBeVisible();
+    await waitUsable(page);
+    expect(recorder.requests.filter((entry) => entry.path === "/api/entries-page")).toHaveLength(1);
+    await context.close();
+  });
+
+  test("with no connection information and a slow recent page load, only code warms", async ({ browser }) => {
+    const { context, page } = await newPage(browser, MOBILE);
+    await injectWarmupCosts(page);
+    await setConnection(page, null);
+    // Every required read of the Summary page takes over 500 ms.
+    await page.route(/\/api\/(app-shell|reference-data|summary-page|summary-account-pills)(\?|$)/, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      await route.continue().catch(() => {});
+    });
+    const moduleLoads = recordEntriesModule(page);
+    const recorder = recordDataRequests(page);
+    await openUsable(page, "/summary?view=household&month=2026-05", recorder);
+    await expect.poll(() => moduleLoads.length, { timeout: 10_000 }).toBe(1);
+    await page.waitForTimeout(8_000);
+    expect(recorder.requests).toEqual([]);
+    await context.close();
+  });
+
+  // Slow connections and data saver block automatic code too.
   for (const [label, connection, codeWarms] of [
     ["a 3g connection", { saveData: false, effectiveType: "3g" }, false],
-    ["data saver", { saveData: true, effectiveType: "4g" }, false],
-    ["no connection information (as on iPhone)", null, true]
+    ["data saver", { saveData: true, effectiveType: "4g" }, false]
   ]) {
     test(`${label} warms no data`, async ({ browser }) => {
       const { context, page } = await newPage(browser, MOBILE);
