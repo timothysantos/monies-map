@@ -129,13 +129,16 @@ export function CategoryAppearancePopover({ category, onChange }) {
       >
         <CategoryGlyph iconKey={category.iconKey} />
       </button>
-      <CategoryEditDialog
-        dialog={categoryDialog}
-        isSubmitting={isSubmitting}
-        onChange={setDialog}
-        onClose={() => setDialog(null)}
-        onSave={handleSave}
-      />
+      {/* Mounted only while open: long lists render one of these per row. */}
+      {categoryDialog ? (
+        <CategoryEditDialog
+          dialog={categoryDialog}
+          isSubmitting={isSubmitting}
+          onChange={setDialog}
+          onClose={() => setDialog(null)}
+          onSave={handleSave}
+        />
+      ) : null}
     </>
   );
 }

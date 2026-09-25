@@ -1294,7 +1294,6 @@ export function EntriesPanel({
       {groupedEntries.length ? (
         <EntriesDateGroups
           groupedEntries={groupedEntries}
-          allEntries={entries}
           categories={categories}
           categoryOptions={categoryOptions}
           accountOptions={accountOptions}
