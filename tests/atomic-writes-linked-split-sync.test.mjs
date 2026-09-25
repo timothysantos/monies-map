@@ -56,6 +56,12 @@ async function splitActivity(api, splitExpenseId, month = MONTH) {
   return page.payload.splitsPage.activity.find((item) => item.id === splitExpenseId);
 }
 
+async function timSummaryExpenses(api) {
+  const summary = await api(`/api/summary-page?view=person-tim&month=${MONTH}&summary_start=${MONTH}&summary_end=${MONTH}`);
+  assert.equal(summary.status, 200, JSON.stringify(summary.payload));
+  return summary.payload.summaryPage.months.find((item) => item.month === MONTH).realExpensesMinor;
+}
+
 async function splitRow(db, splitExpenseId) {
   const [row] = await rows(db, `
     SELECT expense_date, description, payer_person_id, split_group_id, split_batch_id, category_id,
@@ -92,6 +98,7 @@ test("adding an entry to splits moves each person's month total to their share i
   const { db, api } = await openSeededDatabase(t, template);
   const entryId = await createEntry(api, { date: DATE, description: "Split sync add", amountMinor: 6_000 });
   const before = await snapshotTotals(db, MONTH);
+  const summaryBefore = await timSummaryExpenses(api);
 
   const splitExpenseId = await addToSplits(api, entryId);
 
@@ -105,10 +112,9 @@ test("adding an entry to splits moves each person's month total to their share i
   await recalculateMonthlySnapshots(db, MONTH);
   assert.deepEqual(await snapshotTotals(db, MONTH), after);
 
-  const summary = await api(`/api/summary-page?view=person-tim&month=${MONTH}&summary_start=${MONTH}&summary_end=${MONTH}`);
-  assert.equal(summary.status, 200, JSON.stringify(summary.payload));
-  const summaryMonth = summary.payload.summaryPage.months.find((item) => item.month === MONTH);
-  assert.equal(summaryMonth.realExpensesMinor, scopeTotal(after, "person-tim"));
+  // The Summary page recomputes actual spend from the entries on each read,
+  // so it already showed the share; the stored totals now agree with it.
+  assert.equal(await timSummaryExpenses(api) - summaryBefore, -3_000);
   assert.equal((await entryRow(api, "person-tim", entryId)).linkedSplitExpenseId, splitExpenseId);
 });
 
@@ -252,7 +258,9 @@ test("deleting a linked split clears the shared state in every projection and al
   assert.equal(timRow.linkedSplitExpenseId, undefined);
   assert.equal(timRow.linkedSplitShares, undefined);
   assert.equal(timRow.amountMinor, 6_000);
-  assert.equal(await entryRow(api, "person-joyce", entryId), undefined);
+  const joyceRow = await entryRow(api, "person-joyce", entryId);
+  assert.equal(joyceRow.linkedSplitExpenseId, undefined);
+  assert.equal(joyceRow.viewerSplitRatioBasisPoints, undefined);
   // Month totals are back to the unlinked entry, refreshed by the delete.
   assert.deepEqual(await snapshotTotals(db, MONTH), unlinkedTotals);
   assert.deepEqual(await rows(db, "SELECT month_key FROM monthly_snapshot_refreshes"), []);
@@ -299,5 +307,102 @@ test("a split delete that fails while recording its history changes nothing", as
 
   assert.equal(faulty.state.fired, true);
   assert.notEqual(deleted.status, 200);
+  assertSameDatabase(await dumpDatabase(db), before);
+});
+
+test("a split restore that fails while recording its history changes nothing", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const { splitExpenseId } = await createLinkedEntry(api, { description: "Split sync restore atomic" });
+  assert.equal((await api("/api/splits/expenses/delete", { splitExpenseId })).status, 200);
+  const before = await dumpDatabase(db);
+  const faulty = failingStatement(db, /INSERT INTO split_activity_history/);
+
+  const restored = await api("/api/splits/activity-history/restore", { recordKind: "expense", recordId: splitExpenseId }, { database: faulty.db });
+
+  assert.equal(faulty.state.fired, true);
+  assert.notEqual(restored.status, 200);
+  assertSameDatabase(await dumpDatabase(db), before);
+});
+
+// --- Matching a split to an imported entry ----------------------------------
+
+// An imported expense that no split record holds yet.
+async function unlinkedImportedExpense(db) {
+  const [row] = await rows(db, `
+    SELECT transactions.id, transactions.transaction_date, transactions.amount_minor
+    FROM transactions INNER JOIN imports ON imports.id = transactions.import_id
+    WHERE imports.status = 'completed' AND transactions.entry_type = 'expense'
+      AND NOT EXISTS (SELECT 1 FROM split_expenses WHERE linked_transaction_id = transactions.id)
+    ORDER BY transactions.transaction_date, transactions.id
+    LIMIT 1
+  `);
+  assert.ok(row, "the demo seed has an unlinked imported expense");
+  return row;
+}
+
+async function createSplitFor(api, transaction, description) {
+  const created = await api("/api/splits/expenses/create", {
+    groupId: null,
+    date: transaction.transaction_date,
+    description,
+    categoryName: "Groceries",
+    payerPersonName: "Tim",
+    amountMinor: Math.abs(transaction.amount_minor),
+    splitBasisPoints: 5_000,
+    paymentMethod: "bank",
+    paymentStatus: "recorded"
+  });
+  assert.equal(created.status, 200, JSON.stringify(created.payload));
+  return created.payload.splitExpenseId;
+}
+
+test("matching a split to an imported entry refreshes month totals, and deleting the match frees the entry", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const transaction = await unlinkedImportedExpense(db);
+  const month = transaction.transaction_date.slice(0, 7);
+  const firstId = await createSplitFor(api, transaction, "Split sync match first");
+  await recalculateMonthlySnapshots(db, month);
+  const before = await snapshotTotals(db, month);
+
+  const linked = await api("/api/splits/matches/link-expense", { splitExpenseId: firstId, transactionId: transaction.id });
+
+  assert.equal(linked.status, 200, JSON.stringify(linked.payload));
+  const [owner] = await rows(db, "SELECT COALESCE(transactions.owner_person_id, accounts.owner_person_id) AS person_id FROM transactions INNER JOIN accounts ON accounts.id = transactions.account_id WHERE transactions.id = ?", transaction.id);
+  const other = owner.person_id === "person-tim" ? "person-joyce" : "person-tim";
+  const shares = Object.fromEntries((await shareRows(db, firstId)).map((share) => [share.person_id, share.amount_minor]));
+  const afterLink = await snapshotTotals(db, month);
+  assert.equal(scopeTotal(afterLink, owner.person_id) - scopeTotal(before, owner.person_id), shares[owner.person_id] - Math.abs(transaction.amount_minor));
+  assert.equal(scopeTotal(afterLink, other) - scopeTotal(before, other), shares[other]);
+  assert.deepEqual(await rows(db, "SELECT month_key FROM monthly_snapshot_refreshes"), []);
+
+  // Deleting the matched split frees the entry for another split record.
+  assert.equal((await api("/api/splits/expenses/delete", { splitExpenseId: firstId })).status, 200);
+  assert.deepEqual(await snapshotTotals(db, month), before);
+  const secondId = await createSplitFor(api, transaction, "Split sync match second");
+  const relinked = await api("/api/splits/matches/link-expense", { splitExpenseId: secondId, transactionId: transaction.id });
+  assert.equal(relinked.status, 200, JSON.stringify(relinked.payload));
+  assert.equal((await entryRow(api, "person-tim", transaction.id, month)).linkedSplitExpenseId, secondId);
+
+  // Nothing else can take the row while the second split holds it.
+  const thirdId = await createSplitFor(api, transaction, "Split sync match third");
+  const refused = await api("/api/splits/matches/link-expense", { splitExpenseId: thirdId, transactionId: transaction.id });
+  assert.equal(refused.status, 400);
+  assert.match(refused.payload.error, /already linked to another split record/);
+  const restore = await api("/api/splits/activity-history/restore", { recordKind: "expense", recordId: firstId });
+  assert.equal(restore.status, 400);
+  assert.match(restore.payload.error, /linked to another split/);
+});
+
+test("a split match that fails on its month refresh marker changes nothing", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const transaction = await unlinkedImportedExpense(db);
+  const splitExpenseId = await createSplitFor(api, transaction, "Split sync match atomic");
+  const before = await dumpDatabase(db);
+  const faulty = failingStatement(db, /INSERT INTO monthly_snapshot_refreshes/);
+
+  const linked = await api("/api/splits/matches/link-expense", { splitExpenseId, transactionId: transaction.id }, { database: faulty.db });
+
+  assert.equal(faulty.state.fired, true);
+  assert.notEqual(linked.status, 200);
   assertSameDatabase(await dumpDatabase(db), before);
 });
