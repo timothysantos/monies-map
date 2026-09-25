@@ -82,6 +82,12 @@ export async function openSeededDatabase(t, template) {
   };
 }
 
+// The SQL of a prepared or bound statement. Miniflare keeps it on the
+// statement object; test-only, used to recognise a batch.
+export function statementSql(statement) {
+  return String(statement?.statement ?? "");
+}
+
 // Every table's rows in insertion order: the whole persisted state.
 export async function dumpDatabase(db) {
   const tables = await db
@@ -109,11 +115,10 @@ export function failingStatement(db, pattern, { skip = 0 } = {}) {
             state.matches += 1;
             if (state.matches > skip) {
               state.fired = true;
-              // A real statement (db.batch() rejects look-alikes) that
-              // ignores the caller's bindings and fails when it executes.
-              const statement = failing();
-              statement.bind = () => statement;
-              return statement;
+              // A real statement (db.batch() rejects look-alikes). The
+              // caller still binds its own values; the missing table fails
+              // first when the statement executes.
+              return failing();
             }
           }
           return target.prepare(sql);

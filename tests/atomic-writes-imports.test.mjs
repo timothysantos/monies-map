@@ -14,7 +14,8 @@ import {
   failingStatement,
   openSeededDatabase,
   rows,
-  snapshotTotals
+  snapshotTotals,
+  statementSql
 } from "./support/d1-workspace.mjs";
 import { recalculateMonthlySnapshots } from "../src/domain/app-repository-snapshots.ts";
 
@@ -230,6 +231,65 @@ test("a staged bulk import that fails in a later chunk or the final batch leaves
   }
 });
 
+test("a staged bulk import whose final batch lands but reports an error keeps the committed import", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const commitBody = await previewBulkCsvImport(api);
+  let dropped = false;
+  const flaky = new Proxy(db, {
+    get(target, property) {
+      if (property === "batch") {
+        return async (statements) => {
+          const result = await target.batch(statements);
+          if (!dropped && statements.some((statement) => /SET status = 'completed'/.test(statementSql(statement)))) {
+            dropped = true;
+            throw new Error("Network connection lost after commit");
+          }
+          return result;
+        };
+      }
+      const value = Reflect.get(target, property);
+      return typeof value === "function" ? value.bind(target) : value;
+    }
+  });
+
+  const { status, payload } = await api("/api/imports/commit", commitBody, { database: flaky });
+
+  assert.equal(dropped, true);
+  assert.equal(status, 400);
+  assert.match(payload.error, /Network connection lost/);
+  const [committed] = await rows(db, "SELECT id, status FROM imports WHERE source_label = 'Atomic bulk CSV'");
+  assert.equal(committed.status, "completed");
+  assert.equal((await rows(db, "SELECT id FROM transactions WHERE import_id = ?", committed.id)).length, BULK_ROW_COUNT);
+  const retry = await api("/api/imports/commit", commitBody);
+  assert.equal(retry.payload.created, false);
+});
+
+test("a second commit of the same bulk file that loses the race removes none of the first commit's rows", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const commitBody = await previewBulkCsvImport(api);
+  const first = await api("/api/imports/commit", commitBody);
+  assert.equal(first.payload.created, true);
+  const before = await dumpDatabase(db);
+  // The second request checked for the import before the first created it.
+  const late = new Proxy(db, {
+    get(target, property) {
+      if (property === "prepare") {
+        return (sql) => /SELECT status FROM imports WHERE household_id = \? AND id = \?/.test(sql)
+          ? target.prepare("SELECT status FROM imports WHERE household_id = ? AND id = ? AND 0")
+          : target.prepare(sql);
+      }
+      const value = Reflect.get(target, property);
+      return typeof value === "function" ? value.bind(target) : value;
+    }
+  });
+
+  const second = await api("/api/imports/commit", commitBody, { database: late });
+
+  assert.equal(second.status, 400);
+  assert.match(second.payload.error, /UNIQUE constraint failed: imports\.id/);
+  assertSameDatabase(await dumpDatabase(db), before);
+});
+
 // ------------------------------------------------- statement certification
 
 async function prepareStatementImport(api) {
@@ -334,6 +394,21 @@ test("a statement import certifies the matched entry, saves the checkpoint and c
   assert.deepEqual(await rows(db, "SELECT bank_certification_status FROM transactions WHERE id = ?", manualEntryId), [{ bank_certification_status: "provisional" }]);
   assert.deepEqual(await rows(db, "SELECT id FROM account_balance_checkpoints WHERE account_id = ?", accountId), []);
   assert.deepEqual(await rows(db, "SELECT id FROM statement_reconciliation_certificates WHERE import_id = ?", importId), []);
+});
+
+test("a statement certificate without preview figures computes the balance from the ledger after the commit", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const { commitBody } = await prepareStatementImport(api);
+  const reconciliations = commitBody.statementReconciliations.map(({ projectedLedgerBalanceMinor, deltaMinor, ...rest }) => rest);
+
+  const commit = await api("/api/imports/commit", { ...commitBody, statementReconciliations: reconciliations });
+
+  assert.equal(commit.status, 200, JSON.stringify(commit.payload));
+  // The certified row's cleared date (2026-04-17) falls in the statement
+  // period, so the ledger balance is the -7.34 card charge: no difference.
+  assert.deepEqual(await rows(db, "SELECT statement_balance_minor, projected_ledger_balance_minor, delta_minor FROM statement_reconciliation_certificates WHERE import_id = ?", commit.payload.importId), [
+    { statement_balance_minor: -734, projected_ledger_balance_minor: -734, delta_minor: 0 }
+  ]);
 });
 
 test("a statement import that fails while saving its certificate certifies nothing", async (t) => {
