@@ -190,15 +190,6 @@ async function loadEntriesPage(page, { view = "person-tim", month = "2025-10" } 
   return response.json();
 }
 
-async function loadAppShell(page, { month = "2025-10", scope = "direct_plus_shared" } = {}) {
-  const params = new URLSearchParams({ month, scope });
-  const response = await page.request.get(`/api/app-shell?${params.toString()}`);
-  if (!response.ok()) {
-    throw new Error(`App shell failed: ${response.status()} ${await response.text()}`);
-  }
-  return response.json();
-}
-
 async function loadReferenceData(page) {
   const response = await page.request.get("/api/reference-data");
   if (!response.ok()) {
@@ -1495,7 +1486,7 @@ test.describe("import flow", () => {
     const account = referenceData.accounts.find((item) => item.name === "UOB One" && item.ownerLabel === "Tim");
     expect(account).toBeTruthy();
 
-    const beforeEntries = await loadEntriesPage(page, { view: "person-tim", month });
+    await loadEntriesPage(page, { view: "person-tim", month });
     const beforeSummary = await loadSummaryPage(page, { view: "person-tim", month });
     const beforeMonth = findSummaryMonth(beforeSummary, month);
     const beforeImportsPageResponse = await page.request.get("/api/imports-page");
@@ -1920,7 +1911,6 @@ test.describe("import flow", () => {
     await importsPage.getByRole("button", { name: "Preview import" }).click();
     await importsPage.getByRole("button", { name: "Commit import" }).first().click();
 
-    const expectedLabel = formatMoney(expectedAfterActual);
     await summaryPage.goto("/summary?view=person-tim&month=2025-10&summary_focus=2025-10");
     await monthPage.goto("/month?view=person-tim&month=2025-10");
 
