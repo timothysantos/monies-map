@@ -51,7 +51,12 @@ import { useRouteWorkReport } from "./use-route-work-status";
 
 const { format: formatService } = moniesClient;
 
-export function SplitsPanel({ view, categories, people, onRefresh, canRequestWording = false }) {
+// Without the shell's notice (isolated renders), a failed refresh is dropped.
+function runQuietly(task) {
+  return Promise.resolve().then(task).catch(() => null);
+}
+
+export function SplitsPanel({ view, categories, people, onRefresh, runBackgroundRefresh = runQuietly, canRequestWording = false }) {
   const splitsPage = view.splitsPage ?? {
     groups: [],
     activity: [],
@@ -378,13 +383,16 @@ export function SplitsPanel({ view, categories, people, onRefresh, canRequestWor
     const refreshGeneration = refreshGuardRef.current?.next() ?? 1;
     setIsRefreshingDerived(true);
 
-    void onRefresh(options)
-      .then(() => {
+    // A failed refresh keeps the optimistic page and raises the shell's
+    // refresh notice, whose retry runs this again.
+    void runBackgroundRefresh(
+      () => onRefresh(options).then(() => {
         if (refreshGuardRef.current?.isCurrent(refreshGeneration)) {
           setOptimisticSplitsPage(null);
         }
-      })
-      .catch(() => {})
+      }),
+      () => refreshAfterSplitMutation(options)
+    )
       .finally(() => {
         if (refreshGuardRef.current?.isCurrent(refreshGeneration)) {
           setIsRefreshingDerived(false);
