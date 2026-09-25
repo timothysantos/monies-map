@@ -203,7 +203,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       return { ok: false };
     }
     const currentEntry = patch
-      ? entryService.normalize({ ...existingEntry, ...patch }, people, existingEntry)
+      ? entryService.normalize({ ...existingEntry, ...withLinkedEntryTotal(existingEntry, patch) }, people, existingEntry)
       : existingEntry;
 
     const primarySplit = currentEntry.ownershipType === "shared" ? currentEntry.splits[0] : undefined;
@@ -264,6 +264,9 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
           invalidateMonth: refreshPlan.invalidateMonth,
           invalidateSummary: refreshPlan.invalidateSummary
         });
+      }
+      if (refreshPlan.invalidateSplits) {
+        onSplitMutation?.({ month: view.monthPage.month });
       }
       await onRefresh();
       return {
@@ -629,7 +632,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
         return entry;
       }
 
-      return entryService.normalize({ ...entry, ...patch }, people, entry);
+      return entryService.normalize({ ...entry, ...withLinkedEntryTotal(entry, patch) }, people, entry);
     }));
   }
 
@@ -640,7 +643,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       }
 
       if (view.id === "household" || entry.ownershipType !== "shared" || entry.splits.length < 2) {
-        return entryService.normalize({ ...entry, amountMinor, amountInput }, people, entry);
+        return entryService.normalize({ ...entry, ...withLinkedEntryTotal(entry, { amountMinor, amountInput }) }, people, entry);
       }
 
       const splitPercent = entryService.getVisibleSplitPercent(entry, view.id) ?? 50;
@@ -775,6 +778,14 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     updateEntryAmount,
     updateEntrySplit
   };
+}
+
+// The amount field of a split-linked entry edits the ledger total, even in a
+// person view where the row's amountMinor is the viewer's share.
+function withLinkedEntryTotal(entry, patch) {
+  return entry.linkedSplitExpenseId && Object.prototype.hasOwnProperty.call(patch, "amountMinor")
+    ? { ...patch, totalAmountMinor: patch.amountMinor }
+    : patch;
 }
 
 function buildPersistedEntryPayload(entry, primarySplit) {

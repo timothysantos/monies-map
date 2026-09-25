@@ -79,8 +79,10 @@ export function buildComparableEntryState(entry) {
     accountId: entry.accountId ?? null,
     accountName: entry.accountName ?? "",
     categoryName: entry.categoryName,
+    // Shared and split-linked rows hold the viewer's share as amountMinor;
+    // the saved ledger amount is the total.
     amountMinor: Number(
-      entry.ownershipType === "shared"
+      entry.ownershipType === "shared" || entry.linkedSplitExpenseId
         ? Number(entry.totalAmountMinor ?? entry.amountMinor ?? 0)
         : (entry.amountMinor ?? 0)
     ),
