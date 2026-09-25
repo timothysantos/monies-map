@@ -500,6 +500,16 @@ async function ensureDemoSchemaOnce(db: D1Database) {
     await db.prepare("ALTER TABLE statement_reconciliation_certificates ADD COLUMN certified_ledger_rows_json TEXT").run();
   }
 
+  const importRowColumns = await db
+    .prepare("PRAGMA table_info(import_rows)")
+    .all<{ name: string }>();
+  if (
+    importRowColumns.results.length > 0
+    && !importRowColumns.results.some((column) => column.name === "promoted_entry_snapshot_json")
+  ) {
+    await db.prepare("ALTER TABLE import_rows ADD COLUMN promoted_entry_snapshot_json TEXT").run();
+  }
+
   await db
     .prepare(`
       CREATE TABLE IF NOT EXISTS app_error_diagnostics (
