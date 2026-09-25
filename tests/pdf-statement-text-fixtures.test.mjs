@@ -257,16 +257,16 @@ test("OCBC 360 PDF text parses continuation lines across a disclosure page and r
   assert.equal(parsed.sourceLabel, "360 ACCOUNT-0001-May-26");
   assert.deepEqual(parsed.warnings, []);
   assert.equal(parsed.rows.length, 5);
-  // Current behavior: the first (transaction) date column is the row date and
-  // the value-date column is dropped while it sits inside the statement period
-  // ("01 MAY 02 MAY", "31 MAY 30 MAY"). DOMAIN.md asks for both lanes, so this
-  // is an open target in docs/known-coupling-targets.md, not a settled contract.
+  // Rows are booked on the Value Date column and keep the Transaction Date as
+  // a note ("01 MAY 02 MAY", "31 MAY 30 MAY"), matching the OCBC 360 activity
+  // CSV and DOMAIN.md date lanes. Real-statement proof:
+  // tests/pdf-real-statement-fixtures.test.mjs.
   assert.deepEqual(parsed.rows.map(projectRow), [
-    { date: "2026-05-01", description: "FAST PAYMENT via PayNow-Mobile to REDACTED PERSON", amountMinor: -20000, account: "OCBC 360", category: "Transfer", type: "transfer", note: "" },
+    { date: "2026-05-02", description: "FAST PAYMENT via PayNow-Mobile to REDACTED PERSON", amountMinor: -20000, account: "OCBC 360", category: "Transfer", type: "transfer", note: "transaction date: 2026-05-01" },
     { date: "2026-05-05", description: "GIRO - SALARY REDACTED EMPLOYER PTE LTD SALA", amountMinor: 650000, account: "OCBC 360", category: "Salary", type: "income", note: "" },
     { date: "2026-05-18", description: "BILL PAYMENT INB 0000000000001234 INTERNET BANKING SINGAPORE", amountMinor: -79172, account: "OCBC 360", category: "Transfer", type: "transfer", note: "" },
     { date: "2026-05-22", description: "FUND TRANSFER OTHR - 00000000 to REDACTED PAYEE", amountMinor: -100000, account: "OCBC 360", category: "Transfer", type: "transfer", note: "" },
-    { date: "2026-05-31", description: "INTEREST CREDIT", amountMinor: 214, account: "OCBC 360", category: "Other - Income", type: "income", note: "" }
+    { date: "2026-05-30", description: "INTEREST CREDIT", amountMinor: 214, account: "OCBC 360", category: "Other - Income", type: "income", note: "transaction date: 2026-05-31" }
   ]);
   assert.deepEqual(parsed.checkpoints, [{
     accountName: "OCBC 360",
