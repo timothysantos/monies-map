@@ -248,6 +248,37 @@ The backend should remain explicit about boundaries:
 The existing domain richness is an asset. The redesign should not flatten the
 domain model just to simplify the client.
 
+### Write atomicity and derived month totals (current, 2026-09)
+
+Every persistence command reads and checks first, then commits all of its
+writes, its audit event and its month refresh markers in one `db.batch()`,
+which D1 runs as one transaction. A failure at any statement leaves the
+database as it was. This covers import commit and rollback (including
+statement certification, checkpoints and certificates), entry create, edit
+and delete, transfer link and settle, and every month-plan command.
+
+`monthly_snapshots` (the stored month totals Summary reads) are derived from
+the committed ledger, so they are refreshed in a second batch right after the
+write:
+
+```text
+command batch:  ledger writes + audit event + monthly_snapshot_refreshes rows
+refresh batch:  every scope's monthly_snapshots for those months
+                + delete their monthly_snapshot_refreshes rows
+Summary/Month page read: refresh any months still marked, then read totals
+```
+
+Each marker write sets a new refresh token, and a refresh only writes totals
+and clears a marker while the token it read is unchanged, so a refresh that
+races a newer write can never store older totals. A refresh that fails does
+not fail the committed write; its markers stay until
+the next Summary or Month read repairs them. An import larger than one batch
+(over 500 statements, about 245 CSV rows) stages the draft import and its new
+rows in chunks, which ledger reads ignore while the import is a draft, then
+makes every visible change in one final batch and discards the staged rows if
+anything fails. Rolling back an already rolled-back import is rejected (409).
+Evidence: `docs/audits/atomic-writes.md`.
+
 ### Shortcut integration boundary
 
 The Apple Pay integration uses a dedicated direct-create route rather than the

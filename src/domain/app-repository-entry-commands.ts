@@ -1,12 +1,18 @@
 // Entry commands (H15b): create, update (every edit path), delete, deep-link
 // lookup, and transfer linking and settling. Each write keeps its original
-// SQL order, idempotency check and bank-fact lock, and recalculates the
-// affected months' snapshots.
+// SQL order, idempotency check and bank-fact lock. Reads and checks run
+// first; the ledger change, its audit event and the month refresh markers
+// then commit as one db.batch(), and the affected months' snapshots are
+// refreshed after it (see app-repository-snapshots.ts).
 
-import { recalculateMonthlySnapshots } from "./app-repository-snapshots";
+import {
+  buildMonthlySnapshotRefreshMarkers,
+  recalculateMonthlySnapshots,
+  refreshMonthlySnapshotsAfterWrite
+} from "./app-repository-snapshots";
 import { normalizeStatementDate } from "./app-repository-helpers";
 import { recordCategoryMatchSuggestion } from "./app-repository-category-match-rules";
-import { recordAuditEvent } from "./app-repository-audit";
+import { buildAuditEventStatement } from "./app-repository-audit";
 import { resolveAccountId, resolveCategoryId, resolvePersonId } from "./app-repository-lookups";
 import { upsertLinkedSplitExpenseForEntryRecord } from "./app-repository-splits";
 import type { EntryDeepLinkContextDto } from "../types/dto";
@@ -87,6 +93,18 @@ async function findClosedStatementCheckpointForTransaction(
     `)
     .bind(DEFAULT_HOUSEHOLD_ID, input.accountId, input.transactionDate, input.transactionDate)
     .first<{ checkpoint_month: string; statement_start_date: string | null; statement_end_date: string | null }>();
+}
+
+// Unlinks both halves of a transfer pair and removes the pair's group.
+function buildTransferGroupDissolveStatements(db: D1Database, transferGroupId: string) {
+  return [
+    db
+      .prepare("UPDATE transactions SET transfer_group_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE household_id = ? AND transfer_group_id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, transferGroupId),
+    db
+      .prepare("DELETE FROM transfer_groups WHERE household_id = ? AND id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, transferGroupId)
+  ];
 }
 
 export async function updateEntryRecord(
@@ -204,7 +222,19 @@ export async function updateEntryRecord(
     }
   });
 
-  await db
+  const previousMonth = transaction.transaction_date.slice(0, 7);
+  const nextMonth = input.date.slice(0, 7);
+  const previousClearedDate = transaction.post_date ?? transaction.transaction_date;
+  const nextClearedDate = resolvedPostDate ?? input.date;
+  const monthsToRecalculate = new Set([
+    previousMonth,
+    nextMonth,
+    previousClearedDate.slice(0, 7),
+    nextClearedDate.slice(0, 7)
+  ]);
+
+  const statements = [
+    db
     .prepare(`
       UPDATE transactions
       SET
@@ -239,39 +269,23 @@ export async function updateEntryRecord(
       input.entryId,
       DEFAULT_HOUSEHOLD_ID
     )
-    .run();
+  ];
 
   if (resolvedEntryType !== "transfer" && transaction.transfer_group_id) {
-    await db
-      .prepare("UPDATE transactions SET transfer_group_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE household_id = ? AND transfer_group_id = ?")
-      .bind(DEFAULT_HOUSEHOLD_ID, transaction.transfer_group_id)
-      .run();
-    await db
-      .prepare("DELETE FROM transfer_groups WHERE household_id = ? AND id = ?")
-      .bind(DEFAULT_HOUSEHOLD_ID, transaction.transfer_group_id)
-      .run();
+    statements.push(...buildTransferGroupDissolveStatements(db, transaction.transfer_group_id));
   }
 
-  const previousMonth = transaction.transaction_date.slice(0, 7);
-  const nextMonth = input.date.slice(0, 7);
-  const previousClearedDate = transaction.post_date ?? transaction.transaction_date;
-  const nextClearedDate = resolvedPostDate ?? input.date;
-  const monthsToRecalculate = new Set([
-    previousMonth,
-    nextMonth,
-    previousClearedDate.slice(0, 7),
-    nextClearedDate.slice(0, 7)
-  ]);
-  for (const month of monthsToRecalculate) {
-    await recalculateMonthlySnapshots(db, month);
-  }
-
-  await recordAuditEvent(db, {
-    entityType: "transaction",
-    entityId: input.entryId,
-    action: "entry_updated",
-    detail: `Updated entry ${input.description} on ${input.date} in ${account.account_name}.`
-  });
+  statements.push(
+    buildAuditEventStatement(db, {
+      entityType: "transaction",
+      entityId: input.entryId,
+      action: "entry_updated",
+      detail: `Updated entry ${input.description} on ${input.date} in ${account.account_name}.`
+    }),
+    ...buildMonthlySnapshotRefreshMarkers(db, monthsToRecalculate)
+  );
+  await db.batch(statements);
+  await refreshMonthlySnapshotsAfterWrite(db, monthsToRecalculate);
 
   if (transaction.category_name && transaction.category_name !== input.categoryName) {
     await recordCategoryMatchSuggestion(db, {
@@ -305,17 +319,17 @@ export async function updateEntryNoteRecord(
     throw new Error("Entry not found.");
   }
 
-  await db
-    .prepare("UPDATE transactions SET note = ?, updated_at = CURRENT_TIMESTAMP WHERE household_id = ? AND id = ?")
-    .bind(input.note ?? null, DEFAULT_HOUSEHOLD_ID, input.entryId)
-    .run();
-
-  await recordAuditEvent(db, {
-    entityType: "transaction",
-    entityId: input.entryId,
-    action: "entry_note_updated",
-    detail: "Updated entry note from linked split note sync."
-  });
+  await db.batch([
+    db
+      .prepare("UPDATE transactions SET note = ?, updated_at = CURRENT_TIMESTAMP WHERE household_id = ? AND id = ?")
+      .bind(input.note ?? null, DEFAULT_HOUSEHOLD_ID, input.entryId),
+    buildAuditEventStatement(db, {
+      entityType: "transaction",
+      entityId: input.entryId,
+      action: "entry_note_updated",
+      detail: "Updated entry note from linked split note sync."
+    })
+  ]);
 
   return { entryId: input.entryId, updated: true };
 }
@@ -359,19 +373,20 @@ export async function updateEntryCategoryRecord(
     throw new Error("Entry not found.");
   }
 
-  await db
-    .prepare("UPDATE transactions SET category_id = ?, updated_at = CURRENT_TIMESTAMP WHERE household_id = ? AND id = ?")
-    .bind(category.id, DEFAULT_HOUSEHOLD_ID, input.entryId)
-    .run();
-
-  await recalculateMonthlySnapshots(db, transaction.transaction_date.slice(0, 7));
-
-  await recordAuditEvent(db, {
-    entityType: "transaction",
-    entityId: input.entryId,
-    action: "entry_category_updated",
-    detail: `Updated entry category from linked split category sync to ${input.categoryName}.`
-  });
+  const months = [transaction.transaction_date.slice(0, 7)];
+  await db.batch([
+    db
+      .prepare("UPDATE transactions SET category_id = ?, updated_at = CURRENT_TIMESTAMP WHERE household_id = ? AND id = ?")
+      .bind(category.id, DEFAULT_HOUSEHOLD_ID, input.entryId),
+    buildAuditEventStatement(db, {
+      entityType: "transaction",
+      entityId: input.entryId,
+      action: "entry_category_updated",
+      detail: `Updated entry category from linked split category sync to ${input.categoryName}.`
+    }),
+    ...buildMonthlySnapshotRefreshMarkers(db, months)
+  ]);
+  await refreshMonthlySnapshotsAfterWrite(db, months);
 
   if (transaction.category_name && transaction.category_name !== input.categoryName) {
     await recordCategoryMatchSuggestion(db, {
@@ -423,25 +438,26 @@ export async function updateEntryPostDateRecord(
     throw new Error("Posted date must use YYYY-MM-DD.");
   }
 
-  await db
-    .prepare(`
-      UPDATE transactions
-      SET
-        post_date = ?,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ? AND household_id = ?
-    `)
-    .bind(normalizedPostDate, input.entryId, DEFAULT_HOUSEHOLD_ID)
-    .run();
-
-  await recalculateMonthlySnapshots(db, transaction.transaction_date.slice(0, 7));
-
-  await recordAuditEvent(db, {
-    entityType: "transaction",
-    entityId: input.entryId,
-    action: "entry_post_date_updated",
-    detail: `Updated posted date for ${transaction.description} from ${transaction.post_date ?? "unset"} to ${normalizedPostDate}.`
-  });
+  const months = [transaction.transaction_date.slice(0, 7)];
+  await db.batch([
+    db
+      .prepare(`
+        UPDATE transactions
+        SET
+          post_date = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND household_id = ?
+      `)
+      .bind(normalizedPostDate, input.entryId, DEFAULT_HOUSEHOLD_ID),
+    buildAuditEventStatement(db, {
+      entityType: "transaction",
+      entityId: input.entryId,
+      action: "entry_post_date_updated",
+      detail: `Updated posted date for ${transaction.description} from ${transaction.post_date ?? "unset"} to ${normalizedPostDate}.`
+    }),
+    ...buildMonthlySnapshotRefreshMarkers(db, months)
+  ]);
+  await refreshMonthlySnapshotsAfterWrite(db, months);
 
   return { entryId: input.entryId, postDate: normalizedPostDate, updated: true };
 }
@@ -516,38 +532,37 @@ export async function updateEntryClassificationRecord(
     }
   });
 
-  await db
-    .prepare(`
-      UPDATE transactions
-      SET
-        entry_type = ?,
-        transfer_direction = ?,
-        transfer_group_id = ?,
-        category_id = ?,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ? AND household_id = ?
-    `)
-    .bind(input.entryType, nextTransferDirection, nextTransferGroupId, category.id, input.entryId, DEFAULT_HOUSEHOLD_ID)
-    .run();
+  const statements = [
+    db
+      .prepare(`
+        UPDATE transactions
+        SET
+          entry_type = ?,
+          transfer_direction = ?,
+          transfer_group_id = ?,
+          category_id = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND household_id = ?
+      `)
+      .bind(input.entryType, nextTransferDirection, nextTransferGroupId, category.id, input.entryId, DEFAULT_HOUSEHOLD_ID)
+  ];
 
   if (input.entryType !== "transfer" && transaction.transfer_group_id) {
-    await db
-      .prepare("UPDATE transactions SET transfer_group_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE household_id = ? AND transfer_group_id = ?")
-      .bind(DEFAULT_HOUSEHOLD_ID, transaction.transfer_group_id)
-      .run();
-    await db
-      .prepare("DELETE FROM transfer_groups WHERE household_id = ? AND id = ?")
-      .bind(DEFAULT_HOUSEHOLD_ID, transaction.transfer_group_id)
-      .run();
+    statements.push(...buildTransferGroupDissolveStatements(db, transaction.transfer_group_id));
   }
 
-  await recalculateMonthlySnapshots(db, transaction.transaction_date.slice(0, 7));
-  await recordAuditEvent(db, {
-    entityType: "transaction",
-    entityId: input.entryId,
-    action: "entry_classification_updated",
-    detail: `Updated entry classification for ${transaction.description} on ${transaction.transaction_date}.`
-  });
+  const months = [transaction.transaction_date.slice(0, 7)];
+  statements.push(
+    buildAuditEventStatement(db, {
+      entityType: "transaction",
+      entityId: input.entryId,
+      action: "entry_classification_updated",
+      detail: `Updated entry classification for ${transaction.description} on ${transaction.transaction_date}.`
+    }),
+    ...buildMonthlySnapshotRefreshMarkers(db, months)
+  );
+  await db.batch(statements);
+  await refreshMonthlySnapshotsAfterWrite(db, months);
 
   if (transaction.category_name && transaction.category_name !== input.categoryName) {
     await recordCategoryMatchSuggestion(db, {
@@ -625,13 +640,8 @@ export async function createEntryRecord(
         offsetsCategory: input.offsetsCategory ? 1 : 0,
         note: input.note ?? null
       });
-      const monthsToRecalculate = new Set([
-        input.date.slice(0, 7),
-        (input.postDate ?? input.date).slice(0, 7)
-      ]);
-      for (const month of monthsToRecalculate) {
-        await recalculateMonthlySnapshots(db, month);
-      }
+      // A replay writes nothing, so it recalculates the months directly.
+      await recalculateEntryMonths(db, input.date, input.postDate);
       return {
         entryId: existing.id,
         created: false,
@@ -642,9 +652,14 @@ export async function createEntryRecord(
     }
   }
   const entryId = `txn-${crypto.randomUUID()}`;
+  const monthsToRecalculate = new Set([
+    input.date.slice(0, 7),
+    (input.postDate ?? input.date).slice(0, 7)
+  ]);
 
   try {
-    await db
+    await db.batch([
+      db
       .prepare(`
         INSERT INTO transactions (
           id, household_id, account_id, transaction_date, post_date,
@@ -668,8 +683,15 @@ export async function createEntryRecord(
         input.offsetsCategory ? 1 : 0,
         input.note ?? null,
         externalReference
-      )
-      .run();
+      ),
+      buildAuditEventStatement(db, {
+        entityType: "transaction",
+        entityId: entryId,
+        action: "entry_created",
+        detail: `Created ${input.entryType} entry ${input.description} on ${input.date} in ${accountName}.`
+      }),
+      ...buildMonthlySnapshotRefreshMarkers(db, monthsToRecalculate)
+    ]);
   } catch (error) {
     const existing = externalReference
       ? await loadEntryByExternalReference(db, externalReference)
@@ -691,13 +713,7 @@ export async function createEntryRecord(
       offsetsCategory: input.offsetsCategory ? 1 : 0,
       note: input.note ?? null
     });
-    const monthsToRecalculate = new Set([
-      input.date.slice(0, 7),
-      (input.postDate ?? input.date).slice(0, 7)
-    ]);
-    for (const month of monthsToRecalculate) {
-      await recalculateMonthlySnapshots(db, month);
-    }
+    await recalculateEntryMonths(db, input.date, input.postDate);
     return {
       entryId: existing.id,
       created: false,
@@ -707,20 +723,7 @@ export async function createEntryRecord(
     };
   }
 
-  const monthsToRecalculate = new Set([
-    input.date.slice(0, 7),
-    (input.postDate ?? input.date).slice(0, 7)
-  ]);
-  for (const month of monthsToRecalculate) {
-    await recalculateMonthlySnapshots(db, month);
-  }
-
-  await recordAuditEvent(db, {
-    entityType: "transaction",
-    entityId: entryId,
-    action: "entry_created",
-    detail: `Created ${input.entryType} entry ${input.description} on ${input.date} in ${accountName}.`
-  });
+  await refreshMonthlySnapshotsAfterWrite(db, monthsToRecalculate);
 
   if (input.ownershipType === "shared" && input.entryType === "expense") {
     await upsertLinkedSplitExpenseForEntryRecord(db, {
@@ -730,6 +733,12 @@ export async function createEntryRecord(
   }
 
   return { entryId, created: true, accountId, accountName, currency };
+}
+
+async function recalculateEntryMonths(db: D1Database, date: string, postDate?: string | null) {
+  for (const month of new Set([date.slice(0, 7), (postDate ?? date).slice(0, 7)])) {
+    await recalculateMonthlySnapshots(db, month);
+  }
 }
 
 interface IdempotentEntryRow {
@@ -838,48 +847,30 @@ export async function deleteEntryRecord(
     throw new Error("Entry not found.");
   }
 
-  if (transaction.transfer_group_id) {
-    await db
-      .prepare(`
-        UPDATE transactions
-        SET transfer_group_id = NULL,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE household_id = ?
-          AND transfer_group_id = ?
-      `)
-      .bind(DEFAULT_HOUSEHOLD_ID, transaction.transfer_group_id)
-      .run();
-    await db
-      .prepare("DELETE FROM transfer_groups WHERE household_id = ? AND id = ?")
-      .bind(DEFAULT_HOUSEHOLD_ID, transaction.transfer_group_id)
-      .run();
-  }
-
-  await db
-    .prepare("DELETE FROM monthly_plan_entry_links WHERE transaction_id = ?")
-    .bind(input.entryId)
-    .run();
-  await db
-    .prepare("UPDATE split_expenses SET linked_transaction_id = NULL WHERE linked_transaction_id = ?")
-    .bind(input.entryId)
-    .run();
-  await db
-    .prepare("UPDATE split_settlements SET linked_transaction_id = NULL WHERE linked_transaction_id = ?")
-    .bind(input.entryId)
-    .run();
-  await db
-    .prepare("DELETE FROM transactions WHERE household_id = ? AND id = ?")
-    .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
-    .run();
-
-  await recalculateMonthlySnapshots(db, transaction.transaction_date.slice(0, 7));
-
-  await recordAuditEvent(db, {
-    entityType: "transaction",
-    entityId: input.entryId,
-    action: "entry_deleted",
-    detail: `Deleted entry ${transaction.description} on ${transaction.transaction_date}.`
-  });
+  const months = [transaction.transaction_date.slice(0, 7)];
+  await db.batch([
+    ...(transaction.transfer_group_id ? buildTransferGroupDissolveStatements(db, transaction.transfer_group_id) : []),
+    db
+      .prepare("DELETE FROM monthly_plan_entry_links WHERE transaction_id = ?")
+      .bind(input.entryId),
+    db
+      .prepare("UPDATE split_expenses SET linked_transaction_id = NULL WHERE linked_transaction_id = ?")
+      .bind(input.entryId),
+    db
+      .prepare("UPDATE split_settlements SET linked_transaction_id = NULL WHERE linked_transaction_id = ?")
+      .bind(input.entryId),
+    db
+      .prepare("DELETE FROM transactions WHERE household_id = ? AND id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, input.entryId),
+    buildAuditEventStatement(db, {
+      entityType: "transaction",
+      entityId: input.entryId,
+      action: "entry_deleted",
+      detail: `Deleted entry ${transaction.description} on ${transaction.transaction_date}.`
+    }),
+    ...buildMonthlySnapshotRefreshMarkers(db, months)
+  ]);
+  await refreshMonthlySnapshotsAfterWrite(db, months);
 
   return {
     entryId: input.entryId,
@@ -972,25 +963,25 @@ export async function linkTransferPair(
     throw new Error("Transfer category not found");
   }
 
-  const staleGroupIds = [fromEntry.transfer_group_id, toEntry.transfer_group_id].filter(Boolean);
+  const staleGroupIds = [fromEntry.transfer_group_id, toEntry.transfer_group_id].filter((id): id is string => Boolean(id));
+  const statements: D1PreparedStatement[] = [];
   for (const groupId of staleGroupIds) {
-    await db
-      .prepare("UPDATE transactions SET transfer_group_id = NULL WHERE household_id = ? AND transfer_group_id = ?")
-      .bind(DEFAULT_HOUSEHOLD_ID, groupId)
-      .run();
-    await db
-      .prepare("DELETE FROM transfer_groups WHERE household_id = ? AND id = ?")
-      .bind(DEFAULT_HOUSEHOLD_ID, groupId)
-      .run();
+    statements.push(
+      db
+        .prepare("UPDATE transactions SET transfer_group_id = NULL WHERE household_id = ? AND transfer_group_id = ?")
+        .bind(DEFAULT_HOUSEHOLD_ID, groupId),
+      db
+        .prepare("DELETE FROM transfer_groups WHERE household_id = ? AND id = ?")
+        .bind(DEFAULT_HOUSEHOLD_ID, groupId)
+    );
   }
 
   const groupId = `tg-${crypto.randomUUID()}`;
-  await db
-    .prepare("INSERT INTO transfer_groups (id, household_id, note, matched_confidence) VALUES (?, ?, ?, ?)")
-    .bind(groupId, DEFAULT_HOUSEHOLD_ID, "Linked from entries editor", 1)
-    .run();
-
-  await Promise.all([
+  const months = new Set([fromEntry.transaction_date.slice(0, 7), toEntry.transaction_date.slice(0, 7)]);
+  statements.push(
+    db
+      .prepare("INSERT INTO transfer_groups (id, household_id, note, matched_confidence) VALUES (?, ?, ?, ?)")
+      .bind(groupId, DEFAULT_HOUSEHOLD_ID, "Linked from entries editor", 1),
     db
       .prepare(`
         UPDATE transactions
@@ -1003,8 +994,7 @@ export async function linkTransferPair(
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ? AND household_id = ?
       `)
-      .bind(groupId, transferCategory.id, input.fromEntryId, DEFAULT_HOUSEHOLD_ID)
-      .run(),
+      .bind(groupId, transferCategory.id, input.fromEntryId, DEFAULT_HOUSEHOLD_ID),
     db
       .prepare(`
         UPDATE transactions
@@ -1017,21 +1007,17 @@ export async function linkTransferPair(
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ? AND household_id = ?
       `)
-      .bind(groupId, transferCategory.id, input.toEntryId, DEFAULT_HOUSEHOLD_ID)
-      .run()
-  ]);
-
-  const months = new Set([fromEntry.transaction_date.slice(0, 7), toEntry.transaction_date.slice(0, 7)]);
-  for (const month of months) {
-    await recalculateMonthlySnapshots(db, month);
-  }
-
-  await recordAuditEvent(db, {
-    entityType: "transfer_group",
-    entityId: groupId,
-    action: "transfer_linked",
-    detail: `Linked transfer pair ${input.fromEntryId} -> ${input.toEntryId}.`
-  });
+      .bind(groupId, transferCategory.id, input.toEntryId, DEFAULT_HOUSEHOLD_ID),
+    buildAuditEventStatement(db, {
+      entityType: "transfer_group",
+      entityId: groupId,
+      action: "transfer_linked",
+      detail: `Linked transfer pair ${input.fromEntryId} -> ${input.toEntryId}.`
+    }),
+    ...buildMonthlySnapshotRefreshMarkers(db, months)
+  );
+  await db.batch(statements);
+  await refreshMonthlySnapshotsAfterWrite(db, months);
 
   return { groupId, linked: true };
 }
@@ -1106,27 +1092,28 @@ export async function settleTransferPair(
     counterpartCategoryId = counterpartCategory.id;
   }
 
-  await db
-    .prepare(`
-      UPDATE transactions
-      SET
-        entry_type = ?,
-        transfer_direction = NULL,
-        transfer_group_id = NULL,
-        category_id = ?,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ? AND household_id = ?
-    `)
-    .bind(
-      currentEntry.transfer_direction === "in" ? "income" : "expense",
-      currentCategory.id,
-      currentEntry.id,
-      DEFAULT_HOUSEHOLD_ID
-    )
-    .run();
+  const statements = [
+    db
+      .prepare(`
+        UPDATE transactions
+        SET
+          entry_type = ?,
+          transfer_direction = NULL,
+          transfer_group_id = NULL,
+          category_id = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND household_id = ?
+      `)
+      .bind(
+        currentEntry.transfer_direction === "in" ? "income" : "expense",
+        currentCategory.id,
+        currentEntry.id,
+        DEFAULT_HOUSEHOLD_ID
+      )
+  ];
 
   if (counterpartEntry && counterpartCategoryId) {
-    await db
+    statements.push(db
       .prepare(`
         UPDATE transactions
         SET
@@ -1142,32 +1129,31 @@ export async function settleTransferPair(
         counterpartCategoryId,
         counterpartEntry.id,
         DEFAULT_HOUSEHOLD_ID
-      )
-      .run();
+      ));
   }
 
   const groupIds = new Set([currentEntry.transfer_group_id, counterpartEntry?.transfer_group_id].filter(Boolean));
   for (const groupId of groupIds) {
-    await db
+    statements.push(db
       .prepare("DELETE FROM transfer_groups WHERE household_id = ? AND id = ?")
-      .bind(DEFAULT_HOUSEHOLD_ID, groupId)
-      .run();
+      .bind(DEFAULT_HOUSEHOLD_ID, groupId));
   }
 
   const months = new Set(
     [currentEntry.transaction_date.slice(0, 7), counterpartEntry?.transaction_date?.slice(0, 7)]
       .filter((month): month is string => Boolean(month))
   );
-  for (const month of months) {
-    await recalculateMonthlySnapshots(db, month);
-  }
-
-  await recordAuditEvent(db, {
-    entityType: "transfer_group",
-    entityId: currentEntry.transfer_group_id ?? currentEntry.id,
-    action: "transfer_settled",
-    detail: `Broke transfer pair and converted ${currentEntry.id}${counterpartEntry ? ` and ${counterpartEntry.id}` : ""} into regular categories.`
-  });
+  statements.push(
+    buildAuditEventStatement(db, {
+      entityType: "transfer_group",
+      entityId: currentEntry.transfer_group_id ?? currentEntry.id,
+      action: "transfer_settled",
+      detail: `Broke transfer pair and converted ${currentEntry.id}${counterpartEntry ? ` and ${counterpartEntry.id}` : ""} into regular categories.`
+    }),
+    ...buildMonthlySnapshotRefreshMarkers(db, months)
+  );
+  await db.batch(statements);
+  await refreshMonthlySnapshotsAfterWrite(db, months);
 
   return { settled: true };
 }

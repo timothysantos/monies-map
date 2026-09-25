@@ -25,6 +25,7 @@ const deleteStatements = [
   "DELETE FROM monthly_budgets",
   "DELETE FROM monthly_notes",
   "DELETE FROM monthly_snapshots",
+  "DELETE FROM monthly_snapshot_refreshes",
   "DELETE FROM statement_reconciliation_certificates",
   "DELETE FROM import_rows",
   "DELETE FROM imports",
