@@ -7,6 +7,7 @@ import {
   entryMatchesSearch,
   getEntrySearchSuggestions
 } from "./entry-search";
+import { projectEntriesForView } from "./entry-row-projection";
 import { moniesClient } from "./monies-client-service";
 
 const {
@@ -133,15 +134,8 @@ export function getExpenseBreakdown(entries) {
 
 export function getEntryDerivedData({ entries, entryFilters, selectedScope, viewId, pinnedEntryIds }) {
   const filteredEntries = getFilteredEntries({ entries, entryFilters, selectedScope, viewId, pinnedEntryIds });
-  const aggregateEntries = filteredEntries.map((entry) => ({
-    ...entry,
-    visibleAmountMinor: entryService.getVisibleAmountMinor(entry, viewId),
-    grossAmountMinor: entryService.getTotalAmountMinor(entry)
-  }));
-  const groupedEntries = entryService.groupByDate(aggregateEntries.map((entry) => ({
-    ...entry,
-    amountMinor: entry.visibleAmountMinor
-  })));
+  const { aggregateEntries, rowEntries } = projectEntriesForView(filteredEntries, viewId);
+  const groupedEntries = entryService.groupByDate(rowEntries);
   const entryTotals = getEntryTotals(aggregateEntries);
 
   return {
