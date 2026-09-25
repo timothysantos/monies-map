@@ -46,6 +46,14 @@ settles. A failed save keeps the dialog or sheet open with the draft and an
 inline error. Only a successful save closes it and refreshes the month.
 Saving a category from inside a Month sheet saves only the category.
 
+Every other Month write also waits for the server. Deleting a plan or income
+row, saving a row note or the month note, and duplicating, resetting or
+deleting the month each show that they are working, send one request, and on
+failure keep the row, draft, popover or dialog open with an inline error.
+Totals and the table never show a change the server did not accept. Reset
+month and delete month open their confirmation dialogs from the Actions menu
+(before this fix the dialogs closed with the menu and could not be used).
+
 If the Month page fails to load after navigation, it shows the page error
 panel with "Try loading again" instead of the previous page. An empty
 match picker says "No matching expense entries fit the current filters."
