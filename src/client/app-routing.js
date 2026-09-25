@@ -161,8 +161,9 @@ export function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appS
   }
 
   if (tabId === "splits" && pageData.splitsPage) {
-    // Splits keeps the linked month slice alongside its own data so row
-    // matching can work without widening the page-view contract.
+    // Splits keeps a small month slice alongside its own data: the month key
+    // and the month's transfers, for matching a settlement checkpoint to a
+    // bank transfer.
     return {
       ...baseView,
       monthPage: pageData.monthPage ?? null,

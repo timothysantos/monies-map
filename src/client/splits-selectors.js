@@ -27,7 +27,6 @@ export function buildSplitsPanelModel({
 }) {
   // Splits can render before the route slice finishes hydrating, so the
   // selectors stay defensive and fall back to empty collections.
-  const monthEntries = view.monthPage?.entries ?? [];
   const splitsPage = view.splitsPage ?? {
     groups: [],
     activity: [],
@@ -61,7 +60,6 @@ export function buildSplitsPanelModel({
     groups,
     groupOptions,
     groupSummaryLabel: view.id === "household" ? "" : getGroupSummaryLabel(groupBalanceMinor),
-    linkedEntriesById: new Map(monthEntries.map((entry) => [entry.id, entry])),
     pendingMatchCount: unresolvedMatches.length,
     selectedArchivedBatch,
     settlementMatchCount: unresolvedMatches.filter((item) => item.kind === "settlement").length,
