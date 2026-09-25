@@ -5,7 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
-import { EmptyState } from "./ui-states";
+import { EmptyState, ErrorPanel } from "./ui-states";
 import { useEntryActions } from "./entry-actions";
 import {
   EntryComposerInlineSection,
@@ -43,6 +43,7 @@ import { fetchQueryWithLease } from "./query-leases";
 import { createEntriesDataOwner } from "./entries-data-owner";
 import { buildEntriesPageParams } from "./app-routing";
 import { useIsMobileLayout } from "./use-viewport";
+import { useStableHandler } from "./use-stable-handler";
 
 const QUICK_EXPENSE_DRAFT_STORAGE_KEY = "monies.quickExpenseDraft";
 const QUICK_EXPENSE_DRAFT_STORAGE_TTL_MS = 15 * 60 * 1000;
@@ -78,6 +79,7 @@ export function EntriesPanel({
   onInvalidateEntryMutation,
   onBroadcastSplitMutation,
   runBackgroundRefresh = runQuietly,
+  onRetryPageLoad,
   canRequestWording = false
 }) {
   const queryClient = useQueryClient();
@@ -101,12 +103,14 @@ export function EntriesPanel({
   const [isMobileSplitPickerOpen, setIsMobileSplitPickerOpen] = useState(false);
   const [isMobileSplitSelectorOpen, setIsMobileSplitSelectorOpen] = useState(false);
   const [mobileSplitGroupId, setMobileSplitGroupId] = useState("");
+  const [isRetryingPageLoad, setIsRetryingPageLoad] = useState(false);
   const handledQuickExpenseKeyRef = useRef("");
   const pendingQuickExpenseDraftRef = useRef(null);
   const suppressedLinkedEntryIdRef = useRef("");
   const {
     entriesPage,
     isEntriesPageLoading,
+    entriesLoadError,
     refreshEntriesPage
   } = useEntriesPageData({
     queryClient,
@@ -981,6 +985,18 @@ export function EntriesPanel({
     refreshEntriesPage({ bypassCache: true })
   ), [refreshEntriesPage]);
 
+  // The shell's page retry reloads this route and hands the page back through
+  // the owner's warm start, so the shell and the list recover together. If it
+  // fails again, the shell's own page error takes over.
+  const retryEntriesPageLoad = async () => {
+    setIsRetryingPageLoad(true);
+    try {
+      await onRetryPageLoad();
+    } finally {
+      setIsRetryingPageLoad(false);
+    }
+  };
+
   const filterStackProps = useMemo(() => ({
     showMobileFilters,
     activeEntryFilterCount,
@@ -1061,17 +1077,37 @@ export function EntriesPanel({
         </div>
       </div>
 
-      <EntriesTotalsStrip
-        showExpenseBreakdown={showExpenseBreakdown}
-        entryTotals={entryTotals}
-        entryOutflowMinor={entryOutflowMinor}
-        entryGrossOutflowMinor={entryGrossOutflowMinor}
-        entryNetMinor={entryNetMinor}
-        onToggleExpenseBreakdown={() => setShowExpenseBreakdown((current) => !current)}
-        onAddEntry={openEntryComposer}
-      />
+      {entriesLoadError ? (
+        // The page on screen belongs to another month or view, so none of
+        // its figures or rows may show here. Drafts and open sheets stay.
+        <ErrorPanel
+          className="entries-load-error"
+          title={messages.common.pageLoadErrorTitle}
+          detail={messages.common.loadFailedDetail}
+          actions={[{
+            label: isRetryingPageLoad ? messages.common.working : messages.common.retryPageLoad,
+            onClick: () => void retryEntriesPageLoad(),
+            disabled: isRetryingPageLoad,
+            primary: true
+          }]}
+        >
+          <p className="app-loading-issue-inline">{entriesLoadError.message}</p>
+        </ErrorPanel>
+      ) : (
+        <>
+          <EntriesTotalsStrip
+            showExpenseBreakdown={showExpenseBreakdown}
+            entryTotals={entryTotals}
+            entryOutflowMinor={entryOutflowMinor}
+            entryGrossOutflowMinor={entryGrossOutflowMinor}
+            entryNetMinor={entryNetMinor}
+            onToggleExpenseBreakdown={() => setShowExpenseBreakdown((current) => !current)}
+            onAddEntry={openEntryComposer}
+          />
 
-      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-entries" canRequestWording={canRequestWording} />
+          <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-entries" canRequestWording={canRequestWording} />
+        </>
+      )}
 
       <button
         type="button"
@@ -1082,7 +1118,7 @@ export function EntriesPanel({
         tabIndex={-1}
       />
 
-      {showExpenseBreakdown ? (
+      {showExpenseBreakdown && !entriesLoadError ? (
         <EntriesBreakdownPanel
           expenseBreakdown={expenseBreakdown}
           categories={categories}
@@ -1091,7 +1127,7 @@ export function EntriesPanel({
         />
       ) : null}
 
-      {!useMobileEntrySheet ? <EntriesFilterStack {...filterStackProps} /> : null}
+      {!useMobileEntrySheet && !entriesLoadError ? <EntriesFilterStack {...filterStackProps} /> : null}
 
       {isEntriesPageLoading ? (
         <div className="app-loading-overlay entries-page-loading" role="status" aria-live="polite">
@@ -1291,7 +1327,7 @@ export function EntriesPanel({
         document.body
       ) : null}
 
-      {groupedEntries.length ? (
+      {entriesLoadError ? null : groupedEntries.length ? (
         <EntriesDateGroups
           groupedEntries={groupedEntries}
           categories={categories}
@@ -1456,8 +1492,11 @@ function useEntriesPageData({
   onInvalidateAppShellCache,
   runBackgroundRefresh
 }) {
-  const [owner] = useState(() => createEntriesDataOwner({ initialPage: buildInitialEntriesPage(view) }));
-  const { page: entriesPage, isLoading: isEntriesPageLoading } = useSyncExternalStore(
+  const [owner] = useState(() => createEntriesDataOwner({
+    initialPage: buildInitialEntriesPage(view),
+    initialParams: buildEntriesPageParams({ viewId: view.id, month: view.monthPage.month })
+  }));
+  const { page: entriesPage, isLoading: isEntriesPageLoading, loadError: entriesLoadError } = useSyncExternalStore(
     owner.subscribe,
     owner.getSnapshot,
     owner.getSnapshot
@@ -1519,23 +1558,32 @@ function useEntriesPageData({
       return;
     }
 
-    owner.seed(initialPage);
-  }, [entriesPageCacheKey, entriesSourceView, owner, selectedMonth]);
+    owner.seed(initialPage, entriesPageParams);
+  }, [entriesPageCacheKey, entriesPageParams, entriesSourceView, owner, selectedMonth]);
+
+  // A failed load over rows that already belong to this month and view is a
+  // background failure: the rows stay and the refresh notice offers a retry.
+  const reportBackgroundLoadFailure = useStableHandler((error) => {
+    void runBackgroundRefresh(
+      () => Promise.reject(error),
+      () => refreshEntriesPage({ bypassCache: true })
+    );
+  });
 
   useEffect(() => {
     const controller = new AbortController();
     const hasCachedPage = Boolean(queryClient.getQueryData(queryKeys.entriesPage(entriesPageParams)));
-    void owner.load({
+    owner.load({
       params: entriesPageParams,
       fetchPage: fetchEntriesPage,
       signal: controller.signal,
       showLoading: !hasCachedPage
-    });
+    }).catch(reportBackgroundLoadFailure);
 
     return () => {
       controller.abort();
     };
-  }, [entriesPageCacheKey, entriesPageParams, fetchEntriesPage, owner, queryClient]);
+  }, [entriesPageCacheKey, entriesPageParams, fetchEntriesPage, owner, queryClient, reportBackgroundLoadFailure]);
 
   // Another tab changed this month's entries: refresh in the background and
   // raise the refresh notice if that fails.
@@ -1550,6 +1598,7 @@ function useEntriesPageData({
   return {
     entriesPage,
     isEntriesPageLoading,
+    entriesLoadError,
     refreshEntriesPage
   };
 }

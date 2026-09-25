@@ -85,6 +85,7 @@ export const messages = {
   },
   month: {
     planLinkNoCandidates: "No matching expense entries fit the current filters.",
+    planLinkSaveFailed: "The matches could not be saved.",
     incomeSectionTitle: "Income",
     incomeSectionDetail: "Planned income sources that fund the month before expenses are allocated.",
     actions: "Actions",

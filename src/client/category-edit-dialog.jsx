@@ -6,6 +6,18 @@ import { messages } from "./copy/en-SG";
 import { CategoryGlyph } from "./ui-components";
 import { COLOR_OPTIONS, FALLBACK_THEME, ICON_OPTIONS } from "./ui-options";
 
+// The dialog is portalled out of the DOM, but React still bubbles its events
+// through the component tree into whatever opened it: the entry or plan-row
+// form of a mobile sheet or the desktop composer (submit), a list row that
+// opens its editor on click or on Enter and Space (click, keydown). Stopping
+// them at the dialog keeps a category save, click or key press on the
+// category only. Pointer-down is left alone: Radix dismisses on it.
+const keepEventsInDialog = {
+  onSubmit: (event) => event.stopPropagation(),
+  onClick: (event) => event.stopPropagation(),
+  onKeyDown: (event) => event.stopPropagation()
+};
+
 export function CategoryEditDialog({
   dialog,
   isSubmitting = false,
@@ -16,8 +28,8 @@ export function CategoryEditDialog({
   return (
     <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
-        <Dialog.Overlay className="note-dialog-overlay" />
-        <Dialog.Content className="note-dialog-content settings-account-dialog settings-category-dialog">
+        <Dialog.Overlay className="note-dialog-overlay" {...keepEventsInDialog} />
+        <Dialog.Content className="note-dialog-content settings-account-dialog settings-category-dialog" {...keepEventsInDialog}>
           <form
             onSubmit={(event) => {
               event.preventDefault();
