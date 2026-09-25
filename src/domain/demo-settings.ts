@@ -1,5 +1,5 @@
 import { defaultDemoSettings, type DemoSettings } from "./demo-data";
-import { clearDemoData, reseedDemoData, seedEmptyStateReferenceData } from "./app-repository";
+import { clearDemoData, reseedDemoData, seedEmptyStateReferenceData } from "./app-repository-seed";
 
 const DEMO_SETTINGS_KEY = "current";
 
