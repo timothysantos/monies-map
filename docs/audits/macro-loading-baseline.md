@@ -2296,3 +2296,153 @@ and `--config` changed).
 | `npm run build` + `npm run check:bundle` | Pass: 181,757 B JS / 31,981 B CSS gzip against the 180,337 / 31,961 budget (+0.8%, under +5%); budget unchanged |
 | Smoke bundle, isolated 5402/8802 | Every group passes (127 tests) |
 | Full `npm run test:e2e` suite, isolated 5402/8802 | **258/258** |
+
+## Entries and Month list rendering (2,000-row month, 2026-09-25)
+
+Branch `entries-render-speed`, from `macro-performance` (`d702fed`). The
+Entries list re-rendered every row on each filter, search, editor, draft or
+privacy change; on the scale-10k month (2,018 rows in 2026-05) that cost up
+to 2.5 s per keystroke on the throttled mobile profile. The Entries data
+owner (`entries-data-owner.js`, generation guards) is unchanged.
+
+### How it was measured
+
+- `tests/performance/entries-interaction.spec.js` (new): built client,
+  scale-10k fixture, household view of 2026-05. Per interaction, 8 timed
+  samples after one warm-up round. `settledMs` runs from the first trusted
+  input event to the first animation frame whose DOM shows the end state;
+  `eventMs` is the longest Event Timing entry (under 16 ms reads as 0).
+  A separate pass counts React commits and row renders through a
+  DevTools-hook counter (`tests/support/react-commit-counter.js`), which
+  keys rows by their host element class so it works on minified builds.
+- `tests/performance/month-interaction.spec.js` (new): the Month "Match
+  planned item" picker for a Groceries plan row in Tim's view. The picker
+  scores every expense in the month (981 Groceries rows match) and lists
+  the best 80.
+- Profiles: desktop Chromium 1440×900 at CPU 1×; Pixel 7 emulation at
+  390×844, CPU 4×. No network emulation (data is already loaded).
+- Cohorts: 5 runs per project per side (`--repeat-each=5`), compared with
+  `node scripts/compare-performance.mjs --interaction`. The verdict is
+  "faster" only when the per-run medians of both sides do not overlap.
+- Cohorts ran one after another, not interleaved, on a machine shared
+  with other sessions' Workers, so absolute numbers carry that load. The
+  report `revision` field is the harness checkout; the Month baseline
+  served the saved pre-change build of the client.
+
+### What changed
+
+| Step | Change | Commit |
+| --- | --- | --- |
+| 2 | `mergeEntriesById` returns the current object when a merge changes no field | `72ce174` |
+| 2 | Row projections cached per entry object and view (`entry-row-projection.js`) | `c21691d` |
+| 2 | `EntryRow` memoized; stable handlers (`useStableHandler`); editor props only for the open row; transfer candidates only for that row | `389fa3e` |
+| 2 | Privacy subscription moved to a memoized `EntryRowAmount` | `c7d9ba2` |
+| 2 | A row's category dialog mounts only while open | `1db671e` |
+| 3 | `content-visibility: auto` on closed rows (68 px desktop, 89 px mobile intrinsic size); focus ring drawn inside the row | `6608f05` |
+| Month | Plan-link scoring memoized on the plan row and entries only; candidate rows memoized with a stable toggle | `a41ae5e` |
+
+Step 3 used CSS, not windowing: rows stay in the DOM, so find-in-page, Tab
+focus and screen readers reach every row. `entries-row-rendering.spec.js`
+checks that an off-screen row is skipped, that `window.find` still finds
+it, that focusing it renders it, and that the open row is never skipped.
+
+### Entries results: baseline → final (step 3)
+
+Settled median, p95 and the min–max of per-run medians, in ms.
+
+Desktop (CPU 1×):
+
+| Interaction | Median | p95 | Run medians | Row renders | Verdict |
+| --- | ---: | ---: | --- | ---: | --- |
+| Type one search character | 212 → 74 | 304 → 93 | 204–213 → 66–88 | 1,554 → 0 | faster |
+| Clear the search (464 rows return) | 854 → 707 | 1,427 → 1,120 | 730–952 → 529–728 | 2,018 → 464 | faster |
+| Category filter on | 142 → 45 | 204 → 70 | 131–163 → 42–54 | 981 → 0 | faster |
+| Category filter off (1,037 rows return) | 1,531 → 1,435 | 3,067 → 2,457 | 1,361–1,903 → 1,076–1,583 | 2,018 → 1,037 | within noise |
+| Open one entry editor | 403 → 74 | 664 → 117 | 369–486 → 67–98 | 4,036 → 2 | faster |
+| One draft keystroke | 161 → 25 | 244 → 34 | 146–210 → 21–28 | 2,018 → 1 | faster |
+| Close the editor | 415 → 77 | 658 → 110 | 361–525 → 71–103 | 6,054 → 2 | faster |
+| Show money | 269 → 49 | 377 → 74 | 249–284 → 46–63 | 2,018 → 0 | faster |
+| Hide money | 284 → 46 | 402 → 60 | 257–294 → 45–56 | 2,018 → 0 | faster |
+
+Mobile emulation (CPU 4×):
+
+| Interaction | Median | p95 | Run medians | Row renders | Verdict |
+| --- | ---: | ---: | --- | ---: | --- |
+| Type one search character | 2,508 → 238 | 4,251 → 337 | 2,074–3,274 → 223–294 | 3,108 → 0 | faster |
+| Clear the search | 3,487 → 430 | 5,733 → 773 | 2,674–5,278 → 364–565 | 4,036 → 464 | faster |
+| Category filter on | 1,749 → 162 | 3,119 → 261 | 1,372–2,810 → 149–221 | 1,962 → 0 | faster |
+| Category filter off | 3,955 → 557 | 7,697 → 1,013 | 3,610–5,878 → 462–789 | 4,036 → 1,037 | faster |
+| Open one entry (bottom sheet) | 1,802 → 194 | 3,100 → 319 | 1,451–2,440 → 181–296 | 4,036 → 1 | faster |
+| One draft keystroke | 1,622 → 140 | 2,599 → 200 | 1,286–2,323 → 131–170 | 4,036 → 1 | faster |
+| Close the sheet | 2,402 → 296 | 4,439 → 410 | 2,147–3,534 → 274–379 | 6,054 → 2 | faster |
+| Show money | 1,930 → 195 | 4,305 → 282 | 1,650–3,281 → 178–237 | 4,036 → 0 | faster |
+| Hide money | 2,093 → 165 | 2,683 → 244 | 1,857–2,413 → 154–207 | 2,018 → 0 | faster |
+
+Step 2 alone (memo, stable props, identity) was faster than baseline on
+every interaction except desktop search clear and category off (within
+noise) and made each re-render touch only changed rows. Step 3 then cut
+what remained of re-inserting rows and redrawing amounts: against step 2,
+mobile "category off" went 1,161 → 557, "clear the search" 798 → 430,
+"show money" 748 → 195, and desktop "show money" 128 → 49 (all per-run
+medians disjoint).
+
+### Month plan-link picker: before → after
+
+| Interaction | Desktop median | Mobile median | Mobile run medians | Verdict (both) |
+| --- | ---: | ---: | --- | --- |
+| Open the picker | 35 → 38 | 149 → 136 | 139–160 → 129–140 | within noise |
+| Toggle one candidate on | 17 → 6 | 71 → 26 | 65–77 → 25–28 | faster |
+| Toggle it off | 17 → 6 | 72 → 24 | 64–77 → 23–28 | faster |
+| Type in the filter | 17 → 9 | 76 → 33 | 70–79 → 31–34 | faster |
+| Clear the filter | 19 → 11 | 83 → 43 | 79–89 → 41–45 | faster |
+| Close the picker | 13 → 13 | 55 → 51 | 52–60 → 51–52 | within noise |
+
+The Month page has no 2,000-row list: the plan tables hold dozens of rows
+and the picker lists at most 80. Each picker click still re-renders the
+Month page around it (about 460–500 components after, 670–711 before),
+because `MonthPanel` owns the dialog state.
+
+### Still open
+
+- **Desktop "category filter off" after an edit.** Re-inserting 1,037 rows
+  settles in about 260 ms on a fresh page but 1–4 s after an entry editor
+  has been opened and closed. A CPU profile puts the time in React's
+  `setAttribute`/`appendChild` on new elements, not in app code, and a
+  forced garbage collection before the click brings it to about 660 ms,
+  so garbage left by the unmounted editor appears to slow Chromium's DOM
+  work until it is collected. The baseline has the same pattern. Removing
+  it needs fewer rows mounted at once (windowing), which would drop
+  off-screen rows from the DOM and break find-in-page and Tab order
+  through the list; not done.
+- Scroll smoothness and a physical phone were not measured.
+
+### Chunk sizes (gzip)
+
+| Asset | Before | After |
+| --- | ---: | ---: |
+| `entries-panel` route chunk (lazy) | 19,807 B | 20,141 B |
+| `month-panel` route chunk (lazy) | 13,758 B | 13,793 B |
+| `category-visuals` | 2,167 B | 2,182 B |
+| `styles.css` | 31,413 B | 31,826 B |
+
+No dependency was added. `npm run check:bundle` (first screen) passes;
+results are in "Gates" below.
+
+### Tests
+
+- `tests/e2e/entries-row-rendering.spec.js` (5 tests): opening an entry,
+  typing a draft and cancelling re-render only that row; a Back/Forward
+  filter change keeps the draft, its focus and caret, and renders only
+  rows it adds; privacy redraws every amount and no row; the row category
+  dialog opens on demand without opening the row; content-visibility
+  behaviour above. The first two failed on the old code (17 unrelated
+  rows re-rendered); the privacy test failed on step 2 before the
+  amount split; the content-visibility test fails without the CSS.
+- `tests/e2e/month-plan-link-rendering.spec.js`: one toggle re-renders one
+  candidate row (failed on the old code: rows were not components);
+  narrowing re-renders none; a checked row hidden by the text filter
+  returns still checked.
+- Unit: `entry-workflow-contract.test.mjs` (merge keeps unchanged objects;
+  failed on the old merge), `entry-selectors.test.mjs` (projection
+  identity per entry and view), `compare-performance.test.mjs`
+  (interaction cohorts, verdicts, report reading).
