@@ -123,6 +123,23 @@ type SupersededLedgerRowSnapshot = {
   }>;
 };
 
+// The bank facts a current-activity promotion overwrites on a manual entry,
+// as they were before it. Stored on the promoting import row so rolling back
+// the import puts the manual entry back.
+type PromotedEntrySnapshot = {
+  transaction: {
+    id: string;
+    import_id: string | null;
+    import_row_id: string | null;
+    post_date: string | null;
+    description: string;
+    amount_minor: number;
+    entry_type: "expense" | "income" | "transfer";
+    transfer_direction: "in" | "out" | null;
+    updated_at: string;
+  };
+};
+
 type CertifiedLedgerRowSnapshot = {
   transaction: {
     id: string;
@@ -538,7 +555,8 @@ export async function commitImportBatch(
     const reconciliationTarget = row.reconciliationTargetTransactionId
       ? await db
         .prepare(`
-          SELECT id, transaction_date, import_id, post_date
+          SELECT id, transaction_date, import_id, import_row_id, post_date, description,
+            amount_minor, entry_type, transfer_direction, updated_at
           FROM transactions
           WHERE household_id = ?
             AND id = ?
@@ -546,18 +564,35 @@ export async function commitImportBatch(
             AND bank_certification_status = 'provisional'
         `)
         .bind(DEFAULT_HOUSEHOLD_ID, row.reconciliationTargetTransactionId, accountId)
-        .first<{ id: string; transaction_date: string; import_id: string | null; post_date: string | null }>()
+        .first<PromotedEntrySnapshot["transaction"] & { transaction_date: string }>()
       : null;
 
     if (row.reconciliationTargetTransactionId && !reconciliationTarget) {
       throw new Error("Reconciliation target is no longer available. Refresh the import preview and try again.");
     }
 
+    const promotedEntrySnapshot: PromotedEntrySnapshot | null = reconciliationTarget && !isOfficialStatementImport
+      ? {
+        transaction: {
+          id: reconciliationTarget.id,
+          import_id: reconciliationTarget.import_id,
+          import_row_id: reconciliationTarget.import_row_id,
+          post_date: reconciliationTarget.post_date,
+          description: reconciliationTarget.description,
+          amount_minor: reconciliationTarget.amount_minor,
+          entry_type: reconciliationTarget.entry_type,
+          transfer_direction: reconciliationTarget.transfer_direction,
+          updated_at: reconciliationTarget.updated_at
+        }
+      }
+      : null;
+
     stage(db
       .prepare(`
         INSERT INTO import_rows (
-          id, import_id, row_index, assigned_account_id, raw_row_json, normalized_hash, status
-        ) VALUES (?, ?, ?, ?, ?, ?, 'imported')
+          id, import_id, row_index, assigned_account_id, raw_row_json, normalized_hash, status,
+          promoted_entry_snapshot_json
+        ) VALUES (?, ?, ?, ?, ?, ?, 'imported', ?)
       `)
       .bind(
         rowId,
@@ -565,7 +600,8 @@ export async function commitImportBatch(
         row.rowIndex,
         accountId,
         JSON.stringify(row.rawRow),
-        buildImportRowHash(row)
+        buildImportRowHash(row),
+        promotedEntrySnapshot ? JSON.stringify(promotedEntrySnapshot) : null
       ));
 
     if (reconciliationTarget && !isOfficialStatementImport) {
@@ -1182,7 +1218,10 @@ export async function rollbackImportBatch(
   // Every read happens here, before the single batch below.
   const certifiedRestore = await buildStatementCertifiedRowRestore(db, input.importId);
   const supersededRestore = await buildSupersededStatementRowRestore(db, input.importId);
-  // The months of the entries this rollback removes change too.
+  const promotedRestore = importRecord.source_type === "pdf"
+    ? { statements: [], months: new Set<string>() }
+    : await buildPromotedEntryRestore(db, input.importId);
+  // The months of the entries this rollback removes (or restores) change too.
   const removedEntryMonths = await db
     .prepare(`
       SELECT DISTINCT
@@ -1196,6 +1235,7 @@ export async function rollbackImportBatch(
   const transactionMonths = new Set([
     ...certifiedRestore.months,
     ...supersededRestore.months,
+    ...promotedRestore.months,
     ...removedEntryMonths.results.flatMap((row) => [row.event_month, row.cleared_month])
   ]);
   const chainBreakStatements = importRecord.source_type === "pdf"
@@ -1205,6 +1245,9 @@ export async function rollbackImportBatch(
   await db.batch([
     ...certifiedRestore.statements,
     ...supersededRestore.statements,
+    // Before the cleanup: a restored entry no longer carries this import's
+    // id, so the cleanup neither unlinks its splits nor deletes it.
+    ...promotedRestore.statements,
     ...chainBreakStatements,
     ...await buildImportBatchCleanupStatements(db, input.importId),
     db
@@ -1221,6 +1264,239 @@ export async function rollbackImportBatch(
   await refreshMonthlySnapshotsAfterWrite(db, transactionMonths);
 
   return { importId: input.importId, rolledBack: true };
+}
+
+// Puts the manual entries this current-activity import promoted back as
+// Manual provisional entries: the bank facts the promotion overwrote come
+// from the import row's snapshot, and annotations made since (category,
+// note, owner, splits, transfer links) are kept. An entry the user deleted
+// has nothing to restore.
+//
+// An entry a later statement certified keeps the statement's bank facts and
+// its certification; only what lies underneath changes, so rolling that
+// statement back afterwards gives the manual entry, not this import's row.
+//
+// Imports committed before snapshots existed have none. An entry created
+// before such an import can only have been promoted by it, so it stays as a
+// manual entry with its current bank facts (the originals are unknown)
+// instead of being deleted.
+async function buildPromotedEntryRestore(db: D1Database, importId: string) {
+  const promotedEntries = await db
+    .prepare(`
+      SELECT
+        transactions.id,
+        transactions.account_id,
+        transactions.transaction_date,
+        transactions.post_date,
+        transactions.bank_certification_status,
+        transactions.statement_certified_import_id,
+        transactions.statement_certified_previous_import_id,
+        import_rows.promoted_entry_snapshot_json
+      FROM transactions
+      INNER JOIN import_rows
+        ON import_rows.id = transactions.import_row_id
+        AND import_rows.import_id = transactions.import_id
+      INNER JOIN imports ON imports.id = transactions.import_id
+      WHERE transactions.household_id = ?
+        AND transactions.import_id = ?
+        AND (
+          import_rows.promoted_entry_snapshot_json IS NOT NULL
+          OR transactions.created_at < imports.imported_at
+        )
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, importId)
+    .all<{
+      id: string;
+      account_id: string;
+      transaction_date: string;
+      post_date: string | null;
+      bank_certification_status: "provisional" | "statement_certified";
+      statement_certified_import_id: string | null;
+      statement_certified_previous_import_id: string | null;
+      promoted_entry_snapshot_json: string | null;
+    }>();
+
+  const statements: D1PreparedStatement[] = [];
+  const months = new Set<string>();
+  // Certificate snapshots to rewrite, by certificate id.
+  const certificateRewrites = new Map<string, CertifiedLedgerRowSnapshot[]>();
+
+  for (const entry of promotedEntries.results) {
+    const snapshot = parsePromotedEntrySnapshot(entry.promoted_entry_snapshot_json, entry.id);
+    months.add(entry.transaction_date.slice(0, 7));
+    months.add((entry.post_date ?? entry.transaction_date).slice(0, 7));
+    if (snapshot) {
+      months.add((snapshot.transaction.post_date ?? entry.transaction_date).slice(0, 7));
+    }
+
+    if (entry.bank_certification_status === "provisional") {
+      statements.push(snapshot
+        ? db
+          .prepare(`
+            UPDATE transactions
+            SET import_id = NULL,
+              import_row_id = NULL,
+              post_date = ?,
+              description = ?,
+              amount_minor = ?,
+              entry_type = ?,
+              transfer_direction = ?,
+              updated_at = CURRENT_TIMESTAMP
+            WHERE household_id = ?
+              AND id = ?
+              AND import_id = ?
+              AND bank_certification_status = 'provisional'
+          `)
+          .bind(
+            snapshot.transaction.post_date,
+            snapshot.transaction.description,
+            snapshot.transaction.amount_minor,
+            snapshot.transaction.entry_type,
+            snapshot.transaction.transfer_direction,
+            DEFAULT_HOUSEHOLD_ID,
+            entry.id,
+            importId
+          )
+        : db
+          .prepare(`
+            UPDATE transactions
+            SET import_id = NULL,
+              import_row_id = NULL,
+              updated_at = CURRENT_TIMESTAMP
+            WHERE household_id = ?
+              AND id = ?
+              AND import_id = ?
+              AND bank_certification_status = 'provisional'
+          `)
+          .bind(DEFAULT_HOUSEHOLD_ID, entry.id, importId));
+      continue;
+    }
+
+    if (entry.statement_certified_previous_import_id !== importId || !entry.statement_certified_import_id) {
+      // Not a state this import's promotion produces; left to the cleanup.
+      continue;
+    }
+
+    statements.push(snapshot
+      ? db
+        .prepare(`
+          UPDATE transactions
+          SET import_id = NULL,
+            import_row_id = NULL,
+            statement_certified_previous_import_id = NULL,
+            statement_certified_previous_import_row_id = NULL,
+            statement_certified_previous_post_date = ?,
+            statement_certified_previous_description = ?,
+            statement_certified_previous_amount_minor = ?,
+            statement_certified_previous_entry_type = ?,
+            statement_certified_previous_transfer_direction = ?,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE household_id = ?
+            AND id = ?
+            AND import_id = ?
+            AND statement_certified_previous_import_id = ?
+        `)
+        .bind(
+          snapshot.transaction.post_date,
+          snapshot.transaction.description,
+          snapshot.transaction.amount_minor,
+          snapshot.transaction.entry_type,
+          snapshot.transaction.transfer_direction,
+          DEFAULT_HOUSEHOLD_ID,
+          entry.id,
+          importId,
+          importId
+        )
+      : db
+        .prepare(`
+          UPDATE transactions
+          SET import_id = NULL,
+            import_row_id = NULL,
+            statement_certified_previous_import_id = NULL,
+            statement_certified_previous_import_row_id = NULL,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE household_id = ?
+            AND id = ?
+            AND import_id = ?
+            AND statement_certified_previous_import_id = ?
+        `)
+        .bind(DEFAULT_HOUSEHOLD_ID, entry.id, importId, importId));
+
+    // The statement's rollback restores from its certificate snapshot first,
+    // so that snapshot must describe the manual entry too.
+    const certificates = await db
+      .prepare(`
+        SELECT id, certified_ledger_rows_json
+        FROM statement_reconciliation_certificates
+        WHERE household_id = ?
+          AND import_id = ?
+          AND account_id = ?
+          AND certified_ledger_rows_json IS NOT NULL
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, entry.statement_certified_import_id, entry.account_id)
+      .all<{ id: string; certified_ledger_rows_json: string }>();
+    for (const certificate of certificates.results) {
+      let certifiedRows = certificateRewrites.get(certificate.id);
+      if (!certifiedRows) {
+        try {
+          certifiedRows = JSON.parse(certificate.certified_ledger_rows_json) as CertifiedLedgerRowSnapshot[];
+        } catch {
+          continue;
+        }
+      }
+      let changed = false;
+      certifiedRows = certifiedRows.map((certifiedRow) => {
+        if (certifiedRow.transaction.id !== entry.id || certifiedRow.transaction.import_id !== importId) {
+          return certifiedRow;
+        }
+        changed = true;
+        return {
+          ...certifiedRow,
+          transaction: {
+            ...certifiedRow.transaction,
+            import_id: null,
+            import_row_id: null,
+            ...(snapshot
+              ? {
+                post_date: snapshot.transaction.post_date,
+                description: snapshot.transaction.description,
+                amount_minor: snapshot.transaction.amount_minor,
+                entry_type: snapshot.transaction.entry_type,
+                transfer_direction: snapshot.transaction.transfer_direction
+              }
+              : {})
+          }
+        };
+      });
+      if (changed) {
+        certificateRewrites.set(certificate.id, certifiedRows);
+      }
+    }
+  }
+
+  for (const [certificateId, certifiedRows] of certificateRewrites) {
+    statements.push(db
+      .prepare(`
+        UPDATE statement_reconciliation_certificates
+        SET certified_ledger_rows_json = ?
+        WHERE household_id = ? AND id = ?
+      `)
+      .bind(JSON.stringify(certifiedRows), DEFAULT_HOUSEHOLD_ID, certificateId));
+  }
+
+  return { statements, months };
+}
+
+function parsePromotedEntrySnapshot(value: string | null, entryId: string) {
+  if (!value) {
+    return null;
+  }
+  try {
+    const snapshot = JSON.parse(value) as PromotedEntrySnapshot;
+    return snapshot?.transaction?.id === entryId ? snapshot : null;
+  } catch {
+    return null;
+  }
 }
 
 // Puts entries certified by this import back to their pre-certification bank
