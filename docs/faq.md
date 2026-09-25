@@ -1177,7 +1177,9 @@ such as its category, note, owner, split or transfer link, stay. If you had
 already deleted the entry, the rollback has nothing to restore. If a later
 statement has since certified the entry, it stays `Statement certified` with
 the statement's details; rolling that statement back afterwards gives you your
-original manual entry. Imports saved before 2026-09-25 did not keep the
+original manual entry. The same happens if a statement replaced the entry
+because the bank never listed it: rolling that statement back brings your
+manual entry back. Imports saved before 2026-09-25 did not keep the
 entry's original details, so rolling one of those back keeps the entry as a
 manual entry with the imported description and posted date.
 
