@@ -1997,6 +1997,7 @@ export function App() {
           onInvalidateAppShellCache={syncAppShellAfterMutation}
           onInvalidateEntryMutation={broadcastEntryMutation}
           onBroadcastSplitMutation={broadcastSplitMutation}
+          runBackgroundRefresh={runBackgroundRefresh}
           canRequestWording={routeWork.usable}
         />
       );
