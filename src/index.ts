@@ -39,17 +39,11 @@ import {
   deleteAccountCheckpointRecord,
   deleteCategoryRecord,
   ignoreCategoryMatchRuleSuggestion,
-  deleteMonthPlan,
-  deleteMonthPlanRow,
-  duplicateMonthPlan,
   rollbackImportBatch,
   retainLatestAppErrorDiagnostics,
-  resetMonthPlan,
   resolveReconciliationExceptionRecord,
   saveAccountCheckpointRecord,
   saveCategoryMatchRule,
-  saveMonthPlanEntryLinks,
-  saveMonthPlanRow,
   linkSplitExpenseMatch,
   linkSplitSettlementMatch,
   registerLoginIdentity,
@@ -67,10 +61,18 @@ import {
   updateAccountRecord,
   updateCategoryRecord,
   updatePersonRecord,
-  updateMonthlySnapshotNote,
   loadSplitActivityHistory,
   restoreSplitRecord
 } from "./domain/app-repository";
+import {
+  deleteMonthPlan,
+  deleteMonthPlanRow,
+  duplicateMonthPlan,
+  resetMonthPlan,
+  saveMonthPlanEntryLinks,
+  saveMonthPlanRow,
+  updateMonthlySnapshotNote
+} from "./domain/app-repository-month-commands";
 import {
   createEntryRecord,
   locateEntryDeepLinkContext,
