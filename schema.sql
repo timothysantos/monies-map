@@ -223,6 +223,9 @@ CREATE TABLE IF NOT EXISTS import_rows (
     status IN ('preview', 'imported', 'skipped', 'error')
   ),
   error_message TEXT,
+  -- The bank facts of the manual entry this row promoted, as they were
+  -- before the promotion, so a rollback can restore the manual entry.
+  promoted_entry_snapshot_json TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE,
   FOREIGN KEY (assigned_account_id) REFERENCES accounts(id)
