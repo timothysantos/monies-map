@@ -58,7 +58,6 @@ export function buildImportPreviewModel({
   const reconciledExistingRowCount = previewRows.filter((row) => row.reconciliationTargetTransactionId).length;
   const skippedPreviewRowCount = visiblePreviewRows.filter((row) => row.commitStatus === "skipped").length;
   const needsReviewPreviewRowCount = visiblePreviewRows.filter((row) => row.commitStatus === "needs_review").length;
-  const includedPreviewRows = visiblePreviewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review");
   const commitPayloadPreviewRows = previewRows.filter((row) => row.commitStatus !== "skipped" && row.commitStatus !== "needs_review");
   const statementReconciliations = preview?.statementReconciliations ?? [];
   const hasDuplicateCheckpointAccounts = duplicateCheckpointAccounts.length > 0;

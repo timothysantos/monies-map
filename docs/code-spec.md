@@ -384,7 +384,24 @@ list when relevant:
 Testing depth rule:
 
 - `npm run verify` is the local merge gate: dependency audit, strict
-  TypeScript, unit tests, production build, and the desktop/mobile smoke bundle
+  TypeScript, the client type check, lint, unit tests, production build, the
+  initial bundle budget, and the desktop/mobile smoke bundle
+- `npm run lint` (`eslint.config.js`, ESLint flat config) checks correctness
+  only: `eslint:recommended`, unused locals and imports (parameters and props
+  are ignored, `_` names are exempt), `eqeqeq` smart, self-compare, template
+  placeholders in plain strings, unmodified loop conditions, array callbacks
+  that forget to return, and `react-hooks/rules-of-hooks` as errors;
+  `react-hooks/exhaustive-deps` is a warning because many effects deliberately
+  run on a key. There are no stylistic or formatting rules, and TypeScript
+  files are left to `tsc`. Errors fail verify; do not add warnings casually
+- `npm run typecheck:client` (`tsconfig.client.json`) runs `tsc` with
+  `allowJs` and `checkJs` over `src/client` at the default, non-strict level
+  (`strictNullChecks` alone reports hundreds of errors). Ambient browser and
+  test-hook types live in `src/client/client-env.d.ts`. In plain JS an
+  undefaulted destructured prop counts as required, so give optional props
+  and options an explicit `= undefined` default rather than suppressing the
+  error; use a JSDoc cast for untyped cache reads. A `// @ts-expect-error`
+  needs a reason, and `// @ts-nocheck` is only for generated or vendor code
 - run `npm run test:e2e` before merging broad shared-infrastructure,
   persistence, import, or cross-page invalidation changes
 - do not waive a failing browser scenario as timing-sensitive until the
@@ -413,7 +430,11 @@ Testing depth rule:
   `tests/fixtures/pdf-statement-text/` in the `extractPdfText()` shape (raw items,
   `__PDF_LAYOUT_TEXT__`, `__PDF_SPACED_LAYOUT_TEXT__`) so routing in
   `parseStatementText()` sees all three views. Assert every parsed row, the
-  checkpoints, and at least one rejected tampered variant.
+  checkpoints, and at least one rejected tampered variant. Prefer text
+  extracted from a real statement with the shipped pdf.js version and masked
+  item by item (`*-real-sanitized.pdf-text.txt`); hand-built layouts missed
+  real Citi and OCBC card structure. pdf.js stays on 4.x because the parsers
+  read its per-word text items (`tests/pdfjs-version-contract.test.mjs`).
 - One-off data repairs and schema maintenance must not run from hot read helpers
   such as reference-data, account-list, summary, entries, or settings reads.
   Put repairs behind explicit initialization and persist a completion marker so

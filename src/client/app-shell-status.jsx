@@ -1,4 +1,5 @@
 import { messages } from "./copy/en-SG";
+import { ErrorPanel } from "./ui-states";
 
 // Loading and error chrome for the app shell. Presentation only: App decides
 // which state applies and owns every retry handler.
@@ -30,26 +31,22 @@ export function EnvironmentBanner({ environment }) {
   );
 }
 
-// A whole-shell failure with one retry. `issuePlacement` keeps the loading
-// issue line where each screen has always shown it: after the copy block, or
-// inside it for page failures.
-export function ShellErrorScreen({ environment, title, message, diagnosis = null, issue, issuePlacement = "after", retryLabel, onRetry }) {
-  const issueLine = issue ? <p className="app-loading-issue-inline">{issue}</p> : null;
+// A whole-shell failure with one retry. The detail line is plain language;
+// the technical reason (the loading issue, or the raw error when no issue was
+// recorded) sits underneath in the smaller issue line.
+export function ShellErrorScreen({ environment, title, detail = messages.common.loadFailedDetail, message, diagnosis = null, issue, retryLabel, onRetry }) {
+  const technical = issue && (!message || String(issue).includes(message)) ? issue : [message, issue].filter(Boolean).join(" · ");
   return (
     <main className="shell">
       <EnvironmentBanner environment={environment} />
-      <section className="panel app-loading-panel app-loading-panel-error">
-        <div>
-          <p>{title}</p>
-          <p className="app-loading-error-copy">{message}</p>
-          {diagnosis}
-          {issuePlacement === "inside" ? issueLine : null}
-        </div>
-        {issuePlacement === "after" ? issueLine : null}
-        <button type="button" className="button-primary" onClick={onRetry}>
-          {retryLabel}
-        </button>
-      </section>
+      <ErrorPanel
+        title={title}
+        detail={detail}
+        actions={[{ label: retryLabel, onClick: onRetry, primary: true }]}
+      >
+        {diagnosis}
+        {technical ? <p className="app-loading-issue-inline">{technical}</p> : null}
+      </ErrorPanel>
     </main>
   );
 }

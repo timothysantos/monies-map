@@ -49,11 +49,12 @@ import {
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { todayInAppTimeZone } from "./app-dates";
+import { useIsMobileLayout } from "./use-viewport";
 
 const { format: formatService } = moniesClient;
 
 // Without the shell's notice (isolated renders), a failed refresh is dropped.
-function runQuietly(task) {
+function runQuietly(task, _retry) {
   return Promise.resolve().then(task).catch(() => null);
 }
 
@@ -68,7 +69,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showBreakdown, setShowBreakdown] = useState(false);
-  const [useMobileSplitSheet, setUseMobileSplitSheet] = useState(false);
+  const useMobileSplitSheet = useIsMobileLayout();
   const [archiveDialog, setArchiveDialog] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [groupDialog, setGroupDialog] = useState(null);
@@ -195,8 +196,6 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     clearInlineSplitDraft,
     resetForViewChange,
     requestDeleteSplit,
-    clearExpenseDialogSnapshot,
-    clearSettlementDialogSnapshot,
     clearInlineSplitSnapshot
   } = useSplitEditState({ categoryOptions, people });
   // The optimistic overlay alone is not counted: it can outlive a failed
@@ -232,18 +231,6 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
 
     updateSplitView({ groupId: defaultGroupId, mode: "entries" });
   }, [defaultGroupId, selectedGroupId, selectedGroupParam, selectedMode]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const mediaQuery = window.matchMedia("(max-width: 760px)");
-    const update = () => setUseMobileSplitSheet(mediaQuery.matches);
-    update();
-    mediaQuery.addEventListener?.("change", update);
-    return () => mediaQuery.removeEventListener?.("change", update);
-  }, []);
 
   useEffect(() => {
     setDismissedMatchIds([]);

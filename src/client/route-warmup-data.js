@@ -59,7 +59,7 @@ export function isFresh(queryClient, queryKey, staleMs, now) {
   return staleMs === Infinity || state.dataUpdatedAt + staleMs > now;
 }
 
-export async function fetchSpeculativeJson(url, { signal } = {}) {
+export async function fetchSpeculativeJson(url, { signal = undefined } = {}) {
   const { response, responseText } = await fetchTextWithTransientWorkerRetry(url, {
     cache: "no-store",
     requestLabel: "Warmup request",
@@ -72,6 +72,7 @@ export async function fetchSpeculativeJson(url, { signal } = {}) {
   return responseText ? JSON.parse(responseText) : null;
 }
 
+/** @param {{ queryClient: any, now?: () => number, clock?: Pick<typeof globalThis, "setTimeout" | "clearTimeout"> }} options */
 export function createWarmupDataAdapter({ queryClient, now = () => Date.now(), clock = globalThis }) {
   return (candidate) => {
     const request = buildSpeculativeRequest(candidate);

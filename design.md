@@ -278,6 +278,54 @@ previous page stays on screen while the next one loads. A second boundary in
 failed to download also gets only "Reload app", because `React.lazy` keeps a
 failed load failed until the page reloads.
 
+## Shared States
+
+`ui-states.jsx` is the one presentation for "nothing here", "this failed"
+and "this screen failed"; callers pass copy from `copy/en-SG.js` and own
+every retry handler.
+
+- `EmptyState` renders an empty section as one muted line, or as a titled
+  block with actions (the Entries wallet-view mismatch). Empty sections
+  say what is missing instead of showing a bare dash.
+- `InlineError` renders a failure inside a section as `role="alert"`, with
+  an optional retry button; forms, dialogs and the mobile sheet use it.
+- `ErrorPanel` is the screen-level failure. `ShellErrorScreen` (shell,
+  reference data and first page load) and the screen error boundary both
+  render it, so each is an alert with the same layout and a primary
+  `dialog-primary` retry. The detail line is plain language
+  (`common.loadFailedDetail`); the technical reason sits in the smaller
+  issue line below it.
+
+A page load that fails after the person navigated shows the page
+`ErrorPanel` inside the shell, and hides the previous page. Otherwise the
+previous page's figures would stay on screen under the new tab or period.
+
+- Navigation and the period picker stay usable.
+- "Try loading again" runs `retryActivePageLoad`, and the panel stays up
+  (showing "Working...") until the retry settles.
+- The previous page is hidden (`display: none` on `.route-page-body`), not
+  unmounted, so a draft on it survives the failure and the retry.
+
+## Mobile Sheet
+
+`entry-mobile-sheet.jsx` (`EntryMobileSheet`) is the bottom sheet for the
+Month plan sheets and the Entries add and edit sheets. It is a modal Radix
+dialog, like the desktop dialogs:
+
+- Focus moves into the sheet on open. The sheet itself takes focus, not a
+  field, so opening it does not raise the phone keyboard.
+- Focus stays inside the sheet while it is open.
+- Escape or a backdrop tap closes the sheet, and focus returns to the
+  control that opened it.
+- Escape is a cancel, as in the desktop dialogs, so the draft is discarded.
+- While `isSubmitting` (a save or delete in flight), Escape and backdrop
+  taps are ignored, so the pending result and the draft are kept.
+- Nested Radix layers (a category editor, the mobile select) close first on
+  Escape, leaving the sheet open.
+- Limitation: iOS Safari does not focus a tapped button. When the opener was
+  never focused (tapped on iOS, or a table row), focus is not restored, and
+  the browser default applies.
+
 ## Reference Data Owner
 
 `reference-data-owner.js` owns accounts and categories: the query cache is
@@ -319,6 +367,38 @@ its shell), "Refresh now" reruns each of them.
 
 `use-app-sync-subscription.js` owns the cross-tab BroadcastChannel and
 storage listeners; its parse and dispatch helpers are pure.
+
+## Layout Breakpoint Boundary
+
+`use-viewport.js` is the only client module that calls `matchMedia` for
+layout; nothing else reads `innerWidth` or repeats a query string. It has
+two queries:
+
+- `MOBILE_LAYOUT_QUERY`, `(max-width: 760px)`, is the phone layout and
+  matches the `@media (max-width: 760px)` blocks in `public/styles.css` (a
+  unit test checks the stylesheet). Entries, Splits, the responsive pickers,
+  the spending chart, the last-period hint, inline editor scrolling, the
+  Splits group pills and focus visibility use it.
+- `MONTH_SHEET_LAYOUT_QUERY` adds `(max-width: 1024px) and (orientation:
+  portrait)`. Month plan and income rows open the mobile sheet on a portrait
+  tablet too, while the CSS and every other page keep the desktop layout.
+  This difference is deliberate; do not merge the two queries.
+
+Render code uses `useIsMobileLayout()` / `useIsMonthSheetLayout()`, built on
+`useSyncExternalStore` with one shared `MediaQueryList` per query, so the
+value is right on first render and a resize or rotation switches the layout
+without a reload. With no window (server render, unit tests) they report
+the desktop layout. Event handlers and effects call `isMobileLayout()` /
+`isMonthSheetLayout()`, which ask `matchMedia` at that moment. The Month
+open handlers must keep this fresh read: the row-open spy in
+`tests/e2e/month-page.spec.js` counts it. Focus visibility also treats a
+visual viewport of 760px or less (pinch zoom) as mobile.
+
+Route warmup reuses `MOBILE_LAYOUT_QUERY` for its narrow-viewport signal,
+but its mode also needs `(pointer: coarse)` and stays in
+`selectWarmupMode`, because warmup is about the device, not the layout.
+`tests/e2e/viewport-breakpoints.spec.js` resizes one page across both
+widths.
 
 ## Route Warmup Boundary
 

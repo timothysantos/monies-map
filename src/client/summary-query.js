@@ -42,7 +42,7 @@ function fetchSummaryJson(queryClient, {
   queryKey,
   path,
   bypassCache = false,
-  signal
+  signal = undefined
 }) {
   return fetchQueryWithLease(queryClient, {
     queryKey,

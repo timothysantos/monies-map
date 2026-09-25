@@ -1,4 +1,5 @@
-const MOBILE_WIDTH_QUERY = "(max-width: 760px)";
+import { MOBILE_LAYOUT_MAX_WIDTH, isMobileLayout } from "./use-viewport.js";
+
 const FOCUSABLE_FORM_CONTROL_SELECTOR = [
   "input:not([type='hidden'])",
   "textarea",
@@ -11,9 +12,11 @@ function isMobileViewport() {
     return false;
   }
 
+  // The visual viewport also counts: it narrows under pinch zoom even while
+  // the layout viewport, and so the CSS layout, stays wide.
   return Boolean(
-    window.matchMedia?.(MOBILE_WIDTH_QUERY).matches ||
-    (window.visualViewport && window.visualViewport.width <= 760)
+    isMobileLayout() ||
+    (window.visualViewport && window.visualViewport.width <= MOBILE_LAYOUT_MAX_WIDTH)
   );
 }
 

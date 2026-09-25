@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { hashKey, useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -7,12 +7,8 @@ import {
   Plus
 } from "lucide-react";
 import {
-  Navigate,
-  Route,
-  Routes,
   useLocation,
   useNavigate,
-  useParams,
   useSearchParams
 } from "react-router-dom";
 import {
@@ -48,6 +44,7 @@ import {
   ShellLoadingScreen
 } from "./app-shell-status";
 import { ScreenErrorBoundary } from "./screen-error-boundary";
+import { ErrorPanel } from "./ui-states";
 import { ShellRouteTabs } from "./app-shell-navigation";
 import { PeriodMonthPicker } from "./app-shell-period-pickers";
 import { LoginRegistrationDialog } from "./login-registration-dialog";
@@ -60,9 +57,9 @@ import {
   describeAppShellError,
   isAppShellResourceLimitError
 } from "./request-errors";
-import { fetchTextWithTransientWorkerRetry, fetchWithTimeout } from "./request-timeout";
+import { fetchTextWithTransientWorkerRetry } from "./request-timeout";
 import { installMobileFocusVisibility } from "./mobile-focus-visibility";
-import { queryKeys, summaryPageKeyFromParams } from "./query-keys";
+import { queryKeys } from "./query-keys";
 import { fetchQueryWithLease } from "./query-leases";
 import { loadRouteModule } from "./route-modules";
 import { useAppShellState } from "./use-app-shell-state";
@@ -89,9 +86,7 @@ import {
   invalidateImportMutationQueries,
   invalidateEntriesMutationQueries,
   invalidateImportsPageQueries,
-  invalidateMonthQueries,
-  invalidateSummaryAccountPillQueries,
-  invalidateSummaryPageQueries
+  invalidateMonthQueries
 } from "./query-mutations";
 import { describeSettingsRefreshPlan, SETTINGS_ROUTE_REQUEST } from "./settings-refresh-plan";
 import {
@@ -250,6 +245,7 @@ export function App() {
   const isAppShellLoading = appShellLoadCount > 0;
   const [importInboxBanner, setImportInboxBanner] = useState(null);
   const [routePageError, setRoutePageError] = useState("");
+  const [isRetryingRoutePage, setIsRetryingRoutePage] = useState(false);
   // Summary data is not replaced until the next response arrives, so keep the
   // request it belongs to; readiness compares it with the active request.
   const [entriesExternalRefreshToken, setEntriesExternalRefreshToken] = useState(0);
@@ -261,10 +257,8 @@ export function App() {
   const [suppressedLoginRegistrationEmail, setSuppressedLoginRegistrationEmail] = useState("");
   // These aliases make the current route inputs explicit before they flow into
   // shell and page fetch helpers.
-  const appShellMonth = selectedMonth;
   const appShellSummaryStart = selectedSummaryStart;
   const appShellSummaryEnd = selectedSummaryEnd;
-  const appShellScope = selectedScope;
 
   // Install the mobile focus helper once so dialogs and popovers remain
   // keyboard-friendly on small screens.
@@ -491,30 +485,9 @@ export function App() {
     queryClient.removeQueries({ queryKey: ["entries-page"] });
   }, [bumpQueryEpoch, queryClient]);
 
-  // Fetch the entries page with exact caching semantics so the dedicated
-  // entries workflow can reuse data without rebuilding the shell.
-  const fetchEntriesPageData = useCallback((params, { bypassCache = false, signal } = {}) => (
-    fetchQueryWithLease(queryClient, {
-      queryKey: queryKeys.entriesPage(params),
-      bypassCache,
-      signal,
-      abortMessage: "Entries page request aborted.",
-      fetcher: async ({ signal: requestSignal }) => {
-        const response = await fetchWithTimeout(`/api/entries-page?${params.toString()}`, {
-          cache: "no-store",
-          signal: requestSignal
-        }, "Entries page request");
-        if (!response.ok) {
-          throw new Error(await buildRequestErrorMessage(response, "Entries page failed."));
-        }
-        return response.json();
-      }
-    })
-  ), [queryClient]);
-
   // Fetch the app shell payload and persist it so the next render can reuse
   // global metadata immediately.
-  const fetchAppShellData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
+  const fetchAppShellData = useCallback(async (params, { bypassCache = false, signal = undefined } = {}) => {
     const cacheKey = params.toString();
     const queryKey = queryKeys.appShell(params);
     const queryState = queryClient.getQueryState(queryKey);
@@ -611,7 +584,7 @@ export function App() {
   }, [queryClient, updateLoadingStatus]);
 
   // Fetch the entries shell payload used by the dedicated entries workflow.
-  const fetchEntriesShellData = useCallback(async (params, { signal } = {}) => {
+  const fetchEntriesShellData = useCallback(async (params, { signal = undefined } = {}) => {
     if (signal?.aborted) {
       throw new DOMException("Entries shell request aborted.", "AbortError");
     }
@@ -726,7 +699,7 @@ export function App() {
   }, [appShellOwner, appShellParams, clearAppShellCache, fetchAppShellData]);
 
   // Fetch the active route page and shape it into the current screen payload.
-  const fetchRoutePageData = useCallback(async (request, { bypassCache = false, signal } = {}) => {
+  const fetchRoutePageData = useCallback(async (request, { bypassCache = false, signal = undefined } = {}) => {
     if (!request) {
       return null;
     }
@@ -810,7 +783,7 @@ export function App() {
 
   // Summary uses slice-owned queries instead of the generic route-page
   // endpoint so its range DTO and wallet pills can refresh independently.
-  const fetchSummaryPageData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
+  const fetchSummaryPageData = useCallback(async (params, { bypassCache = false, signal = undefined } = {}) => {
     updateLoadingStatus({
       label: "Loading current page",
       detail: "Loading summary...",
@@ -827,7 +800,7 @@ export function App() {
 
   // Summary account pills stay on a dedicated query so range changes and note
   // edits do not fan out into unrelated wallet refreshes.
-  const fetchSummaryAccountPillsData = useCallback(async (params, { bypassCache = false, signal } = {}) => (
+  const fetchSummaryAccountPillsData = useCallback(async (params, { bypassCache = false, signal = undefined } = {}) => (
     fetchSummaryAccountPillsQuery(queryClient, params, { bypassCache, signal })
   ), [queryClient]);
   const {
@@ -2092,11 +2065,45 @@ export function App() {
   // The previous page stays on screen while the next one loads, so a crashed
   // screen retries both when a navigation starts and when its page settles.
   const screenErrorResetKey = `${activeRouteKey}:${currentPageView ? "current" : "previous"}`;
+  // A page that failed to load after the person navigated must not leave the
+  // previous page readable under the new tab or period: its figures would
+  // read as the new period's. The error panel takes its place inside the
+  // shell, so navigation and the period picker keep working, and stays up
+  // while "Try loading again" runs. The previous page stays mounted but
+  // hidden, so a draft on it survives the failure and the retry.
+  const showRoutePageError = Boolean((routePageError || isRetryingRoutePage) && !currentPageView && pageView);
+  const retryRoutePageFromPanel = async () => {
+    setIsRetryingRoutePage(true);
+    try {
+      await retryActivePageLoad();
+    } finally {
+      setIsRetryingRoutePage(false);
+    }
+  };
   const routeBody = pageView
     ? (
-        <RouteWorkProvider registry={routeWorkRegistry} routeKey={currentPageView ? activeRouteKey : null}>
-          {renderedRouteElement}
-        </RouteWorkProvider>
+        <>
+          {showRoutePageError ? (
+            <ErrorPanel
+              className="route-page-error"
+              title={messages.common.pageLoadErrorTitle}
+              detail={messages.common.loadFailedDetail}
+              actions={[{
+                label: isRetryingRoutePage ? messages.common.working : messages.common.retryPageLoad,
+                onClick: () => void retryRoutePageFromPanel(),
+                disabled: isRetryingRoutePage,
+                primary: true
+              }]}
+            >
+              {routePageError ? <p className="app-loading-issue-inline">{routePageError}</p> : null}
+            </ErrorPanel>
+          ) : null}
+          <div className="route-page-body" style={{ display: showRoutePageError ? "none" : "contents" }}>
+            <RouteWorkProvider registry={routeWorkRegistry} routeKey={currentPageView ? activeRouteKey : null}>
+              {renderedRouteElement}
+            </RouteWorkProvider>
+          </div>
+        </>
       )
     : <RouteChunkLoadingFallback status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />;
   const showImportInboxBanner = Boolean(
@@ -2112,7 +2119,7 @@ export function App() {
   useEffect(() => {
     const importsKeyHash = hashKey(queryKeys.importsPage());
     const readBanner = () => {
-      setImportInboxBanner(queryClient.getQueryData(queryKeys.importsPage())?.importsPage?.importInbox ?? null);
+      setImportInboxBanner(/** @type {any} */ (queryClient.getQueryData(queryKeys.importsPage()))?.importsPage?.importInbox ?? null);
     };
     readBanner();
     return queryClient.getQueryCache().subscribe((event) => {
@@ -2364,7 +2371,6 @@ export function App() {
         message={referenceDataError}
         diagnosis={(
           <div className="app-loading-diagnosis">
-            <strong>{messages.common.referenceDataErrorTitle}</strong>
             <p>{messages.common.referenceDataErrorDetail}</p>
           </div>
         )}
@@ -2382,7 +2388,6 @@ export function App() {
         title={messages.common.pageLoadErrorTitle}
         message={routePageError}
         issue={loadingStatus.issue}
-        issuePlacement="inside"
         retryLabel={messages.common.retryPageLoad}
         onRetry={retryActivePageLoad}
       />
@@ -2404,7 +2409,7 @@ export function App() {
       : pageView.label;
   // The settings badge reads from the settings page cache so the shell stays a
   // reference-data payload instead of reabsorbing settings-page state.
-  const cachedSettingsPage = queryClient.getQueryData(queryKeys.routeRequestKey(SETTINGS_ROUTE_REQUEST));
+  const cachedSettingsPage = /** @type {any} */ (queryClient.getQueryData(queryKeys.routeRequestKey(SETTINGS_ROUTE_REQUEST)));
   const pendingCategorySuggestionCount = cachedSettingsPage?.settingsPage?.categoryMatchRuleSuggestions?.length ?? 0;
   const buildTabTarget = (tab) => {
     // Each nav link preserves the relevant route query while stripping
@@ -3134,75 +3139,4 @@ function areStringArraysEqual(current, next) {
     return false;
   }
   return current.every((value, index) => value === next[index]);
-}
-
-// Build the query string used by the deep-link route that jumps directly to
-// the Entries page.
-
-// Resolve an entry deep link by looking up the owning month and redirecting to
-// the correct Entries route with the matching edit context.
-function EntryDeepLinkRoute() {
-  const { entryId = "" } = useParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [status, setStatus] = useState({ loading: true, error: "" });
-
-  useEffect(() => {
-    if (!entryId) {
-      setStatus({ loading: false, error: "Missing entry id." });
-      return;
-    }
-
-    const controller = new AbortController();
-    setStatus({ loading: true, error: "" });
-
-    void fetch(`/api/entries/locate?entryId=${encodeURIComponent(entryId)}`, {
-      cache: "no-store",
-      signal: controller.signal
-    })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok || !data?.context) {
-          throw new Error(data?.error ?? "Entry not found.");
-        }
-
-        const next = new URLSearchParams(location.search);
-        next.set("view", data.context.viewId ?? "household");
-        next.set("month", data.context.month);
-        next.set("editing_entry", data.context.entryId);
-        if (data.context.accountId) {
-          next.set("entry_wallet", data.context.accountId);
-        } else if (data.context.accountName) {
-          next.set("entry_wallet", data.context.accountName);
-        }
-        navigate({
-          pathname: "/entries",
-          search: `?${next.toString()}`
-        }, { replace: true });
-      })
-      .catch((error) => {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
-        setStatus({
-          loading: false,
-          error: error instanceof Error ? error.message : "Entry not found."
-        });
-      });
-
-    return () => controller.abort();
-  }, [entryId, location.search, navigate]);
-
-  if (status.loading) {
-    return <RouteChunkLoadingFallback />;
-  }
-
-  return (
-    <section className="panel panel-accent">
-      <div className="import-warning import-warning-attention">
-        <strong>Entry link unavailable</strong>
-        <p className="lede compact">{status.error || "The requested entry could not be opened."}</p>
-      </div>
-    </section>
-  );
 }

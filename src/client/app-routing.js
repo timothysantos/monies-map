@@ -62,7 +62,7 @@ export function getSelectedTabId(pathname) {
   return "summary";
 }
 
-export function buildRoutePageRequest({ tabId, viewId, month, scope, summaryStart, summaryEnd }) {
+export function buildRoutePageRequest({ tabId, viewId, month, scope, summaryStart = undefined, summaryEnd = undefined }) {
   // Convert the active tab into the exact page endpoint and query params the
   // server expects for that screen.
   if (tabId === "month") {
