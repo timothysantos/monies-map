@@ -2503,3 +2503,40 @@ low ones: deep-link scroll with estimated heights (reproduced and fixed,
 above), `useStableHandler` silently skipping a missing handler (now
 throws as before), and future focus rings at a row's edge (noted under
 "Still open").
+
+### Mobile sheet open time after the modal sheet (2026-09-25)
+
+Branch `quiet-failures`. The final cohort above recorded mobile "open one
+entry" rising 194 → 324 ms after `consistent-states` (`4489ab0`) made
+`EntryMobileSheet` a modal Radix dialog. Measured with the existing probe
+(`tests/performance/entries-interaction.spec.js`,
+`PERFORMANCE_INTERACTIONS=editor`, scale-10k, Pixel 7 emulation at CPU 4×,
+8 samples per run). Variants differed only in `entry-mobile-sheet.jsx` and
+ran interleaved, 5 runs each, compared with
+`scripts/compare-performance.mjs --interaction`:
+
+| Variant | Open (median, run medians) | Close (median) | Verdict vs current |
+| --- | --- | --- | --- |
+| A: current modal sheet | 320 ms (300–339) | 351 ms | — |
+| B: pre-modal sheet (`4489ab0^`) | 164 ms (155–170) | 271 ms | faster (open and close) |
+| C: current sheet with `modal={false}` | 166 ms (155–172) | 272 ms | faster (open and close) |
+| D: modal, plain backdrop instead of `Dialog.Overlay` (no scroll lock) | 260 ms vs A 303 ms in its own cohort | 323 vs 337 ms | open faster, close within noise |
+
+Draft keystrokes were within noise in every variant, and row renders were
+unchanged (1 on open, 2 on close).
+
+The regression is confirmed and comes from modal-only work. The Dialog
+itself and the sheet's React tree are not the cost: C renders the same
+tree and matches B. Of the roughly 155 ms, the scroll lock that Radix
+attaches to the overlay (`react-remove-scroll`) accounts for about 43 ms.
+The rest is spread over the other modal behaviours on a 2,000-row
+document: `aria-hidden` on everything outside the portal, the body
+`pointer-events: none` lock and the focus trap.
+
+Not changed. The only variant that recovers the full cost drops modality,
+which would undo the focus trap and background hiding that
+`mobile-sheet-focus.spec.js` requires. Removing just the scroll lock saves
+about a quarter of it, and lets the page behind scroll when the backdrop is
+dragged on iPhone. Neither is a clear, safe fix. A later option is a
+lighter modal (native `<dialog>` with `showModal()`, or a hand-rolled
+`inert` on the app root), measured against this cohort.
