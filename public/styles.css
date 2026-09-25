@@ -5762,23 +5762,30 @@ button.split-activity-card:hover {
 /* Shared "nothing here yet" line (EmptyState in src/client/ui-states.jsx). */
 .empty-state {
   max-width: none;
-  margin: 0 0 18px;
   color: var(--muted);
   font-size: 1.02rem;
   line-height: 1.7;
 }
 
-.empty-state.is-detailed {
+/* Spacing and the detailed layout have zero specificity, so a context class
+   (for example the Entries wallet notice) keeps its own colour, gap and
+   margins. */
+:where(.empty-state) {
+  margin: 0 0 18px;
+}
+
+:where(.empty-state.is-detailed) {
   display: grid;
   gap: 8px;
+  margin: 0;
   line-height: 1.5;
 }
 
-.empty-state.is-detailed strong {
+:where(.empty-state.is-detailed) strong {
   color: var(--text);
 }
 
-.empty-state.is-detailed p {
+:where(.empty-state.is-detailed) p {
   margin: 0;
 }
 

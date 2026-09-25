@@ -251,6 +251,7 @@ export function App() {
   const isAppShellLoading = appShellLoadCount > 0;
   const [importInboxBanner, setImportInboxBanner] = useState(null);
   const [routePageError, setRoutePageError] = useState("");
+  const [isRetryingRoutePage, setIsRetryingRoutePage] = useState(false);
   // Summary data is not replaced until the next response arrives, so keep the
   // request it belongs to; readiness compares it with the active request.
   const [entriesExternalRefreshToken, setEntriesExternalRefreshToken] = useState(0);
@@ -2094,25 +2095,44 @@ export function App() {
   // screen retries both when a navigation starts and when its page settles.
   const screenErrorResetKey = `${activeRouteKey}:${currentPageView ? "current" : "previous"}`;
   // A page that failed to load after the person navigated must not leave the
-  // previous page on screen under the new tab or period: its figures would
-  // read as the new period's. The error takes the page's place inside the
-  // shell, so navigation and the period picker keep working.
-  const routeBody = routePageError && !currentPageView && pageView
+  // previous page readable under the new tab or period: its figures would
+  // read as the new period's. The error panel takes its place inside the
+  // shell, so navigation and the period picker keep working, and stays up
+  // while "Try loading again" runs. The previous page stays mounted but
+  // hidden, so a draft on it survives the failure and the retry.
+  const showRoutePageError = Boolean((routePageError || isRetryingRoutePage) && !currentPageView && pageView);
+  const retryRoutePageFromPanel = async () => {
+    setIsRetryingRoutePage(true);
+    try {
+      await retryActivePageLoad();
+    } finally {
+      setIsRetryingRoutePage(false);
+    }
+  };
+  const routeBody = pageView
     ? (
-        <ErrorPanel
-          className="route-page-error"
-          title={messages.common.pageLoadErrorTitle}
-          detail={messages.common.loadFailedDetail}
-          actions={[{ label: messages.common.retryPageLoad, onClick: () => void retryActivePageLoad(), primary: true }]}
-        >
-          <p className="app-loading-issue-inline">{routePageError}</p>
-        </ErrorPanel>
-      )
-    : pageView
-    ? (
-        <RouteWorkProvider registry={routeWorkRegistry} routeKey={currentPageView ? activeRouteKey : null}>
-          {renderedRouteElement}
-        </RouteWorkProvider>
+        <>
+          {showRoutePageError ? (
+            <ErrorPanel
+              className="route-page-error"
+              title={messages.common.pageLoadErrorTitle}
+              detail={messages.common.loadFailedDetail}
+              actions={[{
+                label: isRetryingRoutePage ? messages.common.working : messages.common.retryPageLoad,
+                onClick: () => void retryRoutePageFromPanel(),
+                disabled: isRetryingRoutePage,
+                primary: true
+              }]}
+            >
+              {routePageError ? <p className="app-loading-issue-inline">{routePageError}</p> : null}
+            </ErrorPanel>
+          ) : null}
+          <div className="route-page-body" style={{ display: showRoutePageError ? "none" : "contents" }}>
+            <RouteWorkProvider registry={routeWorkRegistry} routeKey={currentPageView ? activeRouteKey : null}>
+              {renderedRouteElement}
+            </RouteWorkProvider>
+          </div>
+        </>
       )
     : <RouteChunkLoadingFallback status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />;
   const showImportInboxBanner = Boolean(

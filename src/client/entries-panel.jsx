@@ -1167,7 +1167,7 @@ export function EntriesPanel({
           saveLabel={savingEntryId === activeEditingEntry.id ? messages.common.saving : "Save"}
           cancelLabel={hasEditingEntryChanges ? messages.entries.cancelEdit : messages.common.close}
           isSaveDisabled={Boolean(savingEntryId) || Boolean(deletingEntryId) || !hasEditingEntryChanges}
-          isSubmitting={Boolean(savingEntryId) || Boolean(deletingEntryId)}
+          isSubmitting={Boolean(savingEntryId) || Boolean(deletingEntryId) || Boolean(addingToSplitsEntryId)}
           secondaryAction={activeEditingEntry.entryType !== "expense"
             ? (
                 <button
