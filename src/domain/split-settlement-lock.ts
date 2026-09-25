@@ -25,7 +25,7 @@ export interface SplitSettlementFacts {
   shares: Array<{ personId: string; amountMinor: number }>;
 }
 
-export type SplitSettlementFact = "amount" | "currency" | "shares" | "who paid" | "date" | "group";
+export type SplitSettlementFact = "amount" | "currency" | "shares" | "payer" | "date" | "group";
 
 export interface LockingSettlementCheckpoint {
   id: string;
@@ -57,7 +57,7 @@ export function changedSplitSettlementFacts(before: SplitSettlementFacts, after:
   if (before.amountMinor !== after.amountMinor) changed.push("amount");
   if (normalizeSplitCurrency(before.currency) !== normalizeSplitCurrency(after.currency)) changed.push("currency");
   if (sharesKey(before.shares) !== sharesKey(after.shares)) changed.push("shares");
-  if (before.partyIds.join("|") !== after.partyIds.join("|")) changed.push("who paid");
+  if (before.partyIds.join("|") !== after.partyIds.join("|")) changed.push("payer");
   if (before.date !== after.date) changed.push("date");
   if ((before.groupId ?? null) !== (after.groupId ?? null)) changed.push("group");
   return changed;
@@ -192,14 +192,13 @@ export function buildSplitSettlementLockedMessage(input: {
   change: SplitSettlementFact[] | "deleted";
 }) {
   const record = input.recordKind === "expense" ? "expense" : "settle-up";
-  const who = input.subject === "linked entry" ? `This entry's split ${record}` : `This split ${record}`;
-  const action = input.change === "deleted"
-    ? "deleting it"
-    : input.subject === "linked entry"
-      ? `changing the entry, because its split ${joinFacts(input.change)} would change`
-      : `changing its ${joinFacts(input.change)}`;
-  const where = input.subject === "linked entry" ? " in Splits" : "";
-  return `${who} is part of the ${describeCheckpoint(input.checkpoint)}. Undo the simplification${where} before ${action}, so the settled amount still matches its activity.`;
+  const settlement = describeCheckpoint(input.checkpoint);
+  const reason = "so the settled amount still matches its activity";
+  if (input.subject === "linked entry" && input.change !== "deleted") {
+    return `This entry's split ${record} is part of the ${settlement}, and saving would change the split's ${joinFacts(input.change)}. Undo the simplification first, ${reason}.`;
+  }
+  const action = input.change === "deleted" ? "deleting it" : `changing its ${joinFacts(input.change)}`;
+  return `This split ${record} is part of the ${settlement}. Undo the simplification before ${action}, ${reason}.`;
 }
 
 function joinFacts(facts: SplitSettlementFact[]) {
@@ -207,6 +206,8 @@ function joinFacts(facts: SplitSettlementFact[]) {
   return `${facts.slice(0, -1).join(", ")} and ${facts[facts.length - 1]}`;
 }
 
+// Names the settlement without its amount: the message is plain text, and
+// the Splits and Entries pages may be hiding money.
 function describeCheckpoint(checkpoint: LockingSettlementCheckpoint) {
   const state = checkpoint.status === "matched"
     ? ", bank matched"
@@ -215,16 +216,6 @@ function describeCheckpoint(checkpoint: LockingSettlementCheckpoint) {
       : "";
   const detail = checkpoint.amountMinor === 0 || checkpoint.status === "internally_offset" || !checkpoint.fromPersonName || !checkpoint.toPersonName
     ? "groups offset to zero"
-    : `${checkpoint.fromPersonName} pays ${checkpoint.toPersonName} ${formatMoney(checkpoint.amountMinor, checkpoint.currency)}`;
+    : `${checkpoint.fromPersonName} pays ${checkpoint.toPersonName}`;
   return `simplified settlement of ${checkpoint.settlementDate} (${detail}${state})`;
-}
-
-function formatMoney(amountMinor: number, currency: string) {
-  try {
-    const formatter = new Intl.NumberFormat("en-SG", { style: "currency", currency });
-    const digits = formatter.resolvedOptions().maximumFractionDigits ?? 2;
-    return formatter.format(amountMinor / 10 ** digits);
-  } catch {
-    return `${currency} ${(amountMinor / 100).toFixed(2)}`;
-  }
 }

@@ -139,7 +139,7 @@ test("a Splits edit that changes a settled expense's amount, shares, payer, date
   const variants = [
     [{ amountMinor: 8_000, splitAmountMinor: 4_000 }, /amount/],
     [{ splitAmountMinor: 2_000 }, /shares/],
-    [{ payerPersonName: "Joyce" }, /who paid/],
+    [{ payerPersonName: "Joyce" }, /payer/],
     [{ date: "2026-05-17" }, /date/],
     [{ groupId: group.payload.groupId }, /group/]
   ];
@@ -346,7 +346,7 @@ test("a settle-up included in a settlement cannot change amount or be deleted, b
   };
 
   assertLocked(await api("/api/splits/settlements/update", settlementEdit), checkpoint.checkpointId, /settle-up/);
-  assertLocked(await api("/api/splits/settlements/update", { ...settlementEdit, amountMinor: 1_000, fromPersonName: "Tim", toPersonName: "Joyce" }), checkpoint.checkpointId, /who paid/);
+  assertLocked(await api("/api/splits/settlements/update", { ...settlementEdit, amountMinor: 1_000, fromPersonName: "Tim", toPersonName: "Joyce" }), checkpoint.checkpointId, /payer/);
   assertLocked(await api("/api/splits/settlements/delete", { settlementId }), checkpoint.checkpointId);
   assertSameDatabase(await dumpDatabase(db), before);
 
