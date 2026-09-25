@@ -278,6 +278,8 @@ Source anchors:
 
 - `src/lib/statement-import/xls.ts`
 - `tests/fixtures/uob-current-transactions/`
+- `src/lib/statement-import/citibank.ts`, `uob.ts`, `ocbc.ts`
+- `tests/fixtures/pdf-statement-text/`
 
 ## Rule 7b: Preserve The Original Parse Path Before Adding A Fallback
 
