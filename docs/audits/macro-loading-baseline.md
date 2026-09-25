@@ -2148,3 +2148,18 @@ Retry screen fix and AI wording timing.
 
 Document checks: every relative Markdown link in the changed docs resolves
 (see the gates below).
+
+### H16 and H17 gates
+
+| Check | Result |
+| --- | --- |
+| `npm run typecheck` | Pass |
+| `npm run test:unit` | Pass 448/448 |
+| Doc reference check (relative links and backticked repo paths in the changed docs) | 0 broken |
+| Full functional E2E on isolated ports (after the CSS prune and dead-code removal) | **Pass 244/244** |
+
+The macro performance plan, H00–H17, is complete. Open items for a future
+decision:
+- the remaining large modules (code-spec table);
+- the 482 KB (gzip) PDF worker, loaded only for PDF import;
+- CDP-emulated measurements rather than real devices.
