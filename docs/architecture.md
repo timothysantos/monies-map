@@ -33,21 +33,21 @@ system.
 - [`docs/refactor-decisions.md`](./refactor-decisions.md): intended answers to
   the remaining shell, helper, mobile, money-editing, bootstrap, and
   invalidation shape questions
-- [`docs/first-slice-prompt.md`](./first-slice-prompt.md): ready-to-run prompt
+- [`docs/archive/first-slice-prompt.md`](./archive/first-slice-prompt.md): ready-to-run prompt
   for the app shell and query infrastructure foundation slice
-- [`docs/second-slice-prompt.md`](./second-slice-prompt.md): ready-to-run
+- [`docs/archive/second-slice-prompt.md`](./archive/second-slice-prompt.md): ready-to-run
   prompt for the route-transition and domain-boundary slice
-- [`docs/third-slice-prompt.md`](./third-slice-prompt.md): ready-to-run prompt
+- [`docs/archive/third-slice-prompt.md`](./archive/third-slice-prompt.md): ready-to-run prompt
   for the imports query and workflow slice
-- [`docs/fourth-slice-prompt.md`](./fourth-slice-prompt.md): ready-to-run
+- [`docs/archive/fourth-slice-prompt.md`](./archive/fourth-slice-prompt.md): ready-to-run
   prompt for the settings query and workflow slice
-- [`docs/eighth-slice-prompt.md`](./eighth-slice-prompt.md): ready-to-run
+- [`docs/archive/eighth-slice-prompt.md`](./archive/eighth-slice-prompt.md): ready-to-run
   prompt for the app-shell retirement and legacy-bridge cleanup slice
-- [`docs/ninth-slice-prompt.md`](./ninth-slice-prompt.md): ready-to-run
+- [`docs/archive/ninth-slice-prompt.md`](./archive/ninth-slice-prompt.md): ready-to-run
   prompt for the entries workflow boundary and remaining month handoff slice
-- [`docs/tenth-slice-prompt.md`](./tenth-slice-prompt.md): ready-to-run
+- [`docs/archive/tenth-slice-prompt.md`](./archive/tenth-slice-prompt.md): ready-to-run
   prompt for the month workspace boundary slice
-- [`docs/eleventh-slice-prompt.md`](./eleventh-slice-prompt.md): ready-to-run
+- [`docs/archive/eleventh-slice-prompt.md`](./archive/eleventh-slice-prompt.md): ready-to-run
   prompt for the summary slice
 - [`docs/existing-behavior-guardrails.md`](./existing-behavior-guardrails.md): current-app behaviors that must survive refactors
 - [`docs/responsive-behavior.md`](./responsive-behavior.md): responsive UX and form-factor contract
@@ -462,7 +462,7 @@ Before implementation work, also use:
 - [`docs/known-coupling-targets.md`](./known-coupling-targets.md)
 - [`docs/implementation-prompt-template.md`](./implementation-prompt-template.md)
 - [`docs/refactor-decisions.md`](./refactor-decisions.md)
-- [`docs/first-slice-prompt.md`](./first-slice-prompt.md)
+- [`docs/archive/first-slice-prompt.md`](./archive/first-slice-prompt.md)
 
 ### Stage 5: Tighten backend boundaries to match the slices
 
