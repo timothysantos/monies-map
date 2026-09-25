@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import worker from "../src/index.ts";
-import { ensureDemoSchemaTimed } from "../src/domain/app-repository.ts";
+import { ensureDemoSchemaTimed } from "../src/domain/app-repository-schema.ts";
 import { buildServerTimingHeader, timeInitialization } from "../src/server/server-timing.ts";
 
 // A permissive D1 stand-in: every statement succeeds with empty results.

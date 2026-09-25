@@ -78,10 +78,10 @@ import {
   updateEntryNoteRecord,
   updateEntryPostDateRecord,
   updateEntryRecord,
-  ensureDemoSchemaTimed,
   loadSplitActivityHistory,
   restoreSplitRecord
 } from "./domain/app-repository";
+import { ensureDemoSchemaTimed } from "./domain/app-repository-schema";
 import { ignoreCategoryMatchRuleIssue } from "./domain/app-repository-category-match-rules";
 import {
   dismissAllUnresolvedTransfers,
