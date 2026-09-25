@@ -15,7 +15,6 @@ import { recordCategoryMatchSuggestion } from "./app-repository-category-match-r
 import { buildAuditEventStatement } from "./app-repository-audit";
 import { resolveAccountId, resolveCategoryId, resolvePersonId } from "./app-repository-lookups";
 import { upsertLinkedSplitExpenseForEntryRecord } from "./app-repository-splits";
-import type { EntryDeepLinkContextDto } from "../types/dto";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 
 async function assertUnlockedBankFactsForEntryUpdate(
@@ -875,44 +874,6 @@ export async function deleteEntryRecord(
   return {
     entryId: input.entryId,
     deleted: true
-  };
-}
-
-export async function locateEntryDeepLinkContext(
-  db: D1Database,
-  entryId: string
-): Promise<EntryDeepLinkContextDto | null> {
-  const row = await db
-    .prepare(`
-      SELECT
-        transactions.id,
-        transactions.transaction_date,
-        transactions.account_id,
-        accounts.account_name
-      FROM transactions
-      INNER JOIN accounts ON accounts.id = transactions.account_id
-      WHERE transactions.household_id = ?
-        AND transactions.id = ?
-      LIMIT 1
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, entryId)
-    .first<{
-      id: string;
-      transaction_date: string;
-      account_id: string;
-      account_name: string;
-    }>();
-
-  if (!row) {
-    return null;
-  }
-
-  return {
-    entryId: row.id,
-    month: row.transaction_date.slice(0, 7),
-    accountId: row.account_id,
-    accountName: row.account_name,
-    viewId: "household"
   };
 }
 

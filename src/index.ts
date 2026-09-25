@@ -74,7 +74,6 @@ import {
 } from "./domain/app-repository-month-commands";
 import {
   createEntryRecord,
-  locateEntryDeepLinkContext,
   deleteEntryRecord,
   linkTransferPair,
   settleTransferPair,
@@ -906,23 +905,6 @@ export default {
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to create entry" }, 400);
       }
-    }
-
-    if (url.pathname === "/api/entries/locate" && request.method === "GET") {
-      const entryId = url.searchParams.get("entryId");
-      if (!entryId) {
-        return json({ ok: false, error: "Missing entry id" }, 400);
-      }
-
-      const context = await locateEntryDeepLinkContext(env.DB, entryId);
-      if (!context) {
-        return json({ ok: false, error: "Entry not found" }, 404);
-      }
-
-      return json({
-        ok: true,
-        context
-      });
     }
 
     if (url.pathname === "/api/shortcuts/entries/create" && request.method === "POST") {
