@@ -1596,7 +1596,7 @@ page so it is visually distinct from deployed environments.
 If the app sits on `Loading...` and the browser console shows `/api/app-shell`
 or one of the page routes returning `500` plus a JSON parse error, the usual
 local cause is that Vite is still running while the Worker API failed to
-start. This repo expects Node 22.12.0 or newer for local scripts, so run
+start. This repo expects Node 22.23.0 or newer for local scripts, so run
 `nvm use` from the repo root and restart `npm run dev`.
 
 ## Where is the production app deployed?
@@ -1636,7 +1636,7 @@ blue `demo` banner at the top of the page.
 
 Use the Cloudflare deploy steps in
 [`README.md`](../README.md#cloudflare-deploy).
-The routine production path is to use Node 22.12.0 or newer, then run
+The routine production path is to use Node 22.23.0 or newer, then run
 `npm run deploy:prod`. Use `npm run deploy:demo` for only the public demo, or
 `npm run deploy:all` to build once and publish both Workers. If the app change
 depends on a schema update, run the matching D1 migration before deploy.

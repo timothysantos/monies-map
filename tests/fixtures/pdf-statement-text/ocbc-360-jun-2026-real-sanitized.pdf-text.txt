@@ -1,0 +1,1055 @@
+OCBC Bank
+
+65 Chulia Street, OCBC Centre
+Singapore 049513
+Oversea-Chinese Banking Corporation Limited
+Co. Reg. No.: 193200032W
+
+Singapore dollar deposits of non-bank depositors and monies and deposits denominated in Singapore dollars under the Supplementary Retirement Scheme are insured by the Singapore Deposit Insurance Corporation,
+for up to S$100,000 in aggregate per depositor per Scheme member by law. Monies and deposits denominated in Singapore dollars under the CPF Investment Scheme and CPF Retirement Sum Scheme are aggregated
+and separately insured up to S$100,000 for each depositor per Scheme member. Foreign currency deposits, dual currency investments, structured deposits and other investment products are not insured.
+
+Deposit Insurance Scheme
+5892\N\501\M
+
+0 0 0 0 0 0
+
+XX
+ 
+XXXXXX
+,
+ 
+XXXXX
+
+0
+ 
+XXXXX
+ 
+XXXXXX
+
+#
+00
+-
+00
+
+SINGAPORE
+ 
+000000
+
+STATEMENT OF ACCOUNT
+
+Page 1 of 3
+For enquiries, please call
+our Customer Service Officers at 1800 363 3333
+
+OCBC Centre Branch
+
+Information
+
+As part of our efforts to be a more environmentally
+-
+friendly bank
+,
+ 
+all our account
+
+statements will now be printed on both sides of the page
+.
+
+RNB05ESNI\1
+
+Transaction
+Date
+ 
+Date
+ 
+Description
+ 
+Cheque
+ 
+Withdrawal
+ 
+Deposit
+ 
+Balance
+Value
+
+360 ACCOUNT
+
+Account No. 000000000000
+1 JUN 2026 TO 30 JUN 2026
+
+31,771.66
+BALANCE B/F
+31 MAY
+ 
+1,370.00
+ 
+30,401.66
+02 JUN
+ 
+FUND TRANSFER
+via PayNow-UEN
+to XXX XXXXXXXX XXX
+OTHR - 00000000 XXXXX XX
+03 JUN
+ 
+685.00
+ 
+29,716.66
+03 JUN
+ 
+IBG GIRO
+COLL X0000000
+IFAST FINANCIAL PL-
+X0000000
+03 JUN
+ 
+1,370.00
+ 
+28,346.66
+03 JUN
+ 
+IBG GIRO
+COLL X0000000
+IFAST FINANCIAL PL-
+X0000000
+04 JUN
+ 
+274.00
+ 
+28,072.66
+04 JUN
+ 
+FAST PAYMENT
+via PayNow-Mobile
+to XXX XXXX XXXX
+OTHR-Monthly
+10 JUN
+ 
+928.39
+ 
+27,144.27
+10 JUN
+ 
+DEBIT PURCHASE
+07/06/26
+xx-0000 XXXXXXXXXX
+S
+10 JUN
+ 
+93.71
+ 
+27,050.56
+10 JUN
+ 
+DEBIT PURCHASE
+07/06/26
+xx-0000 XXXX XXX XXX
+S
+10 JUN
+ 
+58.84
+ 
+27,109.40
+10 JUN
+ 
+BONUS INTEREST
+360 SALARY BONUS
+10 JUN
+ 
+23.54
+ 
+27,132.94
+10 JUN
+ 
+BONUS INTEREST
+360 SAVE BONUS
+13 JUN
+ 
+23.43
+ 
+27,109.51
+13 JUN
+ 
+DEBIT PURCHASE
+11/06/26
+xx-0000 XXXX XXX XXX
+S
+18 JUN
+ 
+13,700.00
+ 
+13,409.51
+18 JUN
+ 
+FAST PAYMENT
+0000000000
+to XX
+OTHR-Other
+24 JUN
+ 
+11,414.63
+ 
+24,824.14
+24 JUN
+ 
+IBG GIRO
+SALA
+XXXXXXXXXX XXX XXX
+SALARY TRANSACTION
+OCBC Bank
+
+65 Chulia Street, OCBC Centre
+Singapore 049513
+Oversea-Chinese Banking Corporation Limited
+Co. Reg. No.: 193200032W
+
+Singapore dollar deposits of non-bank depositors and monies and deposits denominated in Singapore dollars under the Supplementary Retirement Scheme are insured by the Singapore Deposit Insurance Corporation,
+for up to S$100,000 in aggregate per depositor per Scheme member by law. Monies and deposits denominated in Singapore dollars under the CPF Investment Scheme and CPF Retirement Sum Scheme are aggregated
+and separately insured up to S$100,000 for each depositor per Scheme member. Foreign currency deposits, dual currency investments, structured deposits and other investment products are not insured.
+
+Deposit Insurance Scheme
+Account
+Account Closed
+ATM Overseas
+Automated Teller Machine Payment
+Automated Teller Machine Transfer
+Foreign Currency
+Adjustment
+Advance
+Amendment
+Automated Standing Instruction
+Bank Charges
+Balance
+Cashier's Order
+Cheque Deposit
+Cash Card
+Central Depository
+Commission
+Conversion
+Credit
+VISA Electron Credit
+Telegraphic Transfer Cancellation
+Dividend
+Debit
+Demand Draft
+VISA Electron Purchases
+Direct Debit
+Direct Credit
+Electronic Payment of Shares
+EasiSave
+EasiSave Fixed Fee
+Electronic Share Application
+Export Loan
+Foreign Currency
+House Loan
+Import Loan
+A/C
+A/C CLOSED
+ATM O
+ATM PAYMENT
+ATM TRANSFER
+ACU
+ADJ
+ADV
+AMD
+ASI
+BANK CHARGES
+BAL
+C/Order
+CHQ DP
+CC
+CDP
+COM
+CONV
+CR
+CRVISA
+CANC TT
+DIV
+DR
+DD
+DVE
+DDB
+DCR
+EPS
+ES
+ES FIXED FEE
+ESA
+EXPORT LOAN
+FCY
+HSE LOAN
+IMPORT LOAN
+
+TRANSACTION CODE
+ 
+DESCRIPTION
+
+INT
+I/COLLN
+IBG
+INB
+INB TRANSFER
+INS
+L/C
+L CHQ
+MER
+NEGN
+NETS
+NOM
+O/COLLN
+PAYMENT-MAS
+PER LOAN
+PHN TRANSFER
+POS
+POST
+PREM
+PS
+REIMB
+RTN GIRO
+RTN CHQ
+RECEIPTS-MAS
+SEC
+SGD
+SATM
+ST
+SER CHARGE
+SHR
+T/R
+TT
+TRAN CHARGE
+TRADE FINANCE
+TRANSFER
+Interest
+Inward Collection
+Inter-Bank GIRO
+Internet Banking
+Internet Banking Transfer
+Insurance
+Letter of Credit
+Late Cheque
+Merchant
+Negotiation
+NETS
+Nominee
+Outward Collection
+MEPS Payment
+Personal Loan
+PhoneBank Transfer
+Point of Sale
+Postage
+Premium
+Power Supply
+Reimbursement
+Return GIRO
+Return Cheque
+MEPS Receipts
+Security
+Singapore Dollar
+Shared ATM
+SingTel
+Service Charge
+Share NETS
+Trust Receipt
+Telegraphic Transfer
+Transaction Charge
+Trade Finance
+Transfer
+
+Contact for Consumer Banking:
+ 
+Contact for Business Banking:
+1800 363 3333
+ 
+(65) 0000 0000
+APPLICATIONS FOR INDIVIDUALS
+
+Application for Banking Services
+
+ATM Card
+ 
+INTERNET/MOBILE BANKING
+
+Apply at any OCBC Bank Branch
+
+eBANKING APPLICATIONS FOR BUSINESSES
+
+Application for Access
+
+ATM Card
+
+Apply at any OCBC Bank Branch
+
+INTERNET BANKING
+
+Complete the Apply & Manage OCBC Velocity Account Form available at
+www.ocbc.com, and mail it back to the address stated on the form.
+Three easy ways to apply:-
+1. Apply at any OCBC ATM with your ATM Card and PIN.
+Select 'Other Services'
+Select 'Internet Banking/Mobile Banking Application';
+or
+2. Download and complete the 'Internet/Mobile Banking Services Form
+(Personal)' available at www.ocbc.com, and mail it back to the address
+stated on the form
+or
+3. Apply at any OCBC Branch.
+账户
+关闭账户
+海外自动柜员机
+自动柜员机付款
+自动柜员机转账
+外币
+调整
+预付款
+修改
+自动长期指示
+银行费用
+余款
+本票
+支票存入
+现金卡
+中央托收私人有限公司
+佣金
+外币兌換
+货方/存货
+维萨电子付款
+电子汇款撤消
+股息
+借方/付出
+即期汇票
+维萨电子
+直接财路付款
+直接财路存款
+电子购股付款
+易式储蓄户口
+易式账户固定费用
+电子股票认购
+出口贷款
+外币
+房屋贷款
+进口贷款
+
+利息
+进口托收
+财路
+网络银行
+网络银行转账
+保险
+信用证
+逾期支票
+信用卡特约商家
+信用证议付
+电子转账网络系统
+信托人
+出口托收
+货币管理(MAS)电子付款系统-付款
+个人贷款
+电话银行转账
+销售终端
+邮费
+保险费
+能源供应公司
+偿付
+退回财路
+退回支票
+货币管理局电子付款系统-存入
+证券
+新币
+供享自动柜员机
+新电信
+服务费
+供享电子转账网络系统
+信托收据
+电子付款
+交易费用
+货易融资
+转账
+OCBC Bank
+
+65 Chulia Street, OCBC Centre
+Singapore 049513
+Oversea-Chinese Banking Corporation Limited
+Co. Reg. No.: 193200032W
+
+Singapore dollar deposits of non-bank depositors and monies and deposits denominated in Singapore dollars under the Supplementary Retirement Scheme are insured by the Singapore Deposit Insurance Corporation,
+for up to S$100,000 in aggregate per depositor per Scheme member by law. Monies and deposits denominated in Singapore dollars under the CPF Investment Scheme and CPF Retirement Sum Scheme are aggregated
+and separately insured up to S$100,000 for each depositor per Scheme member. Foreign currency deposits, dual currency investments, structured deposits and other investment products are not insured.
+
+Deposit Insurance Scheme
+STATEMENT OF ACCOUNT
+
+Page 2 of 3
+XX XXXXXX, XXXXX
+RNB05ESNI\2
+
+Transaction
+Date
+ 
+Date
+ 
+Description
+ 
+Cheque
+ 
+Withdrawal
+ 
+Deposit
+ 
+Balance
+Value
+
+360 ACCOUNT
+
+Account No. 000000000000
+1 JUN 2026 TO 30 JUN 2026
+
+26 JUN
+ 
+6,850.00
+ 
+17,974.14
+26 JUN
+ 
+FAST PAYMENT
+via PayNow-Mobile
+to XX XXXXXXX XXXXX
+SALA-PayNow Transfer
+28 JUN
+ 
+6,850.00
+ 
+11,124.14
+29 JUN
+ 
+FAST PAYMENT
+via PayNow-Mobile
+to XX XXXXXXX XXXXX
+OTHR-OTHR
+30 JUN
+ 
+2,778.63
+ 
+8,345.51
+30 JUN
+ 
+FAST PAYMENT
+via PayNow-UEN
+to XXXXXXXXX XXXX X
+OTHR-00000000000000XXXXXX
+30 JUN
+ 
+1,370.00
+ 
+6,975.51
+30 JUN
+ 
+FAST PAYMENT
+via PayNow-Mobile
+to XX XXXXXXX XXXXX
+OTHR-OTHR
+30 JUN
+ 
+0.92
+ 
+6,976.43
+30 JUN
+ 
+INTEREST CREDIT
+6,976.43
+BALANCE C/F
+
+Total Withdrawals/Deposits
+Total Interest Paid This Year
+Average Balance
+11,497.93
+36,293.16
+0.00
+00,000.00
+
+CHECK YOUR STATEMENT
+
+Please check this statement
+ 
+&
+ 
+advise us of any discrepancies within
+ 
+14
+ 
+days of receipt
+.
+ 
+If we do not hear from you
+,
+
+we will take this statement as correct and binding
+.
+
+For enquiries
+,
+ 
+please call our Customer Service Officers at
+ 
+1800 363 3333
+.
+
+UPDATING YOUR PERSONAL PARTICULARS
+
+You may update your address and contact numbers via OCBC Online Banking or our ATMs
+.
+ 
+Alternatively
+,
+ 
+complete and mail us
+
+the Change of address
+ 
+/
+ 
+Contact details form
+:
+ 
+OCBC website
+ 
+>
+ 
+Personal Banking
+ 
+>
+ 
+Help and Support
+ 
+>
+ 
+Banking Forms
+.
+OCBC Bank
+
+65 Chulia Street, OCBC Centre
+Singapore 049513
+Oversea-Chinese Banking Corporation Limited
+Co. Reg. No.: 193200032W
+
+Singapore dollar deposits of non-bank depositors and monies and deposits denominated in Singapore dollars under the Supplementary Retirement Scheme are insured by the Singapore Deposit Insurance Corporation,
+for up to S$100,000 in aggregate per depositor per Scheme member by law. Monies and deposits denominated in Singapore dollars under the CPF Investment Scheme and CPF Retirement Sum Scheme are aggregated
+and separately insured up to S$100,000 for each depositor per Scheme member. Foreign currency deposits, dual currency investments, structured deposits and other investment products are not insured.
+
+Deposit Insurance Scheme
+STATEMENT OF ACCOUNT
+
+Page 3 of 3
+XX XXXXXX, XXXXX
+RNB05ESNI\3
+
+OCBC PROMOTION & INFORMATION
+
+OCBC HARBOURFRONT BR TO
+MERGE WITH OCBC TIONG BAHRU
+PLAZA BR
+
+Our OCBC HarbourFront Branch will merge with OCBC
+
+Tiong Bahru Plaza Branch on
+ 
+27
+ 
+July
+ 
+2026
+.
+ 
+The last
+
+day of operations for OCBC HarbourFront Branch
+
+will be
+ 
+25
+ 
+July
+ 
+2026
+ 
+and it will close at
+ 
+1
+.
+30
+pm
+.
+
+For more information, visit any of our branches or log on to OCBC Website.
+__PDF_LAYOUT_TEXT__
+OCBC Bank
+65 Chulia Street, OCBC Centre
+Singapore 049513
+Information
+5892\N\501\M
+As part of our efforts to be a more environmentally-friendly bank,all our account
+statements will now be printed on both sides of the page.
+0 0 0 0 0 0
+XXXXXXXX,XXXXXSTATEMENT OF ACCOUNT
+0XXXXXXXXXXXPage 1 of 3
+#00-00For enquiries, please call
+SINGAPORE000000our Customer Service Officers at 1800 363 3333
+OCBC Centre Branch
+360 ACCOUNT1 JUN 2026 TO 30 JUN 2026
+Account No. 000000000000
+TransactionValue
+DateDateDescriptionChequeWithdrawalDepositBalance
+BALANCE B/F31,771.66
+31 MAY02 JUNFUND TRANSFER1,370.0030,401.66
+via PayNow-UEN
+to XXX XXXXXXXX XXX
+OTHR - 00000000 XXXXX XX
+03 JUN03 JUNIBG GIRO685.0029,716.66
+COLL X0000000
+IFAST FINANCIAL PL-
+X0000000
+03 JUN03 JUNIBG GIRO1,370.0028,346.66
+COLL X0000000
+IFAST FINANCIAL PL-
+X0000000
+04 JUN04 JUNFAST PAYMENT274.0028,072.66
+via PayNow-Mobile
+to XXX XXXX XXXX
+OTHR-Monthly
+10 JUN10 JUNDEBIT PURCHASE928.3927,144.27
+07/06/26
+xx-0000 XXXXXXXXXX
+S
+10 JUN10 JUNDEBIT PURCHASE93.7127,050.56
+07/06/26
+xx-0000 XXXX XXX XXX
+S
+10 JUN10 JUNBONUS INTEREST58.8427,109.40
+360 SALARY BONUS
+10 JUN10 JUNBONUS INTEREST23.5427,132.94
+360 SAVE BONUS
+13 JUN13 JUNDEBIT PURCHASE23.4327,109.51
+11/06/26
+xx-0000 XXXX XXX XXX
+S
+18 JUN18 JUNFAST PAYMENT13,700.0013,409.51
+0000000000
+to XX
+OTHR-Other
+24 JUN24 JUNIBG GIRO11,414.6324,824.14
+SALA
+XXXXXXXXXX XXX XXX
+SALARY TRANSACTION
+RNB05ESNI\1Oversea-Chinese Banking Corporation LimitedCo. Reg. No.: 193200032W
+Deposit Insurance Scheme
+Singapore dollar deposits of non-bank depositors and monies and deposits denominated in Singapore dollars under the Supplementary Retirement Scheme are insured by the Singapore Deposit Insurance Corporation,
+for up to S$100,000 in aggregate per depositor per Scheme member by law. Monies and deposits denominated in Singapore dollars under the CPF Investment Scheme and CPF Retirement Sum Scheme are aggregated
+and separately insured up to S$100,000 for each depositor per Scheme member. Foreign currency deposits, dual currency investments, structured deposits and other investment products are not insured.
+OCBC Bank
+65 Chulia Street, OCBC Centre
+Singapore 049513
+TRANSACTION CODEDESCRIPTION
+A/CAccount账户INTInterest利息
+A/C CLOSEDAccount Closed关闭账户I/COLLNInward Collection进口托收
+ATM OATM Overseas海外自动柜员机IBGInter-Bank GIRO财路
+ATM PAYMENTAutomated Teller Machine Payment自动柜员机付款INBInternet Banking网络银行
+ATM TRANSFERAutomated Teller Machine Transfer自动柜员机转账INB TRANSFERInternet Banking Transfer网络银行转账
+ACUForeign Currency外币INSInsurance保险
+ADJAdjustment调整L/CLetter of Credit信用证
+ADVAdvance预付款L CHQLate Cheque逾期支票
+AMDAmendment修改MERMerchant信用卡特约商家
+ASIAutomated Standing Instruction自动长期指示NEGNNegotiation信用证议付
+BANK CHARGESBank Charges银行费用NETSNETS电子转账网络系统
+BALBalance余款NOMNominee信托人
+C/OrderCashier's Order本票O/COLLNOutward Collection出口托收
+CHQ DPCheque Deposit支票存入PAYMENT-MASMEPS Payment货币管理(MAS)电子付款系统-付款
+CCCash Card现金卡PER LOANPersonal Loan个人贷款
+CDPCentral Depository中央托收私人有限公司PHN TRANSFERPhoneBank Transfer电话银行转账
+COMCommission佣金POSPoint of Sale销售终端
+CONVConversion外币兌換POSTPostage邮费
+CRCredit货方/存货PREMPremium保险费
+CRVISAVISA Electron Credit维萨电子付款PSPower Supply能源供应公司
+CANC TTTelegraphic Transfer Cancellation电子汇款撤消REIMBReimbursement偿付
+DIVDividend股息RTN GIROReturn GIRO退回财路
+DRDebit借方/付出RTN CHQReturn Cheque退回支票
+DDDemand Draft即期汇票RECEIPTS-MASMEPS Receipts货币管理局电子付款系统-存入
+DVEVISA Electron Purchases维萨电子SECSecurity证券
+DDBDirect Debit直接财路付款SGDSingapore Dollar新币
+DCRDirect Credit直接财路存款SATMShared ATM供享自动柜员机
+EPSElectronic Payment of Shares电子购股付款STSingTel新电信
+ESEasiSave易式储蓄户口SER CHARGEService Charge服务费
+ES FIXED FEEEasiSave Fixed Fee易式账户固定费用SHRShare NETS供享电子转账网络系统
+ESAElectronic Share Application电子股票认购T/RTrust Receipt信托收据
+EXPORT LOANExport Loan出口贷款TTTelegraphic Transfer电子付款
+FCYForeign Currency外币TRAN CHARGETransaction Charge交易费用
+HSE LOANHouse Loan房屋贷款TRADE FINANCETrade Finance货易融资
+IMPORT LOANImport Loan进口贷款TRANSFERTransfer转账
+Contact for Consumer Banking:1800 363 3333Contact for Business Banking:(65) 0000 0000
+APPLICATIONS FOR INDIVIDUALS
+ATM CardINTERNET/MOBILE BANKING
+Application for Banking ServicesApply at any OCBC Bank BranchThree easy ways to apply:-
+1. Apply at any OCBC ATM with your ATM Card and PIN.
+Select 'Other Services'
+Select 'Internet Banking/Mobile Banking Application';
+or
+2. Download and complete the 'Internet/Mobile Banking Services Form
+(Personal)' available at www.ocbc.com, and mail it back to the address
+stated on the form
+or
+3. Apply at any OCBC Branch.
+eBANKING APPLICATIONS FOR BUSINESSES
+ATM CardINTERNET BANKING
+Application for AccessApply at any OCBC Bank BranchComplete the Apply & Manage OCBC Velocity Account Form available at
+www.ocbc.com, and mail it back to the address stated on the form.
+Oversea-Chinese Banking Corporation LimitedCo. Reg. No.: 193200032W
+Deposit Insurance Scheme
+Singapore dollar deposits of non-bank depositors and monies and deposits denominated in Singapore dollars under the Supplementary Retirement Scheme are insured by the Singapore Deposit Insurance Corporation,
+for up to S$100,000 in aggregate per depositor per Scheme member by law. Monies and deposits denominated in Singapore dollars under the CPF Investment Scheme and CPF Retirement Sum Scheme are aggregated
+and separately insured up to S$100,000 for each depositor per Scheme member. Foreign currency deposits, dual currency investments, structured deposits and other investment products are not insured.
+OCBC Bank
+65 Chulia Street, OCBC Centre
+Singapore 049513
+XX XXXXXX, XXXXX
+STATEMENT OF ACCOUNT
+Page 2 of 3
+360 ACCOUNT1 JUN 2026 TO 30 JUN 2026
+Account No. 000000000000
+TransactionValue
+DateDateDescriptionChequeWithdrawalDepositBalance
+26 JUN26 JUNFAST PAYMENT6,850.0017,974.14
+via PayNow-Mobile
+to XX XXXXXXX XXXXX
+SALA-PayNow Transfer
+28 JUN29 JUNFAST PAYMENT6,850.0011,124.14
+via PayNow-Mobile
+to XX XXXXXXX XXXXX
+OTHR-OTHR
+30 JUN30 JUNFAST PAYMENT2,778.638,345.51
+via PayNow-UEN
+to XXXXXXXXX XXXX X
+OTHR-00000000000000XXXXXX
+30 JUN30 JUNFAST PAYMENT1,370.006,975.51
+via PayNow-Mobile
+to XX XXXXXXX XXXXX
+OTHR-OTHR
+30 JUN30 JUNINTEREST CREDIT0.926,976.43
+BALANCE C/F6,976.43
+Total Withdrawals/Deposits36,293.1611,497.93
+Total Interest Paid This Year0.00
+Average Balance00,000.00
+CHECK YOUR STATEMENT
+Please check this statement&advise us of any discrepancies within14days of receipt.If we do not hear from you,
+we will take this statement as correct and binding.
+For enquiries,please call our Customer Service Officers at1800 363 3333.
+UPDATING YOUR PERSONAL PARTICULARS
+You may update your address and contact numbers via OCBC Online Banking or our ATMs.Alternatively,complete and mail us
+the Change of address/Contact details form:OCBC website>Personal Banking>Help and Support>Banking Forms.
+RNB05ESNI\2Oversea-Chinese Banking Corporation LimitedCo. Reg. No.: 193200032W
+Deposit Insurance Scheme
+Singapore dollar deposits of non-bank depositors and monies and deposits denominated in Singapore dollars under the Supplementary Retirement Scheme are insured by the Singapore Deposit Insurance Corporation,
+for up to S$100,000 in aggregate per depositor per Scheme member by law. Monies and deposits denominated in Singapore dollars under the CPF Investment Scheme and CPF Retirement Sum Scheme are aggregated
+and separately insured up to S$100,000 for each depositor per Scheme member. Foreign currency deposits, dual currency investments, structured deposits and other investment products are not insured.
+OCBC Bank
+65 Chulia Street, OCBC Centre
+Singapore 049513
+XX XXXXXX, XXXXX
+STATEMENT OF ACCOUNT
+Page 3 of 3
+OCBC PROMOTION & INFORMATION
+OCBC HARBOURFRONT BR TOOur OCBC HarbourFront Branch will merge with OCBC
+MERGE WITH OCBC TIONG BAHRUTiong Bahru Plaza Branch on27July2026.The last
+PLAZA BR
+day of operations for OCBC HarbourFront Branch
+will be25July2026and it will close at1.30pm.
+For more information, visit any of our branches or log on to OCBC Website.
+RNB05ESNI\3Oversea-Chinese Banking Corporation LimitedCo. Reg. No.: 193200032W
+Deposit Insurance Scheme
+Singapore dollar deposits of non-bank depositors and monies and deposits denominated in Singapore dollars under the Supplementary Retirement Scheme are insured by the Singapore Deposit Insurance Corporation,
+for up to S$100,000 in aggregate per depositor per Scheme member by law. Monies and deposits denominated in Singapore dollars under the CPF Investment Scheme and CPF Retirement Sum Scheme are aggregated
+and separately insured up to S$100,000 for each depositor per Scheme member. Foreign currency deposits, dual currency investments, structured deposits and other investment products are not insured.
+__PDF_SPACED_LAYOUT_TEXT__
+OCBC Bank
+65 Chulia Street, OCBC Centre
+Singapore 049513
+Information
+5892\N\501\M
+As part of our efforts to be a more environmentally - friendly bank , all our account
+statements will now be printed on both sides of the page .
+0 0 0 0 0 0
+XX XXXXXX , XXXXX STATEMENT OF ACCOUNT
+0 XXXXX XXXXXX Page 1 of 3
+# 00 - 00 For enquiries, please call
+SINGAPORE 000000 our Customer Service Officers at 1800 363 3333
+OCBC Centre Branch
+360 ACCOUNT 1 JUN 2026 TO 30 JUN 2026
+Account No. 000000000000
+Transaction Value
+Date Date Description Cheque Withdrawal Deposit Balance
+BALANCE B/F 31,771.66
+31 MAY 02 JUN FUND TRANSFER 1,370.00 30,401.66
+via PayNow-UEN
+to XXX XXXXXXXX XXX
+OTHR - 00000000 XXXXX XX
+03 JUN 03 JUN IBG GIRO 685.00 29,716.66
+COLL X0000000
+IFAST FINANCIAL PL-
+X0000000
+03 JUN 03 JUN IBG GIRO 1,370.00 28,346.66
+COLL X0000000
+IFAST FINANCIAL PL-
+X0000000
+04 JUN 04 JUN FAST PAYMENT 274.00 28,072.66
+via PayNow-Mobile
+to XXX XXXX XXXX
+OTHR-Monthly
+10 JUN 10 JUN DEBIT PURCHASE 928.39 27,144.27
+07/06/26
+xx-0000 XXXXXXXXXX
+S
+10 JUN 10 JUN DEBIT PURCHASE 93.71 27,050.56
+07/06/26
+xx-0000 XXXX XXX XXX
+S
+10 JUN 10 JUN BONUS INTEREST 58.84 27,109.40
+360 SALARY BONUS
+10 JUN 10 JUN BONUS INTEREST 23.54 27,132.94
+360 SAVE BONUS
+13 JUN 13 JUN DEBIT PURCHASE 23.43 27,109.51
+11/06/26
+xx-0000 XXXX XXX XXX
+S
+18 JUN 18 JUN FAST PAYMENT 13,700.00 13,409.51
+0000000000
+to XX
+OTHR-Other
+24 JUN 24 JUN IBG GIRO 11,414.63 24,824.14
+SALA
+XXXXXXXXXX XXX XXX
+SALARY TRANSACTION
+RNB05ESNI\1 Oversea-Chinese Banking Corporation Limited Co. Reg. No.: 193200032W
+Deposit Insurance Scheme
+Singapore dollar deposits of non-bank depositors and monies and deposits denominated in Singapore dollars under the Supplementary Retirement Scheme are insured by the Singapore Deposit Insurance Corporation,
+for up to S$100,000 in aggregate per depositor per Scheme member by law. Monies and deposits denominated in Singapore dollars under the CPF Investment Scheme and CPF Retirement Sum Scheme are aggregated
+and separately insured up to S$100,000 for each depositor per Scheme member. Foreign currency deposits, dual currency investments, structured deposits and other investment products are not insured.
+OCBC Bank
+65 Chulia Street, OCBC Centre
+Singapore 049513
+TRANSACTION CODE DESCRIPTION
+A/C Account 账户 INT Interest 利息
+A/C CLOSED Account Closed 关闭账户 I/COLLN Inward Collection 进口托收
+ATM O ATM Overseas 海外自动柜员机 IBG Inter-Bank GIRO 财路
+ATM PAYMENT Automated Teller Machine Payment 自动柜员机付款 INB Internet Banking 网络银行
+ATM TRANSFER Automated Teller Machine Transfer 自动柜员机转账 INB TRANSFER Internet Banking Transfer 网络银行转账
+ACU Foreign Currency 外币 INS Insurance 保险
+ADJ Adjustment 调整 L/C Letter of Credit 信用证
+ADV Advance 预付款 L CHQ Late Cheque 逾期支票
+AMD Amendment 修改 MER Merchant 信用卡特约商家
+ASI Automated Standing Instruction 自动长期指示 NEGN Negotiation 信用证议付
+BANK CHARGES Bank Charges 银行费用 NETS NETS 电子转账网络系统
+BAL Balance 余款 NOM Nominee 信托人
+C/Order Cashier's Order 本票 O/COLLN Outward Collection 出口托收
+CHQ DP Cheque Deposit 支票存入 PAYMENT-MAS MEPS Payment 货币管理(MAS)电子付款系统-付款
+CC Cash Card 现金卡 PER LOAN Personal Loan 个人贷款
+CDP Central Depository 中央托收私人有限公司 PHN TRANSFER PhoneBank Transfer 电话银行转账
+COM Commission 佣金 POS Point of Sale 销售终端
+CONV Conversion 外币兌換 POST Postage 邮费
+CR Credit 货方/存货 PREM Premium 保险费
+CRVISA VISA Electron Credit 维萨电子付款 PS Power Supply 能源供应公司
+CANC TT Telegraphic Transfer Cancellation 电子汇款撤消 REIMB Reimbursement 偿付
+DIV Dividend 股息 RTN GIRO Return GIRO 退回财路
+DR Debit 借方/付出 RTN CHQ Return Cheque 退回支票
+DD Demand Draft 即期汇票 RECEIPTS-MAS MEPS Receipts 货币管理局电子付款系统-存入
+DVE VISA Electron Purchases 维萨电子 SEC Security 证券
+DDB Direct Debit 直接财路付款 SGD Singapore Dollar 新币
+DCR Direct Credit 直接财路存款 SATM Shared ATM 供享自动柜员机
+EPS Electronic Payment of Shares 电子购股付款 ST SingTel 新电信
+ES EasiSave 易式储蓄户口 SER CHARGE Service Charge 服务费
+ES FIXED FEE EasiSave Fixed Fee 易式账户固定费用 SHR Share NETS 供享电子转账网络系统
+ESA Electronic Share Application 电子股票认购 T/R Trust Receipt 信托收据
+EXPORT LOAN Export Loan 出口贷款 TT Telegraphic Transfer 电子付款
+FCY Foreign Currency 外币 TRAN CHARGE Transaction Charge 交易费用
+HSE LOAN House Loan 房屋贷款 TRADE FINANCE Trade Finance 货易融资
+IMPORT LOAN Import Loan 进口贷款 TRANSFER Transfer 转账
+Contact for Consumer Banking: 1800 363 3333 Contact for Business Banking: (65) 0000 0000
+APPLICATIONS FOR INDIVIDUALS
+ATM Card INTERNET/MOBILE BANKING
+Application for Banking Services Apply at any OCBC Bank Branch Three easy ways to apply:-
+1. Apply at any OCBC ATM with your ATM Card and PIN.
+Select 'Other Services'
+Select 'Internet Banking/Mobile Banking Application';
+or
+2. Download and complete the 'Internet/Mobile Banking Services Form
+(Personal)' available at www.ocbc.com, and mail it back to the address
+stated on the form
+or
+3. Apply at any OCBC Branch.
+eBANKING APPLICATIONS FOR BUSINESSES
+ATM Card INTERNET BANKING
+Application for Access Apply at any OCBC Bank Branch Complete the Apply & Manage OCBC Velocity Account Form available at
+www.ocbc.com, and mail it back to the address stated on the form.
+Oversea-Chinese Banking Corporation Limited Co. Reg. No.: 193200032W
+Deposit Insurance Scheme
+Singapore dollar deposits of non-bank depositors and monies and deposits denominated in Singapore dollars under the Supplementary Retirement Scheme are insured by the Singapore Deposit Insurance Corporation,
+for up to S$100,000 in aggregate per depositor per Scheme member by law. Monies and deposits denominated in Singapore dollars under the CPF Investment Scheme and CPF Retirement Sum Scheme are aggregated
+and separately insured up to S$100,000 for each depositor per Scheme member. Foreign currency deposits, dual currency investments, structured deposits and other investment products are not insured.
+OCBC Bank
+65 Chulia Street, OCBC Centre
+Singapore 049513
+XX XXXXXX, XXXXX
+STATEMENT OF ACCOUNT
+Page 2 of 3
+360 ACCOUNT 1 JUN 2026 TO 30 JUN 2026
+Account No. 000000000000
+Transaction Value
+Date Date Description Cheque Withdrawal Deposit Balance
+26 JUN 26 JUN FAST PAYMENT 6,850.00 17,974.14
+via PayNow-Mobile
+to XX XXXXXXX XXXXX
+SALA-PayNow Transfer
+28 JUN 29 JUN FAST PAYMENT 6,850.00 11,124.14
+via PayNow-Mobile
+to XX XXXXXXX XXXXX
+OTHR-OTHR
+30 JUN 30 JUN FAST PAYMENT 2,778.63 8,345.51
+via PayNow-UEN
+to XXXXXXXXX XXXX X
+OTHR-00000000000000XXXXXX
+30 JUN 30 JUN FAST PAYMENT 1,370.00 6,975.51
+via PayNow-Mobile
+to XX XXXXXXX XXXXX
+OTHR-OTHR
+30 JUN 30 JUN INTEREST CREDIT 0.92 6,976.43
+BALANCE C/F 6,976.43
+Total Withdrawals/Deposits 36,293.16 11,497.93
+Total Interest Paid This Year 0.00
+Average Balance 00,000.00
+CHECK YOUR STATEMENT
+Please check this statement & advise us of any discrepancies within 14 days of receipt . If we do not hear from you ,
+we will take this statement as correct and binding .
+For enquiries , please call our Customer Service Officers at 1800 363 3333 .
+UPDATING YOUR PERSONAL PARTICULARS
+You may update your address and contact numbers via OCBC Online Banking or our ATMs . Alternatively , complete and mail us
+the Change of address / Contact details form : OCBC website > Personal Banking > Help and Support > Banking Forms .
+RNB05ESNI\2 Oversea-Chinese Banking Corporation Limited Co. Reg. No.: 193200032W
+Deposit Insurance Scheme
+Singapore dollar deposits of non-bank depositors and monies and deposits denominated in Singapore dollars under the Supplementary Retirement Scheme are insured by the Singapore Deposit Insurance Corporation,
+for up to S$100,000 in aggregate per depositor per Scheme member by law. Monies and deposits denominated in Singapore dollars under the CPF Investment Scheme and CPF Retirement Sum Scheme are aggregated
+and separately insured up to S$100,000 for each depositor per Scheme member. Foreign currency deposits, dual currency investments, structured deposits and other investment products are not insured.
+OCBC Bank
+65 Chulia Street, OCBC Centre
+Singapore 049513
+XX XXXXXX, XXXXX
+STATEMENT OF ACCOUNT
+Page 3 of 3
+OCBC PROMOTION & INFORMATION
+OCBC HARBOURFRONT BR TO Our OCBC HarbourFront Branch will merge with OCBC
+MERGE WITH OCBC TIONG BAHRU Tiong Bahru Plaza Branch on 27 July 2026 . The last
+PLAZA BR
+day of operations for OCBC HarbourFront Branch
+will be 25 July 2026 and it will close at 1 . 30 pm .
+For more information, visit any of our branches or log on to OCBC Website.
+RNB05ESNI\3 Oversea-Chinese Banking Corporation Limited Co. Reg. No.: 193200032W
+Deposit Insurance Scheme
+Singapore dollar deposits of non-bank depositors and monies and deposits denominated in Singapore dollars under the Supplementary Retirement Scheme are insured by the Singapore Deposit Insurance Corporation,
+for up to S$100,000 in aggregate per depositor per Scheme member by law. Monies and deposits denominated in Singapore dollars under the CPF Investment Scheme and CPF Retirement Sum Scheme are aggregated
+and separately insured up to S$100,000 for each depositor per Scheme member. Foreign currency deposits, dual currency investments, structured deposits and other investment products are not insured.

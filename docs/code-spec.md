@@ -388,7 +388,11 @@ Testing depth rule:
   `tests/fixtures/pdf-statement-text/` in the `extractPdfText()` shape (raw items,
   `__PDF_LAYOUT_TEXT__`, `__PDF_SPACED_LAYOUT_TEXT__`) so routing in
   `parseStatementText()` sees all three views. Assert every parsed row, the
-  checkpoints, and at least one rejected tampered variant.
+  checkpoints, and at least one rejected tampered variant. Prefer text
+  extracted from a real statement with the shipped pdf.js version and masked
+  item by item (`*-real-sanitized.pdf-text.txt`); hand-built layouts missed
+  real Citi and OCBC card structure. pdf.js stays on 4.x because the parsers
+  read its per-word text items (`tests/pdfjs-version-contract.test.mjs`).
 - One-off data repairs and schema maintenance must not run from hot read helpers
   such as reference-data, account-list, summary, entries, or settings reads.
   Put repairs behind explicit initialization and persist a completion marker so
