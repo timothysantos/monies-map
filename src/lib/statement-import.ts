@@ -47,7 +47,7 @@ export function parseStatementText(text: string, fileName?: string): ParsedState
     return parseCitibankCreditCardStatement(layoutLines, fileName);
   }
 
-  if (spacedLayoutLines.some((line) => /^OCBC (?:365 CREDIT CARD|INFINITY CASHBACK)$/i.test(line))) {
+  if (spacedLayoutLines.some((line) => /^OCBC (?:365 CREDIT CARD|INFINITY CASHBACK)(?:\s|$)/i.test(line))) {
     return parseOcbcCreditCardStatement(spacedLayoutLines, fileName);
   }
 
