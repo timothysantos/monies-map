@@ -12,8 +12,9 @@
 // maxRangeMonths applies to summary-page only (longest measured range).
 export const WARMUP_ADMISSIONS = Object.freeze([
   // Mobile's only data candidate. Largest of the household and Tim views for
-  // the 2,000-row month at 10k rows (1.43 MB uncompressed).
-  Object.freeze({ family: "entries-page", fixture: "scale-10k", revision: "e3cd00b", responseBytes: 44_784, handlerMs: 25 })
+  // the 2,000-row month at 10k rows, measured after compact JSON (0.98 MB
+  // uncompressed).
+  Object.freeze({ family: "entries-page", fixture: "scale-10k", revision: "compact-json", responseBytes: 37_975, handlerMs: 25 })
 ]);
 
 function rangeMonths(identity) {

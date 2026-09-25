@@ -58,7 +58,7 @@ test("the adapter reports a stable key, freshness and admission, and starts one 
     const key = queryKeys.entriesPage(buildEntriesPageParams({ viewId: "person-tim", month: "2026-05" }));
     assert.equal(data.key, hashKey(key));
     assert.equal(data.fresh, false);
-    assert.deepEqual(data.admission, { responseBytes: 44_784, handlerMs: 25 }, "the measured Entries admission");
+    assert.deepEqual(data.admission, { responseBytes: 37_975, handlerMs: 25 }, "the measured Entries admission");
     assert.equal(adapter({ kind: "data", purpose: "imports-page", routeId: "imports", identity: identity("imports") }).admission, null, "unmeasured families stay unknown");
     const handle = data.start();
     assert.equal(handle.started, true);
