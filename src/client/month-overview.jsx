@@ -49,6 +49,7 @@ export function MonthPanelHeader({
                 key={scope.key}
                 className={`pill scope-button ${scope.key === view.monthPage.selectedScope ? "is-active" : ""}`}
                 type="button"
+                aria-pressed={scope.key === view.monthPage.selectedScope}
                 onClick={() => onScopeChange(scope.key)}
               >
                 {scope.label}
