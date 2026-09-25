@@ -1,25 +1,22 @@
 import { expect, test } from "@playwright/test";
-import { execFileSync } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import { installReactCommitCounter } from "../support/react-commit-counter.js";
-import { summarizeSamples } from "./performance-stats.mjs";
+import {
+  INTERACTION_PROFILES as PROFILES,
+  contextOptions,
+  gitRevision,
+  installInteractionProbe,
+  measureInteraction as measure,
+  summarizeInteractions,
+  writeInteractionReport
+} from "./interaction-probe.mjs";
 
 // Interaction latency on the 2,000-row Entries month (scale-10k, 2026-05).
 // Like the other harness specs it records and never asserts timing, so noise
 // cannot fail it and budgets cannot be inflated to pass it. It asserts only
 // that the harness is valid: the large month is on screen and every
-// interaction reached its visible end state.
-//
-// Per interaction it records two times, both from the page's own clock:
-// - settledMs: first trusted input event to the first animation frame whose
-//   DOM shows the interaction's end state (includes any deferred render).
-// - eventMs: the longest Event Timing entry of that input (what INP reads:
-//   input delay + handlers + next paint). Entries under the browser's 16 ms
-//   floor are not reported, so they count as 0 here.
-// A separate single pass per interaction counts React commits and row renders
-// with tests/support/react-commit-counter.js; the counter is off while timing.
+// interaction reached its visible end state. What settledMs and eventMs mean
+// is described in interaction-probe.mjs. A separate single pass per
+// interaction counts React commits and row renders.
 
 const FIXTURE = process.env.PERFORMANCE_FIXTURE || "demo";
 const SAMPLES = Number(process.env.PERFORMANCE_INTERACTION_SAMPLES ?? 8);
@@ -28,83 +25,7 @@ const WARMUP_MODE = process.env.PERFORMANCE_WARMUP_MODE || "normal";
 const ENTRIES_URL = "/entries?view=household&month=2026-05";
 const LARGE_MONTH_FIXTURE_ROWS = 2_000;
 const READY_TIMEOUT_MS = 60_000;
-const SETTLE_TIMEOUT_MS = 20_000;
-// Event Timing entries are delivered after the next paint; give them a beat.
-const EVENT_FLUSH_MS = 150;
 const ROW_CLASSES = ["entry-row"];
-
-// CPU presets match built-client.spec.js. Interactions run with warm data, so
-// network emulation is not applied.
-const PROFILES = {
-  desktop: { label: "desktop: CPU 1x", cpuRate: 1 },
-  mobile: { label: "mobile: CPU 4x", cpuRate: 4 }
-};
-
-function contextOptions(use) {
-  const { baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch } = use;
-  return { baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch };
-}
-
-function installInteractionProbe() {
-  const probe = { firstInputAt: null, events: [] };
-  window.__interactionProbe = probe;
-  const markInput = (event) => {
-    if (event.isTrusted && probe.firstInputAt == null) probe.firstInputAt = event.timeStamp;
-  };
-  for (const type of ["pointerdown", "mousedown", "keydown", "touchstart"]) {
-    window.addEventListener(type, markInput, { capture: true, passive: true });
-  }
-  try {
-    new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) {
-        probe.events.push({ name: entry.name, startTime: entry.startTime, duration: entry.duration, interactionId: entry.interactionId ?? 0 });
-      }
-    }).observe({ type: "event", durationThreshold: 16, buffered: false });
-    probe.eventTimingSupported = true;
-  } catch {
-    probe.eventTimingSupported = false;
-  }
-}
-
-async function beginInteraction(page) {
-  await page.evaluate(() => {
-    window.__interactionProbe.firstInputAt = null;
-    window.__interactionProbe.events = [];
-  });
-}
-
-async function endInteraction(page, settledAt) {
-  await page.waitForTimeout(EVENT_FLUSH_MS);
-  return page.evaluate((settled) => {
-    const { firstInputAt, events } = window.__interactionProbe;
-    const related = events.filter((entry) => firstInputAt != null && entry.startTime >= firstInputAt - 1);
-    return {
-      settledMs: firstInputAt == null ? null : settled - firstInputAt,
-      eventMs: related.reduce((max, entry) => Math.max(max, entry.duration), 0),
-      events: related.map((entry) => `${entry.name}:${entry.duration}`)
-    };
-  }, settledAt);
-}
-
-// Runs one interaction: act() dispatches real input through Playwright, then
-// the in-page predicate is polled once per animation frame and returns the
-// frame's performance.now() when the end state is visible.
-// With count set, the React commit counter runs for just this input and its
-// settle window.
-async function measure(page, act, predicate, arg, { count = false } = {}) {
-  await beginInteraction(page);
-  if (count) await page.evaluate(() => { window.__reactCommitCounter.reset(); window.__reactCommitCounter.enabled = true; });
-  await act();
-  const handle = await page.waitForFunction(predicate, arg, { polling: "raf", timeout: SETTLE_TIMEOUT_MS });
-  const result = await endInteraction(page, await handle.jsonValue());
-  if (count) {
-    result.renders = await page.evaluate(() => {
-      window.__reactCommitCounter.enabled = false;
-      return window.__reactCommitCounter.read();
-    });
-  }
-  return result;
-}
 
 const rowCount = () => document.querySelectorAll(".entry-row").length;
 
@@ -266,16 +187,9 @@ test("Entries interactions on the 2,000-row month", async ({ browser }, testInfo
   expect(await page.evaluate(rowCount)).toBe(totalRows);
   expect(pageErrors).toEqual([]);
 
-  const actions = Object.fromEntries(Object.entries(timings).map(([name, samples]) => [name, {
-    settled: summarizeSamples(samples.map((item) => item.settledMs)),
-    event: summarizeSamples(samples.map((item) => item.eventMs)),
-    rawSettledMs: samples.map((item) => item.settledMs),
-    rawEventMs: samples.map((item) => item.eventMs)
-  }]));
-  const report = {
+  await writeInteractionReport({
     task: "entries-interaction",
-    revision: execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" }).trim(),
-    workingTreeDirty: execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim().length > 0,
+    ...gitRevision(),
     fixture: FIXTURE,
     warmupMode: WARMUP_MODE,
     route: ENTRIES_URL,
@@ -286,25 +200,13 @@ test("Entries interactions on the 2,000-row month", async ({ browser }, testInfo
     profile,
     samplesPerInteraction: SAMPLES,
     eventTimingSupported,
-    actions,
+    actions: summarizeInteractions(timings),
     renders,
     notMeasured: {
       eventFloor: "Event Timing drops entries under 16 ms; those count as 0 in eventMs",
       physicalDevice: "Chromium emulation with CPU throttling only; not a physical device",
       scroll: "scroll jank is not sampled"
     }
-  };
-  const outputDirectory = process.env.PERFORMANCE_ARTIFACTS_DIR ?? path.join(os.tmpdir(), "monies-map-performance-results");
-  await mkdir(outputDirectory, { recursive: true });
-  const outputFile = path.join(outputDirectory, `${Date.now()}-entries-interaction-${testInfo.project.name}.json`);
-  await writeFile(outputFile, `${JSON.stringify(report, null, 2)}\n`);
-  console.log(`Performance report: ${outputFile}`);
-  console.log(JSON.stringify({
-    project: testInfo.project.name,
-    rows: totalRows,
-    settledMedianMs: Object.fromEntries(Object.entries(actions).map(([name, value]) => [name, value.settled.medianMs])),
-    eventMedianMs: Object.fromEntries(Object.entries(actions).map(([name, value]) => [name, value.event.medianMs])),
-    renders
-  }));
+  }, "entries-interaction");
   await context.close();
 });
