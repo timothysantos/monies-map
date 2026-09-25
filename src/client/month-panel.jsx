@@ -1443,6 +1443,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
           errorMessage={monthRowError}
           saveLabel={isSavingMonthRow ? messages.common.saving : messages.month.doneEdit}
           isSaveDisabled={isSavingMonthRow}
+          isSubmitting={isSavingMonthRow}
           onClose={() => setMobileAddDialog(null)}
           onSave={() => void saveMobileAddDialog()}
         >

@@ -1139,6 +1139,7 @@ export function EntriesPanel({
           errorMessage={entrySubmitError || quickExpenseWarning}
           saveLabel={isSavingEntryDraft || isQuickExpenseSaving ? "Saving..." : "Save"}
           isSaveDisabled={isComposerSaveDisabled}
+          isSubmitting={isSavingEntryDraft || isQuickExpenseSaving}
           entry={entryDraft}
           categories={categories}
           categoryOptions={categoryOptions}
@@ -1165,6 +1166,7 @@ export function EntriesPanel({
           saveLabel={savingEntryId === activeEditingEntry.id ? messages.common.saving : "Save"}
           cancelLabel={hasEditingEntryChanges ? messages.entries.cancelEdit : messages.common.close}
           isSaveDisabled={Boolean(savingEntryId) || Boolean(deletingEntryId) || !hasEditingEntryChanges}
+          isSubmitting={Boolean(savingEntryId) || Boolean(deletingEntryId)}
           secondaryAction={activeEditingEntry.entryType !== "expense"
             ? (
                 <button
