@@ -491,14 +491,16 @@ export function EntryTransferTools({
                   >
                     {isRefreshingCandidates ? "Checking..." : "Recheck matches"}
                   </button>
-                  <button
-                    type="button"
-                    className="subtle-action"
-                    disabled={isRankingCandidates || !transferCandidates.length}
-                    onClick={() => void onRankCandidates?.(entry)}
-                  >
-                    {isRankingCandidates ? "Ranking..." : "Rank descriptions"}
-                  </button>
+                  {onRankCandidates ? (
+                    <button
+                      type="button"
+                      className="subtle-action"
+                      disabled={isRankingCandidates || !transferCandidates.length}
+                      onClick={() => void onRankCandidates(entry)}
+                    >
+                      {isRankingCandidates ? "Ranking..." : "Rank descriptions"}
+                    </button>
+                  ) : null}
                 </div>
                 <div className="transfer-match-stack">
                   {transferCandidatesError ? (

@@ -89,7 +89,7 @@ test.describe("settings reference data", () => {
   });
 
   test("category rule save shows pending state and keeps the dialog stable", async ({ page }) => {
-    const before = await loadSettingsPage(page);
+    await loadSettingsPage(page);
     const referenceData = await loadReferenceData(page);
     const targetCategory = referenceData.categories[0];
     const rulePattern = uniqueLabel("Playwright rule save");
@@ -225,6 +225,8 @@ test.describe("settings reference data", () => {
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByRole("heading", { name: "Transfer details" })).toBeVisible();
     await expect(dialog).toContainText(inDescription);
+    // Settings wires AI description ranking for its transfer reviews.
+    await expect(dialog.getByRole("button", { name: "Rank descriptions" })).toBeVisible();
     await dialog.getByRole("button", { name: "Use match" }).click();
     await expect(dialog).toHaveCount(0);
     await expect(transferRow).toHaveCount(0);
