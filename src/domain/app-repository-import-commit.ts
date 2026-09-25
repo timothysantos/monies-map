@@ -833,9 +833,11 @@ export async function commitImportBatch(
 // first writes the draft import and its own new rows (invisible to ledger
 // reads while the import is a draft) in chunks, then makes every visible
 // change (edits to existing entries, checkpoints, certificates, the completed
-// status, audit and refresh markers) in one final batch. If a step fails, the
-// staged rows and the draft are discarded; if even that cannot run, the
-// leftover draft stays hidden and the next commit of the same file replaces it.
+// status, audit and refresh markers) in one final batch. If a later step fails
+// after this request wrote its draft, the staged rows and the draft are
+// discarded, but only while the import is still a draft; if even that cannot
+// run, the leftover draft stays hidden and the next commit of the same file
+// replaces it.
 async function commitImportStatements(db: D1Database, importId: string, commitStatements: ImportCommitStatement[]) {
   if (commitStatements.length <= IMPORT_COMMIT_SINGLE_BATCH_STATEMENT_LIMIT) {
     await db.batch(commitStatements.map((item) => item.statement));
@@ -850,8 +852,12 @@ async function commitImportStatements(db: D1Database, importId: string, commitSt
   for (let index = 0; index < staged.length; index += IMPORT_COMMIT_STAGING_CHUNK_SIZE) {
     chunks.push(staged.slice(index, index + IMPORT_COMMIT_STAGING_CHUNK_SIZE));
   }
+  // A draft batch that fails (for example because a concurrent commit of the
+  // same file already created this import) wrote nothing, so there is
+  // nothing of this request's to discard.
+  await db.batch(chunks[0]);
   try {
-    for (const chunk of chunks) {
+    for (const chunk of chunks.slice(1)) {
       await db.batch(chunk);
     }
     await db.batch(inPhase("final"));
@@ -863,14 +869,18 @@ async function commitImportStatements(db: D1Database, importId: string, commitSt
   }
 }
 
+// Every delete is guarded by the import still being a draft, so a final
+// batch that did commit (the call failed only after it landed) is never
+// undone here.
 async function discardStagedImport(db: D1Database, importId: string) {
+  const stillDraft = "EXISTS (SELECT 1 FROM imports WHERE household_id = ? AND id = ? AND status = 'draft')";
   await db.batch([
     db
-      .prepare("DELETE FROM transactions WHERE household_id = ? AND import_id = ?")
-      .bind(DEFAULT_HOUSEHOLD_ID, importId),
+      .prepare(`DELETE FROM transactions WHERE household_id = ? AND import_id = ? AND ${stillDraft}`)
+      .bind(DEFAULT_HOUSEHOLD_ID, importId, DEFAULT_HOUSEHOLD_ID, importId),
     db
-      .prepare("DELETE FROM import_rows WHERE import_id = ?")
-      .bind(importId),
+      .prepare(`DELETE FROM import_rows WHERE import_id = ? AND ${stillDraft}`)
+      .bind(importId, DEFAULT_HOUSEHOLD_ID, importId),
     db
       .prepare("DELETE FROM imports WHERE household_id = ? AND id = ? AND status = 'draft'")
       .bind(DEFAULT_HOUSEHOLD_ID, importId)
