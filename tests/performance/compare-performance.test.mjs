@@ -7,7 +7,11 @@ import test from "node:test";
 import {
   compareMetrics,
   extractMetrics,
+  interactionVerdict,
+  readInteractionReports,
   readReports,
+  renderInteractionMarkdown,
+  summarizeInteractionCohort,
   regressionFlag,
   renderMarkdown,
   speculativeUse
@@ -112,6 +116,68 @@ test("the latest built-client report per project is read; other reports are igno
     const reports = await readReports(directory);
     assert.equal(reports.size, 1);
     assert.equal(reports.get("desktop-chromium-emulated-network").cold.medianMs, 5);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+function interactionReport({ project = "desktop-chromium-emulated-network", searchType = [100, 120, 140], openEditor = [300, 310], rows = 2018 } = {}) {
+  return {
+    task: "entries-interaction",
+    project,
+    actions: {
+      searchType: { rawSettledMs: searchType, rawEventMs: searchType.map((value) => value - 20) },
+      openEditor: { rawSettledMs: openEditor, rawEventMs: [0, 0] }
+    },
+    renders: { searchType: { entryRowRenders: rows }, openEditor: { entryRowRenders: rows * 2 } }
+  };
+}
+
+test("interaction cohorts pool samples and keep the spread of per-run medians", () => {
+  const summary = summarizeInteractionCohort([
+    interactionReport({ searchType: [100, 120, 140] }),
+    interactionReport({ searchType: [200, 210, 220], rows: 2 })
+  ]);
+  assert.deepEqual(summary.searchType, {
+    runs: 2,
+    samples: 6,
+    settledMedianMs: 140,
+    settledP95Ms: 220,
+    runMedianMinMs: 120,
+    runMedianMaxMs: 210,
+    eventMedianMs: 120,
+    eventP95Ms: 200,
+    entryRowRenders: 2
+  });
+  assert.equal(summary.openEditor.eventMedianMs, 0);
+  assert.equal(summary.openEditor.entryRowRenders, 4);
+});
+
+test("a cohort is only called faster or slower when per-run medians do not overlap", () => {
+  const baseline = { runMedianMinMs: 200, runMedianMaxMs: 260 };
+  assert.equal(interactionVerdict(baseline, { runMedianMinMs: 40, runMedianMaxMs: 60 }), "faster");
+  assert.equal(interactionVerdict(baseline, { runMedianMinMs: 280, runMedianMaxMs: 300 }), "slower");
+  assert.equal(interactionVerdict(baseline, { runMedianMinMs: 190, runMedianMaxMs: 210 }), "within noise");
+  assert.equal(interactionVerdict(baseline, { runMedianMinMs: null, runMedianMaxMs: null }), "n/a");
+  const markdown = renderInteractionMarkdown(
+    "desktop",
+    summarizeInteractionCohort([interactionReport({ searchType: [200, 220, 240] })]),
+    summarizeInteractionCohort([interactionReport({ searchType: [40, 50, 60], rows: 12 })])
+  );
+  assert.match(markdown, /\| searchType \| 220 → 50 \| -170 \(-77\.3%\) \| 240 → 60 \| 220–220 → 50–50 \| 200 → 30 \| 2,018 → 12 \| faster \|/);
+});
+
+test("only entries-interaction reports are read, every run per project", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "interaction-reports-"));
+  try {
+    await writeFile(path.join(directory, "1-a.json"), JSON.stringify(interactionReport()));
+    await writeFile(path.join(directory, "2-b.json"), JSON.stringify(interactionReport({ project: "mobile" })));
+    await writeFile(path.join(directory, "3-c.json"), JSON.stringify(interactionReport()));
+    await writeFile(path.join(directory, "4-built.json"), JSON.stringify(report()));
+    const reports = await readInteractionReports(directory);
+    assert.deepEqual([...reports.keys()].sort(), ["desktop-chromium-emulated-network", "mobile"]);
+    assert.equal(reports.get("desktop-chromium-emulated-network").length, 2);
+    assert.equal(reports.get("mobile").length, 1);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

@@ -4,10 +4,17 @@
 // +5%, timing medians/p95 +10%).
 //
 //   node scripts/compare-performance.mjs <baselineDir> <candidateDir> [--unwarmed <dir>]
+//   node scripts/compare-performance.mjs --interaction <baselineDir> <candidateDir>
 //
 // With --unwarmed (a warmup-off cohort of the candidate build), it also
 // reports how much idle warmup the first Summary → Entries → Summary round
 // trip actually used.
+//
+// With --interaction it compares cohorts of Entries interaction reports
+// (tests/performance/entries-interaction.spec.js). Every report in a
+// directory is one run; samples are pooled per interaction, and the spread
+// of the per-run medians shows whether a difference outgrows run-to-run
+// noise.
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
@@ -151,7 +158,96 @@ export async function readReports(directory) {
   return byProject;
 }
 
+const INTERACTION_TASK = "entries-interaction";
+
+// Every interaction report per project in a directory (one per run).
+export async function readInteractionReports(directory) {
+  const files = (await readdir(directory)).filter((file) => file.endsWith(".json")).sort();
+  const byProject = new Map();
+  for (const file of files) {
+    const report = JSON.parse(await readFile(path.join(directory, file), "utf8"));
+    if (report.task !== INTERACTION_TASK || !report.project || !report.actions) continue;
+    byProject.set(report.project, [...(byProject.get(report.project) ?? []), report]);
+  }
+  return byProject;
+}
+
+// Pooled median and p95 per interaction, the min–max of per-run medians,
+// and the median row renders of the counted pass.
+export function summarizeInteractionCohort(reports) {
+  const names = [...new Set(reports.flatMap((report) => Object.keys(report.actions)))];
+  return Object.fromEntries(names.map((name) => {
+    const runs = reports.map((report) => report.actions[name]).filter(Boolean);
+    const settled = runs.flatMap((run) => run.rawSettledMs ?? []);
+    const event = runs.flatMap((run) => run.rawEventMs ?? []);
+    const runMedians = runs.map((run) => median(run.rawSettledMs ?? [])).filter(Number.isFinite);
+    const rowRenders = reports.map((report) => report.renders?.[name]?.entryRowRenders);
+    return [name, {
+      runs: runs.length,
+      samples: settled.length,
+      settledMedianMs: median(settled),
+      settledP95Ms: percentileOf(settled, 0.95),
+      runMedianMinMs: runMedians.length ? Math.min(...runMedians) : null,
+      runMedianMaxMs: runMedians.length ? Math.max(...runMedians) : null,
+      eventMedianMs: median(event),
+      eventP95Ms: percentileOf(event, 0.95),
+      entryRowRenders: median(rowRenders)
+    }];
+  }));
+}
+
+function percentileOf(values, fraction) {
+  const finite = values.filter((value) => Number.isFinite(value)).sort((a, b) => a - b);
+  if (!finite.length) return null;
+  return finite[Math.max(1, Math.ceil(fraction * finite.length)) - 1];
+}
+
+// The candidate is only called faster or slower when its per-run medians do
+// not overlap the baseline's; otherwise the difference is within noise.
+export function interactionVerdict(baseline, candidate) {
+  if (![baseline.runMedianMinMs, baseline.runMedianMaxMs, candidate.runMedianMinMs, candidate.runMedianMaxMs].every(Number.isFinite)) return "n/a";
+  if (candidate.runMedianMaxMs < baseline.runMedianMinMs) return "faster";
+  if (candidate.runMedianMinMs > baseline.runMedianMaxMs) return "slower";
+  return "within noise";
+}
+
+export function renderInteractionMarkdown(project, baseline, candidate) {
+  const spread = (item) => (Number.isFinite(item?.runMedianMinMs) ? `${formatNumber(item.runMedianMinMs)}–${formatNumber(item.runMedianMaxMs)}` : "n/a");
+  const names = [...new Set([...Object.keys(baseline), ...Object.keys(candidate)])];
+  return [
+    `### ${project}`,
+    "",
+    `Runs: baseline ${Math.max(0, ...Object.values(baseline).map((item) => item.runs))}, candidate ${Math.max(0, ...Object.values(candidate).map((item) => item.runs))}. Times in ms from the first input to the settled frame; event is the longest Event Timing entry (0 = under 16 ms).`,
+    "",
+    "| Interaction | Settled median | Δ | Settled p95 | Run medians (spread) | Event median | Row renders | Verdict |",
+    "| --- | ---: | ---: | ---: | --- | ---: | ---: | --- |",
+    ...names.map((name) => {
+      const before = baseline[name] ?? {};
+      const after = candidate[name] ?? {};
+      return `| ${name} | ${formatNumber(before.settledMedianMs)} → ${formatNumber(after.settledMedianMs)} | ${formatDelta(before.settledMedianMs, after.settledMedianMs)} | ${formatNumber(before.settledP95Ms)} → ${formatNumber(after.settledP95Ms)} | ${spread(before)} → ${spread(after)} | ${formatNumber(before.eventMedianMs)} → ${formatNumber(after.eventMedianMs)} | ${formatNumber(before.entryRowRenders)} → ${formatNumber(after.entryRowRenders)} | ${interactionVerdict(before, after)} |`;
+    })
+  ].join("\n");
+}
+
+async function mainInteraction(baselineDir, candidateDir) {
+  const [baseline, candidate] = await Promise.all([readInteractionReports(baselineDir), readInteractionReports(candidateDir)]);
+  const output = [];
+  for (const [project, candidateReports] of candidate) {
+    const baselineReports = baseline.get(project);
+    if (!baselineReports) {
+      output.push(`### ${project}\n\nNo baseline interaction reports for this project.`);
+      continue;
+    }
+    output.push(renderInteractionMarkdown(project, summarizeInteractionCohort(baselineReports), summarizeInteractionCohort(candidateReports)));
+  }
+  console.log(output.join("\n\n"));
+}
+
 async function main(argv) {
+  if (argv[0] === "--interaction") {
+    if (!argv[1] || !argv[2]) throw new Error("Usage: node scripts/compare-performance.mjs --interaction <baselineDir> <candidateDir>");
+    return mainInteraction(argv[1], argv[2]);
+  }
   const [baselineDir, candidateDir, flag, unwarmedDir] = argv;
   if (!baselineDir || !candidateDir || (flag && flag !== "--unwarmed")) {
     throw new Error("Usage: node scripts/compare-performance.mjs <baselineDir> <candidateDir> [--unwarmed <dir>]");
