@@ -28,7 +28,7 @@ function isAbort(error) {
 export function createReferenceDataOwner({
   queryClient,
   onCacheCleared = () => {},
-  reportIssue = () => {},
+  reportIssue = (_message, _error) => {},
   fetcher = fetchReferenceDataJson
 }) {
   const queryKey = queryKeys.referenceData();
@@ -91,7 +91,7 @@ export function createReferenceDataOwner({
 
     // First load: reuses the cache. A failure clears the snapshot and shows
     // the reference-data error screen.
-    async load({ signal } = {}) {
+    async load({ signal = undefined } = {}) {
       const mine = ++generation;
       try {
         const data = await read({ bypassCache: false });

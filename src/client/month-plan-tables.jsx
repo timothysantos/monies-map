@@ -9,7 +9,6 @@ import { moniesClient } from "./monies-client-service";
 import { PrivateMoney } from "./money-privacy";
 import {
   canInlineEditMonthPlanRow,
-  canInlineEditMonthRow,
   canOpenMonthMobileSheet,
   getMonthPlanSharedEditHint
 } from "./month-row-editing";

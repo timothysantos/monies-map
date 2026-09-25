@@ -527,7 +527,7 @@ function getOverlapEntrySignedMinor(entry) {
 
 function OverlapScopeInfo() {
   const [open, setOpen] = useState(false);
-  const closeTimeoutRef = useRef();
+  const closeTimeoutRef = useRef(undefined);
 
   function openPopover() {
     window.clearTimeout(closeTimeoutRef.current);
@@ -902,18 +902,18 @@ function StatementReconciliationDiagnosticRows({
   title,
   detail,
   summary,
-  collapsedSummary,
+  collapsedSummary = undefined,
   collapsedByDefault = false,
-  actionDetail,
+  actionDetail = undefined,
   rows,
   totalRowCount,
   totalAmountMinor,
   viewId,
-  accountId,
-  statementEndDate,
-  onDeleteDiagnosticLedgerRow,
-  onDeleteDiagnosticLedgerRows,
-  onSetDiagnosticLedgerPostDate
+  accountId = undefined,
+  statementEndDate = undefined,
+  onDeleteDiagnosticLedgerRow = undefined,
+  onDeleteDiagnosticLedgerRows = undefined,
+  onSetDiagnosticLedgerPostDate = undefined
 }) {
   const rowCount = totalRowCount ?? rows.length;
   const ledgerRows = rows.filter((row) => row.source === "ledger" && row.id);

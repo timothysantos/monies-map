@@ -65,7 +65,7 @@ export function deleteSettingsCategory(categoryId) {
   );
 }
 
-export function saveCategoryMatchRule({ ruleId, sourceSuggestionId, pattern, categoryId, priority, isActive, note }) {
+export function saveCategoryMatchRule({ ruleId = undefined, sourceSuggestionId, pattern, categoryId, priority, isActive, note }) {
   return postJson(
     "/api/category-match-rules/save",
     { ruleId, sourceSuggestionId, pattern, categoryId, priority, isActive, note },
@@ -137,7 +137,7 @@ export function createReconciliationException({
   );
 }
 
-export function resolveReconciliationException({ exceptionId, resolutionNote }) {
+export function resolveReconciliationException({ exceptionId, resolutionNote = undefined }) {
   return postJson(
     "/api/reconciliation-exceptions/resolve",
     { exceptionId, resolutionNote },

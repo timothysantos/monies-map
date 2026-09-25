@@ -54,7 +54,7 @@ import { useIsMobileLayout } from "./use-viewport";
 const { format: formatService } = moniesClient;
 
 // Without the shell's notice (isolated renders), a failed refresh is dropped.
-function runQuietly(task) {
+function runQuietly(task, _retry) {
   return Promise.resolve().then(task).catch(() => null);
 }
 
@@ -196,8 +196,6 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     clearInlineSplitDraft,
     resetForViewChange,
     requestDeleteSplit,
-    clearExpenseDialogSnapshot,
-    clearSettlementDialogSnapshot,
     clearInlineSplitSnapshot
   } = useSplitEditState({ categoryOptions, people });
   // The optimistic overlay alone is not counted: it can outlive a failed

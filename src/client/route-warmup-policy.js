@@ -30,7 +30,7 @@ const TRIGGERS = new Set(["auto", ...INTENT_TRIGGERS]);
 
 // Hybrid and unknown devices get the conservative mobile policy: a touch
 // laptop or a missing media query must not unlock desktop speculation.
-export function selectWarmupMode({ narrowViewport, coarsePointer } = {}) {
+export function selectWarmupMode({ narrowViewport = undefined, coarsePointer = undefined } = {}) {
   if (narrowViewport === false && coarsePointer === false) {
     return "desktop";
   }

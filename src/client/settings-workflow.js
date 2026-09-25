@@ -108,7 +108,7 @@ export function findDuplicateCategoryMatchRules(rules, ignoredIssueIds = []) {
     for (let rightIndex = leftIndex + 1; rightIndex < activeRules.length; rightIndex += 1) {
       const left = activeRules[leftIndex];
       const right = activeRules[rightIndex];
-      const sameCategory = Boolean(left.rule.categoryId && right.rule.categoryId)
+      const sameCategory = (left.rule.categoryId && right.rule.categoryId)
         ? left.rule.categoryId === right.rule.categoryId
         : left.rule.categoryName === right.rule.categoryName;
       const isExactDuplicate = left.signature === right.signature;

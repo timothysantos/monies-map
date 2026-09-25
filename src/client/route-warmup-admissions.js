@@ -26,6 +26,7 @@ function rangeMonths(identity) {
   return (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
 }
 
+/** @param {ReadonlyArray<{ family: string, maxRangeMonths?: number, responseBytes: number, handlerMs: number }>} [table] */
 export function admissionFor(family, identity, table = WARMUP_ADMISSIONS) {
   const row = table.find((candidate) => candidate.family === family);
   if (!row) {

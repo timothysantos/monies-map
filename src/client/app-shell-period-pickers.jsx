@@ -17,7 +17,7 @@ export function PeriodMonthPicker({
   onYearChange,
   months,
   selectedMonth,
-  isMonthDisabled = () => false,
+  isMonthDisabled = (_month) => false,
   closeOnSelect = false,
   onSelect
 }) {
