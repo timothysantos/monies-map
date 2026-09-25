@@ -36,51 +36,30 @@ team conventions evolve.
 - Keep [`docs/refactor-decisions.md`](/Users/tim/22m/ai-projects/monies_map/docs/refactor-decisions.md)
   updated alongside decisions about shell shape, shared helpers, mobile
   workflow boundaries, money editing, bootstrap migration, and invalidation.
-- Keep [`docs/first-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/first-slice-prompt.md)
-  updated alongside the actual first implementation prompt for the shell and
-  query foundation slice.
-- Keep [`docs/second-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/second-slice-prompt.md)
-  updated alongside the actual second implementation prompt for route
-  transition and domain-boundary work.
-- Keep [`docs/third-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/third-slice-prompt.md)
-  updated alongside the actual third implementation prompt for the imports
-  query and workflow slice.
-- Keep [`docs/fourth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/fourth-slice-prompt.md)
-  updated alongside the actual fourth implementation prompt for the settings
-  query and workflow slice.
-- Keep [`docs/fifth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/fifth-slice-prompt.md)
-  updated alongside the actual fifth implementation prompt for the summary
-  query and workflow slice.
-- Keep [`docs/sixth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/sixth-slice-prompt.md)
-  updated alongside the actual sixth implementation prompt for the splits
-  query and workflow slice.
-- Keep [`docs/seventh-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/seventh-slice-prompt.md)
-  updated alongside the actual seventh implementation prompt for the
-  cross-page freshness and workflow-lock coordination slice.
-- Keep [`docs/eighth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/eighth-slice-prompt.md)
-  updated alongside the actual eighth implementation prompt for the app-shell
-  retirement and legacy-bridge cleanup slice.
-- Keep [`docs/ninth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/ninth-slice-prompt.md)
-  updated alongside the actual ninth implementation prompt for the entries
-  workflow boundary and remaining month handoff slice.
-- Keep [`docs/tenth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/tenth-slice-prompt.md)
-  updated alongside the actual tenth implementation prompt for the month
-  workspace boundary slice.
-- Keep [`docs/eleventh-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/eleventh-slice-prompt.md)
-  updated alongside the actual eleventh implementation prompt for the summary
-  slice.
-- Keep [`docs/twelfth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/twelfth-slice-prompt.md)
-  updated alongside the actual twelfth implementation prompt for the splits
-  slice.
-- Keep [`docs/thirteenth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/thirteenth-slice-prompt.md)
-  updated alongside the actual thirteenth implementation prompt for the
-  settings slice.
-- Keep [`docs/fourteenth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/fourteenth-slice-prompt.md)
-  updated alongside the actual fourteenth implementation prompt for the
-  remaining cross-slice infrastructure cleanup slice.
-- Keep [`docs/stage4-closure-audit-documentation-alignment-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/stage4-closure-audit-documentation-alignment-prompt.md)
-  updated alongside the Stage 4 closure audit and documentation alignment
-  prompt.
+- Keep [`docs/README.md`](/Users/tim/22m/ai-projects/monies_map/docs/README.md)
+  updated as the docs index when a doc is added, moved, or archived.
+- Archived prompts in [`docs/archive/`](/Users/tim/22m/ai-projects/monies_map/docs/archive/)
+  are historical records of finished slices and no longer need updating.
+  Start new prompts from `docs/implementation-prompt-template.md`. Archived
+  slice prompts:
+  [first](/Users/tim/22m/ai-projects/monies_map/docs/archive/first-slice-prompt.md),
+  [second](/Users/tim/22m/ai-projects/monies_map/docs/archive/second-slice-prompt.md),
+  [third](/Users/tim/22m/ai-projects/monies_map/docs/archive/third-slice-prompt.md),
+  [fourth](/Users/tim/22m/ai-projects/monies_map/docs/archive/fourth-slice-prompt.md),
+  [fifth](/Users/tim/22m/ai-projects/monies_map/docs/archive/fifth-slice-prompt.md),
+  [sixth](/Users/tim/22m/ai-projects/monies_map/docs/archive/sixth-slice-prompt.md),
+  [seventh](/Users/tim/22m/ai-projects/monies_map/docs/archive/seventh-slice-prompt.md),
+  [eighth](/Users/tim/22m/ai-projects/monies_map/docs/archive/eighth-slice-prompt.md),
+  [ninth](/Users/tim/22m/ai-projects/monies_map/docs/archive/ninth-slice-prompt.md),
+  [tenth](/Users/tim/22m/ai-projects/monies_map/docs/archive/tenth-slice-prompt.md),
+  [eleventh](/Users/tim/22m/ai-projects/monies_map/docs/archive/eleventh-slice-prompt.md),
+  [twelfth](/Users/tim/22m/ai-projects/monies_map/docs/archive/twelfth-slice-prompt.md),
+  [thirteenth](/Users/tim/22m/ai-projects/monies_map/docs/archive/thirteenth-slice-prompt.md),
+  [fourteenth](/Users/tim/22m/ai-projects/monies_map/docs/archive/fourteenth-slice-prompt.md),
+  [fifteenth](/Users/tim/22m/ai-projects/monies_map/docs/archive/fifteenth-slice-prompt.md),
+  [sixteenth](/Users/tim/22m/ai-projects/monies_map/docs/archive/sixteenth-slice-prompt.md),
+  and the
+  [Stage 4 closure audit](/Users/tim/22m/ai-projects/monies_map/docs/archive/stage4-closure-audit-documentation-alignment-prompt.md).
 - Keep [`docs/stage4-flow-index.md`](/Users/tim/22m/ai-projects/monies_map/docs/stage4-flow-index.md)
   and the page flow docs under `docs/flows/` aligned with the current route,
   state, and data contracts.
@@ -316,24 +295,8 @@ Details and the reasons are in `docs/code-spec.md` and
 - Update [`docs/refactor-decisions.md`](/Users/tim/22m/ai-projects/monies_map/docs/refactor-decisions.md)
   when a decision about App shell shape, shared helpers, mobile workflow
   shape, money editing, bootstrap dependence, or invalidation changes.
-- Update [`docs/first-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/first-slice-prompt.md)
-  when the first slice prompt itself changes or when the first slice target
-  scenarios or coupling rows change.
-- Update [`docs/second-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/second-slice-prompt.md)
-  when the second slice prompt itself changes or when the route-transition
-  target scenarios or coupling rows change.
-- Update [`docs/third-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/third-slice-prompt.md)
-  when the third slice prompt itself changes or when the imports target
-  scenarios or coupling rows change.
-- Update [`docs/fourth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/fourth-slice-prompt.md)
-  when the fourth slice prompt itself changes or when the settings target
-  scenarios or coupling rows change.
-- Update [`docs/fifth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/fifth-slice-prompt.md)
-  when the fifth slice prompt itself changes or when the summary target
-  scenarios or coupling rows change.
-- Update [`docs/sixth-slice-prompt.md`](/Users/tim/22m/ai-projects/monies_map/docs/sixth-slice-prompt.md)
-  when the sixth slice prompt itself changes or when the splits target
-  scenarios or coupling rows change.
+- Do not update archived prompts or reports in `docs/archive/`; they are
+  historical. Move a finished prompt there with `git mv` and fix its links.
 - Update [`design.md`](/Users/tim/22m/ai-projects/monies_map/design.md) when
   implementation boundaries such as the client deep module service evolve.
 - Update [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
