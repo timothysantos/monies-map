@@ -1,4 +1,4 @@
-const requiredVersion = process.argv[2] ?? "22.12.0";
+const requiredVersion = process.argv[2] ?? "22.23.0";
 const currentVersion = process.versions.node ?? "";
 const parseVersion = (version) =>
   version.split(".").map((part) => Number(part.replace(/\D.*$/, "") || "0"));
