@@ -241,7 +241,7 @@ The win is:
 The settings slice is now closed.
 
 That means the next highest-value slice is the one already called out in
-[`docs/implementation-order.md`](./implementation-order.md):
+[`docs/implementation-order.md`](../implementation-order.md):
 
 - summary is the main downstream range-review workspace
 - summary consumes month and entry freshness
