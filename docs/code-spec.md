@@ -356,8 +356,9 @@ A persistence command is all-or-nothing:
 
 Converted (2026-09, `docs/audits/atomic-writes.md`): import commit and
 rollback, entry create/edit/delete, transfer link and settle, month-plan
-commands and the month snapshot recalculation. Not yet converted, so still
-written statement by statement: the split workspace
+commands, the month snapshot recalculation, and split expense and settle-up
+edit and delete (2026-09-26). Not yet converted, so still
+written statement by statement: the rest of the split workspace
 (`app-repository-splits.ts`, including the linked split a shared-ownership
 entry save upserts after its own batch; the linked split's amount follow-up
 on an entry amount edit is in the entry's batch), category match rules,

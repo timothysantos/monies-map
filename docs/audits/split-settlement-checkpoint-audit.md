@@ -124,8 +124,10 @@ button styles, with a responsive stacked layout on mobile.
 | Unrelated same-amount transfer | Remains unmatched | Not implemented |
 | Backdated row in newer batch | Open after settlement | Implemented; record marker and batch membership |
 | Same-date row added later | New batch membership wins | Implemented by record membership |
-| Edit included row after match | Require reopen/recompute | Not implemented |
-| Delete included row after match | Require reopen/recompute | Not implemented |
+| Edit included row (any active state) | Refused until Undo simplification | Implemented (2026-09-26, settlement lock) |
+| Delete included row (any active state) | Refused until Undo simplification | Implemented (2026-09-26, settlement lock) |
+| Entry edit that moves a settled linked split | Whole save refused until Undo simplification | Implemented (2026-09-26, settlement lock) |
+| Import rollback removes a settled split's entry | Split facts and checkpoint unchanged; link cleared | Verified (2026-09-26) |
 | Undo/reopen | History retained; balance reopens | Implemented |
 | Mark paid before transfer posts | Collapsed follow-up; no ledger state changed | Implemented; endpoint/UI |
 | Undo paid | Same checkpoint returns active; included rows remain frozen | Implemented; endpoint/UI |
@@ -150,3 +152,42 @@ paths.
 checkpoint creation, paid confirmation, undo paid, later ledger matching,
 backdated additions, and reopen. Existing split settlement and match suites
 continue to pass.
+
+## Settlement Lock (2026-09-26)
+
+Branch `checkpoint-reopen`. Before this, an expense already in a checkpoint
+could be edited (amount, shares, payer, date, group) or deleted in Splits, and
+a linked entry's amount edit moved its split's total and shares, without the
+checkpoint knowing: the settled amount stopped matching its rows.
+
+Rule (DOMAIN.md, Settlement Checkpoint): while a checkpoint is active (any
+status except `reopened`/`voided`, paid or not), its rows keep amount,
+currency, shares, payer, date and group, and cannot be deleted. The command is
+refused before its first write with 409 `split_settlement_locked` and the
+checkpoint id; the editor, dialog or phone sheet shows the reason and an
+`Undo simplification` action (reopen), and keeps the person's change for a
+second save. Chosen over automatic reopen (an edit would silently release
+every included row and undo a paid or bank-matched settlement) and over
+"needs review" (it leaves a settled amount that does not match its rows).
+Existing checkpoint steps are explicit in the same way: reopen before
+creating another, remove the bank match before undoing paid.
+
+Paths: `updateSplitExpenseRecord`, `deleteSplitExpenseRecord`,
+`updateSplitSettlementRecord`, `deleteSplitSettlementRecord`
+(`app-repository-splits.ts`), and `updateEntryRecord`
+(`app-repository-entry-commands.ts`) through
+`assertLinkedSplitSettlementUnchanged`, which predicts both the amount
+follow-up and the shared-save upsert. The check lives in
+`src/domain/split-settlement-lock.ts`. Import rollback was checked and needs
+no guard: it only clears a removed entry's split link. The four split commands
+now also commit in one `db.batch()`.
+
+Proof: `tests/atomic-writes-split-checkpoint-lock.test.mjs` (14, real
+Miniflare D1; 9 failed on the old code: refused edits, delete, entry edit,
+undo-then-save, paid/matched/offset, settle-up, and the three atomicity
+tests), `tests/e2e/splits-settlement-lock.spec.js` (4: inline edit refused
+then saved after undo, delete dialog, Entries edit refused then saved, phone
+dialog).
+
+Open: a group settlement (closed batch) does not lock its rows the same way;
+editing a row in a settled batch still changes the batch without notice.
