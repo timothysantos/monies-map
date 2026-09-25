@@ -16,6 +16,7 @@ export const messages = {
     retryPageLoad: "Try loading again",
     screenCrashTitle: "This page hit a problem and could not be shown.",
     appCrashTitle: "The app hit a problem and could not be shown.",
+    codeLoadCrashTitle: "This page needs a fresh copy of the app.",
     screenCrashDetail: "Your saved data is not affected. Try again, open another page, or reload the app.",
     appCrashDetail: "Your saved data is not affected. Reload the app to continue.",
     screenCrashRetry: "Try again",

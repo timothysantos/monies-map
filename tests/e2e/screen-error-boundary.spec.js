@@ -18,6 +18,10 @@ test.beforeEach(async ({ page }) => {
   await reseedDemo(page);
 });
 
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+});
+
 test("a screen that crashes shows a fallback inside the app, and other pages still open", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -78,4 +82,16 @@ test("switching person on the crashed page draws the new view once it loads", as
   await expect(page).toHaveURL(/view=person-joyce/);
   await expect(fallback).toHaveCount(0);
   await expect(page.locator("article.panel-splits")).toBeVisible();
+});
+
+// Route code that fails to download (typically after a deploy replaced the
+// old files) stays failed inside React.lazy, so only a reload can fix it.
+test("a page whose code cannot download offers a reload, not a retry that cannot work", async ({ page }) => {
+  await page.route("**/src/client/splits-panel.jsx*", (route) => route.abort());
+  await page.goto("/splits?view=person-tim&month=2025-10");
+  const fallback = page.getByRole("alert").filter({ hasText: "needs a fresh copy of the app" });
+  await expect(fallback).toBeVisible();
+  await expect(fallback.getByRole("button", { name: "Reload app" })).toBeVisible();
+  await expect(fallback.getByRole("button", { name: "Try again" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Summary" }).first()).toBeVisible();
 });

@@ -6,6 +6,14 @@ import { messages } from "./copy/en-SG";
 // boundary wraps only the active page, so navigation keeps working; it clears
 // itself when the route changes. The app boundary is the last resort around
 // everything and can only offer a reload.
+
+// React.lazy keeps a failed code download failed, so for those only a reload
+// helps (usually a deploy replaced the old files).
+function isCodeLoadError(error) {
+  return /dynamically imported module|Importing a module script failed|error loading dynamically imported module|Loading chunk|ChunkLoadError/i
+    .test(String(error?.message ?? error ?? ""));
+}
+
 export class ScreenErrorBoundary extends Component {
   constructor(props) {
     super(props);
@@ -25,8 +33,15 @@ export class ScreenErrorBoundary extends Component {
 
   componentDidUpdate(previousProps) {
     if (this.state.error && previousProps.resetKey !== this.props.resetKey) {
-      this.setState({ error: null, retrying: false });
+      this.reset();
     }
+  }
+
+  // The crash log also lands on the shell's loading-issue line; onReset lets
+  // App clear it once the page is drawn again.
+  reset() {
+    this.setState({ error: null, retrying: false });
+    this.props.onReset?.();
   }
 
   async handleRetry() {
@@ -34,7 +49,7 @@ export class ScreenErrorBoundary extends Component {
     try {
       await this.props.onRetry?.();
     } finally {
-      this.setState({ error: null, retrying: false });
+      this.reset();
     }
   }
 
@@ -44,19 +59,23 @@ export class ScreenErrorBoundary extends Component {
     }
     const copy = messages.common;
     const isAppLevel = this.props.level === "app";
+    const needsReload = isAppLevel || isCodeLoadError(this.state.error);
+    const title = isCodeLoadError(this.state.error)
+      ? copy.codeLoadCrashTitle
+      : isAppLevel ? copy.appCrashTitle : copy.screenCrashTitle;
     const panel = (
       <section className="panel app-loading-panel app-loading-panel-error screen-error-panel" role="alert">
         <div>
-          <p>{isAppLevel ? copy.appCrashTitle : copy.screenCrashTitle}</p>
-          <p className="app-loading-error-copy">{isAppLevel ? copy.appCrashDetail : copy.screenCrashDetail}</p>
+          <p>{title}</p>
+          <p className="app-loading-error-copy">{needsReload ? copy.appCrashDetail : copy.screenCrashDetail}</p>
         </div>
         <div className="screen-error-actions">
-          {isAppLevel ? null : (
+          {needsReload ? null : (
             <button type="button" className="subtle-action is-primary" onClick={this.handleRetry} disabled={this.state.retrying}>
               {this.state.retrying ? copy.working : copy.screenCrashRetry}
             </button>
           )}
-          <button type="button" className={isAppLevel ? "subtle-action is-primary" : "subtle-action"} onClick={() => window.location.reload()}>
+          <button type="button" className={needsReload ? "subtle-action is-primary" : "subtle-action"} onClick={() => window.location.reload()}>
             {copy.screenCrashReload}
           </button>
         </div>
