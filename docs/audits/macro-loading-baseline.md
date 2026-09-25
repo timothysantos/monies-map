@@ -2547,3 +2547,176 @@ dialog events, this measurement), Node 22.23.3, ports 5173/8787 free:
 typecheck; lint 0 errors, 30 existing warnings; unit 566/566; build;
 `check:bundle` 172,986 B JS / 32,878 B CSS gzip against 180,337 / 31,961,
 budget unchanged; smoke 133 passed) and full `npm run test:e2e` 290/290.
+
+## Mobile sheet: a lighter modal (2026-09-26)
+
+Branch `sheet-open-speed`, from `macro-performance` (`c97dd63`). Follows
+"Mobile sheet open time after the modal sheet" above: the modal
+`EntryMobileSheet` opened in about 320 ms and closed in about 350 ms on the
+2,000-row month, against about 165 / 270 ms for a non-modal sheet.
+
+### Where the time went (profiled, not assumed)
+
+A Chromium trace of one open and one close on the built client (scale-10k,
+household 2026-05, Pixel 7 emulation, CPU 4x), main thread only:
+
+| | Open | Close |
+| --- | --- | --- |
+| Full style recalculations | 2: 3,116 elements (~72 ms) and 2,905 elements (~60 ms) | 1: 3,042 elements (~77 ms) |
+| Layout | 2,196 dirty objects (~30 ms) | 2,089 dirty objects (~28 ms) |
+| Row renders / component renders | 1 / 438 | 2 / 666 |
+
+About 3,000 elements is every row element (`content-visibility` skips their
+insides) plus the rest of the page, so each recalculation restyled the whole
+document. React was not the cost: the sheet re-renders one row on open and
+two on close, the same as the non-modal sheet.
+
+To find which modal side effect restyles the page, each one was applied
+alone to the loaded page and a style and then a layout flush were timed
+(median of 5, CPU 4x):
+
+| Change | Style | Layout |
+| --- | ---: | ---: |
+| `pointer-events: none` on `<body>` (Radix `DismissableLayer`) | 50–58 ms | 23–28 ms |
+| Scroll lock: `body[data-scroll-locked]` with Radix's lock stylesheet (sets a custom property, `position`, `overflow`) | 59–73 ms | 24–27 ms |
+| Inserting the lock stylesheet alone | 8–10 ms | 0 |
+| The same lock with `--removed-body-scroll-bar-size` restated on `#root` | 21 ms | 0.7 ms |
+| `aria-hidden` on `#root` (`hideOthers`) | 0–0.2 ms | 0 |
+| `inert` on `#root` | 47–52 ms | 21–25 ms |
+| `overflow: hidden` on `<body>` | 16 ms | 0.5 ms |
+| `overflow: hidden` on `<html>` | 0.2 ms | 0.6 ms |
+| Inserting a `.entry-mobile-sheet` element (the `body:has(...)` rules) | 29 ms | 0.2–1.5 ms |
+
+`pointer-events` and custom properties inherit, so a change on `<body>`
+restyles every element below it. `aria-hidden` is an attribute no style
+reads, so hiding the page from screen readers costs nothing.
+
+### Options evaluated
+
+- **`aria-hidden` or `inert` on one container.** `hideOthers` already marks
+  only the children of `<body>` (the app root, the floating totals button,
+  focus guards), not every row, and costs about 0. `inert` changes computed
+  style and costs as much as `pointer-events`. Rejected.
+- **Native `<dialog>` with `showModal()`.** It makes the page inert the
+  same way, and the sheet's nested Radix layers (category editor, mobile
+  select) portal to `<body>` and would sit under the top layer. Rejected
+  without building it.
+- **A portal with a small sibling set.** Already the case: the sheet is a
+  direct child of `<body>`.
+- **Avoiding a list re-render.** Already 1 row render on open and 2 on
+  close; nothing to win.
+- **Restating the inherited values on `#root`.** Restating the scroll-lock
+  custom property saved about 45 ms on open in quick runs, but close was
+  unchanged. Doing the same for `pointer-events` would leave the page
+  clickable, and on close the portal leaves before `<body>` is restored, so
+  the page would be restyled anyway. Not taken.
+- **Deferring sheet content past the first frame.** Not tried. After the
+  change below, style and layout are about 35 ms of the open; the rest is
+  the React render of the sheet and editor.
+- **A lighter modal: landed.** Radix Dialog with `modal={false}`, and the
+  modal behaviours added back from the pieces Radix itself uses, none of
+  which changes an inherited style:
+  - a trapped, looping `FocusScope` (`@radix-ui/react-focus-scope`);
+  - `hideOthers` (`aria-hidden`);
+  - `RemoveScroll` (`react-remove-scroll`) with `removeScrollBar={false}`,
+    which blocks touch and wheel scrolling outside the sheet;
+  - `overflow: hidden` on `<html>` for the scroll keys;
+  - a plain backdrop that covers the viewport in every layout (transparent
+    outside the phone layout), so a tap outside lands on it and closes the
+    sheet instead of reaching the page.
+
+  The three packages were already installed through
+  `@radix-ui/react-dialog` at the same versions (1.1.7, 1.2.6, 2.7.2); they
+  are now direct dependencies. Commit `7063924`.
+
+After the change the same trace shows one style recalculation per
+interaction, of 112 elements on open (~30 ms) and 37 on close (~36 ms),
+and layouts of 150 and 50 objects (~3 ms each).
+
+### Cohorts
+
+`tests/performance/entries-interaction.spec.js` with
+`PERFORMANCE_INTERACTIONS=editor`, scale-10k, mobile project (Pixel 7,
+390×844, CPU 4x), 8 samples per run. Baseline is the saved build of
+`c97dd63`, candidate the build of this branch; runs alternated one by one
+between the two builds on port 5191 and were compared with
+`node scripts/compare-performance.mjs --interaction`. The machine was
+shared with other sessions (load average 20–50), so absolute numbers carry
+that load. Some runs failed before measuring (the scale fixture load hit
+`fetch failed` under that load, on both builds) and were rerun.
+
+Cohort 1 (5 + 5 runs):
+
+| Interaction | Median | p95 | Run medians | Row / component renders | Verdict |
+| --- | ---: | ---: | --- | --- | --- |
+| Open one entry | 361 → 233 | 545 → 262 | 324–432 → 214–238 | 1 / 438 → 1 / 446 | faster |
+| One draft keystroke | 155 → 152 | 216 → 173 | 134–186 → 146–163 | 1 / 489 → 1 / 481 | within noise |
+| Close the editor | 416 → 335 | 539 → 399 | 359–495 → 314–362 | 2 / 666 → 2 / 666 | within noise (ranges overlap by 3 ms) |
+
+Cohort 2, fresh (5 + 5 runs, after a small `useMemo` change in the sheet):
+
+| Interaction | Median | p95 | Run medians | Verdict |
+| --- | ---: | ---: | --- | --- |
+| Open one entry | 387 → 232 | 468 → 270 | 353–423 → 212–252 | faster |
+| One draft keystroke | 162 → 152 | 210 → 189 | 148–176 → 144–166 | within noise |
+| Close the editor | 435 → 334 | 470 → 392 | 388–453 → 319–365 | faster |
+
+Open is about 130–155 ms faster in both cohorts, so it is now about where
+the non-modal sheet was. Close is about 80–100 ms faster by median; one
+cohort's run medians overlap by 3 ms, the other's do not.
+
+### Behaviour kept and checked
+
+- `tests/e2e/mobile-sheet-focus.spec.js` gained two tests, written first
+  and passing on the old modal sheet:
+  - The Entries edit sheet hides every row from screen readers
+    (`aria-hidden` or `inert` on an ancestor, and the rows' buttons drop out
+    of role queries) until it closes.
+  - "While a sheet is open the page behind cannot be tapped, scrolled or
+    read" (touch-enabled iPhone viewport, Month). Focus moved outside is
+    pulled back. The page's buttons drop out of role queries. Every sampled
+    point outside the sheet hits the backdrop. A CDP touch drag and a wheel
+    over the backdrop leave `scrollY` unchanged. On close, focus returns and
+    the page scrolls again.
+
+  Both fail on a non-modal sheet (`modal={false}` with nothing added back),
+  and the scroll check fails when only the scroll lock is removed. The
+  existing Tab-wrap check passes even without a trap, because a looping
+  scope wraps Tab either way; the focus-outside check covers the trap.
+- Runtime, built client on the 10k fixture: a grid of points over the
+  Entries edit and add sheets and the Month add sheet all hit the backdrop.
+  On a portrait tablet (820×1180) the transparent backdrop covers the page,
+  and a tap outside closes the sheet without clicking the page underneath.
+- Behaviour change: the page is no longer made unclickable with
+  `pointer-events: none`. The backdrop covers it instead, so anything that
+  rendered above the backdrop (`z-index` over 80) inside the page would be
+  tappable. Nothing on Entries or Month does (checked by the grid above).
+  The sheet also sets `aria-modal="true"`.
+
+### Found, not fixed
+
+- **Month sheet on portrait tablets is out of reach.** Between 761 and
+  1,024 px wide in portrait, Month uses the sheet, but the sheet's
+  positioning CSS is only in the 760 px media query. It renders at the
+  bottom of the page (about y = 2,600 at 820×1180) while the page is
+  scroll-locked, so it cannot be reached. This happens before and after
+  this change.
+- **The `body:has(...)` rules.** The sheet's remaining style cost (~30 ms
+  per open or close at CPU 4x) comes from the 9 `body:has(...)` rules that
+  hide the tab strip, floating buttons and sticky context while an editor
+  or sheet is open. Deleting them in the page cut about 35–40 ms from open
+  and 30–70 ms from close in two quick single runs, which is not a cohort.
+  Scoping them to siblings of `#root` (for example
+  `#root:has(~ .entry-mobile-sheet)`) might keep the behaviour at lower
+  cost. Needs its own measured change.
+
+### Chunk sizes (gzip -9)
+
+| Asset | Before | After |
+| --- | ---: | ---: |
+| `entry-mobile-sheet` chunk (lazy) | 1,271 B | 1,548 B |
+| `entries-panel` chunk (lazy) | 20,534 B | 20,554 B |
+| `styles.css` | 32,294 B | 32,438 B |
+
+`npm run check:bundle` (first screen): 173,299 B JS / 33,019 B CSS against
+the baseline build's 173,275 / 33,019; budget unchanged.
