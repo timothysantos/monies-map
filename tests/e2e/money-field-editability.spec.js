@@ -157,7 +157,7 @@ test.describe("money field editability", () => {
     });
 
     await page.goto("/entries?view=person-tim&month=2026-05");
-    const editor = await openEntryEditor(page, description);
+    await openEntryEditor(page, description);
 
     const noteInput = page.getByRole("textbox", { name: "Note" });
     await noteInput.fill("receipt captured and itemized");

@@ -432,7 +432,7 @@ test("equal split amounts keep the odd cent on the deterministic remainder share
     ownerName: "Tim"
   });
 
-  const splitData = await postJson(page, "/api/splits/expenses/from-entry", {
+  await postJson(page, "/api/splits/expenses/from-entry", {
     entryId: entry.entryId,
     splitGroupId: null
   });
