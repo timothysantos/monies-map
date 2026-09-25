@@ -30,8 +30,6 @@ import {
   createSplitGroupRecord,
   createSplitSettlementRecord,
   createSplitSettlementCheckpoint,
-  createEntryRecord,
-  locateEntryDeepLinkContext,
   createCategoryRecord,
   createAccountRecord,
   createReconciliationExceptionRecord,
@@ -40,7 +38,6 @@ import {
   deleteCategoryMatchRule,
   deleteAccountCheckpointRecord,
   deleteCategoryRecord,
-  deleteEntryRecord,
   ignoreCategoryMatchRuleSuggestion,
   deleteMonthPlan,
   deleteMonthPlanRow,
@@ -55,9 +52,7 @@ import {
   saveMonthPlanRow,
   linkSplitExpenseMatch,
   linkSplitSettlementMatch,
-  linkTransferPair,
   registerLoginIdentity,
-  settleTransferPair,
   unregisterLoginIdentity,
   updateSplitExpenseCategoryRecord,
   updateSplitExpenseRecord,
@@ -73,14 +68,21 @@ import {
   updateCategoryRecord,
   updatePersonRecord,
   updateMonthlySnapshotNote,
+  loadSplitActivityHistory,
+  restoreSplitRecord
+} from "./domain/app-repository";
+import {
+  createEntryRecord,
+  locateEntryDeepLinkContext,
+  deleteEntryRecord,
+  linkTransferPair,
+  settleTransferPair,
   updateEntryCategoryRecord,
   updateEntryClassificationRecord,
   updateEntryNoteRecord,
   updateEntryPostDateRecord,
-  updateEntryRecord,
-  loadSplitActivityHistory,
-  restoreSplitRecord
-} from "./domain/app-repository";
+  updateEntryRecord
+} from "./domain/app-repository-entry-commands";
 import { ensureDemoSchemaTimed } from "./domain/app-repository-schema";
 import { ignoreCategoryMatchRuleIssue } from "./domain/app-repository-category-match-rules";
 import {
