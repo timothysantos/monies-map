@@ -1169,6 +1169,20 @@ clear.
 Ordinary CSV, XLS, and mid-cycle imports can be rolled back as working imports.
 They are provisional working data until a statement confirms them.
 
+If a current-activity import matched an entry you had added by hand, the
+import updated that entry in place instead of adding a second one. Rolling the
+import back puts your entry back as a `Manual provisional` entry with its
+original description, amount and dates. Changes you made after the import,
+such as its category, note, owner, split or transfer link, stay. If you had
+already deleted the entry, the rollback has nothing to restore. If a later
+statement has since certified the entry, it stays `Statement certified` with
+the statement's details; rolling that statement back afterwards gives you your
+original manual entry. The same happens if a statement replaced the entry
+because the bank never listed it: rolling that statement back brings your
+manual entry back. Imports saved before 2026-09-25 did not keep the
+entry's original details, so rolling one of those back keeps the entry as a
+manual entry with the imported description and posted date.
+
 A first PDF statement can also be rolled back when the ledger rows were created
 by that same PDF import and no later statement exists for the same account. This
 includes the case where the user creates a new account from the import page and
