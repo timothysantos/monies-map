@@ -26,6 +26,14 @@ Month state is split between:
 
 The page must preserve active edits while background freshness catches up.
 
+Opening a plan row (income, planned items, budget buckets) starts the same
+edit on both layouts: inline editing on desktop, the edit sheet on mobile. A
+row opens from a click anywhere on the row outside its own controls, or from
+the "Edit <label> row" button in the item cell, which is the keyboard path
+(Tab, then Enter or Space). One click opens the row once; only the `<tr>`
+carries the click handler. The scope pills and match filter chips are toggle
+buttons and expose their state with `aria-pressed`.
+
 ## Data Flow
 
 Month data comes from:
