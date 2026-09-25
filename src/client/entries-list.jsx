@@ -9,6 +9,7 @@ import { buildEntryRowDisplay, getEntryOwnerCue } from "./entry-row-display";
 import { moniesClient } from "./monies-client-service";
 import { PrivateMoney } from "./money-privacy";
 import { useRouteWorkBusy } from "./use-route-work-status";
+import { isMobileLayout } from "./use-viewport";
 
 const {
   categories: categoryService,
@@ -19,7 +20,7 @@ const {
 const NON_GROUP_SPLIT_VALUE = "__split_group_none__";
 
 function scrollInlineEditorIntoView(element) {
-  if (window.matchMedia("(max-width: 760px)").matches) {
+  if (isMobileLayout()) {
     element.scrollIntoView({ block: "start", behavior: "smooth" });
     return;
   }
@@ -415,7 +416,7 @@ function EntryRow({
       attempts += 1;
       if (renderInlineEditor && inlineEditorRef.current) {
         scrollInlineEditorIntoView(inlineEditorRef.current);
-      } else if (window.matchMedia("(max-width: 760px)").matches && rowRef.current) {
+      } else if (isMobileLayout() && rowRef.current) {
         scrollMobileEntryRowIntoView(rowRef.current);
       }
 

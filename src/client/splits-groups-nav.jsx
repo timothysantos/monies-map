@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { messages } from "./copy/en-SG";
 import { getIconComponent } from "./ui-components";
 import { useMoneyPrivacy } from "./money-privacy";
+import { isMobileLayout } from "./use-viewport";
 
 export function SplitsGroupsNav({
   groups,
@@ -22,7 +23,7 @@ export function SplitsGroupsNav({
       return;
     }
 
-    if (!window.matchMedia("(max-width: 760px)").matches) {
+    if (!isMobileLayout()) {
       return;
     }
 
