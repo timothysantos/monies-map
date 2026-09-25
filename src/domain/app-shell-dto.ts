@@ -1,10 +1,6 @@
 import { getCurrentMonthKey } from "../lib/month";
-import {
-  adjustEntriesForView,
-  buildEntriesContextView,
-  ensureAppData,
-  loadAppShellContext
-} from "./app-shell";
+import { buildEntriesContextView, ensureAppData, loadAppShellContext } from "./app-shell";
+import { adjustEntriesForView } from "./month-projection";
 import {
   findSuggestedLoginPersonId,
   loadCategories,

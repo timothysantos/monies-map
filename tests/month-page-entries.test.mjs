@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { adjustEntriesForView, buildMonthPage } from "../src/domain/app-shell.ts";
+import { adjustEntriesForView, buildMonthPage } from "../src/domain/month-projection.ts";
 import { buildPlanLinkCandidates } from "../src/client/month-helpers.js";
 
 // H14: the Month page used to send the month's entries twice
