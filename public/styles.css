@@ -8391,10 +8391,12 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
    layout and paint until they scroll near the viewport; find-in-page, Tab
    focus and screen readers still reach them because they stay in the DOM.
    "auto" keeps each row's last rendered height, so the scrollbar stays put
-   once a row has been seen; the fallback is the measured row height. */
+   once a row has been seen. The fallback is the measured content height
+   (68 px row minus its 1 px top border): the intrinsic size excludes the
+   border, and a 1 px error per row adds up over a 2,000-row month. */
 .entry-row:not(.is-editing) {
   content-visibility: auto;
-  contain-intrinsic-size: auto 68px;
+  contain-intrinsic-size: auto 67px;
 }
 
 /* Paint containment clips anything outside the row, so draw the keyboard
@@ -10837,7 +10839,7 @@ th {
   }
 
   .entry-row:not(.is-editing) {
-    contain-intrinsic-size: auto 89px;
+    contain-intrinsic-size: auto 88px;
   }
 
   .entries-date-head {

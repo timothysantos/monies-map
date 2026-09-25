@@ -9,5 +9,5 @@ export function useStableHandler(handler) {
   useInsertionEffect(() => {
     handlerRef.current = handler;
   });
-  return useCallback((...args) => handlerRef.current?.(...args), []);
+  return useCallback((...args) => handlerRef.current(...args), []);
 }

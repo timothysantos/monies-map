@@ -154,10 +154,16 @@ rendering"):
 - Expensive scoring runs when its real inputs change, not on every
   checkbox or keystroke in the same dialog (Month plan-link candidates).
 - Closed Entries rows use `content-visibility: auto` with a measured
-  `contain-intrinsic-size` (68 px desktop, 89 px mobile). Rows stay in the
-  DOM, so find-in-page, Tab focus and screen readers reach every row; the
-  open row is never skipped. Update the intrinsic size if the row layout
-  changes height.
+  `contain-intrinsic-size` of the row's content height (67 px desktop,
+  88 px mobile: the rendered row minus its 1 px top border, which the
+  intrinsic size excludes). Rows stay in the DOM, so find-in-page, Tab focus
+  and screen readers reach every row; the open row is never skipped. Update
+  the intrinsic size if the row layout changes height.
+- Scrolling to a row more than two screens away is instant
+  (`longJumpOr` in `entries-list.jsx`): a long smooth scroll renders
+  estimated rows on the way and ends off target.
+  `tests/performance/entries-deep-link.spec.js` checks a deep link to row
+  1,500 and 1,990 lands where row 5 does.
 - Entries is not windowed. Windowing would remove off-screen rows from
   the DOM, breaking find-in-page and Tab order through the list; add it
   only with a measured reason and a plan for those.
