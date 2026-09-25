@@ -808,6 +808,16 @@ That keeps the bank ledger complete while also recording who owes whom. The
 original entry remains traceable to the import batch, and the split record points
 back to the ledger entry.
 
+When a linked entry and split already exist, changing the entry's amount
+changes the split too. The split total becomes the new amount and each
+person's share keeps the same percentage: a 50/50 split stays 50/50, a 25%
+share stays 25%, and a share you entered as an exact amount becomes the same
+percentage of the new total. For example, editing a $60.00 50/50 entry to
+$80.50 in a person view shows that person's share as $40.25 in Entries,
+Splits, Month and Summary. A travel split in another currency keeps its own amount and shares;
+only its converted home amount changes. If the new share is not what you
+agreed, adjust it in the split editor.
+
 When a linked entry and split already exist, changing the note on either side
 opens a confirmation dialog before save. The dialog shows the note you are
 saving and the connected record's current note, then lets you save only the

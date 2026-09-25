@@ -279,13 +279,114 @@ the Entries page shows "FAIRPRICE FINEST", 18 May 2026, -$43.21, the note, and
 no new row; the API reports `Manual provisional`; D1 shows `import_id`,
 `import_row_id` and `post_date` NULL. A second rollback returns 409.
 
+## Linked split follows its entry's amount (2026-09-25)
+
+Branch `split-share-follows-amount`, based on `macro-performance` at
+`4c71e23`, Node v22.23.3.
+
+Bug (reported by another session, reproduced here): in a person view, editing
+the amount of a split-linked entry from 60.00 to 80.50 saved the ledger total
+but left the split expense at 60.00 and Tim's share at 30.00. Two causes:
+
+- Server: every loaded entry is `ownershipType: "direct"`, and
+  `updateEntryRecord` only synced the linked split for `"shared"` saves (the
+  upsert after its batch), so the split total and shares never moved. Month
+  totals for person scopes also stayed on the old share.
+- Client: the optimistic row kept the old `linkedSplitShares`, forced a 100%
+  ratio, and the pending-row comparison set the viewer share (server) against
+  the total (local), so the row stayed "Updating" with `-$80.50 (-$30.00)`
+  until a reload. Splits kept its cached page.
+
+Rule (documented in `DOMAIN.md`, split expense share): the split does not store
+whether a share was entered as a percentage or an exact amount, so the shares
+follow the new total by their stored `ratio_basis_points` with
+`splitAmountMinorWithRoundedRemainder` (floor for the first person in
+owner/partner order, remainder for the second). An exact-amount share becomes
+the same proportion. An even split whose odd cent was assigned (a stored
+4999/5001) stays 5000/5000. An edit that keeps the amount leaves the shares
+alone, so an explicitly assigned odd cent survives a rename. A cross-currency
+split keeps its own total and shares; only `home_amount_minor` and
+`fx_rate_basis_points` move. An archived (deleted) split that still carries the
+link is updated too, so a restore matches the ledger.
+
+Write path: `buildLinkedSplitAmountStatements` (`app-repository-splits.ts`)
+reads the linked split and its shares before the batch and returns `UPDATE`
+statements that run in `updateEntryRecord`'s own `db.batch()`, before the
+month refresh. The shared-ownership upsert after the batch is unchanged and
+still sequential; the Entries UI no longer offers "Shared" as an owner.
+
+Client: `normalizeEntryShape` rebalances a linked entry's `linkedSplitShares`
+with the same domain function when the total changes, takes the viewer ratio
+from those shares, and shows the ledger total in the amount field (it showed
+the viewer's share after any other edit, and with the new total handling a
+tab-through would have saved that share as the total).
+`buildComparableEntryState` compares the ledger total for linked rows, and an
+amount edit of a linked entry sets `invalidateSplits`, which clears the Splits
+page cache through `onSplitMutation`.
+
+Tests (each new one fails on the base code; checked by running them with
+`src/` from `macro-performance`):
+
+- `tests/atomic-writes-linked-split-amount.test.mjs` (7, real Miniflare D1):
+  person-view edit at 25% (80.50 → 20.12 / 60.38, Entries row, Splits activity
+  and balance, Tim's snapshot +5.12 and equal to a full recalculation), even
+  split with default and assigned odd cent, exact-amount share, unchanged
+  amount keeps an assigned odd cent (passes on base too), household edit,
+  cross-currency, and a failure injected on `UPDATE split_expense_shares`
+  leaving the whole database unchanged. 6 of 7 fail on base.
+- `tests/split-allocation.test.mjs` (4) for the pure rule; disabling the even
+  rule fails 2 tests here and in the D1 file.
+- `tests/entry-workflow-contract.test.mjs` (+4, one existing test extended)
+  and `tests/entry-refresh-plan.test.mjs` (+1): 6 fail on the base client
+  (checked in a scratch worktree of `macro-performance` with the new tests
+  copied in).
+- `tests/e2e/entries-linked-split-amount.spec.js` (3): person-view edit with
+  Splits cached first (row `$40.25`, 50%, APIs, balance +10.25, Summary +40.25
+  against a pre-link baseline, in-app Splits shows `$80.50` / `$40.25`);
+  household edit (row keeps `$70.01`, Joyce's view `$35.01`); a description
+  edit keeps `60` in the amount field and a tab-through saves 6000. On base,
+  the first fails with `-$80.50(-$30.00)Updating…100%`; with the amount-field
+  guard removed, the third fails with `30`.
+
+Persisted state (`scripts/persisted-state-snapshot.mjs`, one new scenario step:
+the shared dinner edited from 90.01 to 80.51 with the direct payload the editor
+sends): base vs this branch differ only in that split (`total_amount_minor`,
+`home_amount_minor` 9001 → 8051; shares 4500/4501 at 4999/5001 → 4025/4026 at
+5000/5000), Tim's share in the Entries, Month, Summary and Splits DTOs, and the
+two 2026-05 `person-tim` `monthly_snapshots` rows (−475 each). Household totals
+are unchanged. The unmodified script gives byte-identical output (`cmp`) on
+base and branch.
+
+Runtime: the e2e specs above ran in Chromium against a real `wrangler dev`
+Worker (Vite 5411, Worker 8811, `--persist-to .wrangler/state-splitshare`). A
+hand check in the browser pane did the same: 60.00 → 80.50 in Tim's view
+showed `-$80.50 (-$40.25)`, 50%, daily net −$40.25, and in-app Splits showed
+"You paid $80.50 · you lent $40.25".
+
+Not changed, noted for follow-up:
+
+- Adding an entry to splits (and other split workspace writes) does not
+  refresh month snapshots, so Tim's Summary total counts the full 60.00 until
+  something recalculates the month (seen in the D1 test baseline).
+- Other entry edits (date, description, owner/payer, category) are not copied
+  to a linked split by the entry save; note and category have their own sync
+  dialogs.
+- Settlement checkpoints: an amount edit of a linked expense that is already
+  in a checkpoint changes that expense's shares without reopening the
+  checkpoint (the checkpoint audit lists "edit included row after match" as
+  not implemented; Splits editor edits behave the same).
+- Entries treats an archived (deleted) split as still linked because its join
+  does not filter `deleted_at`.
+
 ## Open items
 
 - Closed 2026-09-25 (section above): rolling back a CSV import deleted a
   manual entry that the import had promoted.
 - Not yet converted (still sequential writes): the split workspace
-  (`app-repository-splits.ts`), including the linked split expense an entry
-  save upserts after its own batch; category match rule suggestions recorded
+  (`app-repository-splits.ts`), including the linked split expense a
+  shared-ownership entry save upserts after its own batch (the amount
+  follow-up on an entry amount edit is converted, section above); category
+  match rule suggestions recorded
   after an entry edit; settings, categories, statement checkpoint edits,
   reconciliation exceptions, Shortcut requests (parked on purpose) and the demo
   seed.
