@@ -1171,6 +1171,23 @@ test.describe("month page", () => {
     expect(await takeMonthRowOpenCount(page)).toBe(1);
   });
 
+  test("desktop month toggle buttons expose their pressed state", async ({ page }) => {
+    await gotoMonthPage(page);
+    const scopeToggle = page.locator(".desktop-scope-toggle");
+    await expect(scopeToggle.getByRole("button", { name: "Direct + Shared" })).toHaveAttribute("aria-pressed", "true");
+    await expect(scopeToggle.getByRole("button", { name: "Direct ownership" })).toHaveAttribute("aria-pressed", "false");
+
+    const row = page.locator("tr").filter({ hasText: "Savings" }).first();
+    await row.getByRole("button", { name: "Link entries" }).click();
+    const dialog = page.locator(".planned-link-dialog");
+    await expect(dialog).toBeVisible();
+    const sameCategory = dialog.getByRole("button", { name: "Same category" });
+    await expect(sameCategory).toHaveAttribute("aria-pressed", "true");
+    await sameCategory.click();
+    await expect(sameCategory).toHaveAttribute("aria-pressed", "false");
+    await expect(dialog.getByRole("button", { name: "Linked" })).toHaveAttribute("aria-pressed", "false");
+  });
+
   test("mobile month plan rows open the edit sheet from the keyboard and once per tap", async ({ page }) => {
     await page.setViewportSize(devices["iPhone 12 Pro"].viewport);
     await gotoMonthPage(page, { expectHeading: false });

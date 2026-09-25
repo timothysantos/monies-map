@@ -1739,6 +1739,7 @@ function MonthPlanLinkContent({
               key={key}
               type="button"
               className={`planned-link-filter-chip ${planLinkDialog?.[key] ? "is-active" : ""}`}
+              aria-pressed={Boolean(planLinkDialog?.[key])}
               onClick={() => onToggleFilter(key)}
             >
               {label}
