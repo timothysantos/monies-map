@@ -342,20 +342,26 @@ test("a refresh after the split was deleted drops the local split link instead o
   assert.equal(stillLinked.linkedSplitNote, "Split note");
 });
 
-test("an entry whose split is deleted in the editor shows its ledger amount as a direct entry", () => {
-  const linked = linkedPersonViewEntry();
+test("an entry whose split is deleted in the editor shows its ledger amount and keeps every other field", () => {
+  const linked = { ...linkedPersonViewEntry(), linkedSplitGroupName: "Non-group expenses", linkedSplitNote: "Split note" };
+  const {
+    linkedSplitExpenseId: _id,
+    linkedSplitShares: _shares,
+    linkedSplitGroupName: _group,
+    linkedSplitNote: _note,
+    totalAmountMinor: _total,
+    viewerSplitRatioBasisPoints: _ratio,
+    ...directFields
+  } = linked;
 
-  const unlinked = normalizeEntryShape(withoutSplitLink(linked), linkedPeople, withoutSplitLink(linked));
+  assert.deepEqual(withoutSplitLink(linked), { ...directFields, amountMinor: 6000 });
 
-  assert.equal(unlinked.linkedSplitExpenseId, undefined);
-  assert.equal(unlinked.linkedSplitShares, undefined);
-  assert.equal(unlinked.amountMinor, 6000);
-  assert.equal(unlinked.totalAmountMinor, 6000);
-  assert.equal(unlinked.viewerSplitRatioBasisPoints, 10000);
-  assert.deepEqual(unlinked.splits, [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor: 6000 }]);
+  // A joint-account row without an owner does not gain one.
+  const { ownerName: _owner, ...ownerless } = linked;
+  assert.equal("ownerName" in withoutSplitLink(ownerless), false);
   // An entry without a split is returned as it is.
-  const direct = withoutSplitLink(unlinked);
-  assert.equal(direct, unlinked);
+  const direct = withoutSplitLink(linked);
+  assert.equal(withoutSplitLink(direct), direct);
 });
 
 test("entries filtering can pin the actively edited row until save", () => {

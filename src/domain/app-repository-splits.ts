@@ -1269,12 +1269,12 @@ export async function restoreSplitRecord(db: D1Database, input: { recordKind: "e
 async function assertLedgerRowFreeForRestore(db: D1Database, input: { recordId: string; transactionId: string }) {
   const holder = await db
     .prepare(`
-      SELECT id FROM split_expenses WHERE linked_transaction_id = ? AND deleted_at IS NULL AND id <> ?
-      UNION ALL SELECT id FROM split_settlements WHERE linked_transaction_id = ? AND deleted_at IS NULL AND id <> ?
+      SELECT id FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ? AND deleted_at IS NULL AND id <> ?
+      UNION ALL SELECT id FROM split_settlements WHERE household_id = ? AND linked_transaction_id = ? AND deleted_at IS NULL AND id <> ?
       UNION ALL SELECT checkpoint_id AS id FROM split_settlement_checkpoint_matches WHERE transaction_id = ?
       LIMIT 1
     `)
-    .bind(input.transactionId, input.recordId, input.transactionId, input.recordId, input.transactionId)
+    .bind(DEFAULT_HOUSEHOLD_ID, input.transactionId, input.recordId, DEFAULT_HOUSEHOLD_ID, input.transactionId, input.recordId, input.transactionId)
     .first<{ id: string }>();
   if (holder) {
     throw new Error("Its entry is now linked to another split. Delete that split first to restore this one.");
@@ -1662,7 +1662,7 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
   }
 
   const existingSplit = await db
-    .prepare("SELECT id, split_group_id FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ?")
+    .prepare("SELECT id, split_group_id FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ? AND deleted_at IS NULL")
     .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
     .first<{ id: string; split_group_id: string | null }>();
   const splitExpenseId = existingSplit?.id ?? `split-expense-${Date.now()}`;
