@@ -560,11 +560,13 @@ CREATE TABLE IF NOT EXISTS monthly_snapshots (
 );
 
 -- Months whose monthly_snapshots are stale because a committed write's
--- follow-up refresh did not finish. Written in the same batch as the write,
--- cleared in the same batch as the refresh, repaired on the next Summary read.
+-- follow-up refresh has not finished. Written in the same batch as the write
+-- (each write sets a new refresh_token), cleared in the same batch as a
+-- refresh that read that token, repaired on the next Summary or Month read.
 CREATE TABLE IF NOT EXISTS monthly_snapshot_refreshes (
   household_id TEXT NOT NULL,
   month_key TEXT NOT NULL,
+  refresh_token TEXT NOT NULL,
   requested_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (household_id, month_key),
   FOREIGN KEY (household_id) REFERENCES households(id)

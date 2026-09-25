@@ -16,7 +16,12 @@ import {
   rows,
   snapshotTotals
 } from "./support/d1-workspace.mjs";
-import { recalculateMonthlySnapshots } from "../src/domain/app-repository-snapshots.ts";
+import {
+  buildMonthlySnapshotRefreshMarkers,
+  recalculateMonthlySnapshots,
+  refreshMonthlySnapshots,
+  refreshPendingMonthlySnapshots
+} from "../src/domain/app-repository-snapshots.ts";
 import {
   deleteMonthPlanRow,
   duplicateMonthPlan,
@@ -51,6 +56,58 @@ test("a month-total recalculation that fails on a later scope keeps every scope'
   const [household] = (await snapshotTotals(db, "2026-05")).filter((row) => row.person_scope === "household");
   const [householdBefore] = totalsBefore.filter((row) => row.person_scope === "household");
   assert.equal(household.total_expense_minor, householdBefore.total_expense_minor + expenseCount * 100);
+});
+
+test("a month refresh computed before a newer write neither overwrites its totals nor clears its marker", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  await recalculateMonthlySnapshots(db, "2026-05");
+  // Write A: a ledger change and its marker; its refresh is about to run.
+  await db.batch([
+    db.prepare("UPDATE transactions SET amount_minor = amount_minor + 100 WHERE id = (SELECT id FROM transactions WHERE transaction_date LIKE '2026-05-%' AND entry_type = 'expense' ORDER BY id LIMIT 1)"),
+    ...buildMonthlySnapshotRefreshMarkers(db, ["2026-05"])
+  ]);
+  // Refresh A has read the ledger; write B (and B's own refresh) lands
+  // before refresh A's batch does.
+  let raced = false;
+  const racing = new Proxy(db, {
+    get(target, property) {
+      if (property === "batch") {
+        return async (statements) => {
+          if (!raced) {
+            raced = true;
+            await createEntry(api, { date: "2026-05-20", description: "Atomic racing write", amountMinor: 7_000 });
+          }
+          return target.batch(statements);
+        };
+      }
+      const value = Reflect.get(target, property);
+      return typeof value === "function" ? value.bind(target) : value;
+    }
+  });
+
+  await refreshMonthlySnapshots(racing, ["2026-05"]);
+
+  assert.equal(raced, true);
+  const stored = await snapshotTotals(db, "2026-05");
+  await recalculateMonthlySnapshots(db, "2026-05");
+  assert.deepEqual(stored, await snapshotTotals(db, "2026-05"), "stored totals include write B");
+  assert.deepEqual(await rows(db, "SELECT month_key FROM monthly_snapshot_refreshes"), []);
+});
+
+test("a repair of more than a hundred marked months refreshes and clears them all", async (t) => {
+  const { db } = await openSeededDatabase(t, template);
+  const months = Array.from({ length: 101 }, (_, index) => {
+    const date = new Date(Date.UTC(2010, index, 1));
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+  });
+  months.push("2026-05");
+  await db.batch(buildMonthlySnapshotRefreshMarkers(db, months));
+  await db.prepare("DELETE FROM monthly_snapshots WHERE year = 2026 AND month = 5").run();
+
+  await refreshPendingMonthlySnapshots(db);
+
+  assert.deepEqual(await rows(db, "SELECT month_key FROM monthly_snapshot_refreshes"), []);
+  assert.deepEqual((await snapshotTotals(db, "2026-05")).map((row) => row.person_scope), ["household", "person-joyce", "person-tim"]);
 });
 
 // ------------------------------------------------------------- month plans
