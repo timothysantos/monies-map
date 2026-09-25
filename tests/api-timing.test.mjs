@@ -189,3 +189,15 @@ test("health and the shortcut gateway answer before initialization and carry no 
   assert.equal(wrongMethod.headers.get("allow"), "POST");
   assert.equal(env.DB.calls + gatewayEnv.DB.calls, 0, "no statement ran");
 });
+
+// The entry deep-link lookup lost its last client caller when the unrendered
+// deep-link component was removed; the route is gone rather than left as an
+// unowned endpoint.
+test("the retired entry locate route answers like any unknown API path", async () => {
+  const env = { DB: createFakeDb() };
+  const retired = await request(env, "/api/entries/locate?entryId=entry-1");
+  const unknown = await request(env, "/api/not-a-route");
+  assert.equal(retired.status, 404);
+  assert.equal(retired.status, unknown.status);
+  assert.equal(await retired.text(), await unknown.text());
+});

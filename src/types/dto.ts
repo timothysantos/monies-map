@@ -212,14 +212,6 @@ export interface EntriesPageDto {
   };
 }
 
-export interface EntryDeepLinkContextDto {
-  entryId: string;
-  month: string;
-  accountId?: string;
-  accountName?: string;
-  viewId: string;
-}
-
 export interface SplitGroupPillDto {
   id: string;
   name: string;
