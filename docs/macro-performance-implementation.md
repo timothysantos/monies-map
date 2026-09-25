@@ -94,10 +94,10 @@ Known baseline failures (record, do not "fix" inside unrelated tasks):
 
 | Failure | Status |
 | --- | --- |
-| `npm run verify` stops at `npm audit`: 5 advisories (browserslist, sharp via miniflare/wrangler) | Pre-existing; dependency upgrades are out of scope. Run the remaining verify steps individually and record both facts |
+| `npm run verify` stopped at `npm audit`: 5 advisories (browserslist, sharp via miniflare/wrangler) | Fixed 2026-09-25: the `sharp` override moved from 0.35.2 to 0.35.4 (wrangler stays pinned at 4.113.0) and `npm audit fix` updated browserslist and its data packages; `npm run verify` passes end to end |
 | Full E2E: `splits-viewer-amounts` › odd-cent recipient failed deterministically | Fixed by `703cb87` (test now reveals money) |
 | Functional Playwright uses fixed ports 5173/8787 with `reuseExistingServer`, and every worktree's Worker shares its own `.wrangler` D1 | Parallel sessions silently test each other's servers. Check the port owner (`lsof -a -p <pid> -d cwd`) first; if taken, use a temporary untracked config on free ports with `reuseExistingServer:false` and a separate `--persist-to` directory (see audit §H03) |
-| `money-field-editability` › settings opening balance intermittently loses typed characters | Pre-existing flake; separate task. Rerun the file alone once; record both results |
+| `money-field-editability` › settings opening balance intermittently loses typed characters | Fixed (late rAF select-all guard, merged `80b29b5`) |
 | Fresh `schema.sql` database: first data request returns 500, retry succeeds | Fixed: `audit_events` is created before legacy repairs and the OCBC repair skips its audit without a default household. `scripts/performance-preflight.sql` is deleted; regression in `tests/fresh-schema-initialization.test.mjs` |
 
 ## Global Rules
