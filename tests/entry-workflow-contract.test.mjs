@@ -270,6 +270,25 @@ test("a person-view total that equals the viewer's old share is still saved as t
   assert.deepEqual(normalized.linkedSplitShares.map((share) => share.amountMinor), [1125, 375]);
 });
 
+test("a person-view edit of a linked entry keeps the total in the amount field, so tabbing through it changes nothing", () => {
+  const previous = linkedPersonViewEntry();
+
+  const renamed = normalizeEntryShape({ ...previous, description: "Groceries run" }, linkedPeople, previous);
+
+  // The field shows the $60.00 total, never Tim's $15.00 share.
+  assert.equal(renamed.amountInput, "60");
+  assert.equal(renamed.totalAmountMinor, 6000);
+
+  // A blur on the untouched field re-sends the total it shows.
+  const blurred = normalizeEntryShape({ ...renamed, amountMinor: 6000, amountInput: "60", totalAmountMinor: 6000 }, linkedPeople, renamed);
+  assert.equal(blurred.totalAmountMinor, 6000);
+  assert.deepEqual(blurred.linkedSplitShares, previous.linkedSplitShares);
+
+  // While typing, the typed text is kept as is.
+  const typing = normalizeEntryShape({ ...renamed, amountMinor: 800, amountInput: "8", totalAmountMinor: 800 }, linkedPeople, renamed);
+  assert.equal(typing.amountInput, "8");
+});
+
 test("a saved split-linked amount edit gives way to the server row with the new share", () => {
   const previous = linkedPersonViewEntry();
   const saved = {

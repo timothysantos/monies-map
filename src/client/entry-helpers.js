@@ -91,6 +91,11 @@ export function normalizeEntryShape(entry, people, previousEntry = entry) {
     // A linked entry's viewer ratio comes from its split shares, which follow
     // a new ledger total the same way the server rebalances them.
     nextEntry.viewerSplitRatioBasisPoints = isLinkedToSplit ? undefined : 10000;
+    // The amount field edits the ledger total, so unless this change typed
+    // into it, show the total rather than the viewer's share.
+    if (isLinkedToSplit && entry.amountInput === previousEntry?.amountInput) {
+      nextEntry.amountInput = formatEditableMinorInput(nextEntry.totalAmountMinor);
+    }
     if (isLinkedToSplit && nextEntry.linkedSplitShares?.length === 2 && nextEntry.totalAmountMinor !== getTotalAmountMinor(previousEntry)) {
       nextEntry.linkedSplitShares = rebalanceLinkedSplitShares(nextEntry.linkedSplitShares, people, nextEntry.totalAmountMinor);
     }
