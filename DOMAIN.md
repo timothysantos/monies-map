@@ -346,6 +346,29 @@ Important distinctions:
 - Statement certification preserves user annotations such as category, note,
   ownership, splits, and links; it does not preserve provisional bank facts that
   conflict with the final PDF.
+- A current-activity (CSV/XLS) import that reconciles with a manual
+  provisional entry promotes it in place: the entry takes the import's bank
+  facts (posted date, description, amount, entry type, transfer direction) and
+  joins the import batch. The promoting import row keeps a snapshot of the
+  facts it replaced. Rolling the import back restores those facts and removes
+  the entry from the batch, so it is `Manual provisional` again exactly as
+  before the promotion; annotations made since (category, note, owner, splits,
+  transfer links) are kept. A bank fact the user edited after the promotion
+  is still restored, except that an entry linked as a transfer keeps the
+  transfer entry type and direction its link needs. Rows the import created
+  are removed as before. An entry deleted after the promotion has nothing to
+  restore.
+- If a later statement certified a promoted entry, a rollback of the
+  current-activity import keeps the entry `Statement certified` with the
+  statement's bank facts, and replaces the import-provisional state underneath
+  it (the state a statement rollback returns to) with the manual entry.
+  If a later statement superseded the promoted entry, the statement's
+  snapshot is rewritten the same way, and the rows the rolled-back import
+  created are dropped from it, so rolling the statement back re-creates the
+  manual entry and nothing of the rolled-back import.
+- Imports committed before promotion snapshots existed (before 2026-09-25)
+  have none. Their rollback keeps an entry created before the import as a
+  manual entry with its current bank facts rather than deleting it.
 - The newest PDF statement for an account remains rollbackable even when it
   certified existing provisional rows. Rollback restores those rows to their
   prior working state and removes the statement certificate metadata. Older PDF
