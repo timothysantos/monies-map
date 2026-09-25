@@ -190,6 +190,13 @@ Details and the reasons are in `docs/code-spec.md` and
   and page projections in `*-projection.ts`. New code imports the specific
   module, never the `app-repository.ts` hub, and command modules never import
   each other.
+- Persistence commands are all-or-nothing: read and check first, then
+  commit all their writes, audit event and month refresh markers in one
+  `db.batch()`, and refresh month totals after it with
+  `refreshMonthlySnapshotsAfterWrite`. New or changed commands must not write
+  with sequential `.run()` calls, and must be proved by a `failingStatement`
+  test in `tests/atomic-writes-*.test.mjs`. Details and the modules not yet
+  converted: "Persistence Atomicity Contract" in `docs/code-spec.md`.
 - Keep `Server-Timing` as `app, init, total` with `app` first; budget checks
   read the first `dur`.
 - Work in three passes: tests first, then runtime and failure behaviour in a

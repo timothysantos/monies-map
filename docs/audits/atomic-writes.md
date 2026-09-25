@@ -1,0 +1,196 @@
+# Atomic Writes Audit
+
+Status: complete for the listed commands; open items at the end.
+
+Branch `atomic-writes`, based on `macro-performance` at `94c3ac2`. Node
+v22.12.0. Scope: evaluation steps 2 and part of 5 — make multi-statement
+persistence commands all-or-nothing, with focused unit tests first.
+
+## What was non-atomic (verified in the base code)
+
+| Command | Base behaviour | Partial state a mid-command failure left |
+| --- | --- | --- |
+| Import commit | draft `imports` row by itself, rows in `db.batch()` chunks of 90, certificates and chain-break clears in further batches, status flip, snapshot recalculation and audit as separate statements; a `catch` deleted the import's rows and marked it `rolled_back` | a `rolled_back` imports row always; promoted or certified existing entries could stay changed (cleanup only resets certification status, not the previous bank facts) |
+| Import rollback | ~10 sequential writes plus per-row restores, no status check | half-restored certified rows, entries removed but import still `completed`; a second rollback ran again and added another audit event |
+| Month totals (`recalculateMonthlySnapshots`) | one `.run()` per person scope | some scopes updated, others stale |
+| Entry update / classification / delete | sequential `.run()` | e.g. transfer pair unlinked but its group kept; plan links deleted but entry kept |
+| Transfer link / settle | sequential `.run()` (link ran two updates with `Promise.all`) | one half linked or settled, the other not |
+| Month plan save / links / delete row / duplicate / reset / delete month | sequential `.run()`; split sync deleted splits before the owner lookup | plan row without splits; links without hints; copied rows without totals; month half cleared |
+
+Two further defects surfaced by the new tests and fixed:
+
+- Rolling back a CSV import never refreshed the months of the entries it
+  removed, so the stored month totals kept counting them (commit `3061256`).
+- The certificate's superseded-row snapshot was read after the commit had
+  deleted those rows, so it always fell back to rebuilding the row from the
+  raw import row, losing category, note, owner and split links. It is now read
+  before the batch (commit `de03bd1`).
+
+## Design
+
+- Every command reads and validates first, then commits its writes, its audit
+  event and its month refresh markers in one `db.batch()`. D1 documents a
+  batch as a SQL transaction that rolls back if any statement fails; the unit
+  tests confirm this against Miniflare's local D1.
+- Month totals are derived from the committed ledger, so they cannot be
+  computed inside the write's batch without re-implementing `loadEntries` in
+  SQL. The write puts `monthly_snapshot_refreshes` rows in its batch; the
+  refresh rewrites every scope of those months and deletes the markers in one
+  batch. A refresh failure is logged and does not fail the committed write;
+  the Summary and Month pages repair marked months before reading totals (one
+  small query when nothing is pending).
+- Month duplicate computes the new month's planned totals from the source
+  month it copies (same rows, same splits), so the copy and its totals commit
+  together.
+- Import certificate: the fallback projected balance used to read the ledger
+  after the chunks were written. It is now computed from the ledger read
+  before the batch with this commit's own superseded deletes, certification
+  updates and new rows applied.
+- Rolling back a `rolled_back` import throws "cannot be rolled back", which the
+  route already maps to 409.
+
+### Import size and the one staged path
+
+No batch limit was hit. D1's documented limits apply per statement (100 bound
+parameters, 100 KB of SQL, 30 s) and there is no documented statement-count
+limit per batch; Workers allow 50 (free) / 1,000 (paid) queries per
+invocation. The April 2026 chunking (`46496fe`) fixed large CSV commits that
+issued many sequential queries, which is consistent with the per-invocation
+query cap rather than a batch-size cap, but the exact production error was not
+recorded, so the batch size that Cloudflare accepts in production is not
+proven here.
+
+The chosen design: commits up to 500 statements (about 245 CSV rows) run as
+one batch, which stays under the paid per-invocation cap even if every
+statement in a batch counted separately. Larger commits are staged: the draft
+import and its own new rows (import rows and new ledger entries, which ledger
+reads ignore while the import is `draft`) are written in chunks of 90, then
+every visible change (promotions, certifications, superseded deletes,
+checkpoints, certificates, the `completed` flip, audit and markers) is one
+final batch. Any failure deletes the staged rows and the draft; if even that
+fails, the draft stays hidden and the next commit of the same file replaces it.
+
+## Test evidence
+
+New files (node:test, real local D1 via Miniflare, demo household seeded once
+per file, a copied database per test): `tests/atomic-writes-imports.test.mjs`
+(13), `tests/atomic-writes-entries.test.mjs` (8),
+`tests/atomic-writes-months.test.mjs` (10). `tests/support/d1-workspace.mjs`
+provides `failingStatement`, which makes the n-th matching statement fail when
+it executes, alone or inside a batch, and `dumpDatabase`, a full dump of every
+table in rowid order. Each failure test asserts the whole dump is unchanged.
+
+The tests were written against the base code first. The first 26 tests, run
+unchanged in a checkout of `94c3ac2`: 7 pass (the success cases of existing
+behaviour) and 19 fail. 17 of those fail for the stated reason, for example a
+failed commit left an `imports` row `rolled_back`; a failed rollback had
+already deleted 2 entries; a failed recalculation had rewritten the household
+scope; a failed entry delete had already removed its plan link; a failed month
+reset had deleted 18 entries and 53 splits; a failed staged import left its
+`imports` row; a second rollback returned 200 instead of 409; the CSV rollback
+left the month total 6,912 too high. The other 2 (the single-batch and bulk
+commit success tests) fail only because they also assert the new
+`monthly_snapshot_refreshes` table is empty. Two test bugs found on the first
+base run (import row indexes are 1-based; plan rows tie on `created_at`) were
+fixed in the tests, not the code.
+
+On this branch all 31 pass (26 plus the 5 added after review, below). Deliberate breaks are caught: running the
+entry-delete statements one by one fails the entry-delete failure test;
+skipping the staged final batch fails both bulk-import tests.
+
+## Persisted-state harness
+
+`node --experimental-sqlite --no-warnings scripts/persisted-state-snapshot.mjs`
+(isolated ports 8961–8964):
+
+- base `94c3ac2`, run twice: byte-identical (`cmp`), so the harness is
+  deterministic.
+- after the atomicity refactor (`de03bd1`, before the rollback fix): every
+  table and all 14 page DTOs identical to the base. The only difference is the
+  new `monthly_snapshot_refreshes` table, present and empty.
+- after the rollback fix (`3061256`): one intended difference — the 2026-05
+  `monthly_snapshots` rows for `household` and `person-tim` drop from 579,900
+  to 574,222 and 452,900 to 447,222 (`total_expense_minor` and
+  `total_net_minor`), exactly the 5,678 of the rolled-back "STATE IMPORT
+  ROLLED BACK" row the old rollback left counted. Page DTOs are unchanged.
+
+## Runtime (pass 2)
+
+Real `wrangler dev` Worker on port 8801 with its own D1 (`--persist-to
+.wrangler/state-atomic`): reseed, CSV preview and commit of two rows moved the
+Summary 2026-05 real expenses from 559,666 to 566,578; rollback returned it to
+559,666; a second rollback returned 409 with "This import has already been
+rolled back, so it cannot be rolled back again."
+
+Failure injection ran against Miniflare's workerd-backed D1 in the unit tests,
+not inside `wrangler dev`.
+
+## Independent review (pass 3)
+
+A separate reviewer read the whole diff. Confirmed and fixed, each with a
+test that fails on the pre-review commit `2c087d0` (checked in a scratch
+checkout: exactly these 4 of 31 failed):
+
+- High: the staged commit's cleanup deleted every row of the import id with
+  no status check. A concurrent second commit of the same large file (same
+  deterministic id) that failed on the `imports` key wiped the first commit's
+  300 rows; a final batch that landed but reported an error was undone after
+  committing. Now the draft batch runs before cleanup is armed and every
+  cleanup delete requires the import to still be `draft` (`88c383a`).
+- Medium: the marker delete used one `IN` list, so a refresh of more than 99
+  months exceeded D1's 100 bound parameters and failed on every read. Now one
+  delete per month (`e83fa0f`).
+- Medium: a refresh computed before a newer write to the same month could
+  commit after that write's own refresh, storing older totals (7,000 short in
+  the test) and deleting the only marker. Each marker write now sets a
+  `refresh_token`; a refresh's snapshot writes and marker delete apply only
+  while the token it read is unchanged (`e83fa0f`).
+
+Also added: a test that the certificate computes its balance from the
+post-commit ledger when preview figures are missing (passes before and
+after). Noted, not changed: reads that now run before a replaced earlier
+attempt's cleanup only differ for a leftover legacy draft that still
+certifies rows, which this code never produces; a row that is both
+superseded and a reconciliation target would be counted by the certificate
+simulation, which preview does not produce.
+
+After the review fixes the persisted-state harness output is byte-identical
+to the post-rollback-fix run above.
+
+## Gates
+
+All on the final code unless noted, Node v22.12.0.
+
+- `npm run verify`: exit 0. `npm audit` 0 vulnerabilities; typecheck clean;
+  unit 482/482 (68 s); build; `check:bundle` 180,385 B JS gzip against a
+  180,337 B budget (+48 B, inside the 5% allowance, from the longer
+  large-import notice; budget not raised), CSS 31,961 B unchanged; smoke 17
+  workflows, 125 tests passed, including the page-payload budget spec.
+- `npm run test:e2e` (full, 245 tests) on isolated ports (Vite 5401,
+  Worker 8801, `--persist-to .wrangler/state-atomic`, temporary Playwright
+  config with `webServer: undefined`): 245 passed (9.6 min).
+- An earlier full run, before the review fixes, had 244 passed and 1 failed:
+  `import-inbox-navigation` "stale import banner" timed out waiting 10 s for
+  the Summary heading. It passed when re-run alone (5.9 s), in the smoke
+  bundle, and in the final full run. Recorded as a timing flake; the cause was
+  not investigated further.
+
+## Open items
+
+- Rolling back a CSV import deletes a manual entry that the import reconciled
+  (promoted): cleanup removes every transaction whose `import_id` is the
+  import, and promotion sets that field on the manual entry. Verified on this
+  branch; the SQL is unchanged from the base, so it is pre-existing. Not fixed
+  here because restoring the manual entry is a product decision.
+- Not yet converted (still sequential writes): the split workspace
+  (`app-repository-splits.ts`), including the linked split expense an entry
+  save upserts after its own batch; category match rule suggestions recorded
+  after an entry edit; settings, categories, statement checkpoint edits,
+  reconciliation exceptions, Shortcut requests (parked on purpose) and the demo
+  seed.
+- Two concurrent rollbacks of the same import can both pass the status check;
+  the second batch is idempotent apart from a second audit event. Not guarded.
+- Staged imports (over about 245 rows) are visible as a hidden draft between
+  their chunks and final batch to reads that do not filter by import status.
+- The single-batch size Cloudflare accepts in production is inferred from
+  documentation, not measured on a deployed Worker.

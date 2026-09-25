@@ -249,6 +249,47 @@ else:
   refetchAndReconcile()
 ```
 
+## Persistence Atomicity Contract
+
+A persistence command is all-or-nothing:
+
+- read and validate everything first (lookups, existence and lock checks,
+  snapshots needed for undo, generated ids); throw before the first write
+- then commit every write of the command, its audit event
+  (`buildAuditEventStatement`) and its month refresh markers
+  (`buildMonthlySnapshotRefreshMarkers`) in one `db.batch()`. D1 runs a batch
+  as one transaction and rolls it back if any statement fails
+- never interleave awaited reads between writes, never write with sequential
+  `.run()` calls, and never split one command's writes over several batches.
+  When a later statement needs an earlier result, compute it in JS before the
+  batch (precomputed ids, the ledger with the command's own changes applied,
+  source-month totals for a copied month)
+- helpers used inside a command return statements (`build...Statements`)
+  instead of executing them
+- refresh derived month totals after the batch with
+  `refreshMonthlySnapshotsAfterWrite`; one month's scopes and the marker clear
+  commit together, and a refresh failure is logged, not returned as a write
+  failure, because the markers let the next Summary or Month read repair it
+- the only multi-batch write is an import over
+  `IMPORT_COMMIT_SINGLE_BATCH_STATEMENT_LIMIT` (500) statements: draft-only
+  rows are staged, every visible change is one final batch, and a failure
+  discards the staged rows. Do not add another staged write without a measured
+  limit and the same invisibility argument
+- a repeated destructive command is rejected, not re-run (rolling back a
+  rolled-back import returns 409)
+- prove each command with a failure test in `tests/atomic-writes-*.test.mjs`:
+  make one statement fail partway with `failingStatement` and assert the whole
+  database dump is unchanged; the test must fail on sequential writes
+
+Converted (2026-09, `docs/audits/atomic-writes.md`): import commit and
+rollback, entry create/edit/delete, transfer link and settle, month-plan
+commands and the month snapshot recalculation. Not yet converted, so still
+written statement by statement: the split workspace
+(`app-repository-splits.ts`, including the linked split an entry save
+upserts after its own batch), category match rules, settings, categories,
+statement checkpoint edits, Shortcut requests (parked on purpose) and the
+demo seed. Convert a module the next time its writes change.
+
 ## Data Flow Pseudocode
 
 Keep slice code close to this shape:
@@ -346,9 +387,10 @@ These are defaults, not excuses for clever golfing.
   (runtime schema), `app-repository-seed.ts` (demo and empty-state seed),
   `app-repository-entry-commands.ts`, `app-repository-month-commands.ts`,
   `app-repository-import-commit.ts` (commit and rollback) and
-  `app-repository-snapshots.ts` (monthly snapshot recalculation, used by all
-  of them). New code imports the specific module, never the hub, and a
-  command module never imports another command module
+  `app-repository-snapshots.ts` (monthly snapshot recalculation, refresh
+  markers and repair, used by all of them). New code imports the specific
+  module, never the hub, and a command module never imports another command
+  module. Command writes follow the Persistence Atomicity Contract
 - move persistence code with `scripts/persisted-state-snapshot.mjs`: its
   normalized table and page-DTO dump must be identical before and after
 - if several route modules repeat the same route-context or month-selection

@@ -794,6 +794,21 @@ Relationships:
 - belongs to one `household`
 - keyed by `year`, `month`, and `person_scope`
 
+### Month Snapshot Refresh
+
+A pending recalculation of one month's `month snapshots`. A write records it
+in the same transaction as its ledger change, and the refresh that rewrites
+the month's snapshots removes it in that same transaction. A refresh left
+pending (for example after an interrupted request) is completed before the
+next Summary or Month read. It carries no user data.
+
+Storage:
+- `monthly_snapshot_refreshes`
+
+Relationships:
+- belongs to one `household`
+- keyed by `month_key` (`YYYY-MM`)
+
 ### Monthly Budget Record
 
 A compatibility-level planning table that still exists in storage but is not
