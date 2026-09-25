@@ -628,23 +628,13 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
 
   // After its split is deleted, an entry open in the editor (which ignores
   // server refreshes until it closes) shows the ledger amount and can be
-  // added to splits again; the snapshot follows so Cancel keeps that.
+  // added to splits again; the snapshot follows so Cancel keeps that. Only
+  // the split fields change: a full normalize would also fill in an owner.
   function clearEntrySplitLink(entryId) {
-    let unlinkedEntry = null;
-    setEntries((current) => current.map((entry) => {
-      if (entry.id !== entryId || !entry.linkedSplitExpenseId) {
-        return entry;
-      }
-
-      unlinkedEntry = entryService.normalize(withoutSplitLink(entry), people, withoutSplitLink(entry));
-      return unlinkedEntry;
-    }));
-    setEntrySnapshot((current) => (
-      current?.id === entryId && current.linkedSplitExpenseId
-        ? entryService.normalize(withoutSplitLink(current), people, withoutSplitLink(current))
-        : current
-    ));
-    return unlinkedEntry;
+    setEntries((current) => current.map((entry) => (
+      entry.id === entryId ? withoutSplitLink(entry) : entry
+    )));
+    setEntrySnapshot((current) => (current?.id === entryId ? withoutSplitLink(current) : current));
   }
 
   function updateEntry(entryId, patch) {

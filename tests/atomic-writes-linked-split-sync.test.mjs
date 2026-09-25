@@ -297,6 +297,43 @@ test("restoring a deleted linked split links the entry again, unless the entry i
   assert.equal((await entryRow(api, "person-tim", entryId)).linkedSplitExpenseId, readdedId);
 });
 
+test("saving an entry as Shared links a new split instead of rewriting its archived one", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const { entryId, splitExpenseId: archivedId } = await createLinkedEntry(api, { description: "Split sync shared save" });
+  assert.equal((await api("/api/splits/expenses/delete", { splitExpenseId: archivedId })).status, 200);
+  const archivedShares = await shareRows(db, archivedId);
+
+  const update = await api("/api/entries/update", entryEdit(entryId, { description: "Split sync shared save", ownershipType: "shared", splitBasisPoints: 8_000 }));
+
+  assert.equal(update.status, 200, JSON.stringify(update.payload));
+  assert.deepEqual(await shareRows(db, archivedId), archivedShares);
+  const row = await entryRow(api, "person-tim", entryId);
+  assert.ok(row.linkedSplitExpenseId && row.linkedSplitExpenseId !== archivedId, "the entry is linked to a new active split");
+  assert.equal(row.amountMinor, 4_800);
+
+  // With an active split, the Shared save updates that split, not the archived one.
+  const again = await api("/api/entries/update", entryEdit(entryId, { description: "Split sync shared save", ownershipType: "shared", splitBasisPoints: 2_500 }));
+  assert.equal(again.status, 200, JSON.stringify(again.payload));
+  assert.deepEqual(await shareRows(db, archivedId), archivedShares);
+  assert.equal((await entryRow(api, "person-tim", entryId)).amountMinor, 1_500);
+});
+
+test("an archived split follows its entry's edits so a restore matches the ledger", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const { entryId, splitExpenseId } = await createLinkedEntry(api, { description: "Split sync archived follow" });
+  assert.equal((await api("/api/splits/expenses/delete", { splitExpenseId })).status, 200);
+
+  const update = await api("/api/entries/update", entryEdit(entryId, { date: "2026-05-20", description: "Split sync archived renamed", amountMinor: 7_000 }));
+
+  assert.equal(update.status, 200, JSON.stringify(update.payload));
+  const after = await splitRow(db, splitExpenseId);
+  assert.equal(after.archived, 1);
+  assert.equal(after.expense_date, "2026-05-20");
+  assert.equal(after.description, "Split sync archived renamed");
+  assert.equal(after.total_amount_minor, 7_000);
+  assert.deepEqual((await shareRows(db, splitExpenseId)).map((share) => share.amount_minor), [3_500, 3_500]);
+});
+
 test("a split delete that fails while recording its history changes nothing", async (t) => {
   const { db, api } = await openSeededDatabase(t, template);
   const { splitExpenseId } = await createLinkedEntry(api, { description: "Split sync delete atomic" });
