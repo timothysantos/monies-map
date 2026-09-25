@@ -248,7 +248,7 @@ The win is:
 The imports slice is now closed.
 
 That means the next highest-value slice is the one already called out in
-[`docs/implementation-order.md`](./implementation-order.md):
+[`docs/implementation-order.md`](../implementation-order.md):
 
 - settings is the last major feature slice
 - settings controls household reference data used by every other workflow
