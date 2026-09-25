@@ -6,6 +6,7 @@ import { moniesClient } from "./monies-client-service";
 import { SplitExpenseFields, SplitSettlementFields } from "./splits-dialogs";
 import { CategoryGlyph } from "./ui-components";
 import { useRouteWorkBusy } from "./use-route-work-status";
+import { isMobileLayout } from "./use-viewport";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 
@@ -24,7 +25,7 @@ export function splitActivityDomId(itemOrKind, maybeId) {
 }
 
 function scrollInlineEditorIntoView(element) {
-  if (window.matchMedia("(max-width: 760px)").matches) {
+  if (isMobileLayout()) {
     element.scrollIntoView({ block: "start", behavior: "smooth" });
     return;
   }
