@@ -8691,9 +8691,17 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
     radial-gradient(circle at top right, rgba(177, 94, 47, 0.12), transparent 48%);
 }
 
-.entry-composer-overlay,
 .entry-composer-head {
   display: none;
+}
+
+/* The mobile sheet's backdrop covers the viewport in every layout where the
+   sheet opens, so a tap outside the sheet lands on it (and closes the sheet)
+   instead of reaching the page. It is transparent outside the phone layout. */
+.entry-composer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
 }
 
 .entry-submit-error {
