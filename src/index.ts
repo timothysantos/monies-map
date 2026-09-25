@@ -24,7 +24,6 @@ import {
   buildAccountCheckpointLedgerCsv,
   buildImportPreview,
   compareAccountCheckpointStatementRows,
-  commitImportBatch,
   createSplitExpenseRecord,
   createSplitExpenseFromEntryRecord,
   createSplitGroupRecord,
@@ -39,7 +38,6 @@ import {
   deleteAccountCheckpointRecord,
   deleteCategoryRecord,
   ignoreCategoryMatchRuleSuggestion,
-  rollbackImportBatch,
   retainLatestAppErrorDiagnostics,
   resolveReconciliationExceptionRecord,
   saveAccountCheckpointRecord,
@@ -64,6 +62,7 @@ import {
   loadSplitActivityHistory,
   restoreSplitRecord
 } from "./domain/app-repository";
+import { commitImportBatch, rollbackImportBatch } from "./domain/app-repository-import-commit";
 import {
   deleteMonthPlan,
   deleteMonthPlanRow,
