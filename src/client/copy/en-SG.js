@@ -12,6 +12,7 @@ export const messages = {
     appShellResourceLimitTitle: "Cloudflare stopped the request before the app could return data.",
     appShellResourceLimitDetail: "This is usually a Worker CPU or resource limit on the shared app-shell request, not proof that an import changed data. If this keeps happening, check Cloudflare Workers observability for /api/app-shell and reduce that endpoint's work or move the Worker to a plan with more headroom.",
     appShellDiagnosticsUnavailable: "Settings and Error diagnostics also need the app shell. If /api/app-shell is the failing request, the diagnostics page may not open until the endpoint succeeds again.",
+    loadFailedDetail: "Your saved data is not affected. Try again in a moment.",
     pageLoadErrorTitle: "This page could not finish loading.",
     retryPageLoad: "Try loading again",
     refreshFailedTitle: "This page could not refresh.",
@@ -83,6 +84,7 @@ export const messages = {
     }
   },
   month: {
+    planLinkNoCandidates: "No matching expense entries fit the current filters.",
     incomeSectionTitle: "Income",
     incomeSectionDetail: "Planned income sources that fund the month before expenses are allocated.",
     actions: "Actions",
@@ -200,6 +202,7 @@ export const messages = {
     noGroups: "No split groups yet.",
     noEntries: "No split entries yet for this group.",
     noMatches: "No split matches to review right now.",
+    historyEmpty: "No split activity has been recorded yet.",
     searchPlaceholder: "Expense, person, note, amount...",
     noSearchResults: "No split activity matches this search.",
     youAreOwed: "You are owed",
@@ -776,6 +779,7 @@ export const messages = {
       blocking: "Blocking"
     },
     unresolvedTransfersTitle: "Unresolved transfers",
+    unresolvedTransfersEmpty: "No transfers need review right now.",
     unresolvedTransfersDetail: "These transfer rows are not fully paired yet and can leave wallet balances looking wrong until reviewed.",
     unresolvedTransfersDetailWithCount: (count) => `${count} transfer rows are not fully paired yet and can leave wallet balances looking wrong until reviewed.`,
     openTransferReview: "Open in entries",
@@ -791,6 +795,7 @@ export const messages = {
     transferReviewTitle: "Transfer review",
     transferReviewDetail: "Use this list to clean up unpaired transfer rows before trusting wallet balances.",
     recentActivityTitle: "Recent balance activity",
+    recentActivityEmpty: "No balance activity recorded yet.",
     recentActivityDetail: "A lightweight audit trail for actions that can change balances or transfer links.",
     errorDiagnosticsTitle: "Error diagnostics",
     errorDiagnosticsDetail: "Saved request failures with the previous action, current action, response body, and likely reason.",
@@ -881,6 +886,7 @@ export const messages = {
     categoryIcon: "Icon",
     categoryColor: "Color",
     categoryRulesTitle: "Category matching",
+    categoryRulesEmpty: "No category rules yet. Rules appear here once you save one.",
     categoryRulesDetail: "Rules categorize new import rows during preview and can correct the bank parser when it guesses wrong. Capitalization, spaces, and punctuation do not matter. Write one merchant word or phrase, or separate a few words with commas when all of them must appear, like paynow-fast, lunch. Very short names must appear as their own word, and lower priority numbers are checked first.",
     categoryRuleSuggestionsTitle: "Suggestions",
     categoryRuleSuggestionsDetail: "Repeated manual category changes are held here for review. Add the rule, edit it first, or ignore it.",

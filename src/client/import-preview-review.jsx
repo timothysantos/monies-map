@@ -7,6 +7,7 @@ import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { DeleteRowButton } from "./ui-components";
 import { addDaysToIsoDate } from "./app-dates";
+import { InlineError } from "./ui-states";
 
 const {
   accounts: accountService,
@@ -526,7 +527,7 @@ function getOverlapEntrySignedMinor(entry) {
 
 function OverlapScopeInfo() {
   const [open, setOpen] = useState(false);
-  const closeTimeoutRef = useRef();
+  const closeTimeoutRef = useRef(undefined);
 
   function openPopover() {
     window.clearTimeout(closeTimeoutRef.current);
@@ -901,18 +902,18 @@ function StatementReconciliationDiagnosticRows({
   title,
   detail,
   summary,
-  collapsedSummary,
+  collapsedSummary = undefined,
   collapsedByDefault = false,
-  actionDetail,
+  actionDetail = undefined,
   rows,
   totalRowCount,
   totalAmountMinor,
   viewId,
-  accountId,
-  statementEndDate,
-  onDeleteDiagnosticLedgerRow,
-  onDeleteDiagnosticLedgerRows,
-  onSetDiagnosticLedgerPostDate
+  accountId = undefined,
+  statementEndDate = undefined,
+  onDeleteDiagnosticLedgerRow = undefined,
+  onDeleteDiagnosticLedgerRows = undefined,
+  onSetDiagnosticLedgerPostDate = undefined
 }) {
   const rowCount = totalRowCount ?? rows.length;
   const ledgerRows = rows.filter((row) => row.source === "ledger" && row.id);
@@ -1119,7 +1120,7 @@ function ConfirmLedgerActionButton({
         >
           <strong>{triggerLabel ?? label}</strong>
           <p>{prompt}</p>
-          {error ? <p className="form-error">{error}</p> : null}
+          <InlineError message={error} />
           <div className="delete-popover-actions">
             <Popover.Close asChild>
               <button type="button" className="subtle-action" disabled={isWorking}>
@@ -1214,7 +1215,7 @@ function PostedDateDialog({ row, initialDate, statementEndLabel, onSetPostDate }
                 onChange={(event) => setPostDate(event.target.value)}
               />
             </label>
-            {error ? <p className="form-error">{error}</p> : null}
+            <InlineError message={error} />
             <div className="note-dialog-actions">
               <Dialog.Close asChild>
                 <button type="button" className="subtle-action" disabled={isWorking}>

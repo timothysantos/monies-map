@@ -6,6 +6,7 @@ import { moniesClient } from "./monies-client-service";
 import { CategoryGlyph } from "./ui-components";
 import { PrivateMoney } from "./money-privacy";
 import { useRouteWorkBusy } from "./use-route-work-status";
+import { useIsMobileLayout } from "./use-viewport";
 
 const LazySpendingMixRecharts = lazy(() => import("./spending-mix-recharts.jsx"));
 const { categories: categoryService, format: formatService } = moniesClient;
@@ -23,7 +24,7 @@ export function SpendingMixChart({
   const total = typeof totalMinor === "number"
     ? totalMinor
     : data.reduce((sum, item) => sum + item.valueMinor, 0);
-  const isNarrowViewport = typeof window !== "undefined" && window.innerWidth <= 760;
+  const isNarrowViewport = useIsMobileLayout();
   const resolvedHeight = isNarrowViewport ? Math.min(height, compact ? 250 : 280) : height;
   const resolvedInnerRadius = isNarrowViewport ? Math.min(innerRadius, compact ? 54 : 62) : innerRadius;
   const resolvedOuterRadius = isNarrowViewport ? Math.min(outerRadius, compact ? 84 : 98) : outerRadius;
@@ -120,7 +121,7 @@ export function CategoryAppearancePopover({ category, onChange }) {
             mode: "edit",
             categoryId: category.id,
             name: category.name,
-            slug: category.slug ?? slugify(category.name),
+            slug: category.slug ?? categoryService.slugify(category.name),
             iconKey: category.iconKey,
             colorHex: category.colorHex
           });

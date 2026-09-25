@@ -5,6 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
+import { EmptyState } from "./ui-states";
 import { useEntryActions } from "./entry-actions";
 import {
   EntryComposerInlineSection,
@@ -41,6 +42,7 @@ import { useRouteWorkReport } from "./use-route-work-status";
 import { fetchQueryWithLease } from "./query-leases";
 import { createEntriesDataOwner } from "./entries-data-owner";
 import { buildEntriesPageParams } from "./app-routing";
+import { useIsMobileLayout } from "./use-viewport";
 
 const QUICK_EXPENSE_DRAFT_STORAGE_KEY = "monies.quickExpenseDraft";
 const QUICK_EXPENSE_DRAFT_STORAGE_TTL_MS = 15 * 60 * 1000;
@@ -83,7 +85,7 @@ export function EntriesPanel({
   const [searchParams, setSearchParams] = useSearchParams();
   const [showExpenseBreakdown, setShowExpenseBreakdown] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [useMobileEntrySheet, setUseMobileEntrySheet] = useState(false);
+  const useMobileEntrySheet = useIsMobileLayout();
   const [isQuickExpenseSaving, setIsQuickExpenseSaving] = useState(false);
   const [quickExpensePendingKey, setQuickExpensePendingKey] = useState("");
   const [quickExpenseWarning, setQuickExpenseWarning] = useState("");
@@ -211,7 +213,6 @@ export function EntriesPanel({
   const entryComposerEditorRef = useRef(null);
   const defaultEntryPerson = entryView.id !== "household" ? entryView.label : "";
   const {
-    searchParamsKey,
     selectedScope,
     walletFilters,
     walletFilterKey,
@@ -222,18 +223,6 @@ export function EntriesPanel({
   useEffect(() => {
     openEntryComposerRef.current = openEntryComposer;
   }, [openEntryComposer]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const mediaQuery = window.matchMedia("(max-width: 760px)");
-    const update = () => setUseMobileEntrySheet(mediaQuery.matches);
-    update();
-    mediaQuery.addEventListener?.("change", update);
-    return () => mediaQuery.removeEventListener?.("change", update);
-  }, []);
 
   useEffect(() => {
     if (!showEntryComposer) {
@@ -439,7 +428,7 @@ export function EntriesPanel({
     setIsQuickExpenseSaving(true);
     try {
       const result = await saveEntryDraft();
-      if (result?.saved) {
+      if (result && result.saved) {
         pendingQuickExpenseDraftRef.current = null;
         setQuickExpensePendingKey("");
         clearStoredQuickExpenseDraft();
@@ -1139,6 +1128,7 @@ export function EntriesPanel({
           errorMessage={entrySubmitError || quickExpenseWarning}
           saveLabel={isSavingEntryDraft || isQuickExpenseSaving ? "Saving..." : "Save"}
           isSaveDisabled={isComposerSaveDisabled}
+          isSubmitting={isSavingEntryDraft || isQuickExpenseSaving}
           entry={entryDraft}
           categories={categories}
           categoryOptions={categoryOptions}
@@ -1165,6 +1155,7 @@ export function EntriesPanel({
           saveLabel={savingEntryId === activeEditingEntry.id ? messages.common.saving : "Save"}
           cancelLabel={hasEditingEntryChanges ? messages.entries.cancelEdit : messages.common.close}
           isSaveDisabled={Boolean(savingEntryId) || Boolean(deletingEntryId) || !hasEditingEntryChanges}
+          isSubmitting={Boolean(savingEntryId) || Boolean(deletingEntryId) || Boolean(addingToSplitsEntryId)}
           secondaryAction={activeEditingEntry.entryType !== "expense"
             ? (
                 <button
@@ -1433,22 +1424,26 @@ function EntriesDeleteConfirmationDialog({ confirmation, isSubmitting = false, o
 
 function EntriesEmptyState({ suggestion, onSwitchView }) {
   if (!suggestion) {
-    return <p className="empty-state">{messages.entries.noEntries}</p>;
+    return <EmptyState>{messages.entries.noEntries}</EmptyState>;
   }
 
   return (
-    <section className="entries-empty-state linked-entry-notice">
-      <strong>{messages.entries.walletViewMismatchTitle}</strong>
-      <p>{messages.entries.walletViewMismatchDetail(suggestion.walletLabel, suggestion.ownerLabel, suggestion.viewLabel)}</p>
-      <div className="entries-empty-state-actions">
-        <button type="button" className="subtle-action" onClick={() => onSwitchView("household")}>
-          {messages.entries.walletViewMismatchHouseholdAction}
-        </button>
-        <button type="button" className="subtle-action is-primary" onClick={() => onSwitchView(suggestion.ownerPersonId)}>
-          {messages.entries.walletViewMismatchOwnerAction(suggestion.ownerLabel)}
-        </button>
-      </div>
-    </section>
+    <EmptyState
+      className="entries-empty-state linked-entry-notice"
+      title={messages.entries.walletViewMismatchTitle}
+      actions={(
+        <>
+          <button type="button" className="subtle-action" onClick={() => onSwitchView("household")}>
+            {messages.entries.walletViewMismatchHouseholdAction}
+          </button>
+          <button type="button" className="subtle-action is-primary" onClick={() => onSwitchView(suggestion.ownerPersonId)}>
+            {messages.entries.walletViewMismatchOwnerAction(suggestion.ownerLabel)}
+          </button>
+        </>
+      )}
+    >
+      {messages.entries.walletViewMismatchDetail(suggestion.walletLabel, suggestion.ownerLabel, suggestion.viewLabel)}
+    </EmptyState>
   );
 }
 
@@ -1483,7 +1478,7 @@ function useEntriesPageData({
 
   // This is the single network boundary for the panel. Everything else reads
   // from the owner or the react-query cache.
-  const fetchEntriesPage = useCallback((params, { bypassCache = false, signal } = {}) => (
+  const fetchEntriesPage = useCallback((params, { bypassCache = false, signal = undefined } = {}) => (
     fetchQueryWithLease(queryClient, {
       queryKey: queryKeys.entriesPage(params),
       bypassCache,

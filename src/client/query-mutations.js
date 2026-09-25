@@ -35,7 +35,7 @@ export async function invalidateImportsPageQueries(queryClient) {
 
 export async function invalidateMonthQueries(queryClient, {
   invalidateSummaryAccountPills = false,
-  entriesParams,
+  entriesParams = undefined,
   month,
   scope,
   summaryRange,

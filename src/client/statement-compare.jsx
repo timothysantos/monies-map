@@ -2,6 +2,7 @@ import { useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 
 import { messages } from "./copy/en-SG";
+import { EmptyState, InlineError } from "./ui-states";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 import { useRouteWorkBusy } from "./use-route-work-status";
@@ -68,7 +69,7 @@ export function StatementCompareResultView({ result, deltaMinor, accounts, categ
             <StatementCompareDuplicateGroups title={messages.settings.statementCompareDuplicateLedger} groups={duplicateLedgerGroups} />
           </>
         ) : (
-          <p>{messages.settings.statementCompareDuplicateNone}</p>
+          <EmptyState>{messages.settings.statementCompareDuplicateNone}</EmptyState>
         )}
       </div>
       <div className="settings-statement-compare-grid">
@@ -85,13 +86,13 @@ export function StatementCompareResultView({ result, deltaMinor, accounts, categ
               people={people}
               onEntryAdded={onEntryAdded}
             />
-          )) : <p>{messages.settings.statementCompareNone}</p>}
+          )) : <EmptyState>{messages.settings.statementCompareNone}</EmptyState>}
         </div>
         <div>
           <h3>{messages.settings.statementCompareExtraTitle}</h3>
           {result.unmatchedLedgerRows.length ? result.unmatchedLedgerRows.slice(0, 12).map((row) => (
             <StatementCompareDisplayRow key={row.id} row={row} />
-          )) : <p>{messages.settings.statementCompareNone}</p>}
+          )) : <EmptyState>{messages.settings.statementCompareNone}</EmptyState>}
         </div>
       </div>
     </section>
@@ -228,7 +229,7 @@ function StatementCompareDirectionMismatch({ candidate, categories, categorySele
                   </label>
                 )}
               </div>
-              {error ? <p className="form-error">{error}</p> : null}
+              <InlineError message={error} />
               <div className="dialog-actions">
                 <button type="button" className="subtle-cancel" onClick={() => setOpen(false)}>Cancel</button>
                 <button type="submit" className="dialog-primary" disabled={isSaving || !draft.entryType || !draft.categoryName}>
@@ -245,7 +246,7 @@ function StatementCompareDirectionMismatch({ candidate, categories, categorySele
   );
 }
 
-function StatementCompareDisplayRow({ row, label }) {
+function StatementCompareDisplayRow({ row, label = undefined }) {
   return (
     <div className="settings-statement-row">
       {label ? <span className="settings-statement-row-label">{label}</span> : null}
@@ -416,7 +417,7 @@ function StatementCompareMissingRow({ row, result, accounts, categories, categor
                   <input className="table-edit-input" value={draft.note} enterKeyHint="done" onChange={(event) => updateDraft({ note: event.target.value })} />
                 </label>
               </div>
-              {error ? <p className="form-error">{error}</p> : null}
+              <InlineError message={error} />
               <div className="dialog-actions">
                 <button type="button" className="subtle-cancel" onClick={() => setOpen(false)}>Cancel</button>
                 <button type="submit" className="dialog-primary" disabled={isSaving || !draft.date || !draft.description || !draft.accountName || !draft.categoryName || !draft.amountMinor}>

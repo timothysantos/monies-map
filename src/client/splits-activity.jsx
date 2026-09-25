@@ -6,6 +6,8 @@ import { moniesClient } from "./monies-client-service";
 import { SplitExpenseFields, SplitSettlementFields } from "./splits-dialogs";
 import { CategoryGlyph } from "./ui-components";
 import { useRouteWorkBusy } from "./use-route-work-status";
+import { isMobileLayout } from "./use-viewport";
+import { InlineError } from "./ui-states";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 
@@ -24,7 +26,7 @@ export function splitActivityDomId(itemOrKind, maybeId) {
 }
 
 function scrollInlineEditorIntoView(element) {
-  if (window.matchMedia("(max-width: 760px)").matches) {
+  if (isMobileLayout()) {
     element.scrollIntoView({ block: "start", behavior: "smooth" });
     return;
   }
@@ -59,14 +61,14 @@ export function SplitActivityGroups({
   isSubmitting = false,
   hasEditingChanges = true,
   readOnly = false,
-  onChangeEditingDraft,
-  onCancelEditing,
-  onSaveEditing,
-  onRequestDelete,
+  onChangeEditingDraft = undefined,
+  onCancelEditing = undefined,
+  onSaveEditing = undefined,
+  onRequestDelete = undefined,
   onEditExpense,
   onEditSettlement,
   onViewLinkedEntry,
-  onRefreshActivity,
+  onRefreshActivity = undefined,
   viewId = "household"
 }) {
   const inlineEditorRef = useRef(null);
@@ -205,7 +207,7 @@ export function SplitActivityGroups({
                     autoFocusAmount
                   />
                 )}
-                {inlineFormError ? <p className="form-error">{inlineFormError}</p> : null}
+                <InlineError message={inlineFormError} />
                 <div className="split-inline-actions">
                   {editingDraft.linkedTransactionId ? (
                     <button

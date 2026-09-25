@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import { EmptyState } from "./ui-states";
 import { selectAllOnFocus } from "./focus-utils";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
 import { FinancialInsight } from "./financial-insight";
@@ -29,9 +30,9 @@ import { ResponsiveSelect } from "./responsive-select";
 import { getRowDateValue } from "./table-helpers";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
 import { useRouteWorkReport } from "./use-route-work-status";
+import { isMonthSheetLayout, useIsMonthSheetLayout } from "./use-viewport";
 
 const MONTH_SECTION_STATE_CACHE = new Map();
-const MOBILE_ADD_DIALOG_QUERY = "(max-width: 760px), (max-width: 1024px) and (orientation: portrait)";
 const {
   accounts: accountService,
   categories: categoryService,
@@ -46,7 +47,7 @@ const {
 // - route-level dialogs such as notes, plan links, and mobile editors
 //
 // Without the shell's notice (isolated renders), a failed refresh is dropped.
-function runQuietly(task) {
+function runQuietly(task, _retry) {
   return Promise.resolve().then(task).catch(() => null);
 }
 
@@ -56,7 +57,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
   const [planSections, setPlanSections] = useState(view.monthPage.planSections ?? []);
   const [editingRowId, setEditingRowId] = useState(null);
   const [editingSnapshot, setEditingSnapshot] = useState(null);
-  const [editingDrafts, setEditingDrafts] = useState({});
+  const [editingDrafts, setEditingDrafts] = useState(/** @type {Record<string, any>} */ ({}));
   const [incomeRows, setIncomeRows] = useState(view.monthPage.incomeRows ?? []);
   const [sectionOpen, setSectionOpen] = useState(() => MONTH_SECTION_STATE_CACHE.get(monthUiKey) ?? monthService.getDefaultSectionOpen());
   const [noteDialog, setNoteDialog] = useState(null);
@@ -71,7 +72,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
   const [monthRowError, setMonthRowError] = useState("");
   const [mobileAddDialog, setMobileAddDialog] = useState(null);
   const [actionsOpen, setActionsOpen] = useState(false);
-  const [useMobileMonthSheet, setUseMobileMonthSheet] = useState(false);
+  const useMobileMonthSheet = useIsMonthSheetLayout();
   const [isMonthDataRefreshing, setIsMonthDataRefreshing] = useState(false);
   const [isRemovingMonthRow, setIsRemovingMonthRow] = useState(false);
   const previousMonthActualCacheRef = useRef(new Map());
@@ -112,18 +113,6 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
   useEffect(() => {
     setSectionOpen(MONTH_SECTION_STATE_CACHE.get(monthUiKey) ?? monthService.getDefaultSectionOpen());
   }, [monthUiKey]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const mediaQuery = window.matchMedia(MOBILE_ADD_DIALOG_QUERY);
-    const update = () => setUseMobileMonthSheet(mediaQuery.matches);
-    update();
-    mediaQuery.addEventListener?.("change", update);
-    return () => mediaQuery.removeEventListener?.("change", update);
-  }, []);
 
   // Summary cards borrow the selected month's rollup from the already-loaded
   // summary payload instead of refetching anything here.
@@ -583,8 +572,10 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     setEditingDrafts({});
   }
 
+  // Read at the moment of the click so a resize that has not re-rendered yet
+  // still opens the layout the viewport shows now.
   function isMobileAddDialogPreferred() {
-    return useMobileMonthSheet || (typeof window !== "undefined" && window.matchMedia(MOBILE_ADD_DIALOG_QUERY).matches);
+    return isMonthSheetLayout();
   }
 
   function openMonthSection(sectionKey) {
@@ -985,7 +976,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     });
   }
 
-  function handleOpenEntriesForActual({ categoryName, entryIds = [], entryType = "" }) {
+  function handleOpenEntriesForActual({ categoryName = undefined, entryIds = [], entryType = "" }) {
     const next = new URLSearchParams();
     next.set("view", view.id);
     next.set("month", view.monthPage.month);
@@ -1307,7 +1298,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     });
   }
 
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [, setSearchParams] = useSearchParams();
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [isResettingMonth, setIsResettingMonth] = useState(false);
   const [isDeletingMonth, setIsDeletingMonth] = useState(false);
@@ -1455,6 +1446,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
           errorMessage={monthRowError}
           saveLabel={isSavingMonthRow ? messages.common.saving : messages.month.doneEdit}
           isSaveDisabled={isSavingMonthRow}
+          isSubmitting={isSavingMonthRow}
           onClose={() => setMobileAddDialog(null)}
           onSave={() => void saveMobileAddDialog()}
         >
@@ -1715,11 +1707,11 @@ function MonthPlanLinkContent({
   allCandidates,
   candidates,
   selectedIds,
-  onClose,
+  onClose = undefined,
   onToggleFilter,
   onDescriptionFilterChange,
   onToggleEntry,
-  onSave,
+  onSave = undefined,
   isMobile = false
 }) {
   const filters = [
@@ -1729,9 +1721,12 @@ function MonthPlanLinkContent({
     ["filterCurrentMonthOnly", "This month only"]
   ];
 
+  // On mobile this sits inside the sheet's own form, which saves on submit. A
+  // nested form would take Enter from the filter field and submit the page.
+  const FormElement = isMobile ? "div" : "form";
   return (
-    <form
-      onSubmit={(event) => {
+    <FormElement
+      onSubmit={isMobile ? undefined : (event) => {
         event.preventDefault();
         void onSave();
       }}
@@ -1786,7 +1781,7 @@ function MonthPlanLinkContent({
       {candidates.length ? (
         <div className="planned-link-list">
           {candidates.map((entry) => (
-            <PlanLinkCandidateRow
+            <MemoizedPlanLinkCandidateRow
               key={entry.id}
               entry={entry}
               checked={selectedIds.has(entry.id)}
@@ -1795,7 +1790,7 @@ function MonthPlanLinkContent({
           ))}
         </div>
       ) : (
-        <p className="empty-copy">No matching expense entries fit the current filters.</p>
+        <EmptyState>{messages.month.planLinkNoCandidates}</EmptyState>
       )}
       {!isMobile ? (
         <div className="note-dialog-actions">
@@ -1807,13 +1802,13 @@ function MonthPlanLinkContent({
           </button>
         </div>
       ) : null}
-    </form>
+    </FormElement>
   );
 }
 
 // Memoized: a checkbox or filter change re-renders only the rows it changes.
 // It subscribes to money privacy because the shared formatter reads it.
-const PlanLinkCandidateRow = memo(function PlanLinkCandidateRow({ entry, checked, onToggleEntry }) {
+function PlanLinkCandidateRow({ entry, checked, onToggleEntry }) {
   useMoneyPrivacy();
   return (
     <label className="planned-link-row">
@@ -1830,7 +1825,9 @@ const PlanLinkCandidateRow = memo(function PlanLinkCandidateRow({ entry, checked
       <span>{formatService.money(entry.amountMinor)}</span>
     </label>
   );
-});
+}
+
+const MemoizedPlanLinkCandidateRow = memo(PlanLinkCandidateRow);
 
 function getPreviousMonthKey(monthKey) {
   const [year, month] = monthKey.split("-").map(Number);

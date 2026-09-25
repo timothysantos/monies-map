@@ -711,7 +711,7 @@ function formatMonthName(month: string) {
 }
 
 function hasOnlyKnownTokens(template: string, replacements: Record<string, string>) {
-  const tokens = template.match(/{{\s*[^}]+\s*}}/g) ?? [];
+  const tokens: string[] = template.match(/{{\s*[^}]+\s*}}/g) ?? [];
   return tokens.every((token) => Object.hasOwn(replacements, token.slice(2, -2).trim()));
 }
 

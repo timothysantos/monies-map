@@ -10,6 +10,7 @@ import { moniesClient } from "./monies-client-service";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { useStableHandler } from "./use-stable-handler";
+import { isMobileLayout } from "./use-viewport";
 
 const {
   categories: categoryService,
@@ -20,7 +21,7 @@ const {
 const NON_GROUP_SPLIT_VALUE = "__split_group_none__";
 
 function scrollInlineEditorIntoView(element) {
-  if (window.matchMedia("(max-width: 760px)").matches) {
+  if (isMobileLayout()) {
     element.scrollIntoView({ block: "start", behavior: "smooth" });
     return;
   }
@@ -265,7 +266,7 @@ export function EntriesDateGroups({
             {group.entries.map((entry) => {
               const isEditing = editingEntryId === entry.id;
               return (
-                <EntryRow
+                <MemoizedEntryRow
                   key={entry.id}
                   entry={entry}
                   categories={categories}
@@ -357,7 +358,7 @@ function EntrySplitGroupPickerDialog({ entry, splitGroupOptions, isSubmitting, o
   );
 }
 
-const EntryRow = memo(function EntryRow({
+function EntryRow({
   entry,
   categories,
   viewId,
@@ -396,7 +397,7 @@ const EntryRow = memo(function EntryRow({
       attempts += 1;
       if (renderInlineEditor && inlineEditorRef.current) {
         scrollInlineEditorIntoView(inlineEditorRef.current);
-      } else if (window.matchMedia("(max-width: 760px)").matches && rowRef.current) {
+      } else if (isMobileLayout() && rowRef.current) {
         scrollMobileEntryRowIntoView(rowRef.current);
       }
 
@@ -455,7 +456,7 @@ const EntryRow = memo(function EntryRow({
             <p>{display.accountDetail || messages.common.emptyValue}</p>
           </div>
           <div className="entry-row-right">
-            <EntryRowAmount
+            <MemoizedEntryRowAmount
               primarySignedAmountMinor={display.primarySignedAmountMinor}
               secondarySignedAmountMinor={display.secondarySignedAmountMinor}
             />
@@ -508,12 +509,15 @@ const EntryRow = memo(function EntryRow({
       ) : null}
     </div>
   );
-});
+}
+
+// Declared apart from memo() so the client type-check infers its props.
+const MemoizedEntryRow = memo(EntryRow);
 
 // The shared money formatter reads the privacy setting while rendering, so
 // the amount subscribes to it. A privacy toggle then redraws only amounts,
 // not whole memoized rows.
-const EntryRowAmount = memo(function EntryRowAmount({ primarySignedAmountMinor, secondarySignedAmountMinor }) {
+function EntryRowAmount({ primarySignedAmountMinor, secondarySignedAmountMinor }) {
   useMoneyPrivacy();
   return (
     <div className="entry-row-amount">
@@ -521,7 +525,9 @@ const EntryRowAmount = memo(function EntryRowAmount({ primarySignedAmountMinor, 
       {secondarySignedAmountMinor != null ? <p>({formatService.money(secondarySignedAmountMinor)})</p> : null}
     </div>
   );
-});
+}
+
+const MemoizedEntryRowAmount = memo(EntryRowAmount);
 
 function EntryInlineEditorFields({ entry, categories, bankState, linkedSplitExpenseId, onCategoryAppearanceChange, editor }) {
   const {

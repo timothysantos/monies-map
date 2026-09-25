@@ -52,7 +52,7 @@ export function createRefreshNoticeOwner() {
     // Runs a background refresh and resolves to its result, or to null when
     // it failed. A failure of a refresh that still belongs to the active
     // route raises the notice; `retry` runs when the person asks for it.
-    settle(task, { retry } = {}) {
+    settle(task, { retry = undefined } = {}) {
       const startedFor = routeKey;
       return Promise.resolve()
         .then(task)

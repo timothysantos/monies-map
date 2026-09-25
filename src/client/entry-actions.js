@@ -191,7 +191,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     });
   }
 
-  async function persistExistingEntry(entryId, { closeEditor, patch } = {}) {
+  async function persistExistingEntry(entryId, { closeEditor = undefined, patch = undefined } = {}) {
     if (!entryId) {
       return { ok: false };
     }

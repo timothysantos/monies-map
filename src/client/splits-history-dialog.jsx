@@ -1,6 +1,8 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { RotateCcw } from "lucide-react";
+import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
+import { EmptyState } from "./ui-states";
 
 const { format: formatService } = moniesClient;
 
@@ -27,7 +29,7 @@ export function SplitHistoryDialog({ open, history = [], isSubmitting = false, o
                 </div>
                 {item.canRestore ? <button type="button" className="subtle-action" disabled={isSubmitting} onClick={() => onRestore(item)}><RotateCcw size={15} /> Restore</button> : null}
               </article>
-            )) : <p className="split-history-empty">No split activity has been recorded yet.</p>}
+            )) : <EmptyState>{messages.splits.historyEmpty}</EmptyState>}
           </div>
           <div className="dialog-actions"><button type="button" className="subtle-cancel" onClick={onClose}>Close</button></div>
         </Dialog.Content>

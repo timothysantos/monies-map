@@ -103,9 +103,11 @@ async function gotoMonthPage(page, {
 }
 
 // Counts how many times one user action ran the Month row-open handler. Both
-// open paths (beginPlanEdit and beginIncomeEdit) ask matchMedia whether to use
-// the mobile sheet, so a spy that only counts calls made from those handlers
-// sees each open exactly once without depending on the rendered result.
+// open paths (beginPlanEdit and beginIncomeEdit) ask isMonthSheetLayout() in
+// use-viewport.js, which calls matchMedia fresh at the moment of the event, so
+// a spy that only counts calls made from those handlers sees each open exactly
+// once, on desktop and on mobile, without depending on the rendered result.
+// Subscribed render reads share one cached media list and never count here.
 async function spyOnMonthRowOpens(page) {
   await page.addInitScript(() => {
     const originalMatchMedia = window.matchMedia.bind(window);
@@ -566,6 +568,66 @@ test.describe("month page", () => {
 
     await page.getByRole("button", { name: "Cancel" }).click();
     await expect(sheet).toHaveCount(0);
+
+    await context.close();
+  });
+
+  test("pressing Enter in the mobile match filter saves the selection once without a page error", async ({ browser }) => {
+    const context = await browser.newContext({ ...devices["iPhone 12 Pro"] });
+    const page = await context.newPage();
+    const pageErrors = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+    await page.goto("/");
+
+    const label = `Mobile enter match ${Date.now()}`;
+    const saveResult = await postJson(page, "/api/month-plan/save", {
+      rowId: `mobile-plan-enter-${Date.now()}`,
+      month: "2026-05",
+      sectionKey: "planned_items",
+      categoryName: "Entertainment",
+      label,
+      planDate: "2026-05-19",
+      accountName: "UOB One",
+      plannedMinor: 4000,
+      note: "",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    const rowId = saveResult.row?.id ?? saveResult.id ?? saveResult.rowId;
+    expect(rowId).toBeTruthy();
+    const entry = await postJson(page, "/api/entries/create", {
+      date: "2026-05-19",
+      description: "Mobile enter concert",
+      accountName: "UOB One",
+      categoryName: "Entertainment",
+      amountMinor: 2500,
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+
+    await page.goto("/month?view=person-tim&month=2026-05&scope=direct_plus_shared");
+    await page.locator("tr").filter({ hasText: label }).first().getByRole("button", { name: "Link entries" }).click();
+    const sheet = page.locator('.entry-mobile-sheet[aria-label="Match planned item"]');
+    await expect(sheet).toBeVisible();
+    await sheet.locator(".planned-link-row").filter({ hasText: "Mobile enter concert" }).getByRole("checkbox").check();
+
+    const linkRequests = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/month-plan/links")) linkRequests.push(request.url());
+    });
+    const filter = sheet.getByPlaceholder("Filter descriptions in this list");
+    await filter.fill("Mobile enter");
+    await filter.press("Enter");
+    await expect(sheet).toHaveCount(0);
+
+    await expect.poll(async () => {
+      const monthPage = await loadMonthPageData(page);
+      const plannedItems = monthPage.monthPage.planSections.find((section) => section.key === "planned_items");
+      return plannedItems?.rows.find((item) => item.label === label)?.linkedEntryIds ?? [];
+    }).toEqual([entry.entryId]);
+    expect(linkRequests).toHaveLength(1);
+    expect(pageErrors).toEqual([]);
 
     await context.close();
   });
@@ -1190,6 +1252,7 @@ test.describe("month page", () => {
 
   test("mobile month plan rows open the edit sheet from the keyboard and once per tap", async ({ page }) => {
     await page.setViewportSize(devices["iPhone 12 Pro"].viewport);
+    await spyOnMonthRowOpens(page);
     await gotoMonthPage(page, { expectHeading: false });
 
     const row = page.locator("tr").filter({ hasText: "Savings" }).first();
@@ -1200,19 +1263,21 @@ test.describe("month page", () => {
     await page.keyboard.press("Tab");
     await expect(openButton).toBeFocused();
     await expect(openButton).toHaveCSS("outline-style", "solid");
+    await takeMonthRowOpenCount(page);
 
     await page.keyboard.press("Enter");
     await expect(editSheet).toBeVisible();
     await expect(sheets).toHaveCount(1);
     await expect(editSheet.locator('input[value="Savings"]')).toBeVisible();
+    expect(await takeMonthRowOpenCount(page)).toBe(1);
     await editSheet.getByRole("button", { name: "Close edit planned item" }).first().click();
     await expect(sheets).toHaveCount(0);
 
-    // The mobile open path skips matchMedia (the sheet preference is already
-    // in state), so the handler spy only covers desktop; here one tap must
-    // still leave exactly one sheet.
+    // One tap must run the open handler once and leave exactly one sheet.
+    await takeMonthRowOpenCount(page);
     await row.locator("td").nth(4).click();
     await expect(editSheet).toBeVisible();
     await expect(sheets).toHaveCount(1);
+    expect(await takeMonthRowOpenCount(page)).toBe(1);
   });
 });
