@@ -97,6 +97,18 @@ async function runScenario() {
     }
   }
 
+  // Import promotion: a CSV row promotes a manual entry, the entry is
+  // annotated, then the import is rolled back.
+  const promoted = await call("/api/entries/create", { date: "2026-05-21", description: "FAIRPRICE FINEST", accountName: "UOB One", categoryName: "Groceries", amountMinor: 4_329, entryType: "expense", ownershipType: "direct", ownerName: "Tim" });
+  const promotionCsv = ["date,description,amount,account,category,note", "2026-05-22,FAIRPRICE FINEST SINGAPORE,-43.29,UOB One,Groceries,"].join("\n");
+  const promotionPreview = await call("/api/imports/preview", { sourceLabel: "State import promotion", sourceType: "csv", csv: promotionCsv, ownershipType: "direct", ownerName: "Tim" });
+  if (promotionPreview.preview.previewRows[0].reconciliationTargetTransactionId !== promoted.entryId) {
+    throw new Error("The promotion CSV row did not target the manual entry.");
+  }
+  const promotionCommit = await call("/api/imports/commit", { sourceLabel: "State import promotion", sourceType: "csv", parserKey: "generic_csv", rows: promotionPreview.preview.previewRows });
+  await call("/api/entries/update-note", { entryId: promoted.entryId, note: "promoted note" });
+  await call("/api/imports/rollback", { importId: promotionCommit.importId });
+
   // Splits: an expense and a settlement.
   await call("/api/splits/expenses/create", { date: "2026-05-19", description: "State split taxi", categoryName: "Taxi", payerPersonName: "Tim", amountMinor: 3_000, groupId: null, note: "state split" });
   await call("/api/splits/settlements/create", { groupId: null, date: "2026-05-20", fromPersonName: "Joyce", toPersonName: "Tim", amountMinor: 1_000, paymentMethod: "bank", paymentStatus: "recorded", note: "state settle" });
