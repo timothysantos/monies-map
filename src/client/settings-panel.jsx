@@ -1105,7 +1105,7 @@ export function SettingsPanel({
             <div>
               <h3>{viewerIdentity.personId ? "Login linked" : "Signed in"}</h3>
               <p>{viewerIdentity.email}</p>
-              {loginIdentityError ? <span className="form-error">{loginIdentityError}</span> : null}
+              {loginIdentityError ? <span className="form-error" role="alert">{loginIdentityError}</span> : null}
             </div>
           </div>
           <div className="settings-login-actions">

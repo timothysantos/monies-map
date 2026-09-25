@@ -7,6 +7,7 @@ import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { DeleteRowButton } from "./ui-components";
 import { addDaysToIsoDate } from "./app-dates";
+import { InlineError } from "./ui-states";
 
 const {
   accounts: accountService,
@@ -1119,7 +1120,7 @@ function ConfirmLedgerActionButton({
         >
           <strong>{triggerLabel ?? label}</strong>
           <p>{prompt}</p>
-          {error ? <p className="form-error">{error}</p> : null}
+          <InlineError message={error} />
           <div className="delete-popover-actions">
             <Popover.Close asChild>
               <button type="button" className="subtle-action" disabled={isWorking}>
@@ -1214,7 +1215,7 @@ function PostedDateDialog({ row, initialDate, statementEndLabel, onSetPostDate }
                 onChange={(event) => setPostDate(event.target.value)}
               />
             </label>
-            {error ? <p className="form-error">{error}</p> : null}
+            <InlineError message={error} />
             <div className="note-dialog-actions">
               <Dialog.Close asChild>
                 <button type="button" className="subtle-action" disabled={isWorking}>

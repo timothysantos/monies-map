@@ -172,6 +172,7 @@ export function EntryComposerMobileSection({
   errorMessage = "",
   saveLabel,
   isSaveDisabled = false,
+  isSubmitting = false,
   entry,
   categories,
   categoryOptions,
@@ -194,6 +195,7 @@ export function EntryComposerMobileSection({
       errorMessage={errorMessage}
       saveLabel={saveLabel}
       isSaveDisabled={isSaveDisabled}
+      isSubmitting={isSubmitting}
       onClose={onClose}
       onSave={onSave}
     >

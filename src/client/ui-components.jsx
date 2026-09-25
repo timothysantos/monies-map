@@ -9,6 +9,7 @@ import { ResponsiveSelect } from "./responsive-select";
 import { ICON_REGISTRY } from "./ui-options";
 import { PrivateMoney } from "./money-privacy";
 import { useIsMobileLayout } from "./use-viewport";
+import { InlineError } from "./ui-states";
 
 const { format: formatService } = moniesClient;
 
@@ -256,7 +257,7 @@ export function DeleteRowButton({
           <p>
             {prompt ?? <>You are deleting <strong>{label}</strong>. Confirm?</>}
           </p>
-          {error ? <p className="form-error">{error}</p> : null}
+          <InlineError message={error} />
           <div className="delete-popover-actions">
             <Popover.Close asChild>
               <button type="button" className="subtle-action" disabled={isWorking}>

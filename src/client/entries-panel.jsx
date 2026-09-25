@@ -5,6 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
+import { EmptyState } from "./ui-states";
 import { useEntryActions } from "./entry-actions";
 import {
   EntryComposerInlineSection,
@@ -1128,6 +1129,7 @@ export function EntriesPanel({
           errorMessage={entrySubmitError || quickExpenseWarning}
           saveLabel={isSavingEntryDraft || isQuickExpenseSaving ? "Saving..." : "Save"}
           isSaveDisabled={isComposerSaveDisabled}
+          isSubmitting={isSavingEntryDraft || isQuickExpenseSaving}
           entry={entryDraft}
           categories={categories}
           categoryOptions={categoryOptions}
@@ -1154,6 +1156,7 @@ export function EntriesPanel({
           saveLabel={savingEntryId === activeEditingEntry.id ? messages.common.saving : "Save"}
           cancelLabel={hasEditingEntryChanges ? messages.entries.cancelEdit : messages.common.close}
           isSaveDisabled={Boolean(savingEntryId) || Boolean(deletingEntryId) || !hasEditingEntryChanges}
+          isSubmitting={Boolean(savingEntryId) || Boolean(deletingEntryId) || Boolean(addingToSplitsEntryId)}
           secondaryAction={activeEditingEntry.entryType !== "expense"
             ? (
                 <button
@@ -1423,22 +1426,26 @@ function EntriesDeleteConfirmationDialog({ confirmation, isSubmitting = false, o
 
 function EntriesEmptyState({ suggestion, onSwitchView }) {
   if (!suggestion) {
-    return <p className="empty-state">{messages.entries.noEntries}</p>;
+    return <EmptyState>{messages.entries.noEntries}</EmptyState>;
   }
 
   return (
-    <section className="entries-empty-state linked-entry-notice">
-      <strong>{messages.entries.walletViewMismatchTitle}</strong>
-      <p>{messages.entries.walletViewMismatchDetail(suggestion.walletLabel, suggestion.ownerLabel, suggestion.viewLabel)}</p>
-      <div className="entries-empty-state-actions">
-        <button type="button" className="subtle-action" onClick={() => onSwitchView("household")}>
-          {messages.entries.walletViewMismatchHouseholdAction}
-        </button>
-        <button type="button" className="subtle-action is-primary" onClick={() => onSwitchView(suggestion.ownerPersonId)}>
-          {messages.entries.walletViewMismatchOwnerAction(suggestion.ownerLabel)}
-        </button>
-      </div>
-    </section>
+    <EmptyState
+      className="entries-empty-state linked-entry-notice"
+      title={messages.entries.walletViewMismatchTitle}
+      actions={(
+        <>
+          <button type="button" className="subtle-action" onClick={() => onSwitchView("household")}>
+            {messages.entries.walletViewMismatchHouseholdAction}
+          </button>
+          <button type="button" className="subtle-action is-primary" onClick={() => onSwitchView(suggestion.ownerPersonId)}>
+            {messages.entries.walletViewMismatchOwnerAction(suggestion.ownerLabel)}
+          </button>
+        </>
+      )}
+    >
+      {messages.entries.walletViewMismatchDetail(suggestion.walletLabel, suggestion.ownerLabel, suggestion.viewLabel)}
+    </EmptyState>
   );
 }
 
