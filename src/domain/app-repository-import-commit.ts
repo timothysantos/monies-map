@@ -1,10 +1,18 @@
 // Import commit and rollback (H15d): writing an import batch (rows,
 // statement checkpoints, reconciliation certificates and superseded-row
 // snapshots) and rolling it back, restoring certified and superseded statement
-// rows and linked splits and transfers. SQL order, chunking and idempotency
-// are unchanged.
+// rows and linked splits and transfers. SQL order and idempotency are
+// unchanged.
+//
+// Both commands are all-or-nothing: every read and check runs first, then
+// the whole write (with its audit event and month refresh markers) commits
+// as one db.batch(), which D1 runs as a single transaction. Only an import
+// too large for one batch is staged (see commitImportStatements).
 
-import { recalculateMonthlySnapshots } from "./app-repository-snapshots";
+import {
+  buildMonthlySnapshotRefreshMarkers,
+  refreshMonthlySnapshotsAfterWrite
+} from "./app-repository-snapshots";
 import {
   buildImportRowHash,
   computeCheckpointLedgerBalanceMinor,
@@ -17,7 +25,7 @@ import {
   normalizeStatementBalanceInputMinor,
   normalizeStatementDate
 } from "./app-repository-helpers";
-import { recordAuditEvent } from "./app-repository-audit";
+import { buildAuditEventStatement } from "./app-repository-audit";
 import { assertImportDescriptionQuality } from "./import-description-quality";
 import type {
   ImportPreviewRowDto,
@@ -26,7 +34,38 @@ import type {
 } from "../types/dto";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 
-const IMPORT_COMMIT_STATEMENT_CHUNK_SIZE = 90;
+// D1 applies its per-query limits (100 bound parameters, 100 KB of SQL,
+// 30 s) to each statement in a batch and documents no statement-count limit,
+// but Workers cap queries per invocation (1,000 on the paid plan). Commits up
+// to this many statements run as one batch, which stays under that cap even
+// if every statement in a batch counted separately.
+const IMPORT_COMMIT_SINGLE_BATCH_STATEMENT_LIMIT = 500;
+// Larger commits stage their new rows in chunks of this size, the size the
+// April 2026 chunked commits proved on Cloudflare.
+const IMPORT_COMMIT_STAGING_CHUNK_SIZE = 90;
+
+type ImportCommitStatement = {
+  statement: D1PreparedStatement;
+  // "draft" creates the draft import (replacing an earlier attempt);
+  // "staged" inserts a row that belongs only to the new import (an import row
+  // or a new ledger entry), which ledger reads ignore while the import is a
+  // draft; "final" is every change a reader can see. Only a staged commit
+  // (commitImportStatements) runs the phases as separate batches.
+  phase: "draft" | "staged" | "final";
+};
+
+// Ledger rows as the certificate check reads them, keyed by id so the
+// commit's own pending changes can be applied before anything is written.
+type CertificateLedgerRow = {
+  id: string;
+  import_id: string | null;
+  bank_certification_status: string;
+  account_id: string;
+  cleared_date: string;
+  entry_type: "expense" | "income" | "transfer";
+  transfer_direction: "in" | "out" | null;
+  amount_minor: number;
+};
 
 function collectStatementSupersededLedgerRows(statementReconciliations: ImportPreviewStatementReconciliationDto[]) {
   const rowsById = new Map<string, {
@@ -371,386 +410,471 @@ export async function commitImportBatch(
     return { importId, created: false, importedRows: input.rows.length };
   }
 
-  if (existingImport?.status === "draft" || existingImport?.status === "rolled_back") {
-    await cleanupImportBatchRows(db, importId);
-    await db
+  const commitStatements: ImportCommitStatement[] = [];
+  const draft = (statement: D1PreparedStatement) => commitStatements.push({ statement, phase: "draft" });
+  const stage = (statement: D1PreparedStatement) => commitStatements.push({ statement, phase: "staged" });
+  const write = (statement: D1PreparedStatement) => commitStatements.push({ statement, phase: "final" });
+
+  // A draft (an interrupted staged commit) or a rolled-back attempt of the
+  // same file is replaced by this commit.
+  const replacesEarlierAttempt = existingImport?.status === "draft" || existingImport?.status === "rolled_back";
+  if (replacesEarlierAttempt) {
+    for (const statement of await buildImportBatchCleanupStatements(db, importId)) {
+      draft(statement);
+    }
+    draft(db
       .prepare("DELETE FROM imports WHERE household_id = ? AND id = ?")
-      .bind(DEFAULT_HOUSEHOLD_ID, importId)
-      .run();
+      .bind(DEFAULT_HOUSEHOLD_ID, importId));
   }
 
-  await db
+  draft(db
     .prepare(`
       INSERT INTO imports (
         id, household_id, source_type, source_label, parser_key, imported_at, status, note
       ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'draft', ?)
     `)
-    .bind(importId, DEFAULT_HOUSEHOLD_ID, input.sourceType ?? "csv", input.sourceLabel, input.parserKey ?? "generic_csv", input.note ?? null)
-    .run();
+    .bind(importId, DEFAULT_HOUSEHOLD_ID, input.sourceType ?? "csv", input.sourceLabel, input.parserKey ?? "generic_csv", input.note ?? null));
 
-  try {
-    const [accountRows, categoryRows, personRows] = await Promise.all([
-      db
-        .prepare("SELECT id, account_name, account_kind, owner_person_id, opening_balance_minor FROM accounts WHERE household_id = ?")
-        .bind(DEFAULT_HOUSEHOLD_ID)
-        .all<{ id: string; account_name: string; account_kind: string; owner_person_id: string | null; opening_balance_minor: number }>(),
-      db
-        .prepare("SELECT id, name FROM categories WHERE household_id = ?")
-        .bind(DEFAULT_HOUSEHOLD_ID)
-        .all<{ id: string; name: string }>(),
-      db
-        .prepare("SELECT id, display_name FROM people WHERE household_id = ? ORDER BY created_at")
-        .bind(DEFAULT_HOUSEHOLD_ID)
-        .all<{ id: string; display_name: string }>()
-    ]);
-    const accountsById = new Map(accountRows.results.map((account) => [account.id, account]));
-    const accountRowsByName = new Map<string, typeof accountRows.results>();
-    for (const account of accountRows.results) {
-      const current = accountRowsByName.get(account.account_name) ?? [];
-      current.push(account);
-      accountRowsByName.set(account.account_name, current);
-    }
-    const categoryIdsByName = new Map(categoryRows.results.map((category) => [category.name, category.id]));
-    const personIdsByName = new Map(personRows.results.map((person) => [person.display_name, person.id]));
-    const statements: D1PreparedStatement[] = [];
-    const supersededLedgerRows = collectStatementSupersededLedgerRows(input.statementReconciliations ?? []);
-    const certifiedLedgerRowsByAccountId = new Map<string, CertifiedLedgerRowSnapshot[]>();
-    for (const row of supersededLedgerRows) {
-      statements.push(
-        db
-          .prepare("UPDATE split_expenses SET linked_transaction_id = NULL WHERE household_id = ? AND linked_transaction_id = ?")
-          .bind(DEFAULT_HOUSEHOLD_ID, row.transactionId),
-        db
-          .prepare("UPDATE split_settlements SET linked_transaction_id = NULL WHERE household_id = ? AND linked_transaction_id = ?")
-          .bind(DEFAULT_HOUSEHOLD_ID, row.transactionId),
-        db
-          .prepare(`
-            DELETE FROM transactions
-            WHERE household_id = ?
-              AND id = ?
-              AND import_id = ?
-              AND bank_certification_status = 'provisional'
-          `)
-          .bind(DEFAULT_HOUSEHOLD_ID, row.transactionId, row.importId)
-      );
-      monthsToRecalculate.add(row.date.slice(0, 7));
-      if (row.postedDate) {
-        monthsToRecalculate.add(row.postedDate.slice(0, 7));
+  const [accountRows, categoryRows, personRows] = await Promise.all([
+    db
+      .prepare("SELECT id, account_name, account_kind, owner_person_id, opening_balance_minor FROM accounts WHERE household_id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID)
+      .all<{ id: string; account_name: string; account_kind: string; owner_person_id: string | null; opening_balance_minor: number }>(),
+    db
+      .prepare("SELECT id, name FROM categories WHERE household_id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID)
+      .all<{ id: string; name: string }>(),
+    db
+      .prepare("SELECT id, display_name FROM people WHERE household_id = ? ORDER BY created_at")
+      .bind(DEFAULT_HOUSEHOLD_ID)
+      .all<{ id: string; display_name: string }>()
+  ]);
+  const accountsById = new Map(accountRows.results.map((account) => [account.id, account]));
+  const accountRowsByName = new Map<string, typeof accountRows.results>();
+  for (const account of accountRows.results) {
+    const current = accountRowsByName.get(account.account_name) ?? [];
+    current.push(account);
+    accountRowsByName.set(account.account_name, current);
+  }
+  const categoryIdsByName = new Map(categoryRows.results.map((category) => [category.name, category.id]));
+  const personIdsByName = new Map(personRows.results.map((person) => [person.display_name, person.id]));
+  const supersededLedgerRows = collectStatementSupersededLedgerRows(input.statementReconciliations ?? []);
+  const certifiedLedgerRowsByAccountId = new Map<string, CertifiedLedgerRowSnapshot[]>();
+  // What this commit will do to the ledger, so the statement certificate can
+  // be computed before anything is written.
+  const pendingLedger = {
+    deletedIds: new Set<string>(),
+    upserts: new Map<string, Omit<CertificateLedgerRow, "import_id" | "bank_certification_status">>()
+  };
+  const savesCertificates = isOfficialStatementImport && Boolean(input.statementCheckpoints?.length);
+  // Snapshots of the rows a statement supersedes, taken before the commit
+  // deletes them so a rollback can restore them as they were.
+  const supersededSnapshotsByReconciliation = new Map<ImportPreviewStatementReconciliationDto, SupersededLedgerRowSnapshot[]>();
+  if (savesCertificates) {
+    for (const reconciliation of input.statementReconciliations ?? []) {
+      if (reconciliation.supersededLedgerRows?.length) {
+        supersededSnapshotsByReconciliation.set(reconciliation, await buildSupersededLedgerRowSnapshots(db, reconciliation.supersededLedgerRows));
       }
     }
+  }
+  // An earlier attempt's rows are removed by this commit, so they are not
+  // part of the ledger the certificate checks.
+  const certificateLedgerRows = savesCertificates
+    ? (await loadCertificateLedgerRows(db)).filter((row) => !replacesEarlierAttempt || row.import_id !== importId)
+    : [];
+  const certificateLedgerRowsById = new Map(certificateLedgerRows.map((row) => [row.id, row]));
 
-    for (const row of input.rows) {
-      assertImportDescriptionQuality(row.description, row.rowIndex);
-
-      const rowId = `import-row-${crypto.randomUUID()}`;
-      const transactionId = `txn-${crypto.randomUUID()}`;
-      const account = resolveImportAccount(accountsById, accountRowsByName, row.accountId, row.accountName);
-      const accountId = account?.id ?? null;
-
-      if (!account || !accountId) {
-        throw new Error(`Unknown account: ${row.accountName ?? "Unassigned"}`);
-      }
-
-      const categoryName = row.entryType === "transfer" ? "Transfer" : row.categoryName;
-      const categoryId = categoryName ? categoryIdsByName.get(categoryName) : null;
-      if (!categoryId) {
-        throw new Error(`Unknown category: ${categoryName ?? "Unassigned"}`);
-      }
-
-      const directOwnerId = row.ownerName
-        ? personIdsByName.get(row.ownerName)
-        : account.owner_person_id;
-      if (row.ownerName && !directOwnerId) {
-        throw new Error(`Unknown owner: ${row.ownerName ?? "Unassigned"}`);
-      }
-
-      const reconciliationTarget = row.reconciliationTargetTransactionId
-        ? await db
-          .prepare(`
-            SELECT id, transaction_date, import_id, post_date
-            FROM transactions
-            WHERE household_id = ?
-              AND id = ?
-              AND account_id = ?
-              AND bank_certification_status = 'provisional'
-          `)
-          .bind(DEFAULT_HOUSEHOLD_ID, row.reconciliationTargetTransactionId, accountId)
-          .first<{ id: string; transaction_date: string; import_id: string | null; post_date: string | null }>()
-        : null;
-
-      if (row.reconciliationTargetTransactionId && !reconciliationTarget) {
-        throw new Error("Reconciliation target is no longer available. Refresh the import preview and try again.");
-      }
-
-      statements.push(
-        db
-          .prepare(`
-            INSERT INTO import_rows (
-              id, import_id, row_index, assigned_account_id, raw_row_json, normalized_hash, status
-            ) VALUES (?, ?, ?, ?, ?, ?, 'imported')
-          `)
-          .bind(
-            rowId,
-            importId,
-            row.rowIndex,
-            accountId,
-            JSON.stringify(row.rawRow),
-            buildImportRowHash(row)
-          )
-      );
-
-      if (reconciliationTarget && !isOfficialStatementImport) {
-        if (reconciliationTarget.import_id) {
-          throw new Error("Current-activity reconciliation target is no longer manual. Refresh the import preview and try again.");
-        }
-
-        // Promotion fills the bank-cleared lane only. The ledger event date
-        // stays pinned to the original manual or split-entered intent date.
-        const promotedPostDate = row.date;
-
-        statements.push(
-          db
-            .prepare(`
-              UPDATE transactions
-              SET import_id = ?,
-                import_row_id = ?,
-                post_date = ?,
-                description = ?,
-                amount_minor = ?,
-                entry_type = ?,
-                transfer_direction = ?,
-                updated_at = CURRENT_TIMESTAMP
-              WHERE household_id = ?
-                AND id = ?
-                AND account_id = ?
-                AND import_id IS NULL
-                AND bank_certification_status = 'provisional'
-            `)
-            .bind(
-              importId,
-              rowId,
-              promotedPostDate,
-              row.description,
-              row.amountMinor,
-              row.entryType,
-              row.transferDirection ?? null,
-              DEFAULT_HOUSEHOLD_ID,
-              reconciliationTarget.id,
-              accountId
-            )
-        );
-        monthsToRecalculate.add(reconciliationTarget.transaction_date.slice(0, 7));
-        continue;
-      }
-
-      if (reconciliationTarget) {
-        // Official statements own bank facts. Preserve user annotations by not
-        // touching category, note, ownership, splits, or transfer links here.
-        const promotedPostDate = row.date;
-        const promotedEventDate = resolveImportPreviewEventDate(row);
-        const certifiedRowSnapshot = await db
-          .prepare(`
-            SELECT
-              id,
-              import_id,
-              import_row_id,
-              account_id,
-              transaction_date,
-              post_date,
-              description,
-              amount_minor,
-              currency,
-              entry_type,
-              transfer_direction
-            FROM transactions
-            WHERE household_id = ?
-              AND id = ?
-              AND account_id = ?
-          `)
-          .bind(DEFAULT_HOUSEHOLD_ID, reconciliationTarget.id, accountId)
-          .first<CertifiedLedgerRowSnapshot["transaction"]>();
-
-        if (certifiedRowSnapshot) {
-          const currentSnapshots = certifiedLedgerRowsByAccountId.get(accountId) ?? [];
-          currentSnapshots.push({ transaction: certifiedRowSnapshot });
-          certifiedLedgerRowsByAccountId.set(accountId, currentSnapshots);
-        }
-
-        statements.push(
-          db
-            .prepare(`
-              UPDATE transactions
-              SET transaction_date = ?,
-                post_date = ?,
-                description = ?,
-                amount_minor = ?,
-                entry_type = ?,
-                transfer_direction = ?,
-                bank_certification_status = 'statement_certified',
-                statement_certified_import_id = ?,
-                statement_certified_import_row_id = ?,
-                statement_certified_at = CURRENT_TIMESTAMP,
-                statement_certified_previous_import_id = import_id,
-                statement_certified_previous_import_row_id = import_row_id,
-                statement_certified_previous_transaction_date = transaction_date,
-                statement_certified_previous_post_date = post_date,
-                statement_certified_previous_description = description,
-                statement_certified_previous_amount_minor = amount_minor,
-                statement_certified_previous_entry_type = entry_type,
-                statement_certified_previous_transfer_direction = transfer_direction,
-                updated_at = CURRENT_TIMESTAMP
-              WHERE household_id = ?
-                AND id = ?
-                AND account_id = ?
-                AND bank_certification_status = 'provisional'
-            `)
-            .bind(
-              promotedEventDate,
-              promotedPostDate,
-              row.description,
-              row.amountMinor,
-              row.entryType,
-              row.transferDirection ?? null,
-              importId,
-              rowId,
-              DEFAULT_HOUSEHOLD_ID,
-              reconciliationTarget.id,
-              accountId
-            )
-        );
-        monthsToRecalculate.add(reconciliationTarget.transaction_date.slice(0, 7));
-        monthsToRecalculate.add(promotedEventDate.slice(0, 7));
-        continue;
-      }
-
-      // Imported rows can carry both lanes: a true event date hint plus the
-      // bank's posted date. When no hint exists, both lanes collapse to the
-      // same day.
-      const importedEventDate = resolveImportPreviewEventDate(row);
-      const storedPostDate = row.date;
-
-      statements.push(
-        db
-          .prepare(`
-            INSERT INTO transactions (
-              id, household_id, import_id, import_row_id, account_id, transaction_date,
-              post_date,
-              description, amount_minor, currency, entry_type, transfer_direction,
-              category_id, owner_person_id, offsets_category, note,
-              bank_certification_status, statement_certified_import_id, statement_certified_import_row_id, statement_certified_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
-          `)
-          .bind(
-            transactionId,
-            DEFAULT_HOUSEHOLD_ID,
-            importId,
-            rowId,
-            accountId,
-            importedEventDate,
-            storedPostDate,
-            row.description,
-            row.amountMinor,
-            row.entryType,
-            row.transferDirection ?? null,
-            categoryId,
-            directOwnerId ?? null,
-            row.note ?? null,
-            isOfficialStatementImport ? "statement_certified" : "provisional",
-            isOfficialStatementImport ? importId : null,
-            isOfficialStatementImport ? rowId : null,
-            isOfficialStatementImport ? new Date().toISOString() : null
-          )
-      );
-
-      monthsToRecalculate.add(row.date.slice(0, 7));
+  for (const row of supersededLedgerRows) {
+    write(db
+      .prepare("UPDATE split_expenses SET linked_transaction_id = NULL WHERE household_id = ? AND linked_transaction_id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, row.transactionId));
+    write(db
+      .prepare("UPDATE split_settlements SET linked_transaction_id = NULL WHERE household_id = ? AND linked_transaction_id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, row.transactionId));
+    write(db
+      .prepare(`
+        DELETE FROM transactions
+        WHERE household_id = ?
+          AND id = ?
+          AND import_id = ?
+          AND bank_certification_status = 'provisional'
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, row.transactionId, row.importId));
+    const ledgerRow = certificateLedgerRowsById.get(row.transactionId);
+    if (ledgerRow?.import_id === row.importId && ledgerRow.bank_certification_status === "provisional") {
+      pendingLedger.deletedIds.add(row.transactionId);
     }
-
-    for (const checkpoint of input.statementCheckpoints ?? []) {
-      const account = resolveImportCheckpointAccount(accountsById, accountRowsByName, checkpoint, input.statementControlRows ?? input.rows);
-      if (!account) {
-        throw new Error(`Unknown checkpoint account: ${checkpoint.accountName}`);
-      }
-      if (!checkpoint.checkpointMonth || !Number.isFinite(checkpoint.statementBalanceMinor)) {
-        throw new Error(`Invalid statement checkpoint for ${checkpoint.accountName}`);
-      }
-
-      statements.push(
-        db
-          .prepare(`
-            INSERT INTO account_balance_checkpoints (
-              id, household_id, account_id, checkpoint_month, statement_start_date, statement_end_date, statement_balance_minor, note
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(account_id, checkpoint_month) DO UPDATE SET
-              statement_start_date = excluded.statement_start_date,
-              statement_end_date = excluded.statement_end_date,
-              statement_balance_minor = excluded.statement_balance_minor,
-              note = excluded.note,
-              updated_at = CURRENT_TIMESTAMP
-          `)
-          .bind(
-            `checkpoint-${crypto.randomUUID()}`,
-            DEFAULT_HOUSEHOLD_ID,
-            account.id,
-            checkpoint.checkpointMonth,
-            normalizeStatementDate(checkpoint.statementStartDate),
-            normalizeStatementDate(checkpoint.statementEndDate),
-            normalizeStatementBalanceInputMinor(
-              Math.round(checkpoint.statementBalanceMinor),
-              account.account_kind
-            ),
-            checkpoint.note ?? null
-          )
-      );
+    monthsToRecalculate.add(row.date.slice(0, 7));
+    if (row.postedDate) {
+      monthsToRecalculate.add(row.postedDate.slice(0, 7));
     }
-
-    for (let index = 0; index < statements.length; index += IMPORT_COMMIT_STATEMENT_CHUNK_SIZE) {
-      await db.batch(statements.slice(index, index + IMPORT_COMMIT_STATEMENT_CHUNK_SIZE));
-    }
-
-    if (isOfficialStatementImport && input.statementCheckpoints?.length) {
-      await saveStatementReconciliationCertificates(db, {
-        importId,
-        checkpoints: input.statementCheckpoints,
-        committedRows: input.rows,
-        statementControlRows: input.statementControlRows ?? input.rows,
-        statementReconciliations: input.statementReconciliations ?? [],
-        accountsById,
-        accountRowsByName,
-        certifiedLedgerRowsByAccountId
-      });
-      await clearStatementChainBreaksForImport(db, {
-        checkpoints: input.statementCheckpoints,
-        statementControlRows: input.statementControlRows ?? input.rows,
-        accountsById,
-        accountRowsByName
-      });
-    }
-
-    await db
-      .prepare("UPDATE imports SET status = 'completed' WHERE household_id = ? AND id = ?")
-      .bind(DEFAULT_HOUSEHOLD_ID, importId)
-      .run();
-
-    for (const month of monthsToRecalculate) {
-      await recalculateMonthlySnapshots(db, month);
-    }
-  } catch (error) {
-    await cleanupImportBatchRows(db, importId);
-    await db
-      .prepare("UPDATE imports SET status = 'rolled_back' WHERE household_id = ? AND id = ?")
-      .bind(DEFAULT_HOUSEHOLD_ID, importId)
-      .run();
-    throw error;
   }
 
-  await recordAuditEvent(db, {
+  for (const row of input.rows) {
+    assertImportDescriptionQuality(row.description, row.rowIndex);
+
+    const rowId = `import-row-${crypto.randomUUID()}`;
+    const transactionId = `txn-${crypto.randomUUID()}`;
+    const account = resolveImportAccount(accountsById, accountRowsByName, row.accountId, row.accountName);
+    const accountId = account?.id ?? null;
+
+    if (!account || !accountId) {
+      throw new Error(`Unknown account: ${row.accountName ?? "Unassigned"}`);
+    }
+
+    const categoryName = row.entryType === "transfer" ? "Transfer" : row.categoryName;
+    const categoryId = categoryName ? categoryIdsByName.get(categoryName) : null;
+    if (!categoryId) {
+      throw new Error(`Unknown category: ${categoryName ?? "Unassigned"}`);
+    }
+
+    const directOwnerId = row.ownerName
+      ? personIdsByName.get(row.ownerName)
+      : account.owner_person_id;
+    if (row.ownerName && !directOwnerId) {
+      throw new Error(`Unknown owner: ${row.ownerName ?? "Unassigned"}`);
+    }
+
+    const reconciliationTarget = row.reconciliationTargetTransactionId
+      ? await db
+        .prepare(`
+          SELECT id, transaction_date, import_id, post_date
+          FROM transactions
+          WHERE household_id = ?
+            AND id = ?
+            AND account_id = ?
+            AND bank_certification_status = 'provisional'
+        `)
+        .bind(DEFAULT_HOUSEHOLD_ID, row.reconciliationTargetTransactionId, accountId)
+        .first<{ id: string; transaction_date: string; import_id: string | null; post_date: string | null }>()
+      : null;
+
+    if (row.reconciliationTargetTransactionId && !reconciliationTarget) {
+      throw new Error("Reconciliation target is no longer available. Refresh the import preview and try again.");
+    }
+
+    stage(db
+      .prepare(`
+        INSERT INTO import_rows (
+          id, import_id, row_index, assigned_account_id, raw_row_json, normalized_hash, status
+        ) VALUES (?, ?, ?, ?, ?, ?, 'imported')
+      `)
+      .bind(
+        rowId,
+        importId,
+        row.rowIndex,
+        accountId,
+        JSON.stringify(row.rawRow),
+        buildImportRowHash(row)
+      ));
+
+    if (reconciliationTarget && !isOfficialStatementImport) {
+      if (reconciliationTarget.import_id) {
+        throw new Error("Current-activity reconciliation target is no longer manual. Refresh the import preview and try again.");
+      }
+
+      // Promotion fills the bank-cleared lane only. The ledger event date
+      // stays pinned to the original manual or split-entered intent date.
+      const promotedPostDate = row.date;
+
+      write(db
+        .prepare(`
+          UPDATE transactions
+          SET import_id = ?,
+            import_row_id = ?,
+            post_date = ?,
+            description = ?,
+            amount_minor = ?,
+            entry_type = ?,
+            transfer_direction = ?,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE household_id = ?
+            AND id = ?
+            AND account_id = ?
+            AND import_id IS NULL
+            AND bank_certification_status = 'provisional'
+        `)
+        .bind(
+          importId,
+          rowId,
+          promotedPostDate,
+          row.description,
+          row.amountMinor,
+          row.entryType,
+          row.transferDirection ?? null,
+          DEFAULT_HOUSEHOLD_ID,
+          reconciliationTarget.id,
+          accountId
+        ));
+      monthsToRecalculate.add(reconciliationTarget.transaction_date.slice(0, 7));
+      continue;
+    }
+
+    if (reconciliationTarget) {
+      // Official statements own bank facts. Preserve user annotations by not
+      // touching category, note, ownership, splits, or transfer links here.
+      const promotedPostDate = row.date;
+      const promotedEventDate = resolveImportPreviewEventDate(row);
+      const certifiedRowSnapshot = await db
+        .prepare(`
+          SELECT
+            id,
+            import_id,
+            import_row_id,
+            account_id,
+            transaction_date,
+            post_date,
+            description,
+            amount_minor,
+            currency,
+            entry_type,
+            transfer_direction
+          FROM transactions
+          WHERE household_id = ?
+            AND id = ?
+            AND account_id = ?
+        `)
+        .bind(DEFAULT_HOUSEHOLD_ID, reconciliationTarget.id, accountId)
+        .first<CertifiedLedgerRowSnapshot["transaction"]>();
+
+      if (certifiedRowSnapshot) {
+        const currentSnapshots = certifiedLedgerRowsByAccountId.get(accountId) ?? [];
+        currentSnapshots.push({ transaction: certifiedRowSnapshot });
+        certifiedLedgerRowsByAccountId.set(accountId, currentSnapshots);
+      }
+
+      write(db
+        .prepare(`
+          UPDATE transactions
+          SET transaction_date = ?,
+            post_date = ?,
+            description = ?,
+            amount_minor = ?,
+            entry_type = ?,
+            transfer_direction = ?,
+            bank_certification_status = 'statement_certified',
+            statement_certified_import_id = ?,
+            statement_certified_import_row_id = ?,
+            statement_certified_at = CURRENT_TIMESTAMP,
+            statement_certified_previous_import_id = import_id,
+            statement_certified_previous_import_row_id = import_row_id,
+            statement_certified_previous_transaction_date = transaction_date,
+            statement_certified_previous_post_date = post_date,
+            statement_certified_previous_description = description,
+            statement_certified_previous_amount_minor = amount_minor,
+            statement_certified_previous_entry_type = entry_type,
+            statement_certified_previous_transfer_direction = transfer_direction,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE household_id = ?
+            AND id = ?
+            AND account_id = ?
+            AND bank_certification_status = 'provisional'
+        `)
+        .bind(
+          promotedEventDate,
+          promotedPostDate,
+          row.description,
+          row.amountMinor,
+          row.entryType,
+          row.transferDirection ?? null,
+          importId,
+          rowId,
+          DEFAULT_HOUSEHOLD_ID,
+          reconciliationTarget.id,
+          accountId
+        ));
+      pendingLedger.upserts.set(reconciliationTarget.id, {
+        id: reconciliationTarget.id,
+        account_id: accountId,
+        cleared_date: promotedPostDate,
+        entry_type: row.entryType,
+        transfer_direction: row.transferDirection ?? null,
+        amount_minor: row.amountMinor
+      });
+      monthsToRecalculate.add(reconciliationTarget.transaction_date.slice(0, 7));
+      monthsToRecalculate.add(promotedEventDate.slice(0, 7));
+      continue;
+    }
+
+    // Imported rows can carry both lanes: a true event date hint plus the
+    // bank's posted date. When no hint exists, both lanes collapse to the
+    // same day.
+    const importedEventDate = resolveImportPreviewEventDate(row);
+    const storedPostDate = row.date;
+
+    stage(db
+      .prepare(`
+        INSERT INTO transactions (
+          id, household_id, import_id, import_row_id, account_id, transaction_date,
+          post_date,
+          description, amount_minor, currency, entry_type, transfer_direction,
+          category_id, owner_person_id, offsets_category, note,
+          bank_certification_status, statement_certified_import_id, statement_certified_import_row_id, statement_certified_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'SGD', ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
+      `)
+      .bind(
+        transactionId,
+        DEFAULT_HOUSEHOLD_ID,
+        importId,
+        rowId,
+        accountId,
+        importedEventDate,
+        storedPostDate,
+        row.description,
+        row.amountMinor,
+        row.entryType,
+        row.transferDirection ?? null,
+        categoryId,
+        directOwnerId ?? null,
+        row.note ?? null,
+        isOfficialStatementImport ? "statement_certified" : "provisional",
+        isOfficialStatementImport ? importId : null,
+        isOfficialStatementImport ? rowId : null,
+        isOfficialStatementImport ? new Date().toISOString() : null
+      ));
+    pendingLedger.upserts.set(transactionId, {
+      id: transactionId,
+      account_id: accountId,
+      cleared_date: storedPostDate,
+      entry_type: row.entryType,
+      transfer_direction: row.transferDirection ?? null,
+      amount_minor: row.amountMinor
+    });
+
+    monthsToRecalculate.add(row.date.slice(0, 7));
+  }
+
+  for (const checkpoint of input.statementCheckpoints ?? []) {
+    const account = resolveImportCheckpointAccount(accountsById, accountRowsByName, checkpoint, input.statementControlRows ?? input.rows);
+    if (!account) {
+      throw new Error(`Unknown checkpoint account: ${checkpoint.accountName}`);
+    }
+    if (!checkpoint.checkpointMonth || !Number.isFinite(checkpoint.statementBalanceMinor)) {
+      throw new Error(`Invalid statement checkpoint for ${checkpoint.accountName}`);
+    }
+
+    write(db
+      .prepare(`
+        INSERT INTO account_balance_checkpoints (
+          id, household_id, account_id, checkpoint_month, statement_start_date, statement_end_date, statement_balance_minor, note
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(account_id, checkpoint_month) DO UPDATE SET
+          statement_start_date = excluded.statement_start_date,
+          statement_end_date = excluded.statement_end_date,
+          statement_balance_minor = excluded.statement_balance_minor,
+          note = excluded.note,
+          updated_at = CURRENT_TIMESTAMP
+      `)
+      .bind(
+        `checkpoint-${crypto.randomUUID()}`,
+        DEFAULT_HOUSEHOLD_ID,
+        account.id,
+        checkpoint.checkpointMonth,
+        normalizeStatementDate(checkpoint.statementStartDate),
+        normalizeStatementDate(checkpoint.statementEndDate),
+        normalizeStatementBalanceInputMinor(
+          Math.round(checkpoint.statementBalanceMinor),
+          account.account_kind
+        ),
+        checkpoint.note ?? null
+      ));
+  }
+
+  if (savesCertificates && input.statementCheckpoints) {
+    const ledgerRowsAfterCommit = [
+      ...certificateLedgerRows.filter((row) => !pendingLedger.deletedIds.has(row.id) && !pendingLedger.upserts.has(row.id)),
+      ...pendingLedger.upserts.values()
+    ];
+    for (const statement of buildStatementReconciliationCertificateStatements(db, {
+      importId,
+      checkpoints: input.statementCheckpoints,
+      committedRows: input.rows,
+      statementControlRows: input.statementControlRows ?? input.rows,
+      statementReconciliations: input.statementReconciliations ?? [],
+      accountsById,
+      accountRowsByName,
+      certifiedLedgerRowsByAccountId,
+      supersededSnapshotsByReconciliation,
+      ledgerRows: ledgerRowsAfterCommit
+    })) {
+      write(statement);
+    }
+    for (const statement of buildStatementChainBreakClearStatements(db, {
+      checkpoints: input.statementCheckpoints,
+      statementControlRows: input.statementControlRows ?? input.rows,
+      accountsById,
+      accountRowsByName
+    })) {
+      write(statement);
+    }
+  }
+
+  write(db
+    .prepare("UPDATE imports SET status = 'completed' WHERE household_id = ? AND id = ?")
+    .bind(DEFAULT_HOUSEHOLD_ID, importId));
+  write(buildAuditEventStatement(db, {
     entityType: "import",
     entityId: importId,
     action: "import_committed",
     detail: `Committed import ${input.sourceLabel} with ${input.rows.length} row${input.rows.length === 1 ? "" : "s"}.`
-  });
+  }));
+  for (const statement of buildMonthlySnapshotRefreshMarkers(db, monthsToRecalculate)) {
+    write(statement);
+  }
+
+  await commitImportStatements(db, importId, commitStatements);
+  await refreshMonthlySnapshotsAfterWrite(db, monthsToRecalculate);
 
   return { importId, created: true, importedRows: input.rows.length };
+}
+
+// Runs a commit's statements. Normally that is one batch, so a failure at
+// any statement leaves nothing behind. A commit too large for one batch
+// first writes the draft import and its own new rows (invisible to ledger
+// reads while the import is a draft) in chunks, then makes every visible
+// change (edits to existing entries, checkpoints, certificates, the completed
+// status, audit and refresh markers) in one final batch. If a step fails, the
+// staged rows and the draft are discarded; if even that cannot run, the
+// leftover draft stays hidden and the next commit of the same file replaces it.
+async function commitImportStatements(db: D1Database, importId: string, commitStatements: ImportCommitStatement[]) {
+  if (commitStatements.length <= IMPORT_COMMIT_SINGLE_BATCH_STATEMENT_LIMIT) {
+    await db.batch(commitStatements.map((item) => item.statement));
+    return;
+  }
+
+  const inPhase = (phase: ImportCommitStatement["phase"]) => commitStatements
+    .filter((item) => item.phase === phase)
+    .map((item) => item.statement);
+  const staged = inPhase("staged");
+  const chunks = [inPhase("draft")];
+  for (let index = 0; index < staged.length; index += IMPORT_COMMIT_STAGING_CHUNK_SIZE) {
+    chunks.push(staged.slice(index, index + IMPORT_COMMIT_STAGING_CHUNK_SIZE));
+  }
+  try {
+    for (const chunk of chunks) {
+      await db.batch(chunk);
+    }
+    await db.batch(inPhase("final"));
+  } catch (error) {
+    await discardStagedImport(db, importId).catch((cleanupError) => {
+      console.error("Discarding a staged import failed; the draft stays hidden until the next commit", cleanupError);
+    });
+    throw error;
+  }
+}
+
+async function discardStagedImport(db: D1Database, importId: string) {
+  await db.batch([
+    db
+      .prepare("DELETE FROM transactions WHERE household_id = ? AND import_id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, importId),
+    db
+      .prepare("DELETE FROM import_rows WHERE import_id = ?")
+      .bind(importId),
+    db
+      .prepare("DELETE FROM imports WHERE household_id = ? AND id = ? AND status = 'draft'")
+      .bind(DEFAULT_HOUSEHOLD_ID, importId)
+  ]);
 }
 
 async function buildImportCommitId(input: {
@@ -793,7 +917,30 @@ function resolveImportPreviewEventDate(row: ImportPreviewRowDto) {
   return candidates[0] ?? row.date;
 }
 
-async function saveStatementReconciliationCertificates(
+async function loadCertificateLedgerRows(db: D1Database) {
+  const ledgerRows = await db
+    .prepare(`
+      SELECT
+        id,
+        import_id,
+        bank_certification_status,
+        account_id,
+        COALESCE(post_date, transaction_date) AS cleared_date,
+        entry_type,
+        transfer_direction,
+        amount_minor
+      FROM transactions
+      WHERE household_id = ?
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID)
+    .all<CertificateLedgerRow>();
+  return ledgerRows.results;
+}
+
+// The certificate rows for a statement import. `ledgerRows` is the ledger as
+// it will be once the commit lands (read before it, with the commit's own
+// changes applied), so the certificate can go in the commit's batch.
+function buildStatementReconciliationCertificateStatements(
   db: D1Database,
   input: {
     importId: string;
@@ -804,28 +951,10 @@ async function saveStatementReconciliationCertificates(
     accountsById: Map<string, { id: string; account_name: string; account_kind: string; opening_balance_minor: number }>;
     accountRowsByName: Map<string, { id: string; account_name: string; account_kind: string; opening_balance_minor: number }[]>;
     certifiedLedgerRowsByAccountId: Map<string, CertifiedLedgerRowSnapshot[]>;
+    supersededSnapshotsByReconciliation: Map<ImportPreviewStatementReconciliationDto, SupersededLedgerRowSnapshot[]>;
+    ledgerRows: Array<Pick<CertificateLedgerRow, "account_id" | "cleared_date" | "entry_type" | "transfer_direction" | "amount_minor">>;
   }
 ) {
-  const ledgerRows = await db
-    .prepare(`
-      SELECT
-        account_id,
-        COALESCE(post_date, transaction_date) AS cleared_date,
-        entry_type,
-        transfer_direction,
-        amount_minor
-      FROM transactions
-      WHERE household_id = ?
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID)
-    .all<{
-      account_id: string;
-      cleared_date: string;
-      entry_type: "expense" | "income" | "transfer";
-      transfer_direction: "in" | "out" | null;
-      amount_minor: number;
-    }>();
-
   const statements: D1PreparedStatement[] = [];
   for (const checkpoint of input.checkpoints) {
     const account = resolveImportCheckpointAccount(input.accountsById, input.accountRowsByName, checkpoint, input.statementControlRows);
@@ -874,7 +1003,7 @@ async function saveStatementReconciliationCertificates(
       )
     ));
     const supersededLedgerRowsJson = previewReconciliation?.supersededLedgerRows?.length
-      ? JSON.stringify(await buildSupersededLedgerRowSnapshots(db, previewReconciliation.supersededLedgerRows))
+      ? JSON.stringify(input.supersededSnapshotsByReconciliation.get(previewReconciliation) ?? [])
       : null;
     const certifiedLedgerRowsJson = input.certifiedLedgerRowsByAccountId.get(account.id)?.length
       ? JSON.stringify(input.certifiedLedgerRowsByAccountId.get(account.id))
@@ -887,7 +1016,7 @@ async function saveStatementReconciliationCertificates(
         statement_start_date: statementStartDate,
         statement_end_date: statementEndDate
       },
-      rows: ledgerRows.results
+      rows: input.ledgerRows
     });
     const projectedLedgerBalanceMinor = typeof previewReconciliation?.projectedLedgerBalanceMinor === "number"
       ? previewReconciliation.projectedLedgerBalanceMinor
@@ -939,9 +1068,7 @@ async function saveStatementReconciliationCertificates(
     );
   }
 
-  if (statements.length) {
-    await db.batch(statements);
-  }
+  return statements;
 }
 
 function resolveImportAccount(
@@ -1017,6 +1144,10 @@ export async function rollbackImportBatch(
     throw new Error("Import batch not found.");
   }
 
+  if (importRecord.status === "rolled_back") {
+    throw new Error("This import has already been rolled back, so it cannot be rolled back again.");
+  }
+
   const laterStatementRows = await db
     .prepare(`
       SELECT COUNT(*) AS row_count
@@ -1038,38 +1169,38 @@ export async function rollbackImportBatch(
     throw new Error("This PDF statement import has a later statement for the same account. Roll back newer statements first, or use a replacement statement or manual adjustment.");
   }
 
-  const transactionMonths = await restoreStatementCertifiedRowsForRollback(db, input.importId);
-  const restoredSupersededMonths = await restoreSupersededStatementRowsForRollback(db, input.importId);
-  for (const month of restoredSupersededMonths) {
-    transactionMonths.add(month);
-  }
+  // Every read happens here, before the single batch below.
+  const certifiedRestore = await buildStatementCertifiedRowRestore(db, input.importId);
+  const supersededRestore = await buildSupersededStatementRowRestore(db, input.importId);
+  const transactionMonths = new Set([...certifiedRestore.months, ...supersededRestore.months]);
+  const chainBreakStatements = importRecord.source_type === "pdf"
+    ? await buildStatementChainBreakStatementsForRollback(db, input.importId)
+    : [];
 
-  if (importRecord.source_type === "pdf") {
-    await recordStatementChainBreaksForRollback(db, input.importId);
-  }
-
-  await cleanupImportBatchRows(db, input.importId);
-
-  await db
-    .prepare("UPDATE imports SET status = 'rolled_back' WHERE household_id = ? AND id = ?")
-    .bind(DEFAULT_HOUSEHOLD_ID, input.importId)
-    .run();
-
-  for (const month of transactionMonths) {
-    await recalculateMonthlySnapshots(db, month);
-  }
-
-  await recordAuditEvent(db, {
-    entityType: "import",
-    entityId: input.importId,
-    action: "import_rolled_back",
-    detail: `Rolled back import ${input.importId}.`
-  });
+  await db.batch([
+    ...certifiedRestore.statements,
+    ...supersededRestore.statements,
+    ...chainBreakStatements,
+    ...await buildImportBatchCleanupStatements(db, input.importId),
+    db
+      .prepare("UPDATE imports SET status = 'rolled_back' WHERE household_id = ? AND id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, input.importId),
+    buildAuditEventStatement(db, {
+      entityType: "import",
+      entityId: input.importId,
+      action: "import_rolled_back",
+      detail: `Rolled back import ${input.importId}.`
+    }),
+    ...buildMonthlySnapshotRefreshMarkers(db, transactionMonths)
+  ]);
+  await refreshMonthlySnapshotsAfterWrite(db, transactionMonths);
 
   return { importId: input.importId, rolledBack: true };
 }
 
-async function restoreStatementCertifiedRowsForRollback(db: D1Database, importId: string) {
+// Puts entries certified by this import back to their pre-certification bank
+// facts. Returns the statements and the months they touch.
+async function buildStatementCertifiedRowRestore(db: D1Database, importId: string) {
   const certifiedRows = await db
     .prepare(`
       SELECT
@@ -1128,8 +1259,9 @@ async function restoreStatementCertifiedRowsForRollback(db: D1Database, importId
     }>();
 
   const monthsToRecalculate = new Set<string>();
+  const statements: D1PreparedStatement[] = [];
   if (!certifiedRows.results.length) {
-    return monthsToRecalculate;
+    return { statements, months: monthsToRecalculate };
   }
 
   const candidateRowsByAccount = new Map<string, Array<{
@@ -1176,7 +1308,7 @@ async function restoreStatementCertifiedRowsForRollback(db: D1Database, importId
             monthsToRecalculate.add(certifiedSnapshot.transaction.post_date.slice(0, 7));
           }
 
-          await db
+          statements.push(db
             .prepare(`
               UPDATE transactions
               SET transaction_date = ?,
@@ -1216,8 +1348,7 @@ async function restoreStatementCertifiedRowsForRollback(db: D1Database, importId
               DEFAULT_HOUSEHOLD_ID,
               row.id,
               importId
-            )
-            .run();
+            ));
           continue;
         }
       } catch {
@@ -1232,7 +1363,7 @@ async function restoreStatementCertifiedRowsForRollback(db: D1Database, importId
 
     monthsToRecalculate.add(restored.transactionDate.slice(0, 7));
 
-    await db
+    statements.push(db
       .prepare(`
         UPDATE transactions
         SET transaction_date = ?,
@@ -1264,14 +1395,15 @@ async function restoreStatementCertifiedRowsForRollback(db: D1Database, importId
         DEFAULT_HOUSEHOLD_ID,
         row.id,
         importId
-      )
-      .run();
+      ));
   }
 
-  return monthsToRecalculate;
+  return { statements, months: monthsToRecalculate };
 }
 
-async function restoreSupersededStatementRowsForRollback(db: D1Database, importId: string) {
+// Re-creates the entries this statement import superseded, with their split
+// links. Returns the statements and the months they touch.
+async function buildSupersededStatementRowRestore(db: D1Database, importId: string) {
   const certificates = await db
     .prepare(`
       SELECT
@@ -1289,6 +1421,9 @@ async function restoreSupersededStatementRowsForRollback(db: D1Database, importI
     }>();
 
   const monthsToRecalculate = new Set<string>();
+  const statements: D1PreparedStatement[] = [];
+  // A row listed by two certificates is re-created once.
+  const restoredTransactionIds = new Set<string>();
   for (const certificate of certificates.results) {
     if (!certificate.superseded_ledger_rows_json) {
       continue;
@@ -1317,8 +1452,9 @@ async function restoreSupersededStatementRowsForRollback(db: D1Database, importI
         .bind(DEFAULT_HOUSEHOLD_ID, snapshot.transaction.id)
         .first<{ id: string }>();
 
-      if (!existingTransaction) {
-        await db
+      if (!existingTransaction && !restoredTransactionIds.has(snapshot.transaction.id)) {
+        restoredTransactionIds.add(snapshot.transaction.id);
+        statements.push(db
           .prepare(`
             INSERT INTO transactions (
               id, household_id, import_id, import_row_id, account_id, transfer_group_id,
@@ -1349,39 +1485,36 @@ async function restoreSupersededStatementRowsForRollback(db: D1Database, importI
             snapshot.transaction.owner_person_id,
             snapshot.transaction.offsets_category,
             snapshot.transaction.note
-          )
-          .run();
+          ));
       }
 
       if (snapshot.splitExpenseLinks.length) {
         for (const splitExpenseLink of snapshot.splitExpenseLinks) {
-          await db
+          statements.push(db
             .prepare(`
               UPDATE split_expenses
               SET linked_transaction_id = ?
               WHERE household_id = ? AND id = ?
             `)
-            .bind(snapshot.transaction.id, DEFAULT_HOUSEHOLD_ID, splitExpenseLink.id)
-            .run();
+            .bind(snapshot.transaction.id, DEFAULT_HOUSEHOLD_ID, splitExpenseLink.id));
         }
       }
 
       if (snapshot.splitSettlementLinks.length) {
         for (const splitSettlementLink of snapshot.splitSettlementLinks) {
-          await db
+          statements.push(db
             .prepare(`
               UPDATE split_settlements
               SET linked_transaction_id = ?
               WHERE household_id = ? AND id = ?
             `)
-            .bind(snapshot.transaction.id, DEFAULT_HOUSEHOLD_ID, splitSettlementLink.id)
-            .run();
+            .bind(snapshot.transaction.id, DEFAULT_HOUSEHOLD_ID, splitSettlementLink.id));
         }
       }
     }
   }
 
-  return monthsToRecalculate;
+  return { statements, months: monthsToRecalculate };
 }
 
 async function resolveRolledBackStatementRowState(
@@ -1678,7 +1811,9 @@ function readSignedMinorFromRawImportRow(rawRow: Record<string, unknown>) {
   return amount;
 }
 
-async function recordStatementChainBreaksForRollback(db: D1Database, importId: string) {
+// Records the statement-chain gaps a PDF rollback opens (a later month that
+// now lacks its earlier statement).
+async function buildStatementChainBreakStatementsForRollback(db: D1Database, importId: string) {
   const certificates = await db
     .prepare(`
       SELECT account_id, checkpoint_month
@@ -1692,7 +1827,7 @@ async function recordStatementChainBreaksForRollback(db: D1Database, importId: s
     }>();
 
   if (!certificates.results.length) {
-    return;
+    return [];
   }
 
   const blockers: D1PreparedStatement[] = [];
@@ -1730,12 +1865,10 @@ async function recordStatementChainBreaksForRollback(db: D1Database, importId: s
     );
   }
 
-  if (blockers.length) {
-    await db.batch(blockers);
-  }
+  return blockers;
 }
 
-async function clearStatementChainBreaksForImport(
+function buildStatementChainBreakClearStatements(
   db: D1Database,
   input: {
     checkpoints: StatementCheckpointDraftDto[];
@@ -1744,10 +1877,6 @@ async function clearStatementChainBreaksForImport(
     accountRowsByName: Map<string, { id: string; account_name: string; account_kind: string; opening_balance_minor?: number }[]>;
   }
 ) {
-  if (!input.checkpoints.length) {
-    return;
-  }
-
   const statements: D1PreparedStatement[] = [];
   for (const checkpoint of input.checkpoints) {
     const account = resolveImportCheckpointAccount(
@@ -1772,57 +1901,52 @@ async function clearStatementChainBreaksForImport(
     );
   }
 
-  if (statements.length) {
-    await db.batch(statements);
-  }
+  return statements;
 }
 
-async function cleanupImportBatchRows(db: D1Database, importId: string) {
-  await cleanupStatementImportMetadata(db, importId);
-  await resetStatementCertificationForImport(db, importId);
-
-  await db
-    .prepare(`
-      UPDATE split_expenses
-      SET linked_transaction_id = NULL
-      WHERE household_id = ?
-        AND linked_transaction_id IN (
-          SELECT id FROM transactions WHERE household_id = ? AND import_id = ?
-        )
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID, importId)
-    .run();
-
-  await db
-    .prepare(`
-      UPDATE split_settlements
-      SET linked_transaction_id = NULL
-      WHERE household_id = ?
-        AND linked_transaction_id IN (
-          SELECT id FROM transactions WHERE household_id = ? AND import_id = ?
-        )
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID, importId)
-    .run();
-
-  await db
-    .prepare("DELETE FROM transactions WHERE household_id = ? AND import_id = ?")
-    .bind(DEFAULT_HOUSEHOLD_ID, importId)
-    .run();
-
-  await db
-    .prepare(`
-      DELETE FROM import_rows
-      WHERE import_id IN (
-        SELECT id FROM imports WHERE household_id = ? AND id = ?
-      )
+// Removes an import's own rows and statement metadata: its checkpoints and
+// certificates, its certification of existing entries, split links to its
+// entries, its entries and its import rows. Reads the certificates now.
+async function buildImportBatchCleanupStatements(db: D1Database, importId: string) {
+  return [
+    ...await buildStatementImportMetadataCleanupStatements(db, importId),
+    buildStatementCertificationResetStatement(db, importId),
+    db
+      .prepare(`
+        UPDATE split_expenses
+        SET linked_transaction_id = NULL
+        WHERE household_id = ?
+          AND linked_transaction_id IN (
+            SELECT id FROM transactions WHERE household_id = ? AND import_id = ?
+          )
       `)
-    .bind(DEFAULT_HOUSEHOLD_ID, importId)
-    .run();
+      .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID, importId),
+    db
+      .prepare(`
+        UPDATE split_settlements
+        SET linked_transaction_id = NULL
+        WHERE household_id = ?
+          AND linked_transaction_id IN (
+            SELECT id FROM transactions WHERE household_id = ? AND import_id = ?
+          )
+      `)
+      .bind(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_ID, importId),
+    db
+      .prepare("DELETE FROM transactions WHERE household_id = ? AND import_id = ?")
+      .bind(DEFAULT_HOUSEHOLD_ID, importId),
+    db
+      .prepare(`
+        DELETE FROM import_rows
+        WHERE import_id IN (
+          SELECT id FROM imports WHERE household_id = ? AND id = ?
+        )
+        `)
+      .bind(DEFAULT_HOUSEHOLD_ID, importId)
+  ];
 }
 
-async function resetStatementCertificationForImport(db: D1Database, importId: string) {
-  await db
+function buildStatementCertificationResetStatement(db: D1Database, importId: string) {
+  return db
     .prepare(`
       UPDATE transactions
       SET bank_certification_status = 'provisional',
@@ -1841,11 +1965,10 @@ async function resetStatementCertificationForImport(db: D1Database, importId: st
       WHERE household_id = ?
         AND statement_certified_import_id = ?
     `)
-    .bind(DEFAULT_HOUSEHOLD_ID, importId)
-    .run();
+    .bind(DEFAULT_HOUSEHOLD_ID, importId);
 }
 
-async function cleanupStatementImportMetadata(db: D1Database, importId: string) {
+async function buildStatementImportMetadataCleanupStatements(db: D1Database, importId: string) {
   const certificates = await db
     .prepare(`
       SELECT
@@ -1866,30 +1989,27 @@ async function cleanupStatementImportMetadata(db: D1Database, importId: string) 
       statement_balance_minor: number;
     }>();
 
-  for (const certificate of certificates.results) {
-    await db
-      .prepare(`
-        DELETE FROM account_balance_checkpoints
-        WHERE household_id = ?
-          AND account_id = ?
-          AND checkpoint_month = ?
-          AND COALESCE(statement_start_date, '') = COALESCE(?, '')
-          AND COALESCE(statement_end_date, '') = COALESCE(?, '')
-          AND statement_balance_minor = ?
-      `)
-      .bind(
-        DEFAULT_HOUSEHOLD_ID,
-        certificate.account_id,
-        certificate.checkpoint_month,
-        certificate.statement_start_date,
-        certificate.statement_end_date,
-        certificate.statement_balance_minor
-      )
-      .run();
-  }
+  const statements = certificates.results.map((certificate) => db
+    .prepare(`
+      DELETE FROM account_balance_checkpoints
+      WHERE household_id = ?
+        AND account_id = ?
+        AND checkpoint_month = ?
+        AND COALESCE(statement_start_date, '') = COALESCE(?, '')
+        AND COALESCE(statement_end_date, '') = COALESCE(?, '')
+        AND statement_balance_minor = ?
+    `)
+    .bind(
+      DEFAULT_HOUSEHOLD_ID,
+      certificate.account_id,
+      certificate.checkpoint_month,
+      certificate.statement_start_date,
+      certificate.statement_end_date,
+      certificate.statement_balance_minor
+    ));
 
-  await db
+  statements.push(db
     .prepare("DELETE FROM statement_reconciliation_certificates WHERE household_id = ? AND import_id = ?")
-    .bind(DEFAULT_HOUSEHOLD_ID, importId)
-    .run();
+    .bind(DEFAULT_HOUSEHOLD_ID, importId));
+  return statements;
 }
