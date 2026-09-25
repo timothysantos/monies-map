@@ -529,6 +529,11 @@ Important distinction:
 - the split allocation and group live on the split expense and its shares
 - deleting or unlinking the split expense removes the shared Entries attribute
   without rewriting the ledger owner
+- changing the entry's amount moves the linked split expense with it in the
+  same write: the split total becomes the new ledger amount and the shares are
+  rebalanced by the split's stored basis (see `split expense share`). A
+  cross-currency split keeps its own total and shares and only updates its home
+  amount and FX rate. Other entry edits leave the split unchanged
 
 Related but separate concepts:
 
@@ -654,6 +659,13 @@ Rounding rule:
   balancing remainder by default, and the split editor can explicitly assign the
   odd cent to either person when matching an external split record
 - the stored share amounts must always add exactly to the split expense total
+- when the linked ledger entry's amount changes, the shares follow the new
+  total by their stored `ratio_basis_points` with the same floor and balancing
+  remainder. The split does not store whether a share was entered as a
+  percentage or an exact amount, so an exact-amount share becomes the same
+  proportion of the new total. An even split whose odd cent was assigned to one
+  person (a stored 4999/5001 ratio) stays an even 5000/5000 split. An edit that
+  keeps the amount leaves the shares, including an assigned odd cent, alone
 
 Relationships:
 - belongs to one `split expense`
