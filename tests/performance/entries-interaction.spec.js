@@ -23,6 +23,8 @@ import { summarizeSamples } from "./performance-stats.mjs";
 
 const FIXTURE = process.env.PERFORMANCE_FIXTURE || "demo";
 const SAMPLES = Number(process.env.PERFORMANCE_INTERACTION_SAMPLES ?? 8);
+// off | intent-only | normal (absent = normal), as in built-client.spec.js.
+const WARMUP_MODE = process.env.PERFORMANCE_WARMUP_MODE || "normal";
 const ENTRIES_URL = "/entries?view=household&month=2026-05";
 const LARGE_MONTH_FIXTURE_ROWS = 2_000;
 const READY_TIMEOUT_MS = 60_000;
@@ -139,6 +141,9 @@ test("Entries interactions on the 2,000-row month", async ({ browser }, testInfo
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await page.addInitScript(installReactCommitCounter);
   await page.addInitScript(installInteractionProbe);
+  if (WARMUP_MODE !== "normal") {
+    await page.addInitScript((mode) => { window.__MONIES_MAP_WARMUP_MODE__ = mode; }, WARMUP_MODE);
+  }
   const cdp = await context.newCDPSession(page);
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: profile.cpuRate });
 
@@ -221,14 +226,20 @@ test("Entries interactions on the 2,000-row month", async ({ browser }, testInfo
     privacyShow: async () => timed(() => privacyToggle.click(), PREDICATES.moneyShown, true),
     privacyHide: async () => timed(() => privacyToggle.click(), PREDICATES.moneyShown, false)
   };
-  const SEQUENCES = [
-    ["searchType", "searchClear"],
-    ["categoryOn", "categoryOff"],
-    ["openEditor", "draftKey", "closeEditor"],
-    ["privacyShow", "privacyHide"]
-  ];
+  // PERFORMANCE_INTERACTIONS=search,category,editor,privacy narrows a
+  // diagnostic run; cohorts use all four.
+  const ALL_SEQUENCES = {
+    search: ["searchType", "searchClear"],
+    category: ["categoryOn", "categoryOff"],
+    editor: ["openEditor", "draftKey", "closeEditor"],
+    privacy: ["privacyShow", "privacyHide"]
+  };
+  const SEQUENCES = (process.env.PERFORMANCE_INTERACTIONS ?? Object.keys(ALL_SEQUENCES).join(","))
+    .split(",")
+    .map((key) => ALL_SEQUENCES[key.trim()])
+    .filter(Boolean);
 
-  const timings = Object.fromEntries(Object.keys(INTERACTIONS).map((name) => [name, []]));
+  const timings = Object.fromEntries(SEQUENCES.flat().map((name) => [name, []]));
   // One unmeasured warm-up round so lazy chunks (popover, sheet) are loaded.
   for (const sequence of SEQUENCES) for (const name of sequence) await INTERACTIONS[name]();
   for (let sample = 0; sample < SAMPLES; sample += 1) {
@@ -266,6 +277,7 @@ test("Entries interactions on the 2,000-row month", async ({ browser }, testInfo
     revision: execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" }).trim(),
     workingTreeDirty: execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim().length > 0,
     fixture: FIXTURE,
+    warmupMode: WARMUP_MODE,
     route: ENTRIES_URL,
     rowsOnScreen: totalRows,
     browser: { engine: "chromium", version: browser.version() },
