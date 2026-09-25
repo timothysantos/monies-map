@@ -51,7 +51,7 @@ test("a failed refresh after a month save keeps the saved value and offers a ret
 
   await page.locator(".month-inline-action-row").first().getByTestId("month-inline-save-button").click();
   await expect(notice(page)).toBeVisible();
-  await expect(notice(page)).toContainText("saved");
+  await expect(notice(page)).toContainText("Saved changes are kept");
   expect(refreshAttempts).toBeGreaterThan(0);
   // The saved value stays on screen and the page is not the error screen.
   await expect(row.locator("td").nth(2)).toContainText("123.45");

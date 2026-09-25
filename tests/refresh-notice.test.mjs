@@ -27,7 +27,7 @@ test("a failed background refresh resolves to null and raises the notice with it
 
   assert.equal(result, null);
   assert.equal(owner.getSnapshot().notice.id, 1);
-  assert.equal(owner.getSnapshot().notice.retry, retry);
+  assert.deepEqual(owner.getSnapshot().notice.retries, [retry]);
   assert.equal(notifications(), 1);
 });
 
@@ -112,4 +112,34 @@ test("dismiss hides the notice without running anything", async () => {
 
   assert.equal(owner.getSnapshot().notice, null);
   assert.equal(retried, 0);
+});
+
+test("when several refreshes fail, Refresh now reruns every one of them", async () => {
+  const { owner } = setup();
+  const reran = [];
+  const monthRetry = () => { reran.push("month"); return Promise.resolve(); };
+  const shellRetry = () => { reran.push("shell"); return Promise.resolve(); };
+  // A Month save: the page refresh and its nested shell refresh both fail.
+  await Promise.all([
+    owner.settle(() => Promise.reject(new Error("shell 500")), { retry: shellRetry }),
+    owner.settle(() => Promise.reject(new Error("month 500")), { retry: monthRetry })
+  ]);
+  assert.equal(owner.getSnapshot().notice.retries.length, 2);
+
+  owner.retry();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.deepEqual(reran.sort(), ["month", "shell"]);
+  assert.equal(owner.getSnapshot().notice, null);
+});
+
+test("the same retry reported twice runs once", async () => {
+  const { owner } = setup();
+  let runs = 0;
+  const retry = () => { runs += 1; return Promise.resolve(); };
+  await owner.settle(() => Promise.reject(new Error("500")), { retry });
+  await owner.settle(() => Promise.reject(new Error("500")), { retry });
+  assert.equal(owner.getSnapshot().notice.retries.length, 1);
+  owner.retry();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(runs, 1);
 });

@@ -1506,6 +1506,10 @@ function useEntriesPageData({
   // it when the person has since moved on, so it cannot replace the newer
   // month's entries.
   const refreshEntriesPage = useCallback(async ({ bypassCache = false, invalidateAppShell = false } = {}) => {
+    // A stale callback must not clear the new month's cache mid-load.
+    if (!owner.isActive(entriesPageParams)) {
+      return null;
+    }
     if (bypassCache) {
       clearEntriesPageCache();
     }

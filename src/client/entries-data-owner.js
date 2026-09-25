@@ -7,12 +7,6 @@
 // is not reported. A refresh for a request that is no longer active does not
 // run at all.
 
-import { isCancelledError } from "@tanstack/react-query";
-
-function isAbort(error) {
-  return (error instanceof DOMException && error.name === "AbortError") || isCancelledError(error);
-}
-
 export function createEntriesDataOwner({ initialPage, requestKeyOf = (params) => params.toString() }) {
   let state = { page: initialPage, isLoading: false };
   let activeKey = "";
@@ -56,16 +50,20 @@ export function createEntriesDataOwner({ initialPage, requestKeyOf = (params) =>
         }
         setState({ page, isLoading: false });
         return true;
-      } catch (error) {
-        if (mine !== generation || signal?.aborted || isAbort(error)) {
+      } catch {
+        if (mine !== generation || signal?.aborted) {
           return false;
         }
-        // The panel keeps the last page; the refresh notice or the next
-        // load reports the problem.
+        // Still the latest load (a failure, or a cancel by a cache clear):
+        // end its loading state and keep the last page, as before.
         setState({ page: state.page, isLoading: false });
         return false;
       }
     },
+
+    // Whether a request is the active month and view. Callers check it
+    // before clearing caches for a refresh that would not run anyway.
+    isActive: (params) => requestKeyOf(params) === activeKey,
 
     // Refetch after a mutation, keeping the current page on screen. Returns
     // the fresh page, or null when the request is no longer the active one

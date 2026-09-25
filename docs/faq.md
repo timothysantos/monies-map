@@ -195,8 +195,8 @@ The goal is to avoid shell-wide reloads for small edits while still making it
 clear that totals, actuals, or charts are catching up to the newest saved data.
 
 If a background refresh fails after a save, the save still stands. The page
-keeps what it shows and a notice says "Your change is saved, but this page
-could not refresh." Choose **Refresh now** to try again, or **Dismiss** to
+keeps what it shows and a notice says "This page could not refresh. Saved
+changes are kept." Choose **Refresh now** to try again, or **Dismiss** to
 carry on; moving to another page or month also clears it, because that page
 loads fresh data.
 
