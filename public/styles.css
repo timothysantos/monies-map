@@ -1651,6 +1651,27 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   color: var(--muted);
 }
 
+.month-row-open-button {
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.month-row-open-button:hover,
+.month-row-open-button:focus-visible {
+  color: var(--accent-strong);
+}
+
+.month-row-open-button:focus-visible {
+  outline: 2px solid rgba(191, 103, 45, 0.32);
+  outline-offset: 3px;
+}
+
 .month-row-pending-hint {
   font-size: 0.76rem;
   line-height: 1.2;
