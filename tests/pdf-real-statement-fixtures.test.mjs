@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { extractTransactionDateHint } from "../src/domain/app-repository-helpers.ts";
+import { extractTransactionDateHint, normalizeDescriptionForMatch } from "../src/domain/app-repository-helpers.ts";
 import { parseStatementText } from "../src/lib/statement-import.ts";
 
 // Extracted with pdf.js 4 from real statements, then masked item by item
@@ -105,6 +105,16 @@ test("a real Citi Rewards statement parses from pdf.js 4 text with its grand tot
   assert.deepEqual(parsed.rows.find((row) => row.description.startsWith("FORTYTWO")), {
     date: "2026-07-30", description: "FORTYTWO", expense: "600.32", income: "", account: "Citi Rewards", category: "Other", note: "", type: "expense"
   });
+  // The trailing location ("SingaporeSG", "SG") is stripped once; a merchant
+  // name that itself ends in .sg keeps it.
+  assert.deepEqual(parsed.rows.filter((row) => /anywheel|ROCKONLINE|Netflix/.test(row.description)).map((row) => row.description), [
+    "www.anywheel.sg",
+    "Netflix.com Los Gatos",
+    "ROCKONLINE.SG"
+  ]);
+  // Rows imported before this fix ("www.anywheel.") still match as duplicates.
+  assert.equal(normalizeDescriptionForMatch("www.anywheel."), normalizeDescriptionForMatch("www.anywheel.sg"));
+  assert.equal(normalizeDescriptionForMatch("ROCKONLINE."), normalizeDescriptionForMatch("ROCKONLINE.SG"));
   // The previous balance plus the net movement is the grand total.
   const previous = Number(/BALANCEPREVIOUSSTATEMENT([\d,]+\.\d{2})/.exec(readFileSync(new URL("./fixtures/pdf-statement-text/citibank-rewards-aug-2026-real-sanitized.pdf-text.txt", import.meta.url), "utf8"))[1].replace(/,/g, "")) * 100;
   assert.equal(Math.round(previous) - netMinor(parsed.rows), 14882);
