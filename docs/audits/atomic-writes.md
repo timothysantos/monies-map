@@ -175,13 +175,71 @@ All on the final code unless noted, Node v22.12.0.
   bundle, and in the final full run. Recorded as a timing flake; the cause was
   not investigated further.
 
+## Rollback restores promoted manual entries (2026-09-25)
+
+Branch `rollback-restores-manual`, based on `macro-performance` at `d702fed`,
+Node v22.23.3. Closes the first open item below. Decision (the user's): a
+rollback puts the promoted entry back as a Manual provisional entry, exactly as
+it was before the promotion.
+
+Storage: one column, `import_rows.promoted_entry_snapshot_json`, in
+`schema.sql` and added by a guarded `ALTER TABLE` in
+`app-repository-schema.ts`, so production needs no manual migration. The
+promoting import row is written in the commit's batch (or its staged chunk for
+large imports) with a JSON snapshot of the fields the promotion overwrites:
+`import_id` (NULL), `import_row_id`, `post_date`, `description`,
+`amount_minor`, `entry_type`, `transfer_direction`, plus `updated_at` as
+evidence. Rows that create entries store NULL. The snapshot is read with the
+reconciliation target before any write.
+
+Rollback (`buildPromotedEntryRestore`, read before the batch, statements run
+first in the rollback's one `db.batch()`, before the cleanup):
+
+| State of the promoted entry at rollback | Result |
+| --- | --- |
+| still import provisional in this import | snapshot bank facts restored, `import_id`/`import_row_id` cleared; category, note, owner, splits and transfer links kept; `updated_at` is the rollback time |
+| deleted by the user | nothing to restore; the rollback succeeds |
+| certified by a later PDF statement | CSV rollback stays allowed (the existing rule). The entry keeps the statement's facts and stays certified; its import links and `statement_certified_previous_*` are replaced by the manual snapshot, and the statement certificate's `certified_ledger_rows_json` entry is rewritten the same way, so rolling the statement back afterwards returns the original manual entry |
+| legacy import (no snapshot) | best effort: an entry whose `created_at` is before the import's `imported_at` can only have been promoted by it, so it is kept as a manual entry with its current (imported) bank facts; today's code deleted it. Import-created rows are always newer than the import and are still deleted |
+
+The months of the entry's current and restored dates get refresh markers in the
+same batch. Double rollback is still rejected with 409 before any read.
+
+Tests: `tests/atomic-writes-import-promotion-rollback.test.mjs` (8, real local
+D1). Written first; run unchanged against the base `d702fed` in a scratch
+checkout: 5 fail and 3 pass. The main scenario, the edited-entry, the
+double-rollback and the statement-certified tests fail because the rollback
+deleted the manual entry (`+ []` / `undefined`); the legacy test fails because
+the column does not exist. The deleted-entry test and the two failure tests
+(rollback failing at its last statement, commit failing at its `completed`
+flip, each asserting the whole database dump unchanged) pass on the base,
+as expected: they pin behaviour that must not regress.
+
+Persisted-state harness (ports 8971-8977):
+
+- unchanged scenario, base vs branch: one difference, the new
+  `promoted_entry_snapshot_json: null` on the kept import's row.
+- the harness now also creates a manual entry, promotes it with a CSV, edits
+  its note and rolls the import back (`bf7af48`). Base vs branch with that
+  scenario: the new column, the restored entry (original description and
+  date, `post_date` NULL, `import_id` NULL, note kept, `Manual provisional` in
+  the Entries DTOs), and every total that counts it 4,329 higher (the base
+  deleted it). Two branch runs are byte-identical.
+
+Runtime (real `wrangler dev` on 8810, Vite 5410, `--persist-to
+.wrangler/state-rollback`): reseed; add manual entry "FAIRPRICE FINEST"
+$43.21 on 2026-05-18 with a note; in the browser paste a CSV with
+"FAIRPRICE FINEST SINGAPORE" -43.21 on 2026-05-19 and a new row; the preview
+said one manual row would be promoted; commit; D1 showed the promoted row with
+the snapshot on its import row; roll back from Recent imports (in-app confirm);
+the Entries page shows "FAIRPRICE FINEST", 18 May 2026, -$43.21, the note, and
+no new row; the API reports `Manual provisional`; D1 shows `import_id`,
+`import_row_id` and `post_date` NULL. A second rollback returns 409.
+
 ## Open items
 
-- Rolling back a CSV import deletes a manual entry that the import reconciled
-  (promoted): cleanup removes every transaction whose `import_id` is the
-  import, and promotion sets that field on the manual entry. Verified on this
-  branch; the SQL is unchanged from the base, so it is pre-existing. Not fixed
-  here because restoring the manual entry is a product decision.
+- Closed 2026-09-25 (section above): rolling back a CSV import deleted a
+  manual entry that the import had promoted.
 - Not yet converted (still sequential writes): the split workspace
   (`app-repository-splits.ts`), including the linked split expense an entry
   save upserts after its own batch; category match rule suggestions recorded
