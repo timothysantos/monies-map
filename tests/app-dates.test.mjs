@@ -6,6 +6,7 @@ import test from "node:test";
 import { addDaysToIsoDate, APP_TIME_ZONE, isoDateInAppTimeZone, todayInAppTimeZone } from "../src/client/app-dates.js";
 import { buildEntryDraft } from "../src/client/entry-helpers.js";
 import { buildQuickExpenseDraftPatch } from "../src/client/quick-entry-url.js";
+import { getCurrentMonthKey } from "../src/lib/month.ts";
 
 // 01:30 on 1 October in Singapore is still 30 September in UTC. Anything that
 // takes "today" from toISOString() lands on the wrong day and month here.
@@ -27,6 +28,24 @@ test("today follows the Singapore calendar, not UTC", (t) => {
 
   atInstant(t, EARLY_SINGAPORE_MORNING);
   assert.equal(todayInAppTimeZone(), "2026-10-01");
+});
+
+// The Worker runs in UTC and a phone may be abroad; the default month must
+// still be the Singapore month.
+test("the current month is the Singapore month whatever the process time zone", (t) => {
+  const originalZone = process.env.TZ;
+  t.after(() => {
+    if (originalZone === undefined) delete process.env.TZ;
+    else process.env.TZ = originalZone;
+  });
+  for (const zone of ["UTC", "America/Los_Angeles", "Asia/Singapore"]) {
+    process.env.TZ = zone;
+    assert.equal(getCurrentMonthKey(new Date(EARLY_SINGAPORE_MORNING)), "2026-10", zone);
+    assert.equal(getCurrentMonthKey(new Date(LATE_SINGAPORE_EVENING)), "2026-09", zone);
+  }
+  atInstant(t, EARLY_SINGAPORE_MORNING);
+  process.env.TZ = "UTC";
+  assert.equal(getCurrentMonthKey(), "2026-10", "the default is read at call time");
 });
 
 test("an invalid instant has no calendar date", () => {
@@ -62,6 +81,17 @@ test("a quick entry date with a time keeps its Singapore day", (t) => {
   }).draft.date;
   assert.equal(build("2026-10-01T01:30:00+08:00"), "2026-10-01");
   assert.equal(build("2026-09-28"), "2026-09-28", "a plain date is kept as written");
+  // Read on a phone in Sydney, 01:30 local is still the previous day in
+  // Singapore; a value written without a zone keeps the day it names.
+  const originalZone = process.env.TZ;
+  process.env.TZ = "Australia/Sydney";
+  try {
+    assert.equal(build("2026-09-28T01:30"), "2026-09-28", "a date and time with no zone keeps its written day");
+    assert.equal(build("2026-09-28 01:30:00"), "2026-09-28");
+  } finally {
+    if (originalZone === undefined) delete process.env.TZ;
+    else process.env.TZ = originalZone;
+  }
   assert.equal(build("garbage"), "2026-10-01", "an unreadable date falls back to today");
 });
 
@@ -76,8 +106,8 @@ test("a new ledger entry with no month open defaults to the Singapore day", (t) 
 
 // Splits drafts load the full client service (pdf.js), so their Singapore
 // default is proven in tests/e2e/app-dates.spec.js. This guard keeps new code
-// from computing "today" from UTC again anywhere in the client.
-test("client code never takes today's date from UTC", () => {
+// from cutting a calendar date out of a UTC timestamp anywhere in the client.
+test("client code never takes a calendar date from a UTC timestamp", () => {
   const offenders = [];
   const visit = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -85,11 +115,14 @@ test("client code never takes today's date from UTC", () => {
       if (entry.isDirectory()) visit(file);
       else if (/\.(jsx?|tsx?)$/.test(entry.name)) {
         readFileSync(file, "utf8").split("\n").forEach((line, index) => {
-          if (/new Date\(\)\.toISOString\(\)\.(slice|split|substring)/.test(line)) offenders.push(`${file}:${index + 1}`);
+          // A full timestamp is fine; cutting a date out of one is the UTC day.
+          if (/\.(toISOString|toJSON)\(\)\.(slice|split|substring|substr)\(/.test(line)) offenders.push(`${file}:${index + 1}`);
         });
       }
     }
   };
   visit("src/client");
-  assert.deepEqual(offenders, [], "use todayInAppTimeZone() from src/client/app-dates.js");
+  // app-dates.js owns calendar arithmetic on T00:00:00Z dates.
+  assert.deepEqual(offenders.filter((line) => !line.startsWith(path.join("src/client", "app-dates.js"))), [],
+    "use todayInAppTimeZone(), isoDateInAppTimeZone() or addDaysToIsoDate() from src/client/app-dates.js");
 });

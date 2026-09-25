@@ -114,7 +114,6 @@ const SummaryPanel = lazy(() => loadRouteModule("summary").then((module) => ({ d
 
 // Shared UI constants used by the month and summary pickers.
 const SUMMARY_FOCUS_OVERALL = "overall";
-const DEFAULT_MONTH_KEY = getCurrentMonthKey();
 // Canonical route registry for the top navigation and route-based prefetching.
 const routeTabs = [
   { id: "summary", path: "/summary", label: messages.tabs.summary },
@@ -243,7 +242,7 @@ export function App() {
     appShell,
     selectedTabId === "splits" ? defaultSplitsViewId : undefined
   );
-  const selectedMonth = searchParams.get("month") ?? DEFAULT_MONTH_KEY;
+  const selectedMonth = searchParams.get("month") ?? getCurrentMonthKey();
   const selectedScope = searchParams.get("scope") ?? "direct_plus_shared";
   const selectedSummaryStart = searchParams.get("summary_start") ?? undefined;
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
