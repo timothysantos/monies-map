@@ -2338,69 +2338,105 @@ owner (`entries-data-owner.js`, generation guards) is unchanged.
 | 2 | `EntryRow` memoized; stable handlers (`useStableHandler`); editor props only for the open row; transfer candidates only for that row | `389fa3e` |
 | 2 | Privacy subscription moved to a memoized `EntryRowAmount` | `c7d9ba2` |
 | 2 | A row's category dialog mounts only while open | `1db671e` |
-| 3 | `content-visibility: auto` on closed rows (68 px desktop, 89 px mobile intrinsic size); focus ring drawn inside the row | `6608f05` |
+| 3 | `content-visibility: auto` on closed rows; focus ring drawn inside the row | `6608f05` |
 | Month | Plan-link scoring memoized on the plan row and entries only; candidate rows memoized with a stable toggle | `a41ae5e` |
+| Review | Content-height placeholders (67 px desktop, 88 px mobile); instant scroll for jumps over two screens | `0d8ebfb` |
 
 Step 3 used CSS, not windowing: rows stay in the DOM, so find-in-page, Tab
 focus and screen readers reach every row. `entries-row-rendering.spec.js`
 checks that an off-screen row is skipped, that `window.find` still finds
 it, that focusing it renders it, and that the open row is never skipped.
 
-### Entries results: baseline → final (step 3)
+### Entries results: baseline → final
 
-Settled median, p95 and the min–max of per-run medians, in ms.
+Final means the finished branch after merging `macro-performance`
+(`0d8ebfb`), measured in a fresh cohort (5 runs per project). Settled
+median, p95 and the min–max of per-run medians, in ms.
 
 Desktop (CPU 1×):
 
 | Interaction | Median | p95 | Run medians | Row renders | Verdict |
 | --- | ---: | ---: | --- | ---: | --- |
-| Type one search character | 212 → 74 | 304 → 93 | 204–213 → 66–88 | 1,554 → 0 | faster |
-| Clear the search (464 rows return) | 854 → 707 | 1,427 → 1,120 | 730–952 → 529–728 | 2,018 → 464 | faster |
-| Category filter on | 142 → 45 | 204 → 70 | 131–163 → 42–54 | 981 → 0 | faster |
-| Category filter off (1,037 rows return) | 1,531 → 1,435 | 3,067 → 2,457 | 1,361–1,903 → 1,076–1,583 | 2,018 → 1,037 | within noise |
-| Open one entry editor | 403 → 74 | 664 → 117 | 369–486 → 67–98 | 4,036 → 2 | faster |
-| One draft keystroke | 161 → 25 | 244 → 34 | 146–210 → 21–28 | 2,018 → 1 | faster |
-| Close the editor | 415 → 77 | 658 → 110 | 361–525 → 71–103 | 6,054 → 2 | faster |
-| Show money | 269 → 49 | 377 → 74 | 249–284 → 46–63 | 2,018 → 0 | faster |
-| Hide money | 284 → 46 | 402 → 60 | 257–294 → 45–56 | 2,018 → 0 | faster |
+| Type one search character | 212 → 72 | 304 → 81 | 204–213 → 70–73 | 1,554 → 0 | faster |
+| Clear the search (464 rows return) | 854 → 635 | 1,427 → 1,083 | 730–952 → 484–638 | 2,018 → 464 | faster |
+| Category filter on | 142 → 44 | 204 → 48 | 131–163 → 43–46 | 981 → 0 | faster |
+| Category filter off (1,037 rows return) | 1,531 → 1,388 | 3,067 → 2,360 | 1,361–1,903 → 1,013–1,388 | 2,018 → 1,037 | within noise |
+| Open one entry | 403 → 70 | 664 → 81 | 369–486 → 65–71 | 4,036 → 2 | faster |
+| One draft keystroke | 161 → 24 | 244 → 30 | 146–210 → 21–25 | 2,018 → 1 | faster |
+| Close the editor | 415 → 75 | 658 → 84 | 361–525 → 73–75 | 6,054 → 2 | faster |
+| Show money | 269 → 48 | 377 → 55 | 249–284 → 46–48 | 2,018 → 0 | faster |
+| Hide money | 284 → 46 | 402 → 55 | 257–294 → 44–47 | 2,018 → 0 | faster |
 
-Mobile emulation (CPU 4×):
+Mobile emulation (CPU 4×; entries open in the bottom sheet):
 
 | Interaction | Median | p95 | Run medians | Row renders | Verdict |
 | --- | ---: | ---: | --- | ---: | --- |
-| Type one search character | 2,508 → 238 | 4,251 → 337 | 2,074–3,274 → 223–294 | 3,108 → 0 | faster |
-| Clear the search | 3,487 → 430 | 5,733 → 773 | 2,674–5,278 → 364–565 | 4,036 → 464 | faster |
-| Category filter on | 1,749 → 162 | 3,119 → 261 | 1,372–2,810 → 149–221 | 1,962 → 0 | faster |
-| Category filter off | 3,955 → 557 | 7,697 → 1,013 | 3,610–5,878 → 462–789 | 4,036 → 1,037 | faster |
-| Open one entry (bottom sheet) | 1,802 → 194 | 3,100 → 319 | 1,451–2,440 → 181–296 | 4,036 → 1 | faster |
-| One draft keystroke | 1,622 → 140 | 2,599 → 200 | 1,286–2,323 → 131–170 | 4,036 → 1 | faster |
-| Close the sheet | 2,402 → 296 | 4,439 → 410 | 2,147–3,534 → 274–379 | 6,054 → 2 | faster |
-| Show money | 1,930 → 195 | 4,305 → 282 | 1,650–3,281 → 178–237 | 4,036 → 0 | faster |
-| Hide money | 2,093 → 165 | 2,683 → 244 | 1,857–2,413 → 154–207 | 2,018 → 0 | faster |
+| Type one search character | 2,508 → 221 | 4,251 → 254 | 2,074–3,274 → 216–224 | 3,108 → 0 | faster |
+| Clear the search (464 rows return) | 3,487 → 366 | 5,733 → 411 | 2,674–5,278 → 352–404 | 4,036 → 464 | faster |
+| Category filter on | 1,749 → 149 | 3,119 → 159 | 1,372–2,810 → 144–154 | 1,962 → 0 | faster |
+| Category filter off (1,037 rows return) | 3,955 → 474 | 7,697 → 548 | 3,610–5,878 → 465–530 | 4,036 → 1,037 | faster |
+| Open one entry | 1,802 → 324 | 3,100 → 361 | 1,451–2,440 → 313–347 | 4,036 → 1 | faster |
+| One draft keystroke | 1,622 → 134 | 2,599 → 149 | 1,286–2,323 → 128–135 | 4,036 → 1 | faster |
+| Close the editor | 2,402 → 333 | 4,439 → 374 | 2,147–3,534 → 331–355 | 6,054 → 2 | faster |
+| Show money | 1,930 → 182 | 4,305 → 203 | 1,650–3,281 → 174–192 | 4,036 → 0 | faster |
+| Hide money | 2,093 → 154 | 2,683 → 168 | 1,857–2,413 → 145–162 | 2,018 → 0 | faster |
 
 Step 2 alone (memo, stable props, identity) was faster than baseline on
 every interaction except desktop search clear and category off (within
-noise) and made each re-render touch only changed rows. Step 3 then cut
+noise), and made each change re-render only changed rows. Step 3 then cut
 what remained of re-inserting rows and redrawing amounts: against step 2,
 mobile "category off" went 1,161 → 557, "clear the search" 798 → 430,
 "show money" 748 → 195, and desktop "show money" 128 → 49 (all per-run
-medians disjoint).
+medians disjoint). Between the step-3 cohort and the final one, mobile
+"open one entry" rose 194 → 324 and "close" 296 → 333; the merge brought
+in the modal mobile sheet change from `consistent-states`, the likely
+cause, not verified.
 
-### Month plan-link picker: before → after
+### Month plan-link picker: before → after (final build)
 
-| Interaction | Desktop median | Mobile median | Mobile run medians | Verdict (both) |
-| --- | ---: | ---: | --- | --- |
-| Open the picker | 35 → 38 | 149 → 136 | 139–160 → 129–140 | within noise |
-| Toggle one candidate on | 17 → 6 | 71 → 26 | 65–77 → 25–28 | faster |
-| Toggle it off | 17 → 6 | 72 → 24 | 64–77 → 23–28 | faster |
-| Type in the filter | 17 → 9 | 76 → 33 | 70–79 → 31–34 | faster |
-| Clear the filter | 19 → 11 | 83 → 43 | 79–89 → 41–45 | faster |
-| Close the picker | 13 → 13 | 55 → 51 | 52–60 → 51–52 | within noise |
+Desktop:
 
-The Month page has no 2,000-row list: the plan tables hold dozens of rows
-and the picker lists at most 80. Each picker click still re-renders the
-Month page around it (about 460–500 components after, 670–711 before),
-because `MonthPanel` owns the dialog state.
+| Interaction | Median | p95 | Run medians | Row renders | Verdict |
+| --- | ---: | ---: | --- | ---: | --- |
+| Open the picker | 35 → 37 | 64 → 43 | 34–40 → 35–37 | 0 → 80 | within noise |
+| Toggle one candidate on | 17 → 6 | 20 → 8 | 17–18 → 5–6 | 0 → 1 | faster |
+| Toggle it off | 17 → 6 | 20 → 7 | 17–18 → 5–6 | 0 → 1 | faster |
+| Type in the filter | 17 → 8 | 24 → 10 | 17–18 → 8–9 | 0 → 0 | faster |
+| Clear the filter | 19 → 11 | 22 → 12 | 18–20 → 11–11 | 0 → 20 | faster |
+| Close the picker | 13 → 13 | 16 → 14 | 13–14 → 13–13 | 0 → 0 | within noise |
+
+Mobile emulation:
+
+| Interaction | Median | p95 | Run medians | Row renders | Verdict |
+| --- | ---: | ---: | --- | ---: | --- |
+| Open the picker | 149 → 148 | 182 → 160 | 139–160 → 143–152 | 0 → 80 | within noise |
+| Toggle one candidate on | 71 → 23 | 89 → 27 | 65–77 → 23–24 | 0 → 1 | faster |
+| Toggle it off | 72 → 21 | 96 → 23 | 64–77 → 21–21 | 0 → 1 | faster |
+| Type in the filter | 76 → 30 | 87 → 34 | 70–79 → 29–31 | 0 → 0 | faster |
+| Clear the filter | 83 → 38 | 98 → 44 | 79–89 → 37–39 | 0 → 20 | faster |
+| Close the picker | 55 → 56 | 72 → 67 | 52–60 → 54–62 | 0 → 0 | within noise |
+
+"Row renders" before is 0 because candidates were plain elements, not
+components; compare component renders instead (711 → 502 per desktop
+toggle, 670 → 508 on mobile). The Month page has no 2,000-row list: the
+plan tables hold dozens of rows and the picker lists at most 80. Each
+picker click still re-renders the Month page around it, because
+`MonthPanel` owns the dialog state.
+
+### Deep links far down the month (found in review)
+
+A review of the diff asked whether scrolling to an entry lands correctly
+with estimated row heights. On the 10k fixture it did not: opening row
+1,500 or 1,990 through `editing_entry` left it 650–2,150 px off screen,
+while the baseline centred it. Two causes: the placeholder height was
+1 px too tall (the intrinsic size excludes the row's top border), and the
+page's `scroll-behavior: smooth` turned the jump into a 2 s animation that
+rendered estimated rows on the way, after the four scroll retries had
+ended. Fixed in `0d8ebfb`: content-height placeholders (67/88 px) and an
+instant scroll for jumps longer than two screens. Row 5, 1,500 and 1,990
+now land at the same spot as the baseline (313 px desktop, 82 px mobile);
+`tests/performance/entries-deep-link.spec.js` asserts it and failed on the
+step-3 build by about 1,900 px.
 
 ### Still open
 
@@ -2418,15 +2454,19 @@ because `MonthPanel` owns the dialog state.
 
 ### Chunk sizes (gzip)
 
-| Asset | Before | After |
-| --- | ---: | ---: |
-| `entries-panel` route chunk (lazy) | 19,807 B | 20,141 B |
-| `month-panel` route chunk (lazy) | 13,758 B | 13,793 B |
-| `category-visuals` | 2,167 B | 2,182 B |
-| `styles.css` | 31,413 B | 31,826 B |
+"Branch" is this work before the merge (built from `a41ae5e`); "final" is
+after merging `macro-performance`, whose own changes (lint fixes, shared
+viewport and error-state modules) are included in that column.
+
+| Asset | Before (`d702fed`) | Branch | Final |
+| --- | ---: | ---: | ---: |
+| `entries-panel` route chunk (lazy) | 19,807 B | 20,141 B | 20,128 B |
+| `month-panel` route chunk (lazy) | 13,758 B | 13,793 B | 13,639 B |
+| `category-visuals` | 2,167 B | 2,182 B | 2,164 B |
+| `styles.css` | 31,413 B | 31,826 B | 32,178 B (`macro-performance` alone: 31,678 B) |
 
 No dependency was added. `npm run check:bundle` (first screen) passes;
-results are in "Gates" below.
+see "Gates" below.
 
 ### Tests
 
@@ -2446,3 +2486,20 @@ results are in "Gates" below.
   failed on the old merge), `entry-selectors.test.mjs` (projection
   identity per entry and view), `compare-performance.test.mjs`
   (interaction cohorts, verdicts, report reading).
+
+### Gates
+
+Run on the merged branch (after `macro-performance` at `70b7d01`), Node 22.
+
+| Check | Result |
+| --- | --- |
+| `npm run verify` (ports 5173/8787 were free) | Pass: audit 0 vulnerabilities; typecheck and client typecheck pass; lint 0 errors (30 warnings, none in this change's files); unit 561/561; build; smoke 133 passed |
+| `npm run check:bundle` | Pass: 172,914 B JS / 32,762 B CSS gzip against 180,337 / 31,961 (CSS +2.5%, under +5%); budget unchanged |
+| Full `npm run test:e2e`, isolated vite 5409 / wrangler 8809 (`--persist-to .wrangler/state-render`) | **281/281** |
+| Performance harness, scale-10k (port 5191) | `entries-interaction`, `month-interaction` cohorts above; `entries-deep-link` 2/2 |
+
+The independent review found no high or medium issues. It raised three
+low ones: deep-link scroll with estimated heights (reproduced and fixed,
+above), `useStableHandler` silently skipping a missing handler (now
+throws as before), and future focus rings at a row's edge (noted under
+"Still open").
