@@ -9,7 +9,6 @@ import { moniesClient } from "./monies-client-service";
 import { PrivateMoney } from "./money-privacy";
 import {
   canInlineEditMonthPlanRow,
-  canInlineEditMonthRow,
   canOpenMonthMobileSheet,
   getMonthPlanSharedEditHint
 } from "./month-row-editing";
@@ -33,7 +32,7 @@ function isBudgetBucketsSection(sectionKey) {
   return sectionKey === "budget_buckets";
 }
 
-function useMonthMobileEditViewport() {
+function isMonthMobileEditViewport() {
   return typeof window !== "undefined" && window.matchMedia(MOBILE_MONTH_EDIT_QUERY).matches;
 }
 
@@ -515,7 +514,7 @@ function PlanningRow({
 }) {
   const variance = row.plannedMinor - row.actualMinor;
   const canInlineEditRow = canInlineEditMonthPlanRow({ isCombinedHouseholdView, row });
-  const canOpenRow = canInlineEditRow || (useMonthMobileEditViewport() && canOpenMonthMobileSheet({ isCombinedHouseholdView, row }));
+  const canOpenRow = canInlineEditRow || (isMonthMobileEditViewport() && canOpenMonthMobileSheet({ isCombinedHouseholdView, row }));
   const isDraftBudgetBucket = isBudgetBucketsSection(section.key) && row.isDraft;
   // A derived row may show a scoped share in the table. When editing, switch to
   // the source row values so the user edits the underlying plan, not the
