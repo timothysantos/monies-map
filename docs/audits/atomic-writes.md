@@ -197,23 +197,45 @@ first in the rollback's one `db.batch()`, before the cleanup):
 
 | State of the promoted entry at rollback | Result |
 | --- | --- |
-| still import provisional in this import | snapshot bank facts restored, `import_id`/`import_row_id` cleared; category, note, owner, splits and transfer links kept; `updated_at` is the rollback time |
+| still import provisional in this import | snapshot bank facts restored, `import_id`/`import_row_id` cleared; category, note, owner, splits and transfer links kept; `updated_at` is the rollback time. A bank fact the user edited after the promotion is also restored (the user's rule), except that an entry now in a transfer group keeps its transfer entry type and direction |
 | deleted by the user | nothing to restore; the rollback succeeds |
 | certified by a later PDF statement | CSV rollback stays allowed (the existing rule). The entry keeps the statement's facts and stays certified; its import links and `statement_certified_previous_*` are replaced by the manual snapshot, and the statement certificate's `certified_ledger_rows_json` entry is rewritten the same way, so rolling the statement back afterwards returns the original manual entry |
+| superseded (deleted) by a later PDF statement | not in the ledger, so nothing is restored now; that statement's `superseded_ledger_rows_json` is rewritten to the manual entry, and the rows this import created are dropped from it, so rolling the statement back re-creates the manual entry only. Before, that statement rollback failed on a foreign key (it re-inserted rows pointing at the deleted import rows) |
 | legacy import (no snapshot) | best effort: an entry whose `created_at` is before the import's `imported_at` can only have been promoted by it, so it is kept as a manual entry with its current (imported) bank facts; today's code deleted it. Import-created rows are always newer than the import and are still deleted |
 
 The months of the entry's current and restored dates get refresh markers in the
 same batch. Double rollback is still rejected with 409 before any read.
 
-Tests: `tests/atomic-writes-import-promotion-rollback.test.mjs` (8, real local
-D1). Written first; run unchanged against the base `d702fed` in a scratch
-checkout: 5 fail and 3 pass. The main scenario, the edited-entry, the
+Tests: `tests/atomic-writes-import-promotion-rollback.test.mjs` (12, real
+local D1). The first 8 were written first and run unchanged against the base
+`d702fed` in a scratch checkout: 5 fail and 3 pass. The main scenario, the edited-entry, the
 double-rollback and the statement-certified tests fail because the rollback
 deleted the manual entry (`+ []` / `undefined`); the legacy test fails because
 the column does not exist. The deleted-entry test and the two failure tests
 (rollback failing at its last statement, commit failing at its `completed`
 flip, each asserting the whole database dump unchanged) pass on the base,
-as expected: they pin behaviour that must not regress.
+as expected: they pin behaviour that must not regress. Added later: a staged
+bulk import (261 rows) that promotes and rolls back, and the three review
+tests below.
+
+Independent review (pass 3), each finding reproduced by a scratch test and
+fixed with a test that failed first (`0998e66`):
+
+- Medium: an entry linked as a transfer after the promotion came back as an
+  expense inside its transfer group with the Transfer category. It now keeps
+  the transfer entry type and direction.
+- Medium: a PDF statement that superseded the promoted entry (its balance
+  left the CSV rows out) kept a snapshot pointing at the CSV's import rows.
+  Rolling back the CSV, then the statement, failed with `FOREIGN KEY
+  constraint failed` and the manual entry was lost. Both orders are now
+  tested and return the manual entry.
+- Test gaps: the legacy and bulk tests now assert the import's own rows are
+  gone; replacing the legacy heuristic with `OR 1 = 1` fails 4 tests.
+
+Noted, not changed: a manual entry created in the same second as a legacy
+import is not recognised as promoted (strict `<`) and is deleted as before;
+a legacy promoted entry that a statement superseded and restored gets a new
+`created_at` and is deleted as before. Neither loses more than the base.
 
 Persisted-state harness (ports 8971-8977):
 
