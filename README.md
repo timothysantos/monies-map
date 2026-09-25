@@ -158,7 +158,7 @@ Core entities in [`schema.sql`](schema.sql):
 
 Recommended local environment:
 
-- Node.js `22.12.0` or newer
+- Node.js `22.23.0` or newer
 - npm
 - Git
 
@@ -170,7 +170,7 @@ nvm use
 node -v
 ```
 
-If you do not use `nvm`, install Node 22.12.0 or newer manually.
+If you do not use `nvm`, install Node 22.23.0 or newer manually.
 
 ## Local development
 
@@ -255,7 +255,7 @@ rollback, D1 schema checks, asset routing, and stale browser sessions.
 
 ### Command reference
 
-The repo requires Node 22.12.0 or newer for local scripts:
+The repo requires Node 22.23.0 or newer for local scripts:
 
 ```bash
 source ~/.nvm/nvm.sh
