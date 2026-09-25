@@ -274,7 +274,9 @@ fallback with "Try again" (reloads the page data through
 `retryActivePageLoad`, then redraws) and "Reload app". It clears itself when
 a navigation starts and again when the requested page settles, because the
 previous page stays on screen while the next one loads. A second boundary in
-`main.jsx` wraps the whole app and can only offer a reload.
+`main.jsx` wraps the whole app and can only offer a reload. A page whose code
+failed to download also gets only "Reload app", because `React.lazy` keeps a
+failed load failed until the page reloads.
 
 ## Reference Data Owner
 

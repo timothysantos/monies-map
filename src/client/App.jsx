@@ -366,6 +366,10 @@ export function App() {
     updateLoadingStatus({ issue: `${source}: ${summary}` });
   }, [updateLoadingStatus]);
 
+  const clearLoadingIssue = useCallback(() => {
+    updateLoadingStatus({ issue: "" });
+  }, [updateLoadingStatus]);
+
   // Incrementing this counter invalidates in-flight responses from older
   // requests so the latest route state always wins.
   const beginAppShellLoad = useCallback(() => {
@@ -2926,7 +2930,7 @@ export function App() {
             }))}
           />
         ) : null}
-        <ScreenErrorBoundary resetKey={screenErrorResetKey} onRetry={retryActivePageLoad}>
+        <ScreenErrorBoundary resetKey={screenErrorResetKey} onRetry={retryActivePageLoad} onReset={clearLoadingIssue}>
           {routeBody}
         </ScreenErrorBoundary>
         {isAppShellLoading ? <AppLoadingOverlay status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} /> : null}
