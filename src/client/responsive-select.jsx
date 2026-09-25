@@ -11,8 +11,8 @@ export function ResponsiveSelect({
   title,
   className = "table-edit-input",
   disabled = false,
-  open,
-  onOpenChange,
+  open = undefined,
+  onOpenChange = undefined,
   hideMobileTrigger = false
 }) {
   const useMobilePicker = useIsMobileLayout();

@@ -15,7 +15,7 @@ function clampAmountMinor(value, totalAmountMinor) {
 export function buildSplitShareState({
   totalAmountMinor,
   splitBasisPoints = 5000,
-  splitAmountMinor,
+  splitAmountMinor = undefined,
   splitValueMode = "percent"
 }) {
   const safeTotal = Math.max(0, Number(totalAmountMinor ?? 0));

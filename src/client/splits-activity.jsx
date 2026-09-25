@@ -61,14 +61,14 @@ export function SplitActivityGroups({
   isSubmitting = false,
   hasEditingChanges = true,
   readOnly = false,
-  onChangeEditingDraft,
-  onCancelEditing,
-  onSaveEditing,
-  onRequestDelete,
+  onChangeEditingDraft = undefined,
+  onCancelEditing = undefined,
+  onSaveEditing = undefined,
+  onRequestDelete = undefined,
   onEditExpense,
   onEditSettlement,
   onViewLinkedEntry,
-  onRefreshActivity,
+  onRefreshActivity = undefined,
   viewId = "household"
 }) {
   const inlineEditorRef = useRef(null);

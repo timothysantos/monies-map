@@ -213,7 +213,6 @@ export function EntriesPanel({
   const entryComposerEditorRef = useRef(null);
   const defaultEntryPerson = entryView.id !== "household" ? entryView.label : "";
   const {
-    searchParamsKey,
     selectedScope,
     walletFilters,
     walletFilterKey,
@@ -429,7 +428,7 @@ export function EntriesPanel({
     setIsQuickExpenseSaving(true);
     try {
       const result = await saveEntryDraft();
-      if (result?.saved) {
+      if (result && result.saved) {
         pendingQuickExpenseDraftRef.current = null;
         setQuickExpensePendingKey("");
         clearStoredQuickExpenseDraft();
@@ -1480,7 +1479,7 @@ function useEntriesPageData({
 
   // This is the single network boundary for the panel. Everything else reads
   // from the owner or the react-query cache.
-  const fetchEntriesPage = useCallback((params, { bypassCache = false, signal } = {}) => (
+  const fetchEntriesPage = useCallback((params, { bypassCache = false, signal = undefined } = {}) => (
     fetchQueryWithLease(queryClient, {
       queryKey: queryKeys.entriesPage(params),
       bypassCache,

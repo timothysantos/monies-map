@@ -314,7 +314,7 @@ test.describe("financial insight wording readiness", () => {
   }
 
   test("month, entries and splits each receive wording once their page is usable", async ({ page }) => {
-    const control = await controlInsightRequests(page);
+    await controlInsightRequests(page);
     await openSummary(page);
     await expect(page.locator(".financial-insight-summary")).toContainText(AI_WORDING);
     for (const [path, heading, className] of [

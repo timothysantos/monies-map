@@ -572,6 +572,66 @@ test.describe("month page", () => {
     await context.close();
   });
 
+  test("pressing Enter in the mobile match filter saves the selection once without a page error", async ({ browser }) => {
+    const context = await browser.newContext({ ...devices["iPhone 12 Pro"] });
+    const page = await context.newPage();
+    const pageErrors = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+    await page.goto("/");
+
+    const label = `Mobile enter match ${Date.now()}`;
+    const saveResult = await postJson(page, "/api/month-plan/save", {
+      rowId: `mobile-plan-enter-${Date.now()}`,
+      month: "2026-05",
+      sectionKey: "planned_items",
+      categoryName: "Entertainment",
+      label,
+      planDate: "2026-05-19",
+      accountName: "UOB One",
+      plannedMinor: 4000,
+      note: "",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    const rowId = saveResult.row?.id ?? saveResult.id ?? saveResult.rowId;
+    expect(rowId).toBeTruthy();
+    const entry = await postJson(page, "/api/entries/create", {
+      date: "2026-05-19",
+      description: "Mobile enter concert",
+      accountName: "UOB One",
+      categoryName: "Entertainment",
+      amountMinor: 2500,
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+
+    await page.goto("/month?view=person-tim&month=2026-05&scope=direct_plus_shared");
+    await page.locator("tr").filter({ hasText: label }).first().getByRole("button", { name: "Link entries" }).click();
+    const sheet = page.locator('.entry-mobile-sheet[aria-label="Match planned item"]');
+    await expect(sheet).toBeVisible();
+    await sheet.locator(".planned-link-row").filter({ hasText: "Mobile enter concert" }).getByRole("checkbox").check();
+
+    const linkRequests = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/month-plan/links")) linkRequests.push(request.url());
+    });
+    const filter = sheet.getByPlaceholder("Filter descriptions in this list");
+    await filter.fill("Mobile enter");
+    await filter.press("Enter");
+    await expect(sheet).toHaveCount(0);
+
+    await expect.poll(async () => {
+      const monthPage = await loadMonthPageData(page);
+      const plannedItems = monthPage.monthPage.planSections.find((section) => section.key === "planned_items");
+      return plannedItems?.rows.find((item) => item.label === label)?.linkedEntryIds ?? [];
+    }).toEqual([entry.entryId]);
+    expect(linkRequests).toHaveLength(1);
+    expect(pageErrors).toEqual([]);
+
+    await context.close();
+  });
+
   test("mobile entries sticky context trigger switches view and scope and hides scope for household", async ({ browser }) => {
     const directDescription = `Playwright mobile direct ${Date.now()}`;
     const sharedDescription = `Playwright mobile shared ${Date.now()}`;

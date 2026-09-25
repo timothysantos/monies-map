@@ -45,10 +45,11 @@ function buildImportPreviewError(error, fallbackMessage = "Import preview failed
     return { message: fallbackMessage };
   }
 
+  const requestError = /** @type {Error & { diagnosticHref?: string, diagnosticId?: string }} */ (error);
   return {
-    message: error.message || fallbackMessage,
-    diagnosticHref: error.diagnosticHref,
-    diagnosticId: error.diagnosticId
+    message: requestError.message || fallbackMessage,
+    diagnosticHref: requestError.diagnosticHref,
+    diagnosticId: requestError.diagnosticId
   };
 }
 
@@ -112,7 +113,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   const [defaultAccountName, setDefaultAccountName] = useState(accounts[0]?.name ?? "");
   const [ownershipType, setOwnershipType] = useState("direct");
   const [ownerName, setOwnerName] = useState(people[0]?.name ?? "");
-  const [splitPercent, setSplitPercent] = useState("50");
   const [unknownCategoryMode, setUnknownCategoryMode] = useState(DEFAULT_UNKNOWN_CATEGORY_MODE);
   const [columnMappings, setColumnMappings] = useState({});
 
@@ -120,7 +120,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
   // matching, and account resolution.
   const [preview, setPreview] = useState(null);
   const [previewRows, setPreviewRows] = useState([]);
-  const [previewError, setPreviewError] = useState("");
+  const [previewError, setPreviewError] = useState(/** @type {string | { message: string, diagnosticHref?: string, diagnosticId?: string }} */ (""));
   const [aiMismatchExplanations, setAiMismatchExplanations] = useState([]);
   const [isExplainingMismatch, setIsExplainingMismatch] = useState(false);
   const [aiDuplicateScores, setAiDuplicateScores] = useState([]);
@@ -350,7 +350,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     detectedPreviewAccountNames,
     certifiedConflictRows,
     duplicateCheckpointAccounts,
-    hasBlockingCategoryPolicy,
     hasAlreadyCoveredCheckpointRefresh,
     hasDuplicateCheckpointAccounts,
     hasEmptyStatementCheckpointOnly,
@@ -496,7 +495,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     setDefaultAccountName(accounts[0]?.name ?? "");
     setOwnershipType("direct");
     setOwnerName(people[0]?.name ?? "");
-    setSplitPercent("50");
     setUnknownCategoryMode(DEFAULT_UNKNOWN_CATEGORY_MODE);
     setColumnMappings({});
     setPreview(null);
@@ -685,7 +683,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           return { parsed: { ...parsed, checkpoints: withDetectedStatementAccounts(parsed.checkpoints) }, sourceType: "pdf" };
         }
         setUploadStatus({ tone: "active", message: messages.imports.uploadOcr(file.name) });
-        const ocrText = await importService.extractPdfOcrText(file, ({ pageNumber, pageCount, status, progress } = {}) => {
+        const ocrText = await importService.extractPdfOcrText(file, ({ pageNumber = undefined, pageCount = undefined, status = undefined, progress = undefined } = {}) => {
           setUploadStatus({
             tone: "active",
             message: messages.imports.uploadOcrProgress({
@@ -1664,7 +1662,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
             <p className="lede compact">{messages.imports.composerDetail}</p>
           </div>
           {importDraftExists ? (
-            <button type="button" className="subtle-action" onClick={resetImportForm} disabled={isSubmitting}>
+            <button type="button" className="subtle-action" onClick={() => resetImportForm()} disabled={isSubmitting}>
               {messages.imports.startOver}
             </button>
           ) : null}
@@ -1678,13 +1676,9 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
           defaultAccountName={defaultAccountName}
           onDefaultAccountChange={handleDefaultAccountChange}
           accounts={accounts}
-          ownershipType={ownershipType}
-          onOwnershipTypeChange={setOwnershipType}
           ownerName={ownerName}
           onOwnerNameChange={handleOwnerNameChange}
           people={people}
-          splitPercent={splitPercent}
-          onSplitPercentChange={setSplitPercent}
           importNote={importNote}
           onImportNoteChange={setImportNote}
           csvText={csvText}
@@ -1741,7 +1735,7 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
                 <button
                   type="button"
                   className="subtle-action"
-                  onClick={resetImportForm}
+                  onClick={() => resetImportForm()}
                 >
                   {messages.imports.startOver}
                 </button>

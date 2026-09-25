@@ -46,7 +46,7 @@ const {
 // - route-level dialogs such as notes, plan links, and mobile editors
 //
 // Without the shell's notice (isolated renders), a failed refresh is dropped.
-function runQuietly(task) {
+function runQuietly(task, _retry) {
   return Promise.resolve().then(task).catch(() => null);
 }
 
@@ -56,7 +56,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
   const [planSections, setPlanSections] = useState(view.monthPage.planSections ?? []);
   const [editingRowId, setEditingRowId] = useState(null);
   const [editingSnapshot, setEditingSnapshot] = useState(null);
-  const [editingDrafts, setEditingDrafts] = useState({});
+  const [editingDrafts, setEditingDrafts] = useState(/** @type {Record<string, any>} */ ({}));
   const [incomeRows, setIncomeRows] = useState(view.monthPage.incomeRows ?? []);
   const [sectionOpen, setSectionOpen] = useState(() => MONTH_SECTION_STATE_CACHE.get(monthUiKey) ?? monthService.getDefaultSectionOpen());
   const [noteDialog, setNoteDialog] = useState(null);
@@ -965,7 +965,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     });
   }
 
-  function handleOpenEntriesForActual({ categoryName, entryIds = [], entryType = "" }) {
+  function handleOpenEntriesForActual({ categoryName = undefined, entryIds = [], entryType = "" }) {
     const next = new URLSearchParams();
     next.set("view", view.id);
     next.set("month", view.monthPage.month);
@@ -1286,7 +1286,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     });
   }
 
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [, setSearchParams] = useSearchParams();
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [isResettingMonth, setIsResettingMonth] = useState(false);
   const [isDeletingMonth, setIsDeletingMonth] = useState(false);
@@ -1695,11 +1695,11 @@ function MonthPlanLinkContent({
   allCandidates,
   candidates,
   selectedIds,
-  onClose,
+  onClose = undefined,
   onToggleFilter,
   onDescriptionFilterChange,
   onToggleEntry,
-  onSave,
+  onSave = undefined,
   isMobile = false
 }) {
   const filters = [
@@ -1709,9 +1709,12 @@ function MonthPlanLinkContent({
     ["filterCurrentMonthOnly", "This month only"]
   ];
 
+  // On mobile this sits inside the sheet's own form, which saves on submit. A
+  // nested form would take Enter from the filter field and submit the page.
+  const FormElement = isMobile ? "div" : "form";
   return (
-    <form
-      onSubmit={(event) => {
+    <FormElement
+      onSubmit={isMobile ? undefined : (event) => {
         event.preventDefault();
         void onSave();
       }}
@@ -1794,7 +1797,7 @@ function MonthPlanLinkContent({
           </button>
         </div>
       ) : null}
-    </form>
+    </FormElement>
   );
 }
 

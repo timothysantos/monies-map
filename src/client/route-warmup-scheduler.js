@@ -27,7 +27,7 @@ export function createRouteWarmupScheduler({
   selectCandidates,
   costFor,
   // (candidate) -> { key, fresh, admission, start() -> { promise, cancel } } | null
-  dataFor = () => null
+  dataFor = (_candidate) => null
 }) {
   let generation = 0;
   let visitKey = null;
@@ -255,7 +255,7 @@ export function createRouteWarmupScheduler({
     // Call on every input change. A new visit key starts a new visit (fresh
     // per-visit budget); newGeneration alone (for example a query epoch
     // change) invalidates queued work without refilling the visit budget.
-    updateContext({ visitKey: nextVisitKey, newGeneration = false } = {}) {
+    updateContext({ visitKey: nextVisitKey = undefined, newGeneration = false } = {}) {
       if (disposed) {
         return;
       }

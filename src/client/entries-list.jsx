@@ -363,6 +363,7 @@ function EntryRow({
   onBeginEntryEdit,
   onCategoryAppearanceChange,
   onUpdateEntry,
+  onUpdateEntryAmount,
   onUpdateEntrySplit,
   onEnsureTransferSettlementDraft,
   onTransferDialogEntryChange,

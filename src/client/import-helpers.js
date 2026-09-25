@@ -148,7 +148,7 @@ export async function extractPdfText(file) {
   for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
     const page = await document.getPage(pageNumber);
     const content = await page.getTextContent();
-    pages.push(content.items.map((item) => item.str ?? "").join("\n"));
+    pages.push(content.items.map((item) => ("str" in item ? item.str : "")).join("\n"));
     layoutPages.push(extractPdfLayoutLines(content.items).join("\n"));
     spacedLayoutPages.push(extractPdfLayoutLines(content.items, " ").join("\n"));
   }

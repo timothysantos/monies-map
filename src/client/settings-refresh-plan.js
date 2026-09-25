@@ -127,6 +127,7 @@ export function buildSettingsRefreshPlan(kind) {
 
 // Convert the slice-level refresh flags into the concrete route-page families
 // that must be cleared. App executes this shape without owning the mapping.
+/** @param {Partial<Record<keyof typeof SETTINGS_ONLY_PLAN, boolean>>} [plan] */
 export function describeSettingsRefreshPlan(plan = SETTINGS_ONLY_PLAN) {
   const routePagePaths = [];
 
