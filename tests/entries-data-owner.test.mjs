@@ -136,3 +136,75 @@ test("a cache clear that cancels the latest load still ends its loading state", 
   assert.equal(await load, false);
   assert.equal(owner.getSnapshot().isLoading, false);
 });
+
+// A failure while the page on screen still belongs to another month or view
+// is a load failure of this page, not a refresh failure: the owner keeps the
+// old page out of sight behind `loadError` instead of passing it off as the
+// requested month.
+test("a failed refresh while the previous month is still on screen becomes the page's load error, not a refresh failure", async () => {
+  const { owner, calls, fetchPage } = setup();
+  const mayLoad = owner.load({ params: params("2026-05"), fetchPage });
+  calls[0].resolve(page("2026-05"));
+  await mayLoad;
+
+  // The person moves to October; a cross-tab edit cancels that load and
+  // refreshes October, which fails.
+  const octoberLoad = owner.load({ params: params("2025-10"), fetchPage, showLoading: true });
+  const octoberRefresh = owner.refresh({ params: params("2025-10"), fetchPage, bypassCache: true });
+  calls[1].reject(new Error("superseded"));
+  assert.equal(await octoberLoad, false);
+  calls[2].reject(new Error("Entries page failed. Entries exploded"));
+  assert.equal(await octoberRefresh, null, "not rethrown, so no refresh notice");
+
+  const snapshot = owner.getSnapshot();
+  assert.deepEqual(snapshot.loadError, { message: "Entries page failed. Entries exploded" });
+  assert.equal(snapshot.isLoading, false);
+  assert.equal(snapshot.page.monthPage.month, "2026-05", "the old page is kept for drafts, not shown as October");
+});
+
+test("a failed first load of a month records the load error, and a later success or warm start clears it", async () => {
+  const { owner, calls, fetchPage } = setup();
+  const failed = owner.load({ params: params("2025-10"), fetchPage });
+  calls[0].reject(new Error("Entries page failed (500)"));
+  assert.equal(await failed, false);
+  assert.deepEqual(owner.getSnapshot().loadError, { message: "Entries page failed (500)" });
+
+  // The shell's page retry hands the page over as a warm start.
+  owner.seed(page("2025-10", "retried"), params("2025-10"));
+  assert.equal(owner.getSnapshot().loadError, null);
+  assert.equal(owner.getSnapshot().page.monthPage.entries[0].description, "retried");
+
+  const again = owner.load({ params: params("2025-09"), fetchPage });
+  calls[1].reject(new Error("September failed"));
+  await again;
+  assert.deepEqual(owner.getSnapshot().loadError, { message: "September failed" });
+  const back = owner.load({ params: params("2025-10"), fetchPage });
+  assert.equal(owner.getSnapshot().loadError, null, "moving to another request drops the old error");
+  calls[2].resolve(page("2025-10"));
+  assert.equal(await back, true);
+  assert.equal(owner.getSnapshot().loadError, null);
+});
+
+test("a failed load while this request's page is already on screen is rethrown as a background failure", async () => {
+  const calls = [];
+  const fetchPage = (request, options) => new Promise((resolve, reject) => calls.push({ request, options, resolve, reject }));
+  const owner = createEntriesDataOwner({ initialPage: page("2026-05", "route page"), initialParams: params("2026-05") });
+  const load = owner.load({ params: params("2026-05"), fetchPage });
+  calls[0].reject(new Error("Entries page failed (500)"));
+  await assert.rejects(load, /Entries page failed/);
+  assert.equal(owner.getSnapshot().loadError, null, "the rows on screen are this month's");
+  assert.equal(owner.getSnapshot().page.monthPage.entries[0].description, "route page");
+  assert.equal(owner.getSnapshot().isLoading, false);
+});
+
+test("a cancelled load or refresh never becomes a load error", async () => {
+  const { owner, calls, fetchPage } = setup();
+  const { CancelledError } = await import("@tanstack/react-query");
+  const load = owner.load({ params: params("2025-10"), fetchPage });
+  calls[0].reject(new CancelledError());
+  assert.equal(await load, false);
+  const refresh = owner.refresh({ params: params("2025-10"), fetchPage });
+  calls[1].reject(new CancelledError());
+  await assert.rejects(refresh);
+  assert.equal(owner.getSnapshot().loadError, null);
+});
