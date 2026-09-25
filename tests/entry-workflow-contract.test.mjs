@@ -219,3 +219,28 @@ test("entries filtering can pin the actively edited row until save", () => {
   assert.equal(entryBypassesFieldFilters("other", ["editing"]), false);
   assert.equal(entryBypassesFieldFilters("editing", [null, "", "editing"]), true);
 });
+
+test("E-render a merge that changes nothing keeps each entry object, so memoized rows skip it", () => {
+  const splits = [{ personName: "Tim", ratioBasisPoints: 10000, amountMinor: 1200 }];
+  const serverEntries = [
+    { id: "unchanged", description: "Coffee", amountMinor: 1200, note: "", splits },
+    { id: "changed", description: "Lunch", amountMinor: 900, note: "server note", splits }
+  ];
+  // The page merges once on mount, so rows already carry isPendingDerived.
+  const firstMerge = mergeEntriesById(mergeEntriesById([], serverEntries, null), serverEntries, null);
+  const current = firstMerge.map((entry) => (entry.id === "changed" ? { ...entry, note: "local edit" } : entry));
+
+  const nextEntries = mergeEntriesById(current, serverEntries, null);
+
+  assert.equal(nextEntries[0], current[0]);
+  // Negative: a field the server disagrees on still produces a new object with the server value.
+  assert.notEqual(nextEntries[1], current[1]);
+  assert.equal(nextEntries[1].note, "server note");
+  assert.equal(nextEntries[1].isPendingDerived, false);
+
+  // A pending row always settles into a new, non-pending object.
+  const pending = [{ ...current[0], isPendingDerived: true }];
+  const settled = mergeEntriesById(pending, [serverEntries[0]], null);
+  assert.notEqual(settled[0], pending[0]);
+  assert.equal(settled[0].isPendingDerived, false);
+});
