@@ -7,6 +7,7 @@
 
 import {
   buildMonthlySnapshotRefreshMarkers,
+  recalculateMonthlySnapshots,
   refreshMonthlySnapshotsAfterWrite
 } from "./app-repository-snapshots";
 import { normalizeStatementDate } from "./app-repository-helpers";
@@ -639,10 +640,8 @@ export async function createEntryRecord(
         offsetsCategory: input.offsetsCategory ? 1 : 0,
         note: input.note ?? null
       });
-      await refreshMonthlySnapshotsAfterWrite(db, [
-        input.date.slice(0, 7),
-        (input.postDate ?? input.date).slice(0, 7)
-      ]);
+      // A replay writes nothing, so it recalculates the months directly.
+      await recalculateEntryMonths(db, input.date, input.postDate);
       return {
         entryId: existing.id,
         created: false,
@@ -714,10 +713,7 @@ export async function createEntryRecord(
       offsetsCategory: input.offsetsCategory ? 1 : 0,
       note: input.note ?? null
     });
-    await refreshMonthlySnapshotsAfterWrite(db, [
-      input.date.slice(0, 7),
-      (input.postDate ?? input.date).slice(0, 7)
-    ]);
+    await recalculateEntryMonths(db, input.date, input.postDate);
     return {
       entryId: existing.id,
       created: false,
@@ -737,6 +733,12 @@ export async function createEntryRecord(
   }
 
   return { entryId, created: true, accountId, accountName, currency };
+}
+
+async function recalculateEntryMonths(db: D1Database, date: string, postDate?: string | null) {
+  for (const month of new Set([date.slice(0, 7), (postDate ?? date).slice(0, 7)])) {
+    await recalculateMonthlySnapshots(db, month);
+  }
 }
 
 interface IdempotentEntryRow {
