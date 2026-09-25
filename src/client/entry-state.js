@@ -52,13 +52,23 @@ export function mergeEntriesById(
         return currentEntry;
       }
 
-      return {
+      return keepUnchangedEntry(currentEntry, {
         ...currentEntry,
         ...serverEntry,
         isPendingDerived: false
-      };
+      });
     })
   ];
+}
+
+// Returns the current object when a merge changed no field, so entry
+// identity survives a refresh or editor close and memoized rows can skip it.
+function keepUnchangedEntry(currentEntry, mergedEntry) {
+  const keys = Object.keys(mergedEntry);
+  if (keys.length !== Object.keys(currentEntry).length) {
+    return mergedEntry;
+  }
+  return keys.every((key) => Object.is(mergedEntry[key], currentEntry[key])) ? currentEntry : mergedEntry;
 }
 
 export function buildComparableEntryState(entry) {
