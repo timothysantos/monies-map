@@ -127,6 +127,54 @@ Budget rules:
   the page-response size test in `tests/e2e/api-performance.spec.js` (+10% of
   `tests/e2e/api-payload-budget.json`, run by the smoke bundle)
 
+## List Rendering Contract
+
+A month can hold thousands of entries (the 10k stress fixture puts 2,000 in
+2026-05). Lists that grow with the ledger follow these rules, measured in
+`docs/audits/macro-loading-baseline.md` ("Entries and Month list
+rendering"):
+
+- Rows are `memo` components whose props are the row's own data, a few
+  primitives and stable handlers. Pass handlers through `useStableHandler`
+  (`src/client/use-stable-handler.js`) or a `useCallback` with no changing
+  inputs; never an inline closure or a function recreated on each render.
+- Anything only an open editor needs travels in one bundle given to the
+  open row alone (`editor` in `entries-list.jsx`). Closed rows never
+  receive editor, saving, transfer or draft state.
+- Derived row data keeps object identity. `entry-row-projection.js`
+  caches each projection by entry object and view, and `mergeEntriesById`
+  returns the current object when a merge changes no field. Do not spread
+  entries into new objects in a selector that feeds rows.
+- A memoized component that prints money through the shared formatter
+  subscribes with `useMoneyPrivacy()`. Keep that subscription on the
+  smallest piece that prints money (`EntryRowAmount`), so the toggle
+  redraws amounts, not rows.
+- Per-row dialogs, popovers and heavy widgets mount only while open
+  (`CategoryAppearancePopover` mounts its dialog on open).
+- Expensive scoring runs when its real inputs change, not on every
+  checkbox or keystroke in the same dialog (Month plan-link candidates).
+- Closed Entries rows use `content-visibility: auto` with a measured
+  `contain-intrinsic-size` of the row's content height (67 px desktop,
+  88 px mobile: the rendered row minus its 1 px top border, which the
+  intrinsic size excludes). Rows stay in the DOM, so find-in-page, Tab focus
+  and screen readers reach every row; the open row is never skipped. Update
+  the intrinsic size if the row layout changes height.
+- Scrolling to a row more than two screens away is instant
+  (`longJumpOr` in `entries-list.jsx`): a long smooth scroll renders
+  estimated rows on the way and ends off target.
+  `tests/performance/entries-deep-link.spec.js` checks a deep link to row
+  1,500 and 1,990 lands where row 5 does.
+- Entries is not windowed. Windowing would remove off-screen rows from
+  the DOM, breaking find-in-page and Tab order through the list; add it
+  only with a measured reason and a plan for those.
+- Proof: `tests/e2e/entries-row-rendering.spec.js` and
+  `tests/e2e/month-plan-link-rendering.spec.js` count row renders through
+  the React DevTools hook (`tests/support/react-commit-counter.js`).
+  Timing: `PERFORMANCE_FIXTURE=scale-10k npm run test:performance`
+  (`entries-interaction.spec.js`, `month-interaction.spec.js`), compared
+  with `node scripts/compare-performance.mjs --interaction <before> <after>`
+  over several runs per side.
+
 ## Optional AI Contract
 
 Workers AI belongs outside the normal query and mutation graph. Most actions
