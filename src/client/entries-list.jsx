@@ -368,9 +368,6 @@ const EntryRow = memo(function EntryRow({
   onCategoryAppearanceChange,
   editor
 }) {
-  // Row amounts use the shared formatter, which reads the privacy setting
-  // while rendering; subscribing keeps memoized rows in step with the toggle.
-  useMoneyPrivacy();
   const rowRef = useRef(null);
   const inlineEditorRef = useRef(null);
   const category = categoryService.get(categories, entry);
@@ -458,10 +455,10 @@ const EntryRow = memo(function EntryRow({
             <p>{display.accountDetail || messages.common.emptyValue}</p>
           </div>
           <div className="entry-row-right">
-            <div className="entry-row-amount">
-              <strong className={entryService.getAmountToneClass(display.primarySignedAmountMinor)}>{formatService.money(display.primarySignedAmountMinor)}</strong>
-              {display.secondarySignedAmountMinor != null ? <p>({formatService.money(display.secondarySignedAmountMinor)})</p> : null}
-            </div>
+            <EntryRowAmount
+              primarySignedAmountMinor={display.primarySignedAmountMinor}
+              secondarySignedAmountMinor={display.secondarySignedAmountMinor}
+            />
             <div className="entry-pills">
               {entry.isPendingDerived ? <span className="entry-chip entry-chip-pending">Updating</span> : null}
               {display.transferLabel ? <span className="entry-chip entry-chip-transfer">{display.transferLabel}</span> : null}
@@ -509,6 +506,19 @@ const EntryRow = memo(function EntryRow({
           />
         </div>
       ) : null}
+    </div>
+  );
+});
+
+// The shared money formatter reads the privacy setting while rendering, so
+// the amount subscribes to it. A privacy toggle then redraws only amounts,
+// not whole memoized rows.
+const EntryRowAmount = memo(function EntryRowAmount({ primarySignedAmountMinor, secondarySignedAmountMinor }) {
+  useMoneyPrivacy();
+  return (
+    <div className="entry-row-amount">
+      <strong className={entryService.getAmountToneClass(primarySignedAmountMinor)}>{formatService.money(primarySignedAmountMinor)}</strong>
+      {secondarySignedAmountMinor != null ? <p>({formatService.money(secondarySignedAmountMinor)})</p> : null}
     </div>
   );
 });
