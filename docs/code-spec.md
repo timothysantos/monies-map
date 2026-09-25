@@ -351,6 +351,12 @@ These are defaults, not excuses for clever golfing.
   command module never imports another command module
 - move persistence code with `scripts/persisted-state-snapshot.mjs`: its
   normalized table and page-DTO dump must be identical before and after
+- entry, month and statement dates are plain `YYYY-MM-DD` calendar dates,
+  never instants; do not convert them through UTC. Client code takes "today"
+  from `todayInAppTimeZone()` in `src/client/app-dates.js` (Singapore), never
+  `new Date().toISOString()`, which is the UTC day and wrong before 8 am;
+  `tests/app-dates.test.mjs` fails on that pattern. Server calendar
+  arithmetic stays in UTC on `T00:00:00Z` dates
 - if several route modules repeat the same route-context or month-selection
   logic, extract that logic into `src/domain/route-context.ts` or another
   shared route fragment before the duplication spreads

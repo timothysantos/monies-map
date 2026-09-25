@@ -3,6 +3,7 @@ import { CheckCircle2, CircleAlert, Clock3, FileText, Landmark, ListChecks } fro
 
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
+import { addDaysToIsoDate, todayInAppTimeZone } from "./app-dates";
 
 const { format: formatService } = moniesClient;
 
@@ -338,7 +339,7 @@ function readSnoozedImportFiles() {
 
   try {
     const parsed = JSON.parse(window.localStorage.getItem("monies.importInbox.snoozedFiles") ?? "{}");
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayInAppTimeZone();
     return Object.fromEntries(
       Object.entries(parsed).filter(([, snoozedUntil]) => String(snoozedUntil) >= today)
     );
@@ -356,7 +357,5 @@ function writeSnoozedImportFiles(value) {
 }
 
 function getSnoozeUntilDate() {
-  const date = new Date();
-  date.setDate(date.getDate() + 3);
-  return date.toISOString().slice(0, 10);
+  return addDaysToIsoDate(todayInAppTimeZone(), 3);
 }
