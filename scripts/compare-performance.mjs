@@ -10,8 +10,9 @@
 // reports how much idle warmup the first Summary → Entries → Summary round
 // trip actually used.
 //
-// With --interaction it compares cohorts of Entries interaction reports
-// (tests/performance/entries-interaction.spec.js). Every report in a
+// With --interaction it compares cohorts of interaction reports
+// (tests/performance/entries-interaction.spec.js and
+// month-interaction.spec.js). Every report in a
 // directory is one run; samples are pooled per interaction, and the spread
 // of the per-run medians shows whether a difference outgrows run-to-run
 // noise.
@@ -158,18 +159,20 @@ export async function readReports(directory) {
   return byProject;
 }
 
-const INTERACTION_TASK = "entries-interaction";
+const INTERACTION_TASKS = new Set(["entries-interaction", "month-interaction"]);
 
-// Every interaction report per project in a directory (one per run).
+// Every interaction report per task and project in a directory (one per
+// run), keyed "task · project".
 export async function readInteractionReports(directory) {
   const files = (await readdir(directory)).filter((file) => file.endsWith(".json")).sort();
-  const byProject = new Map();
+  const byKey = new Map();
   for (const file of files) {
     const report = JSON.parse(await readFile(path.join(directory, file), "utf8"));
-    if (report.task !== INTERACTION_TASK || !report.project || !report.actions) continue;
-    byProject.set(report.project, [...(byProject.get(report.project) ?? []), report]);
+    if (!INTERACTION_TASKS.has(report.task) || !report.project || !report.actions) continue;
+    const key = `${report.task} · ${report.project}`;
+    byKey.set(key, [...(byKey.get(key) ?? []), report]);
   }
-  return byProject;
+  return byKey;
 }
 
 // Pooled median and p95 per interaction, the min–max of per-run medians,
@@ -181,7 +184,8 @@ export function summarizeInteractionCohort(reports) {
     const settled = runs.flatMap((run) => run.rawSettledMs ?? []);
     const event = runs.flatMap((run) => run.rawEventMs ?? []);
     const runMedians = runs.map((run) => median(run.rawSettledMs ?? [])).filter(Number.isFinite);
-    const rowRenders = reports.map((report) => report.renders?.[name]?.entryRowRenders);
+    const counted = reports.map((report) => report.renders?.[name] ?? {});
+    const rowRenders = counted.map((item) => item.entryRowRenders ?? item.candidateRowRenders);
     return [name, {
       runs: runs.length,
       samples: settled.length,
@@ -191,7 +195,8 @@ export function summarizeInteractionCohort(reports) {
       runMedianMaxMs: runMedians.length ? Math.max(...runMedians) : null,
       eventMedianMs: median(event),
       eventP95Ms: percentileOf(event, 0.95),
-      entryRowRenders: median(rowRenders)
+      entryRowRenders: median(rowRenders),
+      componentRenders: median(counted.map((item) => item.componentRenders))
     }];
   }));
 }
@@ -219,12 +224,12 @@ export function renderInteractionMarkdown(project, baseline, candidate) {
     "",
     `Runs: baseline ${Math.max(0, ...Object.values(baseline).map((item) => item.runs))}, candidate ${Math.max(0, ...Object.values(candidate).map((item) => item.runs))}. Times in ms from the first input to the settled frame; event is the longest Event Timing entry (0 = under 16 ms).`,
     "",
-    "| Interaction | Settled median | Δ | Settled p95 | Run medians (spread) | Event median | Row renders | Verdict |",
-    "| --- | ---: | ---: | ---: | --- | ---: | ---: | --- |",
+    "| Interaction | Settled median | Δ | Settled p95 | Run medians (spread) | Event median | Row renders | Component renders | Verdict |",
+    "| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- |",
     ...names.map((name) => {
       const before = baseline[name] ?? {};
       const after = candidate[name] ?? {};
-      return `| ${name} | ${formatNumber(before.settledMedianMs)} → ${formatNumber(after.settledMedianMs)} | ${formatDelta(before.settledMedianMs, after.settledMedianMs)} | ${formatNumber(before.settledP95Ms)} → ${formatNumber(after.settledP95Ms)} | ${spread(before)} → ${spread(after)} | ${formatNumber(before.eventMedianMs)} → ${formatNumber(after.eventMedianMs)} | ${formatNumber(before.entryRowRenders)} → ${formatNumber(after.entryRowRenders)} | ${interactionVerdict(before, after)} |`;
+      return `| ${name} | ${formatNumber(before.settledMedianMs)} → ${formatNumber(after.settledMedianMs)} | ${formatDelta(before.settledMedianMs, after.settledMedianMs)} | ${formatNumber(before.settledP95Ms)} → ${formatNumber(after.settledP95Ms)} | ${spread(before)} → ${spread(after)} | ${formatNumber(before.eventMedianMs)} → ${formatNumber(after.eventMedianMs)} | ${formatNumber(before.entryRowRenders)} → ${formatNumber(after.entryRowRenders)} | ${formatNumber(before.componentRenders)} → ${formatNumber(after.componentRenders)} | ${interactionVerdict(before, after)} |`;
     })
   ].join("\n");
 }
@@ -232,13 +237,13 @@ export function renderInteractionMarkdown(project, baseline, candidate) {
 async function mainInteraction(baselineDir, candidateDir) {
   const [baseline, candidate] = await Promise.all([readInteractionReports(baselineDir), readInteractionReports(candidateDir)]);
   const output = [];
-  for (const [project, candidateReports] of candidate) {
-    const baselineReports = baseline.get(project);
+  for (const [key, candidateReports] of candidate) {
+    const baselineReports = baseline.get(key);
     if (!baselineReports) {
-      output.push(`### ${project}\n\nNo baseline interaction reports for this project.`);
+      output.push(`### ${key}\n\nNo baseline interaction reports for this task and project.`);
       continue;
     }
-    output.push(renderInteractionMarkdown(project, summarizeInteractionCohort(baselineReports), summarizeInteractionCohort(candidateReports)));
+    output.push(renderInteractionMarkdown(key, summarizeInteractionCohort(baselineReports), summarizeInteractionCohort(candidateReports)));
   }
   console.log(output.join("\n\n"));
 }
