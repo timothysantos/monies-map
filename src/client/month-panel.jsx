@@ -1295,7 +1295,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     });
   }
 
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [, setSearchParams] = useSearchParams();
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [isResettingMonth, setIsResettingMonth] = useState(false);
   const [isDeletingMonth, setIsDeletingMonth] = useState(false);

@@ -349,7 +349,6 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
     detectedPreviewAccountNames,
     certifiedConflictRows,
     duplicateCheckpointAccounts,
-    hasBlockingCategoryPolicy,
     hasAlreadyCoveredCheckpointRefresh,
     hasDuplicateCheckpointAccounts,
     hasEmptyStatementCheckpointOnly,

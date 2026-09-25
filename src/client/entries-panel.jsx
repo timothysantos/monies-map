@@ -211,7 +211,6 @@ export function EntriesPanel({
   const entryComposerEditorRef = useRef(null);
   const defaultEntryPerson = entryView.id !== "household" ? entryView.label : "";
   const {
-    searchParamsKey,
     selectedScope,
     walletFilters,
     walletFilterKey,

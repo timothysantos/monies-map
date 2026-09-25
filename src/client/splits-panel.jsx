@@ -195,8 +195,6 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     clearInlineSplitDraft,
     resetForViewChange,
     requestDeleteSplit,
-    clearExpenseDialogSnapshot,
-    clearSettlementDialogSnapshot,
     clearInlineSplitSnapshot
   } = useSplitEditState({ categoryOptions, people });
   // The optimistic overlay alone is not counted: it can outlive a failed

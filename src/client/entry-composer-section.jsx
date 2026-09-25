@@ -2,11 +2,8 @@ import { useEffect, useMemo } from "react";
 import { Check, X } from "lucide-react";
 
 import { EntryEditorFields } from "./entry-editor";
-import { moniesClient } from "./monies-client-service";
 import { ResponsiveSelect } from "./responsive-select";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
-
-const { entries: entryService } = moniesClient;
 
 export function useEntryComposerSplitOptions({
   showEntryComposer,
