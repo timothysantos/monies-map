@@ -467,6 +467,12 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   gap: 16px;
 }
 
+.screen-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .app-loading-panel .app-loading-error-copy {
   margin-top: 8px;
   max-width: 760px;
