@@ -119,7 +119,9 @@ test("page APIs report init and total beside the unchanged app time, with identi
   // The existing budget check reads the first dur, which must stay the app time.
   assert.equal(Number(cold.headers.get("server-timing").match(/dur=([0-9.]+)/)[1]), coldTiming.app.dur);
   const coldBody = await cold.text();
-  assert.equal(coldBody, JSON.stringify(JSON.parse(coldBody), null, 2));
+  // Compact JSON: no indentation or newlines, same values.
+  assert.equal(coldBody, JSON.stringify(JSON.parse(coldBody)));
+  assert.equal(coldBody.includes("\n"), false);
   assert.equal(cold.headers.get("content-type"), "application/json; charset=utf-8");
   assert.equal(cold.headers.get("cache-control"), "no-store");
 
@@ -127,7 +129,7 @@ test("page APIs report init and total beside the unchanged app time, with identi
   const warmTiming = parseServerTiming(warm.headers.get("server-timing"));
   assert.equal(warmTiming.init.desc, "warm");
   assert.ok(warmTiming.total.dur >= warmTiming.init.dur + warmTiming.app.dur);
-  const withoutClock = (text) => text.replace(/"generatedAt": "[^"]+"/g, "\"generatedAt\": \"\"");
+  const withoutClock = (text) => text.replace(/"generatedAt": ?"[^"]+"/g, "\"generatedAt\":\"\"");
   assert.equal(withoutClock(await warm.text()), withoutClock(coldBody));
 });
 
