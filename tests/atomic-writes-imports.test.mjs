@@ -130,6 +130,26 @@ test("a failed month-total refresh after an import is recorded and repaired on t
   assert.deepEqual(await rows(db, "SELECT month_key FROM monthly_snapshot_refreshes"), []);
 });
 
+test("an import rollback removes the batch rows and restores the month totals", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  await recalculateMonthlySnapshots(db, "2026-05");
+  const totalsBefore = await snapshotTotals(db, "2026-05");
+  const commit = await api("/api/imports/commit", await previewCsvImport(api));
+
+  const { status, payload } = await api("/api/imports/rollback", { importId: commit.payload.importId });
+
+  assert.equal(status, 200, JSON.stringify(payload));
+  assert.deepEqual(payload, { ok: true, importId: commit.payload.importId, rolledBack: true });
+  assert.deepEqual(await rows(db, "SELECT status FROM imports WHERE id = ?", commit.payload.importId), [{ status: "rolled_back" }]);
+  assert.deepEqual(await rows(db, "SELECT id FROM transactions WHERE import_id = ?", commit.payload.importId), []);
+  assert.deepEqual(await rows(db, "SELECT id FROM import_rows WHERE import_id = ?", commit.payload.importId), []);
+  assert.deepEqual(await snapshotTotals(db, "2026-05"), totalsBefore);
+  assert.deepEqual(await rows(db, "SELECT action FROM audit_events WHERE entity_id = ? ORDER BY rowid", commit.payload.importId), [
+    { action: "import_committed" },
+    { action: "import_rolled_back" }
+  ]);
+});
+
 test("rolling back an import twice is rejected and changes nothing", async (t) => {
   const { db, api } = await openSeededDatabase(t, template);
   const commit = await api("/api/imports/commit", await previewCsvImport(api));
