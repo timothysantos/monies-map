@@ -7,6 +7,7 @@ import { SplitExpenseFields, SplitSettlementFields } from "./splits-dialogs";
 import { CategoryGlyph } from "./ui-components";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { isMobileLayout } from "./use-viewport";
+import { InlineError } from "./ui-states";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 
@@ -206,7 +207,7 @@ export function SplitActivityGroups({
                     autoFocusAmount
                   />
                 )}
-                {inlineFormError ? <p className="form-error">{inlineFormError}</p> : null}
+                <InlineError message={inlineFormError} />
                 <div className="split-inline-actions">
                   {editingDraft.linkedTransactionId ? (
                     <button

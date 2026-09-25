@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import { EmptyState } from "./ui-states";
 import { selectAllOnFocus } from "./focus-utils";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
 import { FinancialInsight } from "./financial-insight";
@@ -1433,6 +1434,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
           errorMessage={monthRowError}
           saveLabel={isSavingMonthRow ? messages.common.saving : messages.month.doneEdit}
           isSaveDisabled={isSavingMonthRow}
+          isSubmitting={isSavingMonthRow}
           onClose={() => setMobileAddDialog(null)}
           onSave={() => void saveMobileAddDialog()}
         >
@@ -1780,7 +1782,7 @@ function MonthPlanLinkContent({
           ))}
         </div>
       ) : (
-        <p className="empty-copy">No matching expense entries fit the current filters.</p>
+        <EmptyState>{messages.month.planLinkNoCandidates}</EmptyState>
       )}
       {!isMobile ? (
         <div className="note-dialog-actions">

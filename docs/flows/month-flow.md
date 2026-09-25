@@ -34,6 +34,16 @@ the "Edit <label> row" button in the item cell, which is the keyboard path
 carries the click handler. The scope pills and match filter chips are toggle
 buttons and expose their state with `aria-pressed`.
 
+The mobile edit, add and match sheets are modal dialogs (`EntryMobileSheet`).
+Focus moves into the sheet on open and stays inside it. Escape or a backdrop
+tap closes it and discards the draft, as the desktop dialogs do. Focus then
+returns to the row button or "+ Add planned item". While a save is in flight,
+Escape is ignored, so a failed save keeps the sheet and its draft.
+
+If the Month page fails to load after navigation, it shows the page error
+panel with "Try loading again" instead of the previous page. An empty
+match picker says "No matching expense entries fit the current filters."
+
 ## Data Flow
 
 Month data comes from:

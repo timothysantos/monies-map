@@ -1,7 +1,15 @@
+import { useRef } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import { createPortal } from "react-dom";
 import { ResponsiveSelect } from "./responsive-select";
+import { InlineError } from "./ui-states";
 
+// The mobile bottom sheet shared by Entries and Month. It is a modal Radix
+// dialog like the desktop dialogs: focus moves into the sheet on open and
+// stays inside it, Escape or a tap on the backdrop closes it (discarding the
+// draft, as the desktop dialogs do), and focus returns to the control that
+// opened it. While `isSubmitting` a save or delete is in flight, so Escape
+// and backdrop taps are ignored rather than dropping the pending result.
 export function EntryMobileSheet({
   title,
   description,
@@ -9,65 +17,91 @@ export function EntryMobileSheet({
   saveLabel,
   cancelLabel = "Cancel",
   isSaveDisabled = false,
+  isSubmitting = false,
   secondaryAction = null,
   footerContent = null,
   onClose,
   onSave,
   children
 }) {
-  const sheet = (
-    <>
-      <button
-        type="button"
-        className="entry-composer-overlay"
-        aria-label={`Close ${title.toLowerCase()}`}
-        onClick={onClose}
-      />
-      <section className="entry-composer entry-mobile-sheet" role="dialog" aria-modal="true" aria-label={title}>
-        <form
-          className="entry-mobile-sheet-form"
-          onSubmit={(event) => {
+  // Captured during the first render, before Radix moves focus, so closing
+  // can hand focus back to the row or button that opened the sheet.
+  const openerRef = useRef(undefined);
+  if (openerRef.current === undefined) {
+    openerRef.current = typeof document === "undefined" ? null : document.activeElement;
+  }
+
+  return (
+    <Dialog.Root
+      open
+      onOpenChange={(open) => {
+        if (!open && !isSubmitting) {
+          onClose();
+        }
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Overlay className="entry-composer-overlay" />
+        <Dialog.Content
+          className="entry-composer entry-mobile-sheet"
+          aria-label={title}
+          onOpenAutoFocus={(event) => {
+            // Focus the sheet itself, not its first field, so opening a sheet
+            // does not pop the phone keyboard. Editors that focus a field on
+            // purpose still do so afterwards.
             event.preventDefault();
-            if (!isSaveDisabled) {
-              onSave();
+            const sheet = event.currentTarget;
+            if (sheet instanceof HTMLElement && !sheet.contains(document.activeElement)) {
+              sheet.focus({ preventScroll: true });
+            }
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            const opener = openerRef.current;
+            if (opener instanceof HTMLElement && opener.isConnected && opener !== document.body) {
+              opener.focus({ preventScroll: true });
             }
           }}
         >
-        <div className="entry-mobile-sheet-scroll">
-          <div className="note-dialog-head split-dialog-head entry-composer-head">
-            <div className="entry-composer-copy">
-              <strong>{title}</strong>
-              <p>{description}</p>
+          <form
+            className="entry-mobile-sheet-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!isSaveDisabled) {
+                onSave();
+              }
+            }}
+          >
+          <div className="entry-mobile-sheet-scroll">
+            <div className="note-dialog-head split-dialog-head entry-composer-head">
+              <div className="entry-composer-copy">
+                <Dialog.Title asChild><strong>{title}</strong></Dialog.Title>
+                <Dialog.Description asChild><p>{description}</p></Dialog.Description>
+              </div>
+              <button
+                type="button"
+                className="icon-action subtle-cancel entry-composer-close"
+                aria-label={`Close ${title.toLowerCase()}`}
+                onClick={onClose}
+              >
+                <X size={16} />
+              </button>
             </div>
-            <button
-              type="button"
-              className="icon-action subtle-cancel entry-composer-close"
-              aria-label={`Close ${title.toLowerCase()}`}
-              onClick={onClose}
-            >
-              <X size={16} />
-            </button>
+            <InlineError message={errorMessage} className="entry-submit-error" />
+            {children}
           </div>
-          {errorMessage ? <p className="entry-submit-error">{errorMessage}</p> : null}
-          {children}
-        </div>
-        {footerContent ?? (
-          <div className="entry-inline-actions entry-mobile-sheet-actions">
-            {secondaryAction}
-            <button type="button" className="subtle-cancel" onClick={onClose}>{cancelLabel}</button>
-            <button type="submit" className="dialog-primary" disabled={isSaveDisabled}>{saveLabel}</button>
-          </div>
-        )}
-        </form>
-      </section>
-    </>
+          {footerContent ?? (
+            <div className="entry-inline-actions entry-mobile-sheet-actions">
+              {secondaryAction}
+              <button type="button" className="subtle-cancel" onClick={onClose}>{cancelLabel}</button>
+              <button type="submit" className="dialog-primary" disabled={isSaveDisabled}>{saveLabel}</button>
+            </div>
+          )}
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
-
-  if (typeof document === "undefined") {
-    return sheet;
-  }
-
-  return createPortal(sheet, document.body);
 }
 
 export function EntryMobileEditExpenseFooter({

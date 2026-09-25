@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ChevronRight, ExternalLink, Eye, EyeOff, GripVertic
 import { useMemo, useState } from "react";
 
 import { messages } from "./copy/en-SG";
+import { EmptyState } from "./ui-states";
 import { moniesClient } from "./monies-client-service";
 import { buildSettingsTransferReviewModel, SETTINGS_TRANSFER_PAGE_SIZE } from "./settings-transfer-review-model";
 import { findDuplicateCategoryMatchRules } from "./settings-workflow";
@@ -519,7 +520,7 @@ export function SettingsCategoryMatchRulesSection({
                 </div>
               </details>
             )) : (
-              <p className="lede compact">{messages.common.emptyValue}</p>
+              <EmptyState>{messages.settings.categoryRulesEmpty}</EmptyState>
             )}
           </div>
         </>
@@ -755,7 +756,7 @@ export function SettingsTrustSection({
                   ) : null}
                 </div>
               )) : (
-                <p className="lede compact">{messages.settings.noReconciliationExceptions}</p>
+                <EmptyState>{messages.settings.noReconciliationExceptions}</EmptyState>
               )}
             </div>
           </div>
@@ -873,7 +874,7 @@ export function SettingsTransfersSection({
               ) : null}
             </>
           ) : (
-            <p className="lede compact">{messages.common.emptyValue}</p>
+            <EmptyState>{messages.settings.unresolvedTransfersEmpty}</EmptyState>
           )}
         </div>
       ) : null}
@@ -908,7 +909,7 @@ export function SettingsActivitySection({ activityGroups, isOpen, onToggle }) {
               </div>
             </section>
           )) : (
-            <p className="lede compact">{messages.common.emptyValue}</p>
+            <EmptyState>{messages.settings.recentActivityEmpty}</EmptyState>
           )}
         </div>
       ) : null}
@@ -1012,7 +1013,7 @@ export function SettingsErrorDiagnosticsSection({ diagnostics, isOpen, onToggle,
               </div>
             </>
           ) : (
-            <p className="lede compact">{messages.settings.errorDiagnosticsEmpty}</p>
+            <EmptyState>{messages.settings.errorDiagnosticsEmpty}</EmptyState>
           )}
         </div>
       ) : null}
