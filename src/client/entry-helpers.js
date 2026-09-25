@@ -1,3 +1,4 @@
+import { rebalanceSplitSharesForTotal } from "../domain/split-allocation";
 import { formatEditableMinorInput } from "./formatters";
 import { todayInAppTimeZone } from "./app-dates";
 
@@ -74,16 +75,25 @@ export function normalizeEntryShape(entry, people, previousEntry = entry) {
   if (nextEntry.ownershipType === "direct") {
     const ownerName = nextEntry.ownerName ?? previousEntry.ownerName ?? people[0]?.name ?? "";
     const owner = people.find((person) => person.name === ownerName);
+    const isLinkedToSplit = Boolean(nextEntry.linkedSplitExpenseId);
+    // A person view holds the viewer's share as amountMinor, so an unchanged
+    // amount keeps the ledger total unless the patch set a new total.
     const shouldPreserveLinkedTotal = (
-      Boolean(nextEntry.linkedSplitExpenseId)
+      isLinkedToSplit
       && typeof previousEntry?.totalAmountMinor === "number"
       && nextAmountMinor === previousAmountMinor
+      && nextEntry.totalAmountMinor === previousEntry.totalAmountMinor
     );
     nextEntry.ownerName = ownerName;
     nextEntry.totalAmountMinor = shouldPreserveLinkedTotal
       ? previousEntry.totalAmountMinor
       : nextEntry.amountMinor;
-    nextEntry.viewerSplitRatioBasisPoints = 10000;
+    // A linked entry's viewer ratio comes from its split shares, which follow
+    // a new ledger total the same way the server rebalances them.
+    nextEntry.viewerSplitRatioBasisPoints = isLinkedToSplit ? undefined : 10000;
+    if (isLinkedToSplit && nextEntry.linkedSplitShares?.length === 2 && nextEntry.totalAmountMinor !== getTotalAmountMinor(previousEntry)) {
+      nextEntry.linkedSplitShares = rebalanceLinkedSplitShares(nextEntry.linkedSplitShares, people, nextEntry.totalAmountMinor);
+    }
     nextEntry.splits = ownerName
       ? [{
           personId: owner?.id ?? ownerName.toLowerCase(),
@@ -115,6 +125,21 @@ export function normalizeEntryShape(entry, people, previousEntry = entry) {
   nextEntry.viewerSplitRatioBasisPoints = undefined;
   nextEntry.splits = sharedSplits;
   return nextEntry;
+}
+
+// Mirrors the server: shares in household people order, so the remainder
+// lands on the same person the saved split gives it to.
+function rebalanceLinkedSplitShares(linkedSplitShares, people, totalAmountMinor) {
+  const peopleOrder = (share) => {
+    const index = people.findIndex((person) => person.id === share.personId);
+    return index === -1 ? people.length : index;
+  };
+  const orderedShares = [...linkedSplitShares].sort((left, right) => peopleOrder(left) - peopleOrder(right));
+  const nextShares = rebalanceSplitSharesForTotal(orderedShares, totalAmountMinor);
+  return linkedSplitShares.map((share) => ({
+    ...share,
+    ...nextShares[orderedShares.indexOf(share)]
+  }));
 }
 
 export function applySharedSplit(entry, people, percentage, viewId = "household") {

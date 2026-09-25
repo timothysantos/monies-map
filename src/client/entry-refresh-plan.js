@@ -17,6 +17,15 @@ export function buildComparableEntryRefreshState(entry) {
   };
 }
 
+function getLedgerAmountMinor(entry) {
+  return Number(entry.totalAmountMinor ?? entry.amountMinor ?? 0);
+}
+
+function hasLinkedSplitAmountChange(nextEntry, previousEntry) {
+  return Boolean(nextEntry?.linkedSplitExpenseId && previousEntry)
+    && getLedgerAmountMinor(nextEntry) !== getLedgerAmountMinor(previousEntry);
+}
+
 export function hasLedgerAffectingEntryChange(nextEntry, previousEntry) {
   return JSON.stringify(buildComparableEntryRefreshState(nextEntry))
     !== JSON.stringify(buildComparableEntryRefreshState(previousEntry));
@@ -49,7 +58,17 @@ export function buildEntryMutationRefreshPlan({
     };
   }
 
-  if (kind === "quick-entry-create" || kind === "entry-edit" || kind === "entry-delete") {
+  if (kind === "entry-edit") {
+    return {
+      invalidateEntries: true,
+      invalidateMonth: true,
+      invalidateSummary: true,
+      // The server moves a linked split with its entry's amount.
+      invalidateSplits: hasLinkedSplitAmountChange(nextEntry, previousEntry)
+    };
+  }
+
+  if (kind === "quick-entry-create" || kind === "entry-delete") {
     return {
       invalidateEntries: true,
       invalidateMonth: true,
