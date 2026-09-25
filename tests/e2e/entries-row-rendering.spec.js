@@ -14,7 +14,7 @@ async function openEntries(page) {
   await page.addInitScript(installReactCommitCounter);
   await reseedDemo(page);
   await gotoPageAfterApi(page, ENTRIES_URL, "/api/entries-page", () => page.locator(".entry-row").nth(4));
-  await page.evaluate(() => window.__reactCommitCounter.trackRows(["entry-row"]));
+  await page.evaluate(() => window.__reactCommitCounter.trackRows(["entry-row", "entry-row-amount"]));
 }
 
 async function countRowRenders(page, action) {
@@ -27,8 +27,8 @@ async function countRowRenders(page, action) {
   await page.waitForTimeout(250);
   return page.evaluate(() => {
     window.__reactCommitCounter.enabled = false;
-    const { commits, rowIds } = window.__reactCommitCounter.read();
-    return { commits, rowIds: rowIds["entry-row"] ?? [] };
+    const { commits, rowIds, rowRenders } = window.__reactCommitCounter.read();
+    return { commits, rowIds: rowIds["entry-row"] ?? [], amountRenders: rowRenders["entry-row-amount"] ?? 0 };
   });
 }
 
@@ -112,16 +112,39 @@ test("a filter change keeps the open draft, its focus and caret, and re-renders 
   await expect(note).toHaveValue(`${draft}!`);
 });
 
-test("the privacy toggle still redraws every memoized row amount", async ({ page }) => {
+test("the privacy toggle redraws every row amount without re-rendering the rows", async ({ page }) => {
   await openEntries(page);
   const amounts = page.locator(".entry-row .entry-row-amount strong");
   const count = await amounts.count();
   await expect(amounts.first()).toHaveText("••••");
   expect(await amounts.evaluateAll((items) => items.every((item) => item.textContent === "••••"))).toBe(true);
 
-  await page.getByRole("button", { name: "Show money totals" }).first().click();
-  await expect.poll(() => amounts.evaluateAll((items) => items.filter((item) => item.textContent.includes("$")).length)).toBe(count);
+  const shown = await countRowRenders(page, async () => {
+    await page.getByRole("button", { name: "Show money totals" }).first().click();
+    await expect.poll(() => amounts.evaluateAll((items) => items.filter((item) => item.textContent.includes("$")).length)).toBe(count);
+  });
+  expect(shown.rowIds).toEqual([]);
+  expect(shown.amountRenders).toBe(count);
 
   await page.getByRole("button", { name: "Hide money totals" }).first().click();
   await expect.poll(() => amounts.evaluateAll((items) => items.filter((item) => item.textContent === "••••").length)).toBe(count);
+});
+
+test("a row's category dialog opens only on demand and closes without opening the row", async ({ page }) => {
+  await openEntries(page);
+  const row = page.locator(".entry-row").nth(1);
+  const trigger = row.locator(".category-icon-button");
+  const categoryName = (await trigger.getAttribute("aria-label")).replace(/^Edit /, "");
+  await expect(page.locator(".settings-category-dialog")).toHaveCount(0);
+
+  await trigger.click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator("input").first()).toHaveValue(categoryName);
+  // The icon opens the category dialog, not the row editor.
+  await expect(row.locator(".entry-inline-editor")).toHaveCount(0);
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".settings-category-dialog")).toHaveCount(0);
+  await expect(row.locator(".entry-inline-editor")).toHaveCount(0);
 });
