@@ -102,6 +102,31 @@ async function gotoMonthPage(page, {
   await expect(page).toHaveURL(new RegExp(`/month\\?[^#]*view=${view}[^#]*month=${month}[^#]*scope=${scope}`));
 }
 
+// Counts how many times one user action ran the Month row-open handler. Both
+// open paths (beginPlanEdit and beginIncomeEdit) ask matchMedia whether to use
+// the mobile sheet, so a spy that only counts calls made from those handlers
+// sees each open exactly once without depending on the rendered result.
+async function spyOnMonthRowOpens(page) {
+  await page.addInitScript(() => {
+    const originalMatchMedia = window.matchMedia.bind(window);
+    window.__monthRowOpenCount = 0;
+    window.matchMedia = (query) => {
+      if (/\bbegin(Plan|Income)Edit\b/.test(new Error().stack ?? "")) {
+        window.__monthRowOpenCount += 1;
+      }
+      return originalMatchMedia(query);
+    };
+  });
+}
+
+async function takeMonthRowOpenCount(page) {
+  return page.evaluate(() => {
+    const count = window.__monthRowOpenCount;
+    window.__monthRowOpenCount = 0;
+    return count;
+  });
+}
+
 test.describe("month page", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
@@ -1073,5 +1098,104 @@ test.describe("month page", () => {
     await expect(page).toHaveURL(/\/entries\?/);
     await expect(page.getByText("Mobile actual entry")).toBeVisible();
     await context.close();
+  });
+
+  test("desktop month plan rows open from the keyboard and once per click", async ({ page }) => {
+    await postJson(page, "/api/month-plan/save", {
+      rowId: "playwright-income-keyboard",
+      month: "2026-05",
+      sectionKey: "income",
+      categoryName: "Salary",
+      label: "Playwright salary",
+      plannedMinor: 100000,
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    await spyOnMonthRowOpens(page);
+    await gotoMonthPage(page);
+
+    const budgetRow = page.locator("tr").filter({ hasText: "Entertainment" }).first();
+    const budgetOpenButton = budgetRow.getByRole("button", { name: "Edit Entertainment row" });
+    const actionRow = page.locator(".month-inline-action-row");
+    await budgetRow.getByRole("button", { name: "Edit Entertainment", exact: true }).focus();
+    await page.keyboard.press("Tab");
+    await expect(budgetOpenButton).toBeFocused();
+    await expect(budgetOpenButton).toHaveCSS("outline-style", "solid");
+    await takeMonthRowOpenCount(page);
+
+    await page.keyboard.press("Enter");
+    await expect(actionRow.getByRole("button", { name: "Save" })).toBeVisible();
+    await expect(budgetRow.locator(".table-edit-input-money")).toBeVisible();
+    expect(await takeMonthRowOpenCount(page)).toBe(1);
+
+    await actionRow.getByRole("button", { name: "Cancel" }).click();
+    await expect(actionRow).toHaveCount(0);
+    await takeMonthRowOpenCount(page);
+
+    // A click on a plain cell (variance) must open the row exactly once.
+    await budgetRow.locator("td").nth(4).click();
+    await expect(budgetRow.locator(".table-edit-input-money")).toBeVisible();
+    expect(await takeMonthRowOpenCount(page)).toBe(1);
+    await actionRow.getByRole("button", { name: "Cancel" }).click();
+    await expect(actionRow).toHaveCount(0);
+
+    // Clicking the row's own open button also counts as one open, not two.
+    await takeMonthRowOpenCount(page);
+    await budgetOpenButton.click();
+    await expect(budgetRow.locator(".table-edit-input-money")).toBeVisible();
+    expect(await takeMonthRowOpenCount(page)).toBe(1);
+    await actionRow.getByRole("button", { name: "Cancel" }).click();
+    await expect(actionRow).toHaveCount(0);
+
+    const incomeToggle = page.getByRole("button", { name: /^Income Planned income sources/ });
+    if (await incomeToggle.getAttribute("aria-expanded") !== "true") {
+      await incomeToggle.click();
+    }
+    // The label turns into an input while editing, so find the row by position.
+    const incomeRow = page.locator(".month-plan-section-income tbody tr").first();
+    await expect(incomeRow).toContainText("Playwright salary");
+    const incomeOpenButton = incomeRow.getByRole("button", { name: "Edit Playwright salary row" });
+    await incomeRow.getByRole("button", { name: "Edit Salary", exact: true }).focus();
+    await page.keyboard.press("Tab");
+    await expect(incomeOpenButton).toBeFocused();
+    await takeMonthRowOpenCount(page);
+    await page.keyboard.press("Space");
+    await expect(incomeRow.locator(".table-edit-input-money")).toBeVisible();
+    expect(await takeMonthRowOpenCount(page)).toBe(1);
+    await actionRow.getByRole("button", { name: "Cancel" }).click();
+    await expect(actionRow).toHaveCount(0);
+
+    await takeMonthRowOpenCount(page);
+    await incomeRow.locator("td").nth(4).click();
+    await expect(incomeRow.locator(".table-edit-input-money")).toBeVisible();
+    expect(await takeMonthRowOpenCount(page)).toBe(1);
+  });
+
+  test("mobile month plan rows open the edit sheet from the keyboard and once per tap", async ({ page }) => {
+    await page.setViewportSize(devices["iPhone 12 Pro"].viewport);
+    await gotoMonthPage(page, { expectHeading: false });
+
+    const row = page.locator("tr").filter({ hasText: "Savings" }).first();
+    const openButton = row.getByRole("button", { name: "Edit Savings row" });
+    const sheets = page.locator(".entry-mobile-sheet");
+    const editSheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+    await row.getByRole("button", { name: "Edit Savings", exact: true }).focus();
+    await page.keyboard.press("Tab");
+    await expect(openButton).toBeFocused();
+    await expect(openButton).toHaveCSS("outline-style", "solid");
+
+    await page.keyboard.press("Enter");
+    await expect(editSheet).toBeVisible();
+    await expect(sheets).toHaveCount(1);
+    await expect(editSheet.locator('input[value="Savings"]')).toBeVisible();
+    await editSheet.getByRole("button", { name: "Close edit planned item" }).first().click();
+    await expect(sheets).toHaveCount(0);
+
+    // The mobile open path skips matchMedia (the sheet preference is already
+    // in state), so the handler spy only covers desktop; here one tap must
+    // still leave exactly one sheet.
+    await row.locator("td").nth(4).click();
+    await expect(editSheet).toBeVisible();
+    await expect(sheets).toHaveCount(1);
   });
 });

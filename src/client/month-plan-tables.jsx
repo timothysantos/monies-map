@@ -236,21 +236,21 @@ function IncomePlanSection({
                 const isEditing = editingRowId === row.id;
                 const canEditRow = !isCombinedHouseholdView && !row.isDerived;
                 const variance = row.plannedMinor - row.actualMinor;
+                const isRowOpenable = !isEditing && canEditRow;
                 const handleRowOpen = (event) => {
-                  if (!canEditRow || shouldIgnoreRowOpenTarget(event.target)) {
+                  if (shouldIgnoreRowOpenTarget(event.target)) {
                     return;
                   }
                   onBeginIncomeEdit(row);
                 };
-                const rowOpenProps = !isEditing && canEditRow ? { onClick: handleRowOpen } : {};
 
                 return (
                   <Fragment key={row.id}>
                     <tr
                       className={`${isEditing ? "is-editing" : ""} ${!canEditRow ? "is-readonly" : ""}`}
-                      onClick={canEditRow ? handleRowOpen : undefined}
+                      onClick={isRowOpenable ? handleRowOpen : undefined}
                     >
-                      <td {...rowOpenProps}>
+                      <td>
                         <div className="month-category-cell">
                           <CategoryAppearancePopover
                             category={categoryService.get(categories, row)}
@@ -270,7 +270,7 @@ function IncomePlanSection({
                           ) : <span>{row.categoryName}</span>}
                         </div>
                       </td>
-                      <td {...rowOpenProps}>
+                      <td>
                         {isEditing ? (
                           <input
                             className="table-edit-input"
@@ -278,9 +278,11 @@ function IncomePlanSection({
                             onChange={(event) => onIncomeRowChange(row.id, { label: event.target.value })}
                             onClick={(event) => event.stopPropagation()}
                           />
+                        ) : isRowOpenable ? (
+                          <MonthRowOpenButton row={row} onOpen={() => onBeginIncomeEdit(row)} />
                         ) : row.label}
                       </td>
-                      <td {...rowOpenProps}>
+                      <td>
                         {isEditing ? (
                         <input
                           className="table-edit-input table-edit-input-money"
@@ -311,7 +313,7 @@ function IncomePlanSection({
                           {row.isPendingDerived ? <span className="month-row-pending-hint">Updating...</span> : null}
                         </div>
                       </td>
-                      <td {...rowOpenProps} className={variance <= 0 ? "positive" : "negative"}><PrivateMoney>{formatService.money(variance)}</PrivateMoney></td>
+                      <td className={variance <= 0 ? "positive" : "negative"}><PrivateMoney>{formatService.money(variance)}</PrivateMoney></td>
                       <td>
                         <div className="table-note-actions">
                           <button
@@ -520,21 +522,21 @@ function PlanningRow({
   // weighted projection.
   const editableRow = isEditing ? getMonthPlanEditSource(row) : row;
   const sharedEditHint = isEditing ? getMonthPlanSharedEditHint({ row, viewId: view.id, viewLabel: view.label }) : "";
+  const isRowOpenable = !isEditing && canOpenRow;
   const handleRowOpen = (event) => {
-    if (!canOpenRow || shouldIgnoreRowOpenTarget(event.target)) {
+    if (shouldIgnoreRowOpenTarget(event.target)) {
       return;
     }
     onBeginPlanEdit(section.key, row);
   };
-  const rowOpenProps = !isEditing && canOpenRow ? { onClick: handleRowOpen } : {};
 
   return (
     <Fragment key={row.id}>
       <tr
         className={`${isEditing ? "is-editing" : ""} ${!canOpenRow ? "is-readonly" : ""}`}
-        onClick={canOpenRow ? handleRowOpen : undefined}
+        onClick={isRowOpenable ? handleRowOpen : undefined}
       >
-        <td {...rowOpenProps}>
+        <td>
           <div className="month-category-cell">
             <CategoryAppearancePopover
               category={categoryService.get(categories, row)}
@@ -562,7 +564,7 @@ function PlanningRow({
           </div>
         </td>
         {isPlannedItemsSection(section.key) ? (
-          <td {...rowOpenProps}>
+          <td>
             {isEditing ? (
               <input
                 className="table-edit-input"
@@ -574,7 +576,7 @@ function PlanningRow({
             ) : formatRowDateLabel(row, view.monthPage.month)}
           </td>
         ) : null}
-        <td {...rowOpenProps}>
+        <td>
           {isEditing ? (
             <input
               className="table-edit-input"
@@ -589,9 +591,11 @@ function PlanningRow({
               }}
               onClick={(event) => event.stopPropagation()}
             />
+          ) : isRowOpenable ? (
+            <MonthRowOpenButton row={row} onOpen={() => onBeginPlanEdit(section.key, row)} />
           ) : row.label}
         </td>
-        <td {...rowOpenProps}>
+        <td>
           {isEditing ? (
             <div className="month-planned-cell">
               <input
@@ -650,9 +654,9 @@ function PlanningRow({
             ) : null}
           </div>
         </td>
-        <td {...rowOpenProps} className={variance >= 0 ? "positive" : "negative"}><PrivateMoney>{formatService.money(variance)}</PrivateMoney></td>
+        <td className={variance >= 0 ? "positive" : "negative"}><PrivateMoney>{formatService.money(variance)}</PrivateMoney></td>
         {isPlannedItemsSection(section.key) ? (
-          <td {...rowOpenProps}>
+          <td>
             {isEditing ? (
               <select
                 className="table-edit-input"
@@ -705,6 +709,27 @@ function PlanningRow({
         ) : null}
       />
     </Fragment>
+  );
+}
+
+// The row click stays as a mouse shortcut on the <tr>; this button is the
+// keyboard and screen-reader way to open the same row, so the table keeps its
+// row and cell semantics instead of turning the <tr> into a fake button.
+function MonthRowOpenButton({ row, onOpen }) {
+  const rowName = row.label || row.categoryName || messages.common.emptyValue;
+
+  return (
+    <button
+      type="button"
+      className="month-row-open-button"
+      aria-label={`Edit ${rowName} row`}
+      onClick={(event) => {
+        event.stopPropagation();
+        onOpen();
+      }}
+    >
+      {row.label}
+    </button>
   );
 }
 
