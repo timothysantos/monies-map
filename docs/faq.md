@@ -200,6 +200,12 @@ changes are kept." Choose **Refresh now** to try again, or **Dismiss** to
 carry on; moving to another page or month also clears it, because that page
 loads fresh data.
 
+If a month you moved to could not load at all, the page says "This page could
+not finish loading." with **Try loading again** instead of showing the previous
+month's entries. A draft you had open is kept. A save in a dialog or sheet (for
+example **Save matches**) shows "Saving..." and keeps the dialog open with the
+reason if it fails, so you can try again without redoing your selection.
+
 ## Can an Apple Shortcut create an entry directly?
 
 Yes, but it should use the dedicated shortcut endpoint, not the normal browser

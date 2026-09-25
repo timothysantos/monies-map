@@ -306,6 +306,25 @@ previous page's figures would stay on screen under the new tab or period.
 - The previous page is hidden (`display: none` on `.route-page-body`), not
   unmounted, so a draft on it survives the failure and the retry.
 
+Entries can learn that a month failed when the shell does not. Another
+tab's save during a month switch clears the Entries cache twice, which
+cancels the shell's own load of the page, so the shell stays silent. The
+Entries owner then holds a `loadError`, and the panel shows the same page
+`ErrorPanel` in place of its totals, insight, filters and rows. It never
+shows the previous month's rows or "No entries match this view." Its "Try
+loading again" runs the shell's `retryActivePageLoad` (the `onRetryPageLoad`
+prop), so the shell and the list recover together. Open drafts and sheets
+stay mounted. The split follows the rest of the app: no page for this
+request yet means the error panel, while this request's own rows on screen
+mean the refresh notice.
+
+Dialogs and sheets that write keep their draft until the write succeeds.
+The Month "Match planned item" dialog (desktop) and sheet (mobile) show
+"Saving...", take one submit (a ref guards double clicks), and check the
+response. Escape, Cancel and the close button are ignored while the save
+is in flight. A failure keeps the dialog or sheet open with its draft and an
+`InlineError`; only a success closes it and refreshes the month.
+
 ## Mobile Sheet
 
 `entry-mobile-sheet.jsx` (`EntryMobileSheet`) is the bottom sheet for the
@@ -322,6 +341,13 @@ dialog, like the desktop dialogs:
   taps are ignored, so the pending result and the draft are kept.
 - Nested Radix layers (a category editor, the mobile select) close first on
   Escape, leaving the sheet open.
+- A portalled dialog still bubbles React events through the component tree
+  into the form or row that opened it. `CategoryEditDialog` therefore
+  stops `submit`, `click` and `keydown` at its overlay and content, so
+  saving a category from a sheet, the desktop composer or a list row
+  saves only the category. It leaves `pointerdown` alone, because Radix
+  uses it for outside-press dismissal. Any new dialog that can open inside
+  a form needs the same guard.
 - Limitation: iOS Safari does not focus a tapped button. When the opener was
   never focused (tapped on iOS, or a table row), focus is not restored, and
   the browser default applies.
@@ -352,7 +378,14 @@ The Entries panel's page DTO has its own owner (`entries-data-owner.js`,
 bound inside `useEntriesPageData`): loads and refreshes take a generation,
 and a refresh whose month and view are no longer active returns before it
 clears any cache or fetches, so an edit's late refresh can neither
-overwrite nor stall the month the person moved to.
+overwrite nor stall the month the person moved to. The owner also tracks
+which request the page on screen belongs to (`seed(page, params)` and
+applied loads set it). The latest load or refresh can fail while that page
+is still another month's or view's. The owner then sets `loadError`, keeps
+the page for open drafts, and does not rethrow, so no refresh notice
+appears. A load that fails over this request's own page is rethrown, and
+the panel reports it through `runBackgroundRefresh`. Aborts and cancels are
+never errors.
 
 Refreshes after a save go through `runBackgroundRefresh` from
 `use-refresh-notice.js` (owner: `refresh-notice.js`). App uses it for every

@@ -1975,6 +1975,7 @@ export function App() {
           onInvalidateEntryMutation={broadcastEntryMutation}
           onBroadcastSplitMutation={broadcastSplitMutation}
           runBackgroundRefresh={runBackgroundRefresh}
+          onRetryPageLoad={retryActivePageLoad}
           canRequestWording={routeWork.usable}
         />
       );
@@ -2055,6 +2056,7 @@ export function App() {
     refreshCurrentMonthPage,
     refreshCurrentSplitsPage,
     renderedTabId,
+    retryActivePageLoad,
     routePageData,
     routeWork.usable,
     runBackgroundRefresh,

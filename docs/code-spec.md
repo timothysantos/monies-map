@@ -118,6 +118,16 @@ Budget rules:
 - the Entries page DTO is written only through `entries-data-owner.js`, so
   a refresh started before a month or view change cannot overwrite the new
   month or end its loading state
+- a load or refresh that fails before the request's own page was shown is a
+  load failure, not a refresh failure: show the page `ErrorPanel` with the
+  shell's retry in place of the stale figures and rows (Entries:
+  `loadError`), never the previous period's data or an empty state
+- a dialog or sheet that writes checks `response.ok`, shows a saving state,
+  takes one submit, ignores Escape and Cancel while in flight, and closes
+  only on success; a failure keeps the draft with an `InlineError`
+- a portalled dialog that can open inside a form or clickable row stops
+  React `submit`, `click` and `keydown` bubbling at its overlay and content
+  (`category-edit-dialog.jsx`)
 - a page DTO carries only what its route reads; do not embed another route's
   page DTO (Splits carries the month key and transfers, not the Month page)
 - page APIs report `Server-Timing: app;dur, init;dur;desc, total;dur`; keep

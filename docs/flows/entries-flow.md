@@ -71,6 +71,13 @@ Watch area:
 - draft-only row edits should remain visible until the user saves
 - add-to-splits and transfer-link behavior may fan out to month and summary
   refreshes when ledger evidence changes
-- A failed Entries page load inside the Entries owner (`entries-data-owner.js`)
-  still ends loading silently and keeps the last page. When the route-level
-  page load fails, the shell shows the page error panel instead.
+- When the route-level page load fails, the shell shows the page error panel.
+  When only the Entries owner (`entries-data-owner.js`) learns that the
+  month failed, the panel shows the same `ErrorPanel` with "Try loading
+  again" in place of its figures and rows. This happens when a cross-tab
+  save during a month switch cancels the shell's load. The previous month's
+  rows are never shown, and the month is never called empty. A failed
+  reload over this month's own rows shows the refresh notice instead.
+- The category dialog opened from a sheet, the composer or a row stops its
+  submit, click and key events, so saving it never saves or opens the
+  surrounding entry.
