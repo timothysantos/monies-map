@@ -18,13 +18,14 @@ async function getSplitGroupName(db: D1Database, groupId?: string | null) {
   return row?.group_name ?? "Non-group expenses";
 }
 
-async function createSplitBatch(
+// The insert that opens a new split batch; the caller runs it.
+async function buildSplitBatchInsert(
   db: D1Database,
   input: { groupId?: string | null; openedOn: string; closedOn?: string | null }
 ) {
   const id = `split-batch-${slugify(input.groupId ?? "none")}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
   const groupName = await getSplitGroupName(db, input.groupId);
-  await db
+  const statement = db
     .prepare(`
       INSERT INTO split_batches (
         id, household_id, split_group_id, batch_name, opened_on, closed_on
@@ -37,15 +38,20 @@ async function createSplitBatch(
       splitBatchName(groupName, Boolean(input.closedOn)),
       input.openedOn,
       input.closedOn ?? null
-    )
-    .run();
+    );
+  return { id, statement };
+}
+
+async function createSplitBatch(
+  db: D1Database,
+  input: { groupId?: string | null; openedOn: string; closedOn?: string | null }
+) {
+  const { id, statement } = await buildSplitBatchInsert(db, input);
+  await statement.run();
   return id;
 }
 
-export async function getOrCreateActiveSplitBatch(
-  db: D1Database,
-  input: { groupId?: string | null; date: string }
-) {
+async function findActiveSplitBatchId(db: D1Database, groupId?: string | null) {
   const active = await db
     .prepare(`
       SELECT id
@@ -56,14 +62,32 @@ export async function getOrCreateActiveSplitBatch(
       ORDER BY opened_on DESC, created_at DESC
       LIMIT 1
     `)
-    .bind(DEFAULT_HOUSEHOLD_ID, input.groupId ?? null, input.groupId ?? null)
+    .bind(DEFAULT_HOUSEHOLD_ID, groupId ?? null, groupId ?? null)
     .first<{ id: string }>();
+  return active?.id ?? null;
+}
 
-  if (active?.id) {
-    return active.id;
+export async function getOrCreateActiveSplitBatch(
+  db: D1Database,
+  input: { groupId?: string | null; date: string }
+) {
+  return await findActiveSplitBatchId(db, input.groupId)
+    ?? createSplitBatch(db, { groupId: input.groupId, openedOn: input.date, closedOn: null });
+}
+
+// The group's open batch, or the statement that opens one, so a command can
+// open it in the same db.batch() as the record it files there.
+export async function resolveActiveSplitBatch(
+  db: D1Database,
+  input: { groupId?: string | null; date: string }
+): Promise<{ id: string; statements: D1PreparedStatement[] }> {
+  const activeId = await findActiveSplitBatchId(db, input.groupId);
+  if (activeId) {
+    return { id: activeId, statements: [] };
   }
 
-  return createSplitBatch(db, { groupId: input.groupId, openedOn: input.date, closedOn: null });
+  const { id, statement } = await buildSplitBatchInsert(db, { groupId: input.groupId, openedOn: input.date, closedOn: null });
+  return { id, statements: [statement] };
 }
 
 export async function closeSplitBatch(
