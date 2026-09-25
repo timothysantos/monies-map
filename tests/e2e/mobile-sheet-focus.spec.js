@@ -108,7 +108,7 @@ test.describe("mobile sheet focus", () => {
     await expect(sheet).toBeVisible();
 
     releaseSave();
-    await expect(sheet.locator(".entry-submit-error")).toBeVisible();
+    await expect(sheet.getByRole("alert")).toHaveClass(/entry-submit-error/);
     await expect(sheet.locator('input[value="1810.00"]')).toBeVisible();
     await page.unrouteAll({ behavior: "ignoreErrors" });
   });

@@ -1,4 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
+import { InlineError } from "./ui-states";
 
 function formatNotePreview(value) {
   const note = value?.trim();
@@ -51,7 +52,7 @@ export function LinkedNoteSyncDialog({
             {prompt.helpText ?? "Choose \"Update both\" when the note is a shared explanation for the same real-world item. Choose \"Save only this\" when the connected record needs a different note."}
           </p>
 
-          {prompt.error ? <p className="form-error">{prompt.error}</p> : null}
+          <InlineError message={prompt.error} />
 
           <div className="note-dialog-actions">
             <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onCancel}>Cancel</button>

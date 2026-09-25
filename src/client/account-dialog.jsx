@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { messages } from "./copy/en-SG";
 import { selectAllOnFocus } from "./focus-utils";
 import { ACCOUNT_KIND_OPTIONS } from "./ui-options";
+import { InlineError } from "./ui-states";
 
 // Account editing is shared between settings and imports, so keep the dialog
 // presentational and workflow-agnostic here.
@@ -37,7 +38,7 @@ export function AccountDialog({ dialog, error, people, isSubmitting, onChange, o
                 <X size={16} />
               </button>
             </div>
-            {error ? <p className="form-error">{error}</p> : null}
+            <InlineError message={error} />
             <div className="settings-account-form">
               <label className="table-edit-field">
                 <span>{messages.settings.accountName}</span>
