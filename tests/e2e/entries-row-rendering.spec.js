@@ -148,3 +148,31 @@ test("a row's category dialog opens only on demand and closes without opening th
   await expect(page.locator(".settings-category-dialog")).toHaveCount(0);
   await expect(row.locator(".entry-inline-editor")).toHaveCount(0);
 });
+
+test("closed rows skip off-screen rendering but stay reachable by find and the keyboard", async ({ page }) => {
+  // A short viewport puts most of the month below the fold.
+  await page.setViewportSize({ width: 1280, height: 480 });
+  await openEntries(page);
+  const rows = page.locator(".entry-row");
+  const count = await rows.count();
+  const last = rows.nth(count - 1);
+  expect(await last.evaluate((row) => getComputedStyle(row).contentVisibility)).toBe("auto");
+  // An off-screen row's contents are skipped until they are needed.
+  const isRendered = () => last.locator(".entry-row-main").evaluate((main) => main.checkVisibility({ contentVisibilityAuto: true }));
+  expect(await isRendered()).toBe(false);
+  expect(await rows.first().locator(".entry-row-main").evaluate((main) => main.checkVisibility({ contentVisibilityAuto: true }))).toBe(true);
+
+  // Find-in-page still matches text inside skipped rows.
+  const lastDescription = (await last.locator(".entry-row-description > strong").textContent()).trim();
+  expect(await page.evaluate((text) => window.find(text), lastDescription)).toBe(true);
+
+  // Keyboard focus reaches the last row, which then renders.
+  await last.locator(".entry-row-main").focus();
+  await expect(last.locator(".entry-row-main")).toBeFocused();
+  await expect.poll(isRendered).toBe(true);
+
+  // The open row is never skipped, so its editor is always laid out.
+  await page.keyboard.press("Enter");
+  await expect(last.locator(".entry-inline-editor")).toBeVisible();
+  expect(await last.evaluate((row) => getComputedStyle(row).contentVisibility)).toBe("visible");
+});

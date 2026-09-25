@@ -8353,6 +8353,22 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
   border-top: 0;
 }
 
+/* A month can hold thousands of rows. Closed rows off screen skip style,
+   layout and paint until they scroll near the viewport; find-in-page, Tab
+   focus and screen readers still reach them because they stay in the DOM.
+   "auto" keeps each row's last rendered height, so the scrollbar stays put
+   once a row has been seen; the fallback is the measured row height. */
+.entry-row:not(.is-editing) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 68px;
+}
+
+/* Paint containment clips anything outside the row, so draw the keyboard
+   focus ring inside it. */
+.entry-row-main:focus-visible {
+  outline-offset: -2px;
+}
+
 .entry-row.is-inline-editing:first-child {
   border-top: 1px solid rgba(191, 103, 45, 0.16);
 }
@@ -10783,6 +10799,10 @@ th {
     padding: 10px 12px;
     border-radius: 0;
     overflow: visible;
+  }
+
+  .entry-row:not(.is-editing) {
+    contain-intrinsic-size: auto 89px;
   }
 
   .entries-date-head {
