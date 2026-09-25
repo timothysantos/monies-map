@@ -129,6 +129,8 @@ const PREDICATES = {
 
 test("Entries interactions on the 2,000-row month", async ({ browser }, testInfo) => {
   test.skip(FIXTURE !== "scale-10k", "the 2,000-row month exists only in the scale-10k fixture");
+  // A 4x-throttled 2,000-row run takes minutes; the timing itself is unbounded.
+  test.setTimeout(20 * 60_000);
   const mobile = testInfo.project.name.includes("mobile");
   const profile = mobile ? PROFILES.mobile : PROFILES.desktop;
   const context = await browser.newContext(contextOptions(testInfo.project.use));
