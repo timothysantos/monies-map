@@ -363,3 +363,33 @@ test("rolling back the CSV after a statement certified the promoted entry keeps 
   assert.equal(statementRollback.status, 200, JSON.stringify(statementRollback.payload));
   assert.deepEqual(await entryRow(db, manualEntryId), manualBefore);
 });
+
+// Above about 245 rows the commit is staged: the import rows (with the
+// snapshot) go in chunks and the promotion in the final batch.
+test("a staged bulk import that promotes a manual entry restores it on rollback", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const manualEntryId = await createEntry(api, { date: "2026-05-18", description: "FAIRPRICE FINEST", amountMinor: 4321, note: "weekly shop" });
+  const manualBefore = await entryRow(db, manualEntryId);
+  const lines = ["date,description,amount,account,category,note", "2026-05-19,FAIRPRICE FINEST SINGAPORE,-43.21,UOB One,Groceries,"];
+  for (let index = 1; index <= 260; index += 1) {
+    const day = String(1 + (index % 28)).padStart(2, "0");
+    lines.push(`2026-04-${day},PROMOTION BULK ROW ${String(index).padStart(3, "0")},-${index}.07,UOB One,Groceries,bulk`);
+  }
+  const preview = await api("/api/imports/preview", { sourceLabel: "Promotion bulk CSV", sourceType: "csv", csv: lines.join("\n"), ownershipType: "direct", ownerName: "Tim" });
+  assert.equal(preview.status, 200, JSON.stringify(preview.payload));
+  const previewRows = preview.payload.preview.previewRows;
+  assert.equal(previewRows.length, 261);
+  assert.equal(previewRows[0].reconciliationTargetTransactionId, manualEntryId);
+
+  const commit = await api("/api/imports/commit", { sourceLabel: "Promotion bulk CSV", sourceType: "csv", parserKey: "generic_csv", rows: previewRows });
+  assert.equal(commit.status, 200, JSON.stringify(commit.payload));
+  const importId = commit.payload.importId;
+  assert.equal((await rows(db, "SELECT id FROM transactions WHERE import_id = ?", importId)).length, 261);
+  assert.deepEqual(await rows(db, "SELECT COUNT(*) AS count FROM import_rows WHERE import_id = ? AND promoted_entry_snapshot_json IS NOT NULL", importId), [{ count: 1 }]);
+
+  const rollback = await api("/api/imports/rollback", { importId });
+
+  assert.equal(rollback.status, 200, JSON.stringify(rollback.payload));
+  assert.deepEqual(await entryRow(db, manualEntryId), manualBefore);
+  assert.deepEqual(await rows(db, "SELECT id FROM transactions WHERE import_id = ?", importId), []);
+});
