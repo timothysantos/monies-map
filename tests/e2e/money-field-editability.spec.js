@@ -110,6 +110,39 @@ test.describe("money field editability", () => {
     }).toBe(4876);
   });
 
+  test("leaving the inline entry amount field applies the amount without a page error", async ({ page }) => {
+    const pageErrors = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+    const description = `Playwright amount blur ${Date.now()}`;
+    await postJson(page, "/api/entries/create", {
+      date: "2026-05-24",
+      description,
+      accountName: "UOB One",
+      categoryName: "Groceries",
+      amountMinor: 3210,
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+
+    await page.goto("/entries?view=household&month=2026-05");
+    const editor = await openEntryEditor(page, description);
+    const amountInput = editor.getByLabel("Amount");
+    await amountInput.fill("48.5");
+    // Blur runs the editor's amount handler, which formats and applies the value.
+    await amountInput.press("Tab");
+    await expect(amountInput).toHaveValue("48.5");
+    const updateResponse = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());
+    await page.getByRole("button", { name: "Done editing entry" }).click();
+    await updateResponse;
+
+    await expect.poll(async () => {
+      const entriesPage = await loadEntriesPage(page, { view: "household", month: "2026-05" });
+      return entriesPage.monthPage.entries.find((entry) => entry.description === description)?.amountMinor ?? 0;
+    }).toBe(4850);
+    expect(pageErrors).toEqual([]);
+  });
+
   test("entries still allow note edits and persist them after save", async ({ page }) => {
     const description = `Playwright note edit ${Date.now()}`;
     await postJson(page, "/api/entries/create", {
