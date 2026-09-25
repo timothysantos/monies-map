@@ -372,18 +372,40 @@ Not changed, noted for follow-up:
   to a linked split by the entry save; note and category have their own sync
   dialogs.
 - Settlement checkpoints: an amount edit of a linked expense that is already
-  in a checkpoint changes that expense's shares without reopening the
-  checkpoint (the checkpoint audit lists "edit included row after match" as
-  not implemented; Splits editor edits behave the same).
+  in a checkpoint changed that expense's shares without reopening the
+  checkpoint. Closed 2026-09-26: see "Settlement lock" below.
 - Entries treats an archived (deleted) split as still linked because its join
   does not filter `deleted_at`.
+
+## Settlement lock and split record commands (2026-09-26)
+
+Branch `checkpoint-reopen`. A split record in an active settlement checkpoint
+keeps its settled facts (rule in `DOMAIN.md`, details in
+`docs/audits/split-settlement-checkpoint-audit.md`). The check runs before
+the first write, so a refused command writes nothing: for an entry save it
+runs before the entry batch and before the shared-save upsert that follows
+it.
+
+Converted to one `db.batch()` because their checks changed:
+`updateSplitExpenseRecord` (new batch if the group changes, expense row,
+shares), `deleteSplitExpenseRecord` and `deleteSplitSettlementRecord`
+(archive and history event), `updateSplitSettlementRecord` (new batch,
+settle-up row, batch close). `app-repository-split-batches.ts` gained
+`planActiveSplitBatch` and `buildCloseSplitBatchStatement`, which return
+statements; the create paths still use the running wrappers.
+
+Proof: `tests/atomic-writes-split-checkpoint-lock.test.mjs` injects a failure
+on `INSERT INTO split_expense_shares`, `INSERT INTO split_activity_history`
+and `UPDATE split_batches` and asserts an unchanged dump; all three failed on
+the sequential code.
 
 ## Open items
 
 - Closed 2026-09-25 (section above): rolling back a CSV import deleted a
   manual entry that the import had promoted.
-- Not yet converted (still sequential writes): the split workspace
-  (`app-repository-splits.ts`), including the linked split expense a
+- Not yet converted (still sequential writes): the rest of the split
+  workspace (`app-repository-splits.ts`: create, note and category edits,
+  restore, matching, checkpoint commands), including the linked split expense a
   shared-ownership entry save upserts after its own batch (the amount
   follow-up on an entry amount edit is converted, section above); category
   match rule suggestions recorded

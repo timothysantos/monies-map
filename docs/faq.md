@@ -49,7 +49,8 @@ The core questions behind the app are:
 Yes. Open **Activity history** from the splits page. Deleted expenses and
 settlements are archived, not physically removed, and can be restored with the
 same record ID, shares, group, currency, and ledger link. Restoring does not
-rewrite an existing settlement checkpoint.
+rewrite an existing settlement checkpoint. A split included in an active
+simplified settlement cannot be deleted until that simplification is undone.
 - split expense editing can be driven either by split percentage or by an exact
   per-person dollar amount
 - manual single-entry creation from the entries view
@@ -865,6 +866,27 @@ switching split groups cannot hide a repayment that still needs bank proof.
 `Mark paid` never creates or certifies a ledger entry. Choose `Undo paid` if
 the confirmation was premature; use `Undo simplification` only when the
 included split activity itself must return to the open balance.
+
+### Why can't I change an expense that is already in a simplified settlement?
+
+A simplified settlement is worked out from the exact expenses and settle-ups
+it includes. While it is active (open, marked paid, bank matched or offset to
+zero), those records keep the amount, currency, shares, payer, date and group
+it was worked out from, and cannot be deleted. Otherwise the settled amount
+would stop matching its activity without anyone noticing.
+
+If you try, the save is refused and nothing changes. The editor explains which
+settlement holds the record and offers `Undo simplification`. That reopens
+the settlement and returns all of its activity to the open balance (the
+settlement stays in history), your change is still in the form, and saving
+again applies it. Simplify again afterwards to settle the new balance.
+
+The same applies in Entries: an entry save that would change a linked split in
+an active settlement (a new amount, or a shared save that rewrites its date,
+payer or shares) is refused as a whole, with the same undo. Description,
+category, note and bank links stay editable, and expenses recorded after the
+simplification are not affected. Rolling back an import only unlinks a
+settled split from its removed entry; the split and the settlement are kept.
 
 ## Can I keep the Money check-in brief?
 
