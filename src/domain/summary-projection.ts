@@ -4,7 +4,7 @@
 
 import { buildPlanRowsForView } from "./month-projection";
 import { buildDonutChart } from "./donut-chart-projection";
-import { loadMonthIncomeRows, loadMonthPlanRows } from "./app-repository";
+import { loadMonthIncomeRows, loadMonthPlanRows } from "./app-repository-months";
 import type {
   AccountDto,
   CategoryDto,

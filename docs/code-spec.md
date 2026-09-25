@@ -316,7 +316,19 @@ These are defaults, not excuses for clever golfing.
   move page logic into slice deep modules instead of letting the file keep
   accumulating responsibilities
 - `src/domain/app-shell.ts` is for shell orchestration and shell-shared DTO
-  builders; keep route-page fragments out of that layer
+  builders; keep route-page fragments out of that layer. Page projections
+  live in `month-projection.ts`, `summary-projection.ts`,
+  `splits-projection.ts` and `donut-chart-projection.ts` (H15e)
+- persistence writes live in focused modules below the
+  `app-repository.ts` re-export hub (H15): `app-repository-schema.ts`
+  (runtime schema), `app-repository-seed.ts` (demo and empty-state seed),
+  `app-repository-entry-commands.ts`, `app-repository-month-commands.ts`,
+  `app-repository-import-commit.ts` (commit and rollback) and
+  `app-repository-snapshots.ts` (monthly snapshot recalculation, used by all
+  of them). New code imports the specific module, never the hub, and a
+  command module never imports another command module
+- move persistence code with `scripts/persisted-state-snapshot.mjs`: its
+  normalized table and page-DTO dump must be identical before and after
 - if several route modules repeat the same route-context or month-selection
   logic, extract that logic into `src/domain/route-context.ts` or another
   shared route fragment before the duplication spreads
