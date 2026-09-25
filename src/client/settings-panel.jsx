@@ -74,7 +74,6 @@ import { getCurrentMonthKey } from "../lib/month";
 import { parseStatementText } from "../lib/statement-import";
 import { useRouteWorkReport } from "./use-route-work-status";
 
-const DEFAULT_MONTH_KEY = getCurrentMonthKey();
 const { format: formatService, imports: importService } = moniesClient;
 
 function createShortcutApiKey() {
@@ -822,7 +821,7 @@ export function SettingsPanel({
   function buildTransferReviewUrl(item) {
     const params = new URLSearchParams(searchParams);
     params.set("view", viewId);
-    params.set("month", item?.date?.slice(0, 7) || searchParams.get("month") || DEFAULT_MONTH_KEY);
+    params.set("month", item?.date?.slice(0, 7) || searchParams.get("month") || getCurrentMonthKey());
     params.set("entry_type", "transfer");
     params.set("editing_entry", item.entryId);
     return `/entries?${params.toString()}`;

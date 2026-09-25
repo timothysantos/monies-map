@@ -47,6 +47,7 @@ import {
   ShellErrorScreen,
   ShellLoadingScreen
 } from "./app-shell-status";
+import { ScreenErrorBoundary } from "./screen-error-boundary";
 import { ShellRouteTabs } from "./app-shell-navigation";
 import { PeriodMonthPicker } from "./app-shell-period-pickers";
 import { LoginRegistrationDialog } from "./login-registration-dialog";
@@ -114,7 +115,6 @@ const SummaryPanel = lazy(() => loadRouteModule("summary").then((module) => ({ d
 
 // Shared UI constants used by the month and summary pickers.
 const SUMMARY_FOCUS_OVERALL = "overall";
-const DEFAULT_MONTH_KEY = getCurrentMonthKey();
 // Canonical route registry for the top navigation and route-based prefetching.
 const routeTabs = [
   { id: "summary", path: "/summary", label: messages.tabs.summary },
@@ -243,7 +243,7 @@ export function App() {
     appShell,
     selectedTabId === "splits" ? defaultSplitsViewId : undefined
   );
-  const selectedMonth = searchParams.get("month") ?? DEFAULT_MONTH_KEY;
+  const selectedMonth = searchParams.get("month") ?? getCurrentMonthKey();
   const selectedScope = searchParams.get("scope") ?? "direct_plus_shared";
   const selectedSummaryStart = searchParams.get("summary_start") ?? undefined;
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
@@ -366,6 +366,10 @@ export function App() {
       return;
     }
     updateLoadingStatus({ issue: `${source}: ${summary}` });
+  }, [updateLoadingStatus]);
+
+  const clearLoadingIssue = useCallback(() => {
+    updateLoadingStatus({ issue: "" });
   }, [updateLoadingStatus]);
 
   // Incrementing this counter invalidates in-flight responses from older
@@ -2085,6 +2089,9 @@ export function App() {
     selectedMonth,
     syncAppShellAfterMutation
   ]);
+  // The previous page stays on screen while the next one loads, so a crashed
+  // screen retries both when a navigation starts and when its page settles.
+  const screenErrorResetKey = `${activeRouteKey}:${currentPageView ? "current" : "previous"}`;
   const routeBody = pageView
     ? (
         <RouteWorkProvider registry={routeWorkRegistry} routeKey={currentPageView ? activeRouteKey : null}>
@@ -2950,7 +2957,9 @@ export function App() {
             onDismiss={refreshNoticeOwner.dismiss}
           />
         ) : null}
-        {routeBody}
+        <ScreenErrorBoundary resetKey={screenErrorResetKey} onRetry={retryActivePageLoad} onReset={clearLoadingIssue}>
+          {routeBody}
+        </ScreenErrorBoundary>
         {isAppShellLoading ? <AppLoadingOverlay status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} /> : null}
       </section>
 

@@ -1,3 +1,6 @@
+import { isoDateInAppTimeZone } from "./app-calendar";
+
+// The household's current month, read at call time.
 export function getCurrentMonthKey(date = new Date()): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  return isoDateInAppTimeZone(date).slice(0, 7);
 }

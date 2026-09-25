@@ -1,4 +1,5 @@
 import { formatEditableMinorInput } from "./formatters";
+import { todayInAppTimeZone } from "./app-dates";
 
 export function uniqueValues(values) {
   return [...new Set(values.filter(Boolean))];
@@ -13,7 +14,7 @@ export function buildEntryDraft(view, accounts, categories, people) {
   const preferredCategoryName = categories.find((category) => category.name === "Other")?.name ?? categories[0]?.name ?? "";
   const draft = {
     id: "entry-draft",
-    date: view.monthPage.month ? `${view.monthPage.month}-01` : new Date().toISOString().slice(0, 10),
+    date: view.monthPage.month ? `${view.monthPage.month}-01` : todayInAppTimeZone(),
     description: "",
     accountId: defaultAccount?.id ?? defaultAccount?.accountId,
     accountName: defaultAccount?.name ?? defaultAccount?.accountName ?? "",
