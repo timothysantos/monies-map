@@ -31,7 +31,8 @@ verified on 2026-09-23 only.
 | H13 | P7 | Worker AI route extraction | Done (`ccdc464`, `2205621`) | audit §H13 |
 | H14 | P8 | Endpoint optimization | Done: Month page duplicate entries removed (`ebc8f64`, `92eb369`) | audit §H14 |
 | H15 | P9 | Persistence and projections split | Done (`c4f0f01`…`afaed9b`), proven with the persisted-state harness | audit §H15 |
-| H16–H17 | P10–P11 | Asset work, documentation closure | Awaiting a decision | — |
+| H16 | P10 | Asset work | Done: dead CSS removed (`018c192`); FAQ and chart deferral skipped with evidence | audit §H16 |
+| H17 | P11 | Documentation closure | Done | audit §H17 |
 
 Order is strict: H02 → H03 → H04 → H05 → H06 → H07 → H10. H08 needs only H03.
 H09 needs only H01 and may run any time after H01. H01b must precede enabling

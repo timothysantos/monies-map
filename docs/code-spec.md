@@ -77,6 +77,12 @@ to stay well below that.
 | `settingsPage` | `<= 350ms` | `600ms` | settings forms plus full account diagnostics and checkpoint history |
 | warmup / prefetch | `<= 250ms` | `400ms` | must yield to visible work |
 
+Measured at the 10k stress fixture after the macro performance work
+(`docs/audits/macro-loading-baseline.md`), all well inside these budgets:
+Entries ≈23 ms handler / 38 KB gzip, Month ≈31 ms / 47 KB, Summary (12
+months) ≈77 ms / 2 KB, Splits ≈31 ms / 3 KB, account pills and Imports
+≈30–35 ms. Payload size, not handler time, is what grows with ledger size.
+
 Budget rules:
 
 - visible page queries over `750ms` are a design smell
@@ -91,13 +97,25 @@ Budget rules:
 - the app shell must not statically import route-only UI, page editing controls,
   or a broad client facade that retains those modules; use route-owned lazy
   modules and direct shared helper imports for the few shell-level operations
+- optional work (route code warmup, speculative data, AI wording) starts only
+  when `routeWork.usable` is true and goes through the warmup scheduler; do
+  not add new idle prefetch effects
+- mobile speculative data needs a row in `route-warmup-admissions.js`
+  measured with `tests/performance/api-admission.spec.js` on the 10k
+  fixture; `maxDataBytes` is compared with gzip bytes
+- a page DTO carries only what its route reads; do not embed another route's
+  page DTO (Splits carries the month key and transfers, not the Month page)
+- page APIs report `Server-Timing: app;dur, init;dur;desc, total;dur`; keep
+  `app` first because budget checks read the first `dur`
 
 ## Optional AI Contract
 
 Workers AI belongs outside the normal query and mutation graph. Most actions
 are explicit. A Financial insight may make one debounced, non-blocking wording
-request after a stable page/filter state when the computed-facts key is absent
-from a short-lived in-memory cache. It must render deterministic wording first,
+request after a stable page/filter state, only while the route is usable (no
+editor or save open), when the computed-facts key is absent from a
+short-lived in-memory cache; an aborted, non-OK or stale response is neither
+shown nor cached. It must render deterministic wording first,
 must not persist that cache, and must return an ordinary unavailable result
 when disabled, unconfigured, quota-limited, or invalid. No visible page query,
 import preview or commit, accounting calculation, reconciliation, category
@@ -361,6 +379,23 @@ Refactor rule:
 - large legacy files are migration targets, not permission to keep adding more
   responsibilities to the same file
 - split the file by slice boundary first, then by helper depth inside the slice
+
+## Remaining Large Modules
+
+These handwritten modules are still over the 800-line guideline after the
+macro performance work. Each has one owner and a reason; splitting them is
+future work, not a claim that the complexity is gone.
+
+| Module | Lines | Owner | Why it is still large |
+| --- | ---: | --- | --- |
+| `src/client/App.jsx` | ≈3,150 | App shell | Route orchestration, mutation refresh plans and cross-route invalidation still meet here; state owners (H12) and chrome (H11) have moved out |
+| `src/index.ts` | ≈2,300 | Worker | One flat route chain with request validation per endpoint; only the AI routes are extracted (H13) |
+| `src/client/imports-panel.jsx`, `import-preview-review.jsx` | ≈2,050 / ≈1,400 | Imports | Browser-only intake, preview review and commit flow share draft state |
+| `src/domain/app-repository-import-preview.ts`, `-import-commit.ts` | ≈1,970 / ≈1,900 | Imports | Statement reconciliation, certification and rollback restoration are one tightly coupled algorithm |
+| `src/client/month-panel.jsx`, `entries-panel.jsx`, `splits-panel.jsx`, `settings-panel.jsx`, `settings-sections.jsx` | ≈1,200–1,800 | Each route | Route panels with their editors; drafts and workflow locks are panel state |
+| `src/domain/app-repository-splits.ts` | ≈1,580 | Splits | Split expenses, settlements, checkpoints and matches share validation |
+| `src/domain/app-repository-entry-commands.ts` | ≈1,170 | Entries | Five edit paths share bank-fact locks and split sync |
+| `src/domain/demo-data.ts`, `src/types/dto.ts`, `src/client/copy/en-SG.js` | ≈1,480 / 900 / 940 | Fixtures, DTO types, copy | Data and declarations, not logic |
 
 ## Comment Rules
 
