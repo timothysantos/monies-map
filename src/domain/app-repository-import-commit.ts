@@ -1272,9 +1272,16 @@ export async function rollbackImportBatch(
 // note, owner, splits, transfer links) are kept. An entry the user deleted
 // has nothing to restore.
 //
+// An entry linked as a transfer since keeps its transfer entry type and
+// direction, which the kept link needs.
+//
 // An entry a later statement certified keeps the statement's bank facts and
 // its certification; only what lies underneath changes, so rolling that
 // statement back afterwards gives the manual entry, not this import's row.
+// An entry a later statement superseded (deleted) is not in the ledger, so
+// that statement's snapshot is rewritten to re-create the manual entry, and
+// the rows this import created are dropped from it: rolling the statement
+// back must not re-create rows of a rolled-back import.
 //
 // Imports committed before snapshots existed have none. An entry created
 // before such an import can only have been promoted by it, so it stays as a
@@ -1288,9 +1295,14 @@ async function buildPromotedEntryRestore(db: D1Database, importId: string) {
         transactions.account_id,
         transactions.transaction_date,
         transactions.post_date,
+        transactions.entry_type,
+        transactions.transfer_direction,
+        transactions.transfer_group_id,
         transactions.bank_certification_status,
         transactions.statement_certified_import_id,
         transactions.statement_certified_previous_import_id,
+        transactions.statement_certified_previous_entry_type,
+        transactions.statement_certified_previous_transfer_direction,
         import_rows.promoted_entry_snapshot_json
       FROM transactions
       INNER JOIN import_rows
@@ -1310,9 +1322,14 @@ async function buildPromotedEntryRestore(db: D1Database, importId: string) {
       account_id: string;
       transaction_date: string;
       post_date: string | null;
+      entry_type: PromotedEntrySnapshot["transaction"]["entry_type"];
+      transfer_direction: PromotedEntrySnapshot["transaction"]["transfer_direction"];
+      transfer_group_id: string | null;
       bank_certification_status: "provisional" | "statement_certified";
       statement_certified_import_id: string | null;
       statement_certified_previous_import_id: string | null;
+      statement_certified_previous_entry_type: PromotedEntrySnapshot["transaction"]["entry_type"] | null;
+      statement_certified_previous_transfer_direction: PromotedEntrySnapshot["transaction"]["transfer_direction"];
       promoted_entry_snapshot_json: string | null;
     }>();
 
@@ -1322,7 +1339,20 @@ async function buildPromotedEntryRestore(db: D1Database, importId: string) {
   const certificateRewrites = new Map<string, CertifiedLedgerRowSnapshot[]>();
 
   for (const entry of promotedEntries.results) {
-    const snapshot = parsePromotedEntrySnapshot(entry.promoted_entry_snapshot_json, entry.id);
+    const parsedSnapshot = parsePromotedEntrySnapshot(entry.promoted_entry_snapshot_json, entry.id);
+    const snapshot = parsedSnapshot && entry.transfer_group_id
+      ? {
+        transaction: {
+          ...parsedSnapshot.transaction,
+          entry_type: entry.bank_certification_status === "provisional"
+            ? entry.entry_type
+            : entry.statement_certified_previous_entry_type ?? entry.entry_type,
+          transfer_direction: entry.bank_certification_status === "provisional"
+            ? entry.transfer_direction
+            : entry.statement_certified_previous_transfer_direction
+        }
+      }
+      : parsedSnapshot;
     months.add(entry.transaction_date.slice(0, 7));
     months.add((entry.post_date ?? entry.transaction_date).slice(0, 7));
     if (snapshot) {
@@ -1474,6 +1504,12 @@ async function buildPromotedEntryRestore(db: D1Database, importId: string) {
     }
   }
 
+  const superseded = await buildSupersededPromotionRewrites(db, importId);
+  for (const month of superseded.months) {
+    months.add(month);
+  }
+  statements.push(...superseded.statements);
+
   for (const [certificateId, certifiedRows] of certificateRewrites) {
     statements.push(db
       .prepare(`
@@ -1482,6 +1518,97 @@ async function buildPromotedEntryRestore(db: D1Database, importId: string) {
         WHERE household_id = ? AND id = ?
       `)
       .bind(JSON.stringify(certifiedRows), DEFAULT_HOUSEHOLD_ID, certificateId));
+  }
+
+  return { statements, months };
+}
+
+// Rewrites statement certificates that superseded rows of this import (see
+// buildPromotedEntryRestore).
+async function buildSupersededPromotionRewrites(db: D1Database, importId: string) {
+  const statements: D1PreparedStatement[] = [];
+  const months = new Set<string>();
+  const certificates = await db
+    .prepare(`
+      SELECT id, superseded_ledger_rows_json
+      FROM statement_reconciliation_certificates
+      WHERE household_id = ?
+        AND superseded_ledger_rows_json IS NOT NULL
+        AND instr(superseded_ledger_rows_json, ?) > 0
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, importId)
+    .all<{ id: string; superseded_ledger_rows_json: string }>();
+  if (!certificates.results.length) {
+    return { statements, months };
+  }
+
+  const promotionSnapshots = await db
+    .prepare(`
+      SELECT promoted_entry_snapshot_json
+      FROM import_rows
+      WHERE import_id = ?
+        AND promoted_entry_snapshot_json IS NOT NULL
+    `)
+    .bind(importId)
+    .all<{ promoted_entry_snapshot_json: string }>();
+  const promotionSnapshotsByEntryId = new Map<string, PromotedEntrySnapshot>();
+  for (const row of promotionSnapshots.results) {
+    try {
+      const snapshot = JSON.parse(row.promoted_entry_snapshot_json) as PromotedEntrySnapshot;
+      if (snapshot?.transaction?.id) {
+        promotionSnapshotsByEntryId.set(snapshot.transaction.id, snapshot);
+      }
+    } catch {
+      // An unreadable snapshot is treated like a legacy import's.
+    }
+  }
+
+  for (const certificate of certificates.results) {
+    let supersededRows: SupersededLedgerRowSnapshot[];
+    try {
+      supersededRows = JSON.parse(certificate.superseded_ledger_rows_json) as SupersededLedgerRowSnapshot[];
+    } catch {
+      continue;
+    }
+    if (!supersededRows.some((row) => row.transaction.import_id === importId)) {
+      continue;
+    }
+
+    const rewritten = supersededRows.flatMap((row) => {
+      if (row.transaction.import_id !== importId) {
+        return [row];
+      }
+      const promotion = promotionSnapshotsByEntryId.get(row.transaction.id);
+      if (!promotion) {
+        return [];
+      }
+      const keepsTransferClassification = Boolean(row.transaction.transfer_group_id);
+      return [{
+        ...row,
+        transaction: {
+          ...row.transaction,
+          import_id: null,
+          import_row_id: null,
+          post_date: promotion.transaction.post_date,
+          description: promotion.transaction.description,
+          amount_minor: promotion.transaction.amount_minor,
+          entry_type: keepsTransferClassification ? row.transaction.entry_type : promotion.transaction.entry_type,
+          transfer_direction: keepsTransferClassification ? row.transaction.transfer_direction : promotion.transaction.transfer_direction
+        }
+      }];
+    });
+    for (const row of supersededRows) {
+      if (row.transaction.import_id === importId) {
+        months.add(row.transaction.transaction_date.slice(0, 7));
+      }
+    }
+    statements.push(db
+      .prepare(`
+        UPDATE statement_reconciliation_certificates
+        SET superseded_ledger_rows_json = ?
+        WHERE household_id = ? AND id = ?
+      `)
+      .bind(rewritten.length ? JSON.stringify(rewritten) : null, DEFAULT_HOUSEHOLD_ID, certificate.id));
   }
 
   return { statements, months };
