@@ -130,3 +130,37 @@ test("a household edit of a linked entry keeps the total on the row and moves ea
   const timData = await loadEntriesPage(page, { view: "person-tim", month });
   expect(timData.monthPage.entries.find((item) => item.id === entryId)?.amountMinor).toBe(3500);
 });
+
+test("after a description edit in a person view, the amount field still shows the linked entry's total", async ({ page }) => {
+  const description = `Linked amount field ${Date.now()}`;
+
+  await page.goto("/");
+  await reseedDemo(page);
+  const { entryId } = await createLinkedEntry(page, description);
+
+  await page.goto(`/entries?view=person-tim&month=${month}&entries_scope=direct_plus_shared&editing_entry=${entryId}`);
+  const editor = page.locator(".entry-inline-editor").first();
+  await expect(editor).toBeVisible({ timeout: 60_000 });
+  await editor.getByRole("textbox", { name: "Description" }).fill(`${description} renamed`);
+  const amountInput = editor.getByRole("textbox", { name: /^Amount/ });
+  await expect(amountInput).toHaveValue("60");
+
+  // Tabbing through the untouched amount field and saving keeps the total.
+  await amountInput.focus();
+  await amountInput.blur();
+  await expect(amountInput).toHaveValue("60");
+  const entryUpdate = page.waitForResponse((response) => response.url().includes("/api/entries/update") && response.ok());
+  await editor.getByRole("button", { name: "Done editing entry" }).click();
+  const saved = await entryUpdate;
+  expect(saved.request().postDataJSON().amountMinor).toBe(6000);
+
+  const savedRow = page.locator(".entry-row").filter({ hasText: `${description} renamed` }).first();
+  await expect(savedRow).not.toContainText("Updating");
+  await savedRow.click();
+  await expect(page.locator(".entry-inline-editor").first().getByRole("textbox", { name: /^Amount/ })).toHaveValue("60");
+
+  const entriesData = await loadEntriesPage(page, { view: "person-tim", month });
+  const savedEntry = entriesData.monthPage.entries.find((item) => item.id === entryId);
+  expect(savedEntry?.totalAmountMinor).toBe(6000);
+  expect(savedEntry?.amountMinor).toBe(3000);
+});
