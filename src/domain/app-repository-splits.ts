@@ -3,7 +3,8 @@ import {
   groupSplits,
   slugify
 } from "./app-repository-helpers";
-import { closeSplitBatch, getOrCreateActiveSplitBatch } from "./app-repository-split-batches";
+import { buildCloseSplitBatchStatement, closeSplitBatch, getOrCreateActiveSplitBatch, planActiveSplitBatch } from "./app-repository-split-batches";
+import { assertSplitSettlementUnchanged, type SplitSettlementFacts } from "./split-settlement-lock";
 import {
   findBestCrossCurrencySplitExpenseLedgerCandidate,
   findBestCrossCurrencySplitSettlementLedgerCandidate,
@@ -906,59 +907,74 @@ export async function updateSplitExpenseRecord(
   }
 
   const nextGroupId = input.groupId || null;
-  const batchId = existing.split_group_id === nextGroupId
-    ? existing.split_batch_id
-    : await getOrCreateActiveSplitBatch(db, { groupId: nextGroupId, date: input.date });
-
-  await db
-    .prepare(`
-      UPDATE split_expenses
-      SET split_group_id = ?, split_batch_id = ?, payer_person_id = ?, expense_date = ?, description = ?,
-          category_id = ?, total_amount_minor = ?, currency = ?, home_amount_minor = ?,
-          fx_rate_basis_points = ?, payment_method = ?, payment_status = ?, note = ?
-      WHERE id = ? AND household_id = ?
-    `)
-    .bind(
-      input.groupId || null,
-      batchId ?? null,
-      payerPersonId,
-      input.date,
-      input.description.trim(),
-      categoryId,
-      input.amountMinor,
-      currency,
-      input.homeAmountMinor ?? null,
-      input.fxRateBasisPoints ?? null,
-      input.paymentMethod ?? "cash",
-      input.paymentStatus ?? "recorded",
-      input.note ?? null,
-      input.splitExpenseId,
-      DEFAULT_HOUSEHOLD_ID
-    )
-    .run();
-
   const { firstBasisPoints, secondBasisPoints, firstAmount, secondAmount } = buildSplitShareAmounts(input.amountMinor, input.splitBasisPoints, input.splitAmountMinor);
+  await assertSplitSettlementUnchanged(db, {
+    recordKind: "expense",
+    recordId: input.splitExpenseId,
+    next: () => ({
+      date: input.date,
+      groupId: nextGroupId,
+      currency,
+      amountMinor: input.amountMinor,
+      partyIds: [payerPersonId],
+      shares: [
+        { personId: sharePeople[0].id, amountMinor: firstAmount },
+        { personId: sharePeople[1].id, amountMinor: secondAmount }
+      ]
+    })
+  });
 
-  await db.prepare("DELETE FROM split_expense_shares WHERE split_expense_id = ?").bind(input.splitExpenseId).run();
-  await db
-    .prepare(`
-      INSERT INTO split_expense_shares (
-        id, split_expense_id, person_id, ratio_basis_points, amount_minor
-      ) VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)
-    `)
-    .bind(
-      `${input.splitExpenseId}-${sharePeople[0].id}`,
-      input.splitExpenseId,
-      sharePeople[0].id,
-      firstBasisPoints,
-      firstAmount,
-      `${input.splitExpenseId}-${sharePeople[1].id}`,
-      input.splitExpenseId,
-      sharePeople[1].id,
-      secondBasisPoints,
-      secondAmount
-    )
-    .run();
+  const batch = existing.split_group_id === nextGroupId
+    ? { batchId: existing.split_batch_id, statements: [] }
+    : await planActiveSplitBatch(db, { groupId: nextGroupId, date: input.date });
+
+  await db.batch([
+    ...batch.statements,
+    db
+      .prepare(`
+        UPDATE split_expenses
+        SET split_group_id = ?, split_batch_id = ?, payer_person_id = ?, expense_date = ?, description = ?,
+            category_id = ?, total_amount_minor = ?, currency = ?, home_amount_minor = ?,
+            fx_rate_basis_points = ?, payment_method = ?, payment_status = ?, note = ?
+        WHERE id = ? AND household_id = ?
+      `)
+      .bind(
+        nextGroupId,
+        batch.batchId ?? null,
+        payerPersonId,
+        input.date,
+        input.description.trim(),
+        categoryId,
+        input.amountMinor,
+        currency,
+        input.homeAmountMinor ?? null,
+        input.fxRateBasisPoints ?? null,
+        input.paymentMethod ?? "cash",
+        input.paymentStatus ?? "recorded",
+        input.note ?? null,
+        input.splitExpenseId,
+        DEFAULT_HOUSEHOLD_ID
+      ),
+    db.prepare("DELETE FROM split_expense_shares WHERE split_expense_id = ?").bind(input.splitExpenseId),
+    db
+      .prepare(`
+        INSERT INTO split_expense_shares (
+          id, split_expense_id, person_id, ratio_basis_points, amount_minor
+        ) VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)
+      `)
+      .bind(
+        `${input.splitExpenseId}-${sharePeople[0].id}`,
+        input.splitExpenseId,
+        sharePeople[0].id,
+        firstBasisPoints,
+        firstAmount,
+        `${input.splitExpenseId}-${sharePeople[1].id}`,
+        input.splitExpenseId,
+        sharePeople[1].id,
+        secondBasisPoints,
+        secondAmount
+      )
+  ]);
 
   if (existing.linked_transaction_id) {
     await syncLinkedTransactionToSplitExpense(db, {
@@ -1087,37 +1103,54 @@ export async function updateSplitSettlementRecord(
   }
 
   const nextGroupId = input.groupId || null;
-  const batchId = existing.split_group_id === nextGroupId
-    ? existing.split_batch_id
-    : await getOrCreateActiveSplitBatch(db, { groupId: nextGroupId, date: input.date });
-
-  await db
-    .prepare(`
-      UPDATE split_settlements
-      SET split_group_id = ?, split_batch_id = ?, from_person_id = ?, to_person_id = ?,
-          settlement_date = ?, amount_minor = ?, currency = ?, fx_rate_basis_points = ?,
-          payment_method = ?, payment_status = ?, note = ?
-      WHERE id = ? AND household_id = ?
-    `)
-    .bind(
-      input.groupId || null,
-      batchId ?? null,
-      fromPersonId,
-      toPersonId,
-      input.date,
-      input.amountMinor,
+  await assertSplitSettlementUnchanged(db, {
+    recordKind: "settlement",
+    recordId: input.settlementId,
+    next: () => ({
+      date: input.date,
+      groupId: nextGroupId,
       currency,
-      input.fxRateBasisPoints ?? null,
-      input.paymentMethod ?? "cash",
-      input.paymentStatus ?? "recorded",
-      input.note ?? null,
-      input.settlementId,
-      DEFAULT_HOUSEHOLD_ID
-    )
-    .run();
-  if (batchId) {
-    await closeSplitBatch(db, { batchId, closedOn: input.date });
-  }
+      amountMinor: input.amountMinor,
+      partyIds: [fromPersonId, toPersonId],
+      shares: []
+    })
+  });
+
+  const batch = existing.split_group_id === nextGroupId
+    ? { batchId: existing.split_batch_id, statements: [] }
+    : await planActiveSplitBatch(db, { groupId: nextGroupId, date: input.date });
+  // A settle-up closes the batch it belongs to.
+  const closeBatchStatement = batch.batchId
+    ? await buildCloseSplitBatchStatement(db, { batchId: batch.batchId, groupId: nextGroupId, closedOn: input.date })
+    : null;
+
+  await db.batch([
+    ...batch.statements,
+    db
+      .prepare(`
+        UPDATE split_settlements
+        SET split_group_id = ?, split_batch_id = ?, from_person_id = ?, to_person_id = ?,
+            settlement_date = ?, amount_minor = ?, currency = ?, fx_rate_basis_points = ?,
+            payment_method = ?, payment_status = ?, note = ?
+        WHERE id = ? AND household_id = ?
+      `)
+      .bind(
+        nextGroupId,
+        batch.batchId ?? null,
+        fromPersonId,
+        toPersonId,
+        input.date,
+        input.amountMinor,
+        currency,
+        input.fxRateBasisPoints ?? null,
+        input.paymentMethod ?? "cash",
+        input.paymentStatus ?? "recorded",
+        input.note ?? null,
+        input.settlementId,
+        DEFAULT_HOUSEHOLD_ID
+      ),
+    ...(closeBatchStatement ? [closeBatchStatement] : [])
+  ]);
 
   return { settlementId: input.settlementId };
 }
@@ -1161,12 +1194,14 @@ export async function deleteSplitExpenseRecord(
     throw new Error("Split expense not found.");
   }
   if (existing.deleted_at) throw new Error("This split is already in activity history.");
+  await assertSplitSettlementUnchanged(db, { recordKind: "expense", recordId: existing.id, next: () => "deleted" });
 
-  await db
-    .prepare("UPDATE split_expenses SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ? AND deleted_at IS NULL")
-    .bind(input.splitExpenseId, DEFAULT_HOUSEHOLD_ID)
-    .run();
-  await recordSplitHistory(db, { recordKind: "expense", recordId: existing.id, action: "deleted", groupId: existing.split_group_id, groupName: existing.group_name, description: existing.description, amountMinor: existing.total_amount_minor, currency: existing.currency });
+  await db.batch([
+    db
+      .prepare("UPDATE split_expenses SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ? AND deleted_at IS NULL")
+      .bind(input.splitExpenseId, DEFAULT_HOUSEHOLD_ID),
+    buildSplitHistoryStatement(db, { recordKind: "expense", recordId: existing.id, action: "deleted", groupId: existing.split_group_id, groupName: existing.group_name, description: existing.description, amountMinor: existing.total_amount_minor, currency: existing.currency })
+  ]);
 
   return { splitExpenseId: input.splitExpenseId, deleted: true };
 }
@@ -1187,21 +1222,29 @@ export async function deleteSplitSettlementRecord(
     throw new Error("Split settlement not found.");
   }
   if (existing.deleted_at) throw new Error("This settlement is already in activity history.");
+  await assertSplitSettlementUnchanged(db, { recordKind: "settlement", recordId: existing.id, next: () => "deleted" });
 
-  await db
-    .prepare("UPDATE split_settlements SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ? AND deleted_at IS NULL")
-    .bind(input.settlementId, DEFAULT_HOUSEHOLD_ID)
-    .run();
-  await recordSplitHistory(db, { recordKind: "settlement", recordId: existing.id, action: "deleted", groupId: existing.split_group_id, groupName: existing.group_name, description: existing.description, amountMinor: existing.amount_minor, currency: existing.currency });
+  await db.batch([
+    db
+      .prepare("UPDATE split_settlements SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ? AND deleted_at IS NULL")
+      .bind(input.settlementId, DEFAULT_HOUSEHOLD_ID),
+    buildSplitHistoryStatement(db, { recordKind: "settlement", recordId: existing.id, action: "deleted", groupId: existing.split_group_id, groupName: existing.group_name, description: existing.description, amountMinor: existing.amount_minor, currency: existing.currency })
+  ]);
 
   return { settlementId: input.settlementId, deleted: true };
 }
 
-async function recordSplitHistory(db: D1Database, input: { recordKind: "expense" | "settlement"; recordId: string; action: "created" | "updated" | "deleted" | "restored"; groupId?: string | null; groupName?: string | null; description: string; amountMinor: number; currency?: string | null; detail?: string }) {
-  await db.prepare(`INSERT INTO split_activity_history
+type SplitHistoryInput = { recordKind: "expense" | "settlement"; recordId: string; action: "created" | "updated" | "deleted" | "restored"; groupId?: string | null; groupName?: string | null; description: string; amountMinor: number; currency?: string | null; detail?: string };
+
+function buildSplitHistoryStatement(db: D1Database, input: SplitHistoryInput) {
+  return db.prepare(`INSERT INTO split_activity_history
     (id, household_id, record_kind, record_id, action, group_id, group_name, description, amount_minor, currency, detail)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .bind(`split-history-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, DEFAULT_HOUSEHOLD_ID, input.recordKind, input.recordId, input.action, input.groupId ?? null, input.groupName ?? null, input.description, input.amountMinor, normalizeSplitCurrency(input.currency), input.detail ?? null).run();
+    .bind(`split-history-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, DEFAULT_HOUSEHOLD_ID, input.recordKind, input.recordId, input.action, input.groupId ?? null, input.groupName ?? null, input.description, input.amountMinor, normalizeSplitCurrency(input.currency), input.detail ?? null);
+}
+
+async function recordSplitHistory(db: D1Database, input: SplitHistoryInput) {
+  await buildSplitHistoryStatement(db, input).run();
 }
 
 export async function loadSplitActivityHistory(db: D1Database): Promise<SplitActivityHistoryDto[]> {
@@ -1497,6 +1540,86 @@ export async function buildLinkedSplitAmountStatements(
   }
 
   return statements;
+}
+
+// Refuses an entry save when its linked split expense is in an active
+// simplified settlement and the save would change that split's settlement
+// facts: the amount follow-up above (same currency only) and, for a shared
+// save, the upsert below, which rewrites date, payer, amount, currency and
+// shares. Runs before the entry's batch, so a refused save writes nothing.
+export async function assertLinkedSplitSettlementUnchanged(
+  db: D1Database,
+  input: {
+    entryId: string;
+    entryCurrency: string;
+    followAmountMinor?: number;
+    sharedSync?: { date: string; payerPersonId: string | null; amountMinor: number; splitBasisPoints?: number };
+  }
+) {
+  if (input.followAmountMinor === undefined && !input.sharedSync) return;
+  const linkedSplits = await db
+    .prepare("SELECT id FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ?")
+    .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
+    .all<{ id: string }>();
+  const entryCurrency = normalizeSplitCurrency(input.entryCurrency);
+
+  for (const [index, split] of linkedSplits.results.entries()) {
+    // The upsert rewrites the first linked split only.
+    const sharedSync = index === 0 ? input.sharedSync : undefined;
+    const followAmountMinor = input.followAmountMinor;
+    await assertSplitSettlementUnchanged(db, {
+      recordKind: "expense",
+      recordId: split.id,
+      subject: "linked entry",
+      next: async (current): Promise<SplitSettlementFacts> => {
+        if (sharedSync) {
+          const sharePeople = await loadSplitSharePeople(db);
+          const { firstAmount, secondAmount } = buildSplitShareAmounts(sharedSync.amountMinor, sharedSync.splitBasisPoints);
+          return {
+            date: sharedSync.date,
+            groupId: current.groupId,
+            currency: entryCurrency,
+            amountMinor: sharedSync.amountMinor,
+            partyIds: [sharedSync.payerPersonId ?? current.partyIds[0]],
+            shares: [
+              { personId: sharePeople[0].id, amountMinor: firstAmount },
+              { personId: sharePeople[1].id, amountMinor: secondAmount }
+            ]
+          };
+        }
+        if (followAmountMinor === undefined || current.currency !== entryCurrency) {
+          return current;
+        }
+        const shares = await loadOrderedSplitShares(db, split.id);
+        if (shares.length !== 2) return { ...current, amountMinor: followAmountMinor };
+        const nextShares = rebalanceSplitSharesForTotal(shares, followAmountMinor);
+        return {
+          ...current,
+          amountMinor: followAmountMinor,
+          shares: shares.map((share, shareIndex) => ({ personId: share.personId, amountMinor: nextShares[shareIndex].amountMinor }))
+        };
+      }
+    });
+  }
+}
+
+// A split expense's shares in split-share people order, as the amount
+// follow-up rebalances them.
+async function loadOrderedSplitShares(db: D1Database, splitExpenseId: string) {
+  const shares = await db
+    .prepare(`
+      SELECT split_expense_shares.person_id, split_expense_shares.ratio_basis_points, split_expense_shares.amount_minor
+      FROM split_expense_shares
+      INNER JOIN people ON people.id = split_expense_shares.person_id
+      WHERE split_expense_shares.split_expense_id = ?
+      ORDER BY
+        CASE people.role WHEN 'owner' THEN 0 WHEN 'partner' THEN 1 ELSE 2 END,
+        people.created_at,
+        people.id
+    `)
+    .bind(splitExpenseId)
+    .all<{ person_id: string; ratio_basis_points: number; amount_minor: number }>();
+  return shares.results.map((share) => ({ personId: share.person_id, ratioBasisPoints: share.ratio_basis_points, amountMinor: share.amount_minor }));
 }
 
 export async function upsertLinkedSplitExpenseForEntryRecord(

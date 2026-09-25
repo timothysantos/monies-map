@@ -14,7 +14,7 @@ import { normalizeStatementDate } from "./app-repository-helpers";
 import { recordCategoryMatchSuggestion } from "./app-repository-category-match-rules";
 import { buildAuditEventStatement } from "./app-repository-audit";
 import { resolveAccountId, resolveCategoryId, resolvePersonId } from "./app-repository-lookups";
-import { buildLinkedSplitAmountStatements, upsertLinkedSplitExpenseForEntryRecord } from "./app-repository-splits";
+import { assertLinkedSplitSettlementUnchanged, buildLinkedSplitAmountStatements, upsertLinkedSplitExpenseForEntryRecord } from "./app-repository-splits";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 
 async function assertUnlockedBankFactsForEntryUpdate(
@@ -223,9 +223,23 @@ export async function updateEntryRecord(
     }
   });
 
+  const followsLinkedSplitAmount = resolvedEntryType === "expense" && resolvedAmountMinor !== Number(transaction.amount_minor);
+  const syncsLinkedSplit = input.ownershipType === "shared" && resolvedEntryType === "expense";
+
+  // A linked split in a simplified settlement keeps its settled facts, so a
+  // save that would move them is refused here, before anything is written.
+  await assertLinkedSplitSettlementUnchanged(db, {
+    entryId: input.entryId,
+    entryCurrency: transaction.currency,
+    followAmountMinor: followsLinkedSplitAmount ? resolvedAmountMinor : undefined,
+    sharedSync: syncsLinkedSplit
+      ? { date: input.date, payerPersonId: ownerPersonId, amountMinor: resolvedAmountMinor, splitBasisPoints: input.splitBasisPoints }
+      : undefined
+  });
+
   // A linked split expense mirrors the ledger amount, so an amount change
   // moves the split total and shares in the same batch as the entry.
-  const linkedSplitStatements = resolvedEntryType === "expense" && resolvedAmountMinor !== Number(transaction.amount_minor)
+  const linkedSplitStatements = followsLinkedSplitAmount
     ? await buildLinkedSplitAmountStatements(db, {
         entryId: input.entryId,
         entryCurrency: transaction.currency,
