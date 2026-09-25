@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -9,6 +9,7 @@ import { selectAllOnFocus } from "./focus-utils";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
 import { FinancialInsight } from "./financial-insight";
 import { moniesClient } from "./monies-client-service";
+import { useMoneyPrivacy } from "./money-privacy";
 import { MonthMetricRow, MonthNotesAndAccounts, MonthPanelHeader } from "./month-overview";
 import {
   buildMobileMonthIncomeDialog,
@@ -130,9 +131,23 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     () => view.summaryPage?.months?.find((month) => month.month === view.monthPage.month) ?? null,
     [view]
   );
+  const planLinkRowId = planLinkDialog?.rowId ?? null;
   const planLinkTargetRow = useMemo(
-    () => planLinkDialog ? monthService.getPlanRowById(planSections, planLinkDialog.rowId) : null,
-    [planLinkDialog, planSections]
+    () => planLinkRowId ? monthService.getPlanRowById(planSections, planLinkRowId) : null,
+    [planLinkRowId, planSections]
+  );
+  // Scoring every month entry is the expensive part, so it runs when the
+  // picker opens on a row, not on each checkbox or filter change. Candidate
+  // objects then keep their identity and memoized candidate rows skip.
+  const planLinkCandidates = useMemo(
+    () => planLinkTargetRow
+      ? monthService.buildPlanLinkCandidates({
+        row: planLinkTargetRow,
+        monthEntries: view.monthPage.entries,
+        monthKey: view.monthPage.month
+      })
+      : [],
+    [planLinkTargetRow, view.monthPage.entries, view.monthPage.month]
   );
   const planLinkPickerModel = useMemo(() => {
     if (!planLinkTargetRow) {
@@ -144,11 +159,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       };
     }
 
-    const allCandidates = monthService.buildPlanLinkCandidates({
-      row: planLinkTargetRow,
-      monthEntries: view.monthPage.entries,
-      monthKey: view.monthPage.month
-    });
+    const allCandidates = planLinkCandidates;
     const selectedIds = new Set(planLinkDialog?.draftEntryIds ?? []);
     const rowCategory = (planLinkTargetRow.categoryName ?? "").trim().toLowerCase();
     const rowAccount = (planLinkTargetRow.accountName ?? "").trim().toLowerCase();
@@ -182,7 +193,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       candidates,
       selectedIds
     };
-  }, [planLinkDialog, planLinkTargetRow, view.monthPage.entries, view.monthPage.month]);
+  }, [planLinkCandidates, planLinkDialog, planLinkTargetRow, view.monthPage.month]);
 
   const monthMetricCards = useMemo(
     () => monthService.buildMetricCards({ planSections, incomeRows, currentMonthSummary: selectedMonthSummary }),
@@ -1265,7 +1276,8 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     } : current);
   }
 
-  function togglePlanLinkEntry(entryId, checked) {
+  // Stable so memoized candidate rows do not re-render when the dialog does.
+  const togglePlanLinkEntry = useCallback((entryId, checked) => {
     setPlanLinkDialog((current) => {
       if (!current) {
         return current;
@@ -1281,7 +1293,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         draftEntryIds: [...nextIds]
       };
     });
-  }
+  }, []);
 
   const monthKey = view.monthPage.month;
   function toggleSection(sectionKey) {
@@ -1774,19 +1786,12 @@ function MonthPlanLinkContent({
       {candidates.length ? (
         <div className="planned-link-list">
           {candidates.map((entry) => (
-            <label key={entry.id} className="planned-link-row">
-              <input
-                type="checkbox"
-                checked={selectedIds.has(entry.id)}
-                onChange={(event) => onToggleEntry(entry.id, event.target.checked)}
-              />
-              <span className="planned-link-row-main">
-                <strong>{entry.description}</strong>
-                <small>{formatService.formatDateOnly(entry.date)} • {entry.accountName} • {entry.categoryName}</small>
-                {entry.matchReasons?.length ? <em>{entry.matchReasons.slice(0, 3).join(" · ")}</em> : null}
-              </span>
-              <span>{formatService.money(entry.amountMinor)}</span>
-            </label>
+            <PlanLinkCandidateRow
+              key={entry.id}
+              entry={entry}
+              checked={selectedIds.has(entry.id)}
+              onToggleEntry={onToggleEntry}
+            />
           ))}
         </div>
       ) : (
@@ -1805,6 +1810,27 @@ function MonthPlanLinkContent({
     </form>
   );
 }
+
+// Memoized: a checkbox or filter change re-renders only the rows it changes.
+// It subscribes to money privacy because the shared formatter reads it.
+const PlanLinkCandidateRow = memo(function PlanLinkCandidateRow({ entry, checked, onToggleEntry }) {
+  useMoneyPrivacy();
+  return (
+    <label className="planned-link-row">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onToggleEntry(entry.id, event.target.checked)}
+      />
+      <span className="planned-link-row-main">
+        <strong>{entry.description}</strong>
+        <small>{formatService.formatDateOnly(entry.date)} • {entry.accountName} • {entry.categoryName}</small>
+        {entry.matchReasons?.length ? <em>{entry.matchReasons.slice(0, 3).join(" · ")}</em> : null}
+      </span>
+      <span>{formatService.money(entry.amountMinor)}</span>
+    </label>
+  );
+});
 
 function getPreviousMonthKey(monthKey) {
   const [year, month] = monthKey.split("-").map(Number);
