@@ -8,6 +8,7 @@ import { CategoryGlyph } from "./ui-components";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { isMobileLayout } from "./use-viewport";
 import { InlineError } from "./ui-states";
+import { SettlementLockNotice } from "./settlement-lock-notice";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 
@@ -58,6 +59,9 @@ export function SplitActivityGroups({
   archived = false,
   editingDraft = null,
   inlineFormError = "",
+  inlineSettlementLock = null,
+  isUndoingSettlementLock = false,
+  onUndoSettlementLock = undefined,
   isSubmitting = false,
   hasEditingChanges = true,
   readOnly = false,
@@ -207,7 +211,9 @@ export function SplitActivityGroups({
                     autoFocusAmount
                   />
                 )}
-                <InlineError message={inlineFormError} />
+                {inlineSettlementLock
+                  ? <SettlementLockNotice lock={inlineSettlementLock} isUndoing={isUndoingSettlementLock} onUndo={onUndoSettlementLock} />
+                  : <InlineError message={inlineFormError} />}
                 <div className="split-inline-actions">
                   {editingDraft.linkedTransactionId ? (
                     <button

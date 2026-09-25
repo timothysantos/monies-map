@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
 import { EmptyState, ErrorPanel } from "./ui-states";
+import { SettlementLockNotice } from "./settlement-lock-notice";
 import { useEntryActions } from "./entry-actions";
 import {
   EntryComposerInlineSection,
@@ -141,6 +142,9 @@ export function EntriesPanel({
     showEntryComposer,
     entryDraft,
     entrySubmitError,
+    entrySettlementLock,
+    isUndoingEntrySettlementLock,
+    undoEntrySettlementLock,
     isSavingEntryDraft,
     savingEntryId,
     deletingEntryId,
@@ -538,6 +542,13 @@ export function EntriesPanel({
     () => editingEntryId ? entries.find((entry) => entry.id === editingEntryId) ?? null : null,
     [editingEntryId, entries]
   );
+  // A settlement lock belongs to the entry whose save it refused, and shows
+  // only while that error (or the undo confirmation) is still up.
+  const activeEntrySettlementLock = entrySettlementLock
+    && entrySettlementLock.recordKey === activeEditingEntry?.id
+    && (entrySettlementLock.undone || entrySettlementLock.message === entrySubmitError)
+    ? entrySettlementLock
+    : null;
   const activeEditingEntryBankState = useMemo(
     () => activeEditingEntry ? getEntryBankState(activeEditingEntry) : null,
     [activeEditingEntry]
@@ -1188,6 +1199,9 @@ export function EntriesPanel({
           title="Edit entry"
           description="Update the row in a bottom sheet instead of editing inline."
           errorMessage={entrySubmitError || createdSplitActionError}
+          errorContent={activeEntrySettlementLock
+            ? <SettlementLockNotice lock={activeEntrySettlementLock} isUndoing={isUndoingEntrySettlementLock} onUndo={() => void undoEntrySettlementLock()} />
+            : null}
           saveLabel={savingEntryId === activeEditingEntry.id ? messages.common.saving : "Save"}
           cancelLabel={hasEditingEntryChanges ? messages.entries.cancelEdit : messages.common.close}
           isSaveDisabled={Boolean(savingEntryId) || Boolean(deletingEntryId) || !hasEditingEntryChanges}
@@ -1369,6 +1383,9 @@ export function EntriesPanel({
           onCancelEntryEdit={closeEntryEditSheet}
           onRefreshEntries={refreshEntriesFromServerTruth}
           entrySubmitError={entrySubmitError}
+          entrySettlementLock={activeEntrySettlementLock}
+          isUndoingEntrySettlementLock={isUndoingEntrySettlementLock}
+          onUndoEntrySettlementLock={() => void undoEntrySettlementLock()}
           hasEditingChanges={hasEditingEntryChanges}
           renderInlineEditor={!useMobileEntrySheet}
         />

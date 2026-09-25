@@ -11,6 +11,7 @@ import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { useStableHandler } from "./use-stable-handler";
 import { isMobileLayout } from "./use-viewport";
+import { SettlementLockNotice } from "./settlement-lock-notice";
 
 const {
   categories: categoryService,
@@ -93,6 +94,9 @@ export function EntriesDateGroups({
   onCancelEntryEdit,
   onRefreshEntries,
   entrySubmitError = "",
+  entrySettlementLock = null,
+  isUndoingEntrySettlementLock = false,
+  onUndoEntrySettlementLock = undefined,
   hasEditingChanges = false,
   renderInlineEditor = true
 }) {
@@ -228,6 +232,9 @@ export function EntriesDateGroups({
       refreshingTransferCandidatesEntryId,
       transferCandidatesError: transferCandidateErrors[entry.id] ?? "",
       entrySubmitError,
+      entrySettlementLock,
+      isUndoingEntrySettlementLock,
+      onUndoEntrySettlementLock,
       hasEditingChanges,
       onUpdateEntry,
       onUpdateEntryAmount,
@@ -554,6 +561,9 @@ function EntryInlineEditorFields({ entry, categories, bankState, linkedSplitExpe
     refreshingTransferCandidatesEntryId,
     transferCandidatesError,
     entrySubmitError,
+    entrySettlementLock,
+    isUndoingEntrySettlementLock,
+    onUndoEntrySettlementLock,
     hasEditingChanges,
     onUpdateEntry,
     onUpdateEntryAmount,
@@ -619,7 +629,9 @@ function EntryInlineEditorFields({ entry, categories, bankState, linkedSplitExpe
           />
         )}
       />
-      {entrySubmitError ? <p className="form-error" role="alert">{entrySubmitError}</p> : null}
+      {entrySettlementLock
+        ? <SettlementLockNotice lock={entrySettlementLock} isUndoing={isUndoingEntrySettlementLock} onUndo={onUndoEntrySettlementLock} />
+        : entrySubmitError ? <p className="form-error" role="alert">{entrySubmitError}</p> : null}
       <div className="entry-inline-status-legend" aria-label="Entry status legend">
         <span className="entry-inline-status-item">
           <span className="entry-inline-status-label">Status:</span>

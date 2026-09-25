@@ -6,7 +6,12 @@ async function postJson(endpoint, body, fallbackError) {
   });
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error ?? fallbackError);
+    // A write a simplified settlement refused carries its code and settlement
+    // id, so the form can offer to undo that simplification.
+    throw Object.assign(new Error(data.error ?? fallbackError), {
+      code: data.code,
+      checkpointId: data.checkpointId
+    });
   }
   return data;
 }
