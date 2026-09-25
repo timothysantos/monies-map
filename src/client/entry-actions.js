@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { moniesClient } from "./monies-client-service";
 import { buildEntryMutationRefreshPlan, hasLedgerAffectingEntryChange } from "./entry-refresh-plan";
-import { buildComparableEntryState, mergeEntriesById } from "./entry-state";
+import { buildComparableEntryState, mergeEntriesById, withoutSplitLink } from "./entry-state";
 import { buildRequestErrorMessage } from "./request-errors";
 
 const { entries: entryService } = moniesClient;
@@ -626,6 +626,27 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     }
   }
 
+  // After its split is deleted, an entry open in the editor (which ignores
+  // server refreshes until it closes) shows the ledger amount and can be
+  // added to splits again; the snapshot follows so Cancel keeps that.
+  function clearEntrySplitLink(entryId) {
+    let unlinkedEntry = null;
+    setEntries((current) => current.map((entry) => {
+      if (entry.id !== entryId || !entry.linkedSplitExpenseId) {
+        return entry;
+      }
+
+      unlinkedEntry = entryService.normalize(withoutSplitLink(entry), people, withoutSplitLink(entry));
+      return unlinkedEntry;
+    }));
+    setEntrySnapshot((current) => (
+      current?.id === entryId && current.linkedSplitExpenseId
+        ? entryService.normalize(withoutSplitLink(current), people, withoutSplitLink(current))
+        : current
+    ));
+    return unlinkedEntry;
+  }
+
   function updateEntry(entryId, patch) {
     setEntries((current) => current.map((entry) => {
       if (entry.id !== entryId) {
@@ -773,6 +794,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     settleTransfer,
     refreshEntriesFromServerTruth,
     addEntryToSplits,
+    clearEntrySplitLink,
     deleteEntry,
     updateEntry,
     updateEntryAmount,
