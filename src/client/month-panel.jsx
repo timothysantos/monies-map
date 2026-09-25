@@ -1717,9 +1717,12 @@ function MonthPlanLinkContent({
     ["filterCurrentMonthOnly", "This month only"]
   ];
 
+  // On mobile this sits inside the sheet's own form, which saves on submit. A
+  // nested form would take Enter from the filter field and submit the page.
+  const FormElement = isMobile ? "div" : "form";
   return (
-    <form
-      onSubmit={(event) => {
+    <FormElement
+      onSubmit={isMobile ? undefined : (event) => {
         event.preventDefault();
         void onSave();
       }}
@@ -1802,7 +1805,7 @@ function MonthPlanLinkContent({
           </button>
         </div>
       ) : null}
-    </form>
+    </FormElement>
   );
 }
 
