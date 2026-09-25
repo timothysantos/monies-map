@@ -137,5 +137,10 @@ function normalizeQuickExpenseDate(value) {
     return trimmed;
   }
 
+  // A date and time written without a zone names its own calendar day.
+  const unzoned = trimmed.match(/^(\d{4}-\d{2}-\d{2})[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/);
+  if (unzoned) {
+    return unzoned[1];
+  }
   return isoDateInAppTimeZone(new Date(trimmed));
 }
