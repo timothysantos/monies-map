@@ -14,7 +14,7 @@ import { normalizeStatementDate } from "./app-repository-helpers";
 import { recordCategoryMatchSuggestion } from "./app-repository-category-match-rules";
 import { buildAuditEventStatement } from "./app-repository-audit";
 import { resolveAccountId, resolveCategoryId, resolvePersonId } from "./app-repository-lookups";
-import { buildLinkedSplitAmountStatements, upsertLinkedSplitExpenseForEntryRecord } from "./app-repository-splits";
+import { buildLinkedSplitAmountStatements, buildLinkedSplitMirrorStatements, upsertLinkedSplitExpenseForEntryRecord } from "./app-repository-splits";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 
 async function assertUnlockedBankFactsForEntryUpdate(
@@ -176,8 +176,11 @@ export async function updateEntryRecord(
         transactions.entry_type,
         transactions.description,
         transactions.bank_certification_status,
+        transactions.owner_person_id,
+        accounts.owner_person_id AS account_owner_person_id,
         categories.name AS category_name
       FROM transactions
+      LEFT JOIN accounts ON accounts.id = transactions.account_id
       LEFT JOIN categories ON categories.id = transactions.category_id
       WHERE transactions.id = ? AND transactions.household_id = ?
     `)
@@ -193,6 +196,8 @@ export async function updateEntryRecord(
       entry_type: "expense" | "income" | "transfer";
       description: string;
       bank_certification_status: "provisional" | "statement_certified";
+      owner_person_id: string | null;
+      account_owner_person_id: string | null;
       category_name: string | null;
     }>();
 
@@ -224,13 +229,28 @@ export async function updateEntryRecord(
   });
 
   // A linked split expense mirrors the ledger amount, so an amount change
-  // moves the split total and shares in the same batch as the entry.
-  const linkedSplitStatements = resolvedEntryType === "expense" && resolvedAmountMinor !== Number(transaction.amount_minor)
-    ? await buildLinkedSplitAmountStatements(db, {
-        entryId: input.entryId,
-        entryCurrency: transaction.currency,
-        amountMinor: resolvedAmountMinor
-      })
+  // moves the split total and shares in the same batch as the entry. Its
+  // event date, description and payer follow too while the split still
+  // mirrors them (the payer is the entry owner, else the account owner).
+  const linkedSplitStatements = resolvedEntryType === "expense"
+    ? [
+        ...(resolvedAmountMinor !== Number(transaction.amount_minor)
+          ? await buildLinkedSplitAmountStatements(db, {
+              entryId: input.entryId,
+              entryCurrency: transaction.currency,
+              amountMinor: resolvedAmountMinor
+            })
+          : []),
+        ...await buildLinkedSplitMirrorStatements(db, {
+          entryId: input.entryId,
+          previous: {
+            date: transaction.transaction_date,
+            description: transaction.description,
+            payerPersonId: transaction.owner_person_id ?? transaction.account_owner_person_id
+          },
+          next: { date: input.date, description: input.description, payerPersonId: ownerPersonId }
+        })
+      ]
     : [];
 
   const previousMonth = transaction.transaction_date.slice(0, 7);
