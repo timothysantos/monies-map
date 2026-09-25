@@ -1,4 +1,5 @@
 import { parseDraftMoneyInput } from "./formatters";
+import { isoDateInAppTimeZone, todayInAppTimeZone } from "./app-dates";
 
 export const QUICK_EXPENSE_PARAMS = [
   "action",
@@ -30,7 +31,7 @@ export function buildQuickExpenseDraftPatch({ searchParams, accountOptions, cate
     ?? "";
   const amountMinor = Math.abs(parseDraftMoneyInput(rawAmount ?? "0"));
   const description = isQuickExpensePlaceholder(rawDescription) ? "" : rawDescription ?? "";
-  const date = normalizeQuickExpenseDate(searchParams.get("date")) || new Date().toISOString().slice(0, 10);
+  const date = normalizeQuickExpenseDate(searchParams.get("date")) || todayInAppTimeZone();
 
   if (!hasQuickExpenseAmount(rawAmount)) {
     warnings.push("Shortcut did not pass an amount. Check that the URL uses the real Amount variable, not placeholder text.");
@@ -136,9 +137,5 @@ function normalizeQuickExpenseDate(value) {
     return trimmed;
   }
 
-  const parsed = new Date(trimmed);
-  if (Number.isNaN(parsed.getTime())) {
-    return "";
-  }
-  return parsed.toISOString().slice(0, 10);
+  return isoDateInAppTimeZone(new Date(trimmed));
 }

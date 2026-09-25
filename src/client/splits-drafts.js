@@ -1,8 +1,5 @@
 import { buildSplitShareState } from "./split-share-state";
-
-function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
-}
+import { todayInAppTimeZone } from "./app-dates";
 
 // These builders mirror dialog state, not storage rows, so edit forms can stay dumb.
 export function buildExpenseDraft(item, categoryOptions, people) {
@@ -81,7 +78,7 @@ export function buildNewExpenseDraft({ activeGroup, categoryOptions, people, vie
   return {
     groupId: activeGroup?.id ?? "split-group-none",
     currency: activeGroup?.currency ?? "SGD",
-    date: todayIsoDate(),
+    date: todayInAppTimeZone(),
     description: "",
     categoryName: categoryOptions[0] ?? "Other",
     payerPersonName: (view.id !== "household"
@@ -100,7 +97,7 @@ export function buildNewSettlementDraft({ activeGroup, groupBalanceMinor, people
   return {
     groupId: activeGroup?.id ?? "split-group-none",
     currency: activeGroup?.currency ?? "SGD",
-    date: todayIsoDate(),
+    date: todayInAppTimeZone(),
     fromPersonName: people[1]?.name ?? "",
     toPersonName: people[0]?.name ?? "",
     amountMinor: Math.abs(groupBalanceMinor),
