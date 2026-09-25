@@ -232,6 +232,27 @@ fixed with a test that failed first (`0998e66`):
 - Test gaps: the legacy and bulk tests now assert the import's own rows are
   gone; replacing the legacy heuristic with `OR 1 = 1` fails 4 tests.
 
+Gates (after merging `macro-performance` at `09311fa`, Node v22.23.3), the
+steps of `npm run verify` run one by one: `npm audit` 0 vulnerabilities;
+typecheck clean; unit 546/546; build; `check:bundle` 172,212 B JS gzip
+(budget 180,337) and 32,022 B CSS (budget 31,961, inside the 5% allowance;
+the branch changes no client code); smoke bundle on isolated ports (Vite
+5410, Worker 8810, `--persist-to .wrangler/state-rollback`, temporary
+Playwright config with `webServer: undefined` and a copy of the smoke runner
+pointed at 5410) passed all 17 workflow runs, 130 tests.
+
+Full `npm run test:e2e` on the same isolated ports: the final run passed
+261/261 (11.1 min). Two earlier full runs on the same code each had 260
+passed and 1 failed, both `financial-insight` "an editor open blocks the
+request; closing it starts one request after a full quiet period": the
+request came 613 ms and 640 ms after the test's close timestamp against its
+650 ms floor. Those runs were slow (17.8 and 12.9 min, machine shared with
+other sessions). Alone, that test passed 5/5; the whole spec file failed once
+on a different wording-timing test and then passed 3/3; `macro-performance`
+at `09311fa` in a scratch checkout (ports 5411/8811) passed the spec 2/2 and
+the full suite 261/261 (11.3 min). The branch changes no client code, so this
+is recorded as a timing-sensitive test under load, not investigated further.
+
 Noted, not changed: a manual entry created in the same second as a legacy
 import is not recognised as promoted (strict `<`) and is deleted as before;
 a legacy promoted entry that a statement superseded and restored gets a new
