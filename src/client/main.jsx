@@ -5,13 +5,16 @@ import { BrowserRouter } from "react-router-dom";
 import { App } from "./App";
 import { MoneyPrivacyProvider } from "./money-privacy";
 import { queryClient } from "./query-client";
+import { ScreenErrorBoundary } from "./screen-error-boundary";
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <MoneyPrivacyProvider>
         <BrowserRouter>
-          <App />
+          <ScreenErrorBoundary level="app">
+            <App />
+          </ScreenErrorBoundary>
         </BrowserRouter>
       </MoneyPrivacyProvider>
     </QueryClientProvider>

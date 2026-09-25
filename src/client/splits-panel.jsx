@@ -48,6 +48,7 @@ import {
 } from "./splits-workflow";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
 import { useRouteWorkReport } from "./use-route-work-status";
+import { todayInAppTimeZone } from "./app-dates";
 
 const { format: formatService } = moniesClient;
 
@@ -798,7 +799,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     try {
       await createSettlementCheckpoint({
         viewerPersonId: view.id,
-        date: new Date().toISOString().slice(0, 10),
+        date: todayInAppTimeZone(),
         note: "Simplified settlement",
         currency: activeGroup?.currency
       });

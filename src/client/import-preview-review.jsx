@@ -6,6 +6,7 @@ import { DuplicateMatchPopover } from "./import-preview-rows-table";
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { DeleteRowButton } from "./ui-components";
+import { addDaysToIsoDate } from "./app-dates";
 
 const {
   accounts: accountService,
@@ -1260,15 +1261,7 @@ function getDiagnosticRowDateDetail(row, statementEndDate) {
 }
 
 function getNextIsoDate(date) {
-  if (!date) {
-    return "";
-  }
-  const parsed = new Date(`${date}T00:00:00Z`);
-  if (Number.isNaN(parsed.getTime())) {
-    return "";
-  }
-  parsed.setUTCDate(parsed.getUTCDate() + 1);
-  return parsed.toISOString().slice(0, 10);
+  return date ? addDaysToIsoDate(date, 1) : "";
 }
 
 function sumDiagnosticRows(rows = []) {

@@ -1,8 +1,9 @@
+import { APP_TIME_ZONE } from "./app-dates";
+
 const moneyFormatter = new Intl.NumberFormat("en-SG", {
   style: "currency",
   currency: "SGD"
 });
-const APP_TIME_ZONE = "Asia/Singapore";
 const SQL_DATETIME_WITHOUT_ZONE = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?$/;
 
 function isMoneyPrivacyHidden() {
