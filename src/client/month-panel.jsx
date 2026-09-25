@@ -5,7 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { CategoryAppearancePopover } from "./category-visuals";
 import { messages } from "./copy/en-SG";
-import { EmptyState } from "./ui-states";
+import { EmptyState, InlineError } from "./ui-states";
 import { selectAllOnFocus } from "./focus-utils";
 import { EntryMobileSheet } from "./entry-mobile-sheet";
 import { FinancialInsight } from "./financial-insight";
@@ -26,6 +26,7 @@ import {
   mergeMonthRowsById
 } from "./month-state";
 import { buildMonthMutationRefreshPlan } from "./month-workflow";
+import { buildRequestErrorMessage } from "./request-errors";
 import { ResponsiveSelect } from "./responsive-select";
 import { getRowDateValue } from "./table-helpers";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
@@ -62,6 +63,11 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
   const [sectionOpen, setSectionOpen] = useState(() => MONTH_SECTION_STATE_CACHE.get(monthUiKey) ?? monthService.getDefaultSectionOpen());
   const [noteDialog, setNoteDialog] = useState(null);
   const [planLinkDialog, setPlanLinkDialog] = useState(null);
+  const [isSavingPlanLinks, setIsSavingPlanLinks] = useState(false);
+  const [planLinkError, setPlanLinkError] = useState("");
+  // Set synchronously so a double click cannot start a second save before
+  // the saving state renders.
+  const planLinkSaveInFlightRef = useRef(false);
   const [resetMonthText, setResetMonthText] = useState("");
   const [deleteMonthText, setDeleteMonthText] = useState("");
   const [monthNoteDialog, setMonthNoteDialog] = useState(null);
@@ -1223,6 +1229,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       await finishEdit();
     }
 
+    setPlanLinkError("");
     setPlanLinkDialog({
       rowId: row.id,
       draftEntryIds: row.linkedEntryIds ?? [],
@@ -1234,23 +1241,48 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     });
   }
 
+  // Closes only on success. A failed save keeps the dialog or sheet and its
+  // draft open with the error; while the save is in flight Escape, Cancel and
+  // a second submit are ignored.
   async function savePlanLinkDialog() {
-    if (!planLinkDialog) {
+    if (!planLinkDialog || planLinkSaveInFlightRef.current) {
       return;
     }
 
-    await fetch("/api/month-plan/links", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        rowId: planLinkDialog.rowId,
-        month: view.monthPage.month,
-        transactionIds: planLinkDialog.draftEntryIds
-      })
-    });
+    planLinkSaveInFlightRef.current = true;
+    setIsSavingPlanLinks(true);
+    setPlanLinkError("");
+    try {
+      const response = await fetch("/api/month-plan/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rowId: planLinkDialog.rowId,
+          month: view.monthPage.month,
+          transactionIds: planLinkDialog.draftEntryIds
+        })
+      });
+      if (!response.ok) {
+        throw new Error(await buildRequestErrorMessage(response, messages.month.planLinkSaveFailed));
+      }
+    } catch (error) {
+      setPlanLinkError(error instanceof Error && error.message ? error.message : messages.month.planLinkSaveFailed);
+      return;
+    } finally {
+      planLinkSaveInFlightRef.current = false;
+      setIsSavingPlanLinks(false);
+    }
 
     setPlanLinkDialog(null);
     refreshMonthDataInBackground();
+  }
+
+  function closePlanLinkDialog() {
+    if (planLinkSaveInFlightRef.current) {
+      return;
+    }
+    setPlanLinkDialog(null);
+    setPlanLinkError("");
   }
 
   function togglePlanLinkFilter(key) {
@@ -1606,7 +1638,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       </Dialog.Root>
 
       {!useMobileMonthSheet ? (
-        <Dialog.Root open={Boolean(planLinkDialog)} onOpenChange={(open) => { if (!open) setPlanLinkDialog(null); }}>
+        <Dialog.Root open={Boolean(planLinkDialog)} onOpenChange={(open) => { if (!open) closePlanLinkDialog(); }}>
           <Dialog.Portal>
             <Dialog.Overlay className="note-dialog-overlay" />
             <Dialog.Content className="note-dialog-content planned-link-dialog">
@@ -1616,7 +1648,9 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
                 allCandidates={planLinkPickerModel.allCandidates}
                 candidates={planLinkPickerModel.candidates}
                 selectedIds={planLinkPickerModel.selectedIds}
-                onClose={() => setPlanLinkDialog(null)}
+                isSaving={isSavingPlanLinks}
+                errorMessage={planLinkError}
+                onClose={closePlanLinkDialog}
                 onToggleFilter={togglePlanLinkFilter}
                 onDescriptionFilterChange={updatePlanLinkDescriptionFilter}
                 onToggleEntry={togglePlanLinkEntry}
@@ -1631,8 +1665,11 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         <EntryMobileSheet
           title="Match planned item"
           description={`Link exact ledger entries to ${planLinkPickerModel.row?.label ?? "this planned item"}. Budget buckets still use category totals.`}
-          saveLabel="Save matches"
-          onClose={() => setPlanLinkDialog(null)}
+          saveLabel={isSavingPlanLinks ? messages.common.saving : "Save matches"}
+          errorMessage={planLinkError}
+          isSubmitting={isSavingPlanLinks}
+          isSaveDisabled={isSavingPlanLinks}
+          onClose={closePlanLinkDialog}
           onSave={() => void savePlanLinkDialog()}
         >
           <MonthPlanLinkContent
@@ -1707,6 +1744,8 @@ function MonthPlanLinkContent({
   allCandidates,
   candidates,
   selectedIds,
+  isSaving = false,
+  errorMessage = "",
   onClose = undefined,
   onToggleFilter,
   onDescriptionFilterChange,
@@ -1743,12 +1782,14 @@ function MonthPlanLinkContent({
             type="button"
             className="icon-action subtle-cancel"
             aria-label="Close planned item matching"
+            disabled={isSaving}
             onClick={onClose}
           >
             <X size={16} />
           </button>
         </div>
       ) : null}
+      {!isMobile ? <InlineError message={errorMessage} /> : null}
       <div className="planned-link-filter-panel">
         <div className="planned-link-filter-chips" aria-label="Match filters">
           {filters.map(([key, label]) => (
@@ -1794,11 +1835,11 @@ function MonthPlanLinkContent({
       )}
       {!isMobile ? (
         <div className="note-dialog-actions">
-          <button type="button" className="subtle-cancel" onClick={onClose}>
+          <button type="button" className="subtle-cancel" disabled={isSaving} onClick={onClose}>
             {messages.month.cancelEdit}
           </button>
-          <button type="submit" className="dialog-primary">
-            Save matches
+          <button type="submit" className="dialog-primary" disabled={isSaving}>
+            {isSaving ? messages.common.saving : "Save matches"}
           </button>
         </div>
       ) : null}
