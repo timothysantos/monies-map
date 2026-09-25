@@ -11563,3 +11563,10 @@ th {
     border-top: 1px solid var(--line);
   }
 }
+
+/* Entries could not load the requested month: the shared error panel sits
+   inside the Entries panel in place of its figures and rows. */
+.entries-load-error {
+  min-height: 0;
+  margin-top: 16px;
+}
