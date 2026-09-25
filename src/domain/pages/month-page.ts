@@ -8,9 +8,9 @@ import { adjustEntriesForView, buildMonthPage } from "../month-projection";
 import {
   loadEntries,
   loadMonthIncomeRows,
-  loadMonthPlanRows,
-  loadSummaryMonths
+  loadMonthPlanRows
 } from "../app-repository";
+import { loadRepairedSummaryMonths } from "../app-repository-snapshots";
 import type { MonthPageDto, PersonScope, SummaryMonthDto } from "../../types/dto";
 import {
   loadRoutePageContext,
@@ -30,7 +30,7 @@ export async function buildMonthPageDto(
     loadEntries(db, effectiveSelectedMonth),
     loadMonthPlanRows(db, effectiveSelectedMonth),
     loadMonthIncomeRows(db, viewId, effectiveSelectedMonth),
-    loadSummaryMonths(db, viewId)
+    loadRepairedSummaryMonths(db, viewId)
   ]);
   const plannedSummaryMonthsByView = await loadPlannedSummaryMonthsForViews(db, [viewId], [effectiveSelectedMonth]);
   const adjustedMonthEntries = adjustEntriesForView(monthEntries, viewId);

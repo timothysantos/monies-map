@@ -559,6 +559,17 @@ CREATE TABLE IF NOT EXISTS monthly_snapshots (
   FOREIGN KEY (household_id) REFERENCES households(id)
 );
 
+-- Months whose monthly_snapshots are stale because a committed write's
+-- follow-up refresh did not finish. Written in the same batch as the write,
+-- cleared in the same batch as the refresh, repaired on the next Summary read.
+CREATE TABLE IF NOT EXISTS monthly_snapshot_refreshes (
+  household_id TEXT NOT NULL,
+  month_key TEXT NOT NULL,
+  requested_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (household_id, month_key),
+  FOREIGN KEY (household_id) REFERENCES households(id)
+);
+
 CREATE TABLE IF NOT EXISTS demo_settings (
   key TEXT PRIMARY KEY,
   value_json TEXT NOT NULL,

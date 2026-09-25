@@ -1,10 +1,8 @@
 import { getCurrentMonthKey } from "../../lib/month";
 import { buildSummaryPage, buildSummaryRange, loadPlannedSummaryMonthsForViews } from "../summary-projection";
 import { adjustEntriesForView } from "../month-projection";
-import {
-  loadEntriesForMonths,
-  loadSummaryMonths
-} from "../app-repository";
+import { loadEntriesForMonths } from "../app-repository";
+import { loadRepairedSummaryMonths } from "../app-repository-snapshots";
 import type { PersonScope, SummaryPageDto } from "../../types/dto";
 import {
   loadRoutePageContext,
@@ -25,7 +23,7 @@ export async function buildSummaryPageDto(
   const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
   const summaryRangeMonths = buildSummaryRange(trackedMonths, summaryStartMonth, summaryEndMonth ?? effectiveSelectedMonth);
   const [summaryMonths, summaryEntries] = await Promise.all([
-    loadSummaryMonths(db, viewId),
+    loadRepairedSummaryMonths(db, viewId),
     loadEntriesForMonths(db, summaryRangeMonths)
   ]);
   const plannedSummaryMonthsByView = await loadPlannedSummaryMonthsForViews(db, [viewId], summaryRangeMonths);
