@@ -2,7 +2,8 @@
 // (H15). Starts an isolated test Worker on a fresh local D1, runs a fixed
 // scenario of real API writes (entries, transfers, month plans, month notes,
 // imports with rollback, splits, categories), stops the Worker and dumps every
-// table. Random ids and wall-clock timestamps are normalized, so two runs of
+// table, plus the main page API responses. Random ids and wall-clock
+// timestamps are normalized, so two runs of
 // the same code produce identical output and any persisted-state difference
 // between two revisions shows up as a diff.
 //
@@ -110,6 +111,31 @@ async function runScenario() {
   await call("/api/summary-page?view=household&month=2026-05&scope=direct_plus_shared", undefined, { method: "GET" });
 }
 
+// Page DTOs after the scenario, so projection refactors are checked too.
+const PAGE_DTOS = [
+  "/api/app-shell?view=household&month=2026-05&scope=direct_plus_shared",
+  "/api/reference-data",
+  "/api/entries-page?view=household&month=2026-05",
+  "/api/entries-page?view=person-tim&month=2026-05",
+  "/api/month-page?view=household&month=2026-05&scope=direct_plus_shared",
+  "/api/month-page?view=person-tim&month=2026-05&scope=direct",
+  "/api/month-page?view=person-joyce&month=2025-10&scope=shared",
+  "/api/summary-page?view=household&month=2026-05&scope=direct_plus_shared",
+  "/api/summary-page?view=person-tim&month=2026-05&scope=direct_plus_shared&summary_start=2025-08&summary_end=2026-05",
+  "/api/summary-account-pills?view=household",
+  "/api/splits-page?view=person-tim&month=2026-05",
+  "/api/splits-page?view=household&month=2025-10",
+  "/api/imports-page",
+  "/api/settings-page?view=household"
+];
+async function readPageDtos() {
+  const dtos = {};
+  for (const pathname of PAGE_DTOS) {
+    dtos[pathname] = await call(pathname, undefined, { method: "GET" });
+  }
+  return dtos;
+}
+
 async function findSqlite(dir) {
   const found = [];
   for (const name of await readdir(dir)) {
@@ -129,7 +155,7 @@ const SHORT_ID_SUFFIX = /-(?=[0-9a-f]{0,7}[a-f])([0-9a-f]{8})\b/g;
 const EPOCH_MS = /\b1[6-9]\d{11}\b/g;
 const TIMESTAMP = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?Z?$/;
 
-function dump(file) {
+function dump(file, dtos) {
   const db = new DatabaseSync(file, { readOnly: true });
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name <> 'd1_migrations' ORDER BY name").all().map((row) => row.name);
   const ids = new Map();
@@ -159,10 +185,29 @@ function dump(file) {
     out[table] = rows.map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, normalize(value)])));
   }
   db.close();
+  // Normalize DTOs with the same id map, so ids line up with the tables.
+  // Lists ordered by a second-resolution createdAt can tie; the app's own
+  // order is not deterministic there, so compare them sorted.
+  const normalizeDeep = (value) => Array.isArray(value)
+    ? (value.length && value.every((item) => item && typeof item === "object" && "createdAt" in item)
+      ? value.map(normalizeDeep).sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))
+      : value.map(normalizeDeep))
+    : value && typeof value === "object"
+      ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, normalizeDeep(item)]))
+      : normalize(value);
+  const pages = normalizeDeep(dtos);
+  // The latest-12 audit list cuts through events that share a second, so
+  // which ones it shows varies run to run; audit_events itself is compared
+  // in full above.
+  for (const page of Object.values(pages)) {
+    if (page?.settingsPage?.recentAuditEvents) page.settingsPage.recentAuditEvents = "<excluded: capped list with timestamp ties>";
+  }
+  out.__pageDtos = pages;
   return out;
 }
 
 let server = null;
+let pageDtos = {};
 try {
   d1(path.join(root, "schema.sql"));
   server = spawn(process.execPath, [wrangler, "dev", "--config", configPath, "--local", "--ip", "127.0.0.1", "--port", String(port), "--inspector-port", String(port + 1000), "--persist-to", persist, "--log-level", "error", "--show-interactive-dev-session=false"], { cwd: root, env, stdio: "ignore", detached: true });
@@ -174,6 +219,7 @@ try {
   }
   if (!healthy) throw new Error("Worker did not become healthy");
   await runScenario();
+  pageDtos = await readPageDtos();
 } finally {
   if (server?.pid) {
     try { process.kill(-server.pid, "SIGTERM"); } catch {}
@@ -184,8 +230,8 @@ try {
 
 const files = await findSqlite(persist);
 if (files.length !== 1) throw new Error(`Expected one D1 sqlite file, found ${files.length}`);
-const snapshot = dump(files[0]);
+const snapshot = dump(files[0], pageDtos);
 await writeFile(outFile, `${JSON.stringify(snapshot, null, 1)}\n`);
 await rm(tempRoot, { recursive: true, force: true });
-const counts = Object.fromEntries(Object.entries(snapshot).filter(([, rows]) => rows.length).map(([table, rows]) => [table, rows.length]));
+const counts = Object.fromEntries(Object.entries(snapshot).filter(([table, rows]) => table !== "__pageDtos" && rows.length).map(([table, rows]) => [table, rows.length]));
 console.log(`STATE_SNAPSHOT ${outFile} ${JSON.stringify(counts)}`);
