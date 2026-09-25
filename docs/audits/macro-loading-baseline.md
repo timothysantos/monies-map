@@ -2540,3 +2540,10 @@ about a quarter of it, and lets the page behind scroll when the backdrop is
 dragged on iPhone. Neither is a clear, safe fix. A later option is a
 lighter modal (native `<dialog>` with `showModal()`, or a hand-rolled
 `inert` on the app root), measured against this cohort.
+
+Gates for `quiet-failures` (Entries load error, Month match save, category
+dialog events, this measurement), Node 22.23.3, ports 5173/8787 free:
+`npm run verify` passed (audit 0 vulnerabilities; typecheck and client
+typecheck; lint 0 errors, 30 existing warnings; unit 566/566; build;
+`check:bundle` 172,986 B JS / 32,878 B CSS gzip against 180,337 / 31,961,
+budget unchanged; smoke 133 passed) and full `npm run test:e2e` 290/290.
