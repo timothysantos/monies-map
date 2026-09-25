@@ -91,19 +91,6 @@ export {
 
 const DEFAULT_HOUSEHOLD_ID = defaultHousehold.id;
 
-async function loadAccountName(db: D1Database, accountId: string | null) {
-  if (!accountId) {
-    return "Unassigned";
-  }
-
-  const account = await db
-    .prepare("SELECT account_name FROM accounts WHERE household_id = ? AND id = ?")
-    .bind(DEFAULT_HOUSEHOLD_ID, accountId)
-    .first<{ account_name: string }>();
-
-  return account?.account_name ?? "Unassigned";
-}
-
 export async function resolveLoginIdentityPersonId(db: D1Database, email?: string | null) {
   if (!email?.trim()) {
     return undefined;
