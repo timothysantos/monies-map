@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import { Miniflare } from "miniflare";
 
 import worker from "../src/index.ts";
-import { ensureDemoSchema } from "../src/domain/app-repository.ts";
+import { ensureDemoSchema } from "../src/domain/app-repository-schema.ts";
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const configPath = path.join(root, "wrangler.test.jsonc");

@@ -2,7 +2,6 @@ import { categories as defaultCategories, defaultDemoSettings, household as defa
 import { loadDemoSettings } from "./demo-settings";
 import { getCurrentMonthKey } from "../lib/month";
 import {
-  ensureDemoSchema,
   ensureSeedData,
   loadCategories,
   loadEntries,
@@ -24,8 +23,9 @@ import {
   loadTrackedMonths,
   loadUnresolvedTransfers,
   seedEmptyStateReferenceData,
-  loadSummaryMonths,
+  loadSummaryMonths
 } from "./app-repository";
+import { ensureDemoSchema } from "./app-repository-schema";
 import type { SplitActivityHistoryDto } from "../types/dto";
 import type {
   AccountDto,
