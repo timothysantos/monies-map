@@ -28,9 +28,9 @@ import { ResponsiveSelect } from "./responsive-select";
 import { getRowDateValue } from "./table-helpers";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
 import { useRouteWorkReport } from "./use-route-work-status";
+import { isMonthSheetLayout, useIsMonthSheetLayout } from "./use-viewport";
 
 const MONTH_SECTION_STATE_CACHE = new Map();
-const MOBILE_ADD_DIALOG_QUERY = "(max-width: 760px), (max-width: 1024px) and (orientation: portrait)";
 const {
   accounts: accountService,
   categories: categoryService,
@@ -70,7 +70,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
   const [monthRowError, setMonthRowError] = useState("");
   const [mobileAddDialog, setMobileAddDialog] = useState(null);
   const [actionsOpen, setActionsOpen] = useState(false);
-  const [useMobileMonthSheet, setUseMobileMonthSheet] = useState(false);
+  const useMobileMonthSheet = useIsMonthSheetLayout();
   const [isMonthDataRefreshing, setIsMonthDataRefreshing] = useState(false);
   const [isRemovingMonthRow, setIsRemovingMonthRow] = useState(false);
   const previousMonthActualCacheRef = useRef(new Map());
@@ -111,18 +111,6 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
   useEffect(() => {
     setSectionOpen(MONTH_SECTION_STATE_CACHE.get(monthUiKey) ?? monthService.getDefaultSectionOpen());
   }, [monthUiKey]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const mediaQuery = window.matchMedia(MOBILE_ADD_DIALOG_QUERY);
-    const update = () => setUseMobileMonthSheet(mediaQuery.matches);
-    update();
-    mediaQuery.addEventListener?.("change", update);
-    return () => mediaQuery.removeEventListener?.("change", update);
-  }, []);
 
   // Summary cards borrow the selected month's rollup from the already-loaded
   // summary payload instead of refetching anything here.
@@ -572,8 +560,10 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     setEditingDrafts({});
   }
 
+  // Read at the moment of the click so a resize that has not re-rendered yet
+  // still opens the layout the viewport shows now.
   function isMobileAddDialogPreferred() {
-    return useMobileMonthSheet || (typeof window !== "undefined" && window.matchMedia(MOBILE_ADD_DIALOG_QUERY).matches);
+    return isMonthSheetLayout();
   }
 
   function openMonthSection(sectionKey) {
