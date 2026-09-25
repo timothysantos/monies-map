@@ -4310,6 +4310,7 @@ button.split-activity-card:hover {
 .panel-splits .split-activity-date,
 .panel-splits .share-row-meta,
 .panel-splits .lede.compact,
+.panel-splits .empty-state,
 .panel-splits .entries-summary-metrics {
   color: rgba(255, 255, 255, 0.78);
 }
@@ -5758,9 +5759,41 @@ button.split-activity-card:hover {
   font-size: 0.92rem;
 }
 
+/* Shared "nothing here yet" line (EmptyState in src/client/ui-states.jsx). */
 .empty-state {
+  max-width: none;
+  margin: 0 0 18px;
   color: var(--muted);
+  font-size: 1.02rem;
+  line-height: 1.7;
+}
+
+.empty-state.is-detailed {
+  display: grid;
+  gap: 8px;
+  line-height: 1.5;
+}
+
+.empty-state.is-detailed strong {
+  color: var(--text);
+}
+
+.empty-state.is-detailed p {
   margin: 0;
+}
+
+.empty-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Shared inline failure with an optional retry (InlineError). */
+.inline-error.has-retry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
 }
 
 .chart-bars {
@@ -6596,12 +6629,6 @@ button.split-activity-card:hover {
   display: grid;
   gap: 12px;
   margin-top: 10px;
-}
-
-.entries-empty-state-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
 }
 
 @media (min-width: 961px) {
@@ -9437,7 +9464,8 @@ th {
   .import-history-main strong,
   .import-history-inline,
   .panel-context,
-  .lede.compact {
+  .lede.compact,
+  .empty-state {
     overflow-wrap: anywhere;
   }
 

@@ -1,6 +1,7 @@
 import { Component } from "react";
 
 import { messages } from "./copy/en-SG";
+import { ErrorPanel } from "./ui-states";
 
 // Contains a render crash so it cannot unmount the whole app. The screen
 // boundary wraps only the active page, so navigation keeps working; it clears
@@ -63,23 +64,22 @@ export class ScreenErrorBoundary extends Component {
     const title = isCodeLoadError(this.state.error)
       ? copy.codeLoadCrashTitle
       : isAppLevel ? copy.appCrashTitle : copy.screenCrashTitle;
+    const reloadAction = { label: copy.screenCrashReload, onClick: () => window.location.reload(), primary: needsReload };
     const panel = (
-      <section className="panel app-loading-panel app-loading-panel-error screen-error-panel" role="alert">
-        <div>
-          <p>{title}</p>
-          <p className="app-loading-error-copy">{needsReload ? copy.appCrashDetail : copy.screenCrashDetail}</p>
-        </div>
-        <div className="screen-error-actions">
-          {needsReload ? null : (
-            <button type="button" className="subtle-action is-primary" onClick={this.handleRetry} disabled={this.state.retrying}>
-              {this.state.retrying ? copy.working : copy.screenCrashRetry}
-            </button>
-          )}
-          <button type="button" className={needsReload ? "subtle-action is-primary" : "subtle-action"} onClick={() => window.location.reload()}>
-            {copy.screenCrashReload}
-          </button>
-        </div>
-      </section>
+      <ErrorPanel
+        className="screen-error-panel"
+        title={title}
+        detail={needsReload ? copy.appCrashDetail : copy.screenCrashDetail}
+        actions={needsReload ? [reloadAction] : [
+          {
+            label: this.state.retrying ? copy.working : copy.screenCrashRetry,
+            onClick: this.handleRetry,
+            disabled: this.state.retrying,
+            primary: true
+          },
+          reloadAction
+        ]}
+      />
     );
     return isAppLevel ? <main className="shell">{panel}</main> : panel;
   }
