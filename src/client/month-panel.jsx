@@ -44,7 +44,12 @@ const {
 // - background refreshes so derived totals settle after saves
 // - route-level dialogs such as notes, plan links, and mobile editors
 //
-export function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceChange, onRefresh, canRequestWording = false }) {
+// Without the shell's notice (isolated renders), a failed refresh is dropped.
+function runQuietly(task) {
+  return Promise.resolve().then(task).catch(() => null);
+}
+
+export function MonthPanel({ view, accounts, people, categories, onCategoryAppearanceChange, onRefresh, runBackgroundRefresh = runQuietly, canRequestWording = false }) {
   const navigate = useNavigate();
   const monthUiKey = `${view.id}:${view.monthPage.month}:${view.monthPage.selectedScope}`;
   const [planSections, setPlanSections] = useState(view.monthPage.planSections ?? []);
@@ -264,9 +269,14 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     [safeIncomeRows, safePlanSections]
   );
 
+  // The save already succeeded; a failed refresh keeps the saved rows and
+  // raises the shell's refresh notice, whose retry runs this again.
   function refreshMonthDataInBackground(options) {
     setIsMonthDataRefreshing(true);
-    void onRefresh(options).catch(() => {}).finally(() => {
+    void runBackgroundRefresh(
+      () => onRefresh(options),
+      () => refreshMonthDataInBackground(options)
+    ).finally(() => {
       setIsMonthDataRefreshing(false);
     });
   }

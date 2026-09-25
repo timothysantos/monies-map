@@ -175,17 +175,22 @@ Details and the reasons are in `docs/code-spec.md` and
   (`node scripts/check-initial-bundle.mjs --update`,
   `UPDATE_API_PAYLOAD_BUDGET=1`), and say why in the commit.
 - Server data has one owner per kind (`reference-data-owner.js`,
-  `summary-owner.js`, `route-data-owner.js`, `app-shell-owner.js`). Write
-  through the owner so a superseded response can never overwrite newer
-  data or raise an error screen; do not add a parallel `useState` copy of
-  server data in `App.jsx`.
+  `summary-owner.js`, `route-data-owner.js`, `app-shell-owner.js`,
+  `entries-data-owner.js`). Write through the owner so a superseded
+  response can never overwrite newer data or raise an error screen; do not
+  add a parallel `useState` copy of server data in `App.jsx`.
+- Run a refresh after a save through `runBackgroundRefresh`
+  (`use-refresh-notice.js`), never `.catch(() => null)`: a failure keeps the
+  saved data and shows the retryable refresh notice, and a superseded or
+  aborted one stays silent.
 - Required reads go through `fetchQueryWithLease`, and speculative reads
   through `startSpeculativeQuery` (`src/client/query-leases.js`), so a
   navigation joins warm data instead of repeating or breaking it.
 - Mobile speculative data needs a measured row in
   `src/client/route-warmup-admissions.js` (gzip bytes and handler p95 on the
   10k fixture, `tests/performance/api-admission.spec.js`). Unmeasured means
-  not preloaded.
+  not preloaded. It also needs a reported 4g connection, or an unknown one
+  (iPhone) with a measured recent required request of at most 500 ms.
 - Persistence writes live in the focused `app-repository-*` command modules
   and page projections in `*-projection.ts`. New code imports the specific
   module, never the `app-repository.ts` hub, and command modules never import

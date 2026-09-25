@@ -118,8 +118,11 @@ export function evaluateWarmup(input) {
     return { allowed: true, reason: "ok" };
   }
 
-  // Missing connection information is not permission to spend data.
-  if (page.effectiveType !== "4g") return deny("connection-not-4g");
+  // A reported connection must be 4g. iPhone browsers report none
+  // (effectiveType null); an unknown connection may spend data only on the
+  // strength of the measured recent required request below, never by itself.
+  const connectionUnknown = page.effectiveType === null || page.effectiveType === undefined;
+  if (!connectionUnknown && page.effectiveType !== "4g") return deny("connection-not-4g");
   if (input.recentRequiredDurationMs === null || input.recentRequiredDurationMs === undefined
     || input.recentRequiredDurationMs > limits.maxRecentRequiredMs) {
     return deny("recent-required-slow");
