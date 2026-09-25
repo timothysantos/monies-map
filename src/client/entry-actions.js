@@ -4,6 +4,7 @@ import { moniesClient } from "./monies-client-service";
 import { buildEntryMutationRefreshPlan, hasLedgerAffectingEntryChange } from "./entry-refresh-plan";
 import { buildComparableEntryState, mergeEntriesById } from "./entry-state";
 import { buildRequestErrorMessage } from "./request-errors";
+import { readSettlementLock } from "./settlement-lock-notice";
 
 const { entries: entryService } = moniesClient;
 
@@ -20,6 +21,9 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   const [showEntryComposer, setShowEntryComposer] = useState(false);
   const [entryDraft, setEntryDraft] = useState(() => entryService.buildDraft(view, accounts, categories, people));
   const [entrySubmitError, setEntrySubmitError] = useState("");
+  // The simplified settlement that refused the last entry save, if any.
+  const [entrySettlementLock, setEntrySettlementLock] = useState(null);
+  const [isUndoingEntrySettlementLock, setIsUndoingEntrySettlementLock] = useState(false);
   const [isSavingEntryDraft, setIsSavingEntryDraft] = useState(false);
   const [savingEntryId, setSavingEntryId] = useState(null);
   const [deletingEntryId, setDeletingEntryId] = useState(null);
@@ -68,6 +72,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       people
     ));
     setEntrySubmitError("");
+    setEntrySettlementLock(null);
     setIsSavingEntryDraft(false);
     setSavingEntryId(null);
     setDeletingEntryId(null);
@@ -209,6 +214,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     const primarySplit = currentEntry.ownershipType === "shared" ? currentEntry.splits[0] : undefined;
 
     setEntrySubmitError("");
+    setEntrySettlementLock(null);
     setSavingEntryId(entryId);
     try {
       const response = await fetch("/api/entries/update", {
@@ -226,6 +232,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       if (!response.ok) {
         const errorMessage = data.error ?? "Failed to save entry.";
         setEntrySubmitError(errorMessage);
+        setEntrySettlementLock(readSettlementLock({ code: data.code, checkpointId: data.checkpointId, message: errorMessage }, currentEntry.id));
         return {
           ok: false,
           error: errorMessage
@@ -275,6 +282,36 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       };
     } finally {
       setSavingEntryId((current) => current === entryId ? null : current);
+    }
+  }
+
+  // Undo the simplified settlement that refused an entry save. The editor
+  // keeps the person's change, so saving again applies it and the linked
+  // split follows. Splits reloads its now reopened settlement.
+  async function undoEntrySettlementLock() {
+    const lock = entrySettlementLock;
+    if (!lock || isUndoingEntrySettlementLock) {
+      return;
+    }
+
+    setIsUndoingEntrySettlementLock(true);
+    try {
+      const response = await fetch("/api/splits/checkpoints/reopen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ checkpointId: lock.checkpointId })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to undo the simplification.");
+      }
+      setEntrySubmitError("");
+      setEntrySettlementLock({ ...lock, undone: true });
+      onSplitMutation?.({ month: view.monthPage.month });
+    } catch (error) {
+      setEntrySettlementLock({ ...lock, message: error instanceof Error ? error.message : "Failed to undo the simplification." });
+    } finally {
+      setIsUndoingEntrySettlementLock(false);
     }
   }
 
@@ -745,6 +782,9 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     showEntryComposer,
     entryDraft,
     entrySubmitError,
+    entrySettlementLock,
+    isUndoingEntrySettlementLock,
+    undoEntrySettlementLock,
     isSavingEntryDraft,
     savingEntryId,
     deletingEntryId,
