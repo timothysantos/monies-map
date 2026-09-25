@@ -14,7 +14,7 @@ import { normalizeStatementDate } from "./app-repository-helpers";
 import { recordCategoryMatchSuggestion } from "./app-repository-category-match-rules";
 import { buildAuditEventStatement } from "./app-repository-audit";
 import { resolveAccountId, resolveCategoryId, resolvePersonId } from "./app-repository-lookups";
-import { upsertLinkedSplitExpenseForEntryRecord } from "./app-repository-splits";
+import { buildLinkedSplitAmountStatements, upsertLinkedSplitExpenseForEntryRecord } from "./app-repository-splits";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 
 async function assertUnlockedBankFactsForEntryUpdate(
@@ -167,6 +167,7 @@ export async function updateEntryRecord(
     .prepare(`
       SELECT
         transactions.amount_minor,
+        transactions.currency,
         transactions.account_id,
         transactions.transaction_date,
         transactions.post_date,
@@ -183,6 +184,7 @@ export async function updateEntryRecord(
     .bind(input.entryId, DEFAULT_HOUSEHOLD_ID)
     .first<{
       amount_minor: number;
+      currency: string;
       account_id: string;
       transaction_date: string;
       post_date: string | null;
@@ -220,6 +222,16 @@ export async function updateEntryRecord(
       transferDirection: resolvedTransferDirection
     }
   });
+
+  // A linked split expense mirrors the ledger amount, so an amount change
+  // moves the split total and shares in the same batch as the entry.
+  const linkedSplitStatements = resolvedEntryType === "expense" && resolvedAmountMinor !== Number(transaction.amount_minor)
+    ? await buildLinkedSplitAmountStatements(db, {
+        entryId: input.entryId,
+        entryCurrency: transaction.currency,
+        amountMinor: resolvedAmountMinor
+      })
+    : [];
 
   const previousMonth = transaction.transaction_date.slice(0, 7);
   const nextMonth = input.date.slice(0, 7);
@@ -275,6 +287,7 @@ export async function updateEntryRecord(
   }
 
   statements.push(
+    ...linkedSplitStatements,
     buildAuditEventStatement(db, {
       entityType: "transaction",
       entityId: input.entryId,
