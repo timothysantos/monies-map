@@ -62,6 +62,10 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
   const [incomeRows, setIncomeRows] = useState(view.monthPage.incomeRows ?? []);
   const [sectionOpen, setSectionOpen] = useState(() => MONTH_SECTION_STATE_CACHE.get(monthUiKey) ?? monthService.getDefaultSectionOpen());
   const [noteDialog, setNoteDialog] = useState(null);
+  const [isSavingRowNote, setIsSavingRowNote] = useState(false);
+  const [rowNoteError, setRowNoteError] = useState("");
+  const rowNoteSaveInFlightRef = useRef(false);
+  const rowRemoveInFlightRef = useRef(false);
   const [planLinkDialog, setPlanLinkDialog] = useState(null);
   const [isSavingPlanLinks, setIsSavingPlanLinks] = useState(false);
   const [planLinkError, setPlanLinkError] = useState("");
@@ -814,6 +818,32 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     }
   }
 
+  // One delete at a time; the screen drops the row only after the server
+  // confirms, so totals never show a delete that did not happen.
+  async function deleteMonthPlanRowOnServer(rowId) {
+    if (rowRemoveInFlightRef.current) {
+      throw new Error(messages.month.rowDeleteFailed);
+    }
+    rowRemoveInFlightRef.current = true;
+    setIsRemovingMonthRow(true);
+    try {
+      const response = await fetch("/api/month-plan/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rowId,
+          month: view.monthPage.month
+        })
+      });
+      if (!response.ok) {
+        throw new Error(await buildRequestErrorMessage(response, messages.month.rowDeleteFailed));
+      }
+    } finally {
+      rowRemoveInFlightRef.current = false;
+      setIsRemovingMonthRow(false);
+    }
+  }
+
   async function handleRemovePlanRow(sectionKey, rowId) {
     const section = planSections.find((item) => item.key === sectionKey);
     const row = section?.rows.find((item) => item.id === rowId);
@@ -831,19 +861,8 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       return;
     }
 
-    setIsRemovingMonthRow(true);
-    try {
-      await fetch("/api/month-plan/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rowId,
-          month: view.monthPage.month
-        })
-      });
-    } finally {
-      setIsRemovingMonthRow(false);
-    }
+    // Throws on failure so the delete confirmation keeps the row and shows why.
+    await deleteMonthPlanRowOnServer(rowId);
     setPlanSections((current) => current.map((item) => (
       item.key === sectionKey
         ? { ...item, rows: item.rows.filter((planRow) => planRow.id !== rowId) }
@@ -870,6 +889,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
   }
 
   function openNoteDialog(kind, rowId, sectionKey, note) {
+    setRowNoteError("");
     setNoteDialog({
       kind,
       rowId,
@@ -878,28 +898,50 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     });
   }
 
+  // The table shows the new note only after the save succeeds; a failure
+  // keeps the dialog and its draft open with the error.
   async function commitNoteDialog() {
-    if (!noteDialog) {
+    if (!noteDialog || rowNoteSaveInFlightRef.current) {
       return;
     }
 
-    if (noteDialog.kind === "income") {
-      handleIncomeRowChange(noteDialog.rowId, { note: noteDialog.draft });
-      const row = incomeRows.find((item) => item.id === noteDialog.rowId);
-      if (row) {
-        await persistMonthRow("income", { ...row, note: noteDialog.draft });
-      }
-    } else {
-      updatePlanRow(noteDialog.sectionKey, noteDialog.rowId, { note: noteDialog.draft });
-      const section = planSections.find((item) => item.key === noteDialog.sectionKey);
-      const row = section?.rows.find((item) => item.id === noteDialog.rowId);
-      if (row) {
-        await persistMonthRow(noteDialog.sectionKey, { ...row, note: noteDialog.draft });
-      }
+    const { kind, rowId, sectionKey, draft } = noteDialog;
+    const row = kind === "income"
+      ? incomeRows.find((item) => item.id === rowId)
+      : planSections.find((item) => item.key === sectionKey)?.rows.find((item) => item.id === rowId);
+    if (!row) {
+      setNoteDialog(null);
+      return;
     }
 
+    rowNoteSaveInFlightRef.current = true;
+    setIsSavingRowNote(true);
+    setRowNoteError("");
+    try {
+      await persistMonthRow(kind === "income" ? "income" : sectionKey, { ...row, note: draft });
+    } catch (error) {
+      setRowNoteError(error instanceof Error && error.message ? error.message : messages.month.rowNoteSaveFailed);
+      return;
+    } finally {
+      rowNoteSaveInFlightRef.current = false;
+      setIsSavingRowNote(false);
+    }
+
+    if (kind === "income") {
+      handleIncomeRowChange(rowId, { note: draft });
+    } else {
+      updatePlanRow(sectionKey, rowId, { note: draft });
+    }
     setNoteDialog(null);
     refreshMonthDataInBackground();
+  }
+
+  function closeNoteDialog() {
+    if (rowNoteSaveInFlightRef.current) {
+      return;
+    }
+    setNoteDialog(null);
+    setRowNoteError("");
   }
 
   async function commitMonthNoteDialog() {
@@ -910,7 +952,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     setIsSavingMonthNote(true);
     setMonthNoteError("");
     try {
-      await fetch("/api/month-note/update", {
+      const response = await fetch("/api/month-note/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -919,13 +961,16 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
           note: monthNoteDialog.draft
         })
       });
+      if (!response.ok) {
+        throw new Error(await buildRequestErrorMessage(response, messages.month.monthNoteSaveFailed));
+      }
 
       setMonthNoteDialog(null);
       refreshMonthDataInBackground(buildMonthMutationRefreshPlan({
         kind: "plan-row-edit"
       }));
     } catch (error) {
-      setMonthNoteError(error instanceof Error ? error.message : "Failed to save month note.");
+      setMonthNoteError(error instanceof Error && error.message ? error.message : messages.month.monthNoteSaveFailed);
     } finally {
       setIsSavingMonthNote(false);
     }
@@ -1186,19 +1231,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       return;
     }
 
-    setIsRemovingMonthRow(true);
-    try {
-      await fetch("/api/month-plan/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rowId,
-          month: view.monthPage.month
-        })
-      });
-    } finally {
-      setIsRemovingMonthRow(false);
-    }
+    await deleteMonthPlanRowOnServer(rowId);
     setIncomeRows((current) => current.filter((item) => item.id !== rowId));
     setEditingRowId((current) => (current === rowId ? null : current));
     refreshMonthDataInBackground();
@@ -1344,6 +1377,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       || Boolean(mobileAddDialog)
       || actionsOpen
       || isSavingMonthNote
+      || isSavingRowNote
       || isDraftingMonthNote
       || isSavingMonthRow
       || isRemovingMonthRow
@@ -1356,10 +1390,15 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       || deleteMonthText !== ""
   });
 
+  // Month actions throw on failure; MonthPanelHeader keeps the popover or
+  // confirmation dialog open and shows the error.
   async function handleDuplicateMonth() {
     setIsDuplicating(true);
     try {
       const response = await fetch(`/api/months/duplicate?source=${view.monthPage.month}`, { method: "POST" });
+      if (!response.ok) {
+        throw new Error(await buildRequestErrorMessage(response, messages.month.duplicateMonthFailed));
+      }
       const data = await response.json();
       if (data?.targetMonth) {
         setSearchParams((current) => {
@@ -1376,7 +1415,10 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
   async function handleResetMonth() {
     setIsResettingMonth(true);
     try {
-      await fetch(`/api/months/reset?month=${view.monthPage.month}`, { method: "POST" });
+      const response = await fetch(`/api/months/reset?month=${view.monthPage.month}`, { method: "POST" });
+      if (!response.ok) {
+        throw new Error(await buildRequestErrorMessage(response, messages.month.resetMonthFailed));
+      }
       await onRefresh();
       setResetMonthText("");
     } finally {
@@ -1387,7 +1429,10 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
   async function handleDeleteMonth() {
     setIsDeletingMonth(true);
     try {
-      await fetch(`/api/months/delete?month=${view.monthPage.month}`, { method: "POST" });
+      const response = await fetch(`/api/months/delete?month=${view.monthPage.month}`, { method: "POST" });
+      if (!response.ok) {
+        throw new Error(await buildRequestErrorMessage(response, messages.month.deleteMonthFailed));
+      }
       await onRefresh();
       setDeleteMonthText("");
     } finally {
@@ -1593,7 +1638,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         </EntryMobileSheet>
       ) : null}
 
-      <Dialog.Root open={Boolean(noteDialog)} onOpenChange={(open) => { if (!open) setNoteDialog(null); }}>
+      <Dialog.Root open={Boolean(noteDialog)} onOpenChange={(open) => { if (!open) closeNoteDialog(); }}>
         <Dialog.Portal>
           <Dialog.Overlay className="note-dialog-overlay" />
           <Dialog.Content className="note-dialog-content">
@@ -1612,11 +1657,13 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
                   type="button"
                   className="icon-action subtle-cancel"
                   aria-label="Close note editor"
-                  onClick={() => setNoteDialog(null)}
+                  disabled={isSavingRowNote}
+                  onClick={closeNoteDialog}
                 >
                   <X size={16} />
                 </button>
               </div>
+              <InlineError message={rowNoteError} />
               <textarea
                 className="note-dialog-textarea"
                 value={noteDialog?.draft ?? ""}
@@ -1625,11 +1672,11 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
                 enterKeyHint="done"
               />
               <div className="note-dialog-actions">
-                <button type="button" className="subtle-cancel" onClick={() => setNoteDialog(null)}>
+                <button type="button" className="subtle-cancel" disabled={isSavingRowNote} onClick={closeNoteDialog}>
                   {messages.month.cancelEdit}
                 </button>
-                <button type="submit" className="dialog-primary">
-                  {messages.month.doneEdit}
+                <button type="submit" className="dialog-primary" disabled={isSavingRowNote}>
+                  {isSavingRowNote ? messages.common.saving : messages.month.doneEdit}
                 </button>
               </div>
             </form>
@@ -1714,7 +1761,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
                   <X size={16} />
                 </button>
               </div>
-              {monthNoteError ? <p className="form-error" role="alert">{monthNoteError}</p> : null}
+              <InlineError message={monthNoteError} />
               <textarea
                 className="note-dialog-textarea"
                 value={monthNoteDialog?.draft ?? ""}
