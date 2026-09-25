@@ -41,5 +41,8 @@ left in the text.
   lanes (row date = transaction date, `value date:` note). There is no real CDA
   statement with activity, and its deposit/withdrawal column detection depends
   on real layout, so it is unchanged until a sample exists.
-- Citi descriptions ending in a domain lose the suffix (`www.anywheel.sg` →
-  `www.anywheel.`, `ROCKONLINE.SG` → `ROCKONLINE.`). Cosmetic.
+- Resolved: Citi descriptions ending in `.sg` lost it (`www.anywheel.sg` →
+  `www.anywheel.`, `ROCKONLINE.SG` → `ROCKONLINE.`) because the location suffix
+  was stripped twice. It is now stripped once, uppercase only. Rows imported
+  with the old names still match as duplicates (`normalizeDescriptionForMatch`
+  drops a trailing `sg`).
