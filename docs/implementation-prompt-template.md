@@ -57,6 +57,22 @@ Constraints:
   contract
 - if the slice includes a deliberate exception, name it, test it, and keep it
   isolated instead of letting it become the new default path
+- work in three passes:
+  1. contract: write the tests first and confirm the new ones fail for the
+     stated reason, then make the smallest change;
+  2. integration: prove runtime and failure behaviour in a real browser or
+     local Worker (isolated ports), including drafts, person views and privacy;
+  3. review: read the whole diff, then run the gates (`npm run verify`, and
+     `npm run test:e2e` for shared orchestration)
+- a bug-fix test must fail on the old code; check that at least one new test
+  notices a deliberate break of the new code
+- follow the loading and data guardrails in `AGENTS.md`; keep
+  `npm run check:bundle` and the page-response budget green, and raise a
+  budget only with a measured reason
+- prove persistence or projection moves with
+  `scripts/persisted-state-snapshot.mjs` (identical before and after)
+- record results, including failures and anything not run, in the slice
+  audit; never claim a check that was not run
 
 Deliverables:
 - code changes for the target slice only
