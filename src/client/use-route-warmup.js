@@ -7,6 +7,7 @@ import { missingRouteBytes, readWarmupCosts } from "./route-warmup-costs.js";
 import { createWarmupDataAdapter } from "./route-warmup-data.js";
 import { buildVisitKey, evaluateWarmup, selectWarmupCandidates, selectWarmupMode } from "./route-warmup-policy.js";
 import { createRouteWarmupScheduler } from "./route-warmup-scheduler.js";
+import { MOBILE_LAYOUT_QUERY } from "./use-viewport.js";
 
 // Wires browser signals into the route warmup scheduler: visibility, network
 // hints, device mode, user interaction and editable focus. The latest route
@@ -61,7 +62,9 @@ export function useRouteWarmup({ routeIdentity, routeWork, queryEpoch, queryClie
       return undefined;
     }
     const now = () => performance.now();
-    const narrowViewport = matchQuery("(max-width: 760px)");
+    // Same width as the phone layout; the coarse-pointer half stays local
+    // because warmup cares about the device, not the layout.
+    const narrowViewport = matchQuery(MOBILE_LAYOUT_QUERY);
     const coarsePointer = matchQuery("(pointer: coarse)");
     const readMode = () => selectWarmupMode({
       narrowViewport: narrowViewport ? narrowViewport.matches : null,

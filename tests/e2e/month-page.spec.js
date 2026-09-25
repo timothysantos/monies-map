@@ -103,9 +103,11 @@ async function gotoMonthPage(page, {
 }
 
 // Counts how many times one user action ran the Month row-open handler. Both
-// open paths (beginPlanEdit and beginIncomeEdit) ask matchMedia whether to use
-// the mobile sheet, so a spy that only counts calls made from those handlers
-// sees each open exactly once without depending on the rendered result.
+// open paths (beginPlanEdit and beginIncomeEdit) ask isMonthSheetLayout() in
+// use-viewport.js, which calls matchMedia fresh at the moment of the event, so
+// a spy that only counts calls made from those handlers sees each open exactly
+// once, on desktop and on mobile, without depending on the rendered result.
+// Subscribed render reads share one cached media list and never count here.
 async function spyOnMonthRowOpens(page) {
   await page.addInitScript(() => {
     const originalMatchMedia = window.matchMedia.bind(window);
@@ -1190,6 +1192,7 @@ test.describe("month page", () => {
 
   test("mobile month plan rows open the edit sheet from the keyboard and once per tap", async ({ page }) => {
     await page.setViewportSize(devices["iPhone 12 Pro"].viewport);
+    await spyOnMonthRowOpens(page);
     await gotoMonthPage(page, { expectHeading: false });
 
     const row = page.locator("tr").filter({ hasText: "Savings" }).first();
@@ -1200,19 +1203,21 @@ test.describe("month page", () => {
     await page.keyboard.press("Tab");
     await expect(openButton).toBeFocused();
     await expect(openButton).toHaveCSS("outline-style", "solid");
+    await takeMonthRowOpenCount(page);
 
     await page.keyboard.press("Enter");
     await expect(editSheet).toBeVisible();
     await expect(sheets).toHaveCount(1);
     await expect(editSheet.locator('input[value="Savings"]')).toBeVisible();
+    expect(await takeMonthRowOpenCount(page)).toBe(1);
     await editSheet.getByRole("button", { name: "Close edit planned item" }).first().click();
     await expect(sheets).toHaveCount(0);
 
-    // The mobile open path skips matchMedia (the sheet preference is already
-    // in state), so the handler spy only covers desktop; here one tap must
-    // still leave exactly one sheet.
+    // One tap must run the open handler once and leave exactly one sheet.
+    await takeMonthRowOpenCount(page);
     await row.locator("td").nth(4).click();
     await expect(editSheet).toBeVisible();
     await expect(sheets).toHaveCount(1);
+    expect(await takeMonthRowOpenCount(page)).toBe(1);
   });
 });

@@ -16,6 +16,7 @@ import {
 import { getMonthPlanEditSource } from "./month-state";
 import { formatRowDateLabel, getRowDateValue, sortRows } from "./table-helpers";
 import { DeleteRowButton, SortableHeader } from "./ui-components";
+import { useIsMobileLayout, useIsMonthSheetLayout } from "./use-viewport";
 
 const { categories: categoryService, format: formatService, months: monthService } = moniesClient;
 
@@ -23,7 +24,6 @@ const SECTION_ORDER = {
   budget_buckets: 0,
   planned_items: 1
 };
-const MOBILE_MONTH_EDIT_QUERY = "(max-width: 760px), (max-width: 1024px) and (orientation: portrait)";
 
 function isPlannedItemsSection(sectionKey) {
   return sectionKey === "planned_items";
@@ -31,10 +31,6 @@ function isPlannedItemsSection(sectionKey) {
 
 function isBudgetBucketsSection(sectionKey) {
   return sectionKey === "budget_buckets";
-}
-
-function useMonthMobileEditViewport() {
-  return typeof window !== "undefined" && window.matchMedia(MOBILE_MONTH_EDIT_QUERY).matches;
 }
 
 function shouldIgnoreRowOpenTarget(target) {
@@ -514,8 +510,9 @@ function PlanningRow({
   saveErrorMessage = ""
 }) {
   const variance = row.plannedMinor - row.actualMinor;
+  const isMonthSheetLayout = useIsMonthSheetLayout();
   const canInlineEditRow = canInlineEditMonthPlanRow({ isCombinedHouseholdView, row });
-  const canOpenRow = canInlineEditRow || (useMonthMobileEditViewport() && canOpenMonthMobileSheet({ isCombinedHouseholdView, row }));
+  const canOpenRow = canInlineEditRow || (isMonthSheetLayout && canOpenMonthMobileSheet({ isCombinedHouseholdView, row }));
   const isDraftBudgetBucket = isBudgetBucketsSection(section.key) && row.isDraft;
   // A derived row may show a scoped share in the table. When editing, switch to
   // the source row values so the user edits the underlying plan, not the
@@ -811,11 +808,10 @@ function PlanningTotalsFooter({ section }) {
 }
 
 export function LastPeriodBudgetHint({ actualMinor, month }) {
+  const isNarrowViewport = useIsMobileLayout();
   if (!month || typeof actualMinor !== "number") {
     return null;
   }
-
-  const isNarrowViewport = typeof window !== "undefined" && window.innerWidth <= 760;
 
   return (
     <div className="month-budget-default-hint">

@@ -320,6 +320,38 @@ its shell), "Refresh now" reruns each of them.
 `use-app-sync-subscription.js` owns the cross-tab BroadcastChannel and
 storage listeners; its parse and dispatch helpers are pure.
 
+## Layout Breakpoint Boundary
+
+`use-viewport.js` is the only client module that calls `matchMedia` for
+layout; nothing else reads `innerWidth` or repeats a query string. It has
+two queries:
+
+- `MOBILE_LAYOUT_QUERY`, `(max-width: 760px)`, is the phone layout and
+  matches the `@media (max-width: 760px)` blocks in `public/styles.css` (a
+  unit test checks the stylesheet). Entries, Splits, the responsive pickers,
+  the spending chart, the last-period hint, inline editor scrolling, the
+  Splits group pills and focus visibility use it.
+- `MONTH_SHEET_LAYOUT_QUERY` adds `(max-width: 1024px) and (orientation:
+  portrait)`. Month plan and income rows open the mobile sheet on a portrait
+  tablet too, while the CSS and every other page keep the desktop layout.
+  This difference is deliberate; do not merge the two queries.
+
+Render code uses `useIsMobileLayout()` / `useIsMonthSheetLayout()`, built on
+`useSyncExternalStore` with one shared `MediaQueryList` per query, so the
+value is right on first render and a resize or rotation switches the layout
+without a reload. With no window (server render, unit tests) they report
+the desktop layout. Event handlers and effects call `isMobileLayout()` /
+`isMonthSheetLayout()`, which ask `matchMedia` at that moment. The Month
+open handlers must keep this fresh read: the row-open spy in
+`tests/e2e/month-page.spec.js` counts it. Focus visibility also treats a
+visual viewport of 760px or less (pinch zoom) as mobile.
+
+Route warmup reuses `MOBILE_LAYOUT_QUERY` for its narrow-viewport signal,
+but its mode also needs `(pointer: coarse)` and stays in
+`selectWarmupMode`, because warmup is about the device, not the layout.
+`tests/e2e/viewport-breakpoints.spec.js` resizes one page across both
+widths.
+
 ## Route Warmup Boundary
 
 Optional work (route code, speculative page data, AI wording) starts only

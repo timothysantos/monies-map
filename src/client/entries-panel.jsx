@@ -41,6 +41,7 @@ import { useRouteWorkReport } from "./use-route-work-status";
 import { fetchQueryWithLease } from "./query-leases";
 import { createEntriesDataOwner } from "./entries-data-owner";
 import { buildEntriesPageParams } from "./app-routing";
+import { useIsMobileLayout } from "./use-viewport";
 
 const QUICK_EXPENSE_DRAFT_STORAGE_KEY = "monies.quickExpenseDraft";
 const QUICK_EXPENSE_DRAFT_STORAGE_TTL_MS = 15 * 60 * 1000;
@@ -83,7 +84,7 @@ export function EntriesPanel({
   const [searchParams, setSearchParams] = useSearchParams();
   const [showExpenseBreakdown, setShowExpenseBreakdown] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [useMobileEntrySheet, setUseMobileEntrySheet] = useState(false);
+  const useMobileEntrySheet = useIsMobileLayout();
   const [isQuickExpenseSaving, setIsQuickExpenseSaving] = useState(false);
   const [quickExpensePendingKey, setQuickExpensePendingKey] = useState("");
   const [quickExpenseWarning, setQuickExpenseWarning] = useState("");
@@ -222,18 +223,6 @@ export function EntriesPanel({
   useEffect(() => {
     openEntryComposerRef.current = openEntryComposer;
   }, [openEntryComposer]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const mediaQuery = window.matchMedia("(max-width: 760px)");
-    const update = () => setUseMobileEntrySheet(mediaQuery.matches);
-    update();
-    mediaQuery.addEventListener?.("change", update);
-    return () => mediaQuery.removeEventListener?.("change", update);
-  }, []);
 
   useEffect(() => {
     if (!showEntryComposer) {
