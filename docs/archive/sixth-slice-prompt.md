@@ -274,7 +274,7 @@ The win is:
 The summary slice is now closed.
 
 That means the next highest-value slice is the one already called out in
-[`docs/implementation-order.md`](./implementation-order.md):
+[`docs/implementation-order.md`](../implementation-order.md):
 
 - splits already has strong behavior and now needs narrower query ownership
 - splits is the heaviest current consumer of cross-tab refresh and optimistic

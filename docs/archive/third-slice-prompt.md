@@ -236,7 +236,7 @@ The win is:
 The route-transition and shared-boundary slice is now in place.
 
 That means the next highest-value slice is the one already called out in
-[`docs/implementation-order.md`](./implementation-order.md):
+[`docs/implementation-order.md`](../implementation-order.md):
 
 - imports are operationally critical
 - imports already have strong scenario coverage

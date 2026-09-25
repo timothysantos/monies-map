@@ -86,7 +86,7 @@ to production only when the change is ready for real household data.
 
 Detailed user-facing and operational setup now belongs in this README. Narrow
 implementation notes can still live under [`docs/`](docs/) when they are too
-specific for the README.
+specific for the README; [`docs/README.md`](docs/README.md) indexes them.
 The product workflow guide lives in
 [`docs/git.md`](docs/git.md) and captures
 the current import, reconciliation, and splits workflows.
