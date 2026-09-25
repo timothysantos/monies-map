@@ -29,6 +29,10 @@ Splits state is split between:
 The page should preserve active matching state while freshness catches up,
 instead of replacing the current workflow blindly.
 
+Empty group, activity, search, match and history states use the shared
+`EmptyState`. When there are no matches, the match review says so once, not
+twice. Dialog form errors are `InlineError` alerts.
+
 ## Data Flow
 
 Splits data comes from:

@@ -30,6 +30,13 @@ Settings state is split between:
 Settings should stay lightweight. It should not become a hidden app-shell
 state container.
 
+Empty sections say what is missing instead of showing a bare dash:
+- category rules: "No category rules yet. …"
+- unresolved transfers: "No unresolved transfers. …"
+- recent activity: "No balance activity recorded yet."
+
+They use the shared `EmptyState`. Form errors are `InlineError` alerts.
+
 ## Data Flow
 
 Settings data comes from:
