@@ -193,6 +193,33 @@ Rules:
 - keep `/api/app-shell` free of accounts, categories, page payloads, balances,
   checkpoint history, and import history
 
+### Loading, warmup and data ownership (current, 2026-09)
+
+The macro performance work (`docs/macro-performance-implementation.md`,
+evidence in `docs/audits/macro-loading-baseline.md`) left this shape:
+
+- **Route work.** Each route owner reports whether its page is ready and
+  whether a protected workflow (an editor, a save) is open. The shell derives
+  one `usable` signal from that; optional work waits for it.
+- **One optional warmup queue.** After the page is usable and quiet, at most
+  one likely-next route module and, on desktop, up to two data requests per
+  visit are warmed, one at a time. Mobile warms code, and data only for
+  measured cheap families on a good connection (currently the Entries page).
+  Speculative reads are cancelled at a deadline unless the visible route
+  joins them. Navigation and required reads never wait for warmup.
+- **Owners for server data.** Reference data, Summary, the other route pages
+  and the app shell each have one owner that keeps the last good snapshot on
+  screen and ignores superseded responses, so a slow or cancelled request
+  cannot overwrite newer data, blank the shell or raise an error screen.
+- **Optional AI wording** is requested only while the route is usable and
+  only kept if it still matches the facts on screen.
+- **Payloads.** APIs serve compact JSON. The Month page sends its entries
+  once; Splits carries only the month's transfers. Every page API reports
+  `Server-Timing: app, init, total`.
+- **Persistence.** Write commands, runtime schema, seeding, snapshot
+  recalculation and page projections live in focused modules; persistence
+  refactors are proven with `scripts/persisted-state-snapshot.mjs`.
+
 ### Client state strategy
 
 - route state should select the active screen and screen parameters
@@ -475,8 +502,9 @@ Workers AI is a non-authoritative assistance boundary. It is never on the
 page-load, import-preview, import-commit, reconciliation, or freshness critical
 path. Summary, Month, Entries, and Splits render a deterministic Money
 check-in from their already-loaded figures immediately, then may request a
-wording variation only after a stable page/filter state and an in-memory cache
-miss. Each request is capped by a shared D1 daily usage counter and returns an
+wording variation only after a stable page/filter state, while the route is
+usable (no editor or save open), and on an in-memory cache miss. A response
+is kept only if it is OK, valid and still matches the facts on screen. Each request is capped by a shared D1 daily usage counter and returns an
 ordinary unavailable response when the binding is disabled, the allowance is
 exhausted, or a model response fails validation.
 

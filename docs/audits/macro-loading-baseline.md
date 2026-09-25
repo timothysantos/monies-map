@@ -2045,3 +2045,106 @@ Rollback:
 
 Gates: typecheck passes; unit tests 448/448; build passes; full functional E2E
 on isolated ports **244/244** (243 plus the new Splits payload spec).
+
+## H16: Asset work
+
+Date: 2026-09-25. Commit: `018c192` (CSS). Also `4c0ab02`, which removes
+the dead `loadAccountName` noted in H15.
+
+### Where assets load (built client, H11 harness report)
+
+Before usable, the page loads `styles.css` (render-blocking, 33.6 KB
+transfer) and 8 JS files (181.5 KB). Neither the FAQ chunk nor the Recharts
+chunk is among them in any cold sample.
+
+### H16a CSS: done
+
+`public/styles.css` is one stylesheet: 227,878 bytes, 32,725 gzip, about
+1,355 rules.
+
+Static proof:
+- 915 class names appear in selectors;
+- after allowing 48 dynamic class prefixes found in the source (for example
+  `…--${tab}`, `"environment-banner-" +`), 64 classes are never referenced
+  in `src/` or `index.html`, and none appear in the other `public/` pages;
+- `recharts-*` classes are kept, because the library adds them at runtime.
+
+The prune removed each selector that needs a dead class and each rule left
+with no selectors; everything else is byte-for-byte unchanged.
+
+Coverage check: Chromium CSS coverage ran over a crawl of every route at
+1440×900 and 390×844, with money shown and hidden, plus the insight,
+"More pages", pickers, category and note dialogs, entry composer, Splits
+add and the mobile context sheet. None of the 101 rules that contain dead
+selectors was used.
+
+Result: **114 selectors removed; 227,878 → 218,684 bytes, 32,725 → 31,345
+gzip (−4.2%)**.
+
+Screenshots, full page, 18 states: each route at both sizes, plus the
+entry composer and category editor at both sizes.
+- 17 states are byte-identical to the before shots.
+- The desktop FAQ page varies between runs of the unchanged CSS (a full-page
+  tile glitch in the page's lower band), and its after shot matches within
+  that same band.
+
+### H16b FAQ: skipped with evidence
+
+`faq-panel` is 45 KB gzip, but:
+- it is its own lazy route chunk, never loaded before usable;
+- it is excluded from automatic warmup (`NO_AUTOMATIC_MODULE_ROUTES`) and
+  warmed only on hover, focus or touch intent.
+
+Its cost is paid only by opening FAQ. The spec says not to change it merely
+because it is large.
+
+### H16c charts: skipped with evidence
+
+Recharts (`spending-mix-recharts`) is 92.5 KB gzip and lazy, with a
+fixed-height fallback that shows the total immediately. Measured on the
+built client, 5 cold loads each:
+- desktop: the chart request starts about 10 ms before usable, and the chart
+  shows about 330 ms after usable;
+- mobile: the request starts about 120 ms before usable (2,069–2,226 ms)
+  and ends about 500 ms after it (2,681–2,841 ms).
+
+The overlap is about 120 ms of a 615 ms download, and during it only
+already-issued small API responses are in flight. Deferring the import to
+after usable would save at most tens of milliseconds and show the chart
+about 140 ms later, which does not justify a change. Recharts is kept.
+
+### Gates
+
+- Unit tests pass 448/448.
+- The CSS change was verified with the static proof, coverage and
+  screenshots.
+- The full functional E2E run is recorded under H17.
+
+## H17: Documentation closure
+
+Date: 2026-09-25.
+
+Updated:
+- `docs/architecture.md`: new "Loading, warmup and data ownership" section;
+  the AI wording readiness rule.
+- `docs/code-spec.md`:
+  - measured budgets at 10k;
+  - warmup, admission, payload and Server-Timing rules;
+  - the AI contract readiness rule;
+  - a "Remaining large modules" table with owners and reasons;
+  - the persistence module map (from H15).
+- `AGENTS.md`: always-read rules for the persisted-state harness and for
+  measuring loading changes.
+- `docs/known-coupling-targets.md`: new rows for superseded server
+  responses, AI wording readiness, the Month page entry list, the Splits
+  month slice and mobile data admission.
+- `design.md`: already updated per task (shell chrome, owners, warmup
+  boundary).
+- The status board in `docs/macro-performance-implementation.md`.
+
+Earlier slice prompts are kept unchanged as history. `docs/faq.md` is not
+changed: none of this work changes user-facing behaviour beyond speed, the
+Retry screen fix and AI wording timing.
+
+Document checks: every relative Markdown link in the changed docs resolves
+(see the gates below).

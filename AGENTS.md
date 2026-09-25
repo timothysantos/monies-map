@@ -128,6 +128,12 @@ team conventions evolve.
   unit and parser contracts, the production build, and the smoke bundle.
 - Run `npm run test:e2e` before merging a large refactor branch or a change that
   affects shared route, settings, import, entry, month, or split orchestration.
+- Prove persistence or projection refactors with
+  `node --experimental-sqlite --no-warnings scripts/persisted-state-snapshot.mjs <out.json>`:
+  the normalized table and page-DTO dump must be identical before and after.
+- Measure loading changes with `npm run test:performance` (built client) and
+  compare cohorts with `scripts/compare-performance.mjs`; never claim a speed
+  change from a single noisy run.
 - Do not write shallow tests for implemented behavior. For any non-trivial
   slice, assert the concrete output shape and values, and include at least one
   negative test that proves the guarded or rejected path.
