@@ -40,6 +40,12 @@ tap closes it and discards the draft, as the desktop dialogs do. Focus then
 returns to the row button or "+ Add planned item". While a save is in flight,
 Escape is ignored, so a failed save keeps the sheet and its draft.
 
+"Save matches" in the match dialog (desktop) or sheet (mobile) shows
+"Saving...", takes one submit, and ignores Escape and Cancel until the save
+settles. A failed save keeps the dialog or sheet open with the draft and an
+inline error. Only a successful save closes it and refreshes the month.
+Saving a category from inside a Month sheet saves only the category.
+
 If the Month page fails to load after navigation, it shows the page error
 panel with "Try loading again" instead of the previous page. An empty
 match picker says "No matching expense entries fit the current filters."
