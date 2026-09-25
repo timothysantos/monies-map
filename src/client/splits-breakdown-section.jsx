@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 
 import { SpendingMixChart } from "./category-visuals";
 import { messages } from "./copy/en-SG";
+import { EmptyState } from "./ui-states";
 import {
   getDonutItemId,
   getVisibleDonutData,
@@ -125,7 +126,7 @@ export function SplitsBreakdownSection({
               </div>
             </div>
           ) : (
-            <p className="lede compact">{messages.splits.noEntries}</p>
+            <EmptyState>{messages.splits.noEntries}</EmptyState>
           )}
         </section>
       ) : null}
