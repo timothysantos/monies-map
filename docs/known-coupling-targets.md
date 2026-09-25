@@ -44,6 +44,7 @@ before broadening warmup cache reuse.
 | `src/client/import-preview-rows-table.jsx` and `src/client/statement-compare.jsx` import/reconciliation amount editing | Import and reconciliation money fields follow the same typing and normalization contract as entries | `imports` | `E2E` |
 | Mobile sheets versus desktop editors | Same workflow versus separate workflow is deliberate, and workflow locks protect active sheets from background freshness | `entries`, `months`, `imports` | `E2E` |
 | `src/client/monies-client-service.js` helper facade boundaries | Shared helper APIs stay small, and slice-specific logic does not leak back into the facade | all slices, especially `entries` and `months` | `Integration` |
+| OCBC 360 PDF date lanes (`src/lib/statement-import/ocbc.ts` `parseOcbc360TransactionHeader`) | The statement prints a transaction date and a value date. The parser keeps the first column as the row date and drops the value date while it is inside the period, so `01 MAY 02 MAY` imports on 1 May with no value-date context. DOMAIN.md says a final PDF statement owns both bank date lanes, and the OCBC 360 activity CSV imports on the value date. Decide which lane is the ledger date, keep the other as context, then re-baseline the fixture test. Found 2026-09-25 while adding `tests/fixtures/pdf-statement-text/`; `tests/pdf-statement-text-fixtures.test.mjs` pins current behavior with a comment | `imports` | `Unit` (fixture) and `E2E` |
 
 ## How To Use This List
 

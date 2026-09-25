@@ -311,6 +311,11 @@ Testing depth rule:
   code legends, page headers, and footers cannot be swallowed into transaction
   descriptions. Near-real fixtures should include at least one page boundary or
   non-transaction section for statement formats that print them.
+- PDF statement fixtures are extracted text, not PDFs: keep them in
+  `tests/fixtures/pdf-statement-text/` in the `extractPdfText()` shape (raw items,
+  `__PDF_LAYOUT_TEXT__`, `__PDF_SPACED_LAYOUT_TEXT__`) so routing in
+  `parseStatementText()` sees all three views. Assert every parsed row, the
+  checkpoints, and at least one rejected tampered variant.
 - One-off data repairs and schema maintenance must not run from hot read helpers
   such as reference-data, account-list, summary, entries, or settings reads.
   Put repairs behind explicit initialization and persist a completion marker so
