@@ -485,7 +485,7 @@ export function App() {
 
   // Fetch the app shell payload and persist it so the next render can reuse
   // global metadata immediately.
-  const fetchAppShellData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
+  const fetchAppShellData = useCallback(async (params, { bypassCache = false, signal = undefined } = {}) => {
     const cacheKey = params.toString();
     const queryKey = queryKeys.appShell(params);
     const queryState = queryClient.getQueryState(queryKey);
@@ -582,7 +582,7 @@ export function App() {
   }, [queryClient, updateLoadingStatus]);
 
   // Fetch the entries shell payload used by the dedicated entries workflow.
-  const fetchEntriesShellData = useCallback(async (params, { signal } = {}) => {
+  const fetchEntriesShellData = useCallback(async (params, { signal = undefined } = {}) => {
     if (signal?.aborted) {
       throw new DOMException("Entries shell request aborted.", "AbortError");
     }
@@ -697,7 +697,7 @@ export function App() {
   }, [appShellOwner, appShellParams, clearAppShellCache, fetchAppShellData]);
 
   // Fetch the active route page and shape it into the current screen payload.
-  const fetchRoutePageData = useCallback(async (request, { bypassCache = false, signal } = {}) => {
+  const fetchRoutePageData = useCallback(async (request, { bypassCache = false, signal = undefined } = {}) => {
     if (!request) {
       return null;
     }
@@ -781,7 +781,7 @@ export function App() {
 
   // Summary uses slice-owned queries instead of the generic route-page
   // endpoint so its range DTO and wallet pills can refresh independently.
-  const fetchSummaryPageData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
+  const fetchSummaryPageData = useCallback(async (params, { bypassCache = false, signal = undefined } = {}) => {
     updateLoadingStatus({
       label: "Loading current page",
       detail: "Loading summary...",
@@ -798,7 +798,7 @@ export function App() {
 
   // Summary account pills stay on a dedicated query so range changes and note
   // edits do not fan out into unrelated wallet refreshes.
-  const fetchSummaryAccountPillsData = useCallback(async (params, { bypassCache = false, signal } = {}) => (
+  const fetchSummaryAccountPillsData = useCallback(async (params, { bypassCache = false, signal = undefined } = {}) => (
     fetchSummaryAccountPillsQuery(queryClient, params, { bypassCache, signal })
   ), [queryClient]);
   const {
@@ -2083,7 +2083,7 @@ export function App() {
   useEffect(() => {
     const importsKeyHash = hashKey(queryKeys.importsPage());
     const readBanner = () => {
-      setImportInboxBanner(queryClient.getQueryData(queryKeys.importsPage())?.importsPage?.importInbox ?? null);
+      setImportInboxBanner(/** @type {any} */ (queryClient.getQueryData(queryKeys.importsPage()))?.importsPage?.importInbox ?? null);
     };
     readBanner();
     return queryClient.getQueryCache().subscribe((event) => {
@@ -2375,7 +2375,7 @@ export function App() {
       : pageView.label;
   // The settings badge reads from the settings page cache so the shell stays a
   // reference-data payload instead of reabsorbing settings-page state.
-  const cachedSettingsPage = queryClient.getQueryData(queryKeys.routeRequestKey(SETTINGS_ROUTE_REQUEST));
+  const cachedSettingsPage = /** @type {any} */ (queryClient.getQueryData(queryKeys.routeRequestKey(SETTINGS_ROUTE_REQUEST)));
   const pendingCategorySuggestionCount = cachedSettingsPage?.settingsPage?.categoryMatchRuleSuggestions?.length ?? 0;
   const buildTabTarget = (tab) => {
     // Each nav link preserves the relevant route query while stripping

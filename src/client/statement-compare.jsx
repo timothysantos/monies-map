@@ -245,7 +245,7 @@ function StatementCompareDirectionMismatch({ candidate, categories, categorySele
   );
 }
 
-function StatementCompareDisplayRow({ row, label }) {
+function StatementCompareDisplayRow({ row, label = undefined }) {
   return (
     <div className="settings-statement-row">
       {label ? <span className="settings-statement-row-label">{label}</span> : null}

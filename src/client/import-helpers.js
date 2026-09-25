@@ -148,7 +148,7 @@ export async function extractPdfText(file) {
   for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
     const page = await document.getPage(pageNumber);
     const content = await page.getTextContent();
-    pages.push(content.items.map((item) => item.str ?? "").join("\n"));
+    pages.push(content.items.map((item) => ("str" in item ? item.str : "")).join("\n"));
     layoutPages.push(extractPdfLayoutLines(content.items).join("\n"));
     spacedLayoutPages.push(extractPdfLayoutLines(content.items, " ").join("\n"));
   }
@@ -197,7 +197,7 @@ export async function extractPdfOcrText(file, onProgress) {
       }
       context.fillStyle = "#fff";
       context.fillRect(0, 0, canvas.width, canvas.height);
-      await page.render({ canvasContext: context, viewport }).promise;
+      await page.render({ canvas, canvasContext: context, viewport }).promise;
       onProgress?.({ status: "recognizing text", pageNumber, pageCount: document.numPages });
       const result = await worker.recognize(canvas, {}, { text: true, tsv: true });
       tsvPages.push(result.data.tsv ?? "");
