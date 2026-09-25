@@ -270,6 +270,8 @@ test("an import committed before promotion snapshots existed keeps the promoted 
     created_at: "2026-01-01 00:00:00"
   }]);
   assert.deepEqual(await rows(db, "SELECT id FROM transactions WHERE import_id = ?", importId), []);
+  // The row the import created is still removed, not kept as manual.
+  assert.deepEqual(await rows(db, "SELECT id FROM transactions WHERE description = 'PROMOTION TEST NEW ROW'"), []);
 });
 
 // ------------------------------------------ promoted, then statement certified
@@ -392,4 +394,110 @@ test("a staged bulk import that promotes a manual entry restores it on rollback"
   assert.equal(rollback.status, 200, JSON.stringify(rollback.payload));
   assert.deepEqual(await entryRow(db, manualEntryId), manualBefore);
   assert.deepEqual(await rows(db, "SELECT id FROM transactions WHERE import_id = ?", importId), []);
+  assert.deepEqual(await rows(db, "SELECT COUNT(*) AS count FROM transactions WHERE description LIKE 'PROMOTION BULK ROW%'"), [{ count: 0 }]);
+});
+
+test("a promoted entry linked as a transfer after the promotion stays a transfer after rollback", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const { manualEntryId, manualBefore, importId } = await commitPromotion(api, db);
+  const incomingId = await createEntry(api, { date: "2026-05-18", description: "PROMOTION TRANSFER IN", amountMinor: 4321, accountName: "UOB Savings", entryType: "income", categoryName: "Salary" });
+  const link = await api("/api/transfers/link", { fromEntryId: manualEntryId, toEntryId: incomingId });
+  assert.equal(link.status, 200, JSON.stringify(link.payload));
+  const [linked] = await rows(db, "SELECT entry_type, transfer_direction, transfer_group_id, category_id FROM transactions WHERE id = ?", manualEntryId);
+  assert.equal(linked.entry_type, "transfer");
+  assert.ok(linked.transfer_group_id);
+
+  const rollback = await api("/api/imports/rollback", { importId });
+
+  // The transfer link is the user's; the classification it needs stays with
+  // it. The other bank facts return to the manual entry's.
+  assert.equal(rollback.status, 200, JSON.stringify(rollback.payload));
+  assert.deepEqual(await entryRow(db, manualEntryId), [{
+    ...manualBefore[0],
+    ...linked
+  }]);
+});
+
+// --------------------------------- promoted, then superseded by a statement
+
+// A statement that leaves out the CSV's two rows supersedes them: their
+// total exactly explains the statement difference.
+async function supersedeWithStatement(api, db, accountId, manualEntryId) {
+  const statementCheckpoints = [{
+    accountId,
+    accountName: "Promotion Card",
+    detectedAccountName: "Promotion Card",
+    checkpointMonth: "2026-06",
+    statementStartDate: "2026-05-13",
+    statementEndDate: "2026-06-12",
+    statementBalanceMinor: 500,
+    note: "Promotion supersede checkpoint"
+  }];
+  const preview = await api("/api/imports/preview", {
+    sourceLabel: "Promotion supersede statement",
+    sourceType: "pdf",
+    rows: [{ date: "2026-05-25", description: "STATEMENT ONLY ROW", expense: "5.00", accountId, account: "Promotion Card", category: "Groceries" }],
+    defaultAccountName: "Promotion Card",
+    ownershipType: "direct",
+    ownerName: "Tim",
+    statementCheckpoints
+  });
+  assert.equal(preview.status, 200, JSON.stringify(preview.payload));
+  const reconciliations = preview.payload.preview.statementReconciliations;
+  const supersededIds = reconciliations.flatMap((reconciliation) => reconciliation.supersededLedgerRows ?? []).map((row) => row.transactionId);
+  assert.ok(supersededIds.includes(manualEntryId), "the statement supersedes the promoted entry");
+  assert.equal(supersededIds.length, 2);
+  const previewRows = preview.payload.preview.previewRows;
+  const commit = await api("/api/imports/commit", {
+    sourceLabel: "Promotion supersede statement",
+    sourceType: "pdf",
+    parserKey: "uob_credit_card_pdf",
+    rows: previewRows.filter((row) => row.commitStatus === "included"),
+    statementCheckpoints,
+    statementControlRows: previewRows,
+    statementReconciliations: reconciliations
+  });
+  assert.equal(commit.status, 200, JSON.stringify(commit.payload));
+  assert.deepEqual(await entryRow(db, manualEntryId), []);
+  return commit.payload.importId;
+}
+
+// A superseded entry is re-created by the statement rollback with a new
+// created_at and updated_at; every other column must match.
+async function entryWithoutTimes(db, entryId) {
+  return (await entryRow(db, entryId)).map(({ created_at, ...row }) => row);
+}
+
+test("rolling back the CSV, then the statement that superseded the promoted entry, gives the manual entry back", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const accountId = await createCardAccount(api);
+  const { manualEntryId, manualBefore, importId } = await commitPromotion(api, db, { accountName: "Promotion Card", accountId });
+  const statementImportId = await supersedeWithStatement(api, db, accountId, manualEntryId);
+
+  const rollback = await api("/api/imports/rollback", { importId });
+  assert.equal(rollback.status, 200, JSON.stringify(rollback.payload));
+  const statementRollback = await api("/api/imports/rollback", { importId: statementImportId });
+
+  assert.equal(statementRollback.status, 200, JSON.stringify(statementRollback.payload));
+  const { created_at, ...expected } = manualBefore[0];
+  assert.deepEqual(await entryWithoutTimes(db, manualEntryId), [expected]);
+  // The row the rolled-back CSV created is not re-created.
+  assert.deepEqual(await rows(db, "SELECT id FROM transactions WHERE description = 'PROMOTION TEST NEW ROW'"), []);
+  assert.deepEqual(await rows(db, "SELECT id FROM transactions WHERE import_id IN (?, ?)", importId, statementImportId), []);
+});
+
+test("rolling back the superseding statement first, then the CSV, gives the manual entry back", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const accountId = await createCardAccount(api);
+  const { manualEntryId, manualBefore, importId } = await commitPromotion(api, db, { accountName: "Promotion Card", accountId });
+  const statementImportId = await supersedeWithStatement(api, db, accountId, manualEntryId);
+
+  const statementRollback = await api("/api/imports/rollback", { importId: statementImportId });
+  assert.equal(statementRollback.status, 200, JSON.stringify(statementRollback.payload));
+  const rollback = await api("/api/imports/rollback", { importId });
+
+  assert.equal(rollback.status, 200, JSON.stringify(rollback.payload));
+  const { created_at, ...expected } = manualBefore[0];
+  assert.deepEqual(await entryWithoutTimes(db, manualEntryId), [expected]);
+  assert.deepEqual(await rows(db, "SELECT id FROM transactions WHERE description = 'PROMOTION TEST NEW ROW'"), []);
 });
