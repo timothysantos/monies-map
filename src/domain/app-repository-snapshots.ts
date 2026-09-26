@@ -21,6 +21,7 @@ import { buildSnapshotRowsForScope, sumVisibleExpenseMinor } from "./app-reposit
 import { loadEntries } from "./app-repository-entries";
 import { loadMonthIncomeRows, loadMonthPlanRows, loadSummaryMonths } from "./app-repository-months";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
+import { isEntryInPersonScope } from "./person-entry-amount";
 
 // The statements that bring one month's snapshots in line with the current
 // ledger and plan. Reads now; the caller runs the statements. With a marker,
@@ -53,9 +54,11 @@ export async function buildMonthlySnapshotStatements(db: D1Database, month: stri
   const statements: D1PreparedStatement[] = [];
   for (const scope of scopes) {
     const visibleRows = buildSnapshotRowsForScope(planRows, scope.key);
+    // A person has activity in the month through an entry they own or a
+    // share of a split-linked entry, the same entries their total counts.
     const visibleEntryCount = scope.key === "household"
       ? entries.length
-      : entries.filter((entry) => entry.splits.some((split) => split.personId === scope.key)).length;
+      : entries.filter((entry) => isEntryInPersonScope(entry, scope.key, "direct_plus_shared")).length;
     const plannedExpenseMinor = visibleRows.reduce((sum, row) => sum + row.plannedMinor, 0);
     const actualExpenseMinor = sumVisibleExpenseMinor(entries, scope.key);
     const savingsGoalMinor = visibleRows
