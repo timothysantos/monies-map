@@ -39,6 +39,10 @@ export const smokeWorkflows = [
     file: "tests/e2e/faq-content.spec.js"
   },
   {
+    name: "FAQ guide tabs",
+    file: "tests/e2e/faq-guide-tabs.spec.js"
+  },
+  {
     name: "summary",
     file: "tests/e2e/summary-workflow.spec.js"
   },

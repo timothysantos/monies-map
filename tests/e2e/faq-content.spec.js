@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("FAQ explains Apple Shortcut ownership, replacement, and releases", async ({ page }) => {
+test("the developer guide explains Apple Shortcut ownership, replacement, and releases", async ({ page }) => {
   const consoleErrors = [];
   page.on("console", (message) => {
     if (message.type() === "error") {
@@ -9,9 +9,10 @@ test("FAQ explains Apple Shortcut ownership, replacement, and releases", async (
   });
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/faq", { waitUntil: "domcontentloaded" });
+  await page.goto("/faq?faq=developers", { waitUntil: "domcontentloaded" });
 
   await expect(page.getByRole("heading", { name: "FAQ", exact: true })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "For developers" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", {
     name: "Is the downloaded shortcut tied to the owner's Mac, iPhone, or iCloud?",
     exact: true
