@@ -26,6 +26,7 @@ import {
   normalizeStatementDate
 } from "./app-repository-helpers";
 import { buildAuditEventStatement } from "./app-repository-audit";
+import { assertLinkedSplitSettlementUnchanged, buildLinkedSplitAmountStatements } from "./app-repository-splits";
 import { assertImportDescriptionQuality } from "./import-description-quality";
 import type {
   ImportPreviewRowDto,
@@ -1219,8 +1220,27 @@ export async function rollbackImportBatch(
   const certifiedRestore = await buildStatementCertifiedRowRestore(db, input.importId);
   const supersededRestore = await buildSupersededStatementRowRestore(db, input.importId);
   const promotedRestore = importRecord.source_type === "pdf"
-    ? { statements: [], months: new Set<string>() }
+    ? { statements: [], months: new Set<string>(), amountChanges: [] }
     : await buildPromotedEntryRestore(db, input.importId);
+  // A linked split follows its entry's amount (DOMAIN.md), so a promoted
+  // entry whose amount the rollback restores takes its split along in the
+  // same batch. A split in an active settlement keeps its settled amount:
+  // then the rollback is refused as a whole, before anything is written,
+  // until the simplification is undone.
+  const linkedSplitStatements: D1PreparedStatement[] = [];
+  for (const change of promotedRestore.amountChanges) {
+    await assertLinkedSplitSettlementUnchanged(db, {
+      entryId: change.entryId,
+      entryCurrency: change.currency,
+      followAmountMinor: change.amountMinor,
+      subject: "import rollback"
+    });
+    linkedSplitStatements.push(...await buildLinkedSplitAmountStatements(db, {
+      entryId: change.entryId,
+      entryCurrency: change.currency,
+      amountMinor: change.amountMinor
+    }));
+  }
   // The months of the entries this rollback removes (or restores) change too.
   const removedEntryMonths = await db
     .prepare(`
@@ -1248,6 +1268,7 @@ export async function rollbackImportBatch(
     // Before the cleanup: a restored entry no longer carries this import's
     // id, so the cleanup neither unlinks its splits nor deletes it.
     ...promotedRestore.statements,
+    ...linkedSplitStatements,
     ...chainBreakStatements,
     ...await buildImportBatchCleanupStatements(db, input.importId),
     db
@@ -1287,12 +1308,17 @@ export async function rollbackImportBatch(
 // before such an import can only have been promoted by it, so it stays as a
 // manual entry with its current bank facts (the originals are unknown)
 // instead of being deleted.
+//
+// `amountChanges` lists the expense entries whose amount the restore changes
+// (a user amount edit after the promotion), so their linked split can follow.
 async function buildPromotedEntryRestore(db: D1Database, importId: string) {
   const promotedEntries = await db
     .prepare(`
       SELECT
         transactions.id,
         transactions.account_id,
+        transactions.amount_minor,
+        transactions.currency,
         transactions.transaction_date,
         transactions.post_date,
         transactions.entry_type,
@@ -1320,6 +1346,8 @@ async function buildPromotedEntryRestore(db: D1Database, importId: string) {
     .all<{
       id: string;
       account_id: string;
+      amount_minor: number;
+      currency: string;
       transaction_date: string;
       post_date: string | null;
       entry_type: PromotedEntrySnapshot["transaction"]["entry_type"];
@@ -1335,6 +1363,7 @@ async function buildPromotedEntryRestore(db: D1Database, importId: string) {
 
   const statements: D1PreparedStatement[] = [];
   const months = new Set<string>();
+  const amountChanges: Array<{ entryId: string; currency: string; amountMinor: number }> = [];
   // Certificate snapshots to rewrite, by certificate id.
   const certificateRewrites = new Map<string, CertifiedLedgerRowSnapshot[]>();
 
@@ -1360,6 +1389,9 @@ async function buildPromotedEntryRestore(db: D1Database, importId: string) {
     }
 
     if (entry.bank_certification_status === "provisional") {
+      if (snapshot && snapshot.transaction.entry_type === "expense" && snapshot.transaction.amount_minor !== Number(entry.amount_minor)) {
+        amountChanges.push({ entryId: entry.id, currency: entry.currency, amountMinor: snapshot.transaction.amount_minor });
+      }
       statements.push(snapshot
         ? db
           .prepare(`
@@ -1520,7 +1552,7 @@ async function buildPromotedEntryRestore(db: D1Database, importId: string) {
       .bind(JSON.stringify(certifiedRows), DEFAULT_HOUSEHOLD_ID, certificateId));
   }
 
-  return { statements, months };
+  return { statements, months, amountChanges };
 }
 
 // Rewrites statement certificates that superseded rows of this import (see

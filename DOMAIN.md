@@ -357,7 +357,14 @@ Important distinctions:
   is still restored, except that an entry linked as a transfer keeps the
   transfer entry type and direction its link needs. Rows the import created
   are removed as before. An entry deleted after the promotion has nothing to
-  restore.
+  restore. When the restored amount differs (the user corrected it after the
+  promotion), the entry's linked split follows it in the rollback's own
+  write, by the same rule as an entry amount edit (see `split expense
+  share`); if that split is in an active settlement checkpoint the rollback
+  is refused as a whole instead (settlement lock under Settlement
+  Checkpoint). A promoted entry's amount can only change through such a
+  correction: matching requires equal amounts, and a certified entry's amount
+  is locked, so a statement rollback never restores a different amount.
 - If a later statement certified a promoted entry, a rollback of the
   current-activity import keeps the entry `Statement certified` with the
   statement's bank facts, and replaces the import-provisional state underneath
@@ -532,9 +539,18 @@ Important distinction:
   `linked_transaction_id` only so a restore can bring the link back; it does
   not count as the entry's split in any projection (Entries, Month, Summary,
   month totals), and the entry can be added to or matched with a new split
-- adding an entry to splits, matching a split to it, and deleting or
-  restoring its split change how person views count the entry (share versus
-  full amount), so each of those writes refreshes the entry's event month
+- a ledger entry has at most one active split expense (and a transfer at most
+  one active settle-up). The database holds this with a partial unique index
+  on `linked_transaction_id` where `deleted_at IS NULL`, so when two writes
+  race (add to splits, match, restore, a Shared owner save) the later one is
+  refused as a whole with the same "already linked" message the check before
+  it gives
+- adding an entry to splits, matching a split to it, deleting or restoring
+  its split, editing the split's shares or payer in Splits, and a Shared owner
+  entry save change how person views count the entry (share versus full
+  amount, or which share), so each of those writes puts the entry's event
+  month refresh marker in its own batch and refreshes the stored month totals
+  after it. A Shared owner save writes the entry and its split in one batch
 - changing the entry's amount moves the linked split expense with it in the
   same write: the split total becomes the new ledger amount and the shares are
   rebalanced by the split's stored basis (see `split expense share`). A
@@ -773,7 +789,11 @@ Rules:
   editing one row (the same reason paid confirmation and bank matching are
   explicit steps, and undoing paid refuses while a bank match exists)
 - import rollback does not change a locked row's facts (checkpoint or closed
-  batch): removing a linked entry only clears the split's ledger link
+  batch): removing a linked entry only clears the split's ledger link, and a
+  rollback that would restore a linked entry to a different amount (so its
+  split would follow) is refused as a whole with `split_settlement_locked`
+  until the simplification (or settle-up) is undone. A rollback that leaves
+  the linked entry's amount alone is never blocked
 
 ### Split Activity History
 

@@ -903,6 +903,10 @@ payer or shares) is refused as a whole, with the same undo. Description,
 category, note and bank links stay editable, and expenses recorded after the
 simplification are not affected. Rolling back an import only unlinks a
 settled split from its removed entry; the split and the settlement are kept.
+If the rollback would put a linked entry back on a different amount (you
+corrected the amount after the import matched your own entry), its settled
+split would have to follow, so the rollback is refused with the same message
+until you undo the simplification.
 
 A household save that changes nothing about the split (same amount, date,
 payer and share) is allowed, even when the split's shares carry an odd cent
@@ -1247,7 +1251,10 @@ If a current-activity import matched an entry you had added by hand, the
 import updated that entry in place instead of adding a second one. Rolling the
 import back puts your entry back as a `Manual provisional` entry with its
 original description, amount and dates. Changes you made after the import,
-such as its category, note, owner, split or transfer link, stay. If you had
+such as its category, note, owner, split or transfer link, stay. If the entry
+is shared through a split and you had changed its amount since the import,
+the split goes back to the original amount with the entry, keeping each
+person's percentage. If you had
 already deleted the entry, the rollback has nothing to restore. If a later
 statement has since certified the entry, it stays `Statement certified` with
 the statement's details; rolling that statement back afterwards gives you your
@@ -1592,6 +1599,12 @@ owner or owning account as the payer and creates a linked split expense with a
 default `50/50` split. The ledger row keeps its owner. The app opens a centered
 split-group picker; nothing is saved until you choose a group, and you can
 cancel the picker without creating a split expense.
+
+An entry is shared through one split at a time. If the same entry is added to
+splits (or matched, or an old split is restored) twice at the same moment, for
+example from two open tabs, only the first is saved and the other says the
+entry is already linked. Changing the shares of a linked split in Splits
+updates each person's month totals straight away.
 
 ## What are the default app categories?
 

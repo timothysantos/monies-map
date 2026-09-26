@@ -926,6 +926,7 @@ export function App() {
     invalidateEntries = false,
     invalidateMonth = false,
     invalidateSummary = false,
+    invalidateSplits = false,
     refreshShell = false
   } = {}) => {
     const request = buildRoutePageRequest({
@@ -944,6 +945,7 @@ export function App() {
           ? buildEntriesPageParams({ viewId: selectedViewId, month: selectedMonth })
           : undefined,
         invalidateSummaryAccountPills: true,
+        invalidateSplits,
         monthKeys: invalidateMonth ? [selectedMonth] : [],
         scope: selectedScope,
         summaryRange: invalidateSummary ? {

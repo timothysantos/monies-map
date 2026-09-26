@@ -655,6 +655,18 @@ CREATE INDEX IF NOT EXISTS idx_split_expenses_household_date
 CREATE INDEX IF NOT EXISTS idx_split_settlements_household_date
   ON split_settlements (household_id, settlement_date);
 
+-- One active split record per ledger row. An archived (deleted) record keeps
+-- its link so a restore can bring it back, but it does not hold the row, so
+-- only records with deleted_at IS NULL count. Two racing writes (add to
+-- splits, match, restore) therefore cannot both link the same entry.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_split_expenses_active_linked_transaction
+  ON split_expenses (linked_transaction_id)
+  WHERE linked_transaction_id IS NOT NULL AND deleted_at IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_split_settlements_active_linked_transaction
+  ON split_settlements (linked_transaction_id)
+  WHERE linked_transaction_id IS NOT NULL AND deleted_at IS NULL;
+
 CREATE INDEX IF NOT EXISTS idx_category_match_rules_household_active
   ON category_match_rules (household_id, is_active, priority);
 
