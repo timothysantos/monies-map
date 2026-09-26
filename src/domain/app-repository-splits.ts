@@ -1753,10 +1753,18 @@ export async function buildLinkedSplitAmountStatements(
     `)
     .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
     .all<{ id: string; total_amount_minor: number; currency: string }>();
+  return buildSplitAmountFollowStatements(db, { splits: linkedSplits.results, entryCurrency: input.entryCurrency, amountMinor: input.amountMinor });
+}
+
+// The amount follow-up above for the given split expenses.
+async function buildSplitAmountFollowStatements(
+  db: D1Database,
+  input: { splits: Array<{ id: string; total_amount_minor: number; currency: string | null }>; entryCurrency: string; amountMinor: number }
+) {
   const statements: D1PreparedStatement[] = [];
   const homeAmountMinor = Math.abs(input.amountMinor);
 
-  for (const split of linkedSplits.results) {
+  for (const split of input.splits) {
     if (normalizeSplitCurrency(split.currency) !== normalizeSplitCurrency(input.entryCurrency)) {
       statements.push(
         db
@@ -1845,14 +1853,76 @@ export async function buildLinkedSplitMirrorStatements(
   return statements;
 }
 
+// Statements that link split expenses back to a ledger entry a statement
+// rollback re-creates (the statement superseded, i.e. deleted, the entry and
+// unlinked them), for the rollback's own batch. Reads and the settlement lock
+// check happen here, before that batch.
+// - a split the person has since matched to another ledger row keeps that
+//   link (a row of the statement being rolled back does not count: the
+//   rollback removes it and would unlink the split anyway)
+// - a linked split follows its entry's amount (DOMAIN.md): an expense split
+//   whose amount was changed while it was unlinked moves back to the entry's
+//   amount by the same rule as an entry amount edit, and a split in a settled
+//   simplification or group batch refuses the whole rollback instead
+export async function buildSplitRelinkStatements(
+  db: D1Database,
+  input: {
+    entry: { id: string; amountMinor: number; currency: string; entryType: string };
+    splitExpenseIds: string[];
+    rolledBackImportId: string;
+  }
+) {
+  if (!input.splitExpenseIds.length) return [];
+  const splits = await db
+    .prepare(`
+      SELECT split_expenses.id, split_expenses.total_amount_minor, split_expenses.home_amount_minor, split_expenses.currency,
+        split_expenses.linked_transaction_id, transactions.id AS linked_row_id, transactions.import_id AS linked_import_id
+      FROM split_expenses
+      LEFT JOIN transactions ON transactions.id = split_expenses.linked_transaction_id
+      WHERE split_expenses.household_id = ? AND split_expenses.id IN (${input.splitExpenseIds.map(() => "?").join(", ")})
+      ORDER BY split_expenses.rowid
+    `)
+    .bind(DEFAULT_HOUSEHOLD_ID, ...input.splitExpenseIds)
+    .all<{ id: string; total_amount_minor: number; home_amount_minor: number | null; currency: string | null; linked_transaction_id: string | null; linked_row_id: string | null; linked_import_id: string | null }>();
+  const relinked = splits.results.filter((split) => (
+    !split.linked_transaction_id
+    || split.linked_transaction_id === input.entry.id
+    || !split.linked_row_id
+    || split.linked_import_id === input.rolledBackImportId
+  ));
+  const entryCurrency = normalizeSplitCurrency(input.entry.currency);
+  const homeAmountMinor = Math.abs(input.entry.amountMinor);
+  const following = input.entry.entryType === "expense"
+    ? relinked.filter((split) => (normalizeSplitCurrency(split.currency) === entryCurrency
+      ? split.total_amount_minor !== input.entry.amountMinor
+      : split.home_amount_minor !== homeAmountMinor))
+    : [];
+  await assertLinkedSplitSettlementUnchanged(db, {
+    entryId: input.entry.id,
+    entryCurrency: input.entry.currency,
+    followAmountMinor: input.entry.amountMinor,
+    subject: "import rollback",
+    splitIds: following.map((split) => split.id)
+  });
+  return [
+    ...relinked.map((split) => db
+      .prepare("UPDATE split_expenses SET linked_transaction_id = ? WHERE household_id = ? AND id = ?")
+      .bind(input.entry.id, DEFAULT_HOUSEHOLD_ID, split.id)),
+    ...await buildSplitAmountFollowStatements(db, { splits: following, entryCurrency: input.entry.currency, amountMinor: input.entry.amountMinor })
+  ];
+}
+
 // Refuses an entry save when its linked split expense is in an active
 // simplified settlement and the save would change that split's settlement
 // facts: the amount follow-up above (same currency only) and, for a shared
 // save, the upsert below, which rewrites date, payer, amount, currency and
 // shares (a travel split keeps its own currency and total, so only its date,
-// payer and shares can move), and the date and payer mirror (buildLinkedSplitMirrorStatements),
-// which moves them while the split still holds the entry's previous values.
-// Runs before the entry's batch, so a refused save writes nothing.
+// payer and shares can move), and the date and payer mirror
+// (buildLinkedSplitMirrorStatements), which moves them while the split still
+// holds the entry's previous values. `splitIds` checks those split expenses
+// instead of the ones linked to the entry (a statement rollback re-links
+// splits to an entry it re-creates). Runs before the entry's batch, so a
+// refused save writes nothing.
 export async function assertLinkedSplitSettlementUnchanged(
   db: D1Database,
   input: {
@@ -1865,6 +1935,7 @@ export async function assertLinkedSplitSettlementUnchanged(
       next: { date: string; payerPersonId: string | null };
     };
     subject?: "linked entry" | "import rollback";
+    splitIds?: string[];
   }
 ) {
   const mirror = input.mirror
@@ -1872,14 +1943,20 @@ export async function assertLinkedSplitSettlementUnchanged(
     ? input.mirror
     : undefined;
   if (input.followAmountMinor === undefined && !input.sharedSync && !mirror) return;
+  if (input.splitIds && !input.splitIds.length) return;
   // Archived links follow the amount and mirror too, so all are checked.
-  const linkedSplits = await db
-    .prepare("SELECT id, deleted_at FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ? ORDER BY rowid")
-    .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
-    .all<{ id: string; deleted_at: string | null }>();
+  const linkedSplits = input.splitIds
+    ? await db
+      .prepare(`SELECT id, deleted_at FROM split_expenses WHERE household_id = ? AND id IN (${input.splitIds.map(() => "?").join(", ")}) ORDER BY rowid`)
+      .bind(DEFAULT_HOUSEHOLD_ID, ...input.splitIds)
+      .all<{ id: string; deleted_at: string | null }>()
+    : await db
+      .prepare("SELECT id, deleted_at FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ? ORDER BY rowid")
+      .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
+      .all<{ id: string; deleted_at: string | null }>();
   const entryCurrency = normalizeSplitCurrency(input.entryCurrency);
   // The shared-save upsert rewrites the live linked split only, the same
-  // row upsertLinkedSplitExpenseForEntryRecord picks.
+  // row buildLinkedSplitUpsertStatements picks.
   const sharedSyncSplitId = linkedSplits.results.find((split) => !split.deleted_at)?.id;
 
   for (const split of linkedSplits.results) {
