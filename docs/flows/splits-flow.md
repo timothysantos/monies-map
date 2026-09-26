@@ -68,7 +68,11 @@ Current status: aligned with tests and runtime behavior.
 Watch area:
 
 - keep shell-refresh requests explicit and named
-- checkpoint membership is immutable until the user explicitly reopens it
+- checkpoint membership is immutable until the user explicitly reopens it,
+  and so are the settled facts of its records: a Splits edit or delete, or an
+  Entries save that would move a linked split, is refused with
+  `split_settlement_locked` and the form offers `Undo simplification`
+  (`settlement-lock-notice.jsx`); an edit never reopens a checkpoint by itself
 - a split group has one designated currency; original foreign amounts remain
   authoritative and cross-currency checkpoint matches require explicit FX
   evidence

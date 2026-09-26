@@ -5803,6 +5803,35 @@ button.split-activity-card:hover {
   gap: 8px 12px;
 }
 
+/* "Undo simplification" on a save a simplified settlement refused: the
+   settlement palette, also over the Splits panel's light-on-dark buttons. */
+.settlement-lock-error .subtle-action,
+.panel-splits .settlement-lock-error .subtle-action {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid #9b4a21;
+  border-radius: 999px;
+  background: #b15e2f;
+  color: #fffaf6;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.settlement-lock-error .subtle-action:hover,
+.panel-splits .settlement-lock-error .subtle-action:hover {
+  border-color: #9b4a21;
+  background: #9b4a21;
+}
+
+/* Shown inside light editors and dialogs, also within the Splits panel. */
+.settlement-lock-undone,
+.panel-splits .settlement-lock-undone {
+  margin: 8px 0 0;
+  color: var(--positive);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .chart-bars {
   display: grid;
   gap: 14px;

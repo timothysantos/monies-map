@@ -371,10 +371,10 @@ Not changed, noted for follow-up:
   were not copied to the linked split. Category keeps its own sync dialog.
 - Settlement checkpoints: an amount edit of a linked expense that is already
   in a checkpoint changes that expense's shares without reopening the
-  checkpoint (the checkpoint audit lists "edit included row after match" as
-  not implemented; Splits editor edits behave the same). Owned by the
-  `checkpoint-reopen` branch; the date, description and payer copy below has
-  the same gap.
+  checkpoint. Closed 2026-09-26: see "Settlement lock" below. Since the two
+  branches were merged, the date and payer copy below is predicted by the same
+  lock (`assertLinkedSplitSettlementUnchanged` takes the mirror), so an entry
+  edit that would move a settled split's date or payer is refused too.
 - Closed 2026-09-26 (next section): Entries treated an archived (deleted)
   split as still linked.
 
@@ -522,17 +522,40 @@ change: the `editing_entry` deep-link effect reopens the editor between
 `setEditingEntryId(null)` and `clearEditingEntrySearchParam`. Left for a
 separate fix.
 
+## Settlement lock and split record commands (2026-09-26)
+
+Branch `checkpoint-reopen`. A split record in an active settlement checkpoint
+keeps its settled facts (rule in `DOMAIN.md`, details in
+`docs/audits/split-settlement-checkpoint-audit.md`). The check runs before
+the first write, so a refused command writes nothing: for an entry save it
+runs before the entry batch and before the shared-save upsert that follows
+it.
+
+Converted to one `db.batch()` because their checks changed:
+`updateSplitExpenseRecord` (new batch if the group changes, expense row,
+shares), `deleteSplitExpenseRecord` and `deleteSplitSettlementRecord`
+(archive and history event), `updateSplitSettlementRecord` (new batch,
+settle-up row, batch close). `app-repository-split-batches.ts` gained
+`planActiveSplitBatch` and `buildCloseSplitBatchStatement`, which return
+statements; the create paths still use the running wrappers.
+
+Proof: `tests/atomic-writes-split-checkpoint-lock.test.mjs` injects a failure
+on `INSERT INTO split_expense_shares`, `INSERT INTO split_activity_history`
+and `UPDATE split_batches` and asserts an unchanged dump; all three failed on
+the sequential code.
+
 ## Open items
 
 - Closed 2026-09-25 (section above): rolling back a CSV import deleted a
   manual entry that the import had promoted.
 - Not yet converted (still sequential writes): the rest of the split
-  workspace (`app-repository-splits.ts`: split create and edit, note and
-  category edits, settlements, checkpoints), including the linked split
-  expense a shared-ownership entry save upserts after its own batch (add to
-  splits, match, delete, restore and the entry-edit follow-ups are converted,
-  sections above). A Splits-editor share edit of a linked split still leaves
-  the stored person month totals stale until the month is next refreshed;
+  workspace (`app-repository-splits.ts`: split create, note and category
+  edits, settlements other than edit and delete, checkpoints), including the
+  linked split expense a shared-ownership entry save upserts after its own
+  batch (add to splits, match, delete, restore, split expense and settle-up
+  edit and delete, and the entry-edit follow-ups are converted, sections
+  above). A Splits-editor share edit of a linked split still leaves the stored
+  person month totals stale until the month is next refreshed;
   category
   match rule suggestions recorded
   after an entry edit; settings, categories, statement checkpoint edits,
