@@ -92,6 +92,11 @@ test.describe("mobile continuity", () => {
       expect(fit.height, path).toBeGreaterThanOrEqual(44);
       expect(fit.left, path).toBeGreaterThanOrEqual(0);
       expect(fit.right, path).toBeLessThanOrEqual(fit.viewport);
+
+      // The floating money toggle sits above the bar, not over its caret or arrows.
+      const barBox = await page.locator(".mobile-context-sticky-bar").boundingBox();
+      const toggleBox = await page.locator(".totals-visibility-toggle--floating").boundingBox();
+      expect(toggleBox.y + toggleBox.height, path).toBeLessThanOrEqual(barBox.y);
     }
   });
 

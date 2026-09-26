@@ -9318,6 +9318,13 @@ th {
     background: rgba(255, 243, 234, 0.98);
   }
 
+  /* Above the View and scope bar (80px up, 46px tall) so it never covers
+     the bar's caret or next-month arrow. */
+  .totals-visibility-toggle--month,
+  .totals-visibility-toggle--summary {
+    bottom: calc(136px + env(safe-area-inset-bottom, 0px));
+  }
+
   .totals-visibility-toggle--entries {
     bottom: calc(218px + env(safe-area-inset-bottom, 0px));
   }
@@ -10479,7 +10486,8 @@ th {
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    padding: 10px 14px;
+    min-height: 46px;
+    padding: 6px 14px;
     border: 1px solid var(--line);
     border-radius: 16px;
     background: rgba(255, 255, 255, 0.96);
@@ -10491,35 +10499,40 @@ th {
     cursor: pointer;
   }
 
+  /* Two lines: "Tim · Direct + Shared" over "View and scope". Nothing is
+     truncated; a long name wraps before the scope instead. */
   .mobile-context-trigger-copy {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
     min-width: 0;
-    gap: 8px;
+    gap: 1px;
   }
 
   .mobile-context-trigger-label {
-    flex: 0 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 0.3em;
+    max-width: 100%;
     font-size: 0.84rem;
     font-weight: 700;
+    line-height: 1.25;
     letter-spacing: -0.01em;
   }
 
-  .mobile-context-trigger-divider {
-    flex: 0 0 auto;
-    color: rgba(101, 92, 83, 0.4);
-    font-size: 0.76rem;
+  .mobile-context-trigger-person {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-context-trigger-scope {
+    white-space: nowrap;
   }
 
   .mobile-context-trigger-hint {
-    flex: 0 0 auto;
     color: var(--muted);
     font-size: 0.72rem;
-    line-height: 1;
+    line-height: 1.25;
   }
 
   .mobile-context-trigger-caret {
@@ -10602,6 +10615,13 @@ th {
   .mobile-context-pill-row .pill {
     width: 100%;
     min-width: 0;
+  }
+
+  .mobile-context-dialog-hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.84rem;
+    line-height: 1.4;
   }
 
   .scope-button {
