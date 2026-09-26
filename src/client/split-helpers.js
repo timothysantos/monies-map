@@ -70,3 +70,14 @@ export function getArchivedBatchSummary(batch, viewId) {
     subtitle: `${settlement.fromPersonName} paid ${settlement.toPersonName} ${amount}`
   };
 }
+
+// The category donut for the active group's currency: open expenses in that
+// currency across groups. Currencies are never added together, so an SGD
+// group shows the SGD chart and a JPY group the JPY chart (empty when no
+// yen expense is open), never dollars and yen summed.
+export function selectSplitDonutChart(splitsPage, currency = "SGD") {
+  if (!currency || currency === "SGD") {
+    return splitsPage?.donutChart ?? [];
+  }
+  return splitsPage?.donutChartsByCurrency?.[currency] ?? [];
+}

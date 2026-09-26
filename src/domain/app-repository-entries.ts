@@ -1,6 +1,8 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { getMonthBounds, groupSplits } from "./app-repository-helpers";
 import { getCurrentMonthKey } from "../lib/month";
+import { homeCurrencyShareAmounts } from "./split-allocation";
+import { isCurrencyMatch } from "./split-currency";
 import type { EntryDto, LinkedTransferDto } from "../types/dto";
 
 export async function loadEntries(db: D1Database, month = getCurrentMonthKey()): Promise<EntryDto[]> {
@@ -181,7 +183,12 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
         split_expense_shares.person_id,
         split_expense_shares.ratio_basis_points,
         split_expense_shares.amount_minor,
-        people.display_name
+        people.display_name,
+        split_expenses.currency AS split_currency,
+        transactions.currency AS entry_currency,
+        transactions.amount_minor AS entry_amount_minor,
+        CASE people.role WHEN 'owner' THEN 0 WHEN 'partner' THEN 1 ELSE 2 END AS person_rank,
+        people.created_at AS person_created_at
       FROM split_expense_shares
       INNER JOIN split_expenses ON split_expenses.id = split_expense_shares.split_expense_id
       INNER JOIN people ON people.id = split_expense_shares.person_id
@@ -200,8 +207,13 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       ratio_basis_points: number;
       amount_minor: number;
       display_name: string;
+      split_currency: string | null;
+      entry_currency: string | null;
+      entry_amount_minor: number;
+      person_rank: number;
+      person_created_at: string;
     }>();
-  const linkedSplitShareMap = groupSplits(linkedSplitShares.results, "transaction_id");
+  const linkedSplitShareMap = buildLinkedSplitShareMap(linkedSplitShares.results);
   const entriesByTransferGroup = new Map<string, typeof entries.results>();
 
   for (const entry of entries.results) {
@@ -271,6 +283,60 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
         : []
     };
   });
+}
+
+type LinkedSplitShareRow = {
+  transaction_id: string;
+  person_id: string;
+  ratio_basis_points: number;
+  amount_minor: number;
+  display_name: string;
+  split_currency: string | null;
+  entry_currency: string | null;
+  entry_amount_minor: number;
+  person_rank: number;
+  person_created_at: string;
+};
+
+// The linked split shares of each entry, in the entry's own (home) currency,
+// because every projection of an entry (the viewer share on Entries, Month
+// actuals, Summary, the stored person month totals) counts them as ledger
+// money. A same-currency split's stored shares already are that and pass
+// through untouched. A travel split's shares are in its own currency, so each
+// person's share is converted to their share of the ledger amount
+// (homeCurrencyShareAmounts); the split itself keeps its own shares.
+function buildLinkedSplitShareMap(rows: LinkedSplitShareRow[]) {
+  const shareMap = groupSplits(rows, "transaction_id");
+  const rowsByTransaction = new Map<string, LinkedSplitShareRow[]>();
+  for (const row of rows) {
+    const current = rowsByTransaction.get(row.transaction_id) ?? [];
+    current.push(row);
+    rowsByTransaction.set(row.transaction_id, current);
+  }
+
+  for (const [transactionId, splitRows] of rowsByTransaction) {
+    const [first] = splitRows;
+    if (isCurrencyMatch(first.split_currency, first.entry_currency)) {
+      continue;
+    }
+
+    // Split-share people order, so the balancing cent lands on the same
+    // person as when a same-currency split follows a new amount.
+    const ordered = [...splitRows].sort((left, right) => left.person_rank - right.person_rank
+      || left.person_created_at.localeCompare(right.person_created_at)
+      || left.person_id.localeCompare(right.person_id));
+    const homeAmounts = homeCurrencyShareAmounts(
+      ordered.map((row) => ({ ratioBasisPoints: row.ratio_basis_points, amountMinor: row.amount_minor })),
+      first.entry_amount_minor
+    );
+    const homeAmountByPerson = new Map(ordered.map((row, index) => [row.person_id, homeAmounts[index]]));
+    shareMap.set(transactionId, (shareMap.get(transactionId) ?? []).map((share) => ({
+      ...share,
+      amountMinor: homeAmountByPerson.get(share.personId) ?? share.amountMinor
+    })));
+  }
+
+  return shareMap;
 }
 
 function daysBetween(left: string, right: string) {

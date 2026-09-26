@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { buildSplitsPage } from "../src/domain/splits-projection.ts";
-import { getArchivedBatchSummary } from "../src/client/split-helpers.js";
+import { getArchivedBatchSummary, selectSplitDonutChart } from "../src/client/split-helpers.js";
 
 const people = { "person-tim": "Tim", "person-joyce": "Joyce" };
 
@@ -91,4 +91,37 @@ test("an archived travel batch names its settle-up in the group currency", () =>
   // Negative: an SGD settle-up (or one with no stored currency) stays in dollars.
   assert.equal(getArchivedBatchSummary({ ...batch, items: [{ ...settlement, currency: "SGD" }] }, "household").subtitle, "Tim paid Joyce $6,000.00");
   assert.equal(getArchivedBatchSummary({ ...batch, items: [{ ...settlement, currency: undefined }] }, "household").subtitle, "Tim paid Joyce $6,000.00");
+});
+
+test("the Splits category donut charts each currency on its own and never counts yen or dinars as dollars", () => {
+  const page = buildPage("person-tim");
+  // Joyce paid each: Tim's view charts his half, in the expense's currency.
+  assert.deepEqual(page.donutChart.map(({ label, valueMinor, entryCount }) => ({ label, valueMinor, entryCount })), [
+    { label: "Food & Drinks", valueMinor: 600_000, entryCount: 1 }
+  ]);
+  assert.deepEqual(Object.keys(page.donutChartsByCurrency), ["JPY", "KWD"]);
+  assert.equal(page.donutChartsByCurrency.JPY[0].valueMinor, 600_000);
+  assert.equal(page.donutChartsByCurrency.KWD[0].valueMinor, 1_000);
+
+  // The Splits panel shows the chart for the active group's currency.
+  assert.equal(selectSplitDonutChart(page, "JPY"), page.donutChartsByCurrency.JPY);
+  assert.equal(selectSplitDonutChart(page, "KWD"), page.donutChartsByCurrency.KWD);
+  assert.equal(selectSplitDonutChart(page, "SGD"), page.donutChart);
+  assert.equal(selectSplitDonutChart(page, undefined), page.donutChart);
+
+  // Negative: an SGD-only page has no per-currency charts, and a travel
+  // group without open expenses shows an empty chart, never the SGD one.
+  const sgdOnly = buildSplitsPage(
+    "person-tim",
+    [{ id: "split-group-tokyo", name: "Tokyo trip", sortOrder: 1, currency: "JPY", expenseSource: "cash" }],
+    [expense({ id: "split-expense-sgd", groupId: undefined, groupName: "Non-group expenses", currency: "SGD", totalAmountMinor: 1_000 })],
+    [],
+    [],
+    [],
+    "2025-10",
+    people
+  );
+  assert.equal("donutChartsByCurrency" in sgdOnly, false);
+  assert.equal(sgdOnly.donutChart[0].valueMinor, 500);
+  assert.deepEqual(selectSplitDonutChart(sgdOnly, "JPY"), []);
 });
