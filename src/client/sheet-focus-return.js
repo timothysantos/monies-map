@@ -98,6 +98,10 @@ export function returnFocusFromSheet(opener) {
   if (landmark instanceof HTMLElement) {
     if (!landmark.hasAttribute("tabindex")) {
       landmark.setAttribute("tabindex", "-1");
+      // The landmark needs no focus ring. Set here rather than in
+      // styles.css, which counts towards the first-screen budget. Outline
+      // does not inherit, so the page's rows are not restyled.
+      landmark.style.outline = "none";
     }
     landmark.focus({ preventScroll: true });
   }

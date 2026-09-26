@@ -42,12 +42,6 @@ button {
   padding: 24px 18px 46px;
 }
 
-/* A closing sheet with no opener left hands focus to <main>
-   (sheet-focus-return.js); the landmark itself needs no focus ring. */
-.shell[tabindex="-1"]:focus {
-  outline: none;
-}
-
 .environment-banner {
   position: sticky;
   top: 0;
