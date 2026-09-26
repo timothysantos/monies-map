@@ -182,9 +182,63 @@ test.describe("financial insights", () => {
     const splitsInsight = page.locator(".financial-insight-splits");
     await expect(splitsInsight).toContainText("search");
     await expect(splitsInsight).toContainText("filtered group view");
-    // Splits figures are the whole group's, so the wording never presents
-    // them as the viewer's own spending.
-    await expect(splitsInsight).not.toContainText(/Tim, (you|there)/);
+    // A person view's Splits check-in is that person's own part of the group.
+    await expect(splitsInsight).toContainText("Tim's money check-in");
+  });
+
+  // A person's Splits check-in counts their own split share of each group
+  // expense, in the group currency, not the group's total. Tim paid ¥12,000
+  // for a JPY trip hotel split 25% Tim / 75% Joyce: Tim's part is ¥3,000
+  // (he lent Joyce ¥9,000) and Joyce's is ¥9,000.
+  test("the splits check-in follows the person view and counts that person's share", async ({ page }) => {
+    const bodies = [];
+    await page.route("**/api/ai-assist/financial-insight", async (route) => {
+      bodies.push(route.request().postDataJSON());
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ ok: false }) });
+    });
+    const { groupId } = await postJson(page, "/api/splits/groups/create", { name: "Tokyo trip", currency: "JPY", expenseSource: "cash" });
+    await postJson(page, "/api/splits/expenses/create", {
+      groupId,
+      date: "2026-05-12",
+      description: "Shinjuku hotel",
+      categoryName: "Travel",
+      payerPersonName: "Tim",
+      amountMinor: 1_200_000,
+      splitBasisPoints: 2500,
+      currency: "JPY",
+      paymentMethod: "cash",
+      paymentStatus: "recorded"
+    });
+
+    await gotoPageAfterApi(
+      page,
+      `/splits?view=person-tim&month=2026-05&split_group=${groupId}`,
+      "/api/splits-page",
+      () => page.getByRole("heading", { name: "Splits", exact: true })
+    );
+    const hotel = page.locator(".split-activity-card").filter({ hasText: "Shinjuku hotel" });
+    await expect(hotel).toContainText("You paid JP¥12,000");
+    await expect(hotel.locator(".split-activity-amount-line > span").first()).toHaveText("JP¥9,000");
+    const splitsInsight = page.locator(".financial-insight-splits");
+    await expect(splitsInsight).toContainText("Tim's money check-in");
+    await expect(splitsInsight.locator(".financial-insight-narrative")).toContainText("Tim, you received JP¥0 and spent JP¥3,000 across 1 entry in Tokyo trip group.");
+    await expect(splitsInsight).not.toContainText("JP¥12,000");
+
+    // Only computed facts go out, with the person's name held back.
+    await expect.poll(() => bodies.length, { timeout: 15_000 }).toBe(1);
+    expect(Object.keys(bodies[0])).toEqual(["facts"]);
+    expect(bodies[0].facts).toMatchObject({ audienceKind: "person", spend: "JP¥3,000", entryCount: 1 });
+    expect(JSON.stringify(bodies[0])).not.toContain("Tim");
+
+    // Switching to Joyce's view words the check-in for her share and asks for
+    // wording again, because the facts (and so the cache key) changed.
+    await page.locator(".context-block .pill[title='Joyce']").click();
+    await expect(page).toHaveURL(/view=person-joyce/);
+    await expect(splitsInsight).toContainText("Joyce's money check-in");
+    await expect(splitsInsight.locator(".financial-insight-narrative")).toContainText("Joyce, you received JP¥0 and spent JP¥9,000 across 1 entry in Tokyo trip group.");
+    await expect.poll(() => bodies.length, { timeout: 15_000 }).toBe(2);
+    expect(bodies[1].facts).toMatchObject({ audienceKind: "person", spend: "JP¥9,000" });
+    expect(JSON.stringify(bodies[1])).not.toContain("Joyce");
   });
 });
 

@@ -81,3 +81,27 @@ export function selectSplitDonutChart(splitsPage, currency = "SGD") {
   }
   return splitsPage?.donutChartsByCurrency?.[currency] ?? [];
 }
+
+// The Splits money check-in's records for one group's activity, in the
+// group's currency. The household sees the group's totals; a person sees
+// their own part: their split share of each expense (an expense they have no
+// share in is left out) and the settlements, which carry no spend.
+export function buildSplitInsightRecords(activity, viewId) {
+  const isHousehold = viewId === "household";
+  return activity.flatMap((item) => {
+    const isExpense = item.kind === "expense";
+    const amountMinor = isExpense && !isHousehold
+      ? item.shares?.find((share) => share.personId === viewId)?.amountMinor ?? 0
+      : item.totalAmountMinor;
+    if (isExpense && !amountMinor) {
+      return [];
+    }
+    return [{
+      amountMinor,
+      entryType: isExpense ? "expense" : "transfer",
+      categoryName: item.categoryName ?? "Split expense",
+      description: item.description,
+      date: item.date
+    }];
+  });
+}

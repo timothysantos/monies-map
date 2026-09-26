@@ -2730,6 +2730,11 @@ cohort's run medians overlap by 3 ms, the other's do not.
   1,279 px, so they wrap where the row is full (to about 1,195 px) and
   the header is unchanged where it fits. `tests/e2e/header-tab-fit.spec.js`
   (1,120 and 1,200 px, every page) failed at 1,120 px before the fix.
+  Replaced on branch `header-checkin-fixes`: the owner rejected the second
+  row (it pushes the page down), so from 1,100 px the header is one row
+  again, with tighter spacing from 1,100 to 1,199 px; the wrap is back to
+  761-1,099 px. The spec now asserts a single row at 1,100, 1,120, 1,200
+  and 1,279 px, and failed at 1,100 px before the change.
 - **The `body:has(...)` rules.** The sheet's remaining style cost (~30 ms
   per open or close at CPU 4x) comes from the 9 `body:has(...)` rules that
   hide the tab strip, floating buttons and sticky context while an editor
