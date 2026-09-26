@@ -7,6 +7,7 @@ import { messages } from "./copy/en-SG";
 import { EntryEditorFields, EntryTransferTools } from "./entry-editor";
 import { buildEntryRowDisplay, getEntryOwnerCue } from "./entry-row-display";
 import { moniesClient } from "./monies-client-service";
+import { PAGE_FLAG, pageFlagRef } from "./page-flags";
 import { PrivateMoney, useMoneyPrivacy } from "./money-privacy";
 import { useRouteWorkBusy } from "./use-route-work-status";
 import { useStableHandler } from "./use-stable-handler";
@@ -511,7 +512,7 @@ function EntryRow({
       ) : null}
 
       {editor ? (
-        <div ref={inlineEditorRef} className="entry-inline-editor">
+        <div ref={pageFlagRef(PAGE_FLAG.entryInlineEditor, inlineEditorRef)} className="entry-inline-editor">
           <EntryInlineEditorFields
             entry={entry}
             categories={categories}
