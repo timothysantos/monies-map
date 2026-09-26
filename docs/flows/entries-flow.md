@@ -86,7 +86,9 @@ Watch area:
 - a save that would move a linked split held by an active simplified
   settlement is refused whole (409 `split_settlement_locked`); the editor and
   phone sheet show the reason with `Undo simplification`, which reopens the
-  settlement and invalidates Splits, and the draft is kept for a second save
+  settlement and invalidates Splits, and the draft is kept for a second save.
+  A linked split in a closed group batch is refused the same way, naming the
+  `batchId`, with `Undo settle-up` (`POST /api/splits/batches/reopen`)
 - When the route-level page load fails, the shell shows the page error panel.
   When only the Entries owner (`entries-data-owner.js`) learns that the
   month failed, the panel shows the same `ErrorPanel` with "Try loading

@@ -248,6 +248,72 @@ test("an entry edit that leaves the settled split alone still saves", async (t) 
   assert.deepEqual(await checkpointState(db, checkpoint.checkpointId), checkpointBefore);
 });
 
+// The editor sends the split's stored first-share ratio back as the shared
+// basis. That ratio is rounded (a 10.01 split 5.00/5.01 is stored as 4995),
+// and rebuilding the shares from it floors Tim's share to 4.99, so an
+// unchanged shared save used to move a share by a cent and trip the lock.
+async function storedShares(db, splitExpenseId) {
+  return rows(db, `
+    SELECT split_expense_shares.person_id, split_expense_shares.ratio_basis_points, split_expense_shares.amount_minor
+    FROM split_expense_shares INNER JOIN people ON people.id = split_expense_shares.person_id
+    WHERE split_expense_id = ?
+    ORDER BY CASE people.role WHEN 'owner' THEN 0 WHEN 'partner' THEN 1 ELSE 2 END, people.created_at, people.id
+  `, splitExpenseId);
+}
+
+test("an unchanged shared save of a settled split with a rounding cent is allowed", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const description = "Settled odd cent";
+  const { entryId, splitExpenseId } = await createLinkedEntry(api, { description, amountMinor: 1_001 });
+  const shares = await storedShares(db, splitExpenseId);
+  assert.deepEqual(shares.map((share) => [share.person_id, share.ratio_basis_points, share.amount_minor]), [
+    ["person-tim", 4_995, 500],
+    ["person-joyce", 5_005, 501]
+  ]);
+  const checkpoint = await simplify(api);
+  assert.ok((await includedIds(db, checkpoint.checkpointId)).includes(splitExpenseId));
+  const splitBefore = await splitState(db, splitExpenseId);
+  const checkpointBefore = await checkpointState(db, checkpoint.checkpointId);
+
+  const sharedEdit = await api("/api/entries/update", entryEdit(entryId, { description: "Settled odd cent (renamed)", amountMinor: 1_001 }, {
+    ownershipType: "shared",
+    ownerName: undefined,
+    splitBasisPoints: shares[0].ratio_basis_points
+  }));
+
+  assert.equal(sharedEdit.status, 200, JSON.stringify(sharedEdit.payload));
+  assert.deepEqual(await storedShares(db, splitExpenseId), shares);
+  assert.deepEqual(await splitState(db, splitExpenseId), splitBefore);
+  assert.deepEqual(await checkpointState(db, checkpoint.checkpointId), checkpointBefore);
+  assert.deepEqual(await rows(db, "SELECT description FROM split_expenses WHERE id = ?", splitExpenseId), [{ description: "Settled odd cent (renamed)" }]);
+
+  // A real share change is still refused, and so is one cent moved on purpose.
+  const before = await dumpDatabase(db);
+  const shareEdit = await api("/api/entries/update", entryEdit(entryId, { description: "Settled odd cent (renamed)", amountMinor: 1_001 }, { ownershipType: "shared", ownerName: undefined, splitBasisPoints: 6_000 }));
+  assertLocked(shareEdit, checkpoint.checkpointId, /shares/);
+  const centEdit = await api("/api/entries/update", entryEdit(entryId, { description: "Settled odd cent (renamed)", amountMinor: 1_001 }, { ownershipType: "shared", ownerName: undefined, splitBasisPoints: 5_010 }));
+  assertLocked(centEdit, checkpoint.checkpointId, /shares/);
+  assertSameDatabase(await dumpDatabase(db), before);
+});
+
+test("an unchanged shared save keeps an open split's shares to the cent, and a new basis still applies", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const description = "Open odd cent";
+  const { entryId, splitExpenseId } = await createLinkedEntry(api, { description, amountMinor: 1_001 });
+  const shares = await storedShares(db, splitExpenseId);
+
+  const unchanged = await api("/api/entries/update", entryEdit(entryId, { description, amountMinor: 1_001 }, { ownershipType: "shared", ownerName: undefined, splitBasisPoints: shares[0].ratio_basis_points }));
+  assert.equal(unchanged.status, 200, JSON.stringify(unchanged.payload));
+  assert.deepEqual(await storedShares(db, splitExpenseId), shares);
+
+  const rebased = await api("/api/entries/update", entryEdit(entryId, { description, amountMinor: 1_001 }, { ownershipType: "shared", ownerName: undefined, splitBasisPoints: 6_000 }));
+  assert.equal(rebased.status, 200, JSON.stringify(rebased.payload));
+  assert.deepEqual((await storedShares(db, splitExpenseId)).map((share) => [share.person_id, share.ratio_basis_points, share.amount_minor]), [
+    ["person-tim", 5_994, 600],
+    ["person-joyce", 4_006, 401]
+  ]);
+});
+
 test("expenses outside the settlement stay editable and deletable", async (t) => {
   const { db, api } = await openSeededDatabase(t, template);
   await createSplitExpense(api, { description: "Settled before", amountMinor: 4_000 });
@@ -452,12 +518,21 @@ test("a settle-up edit or delete that fails part way changes nothing", async (t)
   });
   assert.equal(created.status, 200, JSON.stringify(created.payload));
   const settlementId = created.payload.settlementId;
+  // The settle-up closed its batch, which locks its amount; undo it so the
+  // edit and delete reach their writes.
+  const [{ split_batch_id: batchId }] = await rows(db, "SELECT split_batch_id FROM split_settlements WHERE id = ?", settlementId);
+  const undo = await api("/api/splits/batches/reopen", { batchId });
+  assert.equal(undo.status, 200, JSON.stringify(undo.payload));
+  // Moving it to a group without a batch opens one, files the settle-up
+  // there and closes it: three writes, the close last.
+  const group = await api("/api/splits/groups/create", { name: "Atomic settle group", currency: "SGD", expenseSource: "mixed" });
+  assert.equal(group.status, 200, JSON.stringify(group.payload));
   const before = await dumpDatabase(db);
 
   const faultyUpdate = failingStatement(db, /UPDATE split_batches/);
   const update = await api("/api/splits/settlements/update", {
     settlementId,
-    groupId: null,
+    groupId: group.payload.groupId,
     date: DATE,
     fromPersonName: "Joyce",
     toPersonName: "Tim",

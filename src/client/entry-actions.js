@@ -4,7 +4,7 @@ import { moniesClient } from "./monies-client-service";
 import { buildEntryMutationRefreshPlan, hasLedgerAffectingEntryChange } from "./entry-refresh-plan";
 import { buildComparableEntryState, mergeEntriesById, withoutSplitLink } from "./entry-state";
 import { buildRequestErrorMessage } from "./request-errors";
-import { readSettlementLock } from "./settlement-lock-notice";
+import { readSettlementLock, settlementLockUndoRequest } from "./settlement-lock-notice";
 
 const { entries: entryService } = moniesClient;
 
@@ -232,7 +232,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       if (!response.ok) {
         const errorMessage = data.error ?? "Failed to save entry.";
         setEntrySubmitError(errorMessage);
-        setEntrySettlementLock(readSettlementLock({ code: data.code, checkpointId: data.checkpointId, message: errorMessage }, currentEntry.id));
+        setEntrySettlementLock(readSettlementLock({ code: data.code, checkpointId: data.checkpointId, batchId: data.batchId, message: errorMessage }, currentEntry.id));
         return {
           ok: false,
           error: errorMessage
@@ -285,31 +285,32 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     }
   }
 
-  // Undo the simplified settlement that refused an entry save. The editor
-  // keeps the person's change, so saving again applies it and the linked
-  // split follows. Splits reloads its now reopened settlement.
+  // Undo the simplified settlement or group settle-up that refused an entry
+  // save. The editor keeps the person's change, so saving again applies it
+  // and the linked split follows. Splits reloads its now reopened activity.
   async function undoEntrySettlementLock() {
     const lock = entrySettlementLock;
     if (!lock || isUndoingEntrySettlementLock) {
       return;
     }
 
+    const request = settlementLockUndoRequest(lock);
     setIsUndoingEntrySettlementLock(true);
     try {
-      const response = await fetch("/api/splits/checkpoints/reopen", {
+      const response = await fetch(request.url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ checkpointId: lock.checkpointId })
+        body: JSON.stringify(request.body)
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(data.error ?? "Failed to undo the simplification.");
+        throw new Error(data.error ?? request.failure);
       }
       setEntrySubmitError("");
       setEntrySettlementLock({ ...lock, undone: true });
       onSplitMutation?.({ month: view.monthPage.month });
     } catch (error) {
-      setEntrySettlementLock({ ...lock, message: error instanceof Error ? error.message : "Failed to undo the simplification." });
+      setEntrySettlementLock({ ...lock, message: error instanceof Error ? error.message : request.failure });
     } finally {
       setIsUndoingEntrySettlementLock(false);
     }

@@ -17,8 +17,13 @@ export function SplitArchiveDialog({
   onOpenBatch,
   onEditExpense,
   onEditSettlement,
-  onViewLinkedEntry
+  onViewLinkedEntry,
+  onUndoSettleUp,
+  isUndoingSettleUp = false,
+  undoSettleUpError = ""
 }) {
+  // Batches grouped without a stored batch id (older rows) cannot be reopened.
+  const canUndoSettleUp = Boolean(onUndoSettleUp && selectedArchivedBatch?.batchId && !selectedArchivedBatch.batchId.startsWith("split-batch-fallback-"));
   return (
     <Dialog.Root open={Boolean(archiveDialog)} onOpenChange={(open) => { if (!open) onClose(); }}>
       <Dialog.Portal>
@@ -37,6 +42,20 @@ export function SplitArchiveDialog({
               <button type="button" className="subtle-action split-archive-back" onClick={onBackToList}>
                 Back to archived batches
               </button>
+              {canUndoSettleUp ? (
+                <div className="split-archive-undo">
+                  <p className="share-row-meta">Settled activity keeps its amounts. To correct one, undo the settle-up: this activity opens again and the settle-up stays as a payment.</p>
+                  <button
+                    type="button"
+                    className="subtle-action split-archive-undo-action"
+                    onClick={() => onUndoSettleUp(selectedArchivedBatch.batchId)}
+                    disabled={isUndoingSettleUp}
+                  >
+                    {isUndoingSettleUp ? "Undoing..." : "Undo settle-up"}
+                  </button>
+                  {undoSettleUpError ? <p className="form-error" role="alert">{undoSettleUpError}</p> : null}
+                </div>
+              ) : null}
               <div className="split-archive-batch-detail">
                 <SplitActivityGroups
                   groups={selectedArchivedBatch.groups}

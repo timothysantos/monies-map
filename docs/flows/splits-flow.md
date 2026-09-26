@@ -73,6 +73,11 @@ Watch area:
   Entries save that would move a linked split, is refused with
   `split_settlement_locked` and the form offers `Undo simplification`
   (`settlement-lock-notice.jsx`); an edit never reopens a checkpoint by itself
+- a closed group batch (settled by a settle-up) locks its records the same
+  way; the refusal names the `batchId` and offers `Undo settle-up`, which the
+  archived batch view also offers. It reopens the batch (or moves its records
+  into the group's open batch), keeps the settle-up as open activity and
+  refreshes Splits
 - a split group has one designated currency; original foreign amounts remain
   authoritative and cross-currency checkpoint matches require explicit FX
   evidence
