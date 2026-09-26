@@ -868,10 +868,101 @@ alone (the Splits page came up in the Household view, which has no "+ Add
 expense") and fails the same way with `src/` from `89d03ff` (the base), so
 it is not this branch; left for a separate fix.
 
+## Travel split home amounts (2026-09-26)
+
+Branch `travel-split-home-amounts` from `macro-performance` at `2646a9b`,
+Node v22.23.3. Closes the open item "a travel split's shares are counted as
+home-currency amounts" and the Splits donut watch item in
+`docs/flows/splits-flow.md`. No write path changed: both fixes are
+projections.
+
+1. Linked travel split shares. Real. Every home-currency projection of an
+   entry reads its split shares from `EntryDto.linkedSplitShares`, built in
+   one place (`loadEntriesForDateRange`, `app-repository-entries.ts`) from
+   `split_expense_shares.amount_minor`, which for a travel split is in the
+   split's currency. Consumers: the Entries viewer share and Month entries
+   (`adjustEntriesForView`), Month plan actuals and category chart, Summary
+   months and category charts (same adjusted entries), the stored person
+   month totals (`sumVisibleExpenseMinor` in `buildMonthlySnapshotStatements`)
+   and the client row display (`entry-row-display.js`, `entry-helpers.js`).
+   Fix: `buildLinkedSplitShareMap` converts a travel split's shares to each
+   person's home share of the ledger amount with `homeCurrencyShareAmounts`
+   (`split-allocation.ts`): the stored basis applied with the same floor and
+   balancing remainder as `rebalanceSplitSharesForTotal`, in split-share
+   people order, adding up to the ledger amount. The ledger amount is the
+   source rather than the stored FX rate, which is rounded to basis points
+   and would not add back up. Same-currency shares pass through untouched.
+   Rule in DOMAIN.md, "Home share of a travel split".
+2. Splits category donut. Real. `buildSplitsPage` summed every open expense
+   across currencies into one SGD chart. DOMAIN.md never nets currencies
+   without FX evidence and a cash travel expense has none, so per-group SGD
+   conversion is not available; the donut is grouped by currency instead:
+   `donutChart` keeps SGD only, `donutChartsByCurrency` (left out when empty)
+   holds each other currency, and the panel shows the active group's
+   currency through `selectSplitDonutChart`, formatted by
+   `SpendingMixChart`'s new optional `currency`.
+
+Tests first (`tests/atomic-writes-travel-split-home-amounts.test.mjs`, real
+local D1, plus `split-allocation.test.mjs` and
+`split-currency-display.test.mjs`). On the old `src/` (a pristine
+`git archive` of `macro-performance`) 3 of the 4 D1 tests failed: a JPY
+10,000 split 50/50 matched to an SGD 93.01 row showed Tim's share as 500,000
+(SGD 5,000.00) instead of 4,650 on Entries and Month; the stored month totals
+moved by +500,000 for Tim and Joyce instead of +4,650 and +4,651; a 70/30
+split showed 700,000 instead of 6,510; and two JPY group expenses added
+600,000 to the SGD donut's Food & Drinks. The fourth (an SGD split with an
+odd cent assigned to Tim keeps 5,001/5,000) passes on both, as it must.
+
+Persisted state (`scripts/persisted-state-snapshot.mjs`, ports 8975 and 8977,
+empty `dist/`): base vs branch differ only on the scenario's JPY travel
+split: July `person-tim` `monthly_snapshots` 8,159 → 7,809 (its share 5,000
+→ 4,650 of the SGD 93.00 row), the July Entries DTO shares 5,000/5,000 →
+4,650/4,650, and the three Splits DTOs, whose SGD Food & Drinks drops the
+JPY 50 (100 for the household) that moves to `donutChartsByCurrency.JPY`.
+Every table and every other DTO path is identical, so SGD splits are
+unchanged.
+
+Runtime (pass 2), `wrangler dev` 8827 and Vite 5427 on
+`.wrangler/state-travel`, browser pane, demo seed plus an SGD 93.01 UOB One
+row matched to a JPY 10,000 50/50 split in a JPY group and a JPY 3,000 cash
+expense paid by Joyce. Entries (Tim): `-$93.01 (-$46.50)` On splits Tokyo
+trip 50%, daily net -$331.20; Entries (Joyce): `-$93.01 (-$46.51)`, spend
+$1,318.00 ($1,271.50). Month (Tim): Food budget actual $759.69 (713.19 +
+46.50). Summary (Tim) May actual $5,643.16, equal to Month's. Stored May
+totals: household 568,967, Tim 441,817, Joyce 127,150 (seed + 9,301, +4,650,
++4,651); Joyce's equals her Entries spend. Splits (Tim): the Tokyo trip
+donut reads Spend JP¥6,500, Food & Drinks JP¥6,500 • 2 entries; the
+Non-group donut reads $331.48 with no yen. No console errors.
+
+Gates: `npm audit` 0 vulnerabilities; both typechecks clean; lint 0 errors
+(30 warnings, as base); unit 769/769; build; `check:bundle` 173,738 B JS gzip
+(budget 180,337) and 33,435 B CSS (unchanged, inside the 5% allowance);
+`E2E_PORT_OFFSET=60 npm run test:e2e:smoke` 88/88;
+`E2E_PORT_OFFSET=60 npm run test:e2e:sharded` (3 shards, load average
+15-25) 272/273: `financial-insight` "month, entries and splits each receive
+wording" timed out waiting for the first Summary heading, before any Splits
+step, and the whole `financial-insight.spec.js` then passed alone 11/11.
+
+Found while testing, not changed here (not travel-specific):
+- Summary months and the Month "Actual spend" card in a person view sum
+  every household entry (weighted to the person's share only when linked to
+  a split), not just that person's entries: on the seed, May 2026 Summary
+  actual is 559,666 in the household, Tim and Joyce views alike, while the
+  stored person totals are 437,167 and 122,499. The Month plan actuals and
+  category chart do filter by view.
+- A person whose only activity in a month is linked split shares gets no
+  stored month total row: `buildMonthlySnapshotStatements` counts a
+  person's entries by direct owner only (no July `person-joyce` row in the
+  snapshot scenario).
+
 ## Open items
 
-- A travel split's shares are counted as home-currency amounts in person
-  views and stored person month totals (section above).
+- Summary months and the Month "Actual spend" card in a person view count
+  other people's direct entries, and a person with only linked split shares
+  in a month has no stored month total (Travel split home amounts, above).
+- Closed 2026-09-26 (Travel split home amounts, above): a travel split's
+  shares were counted as home-currency amounts in person views and stored
+  person month totals, and the Splits donut added currencies together.
 
 - Closed 2026-09-25 (section above): rolling back a CSV import deleted a
   manual entry that the import had promoted.
