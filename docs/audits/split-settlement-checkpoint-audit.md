@@ -128,6 +128,8 @@ button styles, with a responsive stacked layout on mobile.
 | Delete included row (any active state) | Refused until Undo simplification | Implemented (2026-09-26, settlement lock) |
 | Entry edit that moves a settled linked split | Whole save refused until Undo simplification | Implemented (2026-09-26, settlement lock) |
 | Import rollback removes a settled split's entry | Split facts and checkpoint unchanged; link cleared | Verified (2026-09-26) |
+| Edit or delete a row in a settled group batch | Refused until Undo settle-up | Implemented (2026-09-26, group settle-up lock) |
+| Unchanged shared entry save with an odd-cent share | Saved; shares kept to the cent | Implemented (2026-09-26) |
 | Undo/reopen | History retained; balance reopens | Implemented |
 | Mark paid before transfer posts | Collapsed follow-up; no ledger state changed | Implemented; endpoint/UI |
 | Undo paid | Same checkpoint returns active; included rows remain frozen | Implemented; endpoint/UI |
@@ -191,3 +193,63 @@ dialog).
 
 Open: a group settlement (closed batch) does not lock its rows the same way;
 editing a row in a settled batch still changes the batch without notice.
+Closed 2026-09-26, next section.
+
+## Group Settle-up Lock and the One-cent Shared Save (2026-09-26)
+
+Branch `split-locks`. Verified first on `macro-performance` (`f682ad6`):
+
+- a settle-up closes its group batch, and closed batches leave the group
+  balance. Editing an expense's amount, shares, payer, date or group in a
+  closed batch, or deleting it or the settle-up, returned 200 and changed the
+  settled batch without notice; deleting the settle-up left the batch closed
+  with nothing that paid it. A household shared save of a linked entry moved
+  its split out of the closed batch into the group's open batch
+  (`upsertLinkedSplitExpenseForEntryRecord` always took the active batch).
+- a shared entry save rebuilt the split's shares from the basis the editor
+  sends, which is the stored, rounded first-share ratio: 10.01 split
+  5.00/5.01 is stored as 4995 and floors back to 4.99/5.02. An unchanged
+  shared save of a settled split was refused as a share change, and one of
+  an open split silently moved a cent.
+
+Rules (DOMAIN.md, Split Batch and Split Expense Share):
+
+- a closed group batch locks its records (the settle-up included) exactly as
+  an active checkpoint does, with the same 409 `split_settlement_locked`,
+  naming `batchId` instead of `checkpointId`. Chosen over leaving group
+  batches editable (the settle-up amount would stop matching its activity,
+  invisibly, because closed batches are not in any balance) and over
+  reopening automatically on edit (same reason as for checkpoints).
+- `Undo settle-up` (`POST /api/splits/batches/reopen`) is the release, next
+  to the refusal and in the archived batch view. It keeps the settle-up as
+  open activity (it is a real payment and may be bank linked) rather than
+  deleting it, mirroring Undo simplification, which keeps the checkpoint in
+  history. With a newer open batch the reopened records join it, because the
+  next settle-up closes only one batch.
+- a shared save that keeps amount, currency and the stored basis keeps the
+  stored shares; the lock predicts the same plan (`planSharedSaveShares`).
+
+Paths: `assertSplitSettlementUnchanged` now finds either lock
+(`findSplitSettlementLock`: checkpoint first, then closed batch), so every
+path that already used it is covered: `updateSplitExpenseRecord`,
+`deleteSplitExpenseRecord`, `updateSplitSettlementRecord`,
+`deleteSplitSettlementRecord` and `updateEntryRecord` through
+`assertLinkedSplitSettlementUnchanged` (amount follow-up, shared upsert,
+date and payer mirror). Import rollback re-checked for a closed batch: it
+only clears the link. The upsert keeps the split's batch when its group is
+unchanged.
+
+Proof: `tests/atomic-writes-split-group-settlement-lock.test.mjs` (11, real
+Miniflare D1; 8 failed on the old code: refused edit, delete and settle-up
+facts, refused entry edit, the batch move on a shared save, undo then save,
+undo into a newer open batch, the undo refusals and the undo atomicity),
+two new tests in `tests/atomic-writes-split-checkpoint-lock.test.mjs` (both
+failed on the old code: 409 on an unchanged odd-cent save, and a moved cent
+on an open split), and `tests/e2e/splits-group-settle-up-lock.spec.js` (4:
+archive edit refused then saved after undo, settle-up delete refused, undo
+from the archived batch, linked entry edit refused then saved).
+
+Open: restoring an archived record whose batch has since been closed puts it
+back into that closed batch (it then counts nowhere). Restore is being
+reworked on `split-write-consistency`; the fix is to restore into the
+group's open batch.
