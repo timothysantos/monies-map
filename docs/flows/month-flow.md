@@ -49,6 +49,17 @@ with a fresh item. `tests/e2e/mobile-sheet-focus.spec.js` ("Month sheet on a
 portrait tablet") checks this at 900×1200 and 820×1180 with touch, and that
 Entries keeps its desktop editor at those sizes.
 
+From 761 to 1,099 px wide (tablets in either orientation, small laptops)
+the Month page fits the screen and never scrolls sideways. The plan tables
+fit whole from about 900 px (notes wrap to two lines); narrower than that,
+the Account and Note columns scroll inside the table while Category, Item,
+Planned, Actual and Variance stay on screen. "+ Add planned item", the row
+open buttons, the header tabs and the period controls stay on screen and
+uncovered, and inline Save and Cancel stay at the visible edge of the table.
+The phone layout and 1,100 px and wider are unchanged.
+`tests/e2e/month-mid-width-layout.spec.js` checks 820×1180 (full mobile
+emulation, sheet layout) and 1024×768 (inline editing).
+
 "Save matches" in the match dialog (desktop) or sheet (mobile) shows
 "Saving...", takes one submit, and ignores Escape and Cancel until the save
 settles. A failed save keeps the dialog or sheet open with the draft and an
