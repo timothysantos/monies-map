@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { moniesClient } from "./monies-client-service";
 import { buildEntryMutationRefreshPlan, hasLedgerAffectingEntryChange } from "./entry-refresh-plan";
-import { buildComparableEntryState, mergeEntriesById } from "./entry-state";
+import { buildComparableEntryState, mergeEntriesById, withoutSplitLink } from "./entry-state";
 import { buildRequestErrorMessage } from "./request-errors";
 
 const { entries: entryService } = moniesClient;
@@ -626,6 +626,17 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     }
   }
 
+  // After its split is deleted, an entry open in the editor (which ignores
+  // server refreshes until it closes) shows the ledger amount and can be
+  // added to splits again; the snapshot follows so Cancel keeps that. Only
+  // the split fields change: a full normalize would also fill in an owner.
+  function clearEntrySplitLink(entryId) {
+    setEntries((current) => current.map((entry) => (
+      entry.id === entryId ? withoutSplitLink(entry) : entry
+    )));
+    setEntrySnapshot((current) => (current?.id === entryId ? withoutSplitLink(current) : current));
+  }
+
   function updateEntry(entryId, patch) {
     setEntries((current) => current.map((entry) => {
       if (entry.id !== entryId) {
@@ -773,6 +784,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     settleTransfer,
     refreshEntriesFromServerTruth,
     addEntryToSplits,
+    clearEntrySplitLink,
     deleteEntry,
     updateEntry,
     updateEntryAmount,

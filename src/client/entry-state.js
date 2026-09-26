@@ -7,6 +7,41 @@ function getComparableSplitBasisPoints(entry) {
     : null;
 }
 
+// Fields an entry carries only while it is linked to a split expense; in a
+// person view amountMinor is then the viewer's share and totalAmountMinor the
+// ledger amount.
+const SPLIT_LINK_FIELDS = [
+  "linkedSplitExpenseId",
+  "linkedSplitGroupName",
+  "linkedSplitCategoryName",
+  "linkedSplitNote",
+  "linkedSplitShares",
+  "totalAmountMinor",
+  "viewerSplitRatioBasisPoints"
+];
+
+// The entry once its split is gone: the ledger amount, no split fields.
+export function withoutSplitLink(entry) {
+  if (!entry.linkedSplitExpenseId) {
+    return entry;
+  }
+
+  const next = { ...entry, amountMinor: Number(entry.totalAmountMinor ?? entry.amountMinor ?? 0) };
+  for (const field of SPLIT_LINK_FIELDS) {
+    delete next[field];
+  }
+  return next;
+}
+
+// A server row omits the split fields once the split is deleted, so a merge
+// over a locally linked row must drop them instead of keeping the old link.
+function mergeServerEntry(currentEntry, serverEntry) {
+  const merged = { ...currentEntry, ...serverEntry, isPendingDerived: false };
+  return currentEntry.linkedSplitExpenseId && !serverEntry.linkedSplitExpenseId
+    ? { ...withoutSplitLink(merged), amountMinor: serverEntry.amountMinor }
+    : merged;
+}
+
 export function mergeEntriesById(
   currentEntries,
   serverEntries,
@@ -52,11 +87,7 @@ export function mergeEntriesById(
         return currentEntry;
       }
 
-      return keepUnchangedEntry(currentEntry, {
-        ...currentEntry,
-        ...serverEntry,
-        isPendingDerived: false
-      });
+      return keepUnchangedEntry(currentEntry, mergeServerEntry(currentEntry, serverEntry));
     })
   ];
 }

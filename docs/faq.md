@@ -50,6 +50,12 @@ Yes. Open **Activity history** from the splits page. Deleted expenses and
 settlements are archived, not physically removed, and can be restored with the
 same record ID, shares, group, currency, and ledger link. Restoring does not
 rewrite an existing settlement checkpoint.
+
+While a split is deleted, its entry is not shared: Entries shows it without
+the "On splits" chip, every view counts its full amount for the person who
+paid, and you can add the entry to splits again. If you do, the deleted split
+cannot be restored as a second split of the same entry; delete the new one
+first.
 - split expense editing can be driven either by split percentage or by an exact
   per-person dollar amount
 - manual single-entry creation from the entries view
@@ -823,6 +829,14 @@ $80.50 in a person view shows that person's share as $40.25 in Entries,
 Splits, Month and Summary. A travel split in another currency keeps its own amount and shares;
 only its converted home amount changes. If the new share is not what you
 agreed, adjust it in the split editor.
+
+Changing the entry's date, description or owner (who paid) changes the split
+the same way, in the same save. A split field you changed in Splits, such as
+a description like "Dinner with Joyce" on a bank row that says "RESTAURANT
+XYZ SINGAPORE", keeps your wording. The split's note, category, group, share
+percentages and travel-currency amounts belong to the split and are never
+changed by an entry edit; note and category have their own "update both"
+prompt.
 
 When a linked entry and split already exist, changing the note on either side
 opens a confirmation dialog before save. The dialog shows the note you are
