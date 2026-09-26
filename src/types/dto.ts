@@ -192,6 +192,9 @@ export interface EntryDto {
   linkedSplitGroupName?: string;
   linkedSplitCategoryName?: string;
   linkedSplitNote?: string;
+  // The linked split's shares in this entry's own (home) currency: a travel
+  // split's shares are each person's share of the ledger amount, while the
+  // split itself keeps its own-currency shares.
   linkedSplitShares?: EntrySplitDto[];
   splits: EntrySplitDto[];
 }
