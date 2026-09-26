@@ -32,7 +32,6 @@ import { FinancialInsight } from "./financial-insight";
 import { PrivateMoney } from "./money-privacy";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
-import { buildPersonScopes, effectiveScopeForView } from "../domain/person-view-scope";
 const {
   accounts: accountService,
   categories: categoryService,
@@ -229,17 +228,18 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
 
 // A person view's figures follow the route's scope, so Summary names the
 // scope they count and lets the person switch it, with the same pills as
-// Month. It reads the scope of the request the figures answer, so it never
-// runs ahead of them. The household has one Combined scope and no control.
+// Month. The page view carries the scope of the request the figures answer
+// (buildSummaryPageView), so it never runs ahead of them. The household has
+// one Combined scope and no control.
 function SummaryScopeControl({ view, onScopeChange }) {
-  const scopes = buildPersonScopes(view.id);
+  const scopes = view.scopes ?? [];
   if (scopes.length < 2) {
     return null;
   }
-  const selectedScope = effectiveScopeForView(view.id, view.requestedScope);
+  const { selectedScope } = view;
   return (
     <div className="summary-scope" role="group" aria-label={messages.summary.scope}>
-      <span className="summary-scope-label" aria-hidden="true">{messages.summary.scope}</span>
+      <span aria-hidden="true">{messages.summary.scope}</span>
       <div className="scope-toggle pill-row scope-toggle-row">
         {scopes.map((scope) => (
           <button
@@ -253,7 +253,7 @@ function SummaryScopeControl({ view, onScopeChange }) {
           </button>
         ))}
       </div>
-      <span className="summary-scope-hint">{messages.summary.scopeHint[selectedScope](view.label)}</span>
+      <span>{messages.summary.scopeHint[selectedScope]?.(view.label)}</span>
     </div>
   );
 }
