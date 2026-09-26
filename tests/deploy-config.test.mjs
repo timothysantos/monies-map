@@ -25,5 +25,10 @@ test("the Node minimum is the same in engines, script guards and .nvmrc", async 
   const floor = minimum.split(".").map(Number);
   assert.ok(pinned[0] === floor[0] && (pinned[1] > floor[1] || (pinned[1] === floor[1] && pinned[2] >= floor[2])), ".nvmrc meets the minimum");
   const workflow = await readFile(new URL("../.github/workflows/verify.yml", import.meta.url), "utf8");
-  assert.equal((workflow.match(/node-version-file: \.nvmrc/g) ?? []).length, 2);
+  // Every CI job that installs Node (verify, the full-e2e shards and their
+  // merge job) installs it from .nvmrc, never a pinned version of its own.
+  const setupNodeSteps = (workflow.match(/uses: actions\/setup-node@/g) ?? []).length;
+  assert.ok(setupNodeSteps >= 3, `expected verify, full-e2e-shard and full-e2e to set up Node, found ${setupNodeSteps}`);
+  assert.equal((workflow.match(/node-version-file: \.nvmrc/g) ?? []).length, setupNodeSteps);
+  assert.doesNotMatch(workflow, /node-version:/);
 });
