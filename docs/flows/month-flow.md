@@ -40,6 +40,15 @@ tap closes it and discards the draft, as the desktop dialogs do. Focus then
 returns to the row button or "+ Add planned item". While a save is in flight,
 Escape is ignored, so a failed save keeps the sheet and its draft.
 
+"Mobile" here means the Month sheet layout (`MONTH_SHEET_LAYOUT_QUERY`): a
+phone, or a portrait tablet up to 1024 px wide. On a portrait tablet the
+rest of the page keeps its desktop layout, and the sheet still opens as a
+bottom sheet over a dimmed backdrop, inside the visible viewport, with its
+Save and Cancel buttons in reach. Saving a new item keeps the sheet open
+with a fresh item. `tests/e2e/mobile-sheet-focus.spec.js` ("Month sheet on a
+portrait tablet") checks this at 900×1200 and 820×1180 with touch, and that
+Entries keeps its desktop editor at those sizes.
+
 "Save matches" in the match dialog (desktop) or sheet (mobile) shows
 "Saving...", takes one submit, and ignores Escape and Cancel until the save
 settles. A failed save keeps the dialog or sheet open with the draft and an
