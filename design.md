@@ -371,8 +371,8 @@ modal desktop dialogs:
   also opens it on a portrait tablet, where the page itself keeps its
   desktop layout; before this the sheet rendered at the bottom of the
   scroll-locked page there, out of reach. Rules that restyle the page while
-  a sheet is open (`body:has(.entry-mobile-sheet) ...`) stay in the phone
-  block.
+  a sheet is open (`body:has(> .entry-mobile-sheet) ...`) stay in the
+  phone block (see "Page State Rules").
 - The rest of the page is hidden from screen readers (`aria-hidden`), and
   the backdrop covers the viewport in every layout, so a tap outside the
   sheet lands on the backdrop instead of the page. A touch drag or wheel over
@@ -418,6 +418,38 @@ modal desktop dialogs:
 - `npm run test:e2e:webkit` runs the `@webkit`-tagged sheet focus tests in
   WebKit with an iPhone profile (`playwright.webkit.config.js`); it is not
   part of the default suite. The same tests run in Chromium there.
+
+## Page State Rules
+
+Some CSS restyles the rest of the page while something is open: the tab
+strip, the sticky View and scope bar, the floating add and totals buttons
+and the floating Splits group row give way to the mobile sheet, a dialog or
+an inline editor, and the Splits page has its own phone background. These
+rules must not use a `:has()` that searches all descendants
+(`body:has(.x)`). Chromium then walks the whole page each time an element
+such a rule styles is restyled; on the 2,000-row month that was about 25 ms
+of style work per sheet open or close at CPU 4x (see "Mobile sheet: page
+rules" in `docs/audits/macro-loading-baseline.md`).
+
+- Portalled layers are direct children of `<body>`: Radix portals each
+  direct child of `<Dialog.Portal>` there without a wrapper, including the
+  sheet's backdrop and content. Their rules use `body:has(> .entry-mobile-sheet)`
+  and `body:has(> .note-dialog-overlay)`, which check only `<body>`'s
+  children. A dialog that portals into a container, or wraps its overlay,
+  would not be seen.
+- Elements inside the page hold a flag on `<body>` through
+  `page-flags.js`: `ref={pageFlagRef(PAGE_FLAG.entryInlineEditor, inlineEditorRef)}`
+  on the Entries inline editor, `splitInlineEditor` on the Splits inline
+  card and `splitsPanel` on the Splits panel. The ref sets `data-<flag>`
+  while the element is attached (React 19 ref cleanup), so the flag changes
+  in the same commit as the element, and CSS reads
+  `body[data-entry-inline-editor] ...`. The callback is cached per flag and
+  element ref, so rows need no extra hook. `PAGE_FLAG` lists every flag.
+- `tests/page-flags.test.mjs` fails on a descendant `:has()` in any
+  stylesheet, on a body flag the CSS reads that the client does not set (or
+  the other way round), and on a dialog overlay that is not a direct child
+  of `<Dialog.Portal>`. `tests/e2e/page-chrome-while-editing.spec.js` pins
+  the visible behaviour.
 
 ## Reference Data Owner
 

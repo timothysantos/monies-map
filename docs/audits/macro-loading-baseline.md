@@ -2737,7 +2737,8 @@ cohort's run medians overlap by 3 ms, the other's do not.
   and 30–70 ms from close in two quick single runs, which is not a cohort.
   Scoping them to siblings of `#root` (for example
   `#root:has(~ .entry-mobile-sheet)`) might keep the behaviour at lower
-  cost. Needs its own measured change.
+  cost. Needs its own measured change. Done on branch `sheet-css-speed`; see "Mobile sheet: page
+  rules" below.
 
 ### Chunk sizes (gzip -9)
 
@@ -2775,3 +2776,135 @@ The other two passed when rerun alone: `import-inbox-navigation.spec.js`
 timed out waiting for a response under machine load, and
 `import-ledger-flow.spec.js` hit an ENOENT writing its fixture PDF while
 the disk was nearly full.
+
+## Mobile sheet: page rules (2026-09-26)
+
+Branch `sheet-css-speed`, from `macro-performance` (`501a7d6`). Follows
+"The `body:has(...)` rules" under "Mobile sheet: a lighter modal" above.
+
+### Where the time went (profiled, not assumed)
+
+Built client, scale-10k, Entries household 2026-05 (2,000 rows), Pixel 7
+emulation (390×844), CPU 4x. A bare `div.entry-mobile-sheet` was appended
+to `<body>` and removed again, with a style and layout flush timed around
+each (median of 7, two rounds); rules were switched off or rewritten in the
+live stylesheet through the CSSOM.
+
+| Stylesheet | Insert | Remove |
+| --- | ---: | ---: |
+| As shipped (9 `body:has(...)` rules plus `.shell:has(.panel-splits)`) | 27.5–29.6 ms | 27.5–31.8 ms |
+| All 9 `body:has(...)` rules off | 0.1 ms | 0.1–0.2 ms |
+| Only `body:has(.entry-mobile-sheet) .shell` on | 18–19 ms | 19–20 ms |
+| Only the `.tab-strip` rule on | 20 ms | 21 ms |
+| Only the `.mobile-context-sticky-wrap` rule on | 19 ms | 20 ms |
+| Only the `.splits-groups-row-floating` rule on (no such element on Entries) | 2 ms | 2 ms |
+| Any rule without `.entry-mobile-sheet` in its `:has()`, alone | 0.1 ms | 0.1 ms |
+
+Rewriting selectors step by step (style plus layout, median of 7):
+
+| Selectors | Insert | Remove |
+| --- | ---: | ---: |
+| As shipped | 29–32 ms | 30–32 ms |
+| Sheet and dialog overlay as `body:has(> …)` | 24–26 ms | 25–27 ms |
+| … plus a `<body>` attribute for the in-page editors | 19 ms | 19–21 ms |
+| … plus `body:has(.panel-splits)` limited | 8 ms | 9 ms |
+| … plus `.shell:has(.panel-splits)` limited | 3 ms | 4 ms |
+| No page rules at all | 0.6 ms | 0.5 ms |
+
+The cost is not the invalidation but the matching. When an element such a
+rule styles is restyled (`.shell`, `.tab-strip`, the sticky bar), Chromium
+tries every rule in that element's bucket, and each `:has()` with a
+descendant argument (`body:has(.split-inline-editor-card)`, even though no
+such card exists on a phone) walks everything below `<body>`: every row
+element of the month. A child is added to `<body>`, so `<body>` itself is
+restyled too, and `body:has(.panel-splits)` walks the page again. So every
+descendant `:has()` on those elements had to go, not only the sheet's. A
+keystroke in the open sheet paid the same: its style work was 26.7 ms
+(median of 5 traced keystrokes) with the shipped rules, 2.8 ms with the
+scoped ones and 0.1 ms with none.
+
+A trace of a real sheet open and close on the same page (selectors
+rewritten in place, UpdateLayoutTree total per interaction, median of 5):
+open 39.9 → 17.0 ms, close 39.6 → 15.5 ms; with no page rules at all,
+13.5 / 10.3 ms.
+
+### Change
+
+- Portalled layers are direct children of `<body>`, so
+  `body:has(.entry-mobile-sheet)` and `body:has(.note-dialog-overlay)`
+  became `body:has(> …)`, which checks only `<body>`'s children. Radix
+  portals each direct child of `<Dialog.Portal>` into `<body>` without a
+  wrapper; every overlay in `src/client` is such a child, and none portals
+  into a container (checked by `tests/page-flags.test.mjs`).
+- Elements inside the page set a flag on `<body>` through
+  `src/client/page-flags.js`: the Entries inline editor
+  (`data-entry-inline-editor`, which also stands for
+  `.entry-row.is-inline-editing`: both render under the same condition),
+  the Splits inline card (`data-split-inline-editor`) and the Splits panel
+  (`data-splits-panel`, for the phone background on `<body>` and `.shell`).
+  A cached ref callback holds the flag while the element is attached (React
+  19 ref cleanup), so it changes in the same commit as the element did.
+- Specificity: the rules keep theirs except the inline-editor `.tab-strip`
+  selector (0,3,1 → 0,2,1) and the Splits `.shell` background (0,2,0 →
+  0,2,1); no other rule sets those properties on those elements between
+  the two values.
+
+Rejected: a class toggled by `EntryMobileSheet` alone. It would have left
+the other descendant `:has()` selectors on the same elements, which cost
+most of the time (the attribute variants measured 30–32 ms, the same as
+shipped). `#root:has(~ …)` does not reach the floating buttons, which are
+also portalled to `<body>`.
+
+### Behaviour kept and checked
+
+- Computed styles, element by element and property by property (every
+  property `getComputedStyle` lists), identical between the baseline and
+  candidate builds in 21 states on the demo fixture: phone Entries closed,
+  edit sheet, add sheet and View and scope dialog; phone (touch) Month
+  closed and add sheet; phone Splits closed, Edit split dialog and the
+  household view; phone Summary; portrait tablet 820×1180 Month closed and
+  sheet, Entries and Splits; desktop 1280×900 Entries closed, inline
+  editor and delete dialog over it, Splits closed and inline card, Month
+  and Summary. 0 differing elements of 202–1,005 per state, and the same
+  element set in each.
+- `tests/e2e/page-chrome-while-editing.spec.js` (new, 6 tests, passed on
+  the old stylesheet first): the tab strip, sticky scope bar and page
+  padding change while the Entries or Month sheet is open; a dialog hides
+  the floating add and totals buttons and the sticky bar but keeps the tab
+  strip; a Splits dialog hides the floating group row and totals button;
+  the Entries and Splits inline editors hide their floating add button;
+  Splits keeps its phone background. With the Entries editor and Splits
+  panel refs removed, 2 of them fail.
+- `tests/page-flags.test.mjs` (new, 7 tests): flag counting and release,
+  unknown flags rejected, stable refs, the stylesheet reads exactly the
+  flags the client sets, overlays and the sheet portal straight into
+  `<body>`, and no stylesheet has a `:has()` that searches all descendants
+  (fails on the old stylesheet with 17 offenders).
+
+### Cohorts
+
+`tests/performance/entries-interaction.spec.js` with
+`PERFORMANCE_INTERACTIONS=editor`, scale-10k, mobile project (Pixel 7,
+390×844, CPU 4x), 8 samples per run. Baseline is the build of `dc17610`
+(the branch point plus the new e2e spec), candidate the build with the
+scoped rules; runs alternated one by one on port 5191 and were compared
+with `node scripts/compare-performance.mjs --interaction`. The machine is
+shared; the 1-minute load average is given per cohort. Render counts were
+unchanged in every run (open 1 / 446, keystroke 1 / 481, close 2 / 666).
+
+Cohort 3, 8 + 8 runs, load 6–13 (the quietest window in about 80 minutes
+of waiting):
+
+| Interaction | Median | p95 | Run medians | Verdict |
+| --- | ---: | ---: | --- | --- |
+| Open one entry | 183.2 → 159.3 | 200.8 → 177.6 | 178.3–186.1 → 154.4–162.6 | faster |
+| One draft keystroke | 127.5 → 103.7 | 142.9 → 121.4 | 124.0–128.5 → 100.7–107.3 | faster |
+| Close the editor | 280.9 → 257.7 | 300.3 → 288.1 | 276.7–288.1 → 249.0–261.9 | faster |
+
+Cohort 1, 6 + 6 runs, load 10–22: open 196.9 → 172.6 (run medians
+184.2–204.5 → 159.9–187.3, overlap 3 ms), keystroke 131.7 → 109.1
+(128.4–135.8 → 101.4–121.1, faster), close 295.6 → 274.2 (279.4–298.2 →
+259.6–301.5, overlapping). Cohort 2, 8 + 8 runs, ran into a load spike to
+72 in runs 3–5 and is within noise on all three (medians 198.4 → 189.4,
+134.7 → 115.5, 287.5 → 290.8). All three medians fell by 21–24 ms in
+both usable cohorts, which matches the traced style work.

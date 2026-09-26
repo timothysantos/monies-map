@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { messages } from "./copy/en-SG";
 import { FinancialInsight } from "./financial-insight";
 import { PrivateMoney } from "./money-privacy";
+import { PAGE_FLAG, pageFlagRef } from "./page-flags";
 import { LinkedNoteSyncDialog } from "./linked-note-sync-dialog";
 import {
   useSplitEditState,
@@ -1171,7 +1172,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   ) : null;
 
   return (
-    <article className="panel panel-accent panel-splits">
+    <article ref={pageFlagRef(PAGE_FLAG.splitsPanel)} className="panel panel-accent panel-splits">
       <div className="panel-head">
         <div>
           <h2>{messages.tabs.splits}</h2>

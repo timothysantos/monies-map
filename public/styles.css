@@ -3187,21 +3187,21 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   z-index: 81;
 }
 
-body:has(.note-dialog-overlay) .entries-fab:not(.splits-fab) {
+body:has(> .note-dialog-overlay) .entries-fab:not(.splits-fab) {
   display: none;
 }
 
-body:has(.entry-inline-editor) .entries-fab:not(.splits-fab) {
+body[data-entry-inline-editor] .entries-fab:not(.splits-fab) {
   display: none;
 }
 
-body:has(.split-inline-editor-card) .splits-fab {
+body[data-split-inline-editor] .splits-fab {
   display: none;
 }
 
-body:has(.note-dialog-overlay) .totals-visibility-toggle--floating,
-body:has(.entry-inline-editor) .totals-visibility-toggle--floating,
-body:has(.split-inline-editor-card) .totals-visibility-toggle--floating {
+body:has(> .note-dialog-overlay) .totals-visibility-toggle--floating,
+body[data-entry-inline-editor] .totals-visibility-toggle--floating,
+body[data-split-inline-editor] .totals-visibility-toggle--floating {
   display: none;
 }
 
@@ -9318,7 +9318,7 @@ th {
     overflow-x: clip;
   }
 
-  body:has(.panel-splits) {
+  body[data-splits-panel] {
     background:
       linear-gradient(180deg, rgba(177, 94, 47, 0.96), rgba(155, 74, 33, 0.96)),
       linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 45%);
@@ -9365,7 +9365,7 @@ th {
     bottom: calc(190px + env(safe-area-inset-bottom, 0px));
   }
 
-  body:has(.entry-mobile-sheet) .shell {
+  body:has(> .entry-mobile-sheet) .shell {
     padding-bottom: calc(100dvh - 82px + env(safe-area-inset-bottom, 0px));
   }
 
@@ -9374,7 +9374,7 @@ th {
     margin-bottom: 12px;
   }
 
-  .shell:has(.panel-splits) {
+  body[data-splits-panel] .shell {
     background:
       linear-gradient(180deg, rgba(177, 94, 47, 0.96), rgba(155, 74, 33, 0.96)),
       linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 45%);
@@ -9667,15 +9667,15 @@ th {
     backdrop-filter: blur(10px);
   }
 
-  body:has(.entry-row.is-inline-editing) .tab-strip,
-  body:has(.entry-mobile-sheet) .tab-strip,
-  body:has(.split-inline-editor-card) .tab-strip {
+  body[data-entry-inline-editor] .tab-strip,
+  body:has(> .entry-mobile-sheet) .tab-strip,
+  body[data-split-inline-editor] .tab-strip {
     display: none;
   }
 
-  body:has(.note-dialog-overlay) .mobile-context-sticky-wrap,
-  body:has(.entry-mobile-sheet) .mobile-context-sticky-wrap,
-  body:has(.split-inline-editor-card) .mobile-context-sticky-wrap {
+  body:has(> .note-dialog-overlay) .mobile-context-sticky-wrap,
+  body:has(> .entry-mobile-sheet) .mobile-context-sticky-wrap,
+  body[data-split-inline-editor] .mobile-context-sticky-wrap {
     display: none;
   }
 
@@ -9750,7 +9750,7 @@ th {
    (MONTH_SHEET_LAYOUT_QUERY in src/client/use-viewport.js), where the rest of
    the page keeps its desktop layout. Every selector here is scoped to the
    sheet or its backdrop, which only render in a sheet layout. Page rules for
-   an open sheet (body:has(.entry-mobile-sheet) ...) stay in the phone block. */
+   an open sheet (body:has(> .entry-mobile-sheet) ...) stay in the phone block. */
 
 /* The backdrop covers the viewport, so a tap outside the sheet lands on it
    (and closes the sheet) instead of reaching the page. */
@@ -10212,8 +10212,8 @@ th {
     display: inline;
   }
 
-  body:has(.note-dialog-overlay) .splits-groups-row-floating,
-  body:has(.entry-mobile-sheet) .splits-groups-row-floating {
+  body:has(> .note-dialog-overlay) .splits-groups-row-floating,
+  body:has(> .entry-mobile-sheet) .splits-groups-row-floating {
     display: none;
   }
 
