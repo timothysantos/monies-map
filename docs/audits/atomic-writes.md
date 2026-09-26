@@ -1031,13 +1031,75 @@ and `import-ledger-flow.spec.js` then passed alone 19/19;
 `E2E_PORT_OFFSET=60 npm run test:e2e:sharded` (3 shards) 284/284.
 `macro-performance` had no new commits to merge (still `e93e351`).
 
+## Person check-ins and Summary scope (2026-09-26)
+
+Branch `person-insight-scope` from `macro-performance` at `f38c13c`, Node
+v22.23.3. Client only, plus a move of three pure scope helpers; no write
+path, DTO or request changed.
+
+1. Month check-in in a person view. Real. The Month DTO's `entries` holds
+   every household entry (adjusted for the view, because plan linking needs
+   them all) and `month-panel.jsx` passed them all to the facts, so a person
+   view's check-in counted other people's direct entries and ignored the
+   scope. Seeded May 2026, Joyce Direct ownership: check-in $5,596.66, card
+   $1,224.99; seeded October 2025, Joyce Direct $660.04 against $186.40.
+   Fix: `month-insight-facts.js` keeps the entries the card counts with the
+   Worker's own `filterEntriesForView` / `effectiveScopeForView`, now in
+   `person-view-scope.ts` (moved from `month-projection.ts`, server callers
+   unchanged). The "See income entries" action reads the same entries.
+2. Summary check-in: checked, no fault. Its facts come from the Summary DTO,
+   already filtered to the view and scope on the Worker; the new browser test
+   asserts its spend equals the card after a scope switch.
+3. Splits check-in: facts equal the Splits `Total spend` (the group's total
+   in every view); wording left as is, see Open items.
+4. Summary scope. A person view's Summary now shows the Month scope pills
+   under its heading with `aria-pressed` and a plain line for what the
+   active scope counts; on a phone the row spans the width. The active pill
+   is the scope of the request whose figures are on screen
+   (`buildSummaryPageView` reads the Summary owner's request key), and a
+   pill sets the route's `scope`. The household shows no control.
+
+AI boundary: the wording request still posts only `{ facts }` with the
+person's name replaced by the placeholder; the facts now change with the
+scope, so the cache key does too. No new inference, persistence or cost.
+
+Tests first. On the base, the Month browser test failed (Joyce Direct:
+narrative $660.04, card $186.40), the wording test failed (the scope switch
+made no second request: same facts, same key), and the Summary test failed
+(no `Scope` group). Unit `month-insight-facts.test.mjs` failed 4 of 5 with
+the helper returning every DTO entry. All pass with the fix, plus
+`summary-query.test.mjs` for `selectedScope` / `scopes` (unknown scope and
+household negatives).
+
+Runtime: `wrangler dev` 8829 and Vite 5429 on `.wrangler/state-insight`,
+browser pane, desktop and 375 px: Joyce October 2025 Summary shows
+`Scope | Direct ownership | Shared | Direct + Shared` with Shared active and
+"Joyce's share of split expenses."; on the phone the pills fill the width
+below the metric cards, with no sideways scroll.
+
+Bundle: base 8 files, 173,752 B JS, 33,485 B CSS; branch 8 files,
+174,263 B JS (+511), 33,540 B CSS (+55, allowance 33,559). A first attempt
+imported the rules into both route chunks, which made a ninth file, and gave
+the row its own styles (21 B over); the page view now resolves the scopes in
+the entry chunk and the row reuses existing styles. No budget raised.
+
+Gates: `npm audit` 0 vulnerabilities; both typechecks clean; lint 0 errors
+(30 warnings, as base); unit 778/778; build; `check:bundle` as above;
+`E2E_PORT_OFFSET=60 npm run test:e2e:smoke` 89/89 (load average about 23);
+`E2E_PORT_OFFSET=60 npm run test:e2e:sharded` (3 shards, load average
+about 22) 287/287.
+
 ## Open items
 
-- The Month "money check-in" (financial insight) in a person view still
-  builds its spent total from every household entry on the page
-  (`month-panel.jsx`, `records: view.monthPage.entries`): with the runtime
-  data above it says Joyce spent $5,656.66 while her Actual spend card reads
-  $1,284.99. Client-side; not changed here (Person view totals, above).
+- Closed 2026-09-26 (Person check-ins and Summary scope, above): the Month
+  "money check-in" in a person view built its spent total from every
+  household entry on the page (Joyce's said $5,656.66 against her $1,284.99
+  Actual spend card), and Summary gave no sign of the scope it counted.
+- The Splits check-in in a person view says "<person>, you ... spent" the
+  active group's total (every member's expenses at their full amount). That
+  is the figure the Splits page itself shows as `Total spend` in every view,
+  so the facts match the screen, but the person-addressed wording reads as
+  that person's own spend. Not changed (Person check-ins and Summary scope).
 - Closed 2026-09-26 (Person view totals, above): Summary months and the
   Month "Actual spend" card in a person view counted other people's direct
   entries, and a person with only linked split shares in a month had no
