@@ -1,3 +1,4 @@
+import { formatCurrencyMinor } from "../domain/split-currency";
 import { APP_TIME_ZONE } from "./app-dates";
 
 const moneyFormatter = new Intl.NumberFormat("en-SG", {
@@ -18,12 +19,21 @@ export function money(valueMinor) {
   return moneyFormatter.format(valueMinor / 100);
 }
 
+// A split group or record amount in its own currency (JPY shows whole yen,
+// KWD three decimals). `money` stays the SGD home-currency formatter.
 export function moneyWithCurrency(valueMinor, currency = "SGD") {
   if (isMoneyPrivacyHidden()) {
     return "••••";
   }
 
-  return new Intl.NumberFormat("en-SG", { style: "currency", currency }).format(valueMinor / 100);
+  return formatCurrencyMinor(valueMinor, currency);
+}
+
+// The smallest stored step (one hundredth) in a currency, such as "$0.01" or
+// "JP¥0.01", for the odd-cent choice. It is not a balance, so privacy does not
+// mask it.
+export function moneyStep(currency = "SGD") {
+  return formatCurrencyMinor(1, currency);
 }
 
 export function minorToDecimalString(valueMinor) {
