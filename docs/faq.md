@@ -864,6 +864,12 @@ with its split percentage: only the converted SGD amount and the rate follow
 the card row. Such a save is allowed while the split is in a simplified
 settlement, as long as it does not change the split's date, payer or shares.
 
+Outside Splits, that card row counts in SGD. In a person view, Entries,
+Month, Summary and the month totals show each person's share of the SGD
+amount, split the same way as the JPY split: a JPY 10,000 dinner split 50/50
+and matched to an SGD 93.01 card row shows Tim's share as $46.50 and Joyce's
+as $46.51. The yen amounts stay in Splits.
+
 ### If you are updating mid-month
 
 Use a current-transaction export as a working ledger update.
@@ -2431,6 +2437,10 @@ currency's usual digits: a ¥12,000 dinner reads "Spend JP¥12,000" in the total
 the group pill balance reads "You owe Joyce JP¥6,000", and the expense form's
 share preview shows JP¥6,000 each. SGD bank amounts keep their dollar
 formatting. Hiding money totals masks these amounts too.
+
+The category donut under the totals is also in the trip currency: it charts
+the open yen expenses of every JPY group, and an SGD group's donut charts
+only SGD expenses. Amounts in different currencies are never added together.
 
 For a simpler holiday workflow, create two groups in the trip currency: one
 with purchase source `Cash only` and one with `Bank/card`. The cash group keeps
