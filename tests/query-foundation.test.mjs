@@ -28,6 +28,9 @@ function createFakeQueryClient() {
     },
     async invalidateQueries({ queryKey }) {
       calls.push(["invalidate", queryKey]);
+    },
+    removeQueries({ queryKey }) {
+      calls.push(["remove", queryKey]);
     }
   };
 }
@@ -401,4 +404,24 @@ test("invalidateImportMutationQueries targets imports, entries, month, and summa
     ["invalidate", ["summary-page", { endMonth: "2026-04", month: "2026-04", scope: "direct_plus_shared", startMonth: "2026-01", viewId: "household" }]]
   ]);
   assert.equal(queryClient.calls.some(([, queryKey]) => queryKey[0] === "app-shell"), false);
+  assert.equal(queryClient.calls.some(([, queryKey]) => queryKey[0] === "splits-page"), false);
+});
+
+test("an import rollback also clears every cached Splits page, since it can unlink or move a linked split", async () => {
+  const queryClient = createFakeQueryClient();
+
+  await invalidateImportMutationQueries(queryClient, {
+    invalidateSplits: true,
+    scope: "direct_plus_shared",
+    viewId: "person-tim"
+  });
+
+  assert.deepEqual(queryClient.calls, [
+    ["cancel", ["imports-page"]],
+    ["cancel", ["splits-page"]],
+    ["invalidate", ["imports-page"]],
+    // Removed, not only marked stale: route pages are served from any cached
+    // copy, so a stale Splits page would still be shown.
+    ["remove", ["splits-page"]]
+  ]);
 });

@@ -129,6 +129,25 @@ async function runScenario() {
   const coffee = await linkedEntry("State linked coffee", "2026-05-26", 1_202);
   await call("/api/splits/expenses/from-entry", { entryId: coffee.entryId, splitGroupId: null });
 
+  // June: a manual entry added to splits, promoted by a CSV row, corrected
+  // to 35.00 in Entries and then rolled back (the entry and its split go
+  // back to 32.10); then a Splits share edit of another linked entry, the
+  // last write to June, so its stored month totals show whether the edit
+  // refreshed them.
+  const cold = await linkedEntry("COLD STORAGE", "2026-06-03", 3_210);
+  await call("/api/splits/expenses/from-entry", { entryId: cold.entryId, splitGroupId: null });
+  const coldCsv = ["date,description,amount,account,category,note", "2026-06-04,COLD STORAGE SINGAPORE,-32.10,UOB One,Food & Drinks,"].join("\n");
+  const coldPreview = await call("/api/imports/preview", { sourceLabel: "State linked promotion", sourceType: "csv", csv: coldCsv, ownershipType: "direct", ownerName: "Tim" });
+  if (coldPreview.preview.previewRows[0].reconciliationTargetTransactionId !== cold.entryId) {
+    throw new Error("The linked promotion CSV row did not target the manual entry.");
+  }
+  const coldCommit = await call("/api/imports/commit", { sourceLabel: "State linked promotion", sourceType: "csv", parserKey: "generic_csv", rows: coldPreview.preview.previewRows });
+  await call("/api/entries/update", { entryId: cold.entryId, date: "2026-06-03", description: "COLD STORAGE SINGAPORE", accountName: "UOB One", categoryName: "Food & Drinks", amountMinor: 3_500, entryType: "expense", ownershipType: "direct", ownerName: "Tim", note: "" });
+  await call("/api/imports/rollback", { importId: coldCommit.importId });
+  const share = await linkedEntry("State linked share", "2026-06-05", 5_000);
+  const shareSplit = await call("/api/splits/expenses/from-entry", { entryId: share.entryId, splitGroupId: null });
+  await call("/api/splits/expenses/update", { splitExpenseId: shareSplit.splitExpenseId, groupId: null, date: "2026-06-05", description: "State linked share", categoryName: "Food & Drinks", payerPersonName: "Tim", amountMinor: 5_000, splitBasisPoints: 7_000, homeAmountMinor: 5_000, paymentMethod: "bank", paymentStatus: "certified" });
+
   // Categories and rules.
   await call("/api/categories/create", { name: "State category", slug: "state-category", iconKey: "tag", colorHex: "#445566" });
   await call("/api/category-match-rules/save", { pattern: "STATE IMPORT", categoryId: "cat-groceries", priority: 50, isActive: true });

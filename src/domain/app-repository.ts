@@ -71,7 +71,6 @@ export {
   updateSplitExpenseCategoryRecord,
   updateSplitExpenseRecord,
   updateSplitExpenseNoteRecord,
-  upsertLinkedSplitExpenseForEntryRecord,
   updateSplitSettlementNoteRecord,
   updateSplitSettlementRecord,
   restoreSplitRecord

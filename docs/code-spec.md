@@ -359,13 +359,18 @@ rollback, entry create/edit/delete, transfer link and settle, month-plan
 commands and the month snapshot recalculation; in the split workspace, add
 an entry to splits, match a split expense to an imported entry, delete a
 split expense, restore a split record (each with the entry month's refresh
-markers), split expense and settle-up edit and delete (2026-09-26), and the
-linked split's amount, date, description and payer follow-up inside an entry
-edit's batch. Not yet converted, so still
+markers), split expense and settle-up edit and delete (2026-09-26; a linked
+split's edit carries its entry month's marker), the linked split's amount,
+date, description and payer follow-up inside an entry edit's batch, the
+linked split a Shared owner entry save or create writes
+(`buildLinkedSplitUpsertStatements`, in the entry's batch) and an import
+rollback's linked split amount follow-up. One active split record per ledger
+row is held by partial unique indexes (`schema.sql`, runtime schema), so a
+check before a linking batch is backed by the database when two writes race.
+Not yet converted, so still
 written statement by statement: the rest of the split workspace
 (`app-repository-splits.ts`: split create, note and category edits,
-checkpoints, and the linked split a shared-ownership entry save upserts after
-its own batch), category match rules,
+checkpoints), category match rules,
 settings, categories,
 statement checkpoint edits, Shortcut requests (parked on purpose) and the
 demo seed. Convert a module the next time its writes change.

@@ -1974,6 +1974,9 @@ export default {
           ...(await rollbackImportBatch(env.DB, { importId: body.importId }))
         });
       } catch (error) {
+        if (error instanceof SplitSettlementLockedError) {
+          return splitWriteErrorResponse(error, "Import rollback failed");
+        }
         const message = describeError(error);
         if (message.includes("cannot be rolled back")) {
           return json({ ok: false, error: message }, 409);
