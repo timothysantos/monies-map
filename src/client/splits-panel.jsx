@@ -73,6 +73,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   const useMobileSplitSheet = useIsMobileLayout();
   const [archiveDialog, setArchiveDialog] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [historyError, setHistoryError] = useState("");
   const [groupDialog, setGroupDialog] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [splitNoteSyncPrompt, setSplitNoteSyncPrompt] = useState(null);
@@ -808,6 +809,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   }
 
   async function restoreSplitHistoryItem(item) {
+    setHistoryError("");
     setIsSubmitting(true);
     try {
       await restoreSplitRecord({ recordKind: item.recordKind, recordId: item.recordId });
@@ -822,7 +824,10 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         invalidateSummary: mayRelinkEntry
       });
     } catch (error) {
-      setCheckpointError(error instanceof Error ? error.message : "Failed to restore split.");
+      // The history dialog stays open, so show the refusal inside it. Another
+      // tab may already have restored the record; refresh so the list catches up.
+      setHistoryError(error instanceof Error ? error.message : "Failed to restore split.");
+      void onRefresh();
     } finally {
       setIsSubmitting(false);
     }
@@ -1184,7 +1189,10 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         isSubmitting={isSubmitting}
         onSelectGroup={(groupId) => updateSplitView({ groupId, mode: "entries" })}
         onOpenMatches={openMatchesView}
-        onOpenHistory={() => setShowHistory(true)}
+        onOpenHistory={() => {
+          setHistoryError("");
+          setShowHistory(true);
+        }}
         onBackToGroup={openActiveGroupView}
         onCreateGroup={() => {
           setFormError("");
@@ -1233,6 +1241,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       <SplitHistoryDialog
         open={showHistory}
         history={splitsPage.activityHistory ?? []}
+        error={historyError}
         isSubmitting={isSubmitting}
         onClose={() => setShowHistory(false)}
         onRestore={restoreSplitHistoryItem}
