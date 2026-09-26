@@ -15,6 +15,18 @@ Route entry:
 The route state carries the active view, month, and entry filters. The browser
 location is the source of truth for the current filter contract.
 
+`editing_entry=<entryId>` links one entry's editor (from Splits, Settings,
+import review, a reload, or Add to splits keeping the open entry in the
+URL). The param is the only source of the linked entry; the panel keeps no
+copy of it. It acts on each param value once (`linked-entry-request.js`):
+it opens that entry when this month's rows have it, or treats the link as
+handled when that editor is already open. A handled link never reopens the
+editor while the param is still in the URL, so saving (which closes the
+editor, waits for its refresh, then removes the param) or closing cannot
+bounce the editor back open. A new param value, including the same entry
+linked again after the param was removed, opens it again. Closing or
+saving the editor removes the param with a replace navigation.
+
 ## State Flow
 
 Entries state is split between:
@@ -82,6 +94,10 @@ Watch area:
   save during a month switch cancels the shell's load. The previous month's
   rows are never shown, and the month is never called empty. A failed
   reload over this month's own rows shows the refresh notice instead.
+- A deep-linked editor that bounced back open after Save was proven on
+  2026-09-26 (the link stayed pending while the save waited for its
+  refresh). `entries-deep-link-editor.spec.js` holds that refresh to prove
+  the editor stays closed, for a deep link and after Add to splits.
 - The category dialog opened from a sheet, the composer or a row stops its
   submit, click and key events, so saving it never saves or opens the
   surrounding entry.
