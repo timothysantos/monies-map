@@ -426,7 +426,17 @@ Testing depth rule:
   error; use a JSDoc cast for untyped cache reads. A `// @ts-expect-error`
   needs a reason, and `// @ts-nocheck` is only for generated or vendor code
 - run `npm run test:e2e` before merging broad shared-infrastructure,
-  persistence, import, or cross-page invalidation changes
+  persistence, import, or cross-page invalidation changes;
+  `npm run test:e2e:sharded` runs the same suite as parallel shards, each
+  with its own Vite, Wrangler, ports (5501+/8901+/9501+) and local D1 persist
+  directory, and is the faster equivalent (`docs/audits/e2e-sharding.md`)
+- browser tests must not depend on another spec file or on run order: a
+  test reseeds (`reseedDemo`, in the test, a local helper, or a
+  `beforeEach` covering it) or reads only static content, because a shard
+  starts from an empty schema and runs whole files in any grouping. Tests in
+  one file stay together, in order, on one shard. After adding or
+  noticeably slowing a spec, refresh the shard plan with
+  `npm run test:e2e:sharded -- --update-weights` (full, passing run only)
 - browser or unit: a test belongs in Playwright when the screen is part of
   what it proves: focus and keyboard, layout at a breakpoint, dialogs,
   sheets and Escape, navigation, back/forward and deep links, drafts
