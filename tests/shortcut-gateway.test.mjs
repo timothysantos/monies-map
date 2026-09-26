@@ -7,8 +7,23 @@ import {
   isShortcutCreateRequestAllowed,
   isShortcutGatewayRequestAllowed
 } from "../src/server/shortcut-gateway.ts";
+import worker from "../src/index.ts";
 
 const SHORTCUT_ENDPOINT_PATH = "/api/shortcuts/entries/create";
+
+// Through the real Worker fetch (moved from settings-reference-data.spec.js,
+// which only sent this request): the method check answers before any
+// database work, so no D1 binding is needed.
+test("shortcut direct-create route rejects every non-POST request", async () => {
+  const response = await worker.fetch(new Request(`http://127.0.0.1${SHORTCUT_ENDPOINT_PATH}`), {});
+
+  assert.equal(response.status, 405);
+  assert.equal(response.headers.get("allow"), "POST");
+  assert.deepEqual(await response.json(), {
+    ok: false,
+    error: "Shortcut direct-create endpoint only accepts POST."
+  });
+});
 
 test("shortcut-only gateway rejects every route except the direct-create endpoint", () => {
   assert.equal(isShortcutGatewayRequestAllowed("true", SHORTCUT_ENDPOINT_PATH, SHORTCUT_ENDPOINT_PATH), true);

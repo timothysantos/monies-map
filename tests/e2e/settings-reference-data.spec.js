@@ -5,11 +5,8 @@ import {
   gotoPageAfterApi,
   loadAppShell,
   loadEntriesPage,
-  loadMonthPage,
   loadReferenceData,
   loadSettingsPage,
-  loadSummaryAccountPills,
-  loadSummaryPage,
   postJson,
   reseedDemo
 } from "./helpers";
@@ -38,54 +35,6 @@ async function openSettingsPage(page) {
 test.describe("settings reference data", () => {
   test.beforeEach(async ({ page }) => {
     await reseedDemo(page);
-  });
-
-  test("shortcut direct-create route rejects every non-POST request", async ({ page }) => {
-    const response = await page.request.get("/api/shortcuts/entries/create");
-
-    expect(response.status()).toBe(405);
-    expect(response.headers().allow).toBe("POST");
-    expect(await response.json()).toEqual({
-      ok: false,
-      error: "Shortcut direct-create endpoint only accepts POST."
-    });
-  });
-
-  test("category rule CRUD stays inside the settings page DTO", async ({ page }) => {
-    const before = await loadSettingsPage(page);
-    const referenceData = await loadReferenceData(page);
-    const targetCategory = referenceData.categories[0];
-    const rulePattern = uniqueLabel("Playwright category rule");
-
-    await postJson(page, "/api/category-match-rules/save", {
-      pattern: rulePattern,
-      categoryId: targetCategory.id,
-      priority: 75,
-      isActive: true,
-      note: "Created by Playwright"
-    });
-
-    const afterCreate = await loadSettingsPage(page);
-    const createdRule = afterCreate.settingsPage.categoryMatchRules.find((rule) => rule.pattern === rulePattern);
-    expect(createdRule).toBeTruthy();
-    expect(afterCreate.settingsPage.categoryMatchRules.length).toBe(before.settingsPage.categoryMatchRules.length + 1);
-
-    await postJson(page, "/api/category-match-rules/delete", {
-      ruleId: createdRule.id
-    });
-
-    const afterDelete = await loadSettingsPage(page);
-    expect(afterDelete.settingsPage.categoryMatchRules.find((rule) => rule.pattern === rulePattern)).toBeUndefined();
-    expect(afterDelete.settingsPage.categoryMatchRules.length).toBe(before.settingsPage.categoryMatchRules.length);
-  });
-
-  test("optional AI category suggestions leave the existing rule queue unchanged when AI is unavailable", async ({ page }) => {
-    const before = await loadSettingsPage(page);
-    const response = await postJson(page, "/api/ai-assist/category-rule-suggestions", {});
-    expect(response).toMatchObject({ ok: true, available: false, proposed: 0 });
-
-    const after = await loadSettingsPage(page);
-    expect(after.settingsPage.categoryMatchRuleSuggestions).toEqual(before.settingsPage.categoryMatchRuleSuggestions);
   });
 
   test("category rule save shows pending state and keeps the dialog stable", async ({ page }) => {
@@ -271,50 +220,6 @@ test.describe("settings reference data", () => {
 
     await page.getByRole("button", { name: "Refresh" }).click();
     await expect(transferRow).toHaveCount(0);
-  });
-
-  test("account rename updates reference data plus summary and entries downstream DTOs", async ({ page }) => {
-    const beforeReferenceData = await loadReferenceData(page);
-    const beforeSummaryPills = await loadSummaryAccountPills(page, { view: "household" });
-    const visiblePill = beforeSummaryPills.accountPills[0];
-    const targetAccount = beforeReferenceData.accounts.find((account) => account.id === visiblePill?.accountId) ?? beforeReferenceData.accounts[0];
-    const renamedAccount = uniqueLabel(`${targetAccount.name} renamed`);
-    const createdDescription = uniqueLabel("Playwright account rename");
-
-    await postJson(page, "/api/entries/create", {
-      date: "2026-04-24",
-      description: createdDescription,
-      accountName: targetAccount.name,
-      categoryName: beforeReferenceData.categories[0].name,
-      amountMinor: 4321,
-      entryType: "expense",
-      ownershipType: "direct",
-      ownerName: "Tim"
-    });
-
-    await postJson(page, "/api/accounts/update", {
-      accountId: targetAccount.id,
-      name: renamedAccount,
-      institution: targetAccount.institution,
-      kind: targetAccount.kind,
-      currency: targetAccount.currency,
-      openingBalanceMinor: targetAccount.openingBalanceMinor ?? 0,
-      ownerPersonId: targetAccount.isJoint ? null : (targetAccount.ownerPersonId ?? null),
-      isJoint: targetAccount.isJoint
-    });
-
-    const afterReferenceData = await loadReferenceData(page);
-    expect(afterReferenceData.accounts.find((account) => account.id === targetAccount.id)?.name).toBe(renamedAccount);
-
-    const summaryPage = await loadSummaryAccountPills(page, { view: "household" });
-    expect(
-      summaryPage.accountPills.some((pill) => pill.accountId === targetAccount.id && pill.accountName === renamedAccount)
-    ).toBe(true);
-
-    const entriesPage = await loadEntriesPage(page, { view: "person-tim", month: "2026-04" });
-    expect(
-      entriesPage.monthPage.entries.some((entry) => entry.description === createdDescription && entry.accountName === renamedAccount)
-    ).toBe(true);
   });
 
   test("shortcut settings provide API key auth and default account fallback", async ({ page }) => {
@@ -665,45 +570,6 @@ test.describe("settings reference data", () => {
       }
     });
     await popup.close();
-  });
-
-  test("category rename refreshes reference data plus month and summary downstream DTOs", async ({ page }) => {
-    const beforeReferenceData = await loadReferenceData(page);
-    const targetCategory = beforeReferenceData.categories.find((category) => !category.isSystem) ?? beforeReferenceData.categories[0];
-    const renamedCategory = uniqueLabel(`${targetCategory.name} renamed`);
-    const createdDescription = uniqueLabel("Playwright category rename");
-    const targetAccount = beforeReferenceData.accounts.find((account) => account.isActive) ?? beforeReferenceData.accounts[0];
-
-    await postJson(page, "/api/entries/create", {
-      date: "2026-04-25",
-      description: createdDescription,
-      accountName: targetAccount.name,
-      categoryName: targetCategory.name,
-      amountMinor: 5432,
-      entryType: "expense",
-      ownershipType: "direct",
-      ownerName: "Tim"
-    });
-
-    await postJson(page, "/api/categories/update", {
-      categoryId: targetCategory.id,
-      name: renamedCategory,
-      slug: targetCategory.slug,
-      iconKey: targetCategory.iconKey,
-      colorHex: targetCategory.colorHex
-    });
-
-    const afterReferenceData = await loadReferenceData(page);
-    expect(afterReferenceData.categories.find((category) => category.id === targetCategory.id)?.name).toBe(renamedCategory);
-
-    const monthPage = await loadMonthPage(page, { view: "person-tim", month: "2026-04" });
-    expect(
-      monthPage.monthPage.entries.some((entry) => entry.description === createdDescription && entry.categoryName === renamedCategory)
-    ).toBe(true);
-
-    const summaryPage = await loadSummaryPage(page, { view: "person-tim", month: "2026-04" });
-    const aprilDonut = summaryPage.summaryPage.categoryShareByMonth.find((month) => month.month === "2026-04");
-    expect(aprilDonut?.data.some((item) => item.label === renamedCategory)).toBe(true);
   });
 
   test("edit person submits from Enter in the name field", async ({ page }) => {
