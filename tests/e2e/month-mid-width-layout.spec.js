@@ -244,3 +244,49 @@ for (const size of MID_WIDTHS) {
     }
   });
 }
+
+// The mid-width rules stop at both ends of their range: a wide desktop keeps
+// full-size cells, one-line notes and a one-row header, and a phone keeps
+// its own header grid.
+function readOutOfRangeLayout(page) {
+  return page.evaluate(() => {
+    const cell = document.querySelector(".month-plan-section-planned .month-table-wrap td");
+    const note = document.querySelector(".month-plan-section-planned .note-trigger span");
+    const tabs = document.querySelector("nav.tab-strip").getBoundingClientRect();
+    const period = document.querySelector(".period-display").getBoundingClientRect();
+    return {
+      cellPadding: getComputedStyle(cell).paddingLeft,
+      noteWhiteSpace: getComputedStyle(note).whiteSpace,
+      periodInlineDisplay: getComputedStyle(document.querySelector(".period-inline")).display,
+      periodBelowTabs: period.top >= tabs.bottom
+    };
+  });
+}
+
+test.describe("Month outside the mid-width range", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
+    await page.goto("/");
+    await reseedDemo(page);
+  });
+
+  test("a 1280 px desktop keeps full-size cells, one-line notes and a one-row header", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await gotoPageAfterApi(page, "/month?view=person-tim&month=2026-05&scope=direct_plus_shared", "/api/month-page", () => page.getByRole("button", { name: "+ Add planned item" }));
+    expect(await readOutOfRangeLayout(page)).toEqual({
+      cellPadding: "10px",
+      noteWhiteSpace: "nowrap",
+      periodInlineDisplay: "flex",
+      periodBelowTabs: false
+    });
+  });
+
+  test("a 390 px phone keeps its own header grid and one-line notes", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoPageAfterApi(page, "/month?view=person-tim&month=2026-05&scope=direct_plus_shared", "/api/month-page", () => page.getByRole("button", { name: "+ Add planned item" }));
+    const layout = await readOutOfRangeLayout(page);
+    expect(layout.periodInlineDisplay).toBe("grid");
+    expect(layout.noteWhiteSpace).toBe("nowrap");
+    expect(layout.cellPadding).toBe("10px");
+  });
+});
