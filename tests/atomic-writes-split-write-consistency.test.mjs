@@ -1,7 +1,8 @@
 // Split write consistency: one ledger entry never gets two active split
-// records, even when two writes race, and an import rollback keeps a linked
-// split on its entry's restored amount. Real local D1 (Miniflare) seeded
-// with the demo household.
+// records, even when two writes race; an import rollback keeps a linked
+// split on its entry's restored amount; and a split share edit (in Splits or
+// through a Shared owner save) refreshes the stored person month totals in
+// its own write. Real local D1 (Miniflare) seeded with the demo household.
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -412,5 +413,142 @@ test("a rollback that fails while moving the linked split's shares changes nothi
 
   assert.equal(faulty.state.fired, true);
   assert.notEqual(rollback.status, 200);
+  assertSameDatabase(await dumpDatabase(db), before);
+});
+
+// --- 3. Share edits refresh the stored person month totals -----------------
+
+function splitsEdit(splitExpenseId, overrides = {}) {
+  return {
+    splitExpenseId,
+    groupId: null,
+    date: DATE,
+    description: "Share edit",
+    categoryName: "Groceries",
+    payerPersonName: "Tim",
+    amountMinor: 6_000,
+    homeAmountMinor: 6_000,
+    paymentMethod: "bank",
+    paymentStatus: "certified",
+    ...overrides
+  };
+}
+
+test("a Splits share edit on a linked split moves each person's stored month total in the same write", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const entryId = await createEntry(api, { date: DATE, description: "Share edit", amountMinor: 6_000 });
+  const splitExpenseId = await addToSplits(api, entryId);
+  const before = await assertTotalsFresh(db);
+
+  // Tim now carries 80% (48.00) instead of half.
+  const update = await api("/api/splits/expenses/update", splitsEdit(splitExpenseId, { splitBasisPoints: 8_000 }));
+
+  assert.equal(update.status, 200, JSON.stringify(update.payload));
+  const after = await assertTotalsFresh(db);
+  assert.equal(scopeTotal(after, "person-tim") - scopeTotal(before, "person-tim"), 1_800);
+  assert.equal(scopeTotal(after, "person-joyce") - scopeTotal(before, "person-joyce"), -1_800);
+  assert.equal(scopeTotal(after, "household"), scopeTotal(before, "household"));
+});
+
+test("a Splits share edit on an unlinked split writes no month refresh and leaves month totals alone", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const created = await api("/api/splits/expenses/create", splitsEdit(undefined, { splitExpenseId: undefined, splitBasisPoints: 5_000, paymentMethod: "cash", paymentStatus: "recorded" }));
+  assert.equal(created.status, 200, JSON.stringify(created.payload));
+  await recalculateMonthlySnapshots(db, MONTH);
+  const before = await snapshotTotals(db, MONTH);
+  const markerWrites = failingStatement(db, /INSERT INTO monthly_snapshot_refreshes/);
+
+  const update = await api("/api/splits/expenses/update", splitsEdit(created.payload.splitExpenseId, { splitBasisPoints: 8_000, paymentMethod: "cash", paymentStatus: "recorded" }), { database: markerWrites.db });
+
+  assert.equal(update.status, 200, JSON.stringify(update.payload));
+  assert.equal(markerWrites.state.fired, false, "no month refresh for a split no entry counts");
+  assert.deepEqual(await snapshotTotals(db, MONTH), before);
+});
+
+test("a linked Splits share edit that fails on its month refresh marker changes nothing", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const entryId = await createEntry(api, { date: DATE, description: "Share edit atomic", amountMinor: 6_000 });
+  const splitExpenseId = await addToSplits(api, entryId);
+  const before = await dumpDatabase(db);
+  const faulty = failingStatement(db, /INSERT INTO monthly_snapshot_refreshes/);
+
+  const update = await api("/api/splits/expenses/update", splitsEdit(splitExpenseId, { splitBasisPoints: 8_000 }), { database: faulty.db });
+
+  assert.equal(faulty.state.fired, true);
+  assert.notEqual(update.status, 200);
+  assertSameDatabase(await dumpDatabase(db), before);
+});
+
+function sharedSave(entryId, overrides = {}) {
+  return {
+    entryId,
+    date: DATE,
+    description: "Shared owner save",
+    accountName: "UOB One",
+    categoryName: "Groceries",
+    amountMinor: 6_000,
+    entryType: "expense",
+    ownershipType: "shared",
+    splitBasisPoints: 8_000,
+    note: "",
+    ...overrides
+  };
+}
+
+test("a Shared owner entry save rewrites the split and the stored month totals in the same write", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const entryId = await createEntry(api, { date: DATE, description: "Shared owner save", amountMinor: 6_000 });
+  const splitExpenseId = await addToSplits(api, entryId);
+  const before = await assertTotalsFresh(db);
+
+  const update = await api("/api/entries/update", sharedSave(entryId));
+
+  assert.equal(update.status, 200, JSON.stringify(update.payload));
+  // The first share person (Tim, the owner) takes the 80% basis.
+  assert.deepEqual((await splitAndShares(db, splitExpenseId)).shares.map((share) => [share.person_id, share.amount_minor]), [["person-joyce", 1_200], ["person-tim", 4_800]]);
+  const after = await assertTotalsFresh(db);
+  assert.equal(scopeTotal(after, "person-tim") - scopeTotal(before, "person-tim"), 1_800);
+  assert.equal(scopeTotal(after, "person-joyce") - scopeTotal(before, "person-joyce"), -1_800);
+});
+
+test("creating an entry as Shared links its split and stores fresh month totals in the same write", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  await recalculateMonthlySnapshots(db, MONTH);
+  const before = await snapshotTotals(db, MONTH);
+
+  const created = await api("/api/entries/create", { date: DATE, description: "Shared owner create", accountName: "UOB One", categoryName: "Groceries", amountMinor: 6_000, entryType: "expense", ownershipType: "shared", splitBasisPoints: 5_000 });
+
+  assert.equal(created.status, 200, JSON.stringify(created.payload));
+  assert.equal((await activeSplitsOf(db, created.payload.entryId)).length, 1);
+  const after = await assertTotalsFresh(db);
+  assert.equal(scopeTotal(after, "person-tim") - scopeTotal(before, "person-tim"), 3_000);
+  assert.equal(scopeTotal(after, "person-joyce") - scopeTotal(before, "person-joyce"), 3_000);
+});
+
+test("a Shared owner save that fails while writing the split's shares saves neither the entry nor the split", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const entryId = await createEntry(api, { date: DATE, description: "Shared owner atomic", amountMinor: 6_000 });
+  await addToSplits(api, entryId);
+  const before = await dumpDatabase(db);
+  const faulty = failingStatement(db, /INSERT INTO split_expense_shares/);
+
+  const update = await api("/api/entries/update", sharedSave(entryId, { description: "Shared owner atomic renamed", amountMinor: 7_000 }), { database: faulty.db });
+
+  assert.equal(faulty.state.fired, true);
+  assert.notEqual(update.status, 200);
+  assertSameDatabase(await dumpDatabase(db), before);
+});
+
+test("a Shared owner save on a joint account with no payer is refused before anything is written", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const [joint] = await rows(db, "SELECT account_name FROM accounts WHERE owner_person_id IS NULL AND is_joint = 1 LIMIT 1");
+  assert.ok(joint, "the demo seed has a joint account");
+  const entryId = await createEntry(api, { date: DATE, description: "Joint no payer", amountMinor: 6_000, accountName: joint.account_name, ownerName: undefined });
+  const before = await dumpDatabase(db);
+
+  const update = await api("/api/entries/update", sharedSave(entryId, { accountName: joint.account_name, description: "Joint no payer renamed" }));
+
+  assert.equal(update.status, 400, JSON.stringify(update.payload));
+  assert.match(update.payload.error, /does not have a clear payer/);
   assertSameDatabase(await dumpDatabase(db), before);
 });

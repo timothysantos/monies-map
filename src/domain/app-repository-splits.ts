@@ -928,6 +928,9 @@ export async function updateSplitExpenseRecord(
   const batch = existing.split_group_id === nextGroupId
     ? { batchId: existing.split_batch_id, statements: [] }
     : await planActiveSplitBatch(db, { groupId: nextGroupId, date: input.date });
+  // A linked entry counts by its split shares in person views, so a share
+  // (or payer) change moves the stored month totals of the entry's month.
+  const months = existing.linked_transaction_id ? await linkedEntryMonths(db, input.splitExpenseId) : [];
 
   await db.batch([
     ...batch.statements,
@@ -974,8 +977,10 @@ export async function updateSplitExpenseRecord(
         sharePeople[1].id,
         secondBasisPoints,
         secondAmount
-      )
+      ),
+    ...buildMonthlySnapshotRefreshMarkers(db, months)
   ]);
+  await refreshMonthlySnapshotsAfterWrite(db, months);
 
   if (existing.linked_transaction_id) {
     await syncLinkedTransactionToSplitExpense(db, {
@@ -1793,54 +1798,36 @@ async function loadOrderedSplitShares(db: D1Database, splitExpenseId: string) {
   return shares.results.map((share) => ({ personId: share.person_id, ratioBasisPoints: share.ratio_basis_points, amountMinor: share.amount_minor }));
 }
 
-export async function upsertLinkedSplitExpenseForEntryRecord(
+// The statements a Shared owner save (entry create or update with
+// ownershipType "shared") uses to rewrite the entry's active split expense,
+// or to link a new one, for the entry command's own batch: the split takes
+// the entry's date, description, payer, category, amount and note, and its
+// shares are replaced by the given basis. Reads and checks run here, before
+// that batch, so a refused save (no clear payer, wrong group currency)
+// writes nothing, and the entry, its split and the month refresh markers
+// commit together. An archived split is left alone (a restore brings it
+// back); a later batch that loses a race for the entry fails on the
+// one-active-split index.
+export async function buildLinkedSplitUpsertStatements(
   db: D1Database,
-  input: { entryId: string; splitBasisPoints?: number; splitGroupId?: string | null }
-) {
-  const entry = await db
-    .prepare(`
-      SELECT
-        transactions.id,
-        transactions.transaction_date,
-        transactions.description,
-        transactions.amount_minor,
-        transactions.currency,
-        transactions.owner_person_id,
-        transactions.note,
-        transactions.category_id,
-        transactions.entry_type,
-        accounts.owner_person_id AS account_owner_person_id,
-        accounts.account_kind
-      FROM transactions
-      INNER JOIN accounts ON accounts.id = transactions.account_id
-      WHERE transactions.household_id = ?
-        AND transactions.id = ?
-    `)
-    .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
-    .first<{
-      id: string;
-      transaction_date: string;
+  input: {
+    entryId: string;
+    entry: {
+      date: string;
       description: string;
-      amount_minor: number;
+      amountMinor: number;
       currency: string;
-      owner_person_id: string | null;
+      payerPersonId: string | null;
+      categoryId: string | null;
       note: string | null;
-      category_id: string | null;
-      entry_type: "expense" | "income" | "transfer";
-      account_owner_person_id: string | null;
-      account_kind: "bank" | "credit_card" | "loan" | "cash" | "investment";
-    }>();
-
-  if (!entry) {
-    throw new Error("Entry not found.");
+      accountKind: "bank" | "credit_card" | "loan" | "cash" | "investment";
+    };
+    splitBasisPoints?: number;
+    splitGroupId?: string | null;
   }
-
-  if (entry.entry_type !== "expense") {
-    return { splitExpenseId: null, skipped: true };
-  }
-
-  const payerPersonId = entry.owner_person_id ?? entry.account_owner_person_id;
-  if (!payerPersonId) {
+) {
+  const { entry } = input;
+  if (!entry.payerPersonId) {
     throw new Error("This entry does not have a clear payer. Assign an owner first.");
   }
 
@@ -1851,13 +1838,17 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
   const splitExpenseId = existingSplit?.id ?? `split-expense-${Date.now()}`;
   const splitGroupId = input.splitGroupId === undefined ? existingSplit?.split_group_id ?? null : input.splitGroupId || null;
   await assertSplitGroupCurrency(db, splitGroupId, entry.currency);
-  const batchId = await getOrCreateActiveSplitBatch(db, {
-    groupId: splitGroupId,
-    date: entry.transaction_date
-  });
+  const batch = await planActiveSplitBatch(db, { groupId: splitGroupId, date: entry.date });
+  const sharePeople = await loadSplitSharePeople(db);
+  const { firstBasisPoints, secondBasisPoints, firstAmount, secondAmount } = buildSplitShareAmounts(entry.amountMinor, input.splitBasisPoints);
+  const shares = [
+    { personId: sharePeople[0].id, ratioBasisPoints: firstBasisPoints, amountMinor: firstAmount },
+    { personId: sharePeople[1].id, ratioBasisPoints: secondBasisPoints, amountMinor: secondAmount }
+  ];
+  const paymentMethod = paymentMethodForLinkedAccount(entry.accountKind, "other");
 
-  if (existingSplit) {
-    await db
+  const splitStatement = existingSplit
+    ? db
       .prepare(`
         UPDATE split_expenses
         SET split_group_id = ?, split_batch_id = ?, payer_person_id = ?, expense_date = ?, description = ?,
@@ -1867,24 +1858,21 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
       `)
       .bind(
         splitGroupId,
-        batchId,
-        payerPersonId,
-        entry.transaction_date,
+        batch.batchId,
+        entry.payerPersonId,
+        entry.date,
         entry.description,
-        entry.category_id,
-        entry.amount_minor,
+        entry.categoryId,
+        entry.amountMinor,
         entry.currency,
-        entry.amount_minor,
-        paymentMethodForLinkedAccount(entry.account_kind, "other"),
+        entry.amountMinor,
+        paymentMethod,
         "certified",
         entry.note,
         splitExpenseId,
         DEFAULT_HOUSEHOLD_ID
       )
-      .run();
-    await db.prepare("DELETE FROM split_expense_shares WHERE split_expense_id = ?").bind(splitExpenseId).run();
-  } else {
-    await db
+    : db
       .prepare(`
         INSERT INTO split_expenses (
           id, household_id, split_group_id, split_batch_id, payer_person_id, expense_date,
@@ -1896,42 +1884,31 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
         splitExpenseId,
         DEFAULT_HOUSEHOLD_ID,
         splitGroupId,
-        batchId,
-        payerPersonId,
-        entry.transaction_date,
+        batch.batchId,
+        entry.payerPersonId,
+        entry.date,
         entry.description,
-        entry.category_id,
-        entry.amount_minor,
+        entry.categoryId,
+        entry.amountMinor,
         entry.currency,
-        entry.amount_minor,
-        paymentMethodForLinkedAccount(entry.account_kind, "other"),
+        entry.amountMinor,
+        paymentMethod,
         "certified",
         entry.note,
-        entry.id
-      )
-      .run();
-  }
+        input.entryId
+      );
 
-  const sharePeople = await loadSplitSharePeople(db);
-  const { firstBasisPoints, secondBasisPoints, firstAmount, secondAmount } = buildSplitShareAmounts(
-    entry.amount_minor,
-    input.splitBasisPoints
-  );
-  const shares = [
-    { personId: sharePeople[0].id, ratioBasisPoints: firstBasisPoints, amountMinor: firstAmount },
-    { personId: sharePeople[1].id, ratioBasisPoints: secondBasisPoints, amountMinor: secondAmount }
-  ];
-
-  for (const split of shares) {
-    await db
+  const statements = [
+    ...batch.statements,
+    splitStatement,
+    db.prepare("DELETE FROM split_expense_shares WHERE split_expense_id = ?").bind(splitExpenseId),
+    ...shares.map((share) => db
       .prepare(`
         INSERT INTO split_expense_shares (
           id, split_expense_id, person_id, ratio_basis_points, amount_minor
         ) VALUES (?, ?, ?, ?, ?)
       `)
-      .bind(`${splitExpenseId}-${split.personId}`, splitExpenseId, split.personId, split.ratioBasisPoints, split.amountMinor)
-      .run();
-  }
-
-  return { splitExpenseId, skipped: false };
+      .bind(`${splitExpenseId}-${share.personId}`, splitExpenseId, share.personId, share.ratioBasisPoints, share.amountMinor))
+  ];
+  return { splitExpenseId, statements };
 }
