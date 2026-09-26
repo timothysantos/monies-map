@@ -91,6 +91,33 @@ The product workflow guide lives in
 [`docs/git.md`](docs/git.md) and captures
 the current import, reconciliation, and splits workflows.
 
+## In-App Guides
+
+The FAQ page in the app has two tabs, both kept in the repository:
+
+- [`docs/user-guide.md`](docs/user-guide.md): the User guide for people using
+  the app: start here, every screen, step-by-step recipes, troubleshooting and
+  a glossary, with screenshots.
+- [`docs/developer-guide.md`](docs/developer-guide.md): the For developers
+  tab: local setup, testing, deploy, Shortcut internals and architecture
+  notes. It is downloaded only when that tab opens (`/faq?faq=developers`).
+
+Screenshots live in `public/faq/guide/` as WebP files with thumbnails.
+Regenerate them after a UI change:
+
+```bash
+npm run build
+npm run docs:screenshots                       # every shot
+npm run docs:screenshots -- --list             # shot names
+npm run docs:screenshots -- summary-household  # only some
+```
+
+The script starts its own isolated stack (Vite `5432`, Wrangler `8832`,
+inspector `9432`, D1 in `.wrangler/state-guide`), reseeds the demo data only,
+reveals money totals and captures desktop shots (1280×800, Chromium) and
+phone shots (iPhone 13 profile, WebKit). `tests/guide-content.test.mjs`
+checks that every link, anchor and image in both guides resolves.
+
 ## Supported Imports
 
 The import flow has two layers:
@@ -280,6 +307,7 @@ npm run deploy:demo          # build + deploy only demo
 npm run deploy:all           # build once, deploy production and demo
 npm run deploy               # alias for deploy:prod
 npm run db:empty-production  # terminal-only production empty-state reset
+npm run docs:screenshots     # regenerate the in-app guide screenshots (demo data)
 ```
 
 ### Running the browser tests
