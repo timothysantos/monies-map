@@ -169,7 +169,7 @@ export async function assertSplitSettlementUnchanged(
     recordKind: SplitRecordKind;
     recordId: string;
     next: (current: SplitSettlementFacts) => SplitSettlementFacts | "deleted" | Promise<SplitSettlementFacts | "deleted">;
-    subject?: "record" | "linked entry";
+    subject?: SplitSettlementLockSubject;
   }
 ) {
   const checkpoint = await findLockingSettlementCheckpoint(db, input.recordKind, input.recordId);
@@ -185,15 +185,22 @@ export async function assertSplitSettlementUnchanged(
   );
 }
 
+// Who asked for the change: the record's own command, a save of the ledger
+// entry it is linked to, or an import rollback that restores that entry.
+export type SplitSettlementLockSubject = "record" | "linked entry" | "import rollback";
+
 export function buildSplitSettlementLockedMessage(input: {
   recordKind: SplitRecordKind;
-  subject: "record" | "linked entry";
+  subject: SplitSettlementLockSubject;
   checkpoint: LockingSettlementCheckpoint;
   change: SplitSettlementFact[] | "deleted";
 }) {
   const record = input.recordKind === "expense" ? "expense" : "settle-up";
   const settlement = describeCheckpoint(input.checkpoint);
   const reason = "so the settled amount still matches its activity";
+  if (input.subject === "import rollback" && input.change !== "deleted") {
+    return `Rolling back this import would change the ${joinFacts(input.change)} of a split ${record} in the ${settlement}. Undo the simplification first, ${reason}.`;
+  }
   if (input.subject === "linked entry" && input.change !== "deleted") {
     return `This entry's split ${record} is part of the ${settlement}, and saving would change the split's ${joinFacts(input.change)}. Undo the simplification first, ${reason}.`;
   }
