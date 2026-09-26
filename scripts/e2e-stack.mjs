@@ -13,14 +13,16 @@ const wranglerCli = path.resolve("node_modules/wrangler/bin/wrangler.js");
 const viteServer = path.resolve("scripts/e2e-vite-server.mjs");
 
 /** Ports and directories for shard `index` (1-based). */
-export function shardStack(index, { logDir = "test-results/e2e-sharded/logs" } = {}) {
-  const uiPort = 5500 + index;
-  const apiPort = 8900 + index;
+// E2E_PORT_OFFSET moves every shard's ports, so two worktrees (or two
+// sessions) can run sharded suites at the same time without colliding.
+export function shardStack(index, { logDir = "test-results/e2e-sharded/logs", portOffset = Number(process.env.E2E_PORT_OFFSET) || 0 } = {}) {
+  const uiPort = 5500 + portOffset + index;
+  const apiPort = 8900 + portOffset + index;
   return {
     index,
     uiPort,
     apiPort,
-    inspectorPort: 9500 + index,
+    inspectorPort: 9500 + portOffset + index,
     baseURL: `http://127.0.0.1:${uiPort}`,
     apiOrigin: `http://127.0.0.1:${apiPort}`,
     persistTo: `.wrangler/state-shard-${index}`,
