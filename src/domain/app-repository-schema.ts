@@ -803,7 +803,51 @@ async function ensureDemoSchemaOnce(db: D1Database) {
   }
 
   await ensureHotReadIndexes(db);
+  await ensureActiveSplitLinkIndexes(db);
   await backfillSplitBatches(db);
+}
+
+// One active split record per ledger row (see schema.sql). The unique index
+// is what makes add to splits, match and restore safe when two of them race:
+// the later batch fails as a whole instead of linking the entry twice. A
+// database that already holds a duplicate cannot take the index, so it is
+// skipped with a warning rather than failing every request; the checks
+// before each write still refuse a new duplicate there, only the race stays
+// open until the duplicate is removed.
+const ACTIVE_SPLIT_LINK_INDEXES = [
+  { table: "split_expenses", index: "idx_split_expenses_active_linked_transaction" },
+  { table: "split_settlements", index: "idx_split_settlements_active_linked_transaction" }
+] as const;
+
+async function ensureActiveSplitLinkIndexes(db: D1Database) {
+  for (const { table, index } of ACTIVE_SPLIT_LINK_INDEXES) {
+    const existing = await db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?")
+      .bind(index)
+      .first<{ name: string }>();
+    if (existing) continue;
+    const duplicate = await db
+      .prepare(`
+        SELECT linked_transaction_id
+        FROM ${table}
+        WHERE linked_transaction_id IS NOT NULL AND deleted_at IS NULL
+        GROUP BY linked_transaction_id
+        HAVING COUNT(*) > 1
+        LIMIT 1
+      `)
+      .first<{ linked_transaction_id: string }>();
+    if (duplicate) {
+      console.warn(`Skipped ${index}: ledger row ${duplicate.linked_transaction_id} has more than one active ${table} record.`);
+      continue;
+    }
+    await db
+      .prepare(`
+        CREATE UNIQUE INDEX IF NOT EXISTS ${index}
+        ON ${table} (linked_transaction_id)
+        WHERE linked_transaction_id IS NOT NULL AND deleted_at IS NULL
+      `)
+      .run();
+  }
 }
 
 async function dropLegacyLedgerOwnershipStorage(
