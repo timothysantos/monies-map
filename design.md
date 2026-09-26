@@ -246,36 +246,43 @@ A person view's figures follow the route's `scope`. Each layout has one
 scope control:
 
 - Desktop and tablet (wider than the phone layout in `use-viewport.js`):
-  Month shows the scope pills in its header. Summary shows the same pills
-  (`buildPersonScopes`) in a row under its heading, with the active pill
-  marked `aria-pressed` and a short line saying what that scope counts.
-  Whether desktop Summary keeps these pills is an open design decision:
-  `SHOW_DESKTOP_SCOPE_PILLS` in `summary-panel.jsx` keeps them (`true`, the
-  current state) or leaves desktop Summary with no scope control (`false`,
-  as before the pills were added).
+  Month shows the scope pills in its header. Summary shows
+  `SummaryScopeSwitch`: a compact one-click `Direct` / `Shared` / `Both`
+  switch (`messages.summary.scopeSwitchLabel`) in the empty space under the
+  `Summary` title, with `aria-pressed` on the active option and what each
+  scope counts (`messages.views.scopeHint`) as that option's `title`
+  tooltip; there is no visible explanation row. It must not change the
+  header: `.summary-scope-switch` takes its own row in the title column with
+  `contain: inline-size` (no content width) and a -12px margin that cancels
+  the title row's 12px flex gap, so the title column is exactly as wide as
+  without it, and the row fits beside the two rows of metric cards, so the
+  header is exactly as tall. Where the header stacks (960 px and below) the
+  switch joins the title row instead, again adding no height.
+  `tests/e2e/summary-workflow.spec.js` measures the header, the cards and the
+  check-in with and without the switch at 1,440 and 1,920 px.
 - Phone (`useIsMobileLayout()`): Summary, Month and Entries show the floating
   View and scope bar from `App.jsx` (`stickyScopeConfig`), and Summary does
-  not render its inline pills at all. The bar's dialog holds the view pills
-  and the scope pills; on Summary the scope section also carries the line
-  saying what the scope counts. Month and Entries add month arrows beside
-  the bar; Summary has no arrows because its range moves from the header.
+  not render its switch at all. The bar's dialog holds the view pills and
+  the scope pills; on Summary the scope section also carries the line saying
+  what the scope counts. Month and Entries add month arrows beside the bar;
+  Summary has no arrows because its range moves from the header.
 
 The bar's label is two lines: the person and a short scope name
 (`messages.views.scopeShortLabel`: `Direct`, `Shared`, `Direct + Shared`),
 then `View and scope`. The label is wrapping text whose scope part
 (`· Direct + Shared`) is `nowrap`, so a long name wraps before the scope
-instead of either being cut short; there is no ellipsis. The trigger is at least 46 px tall, and on Month and Summary the
-floating money toggle sits above it. The household view has one Combined
-scope: the bar shows only `Household` and `View`, and the dialog has no scope
-section. The scope names and hints live in `messages.views` so the bar and
-the Summary pills read the same words.
+instead of either being cut short; there is no ellipsis. The trigger is at
+least 46 px tall, and on Month and Summary the floating money toggle sits
+above it. The household view has one Combined scope: the bar shows only
+`Household` and `View`, the dialog has no scope section, and desktop Summary
+shows no switch.
 
 The active scope on Summary is the scope of the request the figures on
 screen answer: `buildSummaryPageView` reads it from the Summary owner's
 request key and sets `selectedScope` and `scopes` on the page view (the same
-names as the Month DTO), so neither the pills nor the bar run ahead of the
-figures while the next scope loads. A pill sets the route's `scope`, and the
-route reloads Summary; no extra request and no DTO field. The scope rules are
+names as the Month DTO), so neither the switch nor the bar run ahead of the
+figures while the next scope loads. An option sets the route's `scope`, and
+the route reloads Summary; no extra request and no DTO field. The scope rules are
 imported by `summary-query.js` in the entry chunk, so the Summary and Month
 route chunks share them without a new first-screen file.
 

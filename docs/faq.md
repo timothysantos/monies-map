@@ -1699,16 +1699,16 @@ The Summary and Month Money check-ins count the same entries, so in Tim's
 Direct + Shared view the Month check-in says he spent $120.00, the same as
 his `Actual spend` card, and switching to `Shared` makes both say $20.00.
 
-In a person view on a computer or tablet, Summary shows the scope under its
-heading: the same `Direct ownership`, `Shared` and `Direct + Shared` pills as
-Month, with the active one highlighted and a short line saying what it counts
-(for example "Joyce's share of split expenses."). Clicking another pill
-reloads Summary for that scope, as on Month. On a phone, Summary has no pills
-of its own: the floating View and scope bar above the bottom navigation, the
-same one Month and Entries use, shows the person and the scope (for example
+In a person view on a computer or tablet, Summary shows a small switch under
+its `Summary` title: `Direct`, `Shared` and `Both` (Direct + Shared), with the
+active one highlighted. Hovering an option says what it counts (for example
+"Joyce's share of split expenses."), and one click reloads Summary for that
+scope, as the pills do on Month. On a phone, Summary has no switch of its
+own: the floating View and scope bar above the bottom navigation, the same
+one Month and Entries use, shows the person and the scope (for example
 `Joyce · Shared`), and tapping it opens a sheet with the view and scope
-choices and the same line saying what the scope counts. The household view
-always counts every entry, so it shows no scope choice.
+choices and a line saying what the scope counts. The household view always
+counts every entry, so it shows no scope choice.
 
 Important current limitation:
 
