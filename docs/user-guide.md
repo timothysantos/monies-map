@@ -818,8 +818,8 @@ There are two ways, depending on where the expense is.
 
 1. Open **Entries** and select the entry.
 2. Select **Add to splits**.
-3. Pick the group from **Split group**. Nothing is saved until you choose;
-   **Cancel** closes it without sharing.
+3. Pick the group from **Split group**. The split is created as soon as you
+   choose; **Cancel** closes the box without sharing anything.
 4. The split starts 50/50 with the entry's owner as the payer. Select
    **View split** to change the people, shares, group, category or note.
 
