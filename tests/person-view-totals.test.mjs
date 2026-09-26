@@ -191,3 +191,37 @@ test("direct entries, a split-linked entry and income count per person and scope
   const stored = storedSpendByScope(await snapshotTotals(db, month));
   assert.equal(stored["person-tim"] + stored["person-joyce"], stored.household);
 });
+
+test("a person whose only activity in a month is a split share gets a stored month total, which goes away when the split is deleted", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const month = "2026-08";
+  const entryId = await createSharedEntry(api, db, { date: "2026-08-09", amountMinor: 8_000 });
+
+  assert.deepEqual(storedSpendByScope(await snapshotTotals(db, month)), {
+    household: 8_000,
+    "person-joyce": 6_000,
+    "person-tim": 2_000
+  });
+  await assertTotalsFresh(db, month);
+  const joyce = await readView(api, "person-joyce", "direct_plus_shared", month);
+  assert.equal(joyce.summarySpend, 6_000);
+  assert.equal(joyce.monthSpendCard, 6_000);
+  assert.equal((await readView(api, "person-joyce", "direct", month)).summarySpend, 0);
+
+  // Deleting the split makes the entry Tim's direct expense again: Joyce has
+  // no activity left in the month, so her stored total is removed.
+  const [{ id: splitExpenseId }] = await rows(db, "SELECT id FROM split_expenses WHERE linked_transaction_id = ? AND deleted_at IS NULL", entryId);
+  const deleted = await api("/api/splits/expenses/delete", { splitExpenseId });
+  assert.equal(deleted.status, 200, JSON.stringify(deleted.payload));
+  assert.deepEqual(storedSpendByScope(await snapshotTotals(db, month)), {
+    household: 8_000,
+    "person-tim": 8_000
+  });
+  await assertTotalsFresh(db, month);
+  const joyceAfter = await readView(api, "person-joyce", "direct_plus_shared", month);
+  assert.equal(joyceAfter.summarySpend, 0);
+  assert.equal(joyceAfter.monthSpendCard, 0);
+  const timAfter = await readView(api, "person-tim", "direct_plus_shared", month);
+  assert.equal(timAfter.summarySpend, 8_000);
+  assert.equal(timAfter.monthSpendCard, 8_000);
+});
