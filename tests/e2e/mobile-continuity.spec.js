@@ -64,6 +64,37 @@ test.describe("mobile continuity", () => {
     await expect(page.getByRole("button", { name: /People/ })).toBeVisible({ timeout: 60_000 });
   });
 
+  // The floating View and scope bar names the person and the whole scope on
+  // Month, Entries and Summary alike, without cutting either short, and stays
+  // a comfortable tap target on the narrowest supported phone.
+  test("the View and scope bar shows the full scope on Month, Entries and Summary at 375 px", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    const pages = [
+      ["/month?view=person-tim&month=2026-04&scope=direct_plus_shared", "/api/month-page"],
+      ["/entries?view=person-tim&month=2026-04&entries_scope=direct_plus_shared", "/api/entries-page"],
+      ["/summary?view=person-tim&month=2026-04&scope=direct_plus_shared&summary_start=2025-06&summary_end=2026-04", "/api/summary-page"]
+    ];
+
+    for (const [path, apiPath] of pages) {
+      const trigger = page.locator(".mobile-context-sticky-wrap .mobile-context-trigger");
+      await gotoPageAfterApi(page, path, apiPath, () => trigger);
+      await expect(trigger.locator(".mobile-context-trigger-label"), path).toHaveText("Tim · Direct + Shared");
+      await expect(trigger, path).toContainText("View and scope");
+
+      const fit = await trigger.evaluate((element) => {
+        const clipped = [element, ...element.querySelectorAll("*")]
+          .filter((node) => node.scrollWidth > node.clientWidth || node.scrollHeight > node.clientHeight)
+          .map((node) => node.className);
+        const box = element.getBoundingClientRect();
+        return { clipped, height: box.height, left: box.left, right: box.right, viewport: window.innerWidth };
+      });
+      expect(fit.clipped, path).toEqual([]);
+      expect(fit.height, path).toBeGreaterThanOrEqual(44);
+      expect(fit.left, path).toBeGreaterThanOrEqual(0);
+      expect(fit.right, path).toBeLessThanOrEqual(fit.viewport);
+    }
+  });
+
   test("entries page stays inside the viewport on narrow and tablet screens", async ({ page }) => {
     const assertEntriesViewportFits = async () => {
       await gotoPageAfterApi(
