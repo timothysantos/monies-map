@@ -235,10 +235,20 @@ needs them all), so `month-insight-facts.js` first keeps the entries the
 `effectiveScopeForView` (`src/domain/person-view-scope.ts`, over
 `person-entry-amount.ts`): every entry for the household, and a person's own
 entries in the scope at their own amounts. A scope change therefore changes
-the facts and the wording cache key. The Splits check-in counts the active
-group's records at their group totals, the same figure as the Splits
-`Total spend`, in every view, and so always uses group-level wording rather
-than addressing the viewer ("<person>, you spent") as if it were their own.
+the facts and the wording cache key. The Splits check-in follows the view
+too: `buildSplitInsightRecords` (`split-helpers.js`, exposed on the Splits
+model as `insightRecords`) gives a person view that person's split share of
+each expense of the active group, read from the activity's existing
+`shares` rows and in the group currency (a JPY trip reads JP¥), and leaves
+out an expense they have no share in; settlements carry no spend. The
+check-in then addresses the person ("Tim's money check-in", "Tim, you
+spent"). The household view counts the group totals, the same figure as the
+Splits `Total spend`, with household wording. The Splits route pins a
+person view whenever the household has people, so in practice the Splits
+check-in is always a person's; the household branch is covered by
+`tests/splits-insight-records.test.mjs`. The wording request still sends
+only the computed facts with the name replaced, and its cache key changes
+with the view.
 
 ## Scope Controls
 
@@ -574,8 +584,8 @@ Between the two layouts there is a CSS-only mid-width range, 761 to
 layout must still fit the screen. It needs no JavaScript, so it has no
 query in `use-viewport.js`. Its blocks are
 `@media (min-width: 761px) and (max-width: 1099px)` (plus one to 960 px)
-and never touch the phone or wide-desktop rules. The header block runs on
-to 1,279 px (see below). The header rules are in
+and never touch the phone or wide-desktop rules. A header block for 1,100
+to 1,199 px follows it (see below). The header rules are in
 `public/styles.css`, because every page shows the header. The Month rules
 are in `src/client/month-mid-width.css`, which `month-panel.jsx` imports,
 so they ship with the lazy Month route and stay out of the first-screen
@@ -585,13 +595,24 @@ so its rules win over base rules of the same specificity.
 - The header's period controls wrap below the page tabs as one group.
   Before, they widened the page up to 960 px and slid under the tabs from
   961 px, covering Settings and FAQ.
-  The same header block runs to 1,279 px (`max-width: 1279px`): from
-  1,100 to about 1,195 px the tabs and period controls do not fit one row,
-  and the tab strip ran up to 71 px under the "‹" button. There the period
-  controls now wrap below the tabs; where the row fits (about 1,200 px and
-  up) the wrap does not happen and the header is laid out as before.
-  `tests/e2e/header-tab-fit.spec.js` checks every page at 1,120 and
-  1,200 px with `elementFromPoint` at each tab's edges and centre.
+  From 1,100 px the header is one row (pills, tabs, period controls), with
+  no second row, hidden tab or sideways scroll. At desktop spacing the row
+  needs about 1,160 px and fits from 1,200 px (the shell's content width
+  stops growing there). From 1,100 to 1,199 px
+  (`@media (min-width: 1100px) and (max-width: 1199px)`) the header
+  gap, view pill and tab padding, tab and period gaps and the period box
+  (padding, gap, `min-width` 236 px, still wider than the Summary range)
+  tighten by about 125 px, leaving about 30 px spare at 1,100 px; the text
+  size is unchanged. 1,200 px and wider, and phones, are pixel-identical to
+  before. `tests/e2e/header-tab-fit.spec.js` checks every page at 1,100,
+  1,120, 1,200 and 1,279 px: `elementFromPoint` at each tab's edges and
+  centre and each period control, one shared vertical centre for the row,
+  and the 1,440 px header height; it also pins the 1,440 and 390 px header
+  spacing. A two-row header here (period controls below the tabs) was
+  tried and rejected because it pushed the page down.
+  From 761 to 1,099 px the wrap above still applies: there one row does not
+  fit at this spacing (at 761 to 960 px the view pills already sit on their
+  own row).
 - The Month panel and plan sections may shrink below their tables'
   min-content width (a grid item's automatic minimum is its min-content,
   which is the whole table), so `.month-table-wrap` scrolls inside the page

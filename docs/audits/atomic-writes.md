@@ -1102,7 +1102,12 @@ about 22) 287/287.
   that person's own spend. Closed 2026-09-26: the Splits check-in always
   uses group-level wording ("The household received ... spent ..."), never
   "<person>, you ...", in every view (`financial-insight.spec.js` "entries
-  and splits scope their advice" fails on the old wording).
+  and splits scope their advice" fails on the old wording). Superseded on
+  branch `header-checkin-fixes` by the owner's decision: a person view's
+  Splits check-in counts that person's split share of each group expense
+  (in the group currency) and addresses them; the household view keeps
+  group totals and household wording (`financial-insight.spec.js` "the
+  splits check-in follows the person view", `splits-insight-records.test.mjs`).
 - Closed 2026-09-26 (Person view totals, above): Summary months and the
   Month "Actual spend" card in a person view counted other people's direct
   entries, and a person with only linked split shares in a month had no
