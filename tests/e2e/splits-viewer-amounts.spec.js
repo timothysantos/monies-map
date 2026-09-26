@@ -61,7 +61,11 @@ test("split editor can choose the odd-cent recipient explicitly", async ({ page 
   await expect(editor.getByText("Joyce owes")).toHaveCount(0);
   await expect(editor.getByText("Odd cent")).toBeVisible();
   await editor.getByRole("button", { name: "Tim gets +$0.01" }).click();
+  // Read the stored shares only after the save has answered; reading while it
+  // is in flight can return the pre-save split.
+  const saved = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/splits/expenses/update" && response.ok());
   await editor.getByRole("button", { name: /Save|Done editing split/ }).click();
+  await saved;
 
   const updatedData = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
   const updatedItem = updatedData.splitsPage.activity.find((item) => item.description === description);
