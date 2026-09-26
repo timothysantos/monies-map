@@ -14,7 +14,7 @@ import process from "node:process";
 import { loadScaleFixture, readFixtureName } from "./load-performance-fixture.mjs";
 
 const PERFORMANCE_READY_MARKER = "PERFORMANCE_FIXTURE_READY";
-// Demo seed months for DEMO_SEED_MONTH=2026-05 (see reseed-contract E2E).
+// Demo seed months for DEMO_SEED_MONTH=2026-05 (see the reseed case in tests/page-dto-api.test.mjs).
 const EXPECTED_TRACKED_MONTHS = ["2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2026-05"];
 
 const root = process.cwd();

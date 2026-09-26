@@ -427,6 +427,19 @@ Testing depth rule:
   needs a reason, and `// @ts-nocheck` is only for generated or vendor code
 - run `npm run test:e2e` before merging broad shared-infrastructure,
   persistence, import, or cross-page invalidation changes
+- browser or unit: a test belongs in Playwright when the screen is part of
+  what it proves: focus and keyboard, layout at a breakpoint, dialogs,
+  sheets and Escape, navigation, back/forward and deep links, drafts
+  surviving, money privacy, loading, error and retry states, timing and
+  races, route warmup, or the Worker, D1 and client working together. A test
+  that only sends API requests and checks the JSON, a computed total, a date
+  or parser rule, a DTO shape or a stored row is a Worker-level test: put it
+  in `tests/*-api.test.mjs` with `useSeededWorkerRequest()`
+  (`tests/support/worker-request.mjs`, the real Worker over a real local D1)
+  or, for a pure function, a plain unit test. Every user workflow keeps at
+  least one browser test that drives it end to end. When in doubt, keep it
+  in the browser. `docs/audits/e2e-unit-audit.md` records the moves made so
+  far and the candidates kept on purpose
 - do not waive a failing browser scenario as timing-sensitive until the
   user-visible invariant has been reproduced and the test has been proven to
   wait on the correct route or rendered state

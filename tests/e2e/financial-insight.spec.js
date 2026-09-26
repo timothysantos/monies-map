@@ -15,44 +15,6 @@ test.describe("financial insights", () => {
     });
   });
 
-  test("the insight endpoint falls back to computed wording when the Worker AI binding is absent", async ({ page }) => {
-    const response = await page.request.post("/api/ai-assist/financial-insight", {
-      data: {
-        facts: {
-          contextLabel: "August 2026 entries",
-          entryCount: 2,
-          spend: "$20.00",
-          income: "$100.00",
-          net: "$80.00",
-          topCategoryName: "Food & Drinks",
-          topCategoryAmount: "$20.00",
-          topMerchantName: "Cold Storage",
-          topMerchantAmount: "$20.00",
-          notableFact: "Food & Drinks makes up all spending in this list.",
-          cashFlowPrinciple: "$80.00 is left after the spending recorded so far.",
-          nextSpendConsideration: "Before buying something non-essential, set aside money for planned bills.",
-          accountingAdvice: "Review provisional entries before closing the month.",
-          decisionMap: {
-            enabled: true,
-            needsReview: false,
-            lanes: [{
-              id: "surplus",
-              label: "Money left so far",
-              value: "$80.00",
-              detail: "This is not automatically free cash.",
-              tone: "positive"
-            }]
-          }
-        }
-      }
-    });
-    expect(response.ok(), await response.text()).toBeTruthy();
-    const payload = await response.json();
-    expect(payload.available).toBe(false);
-    expect(payload.source).toBe("deterministic");
-    expect(payload.narrative).toContain("August 2026 entries");
-  });
-
   test("summary and month render computed insights without waiting for AI", async ({ page }) => {
     await gotoPageAfterApi(
       page,
