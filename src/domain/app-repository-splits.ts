@@ -1750,18 +1750,20 @@ export async function assertLinkedSplitSettlementUnchanged(
           return { ...facts, date, partyIds: [payer, ...facts.partyIds.slice(1)] };
         };
         if (sharedSync) {
-          const sharePeople = await loadSplitSharePeople(db);
-          const { firstAmount, secondAmount } = buildSplitShareAmounts(sharedSync.amountMinor, sharedSync.splitBasisPoints);
+          const shares = await planSharedSaveShares(db, {
+            splitExpenseId: split.id,
+            stored: { amountMinor: current.amountMinor, currency: current.currency },
+            amountMinor: sharedSync.amountMinor,
+            currency: entryCurrency,
+            splitBasisPoints: sharedSync.splitBasisPoints
+          });
           return {
             date: sharedSync.date,
             groupId: current.groupId,
             currency: entryCurrency,
             amountMinor: sharedSync.amountMinor,
             partyIds: [sharedSync.payerPersonId ?? current.partyIds[0]],
-            shares: [
-              { personId: sharePeople[0].id, amountMinor: firstAmount },
-              { personId: sharePeople[1].id, amountMinor: secondAmount }
-            ]
+            shares: shares.map((share) => ({ personId: share.personId, amountMinor: share.amountMinor }))
           };
         }
         if (followAmountMinor === undefined || current.currency !== entryCurrency) {
@@ -1797,6 +1799,46 @@ async function loadOrderedSplitShares(db: D1Database, splitExpenseId: string) {
     .bind(splitExpenseId)
     .all<{ person_id: string; ratio_basis_points: number; amount_minor: number }>();
   return shares.results.map((share) => ({ personId: share.person_id, ratioBasisPoints: share.ratio_basis_points, amountMinor: share.amount_minor }));
+}
+
+// The shares a shared entry save writes to its linked split, in split-share
+// people order; the settlement lock predicts the same. The editor sends the
+// split's stored first-share ratio back as the basis, and that ratio is
+// rounded (10.01 split 5.00/5.01 is stored as 4995, which floors back to
+// 4.99), so a save that keeps the amount, currency and stored basis keeps the
+// stored shares to the cent. Any other save builds them from the basis.
+async function planSharedSaveShares(
+  db: D1Database,
+  input: {
+    splitExpenseId: string | null;
+    stored: { amountMinor: number; currency: string | null } | null;
+    amountMinor: number;
+    currency: string;
+    splitBasisPoints?: number;
+  }
+): Promise<Array<{ personId: string; ratioBasisPoints: number; amountMinor: number }>> {
+  const sharePeople = await loadSplitSharePeople(db);
+  const keepsAmountAndBasis = input.splitExpenseId
+    && input.stored
+    && input.stored.amountMinor === input.amountMinor
+    && normalizeSplitCurrency(input.stored.currency) === normalizeSplitCurrency(input.currency)
+    && input.splitBasisPoints !== undefined;
+  if (keepsAmountAndBasis && input.splitExpenseId) {
+    const stored = await loadOrderedSplitShares(db, input.splitExpenseId);
+    if (
+      stored.length === 2
+      && stored[0].personId === sharePeople[0].id
+      && stored[1].personId === sharePeople[1].id
+      && stored[0].ratioBasisPoints === input.splitBasisPoints
+    ) {
+      return stored;
+    }
+  }
+  const { firstBasisPoints, secondBasisPoints, firstAmount, secondAmount } = buildSplitShareAmounts(input.amountMinor, input.splitBasisPoints);
+  return [
+    { personId: sharePeople[0].id, ratioBasisPoints: firstBasisPoints, amountMinor: firstAmount },
+    { personId: sharePeople[1].id, ratioBasisPoints: secondBasisPoints, amountMinor: secondAmount }
+  ];
 }
 
 export async function upsertLinkedSplitExpenseForEntryRecord(
@@ -1851,9 +1893,9 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
   }
 
   const existingSplit = await db
-    .prepare("SELECT id, split_group_id, split_batch_id FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ? AND deleted_at IS NULL")
+    .prepare("SELECT id, split_group_id, split_batch_id, total_amount_minor, currency FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ? AND deleted_at IS NULL")
     .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
-    .first<{ id: string; split_group_id: string | null; split_batch_id: string | null }>();
+    .first<{ id: string; split_group_id: string | null; split_batch_id: string | null; total_amount_minor: number; currency: string | null }>();
   const splitExpenseId = existingSplit?.id ?? `split-expense-${Date.now()}`;
   const splitGroupId = input.splitGroupId === undefined ? existingSplit?.split_group_id ?? null : input.splitGroupId || null;
   await assertSplitGroupCurrency(db, splitGroupId, entry.currency);
@@ -1866,6 +1908,14 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
         groupId: splitGroupId,
         date: entry.transaction_date
       });
+  // Planned before the writes below replace the stored shares.
+  const shares = await planSharedSaveShares(db, {
+    splitExpenseId: existingSplit?.id ?? null,
+    stored: existingSplit ? { amountMinor: existingSplit.total_amount_minor, currency: existingSplit.currency } : null,
+    amountMinor: entry.amount_minor,
+    currency: entry.currency,
+    splitBasisPoints: input.splitBasisPoints
+  });
 
   if (existingSplit) {
     await db
@@ -1922,16 +1972,6 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
       )
       .run();
   }
-
-  const sharePeople = await loadSplitSharePeople(db);
-  const { firstBasisPoints, secondBasisPoints, firstAmount, secondAmount } = buildSplitShareAmounts(
-    entry.amount_minor,
-    input.splitBasisPoints
-  );
-  const shares = [
-    { personId: sharePeople[0].id, ratioBasisPoints: firstBasisPoints, amountMinor: firstAmount },
-    { personId: sharePeople[1].id, ratioBasisPoints: secondBasisPoints, amountMinor: secondAmount }
-  ];
 
   for (const split of shares) {
     await db
