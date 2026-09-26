@@ -136,6 +136,9 @@ Budget rules:
   +5% of `scripts/initial-bundle-budget.json`, run by `npm run verify`) and
   the page-response size test in `tests/e2e/api-performance.spec.js` (+10% of
   `tests/e2e/api-payload-budget.json`, run by the smoke bundle)
+- CSS that only one lazy route uses goes in a stylesheet imported by that
+  route's module (`month-mid-width.css` from `month-panel.jsx`), so it ships
+  with the route; `public/styles.css` counts toward the first-screen budget
 
 ## List Rendering Contract
 
