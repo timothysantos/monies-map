@@ -39,13 +39,6 @@ const {
   format: formatService
 } = moniesClient;
 
-// Desktop Summary's inline scope pills are pending a design decision: true
-// keeps them, false leaves desktop Summary with no scope control (as before
-// the pills were added). Phones never show them; they use the View and scope
-// bar. Flipping this also means updating the desktop checks in
-// tests/e2e/summary-workflow.spec.js and "Scope Controls" in design.md.
-const SHOW_DESKTOP_SCOPE_PILLS = true;
-
 // Read alongside docs/import-summary-code-glossary.md.
 // This panel has three main blocks:
 // 1. Range-level metrics and spending mix.
@@ -181,6 +174,8 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
         <div>
           <h2>{messages.tabs.summary}</h2>
           <span className="panel-context">{messages.common.viewingDot(view.label)}</span>
+          {/* A phone switches scope from the floating View and scope bar instead. */}
+          {isMobileLayout ? null : <SummaryScopeSwitch view={view} onScopeChange={handleScopeChange} />}
         </div>
         <div className="metric-row metric-row-summary summary-head-metrics">
           {safeSummaryPage.metricCards.map((card) => (
@@ -188,11 +183,6 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
           ))}
         </div>
       </div>
-
-      {/* A phone switches scope from the floating View and scope bar instead. */}
-      {SHOW_DESKTOP_SCOPE_PILLS && !isMobileLayout
-        ? <SummaryScopeControl view={view} onScopeChange={handleScopeChange} />
-        : null}
 
       <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-summary" canRequestWording={canRequestWording} />
 
@@ -238,35 +228,38 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
   );
 }
 
-// A person view's figures follow the route's scope, so Summary names the
-// scope they count and lets the person switch it, with the same pills as
-// Month's desktop header. The page view carries the scope of the request the
-// figures answer (buildSummaryPageView), so it never runs ahead of them. The
-// household has one Combined scope and no control. On a phone the floating
-// View and scope bar in App.jsx is the one scope control, as on Month.
-function SummaryScopeControl({ view, onScopeChange }) {
+// A person view's figures follow the route's scope, so desktop Summary names
+// the scope they count with a compact one-click switch in the empty space
+// under its title, beside the taller metric cards. It adds no height, and no
+// width to the title column: `contain: inline-size` drops its content size and
+// a -12px margin cancels the title row's flex gap (.summary-scope-switch in
+// styles.css). Where the header stacks (960px and below) it joins the title
+// row instead. What each scope counts is the option's tooltip. The page view carries the scope of the
+// request the figures answer (buildSummaryPageView), so it never runs ahead of
+// them. The household has one Combined scope and no switch. On a phone the
+// floating View and scope bar in App.jsx is the one scope control.
+function SummaryScopeSwitch({ view, onScopeChange }) {
   const scopes = view.scopes ?? [];
   if (scopes.length < 2) {
     return null;
   }
   const { selectedScope } = view;
   return (
-    <div className="summary-scope" role="group" aria-label={messages.summary.scope}>
-      <span aria-hidden="true">{messages.summary.scope}</span>
-      <div className="scope-toggle pill-row scope-toggle-row">
+    <div className="summary-scope-switch">
+      <div className="scope-toggle pill-row" role="group" aria-label={messages.summary.scope}>
         {scopes.map((scope) => (
           <button
             key={scope.key}
             className={`pill scope-button ${scope.key === selectedScope ? "is-active" : ""}`}
             type="button"
             aria-pressed={scope.key === selectedScope}
+            title={messages.views.scopeHint[scope.key]?.(view.label)}
             onClick={() => onScopeChange(scope.key)}
           >
-            {scope.label}
+            {messages.summary.scopeSwitchLabel[scope.key] ?? scope.label}
           </button>
         ))}
       </div>
-      <span>{messages.views.scopeHint[selectedScope]?.(view.label)}</span>
     </div>
   );
 }

@@ -84,6 +84,12 @@ export const messages = {
     incomeLabel: (plannedValue, actualValue) => `Planned income ${plannedValue} • Actual income ${actualValue}`,
     totalSpend: "Total spend",
     scope: "Scope",
+    // The desktop scope switch under the Summary title.
+    scopeSwitchLabel: {
+      direct: "Direct",
+      shared: "Shared",
+      direct_plus_shared: "Both"
+    },
     table: {
       metric: "Metric",
       estimate: "Planned",
