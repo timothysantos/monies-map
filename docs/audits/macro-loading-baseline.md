@@ -2908,3 +2908,43 @@ Cohort 1, 6 + 6 runs, load 10–22: open 196.9 → 172.6 (run medians
 72 in runs 3–5 and is within noise on all three (medians 198.4 → 189.4,
 134.7 → 115.5, 287.5 → 290.8). All three medians fell by 21–24 ms in
 both usable cohorts, which matches the traced style work.
+
+### Sizes
+
+First-screen bundle (`npm run check:bundle`), gzip:
+
+| Build | JS | CSS |
+| --- | ---: | ---: |
+| Branch point `501a7d6` | 173,671 B | 33,485 B |
+| Page rules + header fix, before the merge | 173,666 B | 33,496 B |
+| `macro-performance` `a6f179e` (as reported) | 174,263 B | 33,540 B |
+| Branch after the merge, before moving CSS | 174,271 B | 33,552 B |
+| Branch head (Splits-only insight colours moved to `splits-panel.css`) | 174,286 B | 33,434 B |
+
+The CSS limit is 33,559 B (31,961 + 5%), unchanged. The page-rule change
+adds about 12 B; the header fix changes one number. Moving the
+`.panel-splits .financial-*` overrides into the lazy Splits route (0.20 kB
+gzip there) leaves 125 B of headroom. Computed styles were compared again
+between the builds before and after that move: identical in all 21 states
+except the added `<link>` in `<head>` on Splits pages.
+
+### Gates
+
+Run on the branch after merging `macro-performance` at `a6f179e` (merge
+`f11cba4`), Node 22.23.3, browser suites through the isolated stacks with
+`E2E_PORT_OFFSET=30`.
+
+| Check | Result |
+| --- | --- |
+| `npm run audit` | 0 vulnerabilities |
+| `npm run typecheck`, `npm run typecheck:client` | pass |
+| `npm run lint` | 0 errors (30 existing warnings) |
+| `npm run test:unit` | 785/785 |
+| `npm run build`, `npm run check:bundle` | pass: 174,286 B JS / 33,434 B CSS against 180,337 / 33,559 limits; budget unchanged |
+| `npm run test:e2e:smoke` | 89/89 |
+| `npm run test:e2e:sharded` (full suite, 3 shards) | 295/295 |
+| Performance harness, scale-10k (port 5191) | the cohorts above |
+
+Before the merge, `mobile-sheet-focus.spec.js` failed once (the first
+test timed out waiting for the Month page on a cold dev server while the
+load average was about 30) and passed 16/16 when rerun alone.

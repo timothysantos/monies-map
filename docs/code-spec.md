@@ -137,8 +137,14 @@ Budget rules:
   the page-response size test in `tests/e2e/api-performance.spec.js` (+10% of
   `tests/e2e/api-payload-budget.json`, run by the smoke bundle)
 - CSS that only one lazy route uses goes in a stylesheet imported by that
-  route's module (`month-mid-width.css` from `month-panel.jsx`), so it ships
-  with the route; `public/styles.css` counts toward the first-screen budget
+  route's module (`month-mid-width.css` from `month-panel.jsx`,
+  `splits-panel.css` from `splits-panel.jsx`), so it ships with the route;
+  `public/styles.css` counts toward the first-screen budget
+- no `:has()` that searches all descendants (`body:has(.x)`): on a large
+  month each restyle of an element such a rule styles walks the whole page.
+  A portalled layer uses `body:has(> .x)`; an element inside the page holds
+  a `<body>` flag through `page-flags.js` (design.md "Page State Rules";
+  `tests/page-flags.test.mjs` enforces it)
 
 ## List Rendering Contract
 
