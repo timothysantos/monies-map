@@ -34,12 +34,24 @@ test("buildSummaryPageView carries the scope of the request its figures answer",
     summaryPageData: { viewId: "person-joyce", label: "Joyce", summaryPage: { months: [] } },
     summaryAccountPillsData: { accountPills: [] }
   };
+  const shared = buildSummaryPageView({ ...input, summaryPageDataRequestKey: "view=person-joyce&month=2025-10&scope=shared" });
+  assert.equal(shared.selectedScope, "shared");
+  assert.deepEqual(shared.scopes.map((scope) => scope.key), ["direct", "shared", "direct_plus_shared"]);
+  // A missing or unknown scope counts as Direct + Shared, as the Worker counts it.
+  assert.equal(buildSummaryPageView(input).selectedScope, "direct_plus_shared");
   assert.equal(
-    buildSummaryPageView({ ...input, summaryPageDataRequestKey: "view=person-joyce&month=2025-10&scope=shared" }).requestedScope,
-    "shared"
+    buildSummaryPageView({ ...input, summaryPageDataRequestKey: "view=person-joyce&scope=everything" }).selectedScope,
+    "direct_plus_shared"
   );
-  // No request key (or no scope in it) leaves the scope unknown, not guessed.
-  assert.equal(buildSummaryPageView(input).requestedScope, "");
+  // The household is Combined whatever scope the route carried, so it offers no choice.
+  const household = buildSummaryPageView({
+    ...input,
+    selectedViewId: "household",
+    summaryPageData: { viewId: "household", label: "Household", summaryPage: { months: [] } },
+    summaryPageDataRequestKey: "view=household&scope=shared"
+  });
+  assert.equal(household.selectedScope, "direct_plus_shared");
+  assert.deepEqual(household.scopes, [{ key: "direct_plus_shared", label: "Combined" }]);
   assert.equal(buildSummaryPageView({ ...input, summaryPageData: null }), null);
 });
 

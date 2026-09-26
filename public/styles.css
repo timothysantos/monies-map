@@ -386,7 +386,8 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   color: var(--accent-strong);
 }
 
-.panel-context {
+.panel-context,
+.summary-scope > span {
   color: var(--muted);
   font-size: 0.9rem;
 }
@@ -663,26 +664,9 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   box-shadow: none;
 }
 
-/* Summary names the scope a person view counts (Month shows it in its header). */
+/* Summary's scope row; Month shows scope in its header controls. */
 .summary-scope {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 12px;
-  margin: 0 0 14px;
-}
-
-.summary-scope-label {
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.summary-scope-hint {
-  color: var(--muted);
-  font-size: 0.85rem;
+  margin-bottom: 14px;
 }
 
 .mobile-context-sticky-wrap{
@@ -694,7 +678,8 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   display: none;
 }
 
-.month-header-controls {
+.month-header-controls,
+.summary-scope {
   display: flex;
   align-items: center;
   gap: 12px;
