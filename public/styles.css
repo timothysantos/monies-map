@@ -9252,6 +9252,88 @@ th {
   
 }
 
+/* Between the phone layout and 1,100px the tab strip and the period
+   controls do not fit on one line. The controls wrap below the tabs as one
+   group, instead of widening the page (up to 960px) or sliding under the
+   tabs (961px and up). */
+@media (min-width: 761px) and (max-width: 1099px) {
+  .period-inline {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .period-nav-cluster {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 960px) {
+  .period-inline {
+    justify-content: flex-start;
+  }
+}
+
+/* Month on mid-width screens (tablets, small laptops). The desktop tables
+   need about 1,100px. Here they fit their section where they can and
+   otherwise scroll inside .month-table-wrap, so the page never scrolls
+   sideways. The grid items are allowed to shrink (a grid item's automatic
+   minimum is its min-content width, which is the full table), the money
+   columns come first and stay on screen, and notes wrap to two lines. The
+   phone layout and wide desktops are unchanged. */
+@media (min-width: 761px) and (max-width: 1099px) {
+  .month-panel,
+  .month-plan-section {
+    min-width: 0;
+  }
+
+  .month-table-wrap th,
+  .month-table-wrap td {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .month-table-wrap th {
+    letter-spacing: 0.04em;
+  }
+
+  .month-table-wrap .month-category-cell {
+    gap: 8px;
+  }
+
+  .month-table-wrap .month-actual-drilldown {
+    min-width: 0;
+  }
+
+  .month-table-wrap .planned-link-manage-trigger {
+    white-space: nowrap;
+  }
+
+  .month-table-wrap .note-trigger span {
+    display: -webkit-box;
+    max-width: 11rem;
+    white-space: normal;
+    overflow-wrap: break-word;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .month-table-wrap .note-trigger svg {
+    flex: 0 0 auto;
+  }
+
+  /* Inline edit widens the row; Save and Cancel stick to the visible right
+     edge of the table's scroll area. */
+  .month-inline-edit-actions {
+    position: sticky;
+    right: 12px;
+    display: flex;
+    width: max-content;
+    margin-left: auto;
+  }
+}
+
 @media (max-width: 1280px) {
   .settings-categories-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
