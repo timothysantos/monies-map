@@ -1,4 +1,5 @@
 import { getCurrentMonthKey } from "../lib/month";
+import { personEntryAmountMinor } from "./person-entry-amount";
 import type {
   AccountDto,
   EntryDto,
@@ -255,6 +256,8 @@ export function buildSnapshotRowsForScope(rows: MonthPlanRowDto[], personScope: 
   ));
 }
 
+// A scope's stored month spend: every expense at its full amount for the
+// household, the person's own part (personEntryAmountMinor) for a person.
 export function sumVisibleExpenseMinor(entries: EntryDto[], personScope: string) {
   return entries.reduce((sum, entry) => {
     if (entry.entryType !== "expense") {
@@ -265,19 +268,7 @@ export function sumVisibleExpenseMinor(entries: EntryDto[], personScope: string)
       return sum + entry.amountMinor;
     }
 
-    if (entry.linkedSplitExpenseId) {
-      const linkedShare = entry.linkedSplitShares?.find((item) => item.personId === personScope);
-      return linkedShare ? sum + linkedShare.amountMinor : sum;
-    }
-
-    if (entry.ownershipType === "direct") {
-      return entry.splits.some((split) => split.personId === personScope)
-        ? sum + entry.amountMinor
-        : sum;
-    }
-
-    const split = entry.splits.find((item) => item.personId === personScope);
-    return split ? sum + split.amountMinor : sum;
+    return sum + (personEntryAmountMinor(entry, personScope) ?? 0);
   }, 0);
 }
 

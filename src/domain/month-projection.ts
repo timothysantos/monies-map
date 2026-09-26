@@ -3,6 +3,7 @@
 // filtered for a person view. Pure functions over loaded rows.
 
 import { buildDonutChart } from "./donut-chart-projection";
+import { buildPersonScopes, effectiveScopeForView, filterEntriesForView } from "./person-view-scope";
 import type {
   CategoryDto,
   EntryDto,
@@ -23,7 +24,7 @@ export function buildMonthPage(
   selectedMonth: string,
   currentSummaryMonth: SummaryMonthDto | null
 ): MonthPageDto {
-  const effectiveScope = selectedPersonId === "household" ? "direct_plus_shared" : selectedScope;
+  const effectiveScope = effectiveScopeForView(selectedPersonId, selectedScope);
   const visibleEntries = filterEntriesForView(monthEntries, selectedPersonId, effectiveScope);
   const visiblePlanRows = derivePlanRowActuals(
     buildPlanRowsForView(monthPlanRows, selectedPersonId),
@@ -84,16 +85,6 @@ export function buildMonthPage(
     categoryShareChart: buildDonutChart(visibleEntries, categories),
     entries: monthEntries
   };
-}
-
-export function buildPersonScopes(selectedPersonId: string): Array<{ key: PersonScope; label: string }> {
-  return selectedPersonId === "household"
-    ? [{ key: "direct_plus_shared", label: "Combined" }]
-    : [
-        { key: "direct", label: "Direct ownership" },
-        { key: "shared", label: "Shared" },
-        { key: "direct_plus_shared", label: "Direct + Shared" }
-      ];
 }
 
 export function deriveIncomeRowActuals(
@@ -245,22 +236,6 @@ export function buildPlanRowsForView(rows: MonthPlanRowDto[], personId: string):
     .map((row) => normalizePlanRowForView(row));
 }
 
-function filterEntriesForView(entries: EntryDto[], personId: string, scope: PersonScope): EntryDto[] {
-  if (personId === "household") {
-    if (scope === "shared") {
-      return entries.filter((entry) => isEntryLinkedToSplitExpense(entry));
-    }
-
-    if (scope === "direct") {
-      return entries.filter((entry) => !isEntryLinkedToSplitExpense(entry));
-    }
-
-    return entries;
-  }
-
-  return entries.filter((entry) => rowMatchesView(entry, personId, scope));
-}
-
 export function adjustEntriesForView(entries: EntryDto[], personId: string): EntryDto[] {
   return entries.map((entry) => adjustEntryForView(entry, personId));
 }
@@ -293,35 +268,6 @@ function adjustEntryForView(entry: EntryDto, personId: string): EntryDto {
     totalAmountMinor: entry.amountMinor,
     viewerSplitRatioBasisPoints: matchingSplit.ratioBasisPoints
   };
-}
-
-function rowMatchesView(
-  entry: EntryDto,
-  personId: string,
-  scope: PersonScope
-) {
-  const isLinkedToSplits = isEntryLinkedToSplitExpense(entry);
-  const directShares = entry.splits ?? [];
-  const linkedShares = entry.linkedSplitShares ?? [];
-
-  if (personId === "household") {
-    return scope === "shared"
-      ? isLinkedToSplits
-      : scope === "direct"
-        ? !isLinkedToSplits
-        : true;
-  }
-
-  if (scope === "shared") {
-    return isLinkedToSplits && linkedShares.some((split) => split.personId === personId);
-  }
-
-  if (scope === "direct") {
-    return !isLinkedToSplits && directShares.some((split) => split.personId === personId);
-  }
-
-  return directShares.some((split) => split.personId === personId)
-    || linkedShares.some((split) => split.personId === personId);
 }
 
 function isEntryLinkedToSplitExpense(entry: EntryDto) {

@@ -864,6 +864,12 @@ with its split percentage: only the converted SGD amount and the rate follow
 the card row. Such a save is allowed while the split is in a simplified
 settlement, as long as it does not change the split's date, payer or shares.
 
+Outside Splits, that card row counts in SGD. In a person view, Entries,
+Month, Summary and the month totals show each person's share of the SGD
+amount, split the same way as the JPY split: a JPY 10,000 dinner split 50/50
+and matched to an SGD 93.01 card row shows Tim's share as $46.50 and Joyce's
+as $46.51. The yen amounts stay in Splits.
+
 ### If you are updating mid-month
 
 Use a current-transaction export as a working ledger update.
@@ -1677,6 +1683,29 @@ If a shared dining row is split 55/45, the primary person should see the 55%
 subtotal and the partner should see the 45% subtotal. The full shared
 transaction can still be shown alongside it for context.
 
+A person view's actual spend is that person's own spend. Summary months, the
+Summary cards and charts, and the Month `Actual spend` card count the
+person's own entries at their full amount plus their share of each entry that
+is on splits; the other person's own entries are left out. The scope pills
+narrow it: `Direct ownership` counts only the person's entries that are not
+on splits, `Shared` only their split shares, and `Direct + Shared` both. For
+example, if Tim pays $100.00 for groceries and $80.00 for a dinner split 25%
+Tim / 75% Joyce, and Joyce pays $30.00 for shopping, Tim's Direct + Shared
+actual spend is $120.00 and Joyce's is $90.00, on Summary and Month alike;
+the household view shows $210.00. The stored month totals hold the same
+Direct + Shared figure per person, and a person whose only spending in a
+month is a split share (Joyce's $60.00 of a dinner Tim paid) still gets one.
+The Summary and Month Money check-ins count the same entries, so in Tim's
+Direct + Shared view the Month check-in says he spent $120.00, the same as
+his `Actual spend` card, and switching to `Shared` makes both say $20.00.
+
+In a person view, Summary shows the scope under its heading: the same
+`Direct ownership`, `Shared` and `Direct + Shared` pills as Month, with the
+active one highlighted and a short line saying what it counts (for example
+"Joyce's share of split expenses."). Tapping another pill reloads Summary for
+that scope, as on Month; on a phone the pills span the screen width. The
+household view always counts every entry, so it shows no scope pills.
+
 Important current limitation:
 
 - shared month-plan allocation still exists in storage and calculations
@@ -2320,8 +2349,10 @@ rank descriptions among candidates that the app has already constrained by
 account, amount, and date. Summary, Month, Entries, and Splits also show a
 Money check-in for the figures already on screen. It appears immediately
 from the app's own calculations, then may improve its wording in the background
-after a short pause. Changing a month, account, category, search, scope, or
-split group creates a different insight; the app keeps same-view wording in a
+after a short pause. In a person view, the Summary and Month check-ins count
+only that person's entries in the selected scope, the same entries as the
+`Actual spend` card beside them. Changing a month, account, category, search,
+scope, or split group creates a different insight; the app keeps same-view wording in a
 short-lived in-memory cache so it does not keep calling AI while you work.
 Its compact preview includes one deterministic pattern from the entries on the
 current screen before any optional AI wording returns. When a person view is
@@ -2431,6 +2462,10 @@ currency's usual digits: a ¥12,000 dinner reads "Spend JP¥12,000" in the total
 the group pill balance reads "You owe Joyce JP¥6,000", and the expense form's
 share preview shows JP¥6,000 each. SGD bank amounts keep their dollar
 formatting. Hiding money totals masks these amounts too.
+
+The category donut under the totals is also in the trip currency: it charts
+the open yen expenses of every JPY group, and an SGD group's donut charts
+only SGD expenses. Amounts in different currencies are never added together.
 
 For a simpler holiday workflow, create two groups in the trip currency: one
 with purchase source `Cash only` and one with `Bank/card`. The cash group keeps

@@ -2,7 +2,7 @@
 // household, with balances, activity, matches and direction labels.
 
 import { buildDonutChart } from "./donut-chart-projection";
-import { formatCurrencyMinor } from "./split-currency";
+import { formatCurrencyMinor, normalizeSplitCurrency } from "./split-currency";
 import type { SplitActivityHistoryDto } from "../types/dto";
 import type {
   CategoryDto,
@@ -14,6 +14,8 @@ import type {
   SplitSettlementDto,
   SplitSettlementCheckpointDto
 } from "../types/dto";
+
+const HOME_CURRENCY = "SGD";
 
 export function buildSplitsPage(
   viewId: string,
@@ -170,21 +172,7 @@ export function buildSplitsPage(
     ?? "split-group-none";
 
   const activity: SplitActivityDto[] = buildSplitActivity(viewId, checkpointedExpenses, checkpointedSettlements, personNameById);
-  const donutChart = buildDonutChart(
-    openExpenses.map((expense) => ({
-      id: expense.id,
-      date: expense.date,
-      description: expense.description,
-      accountName: expense.groupName,
-      categoryName: expense.categoryName,
-      entryType: "expense",
-      ownershipType: "shared",
-      amountMinor: viewerExpenseAmountForChart(expense, viewId),
-      offsetsCategory: false,
-      splits: expense.shares
-    })),
-    categories
-  );
+  const { donutChart, donutChartsByCurrency } = buildSplitDonutCharts(openExpenses, categories, viewId);
 
   return {
     month: selectedMonth,
@@ -192,6 +180,7 @@ export function buildSplitsPage(
     activity,
     matches: splitMatches.filter((item) => splitMatchMatchesView(item, visibleExpenses, visibleSettlements, viewId)),
     donutChart,
+    ...(donutChartsByCurrency ? { donutChartsByCurrency } : {}),
     settlementCheckpoints,
     activityHistory
   };
@@ -367,6 +356,46 @@ function buildSplitActivity(
   }
 
   return activity.sort((left, right) => right.date.localeCompare(left.date) || right.id.localeCompare(left.id));
+}
+
+// The category donut of open split expenses, one chart per split currency.
+// Currencies are never added together without FX evidence (DOMAIN.md), and a
+// cash travel expense has none, so a yen expense is charted with other yen
+// expenses and never counted as dollars. `donutChart` is the home-currency
+// (SGD) chart; each other currency with open expenses gets its own chart in
+// `donutChartsByCurrency`, which is left out when there are none.
+function buildSplitDonutCharts(openExpenses: SplitExpenseDto[], categories: CategoryDto[], viewId: string) {
+  const expensesByCurrency = new Map<string, SplitExpenseDto[]>();
+  for (const expense of openExpenses) {
+    const currency = normalizeSplitCurrency(expense.currency);
+    const current = expensesByCurrency.get(currency) ?? [];
+    current.push(expense);
+    expensesByCurrency.set(currency, current);
+  }
+
+  const chartFor = (expenses: SplitExpenseDto[]) => buildDonutChart(
+    expenses.map((expense) => ({
+      id: expense.id,
+      date: expense.date,
+      description: expense.description,
+      accountName: expense.groupName,
+      categoryName: expense.categoryName,
+      entryType: "expense",
+      ownershipType: "shared",
+      amountMinor: viewerExpenseAmountForChart(expense, viewId),
+      offsetsCategory: false,
+      splits: expense.shares
+    })),
+    categories
+  );
+  const foreignCurrencies = [...expensesByCurrency.keys()].filter((currency) => currency !== HOME_CURRENCY).sort();
+
+  return {
+    donutChart: chartFor(expensesByCurrency.get(HOME_CURRENCY) ?? []),
+    donutChartsByCurrency: foreignCurrencies.length
+      ? Object.fromEntries(foreignCurrencies.map((currency) => [currency, chartFor(expensesByCurrency.get(currency) ?? [])]))
+      : undefined
+  };
 }
 
 function viewerExpenseAmountForChart(expense: SplitExpenseDto, viewId: string) {

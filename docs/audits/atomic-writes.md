@@ -868,10 +868,245 @@ alone (the Splits page came up in the Household view, which has no "+ Add
 expense") and fails the same way with `src/` from `89d03ff` (the base), so
 it is not this branch; left for a separate fix.
 
+## Travel split home amounts (2026-09-26)
+
+Branch `travel-split-home-amounts` from `macro-performance` at `2646a9b`,
+Node v22.23.3. Closes the open item "a travel split's shares are counted as
+home-currency amounts" and the Splits donut watch item in
+`docs/flows/splits-flow.md`. No write path changed: both fixes are
+projections.
+
+1. Linked travel split shares. Real. Every home-currency projection of an
+   entry reads its split shares from `EntryDto.linkedSplitShares`, built in
+   one place (`loadEntriesForDateRange`, `app-repository-entries.ts`) from
+   `split_expense_shares.amount_minor`, which for a travel split is in the
+   split's currency. Consumers: the Entries viewer share and Month entries
+   (`adjustEntriesForView`), Month plan actuals and category chart, Summary
+   months and category charts (same adjusted entries), the stored person
+   month totals (`sumVisibleExpenseMinor` in `buildMonthlySnapshotStatements`)
+   and the client row display (`entry-row-display.js`, `entry-helpers.js`).
+   Fix: `buildLinkedSplitShareMap` converts a travel split's shares to each
+   person's home share of the ledger amount with `homeCurrencyShareAmounts`
+   (`split-allocation.ts`): the stored basis applied with the same floor and
+   balancing remainder as `rebalanceSplitSharesForTotal`, in split-share
+   people order, adding up to the ledger amount. The ledger amount is the
+   source rather than the stored FX rate, which is rounded to basis points
+   and would not add back up. Same-currency shares pass through untouched.
+   Rule in DOMAIN.md, "Home share of a travel split".
+2. Splits category donut. Real. `buildSplitsPage` summed every open expense
+   across currencies into one SGD chart. DOMAIN.md never nets currencies
+   without FX evidence and a cash travel expense has none, so per-group SGD
+   conversion is not available; the donut is grouped by currency instead:
+   `donutChart` keeps SGD only, `donutChartsByCurrency` (left out when empty)
+   holds each other currency, and the panel shows the active group's
+   currency through `selectSplitDonutChart`, formatted by
+   `SpendingMixChart`'s new optional `currency`.
+
+Tests first (`tests/atomic-writes-travel-split-home-amounts.test.mjs`, real
+local D1, plus `split-allocation.test.mjs` and
+`split-currency-display.test.mjs`). On the old `src/` (a pristine
+`git archive` of `macro-performance`) 3 of the 4 D1 tests failed: a JPY
+10,000 split 50/50 matched to an SGD 93.01 row showed Tim's share as 500,000
+(SGD 5,000.00) instead of 4,650 on Entries and Month; the stored month totals
+moved by +500,000 for Tim and Joyce instead of +4,650 and +4,651; a 70/30
+split showed 700,000 instead of 6,510; and two JPY group expenses added
+600,000 to the SGD donut's Food & Drinks. The fourth (an SGD split with an
+odd cent assigned to Tim keeps 5,001/5,000) passes on both, as it must.
+
+Persisted state (`scripts/persisted-state-snapshot.mjs`, ports 8975 and 8977,
+empty `dist/`): base vs branch differ only on the scenario's JPY travel
+split: July `person-tim` `monthly_snapshots` 8,159 → 7,809 (its share 5,000
+→ 4,650 of the SGD 93.00 row), the July Entries DTO shares 5,000/5,000 →
+4,650/4,650, and the three Splits DTOs, whose SGD Food & Drinks drops the
+JPY 50 (100 for the household) that moves to `donutChartsByCurrency.JPY`.
+Every table and every other DTO path is identical, so SGD splits are
+unchanged.
+
+Runtime (pass 2), `wrangler dev` 8827 and Vite 5427 on
+`.wrangler/state-travel`, browser pane, demo seed plus an SGD 93.01 UOB One
+row matched to a JPY 10,000 50/50 split in a JPY group and a JPY 3,000 cash
+expense paid by Joyce. Entries (Tim): `-$93.01 (-$46.50)` On splits Tokyo
+trip 50%, daily net -$331.20; Entries (Joyce): `-$93.01 (-$46.51)`, spend
+$1,318.00 ($1,271.50). Month (Tim): Food budget actual $759.69 (713.19 +
+46.50). Summary (Tim) May actual $5,643.16, equal to Month's. Stored May
+totals: household 568,967, Tim 441,817, Joyce 127,150 (seed + 9,301, +4,650,
++4,651); Joyce's equals her Entries spend. Splits (Tim): the Tokyo trip
+donut reads Spend JP¥6,500, Food & Drinks JP¥6,500 • 2 entries; the
+Non-group donut reads $331.48 with no yen. No console errors.
+
+Gates: `npm audit` 0 vulnerabilities; both typechecks clean; lint 0 errors
+(30 warnings, as base); unit 769/769; build; `check:bundle` 173,738 B JS gzip
+(budget 180,337) and 33,435 B CSS (unchanged, inside the 5% allowance);
+`E2E_PORT_OFFSET=60 npm run test:e2e:smoke` 88/88;
+`E2E_PORT_OFFSET=60 npm run test:e2e:sharded` (3 shards, load average
+15-25) 272/273: `financial-insight` "month, entries and splits each receive
+wording" timed out waiting for the first Summary heading, before any Splits
+step, and the whole `financial-insight.spec.js` then passed alone 11/11.
+After merging `macro-performance` at `501a7d6` (Month mid-width layout, clean
+merge): both typechecks clean, lint 0 errors (30 warnings), unit 769/769.
+
+Found while testing, not changed here (not travel-specific):
+- Summary months and the Month "Actual spend" card in a person view sum
+  every household entry (weighted to the person's share only when linked to
+  a split), not just that person's entries: on the seed, May 2026 Summary
+  actual is 559,666 in the household, Tim and Joyce views alike, while the
+  stored person totals are 437,167 and 122,499. The Month plan actuals and
+  category chart do filter by view.
+- A person whose only activity in a month is linked split shares gets no
+  stored month total row: `buildMonthlySnapshotStatements` counts a
+  person's entries by direct owner only (no July `person-joyce` row in the
+  snapshot scenario).
+
+## Person view totals (2026-09-26)
+
+Branch `person-view-totals` from `macro-performance` at `e93e351`, Node
+v22.23.3. Closes the two items found under Travel split home amounts. No
+write path changed: one projection fix and one condition inside the
+existing snapshot refresh.
+
+1. Person view actual spend. Real, a regression. Intended meaning, with
+   evidence: DOMAIN.md says every home-currency projection (Month actuals
+   and charts, Summary, the stored person month totals) counts each
+   person's share; Summary's person-view note reads "This view is filtered
+   to <person>. Shared actuals are weighted to this person's split share";
+   the FAQ says person views weight shared rows to the person's split; and
+   the Summary and Month builders filtered by view and scope
+   (`filterEntriesForView`) from `3ae0d65` until `93eee83` ("Split route
+   DTO builders into page modules", a structural move) replaced the filter
+   with `const visibleSummaryEntries = adjustedSummaryEntries`. Since then a
+   person view summed every household entry, weighting only split-linked
+   ones. Fix: one rule, `personEntryAmountMinor` (`person-entry-amount.ts`),
+   used by `sumVisibleExpenseMinor` (stored totals, unchanged values) and
+   `filterEntriesForView` (Summary months, cards and charts; Month Actual
+   spend, plan actuals and chart). The household view counts every entry
+   whatever scope the route carries (`effectiveScopeForView`). One edge also
+   aligned: a split-linked entry whose owner has no share row used to count
+   at full amount in Direct + Shared but in neither Direct nor Shared; it
+   now counts in none, as in the stored total.
+2. Share-only person. Real. `buildMonthlySnapshotStatements` counted a
+   person's activity by direct owner only, so a person whose only entries
+   were split shares got no row (or had it deleted). It now counts the same
+   entries as the total (`isEntryInPersonScope`, Direct + Shared); a split
+   delete that leaves no activity still removes the row.
+
+Tests first (`tests/person-view-totals.test.mjs`, real local D1, the write
+routes' own refresh, `recalculateMonthlySnapshots` as the freshness oracle):
+all 3 failed on the base. Seeded May, Tim Direct: 559,666 instead of
+437,167. A July month with Tim 100.00 direct, Joyce 30.00 direct, Tim 50,000
+income and a Tim-paid 80.00 split 25/75: on the base Tim read 15,000 in
+every scope (Joyce's 3,000 included) instead of 10,000 Direct, 2,000
+Shared and 12,000 Direct + Shared. A
+share-only Joyce (Tim-paid 80.00, 25/75) had no stored row instead of 6,000.
+Negative coverage: household equal in all three scopes (559,666; 21,000),
+Shared is 0 with no linked entries, Joyce's income is 0, and deleting the
+split removes her row and restores Tim to 8,000.
+
+Persisted state (ports 8963, empty `dist/`), id counters canonicalised (the
+harness left one category id suffix unnormalised in one run, which shifts
+later placeholder numbers): the only table change is the new July
+`person-joyce` `monthly_snapshots` row, 6,811 (4,650 home share of the JPY
+split on the 93.00 row plus 2,161). DTO changes are only person views:
+`month-page person-tim 2026-05 direct` Actual spend 579,376 to 449,051,
+`month-page person-joyce 2025-10 shared` 66,004 to 47,364, and
+`summary-page person-tim 2025-08..2026-05` months 542,700 / 502,318 /
+66,002 / 579,376 to 366,490 / 341,196 / 47,362 / 456,877, each equal to the
+stored Tim total, plus its category charts. Every household DTO and every
+other table is identical.
+
+Runtime (pass 2), `wrangler dev` 8828 and Vite 5428 on
+`.wrangler/state-persontotals`, browser pane, demo seed plus a Tim-paid
+80.00 Food & Drinks entry shared 25/75. Joyce: Summary Actual spend
+$1,284.99 and Month Actual spend $1,284.99 (seed 1,224.99 + 60.00). Tim:
+Summary and Month $4,391.67; Shared pill: Month $20.00, then Summary $20.00
+with the route scope. Household with `scope=shared`: $5,676.66. No console
+errors.
+
+Gates: `npm audit` 0 vulnerabilities; both typechecks clean; lint 0 errors
+(30 warnings, as base); unit 772/772; build; `check:bundle` 173,746 B JS
+gzip (budget 180,337) and 33,485 B CSS (inside the 5% allowance; no client
+change); `E2E_PORT_OFFSET=60 npm run test:e2e:smoke` 87/88: `import flow >
+final import shows recent-import loading and completion inline` missed the
+brief `.import-history-refreshing.is-active` state (load average about 27),
+and `import-ledger-flow.spec.js` then passed alone 19/19;
+`E2E_PORT_OFFSET=60 npm run test:e2e:sharded` (3 shards) 284/284.
+`macro-performance` had no new commits to merge (still `e93e351`).
+
+## Person check-ins and Summary scope (2026-09-26)
+
+Branch `person-insight-scope` from `macro-performance` at `f38c13c`, Node
+v22.23.3. Client only, plus a move of three pure scope helpers; no write
+path, DTO or request changed.
+
+1. Month check-in in a person view. Real. The Month DTO's `entries` holds
+   every household entry (adjusted for the view, because plan linking needs
+   them all) and `month-panel.jsx` passed them all to the facts, so a person
+   view's check-in counted other people's direct entries and ignored the
+   scope. Seeded May 2026, Joyce Direct ownership: check-in $5,596.66, card
+   $1,224.99; seeded October 2025, Joyce Direct $660.04 against $186.40.
+   Fix: `month-insight-facts.js` keeps the entries the card counts with the
+   Worker's own `filterEntriesForView` / `effectiveScopeForView`, now in
+   `person-view-scope.ts` (moved from `month-projection.ts`, server callers
+   unchanged). The "See income entries" action reads the same entries.
+2. Summary check-in: checked, no fault. Its facts come from the Summary DTO,
+   already filtered to the view and scope on the Worker; the new browser test
+   asserts its spend equals the card after a scope switch.
+3. Splits check-in: facts equal the Splits `Total spend` (the group's total
+   in every view); wording left as is, see Open items.
+4. Summary scope. A person view's Summary now shows the Month scope pills
+   under its heading with `aria-pressed` and a plain line for what the
+   active scope counts; on a phone the row spans the width. The active pill
+   is the scope of the request whose figures are on screen
+   (`buildSummaryPageView` reads the Summary owner's request key), and a
+   pill sets the route's `scope`. The household shows no control.
+
+AI boundary: the wording request still posts only `{ facts }` with the
+person's name replaced by the placeholder; the facts now change with the
+scope, so the cache key does too. No new inference, persistence or cost.
+
+Tests first. On the base, the Month browser test failed (Joyce Direct:
+narrative $660.04, card $186.40), the wording test failed (the scope switch
+made no second request: same facts, same key), and the Summary test failed
+(no `Scope` group). Unit `month-insight-facts.test.mjs` failed 4 of 5 with
+the helper returning every DTO entry. All pass with the fix, plus
+`summary-query.test.mjs` for `selectedScope` / `scopes` (unknown scope and
+household negatives).
+
+Runtime: `wrangler dev` 8829 and Vite 5429 on `.wrangler/state-insight`,
+browser pane, desktop and 375 px: Joyce October 2025 Summary shows
+`Scope | Direct ownership | Shared | Direct + Shared` with Shared active and
+"Joyce's share of split expenses."; on the phone the pills fill the width
+below the metric cards, with no sideways scroll.
+
+Bundle: base 8 files, 173,752 B JS, 33,485 B CSS; branch 8 files,
+174,263 B JS (+511), 33,540 B CSS (+55, allowance 33,559). A first attempt
+imported the rules into both route chunks, which made a ninth file, and gave
+the row its own styles (21 B over); the page view now resolves the scopes in
+the entry chunk and the row reuses existing styles. No budget raised.
+
+Gates: `npm audit` 0 vulnerabilities; both typechecks clean; lint 0 errors
+(30 warnings, as base); unit 778/778; build; `check:bundle` as above;
+`E2E_PORT_OFFSET=60 npm run test:e2e:smoke` 89/89 (load average about 23);
+`E2E_PORT_OFFSET=60 npm run test:e2e:sharded` (3 shards, load average
+about 22) 287/287.
+
 ## Open items
 
-- A travel split's shares are counted as home-currency amounts in person
-  views and stored person month totals (section above).
+- Closed 2026-09-26 (Person check-ins and Summary scope, above): the Month
+  "money check-in" in a person view built its spent total from every
+  household entry on the page (Joyce's said $5,656.66 against her $1,284.99
+  Actual spend card), and Summary gave no sign of the scope it counted.
+- The Splits check-in in a person view says "<person>, you ... spent" the
+  active group's total (every member's expenses at their full amount). That
+  is the figure the Splits page itself shows as `Total spend` in every view,
+  so the facts match the screen, but the person-addressed wording reads as
+  that person's own spend. Not changed (Person check-ins and Summary scope).
+- Closed 2026-09-26 (Person view totals, above): Summary months and the
+  Month "Actual spend" card in a person view counted other people's direct
+  entries, and a person with only linked split shares in a month had no
+  stored month total.
+- Closed 2026-09-26 (Travel split home amounts, above): a travel split's
+  shares were counted as home-currency amounts in person views and stored
+  person month totals, and the Splits donut added currencies together.
 
 - Closed 2026-09-25 (section above): rolling back a CSV import deleted a
   manual entry that the import had promoted.

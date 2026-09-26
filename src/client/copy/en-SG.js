@@ -71,6 +71,13 @@ export const messages = {
     intentVsOutcomeDetail: "Monthly comparison with expandable detail.",
     incomeLabel: (plannedValue, actualValue) => `Planned income ${plannedValue} • Actual income ${actualValue}`,
     totalSpend: "Total spend",
+    scope: "Scope",
+    // What the active scope counts, in plain words (DOMAIN.md person views).
+    scopeHint: {
+      direct: (name) => `${name}'s entries that are not part of a split.`,
+      shared: (name) => `${name}'s share of split expenses.`,
+      direct_plus_shared: (name) => `${name}'s entries plus their share of split expenses.`
+    },
     table: {
       metric: "Metric",
       estimate: "Planned",

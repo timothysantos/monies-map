@@ -386,7 +386,8 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   color: var(--accent-strong);
 }
 
-.panel-context {
+.panel-context,
+.summary-scope > span {
   color: var(--muted);
   font-size: 0.9rem;
 }
@@ -663,6 +664,11 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   box-shadow: none;
 }
 
+/* Summary's scope row; Month shows scope in its header controls. */
+.summary-scope {
+  margin-bottom: 14px;
+}
+
 .mobile-context-sticky-wrap{
   display: none;
 }
@@ -672,7 +678,8 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   display: none;
 }
 
-.month-header-controls {
+.month-header-controls,
+.summary-scope {
   display: flex;
   align-items: center;
   gap: 12px;
