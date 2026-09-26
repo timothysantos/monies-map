@@ -661,3 +661,25 @@ required read.
   connection (iPhone Safari) stays code-only.
 - Financial Insight asks for AI wording only while the route is usable
   (`canRequestWording`), and keeps a response only if it is still current.
+
+## In-App Guide Boundary
+
+The FAQ route renders two Markdown guides as tabs: `docs/user-guide.md`
+(User guide) and `docs/developer-guide.md` (For developers).
+
+- `guide-markdown.js` is a pure parser for the small Markdown subset the
+  guides use (parts, sections, subsections, lists, tips, code, images, inline
+  bold, code and links). It gives every heading a stable id and classifies
+  links as in-guide anchors, cross-tab anchors (`?faq=developers#id`), app
+  routes, public files or outside sites. Tests reuse it to check that every
+  link, anchor and image resolves.
+- `faq-panel.jsx` owns the tab state in the URL (`faq=developers`; the user
+  guide is the default and has no parameter) and loads each guide through its
+  own dynamic import, so the developer guide downloads only when its tab
+  opens and neither guide reaches the first-screen bundle.
+  `sanitizeTabParams` drops `faq` on every other route.
+- FAQ styles live in `faq-panel.css`, loaded with the lazy route. Screenshot
+  families (`/faq/guide/desktop/`, `/phone/`, `/iphone/`) get a fixed aspect
+  ratio so lazy images never shift a deep-linked section.
+- The route stays static: it reports ready immediately and never busy.
+
