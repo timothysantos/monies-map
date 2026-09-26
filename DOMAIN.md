@@ -993,6 +993,27 @@ Relationships:
 - belongs to one `household`
 - keyed by `year`, `month`, and `person_scope`
 
+Person month total and person views:
+- a person's stored month total (`total_expense_minor` for `person_scope` =
+  the person) is that person's own spend: every expense they own that is not
+  linked to a split, at its full amount, plus their share of every
+  split-linked expense (a travel split's home share, see `split expense
+  share`). An entry that is someone else's direct expense never counts
+- a person view counts entries by the same rule
+  (`personEntryAmountMinor`, `person-entry-amount.ts`) in Summary months,
+  metric cards and category charts, and in the Month `Actual spend` card,
+  plan actuals and category chart. The view's scope narrows it:
+  `Direct ownership` (`direct`) keeps entries not linked to a split,
+  `Shared` (`shared`) keeps split shares, `Direct + Shared`
+  (`direct_plus_shared`) keeps both. Direct plus Shared always adds up to
+  Direct + Shared, and a person's Direct + Shared actual spend equals their
+  stored month total
+- the household view counts every entry at its full amount whatever scope
+  the route carries; it has one `Combined` scope
+- a person has a stored month total for a month when they have a plan row,
+  an income row, a month note, or an entry of their own there, a share of a
+  split-linked entry included. The refresh removes the row once none is left
+
 ### Month Snapshot Refresh
 
 A pending recalculation of one month's `month snapshots`. A write records it
