@@ -482,11 +482,12 @@ Independent review (pass 3), fixed in `3a98287`:
 
 Noted, not changed: the restore guard and the add-to-splits "already
 linked" check are reads before the batch, so two concurrent writes can still
-give one entry two active splits; restoring from history clears the Entries,
+give one entry two active splits (closed 2026-09-26, "Split write
+consistency" below); restoring from history clears the Entries,
 Month and Summary caches only for the month the Splits page shows (as delete
 already did); `linkSplitExpenseMatch` can link an archived split the UI never
 offers; the Shared upsert still runs after the entry's batch without a month
-marker; copying the payer or date to a split in a closed batch or checkpoint
+marker (closed 2026-09-26, below); copying the payer or date to a split in a closed batch or checkpoint
 changes its balance the same way the amount follow-up does (checkpoint
 reopening is the `checkpoint-reopen` branch's work).
 
@@ -544,18 +545,167 @@ on `INSERT INTO split_expense_shares`, `INSERT INTO split_activity_history`
 and `UPDATE split_batches` and asserts an unchanged dump; all three failed on
 the sequential code.
 
+## Split write consistency (2026-09-26)
+
+Branch `split-write-consistency`, based on `macro-performance` at `f682ad6`,
+Node v22.23.3. Closes three items left open above.
+
+Verified first, on the base code (each by a new test run unchanged against it):
+
+- The add-to-splits "already linked" check, the match check and the restore
+  guard are reads before the batch. With both requests held until each has
+  passed its checks (`raceAtBatch` in the test holds matching `db.batch()`
+  calls until two are waiting; D1 still runs them one at a time), two
+  simultaneous Add to splits returned 200 and 200 and left two active splits
+  on the entry; two matches to one imported expense and two restores of two
+  archived splits of one entry likewise both succeeded.
+- Rolling back a CSV import that promoted a manual entry restores the
+  pre-promotion amount even when the user corrected the amount afterwards
+  (the existing rule), but the linked split kept the corrected amount (50.00
+  on an entry back at 43.21). Commit-time promotion and certification never
+  change an amount (matching requires equal amounts), and a certified entry's
+  amount is locked, so the promoted-entry restore is the only rollback path
+  that moves a linked entry's amount; the statement restore and the
+  superseded-row restore were checked and left alone.
+- A Splits-editor share edit of a linked split wrote no month refresh marker:
+  Tim's stored May total stayed 1,800 below a full recalculation after a
+  50 → 80% edit. The Shared owner save (`upsertLinkedSplitExpenseForEntryRecord`,
+  entry update and create) refreshed the month in the entry's batch and only
+  then rewrote the split with sequential `.run()` calls, so the stored totals
+  were stale by the share change, a failure left the entry saved without its
+  split, and a joint-account save with no payer saved the entry and then
+  returned 400. The pages were not wrong (they recompute actuals from the
+  entries); the stale value lived in `monthly_snapshots`.
+
+Changes:
+
+- One active split record per ledger row is held by the database: partial
+  unique indexes `idx_split_expenses_active_linked_transaction` and
+  `idx_split_settlements_active_linked_transaction` on
+  `(linked_transaction_id) WHERE linked_transaction_id IS NOT NULL AND
+  deleted_at IS NULL`, in `schema.sql` and added by the runtime schema
+  (`ensureActiveSplitLinkIndexes`). A database that already holds a duplicate
+  cannot take the index; the runtime schema then skips it with a
+  `console.warn` naming the ledger row instead of failing every request, and
+  the pre-batch checks still refuse a new duplicate there. D1 checks the index
+  per statement inside the batch, so the later of two racing batches fails as
+  a whole. `runLinkingBatch` maps that failure (or any batch failure after
+  which another split holds the row) to the command's usual message: "This
+  entry is already linked to a split expense.", "This ledger row is already
+  linked to another split record." or "Its entry is now linked to another
+  split. Delete that split first to restore this one." (400, as before). The
+  settle-up match now commits through the same helper. A conditional
+  `INSERT ... WHERE NOT EXISTS` was rejected: a zero-row insert would still
+  commit the rest of the batch (history event, markers, shares) and only
+  other statements' side effects could reveal it.
+- Import rollback: `buildPromotedEntryRestore` returns the expense entries
+  whose restored amount differs, and the rollback appends
+  `buildLinkedSplitAmountStatements` for each to its one batch (same rule as
+  an entry amount edit: stored basis, floor for the first share person,
+  cross-currency splits only move home amount and FX rate, archived links
+  follow too). Settlement lock: before the batch the rollback runs
+  `assertLinkedSplitSettlementUnchanged` (new subject "import rollback"), so
+  a split in an active checkpoint refuses the whole rollback with
+  `split_settlement_locked` (409, route mapped) and the message "Rolling back
+  this import would change the amount and shares of a split expense in the
+  simplified settlement of ... Undo the simplification first, ...". Blocking
+  was chosen over silently unlinking because it is the existing lock rule and
+  is recoverable (Undo simplification, then roll back); a rollback that keeps
+  the linked entry's amount is never blocked, and removing an import-created
+  linked entry still only clears the link.
+- `updateSplitExpenseRecord` puts the linked entry's event-month marker in
+  its batch and refreshes after it (no marker for an unlinked split).
+- The Shared owner save is now `buildLinkedSplitUpsertStatements`: reads and
+  checks (payer, group currency, active split, new batch plan) run before the
+  entry's batch, and the split row, share delete and inserts go in the same
+  batch as the entry, before its markers, for both update and create. A lost
+  race there reports "This entry was just linked to a split expense by
+  another change. Refresh and save again."
+- Client: after a rollback the Imports refresh also removes every cached
+  Splits page (`invalidateImportMutationQueries({ invalidateSplits })`). The
+  browser check showed in-app Splits still at $35.00 after the rollback
+  restored $32.10 (a pre-existing gap: a rollback that unlinks a split had the
+  same staleness). Marking the family stale was not enough: route pages are
+  served from any cached copy, so it is removed.
+
+Tests (real Miniflare D1), `tests/atomic-writes-split-write-consistency.test.mjs`
+(19). Run unchanged against the base: 16 fail and 3 pass. The failures are
+the stated ones: the four race tests got `[200, 200]`; the index test got no
+UNIQUE failure (it stopped on a wrong household id in the test, fixed before
+the fix run); the runtime-schema and legacy-duplicate tests found no index;
+the rollback test had shares 2500/2500 instead of 2160/2161; the lock test got
+200 instead of 409; the rollback, Splits-edit and Shared-save failure tests
+never reached their injected statement or left the entry saved; the Splits
+share-edit and Shared save/create tests found stored totals 1,800 (or 3,000)
+off a full recalculation; the joint-account test found the entry saved. The 3
+that pass on both pin guarded paths: a rollback that keeps the amount leaves
+an assigned odd cent alone, a settled split whose entry keeps its amount does
+not block the rollback, and an unlinked split's share edit writes no marker.
+Negative tests besides those: archived and unlinked duplicates are allowed by
+the index, a database holding a legacy duplicate still loads and still refuses
+a third link. Deliberate breaks (mapping disabled, rollback statements
+dropped, share-edit marker dropped) fail 9 of the 19.
+`tests/query-foundation.test.mjs` (+1, fails on base) for the Splits cache
+removal. `tests/e2e/imports-rollback-linked-split.spec.js` (2, Chromium,
+real Worker): Splits loaded before the rollback shows $32.10 / $16.05 after
+it without a reload (fails with the client flag off: "You paid $35.00"), and
+the locked rollback shows the refusal in the confirm popover with the import
+still completed. Unit suite 717/717.
+
+Persisted state (`scripts/persisted-state-snapshot.mjs`, isolated ports
+8991-8997): the unmodified script gives identical output on base and branch
+(0 differences, even for the scenario's Shared create, because later May
+writes refresh May). Two new June steps (commit `8a6b4cb`): a manual entry
+added to splits, promoted, corrected to 35.00 and rolled back; then a Splits
+share edit (70%) of another linked entry as the last write to June. Two
+branch runs are byte-identical. Base vs branch with the new scenario differ
+only as intended (26 paths): the rolled-back split's total and home amount
+3500 → 3210 and shares 1750 → 1605, the same split in the two Splits DTOs
+that list it (amounts, donut value, Non-group balance 6.51 → 5.06), and the
+June `person-tim` / `person-joyce` `monthly_snapshots` 4,250 → 5,105 and
+4,250 → 3,105 (32.10 at half plus the 70/30 share, as a recalculation gives;
+the base kept the corrected split and the pre-edit 50/50). Household totals
+are unchanged.
+
+Runtime (pass 2), real `wrangler dev` on 8860 with Vite on 5260 and
+`--persist-to .wrangler/state-splitconsistency`, in the browser pane, Tim's
+view: a promoted linked entry corrected to $35.00 showed "You paid $35.00 ·
+you lent $17.50" in Splits; rolling the import back from Recent imports
+(in-app confirm) and returning to Splits showed $24.80 / $12.40 for the third
+such entry (the first two runs exposed the cache gap above), Entries showed
+-$24.80 (-$12.40) and the earlier ones -$32.10 (-$16.05); with a simplified
+settlement holding the split, the confirm popover showed the refusal and the
+import stayed Completed. A Splits share edit 50 → 80% on a linked $60.00
+entry saved "you lent $12.00", Entries showed -$60.00 (-$48.00) 80%, and D1
+moved the stored May totals Tim 446,137 → 447,937 and Joyce 131,469 →
+129,669 with no pending markers. Two simultaneous `curl` Add to splits of one
+entry against that Worker returned 200 and 400 "already linked" and Splits
+listed the entry once (without the test's barrier the loser may have been
+turned away by the check rather than the index).
+
+Noted, not changed: two matches of the same split to two different ledger
+rows can both pass; the second `UPDATE ... WHERE linked_transaction_id IS
+NULL` changes no row but its batch still commits its month marker and the
+route returns ok. Two restores of the same record both record a "restored"
+history event. Add-to-splits and Shared save ids are `split-expense-<ms>`,
+so two new splits created in the same millisecond collide on the primary key
+(the losing request fails; for one entry it is reported as already linked).
+A rollback of a statement whose superseded row is re-created re-links its
+split without checking the split's amount.
+
+Gates: see the end of this section.
+
 ## Open items
 
 - Closed 2026-09-25 (section above): rolling back a CSV import deleted a
   manual entry that the import had promoted.
 - Not yet converted (still sequential writes): the rest of the split
   workspace (`app-repository-splits.ts`: split create, note and category
-  edits, settlements other than edit and delete, checkpoints), including the
-  linked split expense a shared-ownership entry save upserts after its own
-  batch (add to splits, match, delete, restore, split expense and settle-up
-  edit and delete, and the entry-edit follow-ups are converted, sections
-  above). A Splits-editor share edit of a linked split still leaves the stored
-  person month totals stale until the month is next refreshed;
+  edits, settlements other than edit and delete, checkpoints) (add to
+  splits, match, delete, restore, split expense and settle-up edit and
+  delete, the entry-edit follow-ups and the Shared owner save are converted,
+  and a linked split's share edit refreshes its entry's month, sections
+  above);
   category
   match rule suggestions recorded
   after an entry edit; settings, categories, statement checkpoint edits,
