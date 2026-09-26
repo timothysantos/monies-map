@@ -947,27 +947,14 @@ export const messages = {
   },
   faq: {
     viewing: (label) => `Viewing FAQ for ${label}`,
-    items: [
-      {
-        question: "What is Monie's Map trying to answer?",
-        answer:
-          "Not only what got spent. The app is trying to answer what was intended, what happened, whether the difference was justified, whether savings were hurt, and which assumption was wrong."
-      },
-      {
-        question: "What does over-granular mean here?",
-        answer:
-          "Over-granular means budgeting too many unstable or one-off purchases as separate planned rows. Based on the June to October sheets, your current split already looks reasonable: planned items on top and broader budget buckets below."
-      },
-      {
-        question: "Why is the month view split into planned items and budget buckets?",
-        answer:
-          "Planned items are intentional commitments like savings, loan, tax, subscriptions, or specific one-offs. Budget buckets are flexible categories like food, groceries, shopping, and transport."
-      },
-      {
-        question: "Should this FAQ be updated later?",
-        answer:
-          "Yes. The FAQ is a living product document and should be updated whenever setup, workflow, philosophy, or user-facing behavior changes."
-      }
-    ]
+    tabsLabel: "Guide",
+    tabs: {
+      user: "User guide",
+      developers: "For developers"
+    },
+    contents: "Contents",
+    loading: "Loading guide...",
+    loadFailed: "This guide could not load. Check your connection and try again.",
+    retry: "Try again"
   }
 };

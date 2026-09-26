@@ -24,6 +24,10 @@ export function sanitizeTabParams(params, tabId) {
     ].forEach((key) => params.delete(key));
   }
 
+  if (tabId !== "faq") {
+    params.delete("faq");
+  }
+
   if (tabId !== "splits") {
     [
       "split_group",
