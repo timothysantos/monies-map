@@ -56,7 +56,7 @@ test("a travel group's pill balance is written in the group currency", () => {
   assert.equal(byId["split-group-tokyo"].currency, "JPY");
   assert.equal(byId["split-group-tokyo"].balanceMinor, -600_000);
   assert.equal(byId["split-group-tokyo"].summaryText, "You owe Joyce JP¥6,000");
-  assert.equal(byId["split-group-kuwait"].summaryText, "You owe Joyce KWD 10.000");
+  assert.equal(byId["split-group-kuwait"].summaryText, "You owe Joyce KWD\u00a010.000");
   // Negative: a home-currency group keeps dollars with cents.
   assert.equal(byId["split-group-home"].summaryText, "You owe Joyce $6,000.00");
   assert.equal(byId["split-group-none"].summaryText, "Settled up");

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { formatCurrencyMinor } from "../src/domain/split-currency.ts";
-import { money, moneyWithCurrency } from "../src/client/formatters.js";
+import { money, moneyStep, moneyWithCurrency } from "../src/client/formatters.js";
 
 // Split amounts are stored in hundredths of their own currency whatever its
 // minor unit (a ¥12,000 expense is amountMinor 1_200_000, see DOMAIN.md
@@ -22,8 +22,8 @@ test("a home-currency amount keeps two decimals and the $ symbol", () => {
 });
 
 test("a three-decimal currency shows its third decimal", () => {
-  assert.equal(formatCurrencyMinor(123_450, "KWD"), "KWD 1,234.500");
-  assert.equal(formatCurrencyMinor(123_450, "BHD"), "BHD 1,234.500");
+  assert.equal(formatCurrencyMinor(123_450, "KWD"), "KWD\u00a01,234.500");
+  assert.equal(formatCurrencyMinor(123_450, "BHD"), "BHD\u00a01,234.500");
 });
 
 test("stored hundredths that are not whole units are never hidden", () => {
@@ -33,7 +33,7 @@ test("stored hundredths that are not whole units are never hidden", () => {
   // The smallest stored step, used by the odd-cent choice.
   assert.equal(formatCurrencyMinor(1, "JPY"), "JP¥0.01");
   assert.equal(formatCurrencyMinor(1, "SGD"), "$0.01");
-  assert.equal(formatCurrencyMinor(1, "KWD"), "KWD 0.010");
+  assert.equal(formatCurrencyMinor(1, "KWD"), "KWD\u00a00.010");
 });
 
 test("the currency code is normalized the way the server stores it", () => {
@@ -58,6 +58,9 @@ test("money privacy still hides group-currency and home-currency amounts", () =>
     assert.equal(moneyWithCurrency(1_200_000, "JPY"), "••••");
     assert.equal(moneyWithCurrency(123_450, "KWD"), "••••");
     assert.equal(money(1_200_000), "••••");
+    // The odd-cent step is a unit label, not a balance, so it stays readable.
+    assert.equal(moneyStep("JPY"), "JP¥0.01");
+    assert.equal(moneyStep(), "$0.01");
     globalThis.document.documentElement.dataset.moneyPrivacy = "visible";
     assert.equal(moneyWithCurrency(1_200_000, "JPY"), "JP¥12,000");
   } finally {
