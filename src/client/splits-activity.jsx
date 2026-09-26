@@ -3,6 +3,7 @@ import { Check, RefreshCw, X } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
+import { PAGE_FLAG, pageFlagRef } from "./page-flags";
 import { SplitExpenseFields, SplitSettlementFields } from "./splits-dialogs";
 import { CategoryGlyph } from "./ui-components";
 import { useRouteWorkBusy } from "./use-route-work-status";
@@ -187,7 +188,7 @@ export function SplitActivityGroups({
           if (isEditing) {
             return (
               <article
-                ref={inlineEditorRef}
+                ref={pageFlagRef(PAGE_FLAG.splitInlineEditor, inlineEditorRef)}
                 id={splitActivityDomId(item)}
                 key={splitItemKey(item)}
                 className="split-inline-editor-card"
