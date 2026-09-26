@@ -72,8 +72,14 @@ team conventions evolve.
   agree before the slice is considered complete.
 - Never mark a slice complete unless the slice contract is proven by tests and
   runtime behavior.
-- Keep [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
-  updated alongside user-facing product, setup, and workflow changes.
+- Keep the in-app guides updated alongside user-facing and setup changes:
+  [`docs/user-guide.md`](/Users/tim/22m/ai-projects/monies_map/docs/user-guide.md)
+  for how to use the app (plain language, no developer terms) and
+  [`docs/developer-guide.md`](/Users/tim/22m/ai-projects/monies_map/docs/developer-guide.md)
+  for setup, testing, deploy and internals. They render as the FAQ page's two
+  tabs. Regenerate the screenshots a change affects with
+  `npm run docs:screenshots` (demo data only, isolated ports);
+  `tests/guide-content.test.mjs` checks every link, anchor and image.
 - When implementation and documentation diverge, update the documentation in the
   same change whenever practical.
 
@@ -322,7 +328,9 @@ Details and the reasons are in `docs/code-spec.md` and
   historical. Move a finished prompt there with `git mv` and fix its links.
 - Update [`design.md`](/Users/tim/22m/ai-projects/monies_map/design.md) when
   implementation boundaries such as the client deep module service evolve.
-- Update [`docs/faq.md`](/Users/tim/22m/ai-projects/monies_map/docs/faq.md)
-  when user-facing behavior, setup steps, or feature scope changes.
+- Update [`docs/user-guide.md`](/Users/tim/22m/ai-projects/monies_map/docs/user-guide.md)
+  when user-facing behavior or feature scope changes, and
+  [`docs/developer-guide.md`](/Users/tim/22m/ai-projects/monies_map/docs/developer-guide.md)
+  when setup steps, testing, deploy or internals change.
 - Add narrower docs under `docs/` when a subsystem grows beyond what belongs in
   the main architecture file.
