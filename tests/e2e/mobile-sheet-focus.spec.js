@@ -189,6 +189,159 @@ test.describe("mobile sheet focus", () => {
   });
 });
 
+// A portrait tablet (761–1024 px wide) keeps the desktop page layout, but
+// Month opens its plan rows in the sheet there (MONTH_SHEET_LAYOUT_QUERY).
+// The sheet must sit on screen, not at the bottom of the scroll-locked page.
+// Presses go to viewport coordinates (page.mouse or page.touchscreen),
+// because a locator click scrolls the target into view first and would hide
+// an off-screen sheet.
+const PORTRAIT_TABLETS = [
+  { name: "900x1200 window", touch: false, use: { viewport: { width: 900, height: 1200 } } },
+  { name: "820x1180 touch", touch: true, use: { viewport: { width: 820, height: 1180 }, hasTouch: true } }
+];
+
+// Reads where the sheet and its Save button are, against the part of the
+// page the person can see, without scrolling anything.
+async function readSheetPlacement(sheet) {
+  return sheet.evaluate((sheetElement) => {
+    const rect = sheetElement.getBoundingClientRect();
+    const save = sheetElement.querySelector("button.dialog-primary");
+    const saveRect = save.getBoundingClientRect();
+    const saveCenter = { x: saveRect.left + saveRect.width / 2, y: saveRect.top + saveRect.height / 2 };
+    const hit = document.elementFromPoint(saveCenter.x, saveCenter.y);
+    const visible = window.visualViewport ?? { offsetLeft: 0, offsetTop: 0, width: window.innerWidth, height: window.innerHeight };
+    return {
+      top: rect.top,
+      bottom: rect.bottom,
+      left: rect.left,
+      right: rect.right,
+      visible: { left: visible.offsetLeft, top: visible.offsetTop, right: visible.offsetLeft + visible.width, bottom: visible.offsetTop + visible.height },
+      scrollY: window.scrollY,
+      saveCenter,
+      saveIsHit: Boolean(hit && save.contains(hit))
+    };
+  });
+}
+
+function expectOnScreen(placement) {
+  expect(placement.top).toBeGreaterThanOrEqual(placement.visible.top);
+  expect(placement.bottom).toBeLessThanOrEqual(placement.visible.bottom + 0.5);
+  expect(placement.left).toBeGreaterThanOrEqual(placement.visible.left);
+  expect(placement.right).toBeLessThanOrEqual(placement.visible.right + 0.5);
+  expect(placement.saveIsHit).toBe(true);
+}
+
+async function pressAt(page, point, touch) {
+  if (touch) {
+    await page.touchscreen.tap(point.x, point.y);
+  } else {
+    await page.mouse.click(point.x, point.y);
+  }
+}
+
+for (const tablet of PORTRAIT_TABLETS) {
+  test.describe(`Month sheet on a portrait tablet (${tablet.name})`, () => {
+    test.use(tablet.use);
+
+    test.beforeEach(async ({ page }) => {
+      await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
+      await page.goto("/");
+      await reseedDemo(page);
+      await gotoPageAfterApi(
+        page,
+        "/month?view=person-tim&month=2026-05&scope=direct_plus_shared",
+        "/api/month-page",
+        () => page.getByRole("button", { name: "+ Add planned item" })
+      );
+    });
+
+    test("the add planned item sheet opens on screen and saves from its own Save button", async ({ page }) => {
+      const sheet = page.locator('.entry-mobile-sheet[aria-label="+ Add planned item"]');
+      const opener = page.getByRole("button", { name: "+ Add planned item" });
+      await opener.scrollIntoViewIfNeeded();
+      const scrollBefore = await page.evaluate(() => window.scrollY);
+      await (tablet.touch ? opener.tap() : opener.click());
+      await expect(sheet).toBeVisible();
+      await expect.poll(() => focusIsInside(sheet)).toBe(true);
+
+      const placement = await readSheetPlacement(sheet);
+      expectOnScreen(placement);
+      expect(placement.scrollY).toBe(scrollBefore);
+
+      // Outside the sheet every point lands on the backdrop, not the page.
+      const reachable = await sheet.evaluate((sheetElement) => {
+        const backdrop = document.querySelector(".entry-composer-overlay");
+        const misses = [];
+        for (let y = 4; y < window.innerHeight; y += 40) {
+          for (let x = 4; x < window.innerWidth; x += 40) {
+            const hit = document.elementFromPoint(x, y);
+            if (hit && (sheetElement.contains(hit) || hit === backdrop)) continue;
+            misses.push(`${x},${y} ${hit?.tagName ?? "none"}.${hit?.className ?? ""}`);
+          }
+        }
+        return misses;
+      });
+      expect(reachable).toEqual([]);
+
+      const item = sheet.locator("label").filter({ hasText: "Item" }).locator("input");
+      const planned = sheet.locator("label").filter({ hasText: "Planned" }).locator("input");
+      await item.fill("Tablet sheet check");
+      await planned.fill("42.00");
+      await expect(item).toHaveValue("Tablet sheet check");
+      await expect(planned).toHaveValue("42.00");
+      // Filling did not have to move the page or the sheet to reach a field.
+      expectOnScreen(await readSheetPlacement(sheet));
+
+      await pressAt(page, placement.saveCenter, tablet.touch);
+      await expect(page.locator("tr").filter({ hasText: "Tablet sheet check" })).toHaveCount(1);
+      // A saved add sheet starts a fresh item, still on screen.
+      await expect(item).toHaveValue("New item");
+      expectOnScreen(await readSheetPlacement(sheet));
+      const cancel = await sheet.getByRole("button", { name: "Cancel", exact: true }).boundingBox();
+      await pressAt(page, { x: cancel.x + cancel.width / 2, y: cancel.y + cancel.height / 2 }, tablet.touch);
+      await expect(sheet).toHaveCount(0);
+    });
+
+    test("an existing plan row opens its edit sheet on screen and saves the change", async ({ page }) => {
+      const rowOpener = page.locator("tr").filter({ hasText: "Savings" }).first().getByRole("button", { name: "Edit Savings row" });
+      const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+      await (tablet.touch ? rowOpener.tap() : rowOpener.click());
+      await expect(sheet).toBeVisible();
+      await expect.poll(() => focusIsInside(sheet)).toBe(true);
+
+      const placement = await readSheetPlacement(sheet);
+      expectOnScreen(placement);
+
+      await sheet.locator('input[value="1800.00"]').fill("1825.00");
+      expectOnScreen(await readSheetPlacement(sheet));
+      await pressAt(page, placement.saveCenter, tablet.touch);
+      await expect(sheet).toHaveCount(0);
+
+      await (tablet.touch ? rowOpener.tap() : rowOpener.click());
+      await expect(sheet.locator('input[value="1825.00"]')).toBeVisible();
+      // A press on the backdrop, away from the sheet, closes it.
+      await pressAt(page, { x: 8, y: 8 }, tablet.touch);
+      await expect(sheet).toHaveCount(0);
+    });
+
+    test("Entries keeps its desktop editor and composer at this size", async ({ page }) => {
+      const entryRows = page.locator(".entry-row");
+      await gotoPageAfterApi(page, "/entries?view=person-tim&month=2026-05", "/api/entries-page", () => entryRows.first());
+      await expect(page.locator(".entries-filter-stack")).toBeVisible();
+
+      await entryRows.first().click();
+      await expect(page.locator(".entry-edit-grid").first()).toBeVisible();
+      await expect(page.locator(".entry-mobile-sheet")).toHaveCount(0);
+      await page.getByRole("button", { name: "Cancel editing entry" }).click();
+      await expect(page.locator(".entry-edit-grid")).toHaveCount(0);
+
+      await page.getByRole("button", { name: "+ Add entry" }).first().click();
+      await expect(page.locator(".entry-row.entry-composer")).toBeVisible();
+      await expect(page.locator(".entry-mobile-sheet")).toHaveCount(0);
+    });
+  });
+}
+
 // The page behind an open sheet is out of reach: the backdrop covers every
 // point outside the sheet, a finger drag or wheel over the backdrop leaves the
 // page where it was, and the page's controls are hidden from screen readers.

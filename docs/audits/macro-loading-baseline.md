@@ -2706,7 +2706,18 @@ cohort's run medians overlap by 3 ms, the other's do not.
   positioning CSS is only in the 760 px media query. It renders at the
   bottom of the page (about y = 2,600 at 820×1180) while the page is
   scroll-locked, so it cannot be reached. This happens before and after
-  this change.
+  this change. Fixed on branch `month-tablet-sheet`: the sheet-scoped
+  rules moved out of the phone block into an unconditional section, so the
+  sheet is a fixed bottom sheet (with a dimmed backdrop) wherever it opens.
+  `tests/e2e/mobile-sheet-focus.spec.js` covers 900×1200 and 820×1180.
+- **Month overflows sideways between 761 and about 1,100 px.** Found while
+  fixing the item above, not caused by it: the desktop Month tables need
+  about 1,100 px, so a 900 px window scrolls sideways and, on an 820 px
+  tablet with mobile viewport emulation, the layout viewport grows to
+  about 1,095 px. There "+ Add planned item" starts off screen to the
+  right, and the fixed sheet spans the wider layout viewport, so its right
+  edge (about 275 px) is outside the visible area until the person zooms
+  out. Needs its own Month layout change.
 - **The `body:has(...)` rules.** The sheet's remaining style cost (~30 ms
   per open or close at CPU 4x) comes from the 9 `body:has(...)` rules that
   hide the tab strip, floating buttons and sticky context while an editor
