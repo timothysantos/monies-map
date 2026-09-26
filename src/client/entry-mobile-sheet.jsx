@@ -5,6 +5,7 @@ import { hideOthers } from "aria-hidden";
 import { X } from "lucide-react";
 import { RemoveScroll } from "react-remove-scroll";
 import { ResponsiveSelect } from "./responsive-select";
+import { findSheetOpener, returnFocusFromSheet } from "./sheet-focus-return";
 import { InlineError } from "./ui-states";
 
 // The mobile bottom sheet shared by Entries and Month. It behaves like the
@@ -12,7 +13,8 @@ import { InlineError } from "./ui-states";
 // it, the rest of the page is hidden from screen readers and cannot be tapped
 // or scrolled, Escape or a tap on the backdrop closes it (discarding the
 // draft, as the desktop dialogs do), and focus returns to the control that
-// opened it. While `isSubmitting` a save or delete is in flight, so Escape
+// opened it (see sheet-focus-return.js: a tapped button is not focused on
+// iPhone or iPad, so the opener is the control the tap landed on). While `isSubmitting` a save or delete is in flight, so Escape
 // and backdrop taps are ignored rather than dropping the pending result.
 //
 // It does not use Radix's `modal` mode. That mode sets `pointer-events: none`
@@ -46,7 +48,7 @@ export function EntryMobileSheet({
   // can hand focus back to the row or button that opened the sheet.
   const openerRef = useRef(undefined);
   if (openerRef.current === undefined) {
-    openerRef.current = typeof document === "undefined" ? null : document.activeElement;
+    openerRef.current = findSheetOpener();
   }
   // The portal attaches the sheet after the first commit, so the node is
   // state rather than a ref read in a mount effect.
@@ -86,10 +88,7 @@ export function EntryMobileSheet({
           }}
           onUnmountAutoFocus={(event) => {
             event.preventDefault();
-            const opener = openerRef.current;
-            if (opener instanceof HTMLElement && opener.isConnected && opener !== document.body) {
-              opener.focus({ preventScroll: true });
-            }
+            returnFocusFromSheet(openerRef.current ?? null);
           }}
         >
           <Dialog.Content
