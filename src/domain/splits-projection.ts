@@ -2,6 +2,7 @@
 // household, with balances, activity, matches and direction labels.
 
 import { buildDonutChart } from "./donut-chart-projection";
+import { formatCurrencyMinor } from "./split-currency";
 import type { SplitActivityHistoryDto } from "../types/dto";
 import type {
   CategoryDto,
@@ -151,7 +152,7 @@ export function buildSplitsPage(
       name: group.name,
       iconKey: group.iconKey,
       balanceMinor: group.balanceMinor,
-      summaryText: formatSplitBalanceSummary(group.balanceMinor, viewId, personNameById),
+      summaryText: formatSplitBalanceSummary(group.balanceMinor, group.currency, viewId, personNameById),
       entryCount: group.entryCount,
       pendingMatchCount: group.pendingMatchCount,
       currency: group.currency,
@@ -256,12 +257,14 @@ function splitSettlementBalanceForView(settlement: SplitSettlementDto, viewId: s
   return settlement.amountMinor;
 }
 
-function formatSplitBalanceSummary(balanceMinor: number, viewId: string, personNameById: Record<string, string>) {
+// The balance is in the group's own currency (a JPY trip reads "You owe
+// Joyce JP¥6,000"); it is never converted to SGD.
+function formatSplitBalanceSummary(balanceMinor: number, currency: string, viewId: string, personNameById: Record<string, string>) {
   if (balanceMinor === 0) {
     return "Settled up";
   }
 
-  const abs = formatCompactMoney(balanceMinor);
+  const abs = formatCurrencyMinor(Math.abs(balanceMinor), currency);
   if (viewId === "household") {
     return `Net balance ${abs}`;
   }
@@ -410,11 +413,4 @@ function formatSettlementDirectionLabel(settlement: SplitSettlementDto, viewId: 
 
 function iconKeyForCategory(categoryName: string, categories: CategoryDto[]) {
   return categories.find((category) => category.name === categoryName)?.iconKey ?? "receipt";
-}
-
-function formatCompactMoney(valueMinor: number) {
-  return new Intl.NumberFormat("en-SG", {
-    style: "currency",
-    currency: "SGD"
-  }).format(Math.abs(valueMinor) / 100);
 }

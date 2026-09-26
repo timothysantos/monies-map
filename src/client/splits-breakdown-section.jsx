@@ -18,6 +18,8 @@ const { format: formatService } = moniesClient;
 
 export function SplitsBreakdownSection({
   showBreakdown,
+  // The active group's currency: its balance and spend are in that currency.
+  currency = "SGD",
   totalExpenseMinor,
   groupBalanceMinor,
   groupSummaryLabel,
@@ -57,9 +59,9 @@ export function SplitsBreakdownSection({
         {searchControl}
         <div className="entries-summary-metrics">
           {!readOnly ? (
-            <span>{groupSummaryLabel} <strong className={groupBalanceMinor >= 0 ? "tone-positive" : "tone-negative"}><PrivateMoney>{formatService.money(Math.abs(groupBalanceMinor))}</PrivateMoney></strong></span>
+            <span>{groupSummaryLabel} <strong className={groupBalanceMinor >= 0 ? "tone-positive" : "tone-negative"}><PrivateMoney>{formatService.moneyWithCurrency(Math.abs(groupBalanceMinor), currency)}</PrivateMoney></strong></span>
           ) : null}
-          <span>{messages.entries.totalSpend} <strong><PrivateMoney>{formatService.money(totalExpenseMinor)}</PrivateMoney></strong></span>
+          <span>{messages.entries.totalSpend} <strong><PrivateMoney>{formatService.moneyWithCurrency(totalExpenseMinor, currency)}</PrivateMoney></strong></span>
         </div>
         {summaryToolbar}
         <button type="button" className="subtle-action split-history-trigger" onClick={onOpenHistory}>Activity history</button>

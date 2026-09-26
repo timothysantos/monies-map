@@ -103,7 +103,14 @@ Watch area:
   create a checkpoint; simplification remains optional
 - active simplified checkpoints are scoped by currency, so an SGD checkpoint
   does not block an independent JPY checkpoint
-- known gap: in a foreign-currency group only the activity cards (and history
-  rows) use the group currency; the group pill balance, the summary strip
-  totals and the expense dialog's share preview and odd-cent labels still
-  format amounts as SGD (a ¥12,000 expense shows "Spend $12,000.00")
+- a foreign-currency group shows its amounts in the group currency with that
+  currency's own digits: the group pill balance, the summary strip totals, the
+  expense dialog's share preview and odd-cent labels, activity cards, history
+  rows and archived settle-up summaries (a ¥12,000 expense shows
+  "Spend JP¥12,000"). All format through `formatCurrencyMinor` (see
+  `design.md`, Split Currency Display Contract);
+  `splits-travel-group.spec.js` and `currency-money-format.test.mjs` cover it,
+  including money privacy masking
+- watch: the category breakdown donut sums open expenses across every group
+  and currency and formats them as SGD; it needs a per-group (or
+  per-currency) projection before it can be labelled in a travel currency
