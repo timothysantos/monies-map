@@ -657,7 +657,9 @@ Rules:
   event on it; the batch's records count in the group balance again. A group
   keeps one open batch, so when a newer batch is already open the reopened
   records join it and the next settle-up closes them together. Deleting the
-  settle-up, or correcting it, is then an ordinary edit
+  settle-up, or correcting it, is then an ordinary edit: editing a settle-up
+  that stays in its group never closes its batch again; only moving it to
+  another group settles that group's current batch
 - a shared entry save that the lock allows keeps its linked split in its
   batch; it never moves a settled split back into the open balance
 
@@ -796,6 +798,8 @@ Rules:
   (settlement lock above)
 - `Undo settle-up` records an `updated` event on each settle-up of the
   reopened batch
+- a record archived before its batch was settled was not paid by that
+  settle-up: restoring it brings it back into the group's open batch
 
 ### Monthly Note
 
