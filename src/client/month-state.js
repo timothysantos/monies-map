@@ -61,8 +61,9 @@ export function buildSavedMonthPlanFields(saved) {
     fields.sourcePlannedMinor = saved.plannedMinor;
   }
   if (Object.prototype.hasOwnProperty.call(saved, "note")) {
-    fields.note = saved.note ?? "";
-    fields.sourceNote = saved.note ?? "";
+    // An empty note stays empty (null) so the table keeps its empty-value mark.
+    fields.note = saved.note;
+    fields.sourceNote = saved.note;
   }
   return fields;
 }
