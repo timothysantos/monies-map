@@ -49,3 +49,20 @@ export function getMonthPlanEditSource(row) {
       .trim()
   };
 }
+
+// A saved plan row stays on screen until the background reload replaces it,
+// and the row editor opens on its source fields. Write the saved values to
+// both the shown and the source fields, so a row reopened before the reload
+// lands shows what was just saved rather than what it held before.
+export function buildSavedMonthPlanFields(saved) {
+  const fields = {};
+  if (Object.prototype.hasOwnProperty.call(saved, "plannedMinor")) {
+    fields.plannedMinor = saved.plannedMinor;
+    fields.sourcePlannedMinor = saved.plannedMinor;
+  }
+  if (Object.prototype.hasOwnProperty.call(saved, "note")) {
+    fields.note = saved.note ?? "";
+    fields.sourceNote = saved.note ?? "";
+  }
+  return fields;
+}

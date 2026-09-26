@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildSavedMonthPlanFields,
   getMonthPlanEditSource,
   mergeMonthPlanSections,
   mergeMonthRowsById
@@ -66,6 +67,41 @@ test("X4a month workflow opens the plan editor against the source row values", (
 
   assert.equal(editSource.plannedMinor, 4200);
   assert.equal(editSource.note, "Source note");
+});
+
+test("a saved plan row reopens on the saved amount and note before the reload replaces it", () => {
+  const row = {
+    id: "row-3",
+    plannedMinor: 180000,
+    sourcePlannedMinor: 180000,
+    note: "Before save",
+    sourceNote: "Before save",
+    label: "Savings"
+  };
+
+  const savedRow = { ...row, ...buildSavedMonthPlanFields({ plannedMinor: 182500, note: "After save" }) };
+
+  assert.deepEqual(savedRow, {
+    id: "row-3",
+    plannedMinor: 182500,
+    sourcePlannedMinor: 182500,
+    note: "After save",
+    sourceNote: "After save",
+    label: "Savings"
+  });
+  assert.equal(getMonthPlanEditSource(savedRow).plannedMinor, 182500);
+  assert.equal(getMonthPlanEditSource(savedRow).note, "After save");
+});
+
+test("a saved plan row note leaves the amount alone and a cleared note clears the source note", () => {
+  const row = { id: "row-4", plannedMinor: 4321, sourcePlannedMinor: 4321, note: "Old", sourceNote: "Old" };
+
+  assert.deepEqual(buildSavedMonthPlanFields({ note: "New" }), { note: "New", sourceNote: "New" });
+  assert.deepEqual(buildSavedMonthPlanFields({ note: null }), { note: "", sourceNote: "" });
+  // Without the saved fields the editor would reopen on the old source note.
+  assert.equal(getMonthPlanEditSource({ ...row, note: "" }).note, "Old");
+  assert.equal(getMonthPlanEditSource({ ...row, ...buildSavedMonthPlanFields({ note: null }) }).note, "");
+  assert.equal(getMonthPlanEditSource({ ...row, ...buildSavedMonthPlanFields({ note: "New" }) }).plannedMinor, 4321);
 });
 
 test("month invalidation matrix keeps note-save scoped to the month unless summary visibly depends on it", () => {
