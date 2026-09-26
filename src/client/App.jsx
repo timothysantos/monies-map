@@ -2837,7 +2837,6 @@ export function App() {
                 <button
                   type="button"
                   className="mobile-context-trigger"
-                  aria-label={stickyScopeConfig.label}
                   onClick={(event) => {
                     event.currentTarget.blur();
                   }}
@@ -2849,7 +2848,7 @@ export function App() {
                       {mobileContextScopeLabel ? (
                         <> <span className="mobile-context-trigger-scope">· {mobileContextScopeLabel}</span></>
                       ) : null}
-                    </span>
+                    </span>{" "}
                     <span className="mobile-context-trigger-hint">
                       {showMobileContextScopeSection ? "View and scope" : "View"}
                     </span>
