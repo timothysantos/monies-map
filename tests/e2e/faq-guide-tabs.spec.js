@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { reseedDemo } from "./helpers";
+
 // The FAQ page has two guides as accessible tabs. The user guide loads with
 // the page; the developer guide downloads only when its tab opens, and the
 // open tab lives in the address (?faq=developers).
@@ -73,8 +75,17 @@ test("a deep link opens the developer tab at its section, and a cross-tab link r
   page.on("request", (request) => {
     if (DEVELOPER_GUIDE_REQUEST.test(request.url())) developerGuideRequests.push(request.url());
   });
+  // With demo months loaded, the shell corrects the month in the address of a
+  // link that has none. Hold the FAQ code so that correction happens first:
+  // the #section anchor must survive it.
+  await reseedDemo(page);
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.route(/faq-panel/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  });
   await page.goto("/faq?faq=developers#how-do-i-regenerate-the-screenshots", { waitUntil: "domcontentloaded" });
+  await expect(page).toHaveURL(/[?&]month=\d{4}-\d{2}.*#how-do-i-regenerate-the-screenshots$/);
   await expect(page.getByRole("tab", { name: "For developers" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "How do I regenerate the screenshots?", exact: true })).toBeInViewport();
 
