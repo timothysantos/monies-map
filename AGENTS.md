@@ -249,6 +249,12 @@ Details and the reasons are in `docs/code-spec.md` and
 
 ## Frontend guidance
 
+- Do not add new visible controls, screens or user-facing copy without the
+  owner's approval. When a fix changes how something looks or reads (layout,
+  wording, a new state or button), list it with a before/after screenshot for
+  the owner to decide instead of shipping it silently. Check the existing
+  pattern first (for example the mobile floating "View and scope" bar) before
+  proposing a new control.
 - Keep rendering predictable and avoid state graphs that are easy to break.
 - Prefer TanStack Query as the server-state boundary and keep query ownership
   close to the feature slice that consumes it.
