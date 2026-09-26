@@ -58,15 +58,13 @@ test.describe("summary workflow", () => {
     await expect(page.locator(".financial-insight-summary .financial-insight-narrative"))
       .toContainText(`spent ${money(actualSpendMinor(directPage))} across`);
 
-    // On a phone the same control stays on screen and switches the figures.
-    await page.setViewportSize({ width: 390, height: 844 });
-    await expect(scope).toBeVisible();
+    // Desktop explains the scope under the pills and has no floating bar.
+    await expect(scope).toContainText("Joyce's entries that are not part of a split.");
+    await expect(page.locator(".mobile-context-sticky-wrap")).toBeHidden();
     await scope.getByRole("button", { name: "Direct + Shared", exact: true }).click();
     await expect(page).toHaveURL(/scope=direct_plus_shared/);
     await expect(scope.getByRole("button", { name: "Direct + Shared", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(actualSpend).toHaveText(money(actualSpendMinor(combinedPage)));
-    const widths = await page.evaluate(() => ({ viewport: window.innerWidth, document: document.documentElement.scrollWidth }));
-    expect(widths.document).toBeLessThanOrEqual(widths.viewport + 1);
 
     // The household view always counts every entry, so it offers no scope.
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -74,6 +72,74 @@ test.describe("summary workflow", () => {
     await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
     await expect(page.locator(".summary-head-metrics .metric").first()).toBeVisible();
     await expect(page.getByRole("group", { name: "Scope" })).toHaveCount(0);
+  });
+
+  // A phone has one scope control on every page: the floating View and scope
+  // bar. Summary shows it instead of the inline pills, and the bar's dialog
+  // switches the scope and says what it counts.
+  test("on a phone summary switches scope through the View and scope bar", async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const range = { view: "person-joyce", month: "2025-10", summaryStart: "2025-10", summaryEnd: "2025-10" };
+    const [sharedPage, directPage] = await Promise.all(
+      ["shared", "direct"].map((scope) => loadSummaryPage(page, { ...range, scope }))
+    );
+    const actualSpendMinor = (data) => data.summaryPage.metricCards.find((card) => card.label === "Actual spend").amountMinor;
+    expect(actualSpendMinor(sharedPage)).not.toBe(actualSpendMinor(directPage));
+    const money = (minor) => new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(minor / 100);
+
+    await page.goto("/summary?view=person-joyce&month=2025-10&scope=shared&summary_start=2025-10&summary_end=2025-10");
+    await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
+    const inlineScope = page.getByRole("group", { name: "Scope" });
+    const stickyBar = page.locator(".mobile-context-sticky-wrap");
+    const trigger = stickyBar.locator(".mobile-context-trigger");
+    const triggerLabel = trigger.locator(".mobile-context-trigger-label");
+    const actualSpend = page.locator(".summary-head-metrics .metric").filter({ hasText: "Actual spend" }).locator("strong");
+    await expect(inlineScope).toBeVisible();
+
+    // Turning to the phone layout swaps the pills for the bar without a reload.
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expect(stickyBar).toBeVisible();
+    await expect(inlineScope).toHaveCount(0);
+    await expect(page.locator(".summary-scope")).toHaveCount(0);
+    await expect(triggerLabel).toHaveText("Joyce · Shared");
+    await expect(trigger).toContainText("View and scope");
+    await expect(actualSpend).toHaveText(money(actualSpendMinor(sharedPage)));
+
+    await trigger.click();
+    const dialog = page.locator(".mobile-context-dialog");
+    const scopeSection = dialog.locator('section[aria-label="Scope"]');
+    await expect(scopeSection).toBeVisible();
+    await expect(scopeSection.getByRole("button", { name: "Shared", exact: true })).toHaveClass(/is-active/);
+    await expect(scopeSection).toContainText("Joyce's share of split expenses.");
+
+    await scopeSection.getByRole("button", { name: "Direct ownership", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page).toHaveURL(/scope=direct(&|$)/);
+    await expect(actualSpend).toHaveText(money(actualSpendMinor(directPage)));
+    await expect(triggerLabel).toHaveText("Joyce · Direct");
+    await expect(page.locator(".financial-insight-summary .financial-insight-narrative"))
+      .toContainText(`spent ${money(actualSpendMinor(directPage))} across`);
+
+    await trigger.click();
+    await expect(scopeSection.getByRole("button", { name: "Direct ownership", exact: true })).toHaveClass(/is-active/);
+    await expect(scopeSection).toContainText("Joyce's entries that are not part of a split.");
+    await dialog.getByRole("button", { name: "Done" }).click();
+    await expect(dialog).toHaveCount(0);
+    const widths = await page.evaluate(() => ({ viewport: window.innerWidth, document: document.documentElement.scrollWidth }));
+    expect(widths.document).toBeLessThanOrEqual(widths.viewport + 1);
+
+    // The household counts every entry: the bar switches the view only.
+    await page.goto("/summary?view=household&month=2025-10&scope=shared&summary_start=2025-10&summary_end=2025-10");
+    await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeVisible();
+    await expect(triggerLabel).toHaveText("Household");
+    await expect(trigger).not.toContainText("Shared");
+    await trigger.click();
+    await expect(dialog).toBeVisible();
+    await expect(scopeSection).toHaveCount(0);
+    await dialog.getByRole("button", { name: "Joyce", exact: true }).click();
+    await expect(page).toHaveURL(/view=person-joyce/);
+    await expect(scopeSection).toBeVisible();
   });
 
   test("summary spending mix cards keep readable text columns on desktop", async ({ page }) => {
