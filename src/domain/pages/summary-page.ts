@@ -1,6 +1,7 @@
 import { getCurrentMonthKey } from "../../lib/month";
 import { buildSummaryPage, buildSummaryRange, loadPlannedSummaryMonthsForViews } from "../summary-projection";
-import { adjustEntriesForView, effectiveScopeForView, filterEntriesForView } from "../month-projection";
+import { adjustEntriesForView } from "../month-projection";
+import { effectiveScopeForView, filterEntriesForView } from "../person-view-scope";
 import { loadEntriesForMonths } from "../app-repository";
 import { loadRepairedSummaryMonths } from "../app-repository-snapshots";
 import type { PersonScope, SummaryPageDto } from "../../types/dto";

@@ -30,7 +30,7 @@ import { buildMonthMutationRefreshPlan } from "./month-workflow";
 import { buildRequestErrorMessage } from "./request-errors";
 import { ResponsiveSelect } from "./responsive-select";
 import { getRowDateValue } from "./table-helpers";
-import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
+import { buildMonthInsightFacts, selectMonthInsightEntries } from "./month-insight-facts";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { isMonthSheetLayout, useIsMonthSheetLayout } from "./use-viewport";
 // Mid-width table layout; ships with this lazy route, not the first screen.
@@ -205,30 +205,26 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     () => monthService.getVisibleAccounts(accounts, view.id),
     [accounts, view.id]
   );
-  const financialInsightFacts = useMemo(() => {
-    const plannedSpendMinor = selectedMonthSummary?.estimatedExpensesMinor ?? 0;
-    const actualSpendMinor = selectedMonthSummary?.realExpensesMinor ?? 0;
-    return buildFinancialInsightFacts({
-      contextLabel: `${formatService.formatMonthLabel(view.monthPage.month)} month`,
-      audienceKind: view.id === "household" ? "household" : "person",
-      audienceName: view.id === "household" ? "" : view.label,
-      records: view.monthPage.entries,
-      formatMoney: formatService.money,
-      perspective: "cash_flow",
-      accountingAdvice: actualSpendMinor > plannedSpendMinor && plannedSpendMinor > 0
-        ? "Actual spending is above the planned budget. Check the largest category and any pending bank rows before changing the plan or assuming the overspend is a one-off."
-        : "Keep the plan, actual entries, and any pending bank rows current before reallocating unused budget or treating the remaining amount as free to spend.",
-      decisionMapContext: {
-        plannedSpendMinor,
-        confidence: buildMonthConfidence(visibleAccounts)
-      }
-    });
-  }, [selectedMonthSummary?.estimatedExpensesMinor, selectedMonthSummary?.realExpensesMinor, view.id, view.label, view.monthPage.entries, view.monthPage.month, visibleAccounts]);
+  // The check-in counts the entries the Actual spend card counts (a person's
+  // own, in the selected scope), not every household entry the DTO carries.
+  const insightEntries = useMemo(
+    () => selectMonthInsightEntries(view.monthPage, view.id),
+    [view.id, view.monthPage]
+  );
+  const financialInsightFacts = useMemo(() => buildMonthInsightFacts({
+    viewId: view.id,
+    viewLabel: view.label,
+    monthPage: view.monthPage,
+    monthSummary: selectedMonthSummary,
+    accounts: visibleAccounts,
+    formatMoney: formatService.money,
+    formatMonthLabel: formatService.formatMonthLabel
+  }), [selectedMonthSummary, view.id, view.label, view.monthPage, visibleAccounts]);
   const financialInsightActions = useMemo(() => {
     const plannedSpendMinor = selectedMonthSummary?.estimatedExpensesMinor ?? 0;
     const actualSpendMinor = selectedMonthSummary?.realExpensesMinor ?? 0;
     const actions = [];
-    if (view.monthPage.entries.some((entry) => entry.entryType === "income")) {
+    if (insightEntries.some((entry) => entry.entryType === "income")) {
       actions.push({
         label: `See income entries (${financialInsightFacts.income})`,
         onClick: () => handleOpenEntriesForActual({ entryType: "income" })
@@ -251,7 +247,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       });
     }
     return actions;
-  }, [financialInsightFacts.decisionMap.needsReview, financialInsightFacts.income, financialInsightFacts.topCategoryName, navigate, selectedMonthSummary?.estimatedExpensesMinor, selectedMonthSummary?.realExpensesMinor, view.monthPage.entries]);
+  }, [financialInsightFacts.decisionMap.needsReview, financialInsightFacts.income, financialInsightFacts.topCategoryName, navigate, selectedMonthSummary?.estimatedExpensesMinor, selectedMonthSummary?.realExpensesMinor, insightEntries]);
   const visibleAccountOptions = useMemo(
     () => accountService.getSelectOptions(visibleAccounts),
     [visibleAccounts]
@@ -1926,20 +1922,4 @@ function getPreviousMonthKey(monthKey) {
   const [year, month] = monthKey.split("-").map(Number);
   const date = new Date(year, month - 2, 1);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function buildMonthConfidence(accounts) {
-  const visibleAccounts = accounts ?? [];
-  const evaluated = visibleAccounts.length > 0;
-  return visibleAccounts.reduce((result, account) => ({
-    evaluated,
-    reconciliationMismatchCount: result.reconciliationMismatchCount + (account.reconciliationStatus === "mismatch" ? 1 : 0),
-    needsCheckpointCount: result.needsCheckpointCount + (account.reconciliationStatus === "needs_checkpoint" ? 1 : 0),
-    unresolvedTransferCount: result.unresolvedTransferCount + Number(account.unresolvedTransferCount ?? 0)
-  }), {
-    evaluated,
-    reconciliationMismatchCount: 0,
-    needsCheckpointCount: 0,
-    unresolvedTransferCount: 0
-  });
 }

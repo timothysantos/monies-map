@@ -112,6 +112,15 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
     });
   }
 
+  // Scope is a route parameter, as on Month: the route reloads Summary for it.
+  function handleScopeChange(scopeKey) {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("scope", scopeKey);
+      return next;
+    });
+  }
+
   function handleOpenEntriesForCategory(categoryName) {
     navigateToEntries({
       entry_category: categoryName,
@@ -171,6 +180,8 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
         </div>
       </div>
 
+      <SummaryScopeControl view={view} onScopeChange={handleScopeChange} />
+
       <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-summary" canRequestWording={canRequestWording} />
 
       <div className="summary-top-grid">
@@ -212,6 +223,38 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
         onSave={saveSummaryMonthNote}
       />
     </article>
+  );
+}
+
+// A person view's figures follow the route's scope, so Summary names the
+// scope they count and lets the person switch it, with the same pills as
+// Month. The page view carries the scope of the request the figures answer
+// (buildSummaryPageView), so it never runs ahead of them. The household has
+// one Combined scope and no control.
+function SummaryScopeControl({ view, onScopeChange }) {
+  const scopes = view.scopes ?? [];
+  if (scopes.length < 2) {
+    return null;
+  }
+  const { selectedScope } = view;
+  return (
+    <div className="summary-scope" role="group" aria-label={messages.summary.scope}>
+      <span aria-hidden="true">{messages.summary.scope}</span>
+      <div className="scope-toggle pill-row scope-toggle-row">
+        {scopes.map((scope) => (
+          <button
+            key={scope.key}
+            className={`pill scope-button ${scope.key === selectedScope ? "is-active" : ""}`}
+            type="button"
+            aria-pressed={scope.key === selectedScope}
+            onClick={() => onScopeChange(scope.key)}
+          >
+            {scope.label}
+          </button>
+        ))}
+      </div>
+      <span>{messages.summary.scopeHint[selectedScope]?.(view.label)}</span>
+    </div>
   );
 }
 

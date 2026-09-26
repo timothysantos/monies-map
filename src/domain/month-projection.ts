@@ -3,7 +3,7 @@
 // filtered for a person view. Pure functions over loaded rows.
 
 import { buildDonutChart } from "./donut-chart-projection";
-import { isEntryInPersonScope } from "./person-entry-amount";
+import { buildPersonScopes, effectiveScopeForView, filterEntriesForView } from "./person-view-scope";
 import type {
   CategoryDto,
   EntryDto,
@@ -85,16 +85,6 @@ export function buildMonthPage(
     categoryShareChart: buildDonutChart(visibleEntries, categories),
     entries: monthEntries
   };
-}
-
-export function buildPersonScopes(selectedPersonId: string): Array<{ key: PersonScope; label: string }> {
-  return selectedPersonId === "household"
-    ? [{ key: "direct_plus_shared", label: "Combined" }]
-    : [
-        { key: "direct", label: "Direct ownership" },
-        { key: "shared", label: "Shared" },
-        { key: "direct_plus_shared", label: "Direct + Shared" }
-      ];
 }
 
 export function deriveIncomeRowActuals(
@@ -244,24 +234,6 @@ export function buildPlanRowsForView(rows: MonthPlanRowDto[], personId: string):
   return rows
     .filter((row) => row.personId === personId || row.splits.some((split) => split.personId === personId))
     .map((row) => normalizePlanRowForView(row));
-}
-
-// The scope a view uses: the household has one Combined view that counts
-// every entry, whatever scope the route carries over from a person view.
-export function effectiveScopeForView(personId: string, scope: PersonScope): PersonScope {
-  return personId === "household" ? "direct_plus_shared" : scope;
-}
-
-// The entries a view counts in its actuals and charts. The household counts
-// every entry; a person view keeps the entries that are theirs in the scope
-// (person-entry-amount.ts). Pass entries adjusted for the view
-// (adjustEntriesForView) so a split-linked entry carries the person's share.
-export function filterEntriesForView(entries: EntryDto[], personId: string, scope: PersonScope): EntryDto[] {
-  if (personId === "household") {
-    return entries;
-  }
-
-  return entries.filter((entry) => isEntryInPersonScope(entry, personId, scope));
 }
 
 export function adjustEntriesForView(entries: EntryDto[], personId: string): EntryDto[] {

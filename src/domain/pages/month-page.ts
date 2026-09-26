@@ -4,12 +4,8 @@ import {
   buildEmptySummaryMonth,
   loadPlannedSummaryMonthsForViews
 } from "../summary-projection";
-import {
-  adjustEntriesForView,
-  buildMonthPage,
-  effectiveScopeForView,
-  filterEntriesForView
-} from "../month-projection";
+import { adjustEntriesForView, buildMonthPage } from "../month-projection";
+import { effectiveScopeForView, filterEntriesForView } from "../person-view-scope";
 import {
   loadEntries,
   loadMonthIncomeRows,
