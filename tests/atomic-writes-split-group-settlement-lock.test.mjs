@@ -348,6 +348,84 @@ test("an Undo settle-up that fails part way changes nothing", async (t) => {
   }
 });
 
+test("after Undo settle-up, editing the kept settle-up does not settle the group again", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const settled = await settledGroup(api, db);
+  assert.equal((await api("/api/splits/batches/reopen", { batchId: settled.batchId })).status, 200);
+  const correction = await api("/api/splits/expenses/update", expenseEdit(settled.splitExpenseId, settled.groupId, settled, { amountMinor: 9_000, splitAmountMinor: 4_500 }));
+  assert.equal(correction.status, 200, JSON.stringify(correction.payload));
+
+  // A note and payment method change is an ordinary edit of open activity.
+  const noteEdit = await api("/api/splits/settlements/update", {
+    settlementId: settled.settlementId,
+    ...settleUpPayload(settled.groupId, { paymentMethod: "bank", note: "paid by transfer" })
+  });
+
+  assert.equal(noteEdit.status, 200, JSON.stringify(noteEdit.payload));
+  assert.deepEqual(await batchOf(db, "split_settlements", settled.settlementId), { id: settled.batchId, closed_on: null });
+  const splitsPage = await api(`/api/splits-page?view=person-tim&month=${MONTH}`);
+  assert.equal(splitsPage.payload.splitsPage.groups.find((group) => group.id === settled.groupId).balanceMinor, 1_500);
+});
+
+test("a shared save is checked against the live linked split, not an archived one", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const groupId = await createGroup(api);
+  const description = "Re-added trip dinner";
+  const entryId = await createEntry(api, { date: DATE, description, amountMinor: 6_000 });
+  const first = await api("/api/splits/expenses/from-entry", { entryId, splitGroupId: groupId });
+  assert.equal(first.status, 200, JSON.stringify(first.payload));
+  assert.equal((await api("/api/splits/expenses/delete", { splitExpenseId: first.payload.splitExpenseId })).status, 200);
+  // The archived split no longer holds the entry, so it can be added again.
+  const second = await api("/api/splits/expenses/from-entry", { entryId, splitGroupId: groupId });
+  assert.equal(second.status, 200, JSON.stringify(second.payload));
+  await settleUp(api, groupId);
+  const batch = await batchOf(db, "split_expenses", second.payload.splitExpenseId);
+  assert.equal(batch.closed_on, SETTLED_ON);
+  const before = await dumpDatabase(db);
+
+  const shareEdit = await api("/api/entries/update", entryEdit(entryId, { description, amountMinor: 6_000 }, { ownershipType: "shared", ownerName: undefined, splitBasisPoints: 2_500 }));
+
+  assertGroupLocked(shareEdit, batch.id, /shares/);
+  assertSameDatabase(await dumpDatabase(db), before);
+});
+
+test("restoring a record whose batch was settled since brings it back as open activity", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const groupId = await createGroup(api);
+  const keptId = await createGroupExpense(api, groupId, { description: "Kept trip shop", amountMinor: 6_000 });
+  const deletedId = await createGroupExpense(api, groupId, { description: "Deleted trip taxi", amountMinor: 2_000 });
+  assert.equal((await api("/api/splits/expenses/delete", { splitExpenseId: deletedId })).status, 200);
+  await settleUp(api, groupId);
+  const settledBatch = await batchOf(db, "split_expenses", keptId);
+  assert.equal(settledBatch.closed_on, SETTLED_ON);
+
+  const restore = await api("/api/splits/activity-history/restore", { recordKind: "expense", recordId: deletedId });
+
+  assert.equal(restore.status, 200, JSON.stringify(restore.payload));
+  // The settle-up did not pay for it, so it counts in the open balance
+  // instead of hiding in the settled batch.
+  const restoredBatch = await batchOf(db, "split_expenses", deletedId);
+  assert.notEqual(restoredBatch.id, settledBatch.id);
+  assert.equal(restoredBatch.closed_on, null);
+  assert.deepEqual(await batchOf(db, "split_expenses", keptId), settledBatch);
+  const splitsPage = await api(`/api/splits-page?view=person-tim&month=${MONTH}`);
+  assert.equal(splitsPage.payload.splitsPage.groups.find((group) => group.id === groupId).balanceMinor, 1_000);
+});
+
+test("Undo settle-up refuses a batch whose activity already moved", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const settled = await settledGroup(api, db);
+  await createGroupExpense(api, settled.groupId, { description: "After the settle-up", amountMinor: 2_000, date: "2026-05-18" });
+  assert.equal((await api("/api/splits/batches/reopen", { batchId: settled.batchId })).status, 200);
+  const before = await dumpDatabase(db);
+
+  const again = await api("/api/splits/batches/reopen", { batchId: settled.batchId });
+
+  assert.equal(again.status, 400, JSON.stringify(again.payload));
+  assert.match(again.payload.error, /already undone/);
+  assertSameDatabase(await dumpDatabase(db), before);
+});
+
 test("activity recorded after a settle-up stays editable", async (t) => {
   const { db, api } = await openSeededDatabase(t, template);
   const settled = await settledGroup(api, db);

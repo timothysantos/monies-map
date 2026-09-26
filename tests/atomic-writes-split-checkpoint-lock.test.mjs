@@ -523,12 +523,16 @@ test("a settle-up edit or delete that fails part way changes nothing", async (t)
   const [{ split_batch_id: batchId }] = await rows(db, "SELECT split_batch_id FROM split_settlements WHERE id = ?", settlementId);
   const undo = await api("/api/splits/batches/reopen", { batchId });
   assert.equal(undo.status, 200, JSON.stringify(undo.payload));
+  // Moving it to a group without a batch opens one, files the settle-up
+  // there and closes it: three writes, the close last.
+  const group = await api("/api/splits/groups/create", { name: "Atomic settle group", currency: "SGD", expenseSource: "mixed" });
+  assert.equal(group.status, 200, JSON.stringify(group.payload));
   const before = await dumpDatabase(db);
 
   const faultyUpdate = failingStatement(db, /UPDATE split_batches/);
   const update = await api("/api/splits/settlements/update", {
     settlementId,
-    groupId: null,
+    groupId: group.payload.groupId,
     date: DATE,
     fromPersonName: "Joyce",
     toPersonName: "Tim",
