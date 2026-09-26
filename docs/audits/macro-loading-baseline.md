@@ -2717,7 +2717,15 @@ cohort's run medians overlap by 3 ms, the other's do not.
   about 1,095 px. There "+ Add planned item" starts off screen to the
   right, and the fixed sheet spans the wider layout viewport, so its right
   edge (about 275 px) is outside the visible area until the person zooms
-  out. Needs its own Month layout change.
+  out. Needs its own Month layout change. Fixed on branch
+  `month-mid-width-layout`: from 761 to 1,099 px the Month panel and plan
+  sections may shrink, so the tables fit (from about 900 px) or scroll
+  inside `.month-table-wrap`, and the header's period controls wrap below
+  the tabs. `tests/e2e/month-mid-width-layout.spec.js` covers 820×1180
+  (mobile emulation) and 1024×768. Still open, outside that range: from
+  1,100 to about 1,220 px the tab strip is up to 71 px wider than its space
+  and FAQ slides partly under the "‹" button (its centre stays clickable),
+  on every page, as before.
 - **The `body:has(...)` rules.** The sheet's remaining style cost (~30 ms
   per open or close at CPU 4x) comes from the 9 `body:has(...)` rules that
   hide the tab strip, floating buttons and sticky context while an editor
