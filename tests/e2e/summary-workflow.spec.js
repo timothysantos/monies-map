@@ -104,6 +104,8 @@ test.describe("summary workflow", () => {
     await expect(page.locator(".summary-scope")).toHaveCount(0);
     await expect(triggerLabel).toHaveText("Joyce · Shared");
     await expect(trigger).toContainText("View and scope");
+    // A screen reader hears the same view and scope the bar shows.
+    await expect(trigger).toHaveAccessibleName("Joyce · Shared View and scope");
     await expect(actualSpend).toHaveText(money(actualSpendMinor(sharedPage)));
 
     await trigger.click();
