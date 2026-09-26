@@ -1699,12 +1699,16 @@ The Summary and Month Money check-ins count the same entries, so in Tim's
 Direct + Shared view the Month check-in says he spent $120.00, the same as
 his `Actual spend` card, and switching to `Shared` makes both say $20.00.
 
-In a person view, Summary shows the scope under its heading: the same
-`Direct ownership`, `Shared` and `Direct + Shared` pills as Month, with the
-active one highlighted and a short line saying what it counts (for example
-"Joyce's share of split expenses."). Tapping another pill reloads Summary for
-that scope, as on Month; on a phone the pills span the screen width. The
-household view always counts every entry, so it shows no scope pills.
+In a person view on a computer or tablet, Summary shows the scope under its
+heading: the same `Direct ownership`, `Shared` and `Direct + Shared` pills as
+Month, with the active one highlighted and a short line saying what it counts
+(for example "Joyce's share of split expenses."). Clicking another pill
+reloads Summary for that scope, as on Month. On a phone, Summary has no pills
+of its own: the floating View and scope bar above the bottom navigation, the
+same one Month and Entries use, shows the person and the scope (for example
+`Joyce · Shared`), and tapping it opens a sheet with the view and scope
+choices and the same line saying what the scope counts. The household view
+always counts every entry, so it shows no scope choice.
 
 Important current limitation:
 
@@ -2010,11 +2014,14 @@ has not changed. On Entries, the same pills reuse the loaded household month
 rows and apply the person as a local filter. Switching between people should
 feel like changing a filter, not like reloading the whole page.
 
-On mobile Month and Entries, the sticky control above the bottom navigation now
-collapses that context into a compact summary button, such as `Tim • Shared`,
-with previous and next month buttons beside it. Tapping the summary opens a
-bottom sheet where you can switch the household/person view first and then
-adjust scope when that view supports multiple scope options.
+On a phone, Summary, Month and Entries have one floating View and scope bar
+above the bottom navigation. It names the view and the whole scope on one
+line, such as `Tim · Direct + Shared`, with `View and scope` under it, and
+never cuts either short (a long name wraps instead). Month and Entries add
+previous and next month buttons beside it; Summary moves its range from the
+header. Tapping the bar opens a bottom sheet where you can switch the
+household/person view first and then the scope, when that view has more than
+one, with a line saying what the chosen scope counts.
 
 Within one browser session, returning to a tab should reuse cached page data
 when no import, edit, rollback, or manual refresh has invalidated it. This keeps

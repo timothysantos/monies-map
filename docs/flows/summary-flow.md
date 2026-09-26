@@ -14,8 +14,12 @@ Route entry:
 
 The route may include view, scope, focus, and range parameters. `App.jsx` reads
 the URL and keeps the selected Summary view in sync with browser location. In a
-person view the scope pills under the heading set `scope`; the active pill is
-the scope of the Summary request whose figures are on screen.
+person view the scope control sets `scope`: on desktop and tablet the pills
+under the heading, on a phone the scope section of the floating View and
+scope bar's dialog (the inline pills are not rendered there). Both show the
+scope of the Summary request whose figures are on screen and a line saying
+what it counts. On a phone the bar also switches the view, and the header's
+view pills are hidden as on Month and Entries.
 
 ## State Flow
 
