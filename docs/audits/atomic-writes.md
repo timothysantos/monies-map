@@ -853,7 +853,9 @@ restore and Entries showed only one of the two rows On splits. Without the
 test's barrier these runtime pairs may have been refused by the check
 rather than the guard. New ids appeared as `split-expense-<ms>-<uuid>`.
 
-Gates (see the final section of the branch report for the post-merge rerun):
+After merging `macro-performance` at `9e59e2b` (split currency display, clean
+merge): both typechecks clean, lint 0 errors (30 warnings), unit 763/763.
+Before the merge:
 `npm audit` 0 vulnerabilities; both typechecks clean; lint 0 errors (30
 warnings, as base); unit 753/753; build; `check:bundle` 173,411 B JS gzip
 (budget 180,337) and 33,435 B CSS (budget 31,961, inside the 5% allowance; no
