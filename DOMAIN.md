@@ -381,6 +381,13 @@ Important distinctions:
   prior working state and removes the statement certificate metadata. Older PDF
   statements stay locked once a later statement certificate exists for the same
   account.
+- Rows a statement superseded (deleted) are re-created by its rollback with
+  their split links. Superseding unlinked the splits, so one may have been
+  edited or matched meanwhile: a re-linked split goes back on the re-created
+  entry's amount by the same rule as an entry amount edit (see `split expense
+  share`; a settled split refuses the rollback instead, see the settlement
+  lock under Settlement Checkpoint), and a split matched to another ledger row
+  since keeps that link, so the entry comes back without a split.
 - If an official statement balance is mismatched only because one or more
   provisional CSV rows in the statement period are absent from the PDF, those
   rows may be superseded by the statement only when their signed total uniquely
@@ -556,6 +563,16 @@ Important distinction:
   rebalanced by the split's stored basis (see `split expense share`). A
   cross-currency split keeps its own total and shares and only updates its home
   amount and FX rate
+- a Shared owner save that rewrites the split follows the same currency rule:
+  a travel split (recorded in its own currency, such as JPY, and matched to a
+  home-currency card or bank row) keeps its currency and total, only its home
+  amount and FX rate take the entry's amount, its group is checked against
+  the split's own currency, and a new share basis divides the split's own
+  total
+- a split record links to one ledger row at a time: when the same split is
+  matched to two rows at once, the later match is refused as a whole ("This
+  split expense is unavailable or already linked.") and writes nothing, not
+  even a month refresh
 - the split mirrors the entry's event date (`transaction_date`, never the
   posted date), description and payer (the entry owner, else the account
   owner): these are copied when the entry is added to splits, and an entry edit
@@ -628,6 +645,12 @@ Core records:
 - `split batches`
 - `split expenses`
 - `split settlements`
+
+Record ids: new split workspace records (groups, batches, expenses,
+settle-ups, settlement checkpoints, history events) get
+`<kind>-<creation time in ms>-<uuid>`, so two made in the same millisecond
+never collide and ids of one kind still sort by creation time. Older
+`<kind>-<ms>` ids and seeded names stay valid.
 
 ### Split Group
 
@@ -727,7 +750,9 @@ Rounding rule:
   currency and stored basis keeps the stored shares to the cent; only a
   different basis (or amount) rebuilds them. The settlement lock compares the
   same plan, so an unchanged shared save of a settled split is allowed and a
-  real share change is still refused
+  real share change is still refused. For a travel split the plan is in the
+  split's own currency and total, so an unchanged shared save of a settled
+  travel split is allowed too
 
 Relationships:
 - belongs to one `split expense`
@@ -793,7 +818,10 @@ Rules:
   rollback that would restore a linked entry to a different amount (so its
   split would follow) is refused as a whole with `split_settlement_locked`
   until the simplification (or settle-up) is undone. A rollback that leaves
-  the linked entry's amount alone is never blocked
+  the linked entry's amount alone is never blocked. The same holds for a
+  statement rollback that re-creates an entry the statement superseded and
+  re-links its split: a split whose amount was changed while it was unlinked
+  would follow the entry, so a settled one refuses the rollback
 
 ### Split Activity History
 
@@ -810,6 +838,10 @@ Rules:
 - active split projections exclude archived records
 - history is household-scoped and ordered newest first
 - restore is allowed only for an archived record and never creates a duplicate
+- a delete or restore takes effect once: when two requests for the same
+  record pass their checks together, the later one is refused as a whole
+  ("This split is already in activity history." / "This split is already
+  active.") and records no second history event
 - an archived record does not hold its ledger row; restoring it is refused
   while another active split record (or a settlement checkpoint match) holds
   that row
