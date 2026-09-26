@@ -2336,11 +2336,12 @@ export function App() {
     ? mobileContextScopes.find((scope) => scope.key === stickyScopeConfig.selectedKey) ?? null
     : null;
   // The bar names the person and a short scope name ("Tim · Direct + Shared")
-  // that it never cuts short; the dialog says what the scope counts.
+  // that it never cuts short. On Summary the dialog also carries the line
+  // saying what the scope counts, which desktop shows under the pills.
   const mobileContextScopeLabel = selectedViewSupportsScope && selectedMobileScope
     ? messages.views.scopeShortLabel[selectedMobileScope.key] ?? selectedMobileScope.label
     : "";
-  const mobileContextScopeHint = selectedMobileScope
+  const mobileContextScopeHint = renderedTabId === "summary" && selectedMobileScope
     ? messages.views.scopeHint[selectedMobileScope.key]?.(pageView?.label ?? "") ?? ""
     : "";
   const showMobileContextSticky = Boolean(stickyScopeConfig);
