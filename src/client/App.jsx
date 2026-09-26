@@ -1701,10 +1701,11 @@ export function App() {
           appShell,
           selectedViewId,
           summaryPageData,
-          summaryAccountPillsData
+          summaryAccountPillsData,
+          summaryPageDataRequestKey
         })
       : buildPageViewFromRouteData(selectedTabId, currentRoutePageData, selectedViewId, appShell),
-    [appShell, currentRoutePageData, selectedTabId, selectedViewId, summaryAccountPillsData, summaryPageData]
+    [appShell, currentRoutePageData, selectedTabId, selectedViewId, summaryAccountPillsData, summaryPageData, summaryPageDataRequestKey]
   );
   const lastSettledPageViewRef = useRef(null);
   const lastSettledTabIdRef = useRef(null);

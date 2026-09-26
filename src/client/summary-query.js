@@ -1,3 +1,4 @@
+import { buildPersonScopes, effectiveScopeForView } from "../domain/person-view-scope";
 import { queryKeys, summaryPageKeyFromParams } from "./query-keys.js";
 import { fetchQueryWithLease } from "./query-leases.js";
 import { buildRequestErrorMessage } from "./request-errors.js";
@@ -84,7 +85,8 @@ export function buildSummaryPageView({
   appShell,
   selectedViewId,
   summaryPageData,
-  summaryAccountPillsData
+  summaryAccountPillsData,
+  summaryPageDataRequestKey = ""
 }) {
   if (!appShell || !summaryPageData) {
     return null;
@@ -94,9 +96,14 @@ export function buildSummaryPageView({
     ? "Household"
     : appShell.household?.people?.find((person) => person.id === selectedViewId)?.name ?? "Household";
 
+  const id = summaryPageData.viewId ?? selectedViewId ?? "household";
   return {
-    id: summaryPageData.viewId ?? selectedViewId ?? "household",
+    id,
     label: summaryPageData.label ?? fallbackLabel,
+    // The scope of the request these figures answer, not the route's latest
+    // one, so the scope control never runs ahead of the figures it labels.
+    selectedScope: effectiveScopeForView(id, new URLSearchParams(summaryPageDataRequestKey).get("scope")),
+    scopes: buildPersonScopes(id),
     summaryPage: {
       ...summaryPageData.summaryPage,
       accountPills: summaryAccountPillsData?.accountPills ?? []
