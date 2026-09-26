@@ -93,7 +93,10 @@ Imports owns:
   while non-JSON failures such as edge 503s include HTTP status and a short
   cleaned response snippet instead of only a generic fallback
 - non-destructive statement preview auto-refresh; transient refresh failures
-  must keep the current reviewed preview visible
+  must keep the current reviewed preview visible. It runs when the tab
+  regains focus, only for a statement (PDF or OCR) preview that has settled
+  for 2 s and has no unsaved row edits; the page run is driven in
+  `imports-statement-auto-refresh.spec.js`
 
 ## Audit Status
 
