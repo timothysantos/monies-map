@@ -308,9 +308,14 @@ smoke 88/88; full browser suite 252/252.
 
 ## Follow-ups
 
-- Add browser tests for the pre-existing UI gaps listed above (split
-  expense created through the dialog, travel-currency groups, restore from
-  split history, import preview auto-refresh on the Imports page).
+- Done: browser tests for the pre-existing UI gaps listed above now drive
+  each screen: `splits-add-expense-dialog.spec.js`,
+  `splits-travel-group.spec.js`, `splits-history-restore.spec.js` and
+  `imports-statement-auto-refresh.spec.js`, each with a negative case and
+  proven by source mutations of the UI path. The restore work found and fixed
+  a refused restore whose error was hidden behind the history dialog; the
+  travel work found that JPY group totals still format as SGD (recorded in
+  `docs/flows/splits-flow.md`).
 - Mutation I10 (rollback keeps the import's rows) failed no test, before or
   after the move: the rolled-back status hides the rows from every page, so
   no page-level assertion notices rows left behind. The whole-database

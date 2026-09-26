@@ -51,6 +51,8 @@ settlements are archived, not physically removed, and can be restored with the
 same record ID, shares, group, currency, and ledger link. Restoring does not
 rewrite an existing settlement checkpoint. A split included in an active
 simplified settlement cannot be deleted until that simplification is undone.
+If the split was already restored elsewhere (for example in another tab), the
+history window says so and refreshes instead of restoring it twice.
 
 While a split is deleted, its entry is not shared: Entries shows it without
 the "On splits" chip, every view counts its full amount for the person who
