@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildSplitsPanelModel } from "../src/client/splits-selectors.js";
+import { buildSplitInsightRecords } from "../src/client/split-helpers.js";
 
 // A JPY trip: Tim paid ¥12,000 for a hotel (Tim 25%, Joyce 75%), Joyce paid
 // ¥4,000 for a dinner she keeps entirely, and Joyce settled ¥9,000 with Tim.
@@ -46,29 +46,12 @@ const activity = [
     toPersonName: "Tim",
     totalAmountMinor: 900_000,
     currency: "JPY"
-  },
-  {
-    id: "other-group",
-    kind: "expense",
-    groupId: "split-group-none",
-    isArchived: false,
-    date: "2026-05-15",
-    description: "Groceries",
-    categoryName: "Groceries",
-    paidByPersonName: "Tim",
-    totalAmountMinor: 5_000,
-    currency: "SGD",
-    shares: [share("person-tim", "Tim", 5000, 2_500), share("person-joyce", "Joyce", 5000, 2_500)]
   }
 ];
 
+// The Splits model passes the active group's current activity.
 function insightRecordsFor(viewId) {
-  return buildSplitsPanelModel({
-    view: { id: viewId, splitsPage: { groups: [tokyo], activity, matches: [], donutChart: [] } },
-    categories: [],
-    selectedGroupId: tokyo.id,
-    dismissedMatchIds: []
-  }).insightRecords;
+  return buildSplitInsightRecords(activity, viewId);
 }
 
 test("a person's split check-in records are that person's share of each group expense", () => {
@@ -84,9 +67,10 @@ test("a person's split check-in records are that person's share of each group ex
 });
 
 test("a person's check-in leaves out an expense they have no share in", () => {
-  const records = insightRecordsFor("person-tim");
-  assert.equal(records.some((record) => record.description === "Omakase dinner"), false);
-  assert.equal(records.some((record) => record.description === "Groceries"), false);
+  // Tim's share of the dinner is zero; a person with no share row at all has
+  // no expense in the group.
+  assert.equal(insightRecordsFor("person-tim").some((record) => record.description === "Omakase dinner"), false);
+  assert.deepEqual(insightRecordsFor("person-guest").map((record) => record.entryType), ["transfer"]);
 });
 
 test("the household split check-in records are the group's totals", () => {
