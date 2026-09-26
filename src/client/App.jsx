@@ -2845,7 +2845,7 @@ export function App() {
                   <span className="mobile-context-trigger-copy">
                     {/* The label wraps between the name and the scope rather than truncating. */}
                     <span className="mobile-context-trigger-label">
-                      <span className="mobile-context-trigger-person">{pageView?.label ?? ""}</span>
+                      {pageView?.label ?? ""}
                       {mobileContextScopeLabel ? (
                         <> <span className="mobile-context-trigger-scope">· {mobileContextScopeLabel}</span></>
                       ) : null}
@@ -2923,7 +2923,7 @@ export function App() {
                         ))}
                       </div>
                       {mobileContextScopeHint ? (
-                        <p className="mobile-context-dialog-hint">{mobileContextScopeHint}</p>
+                        <span className="panel-context">{mobileContextScopeHint}</span>
                       ) : null}
                     </section>
                   ) : null}

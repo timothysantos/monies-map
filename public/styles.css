@@ -9318,8 +9318,7 @@ th {
     background: rgba(255, 243, 234, 0.98);
   }
 
-  /* Above the View and scope bar (80px up, 46px tall) so it never covers
-     the bar's caret or next-month arrow. */
+  /* Clear of the View and scope bar. */
   .totals-visibility-toggle--month,
   .totals-visibility-toggle--summary {
     bottom: calc(136px + env(safe-area-inset-bottom, 0px));
@@ -10499,30 +10498,17 @@ th {
     cursor: pointer;
   }
 
-  /* Two lines: "Tim · Direct + Shared" over "View and scope". Nothing is
-     truncated; a long name wraps before the scope instead. */
+  /* Label over hint; a long name wraps, the scope never truncates. */
   .mobile-context-trigger-copy {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    display: grid;
     min-width: 0;
-    gap: 1px;
   }
 
   .mobile-context-trigger-label {
-    display: flex;
-    flex-wrap: wrap;
-    column-gap: 0.3em;
-    max-width: 100%;
     font-size: 0.84rem;
     font-weight: 700;
     line-height: 1.25;
     letter-spacing: -0.01em;
-  }
-
-  .mobile-context-trigger-person {
-    min-width: 0;
-    overflow-wrap: anywhere;
   }
 
   .mobile-context-trigger-scope {
@@ -10615,13 +10601,6 @@ th {
   .mobile-context-pill-row .pill {
     width: 100%;
     min-width: 0;
-  }
-
-  .mobile-context-dialog-hint {
-    margin: 0;
-    color: var(--muted);
-    font-size: 0.84rem;
-    line-height: 1.4;
   }
 
   .scope-button {
