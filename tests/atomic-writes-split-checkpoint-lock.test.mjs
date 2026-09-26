@@ -452,6 +452,11 @@ test("a settle-up edit or delete that fails part way changes nothing", async (t)
   });
   assert.equal(created.status, 200, JSON.stringify(created.payload));
   const settlementId = created.payload.settlementId;
+  // The settle-up closed its batch, which locks its amount; undo it so the
+  // edit and delete reach their writes.
+  const [{ split_batch_id: batchId }] = await rows(db, "SELECT split_batch_id FROM split_settlements WHERE id = ?", settlementId);
+  const undo = await api("/api/splits/batches/reopen", { batchId });
+  assert.equal(undo.status, 200, JSON.stringify(undo.payload));
   const before = await dumpDatabase(db);
 
   const faultyUpdate = failingStatement(db, /UPDATE split_batches/);

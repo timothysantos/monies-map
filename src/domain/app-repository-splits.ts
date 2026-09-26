@@ -3,7 +3,7 @@ import {
   groupSplits,
   slugify
 } from "./app-repository-helpers";
-import { buildCloseSplitBatchStatement, closeSplitBatch, getOrCreateActiveSplitBatch, planActiveSplitBatch, resolveActiveSplitBatch } from "./app-repository-split-batches";
+import { buildCloseSplitBatchStatement, buildReopenSplitBatchStatement, closeSplitBatch, findActiveSplitBatchId, getOrCreateActiveSplitBatch, planActiveSplitBatch, resolveActiveSplitBatch } from "./app-repository-split-batches";
 import { buildMonthlySnapshotRefreshMarkers, refreshMonthlySnapshotsAfterWrite } from "./app-repository-snapshots";
 import { assertSplitSettlementUnchanged, type SplitSettlementFacts } from "./split-settlement-lock";
 import {
@@ -1256,6 +1256,59 @@ export async function deleteSplitSettlementRecord(
   return { settlementId: input.settlementId, deleted: true };
 }
 
+// Undo settle-up: reopens a group batch that a settle-up closed, so its
+// activity, the settle-up included, counts in the group balance again and
+// can be corrected (the settlement lock releases it). The settle-up is kept,
+// since it records a real payment that may be bank linked, and gets a history
+// event. A group keeps one open batch: when a newer batch is already open the
+// reopened activity (archived records too, so a restore lands there) joins
+// it, and the next settle-up closes all of it together.
+export async function reopenSplitBatchRecord(db: D1Database, input: { batchId: string }) {
+  const batch = await db
+    .prepare("SELECT id, split_group_id, closed_on FROM split_batches WHERE id = ? AND household_id = ?")
+    .bind(input.batchId, DEFAULT_HOUSEHOLD_ID)
+    .first<{ id: string; split_group_id: string | null; closed_on: string | null }>();
+  if (!batch) throw new Error("Settled batch not found.");
+  if (!batch.closed_on) throw new Error("This batch is not settled, so there is no settle-up to undo.");
+
+  const [openBatchId, settlements] = await Promise.all([
+    findActiveSplitBatchId(db, batch.split_group_id),
+    db
+      .prepare(`
+        SELECT split_settlements.id, split_settlements.amount_minor, split_settlements.currency, split_groups.group_name
+        FROM split_settlements
+        LEFT JOIN split_groups ON split_groups.id = split_settlements.split_group_id
+        WHERE split_settlements.split_batch_id = ? AND split_settlements.household_id = ? AND split_settlements.deleted_at IS NULL
+        ORDER BY split_settlements.settlement_date, split_settlements.id
+      `)
+      .bind(batch.id, DEFAULT_HOUSEHOLD_ID)
+      .all<{ id: string; amount_minor: number; currency: string | null; group_name: string | null }>()
+  ]);
+  const reopen = openBatchId
+    ? [
+        db.prepare("UPDATE split_expenses SET split_batch_id = ? WHERE split_batch_id = ? AND household_id = ?").bind(openBatchId, batch.id, DEFAULT_HOUSEHOLD_ID),
+        db.prepare("UPDATE split_settlements SET split_batch_id = ? WHERE split_batch_id = ? AND household_id = ?").bind(openBatchId, batch.id, DEFAULT_HOUSEHOLD_ID)
+      ]
+    : [await buildReopenSplitBatchStatement(db, { batchId: batch.id, groupId: batch.split_group_id })];
+
+  await db.batch([
+    ...reopen,
+    ...settlements.results.map((settlement) => buildSplitHistoryStatement(db, {
+      recordKind: "settlement",
+      recordId: settlement.id,
+      action: "updated",
+      groupId: batch.split_group_id,
+      groupName: settlement.group_name,
+      description: "Settlement",
+      amountMinor: settlement.amount_minor,
+      currency: settlement.currency,
+      detail: "Settle-up undone; its activity is open again."
+    }))
+  ]);
+
+  return { batchId: input.batchId, reopened: true };
+}
+
 type SplitHistoryInput = { recordKind: "expense" | "settlement"; recordId: string; action: "created" | "updated" | "deleted" | "restored"; groupId?: string | null; groupName?: string | null; description: string; amountMinor: number; currency?: string | null; detail?: string };
 
 function buildSplitHistoryStatement(db: D1Database, input: SplitHistoryInput) {
@@ -1798,16 +1851,21 @@ export async function upsertLinkedSplitExpenseForEntryRecord(
   }
 
   const existingSplit = await db
-    .prepare("SELECT id, split_group_id FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ? AND deleted_at IS NULL")
+    .prepare("SELECT id, split_group_id, split_batch_id FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ? AND deleted_at IS NULL")
     .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
-    .first<{ id: string; split_group_id: string | null }>();
+    .first<{ id: string; split_group_id: string | null; split_batch_id: string | null }>();
   const splitExpenseId = existingSplit?.id ?? `split-expense-${Date.now()}`;
   const splitGroupId = input.splitGroupId === undefined ? existingSplit?.split_group_id ?? null : input.splitGroupId || null;
   await assertSplitGroupCurrency(db, splitGroupId, entry.currency);
-  const batchId = await getOrCreateActiveSplitBatch(db, {
-    groupId: splitGroupId,
-    date: entry.transaction_date
-  });
+  // A split that stays in its group stays in its batch: one in a settled
+  // (closed) batch must not slip back into the open balance on a save the
+  // settlement lock allowed.
+  const batchId = existingSplit?.split_batch_id && existingSplit.split_group_id === splitGroupId
+    ? existingSplit.split_batch_id
+    : await getOrCreateActiveSplitBatch(db, {
+        groupId: splitGroupId,
+        date: entry.transaction_date
+      });
 
   if (existingSplit) {
     await db
