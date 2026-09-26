@@ -27,6 +27,22 @@ test("buildSummaryAccountPillsParams only keys the visible view", () => {
   );
 });
 
+test("buildSummaryPageView carries the scope of the request its figures answer", () => {
+  const input = {
+    appShell: { household: { people: [{ id: "person-joyce", name: "Joyce" }] } },
+    selectedViewId: "person-joyce",
+    summaryPageData: { viewId: "person-joyce", label: "Joyce", summaryPage: { months: [] } },
+    summaryAccountPillsData: { accountPills: [] }
+  };
+  assert.equal(
+    buildSummaryPageView({ ...input, summaryPageDataRequestKey: "view=person-joyce&month=2025-10&scope=shared" }).requestedScope,
+    "shared"
+  );
+  // No request key (or no scope in it) leaves the scope unknown, not guessed.
+  assert.equal(buildSummaryPageView(input).requestedScope, "");
+  assert.equal(buildSummaryPageView({ ...input, summaryPageData: null }), null);
+});
+
 test("buildSummaryPageView merges wallet pills into the summary render view", () => {
   const view = buildSummaryPageView({
     appShell: {

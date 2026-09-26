@@ -84,7 +84,8 @@ export function buildSummaryPageView({
   appShell,
   selectedViewId,
   summaryPageData,
-  summaryAccountPillsData
+  summaryAccountPillsData,
+  summaryPageDataRequestKey = ""
 }) {
   if (!appShell || !summaryPageData) {
     return null;
@@ -97,6 +98,9 @@ export function buildSummaryPageView({
   return {
     id: summaryPageData.viewId ?? selectedViewId ?? "household",
     label: summaryPageData.label ?? fallbackLabel,
+    // The scope of the request these figures answer, not the route's latest
+    // one, so the scope control never runs ahead of the figures it labels.
+    requestedScope: new URLSearchParams(summaryPageDataRequestKey).get("scope") ?? "",
     summaryPage: {
       ...summaryPageData.summaryPage,
       accountPills: summaryAccountPillsData?.accountPills ?? []
