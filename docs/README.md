@@ -98,6 +98,9 @@ a doc here in the same change.
   donut category interaction.
 - [`audits/donut-category-visibility-audit.md`](audits/donut-category-visibility-audit.md):
   donut category visibility.
+- [`audits/e2e-unit-audit.md`](audits/e2e-unit-audit.md): browser tests
+  moved to Worker-level and unit tests, with mutation proof and the
+  candidates kept in the browser.
 - [`audits/entries-splits-search-audit.md`](audits/entries-splits-search-audit.md):
   entries and splits search.
 - [`audits/fourteenth-slice-audit.md`](audits/fourteenth-slice-audit.md):

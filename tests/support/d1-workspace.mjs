@@ -62,6 +62,10 @@ export async function openSeededDatabase(t, template) {
   const envFor = (database) => ({ DB: database, ...template.config.vars });
   return {
     db,
+    // The raw Worker response for a request, as a browser fetch would see it.
+    fetch(pathname, init) {
+      return worker.fetch(new Request(`http://127.0.0.1${pathname}`, init), envFor(db));
+    },
     // Calls the real Worker route, optionally against a fault-injecting DB.
     // A route that lets an error escape is a 500 in workerd, so it is
     // reported the same way here.

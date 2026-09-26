@@ -287,21 +287,6 @@ test.describe("month page", () => {
     }
   });
 
-  test("planned item actuals only appear when they are backed by linked current-month entries", async ({ page }) => {
-    const data = await loadMonthPageData(page);
-    const plannedRows = data.monthPage.planSections
-      .find((section) => section.key === "planned_items")
-      ?.rows ?? [];
-
-    const phantomActuals = plannedRows.filter((row) => row.actualMinor > 0 && (row.linkedEntryIds?.length ?? 0) === 0);
-    expect(phantomActuals).toEqual([]);
-
-    for (const row of plannedRows.filter((item) => item.linkedEntryIds?.length)) {
-      expect(row.actualEntryIds?.length ?? 0, `${row.label} should expose actual entry ids for drilldown`).toBeGreaterThan(0);
-      expect(row.actualMinor, `${row.label} should derive actual from linked entries`).toBeGreaterThan(0);
-    }
-  });
-
   test("desktop editing a budget row updates month and summary planning totals", async ({ page }) => {
     const beforeMonth = await loadMonthPageData(page);
     const beforeSummary = await loadSummaryPageData(page);
@@ -777,143 +762,6 @@ test.describe("month page", () => {
     await expect(page.getByText("Actual drilldown unrelated")).toHaveCount(0);
   });
 
-  test("new direct ledger expense updates the matching budget bucket actual in direct and direct+shared scopes", async ({ page }) => {
-    const beforeDirectMonth = await loadMonthPageData(page, { scope: "direct" });
-    const beforeSharedMonth = await loadMonthPageData(page, { scope: "shared" });
-    const beforeCombinedMonth = await loadMonthPageData(page, { scope: "direct_plus_shared" });
-
-    await postJson(page, "/api/entries/create", {
-      date: "2026-05-20",
-      description: "Playwright month food expense",
-      accountName: "UOB One",
-      categoryName: "Food & Drinks",
-      amountMinor: 1234,
-      entryType: "expense",
-      ownershipType: "direct",
-      ownerName: "Tim"
-    });
-
-    const directMonth = await loadMonthPageData(page, { scope: "direct" });
-    const sharedMonth = await loadMonthPageData(page, { scope: "shared" });
-    const combinedMonth = await loadMonthPageData(page, { scope: "direct_plus_shared" });
-
-    expect(findBudgetRow(directMonth, "Food").actualMinor).toBe(findBudgetRow(beforeDirectMonth, "Food").actualMinor + 1234);
-    expect(findBudgetRow(sharedMonth, "Food").actualMinor).toBe(findBudgetRow(beforeSharedMonth, "Food").actualMinor);
-    expect(findBudgetRow(combinedMonth, "Food").actualMinor).toBe(findBudgetRow(beforeCombinedMonth, "Food").actualMinor + 1234);
-  });
-
-  test("planned items stay at zero until linked, then absorb linked actuals and release the bucket total", async ({ page }) => {
-    const rowId = `playwright-plan-${Date.now()}`;
-    await postJson(page, "/api/month-plan/save", {
-      rowId,
-      month: "2026-05",
-      sectionKey: "planned_items",
-      categoryName: "Entertainment",
-      label: "Playwright date night",
-      planDate: "2026-05-18",
-      accountName: "",
-      plannedMinor: 5000,
-      note: "Playwright planned item.",
-      ownershipType: "direct",
-      ownerName: "Tim"
-    });
-
-    const firstEntry = await postJson(page, "/api/entries/create", {
-      date: "2026-05-18",
-      description: "Playwright dinner charge",
-      accountName: "UOB One",
-      categoryName: "Entertainment",
-      amountMinor: 1100,
-      entryType: "expense",
-      ownershipType: "direct",
-      ownerName: "Tim"
-    });
-
-    const secondEntry = await postJson(page, "/api/entries/create", {
-      date: "2026-05-19",
-      description: "Playwright dessert charge",
-      accountName: "UOB One",
-      categoryName: "Entertainment",
-      amountMinor: 400,
-      entryType: "expense",
-      ownershipType: "direct",
-      ownerName: "Tim"
-    });
-
-    const beforeLink = await loadMonthPageData(page, { scope: "direct_plus_shared" });
-    const beforeItem = beforeLink.monthPage.planSections
-      .find((section) => section.key === "planned_items")
-      .rows.find((row) => row.id === rowId);
-    expect(beforeItem.actualMinor).toBe(0);
-    const beforeBucketActualMinor = findBudgetRow(beforeLink, "Entertainment").actualMinor;
-
-    await postJson(page, "/api/month-plan/links", {
-      rowId,
-      month: "2026-05",
-      transactionIds: [firstEntry.entryId, secondEntry.entryId]
-    });
-
-    const afterLink = await loadMonthPageData(page, { scope: "direct_plus_shared" });
-    const linkedItem = afterLink.monthPage.planSections
-      .find((section) => section.key === "planned_items")
-      .rows.find((row) => row.id === rowId);
-    expect(linkedItem.actualMinor).toBe(1500);
-    expect(linkedItem.linkedEntryCount).toBe(2);
-    expect(findBudgetRow(afterLink, "Entertainment").actualMinor).toBe(beforeBucketActualMinor - 1500);
-  });
-
-  test("linked shared planned items use the viewer split amount instead of the household total", async ({ page }) => {
-    const rowId = `playwright-shared-plan-${Date.now()}`;
-    await postJson(page, "/api/month-plan/save", {
-      rowId,
-      month: "2026-05",
-      sectionKey: "planned_items",
-      categoryName: "Family & Personal",
-      label: "Playwright shared family spend",
-      planDate: "2026-05-20",
-      accountName: "UOB One",
-      plannedMinor: 4000,
-      note: "Shared linked actuals should stay view-weighted.",
-      ownershipType: "shared",
-      splitBasisPoints: 2500
-    });
-
-    const linkedEntry = await postJson(page, "/api/entries/create", {
-      date: "2026-05-20",
-      description: "Playwright shared family charge",
-      accountName: "UOB One",
-      categoryName: "Family & Personal",
-      amountMinor: 2000,
-      entryType: "expense",
-      ownershipType: "shared",
-      splitBasisPoints: 2500
-    });
-
-    await postJson(page, "/api/month-plan/links", {
-      rowId,
-      month: "2026-05",
-      transactionIds: [linkedEntry.entryId]
-    });
-
-    const householdData = await loadMonthPageData(page, { view: "household" });
-    const householdRow = householdData.monthPage.planSections
-      .find((section) => section.key === "planned_items")
-      .rows.find((row) => row.id === rowId);
-    expect(householdRow.actualMinor).toBe(2000);
-
-    const timData = await loadMonthPageData(page, { view: "person-tim" });
-    const timRow = timData.monthPage.planSections
-      .find((section) => section.key === "planned_items")
-      .rows.find((row) => row.id === rowId);
-    expect(timRow.actualMinor).toBe(500);
-
-    const joyceData = await loadMonthPageData(page, { view: "person-joyce" });
-    const joyceRow = joyceData.monthPage.planSections
-      .find((section) => section.key === "planned_items")
-      .rows.find((row) => row.id === rowId);
-    expect(joyceRow.actualMinor).toBe(1500);
-  });
-
   test("planned item match dialog supports lightweight filters and description filtering", async ({ page }) => {
     const rowId = `playwright-filter-plan-${Date.now()}`;
     await postJson(page, "/api/month-plan/save", {
@@ -1082,36 +930,6 @@ test.describe("month page", () => {
     await expect(dialog.locator(".planned-link-row")).toHaveCount(2);
     await expect(dialog).toContainText("Playwright oat latte 01");
     await expect(dialog).toContainText("Playwright oat latte 02");
-  });
-
-  test("offsetting income reduces the matching budget bucket actual", async ({ page }) => {
-    const beforeMonthData = await loadMonthPageData(page, { scope: "direct_plus_shared" });
-
-    await postJson(page, "/api/entries/create", {
-      date: "2026-05-22",
-      description: "Playwright groceries charge",
-      accountName: "UOB One",
-      categoryName: "Groceries",
-      amountMinor: 2000,
-      entryType: "expense",
-      ownershipType: "direct",
-      ownerName: "Tim"
-    });
-
-    await postJson(page, "/api/entries/create", {
-      date: "2026-05-23",
-      description: "Playwright grocery reimbursement",
-      accountName: "UOB One",
-      categoryName: "Groceries",
-      amountMinor: 500,
-      entryType: "income",
-      ownershipType: "direct",
-      ownerName: "Tim",
-      offsetsCategory: true
-    });
-
-    const monthData = await loadMonthPageData(page, { scope: "direct_plus_shared" });
-    expect(findBudgetRow(monthData, "Groceries").actualMinor).toBe(findBudgetRow(beforeMonthData, "Groceries").actualMinor + 1500);
   });
 
   test("mobile month edit sheet can open the contributing entries behind actual totals", async ({ browser }) => {
