@@ -4,7 +4,12 @@ import {
   buildEmptySummaryMonth,
   loadPlannedSummaryMonthsForViews
 } from "../summary-projection";
-import { adjustEntriesForView, buildMonthPage } from "../month-projection";
+import {
+  adjustEntriesForView,
+  buildMonthPage,
+  effectiveScopeForView,
+  filterEntriesForView
+} from "../month-projection";
 import {
   loadEntries,
   loadMonthIncomeRows,
@@ -34,7 +39,13 @@ export async function buildMonthPageDto(
   ]);
   const plannedSummaryMonthsByView = await loadPlannedSummaryMonthsForViews(db, [viewId], [effectiveSelectedMonth]);
   const adjustedMonthEntries = adjustEntriesForView(monthEntries, viewId);
-  const visibleEntries = adjustedMonthEntries;
+  // The Actual spend card counts the same entries as Summary and the stored
+  // person month totals: only the person's own, in the selected scope.
+  const visibleEntries = filterEntriesForView(
+    adjustedMonthEntries,
+    viewId,
+    effectiveScopeForView(viewId, selectedScope)
+  );
   const currentSnapshotMonth = summaryMonths.find((month) => month.month === effectiveSelectedMonth) ?? null;
   const currentPlannedSummaryMonth = (plannedSummaryMonthsByView[viewId] ?? []).find((month) => month.month === effectiveSelectedMonth) ?? null;
   const currentSummaryMonth = applyActualsFromEntries(
