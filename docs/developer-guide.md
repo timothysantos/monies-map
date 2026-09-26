@@ -113,6 +113,15 @@ smoke bundle through the same runner on two stacks.
 iPhone profile. It needs `npx playwright install webkit` once and is not part
 of `verify`.
 
+## How do I check the app on an iPhone?
+
+iPhone checks use WebKit (Safari's engine) through Playwright with an iPhone
+device profile: `npm run test:e2e:webkit` for the tagged tests, and the phone
+screenshots in `npm run docs:screenshots`. Neither needs the iOS Simulator.
+To check a real iPhone, open the app in Safari on the phone, connect it to a
+Mac, enable Web Inspector on the phone (Settings → Apps → Safari → Advanced),
+and use Safari's Develop menu on the Mac to inspect the page.
+
 ## Which gates must pass before a merge?
 
 `npm run verify` is the local merge gate: `npm audit`, strict TypeScript for
