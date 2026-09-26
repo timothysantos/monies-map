@@ -554,6 +554,14 @@ export function slugify(value: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+// A new split workspace record id: the creation time, so ids of one kind
+// still sort by it (same-date Splits activity lists newest first by id),
+// then a random UUID, so two records created in the same millisecond never
+// collide. Ids of the older `<prefix>-<ms>` shape and seeded names stay valid.
+export function newSplitRecordId(prefix: string) {
+  return `${prefix}-${Date.now()}-${crypto.randomUUID()}`;
+}
+
 export function groupSplits<
   K extends string,
   T extends { person_id: string; ratio_basis_points: number; amount_minor: number; display_name: string } & Record<K, string>
