@@ -6,10 +6,10 @@
 //   npm run docs:screenshots     # all shots
 //   npm run docs:screenshots -- summary-household phone-month-sheet
 //   npm run docs:screenshots -- --list
-//   npm run docs:screenshots -- --base-url http://127.0.0.1:5432   (reuse a stack)
+//   npm run docs:screenshots -- --base-url http://127.0.0.1:5442   (reuse a stack)
 //   npm run docs:screenshots -- --import-iphone <dir>   (compress real iPhone captures)
 //
-// It starts its own isolated stack (Vite 5432, Wrangler 8832, inspector 9432,
+// It starts its own isolated stack (Vite 5442, Wrangler 8842, inspector 9442,
 // D1 in .wrangler/state-guide) and never touches 5173/8787 or real data: it
 // reseeds the DEMO data through POST /api/demo/reseed, reveals money totals,
 // then walks each workflow at desktop 1280x800 in Chromium and on an iPhone 13
@@ -27,11 +27,11 @@ const MONTH = "2026-05";
 const OUT_DIR = path.resolve("public/faq/guide");
 const GUIDE_STACK = {
   index: "guide",
-  uiPort: 5432,
-  apiPort: 8832,
-  inspectorPort: 9432,
-  baseURL: "http://127.0.0.1:5432",
-  apiOrigin: "http://127.0.0.1:8832",
+  uiPort: 5442,
+  apiPort: 8842,
+  inspectorPort: 9442,
+  baseURL: "http://127.0.0.1:5442",
+  apiOrigin: "http://127.0.0.1:8842",
   persistTo: ".wrangler/state-guide",
   viteCacheDir: "node_modules/.vite-guide",
   serverLog: "test-results/guide-screenshots/servers.log"

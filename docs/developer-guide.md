@@ -162,7 +162,7 @@ npm run docs:screenshots
 ```
 
 `scripts/capture-guide-screenshots.mjs` starts its own isolated stack (Vite
-`5432`, Wrangler `8832`, inspector `9432`, D1 in `.wrangler/state-guide`), so
+`5442`, Wrangler `8842`, inspector `9442`, D1 in `.wrangler/state-guide`), so
 it never touches `5173`/`8787` or your local data. It reseeds the demo data,
 reveals money totals, walks each workflow at desktop 1280×800 and on an
 iPhone 13 profile, and writes WebP files plus thumbnails under
