@@ -19,7 +19,8 @@ under the heading, on a phone the scope section of the floating View and
 scope bar's dialog (the inline pills are not rendered there). Both show the
 scope of the Summary request whose figures are on screen and a line saying
 what it counts. On a phone the bar also switches the view, and the header's
-view pills are hidden as on Month and Entries.
+view pills are hidden as on Month and Entries. Whether desktop keeps the pills
+is still open; `SHOW_DESKTOP_SCOPE_PILLS` in `summary-panel.jsx` switches them.
 
 ## State Flow
 
