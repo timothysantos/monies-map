@@ -1,5 +1,6 @@
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
+import { selectSplitDonutChart } from "./split-helpers";
 import {
   filterSplitActivityForSearch,
   filterSplitMatchesForSearch,
@@ -47,13 +48,15 @@ export function buildSplitsPanelModel({
     : null;
   const unresolvedMatches = filterSplitMatchesForSearch(splitsPage.matches.filter((item) => !dismissedMatchIds.includes(item.id)), searchQuery);
   const groupBalanceMinor = activeGroup?.balanceMinor ?? 0;
+  const donutChart = selectSplitDonutChart(splitsPage, activeGroup?.currency);
 
   return {
     activeGroup,
     archivedBatches,
     categoryOptions: getCategoryOptions(categories),
     currentGroupActivity,
-    donutRows: buildDonutRows(splitsPage.donutChart, categories),
+    donutChart,
+    donutRows: buildDonutRows(donutChart, categories),
     expenseMatchCount: unresolvedMatches.filter((item) => item.kind === "expense").length,
     groupBalanceMinor,
     groupedCurrentActivity,

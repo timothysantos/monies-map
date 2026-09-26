@@ -379,7 +379,11 @@ export interface SplitsPageDto {
   groups: SplitGroupPillDto[];
   activity: SplitActivityDto[];
   matches: SplitMatchCandidateDto[];
+  // Open expenses by category in the home currency (SGD).
   donutChart: DonutChartDatumDto[];
+  // The same chart for each other split currency with open expenses, in that
+  // currency's own amounts; absent when every open expense is in SGD.
+  donutChartsByCurrency?: Record<string, DonutChartDatumDto[]>;
   settlementCheckpoints: SplitSettlementCheckpointDto[];
   activityHistory: SplitActivityHistoryDto[];
 }
