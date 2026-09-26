@@ -89,6 +89,7 @@ import {
   dismissAllUnresolvedTransfers,
   dismissUnresolvedTransfer
 } from "./domain/app-repository-settings";
+import { reopenSplitBatchRecord } from "./domain/app-repository-splits";
 import {
   loadShortcutSettings,
   resolveShortcutAccountSelection,
@@ -121,12 +122,12 @@ import {
   isShortcutGatewayRequestAllowed
 } from "./server/shortcut-gateway";
 
-// A refused write returns its message. One refused by a simplified settlement
-// lock is a 409 that names the settlement, so the client can offer to undo the
-// simplification first.
+// A refused write returns its message. One refused by the settlement lock is
+// a 409 that names the settlement (a simplification's checkpointId or a group
+// settle-up's batchId), so the client can offer the matching undo first.
 function splitWriteErrorResponse(error: unknown, fallback: string) {
   if (error instanceof SplitSettlementLockedError) {
-    return json({ ok: false, error: error.message, code: error.code, checkpointId: error.checkpointId }, 409);
+    return json({ ok: false, error: error.message, code: error.code, checkpointId: error.checkpointId, batchId: error.batchId }, 409);
   }
   return json({ ok: false, error: error instanceof Error ? error.message : fallback }, 400);
 }
@@ -1264,6 +1265,17 @@ export default {
         return json({ ok: true, ...(await reopenSplitSettlementCheckpoint(env.DB, body.checkpointId)) });
       } catch (error) {
         return json({ ok: false, error: error instanceof Error ? error.message : "Failed to reopen settlement" }, 400);
+      }
+    }
+
+    // Undo settle-up: reopens the group batch a settle-up closed.
+    if (url.pathname === "/api/splits/batches/reopen" && request.method === "POST") {
+      const body = await request.json<{ batchId?: string }>();
+      if (!body.batchId) return json({ ok: false, error: "Missing split batch id" }, 400);
+      try {
+        return json({ ok: true, ...(await reopenSplitBatchRecord(env.DB, { batchId: body.batchId })) });
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to undo the settle-up" }, 400);
       }
     }
 

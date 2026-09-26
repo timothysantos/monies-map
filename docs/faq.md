@@ -908,6 +908,26 @@ corrected the amount after the import matched your own entry), its settled
 split would have to follow, so the rollback is refused with the same message
 until you undo the simplification.
 
+A household save that changes nothing about the split (same amount, date,
+payer and share) is allowed, even when the split's shares carry an odd cent
+from rounding: the shares are kept exactly as they are.
+
+### Why can't I change an expense in a settled group batch?
+
+**Settle group** pays off the group's current balance and closes its batch,
+so that batch's expenses and its settle-up move to **Archived batches**. They
+are locked the same way as a simplified settlement's activity: the amount,
+currency, shares, payer, date and group stay as they were settled, and they
+cannot be deleted, from Splits or through a linked entry in Entries.
+
+If you try, the save is refused and nothing changes. The editor names the
+settle-up that holds the record and offers `Undo settle-up`. You can also
+open the batch in **Archived batches** and choose `Undo settle-up` there.
+Undoing reopens the batch: its activity returns to the group's open balance
+and the settle-up stays as an open payment, so saving your change again
+applies it. Settle the group again for any difference, or delete or correct
+the settle-up if it was recorded by mistake.
+
 ## Can I keep the Money check-in brief?
 
 Yes. Every Money check-in starts as a two-line preview with an ellipsis.
@@ -2369,7 +2389,8 @@ the next Summary or Month page load finishes it.
 
 A group can be settled by itself. Use **Settle group** to record payment and
 close only the selected group's current batch. This does not create a
-simplified checkpoint and does not touch balances in other groups.
+simplified checkpoint and does not touch balances in other groups. The
+settled batch keeps its amounts until you choose `Undo settle-up`.
 
 **Simplify settlement** is optional and only combines open groups that share
 the same currency. JPY and SGD obligations remain separate unless each is
