@@ -14,13 +14,13 @@ Route entry:
 
 The route may include view, scope, focus, and range parameters. `App.jsx` reads
 the URL and keeps the selected Summary view in sync with browser location. In a
-person view the scope control sets `scope`: on desktop and tablet the pills
-under the heading, on a phone the scope section of the floating View and
-scope bar's dialog (the inline pills are not rendered there). Both show the
-scope of the Summary request whose figures are on screen and a line saying
-what it counts. On a phone the bar also switches the view, and the header's
-view pills are hidden as on Month and Entries. Whether desktop keeps the pills
-is still open; `SHOW_DESKTOP_SCOPE_PILLS` in `summary-panel.jsx` switches them.
+person view the scope control sets `scope`: on desktop and tablet the compact
+`Direct` / `Shared` / `Both` switch under the `Summary` title (what each counts
+is its tooltip; it adds no header height), on a phone the scope section of the
+floating View and scope bar's dialog, with a line saying what the scope
+counts (the desktop switch is not rendered there). Both show the scope of the
+Summary request whose figures are on screen. On a phone the bar also switches
+the view, and the header's view pills are hidden as on Month and Entries.
 
 ## State Flow
 
