@@ -148,6 +148,35 @@ async function runScenario() {
   const shareSplit = await call("/api/splits/expenses/from-entry", { entryId: share.entryId, splitGroupId: null });
   await call("/api/splits/expenses/update", { splitExpenseId: shareSplit.splitExpenseId, groupId: null, date: "2026-06-05", description: "State linked share", categoryName: "Food & Drinks", payerPersonName: "Tim", amountMinor: 5_000, splitBasisPoints: 7_000, homeAmountMinor: 5_000, paymentMethod: "bank", paymentStatus: "certified" });
 
+  // July: a JPY 10,000 travel split matched to its SGD 90.00 card row, then
+  // a Shared owner save of that entry at 93.00 (the split keeps its JPY
+  // total; only its home amount and FX rate follow). Then a card row added
+  // to splits, superseded by a PDF statement (which unlinks the split), the
+  // split corrected to 50.00 while unlinked, and the statement rolled back:
+  // the split goes back on the re-created 43.21 entry, at 43.21.
+  const importRows = async (label, lines) => {
+    const preview = await call("/api/imports/preview", { sourceLabel: label, sourceType: "csv", csv: ["date,description,amount,account,category,note", ...lines].join("\n"), ownershipType: "direct", ownerName: "Tim" });
+    return call("/api/imports/commit", { sourceLabel: label, sourceType: "csv", parserKey: "generic_csv", rows: preview.preview.previewRows });
+  };
+  const julyEntry = async (description) => (await entriesFor("2026-07")).find((entry) => entry.description === description);
+  await importRows("State travel card", ["2026-07-02,STATE TOKYO DINNER CARD,-90.00,UOB One,Food & Drinks,"]);
+  const tokyoEntry = await julyEntry("STATE TOKYO DINNER CARD");
+  const tokyoSplit = await call("/api/splits/expenses/create", { groupId: null, date: "2026-07-02", description: "State Tokyo dinner", categoryName: "Food & Drinks", payerPersonName: "Tim", amountMinor: 10_000, currency: "JPY", splitBasisPoints: 5_000, paymentMethod: "card", paymentStatus: "awaiting_statement" });
+  await call("/api/splits/matches/link-expense", { splitExpenseId: tokyoSplit.splitExpenseId, transactionId: tokyoEntry.id });
+  await call("/api/entries/update", { entryId: tokyoEntry.id, date: "2026-07-02", description: "STATE TOKYO DINNER CARD", accountName: "UOB One", categoryName: "Food & Drinks", amountMinor: 9_300, entryType: "expense", ownershipType: "shared", splitBasisPoints: 5_000, note: "" });
+  const stateCard = await call("/api/accounts/create", { name: "State Card", institution: "Synthetic Test Bank", kind: "credit_card", openingBalanceMinor: 0, currency: "SGD", ownerPersonId: "", isJoint: false });
+  await importRows("State card activity", ["2026-07-08,STATE CARD GROCER,-43.21,State Card,Groceries,", "2026-07-09,STATE CARD SECOND,-9.99,State Card,Groceries,"]);
+  const grocer = await julyEntry("STATE CARD GROCER");
+  const grocerSplit = await call("/api/splits/expenses/from-entry", { entryId: grocer.id, splitGroupId: null });
+  const statementCheckpoints = [{ accountId: stateCard.accountId, accountName: "State Card", detectedAccountName: "State Card", checkpointMonth: "2026-08", statementStartDate: "2026-07-02", statementEndDate: "2026-08-01", statementBalanceMinor: 500, note: "State statement" }];
+  const statementPreview = await call("/api/imports/preview", { sourceLabel: "State card statement", sourceType: "pdf", rows: [{ date: "2026-07-15", description: "STATE STATEMENT ONLY ROW", expense: "5.00", accountId: stateCard.accountId, account: "State Card", category: "Groceries" }], defaultAccountName: "State Card", ownershipType: "direct", ownerName: "Tim", statementCheckpoints });
+  const statementCommit = await call("/api/imports/commit", { sourceLabel: "State card statement", sourceType: "pdf", parserKey: "uob_credit_card_pdf", rows: statementPreview.preview.previewRows.filter((row) => row.commitStatus === "included"), statementCheckpoints, statementControlRows: statementPreview.preview.previewRows, statementReconciliations: statementPreview.preview.statementReconciliations });
+  if (await julyEntry("STATE CARD GROCER")) {
+    throw new Error("The state statement did not supersede the card row.");
+  }
+  await call("/api/splits/expenses/update", { splitExpenseId: grocerSplit.splitExpenseId, groupId: null, date: "2026-07-08", description: "STATE CARD GROCER", categoryName: "Groceries", payerPersonName: "Tim", amountMinor: 5_000, splitBasisPoints: 5_000, paymentMethod: "card", paymentStatus: "certified" });
+  await call("/api/imports/rollback", { importId: statementCommit.importId });
+
   // Categories and rules.
   await call("/api/categories/create", { name: "State category", slug: "state-category", iconKey: "tag", colorHex: "#445566" });
   await call("/api/category-match-rules/save", { pattern: "STATE IMPORT", categoryId: "cat-groceries", priority: 50, isActive: true });
@@ -172,6 +201,8 @@ const PAGE_DTOS = [
   "/api/summary-account-pills?view=household",
   "/api/splits-page?view=person-tim&month=2026-05",
   "/api/splits-page?view=household&month=2025-10",
+  "/api/entries-page?view=person-tim&month=2026-07",
+  "/api/splits-page?view=person-tim&month=2026-07",
   "/api/imports-page",
   "/api/settings-page?view=household"
 ];
@@ -195,6 +226,13 @@ async function findSqlite(dir) {
 }
 
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+// Split workspace ids are "<prefix>-<epoch>-<uuid>" (newSplitRecordId); the
+// random UUID tail is dropped before any other rule, so they normalize like
+// the older "<prefix>-<epoch>" ids and runs stay comparable with them.
+// Import ids hash their content, which includes the account id; an account
+// the scenario creates has a random id, so its imports are keyed like UUIDs.
+const IMPORT_HASH_ID = /\bimport-[0-9a-f]{24}\b/g;
+const SPLIT_RECORD_UUID_TAIL =/(split-[a-z0-9-]*?-1[6-9]\d{11})-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 // Short random suffixes such as "cat-name-3ea6fa27" (at least one letter,
 // so plain numbers and dates are untouched).
 const SHORT_ID_SUFFIX = /-(?=[0-9a-f]{0,7}[a-f])([0-9a-f]{8})\b/g;
@@ -202,8 +240,8 @@ const SHORT_ID_SUFFIX = /-(?=[0-9a-f]{0,7}[a-f])([0-9a-f]{8})\b/g;
 // keyed with their id prefix, so two kinds of id made in the same
 // millisecond stay distinct however fast a run is.
 const EPOCH_MS = /\b([a-z][a-z-]*-)?(1[6-9]\d{11})\b/g;
-// Random tails after an id's epoch: split batches ("-629") and split
-// activity history ("-khfze6").
+// Random tails after an id's epoch in ids made before newSplitRecordId:
+// split batches ("-629") and split activity history ("-khfze6").
 const SPLIT_BATCH_TAIL = /(split-batch-[a-z0-9-]*<epoch-\d+>)-\d{1,3}\b/g;
 const SPLIT_HISTORY_TAIL = /(split-history-<epoch-\d+>)-[0-9a-z]{6}\b/g;
 const TIMESTAMP = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?Z?$/;
@@ -217,6 +255,11 @@ function dump(file, dtos) {
     if (TIMESTAMP.test(value)) return "<timestamp>";
     // Import ids can embed a commit time; keep the shape, drop the digits.
     return value
+      .replace(SPLIT_RECORD_UUID_TAIL, "$1")
+      .replace(IMPORT_HASH_ID, (match) => {
+        if (!ids.has(match)) ids.set(match, `import-<hash-${ids.size + 1}>`);
+        return ids.get(match);
+      })
       .replace(UUID, (match) => {
         if (!ids.has(match)) ids.set(match, `<uuid-${ids.size + 1}>`);
         return ids.get(match);

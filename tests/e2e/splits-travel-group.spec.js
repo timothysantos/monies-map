@@ -50,7 +50,16 @@ test("a JPY cash-only travel group created in Splits keeps its expense in yen", 
   await expenseDialog.getByLabel("Date").fill("2025-10-14");
   await expenseDialog.getByLabel("Paid by").selectOption("Joyce");
   await expenseDialog.getByLabel("Category").selectOption("Food & Drinks");
+  // An amount with an odd stored hundredth offers the extra step in yen.
+  await expenseDialog.getByLabel("Expense total").fill("12000.01");
+  const oddCentChoice = expenseDialog.getByRole("group", { name: "Choose odd cent recipient" });
+  await expect(oddCentChoice.getByRole("button")).toHaveText([/^\w+ gets \+JP¥0\.01$/, /^\w+ gets \+JP¥0\.01$/]);
+
+  // The share preview is in the group currency with yen's whole-unit digits.
   await expenseDialog.getByLabel("Expense total").fill("12000");
+  await expect(oddCentChoice).toHaveCount(0);
+  const sharePreview = expenseDialog.getByLabel("Split share amounts");
+  await expect(sharePreview.locator("strong")).toHaveText(["JP¥6,000", "JP¥6,000"]);
   await expenseDialog.getByLabel("Description").fill(description);
 
   const createRequest = page.waitForRequest((request) => request.url().includes("/api/splits/expenses/create"));
@@ -73,6 +82,13 @@ test("a JPY cash-only travel group created in Splits keeps its expense in yen", 
   await expect(card.locator(".split-activity-amount-line > span").first()).toHaveText("JP¥6,000");
   await expect(groupPill).toContainText("1 entries");
 
+  // The pill balance and the totals strip use the group currency too.
+  await expect(groupPill).toContainText("You owe Joyce JP¥6,000");
+  const summaryMetrics = page.locator(".splits-summary-strip .entries-summary-metrics");
+  await expect(summaryMetrics).toContainText("You owe JP¥6,000");
+  await expect(summaryMetrics).toContainText("Spend JP¥12,000");
+  await expect(summaryMetrics).not.toContainText("$");
+
   // Negative: the yen expense stays out of the SGD non-group list and balance.
   await nonGroupPill.click();
   await expect(nonGroupPill).toHaveClass(/is-active/);
@@ -80,6 +96,21 @@ test("a JPY cash-only travel group created in Splits keeps its expense in yen", 
   await expect(page.locator(".split-activity-card").filter({ hasText: "JP¥" })).toHaveCount(0);
   await expect(nonGroupPill).toContainText("3 entries");
   await expect(nonGroupPill).toContainText("You owe Joyce $260.25");
+  // Negative: the SGD group's totals strip keeps dollars.
+  await expect(summaryMetrics).toContainText("You owe $260.25");
+  await expect(summaryMetrics).not.toContainText("JP¥");
+
+  // Money privacy still hides the yen amounts.
+  await groupPill.click();
+  await expect(groupPill).toHaveClass(/is-active/);
+  await page.getByRole("button", { name: "Hide money totals" }).first().click();
+  await expect(groupPill).toContainText("Balance hidden");
+  await expect(groupPill).not.toContainText("JP¥");
+  await expect(summaryMetrics).not.toContainText("JP¥");
+  await expect(summaryMetrics.locator("strong")).toHaveText(["••••", "••••"]);
+  await expect(card).not.toContainText("JP¥");
+  await page.getByRole("button", { name: "Show money totals" }).first().click();
+  await expect(groupPill).toContainText("You owe Joyce JP¥6,000");
 
   const data = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
   expect(data.splitsPage.groups.find((group) => group.id === groupId)).toMatchObject({

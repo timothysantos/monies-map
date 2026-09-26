@@ -240,6 +240,28 @@ above the bottom navigation, and stacks above the Entries or Splits add button
 when one is present. Financial Insight stays hidden while totals are masked
 because its prose can expose the same figures.
 
+## Split Currency Display Contract
+
+Every stored amount is in hundredths of its own currency whatever that
+currency's minor unit: a ¥12,000 travel expense is `amountMinor` 1,200,000.
+`formatCurrencyMinor(amountMinor, currency)` in `src/domain/split-currency.ts`
+is the one formatting boundary for a split currency, shared by the Worker
+(the group pill `summaryText`) and the client. It uses the currency's own
+fraction digits through `Intl.NumberFormat` (JPY `JP¥12,000`, SGD `$12,000.00`,
+KWD `KWD 1,234.500`), widens to two digits only when the stored hundredths are
+not whole units, and normalizes a malformed code to SGD like
+`normalizeSplitCurrency`. No currency is special-cased.
+
+On the client, `moneyWithCurrency(valueMinor, currency)` wraps it with money
+privacy, and `money` stays the SGD home-currency formatter. A Splits surface
+that shows a group or record amount passes that currency: the group pill, the
+totals strip, the expense dialog's share preview, activity cards, history
+rows, archived settle-up summaries, same-currency match deltas, checkpoints
+and the Splits financial insight facts. `moneyStep(currency)` names the
+smallest stored step for the odd-cent choice and is not masked, because it is
+a unit label rather than a balance. A home-currency (SGD) ledger amount shown
+next to a foreign split amount keeps its own SGD formatting.
+
 ## Route Work Status Boundary
 
 The shell knows whether the active route is ready and whether any protected

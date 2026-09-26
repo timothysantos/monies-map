@@ -52,7 +52,10 @@ same record ID, shares, group, currency, and ledger link. Restoring does not
 rewrite an existing settlement checkpoint. A split included in an active
 simplified settlement cannot be deleted until that simplification is undone.
 If the split was already restored elsewhere (for example in another tab), the
-history window says so and refreshes instead of restoring it twice.
+history window says so and refreshes instead of restoring it twice. This holds
+even when both restores are sent at the same moment: only one takes effect and
+Activity history lists one restore. Deleting the same split twice at once
+likewise archives it once.
 
 While a split is deleted, its entry is not shared: Entries shows it without
 the "On splits" chip, every view counts its full amount for the person who
@@ -849,7 +852,17 @@ record you edited or update both notes together.
 If you manually create a split before the bank row exists, it is still useful as
 a reminder, but it is not yet matched to the ledger. When the bank row arrives,
 use the split match prompts to link the split to the imported entry instead of
-creating another split.
+creating another split. A split can be matched to one bank row: if it is
+matched to a second row at the same time (for example from another tab), the
+second match is refused with "This split expense is unavailable or already
+linked." and changes nothing.
+
+A travel split recorded in its own currency (for example JPY 10,000 in a Japan
+trip group) and matched to the SGD card row keeps its JPY amount and shares
+whenever that entry is saved, also by a save that sends the entry as Shared
+with its split percentage: only the converted SGD amount and the rate follow
+the card row. Such a save is allowed while the split is in a simplified
+settlement, as long as it does not change the split's date, payer or shares.
 
 ### If you are updating mid-month
 
@@ -1288,7 +1301,15 @@ statement month is imported again.
 A PDF statement may still be rolled back even when it certifies pre-existing
 ledger rows, as long as it is still the newest statement certificate for that
 account. In that case rollback restores the prior working rows and removes the
-statement certificate metadata. Older PDF statements stay locked once a later
+statement certificate metadata.
+
+If the statement replaced rows the bank never listed, rolling it back brings
+those rows back with their splits. While the rows were gone their splits were
+unlinked, so you may have changed one: a split whose amount you changed goes
+back to the row's amount, keeping each person's percentage (if that split is
+in a simplified settlement or settled group batch, the rollback is refused
+until you undo it). A split you matched to another bank row in the meantime
+stays with that row, and the returning row comes back without a split. Older PDF statements stay locked once a later
 statement certificate exists for the same account.
 
 Older PDF statements should also not be rolled back after a later statement for
@@ -2404,6 +2425,12 @@ in that currency. Cash expenses can stay unlinked. For a card expense, mark it
 as awaiting statement until the final certified ledger row arrives; matching a
 different-currency settlement requires an explicit FX rate and keeps both
 amounts visible.
+
+Inside a trip group, every amount is shown in the trip currency with that
+currency's usual digits: a ¥12,000 dinner reads "Spend JP¥12,000" in the totals,
+the group pill balance reads "You owe Joyce JP¥6,000", and the expense form's
+share preview shows JP¥6,000 each. SGD bank amounts keep their dollar
+formatting. Hiding money totals masks these amounts too.
 
 For a simpler holiday workflow, create two groups in the trip currency: one
 with purchase source `Cash only` and one with `Bank/card`. The cash group keeps

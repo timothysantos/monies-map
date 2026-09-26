@@ -353,6 +353,15 @@ A persistence command is all-or-nothing:
   limit and the same invisibility argument
 - a repeated destructive command is rejected, not re-run (rolling back a
   rolled-back import returns 409)
+- a check on the record's own state that a concurrent request can make stale
+  between the read and the batch (still archived, still unlinked) is guarded
+  inside the batch: a first statement from `buildBatchGuard`
+  (`app-repository-splits.ts`) fails the whole batch when the state changed,
+  and the command re-reads it to give the check's own message. A
+  conditional `UPDATE ... WHERE` alone is not enough: its zero-row result
+  would still commit the rest of the batch (history event, month markers).
+  Races between two records for one ledger row stay with the partial unique
+  indexes below
 - prove each command with a failure test in `tests/atomic-writes-*.test.mjs`:
   make one statement fail partway with `failingStatement` and assert the whole
   database dump is unchanged; the test must fail on sequential writes

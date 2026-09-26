@@ -146,7 +146,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       description: item.description,
       date: item.date
     })),
-    formatMoney: formatService.money,
+    // The records are one group's, so their amounts are in its currency.
+    formatMoney: (amountMinor) => formatService.moneyWithCurrency(amountMinor, activeGroup?.currency ?? "SGD"),
     perspective: "split_obligation",
     accountingAdvice: splitSearchQuery
       ? "This is a filtered group view, so check the matching split record before treating the displayed amount as the full group balance."
@@ -155,7 +156,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         : groupBalanceMinor
           ? "Treat the group balance as a settlement obligation between people, not new spending; record or match the settlement when it happens."
           : "The group is settled. Keep bank-linked expenses and settlements matched so the audit trail stays complete."
-  }), [activeGroup?.name, currentGroupActivity, groupBalanceMinor, pendingMatchCount, splitSearchQuery, view.id, view.label]);
+  }), [activeGroup?.currency, activeGroup?.name, currentGroupActivity, groupBalanceMinor, pendingMatchCount, splitSearchQuery, view.id, view.label]);
   const financialInsightActions = useMemo(() => pendingMatchCount ? [{
     label: `Review ${pendingMatchCount} bank ${pendingMatchCount === 1 ? "match" : "matches"}`,
     onClick: () => openMatchesView()

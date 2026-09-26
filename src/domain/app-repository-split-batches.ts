@@ -1,5 +1,5 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
-import { slugify } from "./app-repository-helpers";
+import { newSplitRecordId, slugify } from "./app-repository-helpers";
 
 function splitBatchName(groupName?: string | null, closed = false) {
   const base = groupName ?? "Non-group expenses";
@@ -24,7 +24,7 @@ async function buildSplitBatchInsert(
   db: D1Database,
   input: { groupId?: string | null; openedOn: string; closedOn?: string | null }
 ) {
-  const id = `split-batch-${slugify(input.groupId ?? "none")}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  const id = newSplitRecordId(`split-batch-${slugify(input.groupId ?? "none")}`);
   const groupName = await getSplitGroupName(db, input.groupId);
   const statement = db
     .prepare(`
