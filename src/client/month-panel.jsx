@@ -33,6 +33,8 @@ import { getRowDateValue } from "./table-helpers";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { isMonthSheetLayout, useIsMonthSheetLayout } from "./use-viewport";
+// Mid-width table layout; ships with this lazy route, not the first screen.
+import "./month-mid-width.css";
 
 const MONTH_SECTION_STATE_CACHE = new Map();
 const {

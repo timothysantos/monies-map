@@ -484,9 +484,14 @@ visual viewport of 760px or less (pinch zoom) as mobile.
 Between the two layouts there is a CSS-only mid-width range, 761 to
 1,099 px (portrait and landscape tablets, small laptops), where the desktop
 layout must still fit the screen. It needs no JavaScript, so it has no
-query in `use-viewport.js`; its blocks in `public/styles.css` are
+query in `use-viewport.js`. Its blocks are
 `@media (min-width: 761px) and (max-width: 1099px)` (plus one to 960 px)
-and never touch the phone or wide-desktop rules:
+and never touch the phone or wide-desktop rules. The header rules are in
+`public/styles.css`, because every page shows the header. The Month rules
+are in `src/client/month-mid-width.css`, which `month-panel.jsx` imports,
+so they ship with the lazy Month route and stay out of the first-screen
+CSS budget (`npm run check:bundle`). That file loads after `styles.css`,
+so its rules win over base rules of the same specificity.
 
 - The header's period controls wrap below the page tabs as one group.
   Before, they widened the page up to 960 px and slid under the tabs from
