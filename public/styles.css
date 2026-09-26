@@ -386,8 +386,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   color: var(--accent-strong);
 }
 
-.panel-context,
-.summary-scope > span {
+.panel-context {
   color: var(--muted);
   font-size: 0.9rem;
 }
@@ -664,9 +663,23 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   box-shadow: none;
 }
 
-/* Summary's scope row; Month shows scope in its header controls. */
-.summary-scope {
-  margin-bottom: 14px;
+/* Adds no width or height to the header; see SummaryScopeSwitch. */
+.summary-scope-switch {
+  flex-basis: 100%;
+  contain: inline-size;
+  margin-left: -12px;
+}
+
+.summary-scope-switch .pill-row {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  margin-left: 12px;
+  padding: 2px;
+}
+
+.summary-scope-switch .pill {
+  padding: 4px 10px;
+  font-size: 0.8rem;
 }
 
 .mobile-context-sticky-wrap{
@@ -678,8 +691,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   display: none;
 }
 
-.month-header-controls,
-.summary-scope {
+.month-header-controls {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -9146,6 +9158,12 @@ th {
     flex-direction: column;
   }
 
+  .summary-scope-switch {
+    flex-basis: auto;
+    contain: none;
+    align-self: center;
+  }
+
   .summary-mix{
     grid-template-columns: 1fr;
   }
@@ -10498,7 +10516,6 @@ th {
     cursor: pointer;
   }
 
-  /* Label over hint; a long name wraps, the scope never truncates. */
   .mobile-context-trigger-copy {
     display: grid;
     min-width: 0;
