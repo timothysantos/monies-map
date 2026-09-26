@@ -26,7 +26,7 @@ import {
   normalizeStatementDate
 } from "./app-repository-helpers";
 import { buildAuditEventStatement } from "./app-repository-audit";
-import { assertLinkedSplitSettlementUnchanged, buildLinkedSplitAmountStatements } from "./app-repository-splits";
+import { assertLinkedSplitSettlementUnchanged, buildLinkedSplitAmountStatements, buildSplitRelinkStatements } from "./app-repository-splits";
 import { assertImportDescriptionQuality } from "./import-description-quality";
 import type {
   ImportPreviewRowDto,
@@ -1862,7 +1862,9 @@ async function buildStatementCertifiedRowRestore(db: D1Database, importId: strin
 }
 
 // Re-creates the entries this statement import superseded, with their split
-// links. Returns the statements and the months they touch.
+// links (buildSplitRelinkStatements: on the entry's amount, and never taking
+// a split matched to another row since). Returns the statements and the
+// months they touch.
 async function buildSupersededStatementRowRestore(db: D1Database, importId: string) {
   const certificates = await db
     .prepare(`
@@ -1948,17 +1950,18 @@ async function buildSupersededStatementRowRestore(db: D1Database, importId: stri
           ));
       }
 
-      if (snapshot.splitExpenseLinks.length) {
-        for (const splitExpenseLink of snapshot.splitExpenseLinks) {
-          statements.push(db
-            .prepare(`
-              UPDATE split_expenses
-              SET linked_transaction_id = ?
-              WHERE household_id = ? AND id = ?
-            `)
-            .bind(snapshot.transaction.id, DEFAULT_HOUSEHOLD_ID, splitExpenseLink.id));
-        }
-      }
+      // The split expenses go back on the entry, on its amount (a settled one
+      // that would have to move refuses the rollback before any write).
+      statements.push(...await buildSplitRelinkStatements(db, {
+        entry: {
+          id: snapshot.transaction.id,
+          amountMinor: snapshot.transaction.amount_minor,
+          currency: snapshot.transaction.currency,
+          entryType: snapshot.transaction.entry_type
+        },
+        splitExpenseIds: snapshot.splitExpenseLinks.map((link) => link.id),
+        rolledBackImportId: importId
+      }));
 
       if (snapshot.splitSettlementLinks.length) {
         for (const splitSettlementLink of snapshot.splitSettlementLinks) {
