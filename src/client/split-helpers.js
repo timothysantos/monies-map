@@ -1,4 +1,4 @@
-import { money } from "./formatters";
+import { moneyWithCurrency } from "./formatters";
 
 export function groupSplitActivityByDate(items) {
   const grouped = new Map();
@@ -57,7 +57,7 @@ export function getArchivedBatchSummary(batch, viewId) {
   }
 
   const title = `${settlement.fromPersonName} fully settled up with ${settlement.toPersonName}`;
-  const amount = money(settlement.totalAmountMinor);
+  const amount = moneyWithCurrency(settlement.totalAmountMinor, settlement.currency ?? "SGD");
   if (viewId !== "household") {
     return {
       title,
