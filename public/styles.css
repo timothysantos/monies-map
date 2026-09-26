@@ -9725,11 +9725,6 @@ th {
     grid-template-columns: 1fr;
     gap: 10px;
   }
-
-  
-
-  
-
 }
 
 /* The mobile sheet's own styles apply wherever the sheet opens, not only in
