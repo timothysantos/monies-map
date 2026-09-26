@@ -97,7 +97,7 @@ test("a saved plan row note leaves the amount alone and a cleared note clears th
   const row = { id: "row-4", plannedMinor: 4321, sourcePlannedMinor: 4321, note: "Old", sourceNote: "Old" };
 
   assert.deepEqual(buildSavedMonthPlanFields({ note: "New" }), { note: "New", sourceNote: "New" });
-  assert.deepEqual(buildSavedMonthPlanFields({ note: null }), { note: "", sourceNote: "" });
+  assert.deepEqual(buildSavedMonthPlanFields({ note: null }), { note: null, sourceNote: null });
   // Without the saved fields the editor would reopen on the old source note.
   assert.equal(getMonthPlanEditSource({ ...row, note: "" }).note, "Old");
   assert.equal(getMonthPlanEditSource({ ...row, ...buildSavedMonthPlanFields({ note: null }) }).note, "");

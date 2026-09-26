@@ -21,6 +21,7 @@ import {
 } from "./month-row-editing";
 import { LastPeriodBudgetHint, MonthPlanStack } from "./month-plan-tables";
 import {
+  buildSavedMonthPlanFields,
   getMonthPlanEditSource,
   mergeMonthPlanSections,
   mergeMonthRowsById
@@ -524,13 +525,14 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         const section = planSections.find((item) => item.key === currentSnapshot.sectionKey);
         const row = section?.rows.find((item) => item.id === currentSnapshot.rowId);
         if (row) {
+          const savedPlannedMinor = typeof nextPlannedMinor === "number" ? nextPlannedMinor : row.plannedMinor;
           await persistMonthRow(currentSnapshot.sectionKey, {
             ...row,
-            plannedMinor: typeof nextPlannedMinor === "number" ? nextPlannedMinor : row.plannedMinor
+            plannedMinor: savedPlannedMinor
           }, nextPlannedMinor);
           upsertPlanRow(currentSnapshot.sectionKey, {
             ...row,
-            plannedMinor: typeof nextPlannedMinor === "number" ? nextPlannedMinor : row.plannedMinor,
+            ...buildSavedMonthPlanFields({ plannedMinor: savedPlannedMinor, note: row.note }),
             isDraft: false,
             isPendingDerived: true
           });
@@ -930,7 +932,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     if (kind === "income") {
       handleIncomeRowChange(rowId, { note: draft });
     } else {
-      updatePlanRow(sectionKey, rowId, { note: draft });
+      updatePlanRow(sectionKey, rowId, buildSavedMonthPlanFields({ note: draft }));
     }
     setNoteDialog(null);
     refreshMonthDataInBackground();
@@ -1186,6 +1188,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
         await persistMonthRow(sectionKey, nextPlanRow, plannedMinor);
         upsertPlanRow(sectionKey, {
           ...nextPlanRow,
+          ...buildSavedMonthPlanFields({ plannedMinor, note: nextPlanRow.note }),
           isDraft: false,
           isPendingDerived: true
         }, { prepend: currentDialog.mode === "create" });

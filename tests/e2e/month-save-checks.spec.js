@@ -6,7 +6,8 @@ import { loadMonthPage, postJson, reseedDemo } from "./helpers";
 // saving a row note, saving the month note, and the month actions (duplicate,
 // reset, delete). Each checks the server's answer. A failure keeps the row or
 // draft on screen with the error; the screen changes only after a success, so
-// a totals card never shows an unsaved change as saved.
+// a totals card never shows an unsaved change as saved. A saved row reopened
+// before the background reload lands shows the values just saved.
 
 const MONTH_URL = "/month?view=person-tim&month=2026-05&scope=direct_plus_shared";
 
@@ -16,7 +17,7 @@ async function openMonth(page) {
   await reseedDemo(page);
 }
 
-async function seedPlanRow(page, suffix, sectionKey = "planned_items") {
+async function seedPlanRow(page, suffix, sectionKey = "planned_items", note = "") {
   const label = `Playwright save check ${suffix}`;
   await postJson(page, "/api/month-plan/save", {
     rowId: `playwright-save-check-${suffix}`,
@@ -27,7 +28,7 @@ async function seedPlanRow(page, suffix, sectionKey = "planned_items") {
     planDate: sectionKey === "planned_items" ? "2026-05-18" : null,
     accountName: sectionKey === "planned_items" ? "UOB One" : null,
     plannedMinor: 4321,
-    note: "",
+    note,
     ownershipType: "direct",
     ownerName: "Tim"
   });
@@ -181,6 +182,113 @@ for (const layout of layouts) {
     await expect(dialog).toHaveCount(0);
     await expect(row.locator(".note-trigger")).toContainText(draft);
     await expect.poll(async () => (await findRow(page, label))?.note).toBe(draft);
+    await context.close();
+  });
+}
+
+// After a row save the Month page reloads in the background. A row reopened
+// before that reload lands must show what was just saved, not the old values.
+// Holds every Month page reload until released.
+async function holdMonthReload(page) {
+  const state = { count: 0 };
+  let release;
+  const held = new Promise((resolve) => { release = resolve; });
+  await page.route("**/api/month-page**", async (route) => {
+    state.count += 1;
+    await held;
+    await route.continue().catch(() => {});
+  });
+  return { state, release };
+}
+
+test("mobile: a plan row reopened before the reload shows the amount and note just saved", async ({ browser }) => {
+  const context = await browser.newContext(devices["iPhone 12 Pro"]);
+  const page = await context.newPage();
+  await openMonth(page);
+  const label = await seedPlanRow(page, `reopen-mobile-${Date.now()}`, "planned_items", "Note before save");
+  await page.goto(MONTH_URL);
+  // The phone layout opens a row by tapping it; the row's own open button is
+  // for wider layouts.
+  const rowOpener = page.locator("tr").filter({ hasText: label }).first().getByText(label, { exact: true });
+  const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+
+  await rowOpener.click();
+  await sheet.locator('input[value="43.21"]').fill("45.67");
+  await sheet.locator("textarea").fill("Saved before reload");
+  const { state, release } = await holdMonthReload(page);
+  await sheet.locator("button.dialog-primary").click();
+  await expect(sheet).toHaveCount(0);
+  await expect.poll(() => state.count).toBeGreaterThan(0);
+
+  await rowOpener.click();
+  await expect(sheet.getByRole("textbox", { name: "Planned" })).toHaveValue("45.67");
+  await expect(sheet.locator("textarea")).toHaveValue("Saved before reload");
+  expect((await findRow(page, label))?.plannedMinor).toBe(4567);
+
+  // Once the reload lands the reopened row still shows the saved amount.
+  const reloaded = page.waitForResponse((response) => response.url().includes("/api/month-page") && response.ok());
+  release();
+  await reloaded;
+  await page.keyboard.press("Escape");
+  await expect(sheet).toHaveCount(0);
+  await rowOpener.click();
+  await expect(sheet.getByRole("textbox", { name: "Planned" })).toHaveValue("45.67");
+  await context.close();
+});
+
+test("desktop: a plan row reopened for inline editing before the reload shows the amount just saved", async ({ page }) => {
+  await openMonth(page);
+  const label = await seedPlanRow(page, `reopen-desktop-${Date.now()}`);
+  await page.goto(MONTH_URL);
+  const row = page.locator("tr").filter({ hasText: label }).first();
+  // While editing, the item name is an input, so find the row by its state.
+  const editingRow = page.locator("tr.is-editing");
+  const saveButton = page.getByTestId("month-inline-save-button");
+
+  await row.getByRole("button", { name: `Edit ${label} row` }).click();
+  await editingRow.locator(".table-edit-input-money").fill("45.67");
+  const { state, release } = await holdMonthReload(page);
+  await saveButton.click();
+  await expect(saveButton).toHaveCount(0);
+  await expect(row).toContainText("45.67");
+  await expect.poll(() => state.count).toBeGreaterThan(0);
+
+  await row.getByRole("button", { name: `Edit ${label} row` }).click();
+  await expect(editingRow.locator(".table-edit-input-money")).toHaveValue("45.67");
+  await page.getByTestId("month-inline-cancel-button").click();
+  await expect(row).toContainText("45.67");
+  release();
+});
+
+for (const layout of layouts) {
+  test(`${layout.name}: a row note reopened in the row editor before the reload shows the note just saved`, async ({ browser }) => {
+    const context = await browser.newContext(layout.context);
+    const page = await context.newPage();
+    await openMonth(page);
+    // A row that already has a note, so a stale copy would show that note.
+    const label = await seedPlanRow(page, `reopen-note-${layout.name}-${Date.now()}`, "planned_items", "Note before save");
+    await page.goto(MONTH_URL);
+    const row = page.locator("tr").filter({ hasText: label }).first();
+    const draft = `Reopened note ${layout.name}`;
+
+    await row.locator(".note-trigger").click();
+    const noteDialog = page.getByRole("dialog").filter({ hasText: "Edit note" });
+    await noteDialog.locator("textarea").fill(draft);
+    const { state, release } = await holdMonthReload(page);
+    await noteDialog.locator('button[type="submit"]').click();
+    await expect(noteDialog).toHaveCount(0);
+    await expect(row.locator(".note-trigger")).toContainText(draft);
+    await expect.poll(() => state.count).toBeGreaterThan(0);
+
+    if (layout.name === "mobile") {
+      await row.getByText(label, { exact: true }).click();
+      const sheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+      await expect(sheet.locator("textarea")).toHaveValue(draft);
+    } else {
+      await row.getByRole("button", { name: `Edit ${label} row` }).click();
+      await expect(page.locator("tr.is-editing .note-trigger")).toContainText(draft);
+    }
+    release();
     await context.close();
   });
 }
