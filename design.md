@@ -409,6 +409,13 @@ appears. A load that fails over this request's own page is rethrown, and
 the panel reports it through `runBackgroundRefresh`. Aborts and cancels are
 never errors.
 
+The panel reads the linked entry (`editing_entry`) straight from the URL and
+keeps only whether it already acted on the param's current value
+(`linked-entry-request.js`, synced while rendering, not in an effect). The
+open effect handles each value once, so an editor closed by a save, a
+transfer link or a close is never reopened while the param clear is still
+pending.
+
 Refreshes after a save go through `runBackgroundRefresh` from
 `use-refresh-notice.js` (owner: `refresh-notice.js`). App uses it for every
 background shell, reference-data, route-page and Summary refresh in its
