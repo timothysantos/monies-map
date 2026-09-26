@@ -1,13 +1,20 @@
-// Settlement checkpoint lock. A simplified settlement (settlement checkpoint)
-// is an immutable manifest of the split records it netted. While it is active
-// (any status except reopened or voided, paid or not), those records keep the
-// facts the settled amount was computed from: amount, currency, shares, who
-// paid, date and group, and they cannot be deleted. A command that would
-// change one is refused before its first write, so it changes nothing, and the
-// person is told to undo the simplification first. Undo (reopen) is the one
-// explicit way to release the records, so editing one row can never silently
-// reopen a settlement that may be paid or matched to a bank transfer.
-// Description, category, note and bank links stay editable.
+// Settlement lock. Two things settle split records, and both are computed
+// from the records' facts:
+// - a simplified settlement (settlement checkpoint) is an immutable manifest
+//   of the records it netted. It locks them while it is active (any status
+//   except reopened or voided, paid or not). Undo simplification (reopen)
+//   releases them.
+// - a group settle-up closes its group's current split batch. The batch's
+//   records, the settle-up included, are settled group activity while the
+//   batch stays closed. Undo settle-up (reopen the batch) releases them.
+// A locked record keeps the facts the settled amount was computed from:
+// amount, currency, shares, who paid, date and group, and it cannot be
+// deleted. A command that would change one is refused before its first
+// write, so it changes nothing, and the person is told to undo the
+// settlement first. The undo is the one explicit way to release the records,
+// so editing one row can never silently reopen a settlement that may be paid
+// or matched to a bank transfer. Description, category, note, payment method
+// and bank links stay editable.
 
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import { normalizeSplitCurrency } from "./split-currency";
@@ -38,16 +45,31 @@ export interface LockingSettlementCheckpoint {
   toPersonName: string | null;
 }
 
+// The closed group batch (settled by a group settle-up) a record is in.
+export interface LockingGroupSettlement {
+  batchId: string;
+  closedOn: string;
+  groupName: string;
+}
+
+export type SplitSettlementLock =
+  | { kind: "checkpoint"; checkpoint: LockingSettlementCheckpoint }
+  | { kind: "group"; batch: LockingGroupSettlement };
+
 export const SPLIT_SETTLEMENT_LOCKED = "split_settlement_locked";
 
+// Names what holds the record, so the client can offer the matching undo:
+// a checkpoint id (Undo simplification) or a batch id (Undo settle-up).
 export class SplitSettlementLockedError extends Error {
   readonly code = SPLIT_SETTLEMENT_LOCKED;
-  readonly checkpointId: string;
+  readonly checkpointId?: string;
+  readonly batchId?: string;
 
-  constructor(message: string, checkpointId: string) {
+  constructor(message: string, lock: { checkpointId?: string; batchId?: string }) {
     super(message);
     this.name = "SplitSettlementLockedError";
-    this.checkpointId = checkpointId;
+    this.checkpointId = lock.checkpointId;
+    this.batchId = lock.batchId;
   }
 }
 
@@ -116,6 +138,44 @@ export async function findLockingSettlementCheckpoint(
   };
 }
 
+// The closed group batch that holds this record, if any. Archived records
+// are left out: they no longer count in any balance.
+export async function findLockingGroupSettlement(
+  db: D1Database,
+  recordKind: SplitRecordKind,
+  recordId: string
+): Promise<LockingGroupSettlement | null> {
+  const table = recordKind === "expense" ? "split_expenses" : "split_settlements";
+  const row = await db
+    .prepare(`
+      SELECT batches.id, batches.closed_on, split_groups.group_name
+      FROM ${table} AS records
+      INNER JOIN split_batches AS batches ON batches.id = records.split_batch_id
+      LEFT JOIN split_groups ON split_groups.id = batches.split_group_id
+      WHERE records.id = ?
+        AND records.household_id = ?
+        AND records.deleted_at IS NULL
+        AND batches.closed_on IS NOT NULL
+    `)
+    .bind(recordId, DEFAULT_HOUSEHOLD_ID)
+    .first<{ id: string; closed_on: string; group_name: string | null }>();
+  if (!row) return null;
+  return { batchId: row.id, closedOn: row.closed_on, groupName: row.group_name ?? "Non-group expenses" };
+}
+
+// What settles this record: an active simplified settlement first (the
+// person-level step), else a closed group batch.
+export async function findSplitSettlementLock(
+  db: D1Database,
+  recordKind: SplitRecordKind,
+  recordId: string
+): Promise<SplitSettlementLock | null> {
+  const checkpoint = await findLockingSettlementCheckpoint(db, recordKind, recordId);
+  if (checkpoint) return { kind: "checkpoint", checkpoint };
+  const batch = await findLockingGroupSettlement(db, recordKind, recordId);
+  return batch ? { kind: "group", batch } : null;
+}
+
 // The stored settlement facts of an expense or settle-up.
 export async function loadSplitSettlementFacts(
   db: D1Database,
@@ -159,8 +219,9 @@ export async function loadSplitSettlementFacts(
   };
 }
 
-// Refuses a change to a record in an active settlement when it would change a
-// settlement fact or delete the record. `next` receives the stored facts and
+// Refuses a change to a settled record (active simplified settlement or
+// closed group batch) when it would change a settlement fact or delete the
+// record. `next` receives the stored facts and
 // returns the facts the command would write, or "deleted"; it runs only for
 // a locked record, so it may read what it needs. Reads only.
 export async function assertSplitSettlementUnchanged(
@@ -172,33 +233,36 @@ export async function assertSplitSettlementUnchanged(
     subject?: "record" | "linked entry";
   }
 ) {
-  const checkpoint = await findLockingSettlementCheckpoint(db, input.recordKind, input.recordId);
-  if (!checkpoint) return;
+  const lock = await findSplitSettlementLock(db, input.recordKind, input.recordId);
+  if (!lock) return;
   const current = await loadSplitSettlementFacts(db, input.recordKind, input.recordId);
   if (!current) return;
   const next = await input.next(current);
   const change = next === "deleted" ? "deleted" : changedSplitSettlementFacts(current, next);
   if (change !== "deleted" && change.length === 0) return;
   throw new SplitSettlementLockedError(
-    buildSplitSettlementLockedMessage({ recordKind: input.recordKind, subject: input.subject ?? "record", checkpoint, change }),
-    checkpoint.id
+    buildSplitSettlementLockedMessage({ recordKind: input.recordKind, subject: input.subject ?? "record", lock, change }),
+    lock.kind === "checkpoint" ? { checkpointId: lock.checkpoint.id } : { batchId: lock.batch.batchId }
   );
 }
 
 export function buildSplitSettlementLockedMessage(input: {
   recordKind: SplitRecordKind;
   subject: "record" | "linked entry";
-  checkpoint: LockingSettlementCheckpoint;
+  lock: SplitSettlementLock;
   change: SplitSettlementFact[] | "deleted";
 }) {
   const record = input.recordKind === "expense" ? "expense" : "settle-up";
-  const settlement = describeCheckpoint(input.checkpoint);
+  const settlement = input.lock.kind === "checkpoint"
+    ? describeCheckpoint(input.lock.checkpoint)
+    : `${input.lock.batch.groupName} settle-up of ${input.lock.batch.closedOn}`;
+  const undo = input.lock.kind === "checkpoint" ? "the simplification" : "the settle-up";
   const reason = "so the settled amount still matches its activity";
   if (input.subject === "linked entry" && input.change !== "deleted") {
-    return `This entry's split ${record} is part of the ${settlement}, and saving would change the split's ${joinFacts(input.change)}. Undo the simplification first, ${reason}.`;
+    return `This entry's split ${record} is part of the ${settlement}, and saving would change the split's ${joinFacts(input.change)}. Undo ${undo} first, ${reason}.`;
   }
   const action = input.change === "deleted" ? "deleting it" : `changing its ${joinFacts(input.change)}`;
-  return `This split ${record} is part of the ${settlement}. Undo the simplification before ${action}, ${reason}.`;
+  return `This split ${record} is part of the ${settlement}. Undo ${undo} before ${action}, ${reason}.`;
 }
 
 function joinFacts(facts: SplitSettlementFact[]) {
