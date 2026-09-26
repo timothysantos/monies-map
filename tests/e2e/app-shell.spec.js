@@ -151,7 +151,9 @@ test("every top-level tab renders without crashing", async ({ page }) => {
       await page.waitForTimeout(150 + Math.floor(rng() * 250));
     }
 
-    await page.getByRole("link", { name: nextTab.name, exact: true }).click();
+    // Scope to the page navigation: the FAQ guide's contents also link to
+    // sections named after the screens.
+    await page.getByRole("navigation", { name: "Dashboard sections" }).getByRole("link", { name: nextTab.name, exact: true }).click();
 
     const shouldPauseAfterClick = visitedIndices.size % 2 === 1 || rng() < 0.35;
     if (shouldPauseAfterClick) {
