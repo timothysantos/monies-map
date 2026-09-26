@@ -10,7 +10,12 @@ a doc here in the same change.
 - [`../README.md`](../README.md): product overview, local setup, and deploys.
 - [`git.md`](git.md): short product workflow guide for imports, reconciliation,
   and splits.
-- [`faq.md`](faq.md): user-facing FAQ, also rendered in the app's FAQ panel.
+- [`user-guide.md`](user-guide.md): the in-app User guide (FAQ page, first
+  tab): start here, every screen, step-by-step recipes, troubleshooting and a
+  glossary, with screenshots from `npm run docs:screenshots`.
+- [`developer-guide.md`](developer-guide.md): the in-app For developers tab:
+  local setup, testing, guide screenshots, deploy, Shortcut internals and
+  architecture notes.
 - [`../DOMAIN.md`](../DOMAIN.md): canonical domain vocabulary.
 
 ## Architecture and rules

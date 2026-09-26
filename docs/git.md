@@ -1,7 +1,7 @@
 # Product Workflow Guide
 
 This guide is a short product-facing snapshot of Monie's Map. Keep it aligned
-with [`faq.md`](faq.md) when import,
+with [`user-guide.md`](user-guide.md) when import,
 reconciliation, splits, or account workflows change.
 
 ## Core Features

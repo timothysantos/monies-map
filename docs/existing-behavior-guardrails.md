@@ -49,7 +49,7 @@ Design implication:
 Source anchors:
 
 - `src/client/entries-panel.jsx`
-- `docs/faq.md`
+- `docs/user-guide.md` and `docs/developer-guide.md`
 
 ## Rule 2: Active Workflows Outrank Background Freshness
 
@@ -83,7 +83,7 @@ Source anchors:
 - `src/client/entries-panel.jsx`
 - `src/client/App.jsx`
 - `src/client/imports-panel.jsx`
-- `docs/faq.md`
+- `docs/user-guide.md` and `docs/developer-guide.md`
 
 ## Rule 3: Cross-Tab Freshness Must Work Without Forcing A Full Reload
 
@@ -137,7 +137,7 @@ Design implication:
 Source anchors:
 
 - `src/client/App.jsx`
-- `docs/faq.md`
+- `docs/user-guide.md` and `docs/developer-guide.md`
 
 ## Rule 4a: Broad Route Queries Can Trigger Worker Instability
 
@@ -191,7 +191,7 @@ Design implication:
 Source anchors:
 
 - `src/client/App.jsx`
-- `docs/faq.md`
+- `docs/user-guide.md` and `docs/developer-guide.md`
 
 ## Rule 6: Optimistic UI Needs Stale-Refresh Guards
 
