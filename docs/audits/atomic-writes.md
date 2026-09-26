@@ -705,7 +705,8 @@ entry against that Worker returned 200 and 400 "already linked" and Splits
 listed the entry once (without the test's barrier the loser may have been
 turned away by the check rather than the index).
 
-Noted, not changed: two matches of the same split to two different ledger
+Noted, not changed (all four closed 2026-09-26, "Split integrity
+follow-ups" below): two matches of the same split to two different ledger
 rows can both pass; the second `UPDATE ... WHERE linked_transaction_id IS
 NULL` changes no row but its batch still commits its month marker and the
 route returns ok. Two restores of the same record both record a "restored"
@@ -742,7 +743,133 @@ spec passed alone); the pre-merge smoke once failed
 `import-ledger-flow` "post-import cleanup ... Later", which then passed 3/3
 repeated and in the next two smoke runs.
 
+## Split integrity follow-ups (2026-09-26)
+
+Branch `split-integrity-followups`, based on `macro-performance` at
+`89d03ff`, Node v22.23.3. Closes the four items noted above and the travel
+split Shared save.
+
+Verified first, each by a test in
+`tests/atomic-writes-split-integrity-followups.test.mjs` (19, real Miniflare
+D1) run unchanged against the base (commit `4f6b1c5`, tests only): 14 fail and
+5 pass.
+
+1. Travel split, Shared owner save. Real. A JPY 10,000 split matched to an
+   SGD 90.00 card row: while settled, an unchanged Shared save got 409 (the
+   lock predicted amount, currency and shares changing); after Undo
+   simplification the save wrote `currency = 'SGD'`, `total_amount_minor =
+   9300`; in its JPY group the save was refused with "This group uses JPY".
+   Fix: `sharedSaveSplitAmount` (`app-repository-splits.ts`) keeps a travel
+   split's currency and total and moves only `home_amount_minor` and
+   `fx_rate_basis_points`; shares are planned in the split's currency; the
+   group check uses the split's currency; the lock's shared-save prediction
+   uses the same function, so an unchanged save of a settled travel split is
+   allowed and a basis change is still refused (message names only
+   "shares").
+2. Shared save split write inside the entry's batch. Already done by
+   `split-write-consistency`: `updateEntryRecord` and `createEntryRecord` push
+   `buildLinkedSplitUpsertStatements(...).statements` into their one batch,
+   and that builder runs no `.run()`. No change.
+3. One split matched to two entries at once. Real: `[200, 200]`, the loser's
+   batch committed its month marker. Settle-up matches had the same gap.
+4. Two restores (and two deletes) of one record. Real: `[200, 200]` and two
+   `restored` (or `deleted`) history rows.
+   Fix for 3 and 4: `buildBatchGuard` puts a first statement in the batch that
+   fails the whole batch when the record's checked state changed (already
+   linked, already active, already archived). SQLite raises errors only in
+   triggers, so the guard runs `json('{' || id)` over the rows that break the
+   precondition; the command then re-reads the state and gives the check's
+   own message ("This split expense is unavailable or already linked.",
+   "This settle-up is unavailable or already linked.", "This split is
+   already active.", "This split is already in activity history."). A
+   conditional `UPDATE` alone was rejected: the rest of the batch would still
+   commit. Races of two records for one row stay with the unique index.
+5. Same-millisecond ids. Real: with the clock stopped, the second Add to
+   splits, split create, settle-up create, group create, Shared create and
+   simplification each failed with `UNIQUE constraint failed: <table>.id`.
+   Fix: `newSplitRecordId` gives `<kind>-<ms>-<uuid>` for split groups,
+   batches, expenses, settle-ups, checkpoints and history events; the time
+   prefix keeps same-date Splits activity sorted newest first by id (as
+   `splits-projection.ts` does), matching `txn-<uuid>` for the random part.
+   Old `<kind>-<ms>` ids and seeded names still edit, delete and restore
+   (test passes on both).
+6. Statement rollback re-link. Real: a split edited to 50.00 while its entry
+   was superseded came back linked to the re-created 43.21 entry at 50.00; a
+   settled one was not refused; a split matched to another row meanwhile was
+   taken from it. Decision (DOMAIN.md: a linked split follows its entry's
+   amount, the settlement lock holds): `buildSplitRelinkStatements`, in the
+   rollback's batch, re-links only splits that are unlinked (or linked to a
+   row this rollback removes), moves an expense split whose amount differs
+   by the entry-edit rule (2160/2161), and runs
+   `assertLinkedSplitSettlementUnchanged` (subject "import rollback") first,
+   so a settled split refuses the whole rollback with 409. A split already on
+   the entry's amount keeps its shares (assigned odd cent kept).
+
+Negative tests (pass on base and branch unless noted): a sequential second
+match and a second restore are refused with the database dump unchanged; a
+restore failing on its history insert is not reported as "already active"
+and changes nothing; a basis change of a settled travel split is refused
+with the dump unchanged (on base it was refused too, naming amount and
+currency); a re-link that keeps the amount leaves the shares alone; a
+rollback failing on `UPDATE split_expense_shares` leaves the dump unchanged
+(on base it never reached that statement).
+
+Persisted state (`scripts/persisted-state-snapshot.mjs`, ports 8831-8843):
+the old scenario gives byte-identical output on base and branch (the
+normalizer now drops the UUID tail of new split ids). New July steps (a
+travel split's Shared save at 93.00; a card row added to splits, superseded,
+its split corrected to 50.00, the statement rolled back); the normalizer also
+keys hashed import ids, since the scenario's new account has a random id.
+Two branch runs are byte-identical. Base vs branch: 82 paths, all intended:
+the travel split JPY 10,000 with shares 5,000/5,000 (base SGD 9,300 and
+4,650/4,650), the re-linked split 4,321 with home 4,321 and shares
+2,160/2,161 (base 5,000, home NULL, 2,500/2,500), those two splits in the
+Splits and Entries DTOs and balances, and the July `person-tim`
+`monthly_snapshots` 8,149 → 8,159. (A first base run differed in label
+numbering only, because a random category id suffix was all digits; a
+rerun compared cleanly.)
+
+That last figure exposed a pre-existing gap, not changed here: person views
+(Entries, Month, stored month totals) count a travel split's share amounts,
+which are in the split's currency, as home-currency amounts (Tim's share of
+the SGD 93.00 row shows 50.00, from JPY 5,000). It already happens for any
+matched travel split saved directly; `app-repository-entries.ts` and
+`month-projection.ts` are untouched by this branch.
+
+Runtime (pass 2), real `wrangler dev` on 8826 with Vite on 5426 and
+`--persist-to .wrangler/state-integrity`, browser pane, Tim's view: a card
+row's split corrected to $50.00 while superseded; rolling the statement back
+from Recent imports (in-app confirm) showed "You paid $43.21 · you lent
+$21.61 · Linked" in Splits and `-$43.21 (-$21.60)` On splits 50% in Entries;
+with a simplified settlement holding the split, the confirm popover showed
+"Rolling back this import would change the amount and shares of a split
+expense in the simplified settlement of 2026-05-26 ..." and the import stayed
+Completed. A settled JPY travel split: an unchanged Shared save from the
+page returned 200 and Splits still showed JP¥100 / JP¥50, "Included in
+simplified settlement"; a 70% save returned 409 naming shares. Two
+simultaneous restores and two simultaneous matches sent from the page
+returned 200 + 400 with the messages above; Activity history listed one
+restore and Entries showed only one of the two rows On splits. Without the
+test's barrier these runtime pairs may have been refused by the check
+rather than the guard. New ids appeared as `split-expense-<ms>-<uuid>`.
+
+Gates (see the final section of the branch report for the post-merge rerun):
+`npm audit` 0 vulnerabilities; both typechecks clean; lint 0 errors (30
+warnings, as base); unit 753/753; build; `check:bundle` 173,411 B JS gzip
+(budget 180,337) and 33,435 B CSS (budget 31,961, inside the 5% allowance; no
+client change); `E2E_PORT_OFFSET=120 npm run test:e2e:smoke` 88/88.
+`E2E_PORT_OFFSET=120 npm run test:e2e:sharded` (3 shards, load average
+30-50): 271/273. The two failures were 120 s click timeouts in one shard:
+`app-shell` "summary month round trip" passed when rerun; `app-dates` "new
+split expenses and settlements default to the Singapore day" failed again
+alone (the Splits page came up in the Household view, which has no "+ Add
+expense") and fails the same way with `src/` from `89d03ff` (the base), so
+it is not this branch; left for a separate fix.
+
 ## Open items
+
+- A travel split's shares are counted as home-currency amounts in person
+  views and stored person month totals (section above).
 
 - Closed 2026-09-25 (section above): rolling back a CSV import deleted a
   manual entry that the import had promoted.
