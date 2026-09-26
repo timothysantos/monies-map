@@ -1683,6 +1683,19 @@ If a shared dining row is split 55/45, the primary person should see the 55%
 subtotal and the partner should see the 45% subtotal. The full shared
 transaction can still be shown alongside it for context.
 
+A person view's actual spend is that person's own spend. Summary months, the
+Summary cards and charts, and the Month `Actual spend` card count the
+person's own entries at their full amount plus their share of each entry that
+is on splits; the other person's own entries are left out. The scope pills
+narrow it: `Direct ownership` counts only the person's entries that are not
+on splits, `Shared` only their split shares, and `Direct + Shared` both. For
+example, if Tim pays $100.00 for groceries and $80.00 for a dinner split 25%
+Tim / 75% Joyce, and Joyce pays $30.00 for shopping, Tim's Direct + Shared
+actual spend is $120.00 and Joyce's is $90.00, on Summary and Month alike;
+the household view shows $210.00. The stored month totals hold the same
+Direct + Shared figure per person, and a person whose only spending in a
+month is a split share (Joyce's $60.00 of a dinner Tim paid) still gets one.
+
 Important current limitation:
 
 - shared month-plan allocation still exists in storage and calculations
