@@ -1,0 +1,300 @@
+/* FAQ page styles. Imported by faq-panel.jsx, so they ship with the lazy FAQ
+   route and stay out of the first-screen stylesheet. This file loads after
+   public/styles.css; the shared card look of .faq-item (border, background,
+   phone full-bleed layout) stays there. */
+@media (min-width: 761px) {
+  .faq-item {
+    padding: 16px 18px;
+    border-radius: 20px;
+  }
+}
+
+.faq-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.faq-tab {
+  cursor: pointer;
+}
+
+.faq-tab:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+.faq-tabpanel:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+.faq-guide-status {
+  color: var(--muted);
+}
+
+.faq-guide-status .ghost-button {
+  margin-top: 10px;
+}
+
+.faq-toc {
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--panel);
+}
+
+.faq-toc h3 {
+  margin-bottom: 8px;
+}
+
+.faq-toc > ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  columns: 2 280px;
+  column-gap: 28px;
+}
+
+.faq-toc > ol > li {
+  break-inside: avoid;
+  margin-bottom: 12px;
+}
+
+.faq-toc > ol > li > a {
+  font-weight: 700;
+}
+
+.faq-toc ol ol {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  color: var(--muted);
+  line-height: 1.6;
+  font-size: 0.94rem;
+}
+
+.faq-toc a {
+  color: var(--accent-strong);
+  text-decoration: none;
+}
+
+.faq-toc a:hover,
+.faq-toc a:focus-visible {
+  text-decoration: underline;
+}
+
+.faq-part {
+  display: grid;
+  gap: 12px;
+  scroll-margin-top: 16px;
+}
+
+.faq-part-title {
+  margin: 20px 0 0;
+  font-size: 1.35rem;
+}
+
+.faq-part > p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.faq-item h4 {
+  margin: 0 0 8px;
+  font-size: 1.12rem;
+}
+
+.faq-item h5 {
+  margin: 16px 0 6px;
+  font-size: 1rem;
+}
+
+.faq-item h4,
+.faq-item h5,
+.faq-part-title {
+  scroll-margin-top: 16px;
+}
+
+.faq-item p {
+  margin-bottom: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.faq-item p + p,
+.faq-item ul + p,
+.faq-item ol + p,
+.faq-item .faq-figure + p {
+  margin-top: 12px;
+}
+
+.faq-item p + ul,
+.faq-item p + ol {
+  margin-top: 10px;
+}
+
+.faq-item ul,
+.faq-item ol {
+  margin: 0 0 14px 18px;
+  padding: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.faq-item li + li {
+  margin-top: 4px;
+}
+
+.faq-item strong {
+  color: var(--ink, #26231f);
+}
+
+.faq-item code {
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgba(38, 35, 31, 0.08);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+}
+
+.faq-item a {
+  color: var(--accent-strong);
+}
+
+.faq-callout {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--accent-strong);
+  border-radius: 8px;
+  background: rgba(177, 94, 47, 0.07);
+}
+
+.faq-code {
+  margin: 12px 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  border-radius: 10px;
+  background: rgba(38, 35, 31, 0.06);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.faq-code code {
+  padding: 0;
+  background: none;
+  white-space: pre;
+}
+
+.faq-category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.faq-category-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.faq-category-icon {
+  flex: 0 0 auto;
+}
+
+.faq-category-copy {
+  min-width: 0;
+}
+
+.faq-category-copy strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.faq-category-copy p {
+  font-size: 0.9rem;
+}
+
+/* Screenshots: the shape is reserved from the image family so lazy images
+   never shift the page while they load. */
+.faq-figure {
+  width: min(100%, 640px);
+  margin: 12px 0 18px;
+}
+
+.faq-figure.is-phone,
+.faq-figure.is-iphone {
+  width: min(100%, 260px);
+}
+
+.faq-image-link {
+  display: block;
+  text-decoration: none;
+}
+
+.faq-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 12px 30px rgba(38, 35, 31, 0.1);
+}
+
+.faq-figure.is-desktop img {
+  aspect-ratio: 1280 / 800;
+}
+
+.faq-figure.is-phone img {
+  aspect-ratio: 390 / 664;
+}
+
+.faq-figure.is-iphone img {
+  aspect-ratio: 1206 / 2622;
+}
+
+/* Other pictures show a 16:10 crop of the top; the link opens the full page. */
+.faq-figure.is-other img {
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  object-position: top left;
+}
+
+.faq-figure figcaption {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 760px) {
+  .faq-tabs {
+    padding: 0 12px;
+  }
+
+  .faq-toc {
+    margin-right: -12px;
+    margin-left: -12px;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .faq-part-title {
+    padding: 0 12px;
+  }
+
+  .faq-part > p {
+    padding: 0 12px;
+  }
+}
