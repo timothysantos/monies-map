@@ -508,7 +508,8 @@ Between the two layouts there is a CSS-only mid-width range, 761 to
 layout must still fit the screen. It needs no JavaScript, so it has no
 query in `use-viewport.js`. Its blocks are
 `@media (min-width: 761px) and (max-width: 1099px)` (plus one to 960 px)
-and never touch the phone or wide-desktop rules. The header rules are in
+and never touch the phone or wide-desktop rules. The header block runs on
+to 1,279 px (see below). The header rules are in
 `public/styles.css`, because every page shows the header. The Month rules
 are in `src/client/month-mid-width.css`, which `month-panel.jsx` imports,
 so they ship with the lazy Month route and stay out of the first-screen
@@ -518,6 +519,13 @@ so its rules win over base rules of the same specificity.
 - The header's period controls wrap below the page tabs as one group.
   Before, they widened the page up to 960 px and slid under the tabs from
   961 px, covering Settings and FAQ.
+  The same header block runs to 1,279 px (`max-width: 1279px`): from
+  1,100 to about 1,195 px the tabs and period controls do not fit one row,
+  and the tab strip ran up to 71 px under the "‹" button. There the period
+  controls now wrap below the tabs; where the row fits (about 1,200 px and
+  up) the wrap does not happen and the header is laid out as before.
+  `tests/e2e/header-tab-fit.spec.js` checks every page at 1,120 and
+  1,200 px with `elementFromPoint` at each tab's edges and centre.
 - The Month panel and plan sections may shrink below their tables'
   min-content width (a grid item's automatic minimum is its min-content,
   which is the whole table), so `.month-table-wrap` scrolls inside the page
