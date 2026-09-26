@@ -14,7 +14,12 @@
  * @typedef {{ files: Record<string, { seconds: number, tests: number }> }} ShardWeights
  */
 
-export const DEFAULT_SHARD_COUNT = 4;
+// Measured on a 10-core M1 Pro (docs/audits/e2e-sharding.md): three shards
+// run the full suite in about the time four do, at lower peak CPU load, so
+// timing-sensitive tests keep more headroom. The smoke bundle is bounded by
+// the import ledger spec alone, so two shards are as fast as four.
+export const DEFAULT_SHARD_COUNT = 3;
+export const DEFAULT_SMOKE_SHARD_COUNT = 2;
 
 function medianSecondsPerTest(weights) {
   const perTest = Object.values(weights?.files ?? {})
