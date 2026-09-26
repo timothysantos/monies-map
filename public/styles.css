@@ -9252,6 +9252,24 @@ th {
   
 }
 
+@media (min-width: 761px) and (max-width: 1099px) {
+  .period-inline {
+    flex-wrap: wrap;
+  }
+
+  .period-nav-cluster {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 960px) {
+  .period-inline {
+    justify-content: flex-start;
+  }
+}
+
 @media (max-width: 1280px) {
   .settings-categories-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

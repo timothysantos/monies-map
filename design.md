@@ -508,6 +508,35 @@ open handlers must keep this fresh read: the row-open spy in
 `tests/e2e/month-page.spec.js` counts it. Focus visibility also treats a
 visual viewport of 760px or less (pinch zoom) as mobile.
 
+Between the two layouts there is a CSS-only mid-width range, 761 to
+1,099 px (portrait and landscape tablets, small laptops), where the desktop
+layout must still fit the screen. It needs no JavaScript, so it has no
+query in `use-viewport.js`. Its blocks are
+`@media (min-width: 761px) and (max-width: 1099px)` (plus one to 960 px)
+and never touch the phone or wide-desktop rules. The header rules are in
+`public/styles.css`, because every page shows the header. The Month rules
+are in `src/client/month-mid-width.css`, which `month-panel.jsx` imports,
+so they ship with the lazy Month route and stay out of the first-screen
+CSS budget (`npm run check:bundle`). That file loads after `styles.css`,
+so its rules win over base rules of the same specificity.
+
+- The header's period controls wrap below the page tabs as one group.
+  Before, they widened the page up to 960 px and slid under the tabs from
+  961 px, covering Settings and FAQ.
+- The Month panel and plan sections may shrink below their tables'
+  min-content width (a grid item's automatic minimum is its min-content,
+  which is the whole table), so `.month-table-wrap` scrolls inside the page
+  and the page never scrolls sideways. Tighter cell spacing and two-line
+  notes let the tables fit whole from about 900 px; below that the Account
+  and Note columns scroll inside the table, while Category, Item and the
+  money columns stay on screen. Inline Save and Cancel stick to the visible
+  edge of the table. On a portrait tablet the row sheet shows every field.
+
+`tests/e2e/month-mid-width-layout.spec.js` checks this at 820×1180 (full
+mobile emulation) and 1024×768. With mobile emulation, as on a real tablet,
+a too-wide page grows the layout viewport, which moves controls and the
+fixed sheet off screen, so keep new Month and header content shrinkable.
+
 Route warmup reuses `MOBILE_LAYOUT_QUERY` for its narrow-viewport signal,
 but its mode also needs `(pointer: coarse)` and stays in
 `selectWarmupMode`, because warmup is about the device, not the layout.
