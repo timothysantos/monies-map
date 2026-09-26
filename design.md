@@ -249,12 +249,16 @@ scope control:
   Month shows the scope pills in its header. Summary shows the same pills
   (`buildPersonScopes`) in a row under its heading, with the active pill
   marked `aria-pressed` and a short line saying what that scope counts.
+  Whether desktop Summary keeps these pills is an open design decision:
+  `SHOW_DESKTOP_SCOPE_PILLS` in `summary-panel.jsx` keeps them (`true`, the
+  current state) or leaves desktop Summary with no scope control (`false`,
+  as before the pills were added).
 - Phone (`useIsMobileLayout()`): Summary, Month and Entries show the floating
   View and scope bar from `App.jsx` (`stickyScopeConfig`), and Summary does
-  not render its inline pills at all. The bar's dialog holds the view pills,
-  the scope pills and, under them, the same line saying what the scope
-  counts. Month and Entries add month arrows beside the bar; Summary has no
-  arrows because its range moves from the header.
+  not render its inline pills at all. The bar's dialog holds the view pills
+  and the scope pills; on Summary the scope section also carries the line
+  saying what the scope counts. Month and Entries add month arrows beside
+  the bar; Summary has no arrows because its range moves from the header.
 
 The bar's label is two lines: the person and a short scope name
 (`messages.views.scopeShortLabel`: `Direct`, `Shared`, `Direct + Shared`),

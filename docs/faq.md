@@ -2021,7 +2021,7 @@ never cuts either short (a long name wraps instead). Month and Entries add
 previous and next month buttons beside it; Summary moves its range from the
 header. Tapping the bar opens a bottom sheet where you can switch the
 household/person view first and then the scope, when that view has more than
-one, with a line saying what the chosen scope counts.
+one; on Summary a line under the scope says what it counts.
 
 Within one browser session, returning to a tab should reuse cached page data
 when no import, edit, rollback, or manual refresh has invalidated it. This keeps
