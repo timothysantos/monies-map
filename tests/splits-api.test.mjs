@@ -263,7 +263,7 @@ test("deleted split expenses remain in history and restore with their original r
     currency: "JPY"
   });
   const created = await postJson(request, "/api/splits/expenses/create", {
-    groupId: group.splitGroupId,
+    groupId: group.groupId,
     date: "2026-08-20",
     description,
     categoryName: "Food & Drinks",
@@ -285,6 +285,8 @@ test("deleted split expenses remain in history and restore with their original r
   const restored = await loadSplitsPage(request, { view: "person-tim", month: "2026-08" });
   const restoredExpense = restored.splitsPage.activity.find((item) => item.id === created.splitExpenseId);
   expect(restoredExpense).toMatchObject({ description, totalAmountMinor: 12345, currency: "JPY", note: "Original travel note" });
+  // The restore puts it back in the travel group it was created in.
+  expect(restoredExpense.groupId).toBe(group.groupId);
   expect(restored.splitsPage.activityHistory.some((item) => item.recordId === created.splitExpenseId && item.action === "restored")).toBe(true);
 });
 
