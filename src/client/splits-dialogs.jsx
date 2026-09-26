@@ -131,6 +131,7 @@ function OddCentChooser({ dialog, people, onChange }) {
   const extraCentName = preview.primaryAmountMinor > preview.secondaryAmountMinor
     ? preview.primaryName
     : preview.secondaryName;
+  const extraStep = formatService.moneyStep(dialog?.currency ?? "SGD");
 
   return (
     <div className="split-odd-cent-control">
@@ -147,14 +148,14 @@ function OddCentChooser({ dialog, people, onChange }) {
           className={extraCentName === preview.primaryName ? "is-selected" : ""}
           onClick={() => onChange((current) => current ? applyPrimarySplitAmount(current, higherHalf) : current)}
         >
-          {preview.primaryName} gets +$0.01
+          {preview.primaryName} gets +{extraStep}
         </button>
         <button
           type="button"
           className={extraCentName === preview.secondaryName ? "is-selected" : ""}
           onClick={() => onChange((current) => current ? applyPrimarySplitAmount(current, lowerHalf) : current)}
         >
-          {preview.secondaryName} gets +$0.01
+          {preview.secondaryName} gets +{extraStep}
         </button>
       </div>
     </div>
@@ -163,6 +164,8 @@ function OddCentChooser({ dialog, people, onChange }) {
 
 function SplitSharePreview({ dialog, people }) {
   const preview = splitSharePreview(dialog, people);
+  // Shares are in the expense's own currency (the group currency in a group).
+  const currency = dialog?.currency ?? "SGD";
 
   if (preview.totalAmountMinor <= 0 || people.length < 2) {
     return null;
@@ -172,11 +175,11 @@ function SplitSharePreview({ dialog, people }) {
     <div className="split-share-preview" aria-label="Split share amounts">
       <span>
         <span>{preview.primaryName} share</span>
-        <strong>{formatService.money(preview.primaryAmountMinor)}</strong>
+        <strong>{formatService.moneyWithCurrency(preview.primaryAmountMinor, currency)}</strong>
       </span>
       <span>
         <span>{preview.secondaryName} share</span>
-        <strong>{formatService.money(preview.secondaryAmountMinor)}</strong>
+        <strong>{formatService.moneyWithCurrency(preview.secondaryAmountMinor, currency)}</strong>
       </span>
     </div>
   );

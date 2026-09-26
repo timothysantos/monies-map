@@ -2426,6 +2426,12 @@ as awaiting statement until the final certified ledger row arrives; matching a
 different-currency settlement requires an explicit FX rate and keeps both
 amounts visible.
 
+Inside a trip group, every amount is shown in the trip currency with that
+currency's usual digits: a ¥12,000 dinner reads "Spend JP¥12,000" in the totals,
+the group pill balance reads "You owe Joyce JP¥6,000", and the expense form's
+share preview shows JP¥6,000 each. SGD bank amounts keep their dollar
+formatting. Hiding money totals masks these amounts too.
+
 For a simpler holiday workflow, create two groups in the trip currency: one
 with purchase source `Cash only` and one with `Bank/card`. The cash group keeps
 offline purchases out of ledger matching, while the Bank/card group is ready
