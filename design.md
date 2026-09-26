@@ -227,6 +227,34 @@ scenario. Summary and Month can route proof gaps to Imports. Entries and Splits
 state when their narrower view cannot assess wallet confidence or household
 cash flow.
 
+A check-in's facts count what the figures beside it count. Summary builds
+them from its page DTO, which the Worker already filtered to the view and
+scope. The Month DTO's `entries` holds every household entry (plan linking
+needs them all), so `month-insight-facts.js` first keeps the entries the
+`Actual spend` card counts with the Worker's own `filterEntriesForView` and
+`effectiveScopeForView` (`src/domain/person-view-scope.ts`, over
+`person-entry-amount.ts`): every entry for the household, and a person's own
+entries in the scope at their own amounts. A scope change therefore changes
+the facts and the wording cache key. The Splits check-in counts the active
+group's records at their group totals, the same figure as the Splits
+`Total spend`, in every view.
+
+## Scope Controls
+
+A person view's figures follow the route's `scope`. Month shows the scope
+pills in its header on desktop and in the mobile sticky sheet. Summary shows
+the same pills (`buildPersonScopes`) in a row under its heading on every
+width, with the active pill marked `aria-pressed` and a short line saying
+what that scope counts; on a phone the row spans the width. The active pill
+is the scope of the request the figures on screen answer: `buildSummaryPageView`
+reads it from the Summary owner's request key and sets `selectedScope` and
+`scopes` on the page view (the same names as the Month DTO), so it never runs
+ahead of them while the next scope loads. A pill sets the route's `scope`,
+and the route reloads Summary; no extra request and no DTO field. The
+household view has one Combined scope and shows no control. The scope rules
+are imported by `summary-query.js` in the entry chunk, so the Summary and
+Month route chunks share them without a new first-screen file.
+
 ## Money Privacy Display Preference
 
 Money privacy is a display layer, not a financial-state change. A new browser

@@ -12,14 +12,16 @@ Route entry:
 
 - `/summary`
 
-The route may include view, focus, and range parameters. `App.jsx` reads the URL
-and keeps the selected Summary view in sync with browser location.
+The route may include view, scope, focus, and range parameters. `App.jsx` reads
+the URL and keeps the selected Summary view in sync with browser location. In a
+person view the scope pills under the heading set `scope`; the active pill is
+the scope of the Summary request whose figures are on screen.
 
 ## State Flow
 
 Summary state is split between:
 
-- route state for the selected view and focus
+- route state for the selected view, scope and focus
 - server state for the summary page DTO and account pills
 - workflow state for note editing and drilldown return behavior
 

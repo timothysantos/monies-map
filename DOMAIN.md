@@ -1001,8 +1001,10 @@ Person month total and person views:
   share`). An entry that is someone else's direct expense never counts
 - a person view counts entries by the same rule
   (`personEntryAmountMinor`, `person-entry-amount.ts`) in Summary months,
-  metric cards and category charts, and in the Month `Actual spend` card,
-  plan actuals and category chart. The view's scope narrows it:
+  metric cards and category charts, in the Month `Actual spend` card,
+  plan actuals and category chart, and in the Summary and Month Money
+  check-ins (`filterEntriesForView`, `person-view-scope.ts`). The view's
+  scope narrows it:
   `Direct ownership` (`direct`) keeps entries not linked to a split,
   `Shared` (`shared`) keeps split shares, `Direct + Shared`
   (`direct_plus_shared`) keeps both. Direct plus Shared always adds up to
