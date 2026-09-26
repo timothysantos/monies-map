@@ -1,13 +1,14 @@
-import { expect, test } from "@playwright/test";
+import assert from "node:assert/strict";
+import test from "node:test";
 
 import {
   getStatementPreviewAutoRefreshKey,
   shouldAutoRefreshStatementPreview,
   shouldPreserveStatementPreviewOnRefreshError
-} from "../../src/client/import-preview-auto-refresh.js";
+} from "../src/client/import-preview-auto-refresh.js";
 
 test("statement preview auto-refresh key is empty for non-statement drafts", () => {
-  expect(getStatementPreviewAutoRefreshKey({
+  assert.equal(getStatementPreviewAutoRefreshKey({
     sourceType: "csv",
     statementCheckpoints: [{
       accountId: "acct-1",
@@ -29,11 +30,11 @@ test("statement preview auto-refresh key is empty for non-statement drafts", () 
       commitStatus: "included",
       reconciliationTargetTransactionId: "txn-1"
     }]
-  })).toBe("");
+  }), "");
 });
 
 test("statement preview auto-refresh waits for the preview to settle", () => {
-  expect(shouldAutoRefreshStatementPreview({
+  assert.equal(shouldAutoRefreshStatementPreview({
     hasPreview: true,
     autoRefreshKey: "statement-draft",
     isSubmitting: false,
@@ -43,11 +44,11 @@ test("statement preview auto-refresh waits for the preview to settle", () => {
     lastPreviewHydratedAt: 9_000,
     lastAutoRefreshAt: 0,
     lastAutoRefreshKey: ""
-  })).toBe(false);
+  }), false);
 });
 
 test("statement preview auto-refresh is throttled per draft key", () => {
-  expect(shouldAutoRefreshStatementPreview({
+  assert.equal(shouldAutoRefreshStatementPreview({
     hasPreview: true,
     autoRefreshKey: "statement-draft",
     isSubmitting: false,
@@ -57,11 +58,11 @@ test("statement preview auto-refresh is throttled per draft key", () => {
     lastPreviewHydratedAt: 10_000,
     lastAutoRefreshAt: 20_000,
     lastAutoRefreshKey: "statement-draft"
-  })).toBe(false);
+  }), false);
 });
 
 test("statement preview auto-refresh re-runs when a visible statement draft is stale", () => {
-  expect(shouldAutoRefreshStatementPreview({
+  assert.equal(shouldAutoRefreshStatementPreview({
     hasPreview: true,
     autoRefreshKey: "statement-draft",
     isSubmitting: false,
@@ -71,11 +72,11 @@ test("statement preview auto-refresh re-runs when a visible statement draft is s
     lastPreviewHydratedAt: 10_000,
     lastAutoRefreshAt: 1_000,
     lastAutoRefreshKey: "older-draft"
-  })).toBe(true);
+  }), true);
 });
 
 test("statement preview auto-refresh is blocked while the draft has active workflow edits", () => {
-  expect(shouldAutoRefreshStatementPreview({
+  assert.equal(shouldAutoRefreshStatementPreview({
     hasPreview: true,
     autoRefreshKey: "statement-draft",
     isWorkflowLocked: true,
@@ -86,17 +87,17 @@ test("statement preview auto-refresh is blocked while the draft has active workf
     lastPreviewHydratedAt: 10_000,
     lastAutoRefreshAt: 1_000,
     lastAutoRefreshKey: "older-draft"
-  })).toBe(false);
+  }), false);
 });
 
 test("statement preview auto-refresh failures preserve the current preview", () => {
-  expect(shouldPreserveStatementPreviewOnRefreshError({
+  assert.equal(shouldPreserveStatementPreviewOnRefreshError({
     isAutoRefresh: true,
     hasPreview: true
-  })).toBe(true);
+  }), true);
 
-  expect(shouldPreserveStatementPreviewOnRefreshError({
+  assert.equal(shouldPreserveStatementPreviewOnRefreshError({
     isAutoRefresh: false,
     hasPreview: true
-  })).toBe(false);
+  }), false);
 });
