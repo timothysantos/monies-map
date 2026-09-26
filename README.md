@@ -112,8 +112,8 @@ npm run docs:screenshots -- --list             # shot names
 npm run docs:screenshots -- summary-household  # only some
 ```
 
-The script starts its own isolated stack (Vite `5432`, Wrangler `8832`,
-inspector `9432`, D1 in `.wrangler/state-guide`), reseeds the demo data only,
+The script starts its own isolated stack (Vite `5442`, Wrangler `8842`,
+inspector `9442`, D1 in `.wrangler/state-guide`), reseeds the demo data only,
 reveals money totals and captures desktop shots (1280×800, Chromium) and
 phone shots (iPhone 13 profile, WebKit). `tests/guide-content.test.mjs`
 checks that every link, anchor and image in both guides resolves.

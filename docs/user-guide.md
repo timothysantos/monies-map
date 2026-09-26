@@ -89,6 +89,8 @@ Settings → People (the demo uses Tim and Joyce).
 
 ![A person view shows that person's figures and the scope choice under the heading](/faq/guide/desktop/thumbs/summary-person.webp)
 
+![In the Household view, Month says the combined plan is read-only](/faq/guide/desktop/thumbs/month-household.webp)
+
 The view is kept in the address, so a bookmarked page reopens the same way.
 
 ## Scopes: Direct, Shared, Direct + Shared
