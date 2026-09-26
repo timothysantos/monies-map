@@ -51,7 +51,9 @@ copy, or docs:
   Cash may remain unlinked, while a card expense may await statement
   certification.
 - Use `FX evidence` for an explicit rate used to compare different currencies.
-  Never net currencies without it.
+  Never net currencies without it. For the same reason the Splits category
+  donut charts each split currency on its own ("Split currency in charts" under
+  Split Expense Share), never summing yen and dollars.
 - Use `group settlement` for payment that closes only one split group's
   current batch. Use `simplified settlement checkpoint` for the optional
   netting of open groups in one currency; these are separate workflows.
@@ -563,6 +565,13 @@ Important distinction:
   rebalanced by the split's stored basis (see `split expense share`). A
   cross-currency split keeps its own total and shares and only updates its home
   amount and FX rate
+- every home-currency projection of a linked entry (the viewer share on
+  Entries, Month actuals and charts, Summary, the stored person month totals)
+  counts each person's share of the ledger amount. For a same-currency split
+  that is the stored share. For a travel split it is the person's home share
+  (see `split expense share`), never the split-currency share read as SGD: a
+  JPY 10,000 split 50/50 on an SGD 93.01 row counts 46.50 for Tim and 46.51
+  for Joyce, not 5,000.00
 - a Shared owner save that rewrites the split follows the same currency rule:
   a travel split (recorded in its own currency, such as JPY, and matched to a
   home-currency card or bank row) keeps its currency and total, only its home
@@ -753,6 +762,33 @@ Rounding rule:
   real share change is still refused. For a travel split the plan is in the
   split's own currency and total, so an unchanged shared save of a settled
   travel split is allowed too
+
+Home share of a travel split:
+- a travel split's shares are in its own currency; its linked ledger entry is
+  in the home currency (SGD). A person's `home share` is what that person's
+  share would be if the split's total followed the ledger amount, exactly as a
+  same-currency split's shares do: the stored basis applied to the ledger
+  amount with the same floor and balancing remainder, in split-share people
+  order (`homeCurrencyShareAmounts`, built on `rebalanceSplitSharesForTotal`).
+  An even split stays even and the home shares always add up to the ledger
+  amount
+- the ledger amount, not the stored FX rate, is the source: the rate is
+  rounded to basis points and would not add back up to the ledger row, while
+  the ledger amount is the bank fact the home amount already follows
+- the home share is a projection only. It is computed when the entry is
+  read (`app-repository-entries.ts`), shared by every projection through the
+  entry's `linkedSplitShares`, and never stored. The split keeps its own
+  currency, total and shares, and its balances and settlements stay in the
+  split currency
+- an unlinked travel split has no ledger amount and no home share; it counts
+  only in Splits, in its own currency
+
+Split currency in charts:
+- the Splits category donut sums open expenses per split currency. The SGD
+  chart holds SGD expenses only, and each other currency with open expenses
+  has its own chart in that currency (`donutChartsByCurrency`); the panel
+  shows the chart for the active group's currency. Converting per group to
+  SGD is not possible, because a cash travel expense has no FX evidence
 
 Relationships:
 - belongs to one `split expense`

@@ -123,6 +123,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     archivedBatches,
     categoryOptions,
     currentGroupActivity,
+    donutChart,
     donutRows,
     groupedCurrentActivity,
     groupBalanceMinor,
@@ -1198,7 +1199,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         groupBalanceMinor={groupBalanceMinor}
         groupSummaryLabel={groupSummaryLabel}
         donutRows={donutRows}
-        donutChart={splitsPage.donutChart}
+        donutChart={donutChart}
         categories={categories}
         groupOptions={groupOptions}
         people={people}

@@ -94,6 +94,7 @@ export function SplitsBreakdownSection({
                   categories={categories}
                   totalMinor={visibleTotalMinor}
                   totalLabel={messages.entries.totalSpend}
+                  currency={currency}
                   compact
                   height={300}
                   innerRadius={58}
@@ -120,7 +121,7 @@ export function SplitsBreakdownSection({
                       </span>
                       <div>
                         <strong>{item.label}</strong>
-                        <p><PrivateMoney>{formatService.money(item.valueMinor)}</PrivateMoney> • {item.entryCount} {item.entryCount === 1 ? "entry" : "entries"} • {hiddenCategoryIds.has(getDonutItemId(item)) ? messages.common.hiddenFromChart : messages.common.shownInChart}</p>
+                        <p><PrivateMoney>{formatService.moneyWithCurrency(item.valueMinor, currency)}</PrivateMoney> • {item.entryCount} {item.entryCount === 1 ? "entry" : "entries"} • {hiddenCategoryIds.has(getDonutItemId(item)) ? messages.common.hiddenFromChart : messages.common.shownInChart}</p>
                       </div>
                     </div>
                   </button>
