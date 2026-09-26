@@ -39,6 +39,13 @@ const {
   format: formatService
 } = moniesClient;
 
+// Desktop Summary's inline scope pills are pending a design decision: true
+// keeps them, false leaves desktop Summary with no scope control (as before
+// the pills were added). Phones never show them; they use the View and scope
+// bar. Flipping this also means updating the desktop checks in
+// tests/e2e/summary-workflow.spec.js and "Scope Controls" in design.md.
+const SHOW_DESKTOP_SCOPE_PILLS = true;
+
 // Read alongside docs/import-summary-code-glossary.md.
 // This panel has three main blocks:
 // 1. Range-level metrics and spending mix.
@@ -183,7 +190,9 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
       </div>
 
       {/* A phone switches scope from the floating View and scope bar instead. */}
-      {isMobileLayout ? null : <SummaryScopeControl view={view} onScopeChange={handleScopeChange} />}
+      {SHOW_DESKTOP_SCOPE_PILLS && !isMobileLayout
+        ? <SummaryScopeControl view={view} onScopeChange={handleScopeChange} />
+        : null}
 
       <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-summary" canRequestWording={canRequestWording} />
 
