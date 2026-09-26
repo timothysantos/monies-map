@@ -8704,6 +8704,13 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
   z-index: 80;
 }
 
+/* Keep the sheet above its backdrop in every layout; the phone layout
+   below makes it a fixed bottom sheet. */
+.entry-composer.entry-mobile-sheet {
+  position: relative;
+  z-index: 81;
+}
+
 .entry-submit-error {
   margin: 0 0 12px;
   color: #b33a3a;
