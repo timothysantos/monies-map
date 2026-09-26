@@ -14,7 +14,7 @@ import { normalizeStatementDate } from "./app-repository-helpers";
 import { recordCategoryMatchSuggestion } from "./app-repository-category-match-rules";
 import { buildAuditEventStatement } from "./app-repository-audit";
 import { resolveAccountId, resolveCategoryId, resolvePersonId } from "./app-repository-lookups";
-import { assertLinkedSplitSettlementUnchanged, buildLinkedSplitAmountStatements, buildLinkedSplitMirrorStatements, upsertLinkedSplitExpenseForEntryRecord } from "./app-repository-splits";
+import { assertLinkedSplitSettlementUnchanged, buildLinkedSplitAmountStatements, buildLinkedSplitMirrorStatements, buildLinkedSplitUpsertStatements, isActiveSplitLinkConflict } from "./app-repository-splits";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 
 async function assertUnlockedBankFactsForEntryUpdate(
@@ -126,15 +126,16 @@ export async function updateEntryRecord(
     postDate?: string | null;
   }
 ) {
+  type EntryAccount = { id: string; account_name: string; owner_person_id: string | null; account_kind: LinkedAccountKind };
   const account = input.accountId
     ? await db
-      .prepare("SELECT id, account_name, owner_person_id FROM accounts WHERE household_id = ? AND id = ?")
+      .prepare("SELECT id, account_name, owner_person_id, account_kind FROM accounts WHERE household_id = ? AND id = ?")
       .bind(DEFAULT_HOUSEHOLD_ID, input.accountId)
-      .first<{ id: string; account_name: string; owner_person_id: string | null }>()
+      .first<EntryAccount>()
     : await db
-      .prepare("SELECT id, account_name, owner_person_id FROM accounts WHERE household_id = ? AND account_name = ?")
+      .prepare("SELECT id, account_name, owner_person_id, account_kind FROM accounts WHERE household_id = ? AND account_name = ?")
       .bind(DEFAULT_HOUSEHOLD_ID, input.accountName ?? "")
-      .first<{ id: string; account_name: string; owner_person_id: string | null }>();
+      .first<EntryAccount>();
 
   if (!account) {
     throw new Error(`Unknown account: ${input.accountName ?? input.accountId ?? "Unassigned"}`);
@@ -276,6 +277,26 @@ export async function updateEntryRecord(
       ]
     : [];
 
+  // A Shared owner save rewrites the entry's split (or links a new one) in
+  // the same batch, before the month refresh markers, so the stored person
+  // month totals are refreshed with the new shares.
+  const sharedSplit = syncsLinkedSplit
+    ? await buildLinkedSplitUpsertStatements(db, {
+        entryId: input.entryId,
+        entry: {
+          date: input.date,
+          description: input.description,
+          amountMinor: resolvedAmountMinor,
+          currency: transaction.currency,
+          payerPersonId: ownerPersonId,
+          categoryId: category.id,
+          note: input.note ?? null,
+          accountKind: account.account_kind
+        },
+        splitBasisPoints: input.splitBasisPoints
+      })
+    : null;
+
   const previousMonth = transaction.transaction_date.slice(0, 7);
   const nextMonth = input.date.slice(0, 7);
   const previousClearedDate = transaction.post_date ?? transaction.transaction_date;
@@ -331,6 +352,7 @@ export async function updateEntryRecord(
 
   statements.push(
     ...linkedSplitStatements,
+    ...(sharedSplit?.statements ?? []),
     buildAuditEventStatement(db, {
       entityType: "transaction",
       entityId: input.entryId,
@@ -339,7 +361,7 @@ export async function updateEntryRecord(
     }),
     ...buildMonthlySnapshotRefreshMarkers(db, monthsToRecalculate)
   );
-  await db.batch(statements);
+  await runEntryBatch(db, statements);
   await refreshMonthlySnapshotsAfterWrite(db, monthsToRecalculate);
 
   if (transaction.category_name && transaction.category_name !== input.categoryName) {
@@ -349,14 +371,22 @@ export async function updateEntryRecord(
     });
   }
 
-  if (input.ownershipType === "shared" && resolvedEntryType === "expense") {
-    await upsertLinkedSplitExpenseForEntryRecord(db, {
-      entryId: input.entryId,
-      splitBasisPoints: input.splitBasisPoints
-    });
-  }
-
   return { entryId: input.entryId, updated: true };
+}
+
+type LinkedAccountKind = "bank" | "credit_card" | "loan" | "cash" | "investment";
+
+// An entry batch that links a new split can lose a race for the entry to
+// another split write (the one-active-split index turns it away as a whole).
+async function runEntryBatch(db: D1Database, statements: D1PreparedStatement[]) {
+  try {
+    return await db.batch(statements);
+  } catch (error) {
+    if (isActiveSplitLinkConflict(error)) {
+      throw new Error("This entry was just linked to a split expense by another change. Refresh and save again.");
+    }
+    throw error;
+  }
 }
 
 export async function updateEntryNoteRecord(
@@ -659,12 +689,12 @@ export async function createEntryRecord(
   }
   const account = await db
     .prepare(`
-      SELECT account_name, owner_person_id, currency
+      SELECT account_name, owner_person_id, currency, account_kind
       FROM accounts
       WHERE household_id = ? AND id = ?
     `)
     .bind(DEFAULT_HOUSEHOLD_ID, accountId)
-    .first<{ account_name: string; owner_person_id: string | null; currency: string }>();
+    .first<{ account_name: string; owner_person_id: string | null; currency: string; account_kind: LinkedAccountKind }>();
   if (!account) {
     throw new Error(`Unknown account: ${input.accountName ?? accountId}`);
   }
@@ -711,6 +741,23 @@ export async function createEntryRecord(
     input.date.slice(0, 7),
     (input.postDate ?? input.date).slice(0, 7)
   ]);
+  // A Shared entry is created with its split expense in the same batch.
+  const sharedSplit = input.ownershipType === "shared" && input.entryType === "expense"
+    ? await buildLinkedSplitUpsertStatements(db, {
+        entryId,
+        entry: {
+          date: input.date,
+          description: input.description,
+          amountMinor: input.amountMinor,
+          currency,
+          payerPersonId: ownerPersonId,
+          categoryId,
+          note: input.note ?? null,
+          accountKind: account.account_kind
+        },
+        splitBasisPoints: input.splitBasisPoints
+      })
+    : null;
 
   try {
     await db.batch([
@@ -739,6 +786,7 @@ export async function createEntryRecord(
         input.note ?? null,
         externalReference
       ),
+      ...(sharedSplit?.statements ?? []),
       buildAuditEventStatement(db, {
         entityType: "transaction",
         entityId: entryId,
@@ -779,13 +827,6 @@ export async function createEntryRecord(
   }
 
   await refreshMonthlySnapshotsAfterWrite(db, monthsToRecalculate);
-
-  if (input.ownershipType === "shared" && input.entryType === "expense") {
-    await upsertLinkedSplitExpenseForEntryRecord(db, {
-      entryId,
-      splitBasisPoints: input.splitBasisPoints
-    });
-  }
 
   return { entryId, created: true, accountId, accountName, currency };
 }
