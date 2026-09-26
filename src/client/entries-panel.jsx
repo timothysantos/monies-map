@@ -20,6 +20,12 @@ import { EntriesBreakdownPanel, EntriesTotalsStrip } from "./entries-overview";
 import { EntriesFilterStack } from "./entries-filter-stack";
 import { EntryMobileEditExpenseFooter, EntryMobileSheet } from "./entry-mobile-sheet";
 import { FinancialInsight } from "./financial-insight";
+import {
+  createLinkedEntryRequest,
+  getPendingLinkedEntryId,
+  markLinkedEntryRequestHandled,
+  syncLinkedEntryRequest
+} from "./linked-entry-request";
 import { LinkedNoteSyncDialog } from "./linked-note-sync-dialog";
 import {
   getActiveEntryFilterCount,
@@ -92,7 +98,19 @@ export function EntriesPanel({
   const [isQuickExpenseSaving, setIsQuickExpenseSaving] = useState(false);
   const [quickExpensePendingKey, setQuickExpensePendingKey] = useState("");
   const [quickExpenseWarning, setQuickExpenseWarning] = useState("");
-  const [pendingLinkedEntryId, setPendingLinkedEntryId] = useState(() => searchParams.get("editing_entry") ?? "");
+  // The `editing_entry` param is the only source of the linked entry. The
+  // request records whether this page already acted on the param's current
+  // value, so closing the editor before the param clear lands (a save waits
+  // for its refresh first) can never reopen it.
+  const linkedEntryId = searchParams.get("editing_entry") ?? "";
+  const [storedLinkedEntryRequest, setLinkedEntryRequest] = useState(() => createLinkedEntryRequest(linkedEntryId));
+  const linkedEntryRequest = syncLinkedEntryRequest(storedLinkedEntryRequest, linkedEntryId);
+  if (linkedEntryRequest !== storedLinkedEntryRequest) {
+    // A new param value is a new request. Adjusting state while rendering
+    // keeps it in step with the URL without an effect.
+    setLinkedEntryRequest(linkedEntryRequest);
+  }
+  const pendingLinkedEntryId = getPendingLinkedEntryId(linkedEntryRequest);
   const [createdSplitAction, setCreatedSplitAction] = useState(null);
   const [deletingCreatedSplitId, setDeletingCreatedSplitId] = useState("");
   const [createdSplitActionError, setCreatedSplitActionError] = useState("");
@@ -107,7 +125,6 @@ export function EntriesPanel({
   const [isRetryingPageLoad, setIsRetryingPageLoad] = useState(false);
   const handledQuickExpenseKeyRef = useRef("");
   const pendingQuickExpenseDraftRef = useRef(null);
-  const suppressedLinkedEntryIdRef = useRef("");
   const {
     entriesPage,
     isEntriesPageLoading,
@@ -332,29 +349,6 @@ export function EntriesPanel({
   }, [accountOptions, categoryOptions, defaultEntryPerson, ownerOptions, people, searchParams, setSearchParams, shortcutSettings]);
 
   useEffect(() => {
-    const linkedEntryId = searchParams.get("editing_entry") ?? "";
-    if (!linkedEntryId) {
-      if (pendingLinkedEntryId) {
-        setPendingLinkedEntryId("");
-      }
-      suppressedLinkedEntryIdRef.current = "";
-      return;
-    }
-
-    if (linkedEntryId === suppressedLinkedEntryIdRef.current) {
-      return;
-    }
-
-    if (linkedEntryId === pendingLinkedEntryId) {
-      return;
-    }
-
-    // Mobile edit sheets preserve their target row in the URL so route changes
-    // or panel switches can reopen the same entry.
-    setPendingLinkedEntryId(linkedEntryId);
-  }, [pendingLinkedEntryId, searchParams]);
-
-  useEffect(() => {
     if (
       quickExpensePendingKey
       || pendingQuickExpenseDraftRef.current
@@ -397,8 +391,25 @@ export function EntriesPanel({
     return undefined;
   }, [entriesPage.monthPage.month, isEntriesPageLoading, quickExpensePendingKey, selectedMonth]);
 
+  // Opens the linked entry once per request. Links carry their target row in
+  // the URL so a deep link, or a route change back to Entries, opens the same
+  // entry. Handling the request is what stops a later render from reopening
+  // an editor the person has since saved or closed.
   useEffect(() => {
-    if (!pendingLinkedEntryId || isEntriesPageLoading || editingEntryId === pendingLinkedEntryId) {
+    if (!pendingLinkedEntryId) {
+      return;
+    }
+
+    const markHandled = () => setLinkedEntryRequest((current) => (
+      markLinkedEntryRequestHandled(current, pendingLinkedEntryId)
+    ));
+    // The editor is already open on this entry, for example after adding it
+    // to splits wrote its id into the URL.
+    if (editingEntryId === pendingLinkedEntryId) {
+      markHandled();
+      return;
+    }
+    if (isEntriesPageLoading) {
       return;
     }
 
@@ -409,6 +420,7 @@ export function EntriesPanel({
 
     // Opening a linked entry overrides any pending quick-expense draft because
     // the user explicitly navigated to an existing row to edit it.
+    markHandled();
     pendingQuickExpenseDraftRef.current = null;
     setQuickExpensePendingKey("");
     setQuickExpenseWarning("");
@@ -416,9 +428,10 @@ export function EntriesPanel({
     beginEntryEdit(linkedEntry);
   }, [beginEntryEdit, editingEntryId, entries, isEntriesPageLoading, pendingLinkedEntryId]);
 
+  // Closing the editor ends the link: the request is handled at once, and
+  // the param is removed so a reload does not reopen it either.
   function clearEditingEntrySearchParam() {
-    suppressedLinkedEntryIdRef.current = editingEntryId ?? pendingLinkedEntryId;
-    setPendingLinkedEntryId("");
+    setLinkedEntryRequest((current) => markLinkedEntryRequestHandled(current));
     setSearchParams((current) => {
       if (!current.get("editing_entry")) {
         return current;
