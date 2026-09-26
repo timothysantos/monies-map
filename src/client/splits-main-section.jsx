@@ -96,6 +96,7 @@ export function SplitsMainSection({
 
       <SplitsBreakdownSection
         showBreakdown={showBreakdown}
+        currency={activeGroup?.currency ?? "SGD"}
         totalExpenseMinor={totalExpenseMinor}
         groupBalanceMinor={groupBalanceMinor}
         groupSummaryLabel={groupSummaryLabel}
