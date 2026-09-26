@@ -82,6 +82,9 @@ a doc here in the same change.
   loading baseline evidence (H00, H01).
 - [`audits/route-assets-baseline.json`](audits/route-assets-baseline.json): route
   asset size baseline.
+- [`audits/e2e-sharding.md`](audits/e2e-sharding.md): parallel isolated
+  browser test shards (`npm run test:e2e:sharded`), independence check and
+  timings.
 - [`audits/ai-assistance-slice-audit.md`](audits/ai-assistance-slice-audit.md):
   optional AI assistance slice.
 - [`audits/app-shell-reference-data-split-audit.md`](audits/app-shell-reference-data-split-audit.md):

@@ -268,7 +268,9 @@ Use these commands from the repo root:
 npm run dev                  # local UI + Worker API
 npm run build                # production frontend bundle
 npm run verify               # audit, types, unit, build, and smoke merge gate
-npm run test:e2e             # complete Playwright suite
+npm run test:e2e             # complete Playwright suite, one serial run on 5173/8787
+npm run test:e2e:sharded     # same suite as 3 parallel isolated shards (faster)
+npm run test:e2e:smoke       # smoke bundle as 2 isolated shards (part of verify)
 npm run db:migrate           # local D1 schema
 npm run db:migrate:remote    # production D1 schema
 npm run db:migrate:demo      # demo D1 schema
@@ -278,6 +280,40 @@ npm run deploy:all           # build once, deploy production and demo
 npm run deploy               # alias for deploy:prod
 npm run db:empty-production  # terminal-only production empty-state reset
 ```
+
+### Running the browser tests
+
+`npm run test:e2e` runs the whole Playwright suite serially with one worker
+against Vite on `5173` and Wrangler on `8787` (it reuses servers already on
+those ports outside CI).
+
+`npm run test:e2e:sharded` runs the same suite faster as parallel shards. It
+builds `dist/` once. Then each shard starts its own stack on its own ports
+(Vite `5501+`, Wrangler `8901+`, inspector `9501+`) with its own local D1 in
+`.wrangler/state-shard-N`, and runs its spec files with one worker. At the end
+it merges every shard into `playwright-report/` and
+`test-results/e2e-sharded/report.json`, prints one pass/fail summary, and
+removes the shard servers and state. Shard logs are in
+`test-results/e2e-sharded/logs/`.
+
+```bash
+npm run test:e2e:sharded                          # 3 shards (at most half the CPUs)
+npm run test:e2e:sharded -- --shards 3            # choose the shard count
+npm run test:e2e:sharded -- tests/e2e/month-page.spec.js tests/e2e/splits-edit-expense.spec.js
+npm run test:e2e:sharded -- -- --grep "Month"     # Playwright options for every shard
+npm run test:e2e:sharded -- --update-weights      # refresh tests/e2e/shard-weights.json
+```
+
+The run fails if any test fails, or if the merged test count differs from
+`playwright test --list`. Whole spec files are shared out using the measured
+times in `tests/e2e/shard-weights.json`. After adding a spec or making one
+much slower, refresh them with a full passing `--update-weights` run. CI runs
+four shards on separate runners, then a `full-e2e` job that merges their
+reports. `npm run test:e2e:smoke` runs the smoke bundle through the same
+runner on two stacks (one stack on a two-CPU machine);
+`npm run test:e2e:smoke:serial` is the old one-server-per-workflow run on
+`5173`/`8787`. Measurements are in
+[`docs/audits/e2e-sharding.md`](docs/audits/e2e-sharding.md).
 
 ### Production Deploy
 

@@ -109,6 +109,9 @@ team conventions evolve.
   (checkJs over `src/client`) at zero errors; both run in `verify`.
 - Run `npm run test:e2e` before merging a large refactor branch or a change that
   affects shared route, settings, import, entry, month, or split orchestration.
+  `npm run test:e2e:sharded` is the faster equivalent (isolated parallel stacks
+  on their own ports and D1); browser tests must not depend on another spec
+  file or on run order (`docs/audits/e2e-sharding.md`).
 - Prove persistence or projection refactors with
   `node --experimental-sqlite --no-warnings scripts/persisted-state-snapshot.mjs <out.json>`:
   the normalized table and page-DTO dump must be identical before and after.

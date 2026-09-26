@@ -74,8 +74,9 @@ npm run test:unit                    # node:test via tsx: tests/*.test.mjs + tes
 npm run build                        # vite build + postbuild warmup metadata
 npm run report:route-assets          # build + docs/audits/route-assets-baseline.json
 npm run test:performance             # build + isolated test Worker on 5191 + built-client harness
-npm run test:e2e:smoke               # serial functional smoke on Vite dev (5173) + test Worker (8787)
-npm run test:e2e                     # full functional suite (same servers)
+npm run test:e2e:smoke               # functional smoke as 2 isolated shards (5501+/8901+); :serial for the old 5173/8787 run
+npm run test:e2e                     # full functional suite, serial on Vite dev (5173) + test Worker (8787)
+npm run test:e2e:sharded             # full functional suite as 3 isolated shards (faster)
 npm run verify                       # audit, typecheck, unit, build, smoke
 git diff --check
 ```
