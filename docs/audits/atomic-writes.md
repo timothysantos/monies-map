@@ -490,6 +490,38 @@ marker; copying the payer or date to a split in a closed batch or checkpoint
 changes its balance the same way the amount follow-up does (checkpoint
 reopening is the `checkpoint-reopen` branch's work).
 
+Runtime: besides the Chromium specs, a hand check in the browser pane
+against `wrangler dev` (Vite 5413, Worker 8813, `--persist-to
+.wrangler/state-splitsync`): in Tim's view, "Add to splits" on a new 60.00
+entry, then renaming it and moving it to 24 May in Entries, showed the renamed
+split on 24 May in Splits ("you lent $30.00") and moved the stored May totals
+to Tim 440,167 / Joyce 125,499 with no pending markers; "Delete split" in the
+open editor switched it to "Add to splits" at once, the row showed −$60.00
+without the chip, D1 showed the split archived with its link kept, and the
+stored totals moved to 443,167 / 122,499.
+
+Gates (after merging `macro-performance` at `e9e014b`, Node v22.23.3), the
+steps of `npm run verify` one by one: `npm audit --audit-level=high` 0
+vulnerabilities; both typechecks clean; lint 0 errors (the same 30 warnings
+as base); unit 600/600; build; `check:bundle` 173,339 B JS gzip (budget
+180,337) and 32,878 B CSS (budget 31,961, inside the 5% allowance; no CSS
+change); smoke on isolated ports (Vite 5413, Worker 8813, inspector 9413,
+temporary Playwright config and smoke runner copy) passed all 17 workflow
+runs, 133 tests. An earlier post-merge smoke run failed once in
+`entries-transfer-dialog`: a `/api/demo/reseed` raced the first page's
+`/api/app-shell` seeding and both returned 500 on a foreign key; the spec
+passed 6/6 when repeated and in the next full smoke run. The same race was
+logged, without failing, in the pre-merge smoke run.
+
+Full `npm run test:e2e` (before the merge, on `d5f0a38`): 294 passed, 1
+failed — `entries-linked-split-amount` "a household edit of a linked entry
+keeps the total on the row": after Save the editor stayed open. Repeated 5
+times it failed 3/5 on this branch and 2/5 on `macro-performance` at
+`c97dd63` (same assertion), so it is a timing race in the base, not this
+change: the `editing_entry` deep-link effect reopens the editor between
+`setEditingEntryId(null)` and `clearEditingEntrySearchParam`. Left for a
+separate fix.
+
 ## Open items
 
 - Closed 2026-09-25 (section above): rolling back a CSV import deleted a
