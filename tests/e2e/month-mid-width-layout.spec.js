@@ -131,6 +131,21 @@ for (const size of MID_WIDTHS) {
       }
     });
 
+    test("every page tab and month control in the header is on screen and not covered", async ({ page }) => {
+      const tabs = page.locator("nav.tab-strip > a.tab:visible");
+      const tabNames = await tabs.allTextContents();
+      expect(tabNames.map((name) => name.trim())).toEqual(expect.arrayContaining(["Summary", "Month", "Entries", "Settings", "FAQ"]));
+      const controls = [
+        ...(await tabs.all()),
+        page.getByRole("button", { name: "Previous period" }),
+        page.getByRole("button", { name: "Next period" }),
+        page.locator(".totals-visibility-toggle--header")
+      ];
+      for (const control of controls) {
+        expectInsideVisibleWidth(await readControlPlacement(control));
+      }
+    });
+
     test("+ Add planned item is on screen and opens the new item", async ({ page }) => {
       const add = page.getByRole("button", { name: "+ Add planned item" });
       await scrollToVertically(add);
