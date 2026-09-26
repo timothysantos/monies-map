@@ -237,7 +237,8 @@ needs them all), so `month-insight-facts.js` first keeps the entries the
 entries in the scope at their own amounts. A scope change therefore changes
 the facts and the wording cache key. The Splits check-in counts the active
 group's records at their group totals, the same figure as the Splits
-`Total spend`, in every view.
+`Total spend`, in every view, and so always uses group-level wording rather
+than addressing the viewer ("<person>, you spent") as if it were their own.
 
 ## Scope Controls
 

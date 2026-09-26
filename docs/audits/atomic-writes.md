@@ -1099,7 +1099,10 @@ about 22) 287/287.
   active group's total (every member's expenses at their full amount). That
   is the figure the Splits page itself shows as `Total spend` in every view,
   so the facts match the screen, but the person-addressed wording reads as
-  that person's own spend. Not changed (Person check-ins and Summary scope).
+  that person's own spend. Closed 2026-09-26: the Splits check-in always
+  uses group-level wording ("The household received ... spent ..."), never
+  "<person>, you ...", in every view (`financial-insight.spec.js` "entries
+  and splits scope their advice" fails on the old wording).
 - Closed 2026-09-26 (Person view totals, above): Summary months and the
   Month "Actual spend" card in a person view counted other people's direct
   entries, and a person with only linked split shares in a month had no

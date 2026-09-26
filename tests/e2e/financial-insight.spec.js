@@ -182,6 +182,9 @@ test.describe("financial insights", () => {
     const splitsInsight = page.locator(".financial-insight-splits");
     await expect(splitsInsight).toContainText("search");
     await expect(splitsInsight).toContainText("filtered group view");
+    // Splits figures are the whole group's, so the wording never presents
+    // them as the viewer's own spending.
+    await expect(splitsInsight).not.toContainText(/Tim, (you|there)/);
   });
 });
 
