@@ -1849,7 +1849,8 @@ export async function buildLinkedSplitMirrorStatements(
 // simplified settlement and the save would change that split's settlement
 // facts: the amount follow-up above (same currency only) and, for a shared
 // save, the upsert below, which rewrites date, payer, amount, currency and
-// shares, and the date and payer mirror (buildLinkedSplitMirrorStatements),
+// shares (a travel split keeps its own currency and total, so only its date,
+// payer and shares can move), and the date and payer mirror (buildLinkedSplitMirrorStatements),
 // which moves them while the split still holds the entry's previous values.
 // Runs before the entry's batch, so a refused save writes nothing.
 export async function assertLinkedSplitSettlementUnchanged(
@@ -1900,18 +1901,24 @@ export async function assertLinkedSplitSettlementUnchanged(
           return { ...facts, date, partyIds: [payer, ...facts.partyIds.slice(1)] };
         };
         if (sharedSync) {
+          // A travel split keeps its currency and total (sharedSaveSplitAmount),
+          // so those are what an unchanged save is compared on.
+          const amount = sharedSaveSplitAmount(
+            { amountMinor: current.amountMinor, currency: current.currency },
+            { amountMinor: sharedSync.amountMinor, currency: entryCurrency }
+          );
           const shares = await planSharedSaveShares(db, {
             splitExpenseId: split.id,
             stored: { amountMinor: current.amountMinor, currency: current.currency },
-            amountMinor: sharedSync.amountMinor,
-            currency: entryCurrency,
+            amountMinor: amount.amountMinor,
+            currency: amount.currency,
             splitBasisPoints: sharedSync.splitBasisPoints
           });
           return {
             date: sharedSync.date,
             groupId: current.groupId,
-            currency: entryCurrency,
-            amountMinor: sharedSync.amountMinor,
+            currency: amount.currency,
+            amountMinor: amount.amountMinor,
             partyIds: [sharedSync.payerPersonId ?? current.partyIds[0]],
             shares: shares.map((share) => ({ personId: share.personId, amountMinor: share.amountMinor }))
           };
@@ -1991,10 +1998,34 @@ async function planSharedSaveShares(
   ];
 }
 
+// The amount a Shared owner save writes to the entry's split. A split in the
+// entry's currency takes the entry amount as its total and home amount. A
+// travel split (recorded in its own currency, such as JPY, and matched to a
+// home-currency card or bank row) keeps its currency and total, and only its
+// home amount and FX rate follow the entry, the same rule as an entry amount
+// edit (buildLinkedSplitAmountStatements). `fxRateBasisPoints` is null when
+// the save leaves the stored rate alone.
+function sharedSaveSplitAmount(
+  stored: { amountMinor: number; currency: string | null } | null,
+  entry: { amountMinor: number; currency: string }
+) {
+  if (stored && normalizeSplitCurrency(stored.currency) !== normalizeSplitCurrency(entry.currency)) {
+    const homeAmountMinor = Math.abs(entry.amountMinor);
+    return {
+      amountMinor: stored.amountMinor,
+      currency: normalizeSplitCurrency(stored.currency),
+      homeAmountMinor,
+      fxRateBasisPoints: calculateFxRateBasisPoints(Math.abs(stored.amountMinor), homeAmountMinor) as number | null
+    };
+  }
+  return { amountMinor: entry.amountMinor, currency: entry.currency, homeAmountMinor: entry.amountMinor, fxRateBasisPoints: null as number | null };
+}
+
 // The statements a Shared owner save (entry create or update with
 // ownershipType "shared") uses to rewrite the entry's active split expense,
 // or to link a new one, for the entry command's own batch: the split takes
-// the entry's date, description, payer, category, amount and note, and its
+// the entry's date, description, payer, category, amount and note (a travel
+// split keeps its own currency and total, see sharedSaveSplitAmount), and its
 // shares are replaced by the given basis. Reads and checks run here, before
 // that batch, so a refused save (no clear payer, wrong group currency)
 // writes nothing, and the entry, its split and the month refresh markers
@@ -2025,12 +2056,18 @@ export async function buildLinkedSplitUpsertStatements(
   }
 
   const existingSplit = await db
-    .prepare("SELECT id, split_group_id, split_batch_id, total_amount_minor, currency FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ? AND deleted_at IS NULL ORDER BY rowid")
+    .prepare("SELECT id, split_group_id, split_batch_id, total_amount_minor, currency, fx_rate_basis_points FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ? AND deleted_at IS NULL ORDER BY rowid")
     .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
-    .first<{ id: string; split_group_id: string | null; split_batch_id: string | null; total_amount_minor: number; currency: string | null }>();
+    .first<{ id: string; split_group_id: string | null; split_batch_id: string | null; total_amount_minor: number; currency: string | null; fx_rate_basis_points: number | null }>();
   const splitExpenseId = existingSplit?.id ?? newSplitRecordId("split-expense");
   const splitGroupId = input.splitGroupId === undefined ? existingSplit?.split_group_id ?? null : input.splitGroupId || null;
-  await assertSplitGroupCurrency(db, splitGroupId, entry.currency);
+  const amount = sharedSaveSplitAmount(
+    existingSplit ? { amountMinor: existingSplit.total_amount_minor, currency: existingSplit.currency } : null,
+    entry
+  );
+  // The group's currency is the split's own: a travel split in its JPY group
+  // stays valid when saved from its SGD card entry.
+  await assertSplitGroupCurrency(db, splitGroupId, amount.currency);
   // A split that stays in its group stays in its batch: one in a settled
   // (closed) batch must not slip back into the open balance on a save the
   // settlement lock allowed.
@@ -2042,8 +2079,8 @@ export async function buildLinkedSplitUpsertStatements(
   const shares = await planSharedSaveShares(db, {
     splitExpenseId: existingSplit?.id ?? null,
     stored: existingSplit ? { amountMinor: existingSplit.total_amount_minor, currency: existingSplit.currency } : null,
-    amountMinor: entry.amountMinor,
-    currency: entry.currency,
+    amountMinor: amount.amountMinor,
+    currency: amount.currency,
     splitBasisPoints: input.splitBasisPoints
   });
   const paymentMethod = paymentMethodForLinkedAccount(entry.accountKind, "other");
@@ -2053,7 +2090,7 @@ export async function buildLinkedSplitUpsertStatements(
       .prepare(`
         UPDATE split_expenses
         SET split_group_id = ?, split_batch_id = ?, payer_person_id = ?, expense_date = ?, description = ?,
-            category_id = ?, total_amount_minor = ?, currency = ?, home_amount_minor = ?,
+            category_id = ?, total_amount_minor = ?, currency = ?, home_amount_minor = ?, fx_rate_basis_points = ?,
             payment_method = ?, payment_status = ?, note = ?
         WHERE id = ? AND household_id = ?
       `)
@@ -2064,9 +2101,10 @@ export async function buildLinkedSplitUpsertStatements(
         entry.date,
         entry.description,
         entry.categoryId,
-        entry.amountMinor,
-        entry.currency,
-        entry.amountMinor,
+        amount.amountMinor,
+        amount.currency,
+        amount.homeAmountMinor,
+        amount.fxRateBasisPoints ?? existingSplit.fx_rate_basis_points,
         paymentMethod,
         "certified",
         entry.note,
