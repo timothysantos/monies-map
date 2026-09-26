@@ -22,6 +22,12 @@ function focusIsInside(locator) {
   return locator.evaluate((element) => element.contains(document.activeElement));
 }
 
+// aria-hidden or inert on the element or any ancestor removes it from the
+// accessibility tree.
+function hiddenFromScreenReaders(locator) {
+  return locator.evaluate((element) => Boolean(element.closest('[aria-hidden="true"], [inert]')));
+}
+
 test.describe("mobile sheet focus", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
@@ -130,6 +136,38 @@ test.describe("mobile sheet focus", () => {
     await expect(sheet).toHaveCount(0);
   });
 
+  test("the Entries edit sheet hides the entry list from screen readers until it closes", async ({ page }) => {
+    await page.setViewportSize(iPhone);
+    await gotoPageAfterApi(
+      page,
+      "/entries?view=person-tim&month=2026-04",
+      "/api/entries-page",
+      () => page.locator(".entry-row").first()
+    );
+    const rows = page.locator(".entry-row");
+    const rowCount = await rows.count();
+    expect(rowCount).toBeGreaterThan(5);
+    const sheet = page.locator(".entry-mobile-sheet");
+    // Role queries follow the accessibility tree, so a row's own controls
+    // drop out of them while the sheet hides the list.
+    const firstRowButtons = rows.first().getByRole("button");
+    expect(await firstRowButtons.count()).toBeGreaterThan(0);
+
+    await rows.nth(2).locator(".entry-row-main").click();
+    await expect(sheet).toBeVisible();
+    await expect.poll(() => focusIsInside(sheet)).toBe(true);
+    expect(await hiddenFromScreenReaders(sheet)).toBe(false);
+    for (const index of [0, 2, rowCount - 1]) {
+      expect(await hiddenFromScreenReaders(rows.nth(index))).toBe(true);
+    }
+    await expect(firstRowButtons).toHaveCount(0);
+
+    await page.keyboard.press("Escape");
+    await expect(sheet).toHaveCount(0);
+    expect(await hiddenFromScreenReaders(rows.nth(2))).toBe(false);
+    expect(await firstRowButtons.count()).toBeGreaterThan(0);
+  });
+
   test("the Entries add entry sheet follows the same dialog pattern", async ({ page }) => {
     await page.setViewportSize(iPhone);
     await gotoPageAfterApi(
@@ -148,5 +186,87 @@ test.describe("mobile sheet focus", () => {
     await page.keyboard.press("Escape");
     await expect(sheet).toHaveCount(0);
     await expect(opener).toBeFocused();
+  });
+});
+
+// The page behind an open sheet is out of reach: the backdrop covers every
+// point outside the sheet, a finger drag or wheel over the backdrop leaves the
+// page where it was, and the page's controls are hidden from screen readers.
+// All of it is released when the sheet closes.
+test.describe("mobile sheet background", () => {
+  test.use({ viewport: iPhone, hasTouch: true, isMobile: true });
+
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
+    await page.goto("/");
+    await reseedDemo(page);
+  });
+
+  test("while a sheet is open the page behind cannot be tapped, scrolled or read", async ({ page }) => {
+    await gotoMobileMonth(page);
+    const scrollable = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
+    expect(scrollable).toBeGreaterThan(600);
+    await page.evaluate(() => window.scrollTo({ top: 400, behavior: "instant" }));
+    const opener = page.getByRole("button", { name: "+ Add planned item" });
+    const sheet = page.locator('.entry-mobile-sheet[aria-label="+ Add planned item"]');
+    await opener.click();
+    await expect(sheet).toBeVisible();
+    await expect.poll(() => focusIsInside(sheet)).toBe(true);
+
+    // Tab wraps at the sheet's edges even without a trap, so also move focus
+    // outside directly (as assistive tech can): the trap pulls it back.
+    const movedOutside = await page.evaluate(() => {
+      const target = document.querySelector('#root button[aria-label="Edit Savings row"]');
+      target?.focus();
+      return Boolean(target);
+    });
+    expect(movedOutside).toBe(true);
+    await expect.poll(() => focusIsInside(sheet)).toBe(true);
+
+    await expect(page.getByRole("button", { name: "+ Add planned item", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Edit Savings row" })).toHaveCount(0);
+    expect(await hiddenFromScreenReaders(page.locator("tr").filter({ hasText: "Savings" }).first())).toBe(true);
+    expect(await hiddenFromScreenReaders(sheet)).toBe(false);
+
+    const cover = await sheet.evaluate((sheetElement) => {
+      const backdrop = document.querySelector(".entry-composer-overlay");
+      const reachable = [];
+      let onBackdrop = 0;
+      for (let y = 4; y < window.innerHeight; y += 24) {
+        for (let x = 4; x < window.innerWidth; x += 24) {
+          const hit = document.elementFromPoint(x, y);
+          if (hit && sheetElement.contains(hit)) continue;
+          if (hit && hit === backdrop) onBackdrop += 1;
+          else reachable.push(`${x},${y} ${hit?.tagName ?? "none"}.${hit?.className ?? ""}`);
+        }
+      }
+      return { reachable, onBackdrop, sheetTop: sheetElement.getBoundingClientRect().top };
+    });
+    expect(cover.reachable).toEqual([]);
+    expect(cover.onBackdrop).toBeGreaterThan(0);
+    // A tall sheet stops 24 px below the top; the drag starts in that strip.
+    expect(cover.sheetTop).toBeGreaterThan(16);
+
+    const scrollBefore = await page.evaluate(() => window.scrollY);
+    expect(scrollBefore).toBeGreaterThan(0);
+    const backdropY = Math.floor(cover.sheetTop / 2);
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Input.synthesizeScrollGesture", { x: 195, y: backdropY, yDistance: -400, gestureSourceType: "touch", speed: 1200 });
+    await page.waitForTimeout(300);
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrollBefore);
+    await page.mouse.move(195, backdropY);
+    await page.mouse.wheel(0, 500);
+    await page.waitForTimeout(300);
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrollBefore);
+    await expect(sheet).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(sheet).toHaveCount(0);
+    await expect(opener).toBeFocused();
+    expect(await hiddenFromScreenReaders(opener)).toBe(false);
+    await expect(page.getByRole("button", { name: "Edit Savings row" })).toHaveCount(1);
+    const scrollAfterClose = await page.evaluate(() => window.scrollY);
+    await cdp.send("Input.synthesizeScrollGesture", { x: 195, y: 300, yDistance: 300, gestureSourceType: "touch", speed: 1200 });
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(scrollAfterClose);
   });
 });

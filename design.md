@@ -335,12 +335,17 @@ not inside it, because closing the popover unmounts its content.
 ## Mobile Sheet
 
 `entry-mobile-sheet.jsx` (`EntryMobileSheet`) is the bottom sheet for the
-Month plan sheets and the Entries add and edit sheets. It is a modal Radix
-dialog, like the desktop dialogs:
+Month plan sheets and the Entries add and edit sheets. It behaves like the
+modal desktop dialogs:
 
 - Focus moves into the sheet on open. The sheet itself takes focus, not a
   field, so opening it does not raise the phone keyboard.
-- Focus stays inside the sheet while it is open.
+- Focus stays inside the sheet while it is open, including when something
+  moves it outside directly.
+- The rest of the page is hidden from screen readers (`aria-hidden`), and
+  the backdrop covers the viewport in every layout, so a tap outside the
+  sheet lands on the backdrop instead of the page. A touch drag or wheel over
+  the backdrop does not scroll the page, and neither do the scroll keys.
 - Escape or a backdrop tap closes the sheet, and focus returns to the
   control that opened it.
 - Escape is a cancel, as in the desktop dialogs, so the draft is discarded.
@@ -355,6 +360,16 @@ dialog, like the desktop dialogs:
   saves only the category. It leaves `pointerdown` alone, because Radix
   uses it for outside-press dismissal. Any new dialog that can open inside
   a form needs the same guard.
+- It is a Radix Dialog with `modal={false}` plus the modal pieces added
+  back: a trapped, looping `FocusScope`, `hideOthers` from `aria-hidden`,
+  `RemoveScroll` without its scrollbar styles, `overflow: hidden` on
+  `<html>`, and a plain backdrop. Radix's own modal mode sets
+  `pointer-events: none` and a scroll-lock custom property on `<body>`.
+  Both inherit, so on a 2,000-row month every row recomputed its style on
+  open and again on close. None of the pieces used here changes an
+  inherited style (see "Mobile sheet: a lighter modal" in
+  `docs/audits/macro-loading-baseline.md`). Keep it that way: a new modal
+  behaviour for the sheet must not restyle `<body>` or the app root.
 - Limitation: iOS Safari does not focus a tapped button. When the opener was
   never focused (tapped on iOS, or a table row), focus is not restored, and
   the browser default applies.
