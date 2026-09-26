@@ -112,8 +112,8 @@ A worked example: Tim pays $100.00 for groceries and $80.00 for a dinner split
 
 Summary, Month and Entries all count the same way, so the numbers agree
 everywhere. The Household view has no scope buttons because it always counts
-every entry once. On a phone, Month and Entries keep the view and scope in the
-floating **View and scope** bar ([On your phone](#on-your-phone)).
+every entry once. On a phone, Summary, Month and Entries keep the view and
+scope in the floating **View and scope** bar ([On your phone](#on-your-phone)).
 
 ## Hide or show money totals
 
@@ -159,10 +159,10 @@ The app is designed for phones as well as desktops. The differences:
 - **Bottom navigation.** Summary, Month, Entries and Splits sit at the bottom.
   The **•••** button opens Imports, Settings and FAQ.
   ![On a phone, the ••• button opens Imports, Settings and FAQ](/faq/guide/phone/thumbs/phone-more.webp)
-- **View and scope bar.** On Month and Entries, a floating bar above the
-  navigation shows who and what you are viewing (for example
-  `Tim · Direct + Shared`), with previous and next month buttons beside it.
-  Tap it to change the view first, then the scope.
+- **View and scope bar.** On Summary, Month and Entries, a floating bar above
+  the navigation shows who and what you are viewing (for example
+  `Tim · Direct + Shared`). Month and Entries add previous and next month
+  buttons beside it. Tap it to change the view first, then the scope.
   ![The floating View and scope bar opens a sheet to change person and scope](/faq/guide/phone/thumbs/phone-view-scope.webp)
 - **Edit sheets.** Adding or editing a row opens a sheet from the bottom of
   the screen instead of editing inside the table. **Done** or **Save** saves;
@@ -225,8 +225,9 @@ each control does, the common tasks, and what changes on a phone.
 - **Range** (top right): the months included, 12 by default. Use **‹** and
   **›** to move the whole range, or select the start or end month to pick one.
   ![Selecting the start of the range opens a month picker](/faq/guide/desktop/thumbs/summary-range-picker.webp)
-- **Scope** (person views only): Direct ownership, Shared, or Direct + Shared
-  ([Scopes](#scopes-direct-shared-direct-shared)).
+- **Scope** (person views only): the small **Direct / Shared / Both** switch
+  under the Summary title. Hover an option to see what it counts; one click
+  switches ([Scopes](#scopes-direct-shared-direct-shared)).
 - **Month chips** above the donut: **Range overall**, or one month.
 - **A category in the list**: select it to hide or show it in the donut (it
   says Shown or Hidden). The **›** beside it opens that category's entries.
@@ -246,8 +247,9 @@ each control does, the common tasks, and what changes on a phone.
 
 ### On a phone
 
-The cards scroll sideways. The view switch and range sit at the top. The
-scope buttons appear under the heading in a person view.
+The cards scroll sideways. The range sits at the top. The person and scope
+live in the floating **View and scope** bar above the navigation; tap it to
+change either.
 
 ## Month
 
