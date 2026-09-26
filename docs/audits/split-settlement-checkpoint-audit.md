@@ -239,17 +239,29 @@ date and payer mirror). Import rollback re-checked for a closed batch: it
 only clears the link. The upsert keeps the split's batch when its group is
 unchanged.
 
-Proof: `tests/atomic-writes-split-group-settlement-lock.test.mjs` (11, real
-Miniflare D1; 8 failed on the old code: refused edit, delete and settle-up
-facts, refused entry edit, the batch move on a shared save, undo then save,
-undo into a newer open batch, the undo refusals and the undo atomicity),
+Review follow-ups (same branch): editing a settle-up that stays in its group
+no longer re-closes its batch (after an undo it silently settled the group
+again); the shared-save prediction checks the live linked split, as the
+upsert does, not an archived one first by rowid; restoring a record archived
+before its batch was settled brings it back into the group's open batch;
+Undo settle-up refuses a batch an earlier undo already emptied.
+
+Proof: `tests/atomic-writes-split-group-settlement-lock.test.mjs` (15, real
+Miniflare D1; 12 failed on the code before each fix: refused edit, delete
+and settle-up facts, refused entry edit, the batch move on a shared save,
+undo then save, undo into a newer open batch, the undo refusals, the undo
+atomicity, the re-closing settle-up edit, the archived-split check, restore
+into a closed batch and the repeated undo),
 two new tests in `tests/atomic-writes-split-checkpoint-lock.test.mjs` (both
 failed on the old code: 409 on an unchanged odd-cent save, and a moved cent
 on an open split), and `tests/e2e/splits-group-settle-up-lock.spec.js` (4:
 archive edit refused then saved after undo, settle-up delete refused, undo
 from the archived batch, linked entry edit refused then saved).
 
-Open: restoring an archived record whose batch has since been closed puts it
-back into that closed batch (it then counts nowhere). Restore is being
-reworked on `split-write-consistency`; the fix is to restore into the
-group's open batch.
+Open (pre-existing, outside this branch): a linked split in a different
+currency from its entry (allowed by bank matching) is always predicted as a
+currency change by a shared save, so every shared save of such an entry is
+refused while settled, and after an undo the upsert overwrites the split's
+currency and total with the entry's. The upsert should skip a
+different-currency split, as the amount follow-up does. The upsert itself
+still writes with sequential `.run()` calls.
