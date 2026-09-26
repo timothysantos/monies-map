@@ -256,11 +256,16 @@ On the client, `moneyWithCurrency(valueMinor, currency)` wraps it with money
 privacy, and `money` stays the SGD home-currency formatter. A Splits surface
 that shows a group or record amount passes that currency: the group pill, the
 totals strip, the expense dialog's share preview, activity cards, history
-rows, archived settle-up summaries, same-currency match deltas, checkpoints
-and the Splits financial insight facts. `moneyStep(currency)` names the
+rows, archived settle-up summaries, same-currency match deltas, checkpoints,
+the Splits financial insight facts and the category donut (`SpendingMixChart`
+takes an optional `currency`; `selectSplitDonutChart` picks the active group
+currency's chart from `donutChart` / `donutChartsByCurrency`). `moneyStep(currency)` names the
 smallest stored step for the odd-cent choice and is not masked, because it is
 a unit label rather than a balance. A home-currency (SGD) ledger amount shown
-next to a foreign split amount keeps its own SGD formatting.
+next to a foreign split amount keeps its own SGD formatting. An entry's
+`linkedSplitShares` are already in the entry's home currency (each person's
+home share of a travel split, computed in `app-repository-entries.ts` with
+`homeCurrencyShareAmounts`), so Entries and Month format them with `money`.
 
 ## Route Work Status Boundary
 
