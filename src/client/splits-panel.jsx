@@ -5,6 +5,7 @@ import { messages } from "./copy/en-SG";
 import { FinancialInsight } from "./financial-insight";
 import { PrivateMoney } from "./money-privacy";
 import { PAGE_FLAG, pageFlagRef } from "./page-flags";
+import "./splits-panel.css";
 import { LinkedNoteSyncDialog } from "./linked-note-sync-dialog";
 import {
   useSplitEditState,

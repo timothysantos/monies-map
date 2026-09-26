@@ -1078,47 +1078,6 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   margin-top: 16px;
 }
 
-.panel-splits .financial-insight {
-  border-color: rgba(255, 248, 243, 0.28);
-}
-
-.panel-splits .financial-insight-label,
-.panel-splits .financial-insight p {
-  color: #fff8f3;
-}
-
-.panel-splits .financial-insight-pattern {
-  color: #fff8f3 !important;
-}
-
-.panel-splits .financial-insight-private-copy {
-  color: #fff8f3 !important;
-}
-
-.panel-splits .financial-insight-toggle {
-  color: #fff8f3;
-}
-
-.panel-splits .financial-decision-map {
-  border-color: rgba(255, 248, 243, 0.28);
-}
-
-.panel-splits .financial-decision-map-head,
-.panel-splits .financial-decision-lane > strong {
-  color: #fff8f3;
-}
-
-.panel-splits .financial-decision-map-head span,
-.panel-splits .financial-decision-lane > span,
-.panel-splits .financial-decision-lane > p {
-  color: rgba(255, 248, 243, 0.78);
-}
-
-.panel-splits .financial-decision-lane {
-  border-color: rgba(255, 248, 243, 0.28);
-  background: rgba(255, 248, 243, 0.08);
-}
-
 .settings-page {
   display: grid;
   gap: 12px;
