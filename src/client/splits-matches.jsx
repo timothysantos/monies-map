@@ -51,7 +51,8 @@ export function SplitMatchesList({ matches, pendingMatchCount, onBackToGroup, on
                 <p className="split-match-deltas">
                   {messages.splits.matchDeltaSummary(
                     match.dateDeltaDays,
-                    formatService.money(match.amountDeltaMinor)
+                    // Same-currency match: the delta is in that shared currency.
+                    formatService.moneyWithCurrency(match.amountDeltaMinor, match.splitCurrency ?? "SGD")
                   )}
                 </p>
               )}
