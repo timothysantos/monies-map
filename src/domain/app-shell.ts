@@ -1,5 +1,5 @@
 import { buildEmptySummaryMonth } from "./summary-projection";
-import { buildPersonScopes } from "./month-projection";
+import { buildPersonScopes } from "./person-view-scope";
 
 import { defaultDemoSettings, type DemoSettings } from "./demo-data";
 import { loadDemoSettings } from "./demo-settings";

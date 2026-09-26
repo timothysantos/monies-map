@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { rebalanceSplitSharesForTotal, splitAmountMinorWithRoundedRemainder } from "../src/domain/split-allocation.ts";
+import { homeCurrencyShareAmounts, rebalanceSplitSharesForTotal, splitAmountMinorWithRoundedRemainder } from "../src/domain/split-allocation.ts";
 
 test("a split follows a new total by its stored ratio with the floor on the first share", () => {
   assert.deepEqual(rebalanceSplitSharesForTotal([
@@ -53,4 +53,36 @@ test("a split without exactly two shares is rejected before any write", () => {
     ], 8050),
     /exactly two shares/
   );
+});
+
+test("a travel split's home-currency shares are its stored basis applied to the ledger amount", () => {
+  // JPY 10,000 split 50/50 on an SGD 93.01 row: floor on the first share,
+  // balancing cent on the second; the shares add up to the ledger amount.
+  assert.deepEqual(homeCurrencyShareAmounts([
+    { ratioBasisPoints: 5000, amountMinor: 500_000 },
+    { ratioBasisPoints: 5000, amountMinor: 500_000 }
+  ], 9301), [4650, 4651]);
+  // 70/30: 70% of 93.01 is 65.107.
+  assert.deepEqual(homeCurrencyShareAmounts([
+    { ratioBasisPoints: 7000, amountMinor: 700_000 },
+    { ratioBasisPoints: 3000, amountMinor: 300_000 }
+  ], 9301), [6510, 2791]);
+  // A signed ledger amount converts by its size, like the home amount does.
+  assert.deepEqual(homeCurrencyShareAmounts([
+    { ratioBasisPoints: 7000, amountMinor: 700_000 },
+    { ratioBasisPoints: 3000, amountMinor: 300_000 }
+  ], -9301), [6510, 2791]);
+  // An even split with an assigned odd cent stays even, as a same-currency
+  // split does when it follows a new amount.
+  assert.deepEqual(homeCurrencyShareAmounts([
+    { ratioBasisPoints: 4999, amountMinor: 500 },
+    { ratioBasisPoints: 5001, amountMinor: 501 }
+  ], 9301), [4650, 4651]);
+  // Any other share count floors each share and balances onto the last.
+  assert.deepEqual(homeCurrencyShareAmounts([{ ratioBasisPoints: 10000, amountMinor: 1_000 }], 9301), [9301]);
+  assert.deepEqual(homeCurrencyShareAmounts([
+    { ratioBasisPoints: 3333, amountMinor: 3_333 },
+    { ratioBasisPoints: 3333, amountMinor: 3_333 },
+    { ratioBasisPoints: 3334, amountMinor: 3_334 }
+  ], 100), [33, 33, 34]);
 });

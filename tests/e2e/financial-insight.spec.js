@@ -56,6 +56,78 @@ test.describe("financial insights", () => {
     await expect(page.locator(".financial-insight-month")).toContainText("May 2026 month");
   });
 
+  // The Month check-in counts what the Actual spend card counts: every entry
+  // for the household; a person's own entries in the scope for a person view
+  // (direct entries in full, split-linked entries at their share). Seeded
+  // October 2025 has direct and split-linked entries, so every scope differs.
+  test("the month check-in spends what the Actual spend card shows in every view and scope", async ({ page }) => {
+    const spentInNarrative = async () => {
+      const narrative = await page.locator(".financial-insight-month .financial-insight-narrative").innerText();
+      if (/there are no entries/.test(narrative)) return "$0.00";
+      return narrative.match(/spent (\S+) across/)?.[1] ?? `no spend in: ${narrative}`;
+    };
+    const actualSpendCard = async () => (
+      (await page.locator(".metric-row-month .metric").filter({ hasText: "Actual spend" }).locator("strong").innerText()).trim()
+    );
+    const views = [
+      ["household", "Household", ["direct_plus_shared"]],
+      ["person-joyce", "Joyce", ["direct", "shared", "direct_plus_shared"]],
+      ["person-tim", "Tim", ["direct", "shared", "direct_plus_shared"]]
+    ];
+    const spendByView = {};
+    for (const [viewId, label, scopes] of views) {
+      for (const scope of scopes) {
+        await gotoPageAfterApi(
+          page,
+          `/month?view=${viewId}&month=2025-10&scope=${scope}`,
+          "/api/month-page",
+          () => page.getByRole("heading", { name: "Month", exact: true })
+        );
+        await expect(page.locator(".month-label-view")).toHaveText(label);
+        await expect(page.locator(".financial-insight-month")).toContainText(
+          viewId === "household" ? "Household money check-in" : `${label}'s money check-in`
+        );
+        const card = await actualSpendCard();
+        expect(await spentInNarrative(), `${viewId} ${scope}`).toBe(card);
+        spendByView[`${viewId}:${scope}`] = card;
+      }
+    }
+    // A person's figures are theirs, not the household's, and the scopes differ.
+    expect(spendByView["person-joyce:direct_plus_shared"]).not.toBe(spendByView["household:direct_plus_shared"]);
+    expect(spendByView["person-tim:direct_plus_shared"]).not.toBe(spendByView["household:direct_plus_shared"]);
+    expect(new Set(["direct", "shared", "direct_plus_shared"].map((scope) => spendByView[`person-joyce:${scope}`])).size).toBe(3);
+  });
+
+  test("the month wording request sends the person's scoped facts and asks again when the scope changes", async ({ page }) => {
+    const bodies = [];
+    await page.route("**/api/ai-assist/financial-insight", async (route) => {
+      bodies.push(route.request().postDataJSON());
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ ok: false }) });
+    });
+    const actualSpendCard = page.locator(".metric-row-month .metric").filter({ hasText: "Actual spend" }).locator("strong");
+    await gotoPageAfterApi(
+      page,
+      "/month?view=person-joyce&month=2025-10&scope=direct_plus_shared",
+      "/api/month-page",
+      () => page.getByRole("heading", { name: "Month", exact: true })
+    );
+    await expect.poll(() => bodies.length, { timeout: 15_000 }).toBe(1);
+    const combinedSpend = (await actualSpendCard.innerText()).trim();
+    // Only computed facts go out, with the person's name held back.
+    expect(Object.keys(bodies[0])).toEqual(["facts"]);
+    expect(bodies[0].facts.spend).toBe(combinedSpend);
+    expect(bodies[0].facts.audienceKind).toBe("person");
+    expect(JSON.stringify(bodies[0])).not.toContain("Joyce");
+
+    await page.locator(".desktop-scope-toggle").getByRole("button", { name: "Shared", exact: true }).click();
+    await expect(page).toHaveURL(/scope=shared/);
+    await expect(actualSpendCard).not.toHaveText(combinedSpend);
+    await expect.poll(() => bodies.length, { timeout: 15_000 }).toBe(2);
+    const sharedSpend = (await actualSpendCard.innerText()).trim();
+    expect(bodies[1].facts.spend).toBe(sharedSpend);
+    expect(bodies[1].facts.spend).not.toBe(bodies[0].facts.spend);
+  });
+
   test("entries and splits scope their advice to current filters", async ({ page }) => {
     await postJson(page, "/api/entries/create", {
       date: "2026-05-23",

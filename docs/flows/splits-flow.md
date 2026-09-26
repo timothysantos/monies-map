@@ -111,6 +111,13 @@ Watch area:
   `design.md`, Split Currency Display Contract);
   `splits-travel-group.spec.js` and `currency-money-format.test.mjs` cover it,
   including money privacy masking
-- watch: the category breakdown donut sums open expenses across every group
-  and currency and formats them as SGD; it needs a per-group (or
-  per-currency) projection before it can be labelled in a travel currency
+- the category breakdown donut is per currency: the page sends the SGD chart
+  as `donutChart` and one chart per other currency with open expenses in
+  `donutChartsByCurrency` (left out when there are none), and the panel shows
+  the active group's currency through `selectSplitDonutChart`, formatted in
+  that currency. Yen are never added to dollars (DOMAIN.md, "Split currency
+  in charts"); `split-currency-display.test.mjs` and
+  `atomic-writes-travel-split-home-amounts.test.mjs` cover it
+- a travel split's shares stay in its currency in Splits; Entries, Month,
+  Summary and the stored month totals count each person's SGD share of the
+  linked ledger row instead (DOMAIN.md, "Home share of a travel split")
