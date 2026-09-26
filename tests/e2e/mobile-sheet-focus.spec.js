@@ -28,7 +28,9 @@ function hiddenFromScreenReaders(locator) {
   return locator.evaluate((element) => Boolean(element.closest('[aria-hidden="true"], [inert]')));
 }
 
-test.describe("mobile sheet focus", () => {
+// Tagged @webkit: `npm run test:e2e:webkit` also runs these in WebKit with an
+// iPhone profile, where a clicked or tapped button is not focused.
+test.describe("mobile sheet focus", { tag: "@webkit" }, () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
     await page.goto("/");
@@ -186,6 +188,103 @@ test.describe("mobile sheet focus", () => {
     await page.keyboard.press("Escape");
     await expect(sheet).toHaveCount(0);
     await expect(opener).toBeFocused();
+  });
+});
+
+// iPhone and iPad Safari do not focus a button that is tapped, so the control
+// that opened a sheet is not document.activeElement. The sheet must still
+// hand focus back to it on close, so VoiceOver and keyboard users on an iPad
+// carry on from where they were instead of from the top of the page. In the
+// default suite these run in Chromium; `npm run test:e2e:webkit` runs them
+// in WebKit, where they fail if the sheet relies on document.activeElement.
+test.describe("mobile sheet focus after a tap", { tag: "@webkit" }, () => {
+  test.use({ viewport: iPhone, hasTouch: true, isMobile: true });
+
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
+    await page.goto("/");
+    await reseedDemo(page);
+  });
+
+  test("Month sheets return focus to the tapped button that opened them", async ({ page }) => {
+    await gotoMobileMonth(page);
+    const addOpener = page.getByRole("button", { name: "+ Add planned item" });
+    const addSheet = page.locator('.entry-mobile-sheet[aria-label="+ Add planned item"]');
+
+    await addOpener.tap();
+    await expect(addSheet).toBeVisible();
+    await expect.poll(() => focusIsInside(addSheet)).toBe(true);
+    await addSheet.getByRole("button", { name: "Cancel", exact: true }).tap();
+    await expect(addSheet).toHaveCount(0);
+    await expect(addOpener).toBeFocused();
+
+    // A second tap on a different control makes that control the opener,
+    // not the one that last had focus.
+    const rowOpener = page.locator("tr").filter({ hasText: "Savings" }).first().getByRole("button", { name: "Edit Savings row" });
+    const editSheet = page.locator('.entry-mobile-sheet[aria-label="Edit planned item"]');
+    await rowOpener.tap();
+    await expect(editSheet).toBeVisible();
+    await expect.poll(() => focusIsInside(editSheet)).toBe(true);
+    await editSheet.getByRole("button", { name: "Close edit planned item" }).tap();
+    await expect(editSheet).toHaveCount(0);
+    await expect(rowOpener).toBeFocused();
+    await expect(addOpener).not.toBeFocused();
+  });
+
+  test("Entries sheets return focus to the tapped add button or entry row", async ({ page }) => {
+    await gotoPageAfterApi(
+      page,
+      "/entries?view=person-tim&month=2026-04",
+      "/api/entries-page",
+      () => page.locator(".entry-row").first()
+    );
+    // The floating add button clicks a hidden trigger for the panel; the
+    // button the person tapped is the opener, not that trigger.
+    const addOpener = page.getByRole("button", { name: "+ Add entry" }).first();
+    const addSheet = page.locator('.entry-mobile-sheet[aria-label="Add entry"]');
+    await addOpener.tap();
+    await expect(addSheet).toBeVisible();
+    await expect.poll(() => focusIsInside(addSheet)).toBe(true);
+    await addSheet.getByRole("button", { name: "Close add entry" }).tap();
+    await expect(addSheet).toHaveCount(0);
+    await expect(addOpener).toBeFocused();
+
+    const rowOpener = page.locator(".entry-row").nth(2).locator(".entry-row-main");
+    const editSheet = page.locator('.entry-mobile-sheet[aria-label="Edit entry"]');
+    // Tap the row's description, away from its category and owner controls.
+    await rowOpener.locator(".entry-row-description").tap();
+    await expect(editSheet).toBeVisible();
+    await expect.poll(() => focusIsInside(editSheet)).toBe(true);
+    await editSheet.getByRole("button", { name: "Close edit entry" }).tap();
+    await expect(editSheet).toHaveCount(0);
+    await expect(rowOpener).toBeFocused();
+  });
+
+  test("a sheet opened from a link, with no opener on the page, returns focus to the main landmark", async ({ page }) => {
+    await gotoPageAfterApi(
+      page,
+      "/entries?view=person-tim&month=2026-04",
+      "/api/entries-page",
+      () => page.locator(".entry-row").first()
+    );
+    // Load an entry's edit link fresh, as when arriving from Splits or
+    // Imports: nothing on this page opened the sheet.
+    const entryId = await page.locator(".entry-row").nth(2).getAttribute("id");
+    expect(entryId).toBeTruthy();
+    const editSheet = page.locator('.entry-mobile-sheet[aria-label="Edit entry"]');
+    await gotoPageAfterApi(
+      page,
+      `/entries?view=person-tim&month=2026-04&editing_entry=${entryId}`,
+      "/api/entries-page",
+      () => editSheet
+    );
+    await expect.poll(() => focusIsInside(editSheet)).toBe(true);
+    await editSheet.getByRole("button", { name: "Close edit entry" }).tap();
+    await expect(editSheet).toHaveCount(0);
+    // Focus lands on the page's main content, not on <body>, which would
+    // send a screen reader back to the top of the document.
+    await expect(page.locator("main.shell")).toBeFocused();
+    expect(await page.evaluate(() => document.activeElement === document.body)).toBe(false);
   });
 });
 

@@ -379,9 +379,23 @@ modal desktop dialogs:
   inherited style (see "Mobile sheet: a lighter modal" in
   `docs/audits/macro-loading-baseline.md`). Keep it that way: a new modal
   behaviour for the sheet must not restyle `<body>` or the app root.
-- Limitation: iOS Safari does not focus a tapped button. When the opener was
-  never focused (tapped on iOS, or a table row), focus is not restored, and
-  the browser default applies.
+- The opener is found by `sheet-focus-return.js`, not from
+  `document.activeElement` alone: iPhone and iPad Safari (WebKit) do not
+  focus a tapped or clicked button, so after a tap `activeElement` is
+  `<body>`. The module watches trusted clicks in the capture phase and
+  remembers the focusable control each one landed on (a key press clears
+  it, because keyboard focus is reliable). The sheet takes that control as
+  its opener during its first render, else the focused element, which is
+  what Chromium gave before. Script clicks do not count, so the Entries
+  floating add button, which forwards its tap to a hidden trigger, is the
+  opener rather than the trigger.
+- When the opener is no longer on the page (or the sheet opened from a
+  link, with no opener), and nothing else has taken focus, closing moves
+  focus to the `<main>` landmark (given `tabindex="-1"`) instead of
+  `<body>`, so a screen reader carries on from the page content.
+- `npm run test:e2e:webkit` runs the `@webkit`-tagged sheet focus tests in
+  WebKit with an iPhone profile (`playwright.webkit.config.js`); it is not
+  part of the default suite. The same tests run in Chromium there.
 
 ## Reference Data Owner
 
