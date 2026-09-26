@@ -942,6 +942,8 @@ Gates: `npm audit` 0 vulnerabilities; both typechecks clean; lint 0 errors
 15-25) 272/273: `financial-insight` "month, entries and splits each receive
 wording" timed out waiting for the first Summary heading, before any Splits
 step, and the whole `financial-insight.spec.js` then passed alone 11/11.
+After merging `macro-performance` at `501a7d6` (Month mid-width layout, clean
+merge): both typechecks clean, lint 0 errors (30 warnings), unit 769/769.
 
 Found while testing, not changed here (not travel-specific):
 - Summary months and the Month "Actual spend" card in a person view sum
