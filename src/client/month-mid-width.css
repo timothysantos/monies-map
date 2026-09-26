@@ -1,0 +1,65 @@
+/* Month on mid-width screens (tablets, small laptops), 761 to 1,099px.
+   Imported by month-panel.jsx, so it ships with the lazy Month route and
+   stays out of the first-screen stylesheet. It loads after
+   public/styles.css, so a rule here wins over a base rule of the same
+   specificity. Phone (760px and below) and 1,100px and up are unchanged.
+
+   The desktop tables need about 1,100px. Here they fit their section where
+   they can and otherwise scroll inside .month-table-wrap, so the page never
+   scrolls sideways. A grid item's automatic minimum width is its
+   min-content width, which for these grids is the whole table, so the
+   panel (a route grid item) and each plan section (a .month-plan-stack
+   grid item) may shrink. Tighter cells and two-line notes let the tables
+   fit whole from about 900px; the money columns come first and stay on
+   screen. */
+@media (min-width: 761px) and (max-width: 1099px) {
+  .month-panel,
+  .month-plan-section {
+    min-width: 0;
+  }
+
+  .month-table-wrap th,
+  .month-table-wrap td {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .month-table-wrap th {
+    letter-spacing: 0.04em;
+  }
+
+  .month-table-wrap .month-category-cell {
+    gap: 8px;
+  }
+
+  .month-table-wrap .month-actual-drilldown {
+    min-width: 0;
+  }
+
+  .month-table-wrap .planned-link-manage-trigger {
+    white-space: nowrap;
+  }
+
+  .month-table-wrap .note-trigger span {
+    display: -webkit-box;
+    max-width: 11rem;
+    white-space: normal;
+    overflow-wrap: break-word;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .month-table-wrap .note-trigger svg {
+    flex: 0 0 auto;
+  }
+
+  /* Inline edit widens the row; Save and Cancel stick to the visible right
+     edge of the table's scroll area. */
+  .month-inline-edit-actions {
+    position: sticky;
+    right: 12px;
+    display: flex;
+    width: max-content;
+    margin-left: auto;
+  }
+}
