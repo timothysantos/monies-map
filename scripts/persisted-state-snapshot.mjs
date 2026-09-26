@@ -195,6 +195,10 @@ async function findSqlite(dir) {
 }
 
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+// Split workspace ids are "<prefix>-<epoch>-<uuid>" (newSplitRecordId); the
+// random UUID tail is dropped before any other rule, so they normalize like
+// the older "<prefix>-<epoch>" ids and runs stay comparable with them.
+const SPLIT_RECORD_UUID_TAIL = /(split-[a-z0-9-]*?-1[6-9]\d{11})-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 // Short random suffixes such as "cat-name-3ea6fa27" (at least one letter,
 // so plain numbers and dates are untouched).
 const SHORT_ID_SUFFIX = /-(?=[0-9a-f]{0,7}[a-f])([0-9a-f]{8})\b/g;
@@ -202,8 +206,8 @@ const SHORT_ID_SUFFIX = /-(?=[0-9a-f]{0,7}[a-f])([0-9a-f]{8})\b/g;
 // keyed with their id prefix, so two kinds of id made in the same
 // millisecond stay distinct however fast a run is.
 const EPOCH_MS = /\b([a-z][a-z-]*-)?(1[6-9]\d{11})\b/g;
-// Random tails after an id's epoch: split batches ("-629") and split
-// activity history ("-khfze6").
+// Random tails after an id's epoch in ids made before newSplitRecordId:
+// split batches ("-629") and split activity history ("-khfze6").
 const SPLIT_BATCH_TAIL = /(split-batch-[a-z0-9-]*<epoch-\d+>)-\d{1,3}\b/g;
 const SPLIT_HISTORY_TAIL = /(split-history-<epoch-\d+>)-[0-9a-z]{6}\b/g;
 const TIMESTAMP = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?Z?$/;
@@ -217,6 +221,7 @@ function dump(file, dtos) {
     if (TIMESTAMP.test(value)) return "<timestamp>";
     // Import ids can embed a commit time; keep the shape, drop the digits.
     return value
+      .replace(SPLIT_RECORD_UUID_TAIL, "$1")
       .replace(UUID, (match) => {
         if (!ids.has(match)) ids.set(match, `<uuid-${ids.size + 1}>`);
         return ids.get(match);

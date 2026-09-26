@@ -1,6 +1,7 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
 import {
   groupSplits,
+  newSplitRecordId,
   slugify
 } from "./app-repository-helpers";
 import { buildCloseSplitBatchStatement, buildReopenSplitBatchStatement, closeSplitBatch, findActiveSplitBatchId, getOrCreateActiveSplitBatch, planActiveSplitBatch, resolveActiveSplitBatch } from "./app-repository-split-batches";
@@ -437,7 +438,7 @@ export async function createSplitSettlementCheckpoint(
     balances.set(groupId, (balances.get(groupId) ?? 0) + amount);
   }
   const net = calculateNetSettlement([...balances].map(([groupId, amountMinor]) => ({ groupId, amountMinor })), viewer.display_name, other.display_name);
-  const id = `split-checkpoint-${Date.now()}`;
+  const id = newSplitRecordId("split-checkpoint");
   const status = net.amountMinor === 0 ? "internally_offset" : "open";
   await db.prepare(`
     INSERT INTO split_settlement_checkpoints
@@ -658,7 +659,7 @@ export async function createSplitGroupRecord(
   db: D1Database,
   input: { name: string; currency?: string; expenseSource?: SplitGroupDto["expenseSource"] }
 ) {
-  const id = `split-group-${slugify(input.name)}-${Date.now()}`;
+  const id = newSplitRecordId(`split-group-${slugify(input.name)}`);
   await db
     .prepare(`
       INSERT INTO split_groups (
@@ -698,7 +699,7 @@ export async function createSplitExpenseRecord(
     input.payerPersonName
   );
 
-  const id = `split-expense-${Date.now()}`;
+  const id = newSplitRecordId("split-expense");
   const batchId = await getOrCreateActiveSplitBatch(db, {
     groupId: input.groupId || null,
     date: input.date
@@ -834,7 +835,7 @@ export async function createSplitSettlementRecord(
   const currency = await assertSplitGroupCurrency(db, input.groupId, input.currency);
   const { fromPersonId, toPersonId } = await resolveSplitSettlementRefs(db, input.fromPersonName, input.toPersonName);
 
-  const id = `split-settlement-${Date.now()}`;
+  const id = newSplitRecordId("split-settlement");
   const batchId = await getOrCreateActiveSplitBatch(db, {
     groupId: input.groupId || null,
     date: input.date
@@ -1330,7 +1331,7 @@ function buildSplitHistoryStatement(db: D1Database, input: SplitHistoryInput) {
   return db.prepare(`INSERT INTO split_activity_history
     (id, household_id, record_kind, record_id, action, group_id, group_name, description, amount_minor, currency, detail)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .bind(`split-history-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, DEFAULT_HOUSEHOLD_ID, input.recordKind, input.recordId, input.action, input.groupId ?? null, input.groupName ?? null, input.description, input.amountMinor, normalizeSplitCurrency(input.currency), input.detail ?? null);
+    .bind(newSplitRecordId("split-history"), DEFAULT_HOUSEHOLD_ID, input.recordKind, input.recordId, input.action, input.groupId ?? null, input.groupName ?? null, input.description, input.amountMinor, normalizeSplitCurrency(input.currency), input.detail ?? null);
 }
 
 async function recordSplitHistory(db: D1Database, input: SplitHistoryInput) {
@@ -1602,7 +1603,7 @@ export async function createSplitExpenseFromEntryRecord(
     throw new Error("This entry does not have a clear payer. Assign an owner first.");
   }
 
-  const id = `split-expense-${Date.now()}`;
+  const id = newSplitRecordId("split-expense");
   const currency = await assertSplitGroupCurrency(db, input.splitGroupId, entry.currency);
   const batch = await resolveActiveSplitBatch(db, {
     groupId: input.splitGroupId || null,
@@ -1956,7 +1957,7 @@ export async function buildLinkedSplitUpsertStatements(
     .prepare("SELECT id, split_group_id, split_batch_id, total_amount_minor, currency FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ? AND deleted_at IS NULL ORDER BY rowid")
     .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
     .first<{ id: string; split_group_id: string | null; split_batch_id: string | null; total_amount_minor: number; currency: string | null }>();
-  const splitExpenseId = existingSplit?.id ?? `split-expense-${Date.now()}`;
+  const splitExpenseId = existingSplit?.id ?? newSplitRecordId("split-expense");
   const splitGroupId = input.splitGroupId === undefined ? existingSplit?.split_group_id ?? null : input.splitGroupId || null;
   await assertSplitGroupCurrency(db, splitGroupId, entry.currency);
   // A split that stays in its group stays in its batch: one in a settled
