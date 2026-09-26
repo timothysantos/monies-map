@@ -42,7 +42,19 @@ export const messages = {
     viewEntriesFor: (categoryName) => `View entries for ${categoryName}`
   },
   views: {
-    household: "Household"
+    household: "Household",
+    // A person view's scopes: the short name the View and scope bar shows,
+    // and what each one counts, in plain words (DOMAIN.md person views).
+    scopeShortLabel: {
+      direct: "Direct",
+      shared: "Shared",
+      direct_plus_shared: "Direct + Shared"
+    },
+    scopeHint: {
+      direct: (name) => `${name}'s entries that are not part of a split.`,
+      shared: (name) => `${name}'s share of split expenses.`,
+      direct_plus_shared: (name) => `${name}'s entries plus their share of split expenses.`
+    }
   },
   tabs: {
     summary: "Summary",
@@ -72,12 +84,6 @@ export const messages = {
     incomeLabel: (plannedValue, actualValue) => `Planned income ${plannedValue} • Actual income ${actualValue}`,
     totalSpend: "Total spend",
     scope: "Scope",
-    // What the active scope counts, in plain words (DOMAIN.md person views).
-    scopeHint: {
-      direct: (name) => `${name}'s entries that are not part of a split.`,
-      shared: (name) => `${name}'s share of split expenses.`,
-      direct_plus_shared: (name) => `${name}'s entries plus their share of split expenses.`
-    },
     table: {
       metric: "Metric",
       estimate: "Planned",

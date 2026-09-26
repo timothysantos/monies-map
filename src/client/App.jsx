@@ -2303,39 +2303,50 @@ export function App() {
   }, [detailAvailableYears, isDetailMonthTab, selectedMonth]);
 
   // Derive the mobile sticky control config from the current tab and its scope
-  // semantics.
+  // semantics. On a phone this bar is the one view and scope control on
+  // Month, Entries and Summary. Summary names the scope its figures answer
+  // (the page view's selectedScope), like its desktop pills.
   const stickyScopeConfig = pageView
     ? renderedTabId === "month"
       ? {
           selectedKey: selectedScope,
           paramKey: "scope",
-          label: "Month view controls"
+          label: "Month view controls",
+          scopes: pageView.monthPage?.scopes ?? []
         }
       : renderedTabId === "entries"
         ? {
             selectedKey: selectedEntriesScope,
             paramKey: "entries_scope",
-            label: "Entries view controls"
+            label: "Entries view controls",
+            scopes: pageView.monthPage?.scopes ?? []
           }
-        : null
+        : renderedTabId === "summary"
+          ? {
+              selectedKey: pageView.selectedScope,
+              paramKey: "scope",
+              label: "Summary view controls",
+              scopes: pageView.scopes ?? []
+            }
+          : null
     : null;
-  // Small labels are easier to scan inside the mobile sheet than the full
-  // scope names.
-  const mobileScopeLabels = {
-    direct: "Direct",
-    shared: "Shared",
-    direct_plus_shared: "Direct+Shared"
-  };
   const selectedViewSupportsScope = selectedViewId !== "household";
-  // The sticky sheet only needs month scopes when the route exposes them.
-  const mobileContextScopes = stickyScopeConfig ? pageView?.monthPage?.scopes ?? [] : [];
+  const mobileContextScopes = stickyScopeConfig?.scopes ?? [];
   const selectedMobileScope = stickyScopeConfig
     ? mobileContextScopes.find((scope) => scope.key === stickyScopeConfig.selectedKey) ?? null
     : null;
-  const mobileContextSummary = selectedViewSupportsScope && selectedMobileScope
-    ? `${pageView?.label ?? ""} · ${mobileScopeLabels[selectedMobileScope.key] ?? selectedMobileScope.label}`
-    : pageView?.label ?? "";
+  // The bar names the person and a short scope name ("Tim · Direct + Shared")
+  // that it never cuts short; the dialog says what the scope counts.
+  const mobileContextScopeLabel = selectedViewSupportsScope && selectedMobileScope
+    ? messages.views.scopeShortLabel[selectedMobileScope.key] ?? selectedMobileScope.label
+    : "";
+  const mobileContextScopeHint = selectedMobileScope
+    ? messages.views.scopeHint[selectedMobileScope.key]?.(pageView?.label ?? "") ?? ""
+    : "";
   const showMobileContextSticky = Boolean(stickyScopeConfig);
+  // Summary moves its range from the header; the bar's month arrows step the
+  // single month of Month and Entries.
+  const showMobileMonthJump = showMobileContextSticky && isDetailMonthTab;
   const showMobileContextScopeSection = Boolean(stickyScopeConfig) && selectedViewSupportsScope && mobileContextScopes.length > 1;
 
   // Collapse the mobile sheet when the sticky context is no longer relevant.
@@ -2832,15 +2843,16 @@ export function App() {
                   }}
                 >
                   <span className="mobile-context-trigger-copy">
-                    <span className="mobile-context-trigger-label">{mobileContextSummary}</span>
-                    {showMobileContextScopeSection ? (
-                      <>
-                        <span className="mobile-context-trigger-divider" aria-hidden="true">|</span>
-                        <span className="mobile-context-trigger-hint">View and scope</span>
-                      </>
-                    ) : (
-                      <span className="mobile-context-trigger-hint">View</span>
-                    )}
+                    {/* The label wraps between the name and the scope rather than truncating. */}
+                    <span className="mobile-context-trigger-label">
+                      <span className="mobile-context-trigger-person">{pageView?.label ?? ""}</span>
+                      {mobileContextScopeLabel ? (
+                        <> <span className="mobile-context-trigger-scope">· {mobileContextScopeLabel}</span></>
+                      ) : null}
+                    </span>
+                    <span className="mobile-context-trigger-hint">
+                      {showMobileContextScopeSection ? "View and scope" : "View"}
+                    </span>
                   </span>
                   <span className="mobile-context-trigger-caret" aria-hidden="true">▾</span>
                 </button>
@@ -2910,6 +2922,9 @@ export function App() {
                           </button>
                         ))}
                       </div>
+                      {mobileContextScopeHint ? (
+                        <p className="mobile-context-dialog-hint">{mobileContextScopeHint}</p>
+                      ) : null}
                     </section>
                   ) : null}
 
@@ -2923,26 +2938,28 @@ export function App() {
                 </Dialog.Content>
               </Dialog.Portal>
             </Dialog.Root>
-            <div className="mobile-month-jump" aria-label="Month navigation">
-              <button
-                className="period-button mobile-month-jump-button"
-                type="button"
-                aria-label={messages.period.previousAriaLabel}
-                onClick={() => handleMonthChange(-1)}
-                disabled={!canMoveToPreviousDetailMonth}
-              >
-                ‹
-              </button>
-              <button
-                className="period-button mobile-month-jump-button"
-                type="button"
-                aria-label={messages.period.nextAriaLabel}
-                onClick={() => handleMonthChange(1)}
-                disabled={!canMoveToNextDetailMonth}
-              >
-                ›
-              </button>
-            </div>
+            {showMobileMonthJump ? (
+              <div className="mobile-month-jump" aria-label="Month navigation">
+                <button
+                  className="period-button mobile-month-jump-button"
+                  type="button"
+                  aria-label={messages.period.previousAriaLabel}
+                  onClick={() => handleMonthChange(-1)}
+                  disabled={!canMoveToPreviousDetailMonth}
+                >
+                  ‹
+                </button>
+                <button
+                  className="period-button mobile-month-jump-button"
+                  type="button"
+                  aria-label={messages.period.nextAriaLabel}
+                  onClick={() => handleMonthChange(1)}
+                  disabled={!canMoveToNextDetailMonth}
+                >
+                  ›
+                </button>
+              </div>
+            ) : null}
           </div>
         </section>
       ) : null}
