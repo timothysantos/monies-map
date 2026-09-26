@@ -258,9 +258,9 @@ scope control:
 
 The bar's label is two lines: the person and a short scope name
 (`messages.views.scopeShortLabel`: `Direct`, `Shared`, `Direct + Shared`),
-then `View and scope`. The label is a wrapping flex row whose scope part
-never breaks, so a long name wraps before the scope instead of either being
-cut short. The trigger is at least 46 px tall, and on Month and Summary the
+then `View and scope`. The label is wrapping text whose scope part
+(`· Direct + Shared`) is `nowrap`, so a long name wraps before the scope
+instead of either being cut short; there is no ellipsis. The trigger is at least 46 px tall, and on Month and Summary the
 floating money toggle sits above it. The household view has one Combined
 scope: the bar shows only `Household` and `View`, and the dialog has no scope
 section. The scope names and hints live in `messages.views` so the bar and
