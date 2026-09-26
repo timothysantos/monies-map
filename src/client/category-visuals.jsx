@@ -19,7 +19,9 @@ export function SpendingMixChart({
   compact = false,
   height = 360,
   innerRadius = 70,
-  outerRadius = 120
+  outerRadius = 120,
+  // A Splits chart passes its split currency; other charts are SGD.
+  currency = ""
 }) {
   const total = typeof totalMinor === "number"
     ? totalMinor
@@ -35,10 +37,11 @@ export function SpendingMixChart({
 
   return (
     <div className={`spending-mix-chart-shell ${compact ? "is-compact" : ""}`}>
-      <Suspense fallback={<SpendingMixChartFallback total={total} totalLabel={totalLabel} compact={compact} resolvedHeight={resolvedHeight} />}>
+      <Suspense fallback={<SpendingMixChartFallback total={total} totalLabel={totalLabel} compact={compact} resolvedHeight={resolvedHeight} currency={currency} />}>
         <LazySpendingMixRecharts
           chartData={chartData}
           total={total}
+          currency={currency}
           totalLabel={totalLabel}
           compact={compact}
           isNarrowViewport={isNarrowViewport}
@@ -51,7 +54,7 @@ export function SpendingMixChart({
   );
 }
 
-function SpendingMixChartFallback({ total, totalLabel, compact, resolvedHeight }) {
+function SpendingMixChartFallback({ total, totalLabel, compact, resolvedHeight, currency = "" }) {
   return (
     <div
       className={`spending-mix-chart spending-mix-chart-loading ${compact ? "is-compact" : ""}`}
@@ -61,7 +64,7 @@ function SpendingMixChartFallback({ total, totalLabel, compact, resolvedHeight }
       <span className="chart-spinner" />
       <div className={`donut-center recharts-donut-center ${compact ? "is-compact" : ""}`}>
         <span>{totalLabel}</span>
-        <strong><PrivateMoney>{formatService.money(total)}</PrivateMoney></strong>
+        <strong><PrivateMoney>{currency ? formatService.moneyWithCurrency(total, currency) : formatService.money(total)}</PrivateMoney></strong>
       </div>
     </div>
   );
