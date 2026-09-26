@@ -20,6 +20,7 @@ import {
   matchSettlementCheckpoint,
   reopenSettlementCheckpoint,
   undoSettlementCheckpointPaid,
+  undoSettlementLock as requestSettlementLockUndo,
   unmatchSettlementCheckpoint,
   saveSplitExpense,
   saveSplitSettlement,
@@ -38,7 +39,7 @@ import { SplitArchiveDialog } from "./splits-archive-dialog";
 import { SplitHistoryDialog } from "./splits-history-dialog";
 import { splitActivityDomId } from "./splits-activity";
 import { SplitDeleteDialog, SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./splits-dialogs";
-import { readSettlementLock } from "./settlement-lock-notice";
+import { readSettlementLock, settlementLockUndoRequest } from "./settlement-lock-notice";
 import { SearchFilterInput } from "./entries-filter-stack";
 import { SplitsMainSection } from "./splits-main-section";
 import { buildSplitsPanelModel } from "./splits-selectors";
@@ -86,6 +87,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   const [checkpointError, setCheckpointError] = useState("");
   const [checkpointNotice, setCheckpointNotice] = useState("");
   const [isCheckpointing, setIsCheckpointing] = useState(false);
+  const [archiveUndoError, setArchiveUndoError] = useState("");
   const [checkpointTransferId, setCheckpointTransferId] = useState("");
   const [checkpointFxRateInput, setCheckpointFxRateInput] = useState("1");
   const [checkpointMatchTargetId, setCheckpointMatchTargetId] = useState(null);
@@ -356,11 +358,32 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   }
 
   function openArchiveList() {
+    setArchiveUndoError("");
     setArchiveDialog({ batchId: null });
   }
 
   function openArchivedBatch(batchId) {
+    setArchiveUndoError("");
     setArchiveDialog({ batchId });
+  }
+
+  // Undo settle-up from a settled batch: its activity, the settle-up
+  // included, is open again and counts in the group balance.
+  async function undoArchivedSettleUp(batchId) {
+    if (!batchId || isCheckpointing) return;
+    setArchiveUndoError("");
+    setIsCheckpointing(true);
+    try {
+      await requestSettlementLockUndo({ batchId });
+      setArchiveDialog(null);
+      setCheckpointError("");
+      setCheckpointNotice("Settle-up undone. Its activity is open again.");
+      refreshAfterSplitMutation({ broadcast: true });
+    } catch (error) {
+      setArchiveUndoError(error instanceof Error ? error.message : "Failed to undo the settle-up.");
+    } finally {
+      setIsCheckpointing(false);
+    }
   }
 
   function applyOptimisticSplitsPage(updatePage) {
@@ -965,21 +988,25 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     }
   }
 
-  // Undo the simplification that refused a save or delete (whatever its
-  // state: open, paid, bank matched or offset). The form stays open with the
-  // person's change, so saving again applies it to the now open activity.
+  // Undo the simplification (whatever its state: open, paid, bank matched or
+  // offset) or the group settle-up that refused a save or delete. The form
+  // stays open with the person's change, so saving again applies it to the
+  // now open activity.
   async function undoSettlementLock() {
     const lock = settlementLock;
     if (!lock || isCheckpointing) return;
     setIsCheckpointing(true);
     try {
-      await reopenSettlementCheckpoint(lock.checkpointId);
+      await requestSettlementLockUndo(lock);
       setFormError("");
       setInlineSplitError("");
       setSettlementLock({ ...lock, undone: true });
+      // The reopened batch leaves the archive, so the archive behind the
+      // editor closes; the activity is back in the group's list.
+      if (lock.batchId) setArchiveDialog(null);
       refreshAfterSplitMutation({ broadcast: true });
     } catch (error) {
-      setSettlementLock({ ...lock, message: error instanceof Error ? error.message : "Failed to undo the simplification." });
+      setSettlementLock({ ...lock, message: error instanceof Error ? error.message : settlementLockUndoRequest(lock).failure });
     } finally {
       setIsCheckpointing(false);
     }
@@ -1236,6 +1263,9 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         onEditExpense={openExpenseEditor}
         onEditSettlement={openSettlementEditor}
         onViewLinkedEntry={openLinkedEntry}
+        onUndoSettleUp={(batchId) => void undoArchivedSettleUp(batchId)}
+        isUndoingSettleUp={isCheckpointing}
+        undoSettleUpError={archiveUndoError}
       />
 
       <SplitHistoryDialog
