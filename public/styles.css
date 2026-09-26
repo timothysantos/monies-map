@@ -8720,26 +8720,6 @@ html[data-money-privacy="hidden"] .import-amount-input.is-screened {
     radial-gradient(circle at top right, rgba(177, 94, 47, 0.12), transparent 48%);
 }
 
-.entry-composer-head {
-  display: none;
-}
-
-/* The mobile sheet's backdrop covers the viewport in every layout where the
-   sheet opens, so a tap outside the sheet lands on it (and closes the sheet)
-   instead of reaching the page. It is transparent outside the phone layout. */
-.entry-composer-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 80;
-}
-
-/* Keep the sheet above its backdrop in every layout; the phone layout
-   below makes it a fixed bottom sheet. */
-.entry-composer.entry-mobile-sheet {
-  position: relative;
-  z-index: 81;
-}
-
 .entry-submit-error {
   margin: 0 0 12px;
   color: #b33a3a;
@@ -9745,182 +9725,316 @@ th {
     grid-template-columns: 1fr;
     gap: 10px;
   }
+}
 
-  
+/* The mobile sheet's own styles apply wherever the sheet opens, not only in
+   the phone layout: Month also opens it on a portrait tablet
+   (MONTH_SHEET_LAYOUT_QUERY in src/client/use-viewport.js), where the rest of
+   the page keeps its desktop layout. Every selector here is scoped to the
+   sheet or its backdrop, which only render in a sheet layout. Page rules for
+   an open sheet (body:has(.entry-mobile-sheet) ...) stay in the phone block. */
 
-  
+/* The backdrop covers the viewport, so a tap outside the sheet lands on it
+   (and closes the sheet) instead of reaching the page. */
+.entry-composer-overlay {
+  display: block;
+  position: fixed;
+  inset: 0;
+  border: 0;
+  background: rgba(18, 24, 22, 0.35);
+  backdrop-filter: blur(4px);
+  z-index: 80;
+}
 
-  .entry-composer-overlay {
-    display: block;
-    position: fixed;
-    inset: 0;
-    border: 0;
-    background: rgba(18, 24, 22, 0.35);
-    backdrop-filter: blur(4px);
-    z-index: 80;
-  }
+.entry-composer.entry-mobile-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 81;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px));
+  margin: 0;
+  padding: 18px 16px 0;
+  border: 1px solid rgba(177, 94, 47, 0.14);
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  border-radius: 24px 24px 0 0;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 249, 0.995), rgba(255, 255, 255, 0.99) 56%, rgba(250, 239, 230, 0.96)),
+    radial-gradient(circle at top right, rgba(177, 94, 47, 0.08), transparent 42%);
+  box-shadow: 0 -18px 42px rgba(27, 24, 21, 0.16);
+}
 
-  .entry-composer.entry-mobile-sheet {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 81;
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    min-height: 0;
-    max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px));
-    margin: 0;
-    padding: 18px 16px 0;
-    border: 1px solid rgba(177, 94, 47, 0.14);
-    border-left: 0;
-    border-right: 0;
-    border-bottom: 0;
-    border-radius: 24px 24px 0 0;
-    background:
-      linear-gradient(180deg, rgba(255, 252, 249, 0.995), rgba(255, 255, 255, 0.99) 56%, rgba(250, 239, 230, 0.96)),
-      radial-gradient(circle at top right, rgba(177, 94, 47, 0.08), transparent 42%);
-    box-shadow: 0 -18px 42px rgba(27, 24, 21, 0.16);
-  }
+.entry-mobile-sheet-form {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 
-  .entry-mobile-sheet-form {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-  }
+.entry-mobile-sheet-scroll {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  overscroll-behavior: contain;
+}
 
-  .entry-mobile-sheet-scroll {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    overflow-y: auto;
-    padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
-    overscroll-behavior: contain;
-  }
+.entry-composer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
 
-  .entry-composer-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-  }
+.entry-composer-copy strong,
+.entry-composer-copy p {
+  display: block;
+  margin: 0;
+}
 
-  .entry-composer-copy strong,
-  .entry-composer-copy p {
-    display: block;
-    margin: 0;
-  }
+.entry-composer-copy strong {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+}
 
-  .entry-composer-copy strong {
-    font-size: 1.35rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    line-height: 1.08;
-  }
+.entry-composer-copy p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
 
-  .entry-composer-copy p {
-    margin-top: 4px;
-    color: var(--muted);
-    font-size: 0.92rem;
-    line-height: 1.35;
-  }
+.entry-mobile-sheet .entry-edit-grid,
+.entry-mobile-sheet .entry-writing-grid {
+  gap: 12px;
+}
 
-  .entry-mobile-sheet .entry-edit-grid,
-  .entry-mobile-sheet .entry-writing-grid {
-    gap: 12px;
-  }
+.entry-mobile-sheet .entry-edit-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+}
 
-  .entry-mobile-sheet .entry-edit-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px 14px;
-  }
+.entry-mobile-sheet .entry-edit-grid label,
+.entry-mobile-sheet .entry-writing-grid label {
+  grid-template-columns: 1fr;
+  gap: 4px;
+  align-items: start;
+}
 
-  .entry-mobile-sheet .entry-edit-grid label,
-  .entry-mobile-sheet .entry-writing-grid label {
-    grid-template-columns: 1fr;
-    gap: 4px;
-    align-items: start;
-  }
+.entry-mobile-sheet .entry-edit-grid label > span {
+  align-self: start;
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
 
-  
+.entry-mobile-sheet .entry-edit-transfer-helper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 4px 0 8px;
+}
 
-  .entry-mobile-sheet .entry-edit-grid label > span {
-    align-self: start;
-    font-size: 0.86rem;
-    font-weight: 600;
-    line-height: 1.2;
-  }
+.entry-mobile-sheet .entry-edit-transfer-helper > span {
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
 
-  .entry-mobile-sheet .entry-edit-transfer-helper {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 4px 0 8px;
-  }
+.entry-mobile-sheet .entry-edit-transfer-helper .subtle-action {
+  min-height: 32px;
+  padding: 0 46px;
+}
 
-  .entry-mobile-sheet .entry-edit-transfer-helper > span {
-    font-size: 0.86rem;
-    font-weight: 600;
-    line-height: 1.2;
-  }
+.entry-mobile-sheet .table-edit-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(177, 94, 47, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  font-size: 1rem;
+}
 
-  .entry-mobile-sheet .entry-edit-transfer-helper .subtle-action {
-    min-height: 32px;
-    padding: 0 46px;
-  }
+.entry-mobile-sheet .table-edit-input-money {
+  max-width: none;
+}
 
-  .entry-mobile-sheet .table-edit-input {
-    width: 100%;
-    min-width: 0;
-    min-height: 42px;
-    padding: 8px 12px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.96);
-    border-color: rgba(177, 94, 47, 0.12);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
-    font-size: 1rem;
-  }
+.entry-mobile-sheet .table-edit-textarea {
+  min-height: 92px;
+  max-height: 160px;
+}
 
-  .entry-mobile-sheet .table-edit-input-money {
-    max-width: none;
-  }
+.entry-mobile-sheet textarea.table-edit-textarea {
+  min-height: 46px;
+  height: 46px;
+  max-height: 46px;
+  padding-top: 10px;
+  overflow-y: auto;
+  resize: vertical;
+}
 
-  .entry-mobile-sheet .table-edit-textarea,
+.entry-mobile-sheet .entry-category-field {
+  min-width: 0;
+  gap: 12px;
+}
+
+.entry-mobile-sheet .entry-category-field .category-icon-button,
+.entry-mobile-sheet .entry-category-field .category-icon-static {
+  width: 42px;
+  height: 42px;
+}
+
+.entry-mobile-sheet .entry-category-field > *:last-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.entry-mobile-sheet .entry-inline-actions {
+  position: relative;
+  bottom: auto;
+  flex: 0 0 auto;
+  width: calc(100% + 32px);
+  margin: 0 -16px;
+  transform: none;
+  box-sizing: border-box;
+  padding: 14px 16px max(18px, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(177, 94, 47, 0.1);
+  background: rgba(255, 252, 249, 0.98);
+  box-shadow: 0 -10px 20px rgba(71, 45, 30, 0.08);
+  border-left: 0;
+  border-right: 0;
+  z-index: 2;
+}
+
+.entry-mobile-sheet .entry-mobile-sheet-actions {
+  width: calc(100% + 32px);
+}
+
+.entry-mobile-sheet .entry-mobile-sheet-actions button {
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  line-height: 1.15;
+}
+
+.entry-mobile-sheet-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: stretch;
+  gap: 8px;
+}
+
+.entry-mobile-sheet-linked-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+
+.entry-mobile-sheet .dialog-primary {
+  min-width: 116px;
+  padding-right: 20px;
+  padding-left: 20px;
+}
+
+.entry-mobile-sheet-linked-actions .dialog-primary {
+  min-width: 104px;
+  padding-right: 18px;
+  padding-left: 18px;
+}
+
+.entry-mobile-sheet-secondary-row,
+.entry-mobile-sheet-primary-row {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 8px;
+}
+
+.entry-mobile-sheet-secondary-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.entry-mobile-sheet-linked-actions .entry-mobile-sheet-secondary-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.entry-mobile-sheet-primary-row {
+  grid-template-columns: minmax(0, 1fr) minmax(116px, 1.15fr);
+}
+
+.entry-mobile-sheet-primary-row .subtle-cancel,
+.entry-mobile-sheet-primary-row .dialog-primary {
+  width: 100%;
+  min-height: 44px;
+  justify-content: center;
+}
+
+.entry-mobile-sheet-linked-actions .entry-mobile-sheet-secondary {
+  min-height: 44px;
+  min-width: 0;
+  justify-content: center;
+  padding-right: 6px;
+  padding-left: 6px;
+  margin-right: 0;
+  font-size: 0.82rem;
+  line-height: 1.1;
+  text-align: center;
+  white-space: normal;
+}
+
+.entry-mobile-sheet-secondary {
+  margin-right: 2px;
+}
+
+.entry-mobile-sheet-confirm-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 14px 0 calc(28px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(177, 94, 47, 0.1);
+}
+
+.entry-mobile-sheet-confirm-copy {
+  flex: 1 1 auto;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.entry-mobile-sheet-confirm-buttons {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+
+@media (max-width: 760px) {
   .split-dialog-content .table-edit-textarea {
     min-height: 92px;
     max-height: 160px;
   }
 
-  .entry-mobile-sheet textarea.table-edit-textarea {
-    min-height: 46px;
-    height: 46px;
-    max-height: 46px;
-    padding-top: 10px;
-    overflow-y: auto;
-    resize: vertical;
-  }
-
-  .entry-mobile-sheet .entry-category-field {
-    min-width: 0;
-    gap: 12px;
-  }
-
-  .entry-mobile-sheet .entry-category-field .category-icon-button,
-  .entry-mobile-sheet .entry-category-field .category-icon-static {
-    width: 42px;
-    height: 42px;
-  }
-
-  .entry-mobile-sheet .entry-category-field > *:last-child {
-    min-width: 0;
-    flex: 1 1 auto;
-  }
-
-  .entry-mobile-sheet .entry-inline-actions,
   .split-dialog-content > form > .dialog-actions {
     position: relative;
     bottom: auto;
@@ -9938,11 +10052,6 @@ th {
     z-index: 2;
   }
 
-  .entry-mobile-sheet .entry-mobile-sheet-actions {
-    width: calc(100% + 32px);
-  }
-
-  .entry-mobile-sheet .entry-mobile-sheet-actions button,
   .split-dialog-content .dialog-actions button {
     min-height: 44px;
     padding: 8px 10px;
@@ -9980,107 +10089,6 @@ th {
   .split-dialog-content .split-dialog-actions-divider {
     display: none;
   }
-
-  .entry-mobile-sheet-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    justify-content: stretch;
-    gap: 8px;
-  }
-
-  .entry-mobile-sheet-linked-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-    width: 100%;
-  }
-
-  .entry-mobile-sheet .dialog-primary {
-    min-width: 116px;
-    padding-right: 20px;
-    padding-left: 20px;
-  }
-
-  .entry-mobile-sheet-linked-actions .dialog-primary {
-    min-width: 104px;
-    padding-right: 18px;
-    padding-left: 18px;
-  }
-
-  .entry-mobile-sheet-secondary-row,
-  .entry-mobile-sheet-primary-row {
-    display: grid;
-    width: 100%;
-    min-width: 0;
-    gap: 8px;
-  }
-
-  .entry-mobile-sheet-secondary-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .entry-mobile-sheet-linked-actions .entry-mobile-sheet-secondary-row {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .entry-mobile-sheet-primary-row {
-    grid-template-columns: minmax(0, 1fr) minmax(116px, 1.15fr);
-  }
-
-  .entry-mobile-sheet-primary-row .subtle-cancel,
-  .entry-mobile-sheet-primary-row .dialog-primary {
-    width: 100%;
-    min-height: 44px;
-    justify-content: center;
-  }
-
-  .entry-mobile-sheet-linked-actions .entry-mobile-sheet-secondary {
-    min-height: 44px;
-    min-width: 0;
-    justify-content: center;
-    padding-right: 6px;
-    padding-left: 6px;
-    margin-right: 0;
-    font-size: 0.82rem;
-    line-height: 1.1;
-    text-align: center;
-    white-space: normal;
-  }
-
-  .entry-mobile-sheet-secondary {
-    margin-right: 2px;
-  }
-
-  
-
-  .entry-mobile-sheet-confirm-actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-top: 10px;
-    padding: 14px 0 calc(28px + env(safe-area-inset-bottom, 0px));
-    border-top: 1px solid rgba(177, 94, 47, 0.1);
-  }
-
-  .entry-mobile-sheet-confirm-copy {
-    flex: 1 1 auto;
-    color: var(--muted);
-    font-size: 0.92rem;
-    font-weight: 600;
-    line-height: 1.35;
-  }
-
-  .entry-mobile-sheet-confirm-buttons {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 10px;
-    flex: 0 0 auto;
-    flex-wrap: nowrap;
-  }
-
-  
 
   .note-dialog-head {
     gap: 10px;

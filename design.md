@@ -342,6 +342,15 @@ modal desktop dialogs:
   field, so opening it does not raise the phone keyboard.
 - Focus stays inside the sheet while it is open, including when something
   moves it outside directly.
+- It looks and sits the same wherever it opens: a fixed bottom sheet over a
+  dimmed backdrop. Its styles in `public/styles.css` are therefore not in
+  the 760px phone block but in their own unconditional section, scoped to
+  the sheet and its backdrop (which render only in a sheet layout). Month
+  also opens it on a portrait tablet, where the page itself keeps its
+  desktop layout; before this the sheet rendered at the bottom of the
+  scroll-locked page there, out of reach. Rules that restyle the page while
+  a sheet is open (`body:has(.entry-mobile-sheet) ...`) stay in the phone
+  block.
 - The rest of the page is hidden from screen readers (`aria-hidden`), and
   the backdrop covers the viewport in every layout, so a tap outside the
   sheet lands on the backdrop instead of the page. A touch drag or wheel over
@@ -444,7 +453,9 @@ two queries:
 - `MONTH_SHEET_LAYOUT_QUERY` adds `(max-width: 1024px) and (orientation:
   portrait)`. Month plan and income rows open the mobile sheet on a portrait
   tablet too, while the CSS and every other page keep the desktop layout.
-  This difference is deliberate; do not merge the two queries.
+  This difference is deliberate; do not merge the two queries. The CSS has
+  no copy of this query: the sheet's own styles apply whenever it renders
+  (see "Mobile Sheet").
 
 Render code uses `useIsMobileLayout()` / `useIsMonthSheetLayout()`, built on
 `useSyncExternalStore` with one shared `MediaQueryList` per query, so the
