@@ -31,6 +31,7 @@ import {
 import { FinancialInsight } from "./financial-insight";
 import { PrivateMoney } from "./money-privacy";
 import { useRouteWorkReport } from "./use-route-work-status";
+import { useIsMobileLayout } from "./use-viewport";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
 const {
   accounts: accountService,
@@ -47,6 +48,7 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobileLayout = useIsMobileLayout();
   const [monthNoteDialog, setMonthNoteDialog] = useState(null);
   const [isSavingMonthNote, setIsSavingMonthNote] = useState(false);
   const [monthNoteError, setMonthNoteError] = useState("");
@@ -172,6 +174,8 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
         <div>
           <h2>{messages.tabs.summary}</h2>
           <span className="panel-context">{messages.common.viewingDot(view.label)}</span>
+          {/* A phone switches scope from the floating View and scope bar instead. */}
+          {isMobileLayout ? null : <SummaryScopeSwitch view={view} onScopeChange={handleScopeChange} />}
         </div>
         <div className="metric-row metric-row-summary summary-head-metrics">
           {safeSummaryPage.metricCards.map((card) => (
@@ -179,8 +183,6 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
           ))}
         </div>
       </div>
-
-      <SummaryScopeControl view={view} onScopeChange={handleScopeChange} />
 
       <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-summary" canRequestWording={canRequestWording} />
 
@@ -226,34 +228,38 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
   );
 }
 
-// A person view's figures follow the route's scope, so Summary names the
-// scope they count and lets the person switch it, with the same pills as
-// Month. The page view carries the scope of the request the figures answer
-// (buildSummaryPageView), so it never runs ahead of them. The household has
-// one Combined scope and no control.
-function SummaryScopeControl({ view, onScopeChange }) {
+// A person view's figures follow the route's scope, so desktop Summary names
+// the scope they count with a compact one-click switch in the empty space
+// under its title, beside the taller metric cards. It adds no height, and no
+// width to the title column: `contain: inline-size` drops its content size and
+// a -12px margin cancels the title row's flex gap (.summary-scope-switch in
+// styles.css). Where the header stacks (960px and below) it joins the title
+// row instead. What each scope counts is the option's tooltip. The page view carries the scope of the
+// request the figures answer (buildSummaryPageView), so it never runs ahead of
+// them. The household has one Combined scope and no switch. On a phone the
+// floating View and scope bar in App.jsx is the one scope control.
+function SummaryScopeSwitch({ view, onScopeChange }) {
   const scopes = view.scopes ?? [];
   if (scopes.length < 2) {
     return null;
   }
   const { selectedScope } = view;
   return (
-    <div className="summary-scope" role="group" aria-label={messages.summary.scope}>
-      <span aria-hidden="true">{messages.summary.scope}</span>
-      <div className="scope-toggle pill-row scope-toggle-row">
+    <div className="summary-scope-switch">
+      <div className="scope-toggle pill-row" role="group" aria-label={messages.summary.scope}>
         {scopes.map((scope) => (
           <button
             key={scope.key}
             className={`pill scope-button ${scope.key === selectedScope ? "is-active" : ""}`}
             type="button"
             aria-pressed={scope.key === selectedScope}
+            title={messages.views.scopeHint[scope.key]?.(view.label)}
             onClick={() => onScopeChange(scope.key)}
           >
-            {scope.label}
+            {messages.summary.scopeSwitchLabel[scope.key] ?? scope.label}
           </button>
         ))}
       </div>
-      <span>{messages.summary.scopeHint[selectedScope]?.(view.label)}</span>
     </div>
   );
 }

@@ -386,8 +386,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   color: var(--accent-strong);
 }
 
-.panel-context,
-.summary-scope > span {
+.panel-context {
   color: var(--muted);
   font-size: 0.9rem;
 }
@@ -664,9 +663,23 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   box-shadow: none;
 }
 
-/* Summary's scope row; Month shows scope in its header controls. */
-.summary-scope {
-  margin-bottom: 14px;
+/* Adds no width or height to the header; see SummaryScopeSwitch. */
+.summary-scope-switch {
+  flex-basis: 100%;
+  contain: inline-size;
+  margin-left: -12px;
+}
+
+.summary-scope-switch .pill-row {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  margin-left: 12px;
+  padding: 2px;
+}
+
+.summary-scope-switch .pill {
+  padding: 4px 10px;
+  font-size: 0.8rem;
 }
 
 .mobile-context-sticky-wrap{
@@ -678,8 +691,7 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   display: none;
 }
 
-.month-header-controls,
-.summary-scope {
+.month-header-controls {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -9033,6 +9045,12 @@ th {
     flex-direction: column;
   }
 
+  .summary-scope-switch {
+    flex-basis: auto;
+    contain: none;
+    align-self: center;
+  }
+
   .summary-mix{
     grid-template-columns: 1fr;
   }
@@ -9203,6 +9221,12 @@ th {
 
   .totals-visibility-toggle--floating[aria-pressed="false"] {
     background: rgba(255, 243, 234, 0.98);
+  }
+
+  /* Clear of the View and scope bar. */
+  .totals-visibility-toggle--month,
+  .totals-visibility-toggle--summary {
+    bottom: calc(136px + env(safe-area-inset-bottom, 0px));
   }
 
   .totals-visibility-toggle--entries {
@@ -10366,7 +10390,8 @@ th {
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    padding: 10px 14px;
+    min-height: 46px;
+    padding: 6px 14px;
     border: 1px solid var(--line);
     border-radius: 16px;
     background: rgba(255, 255, 255, 0.96);
@@ -10379,34 +10404,25 @@ th {
   }
 
   .mobile-context-trigger-copy {
-    display: flex;
-    align-items: center;
+    display: grid;
     min-width: 0;
-    gap: 8px;
   }
 
   .mobile-context-trigger-label {
-    flex: 0 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     font-size: 0.84rem;
     font-weight: 700;
+    line-height: 1.25;
     letter-spacing: -0.01em;
   }
 
-  .mobile-context-trigger-divider {
-    flex: 0 0 auto;
-    color: rgba(101, 92, 83, 0.4);
-    font-size: 0.76rem;
+  .mobile-context-trigger-scope {
+    white-space: nowrap;
   }
 
   .mobile-context-trigger-hint {
-    flex: 0 0 auto;
     color: var(--muted);
     font-size: 0.72rem;
-    line-height: 1;
+    line-height: 1.25;
   }
 
   .mobile-context-trigger-caret {
