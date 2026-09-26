@@ -168,6 +168,10 @@
       "seconds": 9.7,
       "tests": 8
     },
+    "splits-group-settle-up-lock.spec.js": {
+      "seconds": 8.1,
+      "tests": 4
+    },
     "splits-review-matches.spec.js": {
       "seconds": 10.8,
       "tests": 5
