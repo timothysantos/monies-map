@@ -15,6 +15,7 @@
 // then walks each workflow at desktop 1280x800 in Chromium and on an iPhone 13
 // profile in WebKit (Safari's engine; `npx playwright install webkit` once).
 // Output: WebP files plus thumbnails under public/faq/guide/{desktop,phone}/.
+/* global window -- only inside page.evaluate / waitForFunction / addInitScript, which run in the browser */
 import { mkdir, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
