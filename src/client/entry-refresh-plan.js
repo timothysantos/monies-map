@@ -21,9 +21,19 @@ function getLedgerAmountMinor(entry) {
   return Number(entry.totalAmountMinor ?? entry.amountMinor ?? 0);
 }
 
-function hasLinkedSplitAmountChange(nextEntry, previousEntry) {
-  return Boolean(nextEntry?.linkedSplitExpenseId && previousEntry)
-    && getLedgerAmountMinor(nextEntry) !== getLedgerAmountMinor(previousEntry);
+// The server copies a linked entry's amount, event date, description and
+// payer (its owner, else its account's owner) to the linked split.
+function hasLinkedSplitMirroredChange(nextEntry, previousEntry) {
+  if (!nextEntry?.linkedSplitExpenseId || !previousEntry) {
+    return false;
+  }
+
+  return getLedgerAmountMinor(nextEntry) !== getLedgerAmountMinor(previousEntry)
+    || nextEntry.date !== previousEntry.date
+    || nextEntry.description !== previousEntry.description
+    || (nextEntry.ownerName ?? null) !== (previousEntry.ownerName ?? null)
+    || (nextEntry.accountId ?? null) !== (previousEntry.accountId ?? null)
+    || (nextEntry.accountName ?? "") !== (previousEntry.accountName ?? "");
 }
 
 export function hasLedgerAffectingEntryChange(nextEntry, previousEntry) {
@@ -63,8 +73,7 @@ export function buildEntryMutationRefreshPlan({
       invalidateEntries: true,
       invalidateMonth: true,
       invalidateSummary: true,
-      // The server moves a linked split with its entry's amount.
-      invalidateSplits: hasLinkedSplitAmountChange(nextEntry, previousEntry)
+      invalidateSplits: hasLinkedSplitMirroredChange(nextEntry, previousEntry)
     };
   }
 

@@ -528,12 +528,28 @@ Important distinction:
 - the ledger owner and bank-facing facts remain on the ledger entry
 - the split allocation and group live on the split expense and its shares
 - deleting or unlinking the split expense removes the shared Entries attribute
-  without rewriting the ledger owner
+  without rewriting the ledger owner. A deleted (archived) split keeps its
+  `linked_transaction_id` only so a restore can bring the link back; it does
+  not count as the entry's split in any projection (Entries, Month, Summary,
+  month totals), and the entry can be added to or matched with a new split
+- adding an entry to splits, matching a split to it, and deleting or
+  restoring its split change how person views count the entry (share versus
+  full amount), so each of those writes refreshes the entry's event month
 - changing the entry's amount moves the linked split expense with it in the
   same write: the split total becomes the new ledger amount and the shares are
   rebalanced by the split's stored basis (see `split expense share`). A
   cross-currency split keeps its own total and shares and only updates its home
-  amount and FX rate. Other entry edits leave the split unchanged
+  amount and FX rate
+- the split mirrors the entry's event date (`transaction_date`, never the
+  posted date), description and payer (the entry owner, else the account
+  owner): these are copied when the entry is added to splits, and an entry edit
+  copies a change to them in the same write while the split still holds the
+  entry's previous value. A split value that already differs (edited in Splits,
+  or recorded there before a bank match) is the split's own and is kept
+- the split's note, category, group, share basis and travel-currency
+  conversion are split-owned: an entry edit never changes them. Note and
+  category are copied at creation and afterwards only through the explicit
+  "update both" sync prompts
 
 Related but separate concepts:
 
@@ -723,6 +739,9 @@ Rules:
 - active split projections exclude archived records
 - history is household-scoped and ordered newest first
 - restore is allowed only for an archived record and never creates a duplicate
+- an archived record does not hold its ledger row; restoring it is refused
+  while another active split record (or a settlement checkpoint match) holds
+  that row
 - checkpoint snapshots remain unchanged when a record is deleted or restored
 
 ### Monthly Note

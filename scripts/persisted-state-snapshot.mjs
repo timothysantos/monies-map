@@ -116,6 +116,19 @@ async function runScenario() {
   await call("/api/splits/expenses/create", { date: "2026-05-19", description: "State split taxi", categoryName: "Taxi", payerPersonName: "Tim", amountMinor: 3_000, groupId: null, note: "state split" });
   await call("/api/splits/settlements/create", { groupId: null, date: "2026-05-20", fromPersonName: "Joyce", toPersonName: "Tim", amountMinor: 1_000, paymentMethod: "bank", paymentStatus: "recorded", note: "state settle" });
 
+  // Linked splits: an entry added to splits, then renamed, redated and given
+  // to the other payer in Entries; a second one added to splits and its split
+  // deleted; a third added to splits as the last write to its month.
+  const linkedEntry = (description, date, amountMinor) => call("/api/entries/create", { date, description, accountName: "UOB One", categoryName: "Food & Drinks", amountMinor, entryType: "expense", ownershipType: "direct", ownerName: "Tim" });
+  const lunch = await linkedEntry("State linked lunch", "2026-05-23", 6_400);
+  await call("/api/splits/expenses/from-entry", { entryId: lunch.entryId, splitGroupId: null });
+  await call("/api/entries/update", { entryId: lunch.entryId, date: "2026-05-24", description: "State linked lunch renamed", accountName: "UOB One", categoryName: "Food & Drinks", amountMinor: 6_400, entryType: "expense", ownershipType: "direct", ownerName: "Joyce", note: "" });
+  const snack = await linkedEntry("State unlinked snack", "2026-05-25", 2_000);
+  const snackSplit = await call("/api/splits/expenses/from-entry", { entryId: snack.entryId, splitGroupId: null });
+  await call("/api/splits/expenses/delete", { splitExpenseId: snackSplit.splitExpenseId });
+  const coffee = await linkedEntry("State linked coffee", "2026-05-26", 1_202);
+  await call("/api/splits/expenses/from-entry", { entryId: coffee.entryId, splitGroupId: null });
+
   // Categories and rules.
   await call("/api/categories/create", { name: "State category", slug: "state-category", iconKey: "tag", colorHex: "#445566" });
   await call("/api/category-match-rules/save", { pattern: "STATE IMPORT", categoryId: "cat-groceries", priority: 50, isActive: true });
@@ -166,8 +179,14 @@ const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 // Short random suffixes such as "cat-name-3ea6fa27" (at least one letter,
 // so plain numbers and dates are untouched).
 const SHORT_ID_SUFFIX = /-(?=[0-9a-f]{0,7}[a-f])([0-9a-f]{8})\b/g;
-// Millisecond epoch values embedded in ids ("split-expense-1790296211654").
-const EPOCH_MS = /\b1[6-9]\d{11}\b/g;
+// Millisecond epoch values embedded in ids ("split-expense-1790296211654"),
+// keyed with their id prefix, so two kinds of id made in the same
+// millisecond stay distinct however fast a run is.
+const EPOCH_MS = /\b([a-z][a-z-]*-)?(1[6-9]\d{11})\b/g;
+// Random tails after an id's epoch: split batches ("-629") and split
+// activity history ("-khfze6").
+const SPLIT_BATCH_TAIL = /(split-batch-[a-z0-9-]*<epoch-\d+>)-\d{1,3}\b/g;
+const SPLIT_HISTORY_TAIL = /(split-history-<epoch-\d+>)-[0-9a-z]{6}\b/g;
 const TIMESTAMP = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?Z?$/;
 
 function dump(file, dtos) {
@@ -187,10 +206,12 @@ function dump(file, dtos) {
         if (!ids.has(suffix)) ids.set(suffix, `<id-${ids.size + 1}>`);
         return `-${ids.get(suffix)}`;
       })
-      .replace(EPOCH_MS, (match) => {
+      .replace(EPOCH_MS, (match, prefix = "") => {
         if (!ids.has(match)) ids.set(match, `<epoch-${ids.size + 1}>`);
-        return ids.get(match);
+        return `${prefix}${ids.get(match)}`;
       })
+      .replace(SPLIT_BATCH_TAIL, "$1")
+      .replace(SPLIT_HISTORY_TAIL, "$1")
       .replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z/g, "<timestamp>");
   };
   const out = {};
@@ -201,10 +222,10 @@ function dump(file, dtos) {
   }
   db.close();
   // Normalize DTOs with the same id map, so ids line up with the tables.
-  // Lists ordered by a second-resolution createdAt can tie; the app's own
-  // order is not deterministic there, so compare them sorted.
+  // Lists ordered by a second-resolution createdAt or importedAt can tie;
+  // the app's own order is not deterministic there, so compare them sorted.
   const normalizeDeep = (value) => Array.isArray(value)
-    ? (value.length && value.every((item) => item && typeof item === "object" && "createdAt" in item)
+    ? (value.length && value.every((item) => item && typeof item === "object" && ("createdAt" in item || "importedAt" in item))
       ? value.map(normalizeDeep).sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))
       : value.map(normalizeDeep))
     : value && typeof value === "object"

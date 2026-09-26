@@ -169,6 +169,7 @@ export function EntriesPanel({
     settleTransfer,
     refreshEntriesFromServerTruth,
     addEntryToSplits,
+    clearEntrySplitLink,
     deleteEntry,
     updateEntry,
     updateEntryAmount,
@@ -834,9 +835,13 @@ export function EntriesPanel({
       setCreatedSplitAction((current) => (
         current?.splitExpenseId === splitExpenseId ? null : current
       ));
+      clearEntrySplitLink(entryId);
+      // The entry counts in full again, so person-view totals change too.
       onBroadcastSplitMutation?.({
         month: selectedMonth,
-        invalidateEntries: true
+        invalidateEntries: true,
+        invalidateMonth: true,
+        invalidateSummary: true
       });
       await refreshEntriesPage({ bypassCache: true });
       return true;

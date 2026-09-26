@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { entryBypassesFieldFilters } from "../src/client/entry-filter-pins.js";
 import { normalizeEntryShape } from "../src/client/entry-helpers.js";
-import { buildComparableEntryState, mergeEntriesById } from "../src/client/entry-state.js";
+import { buildComparableEntryState, mergeEntriesById, withoutSplitLink } from "../src/client/entry-state.js";
 
 test("E1 entries workflow keeps an optimistic row alive when a stale refresh omits it", () => {
   const currentEntries = [
@@ -314,6 +314,54 @@ test("a saved split-linked amount edit gives way to the server row with the new 
   // A server row still on the old amount is stale, so the pending row stays.
   const [kept] = mergeEntriesById([saved], [previous], null);
   assert.equal(kept, saved);
+});
+
+test("a refresh after the split was deleted drops the local split link instead of keeping it", () => {
+  const linked = { ...linkedPersonViewEntry(), linkedSplitGroupName: "Non-group expenses", linkedSplitNote: "Split note", isPendingDerived: false };
+  // The server row of the same entry once its split is archived: the full
+  // ledger amount and none of the split fields.
+  const {
+    linkedSplitExpenseId: _id,
+    linkedSplitShares: _shares,
+    linkedSplitGroupName: _group,
+    linkedSplitNote: _note,
+    totalAmountMinor: _total,
+    viewerSplitRatioBasisPoints: _ratio,
+    ...unlinkedServerRow
+  } = { ...linked, amountMinor: 6000 };
+
+  const [merged] = mergeEntriesById([linked], [unlinkedServerRow], null);
+
+  assert.deepEqual(merged, { ...unlinkedServerRow, isPendingDerived: false });
+
+  // Negative: a server row that is still linked keeps its split fields.
+  const [stillLinked] = mergeEntriesById([linked], [{ ...linked, description: "Groceries renamed" }], null);
+  assert.equal(stillLinked.linkedSplitExpenseId, "split-expense-1");
+  assert.equal(stillLinked.amountMinor, 1500);
+  assert.equal(stillLinked.totalAmountMinor, 6000);
+  assert.equal(stillLinked.linkedSplitNote, "Split note");
+});
+
+test("an entry whose split is deleted in the editor shows its ledger amount and keeps every other field", () => {
+  const linked = { ...linkedPersonViewEntry(), linkedSplitGroupName: "Non-group expenses", linkedSplitNote: "Split note" };
+  const {
+    linkedSplitExpenseId: _id,
+    linkedSplitShares: _shares,
+    linkedSplitGroupName: _group,
+    linkedSplitNote: _note,
+    totalAmountMinor: _total,
+    viewerSplitRatioBasisPoints: _ratio,
+    ...directFields
+  } = linked;
+
+  assert.deepEqual(withoutSplitLink(linked), { ...directFields, amountMinor: 6000 });
+
+  // A joint-account row without an owner does not gain one.
+  const { ownerName: _owner, ...ownerless } = linked;
+  assert.equal("ownerName" in withoutSplitLink(ownerless), false);
+  // An entry without a split is returned as it is.
+  const direct = withoutSplitLink(linked);
+  assert.equal(withoutSplitLink(direct), direct);
 });
 
 test("entries filtering can pin the actively edited row until save", () => {
