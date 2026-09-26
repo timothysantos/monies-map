@@ -271,6 +271,7 @@ npm run verify               # audit, types, unit, build, and smoke merge gate
 npm run test:e2e             # complete Playwright suite, one serial run on 5173/8787
 npm run test:e2e:sharded     # same suite as 3 parallel isolated shards (faster)
 npm run test:e2e:smoke       # smoke bundle as 2 isolated shards (part of verify)
+npm run test:e2e:webkit      # @webkit-tagged tests in WebKit (iPhone profile)
 npm run db:migrate           # local D1 schema
 npm run db:migrate:remote    # production D1 schema
 npm run db:migrate:demo      # demo D1 schema
@@ -286,6 +287,13 @@ npm run db:empty-production  # terminal-only production empty-state reset
 `npm run test:e2e` runs the whole Playwright suite serially with one worker
 against Vite on `5173` and Wrangler on `8787` (it reuses servers already on
 those ports outside CI).
+
+`npm run test:e2e:webkit` runs the tests tagged `@webkit` (currently the
+mobile sheet focus tests) in WebKit with an iPhone profile, because WebKit,
+like iPhone and iPad Safari, does not focus a tapped button. It uses
+`playwright.webkit.config.js`, needs `npx playwright install webkit` once,
+and is not part of `test:e2e`, the sharded runner or `verify`. Point it at
+an isolated stack with `E2E_BASE_URL` as for the other configs.
 
 `npm run test:e2e:sharded` runs the same suite faster as parallel shards. It
 builds `dist/` once. Then each shard starts its own stack on its own ports
