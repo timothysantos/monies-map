@@ -324,6 +324,13 @@ The Month "Match planned item" dialog (desktop) and sheet (mobile) show
 response. Escape, Cancel and the close button are ignored while the save
 is in flight. A failure keeps the dialog or sheet open with its draft and an
 `InlineError`; only a success closes it and refreshes the month.
+The other Month writes follow the same rule: plan and income row deletes
+(the `DeleteRowButton` confirmation shows "Working..." and keeps the row
+with the error), the row note and month note dialogs (the table and note
+card change only after the save succeeds), and duplicate, reset and delete
+month (a failure keeps the Actions popover or confirmation dialog open).
+The reset and delete confirmation dialogs render beside the Actions popover,
+not inside it, because closing the popover unmounts its content.
 
 ## Mobile Sheet
 

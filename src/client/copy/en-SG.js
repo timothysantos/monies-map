@@ -86,6 +86,12 @@ export const messages = {
   month: {
     planLinkNoCandidates: "No matching expense entries fit the current filters.",
     planLinkSaveFailed: "The matches could not be saved.",
+    rowDeleteFailed: "The row could not be deleted.",
+    rowNoteSaveFailed: "The note could not be saved.",
+    monthNoteSaveFailed: "The month note could not be saved.",
+    duplicateMonthFailed: "The month could not be duplicated.",
+    resetMonthFailed: "The month could not be reset.",
+    deleteMonthFailed: "The month could not be deleted.",
     incomeSectionTitle: "Income",
     incomeSectionDetail: "Planned income sources that fund the month before expenses are allocated.",
     actions: "Actions",

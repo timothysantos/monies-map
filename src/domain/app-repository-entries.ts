@@ -127,9 +127,12 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       LEFT JOIN people AS account_owners ON account_owners.id = accounts.owner_person_id
       LEFT JOIN categories ON categories.id = transactions.category_id
       LEFT JOIN imports ON imports.id = transactions.import_id
+      -- An archived (deleted) split keeps its link only for a restore; the
+      -- entry is linked to its active split, if any.
       LEFT JOIN split_expenses
         ON split_expenses.household_id = transactions.household_id
        AND split_expenses.linked_transaction_id = transactions.id
+       AND split_expenses.deleted_at IS NULL
       LEFT JOIN split_groups
         ON split_groups.household_id = split_expenses.household_id
        AND split_groups.id = split_expenses.split_group_id
@@ -185,6 +188,7 @@ async function loadEntriesForDateRange(db: D1Database, monthStart: string, nextM
       INNER JOIN transactions ON transactions.id = split_expenses.linked_transaction_id
       WHERE split_expenses.household_id = ?
         AND split_expenses.linked_transaction_id IS NOT NULL
+        AND split_expenses.deleted_at IS NULL
         AND transactions.transaction_date >= ?
         AND transactions.transaction_date < ?
       ORDER BY split_expense_shares.created_at
