@@ -643,6 +643,26 @@ Relationships:
 A group settlement closes only the selected group's current batch. It does not
 create a simplified settlement checkpoint or change another group's balance.
 
+Rules:
+- a closed batch is settled group activity: its expenses and settle-ups, the
+  closing settle-up included, left the group balance because the settle-up
+  paid them off. The settlement lock (under Settlement Checkpoint) applies to
+  them while the batch stays closed, the same way as to a record in an active
+  simplified settlement: amount, currency, shares, payer, date and group are
+  kept, and the record cannot be deleted. A refusal names the batch
+  (`split_settlement_locked` with `batchId`, HTTP 409)
+- `Undo settle-up` (reopen the batch) is the one way to release them, offered
+  next to the refusal and in the archived batch view. It keeps the settle-up
+  (a real payment, maybe bank linked) as open activity and records a history
+  event on it; the batch's records count in the group balance again. A group
+  keeps one open batch, so when a newer batch is already open the reopened
+  records join it and the next settle-up closes them together. Deleting the
+  settle-up, or correcting it, is then an ordinary edit: editing a settle-up
+  that stays in its group never closes its batch again; only moving it to
+  another group settles that group's current batch
+- a shared entry save that the lock allows keeps its linked split in its
+  batch; it never moves a settled split back into the open balance
+
 ### Split Expense
 
 A shared-expense record in the split workspace. It represents who paid, what
@@ -682,8 +702,16 @@ Rounding rule:
   proportion of the new total. An even split whose odd cent was assigned to one
   person (a stored 4999/5001 ratio) stays an even 5000/5000 split. An edit that
   keeps the amount leaves the shares, including an assigned odd cent, alone.
-  When the split is in an active settlement checkpoint the amount edit is
-  refused instead (see the settlement lock under Settlement Checkpoint)
+  When the split is settled (an active settlement checkpoint or a closed
+  group batch) the amount edit is refused instead (see the settlement lock
+  under Settlement Checkpoint)
+- a shared entry save sends the split's stored first-share ratio back as its
+  basis. That ratio is rounded (a 10.01 split 5.00/5.01 is stored as 4995,
+  which floors back to 4.99), so a shared save that keeps the amount,
+  currency and stored basis keeps the stored shares to the cent; only a
+  different basis (or amount) rebuilds them. The settlement lock compares the
+  same plan, so an unchanged shared save of a settled split is allowed and a
+  real share change is still refused
 
 Relationships:
 - belongs to one `split expense`
@@ -733,7 +761,10 @@ Rules:
   whole, with `split_settlement_locked` (HTTP 409) naming the checkpoint:
   Splits edit and delete, and a ledger entry save whose linked split would
   follow (the amount follow-up, or a shared save that rewrites the split).
-  Description, category, note, payment method and bank links stay editable
+  Description, category, note, payment method and bank links stay editable.
+  The same lock holds the records of a closed group batch (see Split Batch),
+  released by `Undo settle-up`; a record in both is named by its checkpoint,
+  the later step
 - the only way to release locked rows is an explicit `Undo simplification`
   (reopen), offered next to the refusal. An edit never reopens a checkpoint by
   itself and a checkpoint is never left out of step with its rows: reopening
@@ -741,8 +772,8 @@ Rules:
   settlement, which is too consequential to happen as a side effect of
   editing one row (the same reason paid confirmation and bank matching are
   explicit steps, and undoing paid refuses while a bank match exists)
-- import rollback does not change a locked row's facts: removing a linked
-  entry only clears the split's ledger link
+- import rollback does not change a locked row's facts (checkpoint or closed
+  batch): removing a linked entry only clears the split's ledger link
 
 ### Split Activity History
 
@@ -763,7 +794,12 @@ Rules:
   while another active split record (or a settlement checkpoint match) holds
   that row
 - checkpoint snapshots remain unchanged when a record is deleted or restored;
-  a record in an active checkpoint cannot be deleted (settlement lock above)
+  a record in an active checkpoint or a closed group batch cannot be deleted
+  (settlement lock above)
+- `Undo settle-up` records an `updated` event on each settle-up of the
+  reopened batch
+- a record archived before its batch was settled was not paid by that
+  settle-up: restoring it brings it back into the group's open batch
 
 ### Monthly Note
 
