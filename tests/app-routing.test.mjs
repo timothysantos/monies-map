@@ -4,7 +4,8 @@ import test from "node:test";
 import {
   buildPageViewFromRouteData,
   getAppShellAvailableViewIds,
-  resolveRouteViewId
+  resolveRouteViewId,
+  sanitizeTabParams
 } from "../src/client/app-routing.js";
 
 test("getAppShellAvailableViewIds reads the explicit shell route list", () => {
@@ -52,4 +53,17 @@ test("buildEntriesPageParams keeps the Entries request to view and month", async
   const { buildEntriesPageParams } = await import("../src/client/app-routing.js");
   assert.equal(buildEntriesPageParams({ viewId: "person-tim", month: "2026-05" }).toString(), "view=person-tim&month=2026-05");
   assert.equal(buildEntriesPageParams({ viewId: "household", month: "2026-04" }).toString(), "view=household&month=2026-04");
+});
+
+test("sanitizeTabParams keeps the FAQ guide tab only on the FAQ route", () => {
+  const faqParams = new URLSearchParams("view=household&month=2026-05&faq=developers");
+  sanitizeTabParams(faqParams, "faq");
+  assert.equal(faqParams.toString(), "view=household&month=2026-05&faq=developers");
+
+  for (const tabId of ["summary", "month", "entries", "splits", "imports", "settings"]) {
+    const params = new URLSearchParams("view=household&month=2026-05&faq=developers");
+    sanitizeTabParams(params, tabId);
+    assert.equal(params.get("faq"), null, `${tabId} drops the FAQ tab`);
+    assert.equal(params.get("month"), "2026-05");
+  }
 });
