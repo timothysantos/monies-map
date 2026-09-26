@@ -2221,12 +2221,12 @@ export function App() {
       return;
     }
 
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      next.set("month", availableMonths[availableMonths.length - 1]);
-      return next;
-    }, { replace: true });
-  }, [availableMonths, appShell, currentPageView, selectedMonth, selectedRouteIsDetailMonthTab, setSearchParams]);
+    // Keep a #section anchor (an FAQ guide deep link) while the month is
+    // corrected; setSearchParams would drop it.
+    const next = new URLSearchParams(location.search);
+    next.set("month", availableMonths[availableMonths.length - 1]);
+    navigate({ pathname: location.pathname, search: `?${next.toString()}`, hash: location.hash }, { replace: true });
+  }, [availableMonths, appShell, currentPageView, location.hash, location.pathname, location.search, navigate, selectedMonth, selectedRouteIsDetailMonthTab, setSearchParams]);
 
   // Initialize the summary range picker year buckets from the active summary
   // window.
