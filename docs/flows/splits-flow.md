@@ -81,6 +81,12 @@ Watch area:
 - deleting a split archives it from active projections but keeps its ID,
   shares, links, and currency available for restore
 - restoring an archived split does not alter an existing checkpoint snapshot
+- a refused restore (for example, already restored in another tab) shows its
+  error inside the Activity history dialog and refreshes the page data
+- browser coverage for creating an expense through `+ Add expense`, a JPY
+  cash-only travel group and restoring from Activity history lives in
+  `splits-add-expense-dialog.spec.js`, `splits-travel-group.spec.js` and
+  `splits-history-restore.spec.js`
 
 ## Known Exceptions / Watch Areas
 
@@ -92,3 +98,7 @@ Watch area:
   create a checkpoint; simplification remains optional
 - active simplified checkpoints are scoped by currency, so an SGD checkpoint
   does not block an independent JPY checkpoint
+- known gap: in a foreign-currency group only the activity cards (and history
+  rows) use the group currency; the group pill balance, the summary strip
+  totals and the expense dialog's share preview and odd-cent labels still
+  format amounts as SGD (a ¥12,000 expense shows "Spend $12,000.00")

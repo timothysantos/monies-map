@@ -2,7 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { RotateCcw } from "lucide-react";
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
-import { EmptyState } from "./ui-states";
+import { EmptyState, InlineError } from "./ui-states";
 
 const { format: formatService } = moniesClient;
 
@@ -10,7 +10,7 @@ function formatHistoryMoney(item) {
   return formatService.moneyWithCurrency(Math.abs(item.amountMinor), item.currency ?? "SGD");
 }
 
-export function SplitHistoryDialog({ open, history = [], isSubmitting = false, onClose, onRestore }) {
+export function SplitHistoryDialog({ open, history = [], error = "", isSubmitting = false, onClose, onRestore }) {
   return (
     <Dialog.Root open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
       <Dialog.Portal>
@@ -31,6 +31,7 @@ export function SplitHistoryDialog({ open, history = [], isSubmitting = false, o
               </article>
             )) : <EmptyState>{messages.splits.historyEmpty}</EmptyState>}
           </div>
+          <InlineError message={error} />
           <div className="dialog-actions"><button type="button" className="subtle-cancel" onClick={onClose}>Close</button></div>
         </Dialog.Content>
       </Dialog.Portal>
