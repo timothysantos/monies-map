@@ -1,6 +1,7 @@
 import { getCurrentMonthKey } from "../../lib/month";
 import { buildEntriesContextView } from "../app-shell";
-import { adjustEntriesForView, buildPersonScopes } from "../month-projection";
+import { adjustEntriesForView } from "../month-projection";
+import { buildPersonScopes } from "../person-view-scope";
 import {
   loadEntries,
   loadSplitGroups
