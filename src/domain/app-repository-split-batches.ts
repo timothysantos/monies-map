@@ -52,7 +52,7 @@ async function createSplitBatch(
   return id;
 }
 
-async function findActiveSplitBatchId(db: D1Database, groupId?: string | null) {
+export async function findActiveSplitBatchId(db: D1Database, groupId?: string | null) {
   const active = await db
     .prepare(`
       SELECT id
@@ -121,6 +121,18 @@ export async function buildCloseSplitBatchStatement(
       WHERE id = ? AND household_id = ?
     `)
     .bind(input.closedOn, splitBatchName(groupName, true), input.batchId, DEFAULT_HOUSEHOLD_ID);
+}
+
+// The statement that reopens a closed batch as its group's current batch
+// (Undo settle-up). Reads the group name only.
+export async function buildReopenSplitBatchStatement(
+  db: D1Database,
+  input: { batchId: string; groupId: string | null }
+) {
+  const groupName = await getSplitGroupName(db, input.groupId);
+  return db
+    .prepare("UPDATE split_batches SET closed_on = NULL, batch_name = ? WHERE id = ? AND household_id = ?")
+    .bind(splitBatchName(groupName, false), input.batchId, DEFAULT_HOUSEHOLD_ID);
 }
 
 export async function closeSplitBatch(

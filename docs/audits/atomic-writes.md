@@ -545,6 +545,28 @@ on `INSERT INTO split_expense_shares`, `INSERT INTO split_activity_history`
 and `UPDATE split_batches` and asserts an unchanged dump; all three failed on
 the sequential code.
 
+## Group settle-up lock and Undo settle-up (2026-09-26)
+
+Branch `split-locks`. The settlement lock now also holds the records of a
+closed group batch (rule in `DOMAIN.md`, Split Batch; details in
+`docs/audits/split-settlement-checkpoint-audit.md`). It is the same check,
+run before the first write, so a refused command writes nothing.
+
+New command `reopenSplitBatchRecord` (`app-repository-splits.ts`, Undo
+settle-up) reads first, then commits in one `db.batch()`: either the batch
+reopen (`buildReopenSplitBatchStatement`) or, when the group already has an
+open batch, the moves of the closed batch's expenses and settle-ups into it,
+plus a history event per settle-up. No month refresh: batches do not feed
+month totals. Proof: `tests/atomic-writes-split-group-settlement-lock.test.mjs`
+fails `INSERT INTO split_activity_history` and `UPDATE split_settlements SET
+split_batch_id` and asserts an unchanged dump.
+
+`upsertLinkedSplitExpenseForEntryRecord` now keeps the split's batch when
+its group is unchanged and plans its shares before its first write
+(`planSharedSaveShares`). Since the merge with `split-write-consistency` it
+is `buildLinkedSplitUpsertStatements`, in the entry's batch (next section),
+with both rules kept.
+
 ## Split write consistency (2026-09-26)
 
 Branch `split-write-consistency`, based on `macro-performance` at `f682ad6`,
