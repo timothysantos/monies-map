@@ -2627,7 +2627,11 @@ reads, so hiding the page from screen readers costs nothing.
 
   The three packages were already installed through
   `@radix-ui/react-dialog` at the same versions (1.1.7, 1.2.6, 2.7.2); they
-  are now direct dependencies. Commit `7063924`.
+  are now direct dependencies. Commits `7063924` and `10e4375`. The second
+  commit gives the sheet `position: relative; z-index: 81` outside the phone
+  layout. Without it, the full-viewport backdrop covered the unpositioned
+  portrait-tablet sheet, which the full suite caught
+  (`viewport-breakpoints.spec.js`).
 
 After the change the same trace shows one style recalculation per
 interaction, of 112 elements on open (~30 ms) and 37 on close (~36 ms),
@@ -2661,8 +2665,10 @@ Cohort 2, fresh (5 + 5 runs, after a small `useMemo` change in the sheet):
 | One draft keystroke | 162 → 152 | 210 → 189 | 148–176 → 144–166 | within noise |
 | Close the editor | 435 → 334 | 470 → 392 | 388–453 → 319–365 | faster |
 
-Open is about 130–155 ms faster in both cohorts, so it is now about where
-the non-modal sheet was. Close is about 80–100 ms faster by median; one
+Both cohorts ran before `10e4375`. That commit changes only layouts wider
+than 760 px, where the phone rule does not replace `position`. Open is
+about 130–155 ms faster in both cohorts, so it is now about where the
+non-modal sheet was. Close is about 80–100 ms faster by median; one
 cohort's run medians overlap by 3 ms, the other's do not.
 
 ### Behaviour kept and checked
@@ -2720,3 +2726,29 @@ cohort's run medians overlap by 3 ms, the other's do not.
 
 `npm run check:bundle` (first screen): 173,299 B JS / 33,019 B CSS against
 the baseline build's 173,275 / 33,019; budget unchanged.
+
+### Gates
+
+Run on the branch after merging `macro-performance` at `12dfe1f`
+(merge `f15f667`), Node 22.23.3. Ports 5173/8787 belonged to other
+sessions, so smoke and the full suite ran through a temporary config on
+vite 5416 / wrangler 8816 / inspector 9416 with
+`--persist-to .wrangler/state-sheet`.
+
+| Check | Result |
+| --- | --- |
+| `npm run audit` | 0 vulnerabilities |
+| `npm run typecheck`, `npm run typecheck:client` | pass |
+| `npm run lint` | 0 errors (30 existing warnings) |
+| `npm run test:unit` | 600/600 |
+| `npm run build`, `npm run check:bundle` | pass: 173,336 B JS / 33,082 B CSS gzip against 180,337 / 31,961 (CSS +3.5%, under +5%); budget unchanged |
+| Smoke bundle (isolated) | 133 passed |
+| Full `npm run test:e2e` (isolated) | 306/306 |
+| Performance harness, scale-10k (port 5191) | the two cohorts above |
+
+Before the merge, the first full run had 3 failures out of 295. One was
+`viewport-breakpoints.spec.js`, a real regression, fixed in `10e4375`.
+The other two passed when rerun alone: `import-inbox-navigation.spec.js`
+timed out waiting for a response under machine load, and
+`import-ledger-flow.spec.js` hit an ENOENT writing its fixture PDF while
+the disk was nearly full.
