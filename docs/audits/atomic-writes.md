@@ -715,7 +715,32 @@ so two new splits created in the same millisecond collide on the primary key
 A rollback of a statement whose superseded row is re-created re-links its
 split without checking the split's amount.
 
-Gates: see the end of this section.
+Gates (after merging `macro-performance` at `f3ecd74`, which brought in
+`split-locks`; Node v22.23.3), the steps of `npm run verify` one by one:
+`npm audit` 0 vulnerabilities; both typechecks clean; lint 0 errors (the same
+30 warnings); unit 734/734; build; `check:bundle` 173,418 B JS gzip (budget
+180,337) and 33,435 B CSS (budget 31,961, inside the 5% allowance; the branch
+changes no CSS); smoke `E2E_PORT_OFFSET=60 npm run test:e2e:smoke` 88/88.
+The persisted-state comparison was repeated against `f3ecd74` with the same
+result (old scenario identical, new scenario the same 26 intended paths).
+Merging kept both branches' rules in the Shared save builder (a split that
+stays in its group keeps its batch; `planSharedSaveShares` keeps stored
+shares on an unchanged save) and in the restore (a record restored from a
+settled batch moves to the open batch) and the rollback lock names a closed
+group batch too ("Undo the settle-up").
+
+Full browser suite, `E2E_PORT_OFFSET=60 npm run test:e2e:sharded` (3
+shards), on a machine shared with other suites (load average 25-450): two
+runs, 268/270 and 269/270. The failures were timing assertions in code this
+branch does not touch: `financial-insight` "an editor open blocks the
+request" (649 ms against its 650 ms floor), and `route-warmup-data` desktop
+"at most two requests per visit" and mobile "on 4g ... warms once". Rerun
+alone, both spec files passed 22/22, and `route-warmup-data` passed 22/22
+again with `--repeat-each 2`. A pre-merge full run had 264/266 with
+`financial-insight` and `app-dates` (the page came up on another seed; the
+spec passed alone); the pre-merge smoke once failed
+`import-ledger-flow` "post-import cleanup ... Later", which then passed 3/3
+repeated and in the next two smoke runs.
 
 ## Open items
 
