@@ -9218,7 +9218,36 @@ th {
   
 }
 
-@media (min-width: 761px) and (max-width: 1279px) {
+/* One header row from 1,100 px: tighter spacing below 1,200 px. */
+@media (min-width: 1100px) and (max-width: 1199px) {
+  .control-bar {
+    gap: 10px;
+  }
+
+  .context-block .pill {
+    padding-inline: 12px;
+  }
+
+  .tab-strip {
+    gap: 2px;
+  }
+
+  .period-inline {
+    gap: 4px;
+  }
+
+  .tab {
+    padding-inline: 7px;
+  }
+
+  .period-display {
+    gap: 8px;
+    min-width: 236px;
+    padding-inline: 10px;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1099px) {
   .period-inline {
     flex-wrap: wrap;
   }
