@@ -1290,7 +1290,11 @@ export async function restoreSplitRecord(db: D1Database, input: { recordKind: "e
   const group = existing.split_group_id ? await db.prepare("SELECT group_name FROM split_groups WHERE id = ?").bind(existing.split_group_id).first<{ group_name: string }>() : null;
   // A restored expense counts as its entry's split again.
   const months = input.recordKind === "expense" ? await linkedEntryMonths(db, input.recordId) : [];
-  await db.batch([
+  const linkedTransactionId = existing.linked_transaction_id;
+  const holder = linkedTransactionId
+    ? () => findActiveLedgerRowHolder(db, linkedTransactionId, input.recordId)
+    : async () => null;
+  await runLinkingBatch(db, RESTORE_LEDGER_ROW_TAKEN, holder, [
     db.prepare(`UPDATE ${table} SET deleted_at = NULL WHERE id = ? AND household_id = ? AND deleted_at IS NOT NULL`).bind(input.recordId, DEFAULT_HOUSEHOLD_ID),
     buildSplitHistoryStatement(db, { recordKind: input.recordKind, recordId: existing.id, action: "restored", groupId: existing.split_group_id, groupName: group?.group_name, description: existing.description, amountMinor: existing.amount_minor, currency: existing.currency }),
     ...buildMonthlySnapshotRefreshMarkers(db, months)
@@ -1303,6 +1307,26 @@ export async function restoreSplitRecord(db: D1Database, input: { recordKind: "e
 // ledger row, which another split record may since have taken. Restoring
 // would give the row two active split records, so it is refused.
 async function assertLedgerRowFreeForRestore(db: D1Database, input: { recordId: string; transactionId: string }) {
+  if (await findActiveLedgerRowHolder(db, input.transactionId, input.recordId)) {
+    throw new Error(RESTORE_LEDGER_ROW_TAKEN);
+  }
+}
+
+const ENTRY_ALREADY_LINKED = "This entry is already linked to a split expense.";
+const LEDGER_ROW_ALREADY_LINKED = "This ledger row is already linked to another split record.";
+const RESTORE_LEDGER_ROW_TAKEN = "Its entry is now linked to another split. Delete that split first to restore this one.";
+
+async function findActiveLinkedSplitExpenseId(db: D1Database, transactionId: string) {
+  const split = await db
+    .prepare("SELECT id FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ? AND deleted_at IS NULL")
+    .bind(DEFAULT_HOUSEHOLD_ID, transactionId)
+    .first<{ id: string }>();
+  return split?.id ?? null;
+}
+
+// The active split record (or settlement checkpoint match) that holds a
+// ledger row, other than `exceptRecordId`.
+async function findActiveLedgerRowHolder(db: D1Database, transactionId: string, exceptRecordId = "") {
   const holder = await db
     .prepare(`
       SELECT id FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ? AND deleted_at IS NULL AND id <> ?
@@ -1310,10 +1334,36 @@ async function assertLedgerRowFreeForRestore(db: D1Database, input: { recordId: 
       UNION ALL SELECT checkpoint_id AS id FROM split_settlement_checkpoint_matches WHERE transaction_id = ?
       LIMIT 1
     `)
-    .bind(DEFAULT_HOUSEHOLD_ID, input.transactionId, input.recordId, DEFAULT_HOUSEHOLD_ID, input.transactionId, input.recordId, input.transactionId)
+    .bind(DEFAULT_HOUSEHOLD_ID, transactionId, exceptRecordId, DEFAULT_HOUSEHOLD_ID, transactionId, exceptRecordId, transactionId)
     .first<{ id: string }>();
-  if (holder) {
-    throw new Error("Its entry is now linked to another split. Delete that split first to restore this one.");
+  return holder?.id ?? null;
+}
+
+// Whether a failed write lost the race for a ledger row to another split
+// record: the one-active-split index (schema.sql) rejected its batch.
+export function isActiveSplitLinkConflict(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /UNIQUE constraint failed: split_(expenses|settlements)\.linked_transaction_id/.test(message);
+}
+
+// Runs a batch that links a split record to a ledger row. The checks before
+// it cannot see a write that commits in between, so when the batch fails
+// and another split record now holds the row (the index turned the second
+// write away as a whole), the person gets the same "already linked" message
+// as the check gives.
+async function runLinkingBatch(
+  db: D1Database,
+  alreadyLinkedMessage: string,
+  findHolder: () => Promise<string | null>,
+  statements: D1PreparedStatement[]
+) {
+  try {
+    return await db.batch(statements);
+  } catch (error) {
+    if (isActiveSplitLinkConflict(error) || await findHolder()) {
+      throw new Error(alreadyLinkedMessage);
+    }
+    throw error;
   }
 }
 
@@ -1337,7 +1387,7 @@ export async function linkSplitExpenseMatch(
   ]);
   if (!expense) throw new Error("This split expense is unavailable or already linked.");
   if (!transaction || transaction.entry_type !== "expense") throw new Error("Split expense matches require an imported expense.");
-  if (alreadyUsed) throw new Error("This ledger row is already linked to another split record.");
+  if (alreadyUsed) throw new Error(LEDGER_ROW_ALREADY_LINKED);
   const splitCurrency = normalizeSplitCurrency(expense.currency);
   const transactionCurrency = normalizeSplitCurrency(transaction.currency);
   if (splitCurrency !== transactionCurrency && (!["card", "bank"].includes(expense.payment_method) || expense.payment_status !== "awaiting_statement")) {
@@ -1349,7 +1399,7 @@ export async function linkSplitExpenseMatch(
     : calculateFxRateBasisPoints(Math.abs(expense.total_amount_minor), homeAmountMinor);
   // The entry now counts by its split shares, so its month totals change.
   const months = [transaction.transaction_date.slice(0, 7)];
-  await db.batch([
+  await runLinkingBatch(db, LEDGER_ROW_ALREADY_LINKED, () => findActiveLedgerRowHolder(db, input.transactionId), [
     db
       .prepare("UPDATE split_expenses SET linked_transaction_id = ?, home_amount_minor = ?, fx_rate_basis_points = ?, payment_status = 'certified' WHERE id = ? AND household_id = ? AND linked_transaction_id IS NULL")
       .bind(input.transactionId, homeAmountMinor, fxRateBasisPoints, input.splitExpenseId, DEFAULT_HOUSEHOLD_ID),
@@ -1396,7 +1446,7 @@ export async function linkSplitSettlementMatch(
   ]);
   if (!settlement) throw new Error("This settle-up is unavailable or already linked.");
   if (!transaction || transaction.entry_type !== "transfer") throw new Error("Settle-up matches require an imported transfer.");
-  if (alreadyUsed) throw new Error("This ledger row is already linked to another split record.");
+  if (alreadyUsed) throw new Error(LEDGER_ROW_ALREADY_LINKED);
   const splitCurrency = normalizeSplitCurrency(settlement.currency);
   const transactionCurrency = normalizeSplitCurrency(transaction.currency);
   if (splitCurrency !== transactionCurrency && (settlement.payment_method !== "bank" || settlement.payment_status !== "awaiting_statement")) {
@@ -1405,10 +1455,11 @@ export async function linkSplitSettlementMatch(
   const fxRateBasisPoints = splitCurrency === transactionCurrency
     ? 10000
     : calculateFxRateBasisPoints(Math.abs(settlement.amount_minor), Math.abs(transaction.amount_minor));
-  await db
-    .prepare("UPDATE split_settlements SET linked_transaction_id = ?, fx_rate_basis_points = ?, payment_status = 'certified' WHERE id = ? AND household_id = ? AND linked_transaction_id IS NULL")
-    .bind(input.transactionId, fxRateBasisPoints, input.settlementId, DEFAULT_HOUSEHOLD_ID)
-    .run();
+  await runLinkingBatch(db, LEDGER_ROW_ALREADY_LINKED, () => findActiveLedgerRowHolder(db, input.transactionId), [
+    db
+      .prepare("UPDATE split_settlements SET linked_transaction_id = ?, fx_rate_basis_points = ?, payment_status = 'certified' WHERE id = ? AND household_id = ? AND linked_transaction_id IS NULL")
+      .bind(input.transactionId, fxRateBasisPoints, input.settlementId, DEFAULT_HOUSEHOLD_ID)
+  ]);
 
   return { ok: true };
 }
@@ -1461,13 +1512,8 @@ export async function createSplitExpenseFromEntryRecord(
 
   // An archived split keeps its link for a restore but no longer holds the
   // entry, so the entry can be added to a new split.
-  const existingSplit = await db
-    .prepare("SELECT id FROM split_expenses WHERE household_id = ? AND linked_transaction_id = ? AND deleted_at IS NULL")
-    .bind(DEFAULT_HOUSEHOLD_ID, input.entryId)
-    .first<{ id: string }>();
-
-  if (existingSplit) {
-    throw new Error("This entry is already linked to a split expense.");
+  if (await findActiveLinkedSplitExpenseId(db, input.entryId)) {
+    throw new Error(ENTRY_ALREADY_LINKED);
   }
 
   const payerPersonId = entry.owner_person_id ?? entry.account_owner_person_id;
@@ -1490,7 +1536,7 @@ export async function createSplitExpenseFromEntryRecord(
   // The entry now counts by its split shares, so its month totals change.
   const months = [entry.transaction_date.slice(0, 7)];
 
-  await db.batch([
+  await runLinkingBatch(db, ENTRY_ALREADY_LINKED, () => findActiveLinkedSplitExpenseId(db, input.entryId), [
     ...batch.statements,
     db
       .prepare(`
