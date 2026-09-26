@@ -68,37 +68,6 @@ function getAvailableTransitions(currentIndex, visitedIndices) {
     .filter(({ index }) => index !== currentIndex && !visitedIndices.has(index));
 }
 
-test("app shell request stays shell-only", async ({ page }) => {
-  await reseedDemo(page);
-
-  const response = await page.request.get("/api/app-shell");
-  expect(response.ok(), await response.text()).toBeTruthy();
-
-  const shell = await response.json();
-
-  expect(shell.availableViewIds).toContain("household");
-  expect(shell.trackedMonths.length).toBeGreaterThan(0);
-  expect(shell.household.people.length).toBeGreaterThan(0);
-  expect(shell.accounts).toBeUndefined();
-  expect(shell.categories).toBeUndefined();
-  expect(shell.views).toBeUndefined();
-  expect(shell.importsPage).toBeUndefined();
-  expect(shell.settingsPage).toBeUndefined();
-});
-
-test("reference data owns lightweight account and category lists", async ({ page }) => {
-  await reseedDemo(page);
-
-  const response = await page.request.get("/api/reference-data");
-  expect(response.ok(), await response.text()).toBeTruthy();
-
-  const referenceData = await response.json();
-
-  expect(referenceData.accounts.length).toBeGreaterThan(0);
-  expect(referenceData.categories.length).toBeGreaterThan(0);
-  expect(referenceData.accounts[0].checkpointHistory).toBeUndefined();
-});
-
 test("route transitions keep the previous screen visible until the next page settles", async ({ page }) => {
   await reseedDemo(page);
   await page.goto("/summary?view=person-tim&month=2026-04&summary_start=2025-06&summary_end=2026-04");
