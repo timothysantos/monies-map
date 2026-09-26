@@ -303,8 +303,8 @@ to change month.
   plus Transfers). In a person view, a shared row counts at the full amount
   first, with that person's share in brackets.
 - **+ Add entry** and the **Money check-in**.
-- **Filters**: refresh, Search, By wallet, By category, By type (and By
-  people in the Household view), and **Reset filters**.
+- **Filters**: refresh, Search, By wallet, By category, By type and **Reset
+  filters**. Whose entries you see follows the view at the top left.
 - **Days**: entries grouped by date, newest first, with each day's net.
 
 Each row shows the category, description, note, wallet and owner, the amount,
@@ -443,9 +443,9 @@ it.
 - **Balance trust rules**: what makes a balance trustworthy, and a list of
   known gaps (reconciliation exceptions).
 - **Unresolved transfers**: transfers that are not paired yet.
-- **Recent balance activity**: changes that affected balances.
 - **Error diagnostics**: saved details of failed requests, for
   troubleshooting.
+- **Recent balance activity**: changes that affected balances.
 - **Demo state**: only on the demo site ([Try it safely](#try-it-safely-with-the-demo-data)).
 
 ![Accounts section with balances, statement status and Reconcile](/faq/guide/desktop/thumbs/settings-accounts.webp)
