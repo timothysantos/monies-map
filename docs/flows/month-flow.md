@@ -63,6 +63,14 @@ Totals and the table never show a change the server did not accept. Reset
 month and delete month open their confirmation dialogs from the Actions menu
 (before this fix the dialogs closed with the menu and could not be used).
 
+After a plan row save (the mobile edit sheet, desktop inline editing, or a row
+note) the row shows the saved values while the month reloads in the
+background. Reopening the row before that reload lands opens its editor on
+the amount and note just saved, not the values from before the save
+(`buildSavedMonthPlanFields` in `month-state.js` writes both the shown and the
+source fields). `month-save-checks.spec.js` holds the reload to check this on
+both layouts.
+
 If the Month page fails to load after navigation, it shows the page error
 panel with "Try loading again" instead of the previous page. An empty
 match picker says "No matching expense entries fit the current filters."
