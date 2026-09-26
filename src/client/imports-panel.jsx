@@ -1159,7 +1159,8 @@ export function ImportsPanel({ importsPage, viewId, viewLabel, accounts, categor
         invalidateEntries: true,
         invalidateImports: true,
         invalidateMonth: true,
-        invalidateSummary: true
+        invalidateSummary: true,
+        invalidateSplits: true
       });
     } finally {
       setIsSubmitting(false);
