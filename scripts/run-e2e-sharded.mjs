@@ -6,7 +6,7 @@
 // report; the run fails when any test fails or the merged test count differs
 // from `playwright test --list`.
 //
-//   npm run test:e2e:sharded                    full suite on the default shard count
+//   npm run test:e2e:sharded                    full suite on 3 shards (fewer on small machines)
 //   npm run test:e2e:sharded -- --shards 3      pick the shard count
 //   npm run test:e2e:sharded -- --smoke         the smoke bundle
 //   npm run test:e2e:sharded -- --shard 2       only shard 2 of N (CI matrix job)
@@ -21,7 +21,7 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 
-import { DEFAULT_SHARD_COUNT, planShards, unitsFromPlaywrightList, weightsFromJsonReport } from "./e2e-shard-plan.mjs";
+import { DEFAULT_SHARD_COUNT, DEFAULT_SMOKE_SHARD_COUNT, planShards, unitsFromPlaywrightList, weightsFromJsonReport } from "./e2e-shard-plan.mjs";
 import { smokeBatches } from "./e2e-smoke-workflows.mjs";
 import { prepareStack, shardStack, startStack } from "./e2e-stack.mjs";
 
@@ -66,10 +66,11 @@ function parseArgs(argv) {
     else if (!arg.startsWith("-")) options.files.push(arg);
     else throw new Error(`Unknown option ${arg}. Put Playwright options after "--".`);
   }
-  // The smoke bundle runs inside `npm run verify`, including on small CI
-  // runners: never start more stacks than half the CPUs can carry.
+  // Each stack runs Chromium, workerd and Vite. Without --shards, never start
+  // more stacks than half the CPUs can carry; the smoke bundle also runs
+  // inside `npm run verify` on small CI runners (two vCPUs -> one stack).
   const cpuCap = Math.max(1, Math.floor(os.availableParallelism() / 2));
-  options.shards ??= options.smoke ? Math.min(DEFAULT_SHARD_COUNT, cpuCap) : DEFAULT_SHARD_COUNT;
+  options.shards ??= Math.min(options.smoke ? DEFAULT_SMOKE_SHARD_COUNT : DEFAULT_SHARD_COUNT, cpuCap);
   if (!Number.isInteger(options.shards) || options.shards < 1) throw new Error("--shards must be a positive integer.");
   if (options.only !== null && !(Number.isInteger(options.only) && options.only >= 1 && options.only <= options.shards)) {
     throw new Error(`--shard must be between 1 and ${options.shards}.`);
