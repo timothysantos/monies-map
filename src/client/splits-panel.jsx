@@ -124,7 +124,6 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     activeGroup,
     archivedBatches,
     categoryOptions,
-    currentGroupActivity,
     donutChart,
     donutRows,
     groupedCurrentActivity,
@@ -132,6 +131,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     groups,
     groupOptions,
     groupSummaryLabel,
+    insightRecords,
     pendingMatchCount,
     selectedArchivedBatch,
     searchSuggestions,
@@ -140,18 +140,11 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   } = splitModel;
   const financialInsightFacts = useMemo(() => buildFinancialInsightFacts({
     contextLabel: `${activeGroup?.name ?? "Split"} group${splitSearchQuery ? " search" : ""}`,
-    // The records are the whole group's activity (the same totals the page
-    // shows), not the viewer's own spending, so the wording stays group-level
-    // in every view.
-    audienceKind: "household",
-    audienceName: "",
-    records: currentGroupActivity.map((item) => ({
-      amountMinor: item.totalAmountMinor,
-      entryType: item.kind === "expense" ? "expense" : "transfer",
-      categoryName: item.categoryName ?? "Split expense",
-      description: item.description,
-      date: item.date
-    })),
+    // A person view counts that person's share of each group expense, so
+    // the wording addresses them; the household view counts group totals.
+    audienceKind: isHouseholdView ? "household" : "person",
+    audienceName: isHouseholdView ? "" : view.label,
+    records: insightRecords,
     // The records are one group's, so their amounts are in its currency.
     formatMoney: (amountMinor) => formatService.moneyWithCurrency(amountMinor, activeGroup?.currency ?? "SGD"),
     perspective: "split_obligation",
@@ -162,7 +155,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         : groupBalanceMinor
           ? "Treat the group balance as a settlement obligation between people, not new spending; record or match the settlement when it happens."
           : "The group is settled. Keep bank-linked expenses and settlements matched so the audit trail stays complete."
-  }), [activeGroup?.currency, activeGroup?.name, currentGroupActivity, groupBalanceMinor, pendingMatchCount, splitSearchQuery]);
+  }), [activeGroup?.currency, activeGroup?.name, groupBalanceMinor, insightRecords, isHouseholdView, pendingMatchCount, splitSearchQuery, view.label]);
   const financialInsightActions = useMemo(() => pendingMatchCount ? [{
     label: `Review ${pendingMatchCount} bank ${pendingMatchCount === 1 ? "match" : "matches"}`,
     onClick: () => openMatchesView()
