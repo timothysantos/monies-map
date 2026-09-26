@@ -3,6 +3,7 @@
 // filtered for a person view. Pure functions over loaded rows.
 
 import { buildDonutChart } from "./donut-chart-projection";
+import { isEntryInPersonScope } from "./person-entry-amount";
 import type {
   CategoryDto,
   EntryDto,
@@ -23,7 +24,7 @@ export function buildMonthPage(
   selectedMonth: string,
   currentSummaryMonth: SummaryMonthDto | null
 ): MonthPageDto {
-  const effectiveScope = selectedPersonId === "household" ? "direct_plus_shared" : selectedScope;
+  const effectiveScope = effectiveScopeForView(selectedPersonId, selectedScope);
   const visibleEntries = filterEntriesForView(monthEntries, selectedPersonId, effectiveScope);
   const visiblePlanRows = derivePlanRowActuals(
     buildPlanRowsForView(monthPlanRows, selectedPersonId),
@@ -245,20 +246,22 @@ export function buildPlanRowsForView(rows: MonthPlanRowDto[], personId: string):
     .map((row) => normalizePlanRowForView(row));
 }
 
-function filterEntriesForView(entries: EntryDto[], personId: string, scope: PersonScope): EntryDto[] {
+// The scope a view uses: the household has one Combined view that counts
+// every entry, whatever scope the route carries over from a person view.
+export function effectiveScopeForView(personId: string, scope: PersonScope): PersonScope {
+  return personId === "household" ? "direct_plus_shared" : scope;
+}
+
+// The entries a view counts in its actuals and charts. The household counts
+// every entry; a person view keeps the entries that are theirs in the scope
+// (person-entry-amount.ts). Pass entries adjusted for the view
+// (adjustEntriesForView) so a split-linked entry carries the person's share.
+export function filterEntriesForView(entries: EntryDto[], personId: string, scope: PersonScope): EntryDto[] {
   if (personId === "household") {
-    if (scope === "shared") {
-      return entries.filter((entry) => isEntryLinkedToSplitExpense(entry));
-    }
-
-    if (scope === "direct") {
-      return entries.filter((entry) => !isEntryLinkedToSplitExpense(entry));
-    }
-
     return entries;
   }
 
-  return entries.filter((entry) => rowMatchesView(entry, personId, scope));
+  return entries.filter((entry) => isEntryInPersonScope(entry, personId, scope));
 }
 
 export function adjustEntriesForView(entries: EntryDto[], personId: string): EntryDto[] {
@@ -293,35 +296,6 @@ function adjustEntryForView(entry: EntryDto, personId: string): EntryDto {
     totalAmountMinor: entry.amountMinor,
     viewerSplitRatioBasisPoints: matchingSplit.ratioBasisPoints
   };
-}
-
-function rowMatchesView(
-  entry: EntryDto,
-  personId: string,
-  scope: PersonScope
-) {
-  const isLinkedToSplits = isEntryLinkedToSplitExpense(entry);
-  const directShares = entry.splits ?? [];
-  const linkedShares = entry.linkedSplitShares ?? [];
-
-  if (personId === "household") {
-    return scope === "shared"
-      ? isLinkedToSplits
-      : scope === "direct"
-        ? !isLinkedToSplits
-        : true;
-  }
-
-  if (scope === "shared") {
-    return isLinkedToSplits && linkedShares.some((split) => split.personId === personId);
-  }
-
-  if (scope === "direct") {
-    return !isLinkedToSplits && directShares.some((split) => split.personId === personId);
-  }
-
-  return directShares.some((split) => split.personId === personId)
-    || linkedShares.some((split) => split.personId === personId);
 }
 
 function isEntryLinkedToSplitExpense(entry: EntryDto) {
