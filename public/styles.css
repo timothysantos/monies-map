@@ -663,6 +663,28 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   box-shadow: none;
 }
 
+/* Summary names the scope a person view counts (Month shows it in its header). */
+.summary-scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 0 0 14px;
+}
+
+.summary-scope-label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.summary-scope-hint {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .mobile-context-sticky-wrap{
   display: none;
 }
