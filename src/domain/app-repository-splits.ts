@@ -1210,7 +1210,9 @@ export async function deleteSplitExpenseRecord(
   // but it stops counting as the entry's split, so the entry's month totals
   // go back to the full ledger amount.
   const months = await linkedEntryMonths(db, input.splitExpenseId);
-  await db.batch([
+  // A second delete that passed the check before the first committed
+  // archives nothing, so it records no history either.
+  await runGuardedBatch(db, archiveStatePrecondition(db, "split_expenses", existing.id, false, "This split is already in activity history."), [
     db
       .prepare("UPDATE split_expenses SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ? AND deleted_at IS NULL")
       .bind(input.splitExpenseId, DEFAULT_HOUSEHOLD_ID),
@@ -1255,7 +1257,7 @@ export async function deleteSplitSettlementRecord(
   if (existing.deleted_at) throw new Error("This settlement is already in activity history.");
   await assertSplitSettlementUnchanged(db, { recordKind: "settlement", recordId: existing.id, next: () => "deleted" });
 
-  await db.batch([
+  await runGuardedBatch(db, archiveStatePrecondition(db, "split_settlements", existing.id, false, "This settlement is already in activity history."), [
     db
       .prepare("UPDATE split_settlements SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ? AND deleted_at IS NULL")
       .bind(input.settlementId, DEFAULT_HOUSEHOLD_ID),
@@ -1380,7 +1382,9 @@ export async function restoreSplitRecord(db: D1Database, input: { recordKind: "e
       : db.prepare(`UPDATE ${table} SET deleted_at = NULL WHERE id = ? AND household_id = ? AND deleted_at IS NOT NULL`).bind(input.recordId, DEFAULT_HOUSEHOLD_ID),
     buildSplitHistoryStatement(db, { recordKind: input.recordKind, recordId: existing.id, action: "restored", groupId: existing.split_group_id, groupName: group?.group_name, description: existing.description, amountMinor: existing.amount_minor, currency: existing.currency }),
     ...buildMonthlySnapshotRefreshMarkers(db, months)
-  ]);
+  // A second restore of the same record that passed the check before the
+  // first committed restores nothing, so it records no history either.
+  ], archiveStatePrecondition(db, table, input.recordId, true, "This split is already active."));
   await refreshMonthlySnapshotsAfterWrite(db, months);
   return { recordId: input.recordId, restored: true };
 }
@@ -1428,25 +1432,90 @@ export function isActiveSplitLinkConflict(error: unknown) {
   return /UNIQUE constraint failed: split_(expenses|settlements)\.linked_transaction_id/.test(message);
 }
 
+// A check a command made before its batch, which another request can make
+// stale by committing in between (two restores of one record, a split
+// matched to two entries at once). `guard` runs first in the batch and fails
+// it as a whole when the checked state no longer holds, so the later
+// request changes nothing (no second history event, month marker or batch);
+// `stillHolds` re-reads that state after a failure, and `message` is what
+// the check itself says.
+type BatchPrecondition = {
+  guard: D1PreparedStatement;
+  stillHolds: () => Promise<boolean>;
+  message: string;
+};
+
+// A batch guard statement that fails when `staleSql` (a SELECT of an `id`
+// column) finds a row. SQLite can raise an error only inside a trigger, so
+// the guard parses each found id as JSON text that is never valid
+// ('{' || id): one row fails the statement, and D1 rolls the batch back.
+function buildBatchGuard(db: D1Database, staleSql: string, ...params: unknown[]) {
+  return db.prepare(`SELECT json('{' || id) AS stale FROM (${staleSql})`).bind(...params);
+}
+
+// Runs a command's batch behind its precondition guard; a failure after
+// which the precondition no longer holds gets the check's own message.
+// (runLinkingBatch below does the same for batches that link a ledger row.)
+async function runGuardedBatch(db: D1Database, precondition: BatchPrecondition, statements: D1PreparedStatement[]) {
+  try {
+    return await db.batch([precondition.guard, ...statements]);
+  } catch (error) {
+    if (!(await precondition.stillHolds())) {
+      throw new Error(precondition.message);
+    }
+    throw error;
+  }
+}
+
 // Runs a batch that links a split record to a ledger row. The checks before
 // it cannot see a write that commits in between, so when the batch fails
 // and another split record now holds the row (the index turned the second
 // write away as a whole), the person gets the same "already linked" message
-// as the check gives.
+// as the check gives. A precondition on the record itself (still archived,
+// still unlinked) is guarded first.
 async function runLinkingBatch(
   db: D1Database,
   alreadyLinkedMessage: string,
   findHolder: () => Promise<string | null>,
-  statements: D1PreparedStatement[]
+  statements: D1PreparedStatement[],
+  precondition?: BatchPrecondition
 ) {
   try {
-    return await db.batch(statements);
+    return await db.batch(precondition ? [precondition.guard, ...statements] : statements);
   } catch (error) {
+    if (precondition && !(await precondition.stillHolds())) {
+      throw new Error(precondition.message);
+    }
     if (isActiveSplitLinkConflict(error) || await findHolder()) {
       throw new Error(alreadyLinkedMessage);
     }
     throw error;
   }
+}
+
+// The precondition of a match: the split record is still unlinked.
+function unlinkedRecordPrecondition(db: D1Database, table: "split_expenses" | "split_settlements", recordId: string, message: string): BatchPrecondition {
+  return {
+    guard: buildBatchGuard(db, `SELECT id FROM ${table} WHERE id = ? AND household_id = ? AND linked_transaction_id IS NOT NULL`, recordId, DEFAULT_HOUSEHOLD_ID),
+    stillHolds: async () => Boolean(await db
+      .prepare(`SELECT id FROM ${table} WHERE id = ? AND household_id = ? AND linked_transaction_id IS NULL`)
+      .bind(recordId, DEFAULT_HOUSEHOLD_ID)
+      .first()),
+    message
+  };
+}
+
+// The precondition of a delete (`archived: false`) or restore (`archived:
+// true`): the record is still in the state the check saw.
+function archiveStatePrecondition(db: D1Database, table: "split_expenses" | "split_settlements", recordId: string, archived: boolean, message: string): BatchPrecondition {
+  return {
+    guard: buildBatchGuard(db, `SELECT id FROM ${table} WHERE id = ? AND household_id = ? AND deleted_at IS ${archived ? "NULL" : "NOT NULL"}`, recordId, DEFAULT_HOUSEHOLD_ID),
+    stillHolds: async () => Boolean(await db
+      .prepare(`SELECT id FROM ${table} WHERE id = ? AND household_id = ? AND deleted_at IS ${archived ? "NOT NULL" : "NULL"}`)
+      .bind(recordId, DEFAULT_HOUSEHOLD_ID)
+      .first()),
+    message
+  };
 }
 
 export async function linkSplitExpenseMatch(
@@ -1481,12 +1550,14 @@ export async function linkSplitExpenseMatch(
     : calculateFxRateBasisPoints(Math.abs(expense.total_amount_minor), homeAmountMinor);
   // The entry now counts by its split shares, so its month totals change.
   const months = [transaction.transaction_date.slice(0, 7)];
+  // A match of the same split to another entry that committed after the
+  // check above refuses this one as a whole: no link, no month marker.
   await runLinkingBatch(db, LEDGER_ROW_ALREADY_LINKED, () => findActiveLedgerRowHolder(db, input.transactionId), [
     db
       .prepare("UPDATE split_expenses SET linked_transaction_id = ?, home_amount_minor = ?, fx_rate_basis_points = ?, payment_status = 'certified' WHERE id = ? AND household_id = ? AND linked_transaction_id IS NULL")
       .bind(input.transactionId, homeAmountMinor, fxRateBasisPoints, input.splitExpenseId, DEFAULT_HOUSEHOLD_ID),
     ...buildMonthlySnapshotRefreshMarkers(db, months)
-  ]);
+  ], unlinkedRecordPrecondition(db, "split_expenses", input.splitExpenseId, "This split expense is unavailable or already linked."));
   await refreshMonthlySnapshotsAfterWrite(db, months);
 
   const primaryShare = await db
@@ -1541,7 +1612,7 @@ export async function linkSplitSettlementMatch(
     db
       .prepare("UPDATE split_settlements SET linked_transaction_id = ?, fx_rate_basis_points = ?, payment_status = 'certified' WHERE id = ? AND household_id = ? AND linked_transaction_id IS NULL")
       .bind(input.transactionId, fxRateBasisPoints, input.settlementId, DEFAULT_HOUSEHOLD_ID)
-  ]);
+  ], unlinkedRecordPrecondition(db, "split_settlements", input.settlementId, "This settle-up is unavailable or already linked."));
 
   return { ok: true };
 }
