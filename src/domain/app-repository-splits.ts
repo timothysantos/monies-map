@@ -1710,6 +1710,7 @@ export async function assertLinkedSplitSettlementUnchanged(
       previous: { date: string; payerPersonId: string | null };
       next: { date: string; payerPersonId: string | null };
     };
+    subject?: "linked entry" | "import rollback";
   }
 ) {
   const mirror = input.mirror
@@ -1730,7 +1731,7 @@ export async function assertLinkedSplitSettlementUnchanged(
     await assertSplitSettlementUnchanged(db, {
       recordKind: "expense",
       recordId: split.id,
-      subject: "linked entry",
+      subject: input.subject ?? "linked entry",
       next: async (current): Promise<SplitSettlementFacts> => {
         const withMirror = (facts: SplitSettlementFacts): SplitSettlementFacts => {
           if (!mirror) return facts;

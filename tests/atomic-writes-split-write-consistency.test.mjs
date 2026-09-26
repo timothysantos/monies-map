@@ -1,6 +1,7 @@
 // Split write consistency: one ledger entry never gets two active split
-// records, even when two writes race. Real local D1 (Miniflare) seeded with
-// the demo household.
+// records, even when two writes race, and an import rollback keeps a linked
+// split on its entry's restored amount. Real local D1 (Miniflare) seeded
+// with the demo household.
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -27,6 +28,7 @@ test.after(async () => {
 
 const MONTH = "2026-05";
 const DATE = "2026-05-16";
+const LOCKED = "split_settlement_locked";
 
 function scopeTotal(totals, scope) {
   return totals.find((row) => row.person_scope === scope)?.total_expense_minor;
@@ -282,4 +284,133 @@ test("a database that already holds two active splits of one entry still loads; 
   const refused = await api("/api/splits/expenses/from-entry", { entryId, splitGroupId: null });
   assert.equal(refused.status, 400);
   assert.equal(refused.payload.error, "This entry is already linked to a split expense.");
+});
+
+// --- 2. Import rollback keeps a linked split on its entry's amount ---------
+
+// A manual 43.21 expense added to splits (50/50), then promoted by a CSV row
+// of the same amount, then corrected to 50.00 in Entries (the split follows).
+async function promotedLinkedEntry(api, db, { correctedAmountMinor = 5_000 } = {}) {
+  const manualEntryId = await createEntry(api, { date: "2026-05-18", description: "FAIRPRICE FINEST", amountMinor: 4_321, note: "weekly shop" });
+  const splitExpenseId = await addToSplits(api, manualEntryId);
+  const csv = [
+    "date,description,amount,account,category,note",
+    "2026-05-19,FAIRPRICE FINEST SINGAPORE,-43.21,UOB One,Groceries,"
+  ].join("\n");
+  const preview = await api("/api/imports/preview", { sourceLabel: "Promotion CSV", sourceType: "csv", csv, ownershipType: "direct", ownerName: "Tim" });
+  assert.equal(preview.status, 200, JSON.stringify(preview.payload));
+  assert.equal(preview.payload.preview.previewRows[0].reconciliationTargetTransactionId, manualEntryId);
+  const commit = await api("/api/imports/commit", { sourceLabel: "Promotion CSV", sourceType: "csv", parserKey: "generic_csv", rows: preview.payload.preview.previewRows });
+  assert.equal(commit.status, 200, JSON.stringify(commit.payload));
+  if (correctedAmountMinor !== 4_321) {
+    const edit = await api("/api/entries/update", {
+      entryId: manualEntryId,
+      date: "2026-05-18",
+      description: "FAIRPRICE FINEST SINGAPORE",
+      accountName: "UOB One",
+      categoryName: "Groceries",
+      amountMinor: correctedAmountMinor,
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim",
+      note: "weekly shop"
+    });
+    assert.equal(edit.status, 200, JSON.stringify(edit.payload));
+  }
+  assert.equal((await splitAndShares(db, splitExpenseId)).split.total_amount_minor, correctedAmountMinor);
+  return { manualEntryId, splitExpenseId, importId: commit.payload.importId };
+}
+
+test("rolling back an import that restores a promoted entry's amount moves its linked split to that amount", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const { manualEntryId, splitExpenseId, importId } = await promotedLinkedEntry(api, db);
+  assert.deepEqual((await splitAndShares(db, splitExpenseId)).shares.map((share) => share.amount_minor), [2_500, 2_500]);
+
+  const rollback = await api("/api/imports/rollback", { importId });
+
+  assert.equal(rollback.status, 200, JSON.stringify(rollback.payload));
+  assert.deepEqual(await rows(db, "SELECT amount_minor, import_id FROM transactions WHERE id = ?", manualEntryId), [{ amount_minor: 4_321, import_id: null }]);
+  // Same rule as an entry amount edit: the stored 50/50 basis, floor for the
+  // first share person (Tim, the owner), remainder for the second.
+  assert.deepEqual(await splitAndShares(db, splitExpenseId), {
+    split: { total_amount_minor: 4_321, home_amount_minor: 4_321, linked_transaction_id: manualEntryId, archived: 0 },
+    shares: [
+      { person_id: "person-joyce", ratio_basis_points: 5_000, amount_minor: 2_161 },
+      { person_id: "person-tim", ratio_basis_points: 5_000, amount_minor: 2_160 }
+    ]
+  });
+  const timRow = (await api(`/api/entries-page?view=person-tim&month=${MONTH}`)).payload.monthPage.entries.find((entry) => entry.id === manualEntryId);
+  assert.equal(timRow.totalAmountMinor, 4_321);
+  assert.equal(timRow.amountMinor, 2_160);
+  const activity = (await api(`/api/splits-page?view=person-tim&month=${MONTH}`)).payload.splitsPage.activity.find((item) => item.id === splitExpenseId);
+  assert.equal(activity.totalAmountMinor, 4_321);
+  await assertTotalsFresh(db);
+});
+
+test("a rollback whose promoted entry keeps its amount leaves the linked split alone", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const { splitExpenseId, importId } = await promotedLinkedEntry(api, db, { correctedAmountMinor: 4_321 });
+  // An explicitly assigned odd cent must survive: a rollback that does not
+  // change the amount does not rebalance the shares.
+  const shareEdit = await api("/api/splits/expenses/update", {
+    splitExpenseId, groupId: null, date: "2026-05-18", description: "FAIRPRICE FINEST", categoryName: "Groceries",
+    payerPersonName: "Tim", amountMinor: 4_321, splitAmountMinor: 2_161, homeAmountMinor: 4_321, paymentMethod: "bank", paymentStatus: "certified"
+  });
+  assert.equal(shareEdit.status, 200, JSON.stringify(shareEdit.payload));
+  const before = await splitAndShares(db, splitExpenseId);
+
+  const rollback = await api("/api/imports/rollback", { importId });
+
+  assert.equal(rollback.status, 200, JSON.stringify(rollback.payload));
+  assert.deepEqual(await splitAndShares(db, splitExpenseId), before);
+});
+
+test("a rollback that would move a split in an active settlement is refused as a whole until the simplification is undone", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const { manualEntryId, splitExpenseId, importId } = await promotedLinkedEntry(api, db);
+  const checkpoint = await api("/api/splits/checkpoints/create", { viewerPersonId: "person-tim", date: "2026-05-20", currency: "SGD" });
+  assert.equal(checkpoint.status, 200, JSON.stringify(checkpoint.payload));
+  const before = await dumpDatabase(db);
+
+  const refused = await api("/api/imports/rollback", { importId });
+
+  assert.equal(refused.status, 409, JSON.stringify(refused.payload));
+  assert.equal(refused.payload.code, LOCKED);
+  assert.equal(refused.payload.checkpointId, checkpoint.payload.checkpointId);
+  assert.match(refused.payload.error, /Rolling back this import would change the amount and shares of a split expense in the simplified settlement of 2026-05-20/);
+  assert.match(refused.payload.error, /Undo the simplification first/);
+  assertSameDatabase(await dumpDatabase(db), before);
+
+  assert.equal((await api("/api/splits/checkpoints/reopen", { checkpointId: checkpoint.payload.checkpointId })).status, 200);
+  const rollback = await api("/api/imports/rollback", { importId });
+  assert.equal(rollback.status, 200, JSON.stringify(rollback.payload));
+  assert.deepEqual(await rows(db, "SELECT amount_minor FROM transactions WHERE id = ?", manualEntryId), [{ amount_minor: 4_321 }]);
+  assert.equal((await splitAndShares(db, splitExpenseId)).split.total_amount_minor, 4_321);
+});
+
+test("a settled split whose entry keeps its amount does not block the rollback", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const { manualEntryId, splitExpenseId, importId } = await promotedLinkedEntry(api, db, { correctedAmountMinor: 4_321 });
+  const checkpoint = await api("/api/splits/checkpoints/create", { viewerPersonId: "person-tim", date: "2026-05-20", currency: "SGD" });
+  assert.equal(checkpoint.status, 200, JSON.stringify(checkpoint.payload));
+  const before = await splitAndShares(db, splitExpenseId);
+
+  const rollback = await api("/api/imports/rollback", { importId });
+
+  assert.equal(rollback.status, 200, JSON.stringify(rollback.payload));
+  assert.deepEqual(await rows(db, "SELECT import_id FROM transactions WHERE id = ?", manualEntryId), [{ import_id: null }]);
+  assert.deepEqual(await splitAndShares(db, splitExpenseId), before);
+});
+
+test("a rollback that fails while moving the linked split's shares changes nothing", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const { importId } = await promotedLinkedEntry(api, db);
+  const before = await dumpDatabase(db);
+  const faulty = failingStatement(db, /UPDATE split_expense_shares/);
+
+  const rollback = await api("/api/imports/rollback", { importId }, { database: faulty.db });
+
+  assert.equal(faulty.state.fired, true);
+  assert.notEqual(rollback.status, 200);
+  assertSameDatabase(await dumpDatabase(db), before);
 });
