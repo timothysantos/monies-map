@@ -548,7 +548,7 @@ receives it for validation during signing.
 
 Commit the readable source, exact signed release, byte-identical public download,
 size, action contract, and checksums under `shortcuts/apple-pay-api/`. Update the
-Settings install contract, browser test, FAQ, and manifest in the same release.
+Settings install contract, browser test, both guides, and manifest in the same release.
 Deploying changes the file offered to future installations; existing devices
 keep their local copy until the user installs the new version and chooses
 Replace.
