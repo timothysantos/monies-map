@@ -12,6 +12,9 @@ export function SplitsActivitySection({
   searchQuery = "",
   inlineSplitDraft,
   inlineSplitError,
+  inlineSettlementLock = null,
+  isUndoingSettlementLock = false,
+  onUndoSettlementLock,
   isSubmitting,
   hasInlineSplitChanges,
   onAddExpense,
@@ -51,6 +54,9 @@ export function SplitsActivitySection({
             categoryOptions={categoryOptions}
             editingDraft={inlineSplitDraft}
             inlineFormError={inlineSplitError}
+            inlineSettlementLock={inlineSettlementLock}
+            isUndoingSettlementLock={isUndoingSettlementLock}
+            onUndoSettlementLock={onUndoSettlementLock}
             isSubmitting={isSubmitting}
             hasEditingChanges={hasInlineSplitChanges}
             onChangeEditingDraft={onChangeInlineSplitDraft}

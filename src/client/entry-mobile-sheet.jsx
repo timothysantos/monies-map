@@ -14,6 +14,7 @@ export function EntryMobileSheet({
   title,
   description,
   errorMessage = "",
+  errorContent = null,
   saveLabel,
   cancelLabel = "Cancel",
   isSaveDisabled = false,
@@ -87,7 +88,7 @@ export function EntryMobileSheet({
                 <X size={16} />
               </button>
             </div>
-            <InlineError message={errorMessage} className="entry-submit-error" />
+            {errorContent ?? <InlineError message={errorMessage} className="entry-submit-error" />}
             {children}
           </div>
           {footerContent ?? (

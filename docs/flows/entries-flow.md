@@ -71,6 +71,10 @@ Watch area:
 - draft-only row edits should remain visible until the user saves
 - add-to-splits and transfer-link behavior may fan out to month and summary
   refreshes when ledger evidence changes
+- a save that would move a linked split held by an active simplified
+  settlement is refused whole (409 `split_settlement_locked`); the editor and
+  phone sheet show the reason with `Undo simplification`, which reopens the
+  settlement and invalidates Splits, and the draft is kept for a second save
 - When the route-level page load fails, the shell shows the page error panel.
   When only the Entries owner (`entries-data-owner.js`) learns that the
   month failed, the panel shows the same `ErrorPanel` with "Try loading

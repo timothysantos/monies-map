@@ -11,6 +11,7 @@ import { ResponsiveSelect } from "./responsive-select";
 import { updateSplitExpenseDraft } from "./split-editing";
 import { CategoryGlyph } from "./ui-components";
 import { InlineError } from "./ui-states";
+import { SettlementLockNotice } from "./settlement-lock-notice";
 
 const { categories: categoryService, format: formatService } = moniesClient;
 
@@ -371,7 +372,7 @@ export function SplitExpenseFields({ dialog, groupOptions, people, categoryOptio
   );
 }
 
-export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, categories = [], formError, isSubmitting, isSaveDisabled = false, readOnly = false, onChange, onClose, onSave, onViewLinkedEntry, onRequestDelete }) {
+export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptions, categories = [], formError, settlementLock = null, isUndoingSettlementLock = false, onUndoSettlementLock, isSubmitting, isSaveDisabled = false, readOnly = false, onChange, onClose, onSave, onViewLinkedEntry, onRequestDelete }) {
   return (
     <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
@@ -395,7 +396,9 @@ export function SplitExpenseDialog({ dialog, groupOptions, people, categoryOptio
               <fieldset disabled={readOnly} className="split-dialog-fieldset">
                 <SplitExpenseFields dialog={dialog} groupOptions={groupOptions} people={people} categoryOptions={categoryOptions} categories={categories} onChange={onChange} autoFocusAmount={!readOnly} />
               </fieldset>
-              <InlineError message={formError} />
+              {settlementLock
+                ? <SettlementLockNotice lock={settlementLock} isUndoing={isUndoingSettlementLock} onUndo={onUndoSettlementLock} />
+                : <InlineError message={formError} />}
             </div>
             <div className="dialog-actions">
               {!readOnly && dialog?.id ? (
@@ -545,7 +548,7 @@ export function SplitSettlementFields({ dialog, groupOptions, people, onChange, 
   );
 }
 
-export function SplitSettlementDialog({ dialog, groupOptions, people, formError, isSubmitting, isSaveDisabled = false, readOnly = false, onChange, onClose, onSave, onViewLinkedEntry, onRequestDelete }) {
+export function SplitSettlementDialog({ dialog, groupOptions, people, formError, settlementLock = null, isUndoingSettlementLock = false, onUndoSettlementLock, isSubmitting, isSaveDisabled = false, readOnly = false, onChange, onClose, onSave, onViewLinkedEntry, onRequestDelete }) {
   return (
     <Dialog.Root open={Boolean(dialog)} onOpenChange={(open) => { if (!open && !isSubmitting) onClose(); }}>
       <Dialog.Portal>
@@ -571,7 +574,9 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
               <fieldset disabled={readOnly} className="split-dialog-fieldset">
                 <SplitSettlementFields dialog={dialog} groupOptions={groupOptions} people={people} onChange={onChange} autoFocusAmount={!readOnly} />
               </fieldset>
-              <InlineError message={formError} />
+              {settlementLock
+                ? <SettlementLockNotice lock={settlementLock} isUndoing={isUndoingSettlementLock} onUndo={onUndoSettlementLock} />
+                : <InlineError message={formError} />}
             </div>
             <div className="dialog-actions">
               {!readOnly && dialog?.id ? (
@@ -609,7 +614,7 @@ export function SplitSettlementDialog({ dialog, groupOptions, people, formError,
   );
 }
 
-export function SplitDeleteDialog({ target, formError, isSubmitting, onClose, onConfirm }) {
+export function SplitDeleteDialog({ target, formError, settlementLock = null, isUndoingSettlementLock = false, onUndoSettlementLock, isSubmitting, onClose, onConfirm }) {
   const label = target?.description ?? target?.note ?? "this split row";
 
   return (
@@ -632,7 +637,9 @@ export function SplitDeleteDialog({ target, formError, isSubmitting, onClose, on
                 Delete {label}? This removes the split record only. Any linked bank ledger row stays in entries.
               </Dialog.Description>
             </div>
-            <InlineError message={formError} />
+            {settlementLock
+              ? <SettlementLockNotice lock={settlementLock} isUndoing={isUndoingSettlementLock} onUndo={onUndoSettlementLock} />
+              : <InlineError message={formError} />}
             <div className="dialog-actions">
               <button type="button" className="subtle-cancel" disabled={isSubmitting} onClick={onClose}>Cancel</button>
               <button type="submit" className="dialog-danger" disabled={isSubmitting}>

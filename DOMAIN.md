@@ -681,7 +681,9 @@ Rounding rule:
   percentage or an exact amount, so an exact-amount share becomes the same
   proportion of the new total. An even split whose odd cent was assigned to one
   person (a stored 4999/5001 ratio) stays an even 5000/5000 split. An edit that
-  keeps the amount leaves the shares, including an assigned odd cent, alone
+  keeps the amount leaves the shares, including an assigned odd cent, alone.
+  When the split is in an active settlement checkpoint the amount edit is
+  refused instead (see the settlement lock under Settlement Checkpoint)
 
 Relationships:
 - belongs to one `split expense`
@@ -723,6 +725,24 @@ Rules:
 - a later bank match remains required before the payment has ledger evidence
 - undoing paid confirmation returns the same checkpoint to the active workspace
   without releasing its included rows
+- settlement lock: while a checkpoint is active (any status except `reopened`
+  or `voided`, paid or not), each included expense or settle-up keeps the
+  facts the settled amount was computed from: amount, currency, shares, payer
+  (from and to for a settle-up), date and group, and it cannot be deleted. A
+  command that would change one is refused before its first write, as a
+  whole, with `split_settlement_locked` (HTTP 409) naming the checkpoint:
+  Splits edit and delete, and a ledger entry save whose linked split would
+  follow (the amount follow-up, or a shared save that rewrites the split).
+  Description, category, note, payment method and bank links stay editable
+- the only way to release locked rows is an explicit `Undo simplification`
+  (reopen), offered next to the refusal. An edit never reopens a checkpoint by
+  itself and a checkpoint is never left out of step with its rows: reopening
+  releases every included row and may undo a paid or bank-matched
+  settlement, which is too consequential to happen as a side effect of
+  editing one row (the same reason paid confirmation and bank matching are
+  explicit steps, and undoing paid refuses while a bank match exists)
+- import rollback does not change a locked row's facts: removing a linked
+  entry only clears the split's ledger link
 
 ### Split Activity History
 
@@ -742,7 +762,8 @@ Rules:
 - an archived record does not hold its ledger row; restoring it is refused
   while another active split record (or a settlement checkpoint match) holds
   that row
-- checkpoint snapshots remain unchanged when a record is deleted or restored
+- checkpoint snapshots remain unchanged when a record is deleted or restored;
+  a record in an active checkpoint cannot be deleted (settlement lock above)
 
 ### Monthly Note
 

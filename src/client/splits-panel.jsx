@@ -38,6 +38,7 @@ import { SplitArchiveDialog } from "./splits-archive-dialog";
 import { SplitHistoryDialog } from "./splits-history-dialog";
 import { splitActivityDomId } from "./splits-activity";
 import { SplitDeleteDialog, SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./splits-dialogs";
+import { readSettlementLock } from "./settlement-lock-notice";
 import { SearchFilterInput } from "./entries-filter-stack";
 import { SplitsMainSection } from "./splits-main-section";
 import { buildSplitsPanelModel } from "./splits-selectors";
@@ -87,6 +88,8 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
   const [checkpointTransferId, setCheckpointTransferId] = useState("");
   const [checkpointFxRateInput, setCheckpointFxRateInput] = useState("1");
   const [checkpointMatchTargetId, setCheckpointMatchTargetId] = useState(null);
+  // The simplified settlement that refused the last split save or delete.
+  const [settlementLock, setSettlementLock] = useState(null);
   const [showSettlementFollowUps, setShowSettlementFollowUps] = useState(false);
   const refreshGuardRef = useRef(null);
   const latestSplitsPageRef = useRef(splitsPage);
@@ -491,6 +494,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     }
 
     setFormError("");
+    setSettlementLock(null);
     setIsSubmitting(true);
     try {
       const response = await saveSplitExpense(draft);
@@ -528,6 +532,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       return true;
     } catch (error) {
       setFormError(error.message);
+      setSettlementLock(readSettlementLock(error, `expense:${draft?.id}`));
       return false;
     } finally {
       setIsSubmitting(false);
@@ -543,6 +548,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     }
 
     setFormError("");
+    setSettlementLock(null);
     setIsSubmitting(true);
     try {
       const response = await saveSplitSettlement(draft);
@@ -571,6 +577,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       return true;
     } catch (error) {
       setFormError(error.message);
+      setSettlementLock(readSettlementLock(error, `settlement:${draft?.id}`));
       return false;
     } finally {
       setIsSubmitting(false);
@@ -605,6 +612,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     }
 
     setInlineSplitError("");
+    setSettlementLock(null);
     setIsSubmitting(true);
     try {
       if (draft.kind === "expense") {
@@ -661,6 +669,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       return true;
     } catch (error) {
       setInlineSplitError(error.message);
+      setSettlementLock(readSettlementLock(error, `inline:${draft.kind}:${draft.id}`));
       return false;
     } finally {
       setIsSubmitting(false);
@@ -917,6 +926,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
 
     setFormError("");
     setInlineSplitError("");
+    setSettlementLock(null);
     setIsSubmitting(true);
     try {
       const deletedSplitKey = `${deleteTarget.kind}:${deleteTarget.id}`;
@@ -944,9 +954,37 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       });
     } catch (error) {
       setFormError(error.message);
+      setSettlementLock(readSettlementLock(error, `delete:${deleteTarget.kind}:${deleteTarget.id}`));
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  // Undo the simplification that refused a save or delete (whatever its
+  // state: open, paid, bank matched or offset). The form stays open with the
+  // person's change, so saving again applies it to the now open activity.
+  async function undoSettlementLock() {
+    const lock = settlementLock;
+    if (!lock || isCheckpointing) return;
+    setIsCheckpointing(true);
+    try {
+      await reopenSettlementCheckpoint(lock.checkpointId);
+      setFormError("");
+      setInlineSplitError("");
+      setSettlementLock({ ...lock, undone: true });
+      refreshAfterSplitMutation({ broadcast: true });
+    } catch (error) {
+      setSettlementLock({ ...lock, message: error instanceof Error ? error.message : "Failed to undo the simplification." });
+    } finally {
+      setIsCheckpointing(false);
+    }
+  }
+
+  // The lock notice belongs to the form that was refused, and only while its
+  // error (or the undo confirmation) is still showing.
+  function settlementLockFor(recordKey, error) {
+    if (!settlementLock || settlementLock.recordKey !== recordKey) return null;
+    return settlementLock.undone || error === settlementLock.message ? settlementLock : null;
   }
 
   function renderSplitActions(className) {
@@ -1140,6 +1178,9 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         searchQuery={splitSearchQuery}
         inlineSplitDraft={inlineSplitDraft}
         inlineSplitError={inlineSplitError}
+        inlineSettlementLock={settlementLockFor(`inline:${inlineSplitDraft?.kind}:${inlineSplitDraft?.id}`, inlineSplitError)}
+        isUndoingSettlementLock={isCheckpointing}
+        onUndoSettlementLock={() => void undoSettlementLock()}
         isSubmitting={isSubmitting}
         onSelectGroup={(groupId) => updateSplitView({ groupId, mode: "entries" })}
         onOpenMatches={openMatchesView}
@@ -1200,6 +1241,9 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
       <SplitDeleteDialog
         target={deleteTarget}
         formError={formError}
+        settlementLock={settlementLockFor(`delete:${deleteTarget?.kind}:${deleteTarget?.id}`, formError)}
+        isUndoingSettlementLock={isCheckpointing}
+        onUndoSettlementLock={() => void undoSettlementLock()}
         isSubmitting={isSubmitting}
         onClose={() => setDeleteTarget(null)}
         onConfirm={confirmDeleteSplit}
@@ -1221,6 +1265,9 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         categoryOptions={categoryOptions}
         categories={categories}
         formError={formError}
+        settlementLock={settlementLockFor(`expense:${expenseDialog?.id}`, formError)}
+        isUndoingSettlementLock={isCheckpointing}
+        onUndoSettlementLock={() => void undoSettlementLock()}
         isSubmitting={isSubmitting}
         isSaveDisabled={!hasExpenseDialogChanges}
         onChange={setExpenseDialog}
@@ -1236,6 +1283,9 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         groupOptions={groupOptions}
         people={people}
         formError={formError}
+        settlementLock={settlementLockFor(`settlement:${settlementDialog?.id}`, formError)}
+        isUndoingSettlementLock={isCheckpointing}
+        onUndoSettlementLock={() => void undoSettlementLock()}
         isSubmitting={isSubmitting}
         isSaveDisabled={!hasSettlementDialogChanges}
         onChange={setSettlementDialog}

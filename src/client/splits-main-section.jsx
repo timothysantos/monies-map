@@ -27,6 +27,9 @@ export function SplitsMainSection({
   searchQuery = "",
   inlineSplitDraft,
   inlineSplitError,
+  inlineSettlementLock = null,
+  isUndoingSettlementLock = false,
+  onUndoSettlementLock,
   isSubmitting,
   hasInlineSplitChanges,
   onSelectGroup,
@@ -142,6 +145,9 @@ export function SplitsMainSection({
             categoryOptions={categoryOptions}
             inlineSplitDraft={inlineSplitDraft}
             inlineSplitError={inlineSplitError}
+            inlineSettlementLock={inlineSettlementLock}
+            isUndoingSettlementLock={isUndoingSettlementLock}
+            onUndoSettlementLock={onUndoSettlementLock}
             isSubmitting={isSubmitting}
             hasInlineSplitChanges={hasInlineSplitChanges}
             onAddExpense={onAddExpense}

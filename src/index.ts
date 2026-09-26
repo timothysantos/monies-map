@@ -112,6 +112,7 @@ import {
 import { parseCsv } from "./lib/csv";
 import { getCurrentMonthKey } from "./lib/month";
 import { json, jsonFromText, serializeJson } from "./server/json";
+import { SplitSettlementLockedError } from "./domain/split-settlement-lock";
 import { handleAiAssistRoute } from "./server/ai-assistance-routes";
 import { buildServerTimingHeader, timeInitialization } from "./server/server-timing";
 import {
@@ -119,6 +120,16 @@ import {
   isShortcutCreateRequestAllowed,
   isShortcutGatewayRequestAllowed
 } from "./server/shortcut-gateway";
+
+// A refused write returns its message. One refused by a simplified settlement
+// lock is a 409 that names the settlement, so the client can offer to undo the
+// simplification first.
+function splitWriteErrorResponse(error: unknown, fallback: string) {
+  if (error instanceof SplitSettlementLockedError) {
+    return json({ ok: false, error: error.message, code: error.code, checkpointId: error.checkpointId }, 409);
+  }
+  return json({ ok: false, error: error instanceof Error ? error.message : fallback }, 400);
+}
 
 export interface Env {
   DB: D1Database;
@@ -742,7 +753,7 @@ export default {
           }))
         });
       } catch (error) {
-        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update entry" }, 400);
+        return splitWriteErrorResponse(error, "Failed to update entry");
       }
     }
 
@@ -1341,7 +1352,7 @@ export default {
           }))
         });
       } catch (error) {
-        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update split expense" }, 400);
+        return splitWriteErrorResponse(error, "Failed to update split expense");
       }
     }
 
@@ -1422,7 +1433,7 @@ export default {
           }))
         });
       } catch (error) {
-        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to update split settlement" }, 400);
+        return splitWriteErrorResponse(error, "Failed to update split settlement");
       }
     }
 
@@ -1458,7 +1469,7 @@ export default {
           ...(await deleteSplitExpenseRecord(env.DB, { splitExpenseId: body.splitExpenseId }))
         });
       } catch (error) {
-        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to delete split expense" }, 400);
+        return splitWriteErrorResponse(error, "Failed to delete split expense");
       }
     }
 
@@ -1474,7 +1485,7 @@ export default {
           ...(await deleteSplitSettlementRecord(env.DB, { settlementId: body.settlementId }))
         });
       } catch (error) {
-        return json({ ok: false, error: error instanceof Error ? error.message : "Failed to delete split settlement" }, 400);
+        return splitWriteErrorResponse(error, "Failed to delete split settlement");
       }
     }
 
