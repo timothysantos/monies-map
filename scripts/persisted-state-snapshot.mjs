@@ -229,7 +229,10 @@ const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 // Split workspace ids are "<prefix>-<epoch>-<uuid>" (newSplitRecordId); the
 // random UUID tail is dropped before any other rule, so they normalize like
 // the older "<prefix>-<epoch>" ids and runs stay comparable with them.
-const SPLIT_RECORD_UUID_TAIL = /(split-[a-z0-9-]*?-1[6-9]\d{11})-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+// Import ids hash their content, which includes the account id; an account
+// the scenario creates has a random id, so its imports are keyed like UUIDs.
+const IMPORT_HASH_ID = /\bimport-[0-9a-f]{24}\b/g;
+const SPLIT_RECORD_UUID_TAIL =/(split-[a-z0-9-]*?-1[6-9]\d{11})-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 // Short random suffixes such as "cat-name-3ea6fa27" (at least one letter,
 // so plain numbers and dates are untouched).
 const SHORT_ID_SUFFIX = /-(?=[0-9a-f]{0,7}[a-f])([0-9a-f]{8})\b/g;
@@ -253,6 +256,10 @@ function dump(file, dtos) {
     // Import ids can embed a commit time; keep the shape, drop the digits.
     return value
       .replace(SPLIT_RECORD_UUID_TAIL, "$1")
+      .replace(IMPORT_HASH_ID, (match) => {
+        if (!ids.has(match)) ids.set(match, `import-<hash-${ids.size + 1}>`);
+        return ids.get(match);
+      })
       .replace(UUID, (match) => {
         if (!ids.has(match)) ids.set(match, `<uuid-${ids.size + 1}>`);
         return ids.get(match);
