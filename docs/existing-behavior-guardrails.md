@@ -245,7 +245,7 @@ Source anchors:
 
 - `src/client/imports-panel.jsx`
 - `src/client/import-preview-auto-refresh.js`
-- `tests/e2e/import-preview-auto-refresh.spec.js`
+- `tests/import-preview-auto-refresh.test.mjs`
 
 ## Rule 7a: Import Parsers Must Tolerate Structural Variants From The Same Source
 

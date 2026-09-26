@@ -52,10 +52,6 @@ const workflows = [
     file: "tests/e2e/money-field-editability.spec.js"
   },
   {
-    name: "reseed contract",
-    file: "tests/e2e/reseed-contract.spec.js"
-  },
-  {
     name: "settings reference data",
     file: "tests/e2e/settings-reference-data.spec.js"
   },

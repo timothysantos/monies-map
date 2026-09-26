@@ -767,10 +767,14 @@ user-visible contract.
 
 It checks things like:
 
-- app shell request stays shell-only
 - previous screen stays visible until the next page settles
 - month-to-summary and summary round-trip hydration do not crash
 - every top-level tab renders in one browser session without console errors
+
+[`tests/page-dto-api.test.mjs`](../tests/page-dto-api.test.mjs) checks the
+payload shapes against the real Worker: the app shell request stays
+shell-only and reference data carries lightweight account and category
+lists.
 
 ### Query-contract test
 

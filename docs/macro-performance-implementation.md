@@ -1283,9 +1283,9 @@ measurements in `tests/performance/`.
 | Change area | Existing test files |
 | --- | --- |
 | Keys/routing | `tests/query-foundation.test.mjs`, `tests/app-routing.test.mjs`, `tests/summary-query.test.mjs` |
-| Shell and chunks | `tests/client-route-chunks.test.mjs`, `tests/e2e/app-shell.spec.js` |
+| Shell and chunks | `tests/client-route-chunks.test.mjs`, `tests/e2e/app-shell.spec.js`, `tests/page-dto-api.test.mjs` |
 | Draft continuity | `tests/e2e/mobile-continuity.spec.js`, `tests/quick-entry-url-defaults.test.mjs`, `tests/e2e/money-field-editability.spec.js` |
-| Imports and banner | `tests/e2e/import-inbox-navigation.spec.js`, `tests/e2e/import-preview-auto-refresh.spec.js`, `tests/e2e/import-ledger-flow.spec.js` |
+| Imports and banner | `tests/e2e/import-inbox-navigation.spec.js`, `tests/import-preview-auto-refresh.test.mjs`, `tests/e2e/import-ledger-flow.spec.js`, `tests/import-commit-api.test.mjs`, `tests/statement-*-api.test.mjs` |
 | Cross-page projections | `tests/e2e/summary-workflow.spec.js`, `tests/e2e/month-page.spec.js`, `tests/e2e/splits-cross-tab-refresh.spec.js` |
 | AI/privacy | `tests/ai-assistance-contract.test.mjs`, `tests/e2e/financial-insight.spec.js`, `tests/e2e/money-privacy.spec.js` |
 | Worker timing | `tests/e2e/api-performance.spec.js`, `tests/shortcut-gateway.test.mjs` |
