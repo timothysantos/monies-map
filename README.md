@@ -295,6 +295,10 @@ it merges every shard into `playwright-report/` and
 `test-results/e2e-sharded/report.json`, prints one pass/fail summary, and
 removes the shard servers and state. Shard logs are in
 `test-results/e2e-sharded/logs/`.
+To run a second sharded suite at the same time (another worktree or
+session), move its ports with `E2E_PORT_OFFSET`, for example
+`E2E_PORT_OFFSET=20 npm run test:e2e:sharded` uses Vite `5520+`, Wrangler
+`8920+` and inspector `9520+`.
 
 ```bash
 npm run test:e2e:sharded                          # 3 shards (at most half the CPUs)
