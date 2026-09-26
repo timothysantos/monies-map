@@ -8,6 +8,7 @@ import { moniesClient } from "./monies-client-service";
 import { MetricCard } from "./ui-components";
 import { PrivateMoney } from "./money-privacy";
 import { useRouteWorkBusy } from "./use-route-work-status";
+import { InlineError } from "./ui-states";
 
 const { accounts: accountService, format: formatService } = moniesClient;
 
@@ -29,7 +30,22 @@ export function MonthPanelHeader({
 }) {
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  // A failed action keeps its popover or dialog open and says why.
+  const [duplicateError, setDuplicateError] = useState("");
+  const [resetError, setResetError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   useRouteWorkBusy(resetDialogOpen || deleteDialogOpen);
+
+  async function runAction(action, setError, fallback) {
+    setError("");
+    try {
+      await action();
+      return true;
+    } catch (error) {
+      setError(error instanceof Error && error.message ? error.message : fallback);
+      return false;
+    }
+  }
 
   return (
     <div className="panel-head month-panel-head">
@@ -57,7 +73,15 @@ export function MonthPanelHeader({
             ))}
           </div>
         ) : null}
-        <Popover.Root open={actionsOpen} onOpenChange={onActionsOpenChange}>
+        <Popover.Root
+          open={actionsOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDuplicateError("");
+            }
+            onActionsOpenChange(open);
+          }}
+        >
           <Popover.Trigger asChild>
             <button type="button" className="month-actions-trigger">
               {messages.month.actions}
@@ -69,122 +93,132 @@ export function MonthPanelHeader({
                 type="button"
                 className="month-actions-item"
                 onClick={async () => {
-                  await onDuplicateMonth();
-                  onActionsOpenChange(false);
+                  if (await runAction(onDuplicateMonth, setDuplicateError, messages.month.duplicateMonthFailed)) {
+                    onActionsOpenChange(false);
+                  }
                 }}
                 disabled={isDuplicating}
               >
                 {isDuplicating ? messages.common.working : messages.month.duplicateMonth}
               </button>
-              <Dialog.Root
-                open={resetDialogOpen}
-                onOpenChange={(open) => {
-                  if (!open && isResettingMonth) {
-                    return;
-                  }
-                  setResetDialogOpen(open);
-                  if (open) {
-                    onActionsOpenChange(false);
-                  }
+              <InlineError message={duplicateError} />
+              <button
+                type="button"
+                onClick={() => {
+                  setResetError("");
+                  setResetDialogOpen(true);
+                  onActionsOpenChange(false);
                 }}
+                className="month-actions-item"
+                disabled={isResettingMonth}
               >
-                <Dialog.Trigger asChild>
-                  <button
-                    type="button"
-                    className="month-actions-item"
-                    disabled={isResettingMonth}
-                  >
-                    {messages.month.resetMonth}
-                  </button>
-                </Dialog.Trigger>
-                <Dialog.Portal>
-                  <Dialog.Overlay className="note-dialog-overlay" />
-                  <Dialog.Content className="note-dialog-content">
-                    <div className="note-dialog-head">
-                      <Dialog.Title>{messages.month.resetMonth}</Dialog.Title>
-                      <Dialog.Description>{messages.month.resetMonthDetail}</Dialog.Description>
-                    </div>
-                    <input
-                      className="table-edit-input"
-                      placeholder={messages.month.resetMonthPlaceholder}
-                      value={resetMonthText}
-                      onChange={(event) => onResetMonthTextChange(event.target.value)}
-                    />
-                    <div className="note-dialog-actions">
-                      <Dialog.Close asChild>
-                        <button type="button" className="subtle-action" disabled={isResettingMonth}>Cancel</button>
-                      </Dialog.Close>
-                      <button
-                        type="button"
-                        className="subtle-action subtle-danger"
-                        disabled={resetMonthText.trim().toLowerCase() !== "reset month" || isResettingMonth}
-                        onClick={async () => {
-                          await onResetMonth();
-                          setResetDialogOpen(false);
-                        }}
-                      >
-                        {isResettingMonth ? messages.common.working : messages.month.resetMonthConfirm}
-                      </button>
-                    </div>
-                  </Dialog.Content>
-                </Dialog.Portal>
-              </Dialog.Root>
-              <Dialog.Root
-                open={deleteDialogOpen}
-                onOpenChange={(open) => {
-                  if (!open && isDeletingMonth) {
-                    return;
-                  }
-                  setDeleteDialogOpen(open);
-                  if (open) {
-                    onActionsOpenChange(false);
-                  }
+                {messages.month.resetMonth}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteError("");
+                  setDeleteDialogOpen(true);
+                  onActionsOpenChange(false);
                 }}
+                className="month-actions-item month-actions-item-danger"
+                disabled={isDeletingMonth}
               >
-                <Dialog.Trigger asChild>
-                  <button
-                    type="button"
-                    className="month-actions-item month-actions-item-danger"
-                    disabled={isDeletingMonth}
-                  >
-                    {messages.month.deleteMonth}
-                  </button>
-                </Dialog.Trigger>
-                <Dialog.Portal>
-                  <Dialog.Overlay className="note-dialog-overlay" />
-                  <Dialog.Content className="note-dialog-content">
-                    <div className="note-dialog-head">
-                      <Dialog.Title>{messages.month.deleteMonth}</Dialog.Title>
-                      <Dialog.Description>{messages.month.deleteMonthDetail}</Dialog.Description>
-                    </div>
-                    <input
-                      className="table-edit-input"
-                      placeholder={messages.month.deleteMonthPlaceholder}
-                      value={deleteMonthText}
-                      onChange={(event) => onDeleteMonthTextChange(event.target.value)}
-                    />
-                    <div className="note-dialog-actions">
-                      <Dialog.Close asChild>
-                        <button type="button" className="subtle-action" disabled={isDeletingMonth}>Cancel</button>
-                      </Dialog.Close>
-                      <button
-                        type="button"
-                        className="subtle-action subtle-danger"
-                        disabled={deleteMonthText.trim().toLowerCase() !== "delete month" || isDeletingMonth}
-                        onClick={async () => {
-                          await onDeleteMonth();
-                          setDeleteDialogOpen(false);
-                        }}
-                      >
-                        {isDeletingMonth ? messages.common.working : messages.month.deleteMonthConfirm}
-                      </button>
-                    </div>
-                  </Dialog.Content>
-                </Dialog.Portal>
-              </Dialog.Root>
+                {messages.month.deleteMonth}
+              </button>
             </Popover.Content>
           </Popover.Portal>
         </Popover.Root>
+        {/* The confirmation dialogs live outside the Actions popover: opening one
+            closes the popover, which would otherwise unmount the dialog with it. */}
+        <Dialog.Root
+          open={resetDialogOpen}
+          onOpenChange={(open) => {
+            if (!open && isResettingMonth) {
+              return;
+            }
+            setResetDialogOpen(open);
+            setResetError("");
+          }}
+        >
+          <Dialog.Portal>
+            <Dialog.Overlay className="note-dialog-overlay" />
+            <Dialog.Content className="note-dialog-content">
+              <div className="note-dialog-head">
+                <Dialog.Title>{messages.month.resetMonth}</Dialog.Title>
+                <Dialog.Description>{messages.month.resetMonthDetail}</Dialog.Description>
+              </div>
+              <input
+                className="table-edit-input"
+                placeholder={messages.month.resetMonthPlaceholder}
+                value={resetMonthText}
+                onChange={(event) => onResetMonthTextChange(event.target.value)}
+              />
+              <InlineError message={resetError} />
+              <div className="note-dialog-actions">
+                <Dialog.Close asChild>
+                  <button type="button" className="subtle-action" disabled={isResettingMonth}>Cancel</button>
+                </Dialog.Close>
+                <button
+                  type="button"
+                  className="subtle-action subtle-danger"
+                  disabled={resetMonthText.trim().toLowerCase() !== "reset month" || isResettingMonth}
+                  onClick={async () => {
+                    if (await runAction(onResetMonth, setResetError, messages.month.resetMonthFailed)) {
+                      setResetDialogOpen(false);
+                    }
+                  }}
+                >
+                  {isResettingMonth ? messages.common.working : messages.month.resetMonthConfirm}
+                </button>
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+        <Dialog.Root
+          open={deleteDialogOpen}
+          onOpenChange={(open) => {
+            if (!open && isDeletingMonth) {
+              return;
+            }
+            setDeleteDialogOpen(open);
+            setDeleteError("");
+          }}
+        >
+          <Dialog.Portal>
+            <Dialog.Overlay className="note-dialog-overlay" />
+            <Dialog.Content className="note-dialog-content">
+              <div className="note-dialog-head">
+                <Dialog.Title>{messages.month.deleteMonth}</Dialog.Title>
+                <Dialog.Description>{messages.month.deleteMonthDetail}</Dialog.Description>
+              </div>
+              <input
+                className="table-edit-input"
+                placeholder={messages.month.deleteMonthPlaceholder}
+                value={deleteMonthText}
+                onChange={(event) => onDeleteMonthTextChange(event.target.value)}
+              />
+              <InlineError message={deleteError} />
+              <div className="note-dialog-actions">
+                <Dialog.Close asChild>
+                  <button type="button" className="subtle-action" disabled={isDeletingMonth}>Cancel</button>
+                </Dialog.Close>
+                <button
+                  type="button"
+                  className="subtle-action subtle-danger"
+                  disabled={deleteMonthText.trim().toLowerCase() !== "delete month" || isDeletingMonth}
+                  onClick={async () => {
+                    if (await runAction(onDeleteMonth, setDeleteError, messages.month.deleteMonthFailed)) {
+                      setDeleteDialogOpen(false);
+                    }
+                  }}
+                >
+                  {isDeletingMonth ? messages.common.working : messages.month.deleteMonthConfirm}
+                </button>
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
       </div>
     </div>
   );
