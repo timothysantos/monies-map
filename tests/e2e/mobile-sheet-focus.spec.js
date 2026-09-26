@@ -28,7 +28,9 @@ function hiddenFromScreenReaders(locator) {
   return locator.evaluate((element) => Boolean(element.closest('[aria-hidden="true"], [inert]')));
 }
 
-test.describe("mobile sheet focus", () => {
+// Tagged @webkit: `npm run test:e2e:webkit` also runs these in WebKit with an
+// iPhone profile, where a clicked or tapped button is not focused.
+test.describe("mobile sheet focus", { tag: "@webkit" }, () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
     await page.goto("/");

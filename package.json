@@ -39,6 +39,8 @@
     "audit": "npm audit",
     "audit:prod": "npm audit --omit=dev",
     "test:e2e": "playwright test",
+    "pretest:e2e:webkit": "node ./scripts/ensure-node-major.mjs 22.23.0 && npm run db:migrate:test && npm run build",
+    "test:e2e:webkit": "playwright test --config=playwright.webkit.config.js",
     "pretest:e2e:sharded": "node ./scripts/ensure-node-major.mjs 22.23.0",
     "test:e2e:sharded": "node ./scripts/run-e2e-sharded.mjs",
     "pretest:performance": "npm run build",
