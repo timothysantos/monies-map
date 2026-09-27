@@ -66,11 +66,11 @@ export const SPLITS_COPY = {
     think: "Nothing to fix by itself. A good prompt for a friendly chat about how you split things."
   },
   tripInNumbers: {
-    phrasings: ["The trip in numbers: {count} shared costs, and the priciest was {name} at {amount}."],
+    phrasings: ["The trip in numbers: {count} shared costs, and the priciest was the {name} ({amount})."],
     think: ""
   },
   groupInNumbers: {
-    phrasings: ["This group in numbers: {count} shared costs, and the priciest was {name} at {amount}."],
+    phrasings: ["This group in numbers: {count} shared costs, and the priciest was the {name} ({amount})."],
     think: ""
   }
 } satisfies CopyCatalogue;
@@ -208,7 +208,8 @@ export function groupInNumbersTrivia(input: SplitsSignalInput): MoneySignal | nu
   const trip = isTrip(input.group);
   return triviaSignal(`group-in-numbers:${input.group.id}`, trip ? SPLITS_COPY.tripInNumbers : SPLITS_COPY.groupInNumbers, {
     count: expenses.length,
-    name: priciest.description || "one cost",
+    // "the {name}": a description that already starts with "The" drops it.
+    name: String(priciest.description || "shared cost").trim().replace(/^the\s+/i, ""),
     amount: input.formatMoney(priciest.totalAmountMinor)
   }, { moment: trip && sinceLast >= 2 && sinceLast <= 30 });
 }

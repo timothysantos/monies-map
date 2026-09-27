@@ -581,7 +581,7 @@ A trip group's costs; right after a trip ends (2 to 30 days) it is the moment's 
 
 Line:
 
-- The trip in numbers: {count} shared costs, and the priciest was {name} at {amount}.
+- The trip in numbers: {count} shared costs, and the priciest was the {name} ({amount}).
 
 ### groupInNumbers (Just for fun)
 
@@ -589,7 +589,7 @@ Any other group's costs.
 
 Line:
 
-- This group in numbers: {count} shared costs, and the priciest was {name} at {amount}.
+- This group in numbers: {count} shared costs, and the priciest was the {name} ({amount}).
 
 ## Quotes
 
