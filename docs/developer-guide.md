@@ -113,6 +113,16 @@ smoke bundle through the same runner on two stacks.
 iPhone profile. It needs `npx playwright install webkit` once and is not part
 of `verify`.
 
+GitHub's checks run the same tests in headless Chromium on Linux, which
+differs from a Mac in two ways a test must allow for. Linux's default sans
+fonts set text a little wider and taller, so do not rely on a layout that fits
+only with the Mac's fonts or on where the middle of a cell lands (tap the
+control you mean; extra `letter-spacing` imitates wider text on any machine).
+And a synthesized touch
+drag (`Input.synthesizeScrollGesture`) does not scroll the page there, so a
+touch test first checks that a drag scrolls at all, as
+`tests/e2e/mobile-sheet-focus.spec.js` does.
+
 ## How do I check the app on an iPhone?
 
 iPhone checks use WebKit (Safari's engine) through Playwright with an iPhone

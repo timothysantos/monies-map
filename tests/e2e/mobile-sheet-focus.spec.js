@@ -458,6 +458,45 @@ test.describe("mobile sheet background", () => {
     await gotoMobileMonth(page);
     const scrollable = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
     expect(scrollable).toBeGreaterThan(600);
+    const cdp = await page.context().newCDPSession(page);
+    const scrollY = () => page.evaluate(() => window.scrollY);
+    // The scroll position once a touch fling has come to rest.
+    const settledScrollY = async () => {
+      let last = await scrollY();
+      for (let check = 0; check < 40; check += 1) {
+        await page.waitForTimeout(150);
+        const now = await scrollY();
+        if (now === last) return now;
+        last = now;
+      }
+      throw new Error("The page kept scrolling.");
+    };
+    // Chromium's synthesized touch drag scrolls the page in headless macOS
+    // but does nothing in headless Linux (GitHub's runner), where a drag test
+    // would pass vacuously while the sheet is open and fail after it closes.
+    // So first check that a drag scrolls this page with no sheet open. Where
+    // it does, the drags below prove the page does not and then does scroll.
+    // Everywhere, the touchmove a finger sends outside the sheet must be
+    // cancelled while the sheet is open (that is what stops a drag) and not
+    // after it closes.
+    await page.evaluate(() => window.scrollTo({ top: 400, behavior: "instant" }));
+    await cdp.send("Input.synthesizeScrollGesture", { x: 195, y: 300, yDistance: -100, gestureSourceType: "touch", speed: 1200 });
+    const touchDragScrolls = (await settledScrollY()) !== 400;
+    test.info().annotations.push({ type: "touch drag", description: touchDragScrolls ? "synthesized touch drag scrolls" : "synthesized touch drag does not scroll here; checked touchmove cancellation only" });
+    await page.evaluate(() => {
+      window.__lastTouchMoveCancelled = null;
+      // On window, so it runs after the scroll lock's listener on document.
+      window.addEventListener("touchmove", (event) => { window.__lastTouchMoveCancelled = event.defaultPrevented; }, { passive: true });
+    });
+    const touchMoveCancelled = async (x, y) => {
+      await page.evaluate(() => { window.__lastTouchMoveCancelled = null; });
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+      for (const step of [1, 2, 3]) {
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: y + step * 20 }] });
+      }
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      return page.evaluate(() => window.__lastTouchMoveCancelled);
+    };
     await page.evaluate(() => window.scrollTo({ top: 400, behavior: "instant" }));
     const opener = page.getByRole("button", { name: "+ Add planned item" });
     const sheet = page.locator('.entry-mobile-sheet[aria-label="+ Add planned item"]');
@@ -499,17 +538,19 @@ test.describe("mobile sheet background", () => {
     // A tall sheet stops 24 px below the top; the drag starts in that strip.
     expect(cover.sheetTop).toBeGreaterThan(16);
 
-    const scrollBefore = await page.evaluate(() => window.scrollY);
+    const scrollBefore = await scrollY();
     expect(scrollBefore).toBeGreaterThan(0);
     const backdropY = Math.floor(cover.sheetTop / 2);
-    const cdp = await page.context().newCDPSession(page);
-    await cdp.send("Input.synthesizeScrollGesture", { x: 195, y: backdropY, yDistance: -400, gestureSourceType: "touch", speed: 1200 });
-    await page.waitForTimeout(300);
-    expect(await page.evaluate(() => window.scrollY)).toBe(scrollBefore);
+    expect(await touchMoveCancelled(195, backdropY)).toBe(true);
+    if (touchDragScrolls) {
+      await cdp.send("Input.synthesizeScrollGesture", { x: 195, y: backdropY, yDistance: -400, gestureSourceType: "touch", speed: 1200 });
+      await page.waitForTimeout(300);
+    }
+    expect(await scrollY()).toBe(scrollBefore);
     await page.mouse.move(195, backdropY);
     await page.mouse.wheel(0, 500);
     await page.waitForTimeout(300);
-    expect(await page.evaluate(() => window.scrollY)).toBe(scrollBefore);
+    expect(await scrollY()).toBe(scrollBefore);
     await expect(sheet).toBeVisible();
 
     await page.keyboard.press("Escape");
@@ -517,8 +558,18 @@ test.describe("mobile sheet background", () => {
     await expect(opener).toBeFocused();
     expect(await hiddenFromScreenReaders(opener)).toBe(false);
     await expect(page.getByRole("button", { name: "Edit Savings row" })).toHaveCount(1);
-    const scrollAfterClose = await page.evaluate(() => window.scrollY);
-    await cdp.send("Input.synthesizeScrollGesture", { x: 195, y: 300, yDistance: 300, gestureSourceType: "touch", speed: 1200 });
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(scrollAfterClose);
+    // The wheel scrolls the page again.
+    const scrollAfterClose = await scrollY();
+    await page.mouse.move(195, 300);
+    await page.mouse.wheel(0, 300);
+    await expect.poll(scrollY).toBeGreaterThan(scrollAfterClose);
+    // A finger's touchmove is no longer cancelled. (Where these dispatched
+    // touches do scroll the page, it may still be moving afterwards.)
+    expect(await touchMoveCancelled(195, 300)).toBe(false);
+    if (touchDragScrolls) {
+      const scrollBeforeDrag = await settledScrollY();
+      await cdp.send("Input.synthesizeScrollGesture", { x: 195, y: 300, yDistance: 300, gestureSourceType: "touch", speed: 1200 });
+      await expect.poll(scrollY).toBeLessThan(scrollBeforeDrag);
+    }
   });
 });
