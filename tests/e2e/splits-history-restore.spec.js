@@ -87,3 +87,63 @@ test("a restore rejected because another tab already restored the split is shown
   const data = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
   expect(data.splitsPage.activity.filter((item) => item.description === description)).toHaveLength(1);
 });
+
+test("a deleted settle-up is restored from the activity history view", async ({ page }) => {
+  await page.goto("/");
+  await reseedDemo(page);
+  const { groupId } = await postJson(page, "/api/splits/groups/create", { name: `Restore trip ${Date.now()}`, currency: "SGD", expenseSource: "mixed" });
+  await postJson(page, "/api/splits/expenses/create", {
+    groupId,
+    date: "2025-10-15",
+    description: "Trip groceries",
+    categoryName: "Groceries",
+    payerPersonName: "Tim",
+    amountMinor: 6000,
+    splitAmountMinor: 3000,
+    currency: "SGD",
+    paymentMethod: "cash",
+    paymentStatus: "recorded"
+  });
+  const { settlementId } = await postJson(page, "/api/splits/settlements/create", {
+    groupId,
+    date: "2025-10-16",
+    fromPersonName: "Joyce",
+    toPersonName: "Tim",
+    amountMinor: 3000,
+    currency: "SGD",
+    paymentMethod: "cash",
+    paymentStatus: "recorded"
+  });
+  // A settle-up can only be deleted once it is undone.
+  const settled = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
+  const { batchId } = settled.splitsPage.activity.find((item) => item.id === settlementId);
+  await postJson(page, "/api/splits/batches/reopen", { batchId });
+  await postJson(page, "/api/splits/settlements/delete", { settlementId });
+
+  await page.goto(`/splits?view=person-tim&month=2025-10&split_group=${groupId}`);
+  await expect(page.locator("article.panel-splits")).toBeVisible();
+  await page.getByRole("button", { name: "Activity history" }).click();
+  const dialog = page.getByRole("dialog", { name: "Split activity history" });
+  const deletedRow = dialog.locator(".split-history-row").filter({ hasText: "· deleted ·" }).filter({ hasText: "Settlement" });
+  await expect(deletedRow).toHaveCount(1);
+
+  const restoreResponse = page.waitForResponse((response) => response.url().includes("/api/splits/activity-history/restore"));
+  await deletedRow.getByRole("button", { name: "Restore" }).click();
+  const response = await restoreResponse;
+  expect(response.request().postDataJSON()).toEqual({ recordKind: "settlement", recordId: settlementId });
+  expect(response.status()).toBe(200);
+  await expect(dialog).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Activity history" }).click();
+  const settlementRows = dialog.locator(".split-history-row").filter({ hasText: "Settlement" });
+  await expect(settlementRows.filter({ hasText: "· restored ·" })).toHaveCount(1);
+  await expect(settlementRows.getByRole("button", { name: "Restore" })).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Close" }).click();
+
+  const data = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
+  expect(data.splitsPage.activity.filter((item) => item.id === settlementId)).toEqual([
+    expect.objectContaining({ kind: "settlement", batchId })
+  ]);
+  expect(data.splitsPage.activity.find((item) => item.id === settlementId).batchClosedAt).toBeFalsy();
+  expect(data.splitsPage.groups.find((group) => group.id === groupId).balanceMinor).toBe(0);
+});

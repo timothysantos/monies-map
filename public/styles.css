@@ -1620,6 +1620,13 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   opacity: 0.62;
 }
 
+/* A browser sends no click for a press on a disabled button, not even to
+   its row, so an actual amount with no entries would be a dead spot in a
+   row that opens on a click or tap. The press goes through to the row. */
+.month-actual-cell .month-actual-drilldown:disabled {
+  pointer-events: none;
+}
+
 .month-actual-drilldown:not(:disabled):hover,
 .month-actual-drilldown:not(:disabled):focus-visible {
   color: var(--accent-strong);
