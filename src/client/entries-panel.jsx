@@ -48,7 +48,7 @@ import {
 import { buildRequestErrorMessage } from "./request-errors";
 import { deleteSplitExpense, updateSplitExpenseCategory, updateSplitExpenseNote } from "./splits-api";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
-import { buildEntriesSignals, ENTRIES_CALM_LINE } from "../domain/money-signals/entries-signals";
+import { buildEntriesSignals, ENTRIES_CALM_LINES, ENTRIES_TRIVIA_ROTATION } from "../domain/money-signals/entries-signals";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { fetchQueryWithLease } from "./query-leases";
 import { createEntriesDataOwner } from "./entries-data-owner";
@@ -525,7 +525,10 @@ export function EntriesPanel({
       entries: checkInEntries.map((entry) => ({ ...entry, amountMinor: entry.visibleAmountMinor ?? entry.amountMinor })),
       formatMoney: formatService.unmaskedMoney
     }),
-    calmLine: ENTRIES_CALM_LINE,
+    page: "entries",
+    period: entryView.monthPage.month,
+    triviaRotation: ENTRIES_TRIVIA_ROTATION,
+    calmLines: ENTRIES_CALM_LINES,
     alsoLabel: "Also this month",
     clock: checkInClock
   }), [checkInClock, checkInEntries, entryView.id, entryView.monthPage.month, selectedScope]);

@@ -31,6 +31,35 @@ when the headline is not a Bigger question. "See all insights" adds up
 to three more signals, one quote (never beside a Bigger question) and
 the Money consequence map.
 
+## The year rule
+
+What rotates follows the period being viewed, never the time of the visit
+or the browser's memory: Month and Entries use their month, Summary the
+range's last month, Splits the current month for the selected group. For
+one page and view, nothing shown for a period comes back in the eleven
+periods before or after it:
+
+- Just for fun: each trivia type sits in one of twelve columns, one per
+  month number; a period tries its column's types in turn (the first one
+  changes each year) and shows none rather than borrow from another
+  column. Moments (a year recap, an anniversary) go first and fire in at
+  most one period of any twelve. Month and Entries have different types,
+  so they never say the same thing for a month.
+- A signal's wording: every phrasing with every think line it may pair
+  with, taken in turn by month (12 or more pairs per signal), all with the
+  same numbers. The "also" list uses each signal's first phrasing.
+- Long view: a seasonal moment leads; otherwise the long views that fire
+  take turns by month, each in its own wording turn.
+- Quote: the library is in 12 columns (a quote's place in the list, mod 12); each page reads a
+  different column in the same month (Summary +0, Month +3, Entries +6, Splits +9) and
+  moves on one column a month. In its column it shows the quote that fits
+  the headline's topic, else the calm one, else none.
+- Calm line: twelve lines, one per month in turn.
+
+Browser memory may only add: a headline shown in the last three days
+rests, a number that moved leads with what changed, a cleared quick fix
+says "Sorted" once, and a revisit with nothing new is a quiet line.
+
 ## Lines the engine adds
 
 When a signal's number moved by 10% or $50 since the last visit, its
@@ -45,12 +74,24 @@ last visit":
 - All quiet since {when}. Nothing here has moved.
 - Same picture as {when}. Nothing new needs a look.
 
-Calm line when no signal fires:
+Calm lines when no signal fires, one per month in turn. `{place}` is
+`this range` on Summary, `{month}` on Month, `this list` on Entries, `this group` on Splits; each page keeps its own first line:
 
-- Summary: Nothing in this range needs a look right now.
-- Month: Nothing in {month} needs a look right now.
-- Entries: Nothing in this list needs a look right now.
-- Splits: Nothing needs a look in this group right now.
+- Summary, first line: Nothing in this range needs a look right now.
+- Month, first line: Nothing in {month} needs a look right now.
+- Entries, first line: Nothing in this list needs a look right now.
+- Splits, first line: Nothing needs a look in this group right now.
+- All clear in {place}: nothing needs a look.
+- Nothing in {place} is asking for attention right now.
+- {place} looks settled. Nothing to check.
+- Nothing stands out in {place} right now.
+- A calm picture in {place}: nothing needs you.
+- No loose ends in {place} right now.
+- Nothing to sort in {place}. Enjoy the quiet.
+- {place} is quiet: nothing worth a look.
+- All calm in {place}. Nothing is waiting.
+- Nothing in {place} calls for a look.
+- Nothing pressing in {place} right now.
 
 Heading of the expanded list:
 
@@ -72,13 +113,34 @@ Phrasings:
 - One statement doesn't match yet: {whose} {account}, off by {amount}.
 - {amount} separates {whose} {account} statement from the app.
 
-Way to think about it: Small gaps are usually one missing or doubled entry. Sorting it keeps every total here trustworthy.
+Way to think about it, in turn:
+
+- Small gaps are usually one missing or doubled entry. Sorting it keeps every total here trustworthy.
+- A gap this size usually comes down to one entry. Finding it keeps the totals here honest.
+- The statement is the checkpoint for everything else here. One quick comparison usually closes it.
 
 Said once when it clears (Going well): Sorted: {whose} {account} now matches its statement. / That's the part that makes every other number here trustworthy.
 
 Action: Review statement
 
 ## Summary
+
+Just for fun follows the range's last month. Month number, then the type tried first and its reserves:
+
+- January: `category-fraction`
+- February: `every-month-category`, then `range-total`
+- March: `most-entries-month`, then `last-year-top`, then `income-months`
+- April: `quietest-month`, then `daily-average`
+- May: `weekly-category`
+- June: `categories-count`, then `top-category-entries`
+- July: `biggest-month`, then `second-category`
+- August: `top-category-months`
+- September: `entries-total`
+- October: `average-month`
+- November: `most-income-month`, then `category-peak`, then `range-share`
+- December: `half-of-spending`
+
+Moments, tried before the month's column: `year-recap`, `anniversary`.
 
 ### spendingAboveIncome (Bigger question)
 
@@ -90,7 +152,12 @@ Phrasings:
 - For {count} months running, more went out than came in: {gap} in all.
 - The last {count} months each spent more than came in, {gap} altogether.
 
-Way to think about it: Changing one category is easier than changing everything. Which one matters least to you?
+Way to think about it, in turn:
+
+- Changing one category is easier than changing everything. Which one matters least to you?
+- Streaks like this often come from one or two big items. Knowing which ones makes the next step clearer.
+- A few months like this can happen for good reasons. Worth a calm look at whether it was planned.
+- One category usually carries most of a streak like this. Starting there keeps it simple.
 
 ### categoryCreep (Worth a look)
 
@@ -101,9 +168,13 @@ Phrasings:
 - {category} has risen {count} months in a row and is {above} above its {window}-month average.
 - {category} is {above} above its usual month, after {count} rises in a row.
 - {count} months ago {category} was {then}; now it's {now}.
-  - Think line for this phrasing: Rises like this usually happen without anyone deciding. If it's spending you enjoy, keep it; just make it a choice.
 
-Way to think about it: Rises like this usually happen without anyone deciding. If it's spending you enjoy, keep it; just make it a choice.
+Way to think about it, in turn:
+
+- Rises like this usually happen without anyone deciding. If it's spending you enjoy, keep it; just make it a choice.
+- Gradual rises are easy to miss month to month. Seeing the trend is the useful part.
+- Some rises simply follow a change in life. Worth asking whether this one does.
+- A rising category is worth one question: is this still the amount you'd choose?
 
 ### subscriptions (Worth a look)
 
@@ -113,10 +184,19 @@ Phrasings:
 
 - Subscriptions came to {amount} in {month}, about {yearly} a year.
 - {yearly} a year goes to subscriptions. Still using all of them?
-  - Think line for this phrasing: Automatic payments are easy to stop noticing.
+  - Think lines for this phrasing, in turn:
+    - Automatic payments are easy to stop noticing.
+    - The ones used every week are easy to keep.
+    - A quick look once a year keeps the list current.
+    - Each one only needs to earn its place.
 - Your subscriptions cost about {daily} a day.
 
-Way to think about it: Automatic payments are easy to stop noticing. Judge each one by its yearly cost.
+Way to think about it, in turn:
+
+- Automatic payments are easy to stop noticing. Judge each one by its yearly cost.
+- A subscription that still earns its place is money well spent. The yearly cost makes that easy to judge.
+- Once a year is a good rhythm for checking which ones you still use.
+- Small monthly amounts look different at their yearly cost. That view makes each one easier to judge.
 
 ### monthsUnderPlan (Going well)
 
@@ -128,7 +208,12 @@ Phrasings:
 - Under plan in {under} of the last {total} months, {saved} below plan in all.
 - {saved} stayed inside the plan across {under} of the last {total} months.
 
-Way to think about it: Consistency matters more than any single month. This is what a working plan looks like.
+Way to think about it, in turn:
+
+- Consistency matters more than any single month. This is what a working plan looks like.
+- Months like these are the plan doing its job. That's worth noticing.
+- A plan that holds most months is a plan that fits your life.
+- Staying under plan this often leaves room for the things you care about.
 
 ### keepRate (Long view)
 
@@ -139,9 +224,19 @@ Phrasings:
 - Over the last {count} months {subject} kept {rate}% of what came in ({kept}).
 - For every {ten} that came in over the last {count} months, about {stayed} stayed.
 - {kept} kept over the last {count} months. One heavy month barely moves that.
-  - Think line for this phrasing: The year is the fairer scorecard.
+  - Think lines for this phrasing, in turn:
+    - The year is the fairer scorecard.
+    - That's the steady part that builds up.
+    - Month to month it moves; the year shows the pattern.
+    - Over time, that's what gives plans room.
+- Kept over the last {count} months: {kept}, about {rate}% of what came in.
 
-Way to think about it: One heavy month barely moves a year; the year is the fairer scorecard.
+Way to think about it, in turn:
+
+- One heavy month barely moves a year; the year is the fairer scorecard.
+- What stays over a year is the number that builds up over time.
+- Month to month it moves around; over a year the pattern shows.
+- Keeping some of each month's income is what gives future plans room.
 
 ### cushion (Long view)
 
@@ -153,7 +248,12 @@ Phrasings:
 - At your usual spending of about {usual} a month, bank balances would last about {months}.
 - {balance} in bank accounts is about {months} of your usual spending.
 
-Way to think about it: A cushion turns surprises into inconveniences. How big feels right is your call.
+Way to think about it, in turn:
+
+- A cushion turns surprises into inconveniences. How big feels right is your call.
+- A cushion gives room to handle the unexpected calmly. How much is enough is yours to decide.
+- Months of cover is a simple way to see how much room you have.
+- Knowing the number is the useful part; the right size depends on your life.
 
 ### sameSeason (Long view)
 
@@ -165,7 +265,12 @@ Phrasings:
 - Compared with {month} last year, spending was about {diff} {direction}.
 - {month} last year: {then}. This {month}: {now}.
 
-Way to think about it: The same month last year is the fair comparison: holidays, bonuses and school terms line up.
+Way to think about it, in turn:
+
+- The same month last year is the fair comparison: holidays, bonuses and school terms line up.
+- Comparing like with like takes the seasons out of the picture.
+- A year apart, the same month shows what really changed.
+- Seasonal costs repeat. Last year's month is a gentle guide to this one.
 
 ### chineseNewYear (Long view)
 
@@ -177,27 +282,218 @@ Phrasings:
 - Last Chinese New Year month, {lastMonth}, spending came to {amount}. This year's falls in {cnyMonth}.
 - {amount}: what {lastMonth}, last year's Chinese New Year month, came to.
 
-Way to think about it: Festive months have their own shape. Knowing last year's helps this one feel planned rather than surprising.
+Way to think about it, in turn:
+
+- Festive months have their own shape. Knowing last year's helps this one feel planned rather than surprising.
+- Festive months come round every year. Last year's number makes this one easier to plan.
+- Reunion dinners, red packets and visits add up. Last year's month is a useful guide.
+- Knowing roughly what the season costs lets you enjoy it without surprises.
 
 ### categoryFraction (Just for fun)
 
 The month's biggest category (not Other, loans, rent, bills, insurance, tax, savings or transfers) as a plain fraction, between one in two and one in twelve.
 
+Trivia type: `category-fraction`.
+
 Line:
 
 - About one in every {fraction} dollars in {month} went to {category}.
+
+### halfOfSpending (Just for fun)
+
+How few categories made up half of the focus (or latest complete) month's spending (two or more, and fewer than all).
+
+Trivia type: `half-of-spending`.
+
+Line:
+
+- {count} categories made up half of {month}'s spending.
 
 ### lastYearTop (Just for fun)
 
 The biggest category of the same month last year, when it is in the range.
 
+Trivia type: `last-year-top`.
+
 Line:
 
 - A year ago, {category} was your biggest category.
 
+### everyMonthCategory (Just for fun)
+
+Of the categories in every complete month of the range (3 or more months), the steadiest, with its monthly average.
+
+Trivia type: `every-month-category`.
+
+Line:
+
+- {category} showed up in all {count} months of this range, about {amount} a month on average.
+
+### mostEntriesMonth (Just for fun)
+
+The complete month with the most entries (3 or more months, no tie).
+
+Trivia type: `most-entries-month`.
+
+Line:
+
+- The month with the most entries in this range: {month}, with {count}.
+
+### quietestMonth (Just for fun)
+
+The complete month with the least spending (3 or more months, no tie).
+
+Trivia type: `quietest-month`.
+
+Line:
+
+- The quietest month for spending in this range: {month}, at {amount}.
+
+### biggestMonth (Just for fun)
+
+The complete month with the most spending (3 or more months, no tie).
+
+Trivia type: `biggest-month`.
+
+Line:
+
+- The biggest month for spending in this range: {month}, at {amount}.
+
+### averageMonth (Just for fun)
+
+An average complete month's spending (3 or more months).
+
+Trivia type: `average-month`.
+
+Line:
+
+- An average month in this range came to about {amount} of spending.
+
+### weeklyCategory (Just for fun)
+
+The range's biggest everyday category (not Other, loans, rent, bills, insurance, tax, savings or transfers), per week.
+
+Trivia type: `weekly-category`.
+
+Line:
+
+- {category} came to about {amount} a week across this range.
+
+### categoriesCount (Just for fun)
+
+How many categories the range's complete months used (3 or more).
+
+Trivia type: `categories-count`.
+
+Line:
+
+- {count} different categories show up across this range.
+
+### topCategoryMonths (Just for fun)
+
+The category that was biggest in the most complete months (2 or more, no tie).
+
+Trivia type: `top-category-months`.
+
+Line:
+
+- {category} was the biggest category in {count} of the {total} months here.
+
+### topCategoryEntries (Just for fun)
+
+The category with the most entries in the focus (or latest complete) month (2 or more, no tie, not Other).
+
+Trivia type: `top-category-entries`.
+
+Line:
+
+- {category} had the most entries in {month}: {count}.
+
+### entriesTotal (Just for fun)
+
+The entries across the range's complete months (2 or more months).
+
+Trivia type: `entries-total`.
+
+Line:
+
+- This range in numbers: {count} entries across {months} months.
+
+### mostIncomeMonth (Just for fun)
+
+The complete month with the most income (3 or more months with income, no tie).
+
+Trivia type: `most-income-month`.
+
+Line:
+
+- The most money came in during {month}: {amount}.
+
+### categoryPeak (Just for fun)
+
+The largest single everyday category-month in the range (3 or more complete months, no tie).
+
+Trivia type: `category-peak`.
+
+Line:
+
+- The biggest single category month in this range: {category} in {month}, at {amount}.
+
+### dailyAverage (Just for fun)
+
+The range's spending per day (2 or more complete months).
+
+Trivia type: `daily-average`.
+
+Line:
+
+- Across this range, spending averaged about {amount} a day.
+
+### rangeTotal (Just for fun)
+
+The range's spending in all (2 or more complete months).
+
+Trivia type: `range-total`.
+
+Line:
+
+- Spending across this range came to about {amount} over {months} months.
+
+### rangeShare (Just for fun)
+
+The range's biggest everyday category as one in every N dollars (between one in two and one in twelve).
+
+Trivia type: `range-share`.
+
+Line:
+
+- {category} took about one in every {fraction} dollars across this range.
+
+### secondCategory (Just for fun)
+
+The everyday category in second place across the range (no tie).
+
+Trivia type: `second-category`.
+
+Line:
+
+- {category} came second across this range, after {top}.
+
+### incomeMonths (Just for fun)
+
+How many complete months had income come in (1 or more, of 2 or more months).
+
+Trivia type: `income-months`.
+
+Line:
+
+- Income came in during {count} of the {total} months here.
+
 ### yearRecap (Just for fun)
 
-Seasonal: December (the year so far) and January (last year).
+Moment: a range ending in December recaps that year (3 or more of its months in the range).
+
+Trivia type: `year-recap`.
 
 Line:
 
@@ -205,13 +501,30 @@ Line:
 
 ### anniversary (Just for fun)
 
-Milestone: 12, 24, ... months after the first month with data.
+Moment: a range ending this month, 12, 24, ... months after the first month with data.
+
+Trivia type: `anniversary`.
 
 Line:
 
 - {years} of Monie's Map: your first month here was {firstMonth}.
 
 ## Month
+
+Just for fun follows the month. Month number, then the type tried first and its reserves:
+
+- January: `regular-spot`, then `quiet-weekday`
+- February: `no-spend-days`
+- March: `biggest-day`
+- April: `longest-run`, then `plan-count`
+- May: `weekend-share`
+- June: `category-share`, then `dining-weekday`
+- July: `busiest-weekday`, then `category-days`
+- August: `halfway`
+- September: `categories-count`
+- October: `busiest-week`, then `category-largest`
+- November: `day-average`
+- December: `biggest-bill`, then `top-two-categories`
 
 ### unlinkedBills (Quick fix)
 
@@ -229,9 +542,19 @@ When the count is 1:
 - {label}, planned at {total}, is still waiting for an entry.
 - Still unlinked: {label}, {total}, dated before today.
 
-Way to think about it: Linking them keeps the plan honest and catches anything that didn't go out.
+Way to think about it, in turn:
 
-Way to think about it (count of 1): Linking it keeps the plan honest and catches anything that didn't go out.
+- Linking them keeps the plan honest and catches anything that didn't go out.
+- An unlinked bill might still be on its way, or might not have gone out. Linking shows which.
+- Matching bills to entries is what makes the plan line up with the bank.
+- Once linked, the plan and the entries tell the same story.
+
+Way to think about it (count of 1), in turn:
+
+- Linking it keeps the plan honest and catches anything that didn't go out.
+- An unlinked bill might still be on its way, or might not have gone out. Linking shows which.
+- Matching it to its entry is what makes the plan line up with the bank.
+- Once linked, the plan and the entries tell the same story.
 
 Said once when it clears (Going well): Sorted: every planned bill dated so far has an entry linked. / The plan and the entries agree again, so the numbers here tell the whole story.
 
@@ -245,7 +568,12 @@ Phrasings:
 - {month} went {over} over plan, mostly {items}.
 - Most of {month}'s {over} over plan came from {items}.
 
-Way to think about it: Big one-offs happen. Worth deciding: truly one-off, or something to plan for next year?
+Way to think about it, in turn:
+
+- Big one-offs happen. Worth deciding: truly one-off, or something to plan for next year?
+- One big item can make a whole month look different. The rest of the month may be right on track.
+- A one-off is worth a quick question: a rare treat, or a cost that comes round each year?
+- Big purchases often have a season. Planning for the next one makes it feel lighter.
 
 Action: Show those entries
 
@@ -259,7 +587,12 @@ Phrasings:
 - {label} is at {actual} against a {plan} plan.
 - The {label} plan was {plan}; spending came to {actual}.
 
-Way to think about it: Plans are guesses made in advance. Adjust the plan or the spending; either is fine as long as it's a choice.
+Way to think about it, in turn:
+
+- Plans are guesses made in advance. Adjust the plan or the spending; either is fine as long as it's a choice.
+- Going over in one category is information, not a verdict. It shows where the plan and life differ.
+- If this spending was worth it, the plan can grow to match. If not, next month is a fresh start.
+- A plan that matches real life is easier to keep. This is a useful clue for the next one.
 
 Action: Review {category}
 
@@ -273,7 +606,12 @@ Phrasings:
 - {extra} more came in than planned {when}.
 - More came in than planned {when}: {extra} above plan.
 
-Way to think about it: Extra money blends into everyday spending quickly. Deciding early how much goes to future you keeps the rest yours to enjoy on purpose.
+Way to think about it, in turn:
+
+- Extra money blends into everyday spending quickly. Deciding early how much goes to future you keeps the rest yours to enjoy on purpose.
+- Extra income is a good moment to decide on purpose: some for later, some to enjoy.
+- A bonus month is the easiest time to move some money toward a goal.
+- Deciding early where extra money goes makes it feel like more.
 
 ### incomeArrived (Going well)
 
@@ -285,7 +623,12 @@ Phrasings:
 - Payday: {amount} came in on {day}.
 - {amount} landed on {day}.
 
-Way to think about it: Payday is the easiest moment to give money a job, before it blends into the month.
+Way to think about it, in turn:
+
+- Payday is the easiest moment to give money a job, before it blends into the month.
+- Right after payday is when a plan is easiest to follow.
+- Setting savings aside first makes the rest of the month simpler.
+- A few minutes now, deciding where it goes, saves second-guessing later.
 
 ### planLeft (Going well)
 
@@ -295,13 +638,26 @@ Phrasings:
 
 - {left} of this month's plan is still unspent.
 - {left} of this month's plan is still unspent. Give it a job before it drifts.
-  - Think line for this phrasing: Unspent plan isn't spent money yet.
+  - Think lines for this phrasing, in turn:
+    - Unspent plan isn't spent money yet.
+    - A small decision now keeps it yours.
+    - Leftover plan is room, not a rule.
 - You have {left} of plan left. Savings, next month, or something you've been looking forward to?
-  - Think line for this phrasing: Unspent plan isn't spent money yet.
+  - Think lines for this phrasing, in turn:
+    - Unspent plan isn't spent money yet.
+    - A small decision now keeps it yours.
+    - Leftover plan is room, not a rule.
 - Under plan by {left} so far. Nice; decide where it goes while it's still a choice.
-  - Think line for this phrasing: Unspent plan isn't spent money yet.
+  - Think lines for this phrasing, in turn:
+    - Unspent plan isn't spent money yet.
+    - A small decision now keeps it yours.
+    - Leftover plan is room, not a rule.
 
-Way to think about it: Unspent plan isn't spent money yet. Give it a job: savings, next month, or something you've been looking forward to.
+Way to think about it, in turn:
+
+- Unspent plan isn't spent money yet. Give it a job: savings, next month, or something you've been looking forward to.
+- Money left in the plan is a choice waiting to be made.
+- Deciding before the month ends keeps it from quietly disappearing.
 
 ### planLeftPast (Going well)
 
@@ -313,7 +669,12 @@ Phrasings:
 - {month} came in {left} under plan.
 - Under plan by {left} in {month}.
 
-Way to think about it: Unspent plan isn't spent money yet. Give it a job: savings, next month, or something you've been looking forward to.
+Way to think about it, in turn:
+
+- Unspent plan isn't spent money yet. Give it a job: savings, next month, or something you've been looking forward to.
+- A finished month under plan is money with no job yet. Savings or next month are both good homes.
+- Coming in under plan is a quiet win. Deciding where it goes makes it count.
+- Months like this give the next one a head start.
 
 ### savingsOnPlan (Going well)
 
@@ -325,7 +686,12 @@ Phrasings:
 - {saved} went to savings {when}, as planned.
 - Savings came to {saved} against a {planned} plan.
 
-Way to think about it: With savings covered, spending on what you enjoy is part of the plan, not a slip from it.
+Way to think about it, in turn:
+
+- With savings covered, spending on what you enjoy is part of the plan, not a slip from it.
+- Savings done first makes everything else simpler.
+- Future you is covered this month. The rest is room to live.
+- Meeting the savings plan is the part that builds up. Worth a moment of credit.
 
 ### upcomingBills (Worth a look)
 
@@ -343,7 +709,12 @@ When the count is 1:
 - Coming up in the next 10 days: {label}, {total}.
 - {total} goes out for {label} in the next 10 days.
 
-Way to think about it: A fresh month is the easiest time to set things up. Anything to move or cancel before it goes out?
+Way to think about it, in turn:
+
+- A fresh month is the easiest time to set things up. Anything to move or cancel before it goes out?
+- Knowing what's coming makes the rest of the month easier to plan.
+- A quick look now avoids surprises later in the month.
+- Bills due soon are easiest to change before they go out.
 
 ### paceSteady (Going well)
 
@@ -355,7 +726,12 @@ Phrasings:
 - Mid-month check: {spent} spent against a {plan} plan.
 - {left} of the plan is left for the last {days} days of {month}.
 
-Way to think about it: Spending is keeping pace with the plan so far. A calm middle of the month usually makes for a calm end.
+Way to think about it, in turn:
+
+- Spending is keeping pace with the plan so far. A calm middle of the month usually makes for a calm end.
+- Halfway through and on pace: the plan is working as intended.
+- Steady spending mid-month leaves room for the unexpected later.
+- Nothing needs changing. The month is unfolding as planned.
 
 ### paceAhead (Worth a look)
 
@@ -367,7 +743,12 @@ Phrasings:
 - Mid-month check: {spent} spent against a {plan} plan.
 - {left} of the plan is left for the last {days} days of {month}.
 
-Way to think about it: Spending is running ahead of the calendar. Nothing is fixed yet; the rest of the month decides where it lands.
+Way to think about it, in turn:
+
+- Spending is running ahead of the calendar. Nothing is fixed yet; the rest of the month decides where it lands.
+- Some months run ahead early. The second half often evens it out.
+- Ahead of the calendar is a nudge to glance at what's planned, nothing more.
+- There's still room in the plan. Knowing the pace now keeps the rest of the month a choice.
 
 ### fixedCosts (Long view)
 
@@ -379,27 +760,58 @@ Phrasings:
 - {planned} of {whose} {income} income is already spoken for by planned bills and subscriptions.
 - Planned bills and subscriptions: {planned}, against {income} of income.
 
-Way to think about it: Fixed costs set how much room every month has. The lower they are, the more freedom for everything else.
+Way to think about it, in turn:
+
+- Fixed costs set how much room every month has. The lower they are, the more freedom for everything else.
+- Fixed costs are the part of a budget that decides itself. Knowing the size helps every other choice.
+- The room left after fixed costs is where most choices happen.
+- Fixed costs rarely change, so any change there lasts month after month.
 
 ### regularSpot (Just for fun)
 
 The place visited most often, at least 3 times (not transport, bills or transfers).
 
+Trivia type: `regular-spot`.
+
 Line:
 
 - Your regular spot: {name}, {count} visits in {month}.
+
+### quietWeekday (Just for fun)
+
+The weekday with the fewest expenses, once the month has reached every weekday (no tie).
+
+Trivia type: `quiet-weekday`.
+
+Line:
+
+- {weekday} was the quietest day of the week {when}.
 
 ### weekdayPattern (Just for fun)
 
 More than half of the dining out (at least 3) on one weekday.
 
+Trivia type: `dining-weekday`.
+
 Line:
 
 - Most of your dining out {when} happened on {weekday}s.
 
+### busiestWeekday (Just for fun)
+
+The weekday with the most expenses (2 or more, no tie).
+
+Trivia type: `busiest-weekday`.
+
+Line:
+
+- {weekday} was the busiest day of the week {when}, with {count} entries.
+
 ### noSpendDays (Just for fun)
 
 Days with no expense in a finished month.
+
+Trivia type: `no-spend-days`.
 
 Line:
 
@@ -409,19 +821,158 @@ Line:
 
 Days with no expense so far in the month in progress.
 
+Trivia type: `no-spend-days`.
+
 Line:
 
 - {count} days so far in {month} with nothing spent.
 
+### longestRun (Just for fun)
+
+The longest run of days in a row with nothing spent (2 or more; the earliest when two are as long).
+
+Trivia type: `longest-run`.
+
+Line:
+
+- Longest stretch without spending {when}: {count} days, {start} to {end}.
+
 ### biggestDay (Just for fun)
 
-The date with the most spending (not savings, transfers or routine bills), and its largest entry.
+The date with the most spending (not savings, transfers or routine bills), and its largest named entry.
+
+Trivia type: `biggest-day`.
 
 Line:
 
 - Your biggest day was {day}: {name}.
 
+### busiestWeek (Just for fun)
+
+The week (Monday to Sunday, within the month) with the most spending (no tie).
+
+Trivia type: `busiest-week`.
+
+Line:
+
+- The biggest week {when} began {day}, with {amount} spent.
+
+### halfway (Just for fun)
+
+The date by which half of the month's spending had gone (3 or more expenses on 2 or more days).
+
+Trivia type: `halfway`.
+
+Line:
+
+- Half of the spending {when} had happened by {day}.
+
+### dayAverage (Just for fun)
+
+Spending per day of the month (so far, in the month in progress).
+
+Trivia type: `day-average`.
+
+Line:
+
+- Spending {when} averaged about {amount} a day.
+
+### weekendShare (Just for fun)
+
+Weekend spending as one in every N dollars (between one in two and one in twelve).
+
+Trivia type: `weekend-share`.
+
+Line:
+
+- Weekends {when} came to {amount}, about one in every {fraction} dollars spent.
+
+### categoryShare (Just for fun)
+
+The biggest everyday category (not savings, bills, insurance, loans, rent or tax) as one in every N dollars.
+
+Trivia type: `category-share`.
+
+Line:
+
+- {category} took about one in every {fraction} dollars spent {when}.
+
+### topTwoCategories (Just for fun)
+
+The month's two biggest everyday categories (not bills, insurance, loans, rent, tax or savings; no tie).
+
+Trivia type: `top-two-categories`.
+
+Line:
+
+- {top} and {second} were the two biggest categories {when}.
+
+### categoriesCount (Just for fun)
+
+How many categories the month's spending touched (3 or more).
+
+Trivia type: `categories-count`.
+
+Line:
+
+- Spending {when} spread across {count} categories.
+
+### categoryDays (Just for fun)
+
+The category that showed up on the most different days (3 or more).
+
+Trivia type: `category-days`.
+
+Line:
+
+- {category} showed up on {count} different days {when}.
+
+### categoryLargest (Just for fun)
+
+The largest named entry of the biggest everyday category.
+
+Trivia type: `category-largest`.
+
+Line:
+
+- Largest {category} entry {when}: {name}, {amount}.
+
+### planCount (Just for fun)
+
+How many planned bills and category budgets the month's plan holds (2 or more rows).
+
+Trivia type: `plan-count`.
+
+Line:
+
+- The plan for {month} holds {parts}.
+
+### biggestBill (Just for fun)
+
+The largest planned bill (2 or more bills, no tie).
+
+Trivia type: `biggest-bill`.
+
+Line:
+
+- The biggest planned bill {when}: {label}, {amount}.
+
 ## Entries
+
+Just for fun follows the month. Month number, then the type tried first and its reserves:
+
+- January: `smallest`, then `one-off-places`
+- February: `places`, then `income`
+- March: `top-account`, then `round-amounts`
+- April: `average`, then `shared`
+- May: `span`
+- June: `largest`
+- July: `repeated-amount`, then `top-place`
+- August: `category-count`
+- September: `first-day`
+- October: `median`
+- November: `accounts-count`
+- December: `busiest-date`, then `weekend-entries`
 
 ### uncategorized (Quick fix)
 
@@ -439,9 +990,19 @@ When the count is 1:
 - {name} is still in Other.
 - Still in Other: {name}, {total}.
 
-Way to think about it: Categories power every chart. Sorting these takes about a minute.
+Way to think about it, in turn:
 
-Way to think about it (count of 1): Categories power every chart. Sorting it takes about a minute.
+- Categories power every chart. Sorting these takes about a minute.
+- A category on each entry keeps the monthly picture accurate.
+- Once sorted, these show up in the right place on every chart.
+- A few taps now and the totals by category tell the full story.
+
+Way to think about it (count of 1), in turn:
+
+- Categories power every chart. Sorting it takes about a minute.
+- A category on it keeps the monthly picture accurate.
+- Once sorted, it shows up in the right place on every chart.
+- A few taps now and the totals by category tell the full story.
 
 Said once when it clears (Going well): Sorted: every entry {when} has a category. / Every chart here now tells the whole story.
 
@@ -457,7 +1018,12 @@ Phrasings:
 - Two entries for {name} at {amount} each, on {dates}.
 - Same amount, same place, close together: {name}, {amount}, on {dates}.
 
-Way to think about it: Might be right, might be a double charge. A quick look settles it.
+Way to think about it, in turn:
+
+- Might be right, might be a double charge. A quick look settles it.
+- Double charges are rare but worth catching. The bank statement shows which it is.
+- Two of the same close together is sometimes right, sometimes a slip. Either way it's quick to check.
+- If both are real, nothing to do. If not, removing one keeps the month's totals right.
 
 Action: Show those entries
 
@@ -471,19 +1037,221 @@ Phrasings:
 - {top} of the {total} spent {when} came from just five entries.
 - Five entries, {top}: that's {rate}% of {whose} spending of {total}.
 
-Way to think about it: A few big items usually shape a month more than many small ones. That's where a decision has the most effect.
+Way to think about it, in turn:
+
+- A few big items usually shape a month more than many small ones. That's where a decision has the most effect.
+- Big items are where a month's shape comes from. They're also the easiest to plan for.
+- The largest few entries usually explain most of a month.
+- Most of a month's money goes out in a few decisions. These were the big ones.
 
 Action: Show those entries
 
 ### smallestEntry (Just for fun)
 
-The smallest purchase (never a fee, interest or adjustment).
+The smallest purchase with a readable name (never a fee, interest, adjustment, or a PayNow or transfer reference).
+
+Trivia type: `smallest`.
 
 Line:
 
 - Smallest entry {when}: {amount} at {name}.
 
+### largestEntry (Just for fun)
+
+The largest purchase at a place (not a bill, subscription, insurance or transfer).
+
+Trivia type: `largest`.
+
+Line:
+
+- Largest entry {when}: {amount} at {name}.
+
+### placesCount (Just for fun)
+
+How many different places the month's purchases came from (3 or more).
+
+Trivia type: `places`.
+
+Line:
+
+- Entries {when} came from {count} different places.
+
+### oneOffPlaces (Just for fun)
+
+Places that show up only once (2 or more, from 3 or more places).
+
+Trivia type: `one-off-places`.
+
+Line:
+
+- {count} places show up just once {when}.
+
+### topPlace (Just for fun)
+
+The place with the most spent over two or more entries (no tie).
+
+Trivia type: `top-place`.
+
+Line:
+
+- Most spent at one place {when}: {name}, {amount} over {count} entries.
+
+### topAccount (Just for fun)
+
+The account or card with the most entries (2 or more, no tie).
+
+Trivia type: `top-account`.
+
+Line:
+
+- Most-used account or card {when}: {account}, with {count} entries.
+
+### accountsCount (Just for fun)
+
+How many accounts and cards the month's entries used (2 or more).
+
+Trivia type: `accounts-count`.
+
+Line:
+
+- Entries {when} used {count} different accounts and cards.
+
+### averageEntry (Just for fun)
+
+The average expense (3 or more expenses).
+
+Trivia type: `average`.
+
+Line:
+
+- The average entry {when} came to {amount}, across {count} expenses.
+
+### medianEntry (Just for fun)
+
+The median purchase: at least half came to this or less (4 or more).
+
+Trivia type: `median`.
+
+Line:
+
+- Half of the purchases {when} came to {amount} or less.
+
+### firstEntry (Just for fun)
+
+The first date with spending, when it has one entry.
+
+Trivia type: `first-day`.
+
+Line:
+
+- First entry {when}: {name}, {amount}, on {day}.
+
+### firstDay (Just for fun)
+
+The first date with spending, when it has several: the largest named one leads.
+
+Trivia type: `first-day`.
+
+Line:
+
+- First day with spending {when}: {day}, led by {name} at {amount}.
+
+### entrySpan (Just for fun)
+
+The first and last dates in the list and the number of days with entries (2 or more).
+
+Trivia type: `span`.
+
+Line:
+
+- Entries {when} run from {first} to {last}, across {days} different days.
+
+### repeatedAmount (Just for fun)
+
+The amount that appears most often (twice or more, no tie).
+
+Trivia type: `repeated-amount`.
+
+Line:
+
+- The most repeated amount {when}: {amount}, {times}.
+
+### categoryCount (Just for fun)
+
+The category with the most expenses (2 or more, no tie, not Other).
+
+Trivia type: `category-count`.
+
+Line:
+
+- {category} had the most entries {when}: {count} of them.
+
+### busiestDate (Just for fun)
+
+The date with the most entries (2 or more, no tie).
+
+Trivia type: `busiest-date`.
+
+Line:
+
+- Busiest day {when}: {day}, with {count} entries.
+
+### weekendEntries (Just for fun)
+
+Entries dated on a Saturday or Sunday (2 or more, from 5 or more entries).
+
+Trivia type: `weekend-entries`.
+
+Line:
+
+- {count} of the {total} entries {when} fell on a weekend.
+
+### roundAmounts (Just for fun)
+
+Expenses in whole dollars (2 or more).
+
+Trivia type: `round-amounts`.
+
+Line:
+
+- {count} entries {when} were round amounts, with no cents.
+
+### sharedEntries (Just for fun)
+
+Shared entries in the list (2 or more, not all of them).
+
+Trivia type: `shared`.
+
+Line:
+
+- {count} of the {total} entries {when} were shared costs.
+
+### incomeEntries (Just for fun)
+
+The month's income entries and their total.
+
+Trivia type: `income`.
+
+Line:
+
+- Income {when}: {total} across {entries}.
+
 ## Splits
+
+Just for fun follows the current month, for the selected group. Month number, then the type tried first and its reserves:
+
+- January: `in-numbers`
+- February: `payer`, then `weekday-most`
+- March: `busiest-day`, then `total`
+- April: `currencies`, then `top-category`
+- May: `largest-settlement`, then `smallest-cost`
+- June: `first-cost`, then `priciest-day`
+- July: `latest-cost`
+- August: `average-cost`
+- September: `categories`
+- October: `busiest-month`, then `repeated-cost`
+- November: `settle-count`, then `span`
+- December: `payment-mix`
 
 ### owedToYou (Quick fix)
 
@@ -495,7 +1263,12 @@ Phrasings:
 - Still open {groupFrom}: {other} owes you {amount}.
 - The balance {groupFrom}: {other} owes you {amount}.
 
-Way to think about it: Settling while the trip is fresh keeps it light for both of you.
+Way to think about it, in turn:
+
+- Settling while the trip is fresh keeps it light for both of you.
+- Trips are easiest to settle while everyone remembers the details.
+- A settled trip leaves only the memories to share.
+- Clearing the balance now keeps the next trip simple to plan.
 
 Said once when it clears (Going well): Sorted: {groupName} is settled up. / Nothing open between you on this one.
 
@@ -511,7 +1284,12 @@ Phrasings:
 - Still open {groupFrom}: you owe {other} {amount}.
 - The balance {groupFrom}: you owe {other} {amount}.
 
-Way to think about it: Settling while the trip is fresh keeps it light for both of you.
+Way to think about it, in turn:
+
+- Settling while the trip is fresh keeps it light for both of you.
+- Trips are easiest to settle while everyone remembers the details.
+- A settled trip leaves only the memories to share.
+- Clearing the balance now keeps the next trip simple to plan.
 
 Said once when it clears (Going well): Sorted: {groupName} is settled up. / Nothing open between you on this one.
 
@@ -527,7 +1305,12 @@ Phrasings:
 - Still open {groupFrom}: {amount} between you.
 - The balance {groupFrom}: {amount} still to settle between you.
 
-Way to think about it: Settling while the trip is fresh keeps it light for both of you.
+Way to think about it, in turn:
+
+- Settling while the trip is fresh keeps it light for both of you.
+- Trips are easiest to settle while everyone remembers the details.
+- A settled trip leaves only the memories to share.
+- Clearing the balance now keeps the next trip simple to plan.
 
 Said once when it clears (Going well): Sorted: {groupName} is settled up. / Nothing open between you on this one.
 
@@ -535,9 +1318,14 @@ Action: Settle group
 
 ### settleRegularly (Quick fix)
 
-The think line for a balance in a group that is not a trip.
+The think lines for a balance in a group that is not a trip.
 
-Way to think about it: Settling regularly keeps it light for both of you.
+Way to think about it, in turn:
+
+- Settling regularly keeps it light for both of you.
+- Small balances are quick to clear.
+- A regular settle-up keeps shared money simple.
+- Clearing it now means a fresh start for the next round of shared costs.
 
 ### bankMatch (Quick fix)
 
@@ -555,9 +1343,19 @@ When the count is 1:
 - A bank payment looks like a split you already entered.
 - One bank payment is waiting to be matched to a split.
 
-Way to think about it: Linking them avoids counting the same cost twice.
+Way to think about it, in turn:
 
-Way to think about it (count of 1): Linking it avoids counting the same cost twice.
+- Linking them avoids counting the same cost twice.
+- Matched payments keep the split and the bank telling the same story.
+- A quick review links each payment to its split.
+- Once matched, each shared cost shows up exactly once.
+
+Way to think about it (count of 1), in turn:
+
+- Linking it avoids counting the same cost twice.
+- A matched payment keeps the split and the bank telling the same story.
+- A quick review links the payment to its split.
+- Once matched, the shared cost shows up exactly once.
 
 Said once when it clears (Going well): Sorted: no bank payments are waiting to be matched. / Each cost is counted once.
 
@@ -573,11 +1371,18 @@ Phrasings:
 - Of {total} in shared costs {period}, you paid {paid}.
 - {paid} of the {total} in shared costs {period} came from you.
 
-Way to think about it: Nothing to fix by itself. A good prompt for a friendly chat about how you split things.
+Way to think about it, in turn:
+
+- Nothing to fix by itself. A good prompt for a friendly chat about how you split things.
+- Who pays often evens out over time. This shows where it stands now.
+- Uneven stretches are normal. Over a longer time it tends to balance.
+- A split that feels fair to both of you is the right one.
 
 ### tripInNumbers (Just for fun)
 
-A trip group's costs; right after a trip ends (2 to 30 days) it is the moment's line.
+A trip group's costs and its priciest.
+
+Trivia type: `in-numbers`.
 
 Line:
 
@@ -585,34 +1390,245 @@ Line:
 
 ### groupInNumbers (Just for fun)
 
-Any other group's costs.
+Any other group's costs and its priciest.
+
+Trivia type: `in-numbers`.
 
 Line:
 
 - This group in numbers: {count} shared costs, and the priciest was the {name} ({amount}).
 
+### payerCount (Just for fun)
+
+Person views only: how many of the costs you paid for, and how much. The household view never compares partners.
+
+Trivia type: `payer`.
+
+Line:
+
+- You paid for {count} of the {total} shared costs {groupIn}, {amount} in all.
+
+### busiestDay (Just for fun)
+
+The date with the most shared costs (2 or more, no tie).
+
+Trivia type: `busiest-day`.
+
+Line:
+
+- Busiest day {groupIn}: {day}, with {count} shared costs.
+
+### weekdayMost (Just for fun)
+
+The weekday with the most shared costs (3 or more costs, no tie).
+
+Trivia type: `weekday-most`.
+
+Line:
+
+- {weekday} saw the most shared costs {groupIn}.
+
+### busiestMonth (Just for fun)
+
+The month with the most shared costs (2 or more months, no tie).
+
+Trivia type: `busiest-month`.
+
+Line:
+
+- Busiest month {groupIn}: {month}, with {count} shared costs.
+
+### sharedTotal (Just for fun)
+
+What the shared costs add up to (2 or more, in the group's currency).
+
+Trivia type: `total`.
+
+Line:
+
+- Shared costs {groupIn} add up to {amount}.
+
+### averageCost (Just for fun)
+
+The average shared cost, in whole units (3 or more).
+
+Trivia type: `average-cost`.
+
+Line:
+
+- The average shared cost {groupIn}: about {amount}.
+
+### priciestDay (Just for fun)
+
+The date with the most money in shared costs (2 or more dates, no tie).
+
+Trivia type: `priciest-day`.
+
+Line:
+
+- The priciest day {groupIn}: {day}, with {amount} of shared costs.
+
+### smallestCost (Just for fun)
+
+The smallest shared cost with a readable name (3 or more).
+
+Trivia type: `smallest-cost`.
+
+Line:
+
+- The smallest shared cost {groupIn}: {name}, {amount}.
+
+### firstCost (Just for fun)
+
+The first shared cost, when no other shares its date.
+
+Trivia type: `first-cost`.
+
+Line:
+
+- The first shared cost {groupIn}: {name} on {day}.
+
+### firstDay (Just for fun)
+
+The first day of shared costs, when several share that date.
+
+Trivia type: `first-cost`.
+
+Line:
+
+- Shared costs {groupIn} began on {day}, with {count} that day.
+
+### latestCost (Just for fun)
+
+The latest shared cost, when no other shares its date.
+
+Trivia type: `latest-cost`.
+
+Line:
+
+- The latest shared cost {groupIn}: {name}, {amount}, on {day}.
+
+### repeatedCost (Just for fun)
+
+The cost entered most often (twice or more, no tie).
+
+Trivia type: `repeated-cost`.
+
+Line:
+
+- The most repeated shared cost {groupIn}: {name}, {times}.
+
+### costSpan (Just for fun)
+
+The days from the first shared cost to the last (2 or more dates).
+
+Trivia type: `span`.
+
+Line:
+
+- Shared costs {groupIn} span {count} days, from {first} to {last}.
+
+### currencies (Just for fun)
+
+The currencies the costs came in (2 or more).
+
+Trivia type: `currencies`.
+
+Line:
+
+- Shared costs {groupIn} came in {count} currencies: {list}.
+
+### topCategory (Just for fun)
+
+The biggest category (2 or more categories, no tie).
+
+Trivia type: `top-category`.
+
+Line:
+
+- {category} was the biggest category {groupIn}, at {amount}.
+
+### categoriesCount (Just for fun)
+
+How many categories the costs spread across (2 or more).
+
+Trivia type: `categories`.
+
+Line:
+
+- Shared costs {groupIn} spread across {count} categories.
+
+### paymentMix (Just for fun)
+
+How the costs were paid: by card, in cash, by bank transfer (2 or more ways).
+
+Trivia type: `payment-mix`.
+
+Line:
+
+- Shared costs {groupIn}: {parts}.
+
+### largestSettlement (Just for fun)
+
+The largest settle-up.
+
+Trivia type: `largest-settlement`.
+
+Line:
+
+- The largest settle-up {groupIn}: {amount} on {day}.
+
+### settleCount (Just for fun)
+
+How many settle-ups there have been (2 or more).
+
+Trivia type: `settle-count`.
+
+Line:
+
+- {count} settle-ups so far {groupIn}.
+
 ## Quotes
 
-Public domain; wording copied exactly from the source named. Shown only in the expanded view, at most one, never beside a Bigger question, and not again within 28 days.
+Public domain; wording copied exactly from the source named. Shown only in the expanded view, at most one, never beside a Bigger question. Column is the quote's place in the list, mod 12.
 
-- “The cost of a thing is the amount of what I will call life which is required to be exchanged for it, immediately or in the long run.” Henry David Thoreau, Walden (1854). Source: Walden, "Economy" (Project Gutenberg #205). Fits: enjoy, calm.
-- “A man is rich in proportion to the number of things which he can afford to let alone.” Henry David Thoreau, Walden (1854). Source: Walden, "Where I Lived, and What I Lived For" (Project Gutenberg #205). Fits: enough, calm.
-- “Every generation laughs at the old fashions, but follows religiously the new.” Henry David Thoreau, Walden (1854). Source: Walden, "Economy" (Project Gutenberg #205). Fits: change.
-- “I would rather sit on a pumpkin and have it all to myself than be crowded on a velvet cushion.” Henry David Thoreau, Walden (1854). Source: Walden, "Economy" (Project Gutenberg #205). Fits: enjoy, enough.
-- “Superfluous wealth can buy superfluities only. Money is not required to buy one necessary of the soul.” Henry David Thoreau, Walden (1854). Source: Walden, "Conclusion" (Project Gutenberg #205). Fits: enough, calm.
-- “Time is but the stream I go a-fishing in.” Henry David Thoreau, Walden (1854). Source: Walden, "Where I Lived, and What I Lived For" (Project Gutenberg #205). Fits: time, calm.
-- “Annual income twenty pounds, annual expenditure nineteen nineteen and six, result happiness.” Mr Micawber, in Charles Dickens, David Copperfield (1850). Source: David Copperfield, chapter 12 (Project Gutenberg #766). Fits: keep, plan.
-- “It is not the man who has too little, but the man who craves more, that is poor.” Seneca, Letters to Lucilius, Letter 2 (c. 65). Source: Moral Letters to Lucilius, Letter 2, translated by Richard M. Gummere (1917), Wikisource. Fits: enough, calm.
-- “While we are postponing, life speeds by.” Seneca, Letters to Lucilius, Letter 1 (c. 65). Source: Moral Letters to Lucilius, Letter 1, translated by Richard M. Gummere (1917), Wikisource. Fits: later, time.
-- “Nothing, Lucilius, is ours, except time.” Seneca, Letters to Lucilius, Letter 1 (c. 65). Source: Moral Letters to Lucilius, Letter 1, translated by Richard M. Gummere (1917), Wikisource. Fits: time, calm.
-- “Beware of little expences; a small leak will sink a great ship.” Benjamin Franklin, The Way to Wealth (1758). Source: Franklin's Way to Wealth; or, "Poor Richard Improved" (Project Gutenberg #43855). Fits: small-costs.
-- “Many a little makes a mickle.” Benjamin Franklin, The Way to Wealth (1758). Source: Franklin's Way to Wealth; or, "Poor Richard Improved" (Project Gutenberg #43855). Fits: small-costs, keep, steady.
-- “Lost time is never found again.” Benjamin Franklin, The Way to Wealth (1758). Source: Franklin's Way to Wealth; or, "Poor Richard Improved" (Project Gutenberg #43855). Fits: time, later.
-- “For age and want save while you may, No morning sun lasts a whole day.” Benjamin Franklin, The Way to Wealth (1758). Source: Franklin's Way to Wealth; or, "Poor Richard Improved" (Project Gutenberg #43855). Fits: later, keep.
-- “Diligence is the mother of good luck” Benjamin Franklin, The Way to Wealth (1758). Source: Franklin's Way to Wealth; or, "Poor Richard Improved" (Project Gutenberg #43855). Fits: steady.
-- “Drive thy business, let not that drive thee” Benjamin Franklin, The Way to Wealth (1758). Source: Franklin's Way to Wealth; or, "Poor Richard Improved" (Project Gutenberg #43855). Fits: plan.
-- “One to-day is worth two to-morrows” Benjamin Franklin, The Way to Wealth (1758). Source: Franklin's Way to Wealth; or, "Poor Richard Improved" (Project Gutenberg #43855). Fits: later, settle.
-- “Nowadays people know the price of everything and the value of nothing.” Lord Henry, in Oscar Wilde, The Picture of Dorian Gray (1891). Source: The Picture of Dorian Gray, chapter 4 (Project Gutenberg #174). Fits: enjoy, change.
-- “Money often costs too much, and power and pleasure are not cheap.” Ralph Waldo Emerson, The Conduct of Life, "Wealth" (1860). Source: The Conduct of Life, "Wealth" (Project Gutenberg #39827). Fits: enjoy, change.
-- “What have wealth or grandeur to do with happiness?” Marianne Dashwood, in Jane Austen, Sense and Sensibility (1811). Source: Sense and Sensibility, chapter 17 (Project Gutenberg #161). Fits: enough, enjoy, calm.
-- “Slow but steady wins the race.” Aesop, The Hare and the Tortoise (1867). Source: Three Hundred Aesop's Fables, translated by George Fyler Townsend (1867) (Project Gutenberg #21). Fits: steady, keep.
+- Column 1: “The cost of a thing is the amount of what I will call life which is required to be exchanged for it, immediately or in the long run.” Henry David Thoreau, Walden (1854). Source: Walden, "Economy" (Project Gutenberg #205). Fits: enjoy, calm.
+- Column 2: “A man is rich in proportion to the number of things which he can afford to let alone.” Henry David Thoreau, Walden (1854). Source: Walden, "Where I Lived, and What I Lived For" (Project Gutenberg #205). Fits: enough, calm.
+- Column 3: “Every generation laughs at the old fashions, but follows religiously the new.” Henry David Thoreau, Walden (1854). Source: Walden, "Economy" (Project Gutenberg #205). Fits: change.
+- Column 4: “I would rather sit on a pumpkin and have it all to myself than be crowded on a velvet cushion.” Henry David Thoreau, Walden (1854). Source: Walden, "Economy" (Project Gutenberg #205). Fits: enjoy, enough.
+- Column 5: “Superfluous wealth can buy superfluities only. Money is not required to buy one necessary of the soul.” Henry David Thoreau, Walden (1854). Source: Walden, "Conclusion" (Project Gutenberg #205). Fits: enough, calm.
+- Column 6: “Time is but the stream I go a-fishing in.” Henry David Thoreau, Walden (1854). Source: Walden, "Where I Lived, and What I Lived For" (Project Gutenberg #205). Fits: time, calm.
+- Column 7: “Annual income twenty pounds, annual expenditure nineteen nineteen and six, result happiness.” Mr Micawber, in Charles Dickens, David Copperfield (1850). Source: David Copperfield, chapter 12 (Project Gutenberg #766). Fits: keep, plan.
+- Column 8: “It is not the man who has too little, but the man who craves more, that is poor.” Seneca, Letters to Lucilius, Letter 2 (c. 65). Source: Moral Letters to Lucilius, Letter 2, translated by Richard M. Gummere (1917), Wikisource. Fits: enough, calm.
+- Column 9: “While we are postponing, life speeds by.” Seneca, Letters to Lucilius, Letter 1 (c. 65). Source: Moral Letters to Lucilius, Letter 1, translated by Richard M. Gummere (1917), Wikisource. Fits: later, time.
+- Column 10: “Nothing, Lucilius, is ours, except time.” Seneca, Letters to Lucilius, Letter 1 (c. 65). Source: Moral Letters to Lucilius, Letter 1, translated by Richard M. Gummere (1917), Wikisource. Fits: time, calm.
+- Column 11: “Beware of little expences; a small leak will sink a great ship.” Benjamin Franklin, The Way to Wealth (1758). Source: Franklin's Way to Wealth; or, "Poor Richard Improved" (Project Gutenberg #43855). Fits: small-costs.
+- Column 12: “Many a little makes a mickle.” Benjamin Franklin, The Way to Wealth (1758). Source: Franklin's Way to Wealth; or, "Poor Richard Improved" (Project Gutenberg #43855). Fits: small-costs, keep, steady.
+- Column 1: “Lost time is never found again.” Benjamin Franklin, The Way to Wealth (1758). Source: Franklin's Way to Wealth; or, "Poor Richard Improved" (Project Gutenberg #43855). Fits: time, later.
+- Column 2: “For age and want save while you may, No morning sun lasts a whole day.” Benjamin Franklin, The Way to Wealth (1758). Source: Franklin's Way to Wealth; or, "Poor Richard Improved" (Project Gutenberg #43855). Fits: later, keep.
+- Column 3: “Diligence is the mother of good luck” Benjamin Franklin, The Way to Wealth (1758). Source: Franklin's Way to Wealth; or, "Poor Richard Improved" (Project Gutenberg #43855). Fits: steady.
+- Column 4: “Drive thy business, let not that drive thee” Benjamin Franklin, The Way to Wealth (1758). Source: Franklin's Way to Wealth; or, "Poor Richard Improved" (Project Gutenberg #43855). Fits: plan.
+- Column 5: “One to-day is worth two to-morrows” Benjamin Franklin, The Way to Wealth (1758). Source: Franklin's Way to Wealth; or, "Poor Richard Improved" (Project Gutenberg #43855). Fits: later, settle.
+- Column 6: “Nowadays people know the price of everything and the value of nothing.” Lord Henry, in Oscar Wilde, The Picture of Dorian Gray (1891). Source: The Picture of Dorian Gray, chapter 4 (Project Gutenberg #174). Fits: enjoy, change.
+- Column 7: “Money often costs too much, and power and pleasure are not cheap.” Ralph Waldo Emerson, The Conduct of Life, "Wealth" (1860). Source: The Conduct of Life, "Wealth" (Project Gutenberg #39827). Fits: enjoy, change.
+- Column 8: “What have wealth or grandeur to do with happiness?” Marianne Dashwood, in Jane Austen, Sense and Sensibility (1811). Source: Sense and Sensibility, chapter 17 (Project Gutenberg #161). Fits: enough, enjoy, calm.
+- Column 9: “Slow but steady wins the race.” Aesop, The Hare and the Tortoise (1867). Source: Three Hundred Aesop's Fables, translated by George Fyler Townsend (1867) (Project Gutenberg #21). Fits: steady, keep.
+- Column 10: “Creditors have better memories than debtors” Benjamin Franklin, The Way to Wealth (1758). Source: Franklin's Way to Wealth; or, "Poor Richard Improved" (Project Gutenberg #43855). Fits: settle.
+- Column 11: “Nothing can bring you peace but yourself.” Ralph Waldo Emerson, Essays: First Series, "Self-Reliance" (1841). Source: Essays: First Series, "Self-Reliance" (Project Gutenberg #2944). Fits: calm.
+- Column 12: “Always bear this in mind; and another thing too, that very little indeed is necessary for living a happy life.” Marcus Aurelius, Meditations (c. 170). Source: Thoughts of Marcus Aurelius Antoninus, translated by George Long (1862) (Project Gutenberg #15877). Fits: enough, calm.
+- Column 1: “Procrastination is the thief of time.” Mr Micawber, in Charles Dickens, David Copperfield (1850). Source: David Copperfield, chapter 12 (Project Gutenberg #766). Fits: later, settle.
+- Column 2: “Neither a borrower nor a lender be” Polonius, in William Shakespeare, Hamlet (c. 1600). Source: Hamlet, Act 1, Scene 3 (Project Gutenberg #1524). Fits: settle.
+- Column 3: “Rather than love, than money, than fame, give me truth.” Henry David Thoreau, Walden (1854). Source: Walden, "Conclusion" (Project Gutenberg #205). Fits: enough, calm.
+- Column 4: “In quarreling about the shadow we often lose the substance.” Aesop, The Ass and His Shadow (1867). Source: Three Hundred Aesop's Fables, translated by George Fyler Townsend (1867) (Project Gutenberg #21). Fits: settle, calm.
+- Column 5: “At a great pennyworth pause a while” Benjamin Franklin, The Way to Wealth (1758). Source: Franklin's Way to Wealth; or, "Poor Richard Improved" (Project Gutenberg #43855). Fits: small-costs, plan.
+- Column 6: “Lay hold of to-day's task, and you will not need to depend so much upon to-morrow's.” Seneca, Letters to Lucilius, Letter 1 (c. 65). Source: Moral Letters to Lucilius, Letter 1, translated by Richard M. Gummere (1917), Wikisource. Fits: later, plan.
+- Column 7: “Our mere anticipations of life outrun its realities.” Aesop, The Seaside Travelers (1867). Source: Three Hundred Aesop's Fables, translated by George Fyler Townsend (1867) (Project Gutenberg #21). Fits: calm, change.
+- Column 8: “A large income is the best recipe for happiness I ever heard of.” Mary Crawford, in Jane Austen, Mansfield Park (1814). Source: Mansfield Park, chapter 22 (Project Gutenberg #141). Fits: enjoy.
+- Column 9: “Our life is frittered away by detail.” Henry David Thoreau, Walden (1854). Source: Walden, "Where I Lived, and What I Lived For" (Project Gutenberg #205). Fits: small-costs, calm.
+- Column 10: “Do you ask what is the proper limit to wealth? It is, first, to have what is necessary, and, second, to have what is enough.” Seneca, Letters to Lucilius, Letter 2 (c. 65). Source: Moral Letters to Lucilius, Letter 2, translated by Richard M. Gummere (1917), Wikisource. Fits: enough, keep.
+- Column 11: “Buy what thou hast no need of, and ere long thou shalt sell thy necessaries.” Benjamin Franklin, The Way to Wealth (1758). Source: Franklin's Way to Wealth; or, "Poor Richard Improved" (Project Gutenberg #43855). Fits: enough, small-costs.
+- Column 12: “But, dost thou love life? then do not squander time, for that is the stuff life is made of” Benjamin Franklin, The Way to Wealth (1758). Source: Franklin's Way to Wealth; or, "Poor Richard Improved" (Project Gutenberg #43855). Fits: time.
+- Column 1: “I wish as well as every body else to be perfectly happy; but, like every body else it must be in my own way.” Edward Ferrars, in Jane Austen, Sense and Sensibility (1811). Source: Sense and Sensibility, chapter 17 (Project Gutenberg #161). Fits: enjoy, plan.
+- Column 2: “It is life near the bone where it is sweetest.” Henry David Thoreau, Walden (1854). Source: Walden, "Conclusion" (Project Gutenberg #205). Fits: enough, enjoy.
+- Column 3: “Insist on yourself; never imitate.” Ralph Waldo Emerson, Essays: First Series, "Self-Reliance" (1841). Source: Essays: First Series, "Self-Reliance" (Project Gutenberg #2944). Fits: enjoy, change.
+- Column 4: “I went to the woods because I wished to live deliberately” Henry David Thoreau, Walden (1854). Source: Walden, "Where I Lived, and What I Lived For" (Project Gutenberg #205). Fits: plan, enjoy.
