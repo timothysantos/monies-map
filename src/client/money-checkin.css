@@ -131,3 +131,13 @@
   color: var(--muted);
   font-size: 0.78rem;
 }
+
+/* On a phone the money-privacy eye button floats at the right edge (46px
+   wide, 16px in: .totals-visibility-toggle--floating in styles.css), so the
+   insights keep their text out of that column; nothing reads under the
+   button as the page scrolls. */
+@media (max-width: 760px) {
+  .financial-insight .financial-insight-content {
+    padding-inline-end: 56px;
+  }
+}
