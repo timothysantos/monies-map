@@ -3,6 +3,8 @@ import test from "node:test";
 
 import { QueryClient } from "@tanstack/react-query";
 
+import { createRequiredLeases, fetchQueryWithLease } from "../src/client/query-leases.js";
+import { queryKeys, summaryPageKeyFromParams } from "../src/client/query-keys.js";
 import { createSummaryOwner } from "../src/client/summary-owner.js";
 
 // Deferred page and pill fetchers: each call waits until the test settles it.
@@ -160,4 +162,71 @@ test("cache clears remove only the matching family and range", async () => {
   assert.equal(queryClient.getQueryData(["summary-account-pills", { viewId: "household" }]), undefined);
   assert.equal(queryClient.getQueryData(["route-page", { path: "/api/month-page" }]), 4);
   assert.equal(cleared(), 2);
+});
+
+// The owner wired to real required reads, as App wires it: a deferred
+// network per request, so a test can cancel the shared fetch underneath a
+// running load (a cross-tab cache clear) and settle whichever fetch is live.
+function setupWithLeases() {
+  const network = [];
+  const queryClient = new QueryClient();
+  const leases = createRequiredLeases();
+  const read = (kind, queryKeyOf) => (params, { bypassCache = false, signal } = {}) => fetchQueryWithLease(queryClient, {
+    queryKey: queryKeyOf(params),
+    bypassCache,
+    signal,
+    leases,
+    fetcher: ({ signal: requestSignal }) => new Promise((resolve, reject) => {
+      network.push({ kind, resolve });
+      requestSignal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    })
+  });
+  const owner = createSummaryOwner({
+    queryClient,
+    fetchPage: read("page", summaryPageKeyFromParams),
+    fetchPills: read("pills", (params) => queryKeys.summaryAccountPills({ viewId: params.get("view") ?? "household" }))
+  });
+  const live = (kind) => network.filter((call) => call.kind === kind).at(-1);
+  return { owner, network, live, leases };
+}
+
+test("a first load whose pills are cancelled twice underneath it still shows the page instead of hanging", async () => {
+  const { owner, network, live } = setupWithLeases();
+  const request = params("household");
+  const load = owner.load(request);
+  await flush();
+  live("page").resolve(page("household"));
+  await flush();
+  // Two cross-tab refreshes clear the pills cache while the first load waits.
+  // Neither starts a Summary load of its own, so nothing supersedes this one.
+  owner.clearPillsCache();
+  await flush();
+  owner.clearPillsCache();
+  await flush();
+  assert.equal(network.filter((call) => call.kind === "pills").length, 3, "one fetch per cancellation, each recovered");
+  live("pills").resolve(pills("household"));
+  assert.equal(await load, true);
+  assert.deepEqual(owner.getSnapshot(), { summaryPage: page("household"), accountPills: pills("household"), requestKey: request.pageParams.toString() });
+});
+
+test("repeated cancellations of a superseded or aborted load stay silent and leave the newer pair", async () => {
+  const { owner, live, leases } = setupWithLeases();
+  const controller = new AbortController();
+  const aborted = owner.load({ ...params("household", "2025-12"), signal: controller.signal });
+  await flush();
+  controller.abort();
+  owner.clearPageCache();
+  await flush();
+  owner.clearPageCache();
+  await flush();
+  assert.equal(await aborted, false);
+  assert.deepEqual(owner.getSnapshot(), { summaryPage: null, accountPills: null, requestKey: "" });
+
+  const newer = owner.load(params("person-tim"));
+  await flush();
+  live("page").resolve(page("tim"));
+  live("pills").resolve(pills("tim"));
+  assert.equal(await newer, true);
+  assert.deepEqual(owner.getSnapshot().summaryPage, page("tim"));
+  assert.equal(leases.isRequired(summaryPageKeyFromParams(params("person-tim").pageParams)), false, "leases released");
 });
