@@ -206,7 +206,7 @@ export function groupInNumbersTrivia(input: SplitsSignalInput): MoneySignal | nu
   const lastDate = expenses.map((item) => item.date).sort().at(-1) ?? "";
   const sinceLast = daysBetween(lastDate, input.today);
   const trip = isTrip(input.group);
-  return triviaSignal(`group-in-numbers:${input.group.id}:${expenses.length}`, trip ? SPLITS_COPY.tripInNumbers : SPLITS_COPY.groupInNumbers, {
+  return triviaSignal(`group-in-numbers:${input.group.id}`, trip ? SPLITS_COPY.tripInNumbers : SPLITS_COPY.groupInNumbers, {
     count: expenses.length,
     name: priciest.description || "one cost",
     amount: input.formatMoney(priciest.totalAmountMinor)
