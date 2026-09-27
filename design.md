@@ -82,11 +82,11 @@ cannot hide one. The user can expand one item to match a transfer from the
 currently selected ledger month. It must never style a paid confirmation as a
 bank match.
 
-Financial insight (the Money check-in) is deliberately compact by default.
+Financial insight (user-facing: Money insights; the check-in in code) is deliberately compact by default.
 It shows one ranked signal: its kind chip, the bold fact, one think line and
 at most one action that reuses a navigation the page already has, then a
 Just for fun line (never beside a bigger question) and the Long view line.
-`Read full insight` reveals up to three more signals, at most one quote
+`See all insights` reveals up to three more signals, at most one quote
 (never beside a bigger question) and the money consequence map with the
 record actions. Expanding is local presentation state and must not trigger
 an additional AI request; it loads the quote library chunk on demand. The
@@ -255,7 +255,7 @@ model as `insightRecords`) gives a person view that person's split share of
 each expense of the active group, read from the activity's existing
 `shares` rows and in the group currency (a JPY trip reads JP¥), and leaves
 out an expense they have no share in; settlements carry no spend. The
-check-in then addresses the person ("Tim's money check-in", "Joyce owes you
+check-in then addresses the person ("Tim's money insights", "Joyce owes you
 JP¥9,000"). The household view counts the group totals, the same figure as the
 Splits `Total spend`, with household wording. The Splits route pins a
 person view whenever the household has people, so in practice the Splits

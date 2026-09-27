@@ -1146,10 +1146,12 @@ These boundaries are important enough to preserve explicitly:
   Note, does not recalculate totals, and never changes the ledger or plan. A
   financial insight must identify whether its figures are full cash flow, a
   filtered investigation, or a split-settlement obligation. It is never a
-  forecast, a safe-to-spend figure or a savings target. On screen it is the
-  `Money check-in`.
-- Money check-in, check-in signal and signal kind:
-  the `Money check-in` shows one `check-in signal` as its headline: a small,
+  forecast, a safe-to-spend figure or a savings target. Its user-facing name
+  is `Money insights` ("Household money insights", "Ethan's money
+  insights"); code calls it the check-in (`money-signals/checkin.ts`,
+  `FinancialInsight`).
+- Money insights, check-in signal and signal kind:
+  `Money insights` show one `check-in signal` as its headline: a small,
   deterministic rule over data the page already loaded that either fires
   with its numbers or stays silent (`src/domain/money-signals/`). Each
   signal has a `signal kind`, shown as a chip: `Quick fix` (makes the
@@ -1179,7 +1181,7 @@ These boundaries are important enough to preserve explicitly:
   fix clears.
 - Money consequence map:
   a `Money consequence map` is the deterministic evidence inside a
-  Financial insight, under "Read full insight". It separates recorded surplus from free cash, actual
+  Financial insight, under "See all insights". It separates recorded surplus from free cash, actual
   spending from the plan, an already-loaded same-season comparison, bank-proof
   confidence, and a transparent one-repeat scenario. It does not project the
   future, determine a savings target, or certify the ledger.

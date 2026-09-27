@@ -1,12 +1,12 @@
 // The tone lint over every line the money check-in can show: the approved
 // phrasings, think lines, sorted lines, trivia, quiet and calm lines, the
 // quotes and the Money consequence map's lanes. It also keeps
-// docs/checkin-copy.md in step with the copy catalogues.
+// docs/money-insights-copy.md in step with the copy catalogues.
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { CATALOGUES, DOC_PATH, renderCheckInCopyMarkdown } from "../scripts/checkin-copy.mjs";
+import { CATALOGUES, DOC_PATH, renderCheckInCopyMarkdown } from "../scripts/money-insights-copy.mjs";
 import { buildFinancialInsightFacts } from "../src/domain/ai-assistance-insights.ts";
 import { QUIET_LINES } from "../src/domain/money-signals/checkin.ts";
 import { ENTRIES_CALM_LINE } from "../src/domain/money-signals/entries-signals.ts";
@@ -73,7 +73,7 @@ test("every signal has 3 to 5 phrasings with the same numbers; trivia has one li
   for (const catalogue of CATALOGUES) {
     for (const [name, entry] of Object.entries(catalogue.copy)) {
       const [kind] = catalogue.entries[name] ?? [];
-      assert.ok(kind, `${catalogue.title} ${name} is not described in scripts/checkin-copy.mjs`);
+      assert.ok(kind, `${catalogue.title} ${name} is not described in scripts/money-insights-copy.mjs`);
       if (!entry.phrasings.length) {
         continue;
       }
@@ -123,9 +123,9 @@ test("the Money consequence map's lanes pass the tone rules in every state", () 
   assert.deepEqual(problems, []);
 });
 
-test("docs/checkin-copy.md lists every line and is up to date", async () => {
+test("docs/money-insights-copy.md lists every line and is up to date", async () => {
   const doc = await readFile(DOC_PATH, "utf8");
-  assert.equal(doc, renderCheckInCopyMarkdown(), "Run: npx tsx scripts/checkin-copy.mjs");
+  assert.equal(doc, renderCheckInCopyMarkdown(), "Run: npx tsx scripts/money-insights-copy.mjs");
   for (const quote of QUOTES) {
     assert.ok(doc.includes(quote.text), quote.id);
   }
