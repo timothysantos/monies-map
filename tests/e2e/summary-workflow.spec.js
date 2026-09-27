@@ -64,9 +64,10 @@ test.describe("summary workflow", () => {
     await expect(direct).toHaveAttribute("aria-pressed", "true");
     await expect(shared).toHaveAttribute("aria-pressed", "false");
     await expect(actualSpend).toHaveText(money(actualSpendMinor(directPage)));
-    // The Summary check-in counts the same spend as the card.
-    await expect(page.locator(".financial-insight-summary .financial-insight-narrative"))
-      .toContainText(`spent ${money(actualSpendMinor(directPage))} across`);
+    // The Summary check-in follows the scope with the figures: Joyce's
+    // one-month Direct range has nothing that needs a look.
+    await expect(page.locator(".financial-insight-summary")).toContainText("Joyce's money check-in");
+    await expect(page.locator(".financial-insight-summary .checkin-fact")).toHaveText("Nothing in this range needs a look right now.");
 
     // The keyboard reaches and presses it too; desktop has no floating bar.
     await expect(page.locator(".mobile-context-sticky-wrap")).toBeHidden();
@@ -188,8 +189,7 @@ test.describe("summary workflow", () => {
     await expect(page).toHaveURL(/scope=direct(&|$)/);
     await expect(actualSpend).toHaveText(money(actualSpendMinor(directPage)));
     await expect(triggerLabel).toHaveText("Joyce · Direct");
-    await expect(page.locator(".financial-insight-summary .financial-insight-narrative"))
-      .toContainText(`spent ${money(actualSpendMinor(directPage))} across`);
+    await expect(page.locator(".financial-insight-summary .checkin-fact")).toHaveText("Nothing in this range needs a look right now.");
 
     await trigger.click();
     await expect(scopeSection.getByRole("button", { name: "Direct ownership", exact: true })).toHaveClass(/is-active/);

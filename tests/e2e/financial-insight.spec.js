@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, loadSummaryAccountPills, postJson, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, loadMonthPage, loadSummaryAccountPills, postJson, reseedDemo } from "./helpers";
+
+const money = (minor) => new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(minor / 100);
 
 test.describe("financial insights", () => {
   test.beforeEach(async ({ page }) => {
@@ -15,7 +17,7 @@ test.describe("financial insights", () => {
     });
   });
 
-  test("summary and month render computed insights without waiting for AI", async ({ page }) => {
+  test("summary and month render computed check-ins without waiting for AI", async ({ page }) => {
     await gotoPageAfterApi(
       page,
       "/summary?view=household&month=2026-05&scope=direct_plus_shared&summary_start=2026-05&summary_end=2026-05",
@@ -25,17 +27,25 @@ test.describe("financial insights", () => {
     const summaryInsight = page.locator(".financial-insight-summary");
     await expect(summaryInsight).toBeVisible();
     await expect(summaryInsight).toContainText("Household money check-in");
-    await expect(summaryInsight).toContainText("May 2026 summary");
+    // Seeded May 2026 has subscriptions of $28.70: a Worth a look, with the
+    // approved way to think about it.
+    await expect(summaryInsight.locator(".financial-insight-content > .checkin-chip")).toHaveText("Worth a look");
+    await expect(summaryInsight.locator(".checkin-fact")).toContainText(/[Ss]ubscriptions/);
+    await expect(summaryInsight.locator(".checkin-fact")).toContainText(/\$28\.70|\$344|\$0\.94/);
+    await expect(summaryInsight.locator(".checkin-think")).toContainText("Automatic payments are easy to stop noticing.");
+    await expect(summaryInsight).not.toContainText("Before buying something non-essential");
     await expect(summaryInsight.getByRole("button", { name: "Read full insight" })).toHaveAttribute("aria-expanded", "false");
-    await expect(summaryInsight.locator(".financial-insight-narrative")).toHaveClass(/is-collapsed/);
     await expect(summaryInsight.getByLabel("Money consequence map")).toBeHidden();
+    await expect(summaryInsight.locator(".checkin-quote")).toHaveCount(0);
     await summaryInsight.getByRole("button", { name: "Read full insight" }).click();
     await expect(summaryInsight.getByRole("button", { name: "Show less" })).toHaveAttribute("aria-expanded", "true");
-    await expect(summaryInsight).toContainText("Before buying something non-essential");
     await expect(summaryInsight.getByLabel("Money consequence map")).toBeVisible();
     await expect(summaryInsight).toContainText("Money left so far");
     await expect(summaryInsight).toContainText("Income not in this view");
     await expect(summaryInsight).not.toContainText("One-repeat scenario");
+    // Beside a Worth a look, the expanded view has one public-domain quote.
+    await expect(summaryInsight.locator(".checkin-quote blockquote")).toHaveCount(1);
+    await expect(summaryInsight.locator(".checkin-quote figcaption")).toContainText(/, /);
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(summaryInsight.getByRole("button", { name: "Show less" })).toBeVisible();
     const mobileWidth = await page.evaluate(() => ({
@@ -47,20 +57,55 @@ test.describe("financial insights", () => {
     await expect(summaryInsight.getByRole("button", { name: "Read full insight" })).toHaveAttribute("aria-expanded", "false");
     await page.setViewportSize({ width: 1280, height: 720 });
 
+    // Month: May 2026's planned bills without a linked entry are a Quick fix.
     await gotoPageAfterApi(
       page,
       "/month?view=person-tim&month=2026-05&scope=direct_plus_shared",
       "/api/month-page",
       () => page.getByRole("heading", { name: "Month", exact: true })
     );
-    await expect(page.locator(".financial-insight-month")).toContainText("May 2026 month");
+    const monthInsight = page.locator(".financial-insight-month");
+    await expect(monthInsight).toContainText("Tim's money check-in");
+    await expect(monthInsight.locator(".financial-insight-content > .checkin-chip")).toHaveText("Quick fix");
+    await expect(monthInsight.locator(".checkin-fact")).toContainText(/planned bills/);
+    await expect(monthInsight.locator(".checkin-think")).toHaveText(/Linking them keeps the plan honest and catches anything that didn't go out\./);
+    await monthInsight.getByRole("button", { name: "Read full insight" }).click();
+    const also = monthInsight.locator(".checkin-also");
+    await expect(also).toContainText("Also this month");
+    await expect(also.locator("li")).toHaveCount(2);
+    await expect(also).toContainText("Food went $63.19 over its $650 plan.");
+    await expect(monthInsight.getByLabel("Money consequence map")).toBeVisible();
+  });
+
+  // A quote is never shown beside a bigger question. A $2,000 one-off makes
+  // Tim's May go over plan, with most of it from that one entry.
+  test("no quote shows beside a bigger question, and its action opens those entries", async ({ page }) => {
+    await postJson(page, "/api/entries/create", {
+      date: "2026-05-20",
+      description: "COURTS MEGASTORE TAMPINES",
+      accountName: "UOB One",
+      categoryName: "Shopping",
+      amountMinor: 200_000,
+      entryType: "expense",
+      ownershipType: "direct",
+      ownerName: "Tim"
+    });
+    await gotoPageAfterApi(page, "/month?view=person-tim&month=2026-05&scope=direct_plus_shared", "/api/month-page", () => page.getByRole("heading", { name: "Month", exact: true }));
+    const insight = page.locator(".financial-insight-month");
+    await insight.getByRole("button", { name: "Read full insight" }).click();
+    const bigger = insight.locator(".checkin-also li").filter({ hasText: "Bigger question" });
+    await expect(bigger).toContainText(/Courts Megastore Tampines/);
+    await expect(bigger).toContainText("$1,181.79 over plan");
+    await expect(insight.getByLabel("Money consequence map")).toBeVisible();
+    await page.waitForTimeout(600);
+    await expect(insight.locator(".checkin-quote")).toHaveCount(0);
   });
 
   // Month's check-in reads the same wallet health as Summary's: a statement
   // mismatch, a missing statement checkpoint or an unresolved transfer in
-  // the view's wallets makes "Snapshot confidence" say "Needs review". It
-  // once said "No visible proof gap" whatever the wallets showed. The Month
-  // Accounts section shows the same health.
+  // the view's wallets makes "Snapshot confidence" say "Needs review". The
+  // Month Accounts section shows the same health, and a statement gap is
+  // the check-in's Quick fix.
   test("the month check-in's snapshot confidence follows the view's statement checkpoints", async ({ page }) => {
     const monthUrl = "/month?view=person-joyce&month=2026-05&scope=direct_plus_shared";
     const openMonthMap = async () => {
@@ -90,7 +135,8 @@ test.describe("financial insights", () => {
     await expect(map).not.toContainText("Needs review");
     await expect(page.locator(".summary-account-pill").filter({ hasText: "UOB Lady's" })).toContainText("Reconciled to May 2026 statement");
 
-    // One statement $42.80 away from the ledger: Needs review.
+    // One statement $42.80 away from the ledger: Needs review, and the
+    // check-in's Quick fix names it.
     const lady = checked.find((account) => account.accountName === "UOB Lady's");
     await postJson(page, "/api/accounts/reconcile", { accountId: lady.accountId, checkpointMonth: "2026-05", statementBalanceMinor: lady.balanceMinor - 4_280 });
     map = await openMonthMap();
@@ -98,51 +144,44 @@ test.describe("financial insights", () => {
     await expect(map).toContainText("1 wallet has a statement mismatch");
     await expect(map).not.toContainText("No visible proof gap");
     await expect(page.locator(".summary-account-pill").filter({ hasText: "UOB Lady's" })).toContainText("May 2026 statement is off by $42.80");
+    const insight = page.locator(".financial-insight-month");
+    await expect(insight.getByText(/UOB Lady's.*\$42\.80|\$42\.80.*UOB Lady's/).first()).toBeVisible();
   });
 
   // The Month check-in counts what the Actual spend card counts: every entry
-  // for the household; a person's own entries in the scope for a person view
-  // (direct entries in full, split-linked entries at their share). Seeded
-  // October 2025 has direct and split-linked entries, so every scope differs.
+  // for the household; a person's own entries in the scope for a person view.
+  // The consequence map's plan lane is the check-in's spend against the
+  // plan, so it must equal the cards in every view and scope.
   test("the month check-in spends what the Actual spend card shows in every view and scope", async ({ page }) => {
-    const spentInNarrative = async () => {
-      const narrative = await page.locator(".financial-insight-month .financial-insight-narrative").innerText();
-      if (/there are no entries/.test(narrative)) return "$0.00";
-      return narrative.match(/spent (\S+) across/)?.[1] ?? `no spend in: ${narrative}`;
-    };
-    const actualSpendCard = async () => (
-      (await page.locator(".metric-row-month .metric").filter({ hasText: "Actual spend" }).locator("strong").innerText()).trim()
-    );
     const views = [
       ["household", "Household", ["direct_plus_shared"]],
       ["person-joyce", "Joyce", ["direct", "shared", "direct_plus_shared"]],
       ["person-tim", "Tim", ["direct", "shared", "direct_plus_shared"]]
     ];
-    const spendByView = {};
+    const laneByView = {};
     for (const [viewId, label, scopes] of views) {
       for (const scope of scopes) {
-        await gotoPageAfterApi(
-          page,
-          `/month?view=${viewId}&month=2025-10&scope=${scope}`,
-          "/api/month-page",
-          () => page.getByRole("heading", { name: "Month", exact: true })
-        );
+        const data = await loadMonthPage(page, { view: viewId, month: "2026-05", scope });
+        const card = (name) => data.monthPage.metricCards.find((item) => item.label === name).amountMinor;
+        const varianceMinor = card("Actual spend") - card("Planned spend");
+        const expected = varianceMinor > 0 ? `${money(varianceMinor)} over plan` : `${money(-varianceMinor)} unspent`;
+        await gotoPageAfterApi(page, `/month?view=${viewId}&month=2026-05&scope=${scope}`, "/api/month-page", () => page.getByRole("heading", { name: "Month", exact: true }));
         await expect(page.locator(".month-label-view")).toHaveText(label);
-        await expect(page.locator(".financial-insight-month")).toContainText(
-          viewId === "household" ? "Household money check-in" : `${label}'s money check-in`
-        );
-        const card = await actualSpendCard();
-        expect(await spentInNarrative(), `${viewId} ${scope}`).toBe(card);
-        spendByView[`${viewId}:${scope}`] = card;
+        const insight = page.locator(".financial-insight-month");
+        await expect(insight).toContainText(viewId === "household" ? "Household money check-in" : `${label}'s money check-in`);
+        await insight.getByRole("button", { name: "Read full insight" }).click();
+        const planLane = insight.locator(".financial-decision-lane").filter({ hasText: "Plan position" }).locator("strong");
+        await expect(planLane, `${viewId} ${scope}`).toHaveText(expected);
+        laneByView[`${viewId}:${scope}`] = expected;
       }
     }
-    // A person's figures are theirs, not the household's, and the scopes differ.
-    expect(spendByView["person-joyce:direct_plus_shared"]).not.toBe(spendByView["household:direct_plus_shared"]);
-    expect(spendByView["person-tim:direct_plus_shared"]).not.toBe(spendByView["household:direct_plus_shared"]);
-    expect(new Set(["direct", "shared", "direct_plus_shared"].map((scope) => spendByView[`person-joyce:${scope}`])).size).toBe(3);
+    // A person's figures are theirs, not the household's, and scopes differ.
+    expect(laneByView["person-joyce:direct_plus_shared"]).not.toBe(laneByView["household:direct_plus_shared"]);
+    expect(laneByView["person-tim:direct_plus_shared"]).not.toBe(laneByView["household:direct_plus_shared"]);
+    expect(laneByView["person-joyce:direct"]).not.toBe(laneByView["person-joyce:shared"]);
   });
 
-  test("the month wording request sends the person's scoped facts and asks again when the scope changes", async ({ page }) => {
+  test("the month wording request sends the person's scoped facts and headline, and asks again when the scope changes", async ({ page }) => {
     const bodies = [];
     await page.route("**/api/ai-assist/financial-insight", async (route) => {
       bodies.push(route.request().postDataJSON());
@@ -151,17 +190,25 @@ test.describe("financial insights", () => {
     const actualSpendCard = page.locator(".metric-row-month .metric").filter({ hasText: "Actual spend" }).locator("strong");
     await gotoPageAfterApi(
       page,
-      "/month?view=person-joyce&month=2025-10&scope=direct_plus_shared",
+      "/month?view=person-tim&month=2026-05&scope=direct_plus_shared",
       "/api/month-page",
       () => page.getByRole("heading", { name: "Month", exact: true })
     );
     await expect.poll(() => bodies.length, { timeout: 15_000 }).toBe(1);
     const combinedSpend = (await actualSpendCard.innerText()).trim();
-    // Only computed facts go out, with the person's name held back.
+    // Only computed facts go out, with the person's name held back: the
+    // headline's fact and think line, which the AI must keep word for word.
     expect(Object.keys(bodies[0])).toEqual(["facts"]);
     expect(bodies[0].facts.spend).toBe(combinedSpend);
     expect(bodies[0].facts.audienceKind).toBe("person");
-    expect(JSON.stringify(bodies[0])).not.toContain("Joyce");
+    expect(bodies[0].facts.headlineKind).toBe("quick_fix");
+    const insight = page.locator(".financial-insight-month");
+    expect(bodies[0].facts.fact).toBe((await insight.locator(".checkin-fact").innerText()).trim());
+    expect(bodies[0].facts.think).toBe("Linking them keeps the plan honest and catches anything that didn't go out.");
+    expect(JSON.stringify(bodies[0])).not.toContain("Tim");
+    for (const removed of ["notableFact", "cashFlowPrinciple", "nextSpendConsideration", "accountingAdvice"]) {
+      expect(Object.hasOwn(bodies[0].facts, removed)).toBe(false);
+    }
 
     await page.locator(".desktop-scope-toggle").getByRole("button", { name: "Shared", exact: true }).click();
     await expect(page).toHaveURL(/scope=shared/);
@@ -172,7 +219,7 @@ test.describe("financial insights", () => {
     expect(bodies[1].facts.spend).not.toBe(bodies[0].facts.spend);
   });
 
-  test("entries and splits scope their advice to current filters", async ({ page }) => {
+  test("entries and splits check-ins keep their filters' actions and maps", async ({ page }) => {
     await postJson(page, "/api/entries/create", {
       date: "2026-05-23",
       description: "Playwright May salary",
@@ -191,11 +238,9 @@ test.describe("financial insights", () => {
     );
     const entriesInsight = page.locator(".financial-insight-entries");
     await expect(entriesInsight).toContainText("Tim's money check-in");
-    await expect(entriesInsight).toContainText("Tim, you received");
-    await expect(entriesInsight).toContainText("May 2026");
-    await expect(entriesInsight.locator(".financial-insight-pattern")).toBeVisible();
-    await expect(entriesInsight.locator(".financial-insight-pattern")).not.toContainText("Worth noticing");
-    await expect(entriesInsight).not.toContainText("A useful signal");
+    await expect(entriesInsight.locator(".financial-insight-content > .checkin-chip")).toBeVisible();
+    await expect(entriesInsight.locator(".checkin-fact")).not.toBeEmpty();
+    await expect(entriesInsight).not.toContainText("Before buying something non-essential");
     await entriesInsight.getByRole("button", { name: "Read full insight" }).click();
     await expect(entriesInsight.getByLabel("Money consequence map")).toContainText("Check the full month");
     const incomeAction = entriesInsight.getByRole("button", { name: /See income entries/ });
@@ -217,6 +262,8 @@ test.describe("financial insights", () => {
     await resetEntriesInsight.getByRole("button", { name: "Review largest expense" }).click();
     await expect(page).toHaveURL(/entry_id=/);
 
+    // A search does not change what the Splits check-in says about the
+    // group; the map still says it measures settlement obligations.
     await gotoPageAfterApi(
       page,
       "/splits?view=person-tim&month=2026-06&split_group=split-group-none&split_search=Shopee",
@@ -224,17 +271,25 @@ test.describe("financial insights", () => {
       () => page.getByRole("heading", { name: "Splits", exact: true })
     );
     const splitsInsight = page.locator(".financial-insight-splits");
-    await expect(splitsInsight).toContainText("search");
-    await expect(splitsInsight).toContainText("filtered group view");
-    // A person view's Splits check-in is that person's own part of the group.
     await expect(splitsInsight).toContainText("Tim's money check-in");
+    await expect(splitsInsight.locator(".checkin-fact")).toContainText(/you owe Joyce \$260\.25/i);
+    await splitsInsight.getByRole("button", { name: "Read full insight" }).click();
+    await expect(splitsInsight.getByLabel("Money consequence map")).toContainText("Settlement obligations");
   });
 
-  // A person's Splits check-in counts their own split share of each group
-  // expense, in the group currency, not the group's total. Tim paid ¥12,000
-  // for a JPY trip hotel split 25% Tim / 75% Joyce: Tim's part is ¥3,000
-  // (he lent Joyce ¥9,000) and Joyce's is ¥9,000.
-  test("the splits check-in follows the person view and counts that person's share", async ({ page }) => {
+  test("the entries check-in's action filters the list to the entries it names", async ({ page }) => {
+    await gotoPageAfterApi(page, "/entries?view=household&month=2026-05&scope=direct_plus_shared", "/api/entries-page", () => page.getByRole("heading", { name: "Entries", exact: true }));
+    const insight = page.locator(".financial-insight-entries");
+    await expect(insight.locator(".financial-insight-content > .checkin-chip")).toHaveText("Worth a look");
+    await expect(insight.locator(".checkin-fact")).toContainText(/five/i);
+    await insight.getByRole("button", { name: "Show those entries" }).click();
+    await expect(page).toHaveURL(/entry_id=.*entry_id=.*entry_id=.*entry_id=.*entry_id=/);
+  });
+
+  // A person's Splits check-in speaks from their side of the group, in the
+  // group currency. Tim paid ¥12,000 for a JPY trip hotel split 25% Tim /
+  // 75% Joyce: Joyce owes Tim ¥9,000, and Tim's own share is ¥3,000.
+  test("the splits check-in follows the person view and says who owes whom", async ({ page }) => {
     const bodies = [];
     await page.route("**/api/ai-assist/financial-insight", async (route) => {
       bodies.push(route.request().postDataJSON());
@@ -262,28 +317,87 @@ test.describe("financial insights", () => {
     );
     const hotel = page.locator(".split-activity-card").filter({ hasText: "Shinjuku hotel" });
     await expect(hotel).toContainText("You paid JP¥12,000");
-    await expect(hotel.locator(".split-activity-amount-line > span").first()).toHaveText("JP¥9,000");
     const splitsInsight = page.locator(".financial-insight-splits");
     await expect(splitsInsight).toContainText("Tim's money check-in");
-    await expect(splitsInsight.locator(".financial-insight-narrative")).toContainText("Tim, you received JP¥0 and spent JP¥3,000 across 1 entry in Tokyo trip group.");
-    await expect(splitsInsight).not.toContainText("JP¥12,000");
+    await expect(splitsInsight.locator(".financial-insight-content > .checkin-chip")).toHaveText("Quick fix");
+    await expect(splitsInsight.locator(".checkin-fact")).toContainText("Joyce owes you JP¥9,000");
+    await expect(splitsInsight.locator(".checkin-think")).toHaveText(/Settling while the trip is fresh keeps it light for both of you\./);
+    await expect(splitsInsight.getByRole("button", { name: "Settle group" })).toBeVisible();
 
-    // Only computed facts go out, with the person's name held back.
+    // Only computed facts go out, with the person's name held back; the
+    // facts count Tim's own share.
     await expect.poll(() => bodies.length, { timeout: 15_000 }).toBe(1);
     expect(Object.keys(bodies[0])).toEqual(["facts"]);
-    expect(bodies[0].facts).toMatchObject({ audienceKind: "person", spend: "JP¥3,000", entryCount: 1 });
+    expect(bodies[0].facts).toMatchObject({ audienceKind: "person", spend: "JP¥3,000", entryCount: 1, headlineKind: "quick_fix" });
     expect(JSON.stringify(bodies[0])).not.toContain("Tim");
 
-    // Switching to Joyce's view words the check-in for her share and asks for
-    // wording again, because the facts (and so the cache key) changed.
+    // Joyce's view speaks from her side and asks for wording again.
     await page.locator(".context-block .pill[title='Joyce']").click();
     await expect(page).toHaveURL(/view=person-joyce/);
     await expect(splitsInsight).toContainText("Joyce's money check-in");
-    await expect(splitsInsight.locator(".financial-insight-narrative")).toContainText("Joyce, you received JP¥0 and spent JP¥9,000 across 1 entry in Tokyo trip group.");
+    await expect(splitsInsight.locator(".checkin-fact")).toContainText(/you owe Tim JP¥9,000/i);
     await expect.poll(() => bodies.length, { timeout: 15_000 }).toBe(2);
     expect(bodies[1].facts).toMatchObject({ audienceKind: "person", spend: "JP¥9,000" });
     expect(JSON.stringify(bodies[1])).not.toContain("Joyce");
+
+    // Settle group opens the page's own settlement dialog.
+    await splitsInsight.getByRole("button", { name: "Settle group" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
   });
+});
+
+// Keeping it fresh: four visits to Tim's Summary in one week, with injected
+// dates and the real localStorage. Each visit says something different
+// because the data, or the last visit, changed.
+test("four visits in one week: a first look, a new quick fix, sorted once, then a quiet visit", async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
+  await page.route("**/api/ai-assist/financial-insight", (route) => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ ok: false }) }));
+  await reseedDemo(page);
+  const pills = await loadSummaryAccountPills(page, { view: "person-tim" });
+  const card = pills.accountPills.find((account) => account.reconciliationStatus !== "mismatch");
+  const insight = page.locator(".financial-insight-summary");
+  const visit = async (isoInstant) => {
+    await page.clock.setFixedTime(new Date(isoInstant));
+    await gotoPageAfterApi(page, "/summary?view=person-tim&month=2026-05&scope=direct_plus_shared", "/api/summary-page", () => page.getByRole("heading", { name: "Summary", exact: true }));
+    await expect(insight.locator(".financial-insight-narrative")).toBeVisible();
+    const chip = insight.locator(".financial-insight-content > .checkin-chip");
+    return {
+      mode: await insight.getAttribute("data-checkin-mode"),
+      chip: (await chip.count()) ? await chip.textContent() : null,
+      text: (await insight.locator(".financial-insight-narrative").innerText()).trim()
+    };
+  };
+
+  // Mon 4 May: a first look.
+  const monday = await visit("2026-05-04T09:00:00+08:00");
+  expect(monday.mode).toBe("signal");
+
+  // Wed 13 May: a statement arrives $42.80 away from the app: it leads.
+  await postJson(page, "/api/accounts/reconcile", { accountId: card.accountId, checkpointMonth: "2026-05", statementBalanceMinor: card.balanceMinor - 4_280 });
+  const wednesday = await visit("2026-05-13T20:00:00+08:00");
+  expect(wednesday.chip).toBe("Quick fix");
+  expect(wednesday.text).toContain("$42.80");
+  expect(wednesday.text).toContain("Small gaps are usually one missing or doubled entry.");
+
+  // Fri 15 May: fixed. The check-in says so once.
+  await postJson(page, "/api/accounts/reconcile", { accountId: card.accountId, checkpointMonth: "2026-05", statementBalanceMinor: card.balanceMinor });
+  const friday = await visit("2026-05-15T19:00:00+08:00");
+  expect(friday.mode).toBe("sorted");
+  expect(friday.chip).toBe("Going well");
+  expect(friday.text).toMatch(/^Sorted: .* now matches its statement\./);
+  expect(friday.text).toContain("That's the part that makes every other number here trustworthy.");
+
+  // Sun 17 May: nothing new since Friday: one quiet line.
+  const sunday = await visit("2026-05-17T10:00:00+08:00");
+  expect(sunday.mode).toBe("quiet");
+  expect(sunday.chip).toBeNull();
+  expect(sunday.text).toMatch(/Friday/);
+  expect(sunday.text).not.toContain("Sorted");
+
+  expect(new Set([monday.text, wednesday.text, friday.text, sunday.text]).size).toBe(4);
+  // The memory is this browser's only.
+  const stored = await page.evaluate(() => Object.keys(window.localStorage).filter((key) => key.startsWith("monies-map:checkin:")));
+  expect(stored).toEqual(["monies-map:checkin:v1:summary:person-tim"]);
 });
 
 // H08: optional AI wording waits for a usable route (loaded, no editor or
@@ -291,13 +405,19 @@ test.describe("financial insights", () => {
 // page.route; deterministic wording is always on screen meanwhile.
 test.describe("financial insight wording readiness", () => {
   const SUMMARY_URL = "/summary?view=household&month=2026-05&scope=direct_plus_shared";
-  const AI_WORDING = "Playwright AI wording for this check-in.";
+  // The stub rewords around the fact and think line it was sent, as the
+  // Worker's template does: the client keeps only wording that carries both.
+  const AI_WORDING = "Playwright AI wording:";
 
   function controlInsightRequests(page, { respond = "ai" } = {}) {
     const state = { requests: [], held: [], failed: [], hold: false };
     page.on("requestfailed", (request) => {
       if (new URL(request.url()).pathname === "/api/ai-assist/financial-insight") state.failed.push(Date.now());
     });
+    const aiNarrative = (route) => {
+      const facts = route.request().postDataJSON()?.facts ?? {};
+      return `${AI_WORDING} ${facts.fact} ${facts.think}`;
+    };
     const fulfill = async (route) => {
       if (respond === "malformed") {
         await route.fulfill({ status: 200, contentType: "application/json", body: "{not json" }).catch(() => {});
@@ -307,7 +427,15 @@ test.describe("financial insight wording readiness", () => {
         await route.fulfill({
           status: 500,
           contentType: "application/json",
-          body: JSON.stringify({ available: true, source: "ai", narrative: AI_WORDING })
+          body: JSON.stringify({ available: true, source: "ai", narrative: aiNarrative(route) })
+        }).catch(() => {});
+        return;
+      }
+      if (respond === "drops-the-fact") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ available: true, source: "ai", narrative: `${AI_WORDING} something else entirely.` })
         }).catch(() => {});
         return;
       }
@@ -318,7 +446,7 @@ test.describe("financial insight wording readiness", () => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ available: true, source: "ai", narrative: AI_WORDING })
+        body: JSON.stringify({ available: true, source: "ai", narrative: aiNarrative(route) })
       }).catch(() => {});
     };
     return page.route("**/api/ai-assist/financial-insight", async (route) => {
@@ -363,6 +491,8 @@ test.describe("financial insight wording readiness", () => {
     await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(1);
     expect(control.state.requests[0] - closedAt).toBeGreaterThanOrEqual(650);
     await expect(page.locator(".financial-insight-summary")).toContainText(AI_WORDING);
+    // The AI's words sit around the computed fact, which stays bold.
+    await expect(page.locator(".financial-insight-summary .checkin-fact.is-inline")).not.toBeEmpty();
     await page.waitForTimeout(2_000);
     expect(control.state.requests).toHaveLength(1);
   });
@@ -397,7 +527,6 @@ test.describe("financial insight wording readiness", () => {
     const before = await insight.locator(".financial-insight-narrative").textContent();
     await page.locator(".summary-focus-button").filter({ hasText: "Range overall" }).click();
     await expect(page).toHaveURL(/summary_focus=/);
-    await expect(insight.locator(".financial-insight-narrative")).not.toHaveText(before ?? "");
     await expect.poll(() => control.state.failed.length).toBe(1);
     control.state.hold = false;
     control.releaseAll();
@@ -425,12 +554,13 @@ test.describe("financial insight wording readiness", () => {
     expect(control.state.requests).toHaveLength(1);
   });
 
-  for (const respond of ["unavailable", "malformed", "error-with-wording"]) {
+  for (const respond of ["unavailable", "malformed", "error-with-wording", "drops-the-fact"]) {
     test(`a response that is ${respond} keeps the computed wording and is not retried on return`, async ({ page }) => {
       const control = await controlInsightRequests(page, { respond });
       await openSummary(page);
-      const narrative = page.locator(".financial-insight-summary .financial-insight-narrative");
-      await expect(narrative).toContainText("May 2026");
+      const insight = page.locator(".financial-insight-summary");
+      const narrative = insight.locator(".financial-insight-narrative");
+      await expect(insight.locator(".checkin-fact")).not.toBeEmpty();
       const computed = await narrative.textContent();
       await expect.poll(() => control.state.requests.length, { timeout: 10_000 }).toBe(1);
       await page.waitForTimeout(500);
