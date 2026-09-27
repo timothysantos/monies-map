@@ -443,3 +443,90 @@ test("the money consequence map agrees nouns and verbs with each count", () => {
   );
   assert.doesNotMatch(confidenceDetail({ needsCheckpointCount: 2 }), /2 wallet need/);
 });
+
+// Every notable fact a set of records can produce: the pick is a stable hash
+// of the context, so walking context labels reaches each candidate.
+function allNotableFacts(input) {
+  const facts = new Set();
+  for (let index = 0; index < 80; index += 1) {
+    facts.add(buildFinancialInsightFacts({ ...input, contextLabel: `${input.contextLabel} ${index}` }).notableFact);
+  }
+  return [...facts];
+}
+
+const PURCHASE_FACT = /largest (household )?purchase|three largest|\bpaid\b/;
+
+test("Summary category totals never read as purchases, payments or a repeatable expense", () => {
+  const categoryTotals = [
+    { entryType: "expense", amountMinor: 124_000, categoryName: "Groceries", description: "Groceries" },
+    { entryType: "expense", amountMinor: 61_000, categoryName: "Dining", description: "Dining" },
+    { entryType: "expense", amountMinor: 20_000, categoryName: "Transport", description: "Transport" },
+    { entryType: "income", amountMinor: 500_000, description: "Recorded income" }
+  ];
+  for (const audience of [{ audienceKind: "household" }, { audienceKind: "person", audienceName: "Tim" }]) {
+    const input = {
+      contextLabel: "May 2026 summary",
+      ...audience,
+      records: categoryTotals,
+      formatMoney: formatTestMoney,
+      accountingAdvice: "Keep the plan current.",
+      perspective: "cash_flow",
+      recordKind: "category_totals"
+    };
+    const facts = allNotableFacts(input);
+    assert.deepEqual(facts, [audience.audienceKind === "person"
+      ? "Your Groceries spending accounted for 60% of what you spent."
+      : "Groceries accounted for 60% of household spending."]);
+    const lanes = buildFinancialInsightFacts(input).decisionMap.lanes.map((lane) => lane.id);
+    assert.deepEqual(lanes, ["surplus", "plan", "season", "confidence"]);
+  }
+
+  // The same records read as single entries do produce the purchase facts
+  // and the one-repeat scenario, so the guard is what removes them.
+  const asEntries = {
+    contextLabel: "May 2026 summary",
+    records: categoryTotals,
+    formatMoney: formatTestMoney,
+    accountingAdvice: "Keep the plan current.",
+    perspective: "cash_flow"
+  };
+  assert.ok(allNotableFacts(asEntries).some((fact) => PURCHASE_FACT.test(fact)));
+  assert.ok(buildFinancialInsightFacts(asEntries).decisionMap.lanes.some((lane) => lane.id === "repeat"));
+});
+
+test("a person view with shares never says they paid; the largest item names a share only when it is one", () => {
+  const direct = (description, amountMinor) => ({ entryType: "expense", amountMinor, categoryName: "Dining", description, ownershipType: "direct" });
+  const base = {
+    contextLabel: "October 2025 month",
+    audienceKind: "person",
+    audienceName: "Tim",
+    formatMoney: formatTestMoney,
+    accountingAdvice: "Keep the bank record current.",
+    perspective: "cash_flow"
+  };
+  // Joyce paid the dinner; Tim's half is linked from a split.
+  const dinnerShare = { entryType: "expense", amountMinor: 35_659, totalAmountMinor: 71_319, linkedSplitExpenseId: "split-dining", categoryName: "Dining", description: "Anniversary dinner" };
+  const utilitiesShare = { entryType: "expense", amountMinor: 4_000, totalAmountMinor: 10_000, ownershipType: "shared", categoryName: "Utilities", description: "SP Group" };
+
+  const withShareLargest = allNotableFacts({ ...base, records: [dinnerShare, utilitiesShare, direct("Kopitiam", 800), direct("Kopitiam", 700)] });
+  assert.ok(withShareLargest.includes("Your largest share was Anniversary dinner at $356.59."));
+  assert.ok(withShareLargest.every((fact) => !PURCHASE_FACT.test(fact)), withShareLargest.join(" | "));
+
+  const withDirectLargest = allNotableFacts({ ...base, records: [direct("Laptop", 150_000), utilitiesShare, direct("Kopitiam", 800), direct("Kopitiam", 700)] });
+  assert.ok(withDirectLargest.includes("Your largest purchase was Laptop at $1500.00."));
+  assert.ok(withDirectLargest.every((fact) => !/three largest|\bpaid\b/.test(fact)), withDirectLargest.join(" | "));
+
+  // Only their own direct entries: the purchase and payment facts stay.
+  const directOnly = allNotableFacts({ ...base, records: [direct("Laptop", 150_000), direct("Kopitiam", 800), direct("Kopitiam", 700)] });
+  assert.ok(directOnly.includes("You paid Kopitiam 2 times."));
+  assert.ok(directOnly.includes("Your three largest purchases made up 100% of what you spent."));
+
+  // A Splits person view is always shares, even without share markers.
+  const splitPerson = allNotableFacts({ ...base, perspective: "split_obligation", records: [direct("Grab", 2_000), direct("Grab", 1_500), direct("Hotel", 30_000)] });
+  assert.ok(splitPerson.includes("Your largest share was Hotel at $300.00."));
+  assert.ok(splitPerson.every((fact) => !PURCHASE_FACT.test(fact)), splitPerson.join(" | "));
+
+  // The household keeps its wording: its amounts are whole entries.
+  const household = allNotableFacts({ ...base, audienceKind: "household", audienceName: "", records: [dinnerShare, direct("Kopitiam", 800), direct("Kopitiam", 700)] });
+  assert.ok(household.includes("Kopitiam was paid 2 times by the household."));
+});

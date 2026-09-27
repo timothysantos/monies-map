@@ -990,9 +990,11 @@ remove it so one purchase cannot create two entries.
 
 Summary, Month, Entries and Splits each show a **Money check-in**: a short
 reading of the figures on screen, in plain words. In a person view it talks
-to that person (for example "it cannot show whether you are saving"). On
-Splits, a person's check-in names their share of an expense ("Your largest
-share was ..."), because someone else may have paid for it.
+to that person (for example "it cannot show whether you are saving"). When a
+person's figures include their part of a shared or split expense, the
+check-in calls it a share ("Your largest share was ..."), because someone
+else may have paid for it. Summary's check-in works from category totals, so
+it names categories, not single purchases.
 
 1. Read the two-line preview and the highlighted pattern (for example your
    largest purchase or a category that dominated).
