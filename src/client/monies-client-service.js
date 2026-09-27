@@ -62,7 +62,9 @@ export const moniesClient = Object.freeze({
     moneyStep: formatters.moneyStep,
     moneyWithCurrency: formatters.moneyWithCurrency,
     parseDraftMoneyInput: formatters.parseDraftMoneyInput,
-    parseMoneyInput: formatters.parseMoneyInput
+    parseMoneyInput: formatters.parseMoneyInput,
+    unmaskedMoney: formatters.unmaskedMoney,
+    unmaskedMoneyWithCurrency: formatters.unmaskedMoneyWithCurrency
   }),
   imports: Object.freeze({
     buildRawRowFromPreviewRow: importHelpers.buildRawImportRowFromPreviewRow,
