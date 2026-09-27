@@ -120,8 +120,9 @@ test("revealing totals after a hidden load shows the real money check-in on ever
     const narrative = insight.locator(".financial-insight-narrative");
     await expect(narrative, heading).toBeVisible();
     await expect(narrative, heading).not.toContainText("••••");
-    await expect(narrative, heading).toContainText(/\$\d/);
     await insight.getByRole("button", { name: "Read full insight" }).click();
+    // The check-in and its map show real amounts at once.
+    await expect(insight, heading).toContainText(/\$\d/);
     await expect(insight, heading).not.toContainText("••••");
     await insight.getByRole("button", { name: "Show less" }).click();
 
