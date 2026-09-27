@@ -55,6 +55,9 @@ export interface SignalPhrasing {
   // A phrasing that already carries part of the thought gets a shorter
   // think line, so the two never repeat each other.
   think: string;
+  // Every think line this phrasing may pair with (`think` is the first).
+  // The fact and think pairs are the signal's wordings (rotation.ts).
+  thinks?: string[];
 }
 
 export interface MoneySignal {
@@ -71,12 +74,17 @@ export interface MoneySignal {
   primaryText?: string;
   // 3 to 5 approved phrasings with the same numbers (1 for trivia).
   phrasings: SignalPhrasing[];
+  // Just for fun only: the trivia type, the name the page's year rotation
+  // schedules (rotation.ts), e.g. "smallest".
+  triviaType?: string;
   action?: CheckInAction;
   // What a quick fix says once when it clears.
   sorted?: { fact: string; think: string };
   topic?: QuoteTopic;
-  // A time-of-month moment or season (payday, a bonus, bills coming up, a
-  // trip's end, Chinese New Year): ranked ahead of its kind.
+  // A time-of-month moment or season (payday, a bonus, bills coming up,
+  // Chinese New Year): ranked ahead of its kind. A Just for fun moment (a
+  // year recap, an anniversary) goes ahead of the scheduled trivia, and may
+  // fire in at most one period of any twelve.
   moment?: boolean;
   // A quick fix about something outside the view's own period (a wallet's
   // statement on Month) that goes right after a bigger question instead of
