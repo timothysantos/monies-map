@@ -54,15 +54,30 @@ async function expectLineClearOfButton(page, pick, label) {
       document.body.insertAdjacentElement(where, spacer);
     }
   });
-  const before = await measure(page);
+  // Wait for the layout to settle (the expanded view loads its quote on
+  // demand), then scroll the line to the button, re-aiming if it moved.
+  let before = await measure(page);
+  await expect.poll(async () => {
+    const next = await measure(page);
+    const settled = JSON.stringify(next.lines) === JSON.stringify(before.lines);
+    before = next;
+    return settled;
+  }, { message: `${label}: layout settles`, intervals: [200, 300, 500] }).toBe(true);
   expect(before.button, `${label}: floating button`).not.toBeNull();
   const line = pick(before.lines);
   const buttonMiddle = (before.button.top + before.button.bottom) / 2;
-  await page.evaluate((delta) => window.scrollBy({ top: delta, behavior: "instant" }), (line.top + line.bottom) / 2 - buttonMiddle);
-  const after = await measure(page);
-  const moved = after.lines.find((candidate) => candidate.text === line.text && Math.abs(candidate.left - line.left) < 1 && Math.abs(candidate.right - line.right) < 1);
-  expect(moved, `${label}: the line is still on screen`).toBeTruthy();
-  expect(Math.abs((moved.top + moved.bottom) / 2 - buttonMiddle), `${label}: scrolled to the button`).toBeLessThan(12);
+  const sameLine = (candidate) => candidate.text === line.text && Math.abs(candidate.left - line.left) < 1 && Math.abs(candidate.right - line.right) < 1;
+  let after = before;
+  await expect.poll(async () => {
+    const current = after.lines.find(sameLine);
+    if (!current) return "the line is not on screen";
+    const offset = (current.top + current.bottom) / 2 - buttonMiddle;
+    if (Math.abs(offset) < 12) return "aligned";
+    await page.evaluate((delta) => window.scrollBy({ top: delta, behavior: "instant" }), offset);
+    after = await measure(page);
+    const moved = after.lines.find(sameLine);
+    return moved && Math.abs((moved.top + moved.bottom) / 2 - buttonMiddle) < 12 ? "aligned" : "not yet";
+  }, { message: `${label}: scrolled to the button`, intervals: [100, 200, 300] }).toBe("aligned");
   expect(after.lines.filter((candidate) => intersects(candidate, after.button)), `${label}: text under the button`).toEqual([]);
   // The button is fixed and the page scrolls only vertically, so no line
   // anywhere in the insights may reach into the button's column.
