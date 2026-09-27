@@ -126,6 +126,10 @@ export const ENTRIES_COPY = {
     phrasings: ["First day with spending {when}: {day}, led by {name} at {amount}."],
     think: ""
   },
+  firstDayCount: {
+    phrasings: ["First day with spending {when}: {day}, with {entries}."],
+    think: ""
+  },
   entrySpan: {
     phrasings: ["Entries {when} run from {first} to {last}, across {days} different days."],
     think: ""
@@ -450,8 +454,10 @@ export function firstDayTrivia(input: EntriesSignalInput): MoneySignal | null {
   const sameDay = expenses(input).filter((entry) => entry.date === firstDate);
   const lead = named.filter((item) => item.entry.date === firstDate)
     .sort((left, right) => amountOf(right.entry) - amountOf(left.entry) || left.entry.id.localeCompare(right.entry.id))[0];
+  // Nothing that day has a readable name (a PayNow, a GIRO): say the day
+  // and how many entries, never a code.
   if (!lead) {
-    return null;
+    return triviaSignal("first-day", firstDate, ENTRIES_COPY.firstDayCount, { day: shortDay(firstDate), entries: plural(sameDay.length, "entry", "entries"), ...when(input) });
   }
   const copy = sameDay.length === 1 ? ENTRIES_COPY.firstEntry : ENTRIES_COPY.firstDay;
   return triviaSignal("first-day", firstDate, copy, { name: lead.name, amount: input.formatMoney(amountOf(lead.entry)), day: shortDay(firstDate), ...when(input) });
