@@ -991,20 +991,47 @@ remove it so one purchase cannot create two entries.
 
 ## Use the Money check-in
 
-Summary, Month, Entries and Splits each show a **Money check-in**: a short
-reading of the figures on screen, in plain words. In a person view it talks
-to that person (for example "Ethan, you received $8,300.00 and spent
-$1,369.25"). When a
-person's figures include their part of a shared or split expense, the
-check-in calls it a share ("Your largest share was ..."), because someone
-else may have paid for it. Summary's check-in works from category totals, so
-it names categories, not single purchases.
+Summary, Month, Entries and Splits each show a **Money check-in**: one thing
+worth knowing about the figures on screen, a calm way to think about it, and
+a line that zooms out. In a person view it talks to that person (for example
+"Serene owes you JP¥26,730 from the Japan trip."). The household view talks
+about shared patterns and never compares the two of you.
 
-1. Read the two-line preview and the highlighted pattern (for example your
-   largest purchase or a category that dominated).
-2. Select **Read full insight** for the full text, the **Money consequence
-   map** and links to the records worth checking.
-3. Select a **Review** link to open exactly those entries or matches.
+A small label says what kind of line it is:
+
+- **Quick fix**: something small that makes the numbers trustworthy or
+  settles something, such as a statement that is $42.80 away from the app,
+  a planned bill with no entry, money owed on a split or entries still in
+  Other. These come first, because every other number depends on them.
+- **Bigger question**: a pattern worth an honest decision, such as one
+  large purchase that took the month over plan. There is never more than
+  one at a time.
+- **Worth a look**: something that may well be fine but is easy to miss:
+  subscriptions adding up, a category creeping up, a possible double
+  charge.
+- **Going well**: plan left over, months under plan, savings on track.
+- **Just for fun**: a light line from your own spending, such as your
+  regular spot or the priciest thing on a trip. It never sits next to a
+  bigger question.
+- **Long view**: a quieter line that zooms out: how much of your income you
+  kept over the year, how many months your bank balances would cover, or
+  how much of the month's income your planned bills take.
+
+1. Read the bold line and the line under it.
+2. If a link sits under them (**Review statement**, **Show those entries**,
+   **Settle group** or **Review matches**), select it to open exactly those
+   records.
+3. Select **Read full insight** for up to three more things worth knowing,
+   now and then a short quote, and the **Money consequence map**.
+
+The check-in changes as you use it. On your next visit it words the same
+fact a different way, gives other lines a turn once one has been shown, and
+starts with what changed ("Down from $42.80 since your last visit."). When
+you fix something it says "Sorted" once. Early in the month it looks ahead
+at bills coming up, mid-month at how spending is pacing, and at the end it
+wraps up. If nothing has changed since you last looked, it says so in one
+short line. What it has shown you is remembered only in this browser;
+nothing about your visits is saved anywhere else.
 
 ![The full insight with its Money consequence map](/faq/guide/desktop/thumbs/summary-insight-expanded.webp)
 
@@ -1266,7 +1293,8 @@ saves every row or none of them.
 - **Unresolved transfer**: a transfer whose other side is not paired yet.
 - **Reconciliation exception**: a known gap you are tracking until it is
   explained.
-- **Money check-in**: the short reading of the figures on each screen.
+- **Money check-in**: one thing worth knowing about the figures on each
+  screen, with a way to think about it and a long view.
 - **Money consequence map**: the check-in's breakdown of money left, plan
   position and how well statements confirm the figures.
 

@@ -1360,28 +1360,23 @@ You can ask it to draft a Monthly Note, phrase a statement mismatch in simpler
 language, suggest category-rule drafts from existing categorized history, or
 rank descriptions among candidates that the app has already constrained by
 account, amount, and date. Summary, Month, Entries, and Splits also show a
-Money check-in for the figures already on screen. It appears immediately
-from the app's own calculations, then may improve its wording in the background
-after a short pause. In a person view, the Summary and Month check-ins count
-only that person's entries in the selected scope, the same entries as the
-`Actual spend` card beside them. Changing a month, account, category, search,
-scope, or split group creates a different insight; the app keeps same-view wording in a
-short-lived in-memory cache so it does not keep calling AI while you work.
-Its compact preview includes one deterministic pattern from the entries on the
-current screen before any optional AI wording returns. When a person view is
-selected, the app addresses that person in the final browser wording, but sends
-only a placeholder rather than their name to Workers AI.
+Money check-in for the figures already on screen (see [How does the Money
+check-in work?](#how-does-the-money-check-in-work)). It appears immediately
+from the app's own calculations, then may improve its wording in the
+background after a short pause: the AI may only choose a few words around
+the check-in's fact and think line, which it must keep word for word. In a
+person view, the Summary and Month check-ins count only that person's
+entries in the selected scope, the same entries as the `Actual spend` card
+beside them. Changing a month, scope, split group or the headline creates a
+different insight; the app keeps same-view wording in a short-lived
+in-memory cache so it does not keep calling AI while you work. When a person
+view is selected, the app addresses that person in the final browser
+wording, but sends only a placeholder rather than their name to Workers AI.
+A quiet visit or a calm line has nothing to reword, so it asks for nothing.
 
-Those insights are guidance, not a recalculation. A filtered Entries or Splits
-view says so and should be used to investigate that subset, not as a full-month
-budget total. The advice keeps accounting boundaries clear: compare pending
-entries to the bank before closing a month, do not treat split balances as new
-spending, and review large budget variances before changing a plan. In a full
-cash-flow view, it also explains that money left after recorded spending is not
-automatically free to spend: future bills, transfers, and an intentional savings
-transfer still need to be covered. Each insight includes one conservative
-suggestion before a non-essential purchase. It does not forecast, make an
-unverified year-over-year claim, or decide a savings target on its own.
+Those insights are guidance, not a recalculation. The check-in never
+forecasts, promises what is safe to spend, or sets a savings target, and it
+never replaces the plan or the ledger.
 
 Summary and Month also show a **Money consequence map**. It makes the
 calculation easier to inspect: money left so far, plan position, a same-season
@@ -1404,7 +1399,8 @@ filters; AI wording cannot choose or invent a record link.
 
 The wording service receives placeholder names rather than the actual figures,
 merchant names, account names, or ledger rows. The app inserts the
-already-computed values only after validating the model's template. It cannot
+already-computed values (the check-in's fact and think line, word for word)
+only after validating the model's template. It cannot
 import transactions, change a category, skip a row, certify a statement, or
 link a transfer on its own. Use the normal review controls to accept any
 suggestion.
@@ -1419,6 +1415,65 @@ and do not create a statement balance checkpoint automatically.
 The app keeps only daily AI usage counters so it can stay within its configured
 allowance. It does not save prompts, model answers, original PDFs, credentials,
 Shortcut tokens, or full card/account numbers as an AI history.
+
+## How does the Money check-in work?
+
+The check-in is built in the browser from data the page already loaded; it
+adds no endpoint or payload. The code is in `src/domain/money-signals/`:
+
+- **Signals.** `summary-signals.ts`, `month-signals.ts`,
+  `entries-signals.ts` and `splits-signals.ts` hold one small pure function
+  per signal (`statementGapSignal`, `planLeftSignal`, ...). Each returns
+  `{ key, kind, weight, numbers, phrasings, action? }` or `null` when its
+  condition is not met. `weight` is the money involved; `numbers.primaryMinor`
+  is what "moved" is measured on. The page's copy catalogue
+  (`SUMMARY_COPY`, `MONTH_COPY`, ...) beside the functions holds the approved
+  phrasings (3 to 5, all with the same numbers), the think line, the
+  one-time "Sorted" line of a quick fix and the action label. Signals take
+  `today` and the money formatter as inputs and never read the clock.
+- **Ranking.** `rankSignals` in `checkin.ts` orders headline candidates by
+  kind (Quick fix, Bigger question, a moment such as payday or bills coming
+  up, Worth a look, Going well), then by money, then by not seen recently;
+  a signal shown in the last three days goes after the rest unless its
+  number moved by 10% or $50. Only one bigger question is kept. Long view
+  and Just for fun are picked separately.
+- **Rotation.** `composeCheckIn` takes the signals, the visit memory,
+  `nowMs`, `today` and a stable seed (page, view and context) and returns
+  the headline, up to three more lines, the long view, the fun line and the
+  quote topic. It never repeats the last phrasing, leads with "Down from
+  ... since your last visit." when a number moved, says a cleared quick fix
+  is sorted once, and shows one quiet line when nothing changed since a
+  visit in the last three days (never twice in a row). Trivia does not
+  repeat within 14 days and quotes within 28. The same inputs always give
+  the same check-in, so tests pin every rule
+  (`tests/money-checkin-engine.test.mjs`).
+- **Visit memory.** `src/client/checkin-visit-memory.js` keeps it in
+  localStorage under `monies-map:checkin:v1:<page>:<view>[:<group>]`, with
+  every access in try/catch; missing or broken storage reads as a first
+  visit. `recordVisit` writes what was shown; nothing about visits goes to
+  the Worker or AI. The component composes from the memory as the page
+  found it, so recording a visit never changes what is on screen.
+- **Quotes.** `quotes.ts` holds public-domain quotes, each copied exactly
+  from the source it names (author, work, year and the text checked). It is
+  loaded with a dynamic import when "Read full insight" opens, so it never
+  weighs on the first screen; `pickQuote` matches the headline's topic.
+
+To add a signal: write the test first in the page's
+`tests/money-signals-*.test.mjs` (it fires with concrete numbers and the
+exact wording, and stays silent when its condition is not met), add its copy
+to the page's catalogue and describe it in `scripts/checkin-copy.mjs`, add
+the function and list it in the page's `build...Signals`, then run
+`npx tsx scripts/checkin-copy.mjs` to regenerate `docs/checkin-copy.md`. An
+action may only reuse a navigation the page already has.
+
+The tone lint (`tone.ts`, run by `tests/money-checkin-copy.test.mjs`) checks
+every phrasing, think line, sorted, trivia, quiet and calm line, the quotes
+and the consequence map's lanes: no word from the avoid list (overspent,
+blew, bad month, cut back, should, non-essential, guilty, sacrifice,
+warning, alert, problem and a few forms of them), no exclamation marks, no
+emoji, and no percentage without its money amount. The same lint refuses AI
+wording that breaks it. The test also fails when `docs/checkin-copy.md` is
+out of date.
 
 # Product and data model notes
 
@@ -1497,8 +1552,9 @@ the household view shows $210.00. The stored month totals hold the same
 Direct + Shared figure per person, and a person whose only spending in a
 month is a split share (Joyce's $60.00 of a dinner Tim paid) still gets one.
 The Summary and Month Money check-ins count the same entries, so in Tim's
-Direct + Shared view the Month check-in says he spent $120.00, the same as
-his `Actual spend` card, and switching to `Shared` makes both say $20.00.
+Direct + Shared view the Month check-in's facts (and its consequence map's
+plan position) use his $120.00, the same as his `Actual spend` card, and
+switching to `Shared` makes both use $20.00.
 
 In a person view on a computer or tablet, Summary shows a small switch under
 its `Summary` title: `Direct`, `Shared` and `Both` (Direct + Shared), with the

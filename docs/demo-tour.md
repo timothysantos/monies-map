@@ -31,8 +31,9 @@ Open **Summary** with **Household** selected.
 
 - The cards compare planned and actual income and spending over the last 12
   months. "Realized savings" is what was actually left over.
-- The check-in under the cards reads the numbers in plain words. The largest
-  household cost is the HDB loan.
+- The check-in under the cards leads with a **Quick fix**: Serene's OCBC 365
+  Card statement is off by $42.80. Its **Long view** line says the household
+  kept about 61% of what came in over the last 11 complete months.
 - Scroll to **Intent vs Outcome**: most months finish under plan. One month,
   two months ago, sticks out above the plan. Hold that thought.
 
@@ -84,9 +85,11 @@ Go back to **Household**, open **Month** and choose **two months ago**.
 - **Actual spend** is above **Planned spend** by about $3,100. The month
   note explains it: both aircon units were replaced and the new sofa
   arrived.
-- Open the check-in's full insight. **Plan position** shows the overspend,
-  and the **One-repeat scenario** shows the month would end in deficit if
-  one more purchase like the aircon happened.
+- The check-in still leads with the card's statement gap (a quick fix comes
+  first); open its full insight: **Also this month** lists the **Bigger
+  question** (the aircon made up most of the $3,128.14 over plan), **Plan
+  position** shows the overspend, and the **One-repeat scenario** shows the
+  month would end in deficit if one more purchase like the aircon happened.
 - Scroll to **Planned Items**: the HDB loan, S&CC, insurance and
   subscriptions are each linked to the real bank entry that paid them.
   **Budget Buckets** (groceries, food, transport) show how much of each

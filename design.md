@@ -82,14 +82,20 @@ cannot hide one. The user can expand one item to match a transfer from the
 currently selected ledger month. It must never style a paid confirmation as a
 bank match.
 
-Financial insight is deliberately compact by default. It shows a two-line,
-visually ellipsized narrative preview and a clear `Read full insight` control;
-the full narrative, money consequence map, and record actions are revealed
-only on demand. Expanding is local presentation state and must not trigger an
-additional AI request. The preview also surfaces one stable, computed entry
-pattern such as spending concentration or repeated merchant activity. Its
-wording varies deterministically with the visible facts, so it stays specific
-without changing on a rerender or relying on AI.
+Financial insight (the Money check-in) is deliberately compact by default.
+It shows one ranked signal: its kind chip, the bold fact, one think line and
+at most one action that reuses a navigation the page already has, then a
+Just for fun line (never beside a bigger question) and the Long view line.
+`Read full insight` reveals up to three more signals, at most one quote
+(never beside a bigger question) and the money consequence map with the
+record actions. Expanding is local presentation state and must not trigger
+an additional AI request; it loads the quote library chunk on demand. The
+component (`financial-insight.jsx`) composes the check-in with
+`composeCheckIn` from the page's signals and the visit memory as it was when
+the page mounted (`checkin-visit-memory.js`, localStorage only), so
+recording the visit never changes what is on screen; the visit's clock is
+fixed at mount (`useCheckInClock`). Its styles live in `money-checkin.css`,
+which ships with the routes, not the first-screen stylesheet.
 
 The Splits workspace uses a dark surface but paid-settlement follow-ups use a
 light proof card. Controls on that card must use an explicit light-card theme:
@@ -212,8 +218,8 @@ debounced, cache-missed wording request after the view is stable. That cache is
 memory-only and short-lived. The Worker validates every response against
 existing DTO data and returns an unavailable result when the binding, quota, or
 model is unavailable. The shared insight labels whether it is looking at full
-cash flow, a filtered investigation, or split obligations, then gives a bounded
-next-spend consideration from those already-computed facts. When deterministic
+cash flow, a filtered investigation, or split obligations; AI wording may only
+choose words around the computed fact and think line. When deterministic
 evidence warrants it, the component exposes a Review action that opens the
 existing filtered Entries or split-match surface; model output never supplies
 the target. No AI result bypasses the existing editor, preview, or review
@@ -249,8 +255,8 @@ model as `insightRecords`) gives a person view that person's split share of
 each expense of the active group, read from the activity's existing
 `shares` rows and in the group currency (a JPY trip reads JP¥), and leaves
 out an expense they have no share in; settlements carry no spend. The
-check-in then addresses the person ("Tim's money check-in", "Tim, you
-spent"). The household view counts the group totals, the same figure as the
+check-in then addresses the person ("Tim's money check-in", "Joyce owes you
+JP¥9,000"). The household view counts the group totals, the same figure as the
 Splits `Total spend`, with household wording. The Splits route pins a
 person view whenever the household has people, so in practice the Splits
 check-in is always a person's; the household branch is covered by

@@ -31,6 +31,7 @@ import { DEFAULT_HOUSEHOLD_ID } from "../domain/app-repository-constants";
 import { buildMonthPageDto } from "../domain/pages/month-page";
 import { getCurrentMonthKey } from "../lib/month";
 import type { ImportPreviewDto, PersonScope } from "../types/dto";
+import { SIGNAL_KIND_LABELS } from "../domain/money-signals/types";
 import { json } from "./json";
 
 export type AiAssistRouteEnv = AiAssistEnv & { DB: D1Database };
@@ -78,7 +79,7 @@ export async function handleAiAssistRoute(request: Request, url: URL, env: AiAss
       capability: "financial_insight",
       units: 1,
       maxTokens: 180,
-      prompt: `Write a short, warm money check-in of at most two sentences using ONLY these placeholders. {{fact}} is a computed fact and {{think}} is a way to think about it; include each exactly once, word for word, and only choose the few words around them (a short lead-in or link is enough). Do not add facts, numbers, money, dates, advice, or other placeholders. Keep the tone curious and kind: no exclamation marks, no emoji, and never words such as "should", "overspent", "cut back", "problem", "warning" or "non-essential". ${audienceInstruction} Return JSON: {"template":"..."}. Context {{contextLabel}}, fact {{fact}}, way to think about it {{think}}.`,
+      prompt: `Write a short, warm money check-in of at most two sentences using ONLY these placeholders. {{fact}} is a computed fact and {{think}} is a way to think about it; include each exactly once, word for word, and only choose the few words around them (a short lead-in or link is enough). Do not add facts, numbers, money, dates, advice, or other placeholders. Keep the tone curious and kind: no exclamation marks, no emoji, and never words such as "should", "overspent", "cut back", "problem", "warning" or "non-essential". The fact is a "${SIGNAL_KIND_LABELS[facts.headlineKind]}" line. ${audienceInstruction} Return JSON: {"template":"..."}. Context {{contextLabel}}, fact {{fact}}, way to think about it {{think}}.`,
       parse: (response) => parseFinancialInsightTemplate(response, facts)
     });
     return json({
