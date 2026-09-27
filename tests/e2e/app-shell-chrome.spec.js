@@ -165,6 +165,41 @@ test.describe("month and range pickers", () => {
     await expect(page.locator(".period-nav-cluster")).toHaveClass(/is-passive/);
     await expect(page.getByRole("button", { name: /previous/i }).first()).toBeDisabled();
   });
+
+  // Imports, Settings and FAQ do not use a period: the header used to show
+  // "Range Household" between arrows that did nothing. The period controls
+  // are gone there, on desktop and phone, and the view switch still works.
+  for (const [path, heading] of [["/imports", "Imports"], ["/settings", "Settings"], ["/faq", "FAQ"]]) {
+    test(`on ${heading} the period controls are hidden and the view switch still works`, async ({ page }) => {
+      for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
+        await page.setViewportSize(viewport);
+        await page.goto(`${path}?view=household&month=2026-05`);
+        await waitUsable(page);
+        await expect(page.locator(".period-nav-cluster")).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Previous period" })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Next period" })).toHaveCount(0);
+        await expect(page.locator(".control-bar")).not.toContainText("Range");
+        await expect(page.locator(".control-bar .period-display")).toHaveCount(0);
+      }
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.locator(".context-block .pill[title='Tim']").click();
+      await expect(page).toHaveURL(/view=person-tim/);
+      await expect(page.locator(".context-block .pill.is-active")).toHaveText("Tim");
+    });
+  }
+
+  test("Summary and Month keep their period arrows", async ({ page }) => {
+    await page.goto("/summary?view=household&month=2026-05&scope=direct_plus_shared");
+    await waitUsable(page);
+    await expect(page.locator(".period-nav-cluster")).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "Previous period" }).first()).toBeVisible();
+    await page.goto("/month?view=household&month=2026-05&scope=direct_plus_shared");
+    await waitUsable(page);
+    await expect(page.getByRole("button", { name: "Previous period" }).first()).toBeEnabled();
+    await page.getByRole("button", { name: "Previous period" }).first().click();
+    // The seeded household steps back to its previous month with data.
+    await expect(page).toHaveURL(/month=2025-10/);
+  });
 });
 
 test.describe("login registration", () => {
