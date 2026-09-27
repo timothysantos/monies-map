@@ -111,7 +111,14 @@ test("share of costs: a person view's long view, never the household's", () => {
 test("the trip in numbers, the moment's line right after a trip ends", () => {
   const signal = groupInNumbersTrivia(splits({ activity: TRIP_ACTIVITY }));
   assert.equal(signal.kind, "just_for_fun");
-  assert.deepEqual(facts(signal), ["The trip in numbers: 3 shared costs, and the priciest was Tokyo hotel at JP¥168,000."]);
+  assert.deepEqual(facts(signal), ["The trip in numbers: 3 shared costs, and the priciest was the Tokyo hotel (JP¥168,000)."]);
+  // A description with a comma, or one that already starts with "The",
+  // still reads cleanly.
+  const withComma = groupInNumbersTrivia(splits({ activity: [{ ...TRIP_ACTIVITY[0], description: "Tokyo hotel, 4 nights" }, ...TRIP_ACTIVITY.slice(1)] }));
+  assert.deepEqual(facts(withComma), ["The trip in numbers: 3 shared costs, and the priciest was the Tokyo hotel, 4 nights (JP¥168,000)."]);
+  const withThe = groupInNumbersTrivia(splits({ activity: [{ ...TRIP_ACTIVITY[0], description: "The Peninsula Tokyo" }, ...TRIP_ACTIVITY.slice(1)] }));
+  assert.deepEqual(facts(withThe), ["The trip in numbers: 3 shared costs, and the priciest was the Peninsula Tokyo (JP¥168,000)."]);
+  assert.doesNotMatch(facts(withThe)[0], /the the/i);
   assert.equal(signal.moment, false);
   assert.equal(groupInNumbersTrivia(splits({ activity: TRIP_ACTIVITY, today: "2026-04-25" })).moment, true);
   assert.match(facts(groupInNumbersTrivia(splits({ group: { id: "home", name: "Home", balanceMinor: 0 }, activity: TRIP_ACTIVITY })))[0], /^This group in numbers/);
