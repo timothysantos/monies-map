@@ -12,8 +12,27 @@
   color: #fff8f3;
 }
 
-.panel-splits .financial-insight-pattern {
-  color: #fff8f3 !important;
+.panel-splits .financial-insight .checkin-fact,
+.panel-splits .financial-insight .checkin-fun,
+.panel-splits .financial-insight .checkin-long-view,
+.panel-splits .checkin-quote blockquote,
+.panel-splits .checkin-also li {
+  color: #fff8f3;
+}
+
+.panel-splits .checkin-line-label,
+.panel-splits .checkin-action,
+.panel-splits .checkin-quote figcaption {
+  color: rgba(255, 248, 243, 0.86);
+}
+
+.panel-splits .checkin-chip {
+  --chip-colour: #fff8f3;
+}
+
+.panel-splits .checkin-also,
+.panel-splits .checkin-quote {
+  border-color: rgba(255, 248, 243, 0.28);
 }
 
 .panel-splits .financial-insight-private-copy {
