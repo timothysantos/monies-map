@@ -268,10 +268,17 @@ Should not contain:
 
 - summary range payload
 - entries for unrelated months
+- account balances or statement health (see below)
 
 Cache class:
 
 - `Class C`
+
+The Month route load fetches the view's `summaryAccountPills` beside
+`monthPage` (same cache bypass, shared query cache with Summary). The Month
+Accounts section and the money check-in's "Snapshot confidence" read
+balances, statement checkpoint status and unresolved transfers from those
+pills; the reference account list has none of them.
 
 ### `monthPlanLinkCandidates`
 

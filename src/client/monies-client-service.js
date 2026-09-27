@@ -81,7 +81,8 @@ export const moniesClient = Object.freeze({
     getDefaultSectionOpen: monthHelpers.getDefaultMonthSectionOpen,
     getPlanRowById: monthHelpers.getPlanRowById,
     getSectionTotals: monthHelpers.getMonthSectionTotals,
-    getVisibleAccounts: monthHelpers.getVisibleMonthAccounts
+    getVisibleAccounts: monthHelpers.getVisibleMonthAccounts,
+    withAccountHealth: monthHelpers.withMonthAccountHealth
   }),
   splits: Object.freeze({
     formatArchiveDate: splitHelpers.formatArchiveDate,

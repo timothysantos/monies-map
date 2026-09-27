@@ -9,22 +9,47 @@
 //   npm run docs:screenshots -- --base-url http://127.0.0.1:5442   (reuse a stack)
 //   npm run docs:screenshots -- --import-iphone <dir>   (compress real iPhone captures)
 //
+//   npm run docs:screenshots -- --seed-month 2026-10     (see SEED_MONTH)
+//
 // It starts its own isolated stack (Vite 5442, Wrangler 8842, inspector 9442,
-// D1 in .wrangler/state-guide) and never touches 5173/8787 or real data: it
-// reseeds the DEMO data through POST /api/demo/reseed, reveals money totals,
-// then walks each workflow at desktop 1280x800 in Chromium and on an iPhone 13
-// profile in WebKit (Safari's engine; `npx playwright install webkit` once).
+// D1 in .wrangler/state-guide) and never touches 5173/8787 or real data. The
+// stack's Worker runs the showcase demo dataset (Ethan and Serene, the data
+// of the public demo site: DEMO_DATASET=showcase) around a fixed seed month,
+// so the data is the same on every run. The script reseeds it through POST
+// /api/demo/reseed, reveals money totals, then walks each workflow at desktop
+// 1280x800 in Chromium and on an iPhone 13 profile in WebKit (Safari's engine;
+// `npx playwright install webkit` once).
 // Output: WebP files plus thumbnails under public/faq/guide/{desktop,phone,iphone}/
 // (the "On your iPhone" gallery is shot on the phone profile at the iphone size).
 /* global window -- only inside page.evaluate / waitForFunction / addInitScript, which run in the browser */
-import { mkdir, readdir, stat } from "node:fs/promises";
+import { copyFile, mkdir, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { chromium, devices, webkit } from "@playwright/test";
 import sharp from "sharp";
 import { prepareStack, startStack } from "./e2e-stack.mjs";
 
-const MONTH = "2026-05";
+// The showcase's seed month: its last month (M0), with 16 months of history
+// before it, seeded in full. The Import inbox asks for files against the
+// real current month, so the inbox shot shows the showcase's intended state
+// (one missing statement) only when this is the month you capture in; pass
+// --seed-month with the current month when regenerating later.
+const seedMonthArg = process.argv.indexOf("--seed-month");
+const SEED_MONTH = seedMonthArg === -1 ? "2026-09" : process.argv[seedMonthArg + 1];
+if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(SEED_MONTH ?? "")) throw new Error("--seed-month needs a YYYY-MM month.");
+
+function addMonths(month, count) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const index = year * 12 + (monthNumber - 1) + count;
+  return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}`;
+}
+
+// Most shots show the last complete month (M-1): every statement imported.
+// The showcase stories are relative to the seed month (demo-showcase-data.ts).
+const MONTH = addMonths(SEED_MONTH, -1);
+// The oldest month (M-16): a range from it holds last month's same month a
+// year earlier (M-13), so the check-in can show a same-season comparison.
+const OLDEST_MONTH = addMonths(SEED_MONTH, -16);
 const OUT_DIR = path.resolve("public/faq/guide");
 const GUIDE_STACK = {
   index: "guide",
@@ -35,7 +60,9 @@ const GUIDE_STACK = {
   apiOrigin: "http://127.0.0.1:8842",
   persistTo: ".wrangler/state-guide",
   viteCacheDir: "node_modules/.vite-guide",
-  serverLog: "test-results/guide-screenshots/servers.log"
+  serverLog: "test-results/guide-screenshots/servers.log",
+  // Over wrangler.test.jsonc: reseed builds the showcase around SEED_MONTH.
+  vars: { DEMO_DATASET: "showcase", DEMO_SEED_MONTH: SEED_MONTH }
 };
 
 // Output sizes. Desktop shots are taken at 1280x800 (device scale 1); phone
@@ -94,7 +121,24 @@ async function openSettingsSection(page, heading) {
   await scrollToLocator(page, toggle, 20);
 }
 
-const splitsUrl =(view = "person-tim", extra = "") => `/splits?view=${view}&month=${MONTH}${extra}`;
+// A sanitized UOB card export (it names "UOB One Card", which the showcase
+// does not have), copied under the bank's plain file name so the batch name
+// does not carry the test fixture's suffix.
+const SAMPLE_EXPORT_NAME = "CC_TXN_History_06052026211223";
+async function sampleCardExport() {
+  const target = path.resolve("test-results/guide-screenshots", `${SAMPLE_EXPORT_NAME}.xls`);
+  await mkdir(path.dirname(target), { recursive: true });
+  await copyFile("tests/fixtures/uob-current-transactions/CC_TXN_History_06052026211223-onecard-tim-06-may.xls", target);
+  return target;
+}
+
+// "2026-08" -> "Aug 2026", as the Spending Mix month chips say it.
+function monthChipLabel(month) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  return `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct", "Nov", "Dec"][monthNumber - 1]} ${year}`;
+}
+
+const splitsUrl = (view = "person-ethan", extra = "") => `/splits?view=${view}&month=${MONTH}${extra}`;
 
 // ---------------------------------------------------------------------------
 // The shots. `reseed: true` restores the demo first, because the shot (or the
@@ -108,7 +152,7 @@ const SHOTS = [
   },
   {
     name: "summary-person", device: "desktop",
-    run: (page) => open(page, `/summary?view=person-tim&month=${MONTH}`)
+    run: (page) => open(page, `/summary?view=person-ethan&month=${MONTH}`)
   },
   {
     name: "money-hidden", device: "desktop", hidden: true,
@@ -117,7 +161,11 @@ const SHOTS = [
   {
     name: "summary-insight-expanded", device: "desktop",
     run: async (page) => {
-      await open(page, `/summary?view=person-tim&month=${MONTH}`);
+      // From the oldest month, the range holds last month's same month a year
+      // earlier, so the map can compare them (docs/demo-tour.md, step 2).
+      await open(page, `/summary?view=household&month=${MONTH}&summary_start=${OLDEST_MONTH}&summary_end=${MONTH}`);
+      await page.locator(".summary-mix-months").getByRole("button", { name: monthChipLabel(MONTH), exact: true }).click();
+      await waitUsable(page);
       await page.getByRole("button", { name: "Read full insight" }).first().click();
       await scrollToLocator(page, page.locator(".financial-insight"), 20);
     }
@@ -147,7 +195,7 @@ const SHOTS = [
   // Month
   {
     name: "month-person", device: "desktop",
-    run: (page) => open(page, `/month?view=person-tim&month=${MONTH}`)
+    run: (page) => open(page, `/month?view=person-ethan&month=${MONTH}`)
   },
   {
     name: "month-household", device: "desktop",
@@ -159,10 +207,10 @@ const SHOTS = [
   {
     name: "month-edit-row", device: "desktop",
     run: async (page) => {
-      await open(page, `/month?view=person-tim&month=${MONTH}`);
-      const row = page.locator("tr").filter({ hasText: "Public Transport" }).first();
+      await open(page, `/month?view=person-ethan&month=${MONTH}`);
+      const row = page.locator("tr").filter({ hasText: "Food & Drinks" }).first();
       await scrollToLocator(page, row, 220);
-      await row.getByText("Public Transport").first().click();
+      await row.getByText("Food & Drinks").first().click();
       await page.locator(".month-inline-action-row").first().waitFor();
       await page.waitForTimeout(300);
     }
@@ -170,10 +218,10 @@ const SHOTS = [
   {
     name: "month-link-entries", device: "desktop",
     run: async (page) => {
-      await open(page, `/month?view=person-tim&month=${MONTH}`);
-      const row = page.locator("tr").filter({ hasText: "Tithes + offering" }).first();
+      await open(page, `/month?view=person-ethan&month=${MONTH}`);
+      const row = page.locator("tr").filter({ hasText: "Prudential premium" }).first();
       await scrollToLocator(page, row, 300);
-      await row.getByRole("button", { name: "Link entries" }).click();
+      await row.locator(".planned-link-manage-trigger").first().click();
       await page.getByRole("dialog").first().waitFor();
       await page.waitForTimeout(500);
     }
@@ -181,7 +229,7 @@ const SHOTS = [
   {
     name: "month-actions", device: "desktop",
     run: async (page) => {
-      await open(page, `/month?view=person-tim&month=${MONTH}`);
+      await open(page, `/month?view=person-ethan&month=${MONTH}`);
       await page.getByRole("button", { name: "Actions", exact: true }).click();
       await page.waitForTimeout(400);
     }
@@ -189,12 +237,12 @@ const SHOTS = [
   // Entries
   {
     name: "entries-person", device: "desktop",
-    run: (page) => open(page, `/entries?view=person-tim&month=${MONTH}`)
+    run: (page) => open(page, `/entries?view=person-ethan&month=${MONTH}`)
   },
   {
     name: "entries-add", device: "desktop",
     run: async (page) => {
-      await open(page, `/entries?view=person-tim&month=${MONTH}`);
+      await open(page, `/entries?view=person-ethan&month=${MONTH}`);
       await page.getByRole("button", { name: "+ Add entry" }).first().click();
       const composer = page.locator(".entry-composer").first();
       await composer.getByLabel("Description").fill("Kopi and kaya toast");
@@ -207,8 +255,8 @@ const SHOTS = [
   {
     name: "entries-edit", device: "desktop",
     run: async (page) => {
-      await open(page, `/entries?view=person-tim&month=${MONTH}`);
-      const row = page.locator(".entry-row").filter({ hasText: "Tithes" }).first();
+      await open(page, `/entries?view=person-ethan&month=${MONTH}`);
+      const row = page.locator(".entry-row").filter({ hasText: "GOLDEN VILLAGE" }).first();
       await scrollToLocator(page, row, 160);
       await row.click();
       await page.getByRole("button", { name: "Done editing entry" }).waitFor();
@@ -231,7 +279,7 @@ const SHOTS = [
   {
     name: "splits-add-expense", device: "desktop",
     run: async (page) => {
-      await open(page, splitsUrl());
+      await open(page, splitsUrl("person-ethan", "&split_group=split-group-dinners"));
       await page.locator(".splits-summary-strip").getByRole("button", { name: "+ Add expense" }).click();
       const dialog = page.getByRole("dialog", { name: "Create split expense" });
       await dialog.getByLabel("Description").fill("Dinner at Din Tai Fung");
@@ -245,7 +293,7 @@ const SHOTS = [
   {
     name: "splits-settle-group", device: "desktop",
     run: async (page) => {
-      await open(page, splitsUrl("person-tim", "&split_group=split-group-none"));
+      await open(page, splitsUrl("person-ethan", "&split_group=split-group-dinners"));
       await page.getByRole("button", { name: "Settle group" }).first().click();
       await page.getByRole("dialog").first().waitFor();
       await page.waitForTimeout(400);
@@ -253,7 +301,7 @@ const SHOTS = [
   },
   {
     name: "splits-matches", device: "desktop",
-    run: (page) => open(page, splitsUrl("person-tim", "&split_mode=matches"))
+    run: (page) => open(page, splitsUrl("person-ethan", "&split_mode=matches"))
   },
   {
     name: "splits-create-group", device: "desktop",
@@ -261,8 +309,8 @@ const SHOTS = [
       await open(page, splitsUrl());
       await page.locator(".splits-groups-row:not(.splits-groups-row-floating)").getByRole("button", { name: "Create group" }).click();
       const dialog = page.getByRole("dialog", { name: "Create group" });
-      await dialog.getByLabel("Group name").fill("Japan trip");
-      await dialog.getByLabel("Group currency").selectOption("JPY");
+      await dialog.getByLabel("Group name").fill("Seoul trip");
+      await dialog.getByLabel("Group currency").selectOption("KRW");
       await page.waitForTimeout(300);
       await hideCaret(page);
     }
@@ -348,7 +396,7 @@ const SHOTS = [
     name: "page-load-error", device: "desktop",
     run: async (page) => {
       await page.route("**/api/month-page**", (route) => route.fulfill({ status: 503, contentType: "text/plain", body: "Service unavailable" }));
-      await page.goto(`/month?view=person-tim&month=${MONTH}`, { waitUntil: "domcontentloaded" });
+      await page.goto(`/month?view=person-ethan&month=${MONTH}`, { waitUntil: "domcontentloaded" });
       await page.getByRole("button", { name: /Try/ }).first().waitFor({ timeout: 60_000 });
       await page.waitForTimeout(400);
       await page.unroute("**/api/month-page**");
@@ -357,16 +405,16 @@ const SHOTS = [
   // Phone
   {
     name: "phone-summary", device: "phone",
-    run: (page) => open(page, `/summary?view=person-tim&month=${MONTH}`)
+    run: (page) => open(page, `/summary?view=person-ethan&month=${MONTH}`)
   },
   {
     name: "phone-month", device: "phone",
-    run: (page) => open(page, `/month?view=person-tim&month=${MONTH}`)
+    run: (page) => open(page, `/month?view=person-ethan&month=${MONTH}`)
   },
   {
     name: "phone-view-scope", device: "phone",
     run: async (page) => {
-      await open(page, `/month?view=person-tim&month=${MONTH}`);
+      await open(page, `/month?view=person-ethan&month=${MONTH}`);
       await page.locator(".mobile-context-trigger").first().click();
       await page.getByRole("dialog").first().waitFor();
       await page.waitForTimeout(500);
@@ -375,10 +423,10 @@ const SHOTS = [
   {
     name: "phone-month-sheet", device: "phone",
     run: async (page) => {
-      await open(page, `/month?view=person-tim&month=${MONTH}`);
-      const row = page.locator("tr").filter({ hasText: "Public Transport" }).first();
+      await open(page, `/month?view=person-ethan&month=${MONTH}`);
+      const row = page.locator("tr").filter({ hasText: "Food & Drinks" }).first();
       await scrollToLocator(page, row, 260);
-      await row.getByText("Public Transport").first().click();
+      await row.getByText("Food & Drinks").first().click();
       await page.getByRole("dialog").first().waitFor();
       await page.waitForTimeout(600);
       await hideCaret(page);
@@ -386,12 +434,12 @@ const SHOTS = [
   },
   {
     name: "phone-entries", device: "phone",
-    run: (page) => open(page, `/entries?view=person-tim&month=${MONTH}`)
+    run: (page) => open(page, `/entries?view=person-ethan&month=${MONTH}`)
   },
   {
     name: "phone-entries-add", device: "phone",
     run: async (page) => {
-      await open(page, `/entries?view=person-tim&month=${MONTH}`);
+      await open(page, `/entries?view=person-ethan&month=${MONTH}`);
       await page.getByRole("button", { name: /Add entry/ }).last().click();
       await page.getByRole("dialog").first().waitFor();
       await page.waitForTimeout(600);
@@ -420,9 +468,9 @@ const SHOTS = [
   // The "On your iPhone" gallery: each screen as it opens on an iPhone, in
   // WebKit, saved at the iphone size under public/faq/guide/iphone/.
   ...[
-    ["01-summary", `/summary?view=person-tim&month=${MONTH}`],
-    ["02-month", `/month?view=person-tim&month=${MONTH}`],
-    ["03-entries", `/entries?view=person-tim&month=${MONTH}`],
+    ["01-summary", `/summary?view=person-ethan&month=${MONTH}`],
+    ["02-month", `/month?view=person-ethan&month=${MONTH}`],
+    ["03-entries", `/entries?view=person-ethan&month=${MONTH}`],
     ["04-splits", splitsUrl()],
     ["05-imports", "/imports?view=household"],
     ["06-settings", "/settings?view=household"],
@@ -435,8 +483,8 @@ const SHOTS = [
   {
     name: "entries-add-to-splits", device: "desktop",
     run: async (page) => {
-      await open(page, `/entries?view=person-tim&month=${MONTH}`);
-      const row = page.locator(".entry-row").filter({ hasText: "Tithes" }).first();
+      await open(page, `/entries?view=person-ethan&month=${MONTH}`);
+      const row = page.locator(".entry-row").filter({ hasText: "GOLDEN VILLAGE" }).first();
       await scrollToLocator(page, row, 160);
       await row.click();
       await page.getByRole("button", { name: "Add to splits" }).first().click();
@@ -450,14 +498,14 @@ const SHOTS = [
     name: "imports-mapping", device: "desktop", reseed: true, also: ["imports-preview", "imports-committed", "imports-rollback"],
     run: async (page, capture) => {
       await open(page, `/imports?view=household&month=${MONTH}`);
-      await page.getByLabel("Default account").selectOption("UOB One - Tim");
-      await page.locator("input[type=file]").first().setInputFiles("tests/fixtures/uob-current-transactions/CC_TXN_History_06052026211223-onecard-tim-06-may.xls");
+      await page.getByLabel("Default account").selectOption("UOB PRVI Miles Card - Serene");
+      await page.locator("input[type=file]").first().setInputFiles(await sampleCardExport());
       await page.getByText(/ready for review/).first().waitFor({ timeout: 60_000 });
       await page.waitForTimeout(1500);
       await scrollToLocator(page, page.getByText("Preview rows", { exact: true }), 20);
       // The export names the card ("UOB One Card"): map it to the account.
       await capture("imports-mapping");
-      await page.getByRole("combobox").filter({ has: page.locator("option", { hasText: "Choose account" }) }).first().selectOption({ label: "UOB One - Tim" });
+      await page.getByRole("combobox").filter({ has: page.locator("option", { hasText: "Choose account" }) }).first().selectOption({ label: "UOB PRVI Miles Card - Serene" });
       await page.locator("button:has-text('Commit import to ledger'):enabled").first().waitFor({ timeout: 60_000 });
       await page.waitForTimeout(1500);
       await scrollToLocator(page, page.getByText("Preview rows", { exact: true }), 20);
@@ -467,7 +515,11 @@ const SHOTS = [
       await page.waitForTimeout(800);
       await scrollToLocator(page, page.getByRole("heading", { name: "Recent imports", exact: true }), 20);
       await capture("imports-committed");
-      await page.getByRole("button", { name: "Rollback import" }).first().click();
+      // The showcase's own imports are stamped later in the seed month, so
+      // the new batch is not the first row: roll back that one.
+      const batch = page.locator(".import-card-compact").filter({ hasText: SAMPLE_EXPORT_NAME }).first();
+      await scrollToLocator(page, batch, 300);
+      await batch.getByRole("button", { name: "Rollback import" }).click();
       await page.getByRole("button", { name: "Confirm rollback" }).first().waitFor();
       await page.waitForTimeout(300);
     }
@@ -475,8 +527,8 @@ const SHOTS = [
   {
     name: "splits-edit", device: "desktop", reseed: true, also: ["splits-delete", "splits-history-restore"],
     run: async (page, capture) => {
-      await open(page, splitsUrl("person-tim", "&split_group=split-group-none"));
-      const card = page.locator(".split-activity-card").filter({ hasText: "October groceries" }).first();
+      await open(page, splitsUrl("person-ethan", "&split_group=split-group-dinners"));
+      const card = page.locator(".split-activity-card").filter({ hasText: "Jumbo Seafood dinner" }).first();
       await scrollToLocator(page, card, 200);
       await card.click();
       // An open expense edits in place; its form replaces the row.
@@ -499,19 +551,19 @@ const SHOTS = [
     }
   },
   {
+    // The showcase already holds an open simplified settlement (Home & Bills
+    // with Dinners out), waiting for its bank transfer.
     name: "splits-simplify", device: "desktop", reseed: true,
     run: async (page) => {
-      await open(page, splitsUrl());
-      await page.getByRole("button", { name: "Simplify settlement" }).first().click();
+      await open(page, splitsUrl("person-ethan", "&split_group=split-group-home-bills"));
       await page.locator(".split-checkpoint-panel").first().waitFor({ timeout: 30_000 });
-      await waitUsable(page);
       await scrollToLocator(page, page.locator(".split-checkpoint-panel"), 120);
     }
   },
   {
     name: "month-add-planned", device: "desktop", reseed: true,
     run: async (page) => {
-      await open(page, `/month?view=person-tim&month=${MONTH}`);
+      await open(page, `/month?view=person-ethan&month=${MONTH}`);
       const add = page.getByRole("button", { name: "+ Add planned item" });
       await scrollToLocator(page, add, 200);
       await add.click();
@@ -561,6 +613,7 @@ function parseArgs(argv) {
     if (arg === "--list") options.list = true;
     else if (arg === "--base-url") options.baseURL = argv[++index];
     else if (arg === "--import-iphone") options.importIphone = argv[++index];
+    else if (arg === "--seed-month") index += 1; // read at the top, before SHOTS
     else options.names.push(arg);
   }
   return options;

@@ -205,6 +205,12 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     () => monthService.getVisibleAccounts(accounts, view.id),
     [accounts, view.id]
   );
+  // The Accounts section and the check-in's "Snapshot confidence" read
+  // balances and statement health from the view's account pills.
+  const accountsWithHealth = useMemo(
+    () => monthService.withAccountHealth(visibleAccounts, view.accountPills),
+    [view.accountPills, visibleAccounts]
+  );
   // The check-in counts the entries the Actual spend card counts (a person's
   // own, in the selected scope), not every household entry the DTO carries.
   const insightEntries = useMemo(
@@ -216,10 +222,10 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
     viewLabel: view.label,
     monthPage: view.monthPage,
     monthSummary: selectedMonthSummary,
-    accounts: visibleAccounts,
+    accountPills: view.accountPills,
     formatMoney: formatService.unmaskedMoney,
     formatMonthLabel: formatService.formatMonthLabel
-  }), [selectedMonthSummary, view.id, view.label, view.monthPage, visibleAccounts]);
+  }), [selectedMonthSummary, view.accountPills, view.id, view.label, view.monthPage]);
   const financialInsightActions = useMemo(() => {
     const plannedSpendMinor = selectedMonthSummary?.estimatedExpensesMinor ?? 0;
     const actualSpendMinor = selectedMonthSummary?.realExpensesMinor ?? 0;
@@ -1511,7 +1517,7 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
 
       <MonthNotesAndAccounts
         monthNote={view.monthPage.monthNote}
-        visibleAccounts={visibleAccounts}
+        visibleAccounts={accountsWithHealth}
         onEditMonthNote={() => setMonthNoteDialog({ draft: view.monthPage.monthNote ?? "" })}
         onDraftMonthNote={() => void handleDraftMonthNote()}
         isDraftingMonthNote={isDraftingMonthNote}

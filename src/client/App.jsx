@@ -700,7 +700,7 @@ export function App() {
   }, [appShellOwner, appShellParams, clearAppShellCache, fetchAppShellData]);
 
   // Fetch the active route page and shape it into the current screen payload.
-  const fetchRoutePageData = useCallback(async (request, { bypassCache = false, signal = undefined } = {}) => {
+  const fetchRoutePageResponse = useCallback(async (request, { bypassCache = false, signal = undefined } = {}) => {
     if (!request) {
       return null;
     }
@@ -781,6 +781,23 @@ export function App() {
     });
     return data;
   }, [queryClient, updateLoadingStatus]);
+
+  // Month's Accounts section and check-in read wallet balances and statement
+  // health from the view's account pills, the query Summary's "Wallets in
+  // view" uses, fetched beside the month page and with the same cache
+  // bypass, so the month page stays month rows and metrics only and a
+  // Summary visit's warm pills are reused.
+  const fetchRoutePageData = useCallback(async (request, options = {}) => {
+    if (request?.path !== "/api/month-page") {
+      return fetchRoutePageResponse(request, options);
+    }
+    const pillsParams = buildSummaryAccountPillsParams({ viewId: request.params.get("view") ?? "household" });
+    const [data, pills] = await Promise.all([
+      fetchRoutePageResponse(request, options),
+      fetchSummaryAccountPillsQuery(queryClient, pillsParams, options)
+    ]);
+    return data ? { ...data, accountPills: pills?.accountPills ?? [] } : data;
+  }, [fetchRoutePageResponse, queryClient]);
 
   // Summary uses slice-owned queries instead of the generic route-page
   // endpoint so its range DTO and wallet pills can refresh independently.

@@ -111,6 +111,21 @@ async function waitForHealth(stack, children, timeoutMs) {
 }
 
 /**
+ * The `wrangler dev` arguments for the stack's Worker. `stack.vars` adds
+ * Worker vars over wrangler.test.jsonc (the guide screenshots run the
+ * showcase demo dataset this way); browser test stacks have none.
+ */
+export function wranglerDevArgs(stack) {
+  return [
+    "dev", "--config", "wrangler.test.jsonc",
+    "--ip", "127.0.0.1", "--port", String(stack.apiPort),
+    "--inspector-port", String(stack.inspectorPort),
+    "--persist-to", stack.persistTo,
+    ...Object.entries(stack.vars ?? {}).flatMap(([name, value]) => ["--var", `${name}:${value}`])
+  ];
+}
+
+/**
  * Starts Wrangler and Vite for the stack, each in its own process group, and
  * resolves once `/api/health` answers through the Vite proxy. The returned
  * `stop()` ends both groups and removes the stack's D1 state and Vite cache.
@@ -132,12 +147,7 @@ export async function startStack(stack, { timeoutMs = 120_000, keepState = false
     return child;
   };
   const children = [
-    launch("API", [
-      wranglerCli, "dev", "--config", "wrangler.test.jsonc",
-      "--ip", "127.0.0.1", "--port", String(stack.apiPort),
-      "--inspector-port", String(stack.inspectorPort),
-      "--persist-to", stack.persistTo
-    ]),
+    launch("API", [wranglerCli, ...wranglerDevArgs(stack)]),
     launch("UI", [viteServer], { E2E_UI_PORT: String(stack.uiPort), E2E_VITE_CACHE_DIR: stack.viteCacheDir })
   ];
 

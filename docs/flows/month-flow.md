@@ -56,7 +56,10 @@ the Account and Note columns scroll inside the table while Category, Item,
 Planned, Actual and Variance stay on screen. "+ Add planned item", the row
 open buttons, the header tabs and the period controls stay on screen and
 uncovered, and inline Save and Cancel stay at the visible edge of the table.
-The phone layout and 1,100 px and wider are unchanged.
+From 1,100 to 1,199 px the plan tables and summary cards tighten a
+little (narrower cell padding, notes cut off earlier on one line) so the
+full tables fit whole, also with wider fonts, and every note's edit icon
+stays on screen. The phone layout and 1,200 px and wider are unchanged.
 `tests/e2e/month-mid-width-layout.spec.js` checks 820×1180 (full mobile
 emulation, sheet layout) and 1024×768 (inline editing).
 
@@ -91,6 +94,11 @@ match picker says "No matching expense entries fit the current filters."
 Month data comes from:
 
 - `GET /api/month-page`
+- `GET /api/summary-account-pills` for the view, fetched beside it: the
+  Accounts section's balances and statement health and the money check-in's
+  "Snapshot confidence" (a statement mismatch, missing checkpoint or
+  unresolved transfer makes it "Needs review"). The query and its cache are
+  shared with Summary's "Wallets in view".
 
 Month mutations may also cause targeted refreshes in:
 
