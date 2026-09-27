@@ -94,6 +94,11 @@ match picker says "No matching expense entries fit the current filters."
 Month data comes from:
 
 - `GET /api/month-page`
+- `GET /api/summary-account-pills` for the view, fetched beside it: the
+  Accounts section's balances and statement health and the money check-in's
+  "Snapshot confidence" (a statement mismatch, missing checkpoint or
+  unresolved transfer makes it "Needs review"). The query and its cache are
+  shared with Summary's "Wallets in view".
 
 Month mutations may also cause targeted refreshes in:
 

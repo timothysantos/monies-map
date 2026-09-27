@@ -23,7 +23,7 @@ export function buildMonthInsightFacts({
   viewLabel,
   monthPage,
   monthSummary,
-  accounts,
+  accountPills,
   formatMoney,
   formatMonthLabel
 }) {
@@ -41,13 +41,18 @@ export function buildMonthInsightFacts({
       : "Keep the plan, actual entries, and any pending bank rows current before reallocating unused budget or treating the remaining amount as free to spend.",
     decisionMapContext: {
       plannedSpendMinor,
-      confidence: buildMonthConfidence(accounts)
+      confidence: buildMonthConfidence(accountPills)
     }
   });
 }
 
-function buildMonthConfidence(accounts) {
-  const visibleAccounts = accounts ?? [];
+// "Snapshot confidence" reads the view's wallet health from its account
+// pills (the query behind Summary's "Wallets in view"): statement checkpoint
+// status and unresolved transfers. The reference account list has no
+// health, so it cannot vouch for anything. Until the pills load, or for a
+// view with no wallets, the confidence is not evaluated and the map says so.
+function buildMonthConfidence(accountPills) {
+  const visibleAccounts = Array.isArray(accountPills) ? accountPills : [];
   const evaluated = visibleAccounts.length > 0;
   return visibleAccounts.reduce((result, account) => ({
     evaluated,
