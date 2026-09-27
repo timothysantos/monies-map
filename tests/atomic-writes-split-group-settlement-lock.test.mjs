@@ -412,6 +412,92 @@ test("restoring a record whose batch was settled since brings it back as open ac
   assert.equal(splitsPage.payload.splitsPage.groups.find((group) => group.id === groupId).balanceMinor, 1_000);
 });
 
+// A settled group whose settle-up was undone and then deleted, so it sits in
+// activity history with Restore offered.
+async function deletedSettleUp(api, db) {
+  const settled = await settledGroup(api, db);
+  assert.equal((await api("/api/splits/batches/reopen", { batchId: settled.batchId })).status, 200);
+  const removal = await api("/api/splits/settlements/delete", { settlementId: settled.settlementId });
+  assert.equal(removal.status, 200, JSON.stringify(removal.payload));
+  return settled;
+}
+
+async function settlementHistory(api, settlementId) {
+  const history = await api("/api/splits/activity-history");
+  assert.equal(history.status, 200, JSON.stringify(history.payload));
+  return history.payload.activityHistory
+    .filter((row) => row.recordId === settlementId)
+    .map(({ action, recordKind, description, amountMinor, groupName, canRestore }) => ({ action, recordKind, description, amountMinor, groupName, canRestore }));
+}
+
+test("restoring a deleted settle-up brings it back into its open batch with a restored history event", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const settled = await deletedSettleUp(api, db);
+  const deletedHistory = await settlementHistory(api, settled.settlementId);
+  assert.deepEqual(deletedHistory[0], { action: "deleted", recordKind: "settlement", description: "Settlement", amountMinor: 3_000, groupName: "Lock trip", canRestore: true });
+
+  const restore = await api("/api/splits/activity-history/restore", { recordKind: "settlement", recordId: settled.settlementId });
+
+  assert.equal(restore.status, 200, JSON.stringify(restore.payload));
+  assert.deepEqual(restore.payload, { ok: true, recordId: settled.settlementId, restored: true });
+  assert.deepEqual(await rows(db, "SELECT deleted_at, amount_minor, split_batch_id FROM split_settlements WHERE id = ?", settled.settlementId), [
+    { deleted_at: null, amount_minor: 3_000, split_batch_id: settled.batchId }
+  ]);
+  // Its batch was reopened by the undo, so it stays there as open activity.
+  assert.deepEqual(await batchOf(db, "split_settlements", settled.settlementId), { id: settled.batchId, closed_on: null });
+  const history = await settlementHistory(api, settled.settlementId);
+  assert.deepEqual(history[0], { action: "restored", recordKind: "settlement", description: "Settlement", amountMinor: 3_000, groupName: "Lock trip", canRestore: false });
+  assert.equal(history.find((row) => row.action === "deleted").canRestore, false);
+  // The payment counts again: Joyce's 3,000 share is paid.
+  const splitsPage = await api(`/api/splits-page?view=person-tim&month=${MONTH}`);
+  assert.equal(splitsPage.payload.splitsPage.groups.find((group) => group.id === settled.groupId).balanceMinor, 0);
+});
+
+test("restoring a deleted settle-up whose batch was settled since brings it back as open activity", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const settled = await deletedSettleUp(api, db);
+  const secondSettlementId = await settleUp(api, settled.groupId);
+  const settledBatch = await batchOf(db, "split_settlements", secondSettlementId);
+  assert.equal(settledBatch.id, settled.batchId);
+  assert.equal(settledBatch.closed_on, SETTLED_ON);
+
+  const restore = await api("/api/splits/activity-history/restore", { recordKind: "settlement", recordId: settled.settlementId });
+
+  assert.equal(restore.status, 200, JSON.stringify(restore.payload));
+  const restoredBatch = await batchOf(db, "split_settlements", settled.settlementId);
+  assert.notEqual(restoredBatch.id, settledBatch.id);
+  assert.equal(restoredBatch.closed_on, null);
+  assert.deepEqual(await batchOf(db, "split_settlements", secondSettlementId), settledBatch);
+  assert.deepEqual(await batchOf(db, "split_expenses", settled.splitExpenseId), settledBatch);
+});
+
+test("restoring a settle-up that is not in activity history is refused and writes nothing", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const settled = await settledGroup(api, db);
+  const before = await dumpDatabase(db);
+
+  const restore = await api("/api/splits/activity-history/restore", { recordKind: "settlement", recordId: settled.settlementId });
+
+  assert.equal(restore.status, 400, JSON.stringify(restore.payload));
+  assert.match(restore.payload.error, /already active/);
+  assertSameDatabase(await dumpDatabase(db), before);
+});
+
+test("a settle-up restore that fails partway writes nothing", async (t) => {
+  const { db, api } = await openSeededDatabase(t, template);
+  const settled = await deletedSettleUp(api, db);
+  await settleUp(api, settled.groupId);
+  const before = await dumpDatabase(db);
+
+  for (const pattern of [/INSERT INTO split_activity_history/, /UPDATE split_settlements SET deleted_at = NULL/]) {
+    const faulty = failingStatement(db, pattern);
+    const restore = await api("/api/splits/activity-history/restore", { recordKind: "settlement", recordId: settled.settlementId }, { database: faulty.db });
+    assert.equal(faulty.state.fired, true, String(pattern));
+    assert.notEqual(restore.status, 200);
+    assertSameDatabase(await dumpDatabase(db), before);
+  }
+});
+
 test("Undo settle-up refuses a batch whose activity already moved", async (t) => {
   const { db, api } = await openSeededDatabase(t, template);
   const settled = await settledGroup(api, db);
