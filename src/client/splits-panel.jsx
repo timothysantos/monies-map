@@ -1120,7 +1120,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
             ? "The included groups now net to zero. No bank transfer is needed."
             : <>{activeCheckpoint.fromPersonName} pays {activeCheckpoint.toPersonName} <PrivateMoney>{formatCheckpointMoney(activeCheckpoint.amountMinor, activeCheckpoint.currency)}</PrivateMoney>.</>}
         </p>
-        <small>{activeCheckpoint.currency ?? "SGD"} · {activeCheckpoint.includedRecordCount} included split records · {activeCheckpoint.matchedAmountMinor > 0 ? <><PrivateMoney>{formatCheckpointMoney(activeCheckpoint.matchedAmountMinor, activeCheckpoint.currency)}</PrivateMoney> matched · </> : null}{activeCheckpoint.status.replaceAll("_", " ")}</small>
+        <small>{activeCheckpoint.currency ?? "SGD"} · {messages.splits.includedSplitRecords(activeCheckpoint.includedRecordCount)} · {activeCheckpoint.matchedAmountMinor > 0 ? <><PrivateMoney>{formatCheckpointMoney(activeCheckpoint.matchedAmountMinor, activeCheckpoint.currency)}</PrivateMoney> matched · </> : null}{activeCheckpoint.status.replaceAll("_", " ")}</small>
       </div>
       <div className="split-checkpoint-navigation">
         <button type="button" className="split-checkpoint-view-action" onClick={scrollToSettlementActivity}>
@@ -1154,7 +1154,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
             <section className="split-settlement-follow-up" key={checkpoint.id}>
               <div>
                 <strong>{checkpoint.fromPersonName} paid {checkpoint.toPersonName} <PrivateMoney>{formatCheckpointMoney(checkpoint.amountMinor, checkpoint.currency)}</PrivateMoney></strong>
-                <small>Marked paid {checkpoint.settledAt?.slice(0, 10)} · {checkpoint.includedRecordCount} included split records · {checkpoint.matchedAmountMinor ? <><PrivateMoney>{formatCheckpointMoney(checkpoint.matchedAmountMinor, checkpoint.currency)}</PrivateMoney> bank-matched so far</> : "No bank transfer matched yet"}</small>
+                <small>Marked paid {checkpoint.settledAt?.slice(0, 10)} · {messages.splits.includedSplitRecords(checkpoint.includedRecordCount)} · {checkpoint.matchedAmountMinor ? <><PrivateMoney>{formatCheckpointMoney(checkpoint.matchedAmountMinor, checkpoint.currency)}</PrivateMoney> bank-matched so far</> : "No bank transfer matched yet"}</small>
               </div>
               <div className="split-settlement-follow-up-actions">
                 <button type="button" className="subtle-action split-settlement-follow-up-view-action" onClick={() => scrollToSettlementActivity(checkpoint)}>View included activity</button>

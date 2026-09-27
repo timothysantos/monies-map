@@ -332,3 +332,31 @@ test("a provider failure becomes an unavailable suggestion after the bounded all
   assert.match(result.reason, /temporarily unavailable/);
   assert.equal(usageUnits, 1);
 });
+
+// Owner-approved copy fixes: a person view talks to the person, a Splits
+// person view names their share, and counts agree with their nouns.
+const formatTestMoney = (amountMinor) => `$${(amountMinor / 100).toFixed(2)}`;
+
+test("the money consequence map agrees nouns and verbs with each count", () => {
+  const confidenceDetail = (confidence) => buildFinancialInsightFacts({
+    contextLabel: "August 2026 month",
+    records: [
+      { entryType: "income", amountMinor: 100_000, description: "Salary" },
+      { entryType: "expense", amountMinor: 20_000, categoryName: "Food & Drinks", description: "Groceries" }
+    ],
+    formatMoney: formatTestMoney,
+    accountingAdvice: "Check the bank record.",
+    perspective: "cash_flow",
+    decisionMapContext: { confidence: { evaluated: true, ...confidence } }
+  }).decisionMap.lanes.find((lane) => lane.id === "confidence").detail;
+
+  assert.match(
+    confidenceDetail({ reconciliationMismatchCount: 2, needsCheckpointCount: 2, unresolvedTransferCount: 2 }),
+    /^2 wallets have a statement mismatch, 2 wallets need a statement checkpoint,? and 2 transfers are unresolved\./
+  );
+  assert.match(
+    confidenceDetail({ reconciliationMismatchCount: 1, needsCheckpointCount: 1, unresolvedTransferCount: 1 }),
+    /^1 wallet has a statement mismatch, 1 wallet needs a statement checkpoint,? and 1 transfer is unresolved\./
+  );
+  assert.doesNotMatch(confidenceDetail({ needsCheckpointCount: 2 }), /2 wallet need/);
+});

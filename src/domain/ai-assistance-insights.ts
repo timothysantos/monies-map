@@ -606,13 +606,19 @@ function buildConfidenceLane(input: {
   }
   const issues: string[] = [];
   if (input.mismatchCount) {
-    issues.push(`${input.mismatchCount} wallet ${input.mismatchCount === 1 ? "has" : "have"} a statement mismatch`);
+    issues.push(input.mismatchCount === 1
+      ? "1 wallet has a statement mismatch"
+      : `${input.mismatchCount} wallets have a statement mismatch`);
   }
   if (input.checkpointCount) {
-    issues.push(`${input.checkpointCount} wallet ${input.checkpointCount === 1 ? "needs" : "need"} a statement checkpoint`);
+    issues.push(input.checkpointCount === 1
+      ? "1 wallet needs a statement checkpoint"
+      : `${input.checkpointCount} wallets need a statement checkpoint`);
   }
   if (input.unresolvedTransferCount) {
-    issues.push(`${input.unresolvedTransferCount} transfer ${input.unresolvedTransferCount === 1 ? "is" : "are"} unresolved`);
+    issues.push(input.unresolvedTransferCount === 1
+      ? "1 transfer is unresolved"
+      : `${input.unresolvedTransferCount} transfers are unresolved`);
   }
   if (issues.length) {
     return {
