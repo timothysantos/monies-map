@@ -117,11 +117,15 @@ test("the household check-in counts every entry whatever scope the route carries
   }
 });
 
+const HEADLINE = { headlineKind: "going_well", fact: "Savings are on plan this month.", think: "With savings covered, spending on what you enjoy is part of the plan, not a slip from it." };
+
 test("a scope change changes the facts and the wording cache key; the same scope keeps both", () => {
   const direct = factsFor("person-joyce", "direct");
   const shared = factsFor("person-joyce", "shared");
-  assert.notEqual(buildFinancialInsightCacheKey(direct), buildFinancialInsightCacheKey(shared));
-  assert.equal(buildFinancialInsightCacheKey(direct), buildFinancialInsightCacheKey(factsFor("person-joyce", "direct")));
+  assert.notEqual(buildFinancialInsightCacheKey(direct, HEADLINE), buildFinancialInsightCacheKey(shared, HEADLINE));
+  assert.equal(buildFinancialInsightCacheKey(direct, HEADLINE), buildFinancialInsightCacheKey(factsFor("person-joyce", "direct"), HEADLINE));
+  // A different headline (another phrasing or signal) asks for wording again.
+  assert.notEqual(buildFinancialInsightCacheKey(direct, HEADLINE), buildFinancialInsightCacheKey(direct, { ...HEADLINE, fact: "$1,800 went to savings this month, as planned." }));
 });
 
 test("a scope the route does not know counts as Direct + Shared, and the household is always Combined", () => {
@@ -136,24 +140,28 @@ test("a scope the route does not know counts as Direct + Shared, and the househo
 });
 
 test("a person's Month check-in never calls a share of someone else's entry a purchase or payment", async () => {
-  const { buildFinancialInsightFacts } = await import("../src/domain/ai-assistance-insights.ts");
+  const { buildMonthSignals } = await import("../src/domain/money-signals/month-signals.ts");
   for (const scope of ["shared", "direct_plus_shared"]) {
-    const records = selectMonthInsightEntries(monthPageFor("person-tim", scope), "person-tim");
-    const facts = new Set();
-    for (let index = 0; index < 80; index += 1) {
-      facts.add(buildFinancialInsightFacts({
-        contextLabel: `${MONTH} month ${index}`,
-        audienceKind: "person",
-        audienceName: "Tim",
-        records,
-        formatMoney: (amountMinor) => String(amountMinor),
-        accountingAdvice: "Keep the bank record current.",
-        perspective: "cash_flow"
-      }).notableFact);
-    }
-    // Joyce paid the dinner; Tim's largest amount is his half of it.
-    assert.ok(facts.has("Your largest share was dining-split at 35659."), `${scope}: ${[...facts].join(" | ")}`);
-    assert.ok([...facts].every((fact) => !/largest purchase|three largest|\bpaid\b/.test(fact)), `${scope}: ${[...facts].join(" | ")}`);
+    const entries = selectMonthInsightEntries(monthPageFor("person-tim", scope), "person-tim");
+    const spendMinor = entries.filter((item) => item.entryType === "expense").reduce((total, item) => total + item.amountMinor, 0);
+    const signals = buildMonthSignals({
+      audience: "person",
+      viewLabel: "Tim",
+      month: MONTH,
+      today: "2026-09-27",
+      entries,
+      planSections: [],
+      incomeRows: [],
+      summary: { estimatedExpensesMinor: 10_000, realExpensesMinor: spendMinor, plannedIncomeMinor: 0, actualIncomeMinor: 0 },
+      accountPills: [],
+      formatMoney: (amountMinor) => String(amountMinor)
+    });
+    const copy = signals.flatMap((signal) => signal.phrasings.flatMap((phrasing) => [phrasing.fact, phrasing.think]));
+    // Joyce paid the dinner; Tim's part of it is what his check-in counts.
+    const oneOff = signals.find((signal) => signal.key === "one-off-over-plan");
+    assert.equal(oneOff.weight, spendMinor - 10_000, scope);
+    assert.match(oneOff.phrasings[0].fact, /^Dining-split/);
+    assert.ok(copy.every((line) => !/purchase|\bpaid\b/i.test(line)), `${scope}: ${copy.join(" | ")}`);
   }
 });
 

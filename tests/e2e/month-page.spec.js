@@ -757,9 +757,12 @@ test.describe("month page", () => {
 
     await expect(page).toHaveURL(/\/entries\?/);
     await expect(page).toHaveURL(/entry_id=/);
-    await expect(page.getByText("Actual drilldown dinner")).toBeVisible();
-    await expect(page.getByText("Actual drilldown dessert")).toBeVisible();
-    await expect(page.getByText("Actual drilldown unrelated")).toHaveCount(0);
+    // The list shows only those entries. (The money check-in above it reads
+    // the whole month, so its trivia may name another entry.)
+    const list = page.locator(".entries-date-groups");
+    await expect(list.getByText("Actual drilldown dinner")).toBeVisible();
+    await expect(list.getByText("Actual drilldown dessert")).toBeVisible();
+    await expect(list.getByText("Actual drilldown unrelated")).toHaveCount(0);
   });
 
   test("planned item match dialog supports lightweight filters and description filtering", async ({ page }) => {

@@ -55,6 +55,9 @@ export function buildSplitsPanelModel({
     archivedBatches,
     categoryOptions: getCategoryOptions(categories),
     currentGroupActivity,
+    // The group's open (not archived) activity before any search: what the
+    // money check-in reads.
+    openGroupActivity: activeGroupActivity.filter((item) => !item.isArchived),
     donutChart,
     donutRows: buildDonutRows(donutChart, categories),
     expenseMatchCount: unresolvedMatches.filter((item) => item.kind === "expense").length,

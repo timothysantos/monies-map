@@ -1145,12 +1145,43 @@ These boundaries are important enough to preserve explicitly:
   filters and may use optional AI wording, but it is not saved as a Monthly
   Note, does not recalculate totals, and never changes the ledger or plan. A
   financial insight must identify whether its figures are full cash flow, a
-  filtered investigation, or a split-settlement obligation. It may give an
-  app-computed next-spend consideration, but it is never a forecast or a
-  savings target.
+  filtered investigation, or a split-settlement obligation. It is never a
+  forecast, a safe-to-spend figure or a savings target. Its user-facing name
+  is `Money insights` ("Household money insights", "Ethan's money
+  insights"); code calls it the check-in (`money-signals/checkin.ts`,
+  `FinancialInsight`).
+- Money insights, check-in signal and signal kind:
+  `Money insights` show one `check-in signal` as its headline: a small,
+  deterministic rule over data the page already loaded that either fires
+  with its numbers or stays silent (`src/domain/money-signals/`). Each
+  signal has a `signal kind`, shown as a chip: `Quick fix` (makes the
+  numbers trustworthy or settles an obligation: a statement gap, an
+  unlinked planned bill, a split balance, entries in Other), `Bigger
+  question` (a pattern worth a decision; at most one at a time), `Worth a
+  look` (may be fine but easy to miss), `Going well`, `Just for fun`
+  (trivia from the user's own data, shown only when the headline is not a
+  bigger question) and `Long view` (a quieter zoomed-out line: keep rate,
+  cushion, fixed costs, same season, share of costs). A signal carries 3 to
+  5 approved phrasings with the same numbers and one `way to think about
+  it` (the think line). `Headline order` is kind, then money involved, then
+  not recently seen; a `moment` (payday, a bonus, bills coming up, pace)
+  comes right after the bigger question.
+- Cushion:
+  the `cushion` is the Summary long view "bank balances would cover about N
+  months of your usual spending": bank accounts only (never cards), against
+  the range's average monthly actual spend. It is perspective, not a target.
+- Visit memory, rest, quiet visit and sorted:
+  `visit memory` is what one browser remembers about a page and view (and
+  group on Splits): which signals, phrasings, trivia and quotes were shown,
+  when, and the numbers last seen. It lives only in localStorage and is
+  never sent to the server or AI. A shown headline `rests` for three days
+  unless its numbers move by 10% or $50 (then it leads with the change); a
+  `quiet visit` is a visit soon after the last one with nothing new, shown
+  as one short line; `sorted` is the one-time Going well line when a quick
+  fix clears.
 - Money consequence map:
   a `Money consequence map` is the deterministic evidence inside a
-  Financial insight. It separates recorded surplus from free cash, actual
+  Financial insight, under "See all insights". It separates recorded surplus from free cash, actual
   spending from the plan, an already-loaded same-season comparison, bank-proof
   confidence, and a transparent one-repeat scenario. It does not project the
   future, determine a savings target, or certify the ledger.

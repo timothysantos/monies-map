@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { messages } from "./copy/en-SG";
 import { FinancialInsight } from "./financial-insight";
+import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
 import { PrivateMoney } from "./money-privacy";
 import { PAGE_FLAG, pageFlagRef } from "./page-flags";
 import "./splits-panel.css";
@@ -51,6 +52,7 @@ import {
   createSplitRefreshGuard
 } from "./splits-workflow";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
+import { buildSplitsSignals, SPLITS_CALM_LINE } from "../domain/money-signals/splits-signals";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { todayInAppTimeZone } from "./app-dates";
 import { useIsMobileLayout } from "./use-viewport";
@@ -132,6 +134,7 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     groupOptions,
     groupSummaryLabel,
     insightRecords,
+    openGroupActivity,
     pendingMatchCount,
     selectedArchivedBatch,
     searchSuggestions,
@@ -147,15 +150,28 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     records: insightRecords,
     // The records are one group's, so their amounts are in its currency.
     formatMoney: (amountMinor) => formatService.unmaskedMoneyWithCurrency(amountMinor, activeGroup?.currency ?? "SGD"),
-    perspective: "split_obligation",
-    accountingAdvice: splitSearchQuery
-      ? "This is a filtered group view, so check the matching split record before treating the displayed amount as the full group balance."
-      : pendingMatchCount
-        ? "Review possible bank matches before creating another split record. Treat the group balance as a settlement obligation, not new spending."
-        : groupBalanceMinor
-          ? "Treat the group balance as a settlement obligation between people, not new spending; record or match the settlement when it happens."
-          : "The group is settled. Keep bank-linked expenses and settlements matched so the audit trail stays complete."
-  }), [activeGroup?.currency, activeGroup?.name, groupBalanceMinor, insightRecords, isHouseholdView, pendingMatchCount, splitSearchQuery, view.label]);
+    perspective: "split_obligation"
+  }), [activeGroup?.currency, activeGroup?.name, insightRecords, isHouseholdView, splitSearchQuery, view.label]);
+  const checkInClock = useCheckInClock();
+  const checkIn = useMemo(() => ({
+    memoryKey: checkInMemoryKey("splits", view.id, activeGroup?.id ?? "split-group-none"),
+    contextKey: activeGroup?.id ?? "split-group-none",
+    signals: buildSplitsSignals({
+      audience: isHouseholdView ? "household" : "person",
+      viewId: view.id,
+      viewLabel: view.label,
+      people,
+      group: activeGroup ? { id: activeGroup.id, name: activeGroup.name, balanceMinor: groupBalanceMinor } : null,
+      activity: openGroupActivity,
+      pendingMatchCount,
+      today: checkInClock.today,
+      // Balances stay in the group's own currency, never converted.
+      formatMoney: (amountMinor) => formatService.unmaskedMoneyWithCurrency(amountMinor, activeGroup?.currency ?? "SGD")
+    }),
+    calmLine: SPLITS_CALM_LINE,
+    alsoLabel: "Also in this group",
+    clock: checkInClock
+  }), [activeGroup, checkInClock, groupBalanceMinor, isHouseholdView, openGroupActivity, pendingMatchCount, people, view.id, view.label]);
   const financialInsightActions = useMemo(() => pendingMatchCount ? [{
     label: `Review ${pendingMatchCount} bank ${pendingMatchCount === 1 ? "match" : "matches"}`,
     onClick: () => openMatchesView()
@@ -804,6 +820,14 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
     });
   }
 
+  function handleCheckInAction(action) {
+    if (action.id === "settle-group" && activeGroup) {
+      openNewSettlementDialog({ activeGroup, groupBalanceMinor });
+    } else if (action.id === "review-matches") {
+      openMatchesView();
+    }
+  }
+
   function openMatchesView() {
     updateSplitView({ groupId: activeGroup?.id ?? defaultGroupId, mode: "matches" });
   }
@@ -1185,7 +1209,14 @@ export function SplitsPanel({ view, categories, people, onRefresh, runBackground
         {renderSplitActions("split-head-actions split-header-toolbar")}
       </div>
 
-      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-splits" canRequestWording={canRequestWording} />
+      <FinancialInsight
+        facts={financialInsightFacts}
+        checkIn={checkIn}
+        actions={financialInsightActions}
+        onCheckInAction={handleCheckInAction}
+        className="financial-insight-splits"
+        canRequestWording={canRequestWording}
+      />
 
       <SplitsMainSection
         groups={groups}

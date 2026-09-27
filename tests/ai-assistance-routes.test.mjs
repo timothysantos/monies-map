@@ -20,10 +20,9 @@ const FACTS = {
   topCategoryAmount: "$20.00",
   topMerchantName: "Cold Storage",
   topMerchantAmount: "$20.00",
-  notableFact: "Food & Drinks makes up all spending in this list.",
-  cashFlowPrinciple: "$80.00 is left after the spending recorded so far.",
-  nextSpendConsideration: "Before buying something non-essential, set aside money for planned bills.",
-  accountingAdvice: "Review provisional entries before closing the month.",
+  headlineKind: "going_well",
+  fact: "$1,080.59 of this month's plan is still unspent.",
+  think: "Unspent plan isn't spent money yet. Give it a job: savings, next month, or something you've been looking forward to.",
   decisionMap: {
     enabled: true,
     needsReview: false,
@@ -91,9 +90,19 @@ test("a GET on an AI route is not handled by it and ends in a 404", async () => 
 
 test("the insight route rejects facts it cannot trust, without calling AI", async () => {
   const ai = stubAi({ response: "{}" });
-  const response = await post({ DB: createFakeDb(), AI: ai, AI_ASSIST_ENABLED: "true" }, "/api/ai-assist/financial-insight", { facts: { ...FACTS, entryCount: -1 } });
-  assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { ok: true, available: false, reason: "There is not enough computed information for an insight." });
+  // A bad count, a missing fact or think line, or an unknown headline kind
+  // (a long view or trivia line is never reworded).
+  for (const facts of [
+    { ...FACTS, entryCount: -1 },
+    { ...FACTS, fact: "" },
+    { ...FACTS, think: undefined },
+    { ...FACTS, headlineKind: "long_view" },
+    { ...FACTS, headlineKind: undefined }
+  ]) {
+    const response = await post({ DB: createFakeDb(), AI: ai, AI_ASSIST_ENABLED: "true" }, "/api/ai-assist/financial-insight", { facts });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { ok: true, available: false, reason: "There is not enough computed information for an insight." });
+  }
   assert.equal(ai.calls.length, 0);
 });
 
@@ -107,7 +116,8 @@ test("with AI turned off or the binding missing, the insight falls back to compu
     assert.equal(payload.available, false);
     assert.equal(payload.source, "deterministic");
     assert.equal(payload.reason, reason);
-    assert.match(payload.narrative, /August 2026 entries/);
+    // With AI off the check-in reads the same: the fact, then the think line.
+    assert.equal(payload.narrative, `${FACTS.fact} ${FACTS.think}`);
   }
 });
 
@@ -123,18 +133,23 @@ test("a used-up daily allowance falls back without calling AI", async () => {
 });
 
 test("a valid AI template is rendered from computed facts only, and the remaining allowance is reported", async () => {
-  const ai = stubAi({ response: JSON.stringify({ template: "{{notableFact}} {{contextLabel}} {{cashFlowPrinciple}} {{nextSpendConsideration}}" }) });
+  const ai = stubAi({ response: JSON.stringify({ template: "A quiet win this month: {{fact}} {{think}}" }) });
   const db = createFakeDb({ usedUnits: 3 });
   const payload = await (await post({ DB: db, AI: ai, AI_ASSIST_ENABLED: "true", AI_ASSIST_DAILY_LIMIT: "12" }, "/api/ai-assist/financial-insight", { facts: FACTS })).json();
   assert.deepEqual(payload, {
     ok: true,
     available: true,
-    narrative: `${FACTS.notableFact} ${FACTS.contextLabel} ${FACTS.cashFlowPrinciple} ${FACTS.nextSpendConsideration}`,
+    narrative: `A quiet win this month: ${FACTS.fact} ${FACTS.think}`,
     source: "ai",
     remaining: 9
   });
   assert.equal(ai.calls[0].model, "@cf/meta/llama-3.2-3b-instruct");
   assert.equal(ai.calls[0].input.max_tokens, 180);
+  // The prompt asks only for words around the fact and the think line.
+  const prompt = JSON.stringify(ai.calls[0].input);
+  assert.match(prompt, /\{\{fact\}\}/);
+  assert.match(prompt, /\{\{think\}\}/);
+  assert.doesNotMatch(prompt, /notableFact|cashFlowPrinciple|nextSpendConsideration|accountingAdvice/);
 });
 
 test("an AI template with its own figures is refused and the computed wording is used", async () => {
@@ -143,6 +158,23 @@ test("an AI template with its own figures is refused and the computed wording is
   assert.equal(payload.available, false);
   assert.equal(payload.source, "deterministic");
   assert.equal(payload.reason, "AI returned an unusable suggestion.");
+  assert.equal(payload.narrative, `${FACTS.fact} ${FACTS.think}`);
+});
+
+test("an AI template that drops the fact or the think line, or breaks the tone rules, is refused", async () => {
+  for (const template of [
+    "{{think}}",
+    "{{fact}} Worth a thought.",
+    "{{fact}} {{think}} {{fact}}",
+    "Heads up: you should look at this. {{fact}} {{think}}",
+    "Great news! {{fact}} {{think}}",
+    "{{fact}} {{think}} {{notableFact}}"
+  ]) {
+    const ai = stubAi({ response: JSON.stringify({ template }) });
+    const payload = await (await post({ DB: createFakeDb(), AI: ai, AI_ASSIST_ENABLED: "true" }, "/api/ai-assist/financial-insight", { facts: FACTS })).json();
+    assert.equal(payload.source, "deterministic", template);
+    assert.equal(payload.narrative, `${FACTS.fact} ${FACTS.think}`, template);
+  }
 });
 
 test("statement fallback: empty text is refused; valid rows are bounded review rows; account numbers are redacted", async () => {
