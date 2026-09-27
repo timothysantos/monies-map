@@ -201,6 +201,7 @@ export interface MonthSignalInput {
 const SAVINGS = /saving/i;
 const DINING = /food|dining|restaurant|cafe|coffee|drink/i;
 // Places visited out of routine rather than choice: not a "regular spot".
+const NOT_FUN_DAY = /saving|invest|transfer|insurance|giro|bill|utilit|loan|mortgage|rent|tax/i;
 const NOT_A_SPOT = /transport|transfer|bill|utilit|subscription|insurance|rent|mortgage|loan|saving|invest|tax|salary|income/i;
 
 function expenses(input: MonthSignalInput) {
@@ -527,14 +528,15 @@ export function noSpendDaysTrivia(input: MonthSignalInput): MoneySignal | null {
   if (count < 2 || spentDays.size === 0) {
     return null;
   }
-  return triviaSignal(`no-spend:${input.month}:${count}`, phase === "past" ? MONTH_COPY.noSpendDays : MONTH_COPY.noSpendDaysSoFar, { count, month: monthName(input.month) });
+  return triviaSignal(`no-spend:${input.month}`, phase === "past" ? MONTH_COPY.noSpendDays : MONTH_COPY.noSpendDaysSoFar, { count, month: monthName(input.month) });
 }
 
 // Just for fun: the date with the most spending, and its largest entry.
 export function biggestDayTrivia(input: MonthSignalInput): MoneySignal | null {
   const byDate = new Map<string, MonthSignalEntry[]>();
-  // Money set aside or moved is not a "biggest day".
-  for (const entry of expenses(input).filter((item) => !/saving|invest|transfer/i.test(`${item.categoryName ?? ""} ${item.description ?? ""}`))) {
+  // Money set aside or moved, and routine obligations, are not a fun
+  // "biggest day".
+  for (const entry of expenses(input).filter((item) => !NOT_FUN_DAY.test(`${item.categoryName ?? ""} ${item.description ?? ""}`))) {
     byDate.set(entry.date, [...(byDate.get(entry.date) ?? []), entry]);
   }
   const [date, dayEntries] = [...byDate.entries()]

@@ -70,7 +70,7 @@ export const CATALOGUES = [
       weekdayPattern: ["just_for_fun", "More than half of the dining out (at least 3) on one weekday."],
       noSpendDays: ["just_for_fun", "Days with no expense in a finished month."],
       noSpendDaysSoFar: ["just_for_fun", "Days with no expense so far in the month in progress."],
-      biggestDay: ["just_for_fun", "The date with the most spending, and its largest entry."]
+      biggestDay: ["just_for_fun", "The date with the most spending (not savings, transfers or routine bills), and its largest entry."]
     }
   },
   {

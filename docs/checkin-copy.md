@@ -410,7 +410,7 @@ Line:
 
 ### biggestDay (Just for fun)
 
-The date with the most spending, and its largest entry.
+The date with the most spending (not savings, transfers or routine bills), and its largest entry.
 
 Line:
 
