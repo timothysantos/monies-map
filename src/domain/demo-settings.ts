@@ -1,5 +1,7 @@
 import { defaultDemoSettings, type DemoSettings } from "./demo-data";
 import { clearDemoData, reseedDemoData, seedEmptyStateReferenceData } from "./app-repository-seed";
+import { reseedShowcaseData } from "./app-repository-showcase-seed";
+import { SHOWCASE_DATASET } from "./demo-showcase-data";
 
 const DEMO_SETTINGS_KEY = "current";
 
@@ -30,16 +32,16 @@ export async function loadDemoSettings(db: D1Database): Promise<DemoSettings> {
     return {
       salaryPerPersonMinor: parsed.salaryPerPersonMinor ?? defaultDemoSettings.salaryPerPersonMinor,
       lastSeededAt: parsed.lastSeededAt ?? defaultDemoSettings.lastSeededAt,
-      emptyState: parsed.emptyState ?? defaultDemoSettings.emptyState
+      emptyState: parsed.emptyState ?? defaultDemoSettings.emptyState,
+      ...(parsed.dataset === SHOWCASE_DATASET ? { dataset: SHOWCASE_DATASET } : {})
     };
   } catch {
     return defaultDemoSettings;
   }
 }
 
-export async function saveDemoSettings(db: D1Database, settings: DemoSettings) {
-  await ensureDemoSettingsTable(db);
-  await db
+function buildSaveDemoSettingsStatement(db: D1Database, settings: DemoSettings) {
+  return db
     .prepare(`
       INSERT INTO demo_settings (key, value_json, updated_at)
       VALUES (?, ?, CURRENT_TIMESTAMP)
@@ -47,11 +49,34 @@ export async function saveDemoSettings(db: D1Database, settings: DemoSettings) {
         value_json = excluded.value_json,
         updated_at = CURRENT_TIMESTAMP
     `)
-    .bind(DEMO_SETTINGS_KEY, JSON.stringify(settings))
-    .run();
+    .bind(DEMO_SETTINGS_KEY, JSON.stringify(settings));
 }
 
-export async function reseedDemoSettings(db: D1Database, seedMonth?: string): Promise<DemoSettings> {
+export async function saveDemoSettings(db: D1Database, settings: DemoSettings) {
+  await ensureDemoSettingsTable(db);
+  await buildSaveDemoSettingsStatement(db, settings).run();
+}
+
+// `dataset` is the demo worker's DEMO_DATASET. Only "showcase" changes
+// anything: it seeds the showcase dataset and records it in the settings in
+// the same batch as the data. Anything else seeds the default demo exactly
+// as before.
+export async function reseedDemoSettings(db: D1Database, seedMonth?: string, dataset?: string): Promise<DemoSettings> {
+  if (dataset === SHOWCASE_DATASET) {
+    const showcaseSettings: DemoSettings = {
+      ...defaultDemoSettings,
+      lastSeededAt: new Date().toISOString(),
+      emptyState: false,
+      dataset: SHOWCASE_DATASET
+    };
+    await ensureDemoSettingsTable(db);
+    await reseedShowcaseData(db, {
+      seedMonth,
+      extraStatements: [buildSaveDemoSettingsStatement(db, showcaseSettings)]
+    });
+    return showcaseSettings;
+  }
+
   const nextSettings: DemoSettings = {
     ...defaultDemoSettings,
     lastSeededAt: new Date().toISOString(),
