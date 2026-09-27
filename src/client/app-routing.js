@@ -24,6 +24,10 @@ export function sanitizeTabParams(params, tabId) {
     ].forEach((key) => params.delete(key));
   }
 
+  if (tabId !== "faq") {
+    params.delete("faq");
+  }
+
   if (tabId !== "splits") {
     [
       "split_group",
@@ -62,7 +66,7 @@ export function getSelectedTabId(pathname) {
   return "summary";
 }
 
-export function buildRoutePageRequest({ tabId, viewId, month, scope, summaryStart, summaryEnd }) {
+export function buildRoutePageRequest({ tabId, viewId, month, scope, summaryStart = undefined, summaryEnd = undefined }) {
   // Convert the active tab into the exact page endpoint and query params the
   // server expects for that screen.
   if (tabId === "month") {
@@ -105,6 +109,15 @@ export function buildRoutePageRequest({ tabId, viewId, month, scope, summaryStar
   }
 
   return null;
+}
+
+// Entries page request params. The Entries API has no scope parameter; scope
+// stays in the route intent only.
+export function buildEntriesPageParams({ viewId, month }) {
+  return new URLSearchParams({
+    view: viewId,
+    month
+  });
 }
 
 export function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appShell) {
@@ -152,8 +165,9 @@ export function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appS
   }
 
   if (tabId === "splits" && pageData.splitsPage) {
-    // Splits keeps the linked month slice alongside its own data so row
-    // matching can work without widening the page-view contract.
+    // Splits keeps a small month slice alongside its own data: the month key
+    // and the month's transfers, for matching a settlement checkpoint to a
+    // bank transfer.
     return {
       ...baseView,
       monthPage: pageData.monthPage ?? null,

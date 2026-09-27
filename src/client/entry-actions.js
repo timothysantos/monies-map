@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { moniesClient } from "./monies-client-service";
 import { buildEntryMutationRefreshPlan, hasLedgerAffectingEntryChange } from "./entry-refresh-plan";
-import { buildComparableEntryState, mergeEntriesById } from "./entry-state";
+import { buildComparableEntryState, mergeEntriesById, withoutSplitLink } from "./entry-state";
 import { buildRequestErrorMessage } from "./request-errors";
+import { readSettlementLock, settlementLockUndoRequest } from "./settlement-lock-notice";
 
 const { entries: entryService } = moniesClient;
 
@@ -20,6 +21,9 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   const [showEntryComposer, setShowEntryComposer] = useState(false);
   const [entryDraft, setEntryDraft] = useState(() => entryService.buildDraft(view, accounts, categories, people));
   const [entrySubmitError, setEntrySubmitError] = useState("");
+  // The simplified settlement that refused the last entry save, if any.
+  const [entrySettlementLock, setEntrySettlementLock] = useState(null);
+  const [isUndoingEntrySettlementLock, setIsUndoingEntrySettlementLock] = useState(false);
   const [isSavingEntryDraft, setIsSavingEntryDraft] = useState(false);
   const [savingEntryId, setSavingEntryId] = useState(null);
   const [deletingEntryId, setDeletingEntryId] = useState(null);
@@ -68,6 +72,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       people
     ));
     setEntrySubmitError("");
+    setEntrySettlementLock(null);
     setIsSavingEntryDraft(false);
     setSavingEntryId(null);
     setDeletingEntryId(null);
@@ -112,7 +117,11 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
   async function refreshEntriesFromServerTruth() {
     preferServerEntriesOnNextMergeRef.current = true;
     try {
-      await onRefresh();
+      // A refresh that failed or was superseded resolves to null and brings
+      // no server truth, so the next unrelated merge must not prefer it.
+      if (!(await onRefresh())) {
+        preferServerEntriesOnNextMergeRef.current = false;
+      }
     } catch (error) {
       preferServerEntriesOnNextMergeRef.current = false;
       throw error;
@@ -187,7 +196,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     });
   }
 
-  async function persistExistingEntry(entryId, { closeEditor, patch } = {}) {
+  async function persistExistingEntry(entryId, { closeEditor = undefined, patch = undefined } = {}) {
     if (!entryId) {
       return { ok: false };
     }
@@ -199,12 +208,13 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       return { ok: false };
     }
     const currentEntry = patch
-      ? entryService.normalize({ ...existingEntry, ...patch }, people, existingEntry)
+      ? entryService.normalize({ ...existingEntry, ...withLinkedEntryTotal(existingEntry, patch) }, people, existingEntry)
       : existingEntry;
 
     const primarySplit = currentEntry.ownershipType === "shared" ? currentEntry.splits[0] : undefined;
 
     setEntrySubmitError("");
+    setEntrySettlementLock(null);
     setSavingEntryId(entryId);
     try {
       const response = await fetch("/api/entries/update", {
@@ -222,6 +232,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       if (!response.ok) {
         const errorMessage = data.error ?? "Failed to save entry.";
         setEntrySubmitError(errorMessage);
+        setEntrySettlementLock(readSettlementLock({ code: data.code, checkpointId: data.checkpointId, batchId: data.batchId, message: errorMessage }, currentEntry.id));
         return {
           ok: false,
           error: errorMessage
@@ -261,6 +272,9 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
           invalidateSummary: refreshPlan.invalidateSummary
         });
       }
+      if (refreshPlan.invalidateSplits) {
+        onSplitMutation?.({ month: view.monthPage.month });
+      }
       await onRefresh();
       return {
         ok: true,
@@ -268,6 +282,37 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       };
     } finally {
       setSavingEntryId((current) => current === entryId ? null : current);
+    }
+  }
+
+  // Undo the simplified settlement or group settle-up that refused an entry
+  // save. The editor keeps the person's change, so saving again applies it
+  // and the linked split follows. Splits reloads its now reopened activity.
+  async function undoEntrySettlementLock() {
+    const lock = entrySettlementLock;
+    if (!lock || isUndoingEntrySettlementLock) {
+      return;
+    }
+
+    const request = settlementLockUndoRequest(lock);
+    setIsUndoingEntrySettlementLock(true);
+    try {
+      const response = await fetch(request.url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request.body)
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error ?? request.failure);
+      }
+      setEntrySubmitError("");
+      setEntrySettlementLock({ ...lock, undone: true });
+      onSplitMutation?.({ month: view.monthPage.month });
+    } catch (error) {
+      setEntrySettlementLock({ ...lock, message: error instanceof Error ? error.message : request.failure });
+    } finally {
+      setIsUndoingEntrySettlementLock(false);
     }
   }
 
@@ -619,13 +664,24 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     }
   }
 
+  // After its split is deleted, an entry open in the editor (which ignores
+  // server refreshes until it closes) shows the ledger amount and can be
+  // added to splits again; the snapshot follows so Cancel keeps that. Only
+  // the split fields change: a full normalize would also fill in an owner.
+  function clearEntrySplitLink(entryId) {
+    setEntries((current) => current.map((entry) => (
+      entry.id === entryId ? withoutSplitLink(entry) : entry
+    )));
+    setEntrySnapshot((current) => (current?.id === entryId ? withoutSplitLink(current) : current));
+  }
+
   function updateEntry(entryId, patch) {
     setEntries((current) => current.map((entry) => {
       if (entry.id !== entryId) {
         return entry;
       }
 
-      return entryService.normalize({ ...entry, ...patch }, people, entry);
+      return entryService.normalize({ ...entry, ...withLinkedEntryTotal(entry, patch) }, people, entry);
     }));
   }
 
@@ -636,7 +692,7 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
       }
 
       if (view.id === "household" || entry.ownershipType !== "shared" || entry.splits.length < 2) {
-        return entryService.normalize({ ...entry, amountMinor, amountInput }, people, entry);
+        return entryService.normalize({ ...entry, ...withLinkedEntryTotal(entry, { amountMinor, amountInput }) }, people, entry);
       }
 
       const splitPercent = entryService.getVisibleSplitPercent(entry, view.id) ?? 50;
@@ -738,6 +794,9 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     showEntryComposer,
     entryDraft,
     entrySubmitError,
+    entrySettlementLock,
+    isUndoingEntrySettlementLock,
+    undoEntrySettlementLock,
     isSavingEntryDraft,
     savingEntryId,
     deletingEntryId,
@@ -766,11 +825,20 @@ export function useEntryActions({ view, accounts, categories, people, onRefresh,
     settleTransfer,
     refreshEntriesFromServerTruth,
     addEntryToSplits,
+    clearEntrySplitLink,
     deleteEntry,
     updateEntry,
     updateEntryAmount,
     updateEntrySplit
   };
+}
+
+// The amount field of a split-linked entry edits the ledger total, even in a
+// person view where the row's amountMinor is the viewer's share.
+function withLinkedEntryTotal(entry, patch) {
+  return entry.linkedSplitExpenseId && Object.prototype.hasOwnProperty.call(patch, "amountMinor")
+    ? { ...patch, totalAmountMinor: patch.amountMinor }
+    : patch;
 }
 
 function buildPersistedEntryPayload(entry, primarySplit) {

@@ -27,6 +27,9 @@ export function SplitsMainSection({
   searchQuery = "",
   inlineSplitDraft,
   inlineSplitError,
+  inlineSettlementLock = null,
+  isUndoingSettlementLock = false,
+  onUndoSettlementLock,
   isSubmitting,
   hasInlineSplitChanges,
   onSelectGroup,
@@ -93,6 +96,7 @@ export function SplitsMainSection({
 
       <SplitsBreakdownSection
         showBreakdown={showBreakdown}
+        currency={activeGroup?.currency ?? "SGD"}
         totalExpenseMinor={totalExpenseMinor}
         groupBalanceMinor={groupBalanceMinor}
         groupSummaryLabel={groupSummaryLabel}
@@ -142,6 +146,9 @@ export function SplitsMainSection({
             categoryOptions={categoryOptions}
             inlineSplitDraft={inlineSplitDraft}
             inlineSplitError={inlineSplitError}
+            inlineSettlementLock={inlineSettlementLock}
+            isUndoingSettlementLock={isUndoingSettlementLock}
+            onUndoSettlementLock={onUndoSettlementLock}
             isSubmitting={isSubmitting}
             hasInlineSplitChanges={hasInlineSplitChanges}
             onAddExpense={onAddExpense}

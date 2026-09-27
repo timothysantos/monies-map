@@ -35,3 +35,19 @@ test("matched transfer rows open the transfer manager without crashing for both 
 
   expect(pageErrors, pageErrors.join("\n")).toEqual([]);
 });
+
+test("the Entries transfer manager offers only the match tools Entries can run", async ({ page }) => {
+  await page.goto("/");
+  await reseedDemo(page);
+  await gotoPageAfterApi(
+    page,
+    "/entries?view=person-tim&month=2026-05&editing_entry=txn-oct-transfer-out",
+    "/api/entries-page",
+    () => page.getByRole("button", { name: "Manage transfer" })
+  );
+  await page.getByRole("button", { name: "Manage transfer" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("button", { name: "Recheck matches" })).toBeVisible();
+  // Entries has no AI ranking handler, so it must not show a button that does nothing.
+  await expect(dialog.getByRole("button", { name: "Rank descriptions" })).toHaveCount(0);
+});

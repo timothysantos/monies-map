@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { entryBypassesFieldFilters } from "../src/client/entry-filter-pins.js";
 import { normalizeEntryShape } from "../src/client/entry-helpers.js";
-import { buildComparableEntryState, mergeEntriesById } from "../src/client/entry-state.js";
+import { buildComparableEntryState, mergeEntriesById, withoutSplitLink } from "../src/client/entry-state.js";
 
 test("E1 entries workflow keeps an optimistic row alive when a stale refresh omits it", () => {
   const currentEntries = [
@@ -212,10 +212,185 @@ test("split-linked direct entry edits preserve the full ledger amount", () => {
 
   assert.equal(normalized.amountMinor, 1100);
   assert.equal(normalized.totalAmountMinor, 2200);
+  // The viewer ratio comes from the linked shares, not a 100% direct owner.
+  assert.equal(normalized.viewerSplitRatioBasisPoints, undefined);
+  assert.deepEqual(normalized.linkedSplitShares, previous.linkedSplitShares);
+});
+
+const linkedPeople = [
+  { id: "person-tim", name: "Tim" },
+  { id: "person-joyce", name: "Joyce" }
+];
+
+// A Tim-view row of a $60.00 split-linked expense split 25/75.
+function linkedPersonViewEntry() {
+  return {
+    id: "linked-amount",
+    date: "2026-05-22",
+    description: "Groceries",
+    accountId: "acct-1",
+    accountName: "UOB One",
+    categoryName: "Groceries",
+    amountMinor: 1500,
+    totalAmountMinor: 6000,
+    viewerSplitRatioBasisPoints: 2500,
+    entryType: "expense",
+    transferDirection: null,
+    ownershipType: "direct",
+    ownerName: "Tim",
+    linkedSplitExpenseId: "split-expense-1",
+    linkedSplitShares: [
+      { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 7500, amountMinor: 4500 },
+      { personId: "person-tim", personName: "Tim", ratioBasisPoints: 2500, amountMinor: 1500 }
+    ],
+    splits: [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor: 6000 }]
+  };
+}
+
+test("a split-linked entry's new total moves its linked shares by the stored ratio", () => {
+  const previous = linkedPersonViewEntry();
+
+  const normalized = normalizeEntryShape({ ...previous, amountMinor: 8050, amountInput: "80.50", totalAmountMinor: 8050 }, linkedPeople, previous);
+
+  assert.equal(normalized.totalAmountMinor, 8050);
+  assert.equal(normalized.viewerSplitRatioBasisPoints, undefined);
+  // Same floor/remainder as the server: Tim (first person) keeps the floor.
+  assert.deepEqual(normalized.linkedSplitShares, [
+    { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 7500, amountMinor: 6038 },
+    { personId: "person-tim", personName: "Tim", ratioBasisPoints: 2500, amountMinor: 2012 }
+  ]);
+});
+
+test("a person-view total that equals the viewer's old share is still saved as the new total", () => {
+  const previous = linkedPersonViewEntry();
+
+  const normalized = normalizeEntryShape({ ...previous, amountMinor: 1500, amountInput: "15", totalAmountMinor: 1500 }, linkedPeople, previous);
+
+  assert.equal(normalized.totalAmountMinor, 1500);
+  assert.deepEqual(normalized.linkedSplitShares.map((share) => share.amountMinor), [1125, 375]);
+});
+
+test("a person-view edit of a linked entry keeps the total in the amount field, so tabbing through it changes nothing", () => {
+  const previous = linkedPersonViewEntry();
+
+  const renamed = normalizeEntryShape({ ...previous, description: "Groceries run" }, linkedPeople, previous);
+
+  // The field shows the $60.00 total, never Tim's $15.00 share.
+  assert.equal(renamed.amountInput, "60");
+  assert.equal(renamed.totalAmountMinor, 6000);
+
+  // A blur on the untouched field re-sends the total it shows.
+  const blurred = normalizeEntryShape({ ...renamed, amountMinor: 6000, amountInput: "60", totalAmountMinor: 6000 }, linkedPeople, renamed);
+  assert.equal(blurred.totalAmountMinor, 6000);
+  assert.deepEqual(blurred.linkedSplitShares, previous.linkedSplitShares);
+
+  // While typing, the typed text is kept as is.
+  const typing = normalizeEntryShape({ ...renamed, amountMinor: 800, amountInput: "8", totalAmountMinor: 800 }, linkedPeople, renamed);
+  assert.equal(typing.amountInput, "8");
+});
+
+test("a saved split-linked amount edit gives way to the server row with the new share", () => {
+  const previous = linkedPersonViewEntry();
+  const saved = {
+    ...normalizeEntryShape({ ...previous, amountMinor: 8050, amountInput: "80.50", totalAmountMinor: 8050 }, linkedPeople, previous),
+    isPendingDerived: true
+  };
+  const serverRow = {
+    ...previous,
+    amountMinor: 2012,
+    totalAmountMinor: 8050,
+    linkedSplitShares: [
+      { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 7500, amountMinor: 6038 },
+      { personId: "person-tim", personName: "Tim", ratioBasisPoints: 2500, amountMinor: 2012 }
+    ]
+  };
+
+  const [merged] = mergeEntriesById([saved], [serverRow], null);
+
+  assert.equal(merged.isPendingDerived, false);
+  assert.equal(merged.amountMinor, 2012);
+  assert.equal(merged.viewerSplitRatioBasisPoints, 2500);
+
+  // A server row still on the old amount is stale, so the pending row stays.
+  const [kept] = mergeEntriesById([saved], [previous], null);
+  assert.equal(kept, saved);
+});
+
+test("a refresh after the split was deleted drops the local split link instead of keeping it", () => {
+  const linked = { ...linkedPersonViewEntry(), linkedSplitGroupName: "Non-group expenses", linkedSplitNote: "Split note", isPendingDerived: false };
+  // The server row of the same entry once its split is archived: the full
+  // ledger amount and none of the split fields.
+  const {
+    linkedSplitExpenseId: _id,
+    linkedSplitShares: _shares,
+    linkedSplitGroupName: _group,
+    linkedSplitNote: _note,
+    totalAmountMinor: _total,
+    viewerSplitRatioBasisPoints: _ratio,
+    ...unlinkedServerRow
+  } = { ...linked, amountMinor: 6000 };
+
+  const [merged] = mergeEntriesById([linked], [unlinkedServerRow], null);
+
+  assert.deepEqual(merged, { ...unlinkedServerRow, isPendingDerived: false });
+
+  // Negative: a server row that is still linked keeps its split fields.
+  const [stillLinked] = mergeEntriesById([linked], [{ ...linked, description: "Groceries renamed" }], null);
+  assert.equal(stillLinked.linkedSplitExpenseId, "split-expense-1");
+  assert.equal(stillLinked.amountMinor, 1500);
+  assert.equal(stillLinked.totalAmountMinor, 6000);
+  assert.equal(stillLinked.linkedSplitNote, "Split note");
+});
+
+test("an entry whose split is deleted in the editor shows its ledger amount and keeps every other field", () => {
+  const linked = { ...linkedPersonViewEntry(), linkedSplitGroupName: "Non-group expenses", linkedSplitNote: "Split note" };
+  const {
+    linkedSplitExpenseId: _id,
+    linkedSplitShares: _shares,
+    linkedSplitGroupName: _group,
+    linkedSplitNote: _note,
+    totalAmountMinor: _total,
+    viewerSplitRatioBasisPoints: _ratio,
+    ...directFields
+  } = linked;
+
+  assert.deepEqual(withoutSplitLink(linked), { ...directFields, amountMinor: 6000 });
+
+  // A joint-account row without an owner does not gain one.
+  const { ownerName: _owner, ...ownerless } = linked;
+  assert.equal("ownerName" in withoutSplitLink(ownerless), false);
+  // An entry without a split is returned as it is.
+  const direct = withoutSplitLink(linked);
+  assert.equal(withoutSplitLink(direct), direct);
 });
 
 test("entries filtering can pin the actively edited row until save", () => {
   assert.equal(entryBypassesFieldFilters("editing", ["editing"]), true);
   assert.equal(entryBypassesFieldFilters("other", ["editing"]), false);
   assert.equal(entryBypassesFieldFilters("editing", [null, "", "editing"]), true);
+});
+
+test("E-render a merge that changes nothing keeps each entry object, so memoized rows skip it", () => {
+  const splits = [{ personName: "Tim", ratioBasisPoints: 10000, amountMinor: 1200 }];
+  const serverEntries = [
+    { id: "unchanged", description: "Coffee", amountMinor: 1200, note: "", splits },
+    { id: "changed", description: "Lunch", amountMinor: 900, note: "server note", splits }
+  ];
+  // The page merges once on mount, so rows already carry isPendingDerived.
+  const firstMerge = mergeEntriesById(mergeEntriesById([], serverEntries, null), serverEntries, null);
+  const current = firstMerge.map((entry) => (entry.id === "changed" ? { ...entry, note: "local edit" } : entry));
+
+  const nextEntries = mergeEntriesById(current, serverEntries, null);
+
+  assert.equal(nextEntries[0], current[0]);
+  // Negative: a field the server disagrees on still produces a new object with the server value.
+  assert.notEqual(nextEntries[1], current[1]);
+  assert.equal(nextEntries[1].note, "server note");
+  assert.equal(nextEntries[1].isPendingDerived, false);
+
+  // A pending row always settles into a new, non-pending object.
+  const pending = [{ ...current[0], isPendingDerived: true }];
+  const settled = mergeEntriesById(pending, [serverEntries[0]], null);
+  assert.notEqual(settled[0], pending[0]);
+  assert.equal(settled[0].isPendingDerived, false);
 });

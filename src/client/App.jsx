@@ -1,27 +1,17 @@
-import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { hashKey, useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import * as Dialog from "@radix-ui/react-dialog";
-import * as Popover from "@radix-ui/react-popover";
 import {
   Receipt,
-  Ellipsis,
   Plus
 } from "lucide-react";
 import {
-  NavLink,
-  Navigate,
-  Route,
-  Routes,
   useLocation,
   useNavigate,
-  useParams,
   useSearchParams
 } from "react-router-dom";
 import {
-  APP_SYNC_CHANNEL,
-  APP_SYNC_EVENT_TYPES,
-  APP_SYNC_STORAGE_KEY,
   broadcastAppShellRefresh,
   buildEntryMutationSyncEvent,
   buildSummaryMutationSyncEvent,
@@ -38,6 +28,7 @@ import {
   writePersistedAppShell
 } from "./app-shell-query";
 import {
+  buildEntriesPageParams,
   buildPageViewFromRouteData,
   buildRoutePageRequest,
   getAppShellAvailableViewIds,
@@ -45,25 +36,58 @@ import {
   resolveRouteViewId,
   sanitizeTabParams
 } from "./app-routing";
+import {
+  AppLoadingOverlay,
+  EnvironmentBanner,
+  RouteChunkLoadingFallback,
+  ShellErrorScreen,
+  ShellLoadingScreen
+} from "./app-shell-status";
+import { ScreenErrorBoundary } from "./screen-error-boundary";
+import { ErrorPanel } from "./ui-states";
+import { ShellRouteTabs } from "./app-shell-navigation";
+import { PeriodMonthPicker } from "./app-shell-period-pickers";
+import { LoginRegistrationDialog } from "./login-registration-dialog";
 import { slugify } from "./category-utils";
 import { formatMonthLabel } from "./formatters";
 import { TotalsVisibilityToggle, useMoneyPrivacy } from "./money-privacy";
 import {
   buildAppShellErrorMessage,
+  buildRequestFailureMessage,
   buildRequestErrorMessage,
   describeAppShellError,
   isAppShellResourceLimitError
 } from "./request-errors";
-import { fetchWithTimeout } from "./request-timeout";
+import { fetchTextWithTransientWorkerRetry } from "./request-timeout";
 import { installMobileFocusVisibility } from "./mobile-focus-visibility";
 import { queryKeys } from "./query-keys";
+import { fetchQueryWithLease } from "./query-leases";
+import { loadRouteModule } from "./route-modules";
+import { useAppShellState } from "./use-app-shell-state";
+import { useAppSyncSubscription } from "./use-app-sync-subscription";
+import { useReferenceData } from "./use-reference-data";
+import { useRefreshNotice } from "./use-refresh-notice";
+import { useRouteData } from "./use-route-data";
+import { useSummaryData } from "./use-summary-data";
+import { useRouteWarmup } from "./use-route-warmup";
+import {
+  buildRouteIdentity,
+  buildRouteWorkKey,
+  createRequiredWorkCounter,
+  createRouteWorkRegistry,
+  deriveRouteWork,
+  withRequiredWork
+} from "./route-work-status";
+import {
+  RouteWorkProvider,
+  useRequiredWorkCount,
+  useRouteWorkSnapshot
+} from "./use-route-work-status";
 import {
   invalidateImportMutationQueries,
   invalidateEntriesMutationQueries,
   invalidateImportsPageQueries,
-  invalidateMonthQueries,
-  invalidateSummaryAccountPillQueries,
-  invalidateSummaryPageQueries
+  invalidateMonthQueries
 } from "./query-mutations";
 import { describeSettingsRefreshPlan, SETTINGS_ROUTE_REQUEST } from "./settings-refresh-plan";
 import {
@@ -76,66 +100,17 @@ import {
 import { buildSummaryMutationRefreshPlan } from "./summary-workflow";
 import { getCurrentMonthKey } from "../lib/month";
 
-// Lazy route loaders keep the initial shell small while still splitting each
-// feature panel into its own bundle.
-const routeModuleLoaders = {
-  entries: () => import("./entries-panel.jsx"),
-  faq: () => import("./faq-panel.jsx"),
-  imports: () => import("./imports-panel.jsx"),
-  month: () => import("./month-panel.jsx"),
-  settings: () => import("./settings-panel.jsx"),
-  splits: () => import("./splits-panel.jsx"),
-  summary: () => import("./summary-panel.jsx")
-};
-// Track preloaded route bundles so the app does not request the same chunk
-// repeatedly during idle warmup.
-const routeModulePreloads = new Map();
-const TRANSIENT_WORKER_RESPONSE_SNIPPETS = [
-  "worker restarted mid-request",
-  "socket hang up",
-  "Your worker"
-];
-
-function isTransientWorkerResponse(responseText) {
-  return TRANSIENT_WORKER_RESPONSE_SNIPPETS.some((snippet) => responseText.includes(snippet));
-}
-
-async function waitForTransientWorkerRetry(attempt) {
-  await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
-}
-
-async function fetchTextWithTransientWorkerRetry(url, options = {}) {
-  let lastResult = null;
-
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const response = await fetchWithTimeout(url, options, options.requestLabel ?? "App request");
-    const responseText = await response.text();
-    lastResult = { response, responseText };
-
-    if (attempt < 2 && isTransientWorkerResponse(responseText)) {
-      await waitForTransientWorkerRetry(attempt);
-      continue;
-    }
-
-    return lastResult;
-  }
-
-  return lastResult;
-}
-
-const EntriesPanel = lazy(() => routeModuleLoaders.entries().then((module) => ({ default: module.EntriesPanel })));
+const EntriesPanel = lazy(() => loadRouteModule("entries").then((module) => ({ default: module.EntriesPanel })));
 const EntriesFilterStack = lazy(() => import("./entries-filter-stack.jsx").then((module) => ({ default: module.EntriesFilterStack })));
-const FaqPanel = lazy(() => routeModuleLoaders.faq().then((module) => ({ default: module.FaqPanel })));
-const ImportsPanel = lazy(() => routeModuleLoaders.imports().then((module) => ({ default: module.ImportsPanel })));
-const MonthPanel = lazy(() => routeModuleLoaders.month().then((module) => ({ default: module.MonthPanel })));
-const SettingsPanel = lazy(() => routeModuleLoaders.settings().then((module) => ({ default: module.SettingsPanel })));
-const SplitsPanel = lazy(() => routeModuleLoaders.splits().then((module) => ({ default: module.SplitsPanel })));
-const SummaryPanel = lazy(() => routeModuleLoaders.summary().then((module) => ({ default: module.SummaryPanel })));
+const FaqPanel = lazy(() => loadRouteModule("faq").then((module) => ({ default: module.FaqPanel })));
+const ImportsPanel = lazy(() => loadRouteModule("imports").then((module) => ({ default: module.ImportsPanel })));
+const MonthPanel = lazy(() => loadRouteModule("month").then((module) => ({ default: module.MonthPanel })));
+const SettingsPanel = lazy(() => loadRouteModule("settings").then((module) => ({ default: module.SettingsPanel })));
+const SplitsPanel = lazy(() => loadRouteModule("splits").then((module) => ({ default: module.SplitsPanel })));
+const SummaryPanel = lazy(() => loadRouteModule("summary").then((module) => ({ default: module.SummaryPanel })));
 
 // Shared UI constants used by the month and summary pickers.
 const SUMMARY_FOCUS_OVERALL = "overall";
-const MONTH_PICKER_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const DEFAULT_MONTH_KEY = getCurrentMonthKey();
 // Canonical route registry for the top navigation and route-based prefetching.
 const routeTabs = [
   { id: "summary", path: "/summary", label: messages.tabs.summary },
@@ -149,13 +124,6 @@ const routeTabs = [
 // Split the tabs so the primary shell keeps the highest-frequency routes in view.
 const primaryRouteTabs = routeTabs.slice(0, 4);
 const secondaryRouteTabs = routeTabs.slice(4);
-// Prefetch timing is intentionally staggered so warmup does not compete with
-// the visible render path.
-const PAGE_PREFETCH_DELAY_MS = 1200;
-const PAGE_PREFETCH_SPACING_MS = 1500;
-const PAGE_PREFETCH_STAGE_DELAY_MS = 5000;
-const IMPORT_INBOX_BANNER_STALE_TIME_MS = 5 * 60 * 1000;
-const IMPORT_INBOX_BANNER_WARMUP_TIMEOUT_MS = 1200;
 const APP_DOCUMENT_TITLE = "Monie's Map";
 const LOADING_STATUS_POLL_MS = 500;
 function createLoadingStatus(overrides = {}) {
@@ -171,19 +139,6 @@ function createLoadingStatus(overrides = {}) {
   };
 }
 
-// Trim long route labels and status text so loading chrome stays readable
-// without expanding into the whole shell.
-function ellipsizeText(value, maxLength = 52) {
-  const normalized = String(value ?? "").replace(/\s+/g, " ").trim();
-  if (!normalized) {
-    return "";
-  }
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-  return `${normalized.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
-}
-
 function describeRoutePageContractError(tabId) {
   return `The ${tabId} page response did not include the data needed to render this screen.`;
 }
@@ -195,52 +150,6 @@ function getRoutePageRequestKey(request) {
 
   const query = request.params.toString();
   return query ? `${request.path}?${query}` : request.path;
-}
-
-// Warm route bundles ahead of time so navigation stays fast without changing
-// which route data is actually rendered.
-function preloadRouteModule(routeId) {
-  const loader = routeModuleLoaders[routeId];
-  if (!loader) {
-    return;
-  }
-  if (!routeModulePreloads.has(routeId)) {
-    routeModulePreloads.set(routeId, loader().catch(() => {
-      routeModulePreloads.delete(routeId);
-    }));
-  }
-}
-
-// Schedule a small idle task so speculative work never competes with the
-// visible render path.
-function scheduleIdleTask(callback, timeout = 1000) {
-  if (typeof window === "undefined") {
-    return undefined;
-  }
-  if (typeof window.requestIdleCallback === "function") {
-    return { type: "idle", id: window.requestIdleCallback(callback, { timeout }) };
-  }
-  return { type: "timeout", id: window.setTimeout(callback, timeout) };
-}
-
-// Cancel idle work when route or shell state changes before the task runs.
-function cancelIdleTask(handle) {
-  if (!handle || typeof window === "undefined") {
-    return;
-  }
-  if (handle.type === "idle" && typeof window.cancelIdleCallback === "function") {
-    window.cancelIdleCallback(handle.id);
-    return;
-  }
-  window.clearTimeout(handle.id);
-}
-
-// Wrap `setTimeout` in a promise so route work can be staged with explicit
-// pauses during warmup and prefetching.
-function waitFor(ms) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
 }
 
 // Detect the current runtime so the shell can label local/demo builds without
@@ -258,20 +167,6 @@ function getClientAppEnvironment() {
     return "demo";
   }
   return "production";
-}
-
-// Show a small environment badge only when the app is running locally or in
-// the demo environment.
-function EnvironmentBanner({ environment }) {
-  if (environment !== "demo" && environment !== "local") {
-    return null;
-  }
-
-  return (
-    <div className={`environment-banner environment-banner-${environment}`}>
-      {environment}
-    </div>
-  );
 }
 
 // Keep the browser title aligned with the active environment.
@@ -299,8 +194,7 @@ export function App() {
   // App-level shell state and caches live here; everything below derives the
   // active route from that data instead of maintaining a second store.
   const queryClient = useQueryClient();
-  const [appShell, setAppShell] = useState(null);
-  const [appShellError, setAppShellError] = useState("");
+  const { appShell, appShellError, appShellOwner } = useAppShellState();
   const [appShellLoadCount, setAppShellLoadCount] = useState(0);
   // Loading state is separate from shell state so route and shell fetches can
   // report progress without mutating the active payloads.
@@ -327,7 +221,6 @@ export function App() {
   const navigate = useNavigate();
   const syncChannelRef = useRef(null);
   const queryEpochRef = useRef(0);
-  const routePagePrefetchTimerRef = useRef(null);
   // Route identity is derived from the browser location and query string, and
   // that route drives which page payload we fetch next.
   const appEnvironment = appShell?.appEnvironment ?? getClientAppEnvironment();
@@ -346,19 +239,16 @@ export function App() {
     appShell,
     selectedTabId === "splits" ? defaultSplitsViewId : undefined
   );
-  const selectedMonth = searchParams.get("month") ?? DEFAULT_MONTH_KEY;
+  const selectedMonth = searchParams.get("month") ?? getCurrentMonthKey();
   const selectedScope = searchParams.get("scope") ?? "direct_plus_shared";
   const selectedSummaryStart = searchParams.get("summary_start") ?? undefined;
   const selectedSummaryEnd = searchParams.get("summary_end") ?? undefined;
   const isAppShellLoading = appShellLoadCount > 0;
-  const [routePageData, setRoutePageData] = useState(null);
-  const [routePageDataRequestKey, setRoutePageDataRequestKey] = useState("");
   const [importInboxBanner, setImportInboxBanner] = useState(null);
   const [routePageError, setRoutePageError] = useState("");
-  const [referenceData, setReferenceData] = useState(null);
-  const [referenceDataError, setReferenceDataError] = useState("");
-  const [summaryPageData, setSummaryPageData] = useState(null);
-  const [summaryAccountPillsData, setSummaryAccountPillsData] = useState(null);
+  const [isRetryingRoutePage, setIsRetryingRoutePage] = useState(false);
+  // Summary data is not replaced until the next response arrives, so keep the
+  // request it belongs to; readiness compares it with the active request.
   const [entriesExternalRefreshToken, setEntriesExternalRefreshToken] = useState(0);
   const [loginRegistrationDraft, setLoginRegistrationDraft] = useState(null);
   const [loginRegistrationError, setLoginRegistrationError] = useState("");
@@ -368,10 +258,8 @@ export function App() {
   const [suppressedLoginRegistrationEmail, setSuppressedLoginRegistrationEmail] = useState("");
   // These aliases make the current route inputs explicit before they flow into
   // shell and page fetch helpers.
-  const appShellMonth = selectedMonth;
   const appShellSummaryStart = selectedSummaryStart;
   const appShellSummaryEnd = selectedSummaryEnd;
-  const appShellScope = selectedScope;
 
   // Install the mobile focus helper once so dialogs and popovers remain
   // keyboard-friendly on small screens.
@@ -425,6 +313,23 @@ export function App() {
     () => getRoutePageRequestKey(routePageRequest),
     [routePageRequest]
   );
+  // One key per active route and data context. Panels report readiness and
+  // busy state against it; later warmup work reads the derived route work.
+  const activeRouteIdentity = useMemo(
+    () => buildRouteIdentity({
+      tabId: selectedTabId,
+      viewId: selectedTabId === "summary" ? selectedViewId : routeViewId,
+      month: selectedMonth,
+      scope: selectedScope,
+      summaryStart: selectedSummaryStart,
+      summaryEnd: selectedSummaryEnd
+    }),
+    [routeViewId, selectedMonth, selectedScope, selectedSummaryEnd, selectedSummaryStart, selectedTabId, selectedViewId]
+  );
+  const activeRouteKey = useMemo(() => buildRouteWorkKey(activeRouteIdentity), [activeRouteIdentity]);
+  const { refreshNotice, refreshNoticeOwner, runBackgroundRefresh } = useRefreshNotice(activeRouteKey);
+  const [routeWorkRegistry] = useState(createRouteWorkRegistry);
+  const [requiredWork] = useState(createRequiredWorkCounter);
 
   const updateLoadingStatus = useCallback((patch) => {
     setLoadingStatus((current) => ({
@@ -456,6 +361,10 @@ export function App() {
       return;
     }
     updateLoadingStatus({ issue: `${source}: ${summary}` });
+  }, [updateLoadingStatus]);
+
+  const clearLoadingIssue = useCallback(() => {
+    updateLoadingStatus({ issue: "" });
   }, [updateLoadingStatus]);
 
   // Incrementing this counter invalidates in-flight responses from older
@@ -538,9 +447,18 @@ export function App() {
 
   // Bump the local query epoch so stale responses cannot overwrite the latest
   // shell or page state.
+  // The state copy lets route warmup start a new generation on invalidation;
+  // existing readers keep using the ref.
+  const [queryEpoch, setQueryEpoch] = useState(0);
   const bumpQueryEpoch = useCallback(() => {
     queryEpochRef.current += 1;
+    setQueryEpoch((value) => value + 1);
   }, []);
+  const { referenceData, referenceDataError, referenceDataOwner } = useReferenceData({
+    queryClient,
+    onCacheCleared: bumpQueryEpoch,
+    reportIssue: reportLoadingIssue
+  });
 
   // Clear the shell cache and persisted shell payload when shell-relevant data
   // changes.
@@ -551,55 +469,14 @@ export function App() {
     clearPersistedAppShell();
   }, [bumpQueryEpoch, queryClient]);
 
-  const clearReferenceDataCache = useCallback(() => {
-    bumpQueryEpoch();
-    queryClient.cancelQueries({ queryKey: queryKeys.referenceData() });
-    queryClient.removeQueries({ queryKey: queryKeys.referenceData() });
-  }, [bumpQueryEpoch, queryClient]);
-
   // Clear the route-page cache so the next navigation or refresh rebuilds the
   // active screen from fresh server data.
-  const clearRoutePageCache = useCallback(() => {
-    bumpQueryEpoch();
-    queryClient.cancelQueries({ queryKey: ["route-page"] });
-    queryClient.removeQueries({ queryKey: ["route-page"] });
-  }, [bumpQueryEpoch, queryClient]);
-
-  // Summary page DTOs are owned by dedicated slice queries, so they clear
-  // separately from generic route-page caches.
-  const clearSummaryPageCache = useCallback((predicate) => {
-    bumpQueryEpoch();
-    queryClient.cancelQueries({
-      predicate: (query) => (
-        query.queryKey?.[0] === "summary-page"
-        && (!predicate || predicate(query.queryKey?.[1] ?? {}))
-      )
-    });
-    queryClient.removeQueries({
-      predicate: (query) => (
-        query.queryKey?.[0] === "summary-page"
-        && (!predicate || predicate(query.queryKey?.[1] ?? {}))
-      )
-    });
-  }, [bumpQueryEpoch, queryClient]);
-
-  // Wallet pills use their own slice cache so reference-data changes do not
-  // force the whole summary range DTO to refetch.
-  const clearSummaryAccountPillsCache = useCallback((predicate) => {
-    bumpQueryEpoch();
-    queryClient.cancelQueries({
-      predicate: (query) => (
-        query.queryKey?.[0] === "summary-account-pills"
-        && (!predicate || predicate(query.queryKey?.[1] ?? {}))
-      )
-    });
-    queryClient.removeQueries({
-      predicate: (query) => (
-        query.queryKey?.[0] === "summary-account-pills"
-        && (!predicate || predicate(query.queryKey?.[1] ?? {}))
-      )
-    });
-  }, [bumpQueryEpoch, queryClient]);
+  const { routePageData, routePageDataRequestKey, routeDataOwner } = useRouteData({
+    queryClient,
+    onCacheCleared: bumpQueryEpoch,
+    requestKeyOf: getRoutePageRequestKey
+  });
+  const clearRoutePageCache = routeDataOwner.clearCache;
 
   // Clear the entries-page cache when entry mutations should be reflected in
   // the dedicated entries workflow.
@@ -609,98 +486,9 @@ export function App() {
     queryClient.removeQueries({ queryKey: ["entries-page"] });
   }, [bumpQueryEpoch, queryClient]);
 
-  // Fetch the entries page with exact caching semantics so the dedicated
-  // entries workflow can reuse data without rebuilding the shell.
-  const fetchEntriesPageData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
-    const queryKey = queryKeys.entriesPage(params);
-    const queryState = queryClient.getQueryState(queryKey);
-    if (signal?.aborted) {
-      throw new DOMException("Entries page request aborted.", "AbortError");
-    }
-
-    if (!bypassCache) {
-      const cachedData = queryClient.getQueryData(queryKey);
-      if (cachedData) {
-        return cachedData;
-      }
-    }
-
-    const fetcher = async () => {
-      const response = await fetchWithTimeout(`/api/entries-page?${params.toString()}`, {
-        cache: "no-store"
-      }, "Entries page request");
-      if (!response.ok) {
-        throw new Error(await buildRequestErrorMessage(response, "Entries page failed."));
-      }
-      return response.json();
-    };
-
-    const data = bypassCache
-      ? await queryClient.fetchQuery({
-          queryKey,
-          queryFn: fetcher,
-          retry: false,
-          staleTime: 0
-        })
-      : await queryClient.ensureQueryData({
-          queryKey,
-          queryFn: fetcher,
-          retry: false,
-          revalidateIfStale: true
-        });
-
-    if (signal?.aborted) {
-      throw new DOMException("Entries page request aborted.", "AbortError");
-    }
-    return data;
-  }, [queryClient]);
-
-  const fetchReferenceData = useCallback(async ({ bypassCache = false, signal } = {}) => {
-    const queryKey = queryKeys.referenceData();
-    if (signal?.aborted) {
-      throw new DOMException("Reference data request aborted.", "AbortError");
-    }
-
-    if (!bypassCache) {
-      const cachedData = queryClient.getQueryData(queryKey);
-      if (cachedData) {
-        return cachedData;
-      }
-    }
-
-    const fetcher = async () => {
-      const response = await fetchWithTimeout("/api/reference-data", {
-        cache: "no-store"
-      }, "Reference data request");
-      if (!response.ok) {
-        throw new Error(await buildRequestErrorMessage(response, "Reference data failed."));
-      }
-      return response.json();
-    };
-
-    const data = bypassCache
-      ? await queryClient.fetchQuery({
-          queryKey,
-          queryFn: fetcher,
-          retry: false,
-          staleTime: 0
-        })
-      : await queryClient.ensureQueryData({
-          queryKey,
-          queryFn: fetcher,
-          retry: false,
-          revalidateIfStale: true
-        });
-
-    if (signal?.aborted) {
-      throw new DOMException("Reference data request aborted.", "AbortError");
-    }
-    return data;
-  }, [queryClient]);
-
   // Fetch the app shell payload and persist it so the next render can reuse
   // global metadata immediately.
-  const fetchAppShellData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
+  const fetchAppShellData = useCallback(async (params, { bypassCache = false, signal = undefined } = {}) => {
     const cacheKey = params.toString();
     const queryKey = queryKeys.appShell(params);
     const queryState = queryClient.getQueryState(queryKey);
@@ -797,7 +585,7 @@ export function App() {
   }, [queryClient, updateLoadingStatus]);
 
   // Fetch the entries shell payload used by the dedicated entries workflow.
-  const fetchEntriesShellData = useCallback(async (params, { signal } = {}) => {
+  const fetchEntriesShellData = useCallback(async (params, { signal = undefined } = {}) => {
     if (signal?.aborted) {
       throw new DOMException("Entries shell request aborted.", "AbortError");
     }
@@ -823,7 +611,7 @@ export function App() {
         data = JSON.parse(responseText);
       } catch {
         if (!response.ok) {
-          throw new Error(buildAppShellErrorMessage(response.status, responseText));
+          throw new Error(buildRequestFailureMessage("Entries shell request", response.status, responseText));
         }
 
         throw new Error("Entries shell returned invalid JSON.");
@@ -831,7 +619,7 @@ export function App() {
     }
 
     if (!response.ok) {
-      throw new Error(buildAppShellErrorMessage(response.status, data?.message ?? responseText));
+      throw new Error(buildRequestFailureMessage("Entries shell request", response.status, data?.message ?? data?.error ?? responseText));
     }
 
     if (signal?.aborted) {
@@ -842,37 +630,41 @@ export function App() {
   }, [updateLoadingStatus]);
 
   // Hydrate the client shell state from the app-shell query and clear any
-  // previous shell error before rendering.
+  // previous shell error. Page errors stay: a page that failed before the
+  // shell arrived must still reach its error screen.
   const loadAppShell = useCallback(async (signal, { bypassCache = false } = {}) => {
-    const data = await fetchAppShellData(appShellParams, { bypassCache, signal });
-
-    setAppShellError("");
-    setRoutePageError("");
-    setAppShell(data);
-    return data;
-  }, [appShellParams, fetchAppShellData]);
+    const token = appShellOwner.begin();
+    try {
+      const data = await fetchAppShellData(appShellParams, { bypassCache, signal });
+      appShellOwner.apply(token, data);
+      return data;
+    } catch (error) {
+      throw appShellOwner.markIfSuperseded(token, error);
+    }
+  }, [appShellOwner, appShellParams, fetchAppShellData]);
 
   // Normalize shell fetch failures into the app-shell error banner and the
   // loading status tracker.
   const handleAppShellFailure = useCallback((error) => {
-    setAppShell(null);
-    setAppShellError(describeAppShellError(error));
-    setRoutePageError("");
+    // A shell request that a newer one already replaced is not a failure.
+    if (appShellOwner.isSuperseded(error)) {
+      return;
+    }
+    appShellOwner.failLatest(describeAppShellError(error));
     reportLoadingIssue("Load failed", error);
     updateLoadingStatus({
       label: "Dashboard load failed",
       detail: "App shell request did not complete",
       percent: 100
     });
-  }, [reportLoadingIssue, updateLoadingStatus]);
+  }, [appShellOwner, reportLoadingIssue, updateLoadingStatus]);
 
   // Reload the shell from the network and optionally broadcast the refresh to
   // other tabs once the new payload is ready.
   const refreshAppShell = useCallback(async ({ broadcast = false } = {}) => {
     clearAppShellCache();
     clearRoutePageCache();
-    setRoutePageData(null);
-    setRoutePageDataRequestKey("");
+    routeDataOwner.reset();
     const finishAppShellLoad = beginAppShellLoad();
 
     try {
@@ -887,34 +679,74 @@ export function App() {
     } finally {
       finishAppShellLoad();
     }
-  }, [beginAppShellLoad, clearAppShellCache, clearRoutePageCache, loadAppShell]);
+  }, [beginAppShellLoad, clearAppShellCache, clearRoutePageCache, loadAppShell, routeDataOwner]);
 
   // Refresh the shell in the background without surfacing a full loading state
   // to the user.
   const refreshAppShellInBackground = useCallback(async () => {
+    const token = appShellOwner.begin();
     clearAppShellCache();
-    const data = await fetchAppShellData(appShellParams, { bypassCache: true });
-    setAppShellError("");
-    setAppShell(data);
-    return data;
-  }, [appShellParams, clearAppShellCache, fetchAppShellData]);
-
-  const refreshReferenceDataInBackground = useCallback(async () => {
-    clearReferenceDataCache();
-    const data = await fetchReferenceData({ bypassCache: true });
-    setReferenceDataError("");
-    setReferenceData(data);
-    return data;
-  }, [clearReferenceDataCache, fetchReferenceData]);
+    try {
+      const data = await fetchAppShellData(appShellParams, { bypassCache: true });
+      appShellOwner.apply(token, data);
+      return data;
+    } catch (error) {
+      // A newer shell request owns the screen now; this failure is moot.
+      if (!appShellOwner.isLatest(token)) {
+        return null;
+      }
+      throw error;
+    }
+  }, [appShellOwner, appShellParams, clearAppShellCache, fetchAppShellData]);
 
   // Fetch the active route page and shape it into the current screen payload.
-  const fetchRoutePageData = useCallback(async (request, { bypassCache = false, signal } = {}) => {
+  const fetchRoutePageData = useCallback(async (request, { bypassCache = false, signal = undefined } = {}) => {
     if (!request) {
       return null;
     }
 
     const queryKey = queryKeys.routeRequestKey(request);
-    const queryState = queryClient.getQueryState(queryKey);
+    const query = request.params.toString();
+    const requestUrl = query ? `${request.path}?${query}` : request.path;
+    const readPage = () => fetchQueryWithLease(queryClient, {
+      queryKey,
+      bypassCache,
+      signal,
+      abortMessage: "Page request aborted.",
+      // Route-page responses are parsed manually for the same reason as the
+      // shell fetch: server errors still need to surface useful context.
+      fetcher: async ({ signal: requestSignal }) => {
+        const { response, responseText } = await fetchTextWithTransientWorkerRetry(requestUrl, {
+          cache: "no-store",
+          requestLabel: "Page request",
+          signal: requestSignal
+        });
+        updateLoadingStatus({
+          label: "Reading page response",
+          detail: "Parsing page...",
+          percent: 92
+        });
+        let data = null;
+
+        if (responseText) {
+          try {
+            data = JSON.parse(responseText);
+          } catch {
+            if (!response.ok) {
+              throw new Error(buildRequestFailureMessage("Page request", response.status, responseText));
+            }
+
+            throw new Error("Page request returned invalid JSON.");
+          }
+        }
+
+        if (!response.ok) {
+          throw new Error(buildRequestFailureMessage("Page request", response.status, data?.message ?? data?.error ?? responseText));
+        }
+
+        return data;
+      }
+    });
     if (signal?.aborted) {
       throw new DOMException("Page request aborted.", "AbortError");
     }
@@ -925,10 +757,10 @@ export function App() {
         detail: "Cached page...",
         percent: 84
       });
-      return queryClient.getQueryData(queryKey);
+      return readPage();
     }
 
-    if (!bypassCache && queryState?.fetchStatus === "fetching") {
+    if (!bypassCache && queryClient.getQueryState(queryKey)?.fetchStatus === "fetching") {
       updateLoadingStatus({
         label: "Waiting for page data",
         detail: "Waiting for page...",
@@ -936,63 +768,12 @@ export function App() {
       });
     }
 
-    const query = request.params.toString();
-    const requestUrl = query ? `${request.path}?${query}` : request.path;
     updateLoadingStatus({
       label: "Loading current page",
       detail: "Loading page...",
       percent: 88
     });
-    // Route-page responses are parsed manually for the same reason as the
-    // shell fetch: server errors still need to surface useful context.
-    const fetcher = async () => {
-      const { response, responseText } = await fetchTextWithTransientWorkerRetry(requestUrl, {
-        cache: "no-store",
-        requestLabel: "Page request"
-      });
-      updateLoadingStatus({
-        label: "Reading page response",
-        detail: "Parsing page...",
-        percent: 92
-      });
-      let data = null;
-
-      if (responseText) {
-        try {
-          data = JSON.parse(responseText);
-        } catch {
-          if (!response.ok) {
-            throw new Error(buildAppShellErrorMessage(response.status, responseText));
-          }
-
-          throw new Error("Page request returned invalid JSON.");
-        }
-      }
-
-      if (!response.ok) {
-        throw new Error(buildAppShellErrorMessage(response.status, data?.message ?? responseText));
-      }
-
-      return data;
-    };
-
-    const data = bypassCache
-      ? await queryClient.fetchQuery({
-          queryKey,
-          queryFn: fetcher,
-          retry: false,
-          staleTime: 0
-        })
-      : await queryClient.ensureQueryData({
-          queryKey,
-          queryFn: fetcher,
-          retry: false,
-          revalidateIfStale: true
-        });
-
-    if (signal?.aborted) {
-      throw new DOMException("Page request aborted.", "AbortError");
-    }
+    const data = await readPage();
     updateLoadingStatus({
       label: "Current page ready",
       detail: "Applying page...",
@@ -1003,7 +784,7 @@ export function App() {
 
   // Summary uses slice-owned queries instead of the generic route-page
   // endpoint so its range DTO and wallet pills can refresh independently.
-  const fetchSummaryPageData = useCallback(async (params, { bypassCache = false, signal } = {}) => {
+  const fetchSummaryPageData = useCallback(async (params, { bypassCache = false, signal = undefined } = {}) => {
     updateLoadingStatus({
       label: "Loading current page",
       detail: "Loading summary...",
@@ -1020,9 +801,21 @@ export function App() {
 
   // Summary account pills stay on a dedicated query so range changes and note
   // edits do not fan out into unrelated wallet refreshes.
-  const fetchSummaryAccountPillsData = useCallback(async (params, { bypassCache = false, signal } = {}) => (
+  const fetchSummaryAccountPillsData = useCallback(async (params, { bypassCache = false, signal = undefined } = {}) => (
     fetchSummaryAccountPillsQuery(queryClient, params, { bypassCache, signal })
   ), [queryClient]);
+  const {
+    summaryPageData,
+    summaryAccountPillsData,
+    summaryPageDataRequestKey,
+    summaryOwner
+  } = useSummaryData({
+    queryClient,
+    onCacheCleared: bumpQueryEpoch,
+    fetchPage: fetchSummaryPageData,
+    fetchPills: fetchSummaryAccountPillsData
+  });
+  const { clearPageCache: clearSummaryPageCache, clearPillsCache: clearSummaryAccountPillsCache } = summaryOwner;
 
   // Refresh the active route page, and optionally refresh shell state when the
   // mutation affected shared metadata.
@@ -1040,42 +833,25 @@ export function App() {
 
     const finishAppShellLoad = beginAppShellLoad();
     try {
-      const data = await fetchRoutePageData(routePageRequest, { bypassCache: true });
-      setRoutePageData(data);
-      setRoutePageDataRequestKey(routePageRequestKey);
-      return data;
+      const result = await routeDataOwner.refresh({
+        request: routePageRequest,
+        run: () => Promise.all([fetchRoutePageData(routePageRequest, { bypassCache: true })])
+      });
+      return result?.[0] ?? null;
     } finally {
       finishAppShellLoad();
     }
-  }, [beginAppShellLoad, clearEntriesPageCache, clearRoutePageCache, fetchRoutePageData, refreshAppShell, routePageRequest, routePageRequestKey]);
+  }, [beginAppShellLoad, clearEntriesPageCache, clearRoutePageCache, fetchRoutePageData, refreshAppShell, routeDataOwner, routePageRequest]);
 
   // Refresh the summary slice from its dedicated page and account-pill
   // queries without routing it back through the generic page loader.
-  const refreshCurrentSummaryPage = useCallback(async ({ bypassCache = true } = {}) => {
-    if (bypassCache) {
-      clearSummaryPageCache();
-      clearSummaryAccountPillsCache();
-    }
-
-    const [nextSummaryPage, nextSummaryAccountPills] = await Promise.all([
-      fetchSummaryPageData(summaryPageParams, { bypassCache }),
-      fetchSummaryAccountPillsData(summaryAccountPillsParams, { bypassCache })
-    ]);
-
-    setSummaryPageData(nextSummaryPage);
-    setSummaryAccountPillsData(nextSummaryAccountPills);
-    return {
-      summaryPage: nextSummaryPage,
-      summaryAccountPills: nextSummaryAccountPills
-    };
-  }, [
-    clearSummaryAccountPillsCache,
-    clearSummaryPageCache,
-    fetchSummaryAccountPillsData,
-    fetchSummaryPageData,
-    summaryAccountPillsParams,
-    summaryPageParams
-  ]);
+  const refreshCurrentSummaryPage = useCallback(({ bypassCache = true } = {}) => (
+    withRequiredWork(requiredWork, "summary refresh", () => summaryOwner.refresh({
+      pageParams: summaryPageParams,
+      pillsParams: summaryAccountPillsParams,
+      bypassCache
+    }))
+  ), [requiredWork, summaryAccountPillsParams, summaryOwner, summaryPageParams]);
 
   const retryActivePageLoad = useCallback(async () => {
     setRoutePageError("");
@@ -1123,17 +899,21 @@ export function App() {
       params?.startMonth,
       params?.endMonth
     ));
-    const [data] = await Promise.all([
-      fetchRoutePageData(request, { bypassCache: true }),
-      refreshShell ? refreshAppShellInBackground().catch(() => null) : Promise.resolve(null)
-    ]);
-    setRoutePageData(data);
-    setRoutePageDataRequestKey(getRoutePageRequestKey(request));
-    return data;
+    const result = await withRequiredWork(requiredWork, "month refresh", () => routeDataOwner.refresh({
+      request,
+      run: () => Promise.all([
+        fetchRoutePageData(request, { bypassCache: true }),
+        refreshShell ? runBackgroundRefresh(refreshAppShellInBackground) : Promise.resolve(null)
+      ])
+    }));
+    return result?.[0] ?? null;
   }, [
     clearSummaryPageCache,
     fetchRoutePageData,
     refreshAppShellInBackground,
+    requiredWork,
+    routeDataOwner,
+    runBackgroundRefresh,
     selectedMonth,
     selectedScope,
     selectedViewId
@@ -1147,6 +927,7 @@ export function App() {
     invalidateEntries = false,
     invalidateMonth = false,
     invalidateSummary = false,
+    invalidateSplits = false,
     refreshShell = false
   } = {}) => {
     const request = buildRoutePageRequest({
@@ -1161,11 +942,11 @@ export function App() {
 
     if (invalidateImports) {
       await invalidateImportMutationQueries(queryClient, {
-        entriesParams: invalidateEntries ? {
-          viewId: selectedViewId,
-          month: selectedMonth
-        } : undefined,
+        entriesParams: invalidateEntries
+          ? buildEntriesPageParams({ viewId: selectedViewId, month: selectedMonth })
+          : undefined,
         invalidateSummaryAccountPills: true,
+        invalidateSplits,
         monthKeys: invalidateMonth ? [selectedMonth] : [],
         scope: selectedScope,
         summaryRange: invalidateSummary ? {
@@ -1177,11 +958,10 @@ export function App() {
     }
     const tasks = [fetchRoutePageData(request, { bypassCache: true })];
     if (refreshShell) {
-      tasks.push(refreshReferenceDataInBackground().catch(() => null));
+      tasks.push(runBackgroundRefresh(referenceDataOwner.refresh));
     }
-    const [data] = await Promise.all(tasks);
-    setRoutePageData(data);
-    setRoutePageDataRequestKey(getRoutePageRequestKey(request));
+    const result = await withRequiredWork(requiredWork, "imports refresh", () => routeDataOwner.refresh({ request, run: () => Promise.all(tasks) }));
+    const data = result?.[0] ?? null;
 
     if (broadcast) {
       broadcastAppShellRefresh(syncChannelRef);
@@ -1191,7 +971,10 @@ export function App() {
   }, [
     fetchRoutePageData,
     queryClient,
-    refreshReferenceDataInBackground,
+    referenceDataOwner,
+    requiredWork,
+    routeDataOwner,
+    runBackgroundRefresh,
     selectedMonth,
     selectedScope,
     selectedViewId
@@ -1332,18 +1115,22 @@ export function App() {
     }
 
     if (refreshDescription.refreshShell) {
-      tasks.push(refreshAppShellInBackground().catch(() => null));
+      tasks.push(runBackgroundRefresh(refreshAppShellInBackground));
     }
 
     if (refreshDescription.refreshReferenceData) {
-      tasks.push(refreshReferenceDataInBackground().catch(() => null));
+      tasks.push(runBackgroundRefresh(referenceDataOwner.refresh));
     }
 
-    const [data, ...taskResults] = await Promise.all(tasks);
-    if (selectedTabId === "settings") {
-      setRoutePageData(data);
-      setRoutePageDataRequestKey(getRoutePageRequestKey(refreshDescription.routeRequest));
+    const result = await withRequiredWork(requiredWork, "settings refresh", () => routeDataOwner.refresh({
+      request: refreshDescription.routeRequest,
+      run: () => Promise.all(tasks),
+      apply: selectedTabId === "settings"
+    }));
+    if (!result) {
+      return null;
     }
+    const [data, ...taskResults] = result;
 
     if (broadcast && (refreshDescription.refreshShell || refreshDescription.refreshReferenceData)) {
       broadcastAppShellRefresh(syncChannelRef);
@@ -1357,7 +1144,10 @@ export function App() {
     fetchRoutePageData,
     queryClient,
     refreshAppShellInBackground,
-    refreshReferenceDataInBackground,
+    referenceDataOwner,
+    requiredWork,
+    routeDataOwner,
+    runBackgroundRefresh,
     selectedTabId
   ]);
 
@@ -1368,11 +1158,12 @@ export function App() {
       return null;
     }
 
-    const data = await fetchRoutePageData(request, { bypassCache: true });
-    setRoutePageData(data);
-    setRoutePageDataRequestKey(getRoutePageRequestKey(request));
-    return data;
-  }, [fetchRoutePageData]);
+    const result = await withRequiredWork(requiredWork, "route background refresh", () => routeDataOwner.refresh({
+      request,
+      run: () => Promise.all([fetchRoutePageData(request, { bypassCache: true })])
+    }));
+    return result?.[0] ?? null;
+  }, [fetchRoutePageData, requiredWork, routeDataOwner]);
 
   // Broadcast split invalidation details to other tabs after the local cache
   // has already been cleared.
@@ -1463,11 +1254,10 @@ export function App() {
 
     const tasks = [fetchRoutePageData(request, { bypassCache: true })];
     if (refreshShell || invalidateEntries || invalidateMonth || invalidateSummary) {
-      tasks.push(refreshAppShellInBackground().catch(() => null));
+      tasks.push(runBackgroundRefresh(refreshAppShellInBackground));
     }
-    const [data] = await Promise.all(tasks);
-    setRoutePageData(data);
-    setRoutePageDataRequestKey(getRoutePageRequestKey(request));
+    const result = await withRequiredWork(requiredWork, "splits refresh", () => routeDataOwner.refresh({ request, run: () => Promise.all(tasks) }));
+    const data = result?.[0] ?? null;
 
     if (broadcast) {
       if (refreshShell && !invalidateEntries && !invalidateMonth && !invalidateSummary) {
@@ -1488,6 +1278,9 @@ export function App() {
     clearSplitMutationCaches,
     fetchRoutePageData,
     refreshAppShellInBackground,
+    requiredWork,
+    routeDataOwner,
+    runBackgroundRefresh,
     selectedMonth,
     selectedScope,
     selectedViewId
@@ -1516,12 +1309,12 @@ export function App() {
     }
 
     if (selectedTabId === "splits" && selectedMonth === month) {
-      tasks.push(refreshActiveRoutePageInBackground(routePageRequest).catch(() => null));
+      tasks.push(runBackgroundRefresh(() => refreshActiveRoutePageInBackground(routePageRequest)));
     } else if (selectedTabId === "month" && invalidateMonth && selectedMonth === month) {
       if (canUseAppShellRoutePage) {
-        tasks.push(refreshAppShellInBackground().catch(() => null));
+        tasks.push(runBackgroundRefresh(refreshAppShellInBackground));
       } else {
-        tasks.push(refreshActiveRoutePageInBackground(routePageRequest).catch(() => null));
+        tasks.push(runBackgroundRefresh(() => refreshActiveRoutePageInBackground(routePageRequest)));
       }
     } else if (
       selectedTabId === "summary"
@@ -1532,7 +1325,7 @@ export function App() {
         selectedSummaryEnd ?? appShellSummaryEnd
       )
     ) {
-      tasks.push(refreshCurrentSummaryPage({ bypassCache: true }).catch(() => null));
+      tasks.push(runBackgroundRefresh(() => refreshCurrentSummaryPage({ bypassCache: true })));
     }
 
     await Promise.all(tasks);
@@ -1544,6 +1337,7 @@ export function App() {
     refreshAppShellInBackground,
     refreshCurrentSummaryPage,
     routePageRequest,
+    runBackgroundRefresh,
     selectedMonth,
     selectedSummaryEnd,
     selectedSummaryStart,
@@ -1578,9 +1372,9 @@ export function App() {
 
     if (selectedTabId === "month" && invalidateMonth && selectedMonth === month) {
       if (canUseAppShellRoutePage) {
-        tasks.push(refreshAppShellInBackground().catch(() => null));
+        tasks.push(runBackgroundRefresh(refreshAppShellInBackground));
       } else {
-        tasks.push(refreshActiveRoutePageInBackground(routePageRequest).catch(() => null));
+        tasks.push(runBackgroundRefresh(() => refreshActiveRoutePageInBackground(routePageRequest)));
       }
     } else if (
       selectedTabId === "summary"
@@ -1591,7 +1385,7 @@ export function App() {
         selectedSummaryEnd ?? appShellSummaryEnd
       )
     ) {
-      tasks.push(refreshCurrentSummaryPage({ bypassCache: true }).catch(() => null));
+      tasks.push(runBackgroundRefresh(() => refreshCurrentSummaryPage({ bypassCache: true })));
     }
 
     await Promise.all(tasks);
@@ -1604,6 +1398,7 @@ export function App() {
     refreshAppShellInBackground,
     refreshCurrentSummaryPage,
     routePageRequest,
+    runBackgroundRefresh,
     selectedMonth,
     selectedScope,
     selectedSummaryEnd,
@@ -1623,9 +1418,9 @@ export function App() {
 
     if (selectedTabId === "month" && invalidateMonth && selectedMonth === month) {
       if (canUseAppShellRoutePage) {
-        tasks.push(refreshAppShellInBackground().catch(() => null));
+        tasks.push(runBackgroundRefresh(refreshAppShellInBackground));
       } else {
-        tasks.push(refreshActiveRoutePageInBackground(routePageRequest).catch(() => null));
+        tasks.push(runBackgroundRefresh(() => refreshActiveRoutePageInBackground(routePageRequest)));
       }
     } else if (
       selectedTabId === "summary"
@@ -1636,7 +1431,7 @@ export function App() {
         selectedSummaryEnd ?? appShellSummaryEnd
       )
     ) {
-      tasks.push(refreshCurrentSummaryPage({ bypassCache: true }).catch(() => null));
+      tasks.push(runBackgroundRefresh(() => refreshCurrentSummaryPage({ bypassCache: true })));
     }
 
     await Promise.all(tasks);
@@ -1648,6 +1443,7 @@ export function App() {
     refreshAppShellInBackground,
     refreshCurrentSummaryPage,
     routePageRequest,
+    runBackgroundRefresh,
     selectedMonth,
     selectedSummaryEnd,
     selectedSummaryStart,
@@ -1660,81 +1456,6 @@ export function App() {
     clearSummaryPageCache();
     clearSummaryAccountPillsCache();
   }, [clearSummaryAccountPillsCache, clearSummaryPageCache]);
-
-  // Prefetch the next likely route page without replacing the current active
-  // page state.
-  const prefetchRoutePage = useCallback(async (request) => {
-    if (!request) {
-      return;
-    }
-
-    const queryKey = queryKeys.routeRequestKey(request);
-    const queryState = queryClient.getQueryState(queryKey);
-    if (queryClient.getQueryData(queryKey) || queryState?.fetchStatus === "fetching") {
-      return;
-    }
-
-    await fetchRoutePageData(request).catch(() => {});
-  }, [fetchRoutePageData, queryClient]);
-
-  // Summary prefetch warms the range DTO and account pills together because
-  // both are needed for the tab to render without fallback gaps.
-  const prefetchSummaryPage = useCallback(async ({ pageParams, accountPillsParams }) => {
-    const summaryQueryKey = queryKeys.summaryPage({
-      viewId: pageParams.get("view") ?? "household",
-      month: pageParams.get("month") ?? "",
-      scope: pageParams.get("scope") ?? "direct_plus_shared",
-      startMonth: pageParams.get("summary_start") ?? "",
-      endMonth: pageParams.get("summary_end") ?? ""
-    });
-    const pillsQueryKey = queryKeys.summaryAccountPills({
-      viewId: accountPillsParams.get("view") ?? "household"
-    });
-    const summaryState = queryClient.getQueryState(summaryQueryKey);
-    const pillsState = queryClient.getQueryState(pillsQueryKey);
-    const shouldFetchSummary = !queryClient.getQueryData(summaryQueryKey) && summaryState?.fetchStatus !== "fetching";
-    const shouldFetchPills = !queryClient.getQueryData(pillsQueryKey) && pillsState?.fetchStatus !== "fetching";
-
-    await Promise.all([
-      shouldFetchSummary ? fetchSummaryPageData(pageParams).catch(() => {}) : null,
-      shouldFetchPills ? fetchSummaryAccountPillsData(accountPillsParams).catch(() => {}) : null
-    ]);
-  }, [fetchSummaryAccountPillsData, fetchSummaryPageData, queryClient]);
-
-  // Prefetch the entries page using the same exact key that the entries route
-  // will later consume.
-  const prefetchEntriesPage = useCallback(async (params) => {
-    const queryKey = queryKeys.entriesPage(params);
-    const queryState = queryClient.getQueryState(queryKey);
-    if (queryClient.getQueryData(queryKey) || queryState?.fetchStatus === "fetching") {
-      return;
-    }
-
-    await fetchEntriesPageData(params).catch(() => {});
-  }, [fetchEntriesPageData, queryClient]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    void fetchReferenceData({ signal: controller.signal })
-      .then((data) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        setReferenceData(data);
-        setReferenceDataError("");
-      })
-      .catch((error) => {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
-        setReferenceData(null);
-        setReferenceDataError(describeAppShellError(error));
-        reportLoadingIssue("Reference data load failed", error);
-      });
-
-    return () => controller.abort();
-  }, [fetchReferenceData, reportLoadingIssue]);
 
   // Hydrate the shell from persisted cache first, then replace it with fresh
   // server data and an optional entries-shell warm start when the entries tab
@@ -1769,6 +1490,8 @@ export function App() {
     const shouldUseEntriesShell = !hasCachedAppShell && selectedTabId === "entries";
     const finishAppShellLoad = hasCachedAppShell ? null : beginAppShellLoad();
 
+    // The Entries warm start applies twice under one shell token.
+    const warmStartToken = shouldUseEntriesShell ? appShellOwner.begin() : null;
     void (async () => {
       try {
         if (shouldUseEntriesShell) {
@@ -1776,9 +1499,7 @@ export function App() {
             signal: controller.signal
           });
           if (!controller.signal.aborted) {
-            setAppShellError("");
-            setRoutePageError("");
-            setAppShell(shellData);
+            appShellOwner.apply(warmStartToken, shellData);
           }
 
           const fullData = await fetchAppShellData(appShellParams, {
@@ -1786,9 +1507,7 @@ export function App() {
             signal: controller.signal
           });
           if (!controller.signal.aborted) {
-            setAppShellError("");
-            setRoutePageError("");
-            setAppShell(fullData);
+            appShellOwner.apply(warmStartToken, fullData);
           }
           return;
         }
@@ -1810,16 +1529,14 @@ export function App() {
               signal: controller.signal
             });
             if (!controller.signal.aborted) {
-              setAppShellError("");
-              setRoutePageError("");
-              setAppShell(fallbackData);
+              appShellOwner.apply(warmStartToken, fallbackData);
             }
             return;
           } catch (fallbackError) {
             if (fallbackError instanceof DOMException && fallbackError.name === "AbortError") {
               return;
             }
-            handleAppShellFailure(fallbackError);
+            handleAppShellFailure(appShellOwner.markIfSuperseded(warmStartToken, fallbackError));
             return;
           }
         }
@@ -1839,6 +1556,7 @@ export function App() {
   }, [
     beginAppShellLoad,
     appShellCacheKey,
+    appShellOwner,
     appShellParams,
     fetchAppShellData,
     fetchEntriesShellData,
@@ -1852,118 +1570,27 @@ export function App() {
   ]);
 
   // Listen for cross-tab shell refreshes and split mutations so every open tab
-  // converges on the same canonical state.
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    let channel = null;
-    if ("BroadcastChannel" in window) {
-      channel = new window.BroadcastChannel(APP_SYNC_CHANNEL);
-      syncChannelRef.current = channel;
-      channel.onmessage = (event) => {
-        if (event.data?.type === APP_SYNC_EVENT_TYPES.appShellRefresh) {
-          clearAppShellCache();
-          clearReferenceDataCache();
-          clearRoutePageCache();
-          const finishAppShellLoad = beginAppShellLoad();
-          void Promise.all([
-            loadAppShell().catch(handleAppShellFailure),
-            refreshReferenceDataInBackground().catch((error) => {
-              setReferenceDataError(describeAppShellError(error));
-              reportLoadingIssue("Reference data refresh failed", error);
-            })
-          ])
-            .finally(finishAppShellLoad);
-          return;
-        }
-
-        if (event.data?.type === APP_SYNC_EVENT_TYPES.splitMutation) {
-          void handleRemoteSplitMutation(event.data);
-          return;
-        }
-
-        if (event.data?.type === APP_SYNC_EVENT_TYPES.entryMutation) {
-          void handleRemoteEntryMutation(event.data);
-          return;
-        }
-
-        if (event.data?.type === APP_SYNC_EVENT_TYPES.summaryMutation) {
-          void handleRemoteSummaryMutation(event.data);
-        }
-      };
-    }
-
-    const handleStorage = (event) => {
-      if (event.key !== APP_SYNC_STORAGE_KEY || !event.newValue) {
-        return;
-      }
-
-      let payload = null;
-      try {
-        payload = JSON.parse(event.newValue);
-      } catch {
-        return;
-      }
-
-      if (payload?.type === APP_SYNC_EVENT_TYPES.appShellRefresh) {
-        clearAppShellCache();
-        clearReferenceDataCache();
-        clearRoutePageCache();
+  // converges on the same canonical state. A shell refresh arriving through
+  // the storage fallback also clears the Summary caches.
+  useAppSyncSubscription(syncChannelRef, {
+    onShellRefresh: (source) => {
+      clearAppShellCache();
+      clearRoutePageCache();
+      if (source === "storage") {
         clearSummaryPageCache();
         clearSummaryAccountPillsCache();
-        const finishAppShellLoad = beginAppShellLoad();
-        void Promise.all([
-          loadAppShell().catch(handleAppShellFailure),
-          refreshReferenceDataInBackground().catch((error) => {
-            setReferenceDataError(describeAppShellError(error));
-            reportLoadingIssue("Reference data refresh failed", error);
-          })
-        ])
-          .finally(finishAppShellLoad);
-        return;
       }
-
-      if (payload?.type === APP_SYNC_EVENT_TYPES.splitMutation) {
-        void handleRemoteSplitMutation(payload);
-        return;
-      }
-
-      if (payload?.type === APP_SYNC_EVENT_TYPES.entryMutation) {
-        void handleRemoteEntryMutation(payload);
-        return;
-      }
-
-      if (payload?.type === APP_SYNC_EVENT_TYPES.summaryMutation) {
-        void handleRemoteSummaryMutation(payload);
-      }
-    };
-
-    window.addEventListener("storage", handleStorage);
-
-    return () => {
-      window.removeEventListener("storage", handleStorage);
-      if (channel) {
-        channel.close();
-        syncChannelRef.current = null;
-      }
-    };
-  }, [
-    beginAppShellLoad,
-    clearAppShellCache,
-    clearReferenceDataCache,
-    clearRoutePageCache,
-    clearSummaryAccountPillsCache,
-    clearSummaryPageCache,
-    handleAppShellFailure,
-    handleRemoteEntryMutation,
-    handleRemoteSplitMutation,
-    handleRemoteSummaryMutation,
-    loadAppShell,
-    reportLoadingIssue,
-    refreshReferenceDataInBackground
-  ]);
+      const finishAppShellLoad = beginAppShellLoad();
+      void Promise.all([
+        loadAppShell().catch(handleAppShellFailure),
+        referenceDataOwner.refreshOrShowError("Reference data refresh failed")
+      ])
+        .finally(finishAppShellLoad);
+    },
+    onSplitMutation: (payload) => { void handleRemoteSplitMutation(payload); },
+    onEntryMutation: (payload) => { void handleRemoteEntryMutation(payload); },
+    onSummaryMutation: (payload) => { void handleRemoteSummaryMutation(payload); }
+  });
 
   // Summary owns its own page query plus wallet-pill query, so the summary tab
   // hydrates from those slice caches instead of the generic route-page family.
@@ -1991,26 +1618,15 @@ export function App() {
     }
     const finishAppShellLoad = hasCachedPage ? null : beginAppShellLoad();
 
-    void Promise.all([
-      fetchSummaryPageData(summaryPageParams, { signal: controller.signal }),
-      fetchSummaryAccountPillsData(summaryAccountPillsParams, { signal: controller.signal })
-    ])
-      .then(([nextSummaryPage, nextSummaryAccountPills]) => {
-        if (controller.signal.aborted) {
-          return;
+    // The owner ignores aborted and superseded loads; only a failure of
+    // the latest load reaches the page error screen.
+    void summaryOwner.load({ pageParams: summaryPageParams, pillsParams: summaryAccountPillsParams, signal: controller.signal })
+      .then((applied) => {
+        if (applied) {
+          setRoutePageError("");
         }
-
-        setSummaryPageData(nextSummaryPage);
-        setSummaryAccountPillsData(nextSummaryAccountPills);
-        setRoutePageError("");
       })
       .catch((error) => {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
-
-        setSummaryPageData(null);
-        setSummaryAccountPillsData(null);
         setRoutePageError(describeAppShellError(error));
         reportLoadingIssue("Summary load failed", error);
       })
@@ -2022,8 +1638,6 @@ export function App() {
     };
   }, [
     beginAppShellLoad,
-    fetchSummaryAccountPillsData,
-    fetchSummaryPageData,
     queryClient,
     reportLoadingIssue,
     selectedScope,
@@ -2032,6 +1646,7 @@ export function App() {
     selectedTabId,
     selectedViewId,
     summaryAccountPillsParams,
+    summaryOwner,
     summaryPageParams,
     updateLoadingStatus
   ]);
@@ -2055,23 +1670,15 @@ export function App() {
     }
     const finishAppShellLoad = hasCachedPage ? null : beginAppShellLoad();
 
-    void fetchRoutePageData(routePageRequest, { signal: controller.signal })
-      .then(async (data) => {
-        if (controller.signal.aborted) {
-          return;
+    // The owner ignores aborted and superseded loads; only a failure of
+    // the latest load reaches the page error screen.
+    void routeDataOwner.load({ request: routePageRequest, fetchPage: fetchRoutePageData, signal: controller.signal })
+      .then((applied) => {
+        if (applied) {
+          setRoutePageError("");
         }
-
-        setRoutePageData(data);
-        setRoutePageDataRequestKey(routePageRequestKey);
-        setRoutePageError("");
       })
       .catch((error) => {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
-
-        setRoutePageData(null);
-        setRoutePageDataRequestKey("");
         setRoutePageError(describeAppShellError(error));
         reportLoadingIssue("Page load failed", error);
       })
@@ -2081,7 +1688,7 @@ export function App() {
       controller.abort();
       finishAppShellLoad?.();
     };
-  }, [beginAppShellLoad, fetchRoutePageData, queryClient, reportLoadingIssue, routePageRequest, routePageRequestKey, updateLoadingStatus]);
+  }, [beginAppShellLoad, fetchRoutePageData, queryClient, reportLoadingIssue, routeDataOwner, routePageRequest, updateLoadingStatus]);
 
   // Keep only the last settled route snapshot in refs so hydration can fall
   // back to the previous screen without introducing a second render source of
@@ -2095,10 +1702,11 @@ export function App() {
           appShell,
           selectedViewId,
           summaryPageData,
-          summaryAccountPillsData
+          summaryAccountPillsData,
+          summaryPageDataRequestKey
         })
       : buildPageViewFromRouteData(selectedTabId, currentRoutePageData, selectedViewId, appShell),
-    [appShell, currentRoutePageData, selectedTabId, selectedViewId, summaryAccountPillsData, summaryPageData]
+    [appShell, currentRoutePageData, selectedTabId, selectedViewId, summaryAccountPillsData, summaryPageData, summaryPageDataRequestKey]
   );
   const lastSettledPageViewRef = useRef(null);
   const lastSettledTabIdRef = useRef(null);
@@ -2109,8 +1717,11 @@ export function App() {
     }
   }, [currentPageView, selectedTabId]);
 
+  // A page failure belongs to the page: shell loads never clear it, so the
+  // contract check waits for the shell instead of flagging Summary data that
+  // simply arrived first (the Summary view cannot be built without the shell).
   useEffect(() => {
-    if (currentPageView || routePageError) {
+    if (!appShell || currentPageView || routePageError) {
       return;
     }
 
@@ -2125,6 +1736,7 @@ export function App() {
       setRoutePageError(describeRoutePageContractError(selectedTabId));
     }
   }, [
+    appShell,
     currentPageView,
     currentRoutePageData,
     routePageError,
@@ -2137,18 +1749,56 @@ export function App() {
   // back to the last settled route only while the next page hydrates.
   const pageView = currentPageView ?? lastSettledPageViewRef.current;
   const renderedTabId = currentPageView ? selectedTabId : lastSettledTabIdRef.current ?? selectedTabId;
+  // Route data held by the shell counts as ready only when it was fetched for
+  // the active request; a previous page kept on screen never does.
+  const routeDataReady = selectedTabId === "summary"
+    ? Boolean(summaryPageData && summaryAccountPillsData) && summaryPageDataRequestKey === summaryPageParams.toString()
+    : selectedTabId === "faq" || Boolean(currentRoutePageData);
+  const routeWorkSnapshot = useRouteWorkSnapshot(routeWorkRegistry, activeRouteKey);
+  const requiredWorkCount = useRequiredWorkCount(requiredWork);
+  const loginRegistrationBlocking = Boolean(loginRegistrationDraft) || isRegisteringLogin || isUnregisteringLogin;
+  const routeWork = useMemo(
+    () => deriveRouteWork({
+      routeKey: activeRouteKey,
+      hasPageView: Boolean(currentPageView),
+      isAppShellLoading,
+      hasShellError: Boolean(appShellError),
+      hasRouteError: Boolean(routePageError),
+      hasReferenceData: Boolean(referenceData),
+      routeDataReady,
+      snapshot: routeWorkSnapshot,
+      requiredCount: requiredWorkCount,
+      mobileContextOpen,
+      loginRegistrationBlocking
+    }),
+    [
+      activeRouteKey,
+      appShellError,
+      currentPageView,
+      isAppShellLoading,
+      loginRegistrationBlocking,
+      mobileContextOpen,
+      referenceData,
+      requiredWorkCount,
+      routeDataReady,
+      routePageError,
+      routeWorkSnapshot.busy,
+      routeWorkSnapshot.hasReport,
+      routeWorkSnapshot.ready
+    ]
+  );
+  useEffect(() => {
+    // Test/development read hook only; absent from production builds.
+    if (import.meta.env.MODE !== "production") {
+      window.__MONIES_MAP_ROUTE_WORK__ = routeWork;
+    }
+  }, [routeWork]);
   // Summary-dependent helpers reuse the same optional page slice so the
   // summary-specific code stays isolated from detail tabs.
   const summaryPage = pageView?.summaryPage ?? null;
   // Entries scope falls back to the month view scope when the route has not
   // overridden it yet.
   const selectedEntriesScope = searchParams.get("entries_scope") ?? pageView?.monthPage?.selectedScope ?? "direct_plus_shared";
-  const householdMonthEntries = useMemo(
-    () => selectedTabId === "month" && Array.isArray(currentRoutePageData?.householdMonthEntries)
-      ? currentRoutePageData.householdMonthEntries
-      : [],
-    [currentRoutePageData, selectedTabId]
-  );
   const categories = useMemo(
     () => referenceData?.categories.map((category) => ({ ...category, ...(categoryOverrides[category.id] ?? {}) })) ?? [],
     [referenceData, categoryOverrides]
@@ -2165,9 +1815,31 @@ export function App() {
     () => pageView?.summaryPage?.availableMonths?.slice().sort() ?? appShell?.trackedMonths ?? [],
     [appShell, pageView]
   );
+  // Summary range shifts are only proposed from the range the server resolved.
+  const warmupSummaryRange = useMemo(
+    () => (selectedTabId === "summary" && currentPageView?.summaryPage?.rangeStartMonth
+      ? { startMonth: currentPageView.summaryPage.rangeStartMonth, endMonth: currentPageView.summaryPage.rangeEndMonth }
+      : null),
+    [currentPageView, selectedTabId]
+  );
+  // Route code, then a few optional data requests, warm only once this route
+  // is usable and quiet, plus exact link intent. Clicks always load normally.
+  const getNavIntentProps = useRouteWarmup({
+    routeIdentity: activeRouteIdentity,
+    routeWork,
+    queryEpoch,
+    queryClient,
+    availableMonths,
+    summaryRange: warmupSummaryRange
+  });
   const isDetailMonthTab = renderedTabId === "month" || renderedTabId === "entries" || renderedTabId === "splits";
   const selectedRouteIsDetailMonthTab = selectedTabId === "month" || selectedTabId === "entries" || selectedTabId === "splits";
   const isSplitsTab = renderedTabId === "splits";
+  // Imports, Settings and FAQ do not depend on a period, so the header shows
+  // no period text or arrows there; the view switch stays.
+  const routeUsesPeriod = !["imports", "settings", "faq"].includes(renderedTabId);
+  // A page load error names the page the person asked for.
+  const selectedPageLabel = routeTabs.find((tab) => tab.id === selectedTabId)?.label ?? "";
   // Detail tabs use the current month index to decide whether the navigation
   // arrows should remain enabled.
   const currentDetailMonthIndex = useMemo(
@@ -2273,6 +1945,7 @@ export function App() {
           categories={categories}
           onCategoryAppearanceChange={handleCategoryAppearanceChange}
           onRefresh={saveSummaryMonthNote}
+          canRequestWording={routeWork.usable}
         />
       );
     }
@@ -2284,9 +1957,11 @@ export function App() {
           accounts={accounts}
           people={appShell.household.people}
           categories={categories}
-          householdMonthEntries={householdMonthEntries}
           onCategoryAppearanceChange={handleCategoryAppearanceChange}
           onRefresh={refreshCurrentMonthPage}
+          runBackgroundRefresh={runBackgroundRefresh}
+          canRequestWording={routeWork.usable}
+          isDemoEnvironment={appEnvironment === "demo"}
         />
       );
     }
@@ -2301,7 +1976,6 @@ export function App() {
           onCloseMobileContext={closeMobileContext}
           onMobileFilterStateChange={handleEntriesMobileFilterStateChange}
           externalRefreshToken={entriesExternalRefreshToken}
-          availableMonths={availableMonths}
           accounts={accounts}
           categories={categories}
           people={appShell.household.people}
@@ -2310,6 +1984,9 @@ export function App() {
           onInvalidateAppShellCache={syncAppShellAfterMutation}
           onInvalidateEntryMutation={broadcastEntryMutation}
           onBroadcastSplitMutation={broadcastSplitMutation}
+          runBackgroundRefresh={runBackgroundRefresh}
+          onRetryPageLoad={retryActivePageLoad}
+          canRequestWording={routeWork.usable}
         />
       );
     }
@@ -2321,6 +1998,8 @@ export function App() {
           categories={categories}
           people={appShell.household.people}
           onRefresh={(options) => refreshCurrentSplitsPage(options)}
+          runBackgroundRefresh={runBackgroundRefresh}
+          canRequestWording={routeWork.usable}
         />
       );
     }
@@ -2369,7 +2048,6 @@ export function App() {
     accounts,
     appShell?.household?.people,
     appShell?.viewerIdentity,
-    availableMonths,
     broadcastSplitMutation,
     categories,
     closeMobileContext,
@@ -2378,7 +2056,6 @@ export function App() {
     handleEntriesMobileFilterStateChange,
     handleLogout,
     handleUnregisterLogin,
-    householdMonthEntries,
     isUnregisteringLogin,
     loginIdentityError,
     mobileContextOpen,
@@ -2389,13 +2066,57 @@ export function App() {
     refreshCurrentMonthPage,
     refreshCurrentSplitsPage,
     renderedTabId,
+    retryActivePageLoad,
     routePageData,
+    routeWork.usable,
+    runBackgroundRefresh,
     saveSummaryMonthNote,
     selectedMonth,
     syncAppShellAfterMutation
   ]);
+  // The previous page stays on screen while the next one loads, so a crashed
+  // screen retries both when a navigation starts and when its page settles.
+  const screenErrorResetKey = `${activeRouteKey}:${currentPageView ? "current" : "previous"}`;
+  // A page that failed to load after the person navigated must not leave the
+  // previous page readable under the new tab or period: its figures would
+  // read as the new period's. The error panel takes its place inside the
+  // shell, so navigation and the period picker keep working, and stays up
+  // while "Try loading again" runs. The previous page stays mounted but
+  // hidden, so a draft on it survives the failure and the retry.
+  const showRoutePageError = Boolean((routePageError || isRetryingRoutePage) && !currentPageView && pageView);
+  const retryRoutePageFromPanel = async () => {
+    setIsRetryingRoutePage(true);
+    try {
+      await retryActivePageLoad();
+    } finally {
+      setIsRetryingRoutePage(false);
+    }
+  };
   const routeBody = pageView
-    ? renderedRouteElement
+    ? (
+        <>
+          {showRoutePageError ? (
+            <ErrorPanel
+              className="route-page-error"
+              title={messages.common.pageLoadErrorTitleFor(selectedPageLabel)}
+              detail={messages.common.loadFailedDetail}
+              actions={[{
+                label: isRetryingRoutePage ? messages.common.working : messages.common.retryPageLoad,
+                onClick: () => void retryRoutePageFromPanel(),
+                disabled: isRetryingRoutePage,
+                primary: true
+              }]}
+            >
+              {routePageError ? <p className="app-loading-issue-inline">{routePageError}</p> : null}
+            </ErrorPanel>
+          ) : null}
+          <div className="route-page-body" style={{ display: showRoutePageError ? "none" : "contents" }}>
+            <RouteWorkProvider registry={routeWorkRegistry} routeKey={currentPageView ? activeRouteKey : null}>
+              {renderedRouteElement}
+            </RouteWorkProvider>
+          </div>
+        </>
+      )
     : <RouteChunkLoadingFallback status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />;
   const showImportInboxBanner = Boolean(
     importInboxBanner
@@ -2403,226 +2124,22 @@ export function App() {
     && importInboxBanner.summary.requiredFileCount > 0
   );
 
+  // The import banner shows whatever the Imports query cache holds: filled by
+  // visiting Imports, by desktop warmup, or by import mutations that refresh
+  // it. The banner itself never fetches, so mobile never downloads the
+  // Imports page just for it.
   useEffect(() => {
-    if (
-      !["summary", "month"].includes(selectedTabId)
-      || !currentPageView
-      || isAppShellLoading
-      || typeof window === "undefined"
-    ) {
-      return undefined;
-    }
-
-    let cancelled = false;
-    const cachedImportsPage = queryClient.getQueryData(queryKeys.importsPage());
-    if (cachedImportsPage?.importsPage?.importInbox) {
-      setImportInboxBanner(cachedImportsPage.importsPage.importInbox);
-    }
-
-    // This banner is helpful, but it is not part of the Summary or Month
-    // contract. Only warm its Imports query after the active route is usable.
-    const idleHandle = scheduleIdleTask(() => {
-      void queryClient.fetchQuery({
-        queryKey: queryKeys.importsPage(),
-        queryFn: async () => {
-          const response = await fetch("/api/imports-page", { cache: "no-store" });
-          if (!response.ok) {
-            throw new Error("Could not refresh import inbox banner.");
-          }
-          return response.json();
-        },
-        retry: false,
-        staleTime: IMPORT_INBOX_BANNER_STALE_TIME_MS
-      })
-        .then((data) => {
-          if (!cancelled) {
-            setImportInboxBanner(data?.importsPage?.importInbox ?? null);
-          }
-        })
-        .catch(() => {
-          if (!cancelled && !cachedImportsPage?.importsPage?.importInbox) {
-            setImportInboxBanner(null);
-          }
-        });
-    }, IMPORT_INBOX_BANNER_WARMUP_TIMEOUT_MS);
-
-    return () => {
-      cancelled = true;
-      cancelIdleTask(idleHandle);
+    const importsKeyHash = hashKey(queryKeys.importsPage());
+    const readBanner = () => {
+      setImportInboxBanner(/** @type {any} */ (queryClient.getQueryData(queryKeys.importsPage()))?.importsPage?.importInbox ?? null);
     };
-  }, [currentPageView, isAppShellLoading, queryClient, selectedTabId]);
-
-  // Prefetch adjacent routes once the shell is stable so fast navigation feels
-  // instant without violating the current route's source of truth.
-  useEffect(() => {
-    if (
-      !appShell
-      || appShellError
-      || isAppShellLoading
-      || typeof window === "undefined"
-      || window.navigator?.connection?.saveData
-      || window.matchMedia?.("(pointer: coarse)")?.matches
-    ) {
-      return undefined;
-    }
-
-    let isCancelled = false;
-    const queryEpoch = queryEpochRef.current;
-    const isStable = () => !isCancelled
-      && queryEpochRef.current === queryEpoch
-      && document.visibilityState === "visible";
-    const runPrefetchTasks = async (tasks) => {
-      const seenKeys = new Set();
-      for (const task of tasks) {
-        if (!task || seenKeys.has(task.key)) {
-          continue;
-        }
-        seenKeys.add(task.key);
-        if (!isStable()) {
-          return false;
-        }
-        await task.run();
-        if (!isStable()) {
-          return false;
-        }
-        await waitFor(PAGE_PREFETCH_SPACING_MS);
+    readBanner();
+    return queryClient.getQueryCache().subscribe((event) => {
+      if (event?.query?.queryHash === importsKeyHash) {
+        readBanner();
       }
-      return isStable();
-    };
-
-    routePagePrefetchTimerRef.current = window.setTimeout(() => {
-      // High-priority tasks are the next months or summary windows the user is
-      // most likely to visit immediately.
-      const highPriorityTasks = [];
-      // Low-priority tasks warm the rest of the route set and the entries page.
-      const lowPriorityTasks = [];
-
-      if (selectedTabId === "month") {
-        const currentIndex = availableMonths.indexOf(selectedMonth);
-        if (currentIndex !== -1) {
-          for (const offset of [-1, 1]) {
-            const adjacentMonth = availableMonths[currentIndex + offset];
-            if (adjacentMonth) {
-              const request = buildRoutePageRequest({
-                tabId: "month",
-                viewId: selectedViewId,
-                month: adjacentMonth,
-                scope: selectedScope
-              });
-              highPriorityTasks.push({
-                key: `${request.path}?${request.params.toString()}`,
-                run: () => prefetchRoutePage(request)
-              });
-            }
-          }
-        }
-      } else if (selectedTabId === "summary" && summaryPage?.availableMonths?.length) {
-        const summaryMonths = summaryPage.availableMonths;
-        const startIndex = summaryMonths.indexOf(summaryPage.rangeStartMonth);
-        const endIndex = summaryMonths.indexOf(summaryPage.rangeEndMonth);
-        if (startIndex !== -1 && endIndex !== -1) {
-          for (const offset of [-1, 1]) {
-            const nextStartIndex = startIndex + offset;
-            const nextEndIndex = endIndex + offset;
-            if (nextStartIndex >= 0 && nextEndIndex < summaryMonths.length) {
-              highPriorityTasks.push({
-                key: `/api/summary-page?view=${selectedViewId}&scope=${selectedScope}&summary_start=${summaryMonths[nextStartIndex]}&summary_end=${summaryMonths[nextEndIndex]}`,
-                run: () => prefetchSummaryPage({
-                  pageParams: buildSummaryPageParams({
-                    viewId: selectedViewId,
-                    month: selectedMonth,
-                    scope: selectedScope,
-                    summaryStart: summaryMonths[nextStartIndex],
-                    summaryEnd: summaryMonths[nextEndIndex]
-                  }),
-                  accountPillsParams: buildSummaryAccountPillsParams({ viewId: selectedViewId })
-                })
-              });
-            }
-          }
-        }
-      }
-
-      for (const tabId of ["splits"]) {
-        if (tabId === selectedTabId) {
-          continue;
-        }
-        const request = buildRoutePageRequest({
-          tabId,
-          viewId: selectedViewId,
-          month: selectedMonth,
-          scope: selectedScope
-        });
-        if (request) {
-          lowPriorityTasks.push({
-            key: `${request.path}?${request.params.toString()}`,
-            run: () => prefetchRoutePage(request)
-          });
-        }
-      }
-
-      if (selectedTabId !== "entries") {
-        const params = buildEntriesPageParams({ viewId: "household", month: selectedMonth });
-        lowPriorityTasks.push({
-          key: `/api/entries-page?${params.toString()}`,
-          run: () => prefetchEntriesPage(params)
-        });
-      }
-
-      void (async () => {
-        const highPriorityComplete = await runPrefetchTasks(highPriorityTasks.slice(0, 2));
-        if (!highPriorityComplete) {
-          return;
-        }
-        await waitFor(PAGE_PREFETCH_STAGE_DELAY_MS);
-        await runPrefetchTasks(lowPriorityTasks);
-      })();
-    }, PAGE_PREFETCH_DELAY_MS);
-
-    return () => {
-      isCancelled = true;
-      if (routePagePrefetchTimerRef.current) {
-        window.clearTimeout(routePagePrefetchTimerRef.current);
-        routePagePrefetchTimerRef.current = null;
-      }
-    };
-  }, [
-    availableMonths,
-    appShell,
-    appShellError,
-    isAppShellLoading,
-    pageView,
-    prefetchEntriesPage,
-    prefetchRoutePage,
-    prefetchSummaryPage,
-    selectedMonth,
-    selectedScope,
-    selectedTabId,
-    selectedViewId
-  ]);
-
-  // Idle-time route module warming keeps tab switches fast without blocking
-  // the active screen.
-  useEffect(() => {
-    if (!appShell || appShellError || typeof window === "undefined" || window.navigator?.connection?.saveData) {
-      return undefined;
-    }
-
-    const idleHandle = scheduleIdleTask(() => {
-      const warmRouteIds = routeTabs.map((tab) => tab.id);
-      for (const routeId of warmRouteIds) {
-        if (routeId !== selectedTabId) {
-          preloadRouteModule(routeId);
-        }
-      }
-    }, 900);
-
-    return () => cancelIdleTask(idleHandle);
-  }, [
-    appShell,
-    appShellError,
-    selectedTabId
-  ]);
+    });
+  }, [queryClient]);
 
   // Keep the splits view pinned to a sensible default person when no explicit
   // selection is available in the URL.
@@ -2711,12 +2228,12 @@ export function App() {
       return;
     }
 
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      next.set("month", availableMonths[availableMonths.length - 1]);
-      return next;
-    }, { replace: true });
-  }, [availableMonths, appShell, currentPageView, selectedMonth, selectedRouteIsDetailMonthTab, setSearchParams]);
+    // Keep a #section anchor (an FAQ guide deep link) while the month is
+    // corrected; setSearchParams would drop it.
+    const next = new URLSearchParams(location.search);
+    next.set("month", availableMonths[availableMonths.length - 1]);
+    navigate({ pathname: location.pathname, search: `?${next.toString()}`, hash: location.hash }, { replace: true });
+  }, [availableMonths, appShell, currentPageView, location.hash, location.pathname, location.search, navigate, selectedMonth, selectedRouteIsDetailMonthTab, setSearchParams]);
 
   // Initialize the summary range picker year buckets from the active summary
   // window.
@@ -2793,39 +2310,51 @@ export function App() {
   }, [detailAvailableYears, isDetailMonthTab, selectedMonth]);
 
   // Derive the mobile sticky control config from the current tab and its scope
-  // semantics.
+  // semantics. On a phone this bar is the one view and scope control on
+  // Month, Entries and Summary. Summary names the scope its figures answer
+  // (the page view's selectedScope), like its desktop pills.
   const stickyScopeConfig = pageView
     ? renderedTabId === "month"
       ? {
           selectedKey: selectedScope,
           paramKey: "scope",
-          label: "Month view controls"
+          label: "Month view controls",
+          scopes: pageView.monthPage?.scopes ?? []
         }
       : renderedTabId === "entries"
         ? {
             selectedKey: selectedEntriesScope,
             paramKey: "entries_scope",
-            label: "Entries view controls"
+            label: "Entries view controls",
+            scopes: pageView.monthPage?.scopes ?? []
           }
-        : null
+        : renderedTabId === "summary"
+          ? {
+              selectedKey: pageView.selectedScope,
+              paramKey: "scope",
+              label: "Summary view controls",
+              scopes: pageView.scopes ?? []
+            }
+          : null
     : null;
-  // Small labels are easier to scan inside the mobile sheet than the full
-  // scope names.
-  const mobileScopeLabels = {
-    direct: "Direct",
-    shared: "Shared",
-    direct_plus_shared: "Direct+Shared"
-  };
   const selectedViewSupportsScope = selectedViewId !== "household";
-  // The sticky sheet only needs month scopes when the route exposes them.
-  const mobileContextScopes = stickyScopeConfig ? pageView?.monthPage?.scopes ?? [] : [];
+  const mobileContextScopes = stickyScopeConfig?.scopes ?? [];
   const selectedMobileScope = stickyScopeConfig
     ? mobileContextScopes.find((scope) => scope.key === stickyScopeConfig.selectedKey) ?? null
     : null;
-  const mobileContextSummary = selectedViewSupportsScope && selectedMobileScope
-    ? `${pageView?.label ?? ""} · ${mobileScopeLabels[selectedMobileScope.key] ?? selectedMobileScope.label}`
-    : pageView?.label ?? "";
+  // The bar names the person and a short scope name ("Tim · Direct + Shared")
+  // that it never cuts short. On Summary the dialog also carries the line
+  // saying what the scope counts, which desktop shows under the pills.
+  const mobileContextScopeLabel = selectedViewSupportsScope && selectedMobileScope
+    ? messages.views.scopeShortLabel[selectedMobileScope.key] ?? selectedMobileScope.label
+    : "";
+  const mobileContextScopeHint = renderedTabId === "summary" && selectedMobileScope
+    ? messages.views.scopeHint[selectedMobileScope.key]?.(pageView?.label ?? "") ?? ""
+    : "";
   const showMobileContextSticky = Boolean(stickyScopeConfig);
+  // Summary moves its range from the header; the bar's month arrows step the
+  // single month of Month and Entries.
+  const showMobileMonthJump = showMobileContextSticky && isDetailMonthTab;
   const showMobileContextScopeSection = Boolean(stickyScopeConfig) && selectedViewSupportsScope && mobileContextScopes.length > 1;
 
   // Collapse the mobile sheet when the sticky context is no longer relevant.
@@ -2840,89 +2369,59 @@ export function App() {
   if (appShellError) {
     const isResourceLimitError = isAppShellResourceLimitError(appShellError);
     return (
-      <main className="shell">
-        <EnvironmentBanner environment={appEnvironment} />
-        <section className="panel app-loading-panel app-loading-panel-error">
-          <div>
-            <p>{messages.common.appShellErrorTitle}</p>
-            <p className="app-loading-error-copy">{appShellError}</p>
-            {isResourceLimitError ? (
-              <div className="app-loading-diagnosis">
-                <strong>{messages.common.appShellResourceLimitTitle}</strong>
-                <p>{messages.common.appShellResourceLimitDetail}</p>
-                <p>{messages.common.appShellDiagnosticsUnavailable}</p>
-              </div>
-            ) : null}
+      <ShellErrorScreen
+        environment={appEnvironment}
+        title={messages.common.appShellErrorTitle}
+        message={appShellError}
+        diagnosis={isResourceLimitError ? (
+          <div className="app-loading-diagnosis">
+            <strong>{messages.common.appShellResourceLimitTitle}</strong>
+            <p>{messages.common.appShellResourceLimitDetail}</p>
+            <p>{messages.common.appShellDiagnosticsUnavailable}</p>
           </div>
-          {loadingStatus.issue ? <p className="app-loading-issue-inline">{loadingStatus.issue}</p> : null}
-          <button
-            type="button"
-            className="button-primary"
-            onClick={() => { void refreshAppShell({ broadcast: false }).catch(handleAppShellFailure); }}
-          >
-            {messages.common.appShellRetry}
-          </button>
-        </section>
-      </main>
+        ) : null}
+        issue={loadingStatus.issue}
+        retryLabel={messages.common.appShellRetry}
+        onRetry={() => { void refreshAppShell({ broadcast: false }).catch(handleAppShellFailure); }}
+      />
     );
   }
 
   if (referenceDataError) {
     return (
-      <main className="shell">
-        <EnvironmentBanner environment={appEnvironment} />
-        <section className="panel app-loading-panel app-loading-panel-error">
-          <div>
-            <p>{messages.common.referenceDataErrorTitle}</p>
-            <p className="app-loading-error-copy">{referenceDataError}</p>
-            <div className="app-loading-diagnosis">
-              <strong>{messages.common.referenceDataErrorTitle}</strong>
-              <p>{messages.common.referenceDataErrorDetail}</p>
-            </div>
+      <ShellErrorScreen
+        environment={appEnvironment}
+        title={messages.common.referenceDataErrorTitle}
+        message={referenceDataError}
+        diagnosis={(
+          <div className="app-loading-diagnosis">
+            <p>{messages.common.referenceDataErrorDetail}</p>
           </div>
-          {loadingStatus.issue ? <p className="app-loading-issue-inline">{loadingStatus.issue}</p> : null}
-          <button
-            type="button"
-            className="button-primary"
-            onClick={() => { void refreshReferenceDataInBackground().catch((error) => {
-              setReferenceDataError(describeAppShellError(error));
-              reportLoadingIssue("Reference data retry failed", error);
-            }); }}
-          >
-            {messages.common.referenceDataRetry}
-          </button>
-        </section>
-      </main>
+        )}
+        issue={loadingStatus.issue}
+        retryLabel={messages.common.referenceDataRetry}
+        onRetry={() => { void referenceDataOwner.refreshOrShowError("Reference data retry failed"); }}
+      />
     );
   }
 
   if (appShell && !pageView && routePageError) {
     return (
-      <main className="shell">
-        <EnvironmentBanner environment={appEnvironment} />
-        <section className="panel app-loading-panel app-loading-panel-error">
-          <div>
-            <p>{messages.common.pageLoadErrorTitle}</p>
-            <p className="app-loading-error-copy">{routePageError}</p>
-            {loadingStatus.issue ? <p className="app-loading-issue-inline">{loadingStatus.issue}</p> : null}
-          </div>
-          <button type="button" className="button-primary" onClick={retryActivePageLoad}>
-            {messages.common.retryPageLoad}
-          </button>
-        </section>
-      </main>
+      <ShellErrorScreen
+        environment={appEnvironment}
+        title={messages.common.pageLoadErrorTitleFor(selectedPageLabel)}
+        message={routePageError}
+        issue={loadingStatus.issue}
+        retryLabel={messages.common.retryPageLoad}
+        onRetry={retryActivePageLoad}
+      />
     );
   }
 
   // Render the loading state while either the shell or the active page is
   // still being resolved.
   if (!appShell || !referenceData || !pageView) {
-    return (
-      <main className="shell">
-        <EnvironmentBanner environment={appEnvironment} />
-        <AppLoadingPanel status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />
-      </main>
-    );
+    return <ShellLoadingScreen environment={appEnvironment} status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} />;
   }
 
   // The top chrome reflects the active period semantics of the current route.
@@ -2934,7 +2433,7 @@ export function App() {
       : pageView.label;
   // The settings badge reads from the settings page cache so the shell stays a
   // reference-data payload instead of reabsorbing settings-page state.
-  const cachedSettingsPage = queryClient.getQueryData(queryKeys.routeRequestKey(SETTINGS_ROUTE_REQUEST));
+  const cachedSettingsPage = /** @type {any} */ (queryClient.getQueryData(queryKeys.routeRequestKey(SETTINGS_ROUTE_REQUEST)));
   const pendingCategorySuggestionCount = cachedSettingsPage?.settingsPage?.categoryMatchRuleSuggestions?.length ?? 0;
   const buildTabTarget = (tab) => {
     // Each nav link preserves the relevant route query while stripping
@@ -2949,16 +2448,6 @@ export function App() {
 
     return { pathname: tab.path, search: params.toString() ? `?${params.toString()}` : "" };
   };
-  const renderTabLabel = (tab) => (
-    <span className="tab-label-with-badge">
-      <span>{tab.label}</span>
-      {tab.id === "settings" && pendingCategorySuggestionCount ? (
-        <span className="tab-badge" title={messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount)}>
-          {pendingCategorySuggestionCount}
-        </span>
-      ) : null}
-    </span>
-  );
   // Route-driven view changes need to keep the month and entries tabs
   // internally consistent when the active household member changes.
   function handleViewChange(nextViewId) {
@@ -3278,206 +2767,73 @@ export function App() {
         </div>
 
         <div className="period-inline">
-          <nav className="tab-strip" aria-label={messages.tabs.ariaLabel}>
-            {primaryRouteTabs.map((tab) => (
-              <NavLink
-                key={tab.id}
-                className={({ isActive }) => `tab ${isActive ? "is-active" : ""}`}
-                to={buildTabTarget(tab)}
-                title={tab.id === "settings" && pendingCategorySuggestionCount ? messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount) : undefined}
-              >
-                {renderTabLabel(tab)}
-              </NavLink>
-            ))}
-            {secondaryRouteTabs.map((tab) => (
-              <NavLink
-                key={tab.id}
-                className={({ isActive }) => `tab tab-secondary ${isActive ? "is-active" : ""}`}
-                to={buildTabTarget(tab)}
-                title={tab.id === "settings" && pendingCategorySuggestionCount ? messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount) : undefined}
-              >
-                {renderTabLabel(tab)}
-              </NavLink>
-            ))}
-            <Popover.Root>
-              <Popover.Trigger asChild>
-                <button type="button" className={`tab tab-overflow-trigger ${secondaryRouteTabs.some((tab) => tab.id === selectedTabId) ? "is-active" : ""}`} aria-label="More pages">
-                  <Ellipsis size={18} />
-                </button>
-              </Popover.Trigger>
-              <Popover.Portal>
-                <Popover.Content className="tab-overflow-popover" sideOffset={10} align="end">
-                  <div className="tab-overflow-list">
-                    {secondaryRouteTabs.map((tab) => (
-                      <NavLink
-                        key={tab.id}
-                        className={({ isActive }) => `tab-overflow-link ${isActive ? "is-active" : ""}`}
-                        to={buildTabTarget(tab)}
-                        title={tab.id === "settings" && pendingCategorySuggestionCount ? messages.settings.settingsCategorySuggestionBadgeTitle(pendingCategorySuggestionCount) : undefined}
-                      >
-                        {renderTabLabel(tab)}
-                      </NavLink>
-                    ))}
-                  </div>
-                  <Popover.Arrow className="category-popover-arrow" />
-                </Popover.Content>
-              </Popover.Portal>
-            </Popover.Root>
-          </nav>
-          <div className={`period-nav-cluster ${isSplitsTab ? "is-passive" : ""}`}>
-            <button className="period-button" type="button" aria-label={messages.period.previousAriaLabel} onClick={() => handleMonthChange(-1)} disabled={isSplitsTab}>‹</button>
-            <div className="period-display">
-              <span className="period-mode">{periodMode}</span>
-              {isDetailMonthTab ? (
-                <strong className="period-range-value">
-                  <Popover.Root>
-                    <Popover.Trigger asChild>
-                      <button type="button" className="period-range-segment" disabled={isSplitsTab}>
-                        {periodLabel}
-                      </button>
-                    </Popover.Trigger>
-                    <Popover.Portal>
-                      <Popover.Content className="period-picker-popover" sideOffset={10} align="center">
-                        <div className="period-picker-head">
-                          <strong>Month</strong>
-                          <span>Choose a single month for this view.</span>
-                        </div>
-                        <div className="period-picker-years" role="tablist" aria-label="Available years">
-                          {detailAvailableYears.map((year) => (
-                            <button
-                              key={year}
-                              type="button"
-                              className={`period-picker-year ${monthPickerYear === year ? "is-active" : ""}`}
-                              onClick={() => setMonthPickerYear(year)}
-                            >
-                              {year}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="period-picker-months">
-                          {detailAvailableMonthsForPickerYear.map((month) => {
-                            const monthIndex = Number(month.slice(5, 7)) - 1;
-                            const isSelected = month === selectedMonth;
-                            return (
-                              <Popover.Close key={month} asChild>
-                                <button
-                                  type="button"
-                                  className={`period-picker-month ${isSelected ? "is-active" : ""}`}
-                                  onClick={() => handleDetailMonthSelect(month)}
-                                >
-                                  {MONTH_PICKER_LABELS[monthIndex]}
-                                </button>
-                              </Popover.Close>
-                            );
-                          })}
-                        </div>
-                        <Popover.Arrow className="category-popover-arrow" />
-                      </Popover.Content>
-                    </Popover.Portal>
-                  </Popover.Root>
-                </strong>
-              ) : summaryPage?.rangeStartMonth && summaryPage?.rangeEndMonth ? (
-                <strong className="period-range-value">
-                  <Popover.Root>
-                    <Popover.Trigger asChild>
-                      <button type="button" className="period-range-segment">
-                        {formatMonthLabel(pageView.summaryPage.rangeStartMonth)}
-                      </button>
-                    </Popover.Trigger>
-                    <Popover.Portal>
-                      <Popover.Content className="period-picker-popover" sideOffset={10} align="center">
-                        <div className="period-picker-head">
-                          <strong>Start month</strong>
-                          <span>Choose the first month in the summary range.</span>
-                        </div>
-                        <div className="period-picker-years" role="tablist" aria-label="Available start years">
-                          {summaryAvailableYears.map((year) => (
-                            <button
-                              key={year}
-                              type="button"
-                              className={`period-picker-year ${rangePickerStartYear === year ? "is-active" : ""}`}
-                              onClick={() => setRangePickerStartYear(year)}
-                            >
-                              {year}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="period-picker-months">
-                          {summaryAvailableMonthsForPickerYear.map((month) => {
-                            const monthIndex = Number(month.slice(5, 7)) - 1;
-                            const isSelected = month === pageView.summaryPage.rangeStartMonth;
-                            const isDisabled = month > pageView.summaryPage.rangeEndMonth;
-                            return (
-                              <button
-                                key={month}
-                                type="button"
-                                className={`period-picker-month ${isSelected ? "is-active" : ""}`}
-                                disabled={isDisabled}
-                                onClick={() => handleSummaryStartMonthSelect(month)}
-                              >
-                                {MONTH_PICKER_LABELS[monthIndex]}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <Popover.Arrow className="category-popover-arrow" />
-                      </Popover.Content>
-                    </Popover.Portal>
-                  </Popover.Root>
-                  <span className="period-range-separator" aria-hidden="true">-</span>
-                  <Popover.Root>
-                    <Popover.Trigger asChild>
-                      <button type="button" className="period-range-segment">
-                        {formatMonthLabel(pageView.summaryPage.rangeEndMonth)}
-                      </button>
-                    </Popover.Trigger>
-                    <Popover.Portal>
-                      <Popover.Content className="period-picker-popover" sideOffset={10} align="center">
-                        <div className="period-picker-head">
-                          <strong>End month</strong>
-                          <span>Choose the last month in the summary range.</span>
-                        </div>
-                        <div className="period-picker-years" role="tablist" aria-label="Available end years">
-                          {summaryAvailableYears.map((year) => (
-                            <button
-                              key={year}
-                              type="button"
-                              className={`period-picker-year ${rangePickerEndYear === year ? "is-active" : ""}`}
-                              onClick={() => setRangePickerEndYear(year)}
-                            >
-                              {year}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="period-picker-months">
-                          {summaryAvailableMonthsForEndPickerYear.map((month) => {
-                            const monthIndex = Number(month.slice(5, 7)) - 1;
-                            const isSelected = month === pageView.summaryPage.rangeEndMonth;
-                            const isDisabled = month < pageView.summaryPage.rangeStartMonth;
-                            return (
-                              <button
-                                key={month}
-                                type="button"
-                                className={`period-picker-month ${isSelected ? "is-active" : ""}`}
-                                disabled={isDisabled}
-                                onClick={() => handleSummaryEndMonthSelect(month)}
-                              >
-                                {MONTH_PICKER_LABELS[monthIndex]}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <Popover.Arrow className="category-popover-arrow" />
-                      </Popover.Content>
-                    </Popover.Portal>
-                  </Popover.Root>
-                </strong>
-              ) : (
-                <strong className="period-range-value">{periodLabel}</strong>
-              )}
+          <ShellRouteTabs
+            primaryTabs={primaryRouteTabs}
+            secondaryTabs={secondaryRouteTabs}
+            selectedTabId={selectedTabId}
+            buildTabTarget={buildTabTarget}
+            getNavIntentProps={getNavIntentProps}
+            pendingCategorySuggestionCount={pendingCategorySuggestionCount}
+          />
+          {routeUsesPeriod ? (
+            <div className={`period-nav-cluster ${isSplitsTab ? "is-passive" : ""}`}>
+              <button className="period-button" type="button" aria-label={messages.period.previousAriaLabel} onClick={() => handleMonthChange(-1)} disabled={isSplitsTab}>‹</button>
+              <div className="period-display">
+                <span className="period-mode">{periodMode}</span>
+                {isDetailMonthTab ? (
+                  <strong className="period-range-value">
+                    <PeriodMonthPicker
+                      triggerLabel={periodLabel}
+                      disabled={isSplitsTab}
+                      title="Month"
+                      hint="Choose a single month for this view."
+                      yearsAriaLabel="Available years"
+                      years={detailAvailableYears}
+                      activeYear={monthPickerYear}
+                      onYearChange={setMonthPickerYear}
+                      months={detailAvailableMonthsForPickerYear}
+                      selectedMonth={selectedMonth}
+                      closeOnSelect
+                      onSelect={handleDetailMonthSelect}
+                    />
+                  </strong>
+                ) : summaryPage?.rangeStartMonth && summaryPage?.rangeEndMonth ? (
+                  <strong className="period-range-value">
+                    <PeriodMonthPicker
+                      triggerLabel={formatMonthLabel(pageView.summaryPage.rangeStartMonth)}
+                      title="Start month"
+                      hint="Choose the first month in the summary range."
+                      yearsAriaLabel="Available start years"
+                      years={summaryAvailableYears}
+                      activeYear={rangePickerStartYear}
+                      onYearChange={setRangePickerStartYear}
+                      months={summaryAvailableMonthsForPickerYear}
+                      selectedMonth={pageView.summaryPage.rangeStartMonth}
+                      isMonthDisabled={(month) => month > pageView.summaryPage.rangeEndMonth}
+                      onSelect={handleSummaryStartMonthSelect}
+                    />
+                    <span className="period-range-separator" aria-hidden="true">-</span>
+                    <PeriodMonthPicker
+                      triggerLabel={formatMonthLabel(pageView.summaryPage.rangeEndMonth)}
+                      title="End month"
+                      hint="Choose the last month in the summary range."
+                      yearsAriaLabel="Available end years"
+                      years={summaryAvailableYears}
+                      activeYear={rangePickerEndYear}
+                      onYearChange={setRangePickerEndYear}
+                      months={summaryAvailableMonthsForEndPickerYear}
+                      selectedMonth={pageView.summaryPage.rangeEndMonth}
+                      isMonthDisabled={(month) => month < pageView.summaryPage.rangeStartMonth}
+                      onSelect={handleSummaryEndMonthSelect}
+                    />
+                  </strong>
+                ) : (
+                  <strong className="period-range-value">{periodLabel}</strong>
+                )}
+              </div>
+              <button className="period-button" type="button" aria-label={messages.period.nextAriaLabel} onClick={() => handleMonthChange(1)} disabled={isSplitsTab}>›</button>
             </div>
-            <button className="period-button" type="button" aria-label={messages.period.nextAriaLabel} onClick={() => handleMonthChange(1)} disabled={isSplitsTab}>›</button>
-          </div>
+          ) : null}
           <TotalsVisibilityToggle className="totals-visibility-toggle--header" />
         </div>
       </section>
@@ -3491,21 +2847,21 @@ export function App() {
                 <button
                   type="button"
                   className="mobile-context-trigger"
-                  aria-label={stickyScopeConfig.label}
                   onClick={(event) => {
                     event.currentTarget.blur();
                   }}
                 >
                   <span className="mobile-context-trigger-copy">
-                    <span className="mobile-context-trigger-label">{mobileContextSummary}</span>
-                    {showMobileContextScopeSection ? (
-                      <>
-                        <span className="mobile-context-trigger-divider" aria-hidden="true">|</span>
-                        <span className="mobile-context-trigger-hint">View and scope</span>
-                      </>
-                    ) : (
-                      <span className="mobile-context-trigger-hint">View</span>
-                    )}
+                    {/* The label wraps between the name and the scope rather than truncating. */}
+                    <span className="mobile-context-trigger-label">
+                      {pageView?.label ?? ""}
+                      {mobileContextScopeLabel ? (
+                        <> <span className="mobile-context-trigger-scope">· {mobileContextScopeLabel}</span></>
+                      ) : null}
+                    </span>{" "}
+                    <span className="mobile-context-trigger-hint">
+                      {showMobileContextScopeSection ? "View and scope" : "View"}
+                    </span>
                   </span>
                   <span className="mobile-context-trigger-caret" aria-hidden="true">▾</span>
                 </button>
@@ -3575,6 +2931,9 @@ export function App() {
                           </button>
                         ))}
                       </div>
+                      {mobileContextScopeHint ? (
+                        <span className="panel-context">{mobileContextScopeHint}</span>
+                      ) : null}
                     </section>
                   ) : null}
 
@@ -3588,26 +2947,28 @@ export function App() {
                 </Dialog.Content>
               </Dialog.Portal>
             </Dialog.Root>
-            <div className="mobile-month-jump" aria-label="Month navigation">
-              <button
-                className="period-button mobile-month-jump-button"
-                type="button"
-                aria-label={messages.period.previousAriaLabel}
-                onClick={() => handleMonthChange(-1)}
-                disabled={!canMoveToPreviousDetailMonth}
-              >
-                ‹
-              </button>
-              <button
-                className="period-button mobile-month-jump-button"
-                type="button"
-                aria-label={messages.period.nextAriaLabel}
-                onClick={() => handleMonthChange(1)}
-                disabled={!canMoveToNextDetailMonth}
-              >
-                ›
-              </button>
-            </div>
+            {showMobileMonthJump ? (
+              <div className="mobile-month-jump" aria-label="Month navigation">
+                <button
+                  className="period-button mobile-month-jump-button"
+                  type="button"
+                  aria-label={messages.period.previousAriaLabel}
+                  onClick={() => handleMonthChange(-1)}
+                  disabled={!canMoveToPreviousDetailMonth}
+                >
+                  ‹
+                </button>
+                <button
+                  className="period-button mobile-month-jump-button"
+                  type="button"
+                  aria-label={messages.period.nextAriaLabel}
+                  onClick={() => handleMonthChange(1)}
+                  disabled={!canMoveToNextDetailMonth}
+                >
+                  ›
+                </button>
+              </div>
+            ) : null}
           </div>
         </section>
       ) : null}
@@ -3626,67 +2987,36 @@ export function App() {
             }))}
           />
         ) : null}
-        {routeBody}
+        {refreshNotice ? (
+          <RefreshFailureNotice
+            onRetry={refreshNoticeOwner.retry}
+            onDismiss={refreshNoticeOwner.dismiss}
+          />
+        ) : null}
+        <ScreenErrorBoundary resetKey={screenErrorResetKey} onRetry={retryActivePageLoad} onReset={clearLoadingIssue}>
+          {routeBody}
+        </ScreenErrorBoundary>
         {isAppShellLoading ? <AppLoadingOverlay status={loadingStatus} elapsedSeconds={loadingElapsedSeconds} /> : null}
       </section>
 
       {/* Login registration is modal because it must interrupt the flow only when the shell has no stable identity mapping. */}
       {loginRegistrationDraft ? (
-        <Dialog.Root open>
-          <Dialog.Portal>
-            <Dialog.Overlay className="note-dialog-overlay" />
-            <Dialog.Content className="note-dialog-content login-registration-dialog" onOpenAutoFocus={(event) => event.preventDefault()}>
-              <form onSubmit={handleRegisterLogin}>
-                <div className="note-dialog-head">
-                  <div>
-                    <Dialog.Title>Set up this login</Dialog.Title>
-                    <Dialog.Description>
-                      Link {loginRegistrationDraft.email} to one household profile. This lets Splits open on your view next time.
-                    </Dialog.Description>
-                  </div>
-                </div>
-                <div className="login-registration-form">
-                  <label>
-                    <span>Household profile</span>
-                    <select
-                      className="table-edit-input"
-                      value={loginRegistrationDraft.personId}
-                      enterKeyHint="next"
-                      onChange={(event) => {
-                        const person = appShell.household.people.find((item) => item.id === event.target.value);
-                        setLoginRegistrationDraft((current) => current ? {
-                          ...current,
-                          personId: event.target.value,
-                          name: isPlaceholderPersonName(person?.name) ? "" : person?.name ?? current.name
-                        } : current);
-                      }}
-                    >
-                      {appShell.household.people.map((person) => (
-                        <option key={person.id} value={person.id}>{person.name}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>Display name</span>
-                    <input
-                      className="table-edit-input"
-                      value={loginRegistrationDraft.name}
-                      placeholder="Name for this household profile"
-                      enterKeyHint="done"
-                      onChange={(event) => setLoginRegistrationDraft((current) => current ? { ...current, name: event.target.value } : current)}
-                    />
-                  </label>
-                </div>
-                {loginRegistrationError ? <p className="form-error">{loginRegistrationError}</p> : null}
-                <div className="note-dialog-actions">
-                  <button type="submit" className="dialog-primary" disabled={isRegisteringLogin}>
-                    {isRegisteringLogin ? "Saving..." : "Save login"}
-                  </button>
-                </div>
-              </form>
-            </Dialog.Content>
-          </Dialog.Portal>
-        </Dialog.Root>
+        <LoginRegistrationDialog
+          draft={loginRegistrationDraft}
+          people={appShell.household.people}
+          error={loginRegistrationError}
+          isSubmitting={isRegisteringLogin}
+          onSubmit={handleRegisterLogin}
+          onPersonChange={(personId) => {
+            const person = appShell.household.people.find((item) => item.id === personId);
+            setLoginRegistrationDraft((current) => current ? {
+              ...current,
+              personId,
+              name: isPlaceholderPersonName(person?.name) ? "" : person?.name ?? current.name
+            } : current);
+          }}
+          onNameChange={(name) => setLoginRegistrationDraft((current) => current ? { ...current, name } : current)}
+        />
       ) : null}
 
       {renderedTabId === "entries" && typeof document !== "undefined"
@@ -3731,6 +3061,27 @@ export function App() {
   );
 }
 
+// A background refresh after a save failed: the saved result stays on
+// screen, and the person can refresh again without losing their place.
+function RefreshFailureNotice({ onRetry, onDismiss }) {
+  return (
+    <section className="import-stale-banner refresh-failure-notice" role="status">
+      <div>
+        <strong>{messages.common.refreshFailedTitle}</strong>
+        <span>{messages.common.refreshFailedDetail}</span>
+      </div>
+      <div className="refresh-failure-notice-actions">
+        <button type="button" className="dialog-primary" onClick={onRetry}>
+          {messages.common.refreshFailedRetry}
+        </button>
+        <button type="button" className="subtle-action" onClick={onDismiss}>
+          {messages.common.refreshFailedDismiss}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function ImportInboxRouteBanner({ inbox, onOpenImports }) {
   return (
     <section className="import-stale-banner" role="status">
@@ -3766,22 +3117,6 @@ function buildTabPath(tabId, { viewId, month, scope }) {
 // person name during login setup.
 function isPlaceholderPersonName(name) {
   return ["primary", "partner"].includes(String(name ?? "").trim().toLowerCase());
-}
-
-// Compact the loading copy and status line so the startup panel stays readable
-// while the shell is still assembling.
-function AppLoadingStatusText({ status, elapsedSeconds, compact = false }) {
-  const percentText = typeof status?.percent === "number" ? `${Math.max(0, Math.min(100, Math.round(status.percent)))}%` : null;
-  const elapsedText = elapsedSeconds > 0 ? `${elapsedSeconds}s` : null;
-  const detailText = ellipsizeText(status?.detail ?? "");
-  const meta = [percentText, detailText, elapsedText].filter(Boolean).join(" · ");
-
-  return (
-    <div className={`app-loading-status ${compact ? "is-compact" : ""}`}>
-      <small title={status?.detail ?? ""}>{meta}</small>
-      {status?.issue ? <small className="is-error" title={status.issue}>{ellipsizeText(status.issue, compact ? 64 : 84)}</small> : null}
-    </div>
-  );
 }
 
 // Compare the mobile entries filter props deeply enough to avoid rerender
@@ -3835,121 +3170,4 @@ function areStringArraysEqual(current, next) {
     return false;
   }
   return current.every((value, index) => value === next[index]);
-}
-
-// Full-screen startup state used before the shell or route payload is ready.
-function AppLoadingPanel({ status, elapsedSeconds }) {
-  return (
-    <section className="panel app-loading-panel" role="status" aria-live="polite">
-      <div className="app-loading-main">
-        <span className="app-spinner" aria-hidden="true" />
-        <p>{messages.common.loading}</p>
-      </div>
-      <AppLoadingStatusText status={status} elapsedSeconds={elapsedSeconds} />
-    </section>
-  );
-}
-
-// Overlay status used while a route fetch is still hydrating the current
-// screen.
-function AppLoadingOverlay({ status, elapsedSeconds }) {
-  return (
-    <div className="app-loading-overlay" role="status" aria-live="polite">
-      <div className="app-loading-overlay-main">
-        <span className="app-spinner" aria-hidden="true" />
-        <span>{messages.common.loadingLatest}</span>
-      </div>
-      <AppLoadingStatusText status={status} elapsedSeconds={elapsedSeconds} compact />
-    </div>
-  );
-}
-
-// In-panel fallback for route hydration, separate from the full startup state.
-function RouteChunkLoadingFallback({ status, elapsedSeconds }) {
-  return (
-    <section className="route-loading-panel" role="status" aria-live="polite">
-      <div className="app-loading-main">
-        <span className="app-spinner" aria-hidden="true" />
-        <p>{messages.common.loadingLatest}</p>
-      </div>
-      <AppLoadingStatusText status={status} elapsedSeconds={elapsedSeconds} compact />
-    </section>
-  );
-}
-
-// Build the query string used by the deep-link route that jumps directly to
-// the Entries page.
-function buildEntriesPageParams({ viewId, month }) {
-  return new URLSearchParams({
-    view: viewId,
-    month
-  });
-}
-
-// Resolve an entry deep link by looking up the owning month and redirecting to
-// the correct Entries route with the matching edit context.
-function EntryDeepLinkRoute() {
-  const { entryId = "" } = useParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [status, setStatus] = useState({ loading: true, error: "" });
-
-  useEffect(() => {
-    if (!entryId) {
-      setStatus({ loading: false, error: "Missing entry id." });
-      return;
-    }
-
-    const controller = new AbortController();
-    setStatus({ loading: true, error: "" });
-
-    void fetch(`/api/entries/locate?entryId=${encodeURIComponent(entryId)}`, {
-      cache: "no-store",
-      signal: controller.signal
-    })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok || !data?.context) {
-          throw new Error(data?.error ?? "Entry not found.");
-        }
-
-        const next = new URLSearchParams(location.search);
-        next.set("view", data.context.viewId ?? "household");
-        next.set("month", data.context.month);
-        next.set("editing_entry", data.context.entryId);
-        if (data.context.accountId) {
-          next.set("entry_wallet", data.context.accountId);
-        } else if (data.context.accountName) {
-          next.set("entry_wallet", data.context.accountName);
-        }
-        navigate({
-          pathname: "/entries",
-          search: `?${next.toString()}`
-        }, { replace: true });
-      })
-      .catch((error) => {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
-        setStatus({
-          loading: false,
-          error: error instanceof Error ? error.message : "Entry not found."
-        });
-      });
-
-    return () => controller.abort();
-  }, [entryId, location.search, navigate]);
-
-  if (status.loading) {
-    return <RouteChunkLoadingFallback />;
-  }
-
-  return (
-    <section className="panel panel-accent">
-      <div className="import-warning import-warning-attention">
-        <strong>Entry link unavailable</strong>
-        <p className="lede compact">{status.error || "The requested entry could not be opened."}</p>
-      </div>
-    </section>
-  );
 }

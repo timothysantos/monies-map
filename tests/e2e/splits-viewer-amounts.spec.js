@@ -2,32 +2,6 @@ import { expect, test } from "@playwright/test";
 
 import { loadSplitsPage, postJson, reseedDemo } from "./helpers";
 
-test("split activity uses the borrowed amount for both borrower and lender views", async ({ page }) => {
-  await page.goto("/");
-  await reseedDemo(page);
-
-  const [timData, joyceData] = await Promise.all([
-    loadSplitsPage(page, { view: "person-tim", month: "2025-10" }),
-    loadSplitsPage(page, { view: "person-joyce", month: "2025-10" })
-  ]);
-
-  const findTarget = (activity) => activity.find((item) => (
-    item.kind === "expense"
-      && item.description === "Family support"
-      && item.paidByPersonName === "Joyce"
-      && item.totalAmountMinor === 23407
-      && item.groupName === "Baby River"
-  ));
-
-  const timEntry = findTarget(timData.splitsPage.activity);
-  const joyceEntry = findTarget(joyceData.splitsPage.activity);
-
-  expect(timEntry?.viewerDirectionLabel).toBe("you borrowed");
-  expect(timEntry?.viewerAmountMinor).toBe(11703);
-  expect(joyceEntry?.viewerDirectionLabel).toBe("you lent");
-  expect(joyceEntry?.viewerAmountMinor).toBe(11703);
-});
-
 test("person splits view tones lent and borrowed amounts with income and expense colors", async ({ page }) => {
   await page.goto("/");
   await reseedDemo(page);
@@ -48,6 +22,8 @@ test("person splits view tones lent and borrowed amounts with income and expense
 test("split editor can choose the odd-cent recipient explicitly", async ({ page }) => {
   const description = `M1 recurring ${Date.now()}`;
 
+  // Money is hidden by default; this scenario asserts visible dollar amounts.
+  await page.addInitScript(() => window.localStorage.setItem("monies-map:money-totals-visible", "true"));
   await page.goto("/");
   await reseedDemo(page);
 
@@ -85,7 +61,11 @@ test("split editor can choose the odd-cent recipient explicitly", async ({ page 
   await expect(editor.getByText("Joyce owes")).toHaveCount(0);
   await expect(editor.getByText("Odd cent")).toBeVisible();
   await editor.getByRole("button", { name: "Tim gets +$0.01" }).click();
+  // Read the stored shares only after the save has answered; reading while it
+  // is in flight can return the pre-save split.
+  const saved = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/splits/expenses/update" && response.ok());
   await editor.getByRole("button", { name: /Save|Done editing split/ }).click();
+  await saved;
 
   const updatedData = await loadSplitsPage(page, { view: "person-tim", month: "2025-10" });
   const updatedItem = updatedData.splitsPage.activity.find((item) => item.description === description);

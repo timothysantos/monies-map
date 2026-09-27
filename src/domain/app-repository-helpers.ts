@@ -1,4 +1,5 @@
 import { getCurrentMonthKey } from "../lib/month";
+import { personEntryAmountMinor } from "./person-entry-amount";
 import type {
   AccountDto,
   EntryDto,
@@ -255,6 +256,8 @@ export function buildSnapshotRowsForScope(rows: MonthPlanRowDto[], personScope: 
   ));
 }
 
+// A scope's stored month spend: every expense at its full amount for the
+// household, the person's own part (personEntryAmountMinor) for a person.
 export function sumVisibleExpenseMinor(entries: EntryDto[], personScope: string) {
   return entries.reduce((sum, entry) => {
     if (entry.entryType !== "expense") {
@@ -265,19 +268,7 @@ export function sumVisibleExpenseMinor(entries: EntryDto[], personScope: string)
       return sum + entry.amountMinor;
     }
 
-    if (entry.linkedSplitExpenseId) {
-      const linkedShare = entry.linkedSplitShares?.find((item) => item.personId === personScope);
-      return linkedShare ? sum + linkedShare.amountMinor : sum;
-    }
-
-    if (entry.ownershipType === "direct") {
-      return entry.splits.some((split) => split.personId === personScope)
-        ? sum + entry.amountMinor
-        : sum;
-    }
-
-    const split = entry.splits.find((item) => item.personId === personScope);
-    return split ? sum + split.amountMinor : sum;
+    return sum + (personEntryAmountMinor(entry, personScope) ?? 0);
   }, 0);
 }
 
@@ -552,6 +543,14 @@ export function slugify(value: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
+}
+
+// A new split workspace record id: the creation time, so ids of one kind
+// still sort by it (same-date Splits activity lists newest first by id),
+// then a random UUID, so two records created in the same millisecond never
+// collide. Ids of the older `<prefix>-<ms>` shape and seeded names stay valid.
+export function newSplitRecordId(prefix: string) {
+  return `${prefix}-${Date.now()}-${crypto.randomUUID()}`;
 }
 
 export function groupSplits<

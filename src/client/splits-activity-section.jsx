@@ -1,4 +1,5 @@
 import { messages } from "./copy/en-SG";
+import { EmptyState } from "./ui-states";
 import { SplitActivityGroups } from "./splits-activity";
 
 export function SplitsActivitySection({
@@ -11,6 +12,9 @@ export function SplitsActivitySection({
   searchQuery = "",
   inlineSplitDraft,
   inlineSplitError,
+  inlineSettlementLock = null,
+  isUndoingSettlementLock = false,
+  onUndoSettlementLock,
   isSubmitting,
   hasInlineSplitChanges,
   onAddExpense,
@@ -50,6 +54,9 @@ export function SplitsActivitySection({
             categoryOptions={categoryOptions}
             editingDraft={inlineSplitDraft}
             inlineFormError={inlineSplitError}
+            inlineSettlementLock={inlineSettlementLock}
+            isUndoingSettlementLock={isUndoingSettlementLock}
+            onUndoSettlementLock={onUndoSettlementLock}
             isSubmitting={isSubmitting}
             hasEditingChanges={hasInlineSplitChanges}
             onChangeEditingDraft={onChangeInlineSplitDraft}
@@ -64,8 +71,8 @@ export function SplitsActivitySection({
             readOnly={readOnly}
           />
         ) : null}
-        {!groupedCurrentActivity.length && searchQuery ? <p className="lede compact">{messages.splits.noSearchResults}</p> : null}
-        {!groupedCurrentActivity.length && !searchQuery && !archivedBatches.length ? <p className="lede compact">{messages.splits.noEntries}</p> : null}
+        {!groupedCurrentActivity.length && searchQuery ? <EmptyState>{messages.splits.noSearchResults}</EmptyState> : null}
+        {!groupedCurrentActivity.length && !searchQuery && !archivedBatches.length ? <EmptyState>{messages.splits.noEntries}</EmptyState> : null}
       </div>
     </section>
   );

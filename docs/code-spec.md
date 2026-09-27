@@ -77,6 +77,12 @@ to stay well below that.
 | `settingsPage` | `<= 350ms` | `600ms` | settings forms plus full account diagnostics and checkpoint history |
 | warmup / prefetch | `<= 250ms` | `400ms` | must yield to visible work |
 
+Measured at the 10k stress fixture after the macro performance work
+(`docs/audits/macro-loading-baseline.md`), all well inside these budgets:
+Entries ≈23 ms handler / 38 KB gzip, Month ≈31 ms / 47 KB, Summary (12
+months) ≈77 ms / 2 KB, Splits ≈31 ms / 3 KB, account pills and Imports
+≈30–35 ms. Payload size, not handler time, is what grows with ledger size.
+
 Budget rules:
 
 - visible page queries over `750ms` are a design smell
@@ -91,13 +97,111 @@ Budget rules:
 - the app shell must not statically import route-only UI, page editing controls,
   or a broad client facade that retains those modules; use route-owned lazy
   modules and direct shared helper imports for the few shell-level operations
+- optional work (route code warmup, speculative data, AI wording) starts only
+  when `routeWork.usable` is true and goes through the warmup scheduler; do
+  not add new idle prefetch effects
+- mobile speculative data needs a row in `route-warmup-admissions.js`
+  measured with `tests/performance/api-admission.spec.js` on the 10k
+  fixture; `maxDataBytes` is compared with gzip bytes
+- mobile speculative data also needs a reported `4g` connection, or an
+  unknown one (`navigator.connection` missing, as on iPhone) together with a
+  measured recent required request of at most `maxRecentRequiredMs`
+  (500 ms); a missing or slower measurement, `slow-2g`/`2g`/`3g`, data
+  saver, the quiet period, one request per visit, open editors and in-flight
+  work still deny it
+- a refresh after a save runs through `runBackgroundRefresh`
+  (`use-refresh-notice.js`); never swallow it with `.catch(() => null)`. A
+  failure keeps the saved data on screen and shows the inline refresh
+  notice with "Refresh now"; aborted, cancelled, superseded or left-route
+  failures stay silent, and a background refresh never raises the page
+  error screen
+- the Entries page DTO is written only through `entries-data-owner.js`, so
+  a refresh started before a month or view change cannot overwrite the new
+  month or end its loading state
+- a load or refresh that fails before the request's own page was shown is a
+  load failure, not a refresh failure: show the page `ErrorPanel` with the
+  shell's retry in place of the stale figures and rows (Entries:
+  `loadError`), never the previous period's data or an empty state
+- a dialog or sheet that writes checks `response.ok`, shows a saving state,
+  takes one submit, ignores Escape and Cancel while in flight, and closes
+  only on success; a failure keeps the draft with an `InlineError`
+- a portalled dialog that can open inside a form or clickable row stops
+  React `submit`, `click` and `keydown` bubbling at its overlay and content
+  (`category-edit-dialog.jsx`)
+- a page DTO carries only what its route reads; do not embed another route's
+  page DTO (Splits carries the month key and transfers, not the Month page)
+- page APIs report `Server-Timing: app;dur, init;dur;desc, total;dur`; keep
+  `app` first because budget checks read the first `dur`
+- enforced budgets: `npm run check:bundle` (first-screen JS and CSS, gzip,
+  +5% of `scripts/initial-bundle-budget.json`, run by `npm run verify`) and
+  the page-response size test in `tests/e2e/api-performance.spec.js` (+10% of
+  `tests/e2e/api-payload-budget.json`, run by the smoke bundle)
+- CSS that only one lazy route uses goes in a stylesheet imported by that
+  route's module (`month-mid-width.css` from `month-panel.jsx`,
+  `splits-panel.css` from `splits-panel.jsx`), so it ships with the route;
+  `public/styles.css` counts toward the first-screen budget
+- no `:has()` that searches all descendants (`body:has(.x)`): on a large
+  month each restyle of an element such a rule styles walks the whole page.
+  A portalled layer uses `body:has(> .x)`; an element inside the page holds
+  a `<body>` flag through `page-flags.js` (design.md "Page State Rules";
+  `tests/page-flags.test.mjs` enforces it)
+
+## List Rendering Contract
+
+A month can hold thousands of entries (the 10k stress fixture puts 2,000 in
+2026-05). Lists that grow with the ledger follow these rules, measured in
+`docs/audits/macro-loading-baseline.md` ("Entries and Month list
+rendering"):
+
+- Rows are `memo` components whose props are the row's own data, a few
+  primitives and stable handlers. Pass handlers through `useStableHandler`
+  (`src/client/use-stable-handler.js`) or a `useCallback` with no changing
+  inputs; never an inline closure or a function recreated on each render.
+- Anything only an open editor needs travels in one bundle given to the
+  open row alone (`editor` in `entries-list.jsx`). Closed rows never
+  receive editor, saving, transfer or draft state.
+- Derived row data keeps object identity. `entry-row-projection.js`
+  caches each projection by entry object and view, and `mergeEntriesById`
+  returns the current object when a merge changes no field. Do not spread
+  entries into new objects in a selector that feeds rows.
+- A memoized component that prints money through the shared formatter
+  subscribes with `useMoneyPrivacy()`. Keep that subscription on the
+  smallest piece that prints money (`EntryRowAmount`), so the toggle
+  redraws amounts, not rows.
+- Per-row dialogs, popovers and heavy widgets mount only while open
+  (`CategoryAppearancePopover` mounts its dialog on open).
+- Expensive scoring runs when its real inputs change, not on every
+  checkbox or keystroke in the same dialog (Month plan-link candidates).
+- Closed Entries rows use `content-visibility: auto` with a measured
+  `contain-intrinsic-size` of the row's content height (67 px desktop,
+  88 px mobile: the rendered row minus its 1 px top border, which the
+  intrinsic size excludes). Rows stay in the DOM, so find-in-page, Tab focus
+  and screen readers reach every row; the open row is never skipped. Update
+  the intrinsic size if the row layout changes height.
+- Scrolling to a row more than two screens away is instant
+  (`longJumpOr` in `entries-list.jsx`): a long smooth scroll renders
+  estimated rows on the way and ends off target.
+  `tests/performance/entries-deep-link.spec.js` checks a deep link to row
+  1,500 and 1,990 lands where row 5 does.
+- Entries is not windowed. Windowing would remove off-screen rows from
+  the DOM, breaking find-in-page and Tab order through the list; add it
+  only with a measured reason and a plan for those.
+- Proof: `tests/e2e/entries-row-rendering.spec.js` and
+  `tests/e2e/month-plan-link-rendering.spec.js` count row renders through
+  the React DevTools hook (`tests/support/react-commit-counter.js`).
+  Timing: `PERFORMANCE_FIXTURE=scale-10k npm run test:performance`
+  (`entries-interaction.spec.js`, `month-interaction.spec.js`), compared
+  with `node scripts/compare-performance.mjs --interaction <before> <after>`
+  over several runs per side.
 
 ## Optional AI Contract
 
 Workers AI belongs outside the normal query and mutation graph. Most actions
 are explicit. A Financial insight may make one debounced, non-blocking wording
-request after a stable page/filter state when the computed-facts key is absent
-from a short-lived in-memory cache. It must render deterministic wording first,
+request after a stable page/filter state, only while the route is usable (no
+editor or save open), when the computed-facts key is absent from a
+short-lived in-memory cache; an aborted, non-OK or stale response is neither
+shown nor cached. It must render deterministic wording first,
 must not persist that cache, and must return an ordinary unavailable result
 when disabled, unconfigured, quota-limited, or invalid. No visible page query,
 import preview or commit, accounting calculation, reconciliation, category
@@ -149,6 +253,14 @@ Each slice owns:
 - mutation invalidation map
 - selectors that shape query data for UI
 - tests for route contract and invalidation behavior
+
+URL parameter names (`view`, `summary_start`, `summary_end`) differ from key
+field names (`viewId`, `startMonth`, `endMonth`). Translate them only in
+`query-keys.js` (`monthPageKeyFromParams`, `summaryPageKeyFromParams`), never
+inline. A route's fetch key and its mutation invalidation key must be equal
+for every person; `tests/query-foundation.test.mjs` holds that matrix. Keys
+that still use URL names (Entries, Splits) must be built from the same URL
+params on both sides.
 
 Each slice must not own:
 
@@ -219,6 +331,68 @@ else:
   refetchAndReconcile()
 ```
 
+## Persistence Atomicity Contract
+
+A persistence command is all-or-nothing:
+
+- read and validate everything first (lookups, existence and lock checks,
+  snapshots needed for undo, generated ids); throw before the first write
+- then commit every write of the command, its audit event
+  (`buildAuditEventStatement`) and its month refresh markers
+  (`buildMonthlySnapshotRefreshMarkers`) in one `db.batch()`. D1 runs a batch
+  as one transaction and rolls it back if any statement fails
+- never interleave awaited reads between writes, never write with sequential
+  `.run()` calls, and never split one command's writes over several batches.
+  When a later statement needs an earlier result, compute it in JS before the
+  batch (precomputed ids, the ledger with the command's own changes applied,
+  source-month totals for a copied month)
+- helpers used inside a command return statements (`build...Statements`)
+  instead of executing them
+- refresh derived month totals after the batch with
+  `refreshMonthlySnapshotsAfterWrite`; one month's scopes and the marker clear
+  commit together, and a refresh failure is logged, not returned as a write
+  failure, because the markers let the next Summary or Month read repair it
+- the only multi-batch write is an import over
+  `IMPORT_COMMIT_SINGLE_BATCH_STATEMENT_LIMIT` (500) statements: draft-only
+  rows are staged, every visible change is one final batch, and a failure
+  discards the staged rows. Do not add another staged write without a measured
+  limit and the same invisibility argument
+- a repeated destructive command is rejected, not re-run (rolling back a
+  rolled-back import returns 409)
+- a check on the record's own state that a concurrent request can make stale
+  between the read and the batch (still archived, still unlinked) is guarded
+  inside the batch: a first statement from `buildBatchGuard`
+  (`app-repository-splits.ts`) fails the whole batch when the state changed,
+  and the command re-reads it to give the check's own message. A
+  conditional `UPDATE ... WHERE` alone is not enough: its zero-row result
+  would still commit the rest of the batch (history event, month markers).
+  Races between two records for one ledger row stay with the partial unique
+  indexes below
+- prove each command with a failure test in `tests/atomic-writes-*.test.mjs`:
+  make one statement fail partway with `failingStatement` and assert the whole
+  database dump is unchanged; the test must fail on sequential writes
+
+Converted (2026-09, `docs/audits/atomic-writes.md`): import commit and
+rollback, entry create/edit/delete, transfer link and settle, month-plan
+commands and the month snapshot recalculation; in the split workspace, add
+an entry to splits, match a split expense to an imported entry, delete a
+split expense, restore a split record (each with the entry month's refresh
+markers), split expense and settle-up edit and delete (2026-09-26; a linked
+split's edit carries its entry month's marker), the linked split's amount,
+date, description and payer follow-up inside an entry edit's batch, the
+linked split a Shared owner entry save or create writes
+(`buildLinkedSplitUpsertStatements`, in the entry's batch) and an import
+rollback's linked split amount follow-up. One active split record per ledger
+row is held by partial unique indexes (`schema.sql`, runtime schema), so a
+check before a linking batch is backed by the database when two writes race.
+Not yet converted, so still
+written statement by statement: the rest of the split workspace
+(`app-repository-splits.ts`: split create, note and category edits,
+checkpoints), category match rules,
+settings, categories,
+statement checkpoint edits, Shortcut requests (parked on purpose) and the
+demo seed. Convert a module the next time its writes change.
+
 ## Data Flow Pseudocode
 
 Keep slice code close to this shape:
@@ -256,9 +430,49 @@ list when relevant:
 Testing depth rule:
 
 - `npm run verify` is the local merge gate: dependency audit, strict
-  TypeScript, unit tests, production build, and the desktop/mobile smoke bundle
+  TypeScript, the client type check, lint, unit tests, production build, the
+  initial bundle budget, and the desktop/mobile smoke bundle
+- `npm run lint` (`eslint.config.js`, ESLint flat config) checks correctness
+  only: `eslint:recommended`, unused locals and imports (parameters and props
+  are ignored, `_` names are exempt), `eqeqeq` smart, self-compare, template
+  placeholders in plain strings, unmodified loop conditions, array callbacks
+  that forget to return, and `react-hooks/rules-of-hooks` as errors;
+  `react-hooks/exhaustive-deps` is a warning because many effects deliberately
+  run on a key. There are no stylistic or formatting rules, and TypeScript
+  files are left to `tsc`. Errors fail verify; do not add warnings casually
+- `npm run typecheck:client` (`tsconfig.client.json`) runs `tsc` with
+  `allowJs` and `checkJs` over `src/client` at the default, non-strict level
+  (`strictNullChecks` alone reports hundreds of errors). Ambient browser and
+  test-hook types live in `src/client/client-env.d.ts`. In plain JS an
+  undefaulted destructured prop counts as required, so give optional props
+  and options an explicit `= undefined` default rather than suppressing the
+  error; use a JSDoc cast for untyped cache reads. A `// @ts-expect-error`
+  needs a reason, and `// @ts-nocheck` is only for generated or vendor code
 - run `npm run test:e2e` before merging broad shared-infrastructure,
-  persistence, import, or cross-page invalidation changes
+  persistence, import, or cross-page invalidation changes;
+  `npm run test:e2e:sharded` runs the same suite as parallel shards, each
+  with its own Vite, Wrangler, ports (5501+/8901+/9501+) and local D1 persist
+  directory, and is the faster equivalent (`docs/audits/e2e-sharding.md`)
+- browser tests must not depend on another spec file or on run order: a
+  test reseeds (`reseedDemo`, in the test, a local helper, or a
+  `beforeEach` covering it) or reads only static content, because a shard
+  starts from an empty schema and runs whole files in any grouping. Tests in
+  one file stay together, in order, on one shard. After adding or
+  noticeably slowing a spec, refresh the shard plan with
+  `npm run test:e2e:sharded -- --update-weights` (full, passing run only)
+- browser or unit: a test belongs in Playwright when the screen is part of
+  what it proves: focus and keyboard, layout at a breakpoint, dialogs,
+  sheets and Escape, navigation, back/forward and deep links, drafts
+  surviving, money privacy, loading, error and retry states, timing and
+  races, route warmup, or the Worker, D1 and client working together. A test
+  that only sends API requests and checks the JSON, a computed total, a date
+  or parser rule, a DTO shape or a stored row is a Worker-level test: put it
+  in `tests/*-api.test.mjs` with `useSeededWorkerRequest()`
+  (`tests/support/worker-request.mjs`, the real Worker over a real local D1)
+  or, for a pure function, a plain unit test. Every user workflow keeps at
+  least one browser test that drives it end to end. When in doubt, keep it
+  in the browser. `docs/audits/e2e-unit-audit.md` records the moves made so
+  far and the candidates kept on purpose
 - do not waive a failing browser scenario as timing-sensitive until the
   user-visible invariant has been reproduced and the test has been proven to
   wait on the correct route or rendered state
@@ -281,6 +495,15 @@ Testing depth rule:
   code legends, page headers, and footers cannot be swallowed into transaction
   descriptions. Near-real fixtures should include at least one page boundary or
   non-transaction section for statement formats that print them.
+- PDF statement fixtures are extracted text, not PDFs: keep them in
+  `tests/fixtures/pdf-statement-text/` in the `extractPdfText()` shape (raw items,
+  `__PDF_LAYOUT_TEXT__`, `__PDF_SPACED_LAYOUT_TEXT__`) so routing in
+  `parseStatementText()` sees all three views. Assert every parsed row, the
+  checkpoints, and at least one rejected tampered variant. Prefer text
+  extracted from a real statement with the shipped pdf.js version and masked
+  item by item (`*-real-sanitized.pdf-text.txt`); hand-built layouts missed
+  real Citi and OCBC card structure. pdf.js stays on 4.x because the parsers
+  read its per-word text items (`tests/pdfjs-version-contract.test.mjs`).
 - One-off data repairs and schema maintenance must not run from hot read helpers
   such as reference-data, account-list, summary, entries, or settings reads.
   Put repairs behind explicit initialization and persist a completion marker so
@@ -308,7 +531,29 @@ These are defaults, not excuses for clever golfing.
   move page logic into slice deep modules instead of letting the file keep
   accumulating responsibilities
 - `src/domain/app-shell.ts` is for shell orchestration and shell-shared DTO
-  builders; keep route-page fragments out of that layer
+  builders; keep route-page fragments out of that layer. Page projections
+  live in `month-projection.ts`, `summary-projection.ts`,
+  `splits-projection.ts` and `donut-chart-projection.ts` (H15e)
+- persistence writes live in focused modules below the
+  `app-repository.ts` re-export hub (H15): `app-repository-schema.ts`
+  (runtime schema), `app-repository-seed.ts` (demo and empty-state seed),
+  `app-repository-entry-commands.ts`, `app-repository-month-commands.ts`,
+  `app-repository-import-commit.ts` (commit and rollback) and
+  `app-repository-snapshots.ts` (monthly snapshot recalculation, refresh
+  markers and repair, used by all of them). New code imports the specific
+  module, never the hub, and a command module never imports another command
+  module. Command writes follow the Persistence Atomicity Contract
+- move persistence code with `scripts/persisted-state-snapshot.mjs`: its
+  normalized table and page-DTO dump must be identical before and after
+- entry, month and statement dates are plain `YYYY-MM-DD` calendar dates,
+  never instants; do not convert them through UTC. "Today" and the current
+  month come from the household calendar in `src/lib/app-calendar.ts`
+  (Singapore), shared by the client (`src/client/app-dates.js`) and the
+  Worker (`getCurrentMonthKey` in `src/lib/month.ts`), read at call time.
+  Never cut a date out of `toISOString()`/`toJSON()`: that is the UTC day,
+  wrong before 8 am, and the Worker runs in UTC; `tests/app-dates.test.mjs`
+  fails on that pattern in client code. Calendar arithmetic on
+  `T00:00:00Z` dates (`addDaysToIsoDate`) stays in UTC
 - if several route modules repeat the same route-context or month-selection
   logic, extract that logic into `src/domain/route-context.ts` or another
   shared route fragment before the duplication spreads
@@ -341,6 +586,23 @@ Refactor rule:
 - large legacy files are migration targets, not permission to keep adding more
   responsibilities to the same file
 - split the file by slice boundary first, then by helper depth inside the slice
+
+## Remaining Large Modules
+
+These handwritten modules are still over the 800-line guideline after the
+macro performance work. Each has one owner and a reason; splitting them is
+future work, not a claim that the complexity is gone.
+
+| Module | Lines | Owner | Why it is still large |
+| --- | ---: | --- | --- |
+| `src/client/App.jsx` | ≈3,150 | App shell | Route orchestration, mutation refresh plans and cross-route invalidation still meet here; state owners (H12) and chrome (H11) have moved out |
+| `src/index.ts` | ≈2,300 | Worker | One flat route chain with request validation per endpoint; only the AI routes are extracted (H13) |
+| `src/client/imports-panel.jsx`, `import-preview-review.jsx` | ≈2,050 / ≈1,400 | Imports | Browser-only intake, preview review and commit flow share draft state |
+| `src/domain/app-repository-import-preview.ts`, `-import-commit.ts` | ≈1,970 / ≈1,900 | Imports | Statement reconciliation, certification and rollback restoration are one tightly coupled algorithm |
+| `src/client/month-panel.jsx`, `entries-panel.jsx`, `splits-panel.jsx`, `settings-panel.jsx`, `settings-sections.jsx` | ≈1,200–1,800 | Each route | Route panels with their editors; drafts and workflow locks are panel state |
+| `src/domain/app-repository-splits.ts` | ≈1,580 | Splits | Split expenses, settlements, checkpoints and matches share validation |
+| `src/domain/app-repository-entry-commands.ts` | ≈1,170 | Entries | Five edit paths share bank-fact locks and split sync |
+| `src/domain/demo-data.ts`, `src/types/dto.ts`, `src/client/copy/en-SG.js` | ≈1,480 / 900 / 940 | Fixtures, DTO types, copy | Data and declarations, not logic |
 
 ## Comment Rules
 

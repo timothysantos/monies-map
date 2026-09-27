@@ -1,6 +1,7 @@
 import { ChevronLeft } from "lucide-react";
 
 import { messages } from "./copy/en-SG";
+import { EmptyState } from "./ui-states";
 import { moniesClient } from "./monies-client-service";
 
 const { format: formatService } = moniesClient;
@@ -11,7 +12,7 @@ export function SplitMatchesList({ matches, pendingMatchCount, onBackToGroup, on
       <div className="panel-subhead">
         <div>
           <h2>{messages.splits.matches}</h2>
-          <p className="lede compact">{pendingMatchCount ? messages.splits.matchReviewDetail(pendingMatchCount) : messages.splits.noMatches}</p>
+          {pendingMatchCount ? <p className="lede compact">{messages.splits.matchReviewDetail(pendingMatchCount)}</p> : null}
         </div>
         <button type="button" className="subtle-action split-match-back-action" aria-label={messages.splits.backToGroup} onClick={onBackToGroup}>
           <ChevronLeft size={16} aria-hidden="true" />
@@ -50,7 +51,8 @@ export function SplitMatchesList({ matches, pendingMatchCount, onBackToGroup, on
                 <p className="split-match-deltas">
                   {messages.splits.matchDeltaSummary(
                     match.dateDeltaDays,
-                    formatService.money(match.amountDeltaMinor)
+                    // Same-currency match: the delta is in that shared currency.
+                    formatService.moneyWithCurrency(match.amountDeltaMinor, match.splitCurrency ?? "SGD")
                   )}
                 </p>
               )}
@@ -65,7 +67,7 @@ export function SplitMatchesList({ matches, pendingMatchCount, onBackToGroup, on
             </div>
           </div>
         )) : (
-          <p className="lede compact">{messages.splits.noMatches}</p>
+          <EmptyState>{messages.splits.noMatches}</EmptyState>
         )}
       </div>
     </section>

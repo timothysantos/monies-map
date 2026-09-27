@@ -223,6 +223,9 @@ CREATE TABLE IF NOT EXISTS import_rows (
     status IN ('preview', 'imported', 'skipped', 'error')
   ),
   error_message TEXT,
+  -- The bank facts of the manual entry this row promoted, as they were
+  -- before the promotion, so a rollback can restore the manual entry.
+  promoted_entry_snapshot_json TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE,
   FOREIGN KEY (assigned_account_id) REFERENCES accounts(id)
@@ -559,6 +562,19 @@ CREATE TABLE IF NOT EXISTS monthly_snapshots (
   FOREIGN KEY (household_id) REFERENCES households(id)
 );
 
+-- Months whose monthly_snapshots are stale because a committed write's
+-- follow-up refresh has not finished. Written in the same batch as the write
+-- (each write sets a new refresh_token), cleared in the same batch as a
+-- refresh that read that token, repaired on the next Summary or Month read.
+CREATE TABLE IF NOT EXISTS monthly_snapshot_refreshes (
+  household_id TEXT NOT NULL,
+  month_key TEXT NOT NULL,
+  refresh_token TEXT NOT NULL,
+  requested_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (household_id, month_key),
+  FOREIGN KEY (household_id) REFERENCES households(id)
+);
+
 CREATE TABLE IF NOT EXISTS demo_settings (
   key TEXT PRIMARY KEY,
   value_json TEXT NOT NULL,
@@ -638,6 +654,18 @@ CREATE INDEX IF NOT EXISTS idx_split_expenses_household_date
 
 CREATE INDEX IF NOT EXISTS idx_split_settlements_household_date
   ON split_settlements (household_id, settlement_date);
+
+-- One active split record per ledger row. An archived (deleted) record keeps
+-- its link so a restore can bring it back, but it does not hold the row, so
+-- only records with deleted_at IS NULL count. Two racing writes (add to
+-- splits, match, restore) therefore cannot both link the same entry.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_split_expenses_active_linked_transaction
+  ON split_expenses (linked_transaction_id)
+  WHERE linked_transaction_id IS NOT NULL AND deleted_at IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_split_settlements_active_linked_transaction
+  ON split_settlements (linked_transaction_id)
+  WHERE linked_transaction_id IS NOT NULL AND deleted_at IS NULL;
 
 CREATE INDEX IF NOT EXISTS idx_category_match_rules_household_active
   ON category_match_rules (household_id, is_active, priority);

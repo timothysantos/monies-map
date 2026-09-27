@@ -9,6 +9,7 @@ const { format: formatService } = moniesClient;
 export default function SpendingMixRecharts({
   chartData,
   total,
+  currency = "",
   totalLabel,
   compact,
   isNarrowViewport,
@@ -41,7 +42,7 @@ export default function SpendingMixRecharts({
       </ResponsiveContainer>
       <div className={`donut-center recharts-donut-center ${compact ? "is-compact" : ""}`}>
         <span>{totalLabel}</span>
-        <strong><PrivateMoney>{formatService.money(total)}</PrivateMoney></strong>
+        <strong><PrivateMoney>{currency ? formatService.moneyWithCurrency(total, currency) : formatService.money(total)}</PrivateMoney></strong>
       </div>
     </div>
   );

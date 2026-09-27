@@ -1,13 +1,15 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import { Check, ChevronDown, Receipt, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { messages } from "./copy/en-SG";
 import { moniesClient } from "./monies-client-service";
 import { ResponsiveSelect } from "./responsive-select";
 import { ICON_REGISTRY } from "./ui-options";
 import { PrivateMoney } from "./money-privacy";
+import { useIsMobileLayout } from "./use-viewport";
+import { InlineError } from "./ui-states";
 
 const { format: formatService } = moniesClient;
 
@@ -43,7 +45,7 @@ export function FilterMultiSelect({
   onChange,
   selectionLabel
 }) {
-  const [useMobilePicker, setUseMobilePicker] = useState(false);
+  const useMobilePicker = useIsMobileLayout();
   const [open, setOpen] = useState(false);
   const selectedValues = Array.isArray(values) ? values : [];
   const normalizedOptions = options.map((option) => (
@@ -62,18 +64,6 @@ export function FilterMultiSelect({
       : [...selectedValues, nextValue];
     onChange(nextValues);
   }
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const mediaQuery = window.matchMedia("(max-width: 760px)");
-    const update = () => setUseMobilePicker(mediaQuery.matches);
-    update();
-    mediaQuery.addEventListener?.("change", update);
-    return () => mediaQuery.removeEventListener?.("change", update);
-  }, []);
 
   if (useMobilePicker) {
     return (
@@ -212,7 +202,7 @@ export function DeleteRowButton({
   triggerLabel,
   confirmLabel = "Confirm",
   destructive = true,
-  prompt,
+  prompt = undefined,
   buttonClassName = "",
   children = null
 }) {
@@ -267,7 +257,7 @@ export function DeleteRowButton({
           <p>
             {prompt ?? <>You are deleting <strong>{label}</strong>. Confirm?</>}
           </p>
-          {error ? <p className="form-error">{error}</p> : null}
+          <InlineError message={error} />
           <div className="delete-popover-actions">
             <Popover.Close asChild>
               <button type="button" className="subtle-action" disabled={isWorking}>

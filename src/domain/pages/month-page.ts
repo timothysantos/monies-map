@@ -1,18 +1,18 @@
 import { getCurrentMonthKey } from "../../lib/month";
 import {
-  adjustEntriesForView,
   applyActualsFromEntries,
-  buildMonthPage,
   buildEmptySummaryMonth,
   loadPlannedSummaryMonthsForViews
-} from "../app-shell";
+} from "../summary-projection";
+import { adjustEntriesForView, buildMonthPage } from "../month-projection";
+import { effectiveScopeForView, filterEntriesForView } from "../person-view-scope";
 import {
   loadEntries,
   loadMonthIncomeRows,
-  loadMonthPlanRows,
-  loadSummaryMonths
+  loadMonthPlanRows
 } from "../app-repository";
-import type { EntryDto, MonthPageDto, PersonScope, SummaryMonthDto } from "../../types/dto";
+import { loadRepairedSummaryMonths } from "../app-repository-snapshots";
+import type { MonthPageDto, PersonScope, SummaryMonthDto } from "../../types/dto";
 import {
   loadRoutePageContext,
   resolveEffectiveMonth
@@ -24,18 +24,24 @@ export async function buildMonthPageDto(
   selectedViewId = "household",
   selectedMonth = getCurrentMonthKey(),
   selectedScope: PersonScope = "direct_plus_shared"
-): Promise<{ viewId: string; label: string; summaryPage: Pick<{ months: SummaryMonthDto[] }, "months">; monthPage: MonthPageDto; householdMonthEntries: EntryDto[] }> {
+): Promise<{ viewId: string; label: string; summaryPage: Pick<{ months: SummaryMonthDto[] }, "months">; monthPage: MonthPageDto }> {
   const { categories, trackedMonths, viewId, label } = await loadRoutePageContext(db, selectedViewId);
   const effectiveSelectedMonth = resolveEffectiveMonth(trackedMonths, selectedMonth);
   const [monthEntries, monthPlanRows, incomeRows, summaryMonths] = await Promise.all([
     loadEntries(db, effectiveSelectedMonth),
     loadMonthPlanRows(db, effectiveSelectedMonth),
     loadMonthIncomeRows(db, viewId, effectiveSelectedMonth),
-    loadSummaryMonths(db, viewId)
+    loadRepairedSummaryMonths(db, viewId)
   ]);
   const plannedSummaryMonthsByView = await loadPlannedSummaryMonthsForViews(db, [viewId], [effectiveSelectedMonth]);
   const adjustedMonthEntries = adjustEntriesForView(monthEntries, viewId);
-  const visibleEntries = adjustedMonthEntries;
+  // The Actual spend card counts the same entries as Summary and the stored
+  // person month totals: only the person's own, in the selected scope.
+  const visibleEntries = filterEntriesForView(
+    adjustedMonthEntries,
+    viewId,
+    effectiveScopeForView(viewId, selectedScope)
+  );
   const currentSnapshotMonth = summaryMonths.find((month) => month.month === effectiveSelectedMonth) ?? null;
   const currentPlannedSummaryMonth = (plannedSummaryMonthsByView[viewId] ?? []).find((month) => month.month === effectiveSelectedMonth) ?? null;
   const currentSummaryMonth = applyActualsFromEntries(
@@ -57,7 +63,9 @@ export async function buildMonthPageDto(
       categories,
       effectiveSelectedMonth,
       currentSummaryMonth
-    ),
-    householdMonthEntries: monthEntries
+    )
+    // No separate household entry list: monthPage.entries already holds
+    // every household entry (adjusted for the view), which is all plan
+    // linking needs. Sending both doubled the response (H14).
   };
 }

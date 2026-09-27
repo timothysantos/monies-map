@@ -5,6 +5,13 @@ async function cancelAndInvalidate(queryClient, queryKey) {
   await queryClient.invalidateQueries({ queryKey });
 }
 
+// Route pages are served from any cached copy, stale or not, so a family
+// that must be read fresh on its next visit is removed.
+async function cancelAndRemove(queryClient, queryKey) {
+  await queryClient.cancelQueries({ queryKey });
+  queryClient.removeQueries({ queryKey });
+}
+
 export async function invalidateAppShellQueries(queryClient, params = {}) {
   await cancelAndInvalidate(queryClient, queryKeys.appShell(params));
 }
@@ -35,7 +42,7 @@ export async function invalidateImportsPageQueries(queryClient) {
 
 export async function invalidateMonthQueries(queryClient, {
   invalidateSummaryAccountPills = false,
-  entriesParams,
+  entriesParams = undefined,
   month,
   scope,
   summaryRange,
@@ -101,6 +108,7 @@ export async function invalidateEntriesMutationQueries(queryClient, {
 
 export async function invalidateImportMutationQueries(queryClient, {
   invalidateSummaryAccountPills = false,
+  invalidateSplits = false,
   entriesParams,
   monthKeys = [],
   scope,
@@ -108,6 +116,12 @@ export async function invalidateImportMutationQueries(queryClient, {
   viewId
 }) {
   const tasks = [cancelAndInvalidate(queryClient, queryKeys.importsPage())];
+
+  // A rollback can unlink a split from a removed entry or move a linked
+  // split with its restored entry, in any month or view.
+  if (invalidateSplits) {
+    tasks.push(cancelAndRemove(queryClient, ["splits-page"]));
+  }
 
   if (entriesParams) {
     tasks.push(cancelAndInvalidate(queryClient, queryKeys.entriesPage(entriesParams)));

@@ -57,6 +57,13 @@ test("simplified settlement checkpoints preserve backdated additions and can reo
 
   await page.reload();
   await expect(page.locator(".split-checkpoint-panel")).toContainText("Simplified settlement");
+  // Its hints read in sentence case like the rest of the app, not Title Case.
+  const completionHint = page.locator(".split-checkpoint-completion-actions small");
+  await expect(completionHint).toHaveText("Moves this repayment out of the active view. It remains awaiting a bank transfer match.");
+  await expect(completionHint).toHaveCSS("text-transform", "none");
+  const summaryLine = page.locator(".split-checkpoint-summary small");
+  await expect(summaryLine).toContainText(/\d+ included split records? · /);
+  await expect(summaryLine).toHaveCSS("text-transform", "none");
   await expect(page.locator(".split-checkpoint-panel").getByRole("button", { name: "View included activity" })).toBeVisible();
   expect(await page.locator(".split-checkpoint-panel").evaluate((element) => element.compareDocumentPosition(document.querySelector(".split-activity-list")) & Node.DOCUMENT_POSITION_FOLLOWING)).toBeTruthy();
   await page.getByLabel(/Transfer to match/).selectOption(firstTransfer.entryId);

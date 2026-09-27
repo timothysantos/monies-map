@@ -72,8 +72,8 @@ import {
 import { inspectCsv } from "../lib/csv";
 import { getCurrentMonthKey } from "../lib/month";
 import { parseStatementText } from "../lib/statement-import";
+import { useRouteWorkReport } from "./use-route-work-status";
 
-const DEFAULT_MONTH_KEY = getCurrentMonthKey();
 const { format: formatService, imports: importService } = moniesClient;
 
 function createShortcutApiKey() {
@@ -187,6 +187,24 @@ export function SettingsPanel({
   const [shortcutSettingsDraft, setShortcutSettingsDraft] = useState(() => buildShortcutSettingsDraft(safeSettingsPage.shortcutSettings, accounts));
   const [shortcutSettingsError, setShortcutSettingsError] = useState("");
   const [shortcutSettingsStatus, setShortcutSettingsStatus] = useState("");
+  useRouteWorkReport({
+    busy: isSubmitting
+      || emptyStateDialogOpen
+      || reloadDialogOpen
+      || dismissTransfersConfirmOpen
+      || Boolean(personDialog)
+      || Boolean(accountDialog)
+      || Boolean(categoryDialog)
+      || Boolean(categoryRuleDialog)
+      || Boolean(reconciliationDialog)
+      || statementCompareStatus?.tone === "active"
+      || Boolean(transferDialogEntryId)
+      || Boolean(refreshingTransferCandidatesEntryId)
+      || Boolean(rankingTransferCandidatesEntryId)
+      || Boolean(linkingTransferEntryId)
+      || Boolean(settlingTransferEntryId)
+      || isRefreshingTransfers
+  });
 
   useEffect(() => {
     setShortcutSettingsDraft(buildShortcutSettingsDraft(safeSettingsPage.shortcutSettings, accounts));
@@ -803,7 +821,7 @@ export function SettingsPanel({
   function buildTransferReviewUrl(item) {
     const params = new URLSearchParams(searchParams);
     params.set("view", viewId);
-    params.set("month", item?.date?.slice(0, 7) || searchParams.get("month") || DEFAULT_MONTH_KEY);
+    params.set("month", item?.date?.slice(0, 7) || searchParams.get("month") || getCurrentMonthKey());
     params.set("entry_type", "transfer");
     params.set("editing_entry", item.entryId);
     return `/entries?${params.toString()}`;
@@ -1087,7 +1105,7 @@ export function SettingsPanel({
             <div>
               <h3>{viewerIdentity.personId ? "Login linked" : "Signed in"}</h3>
               <p>{viewerIdentity.email}</p>
-              {loginIdentityError ? <span className="form-error">{loginIdentityError}</span> : null}
+              {loginIdentityError ? <span className="form-error" role="alert">{loginIdentityError}</span> : null}
             </div>
           </div>
           <div className="settings-login-actions">

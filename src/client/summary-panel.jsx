@@ -30,6 +30,8 @@ import {
 } from "./ui-components";
 import { FinancialInsight } from "./financial-insight";
 import { PrivateMoney } from "./money-privacy";
+import { useRouteWorkReport } from "./use-route-work-status";
+import { useIsMobileLayout } from "./use-viewport";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
 const {
   accounts: accountService,
@@ -42,13 +44,15 @@ const {
 // 1. Range-level metrics and spending mix.
 // 2. Month-by-month "intent vs outcome" plan review.
 // 3. Account health pills that stay independent from the selected range.
-export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppearanceChange, onRefresh }) {
+export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppearanceChange, onRefresh, canRequestWording = false }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobileLayout = useIsMobileLayout();
   const [monthNoteDialog, setMonthNoteDialog] = useState(null);
   const [isSavingMonthNote, setIsSavingMonthNote] = useState(false);
   const [monthNoteError, setMonthNoteError] = useState("");
+  useRouteWorkReport({ busy: Boolean(monthNoteDialog) || isSavingMonthNote });
   // Summary can mount while the route payload is still hydrating, so keep a
   // fully shaped local summary slice instead of reading nested fields directly.
   const safeSummaryPage = useMemo(() => ({
@@ -62,7 +66,12 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
   }), [view.summaryPage]);
 
   const summaryFocusParam = searchParams.get("summary_focus");
-  const focusState = buildSummaryFocusState(safeSummaryPage, summaryFocusParam);
+  // Memoized so the insight facts, and their cache key, stay stable across
+  // unrelated rerenders.
+  const focusState = useMemo(
+    () => buildSummaryFocusState(safeSummaryPage, summaryFocusParam),
+    [safeSummaryPage, summaryFocusParam]
+  );
   const financialInsightFacts = useMemo(
     () => buildSummaryFinancialInsightFacts(safeSummaryPage, focusState, summaryFocusParam, view),
     [focusState, safeSummaryPage, summaryFocusParam, view.id, view.label]
@@ -101,6 +110,15 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       next.set("summary_focus", nextMonth || SUMMARY_FOCUS_OVERALL);
+      return next;
+    });
+  }
+
+  // Scope is a route parameter, as on Month: the route reloads Summary for it.
+  function handleScopeChange(scopeKey) {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("scope", scopeKey);
       return next;
     });
   }
@@ -156,6 +174,8 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
         <div>
           <h2>{messages.tabs.summary}</h2>
           <span className="panel-context">{messages.common.viewingDot(view.label)}</span>
+          {/* A phone switches scope from the floating View and scope bar instead. */}
+          {isMobileLayout ? null : <SummaryScopeSwitch view={view} onScopeChange={handleScopeChange} />}
         </div>
         <div className="metric-row metric-row-summary summary-head-metrics">
           {safeSummaryPage.metricCards.map((card) => (
@@ -164,7 +184,7 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
         </div>
       </div>
 
-      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-summary" />
+      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-summary" canRequestWording={canRequestWording} />
 
       <div className="summary-top-grid">
         <SummarySpendingMixSection
@@ -205,6 +225,42 @@ export function SummaryPanel({ view, selectedMonth, categories, onCategoryAppear
         onSave={saveSummaryMonthNote}
       />
     </article>
+  );
+}
+
+// A person view's figures follow the route's scope, so desktop Summary names
+// the scope they count with a compact one-click switch in the empty space
+// under its title, beside the taller metric cards. It adds no height, and no
+// width to the title column: `contain: inline-size` drops its content size and
+// a -12px margin cancels the title row's flex gap (.summary-scope-switch in
+// styles.css). Where the header stacks (960px and below) it joins the title
+// row instead. What each scope counts is the option's tooltip. The page view carries the scope of the
+// request the figures answer (buildSummaryPageView), so it never runs ahead of
+// them. The household has one Combined scope and no switch. On a phone the
+// floating View and scope bar in App.jsx is the one scope control.
+function SummaryScopeSwitch({ view, onScopeChange }) {
+  const scopes = view.scopes ?? [];
+  if (scopes.length < 2) {
+    return null;
+  }
+  const { selectedScope } = view;
+  return (
+    <div className="summary-scope-switch">
+      <div className="scope-toggle pill-row" role="group" aria-label={messages.summary.scope}>
+        {scopes.map((scope) => (
+          <button
+            key={scope.key}
+            className={`pill scope-button ${scope.key === selectedScope ? "is-active" : ""}`}
+            type="button"
+            aria-pressed={scope.key === selectedScope}
+            title={messages.views.scopeHint[scope.key]?.(view.label)}
+            onClick={() => onScopeChange(scope.key)}
+          >
+            {messages.summary.scopeSwitchLabel[scope.key] ?? scope.label}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -249,8 +305,9 @@ function buildSummaryFinancialInsightFacts(summaryPage, focusState, summaryFocus
         }))
     ],
     entryCount: focusState.donutData.reduce((total, item) => total + Number(item.entryCount ?? 0), 0),
-    formatMoney: formatService.money,
+    formatMoney: formatService.unmaskedMoney,
     perspective: "cash_flow",
+    recordKind: "category_totals",
     accountingAdvice,
     decisionMapContext: {
       plannedSpendMinor,

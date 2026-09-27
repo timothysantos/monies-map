@@ -10,6 +10,7 @@ import {
   entryMatchesSearch,
   getEntrySearchSuggestions,
 } from "../src/client/entry-search.js";
+import { projectEntriesForView } from "../src/client/entry-row-projection.js";
 
 test("entry selectors support multiple selected categories", () => {
   const categories = normalizeEntryFilterValues(["Food & Drinks", "Taxi", "Taxi", ""]);
@@ -76,3 +77,40 @@ function buildEntry(patch) {
     splits: patch.splits ?? []
   };
 }
+
+test("row projections keep their identity across filter changes and change only for an edited entry", () => {
+  const entry = (id, amountMinor, splits) => ({
+    id,
+    date: "2026-05-03",
+    description: `Row ${id}`,
+    amountMinor,
+    entryType: "expense",
+    ownershipType: splits ? "shared" : "direct",
+    splits: splits ?? [{ personId: "person-tim", personName: "Tim", ratioBasisPoints: 10000, amountMinor }]
+  });
+  const shared = [
+    { personId: "person-tim", personName: "Tim", ratioBasisPoints: 2500, amountMinor: 250 },
+    { personId: "person-joyce", personName: "Joyce", ratioBasisPoints: 7500, amountMinor: 750 }
+  ];
+  const entries = [entry("a", 1200), entry("b", 1000, shared), entry("c", 500)];
+
+  const all = projectEntriesForView(entries, "household");
+  const subset = projectEntriesForView([entries[0], entries[2]], "household");
+  assert.equal(subset.rowEntries[0], all.rowEntries[0]);
+  assert.equal(subset.rowEntries[1], all.rowEntries[2]);
+  assert.equal(subset.aggregateEntries[0], all.aggregateEntries[0]);
+  assert.deepEqual(all.rowEntries.map((row) => row.amountMinor), [1200, 1000, 500]);
+
+  // A person view is a separate projection with that person's share.
+  const tim = projectEntriesForView(entries, "person-tim");
+  assert.notEqual(tim.rowEntries[1], all.rowEntries[1]);
+  assert.equal(tim.rowEntries[1].amountMinor, 250);
+  assert.equal(tim.rowEntries[1].grossAmountMinor, 1000);
+
+  // Negative: an edited entry is a new object, so it gets a new projection.
+  const edited = [entries[0], { ...entries[1], description: "Row b edited" }, entries[2]];
+  const afterEdit = projectEntriesForView(edited, "household");
+  assert.equal(afterEdit.rowEntries[0], all.rowEntries[0]);
+  assert.notEqual(afterEdit.rowEntries[1], all.rowEntries[1]);
+  assert.equal(afterEdit.rowEntries[1].description, "Row b edited");
+});

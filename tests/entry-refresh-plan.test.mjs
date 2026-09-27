@@ -157,6 +157,75 @@ test("X6 entries invalidation matrix keeps add-to-splits on entries, splits, mon
   });
 });
 
+test("an amount edit of a split-linked entry also refreshes Splits, other edits do not", () => {
+  const before = {
+    date: "2026-05-22",
+    description: "Groceries",
+    accountName: "UOB One",
+    categoryName: "Groceries",
+    amountMinor: 3000,
+    totalAmountMinor: 6000,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim",
+    linkedSplitExpenseId: "split-expense-1"
+  };
+
+  assert.deepEqual(buildEntryMutationRefreshPlan({
+    kind: "entry-edit",
+    nextEntry: { ...before, amountMinor: 8050, totalAmountMinor: 8050 },
+    previousEntry: before
+  }), {
+    invalidateEntries: true,
+    invalidateMonth: true,
+    invalidateSummary: true,
+    invalidateSplits: true
+  });
+  assert.equal(buildEntryMutationRefreshPlan({
+    kind: "entry-edit",
+    nextEntry: { ...before, categoryName: "Entertainment" },
+    previousEntry: before
+  }).invalidateSplits, false);
+  const { linkedSplitExpenseId: _unlinked, ...direct } = before;
+  assert.equal(buildEntryMutationRefreshPlan({
+    kind: "entry-edit",
+    nextEntry: { ...direct, amountMinor: 8050, totalAmountMinor: 8050 },
+    previousEntry: direct
+  }).invalidateSplits, false);
+});
+
+test("a date, description, payer or account edit of a split-linked entry refreshes Splits, a category or note edit does not", () => {
+  const before = {
+    date: "2026-05-22",
+    description: "Groceries",
+    accountName: "UOB One",
+    categoryName: "Groceries",
+    amountMinor: 3000,
+    totalAmountMinor: 6000,
+    entryType: "expense",
+    ownershipType: "direct",
+    ownerName: "Tim",
+    note: "",
+    linkedSplitExpenseId: "split-expense-1"
+  };
+  const invalidatesSplits = (nextEntry, previousEntry = before) => buildEntryMutationRefreshPlan({
+    kind: "entry-edit",
+    nextEntry,
+    previousEntry
+  }).invalidateSplits;
+
+  // The server copies these to the linked split in the same save.
+  assert.equal(invalidatesSplits({ ...before, date: "2026-05-23" }), true);
+  assert.equal(invalidatesSplits({ ...before, description: "Groceries renamed" }), true);
+  assert.equal(invalidatesSplits({ ...before, ownerName: "Joyce" }), true);
+  assert.equal(invalidatesSplits({ ...before, accountName: "Joyce Card", accountId: "acct-joyce" }), true);
+  // Category and note reach the split only through their own sync dialogs.
+  assert.equal(invalidatesSplits({ ...before, categoryName: "Entertainment" }), false);
+  assert.equal(invalidatesSplits({ ...before, note: "Only on the entry" }), false);
+  const { linkedSplitExpenseId: _unlinked, ...direct } = before;
+  assert.equal(invalidatesSplits({ ...direct, date: "2026-05-23" }, direct), false);
+});
+
 test("E4 and E7 entries invalidation matrix leaves filter-only and mobile-sheet changes server-local", () => {
   assert.deepEqual(buildEntryMutationRefreshPlan({
     kind: "filter-only"

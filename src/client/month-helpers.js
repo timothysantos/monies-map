@@ -86,7 +86,7 @@ export function getPlanRowById(planSections, rowId) {
   return planSections.flatMap((section) => section.rows).find((row) => row.id === rowId);
 }
 
-export function buildPlanLinkCandidates({ row, householdMonthEntries, monthEntries, monthKey }) {
+export function buildPlanLinkCandidates({ row, monthEntries, monthKey }) {
   if (!row) {
     return [];
   }
@@ -100,7 +100,9 @@ export function buildPlanLinkCandidates({ row, householdMonthEntries, monthEntri
   const hints = row.planMatchHints ?? [];
   const uniqueEntries = new Map();
 
-  for (const entry of [...(householdMonthEntries ?? []), ...(monthEntries ?? [])]) {
+  // The Month page's entries hold every household entry for the month,
+  // adjusted for the selected person, so they are the only candidates.
+  for (const entry of monthEntries ?? []) {
     if (entry.entryType === "expense") {
       uniqueEntries.set(entry.id, entry);
     }

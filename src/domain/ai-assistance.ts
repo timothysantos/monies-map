@@ -20,6 +20,11 @@ export interface AiAssistResult<T> {
 }
 
 const DEFAULT_DAILY_LIMIT = 12;
+// The daily allowance is one cost guard for the whole deployment, not a
+// household record, so its counter row keeps its original key rather than
+// DEFAULT_HOUSEHOLD_ID. Nothing joins on it, and renaming it would silently
+// reset the day's used units on deploy.
+const AI_ALLOWANCE_COUNTER_KEY = "household-default";
 
 // AI assistance is deliberately a best-effort edge. It never throws into a
 // financial workflow and it persists only aggregate daily usage counters.
@@ -166,7 +171,7 @@ async function reserveDailyAiBudget(
   const limit = readDailyLimit(env.AI_ASSIST_DAILY_LIMIT);
   const safeUnits = Math.max(1, Math.min(10, Math.round(units)));
   const usageDay = new Date().toISOString().slice(0, 10);
-  const householdId = "household-default";
+  const householdId = AI_ALLOWANCE_COUNTER_KEY;
 
   const result = await db
     .prepare(`

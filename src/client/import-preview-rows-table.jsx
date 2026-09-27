@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import { messages } from "./copy/en-SG";
+import { EmptyState } from "./ui-states";
 import { selectAllOnFocus } from "./focus-utils";
 import { moniesClient } from "./monies-client-service";
 import { useMoneyPrivacy } from "./money-privacy";
@@ -95,13 +96,13 @@ export function ImportPreviewRowsTable({
           areTotalsVisible={areTotalsVisible}
         />
       ) : (
-        <p className="lede compact">
+        <EmptyState>
           {hasAlreadyCoveredCheckpointRefresh
             ? messages.imports.noRowsToImportCoveredStatement
             : hasEmptyStatementCheckpointOnly
               ? messages.imports.noRowsToImportEmptyStatement
               : messages.imports.noRowsToImport}
-        </p>
+        </EmptyState>
       )}
       {skippedRows.length ? (
         <details ref={skippedRowsRef} className="import-skipped-rows" id="import-skipped-rows">

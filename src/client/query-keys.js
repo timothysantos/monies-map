@@ -31,6 +31,35 @@ function normalizeRecord(value) {
   );
 }
 
+// URL params and query keys use different names (view vs viewId,
+// summary_start vs startMonth). Translate here so a route fetch and its
+// mutation invalidation build the same key; dropping a field here would let
+// two people share one cached page.
+function readParam(params, name) {
+  if (params instanceof URLSearchParams) {
+    return params.get(name) ?? undefined;
+  }
+  return params?.[name];
+}
+
+export function monthPageKeyFromParams(params) {
+  return queryKeys.monthPage({
+    viewId: readParam(params, "view") ?? "household",
+    month: readParam(params, "month") ?? "",
+    scope: readParam(params, "scope") ?? "direct_plus_shared"
+  });
+}
+
+export function summaryPageKeyFromParams(params) {
+  return queryKeys.summaryPage({
+    viewId: readParam(params, "view") ?? "household",
+    month: readParam(params, "month") ?? "",
+    scope: readParam(params, "scope") ?? "direct_plus_shared",
+    startMonth: readParam(params, "summary_start") ?? "",
+    endMonth: readParam(params, "summary_end") ?? ""
+  });
+}
+
 function normalizeRouteRequest(request) {
   if (!request) {
     return { path: "", params: {} };
@@ -63,7 +92,7 @@ export const queryKeys = {
     }
 
     if (request?.path === "/api/month-page") {
-      return this.monthPage(params);
+      return monthPageKeyFromParams(params);
     }
 
     if (request?.path === "/api/splits-page") {
@@ -79,7 +108,7 @@ export const queryKeys = {
     }
 
     if (request?.path === "/api/summary-page") {
-      return this.summaryPage(params);
+      return summaryPageKeyFromParams(params);
     }
 
     return this.routePage(request);

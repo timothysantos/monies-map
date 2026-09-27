@@ -47,6 +47,12 @@ export interface FinancialInsightRecord {
   categoryName?: string;
   description?: string;
   date?: string;
+  // Present on entries adjusted for a person view: a shared or split-linked
+  // entry carries the person's part in amountMinor and the whole entry in
+  // totalAmountMinor.
+  ownershipType?: string;
+  linkedSplitExpenseId?: string | null;
+  totalAmountMinor?: number | null;
 }
 
 export interface FinancialDecisionMapLane {
@@ -126,6 +132,9 @@ export function buildFinancialInsightFacts(input: {
   audienceName?: string;
   entryCount?: number;
   decisionMapContext?: FinancialDecisionMapContext;
+  // Summary passes one record per spending category, not single entries, so
+  // no fact may call a record a purchase or repeat it as one expense.
+  recordKind?: "entries" | "category_totals";
 }) : FinancialInsightFacts {
   const expenses = input.records.filter((record) => record.entryType === "expense");
   const incomeMinor = input.records
@@ -143,6 +152,7 @@ export function buildFinancialInsightFacts(input: {
     .sort((left, right) => Math.abs(right.amountMinor) - Math.abs(left.amountMinor) || String(left.description ?? "").localeCompare(String(right.description ?? "")))[0];
 
   const perspective = input.perspective ?? "cash_flow";
+  const recordKind = input.recordKind ?? "entries";
   const topMerchantName = redactAiText(topMerchant?.description, 100) || "No expense recorded";
   const topMerchantMinor = Math.abs(topMerchant?.amountMinor ?? 0);
   const contextLabel = redactAiText(input.contextLabel, 120) || "Current view";
@@ -171,10 +181,14 @@ export function buildFinancialInsightFacts(input: {
       formatMoney: input.formatMoney,
       contextLabel,
       audienceKind,
-      audienceName
+      audienceName,
+      perspective,
+      recordKind,
+      topMerchantIsShare: Boolean(topMerchant && isShareRecord(topMerchant))
     }),
     ...buildFinancialDecisionPrompts({
       perspective,
+      audienceKind,
       spendMinor,
       incomeMinor,
       netMinor: incomeMinor - spendMinor,
@@ -189,7 +203,8 @@ export function buildFinancialInsightFacts(input: {
       topMerchantName,
       topMerchantMinor,
       formatMoney: input.formatMoney,
-      context: input.decisionMapContext
+      context: input.decisionMapContext,
+      recordKind
     })
   };
 }
@@ -305,6 +320,9 @@ function buildNotableEntryFact(input: {
   contextLabel: string;
   audienceKind: "person" | "household";
   audienceName: string;
+  perspective: "cash_flow" | "partial_view" | "split_obligation";
+  recordKind: "entries" | "category_totals";
+  topMerchantIsShare: boolean;
 }) {
   if (!input.expenses.length || input.spendMinor <= 0) {
     return "There are not enough expenses here to spot a pattern yet.";
@@ -325,19 +343,28 @@ function buildNotableEntryFact(input: {
   const categoryShare = Math.round((input.topCategoryMinor / input.spendMinor) * 100);
   const topThreeShare = Math.round((largestExpensesMinor / input.spendMinor) * 100);
   const weekdayFact = buildInterestingWeekdayPattern(input.expenses, input.audienceKind, input.audienceName);
+  const isCategoryTotals = input.recordKind === "category_totals";
+  // A person's amounts include their part of shared or split entries that
+  // someone else may have paid, so those facts name a share, and the facts
+  // about purchases or payments are left out.
+  const includesShares = input.audienceKind === "person"
+    && (input.perspective === "split_obligation" || input.expenses.some(isShareRecord));
+  const largestIsShare = input.perspective === "split_obligation" || input.topMerchantIsShare;
   const candidates = [
     input.audienceKind === "person"
       ? `Your ${input.topCategoryName} spending accounted for ${categoryShare}% of what you spent.`
       : `${input.topCategoryName} accounted for ${categoryShare}% of household spending.`,
-    input.audienceKind === "person"
-      ? `Your largest purchase was ${input.topMerchantName} at ${input.formatMoney(input.topMerchantMinor)}.`
+    isCategoryTotals
+      ? null
+      : input.audienceKind === "person"
+      ? `Your largest ${largestIsShare ? "share" : "purchase"} was ${input.topMerchantName} at ${input.formatMoney(input.topMerchantMinor)}.`
       : `The largest household purchase was ${input.topMerchantName} at ${input.formatMoney(input.topMerchantMinor)}.`,
-    input.expenses.length >= 3
+    input.expenses.length >= 3 && !isCategoryTotals && !includesShares
       ? input.audienceKind === "person"
         ? `Your three largest purchases made up ${topThreeShare}% of what you spent.`
         : `The three largest household purchases made up ${topThreeShare}% of spending.`
       : null,
-    mostFrequentMerchantCount >= 2
+    mostFrequentMerchantCount >= 2 && !isCategoryTotals && !includesShares
       ? input.audienceKind === "person"
         ? `You paid ${mostFrequentMerchant} ${mostFrequentMerchantCount} times.`
         : `${mostFrequentMerchant} was paid ${mostFrequentMerchantCount} times by the household.`
@@ -345,6 +372,12 @@ function buildNotableEntryFact(input: {
     weekdayFact
   ].filter((candidate): candidate is string => Boolean(candidate));
   return candidates[stableInsightIndex(`${input.contextLabel}|${input.spendMinor}|${input.topCategoryName}|${mostFrequentMerchant}|${weekdayFact ?? ""}`) % candidates.length];
+}
+
+function isShareRecord(record: FinancialInsightRecord) {
+  return record.ownershipType === "shared"
+    || Boolean(record.linkedSplitExpenseId)
+    || (record.totalAmountMinor != null && record.totalAmountMinor !== record.amountMinor);
 }
 
 export function buildInterestingWeekdayPattern(expenses: FinancialInsightRecord[], audienceKind: "person" | "household", audienceName: string) {
@@ -392,6 +425,7 @@ function stableInsightIndex(value: string) {
 
 function buildFinancialDecisionPrompts(input: {
   perspective: "cash_flow" | "partial_view" | "split_obligation";
+  audienceKind: "person" | "household";
   spendMinor: number;
   incomeMinor: number;
   netMinor: number;
@@ -413,7 +447,11 @@ function buildFinancialDecisionPrompts(input: {
 
   if (input.incomeMinor === 0 && input.spendMinor > 0) {
     return {
-      cashFlowPrinciple: "This list has spending but no income, so it cannot show whether the household is saving.",
+      // A person view speaks to the person, in the check-in's second person;
+      // their name stays out of the facts the AI sees.
+      cashFlowPrinciple: input.audienceKind === "person"
+        ? "This list has spending but no income, so it cannot show whether you are saving."
+        : "This list has spending but no income, so it cannot show whether the household is saving.",
       nextSpendConsideration: "Before buying something non-essential, check the month or summary to make sure income still covers bills, transfers, and savings."
     };
   }
@@ -447,6 +485,7 @@ function buildFinancialDecisionMap(input: {
   topMerchantMinor: number;
   formatMoney: (amountMinor: number) => string;
   context?: FinancialDecisionMapContext;
+  recordKind: "entries" | "category_totals";
 }): FinancialDecisionMap {
   if (input.perspective !== "cash_flow") {
     const isSplit = input.perspective === "split_obligation";
@@ -477,7 +516,9 @@ function buildFinancialDecisionMap(input: {
     buildSeasonLane({ ...input, sameSeason: input.context?.sameSeason }),
     buildConfidenceLane({ evaluated: confidence.evaluated === true, mismatchCount, checkpointCount, unresolvedTransferCount })
   ];
-  const repeatLane = buildRepeatLane(input);
+  // The one-repeat scenario adds one more expense like the largest one; a
+  // whole category total is not one expense.
+  const repeatLane = input.recordKind === "entries" ? buildRepeatLane(input) : null;
   if (repeatLane) {
     lanes.push(repeatLane);
   }
@@ -606,13 +647,19 @@ function buildConfidenceLane(input: {
   }
   const issues: string[] = [];
   if (input.mismatchCount) {
-    issues.push(`${input.mismatchCount} wallet ${input.mismatchCount === 1 ? "has" : "have"} a statement mismatch`);
+    issues.push(input.mismatchCount === 1
+      ? "1 wallet has a statement mismatch"
+      : `${input.mismatchCount} wallets have a statement mismatch`);
   }
   if (input.checkpointCount) {
-    issues.push(`${input.checkpointCount} wallet ${input.checkpointCount === 1 ? "needs" : "need"} a statement checkpoint`);
+    issues.push(input.checkpointCount === 1
+      ? "1 wallet needs a statement checkpoint"
+      : `${input.checkpointCount} wallets need a statement checkpoint`);
   }
   if (input.unresolvedTransferCount) {
-    issues.push(`${input.unresolvedTransferCount} transfer ${input.unresolvedTransferCount === 1 ? "is" : "are"} unresolved`);
+    issues.push(input.unresolvedTransferCount === 1
+      ? "1 transfer is unresolved"
+      : `${input.unresolvedTransferCount} transfers are unresolved`);
   }
   if (issues.length) {
     return {
@@ -711,7 +758,7 @@ function formatMonthName(month: string) {
 }
 
 function hasOnlyKnownTokens(template: string, replacements: Record<string, string>) {
-  const tokens = template.match(/{{\s*[^}]+\s*}}/g) ?? [];
+  const tokens: string[] = template.match(/{{\s*[^}]+\s*}}/g) ?? [];
   return tokens.every((token) => Object.hasOwn(replacements, token.slice(2, -2).trim()));
 }
 

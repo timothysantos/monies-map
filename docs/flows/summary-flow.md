@@ -12,14 +12,21 @@ Route entry:
 
 - `/summary`
 
-The route may include view, focus, and range parameters. `App.jsx` reads the URL
-and keeps the selected Summary view in sync with browser location.
+The route may include view, scope, focus, and range parameters. `App.jsx` reads
+the URL and keeps the selected Summary view in sync with browser location. In a
+person view the scope control sets `scope`: on desktop and tablet the compact
+`Direct` / `Shared` / `Both` switch under the `Summary` title (what each counts
+is its tooltip; it adds no header height), on a phone the scope section of the
+floating View and scope bar's dialog, with a line saying what the scope
+counts (the desktop switch is not rendered there). Both show the scope of the
+Summary request whose figures are on screen. On a phone the bar also switches
+the view, and the header's view pills are hidden as on Month and Entries.
 
 ## State Flow
 
 Summary state is split between:
 
-- route state for the selected view and focus
+- route state for the selected view, scope and focus
 - server state for the summary page DTO and account pills
 - workflow state for note editing and drilldown return behavior
 

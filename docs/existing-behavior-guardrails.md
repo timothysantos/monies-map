@@ -49,7 +49,7 @@ Design implication:
 Source anchors:
 
 - `src/client/entries-panel.jsx`
-- `docs/faq.md`
+- `docs/user-guide.md` and `docs/developer-guide.md`
 
 ## Rule 2: Active Workflows Outrank Background Freshness
 
@@ -83,7 +83,7 @@ Source anchors:
 - `src/client/entries-panel.jsx`
 - `src/client/App.jsx`
 - `src/client/imports-panel.jsx`
-- `docs/faq.md`
+- `docs/user-guide.md` and `docs/developer-guide.md`
 
 ## Rule 3: Cross-Tab Freshness Must Work Without Forcing A Full Reload
 
@@ -137,7 +137,7 @@ Design implication:
 Source anchors:
 
 - `src/client/App.jsx`
-- `docs/faq.md`
+- `docs/user-guide.md` and `docs/developer-guide.md`
 
 ## Rule 4a: Broad Route Queries Can Trigger Worker Instability
 
@@ -191,7 +191,7 @@ Design implication:
 Source anchors:
 
 - `src/client/App.jsx`
-- `docs/faq.md`
+- `docs/user-guide.md` and `docs/developer-guide.md`
 
 ## Rule 6: Optimistic UI Needs Stale-Refresh Guards
 
@@ -245,7 +245,7 @@ Source anchors:
 
 - `src/client/imports-panel.jsx`
 - `src/client/import-preview-auto-refresh.js`
-- `tests/e2e/import-preview-auto-refresh.spec.js`
+- `tests/import-preview-auto-refresh.test.mjs`
 
 ## Rule 7a: Import Parsers Must Tolerate Structural Variants From The Same Source
 
@@ -278,6 +278,8 @@ Source anchors:
 
 - `src/lib/statement-import/xls.ts`
 - `tests/fixtures/uob-current-transactions/`
+- `src/lib/statement-import/citibank.ts`, `uob.ts`, `ocbc.ts`
+- `tests/fixtures/pdf-statement-text/`
 
 ## Rule 7b: Preserve The Original Parse Path Before Adding A Fallback
 

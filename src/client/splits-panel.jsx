@@ -4,6 +4,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { messages } from "./copy/en-SG";
 import { FinancialInsight } from "./financial-insight";
 import { PrivateMoney } from "./money-privacy";
+import { PAGE_FLAG, pageFlagRef } from "./page-flags";
+import "./splits-panel.css";
 import { LinkedNoteSyncDialog } from "./linked-note-sync-dialog";
 import {
   useSplitEditState,
@@ -20,6 +22,7 @@ import {
   matchSettlementCheckpoint,
   reopenSettlementCheckpoint,
   undoSettlementCheckpointPaid,
+  undoSettlementLock as requestSettlementLockUndo,
   unmatchSettlementCheckpoint,
   saveSplitExpense,
   saveSplitSettlement,
@@ -38,6 +41,7 @@ import { SplitArchiveDialog } from "./splits-archive-dialog";
 import { SplitHistoryDialog } from "./splits-history-dialog";
 import { splitActivityDomId } from "./splits-activity";
 import { SplitDeleteDialog, SplitExpenseDialog, SplitGroupDialog, SplitSettlementDialog } from "./splits-dialogs";
+import { readSettlementLock, settlementLockUndoRequest } from "./settlement-lock-notice";
 import { SearchFilterInput } from "./entries-filter-stack";
 import { SplitsMainSection } from "./splits-main-section";
 import { buildSplitsPanelModel } from "./splits-selectors";
@@ -47,10 +51,18 @@ import {
   createSplitRefreshGuard
 } from "./splits-workflow";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
+import { useRouteWorkReport } from "./use-route-work-status";
+import { todayInAppTimeZone } from "./app-dates";
+import { useIsMobileLayout } from "./use-viewport";
 
 const { format: formatService } = moniesClient;
 
-export function SplitsPanel({ view, categories, people, onRefresh }) {
+// Without the shell's notice (isolated renders), a failed refresh is dropped.
+function runQuietly(task, _retry) {
+  return Promise.resolve().then(task).catch(() => null);
+}
+
+export function SplitsPanel({ view, categories, people, onRefresh, runBackgroundRefresh = runQuietly, canRequestWording = false }) {
   const splitsPage = view.splitsPage ?? {
     groups: [],
     activity: [],
@@ -61,9 +73,10 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showBreakdown, setShowBreakdown] = useState(false);
-  const [useMobileSplitSheet, setUseMobileSplitSheet] = useState(false);
+  const useMobileSplitSheet = useIsMobileLayout();
   const [archiveDialog, setArchiveDialog] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [historyError, setHistoryError] = useState("");
   const [groupDialog, setGroupDialog] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [splitNoteSyncPrompt, setSplitNoteSyncPrompt] = useState(null);
@@ -76,9 +89,12 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   const [checkpointError, setCheckpointError] = useState("");
   const [checkpointNotice, setCheckpointNotice] = useState("");
   const [isCheckpointing, setIsCheckpointing] = useState(false);
+  const [archiveUndoError, setArchiveUndoError] = useState("");
   const [checkpointTransferId, setCheckpointTransferId] = useState("");
   const [checkpointFxRateInput, setCheckpointFxRateInput] = useState("1");
   const [checkpointMatchTargetId, setCheckpointMatchTargetId] = useState(null);
+  // The simplified settlement that refused the last split save or delete.
+  const [settlementLock, setSettlementLock] = useState(null);
   const [showSettlementFollowUps, setShowSettlementFollowUps] = useState(false);
   const refreshGuardRef = useRef(null);
   const latestSplitsPageRef = useRef(splitsPage);
@@ -108,13 +124,14 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     activeGroup,
     archivedBatches,
     categoryOptions,
-    currentGroupActivity,
+    donutChart,
     donutRows,
     groupedCurrentActivity,
     groupBalanceMinor,
     groups,
     groupOptions,
     groupSummaryLabel,
+    insightRecords,
     pendingMatchCount,
     selectedArchivedBatch,
     searchSuggestions,
@@ -123,16 +140,13 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   } = splitModel;
   const financialInsightFacts = useMemo(() => buildFinancialInsightFacts({
     contextLabel: `${activeGroup?.name ?? "Split"} group${splitSearchQuery ? " search" : ""}`,
-    audienceKind: view.id === "household" ? "household" : "person",
-    audienceName: view.id === "household" ? "" : view.label,
-    records: currentGroupActivity.map((item) => ({
-      amountMinor: item.totalAmountMinor,
-      entryType: item.kind === "expense" ? "expense" : "transfer",
-      categoryName: item.categoryName ?? "Split expense",
-      description: item.description,
-      date: item.date
-    })),
-    formatMoney: formatService.money,
+    // A person view counts that person's share of each group expense, so
+    // the wording addresses them; the household view counts group totals.
+    audienceKind: isHouseholdView ? "household" : "person",
+    audienceName: isHouseholdView ? "" : view.label,
+    records: insightRecords,
+    // The records are one group's, so their amounts are in its currency.
+    formatMoney: (amountMinor) => formatService.unmaskedMoneyWithCurrency(amountMinor, activeGroup?.currency ?? "SGD"),
     perspective: "split_obligation",
     accountingAdvice: splitSearchQuery
       ? "This is a filtered group view, so check the matching split record before treating the displayed amount as the full group balance."
@@ -141,7 +155,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         : groupBalanceMinor
           ? "Treat the group balance as a settlement obligation between people, not new spending; record or match the settlement when it happens."
           : "The group is settled. Keep bank-linked expenses and settlements matched so the audit trail stays complete."
-  }), [activeGroup?.name, currentGroupActivity, groupBalanceMinor, pendingMatchCount, splitSearchQuery, view.id, view.label]);
+  }), [activeGroup?.currency, activeGroup?.name, groupBalanceMinor, insightRecords, isHouseholdView, pendingMatchCount, splitSearchQuery, view.label]);
   const financialInsightActions = useMemo(() => pendingMatchCount ? [{
     label: `Review ${pendingMatchCount} bank ${pendingMatchCount === 1 ? "match" : "matches"}`,
     onClick: () => openMatchesView()
@@ -188,10 +202,26 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     clearInlineSplitDraft,
     resetForViewChange,
     requestDeleteSplit,
-    clearExpenseDialogSnapshot,
-    clearSettlementDialogSnapshot,
     clearInlineSplitSnapshot
   } = useSplitEditState({ categoryOptions, people });
+  // The optimistic overlay alone is not counted: it can outlive a failed
+  // refresh, and isRefreshingDerived already covers the in-flight window.
+  useRouteWorkReport({
+    busy: Boolean(archiveDialog)
+      || showHistory
+      || Boolean(groupDialog)
+      || isSubmitting
+      || Boolean(splitNoteSyncPrompt)
+      || isSyncingSplitNote
+      || Boolean(splitCategorySyncPrompt)
+      || isSyncingSplitCategory
+      || isRefreshingDerived
+      || isCheckpointing
+      || Boolean(expenseDialog)
+      || Boolean(settlementDialog)
+      || Boolean(inlineSplitDraft)
+      || Boolean(deleteTarget)
+  });
 
   useEffect(() => {
     refreshGuardRef.current = refreshGuardRef.current ?? createSplitRefreshGuard();
@@ -207,18 +237,6 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
 
     updateSplitView({ groupId: defaultGroupId, mode: "entries" });
   }, [defaultGroupId, selectedGroupId, selectedGroupParam, selectedMode]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const mediaQuery = window.matchMedia("(max-width: 760px)");
-    const update = () => setUseMobileSplitSheet(mediaQuery.matches);
-    update();
-    mediaQuery.addEventListener?.("change", update);
-    return () => mediaQuery.removeEventListener?.("change", update);
-  }, []);
 
   useEffect(() => {
     setDismissedMatchIds([]);
@@ -340,11 +358,32 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   }
 
   function openArchiveList() {
+    setArchiveUndoError("");
     setArchiveDialog({ batchId: null });
   }
 
   function openArchivedBatch(batchId) {
+    setArchiveUndoError("");
     setArchiveDialog({ batchId });
+  }
+
+  // Undo settle-up from a settled batch: its activity, the settle-up
+  // included, is open again and counts in the group balance.
+  async function undoArchivedSettleUp(batchId) {
+    if (!batchId || isCheckpointing) return;
+    setArchiveUndoError("");
+    setIsCheckpointing(true);
+    try {
+      await requestSettlementLockUndo({ batchId });
+      setArchiveDialog(null);
+      setCheckpointError("");
+      setCheckpointNotice("Settle-up undone. Its activity is open again.");
+      refreshAfterSplitMutation({ broadcast: true });
+    } catch (error) {
+      setArchiveUndoError(error instanceof Error ? error.message : "Failed to undo the settle-up.");
+    } finally {
+      setIsCheckpointing(false);
+    }
   }
 
   function applyOptimisticSplitsPage(updatePage) {
@@ -359,13 +398,16 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     const refreshGeneration = refreshGuardRef.current?.next() ?? 1;
     setIsRefreshingDerived(true);
 
-    void onRefresh(options)
-      .then(() => {
+    // A failed refresh keeps the optimistic page and raises the shell's
+    // refresh notice, whose retry runs this again.
+    void runBackgroundRefresh(
+      () => onRefresh(options).then(() => {
         if (refreshGuardRef.current?.isCurrent(refreshGeneration)) {
           setOptimisticSplitsPage(null);
         }
-      })
-      .catch(() => {})
+      }),
+      () => refreshAfterSplitMutation(options)
+    )
       .finally(() => {
         if (refreshGuardRef.current?.isCurrent(refreshGeneration)) {
           setIsRefreshingDerived(false);
@@ -476,6 +518,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
 
     setFormError("");
+    setSettlementLock(null);
     setIsSubmitting(true);
     try {
       const response = await saveSplitExpense(draft);
@@ -513,6 +556,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       return true;
     } catch (error) {
       setFormError(error.message);
+      setSettlementLock(readSettlementLock(error, `expense:${draft?.id}`));
       return false;
     } finally {
       setIsSubmitting(false);
@@ -528,6 +572,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
 
     setFormError("");
+    setSettlementLock(null);
     setIsSubmitting(true);
     try {
       const response = await saveSplitSettlement(draft);
@@ -556,6 +601,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       return true;
     } catch (error) {
       setFormError(error.message);
+      setSettlementLock(readSettlementLock(error, `settlement:${draft?.id}`));
       return false;
     } finally {
       setIsSubmitting(false);
@@ -590,6 +636,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     }
 
     setInlineSplitError("");
+    setSettlementLock(null);
     setIsSubmitting(true);
     try {
       if (draft.kind === "expense") {
@@ -646,6 +693,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       return true;
     } catch (error) {
       setInlineSplitError(error.message);
+      setSettlementLock(readSettlementLock(error, `inline:${draft.kind}:${draft.id}`));
       return false;
     } finally {
       setIsSubmitting(false);
@@ -771,7 +819,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
     try {
       await createSettlementCheckpoint({
         viewerPersonId: view.id,
-        date: new Date().toISOString().slice(0, 10),
+        date: todayInAppTimeZone(),
         note: "Simplified settlement",
         currency: activeGroup?.currency
       });
@@ -784,13 +832,25 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   }
 
   async function restoreSplitHistoryItem(item) {
+    setHistoryError("");
     setIsSubmitting(true);
     try {
       await restoreSplitRecord({ recordKind: item.recordKind, recordId: item.recordId });
       setShowHistory(false);
-      onRefresh({ broadcast: true });
+      // A restored expense may link its entry again, which changes Entries
+      // and person-view totals; history items do not say whether it has one.
+      const mayRelinkEntry = item.recordKind === "expense";
+      onRefresh({
+        broadcast: true,
+        invalidateEntries: mayRelinkEntry,
+        invalidateMonth: mayRelinkEntry,
+        invalidateSummary: mayRelinkEntry
+      });
     } catch (error) {
-      setCheckpointError(error instanceof Error ? error.message : "Failed to restore split.");
+      // The history dialog stays open, so show the refusal inside it. Another
+      // tab may already have restored the record; refresh so the list catches up.
+      setHistoryError(error instanceof Error ? error.message : "Failed to restore split.");
+      void onRefresh();
     } finally {
       setIsSubmitting(false);
     }
@@ -894,6 +954,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
 
     setFormError("");
     setInlineSplitError("");
+    setSettlementLock(null);
     setIsSubmitting(true);
     try {
       const deletedSplitKey = `${deleteTarget.kind}:${deleteTarget.id}`;
@@ -921,9 +982,41 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       });
     } catch (error) {
       setFormError(error.message);
+      setSettlementLock(readSettlementLock(error, `delete:${deleteTarget.kind}:${deleteTarget.id}`));
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  // Undo the simplification (whatever its state: open, paid, bank matched or
+  // offset) or the group settle-up that refused a save or delete. The form
+  // stays open with the person's change, so saving again applies it to the
+  // now open activity.
+  async function undoSettlementLock() {
+    const lock = settlementLock;
+    if (!lock || isCheckpointing) return;
+    setIsCheckpointing(true);
+    try {
+      await requestSettlementLockUndo(lock);
+      setFormError("");
+      setInlineSplitError("");
+      setSettlementLock({ ...lock, undone: true });
+      // The reopened batch leaves the archive, so the archive behind the
+      // editor closes; the activity is back in the group's list.
+      if (lock.batchId) setArchiveDialog(null);
+      refreshAfterSplitMutation({ broadcast: true });
+    } catch (error) {
+      setSettlementLock({ ...lock, message: error instanceof Error ? error.message : settlementLockUndoRequest(lock).failure });
+    } finally {
+      setIsCheckpointing(false);
+    }
+  }
+
+  // The lock notice belongs to the form that was refused, and only while its
+  // error (or the undo confirmation) is still showing.
+  function settlementLockFor(recordKey, error) {
+    if (!settlementLock || settlementLock.recordKey !== recordKey) return null;
+    return settlementLock.undone || error === settlementLock.message ? settlementLock : null;
   }
 
   function renderSplitActions(className) {
@@ -1027,7 +1120,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
             ? "The included groups now net to zero. No bank transfer is needed."
             : <>{activeCheckpoint.fromPersonName} pays {activeCheckpoint.toPersonName} <PrivateMoney>{formatCheckpointMoney(activeCheckpoint.amountMinor, activeCheckpoint.currency)}</PrivateMoney>.</>}
         </p>
-        <small>{activeCheckpoint.currency ?? "SGD"} · {activeCheckpoint.includedRecordCount} included split records · {activeCheckpoint.matchedAmountMinor > 0 ? <><PrivateMoney>{formatCheckpointMoney(activeCheckpoint.matchedAmountMinor, activeCheckpoint.currency)}</PrivateMoney> matched · </> : null}{activeCheckpoint.status.replaceAll("_", " ")}</small>
+        <small>{activeCheckpoint.currency ?? "SGD"} · {messages.splits.includedSplitRecords(activeCheckpoint.includedRecordCount)} · {activeCheckpoint.matchedAmountMinor > 0 ? <><PrivateMoney>{formatCheckpointMoney(activeCheckpoint.matchedAmountMinor, activeCheckpoint.currency)}</PrivateMoney> matched · </> : null}{activeCheckpoint.status.replaceAll("_", " ")}</small>
       </div>
       <div className="split-checkpoint-navigation">
         <button type="button" className="split-checkpoint-view-action" onClick={scrollToSettlementActivity}>
@@ -1061,7 +1154,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
             <section className="split-settlement-follow-up" key={checkpoint.id}>
               <div>
                 <strong>{checkpoint.fromPersonName} paid {checkpoint.toPersonName} <PrivateMoney>{formatCheckpointMoney(checkpoint.amountMinor, checkpoint.currency)}</PrivateMoney></strong>
-                <small>Marked paid {checkpoint.settledAt?.slice(0, 10)} · {checkpoint.includedRecordCount} included split records · {checkpoint.matchedAmountMinor ? <><PrivateMoney>{formatCheckpointMoney(checkpoint.matchedAmountMinor, checkpoint.currency)}</PrivateMoney> bank-matched so far</> : "No bank transfer matched yet"}</small>
+                <small>Marked paid {checkpoint.settledAt?.slice(0, 10)} · {messages.splits.includedSplitRecords(checkpoint.includedRecordCount)} · {checkpoint.matchedAmountMinor ? <><PrivateMoney>{formatCheckpointMoney(checkpoint.matchedAmountMinor, checkpoint.currency)}</PrivateMoney> bank-matched so far</> : "No bank transfer matched yet"}</small>
               </div>
               <div className="split-settlement-follow-up-actions">
                 <button type="button" className="subtle-action split-settlement-follow-up-view-action" onClick={() => scrollToSettlementActivity(checkpoint)}>View included activity</button>
@@ -1077,7 +1170,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
   ) : null;
 
   return (
-    <article className="panel panel-accent panel-splits">
+    <article ref={pageFlagRef(PAGE_FLAG.splitsPanel)} className="panel panel-accent panel-splits">
       <div className="panel-head">
         <div>
           <h2>{messages.tabs.splits}</h2>
@@ -1092,7 +1185,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         {renderSplitActions("split-head-actions split-header-toolbar")}
       </div>
 
-      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-splits" />
+      <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-splits" canRequestWording={canRequestWording} />
 
       <SplitsMainSection
         groups={groups}
@@ -1104,7 +1197,7 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         groupBalanceMinor={groupBalanceMinor}
         groupSummaryLabel={groupSummaryLabel}
         donutRows={donutRows}
-        donutChart={splitsPage.donutChart}
+        donutChart={donutChart}
         categories={categories}
         groupOptions={groupOptions}
         people={people}
@@ -1117,10 +1210,16 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         searchQuery={splitSearchQuery}
         inlineSplitDraft={inlineSplitDraft}
         inlineSplitError={inlineSplitError}
+        inlineSettlementLock={settlementLockFor(`inline:${inlineSplitDraft?.kind}:${inlineSplitDraft?.id}`, inlineSplitError)}
+        isUndoingSettlementLock={isCheckpointing}
+        onUndoSettlementLock={() => void undoSettlementLock()}
         isSubmitting={isSubmitting}
         onSelectGroup={(groupId) => updateSplitView({ groupId, mode: "entries" })}
         onOpenMatches={openMatchesView}
-        onOpenHistory={() => setShowHistory(true)}
+        onOpenHistory={() => {
+          setHistoryError("");
+          setShowHistory(true);
+        }}
         onBackToGroup={openActiveGroupView}
         onCreateGroup={() => {
           setFormError("");
@@ -1164,11 +1263,15 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         onEditExpense={openExpenseEditor}
         onEditSettlement={openSettlementEditor}
         onViewLinkedEntry={openLinkedEntry}
+        onUndoSettleUp={(batchId) => void undoArchivedSettleUp(batchId)}
+        isUndoingSettleUp={isCheckpointing}
+        undoSettleUpError={archiveUndoError}
       />
 
       <SplitHistoryDialog
         open={showHistory}
         history={splitsPage.activityHistory ?? []}
+        error={historyError}
         isSubmitting={isSubmitting}
         onClose={() => setShowHistory(false)}
         onRestore={restoreSplitHistoryItem}
@@ -1177,6 +1280,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
       <SplitDeleteDialog
         target={deleteTarget}
         formError={formError}
+        settlementLock={settlementLockFor(`delete:${deleteTarget?.kind}:${deleteTarget?.id}`, formError)}
+        isUndoingSettlementLock={isCheckpointing}
+        onUndoSettlementLock={() => void undoSettlementLock()}
         isSubmitting={isSubmitting}
         onClose={() => setDeleteTarget(null)}
         onConfirm={confirmDeleteSplit}
@@ -1198,6 +1304,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         categoryOptions={categoryOptions}
         categories={categories}
         formError={formError}
+        settlementLock={settlementLockFor(`expense:${expenseDialog?.id}`, formError)}
+        isUndoingSettlementLock={isCheckpointing}
+        onUndoSettlementLock={() => void undoSettlementLock()}
         isSubmitting={isSubmitting}
         isSaveDisabled={!hasExpenseDialogChanges}
         onChange={setExpenseDialog}
@@ -1213,6 +1322,9 @@ export function SplitsPanel({ view, categories, people, onRefresh }) {
         groupOptions={groupOptions}
         people={people}
         formError={formError}
+        settlementLock={settlementLockFor(`settlement:${settlementDialog?.id}`, formError)}
+        isUndoingSettlementLock={isCheckpointing}
+        onUndoSettlementLock={() => void undoSettlementLock()}
         isSubmitting={isSubmitting}
         isSaveDisabled={!hasSettlementDialogChanges}
         onChange={setSettlementDialog}

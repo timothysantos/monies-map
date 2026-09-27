@@ -1,4 +1,4 @@
-import { money } from "./formatters";
+import { moneyWithCurrency } from "./formatters";
 
 export function groupSplitActivityByDate(items) {
   const grouped = new Map();
@@ -57,7 +57,7 @@ export function getArchivedBatchSummary(batch, viewId) {
   }
 
   const title = `${settlement.fromPersonName} fully settled up with ${settlement.toPersonName}`;
-  const amount = money(settlement.totalAmountMinor);
+  const amount = moneyWithCurrency(settlement.totalAmountMinor, settlement.currency ?? "SGD");
   if (viewId !== "household") {
     return {
       title,
@@ -69,4 +69,39 @@ export function getArchivedBatchSummary(batch, viewId) {
     title,
     subtitle: `${settlement.fromPersonName} paid ${settlement.toPersonName} ${amount}`
   };
+}
+
+// The category donut for the active group's currency: open expenses in that
+// currency across groups. Currencies are never added together, so an SGD
+// group shows the SGD chart and a JPY group the JPY chart (empty when no
+// yen expense is open), never dollars and yen summed.
+export function selectSplitDonutChart(splitsPage, currency = "SGD") {
+  if (!currency || currency === "SGD") {
+    return splitsPage?.donutChart ?? [];
+  }
+  return splitsPage?.donutChartsByCurrency?.[currency] ?? [];
+}
+
+// The Splits money check-in's records for one group's activity, in the
+// group's currency. The household sees the group's totals; a person sees
+// their own part: their split share of each expense (an expense they have no
+// share in is left out) and the settlements, which carry no spend.
+export function buildSplitInsightRecords(activity, viewId) {
+  const isHousehold = viewId === "household";
+  return activity.flatMap((item) => {
+    const isExpense = item.kind === "expense";
+    const amountMinor = isExpense && !isHousehold
+      ? item.shares?.find((share) => share.personId === viewId)?.amountMinor ?? 0
+      : item.totalAmountMinor;
+    if (isExpense && !amountMinor) {
+      return [];
+    }
+    return [{
+      amountMinor,
+      entryType: isExpense ? "expense" : "transfer",
+      categoryName: item.categoryName ?? "Split expense",
+      description: item.description,
+      date: item.date
+    }];
+  });
 }

@@ -1,5 +1,15 @@
 # Implementation Order
 
+For work after baseline `718e708`, use the task sequence in
+[`macro-performance-plan.md`](./macro-performance-plan.md). It begins with
+runtime measurement and bounded warmup changes, then gates deeper ownership and
+persistence work on evidence. The Stage 4 sequence below is historical context;
+do not restart completed feature migrations.
+For step-by-step execution, use
+[`macro-performance-implementation.md`](./macro-performance-implementation.md),
+starting with H00. Complete the first loading delivery H00-H10 before deciding
+whether measurements justify the later H11-H17 refactors.
+
 This document is the Stage 4 execution order for the Monies Map refactor.
 
 It answers a narrower question than `docs/architecture.md`:

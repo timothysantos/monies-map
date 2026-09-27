@@ -527,8 +527,13 @@ They should not become:
 
 ### Repository/database layer
 
-[`src/domain/app-repository.ts`](../src/domain/app-repository.ts) and related
-repository files own database access.
+[`src/domain/app-repository.ts`](../src/domain/app-repository.ts) re-exports
+the repository modules, which own database access: loaders
+(`app-repository-entries.ts`, `-months.ts`, `-splits.ts`, …) and, since H15,
+the write commands (`app-repository-entry-commands.ts`,
+`-month-commands.ts`, `-import-commit.ts`), runtime schema
+(`-schema.ts`), seeding (`-seed.ts`) and snapshot recalculation
+(`-snapshots.ts`).
 
 Conceptually:
 
@@ -762,10 +767,14 @@ user-visible contract.
 
 It checks things like:
 
-- app shell request stays shell-only
 - previous screen stays visible until the next page settles
 - month-to-summary and summary round-trip hydration do not crash
 - every top-level tab renders in one browser session without console errors
+
+[`tests/page-dto-api.test.mjs`](../tests/page-dto-api.test.mjs) checks the
+payload shapes against the real Worker: the app shell request stays
+shell-only and reference data carries lightweight account and category
+lists.
 
 ### Query-contract test
 

@@ -15,22 +15,71 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run verify
 
-  full-e2e:
+  # The full browser suite runs as four shards on separate runners. Each shard
+  # starts its own Vite + Wrangler + local D1 stack and runs its spec files
+  # (planned from tests/e2e/shard-weights.json) with one worker, then uploads
+  # a Playwright blob report. Keep the shard list and --shards in step.
+  full-e2e-shard:
+    name: full-e2e shard ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
 
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      - run: node scripts/run-e2e-sharded.mjs --shards 4 --shard ${{ matrix.shard }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: e2e-blob-report-${{ matrix.shard }}
+          path: test-results/e2e-sharded/blobs
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # Merges the shard reports into one result. Fails when any shard job failed,
+  # any test failed, or the merged test count differs from `playwright test
+  # --list` (a shard that never reported). Keeps the `full-e2e` check name.
+  full-e2e:
+    needs: full-e2e-shard
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: e2e-blob-report-*
+          path: all-blob-reports
+      - run: node scripts/run-e2e-sharded.mjs --merge all-blob-reports
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: e2e-html-report
+          path: playwright-report
+          retention-days: 7
+      - name: Require every shard job to succeed
+        if: ${{ needs.full-e2e-shard.result != 'success' }}
+        run: |
+          echo "A full-e2e shard job ended with '${{ needs.full-e2e-shard.result }}'."
+          exit 1

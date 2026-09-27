@@ -1,5 +1,5 @@
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
-import { slugify } from "./app-repository-helpers";
+import { newSplitRecordId, slugify } from "./app-repository-helpers";
 
 function splitBatchName(groupName?: string | null, closed = false) {
   const base = groupName ?? "Non-group expenses";
@@ -18,13 +18,15 @@ async function getSplitGroupName(db: D1Database, groupId?: string | null) {
   return row?.group_name ?? "Non-group expenses";
 }
 
-async function createSplitBatch(
+// The insert that opens a new split batch; the caller runs it (directly or
+// inside a command's db.batch()).
+async function buildSplitBatchInsert(
   db: D1Database,
   input: { groupId?: string | null; openedOn: string; closedOn?: string | null }
 ) {
-  const id = `split-batch-${slugify(input.groupId ?? "none")}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  const id = newSplitRecordId(`split-batch-${slugify(input.groupId ?? "none")}`);
   const groupName = await getSplitGroupName(db, input.groupId);
-  await db
+  const statement = db
     .prepare(`
       INSERT INTO split_batches (
         id, household_id, split_group_id, batch_name, opened_on, closed_on
@@ -37,15 +39,20 @@ async function createSplitBatch(
       splitBatchName(groupName, Boolean(input.closedOn)),
       input.openedOn,
       input.closedOn ?? null
-    )
-    .run();
+    );
+  return { id, statement };
+}
+
+async function createSplitBatch(
+  db: D1Database,
+  input: { groupId?: string | null; openedOn: string; closedOn?: string | null }
+) {
+  const { id, statement } = await buildSplitBatchInsert(db, input);
+  await statement.run();
   return id;
 }
 
-export async function getOrCreateActiveSplitBatch(
-  db: D1Database,
-  input: { groupId?: string | null; date: string }
-) {
+export async function findActiveSplitBatchId(db: D1Database, groupId?: string | null) {
   const active = await db
     .prepare(`
       SELECT id
@@ -56,14 +63,76 @@ export async function getOrCreateActiveSplitBatch(
       ORDER BY opened_on DESC, created_at DESC
       LIMIT 1
     `)
-    .bind(DEFAULT_HOUSEHOLD_ID, input.groupId ?? null, input.groupId ?? null)
+    .bind(DEFAULT_HOUSEHOLD_ID, groupId ?? null, groupId ?? null)
     .first<{ id: string }>();
+  return active?.id ?? null;
+}
 
-  if (active?.id) {
-    return active.id;
+// The group's open batch, or the statement that opens one, so a command can
+// open it in the same db.batch() as the record it files there. Reads only.
+export async function resolveActiveSplitBatch(
+  db: D1Database,
+  input: { groupId?: string | null; date: string }
+): Promise<{ id: string; statements: D1PreparedStatement[] }> {
+  const activeId = await findActiveSplitBatchId(db, input.groupId);
+  if (activeId) {
+    return { id: activeId, statements: [] };
   }
 
-  return createSplitBatch(db, { groupId: input.groupId, openedOn: input.date, closedOn: null });
+  const { id, statement } = await buildSplitBatchInsert(db, { groupId: input.groupId, openedOn: input.date, closedOn: null });
+  return { id, statements: [statement] };
+}
+
+// The same plan in the { batchId } shape the settlement-locked split commands use.
+export async function planActiveSplitBatch(
+  db: D1Database,
+  input: { groupId?: string | null; date: string }
+): Promise<{ batchId: string; statements: D1PreparedStatement[] }> {
+  const { id, statements } = await resolveActiveSplitBatch(db, input);
+  return { batchId: id, statements };
+}
+
+export async function getOrCreateActiveSplitBatch(
+  db: D1Database,
+  input: { groupId?: string | null; date: string }
+) {
+  const { id, statements } = await resolveActiveSplitBatch(db, input);
+  for (const statement of statements) {
+    await statement.run();
+  }
+  return id;
+}
+
+// The statement that closes a batch of the given group, for a command that
+// commits its writes in one batch. Reads the group name only.
+export async function buildCloseSplitBatchStatement(
+  db: D1Database,
+  input: { batchId: string; groupId: string | null; closedOn: string }
+) {
+  const groupName = await getSplitGroupName(db, input.groupId);
+  return db
+    .prepare(`
+      UPDATE split_batches
+      SET closed_on = COALESCE(closed_on, ?),
+          batch_name = CASE
+            WHEN closed_on IS NULL THEN ?
+            ELSE batch_name
+          END
+      WHERE id = ? AND household_id = ?
+    `)
+    .bind(input.closedOn, splitBatchName(groupName, true), input.batchId, DEFAULT_HOUSEHOLD_ID);
+}
+
+// The statement that reopens a closed batch as its group's current batch
+// (Undo settle-up). Reads the group name only.
+export async function buildReopenSplitBatchStatement(
+  db: D1Database,
+  input: { batchId: string; groupId: string | null }
+) {
+  const groupName = await getSplitGroupName(db, input.groupId);
+  return db
+    .prepare("UPDATE split_batches SET closed_on = NULL, batch_name = ? WHERE id = ? AND household_id = ?")
+    .bind(splitBatchName(groupName, false), input.batchId, DEFAULT_HOUSEHOLD_ID);
 }
 
 export async function closeSplitBatch(
@@ -78,19 +147,12 @@ export async function closeSplitBatch(
     `)
     .bind(input.batchId, DEFAULT_HOUSEHOLD_ID)
     .first<{ split_group_id: string | null }>();
-  const groupName = await getSplitGroupName(db, currentBatch?.split_group_id ?? null);
-  await db
-    .prepare(`
-      UPDATE split_batches
-      SET closed_on = COALESCE(closed_on, ?),
-          batch_name = CASE
-            WHEN closed_on IS NULL THEN ?
-            ELSE batch_name
-          END
-      WHERE id = ? AND household_id = ?
-    `)
-    .bind(input.closedOn, splitBatchName(groupName, true), input.batchId, DEFAULT_HOUSEHOLD_ID)
-    .run();
+  const statement = await buildCloseSplitBatchStatement(db, {
+    batchId: input.batchId,
+    groupId: currentBatch?.split_group_id ?? null,
+    closedOn: input.closedOn
+  });
+  await statement.run();
 }
 
 export async function backfillSplitBatches(db: D1Database) {
