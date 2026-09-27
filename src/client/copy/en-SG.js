@@ -1,3 +1,6 @@
+// "1 row", "2 rows": a count with the matching form of its noun.
+const countOf = (count, singular, plural = `${singular}s`) => `${count} ${count === 1 ? singular : plural}`;
+
 export const messages = {
   common: {
     loading: "Loading...",
@@ -254,6 +257,7 @@ export const messages = {
     settlementDate: "Date",
     saveSettlement: "Save settlement",
     groupSettlementDetail: (groupName) => `Record payment for ${groupName || "this group"} only. This closes its current batch; Simplify settlement remains optional for combining open groups in the same currency.`,
+    includedSplitRecords: (count) => countOf(count, "included split record"),
     keepSeparate: "Keep separate",
     match: "Match",
     linked: "Linked",
@@ -266,7 +270,7 @@ export const messages = {
   },
   imports: {
     viewing: (label) => `Viewing imports for ${label}`,
-    transactionCount: (count) => `${count} transactions`,
+    transactionCount: (count) => countOf(count, "transaction"),
     inboxTitle: "Import inbox",
     inboxDetail: "The app plans the bank run. Log into one bank, collect the listed files, then drop them below. No renaming needed.",
     inboxSummaryLabel: "Import inbox status",
@@ -277,7 +281,7 @@ export const messages = {
     inboxMetricAccounts: "Accounts current",
     inboxMetricAccountsValue: (current, total) => `${current} of ${total}`,
     inboxMetricCleanup: "Cleanup",
-    inboxMetricCleanupValue: (count) => count ? `${count} split links` : "Clear",
+    inboxMetricCleanupValue: (count) => count ? countOf(count, "split link") : "Clear",
     inboxGuidance: (fileCount, institutionCount) => `Collect ${fileCount} required file${fileCount === 1 ? "" : "s"} across ${institutionCount} bank login session${institutionCount === 1 ? "" : "s"}. Download order is by bank; review order is handled below.`,
     inboxCurrentGuidance: "Bank files look current. Optional activity exports can still refresh the working ledger.",
     inboxNeedsFiles: (count) => `${count} needed`,
@@ -302,7 +306,7 @@ export const messages = {
     inboxReviewOrderItemBody: (accountName, ownerLabel, priority) => `${accountName} • ${ownerLabel}${priority === "optional" ? " activity" : " statement"}`,
     inboxCleanupTitle: "After bank files",
     inboxCurrentAccounts: (count) => `${count} current bank session${count === 1 ? "" : "s"}`,
-    intakeParsing: (count) => `Reading ${count} files in this browser. Original files are not stored.`,
+    intakeParsing: (count) => `Reading ${countOf(count, "file")} in this browser. Original files are not stored.`,
     intakeReady: (count) => `${count} file${count === 1 ? "" : "s"} added to the intake queue.`,
     intakeFailed: "Could not add files to the intake queue.",
     intakeTitle: "File intake queue",
@@ -311,7 +315,7 @@ export const messages = {
     intakeEmptyDetail: "Filename format is not required. The app reads parsed content in this browser, suggests the matching checklist item, flags duplicates, and does not store original files.",
     intakeClear: "Clear queue",
     intakeSummary: ({ total, ready, ambiguous, unexpected, duplicate }) => `${total} queued • ${ready} matched • ${ambiguous} ambiguous • ${unexpected} unexpected • ${duplicate} duplicate`,
-    intakeRowDetail: ({ fileName, rowCount, checkpointCount, parserKey }) => `${fileName} • ${rowCount} rows • ${checkpointCount} checkpoints • ${parserKey}`,
+    intakeRowDetail: ({ fileName, rowCount, checkpointCount, parserKey }) => `${fileName} • ${countOf(rowCount, "row")} • ${countOf(checkpointCount, "checkpoint")} • ${parserKey}`,
     intakeMatched: "Matched to a needed file.",
     intakeAmbiguous: "Needs account or period confirmation during review.",
     intakeUnexpected: "Not on the current checklist, but can still be reviewed.",
@@ -399,7 +403,7 @@ export const messages = {
     previewRows: "Preview rows",
     previewReady: "Preview ready. Matching rows can be reconciled in place before commit instead of creating duplicate ledger entries.",
     largeImportNotice: (count) => `Large import: ${count} rows. The commit saves every row or none of them. If Cloudflare rejects it, nothing is saved; split the file into smaller batches and try again.`,
-    reconciliationCandidates: (count) => `${count} entry reconciliation match${count === 1 ? "" : "es"} need a decision`,
+    reconciliationCandidates: (count) => `${countOf(count, "entry reconciliation match", "entry reconciliation matches")} ${count === 1 ? "needs" : "need"} a decision`,
     reconciledExistingRows: (count, sourceType) => sourceType === "pdf"
       ? `${count} provisional row${count === 1 ? "" : "s"} will be certified by the statement`
       : `${count} manual row${count === 1 ? "" : "s"} will be promoted in place by this import`,
@@ -559,10 +563,12 @@ export const messages = {
     deleteDiagnosticEntry: "Delete",
     deleteDiagnosticEntryConfirm: ({ date, description, amount }) => `Delete this ledger row now? ${date} • ${description} • ${amount}. Use this only when the row is absent from the PDF, duplicated, or belongs to another card/account.`,
     deleteDiagnosticEntries: "Delete all",
-    deleteDiagnosticEntriesLabel: (count) => `Delete ${count} ledger rows`,
-    deleteDiagnosticEntriesConfirm: ({ count, amount }) => `Delete all ${count} unresolved ledger rows shown here now? Together these rows net to ${amount}. Use this only after checking the PDF/account mapping and confirming these rows are absent from this card's PDF, duplicated, or belong to another card/account.`,
-    deleteDiagnosticEntriesProgress: (count) => `Deleting ${count} ledger rows and refreshing statement check.`,
-    deleteDiagnosticEntriesSuccess: (count) => `${count} ledger rows deleted. Statement check refreshed.`,
+    deleteDiagnosticEntriesLabel: (count) => `Delete ${countOf(count, "ledger row")}`,
+    deleteDiagnosticEntriesConfirm: ({ count, amount }) => count === 1
+      ? `Delete the 1 unresolved ledger row shown here now? It nets to ${amount}. Use this only after checking the PDF/account mapping and confirming this row is absent from this card's PDF, duplicated, or belongs to another card/account.`
+      : `Delete all ${count} unresolved ledger rows shown here now? Together these rows net to ${amount}. Use this only after checking the PDF/account mapping and confirming these rows are absent from this card's PDF, duplicated, or belong to another card/account.`,
+    deleteDiagnosticEntriesProgress: (count) => `Deleting ${countOf(count, "ledger row")} and refreshing statement check.`,
+    deleteDiagnosticEntriesSuccess: (count) => `${countOf(count, "ledger row")} deleted. Statement check refreshed.`,
     statementReconciliationSupersededRowsTitle: "Official statement will remove provisional rows not present on the PDF",
     statementReconciliationSupersededRow: (date, description, amount) => `${date} • ${description} • ${amount}`,
     statementReconciliationStatus: {
@@ -599,7 +605,7 @@ export const messages = {
       : `${count} existing row${count === 1 ? "" : "s"} will be promoted in place`,
     willSaveStatementCheckpoints: (count) => `${count} statement checkpoint${count === 1 ? "" : "s"} will refresh`,
     willSkipRows: (count) => `${count} row${count === 1 ? "" : "s"} already covered`,
-    needsReviewRows: (count) => `${count} row${count === 1 ? "" : "s"} need review`,
+    needsReviewRows: (count) => `${countOf(count, "row")} ${count === 1 ? "needs" : "need"} review`,
     noRowsToImport: "No new ledger rows will be created. You can still refresh statement checkpoints and certification when the checks match.",
     noRowsToImportCoveredStatement: "This statement's rows are already in the ledger. No duplicate ledger rows will be created. You can still refresh the statement checkpoint and certification.",
     noRowsToImportEmptyStatement: "This statement has no transaction rows. Only the statement checkpoint will be saved.",
@@ -636,7 +642,7 @@ export const messages = {
     recentRefreshing: "Updating recent imports...",
     recentStatementCertificates: (count) => `${count} statement certificate${count === 1 ? "" : "s"}`,
     recentStatementCertificateException: "certificate exception",
-    recentPageSummary: (start, end, total) => `Showing ${start}-${end} of ${total} imports`,
+    recentPageSummary: (start, end, total) => `Showing ${start}-${end} of ${countOf(total, "import")}`,
     recentPageCount: (page, pageCount) => `Page ${page} of ${pageCount}`,
     previousPage: "Previous",
     nextPage: "Next",
@@ -740,7 +746,7 @@ export const messages = {
     statementCompareReading: (fileName) => `Reading ${fileName}.`,
     statementCompareChecking: (count) => `Comparing ${count} statement row${count === 1 ? "" : "s"} against the current ledger.`,
     statementCompareReady: (result) => `${result.matchedRowCount} matched, ${result.unmatchedStatementRows.length} missing from ledger, ${result.unmatchedLedgerRows.length} extra in ledger.`,
-    statementCompareSummary: (result) => `${result.accountName} ${result.checkpointMonth}: ${result.matchedRowCount} of ${result.statementRowCount} statement rows matched`,
+    statementCompareSummary: (result) => `${result.accountName} ${result.checkpointMonth}: ${result.matchedRowCount} of ${countOf(result.statementRowCount, "statement row")} matched`,
     statementComparePossibleTitle: "Possible near matches",
     statementCompareDirectionTitle: "Direction mismatches",
     statementCompareDirectionDetail: "These look like the same transaction, but one side is income and the other side is expense. That changes the balance by twice the amount.",
@@ -807,7 +813,7 @@ export const messages = {
     unresolvedTransfersTitle: "Unresolved transfers",
     unresolvedTransfersEmpty: "No transfers need review right now.",
     unresolvedTransfersDetail: "These transfer rows are not fully paired yet and can leave wallet balances looking wrong until reviewed.",
-    unresolvedTransfersDetailWithCount: (count) => `${count} transfer rows are not fully paired yet and can leave wallet balances looking wrong until reviewed.`,
+    unresolvedTransfersDetailWithCount: (count) => `${countOf(count, "transfer row")} ${count === 1 ? "is" : "are"} not fully paired yet and can leave wallet balances looking wrong until reviewed.`,
     openTransferReview: "Open in entries",
     manageTransferReview: "Manage transfer",
     refreshTransfers: "Refresh",
@@ -815,7 +821,7 @@ export const messages = {
     clearTransfer: "Clear",
     clearAllTransfers: "Clear all",
     transferMonthQueueLabel: "Transfer review months",
-    transferPage: (page, pageCount, count) => `Page ${page} of ${pageCount} (${count} transfers)`,
+    transferPage: (page, pageCount, count) => `Page ${page} of ${pageCount} (${countOf(count, "transfer")})`,
     transferTruncatedDescriptionWarning: (count) => `${count} transfer description${count === 1 ? " was" : "s were"} shortened for review because the stored bank text is unusually long. Future imports now block this before it reaches the ledger.`,
     reviewAllTransfers: "Review all",
     transferReviewTitle: "Transfer review",
