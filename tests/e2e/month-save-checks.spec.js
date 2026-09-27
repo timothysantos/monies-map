@@ -315,6 +315,32 @@ test("desktop: a duplicate that fails stays on this month and says why", async (
   await expect(page).toHaveURL(/month=2026-05/);
 });
 
+// The Delete month warning talks about "the demo" only on the demo site.
+// The test stack is APP_ENVIRONMENT=test; the demo case relabels the shell.
+for (const environment of ["test", "demo"]) {
+  test(`desktop: the Delete month warning on the ${environment} site`, async ({ page }) => {
+    if (environment === "demo") {
+      await page.route("**/api/app-shell**", async (route) => {
+        const response = await route.fetch();
+        const body = await response.json();
+        await route.fulfill({ response, json: { ...body, appEnvironment: "demo" } });
+      });
+    }
+    await openMonth(page);
+    await page.goto(MONTH_URL);
+    await expect(page.getByRole("heading", { name: "Month", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Actions", exact: true }).click();
+    await page.getByRole("button", { name: "Delete month", exact: true }).click();
+    const dialog = page.getByRole("dialog").filter({ hasText: "Confirm delete month" });
+    if (environment === "demo") {
+      await expect(dialog).toContainText("This removes the current month entirely from the demo, including its summary snapshot.");
+    } else {
+      await expect(dialog).toContainText("This removes the current month entirely, including its summary snapshot.");
+      await expect(dialog).not.toContainText(/demo/i);
+    }
+  });
+}
+
 for (const action of [
   { name: "reset", item: "Reset month", phrase: "reset month", confirm: "Confirm reset month", route: "**/api/months/reset*" },
   { name: "delete", item: "Delete month", phrase: "delete month", confirm: "Confirm delete month", route: "**/api/months/delete*" }

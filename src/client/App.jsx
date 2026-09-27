@@ -1961,6 +1961,7 @@ export function App() {
           onRefresh={refreshCurrentMonthPage}
           runBackgroundRefresh={runBackgroundRefresh}
           canRequestWording={routeWork.usable}
+          isDemoEnvironment={appEnvironment === "demo"}
         />
       );
     }
