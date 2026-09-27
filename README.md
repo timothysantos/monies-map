@@ -303,9 +303,9 @@ npm run test:e2e:webkit      # @webkit-tagged tests in WebKit (iPhone profile)
 npm run db:migrate           # local D1 schema
 npm run db:migrate:remote    # production D1 schema
 npm run db:migrate:demo      # demo D1 schema
-npm run deploy:prod          # build + deploy only production
+npm run deploy:prod          # build + deploy production (app and Shortcut API)
 npm run deploy:demo          # build + deploy only demo
-npm run deploy:all           # build once, deploy production and demo
+npm run deploy:all           # build once, deploy production, the Shortcut API and demo
 npm run deploy               # alias for deploy:prod
 npm run db:empty-production  # terminal-only production empty-state reset
 npm run docs:screenshots     # regenerate the in-app guide screenshots (demo data)
@@ -502,7 +502,8 @@ npm run deploy:demo
 curl -X POST https://monies-map-demo.timsantos-accts.workers.dev/api/demo/reseed
 ```
 
-To deploy both Workers from the same build:
+To deploy all three Workers (production, the Shortcut API and the demo) from
+the same build:
 
 ```bash
 npm run deploy:all
