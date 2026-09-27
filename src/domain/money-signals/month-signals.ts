@@ -551,8 +551,11 @@ export function biggestDayTrivia(input: MonthSignalInput): MoneySignal | null {
 }
 
 export function buildMonthSignals(input: MonthSignalInput): MoneySignal[] {
+  // The month's own bigger question leads ahead of a wallet's statement
+  // gap, which is about the account rather than this month.
+  const statementGap = statementGapSignal({ accountPills: input.accountPills, audience: input.audience, viewLabel: input.viewLabel, formatMoney: input.formatMoney });
   return [
-    statementGapSignal({ accountPills: input.accountPills, audience: input.audience, viewLabel: input.viewLabel, formatMoney: input.formatMoney }),
+    statementGap ? { ...statementGap, yieldsToBiggerQuestion: true } : null,
     unlinkedBillsSignal(input),
     oneOffOverPlanSignal(input),
     categoryOverPlanSignal(input),

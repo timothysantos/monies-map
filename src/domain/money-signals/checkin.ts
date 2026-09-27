@@ -151,23 +151,30 @@ function isRested(signal: MoneySignal, memory: VisitMemory, nowMs: number) {
   return Boolean(previous?.shownAt !== undefined && nowMs - previous.shownAt < REST_MS && !hasMoved(previous, signal));
 }
 
-function kindRank(signal: MoneySignal) {
+function kindRank(signal: MoneySignal, hasBiggerQuestion: boolean) {
   const rank = HEADLINE_KIND_ORDER.indexOf(signal.kind);
+  // A quick fix that yields (Month's statement gap) goes right after the
+  // month's own bigger question.
+  if (signal.yieldsToBiggerQuestion && hasBiggerQuestion) {
+    return 1.2;
+  }
   // A moment (payday, a bonus, bills coming up) comes right after the
   // quick fixes and the bigger question.
   return signal.moment && rank > 1 ? 1.5 : rank;
 }
 
 // Headline candidates in order: kind (quick fix, bigger question, worth a
-// look, going well), then the money involved, then signals not seen
+// look, going well; a quick fix that yields goes right after the bigger
+// question), then the money involved, then signals not seen
 // recently. A signal resting after being shown goes after the rest. Only
 // one bigger question is kept.
 export function rankSignals(signals: MoneySignal[], memory: VisitMemory, nowMs: number): MoneySignal[] {
+  const hasBiggerQuestion = signals.some((signal) => signal.kind === "bigger_question" && signal.phrasings.length > 0);
   const ranked = signals
     .filter((signal) => HEADLINE_KIND_ORDER.includes(signal.kind) && signal.phrasings.length > 0)
     .map((signal) => ({ signal, rested: isRested(signal, memory, nowMs), shownAt: memory.signals[signal.key]?.shownAt ?? -Infinity }))
     .sort((left, right) => Number(left.rested) - Number(right.rested)
-      || kindRank(left.signal) - kindRank(right.signal)
+      || kindRank(left.signal, hasBiggerQuestion) - kindRank(right.signal, hasBiggerQuestion)
       || right.signal.weight - left.signal.weight
       || left.shownAt - right.shownAt
       || left.signal.key.localeCompare(right.signal.key))
