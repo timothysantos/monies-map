@@ -1162,18 +1162,32 @@ These boundaries are important enough to preserve explicitly:
   (trivia from the user's own data, shown only when the headline is not a
   bigger question) and `Long view` (a quieter zoomed-out line: keep rate,
   cushion, fixed costs, same season, share of costs). A signal carries 3 to
-  5 approved phrasings with the same numbers and one `way to think about
-  it` (the think line). `Headline order` is kind, then money involved, then
+  5 approved phrasings with the same numbers and one or more `ways to think
+  about it` (think lines); each phrasing with each think line it may pair
+  with is a `wording`. `Headline order` is kind, then money involved, then
   not recently seen; a `moment` (payday, a bonus, bills coming up, pace)
   comes right after the bigger question.
+- Period, year rule and trivia type:
+  the `period` is the month a check-in is about: Month's and Entries'
+  month, the last month of Summary's range, the current month on Splits.
+  The `year rule`: for one page and view, nothing that rotates (the Just
+  for fun line, a recurring signal's wording, which long view leads, the
+  quote, the calm line) is shown for a period and again in the eleven
+  periods before or after it. It is chosen from the period itself
+  (`money-signals/rotation.ts`), never from visit time or browser memory.
+  A `trivia type` is one kind of Just for fun line (`smallest`,
+  `longest-run`, `payer`); each page places its types in twelve month
+  columns, and a period reads only its own column (the type whose turn it
+  is, then its reserves). Month and Entries share no trivia type.
 - Cushion:
   the `cushion` is the Summary long view "bank balances would cover about N
   months of your usual spending": bank accounts only (never cards), against
   the range's average monthly actual spend. It is perspective, not a target.
 - Visit memory, rest, quiet visit and sorted:
   `visit memory` is what one browser remembers about a page and view (and
-  group on Splits): which signals, phrasings, trivia and quotes were shown,
-  when, and the numbers last seen. It lives only in localStorage and is
+  group on Splits): which signals were present and shown, when, and the
+  numbers last seen. It only adds to the year rule (rests, what changed,
+  sorted, quiet visits) and is never needed for it. It lives only in localStorage and is
   never sent to the server or AI. A shown headline `rests` for three days
   unless its numbers move by 10% or $50 (then it leads with the change); a
   `quiet visit` is a visit soon after the last one with nothing new, shown
