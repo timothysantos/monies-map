@@ -95,7 +95,9 @@ component (`financial-insight.jsx`) composes the check-in with
 the page mounted (`checkin-visit-memory.js`, localStorage only), so
 recording the visit never changes what is on screen; the visit's clock is
 fixed at mount (`useCheckInClock`). Its styles live in `money-checkin.css`,
-which ships with the routes, not the first-screen stylesheet.
+which ships with the routes, not the first-screen stylesheet. On a phone
+the insights reserve the right-hand column the floating money-privacy
+button covers (`tests/e2e/money-insights-phone.spec.js`).
 
 The Splits workspace uses a dark surface but paid-settlement follow-ups use a
 light proof card. Controls on that card must use an explicit light-card theme:
