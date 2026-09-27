@@ -13,7 +13,7 @@ export const messages = {
     appShellResourceLimitDetail: "This is usually a Worker CPU or resource limit on the shared app-shell request, not proof that an import changed data. If this keeps happening, check Cloudflare Workers observability for /api/app-shell and reduce that endpoint's work or move the Worker to a plan with more headroom.",
     appShellDiagnosticsUnavailable: "Settings and Error diagnostics also need the app shell. If /api/app-shell is the failing request, the diagnostics page may not open until the endpoint succeeds again.",
     loadFailedDetail: "Your saved data is not affected. Try again in a moment.",
-    pageLoadErrorTitle: "This page could not finish loading.",
+    pageLoadErrorTitleFor: (pageName) => pageName ? `The ${pageName} page could not load.` : "This page could not load.",
     retryPageLoad: "Try loading again",
     refreshFailedTitle: "This page could not refresh.",
     refreshFailedDetail: "Saved changes are kept. Some figures here may be out of date until the page refreshes.",
