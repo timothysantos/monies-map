@@ -22,6 +22,13 @@ and parallel sessions kept colliding on those ports.
   dependency optimisation. Busy ports fail the run at once instead of reusing
   another tree's server. Servers run in their own process groups and are
   stopped, with their state removed, when the shard ends or on Ctrl+C.
+  While a stack is up it pings its Worker's `/api/health` once a second:
+  `wrangler dev` (4.113) parks a GET whose proxied fetch lost its connection
+  ("Network connection lost.") until the next request reaches its proxy, so
+  in a quiet test a page request could wait for the 45 s client timeout. The
+  ping drains that queue within about a second. Upstream `ProxyWorker.ts`
+  now compares origins instead of full URLs; drop the ping after a wrangler
+  upgrade that includes that fix.
 - `scripts/e2e-shard-plan.mjs`: the work comes from `playwright test --list`,
   so a new spec is always included. Whole files are placed longest first on
   the least-loaded shard, using `tests/e2e/shard-weights.json` (measured
