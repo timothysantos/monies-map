@@ -314,8 +314,15 @@ There are no header or JSON key names to type.
 
 Choose the default account priority used when Wallet does not identify the
 account. Moving an account saves the new order immediately and shows a status
-message. API key and default-param edits under Advanced API settings still use
+message. API key and default-param edits under More shortcut settings still use
 Save shortcut settings.
+
+The Settings screen explains the priority in plain words ("If the shortcut
+doesn't name an account, entries go to the first account in this list."). The
+exact rule: when the direct-create API request omits both `accountId` and
+`accountName`, or the quick-entry URL omits both `account` and `account_id`,
+the server (or the quick-entry draft) uses the first active account in this
+priority order.
 
 The app-managed key is stored in app settings and takes priority over the
 Cloudflare environment token. Existing deployments can still use a Cloudflare
@@ -356,7 +363,7 @@ Apple Pay shortcut -> Default account priority. `accountResolution` in the
 response reports `explicit`, `wallet_name`, or `priority`, so the Shortcut can
 show what happened instead of silently guessing.
 
-The endpoint also applies Settings -> Apple Pay shortcut -> Advanced API
+The endpoint also applies Settings -> Apple Pay shortcut -> More shortcut
 settings -> Default shortcut params before the JSON body, so values sent by the
 shortcut always win.
 
@@ -621,7 +628,7 @@ Supported query parameters are:
 `account` or `account_id` is optional. If neither is sent, the app uses the
 first active account in Settings -> Apple Pay shortcut -> Default account
 priority. The quick-entry URL also applies the Default shortcut params under
-Advanced API settings first, then lets explicit URL parameters override them.
+More shortcut settings first, then lets explicit URL parameters override them.
 
 After the app reads the parameters, it removes them from the URL so refreshing
 the page does not reopen the draft.
