@@ -11,9 +11,9 @@ share costs fairly.
   **Serene** in the view switcher at the top. If you see other names, ask a
   developer to refresh the demo (see "Refresh the demo" at the end).
 - Reseed shortly before a meeting so the history ends in the current month:
-  open Settings, then **Demo state**, and press **Reseed default demo**. On
-  the showcase demo that button restores the showcase data, whatever its
-  label says. Anything a previous visitor changed is replaced.
+  open Settings, then **Demo state**, and press **Reseed demo data**. On
+  the showcase demo that button restores the showcase data. Anything a
+  previous visitor changed is replaced.
 - Money totals can be hidden. If you see dots instead of amounts, press the
   eye button to show them.
 - The data is invented. Ethan works at a logistics company; Serene is a
@@ -178,5 +178,5 @@ npm run deploy:demo
 curl -X POST https://monies-map-demo.timsantos-accts.workers.dev/api/demo/reseed
 ```
 
-Or press **Reseed default demo** in Settings, Demo state on the demo site.
+Or press **Reseed demo data** in Settings, Demo state on the demo site.
 Details are in the developer guide's demo section.
