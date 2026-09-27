@@ -706,7 +706,10 @@ required read.
 - `route-modules.js` is the only route-code loader, shared by navigation and
   warmup, so a warmed chunk is the one the route uses.
 - `query-leases.js` keeps the two fetch paths. Required reads take a lease
-  before touching the cache. Speculative reads are cancelled at their
+  before touching the cache, and fetch again each time a cache clear cancels
+  their shared request, so a live caller never receives a cancellation its
+  owner would take for "superseded" and leave the page loading. Speculative
+  reads are cancelled at their
   deadline unless a required reader joins them (promotion). It also times
   required network fetches: mobile data warmup needs a recent reading of
   500 ms or less.
