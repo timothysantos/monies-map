@@ -20,6 +20,8 @@ import { EntriesBreakdownPanel, EntriesTotalsStrip } from "./entries-overview";
 import { EntriesFilterStack } from "./entries-filter-stack";
 import { EntryMobileEditExpenseFooter, EntryMobileSheet } from "./entry-mobile-sheet";
 import { FinancialInsight } from "./financial-insight";
+import { checkInMemoryKey, useCheckInClock } from "./checkin-visit-memory";
+import { projectEntriesForView } from "./entry-row-projection";
 import {
   createLinkedEntryRequest,
   getPendingLinkedEntryId,
@@ -30,6 +32,7 @@ import { LinkedNoteSyncDialog } from "./linked-note-sync-dialog";
 import {
   getActiveEntryFilterCount,
   getEntryDerivedData,
+  getFilteredEntries,
   getEntryFilterOptions,
   getEntryFormOptions,
   getEntrySearchSuggestions,
@@ -45,6 +48,7 @@ import {
 import { buildRequestErrorMessage } from "./request-errors";
 import { deleteSplitExpense, updateSplitExpenseCategory, updateSplitExpenseNote } from "./splits-api";
 import { buildFinancialInsightFacts } from "../domain/ai-assistance-insights";
+import { buildEntriesSignals, ENTRIES_CALM_LINE } from "../domain/money-signals/entries-signals";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { fetchQueryWithLease } from "./query-leases";
 import { createEntriesDataOwner } from "./entries-data-owner";
@@ -502,11 +506,44 @@ export function EntriesPanel({
       amountMinor: entry.visibleAmountMinor ?? entry.amountMinor
     })),
     formatMoney: formatService.unmaskedMoney,
-    perspective: activeEntryFilterCount ? "partial_view" : "cash_flow",
-    accountingAdvice: activeEntryFilterCount
-      ? "Use this filtered view to investigate the selected account, category, type, or search result; do not use it as the whole-month budget total."
-      : "Before closing the month, compare imported or pending entries with the bank record."
+    perspective: activeEntryFilterCount ? "partial_view" : "cash_flow"
   }), [activeEntryFilterCount, aggregateEntries, entryView.id, entryView.label, entryView.monthPage.month]);
+  // The check-in reads the whole month's list for the view and scope, not
+  // the current search or filter, so it says the same whatever is shown.
+  const checkInEntries = useMemo(
+    () => projectEntriesForView(getFilteredEntries({ entries, entryFilters: {}, selectedScope, viewId: entryView.id }), entryView.id).aggregateEntries,
+    [entries, entryView.id, selectedScope]
+  );
+  const checkInClock = useCheckInClock();
+  const checkIn = useMemo(() => ({
+    memoryKey: checkInMemoryKey("entries", entryView.id),
+    contextKey: `${entryView.monthPage.month}|${selectedScope}`,
+    signals: buildEntriesSignals({
+      audience: entryView.id === "household" ? "household" : "person",
+      month: entryView.monthPage.month,
+      today: checkInClock.today,
+      entries: checkInEntries.map((entry) => ({ ...entry, amountMinor: entry.visibleAmountMinor ?? entry.amountMinor })),
+      formatMoney: formatService.unmaskedMoney
+    }),
+    calmLine: ENTRIES_CALM_LINE,
+    alsoLabel: "Also this month",
+    clock: checkInClock
+  }), [checkInClock, checkInEntries, entryView.id, entryView.monthPage.month, selectedScope]);
+  const handleCheckInAction = useCallback((action) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete("entry_id");
+      next.delete("entry_category");
+      next.delete("entry_search");
+      next.delete("entry_type");
+      if (action.id === "show-entries") {
+        (action.entryIds ?? []).forEach((entryId) => next.append("entry_id", entryId));
+      } else if (action.id === "open-category" && action.categoryName) {
+        next.set("entry_category", action.categoryName);
+      }
+      return next;
+    });
+  }, [setSearchParams]);
   const financialInsightActions = useMemo(() => {
     const actions = [];
     const hasIncome = aggregateEntries.some((entry) => entry.entryType === "income");
@@ -1134,7 +1171,14 @@ export function EntriesPanel({
             onAddEntry={openEntryComposer}
           />
 
-          <FinancialInsight facts={financialInsightFacts} actions={financialInsightActions} className="financial-insight-entries" canRequestWording={canRequestWording} />
+          <FinancialInsight
+            facts={financialInsightFacts}
+            checkIn={checkIn}
+            actions={financialInsightActions}
+            onCheckInAction={handleCheckInAction}
+            className="financial-insight-entries"
+            canRequestWording={canRequestWording}
+          />
         </>
       )}
 
