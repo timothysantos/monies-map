@@ -1002,7 +1002,9 @@ A small label says what kind of line it is:
 - **Quick fix**: something small that makes the numbers trustworthy or
   settles something, such as a statement that is $42.80 away from the app,
   a planned bill with no entry, money owed on a split or entries still in
-  Other. These come first, because every other number depends on them.
+  Other. These come first, because every other number depends on them. On
+  Month, a month's Bigger question comes before a card's statement gap,
+  which then appears under **Also this month**.
 - **Bigger question**: a pattern worth an honest decision, such as one
   large purchase that took the month over plan. There is never more than
   one at a time.

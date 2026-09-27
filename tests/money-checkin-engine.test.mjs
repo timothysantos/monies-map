@@ -77,6 +77,27 @@ test("only one bigger question is ever kept, and a moment comes right after the 
   assert.deepEqual(ranked, ["fix", "bigger-1", "payday", "worth"]);
 });
 
+test("a quick fix that yields to a bigger question goes right after it; without one it still leads", () => {
+  const gap = signal("statement-gap:ocbc", "quick_fix", 4_280, { yieldsToBiggerQuestion: true });
+  const bills = signal("unlinked-bills", "quick_fix", 18_298);
+  const bigger = signal("one-off-over-plan", "bigger_question", 312_814);
+  const worth = signal("category-over-plan:b1", "worth_a_look", 7_266);
+  assert.deepEqual(
+    rankSignals([gap, bigger, worth], emptyVisitMemory(), MON).map((item) => item.key),
+    ["one-off-over-plan", "statement-gap:ocbc", "category-over-plan:b1"]
+  );
+  // Other quick fixes keep their rank ahead of the bigger question.
+  assert.deepEqual(
+    rankSignals([gap, bills, bigger], emptyVisitMemory(), MON).map((item) => item.key),
+    ["unlinked-bills", "one-off-over-plan", "statement-gap:ocbc"]
+  );
+  // No bigger question: the statement gap leads as before.
+  assert.deepEqual(
+    rankSignals([gap, worth], emptyVisitMemory(), MON).map((item) => item.key),
+    ["statement-gap:ocbc", "category-over-plan:b1"]
+  );
+});
+
 test("a shown headline rests for a few days so another signal gets a turn, unless its numbers move", () => {
   const signals = [signal("plan-left", "going_well", 108_059), signal("savings", "going_well", 50_000)];
   const first = visit(signals, emptyVisitMemory(), MON);

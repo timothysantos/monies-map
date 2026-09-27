@@ -85,10 +85,9 @@ Go back to **Household**, open **Month** and choose **two months ago**.
 - **Actual spend** is above **Planned spend** by about $3,100. The month
   note explains it: both aircon units were replaced and the new sofa
   arrived.
-- Money insights still lead with the card's statement gap (a quick fix comes
-  first); press **See all insights**: **Also this month** lists the **Bigger
-  question** (the aircon made up most of the $3,128.14 over plan), **Plan
-  position** shows the overspend, and the **One-repeat scenario** shows the
+- Money insights lead with a **Bigger question**: the aircon made up most of
+  the $3,128.14 over plan. Press **See all insights**: **Also this month**
+  lists the card's statement gap, **Plan position** shows the overspend, and the **One-repeat scenario** shows the
   month would end in deficit if one more purchase like the aircon happened.
 - Scroll to **Planned Items**: the HDB loan, S&CC, insurance and
   subscriptions are each linked to the real bank entry that paid them.

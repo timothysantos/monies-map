@@ -1434,7 +1434,11 @@ adds no endpoint or payload. The code is in `src/domain/money-signals/`:
   `today` and the money formatter as inputs and never read the clock.
 - **Ranking.** `rankSignals` in `checkin.ts` orders headline candidates by
   kind (Quick fix, Bigger question, a moment such as payday or bills coming
-  up, Worth a look, Going well), then by money, then by not seen recently;
+  up, Worth a look, Going well), then by money, then by not seen recently.
+  A signal marked `yieldsToBiggerQuestion` goes right after a bigger
+  question instead: Month marks its statement gap this way, so the month's
+  own bigger question leads and the gap is listed under "Also this month"
+  (Summary still leads with it);
   a signal shown in the last three days goes after the rest unless its
   number moved by 10% or $50. Only one bigger question is kept. Long view
   and Just for fun are picked separately.

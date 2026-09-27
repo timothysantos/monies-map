@@ -78,6 +78,10 @@ export interface MoneySignal {
   // A time-of-month moment or season (payday, a bonus, bills coming up, a
   // trip's end, Chinese New Year): ranked ahead of its kind.
   moment?: boolean;
+  // A quick fix about something outside the view's own period (a wallet's
+  // statement on Month) that goes right after a bigger question instead of
+  // ahead of it.
+  yieldsToBiggerQuestion?: boolean;
 }
 
 export type Audience = "household" | "person";

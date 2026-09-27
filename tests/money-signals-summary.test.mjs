@@ -66,6 +66,9 @@ test("statement gap: the wallet furthest from its statement, named for the view"
   assert.deepEqual(household.action, { id: "review-statement", label: "Review statement" });
   assert.deepEqual(household.sorted, { fact: "Sorted: Serene's OCBC 365 Card now matches its statement.", think: "That's the part that makes every other number here trustworthy." });
 
+  // On Summary the statement gap keeps its Quick fix rank.
+  assert.equal(household.yieldsToBiggerQuestion, undefined);
+
   const serene = statementGapSignal({ accountPills: pills, audience: "person", viewLabel: "Serene", formatMoney: sgd });
   assert.equal(facts(serene)[0], "Your OCBC 365 Card statement is off by $42.80.");
   assert.equal(facts(serene)[2], "One statement doesn't match yet: your OCBC 365 Card, off by $42.80.");

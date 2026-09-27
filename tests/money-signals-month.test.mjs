@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { formatCurrencyMinor } from "../src/domain/split-currency.ts";
+import { composeCheckIn, emptyVisitMemory } from "../src/domain/money-signals/checkin.ts";
 import {
   biggestDayTrivia,
   buildMonthSignals,
@@ -257,4 +258,32 @@ test("buildMonthSignals and the calm line", () => {
   assert.equal(monthCalmLine("2026-08"), "Nothing in August needs a look right now.");
   const signals = buildMonthSignals(input({ summary: null }));
   assert.deepEqual(signals, []);
+});
+
+// Month leads with the month's own bigger question; an account's statement
+// gap (a Quick fix about a wallet, not the month) is listed under "Also this
+// month". Summary keeps leading with the statement gap.
+test("Month: a bigger question leads ahead of a statement gap, which moves to Also this month", () => {
+  const pills = [{ accountId: "acct-ocbc-365", accountName: "OCBC 365 Card", ownerLabel: "Serene", reconciliationStatus: "mismatch", latestCheckpointMonth: "2026-07", latestCheckpointDeltaMinor: -4_280 }];
+  const july = input({
+    audience: "household",
+    viewLabel: "Household",
+    month: "2026-07",
+    today: "2026-09-27",
+    entries: [expense("2026-07-11", "COURTS MEGASTORE TAMPINES", 328_000, "Home"), expense("2026-07-03", "NTUC FAIRPRICE", 18_000, "Groceries")],
+    summary: { estimatedExpensesMinor: 650_000, realExpensesMinor: 962_814, plannedIncomeMinor: 1_351_000, actualIncomeMinor: 1_351_000 },
+    accountPills: pills
+  });
+  const compose = (signals) => composeCheckIn({ signals, memory: emptyVisitMemory(), nowMs: Date.parse("2026-09-27T10:00:00+08:00"), today: "2026-09-27", seed: "month:household|2026-07", contextKey: "2026-07", calmLine: monthCalmLine("2026-07") });
+  const signals = buildMonthSignals(july);
+  assert.equal(signals.find((signal) => signal.key === "statement-gap:acct-ocbc-365").yieldsToBiggerQuestion, true);
+  const view = compose(signals);
+  assert.equal(view.headline.kind, "bigger_question");
+  assert.match(view.headline.fact, /Courts Megastore Tampines/);
+  assert.deepEqual(view.also[0], { key: "statement-gap:acct-ocbc-365", kind: "quick_fix", fact: "Serene's OCBC 365 Card statement is off by $42.80." });
+
+  // Negative: under plan there is no bigger question, so the gap leads.
+  const calm = compose(buildMonthSignals({ ...july, summary: { ...july.summary, realExpensesMinor: 600_000 } }));
+  assert.equal(calm.headline.key, "statement-gap:acct-ocbc-365");
+  assert.equal(calm.headline.kind, "quick_fix");
 });
