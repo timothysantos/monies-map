@@ -20,6 +20,7 @@ import { buildPlanDate, inferMonthKeyFromPlanRow, mapAccountKind, shiftPlanDate,
 import { getCurrentMonthKey } from "../lib/month";
 import { ensureDefaultCategoryMatchRules } from "./app-repository-category-match-rules";
 import { DEFAULT_HOUSEHOLD_ID } from "./app-repository-constants";
+import { isShowcaseSeeded, reseedShowcaseData } from "./app-repository-showcase-seed";
 
 const demoPeople = defaultHousehold.people;
 
@@ -85,6 +86,15 @@ function resolveSeededDemoTransactionDate(entryId: string, date: string, seedMon
 
 export async function ensureSeedData(db: D1Database, settings: DemoSettings) {
   await ensureDemoSchema(db);
+  // A showcase database never gets the default seed's backfill below (it
+  // would insert default-seed rows); it is reseeded only if its own rows
+  // are gone.
+  if (settings.dataset === "showcase") {
+    if (!(await isShowcaseSeeded(db))) {
+      await reseedShowcaseData(db);
+    }
+    return;
+  }
   const existing = await db
     .prepare("SELECT COUNT(*) as count FROM households WHERE id = ?")
     .bind(DEFAULT_HOUSEHOLD_ID)

@@ -137,6 +137,9 @@ export interface Env {
   AI?: Ai;
   APP_ENVIRONMENT?: "demo" | "local" | "production" | "test";
   DEMO_SEED_MONTH?: string;
+  // "showcase" seeds the showcase demo dataset on /api/demo/reseed
+  // (docs/demo-tour.md); unset or any other value seeds the default demo.
+  DEMO_DATASET?: string;
   SHORTCUT_API_ONLY?: string;
   SHORTCUT_APP_ORIGIN?: string;
   SHORTCUT_INGEST_TOKEN?: string;
@@ -405,7 +408,7 @@ export default {
       if (!canUseDemoControls(env, url)) {
         return json({ ok: false, error: "Demo controls are disabled in production." }, 403);
       }
-      const demo = await reseedDemoSettings(env.DB, env.DEMO_SEED_MONTH);
+      const demo = await reseedDemoSettings(env.DB, env.DEMO_SEED_MONTH, env.DEMO_DATASET);
       primeAppDataCache(demo);
       return json({ ok: true, demo });
     }

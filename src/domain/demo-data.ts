@@ -13,6 +13,9 @@ export interface DemoSettings {
   salaryPerPersonMinor: number;
   lastSeededAt: string;
   emptyState?: boolean;
+  // Set only when the showcase dataset (DEMO_DATASET=showcase) was seeded,
+  // so a cold start keeps the showcase instead of backfilling the default.
+  dataset?: "showcase";
 }
 
 interface SummaryMonthSeed {
