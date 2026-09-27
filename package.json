@@ -53,7 +53,7 @@
     "deploy": "npm run deploy:prod",
     "deploy:prod": "npm run build && wrangler deploy --config wrangler.shortcuts.jsonc && wrangler deploy",
     "deploy:demo": "npm run build && wrangler deploy --config wrangler.demo.jsonc",
-    "deploy:all": "npm run build && wrangler deploy && wrangler deploy --config wrangler.demo.jsonc",
+    "deploy:all": "npm run build && wrangler deploy --config wrangler.shortcuts.jsonc && wrangler deploy && wrangler deploy --config wrangler.demo.jsonc",
     "test:e2e:smoke": "node ./scripts/run-e2e-sharded.mjs --smoke --skip-build",
     "test:e2e:smoke:serial": "node ./scripts/run-e2e-smoke.mjs",
     "db:migrate": "wrangler d1 execute monies-map --local --file=schema.sql",

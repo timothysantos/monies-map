@@ -261,8 +261,9 @@ months forward.
 
 Use the Cloudflare deploy steps in `README.md` ("Cloudflare Deploy"). The
 routine production path is to use Node 22.23.0 or newer, then run
-`npm run deploy:prod`. Use `npm run deploy:demo` for only the public demo, or
-`npm run deploy:all` to build once and publish both Workers. If the app change
+`npm run deploy:prod`, which publishes the app and the Shortcut API Worker. Use
+`npm run deploy:demo` for only the public demo, or `npm run deploy:all` to build
+once and publish all three Workers (production, Shortcut API and demo). If the app change
 depends on a schema update, run the matching D1 migration before deploy.
 
 If production is deployed but does not load, follow
