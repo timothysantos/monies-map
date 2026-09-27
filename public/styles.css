@@ -948,25 +948,6 @@ html[data-money-privacy="hidden"] input[inputmode="decimal"] {
   color: var(--muted) !important;
 }
 
-.financial-insight-narrative.is-collapsed {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.financial-insight-pattern {
-  margin-top: 7px !important;
-  color: var(--accent-strong) !important;
-  font-size: 0.84rem !important;
-  font-weight: 600;
-  line-height: 1.45 !important;
-}
-
-.financial-insight-pattern strong {
-  font-weight: 800;
-}
-
 .financial-insight-toggle {
   display: inline-flex;
   align-items: center;

@@ -10,7 +10,6 @@ import {
 import {
   buildDeterministicFinancialInsight,
   buildFinancialInsightFacts,
-  buildInterestingWeekdayPattern,
   buildDeterministicImportExplanation,
   buildFinancialInsightCacheKey,
   buildDeterministicMonthlyNarrative,
@@ -53,6 +52,12 @@ test("monthly AI prose can only render server-provided financial placeholders", 
   assert.equal(buildDeterministicMonthlyNarrative(facts).includes("$120.00"), true);
 });
 
+const HEADLINE = {
+  headlineKind: "worth_a_look",
+  fact: "Subscriptions came to $76.09 in August, about $913 a year.",
+  think: "Automatic payments are easy to stop noticing. Judge each one by its yearly cost."
+};
+
 test("view insights substitute computed facts and reject model-supplied figures", () => {
   const facts = {
     contextLabel: "August 2026 entries",
@@ -64,10 +69,7 @@ test("view insights substitute computed facts and reject model-supplied figures"
     topCategoryAmount: "$50.00",
     topMerchantName: "Cold Storage",
     topMerchantAmount: "$20.00",
-    notableFact: "The three largest expenses make up 75% of the spending in this list.",
-    cashFlowPrinciple: "More money has gone out than come in so far.",
-    nextSpendConsideration: "Before buying something non-essential, check the available budget.",
-    accountingAdvice: "Review provisional entries before closing the month.",
+    ...HEADLINE,
     decisionMap: {
       enabled: true,
       needsReview: false,
@@ -80,17 +82,42 @@ test("view insights substitute computed facts and reject model-supplied figures"
       }]
     }
   };
-  const insight = parseFinancialInsightTemplate({
-    template: "{{notableFact}} {{contextLabel}} has {{entryCount}} entries with spending of {{spend}}. {{cashFlowPrinciple}} {{nextSpendConsideration}}"
-  }, facts);
+  const insight = parseFinancialInsightTemplate({ template: "In {{contextLabel}}: {{fact}} {{think}}" }, facts);
 
-  assert.equal(insight, "The three largest expenses make up 75% of the spending in this list. August 2026 entries has 7 entries with spending of $120.00. More money has gone out than come in so far. Before buying something non-essential, check the available budget.");
-  assert.equal(parseFinancialInsightTemplate({ template: "{{contextLabel}} is up 34%." }, facts), null);
-  assert.match(buildDeterministicFinancialInsight(facts), /The three largest expenses make up 75% of the spending in this list/);
-  assert.notEqual(buildFinancialInsightCacheKey(facts), buildFinancialInsightCacheKey({ ...facts, contextLabel: "Filtered entries" }));
+  assert.equal(insight, "In August 2026 entries: Subscriptions came to $76.09 in August, about $913 a year. Automatic payments are easy to stop noticing. Judge each one by its yearly cost.");
+  // Figures of its own, a missing or repeated fact or think line, and
+  // placeholders that no longer exist are all refused.
+  for (const template of [
+    "{{contextLabel}} is up 34%. {{fact}} {{think}}",
+    "{{think}}",
+    "{{fact}}",
+    "{{fact}} {{fact}} {{think}}",
+    "{{notableFact}} {{fact}} {{think}}",
+    "{{fact}} {{cashFlowPrinciple}} {{think}}",
+    "{{spend}} {{fact}} {{think}}"
+  ]) {
+    assert.equal(parseFinancialInsightTemplate({ template }, facts), null, template);
+  }
+  assert.equal(buildDeterministicFinancialInsight(HEADLINE), `${HEADLINE.fact} ${HEADLINE.think}`);
+  assert.notEqual(buildFinancialInsightCacheKey(facts, HEADLINE), buildFinancialInsightCacheKey({ ...facts, contextLabel: "Filtered entries" }, HEADLINE));
+  assert.notEqual(buildFinancialInsightCacheKey(facts, HEADLINE), buildFinancialInsightCacheKey(facts, { ...HEADLINE, fact: "$913 a year goes to subscriptions. Still using all of them?" }));
 });
 
-test("financial insight uses plain deterministic wording from the current entries", () => {
+test("AI wording around the fact must pass the check-in's tone rules", () => {
+  const facts = { contextLabel: "August 2026", audienceKind: "household", audienceName: "", ...HEADLINE };
+  assert.match(parseFinancialInsightTemplate({ template: "Something small to notice: {{fact}} {{think}}" }, facts), /^Something small to notice: Subscriptions/);
+  for (const template of [
+    "You should look again. {{fact}} {{think}}",
+    "Warning: {{fact}} {{think}}",
+    "Nice work! {{fact}} {{think}}",
+    "{{fact}} Time to cut back. {{think}}",
+    "A problem: {{fact}} {{think}}"
+  ]) {
+    assert.equal(parseFinancialInsightTemplate({ template }, facts), null, template);
+  }
+});
+
+test("financial insight facts hold the computed totals and the map, with no generic advice lines", () => {
   const facts = buildFinancialInsightFacts({
     contextLabel: "August 2026 entries",
     records: [
@@ -100,55 +127,39 @@ test("financial insight uses plain deterministic wording from the current entrie
       { entryType: "income", amountMinor: 20_000, description: "Salary" }
     ],
     formatMoney: (amountMinor) => `$${(amountMinor / 100).toFixed(2)}`,
-    accountingAdvice: "Keep the bank record current.",
     perspective: "cash_flow"
   });
 
-  assert.match(facts.notableFact, /Food & Drinks accounted for 89% of household spending|The largest household purchase was Restaurant A at \$60\.00|The three largest household purchases made up 100% of spending/);
-  const narrative = buildDeterministicFinancialInsight(facts);
-  assert.match(narrative, /^The household received \$200\.00 and spent \$90\.00/);
-  assert.doesNotMatch(narrative, /Worth noticing:|A useful signal:|One entry pattern:|At a glance,/);
-  assert.match(narrative, new RegExp(facts.notableFact.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  assert.equal(narrative, buildDeterministicFinancialInsight(facts));
+  assert.deepEqual(
+    [facts.spend, facts.income, facts.net, facts.topCategoryName, facts.topCategoryAmount, facts.topMerchantName, facts.topMerchantAmount],
+    ["$90.00", "$200.00", "$110.00", "Food & Drinks", "$80.00", "Restaurant A", "$60.00"]
+  );
+  // The old trivia pool and "Before buying something non-essential" lines are gone.
+  for (const removed of ["notableFact", "cashFlowPrinciple", "nextSpendConsideration", "accountingAdvice"]) {
+    assert.equal(Object.hasOwn(facts, removed), false, removed);
+  }
+  assert.doesNotMatch(JSON.stringify(facts), /non-essential|Before buying/);
 });
 
-test("person check-ins use the selected name locally and recognize strong weekday patterns", () => {
-  const records = [
-    { entryType: "income", amountMinor: 300_000, description: "Salary", date: "2026-08-01" },
-    { entryType: "expense", amountMinor: 1_200, categoryName: "Food & Drinks", description: "Lunch", date: "2026-08-03" },
-    { entryType: "expense", amountMinor: 1_500, categoryName: "Food & Drinks", description: "Lunch", date: "2026-08-10" },
-    { entryType: "expense", amountMinor: 1_800, categoryName: "Food & Drinks", description: "Lunch", date: "2026-08-17" }
-  ];
+test("a person's AI wording names the person once through a placeholder, never in the facts", () => {
   const facts = buildFinancialInsightFacts({
     contextLabel: "August 2026",
     audienceKind: "person",
     audienceName: "Tim",
-    records,
+    records: [{ entryType: "expense", amountMinor: 1_200, categoryName: "Food & Drinks", description: "Lunch", date: "2026-08-03" }],
     formatMoney: (amountMinor) => `$${(amountMinor / 100).toFixed(2)}`,
-    accountingAdvice: "Keep the bank record current.",
     perspective: "cash_flow"
   });
-
-  assert.equal(
-    buildInterestingWeekdayPattern(records, "person", "Tim"),
-    "3 of your Food & Drinks purchases landed on Mondays."
-  );
-  assert.equal(buildInterestingWeekdayPattern(records.slice(0, 3), "person", "Tim"), null);
-  assert.match(buildDeterministicFinancialInsight(facts), /^Tim, you received \$3000\.00 and spent \$45\.00/);
-  const template = "{{audienceName}}, {{notableFact}} In {{contextLabel}}, {{cashFlowPrinciple}} {{nextSpendConsideration}}";
-  const workerSafeFacts = { ...facts, audienceName: "[selected person]" };
-  assert.match(parseFinancialInsightTemplate({ template }, workerSafeFacts), /^\[selected person\],/);
-  assert.equal(
-    parseFinancialInsightTemplate({ template: "{{notableFact}} {{contextLabel}} {{cashFlowPrinciple}} {{nextSpendConsideration}}" }, workerSafeFacts),
-    null
-  );
-  assert.equal(
-    parseFinancialInsightTemplate({ template: "{{audienceName}} and {{audienceName}}: {{notableFact}} {{contextLabel}} {{cashFlowPrinciple}} {{nextSpendConsideration}}" }, workerSafeFacts),
-    null
-  );
+  assert.equal(facts.audienceKind, "person");
+  assert.equal(facts.audienceName, "Tim");
+  const workerSafeFacts = { ...facts, ...HEADLINE, audienceName: "[selected person]" };
+  const template = "{{audienceName}}, {{fact}} {{think}}";
+  assert.match(parseFinancialInsightTemplate({ template }, workerSafeFacts), /^\[selected person\], Subscriptions/);
+  assert.equal(parseFinancialInsightTemplate({ template: "{{fact}} {{think}}" }, workerSafeFacts), null);
+  assert.equal(parseFinancialInsightTemplate({ template: "{{audienceName}} and {{audienceName}}: {{fact}} {{think}}" }, workerSafeFacts), null);
 });
 
-test("financial insight converts computed cash flow into conservative next-spend guidance", () => {
+test("more out than in shows in the map as a deficit, without generic spending advice", () => {
   const facts = buildFinancialInsightFacts({
     contextLabel: "August 2026 month",
     records: [
@@ -156,13 +167,13 @@ test("financial insight converts computed cash flow into conservative next-spend
       { entryType: "expense", amountMinor: 125_000, categoryName: "Food & Drinks", description: "Dining" }
     ],
     formatMoney: (amountMinor) => `$${(amountMinor / 100).toFixed(2)}`,
-    accountingAdvice: "Keep the bank record current.",
     perspective: "cash_flow"
   });
 
-  assert.match(facts.cashFlowPrinciple, /More money has gone out than come in/);
-  assert.match(facts.nextSpendConsideration, /buying something non-essential/);
-  assert.match(buildDeterministicFinancialInsight(facts), /less left for savings/);
+  const surplus = facts.decisionMap.lanes.find((lane) => lane.id === "surplus");
+  assert.equal(surplus.value, "$250.00 deficit");
+  assert.match(surplus.detail, /More money has gone out than come in/);
+  assert.doesNotMatch(JSON.stringify(facts), /non-essential/);
 });
 
 test("money consequence map grounds surplus, plan, same-season, and proof gaps in computed evidence", () => {
@@ -173,7 +184,6 @@ test("money consequence map grounds surplus, plan, same-season, and proof gaps i
       { entryType: "expense", amountMinor: 75_000, categoryName: "Food & Drinks", description: "Dining" }
     ],
     formatMoney: (amountMinor) => `$${(amountMinor / 100).toFixed(2)}`,
-    accountingAdvice: "Keep the bank record current.",
     perspective: "cash_flow",
     decisionMapContext: {
       plannedSpendMinor: 50_000,
@@ -210,14 +220,12 @@ test("money consequence map does not infer cash confidence from filtered or spli
     contextLabel: "Filtered August entries",
     records: [{ entryType: "expense", amountMinor: 1_000, categoryName: "Food & Drinks", description: "Lunch" }],
     formatMoney: (amountMinor) => `$${(amountMinor / 100).toFixed(2)}`,
-    accountingAdvice: "Check the full month.",
     perspective: "partial_view"
   });
   const splitFacts = buildFinancialInsightFacts({
     contextLabel: "Family group",
     records: [{ entryType: "expense", amountMinor: 1_000, categoryName: "Food & Drinks", description: "Lunch" }],
     formatMoney: (amountMinor) => `$${(amountMinor / 100).toFixed(2)}`,
-    accountingAdvice: "Record the settlement.",
     perspective: "split_obligation"
   });
 
@@ -235,7 +243,6 @@ test("money consequence map leaves bank confidence unevaluated when wallet evide
       { entryType: "expense", amountMinor: 20_000, categoryName: "Food & Drinks", description: "Groceries" }
     ],
     formatMoney: (amountMinor) => `$${(amountMinor / 100).toFixed(2)}`,
-    accountingAdvice: "Check the bank record.",
     perspective: "cash_flow",
     decisionMapContext: {
       confidence: { evaluated: false }
@@ -253,12 +260,11 @@ test("split insight never presents group obligations as household savings", () =
     contextLabel: "Family group",
     records: [{ entryType: "expense", amountMinor: 1_000, categoryName: "Food & Drinks", description: "Lunch" }],
     formatMoney: (amountMinor) => `$${(amountMinor / 100).toFixed(2)}`,
-    accountingAdvice: "Record the settlement when it happens.",
     perspective: "split_obligation"
   });
 
-  assert.match(facts.cashFlowPrinciple, /do not measure household income or savings/);
-  assert.match(facts.nextSpendConsideration, /payer, group, and expected settlement/);
+  assert.deepEqual(facts.decisionMap.lanes.map((lane) => lane.value), ["Settlement obligations"]);
+  assert.match(facts.decisionMap.lanes[0].detail, /not a household income, savings, or safe-to-spend calculation/);
 });
 
 test("import explanation refuses model-supplied numeric claims and keeps deterministic evidence", () => {
@@ -337,87 +343,36 @@ test("a provider failure becomes an unavailable suggestion after the bounded all
 // person view names their share, and counts agree with their nouns.
 const formatTestMoney = (amountMinor) => `$${(amountMinor / 100).toFixed(2)}`;
 
-test("a person view with spending and no income asks whether you are saving; the household view keeps household wording", () => {
+test("with spending and no income, the map says income is not in this view, for a person and the household alike", () => {
   const records = [{ entryType: "expense", amountMinor: 4_000, categoryName: "Food & Drinks", description: "Dinner" }];
-  const personFacts = buildFinancialInsightFacts({
-    contextLabel: "August 2026 month",
-    audienceKind: "person",
-    audienceName: "Tim",
-    records,
-    formatMoney: formatTestMoney,
-    accountingAdvice: "Keep the bank record current.",
-    perspective: "cash_flow"
-  });
-  const householdFacts = buildFinancialInsightFacts({
-    contextLabel: "August 2026 month",
-    records,
-    formatMoney: formatTestMoney,
-    accountingAdvice: "Keep the bank record current.",
-    perspective: "cash_flow"
-  });
-
-  assert.equal(personFacts.cashFlowPrinciple, "This list has spending but no income, so it cannot show whether you are saving.");
-  assert.doesNotMatch(buildDeterministicFinancialInsight(personFacts), /household/);
-  // The person's name never goes into the facts text the AI sees.
-  assert.doesNotMatch(personFacts.cashFlowPrinciple, /Tim/);
-  assert.equal(householdFacts.cashFlowPrinciple, "This list has spending but no income, so it cannot show whether the household is saving.");
+  for (const audience of [{ audienceKind: "person", audienceName: "Tim" }, { audienceKind: "household" }]) {
+    const facts = buildFinancialInsightFacts({ contextLabel: "August 2026 month", ...audience, records, formatMoney: formatTestMoney, perspective: "cash_flow" });
+    const surplus = facts.decisionMap.lanes.find((lane) => lane.id === "surplus");
+    assert.equal(surplus.value, "Income not in this view");
+    // The person's name never goes into any lane the AI sees.
+    assert.doesNotMatch(JSON.stringify(facts.decisionMap), /Tim/);
+  }
 });
 
-// The notable fact is one of several candidates picked by a stable hash of
-// the context, so the test walks context labels until the largest-item
-// candidate is the one shown.
-function findLargestItemFact(input) {
-  for (let index = 0; index < 60; index += 1) {
-    const facts = buildFinancialInsightFacts({ ...input, contextLabel: `${input.contextLabel} ${index}` });
-    if (/largest (share|purchase|household purchase) was/.test(facts.notableFact)) {
-      return facts;
-    }
-  }
-  throw new Error("No context label picked the largest-item fact.");
-}
-
-test("a Splits person view names the largest share, not the largest purchase; other views keep their wording", () => {
-  const records = [
-    { entryType: "expense", amountMinor: 3_000, categoryName: "Travel", description: "Shinjuku hotel" },
-    { entryType: "expense", amountMinor: 1_000, categoryName: "Food & Drinks", description: "Ramen" }
-  ];
-  const splitPerson = findLargestItemFact({
-    contextLabel: "Tokyo trip group",
-    audienceKind: "person",
-    audienceName: "Tim",
-    records,
-    formatMoney: formatTestMoney,
-    accountingAdvice: "Record the settlement.",
-    perspective: "split_obligation"
+test("a Splits person view's check-in counts shares and says who owes whom, never who bought what", async () => {
+  const { buildSplitsSignals } = await import("../src/domain/money-signals/splits-signals.ts");
+  const signals = buildSplitsSignals({
+    audience: "person",
+    viewId: "person-tim",
+    viewLabel: "Tim",
+    people: [{ id: "person-tim", name: "Tim" }, { id: "person-joyce", name: "Joyce" }],
+    group: { id: "tokyo", name: "Tokyo trip", balanceMinor: 900_000 },
+    activity: [
+      { kind: "expense", date: "2026-05-12", description: "Shinjuku hotel", totalAmountMinor: 1_200_000, paidByPersonName: "Tim" },
+      { kind: "expense", date: "2026-05-13", description: "Ramen", totalAmountMinor: 300_000, paidByPersonName: "Joyce" }
+    ],
+    pendingMatchCount: 0,
+    today: "2026-05-20",
+    formatMoney: formatTestMoney
   });
-  assert.equal(splitPerson.notableFact, "Your largest share was Shinjuku hotel at $30.00.");
-
-  const monthPerson = findLargestItemFact({
-    contextLabel: "August 2026 month",
-    audienceKind: "person",
-    audienceName: "Tim",
-    records,
-    formatMoney: formatTestMoney,
-    accountingAdvice: "Keep the bank record current.",
-    perspective: "cash_flow"
-  });
-  assert.equal(monthPerson.notableFact, "Your largest purchase was Shinjuku hotel at $30.00.");
-
-  const splitHousehold = findLargestItemFact({
-    contextLabel: "Tokyo trip group",
-    records,
-    formatMoney: formatTestMoney,
-    accountingAdvice: "Record the settlement.",
-    perspective: "split_obligation"
-  });
-  assert.equal(splitHousehold.notableFact, "The largest household purchase was Shinjuku hotel at $30.00.");
-
-  // The AI template still accepts the new wording as its notable fact.
-  const template = "{{audienceName}}, {{notableFact}} In {{contextLabel}}, {{cashFlowPrinciple}} {{nextSpendConsideration}}";
-  assert.match(
-    parseFinancialInsightTemplate({ template }, { ...splitPerson, audienceName: "[selected person]" }),
-    /Your largest share was Shinjuku hotel at \$30\.00\./
-  );
+  const copy = signals.flatMap((signal) => signal.phrasings.map((phrasing) => phrasing.fact));
+  assert.ok(copy.includes("Joyce owes you $9000.00 from the Tokyo trip."), copy.join(" | "));
+  assert.ok(copy.every((line) => !/purchase/i.test(line)), copy.join(" | "));
 });
 
 test("the money consequence map agrees nouns and verbs with each count", () => {
@@ -428,7 +383,6 @@ test("the money consequence map agrees nouns and verbs with each count", () => {
       { entryType: "expense", amountMinor: 20_000, categoryName: "Food & Drinks", description: "Groceries" }
     ],
     formatMoney: formatTestMoney,
-    accountingAdvice: "Check the bank record.",
     perspective: "cash_flow",
     decisionMapContext: { confidence: { evaluated: true, ...confidence } }
   }).decisionMap.lanes.find((lane) => lane.id === "confidence").detail;
@@ -444,19 +398,10 @@ test("the money consequence map agrees nouns and verbs with each count", () => {
   assert.doesNotMatch(confidenceDetail({ needsCheckpointCount: 2 }), /2 wallet need/);
 });
 
-// Every notable fact a set of records can produce: the pick is a stable hash
-// of the context, so walking context labels reaches each candidate.
-function allNotableFacts(input) {
-  const facts = new Set();
-  for (let index = 0; index < 80; index += 1) {
-    facts.add(buildFinancialInsightFacts({ ...input, contextLabel: `${input.contextLabel} ${index}` }).notableFact);
-  }
-  return [...facts];
-}
+const PURCHASE_FACT = /purchase|three largest|\bpaid\b/i;
 
-const PURCHASE_FACT = /largest (household )?purchase|three largest|\bpaid\b/;
-
-test("Summary category totals never read as purchases, payments or a repeatable expense", () => {
+test("Summary category totals never read as purchases, payments or a repeatable expense", async () => {
+  const { buildSummarySignals } = await import("../src/domain/money-signals/summary-signals.ts");
   const categoryTotals = [
     { entryType: "expense", amountMinor: 124_000, categoryName: "Groceries", description: "Groceries" },
     { entryType: "expense", amountMinor: 61_000, categoryName: "Dining", description: "Dining" },
@@ -469,64 +414,32 @@ test("Summary category totals never read as purchases, payments or a repeatable 
       ...audience,
       records: categoryTotals,
       formatMoney: formatTestMoney,
-      accountingAdvice: "Keep the plan current.",
       perspective: "cash_flow",
       recordKind: "category_totals"
     };
-    const facts = allNotableFacts(input);
-    assert.deepEqual(facts, [audience.audienceKind === "person"
-      ? "Your Groceries spending accounted for 60% of what you spent."
-      : "Groceries accounted for 60% of household spending."]);
     const lanes = buildFinancialInsightFacts(input).decisionMap.lanes.map((lane) => lane.id);
     assert.deepEqual(lanes, ["surplus", "plan", "season", "confidence"]);
   }
-
-  // The same records read as single entries do produce the purchase facts
-  // and the one-repeat scenario, so the guard is what removes them.
-  const asEntries = {
-    contextLabel: "May 2026 summary",
-    records: categoryTotals,
-    formatMoney: formatTestMoney,
-    accountingAdvice: "Keep the plan current.",
-    perspective: "cash_flow"
-  };
-  assert.ok(allNotableFacts(asEntries).some((fact) => PURCHASE_FACT.test(fact)));
+  // The same records read as single entries do produce the one-repeat
+  // scenario, so the guard is what removes it.
+  const asEntries = { contextLabel: "May 2026 summary", records: categoryTotals, formatMoney: formatTestMoney, perspective: "cash_flow" };
   assert.ok(buildFinancialInsightFacts(asEntries).decisionMap.lanes.some((lane) => lane.id === "repeat"));
-});
 
-test("a person view with shares never says they paid; the largest item names a share only when it is one", () => {
-  const direct = (description, amountMinor) => ({ entryType: "expense", amountMinor, categoryName: "Dining", description, ownershipType: "direct" });
-  const base = {
-    contextLabel: "October 2025 month",
-    audienceKind: "person",
-    audienceName: "Tim",
-    formatMoney: formatTestMoney,
-    accountingAdvice: "Keep the bank record current.",
-    perspective: "cash_flow"
-  };
-  // Joyce paid the dinner; Tim's half is linked from a split.
-  const dinnerShare = { entryType: "expense", amountMinor: 35_659, totalAmountMinor: 71_319, linkedSplitExpenseId: "split-dining", categoryName: "Dining", description: "Anniversary dinner" };
-  const utilitiesShare = { entryType: "expense", amountMinor: 4_000, totalAmountMinor: 10_000, ownershipType: "shared", categoryName: "Utilities", description: "SP Group" };
-
-  const withShareLargest = allNotableFacts({ ...base, records: [dinnerShare, utilitiesShare, direct("Kopitiam", 800), direct("Kopitiam", 700)] });
-  assert.ok(withShareLargest.includes("Your largest share was Anniversary dinner at $356.59."));
-  assert.ok(withShareLargest.every((fact) => !PURCHASE_FACT.test(fact)), withShareLargest.join(" | "));
-
-  const withDirectLargest = allNotableFacts({ ...base, records: [direct("Laptop", 150_000), utilitiesShare, direct("Kopitiam", 800), direct("Kopitiam", 700)] });
-  assert.ok(withDirectLargest.includes("Your largest purchase was Laptop at $1500.00."));
-  assert.ok(withDirectLargest.every((fact) => !/three largest|\bpaid\b/.test(fact)), withDirectLargest.join(" | "));
-
-  // Only their own direct entries: the purchase and payment facts stay.
-  const directOnly = allNotableFacts({ ...base, records: [direct("Laptop", 150_000), direct("Kopitiam", 800), direct("Kopitiam", 700)] });
-  assert.ok(directOnly.includes("You paid Kopitiam 2 times."));
-  assert.ok(directOnly.includes("Your three largest purchases made up 100% of what you spent."));
-
-  // A Splits person view is always shares, even without share markers.
-  const splitPerson = allNotableFacts({ ...base, perspective: "split_obligation", records: [direct("Grab", 2_000), direct("Grab", 1_500), direct("Hotel", 30_000)] });
-  assert.ok(splitPerson.includes("Your largest share was Hotel at $300.00."));
-  assert.ok(splitPerson.every((fact) => !PURCHASE_FACT.test(fact)), splitPerson.join(" | "));
-
-  // The household keeps its wording: its amounts are whole entries.
-  const household = allNotableFacts({ ...base, audienceKind: "household", audienceName: "", records: [dinnerShare, direct("Kopitiam", 800), direct("Kopitiam", 700)] });
-  assert.ok(household.includes("Kopitiam was paid 2 times by the household."));
+  // Summary's signals speak of categories and months, never of purchases.
+  const months = ["2026-02", "2026-03", "2026-04", "2026-05"].map((month) => ({ month, actualIncomeMinor: 500_000, realExpensesMinor: 205_000, estimatedExpensesMinor: 300_000 }));
+  const signals = buildSummarySignals({
+    audience: "person",
+    viewLabel: "Tim",
+    today: "2026-06-10",
+    focusMonth: "2026-05",
+    months,
+    categoryShareByMonth: months.map(({ month }) => ({ month, data: categoryTotals.filter((item) => item.entryType === "expense").map((item) => ({ label: item.categoryName, valueMinor: item.amountMinor, entryCount: 3 })) })),
+    accountPills: [],
+    accountKinds: {},
+    availableMonths: months.map(({ month }) => month),
+    formatMoney: formatTestMoney
+  });
+  const copy = signals.flatMap((signal) => signal.phrasings.map((phrasing) => phrasing.fact));
+  assert.ok(copy.length > 0);
+  assert.ok(copy.every((line) => !PURCHASE_FACT.test(line)), copy.join(" | "));
 });

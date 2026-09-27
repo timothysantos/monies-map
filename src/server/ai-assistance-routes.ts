@@ -22,8 +22,9 @@ import {
   parseFinancialInsightTemplate,
   parseImportExplanationTemplate,
   parseNarrativeTemplate,
+  type CheckInHeadlineFacts,
   type FinancialDecisionMap,
-  type FinancialInsightFacts
+  type FinancialInsightWordingFacts
 } from "../domain/ai-assistance-insights";
 import { loadTransferMatchCandidates, recordVerifiedAiCategoryMatchSuggestion } from "../domain/app-repository";
 import { DEFAULT_HOUSEHOLD_ID } from "../domain/app-repository-constants";
@@ -77,7 +78,7 @@ export async function handleAiAssistRoute(request: Request, url: URL, env: AiAss
       capability: "financial_insight",
       units: 1,
       maxTokens: 180,
-      prompt: `Write a concise, practical two-sentence money check-in using ONLY these placeholders. Choose wording only; do not add facts, numbers, money, dates, actions, or other placeholders. Use warm, direct everyday language and avoid headings or phrases such as "A useful signal", "visible spending", "recorded surplus", "cash flow", "discretionary spend", or "provisional". ${audienceInstruction} Start with the income-and-spending snapshot for a person view, or with the notable entry pattern for a household view. Include {{notableFact}}, {{contextLabel}}, {{cashFlowPrinciple}}, and {{nextSpendConsideration}} exactly once. Keep guidance factual and conservative. Return JSON: {"template":"..."}. Context {{contextLabel}}, entries {{entryCount}}, spending {{spend}}, income {{income}}, net {{net}}, largest category {{topCategoryName}} at {{topCategoryAmount}}, largest expense {{topMerchantName}} at {{topMerchantAmount}}, notable entry pattern {{notableFact}}, plain-language explanation {{cashFlowPrinciple}}, next-step suggestion {{nextSpendConsideration}}, bank-record reminder {{accountingAdvice}}.`,
+      prompt: `Write a short, warm money check-in of at most two sentences using ONLY these placeholders. {{fact}} is a computed fact and {{think}} is a way to think about it; include each exactly once, word for word, and only choose the few words around them (a short lead-in or link is enough). Do not add facts, numbers, money, dates, advice, or other placeholders. Keep the tone curious and kind: no exclamation marks, no emoji, and never words such as "should", "overspent", "cut back", "problem", "warning" or "non-essential". ${audienceInstruction} Return JSON: {"template":"..."}. Context {{contextLabel}}, fact {{fact}}, way to think about it {{think}}.`,
       parse: (response) => parseFinancialInsightTemplate(response, facts)
     });
     return json({
@@ -227,7 +228,9 @@ export async function handleAiAssistRoute(request: Request, url: URL, env: AiAss
   return null;
 }
 
-function parseFinancialInsightFacts(value: unknown): FinancialInsightFacts | null {
+const HEADLINE_KINDS: Array<CheckInHeadlineFacts["headlineKind"]> = ["quick_fix", "bigger_question", "worth_a_look", "going_well"];
+
+function parseFinancialInsightFacts(value: unknown): FinancialInsightWordingFacts | null {
   if (!value || typeof value !== "object") {
     return null;
   }
@@ -237,10 +240,11 @@ function parseFinancialInsightFacts(value: unknown): FinancialInsightFacts | nul
     return null;
   }
   const decisionMap = parseFinancialDecisionMap(input.decisionMap);
-  if (!decisionMap) {
+  const headlineKind = HEADLINE_KINDS.find((kind) => kind === input.headlineKind);
+  if (!decisionMap || !headlineKind) {
     return null;
   }
-  const readText = (key: Exclude<keyof FinancialInsightFacts, "entryCount" | "decisionMap">, maxLength: number) => {
+  const readText = (key: string, maxLength: number) => {
     const candidate = input[key];
     return typeof candidate === "string" ? redactAiText(candidate, maxLength) : "";
   };
@@ -256,19 +260,17 @@ function parseFinancialInsightFacts(value: unknown): FinancialInsightFacts | nul
     topCategoryAmount: readText("topCategoryAmount", 40),
     topMerchantName: readText("topMerchantName", 100),
     topMerchantAmount: readText("topMerchantAmount", 40),
-    notableFact: readText("notableFact", 220) || "No entry pattern is available in this view.",
-    cashFlowPrinciple: readText("cashFlowPrinciple", 320),
-    nextSpendConsideration: readText("nextSpendConsideration", 320),
-    accountingAdvice: readText("accountingAdvice", 260),
+    headlineKind,
+    fact: readText("fact", 240),
+    think: readText("think", 240),
     decisionMap
-  } satisfies FinancialInsightFacts;
+  } satisfies FinancialInsightWordingFacts;
   return facts.contextLabel
     && facts.spend
     && facts.income
     && facts.net
-    && facts.cashFlowPrinciple
-    && facts.nextSpendConsideration
-    && facts.accountingAdvice
+    && facts.fact
+    && facts.think
     && (facts.audienceKind !== "person" || facts.audienceName)
     ? facts
     : null;

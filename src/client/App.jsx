@@ -1960,6 +1960,7 @@ export function App() {
           view={pageView}
           selectedMonth={selectedMonth}
           categories={categories}
+          accounts={accounts}
           onCategoryAppearanceChange={handleCategoryAppearanceChange}
           onRefresh={saveSummaryMonthNote}
           canRequestWording={routeWork.usable}
