@@ -488,6 +488,19 @@ as `monies-map-demo`, and binds the `monies-map-demo` D1 database. Do not enable
 Cloudflare Access on the demo if it should stay login-free. A login-free demo is
 public and mutable, so keep it limited to fake data.
 
+The demo config sets `DEMO_DATASET` to `showcase`, so its reseed writes the
+showcase household (Ethan and Serene, 17 months ending in the current month)
+instead of the default demo seed; see [`docs/demo-tour.md`](docs/demo-tour.md)
+for the presenter walkthrough. Without the variable (local, test, guide
+screenshots) reseed produces the default demo. A deploy keeps the stored data,
+so reseed once after deploying to switch to the showcase or move its months
+forward:
+
+```bash
+npm run deploy:demo
+curl -X POST https://monies-map-demo.timsantos-accts.workers.dev/api/demo/reseed
+```
+
 To deploy both Workers from the same build:
 
 ```bash
