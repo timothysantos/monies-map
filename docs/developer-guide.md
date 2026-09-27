@@ -55,8 +55,7 @@ fixtures, but app totals are derived from D1 rows rather than hardcoded fixture
 amounts.
 
 The local and test Workers seed the demo around the month set in
-`DEMO_SEED_MONTH` (see `wrangler.test.jsonc`). The guide screenshots use this
-demo data only.
+`DEMO_SEED_MONTH` (see `wrangler.test.jsonc`).
 
 The public demo Worker uses a second, deeper dataset: the showcase. When a
 Worker sets `DEMO_DATASET` to `showcase` (`wrangler.demo.jsonc` does), reseed
@@ -67,8 +66,10 @@ month plans with under-, on- and over-plan months, notes, category rules, a
 yen trip split, settled split batches and a simplification. It is built by
 `src/domain/demo-showcase-data.ts` and written in one batch by
 `src/domain/app-repository-showcase-seed.ts`; `tests/demo-showcase.test.mjs`
-checks it. With `DEMO_DATASET` unset (local, test, screenshots) reseed
-produces the default demo exactly as before. The presenter's walkthrough is
+checks it. The guide screenshots use the showcase too (see [How do I
+regenerate the screenshots?](#how-do-i-regenerate-the-screenshots)). With
+`DEMO_DATASET` unset (local, test) reseed produces the default demo exactly as
+before. The presenter's walkthrough is
 `docs/demo-tour.md`.
 
 ## Which commands matter day to day?
@@ -186,13 +187,21 @@ npm run docs:screenshots
 
 `scripts/capture-guide-screenshots.mjs` starts its own isolated stack (Vite
 `5442`, Wrangler `8842`, inspector `9442`, D1 in `.wrangler/state-guide`), so
-it never touches `5173`/`8787` or your local data. It reseeds the demo data,
+it never touches `5173`/`8787` or your local data. Its Worker runs the
+showcase demo data (Ethan and Serene, as on the demo site) with
+`DEMO_DATASET=showcase` and a fixed `DEMO_SEED_MONTH` (`SEED_MONTH` in the
+script), so every run captures the same data. Most shots show the month
+before the seed month, the last complete one. It reseeds the demo data,
 reveals money totals, walks each workflow at desktop 1280×800 and on an
 iPhone 13 profile, and writes WebP files plus thumbnails under
 `public/faq/guide/desktop/`, `public/faq/guide/phone/` and
 `public/faq/guide/iphone/`. Pass shot names to capture only some
 (`npm run docs:screenshots -- summary-household`), or `--list` to print them.
-It needs `dist/` for the Worker assets, so build first.
+It needs `dist/` for the Worker assets, so build first. The Import inbox
+counts missing files against today's month, so it shows the showcase's
+single missing statement only in the seed month; when regenerating in a
+later month, pass that month with `--seed-month 2026-10` (or move
+`SEED_MONTH`) and check the guide's worked examples against the new shots.
 
 The "On your iPhone" gallery in `public/faq/guide/iphone/` (`01-summary` to
 `08-household-summary`) is shot by the script on the iPhone 13 profile in
