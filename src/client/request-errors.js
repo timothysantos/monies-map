@@ -7,19 +7,27 @@ function isCloudflareWorkerLimit(detail) {
   return /worker exceeded (cpu time limit|resource limits)/i.test(String(detail ?? ""));
 }
 
-export function buildAppShellErrorMessage(status, detail) {
+// The technical line of a failed JSON request, labelled with the request
+// that failed ("App shell request", "Page request", ...) so a page's own
+// failure is never reported as the app shell.
+export function buildRequestFailureMessage(requestLabel, status, detail) {
   const normalizedDetail = String(detail ?? "").replace(/\s+/g, " ").trim();
+  const failed = `${requestLabel} failed with status ${status}.`;
   if (!normalizedDetail) {
-    return `App shell request failed with status ${status}.`;
+    return failed;
   }
   if (isHtmlResponseText(normalizedDetail) && isCloudflareWorkerLimit(normalizedDetail)) {
-    return `App shell request failed with status ${status}. Cloudflare stopped the Worker because it exceeded CPU or resource limits before returning app JSON.`;
+    return `${failed} Cloudflare stopped the Worker because it exceeded CPU or resource limits before returning app JSON.`;
   }
   if (isHtmlResponseText(normalizedDetail)) {
-    return `App shell request failed with status ${status}. The server returned an HTML error page instead of JSON.`;
+    return `${failed} The server returned an HTML error page instead of JSON.`;
   }
 
-  return `App shell request failed with status ${status}. ${normalizedDetail.slice(0, 240)}`;
+  return `${failed} ${normalizedDetail.slice(0, 240)}`;
+}
+
+export function buildAppShellErrorMessage(status, detail) {
+  return buildRequestFailureMessage("App shell request", status, detail);
 }
 
 export async function buildRequestErrorMessage(response, fallbackMessage) {

@@ -288,6 +288,11 @@ test.describe("first-load page failures", () => {
       const panel = page.locator(".app-loading-panel-error");
       await expect(panel).toBeVisible({ timeout: 30_000 });
       await expect(panel.locator(".app-loading-error-copy")).not.toBeEmpty();
+      // The panel names the page that failed, in plain words; the technical
+      // line keeps the server's reason and never blames the app shell.
+      await expect(panel).toContainText(`The ${name} page could not load.`);
+      await expect(panel.locator(".app-loading-issue-inline")).toContainText(`${name} exploded`);
+      await expect(panel).not.toContainText("App shell");
       const retry = panel.getByRole("button", { name: "Try loading again" });
       await expect(retry).toBeVisible();
       // The error must stick: no silent re-request and no fallback to the

@@ -1111,7 +1111,7 @@ export function EntriesPanel({
         // its figures or rows may show here. Drafts and open sheets stay.
         <ErrorPanel
           className="entries-load-error"
-          title={messages.common.pageLoadErrorTitle}
+          title={messages.common.pageLoadErrorTitleFor(messages.tabs.entries)}
           detail={messages.common.loadFailedDetail}
           actions={[{
             label: isRetryingPageLoad ? messages.common.working : messages.common.retryPageLoad,
