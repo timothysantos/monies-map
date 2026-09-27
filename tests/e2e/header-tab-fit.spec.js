@@ -7,7 +7,9 @@ import { reseedDemo } from "./helpers";
 // needs about 1,160 px, so below 1,200 px its spacing tightens instead of
 // the tab strip running under the "‹" button or the period controls moving
 // to a second row (which pushed the page down). Every page has the same
-// header. A wide desktop and a phone keep their own header unchanged.
+// header, except that Imports, Settings and FAQ do not use a period and show
+// no period controls. A wide desktop and a phone keep their own header
+// unchanged.
 
 const PAGES = [
   "/summary?view=household&month=2026-05",
@@ -18,11 +20,17 @@ const PAGES = [
   "/settings?view=household&month=2026-05",
   "/faq"
 ];
+// Pages without a period show only the money toggle after the tabs.
+const PAGES_WITHOUT_PERIOD = new Set(["/imports?view=household&month=2026-05", "/settings?view=household&month=2026-05", "/faq"]);
 
 async function openPage(page, path) {
   await page.goto(path);
   await expect(page.locator("nav.tab-strip > a.tab").first()).toBeVisible();
-  await expect(page.locator(".period-display")).toBeVisible();
+  if (PAGES_WITHOUT_PERIOD.has(path)) {
+    await expect(page.locator(".period-display")).toHaveCount(0);
+  } else {
+    await expect(page.locator(".period-display")).toBeVisible();
+  }
   // The "Loading latest data" overlay sits over the period controls while a
   // page fetch runs; the header is read once the page has loaded.
   await page.waitForLoadState("networkidle");
@@ -113,7 +121,7 @@ test.describe("header on a narrow desktop window", () => {
         const header = await readHeader(page);
         expect(header.tabHits.map((tab) => tab.name), where).toEqual(["Summary", "Month", "Entries", "Splits", "Imports", "Settings", "FAQ"]);
         expect(header.tabHits.filter((tab) => !tab.left || !tab.centre || !tab.right), where).toEqual([]);
-        expect(header.controls, where).toEqual([true, true, true, true]);
+        expect(header.controls, where).toEqual(PAGES_WITHOUT_PERIOD.has(path) ? [true] : [true, true, true, true]);
         // One row: the pills, the tabs and every period control share one
         // vertical centre, and the header is as tall as on a wide desktop.
         const [first, ...rest] = header.rowMiddles;
