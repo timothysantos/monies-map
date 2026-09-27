@@ -1,9 +1,13 @@
-// Composes one visit's money check-in from a page's signals and the visit
-// memory kept in the browser: ranking, rests, phrasing rotation, "what
-// changed", "sorted", quiet visits and the Just for fun line. Pure and
-// deterministic: `nowMs`, `today`, the memory and a stable seed are inputs,
-// so the same inputs always give the same check-in.
+// Composes one visit's money check-in from a page's signals, the period
+// being viewed and the visit memory kept in the browser. What rotates (the
+// wording, the long view's lead, the Just for fun line, the quote, the calm
+// line) follows the period, so nothing repeats within a year of months for
+// the same page and view (rotation.ts). The memory only adds: rests,
+// "what changed", "sorted" and quiet visits. Pure and deterministic:
+// `nowMs`, `today`, the period, the memory and a stable seed are inputs, so
+// the same inputs always give the same check-in.
 import { fill, stableHash, weekdayName, daysBetween } from "./format";
+import { pickByPeriod, pickLongView, pickTrivia, quoteColumn, selectWording, YEAR_MONTHS, type CheckInPage, type TriviaRotation } from "./rotation";
 import { HEADLINE_KIND_ORDER, type CheckInAction, type MoneySignal, type QuoteTopic, type SignalKind } from "./types";
 import type { CheckInQuote } from "./quotes";
 
@@ -15,8 +19,6 @@ export const MOVE_RATIO = 0.1;
 export const MOVE_MINOR = 5_000;
 // A visit within this window with nothing new is a quiet visit.
 export const QUIET_MS = 3 * DAY_MS;
-export const TRIVIA_REPEAT_MS = 14 * DAY_MS;
-export const QUOTE_REPEAT_MS = 28 * DAY_MS;
 const FORGET_MS = 90 * DAY_MS;
 const MAX_ALSO = 3;
 
@@ -25,7 +27,6 @@ export interface SignalMemory {
   at: number;
   // Last time it led the check-in (headline or long view line).
   shownAt?: number;
-  phrasing?: number;
   primaryMinor: number;
   primaryText?: string;
 }
@@ -43,8 +44,6 @@ export interface VisitMemory {
   signals: Record<string, SignalMemory>;
   // Quick fixes seen and not yet announced as sorted, with what to say.
   quickFixes: Record<string, { fact: string; think: string }>;
-  trivia: Record<string, number>;
-  quotes: Record<string, number>;
 }
 
 export type CheckInMode = "signal" | "sorted" | "quiet" | "calm";
@@ -62,13 +61,15 @@ export interface CheckInView {
   headline: CheckInLine;
   also: Array<{ key: string; kind: SignalKind; fact: string }>;
   longView: CheckInLine | null;
-  fun: { key: string; text: string } | null;
+  fun: { key: string; type: string; text: string } | null;
   // The quote topic for the expanded view, or null when no quote may show
   // (never beside a bigger question).
   quoteTopic: QuoteTopic | null;
+  // Which of the signal's wordings (rotation.ts) the headline and the long
+  // view use this period.
+  headlineWording: number | null;
+  longViewWording: number | null;
   // Internal choices recordVisit needs.
-  headlinePhrasing: number | null;
-  longViewPhrasing: number | null;
   sortedKey: string | null;
   quietIndex: number | null;
 }
@@ -81,11 +82,39 @@ export const QUIET_LINES = [
   "Same picture as {when}. Nothing new needs a look."
 ];
 
-export function emptyVisitMemory(): VisitMemory {
-  return { v: 1, signals: {}, quickFixes: {}, trivia: {}, quotes: {} };
+// Approved calm lines, for a period with nothing to say. {place} is the
+// page's own ("this range", "August", "this list", "this group"); the page
+// keeps its original first line. Twelve, so a year of months never repeats
+// one (calmLinesFor).
+export const CALM_LINE_TEMPLATES = [
+  "Nothing in {place} needs a look right now.",
+  "All clear in {place}: nothing needs a look.",
+  "Nothing in {place} is asking for attention right now.",
+  "{place} looks settled. Nothing to check.",
+  "Nothing stands out in {place} right now.",
+  "A calm picture in {place}: nothing needs you.",
+  "No loose ends in {place} right now.",
+  "Nothing to sort in {place}. Enjoy the quiet.",
+  "{place} is quiet: nothing worth a look.",
+  "All calm in {place}. Nothing is waiting.",
+  "Nothing in {place} calls for a look.",
+  "Nothing pressing in {place} right now."
+];
+
+export function calmLinesFor(place: string, first?: string) {
+  const lines = CALM_LINE_TEMPLATES.map((template) => {
+    const line = fill(template, { place });
+    return line[0].toUpperCase() + line.slice(1);
+  });
+  return first ? [first, ...lines.slice(1)] : lines;
 }
 
-// Stored memory is untrusted: anything malformed starts fresh.
+export function emptyVisitMemory(): VisitMemory {
+  return { v: 1, signals: {}, quickFixes: {} };
+}
+
+// Stored memory is untrusted: anything malformed starts fresh. Fields of
+// older versions (trivia and quote times, phrasings) are dropped.
 export function normalizeVisitMemory(value: unknown): VisitMemory {
   if (!value || typeof value !== "object" || (value as { v?: unknown }).v !== 1) {
     return emptyVisitMemory();
@@ -104,7 +133,6 @@ export function normalizeVisitMemory(value: unknown): VisitMemory {
     signals[key] = {
       at,
       shownAt: number(item.shownAt),
-      phrasing: number(item.phrasing),
       primaryMinor,
       primaryText: typeof item.primaryText === "string" ? item.primaryText : undefined
     };
@@ -116,9 +144,6 @@ export function normalizeVisitMemory(value: unknown): VisitMemory {
       quickFixes[key] = { fact: item.fact, think: item.think };
     }
   }
-  const times = (candidate: unknown) => Object.fromEntries(
-    Object.entries(record(candidate)).filter(([, at]) => number(at) !== undefined)
-  ) as Record<string, number>;
   const modes: CheckInMode[] = ["signal", "sorted", "quiet", "calm"];
   return {
     v: 1,
@@ -129,9 +154,7 @@ export function normalizeVisitMemory(value: unknown): VisitMemory {
     lastKeys: Array.isArray(input.lastKeys) ? input.lastKeys.filter((key): key is string => typeof key === "string") : undefined,
     quiet: number(input.quiet),
     signals,
-    quickFixes,
-    trivia: times(input.trivia),
-    quotes: times(input.quotes)
+    quickFixes
   };
 }
 
@@ -192,14 +215,6 @@ export function rankSignals(signals: MoneySignal[], memory: VisitMemory, nowMs: 
   });
 }
 
-// The wording skipped last time is never repeated: the next phrasing in
-// turn, starting from a seed-based one on the first visit.
-export function selectPhrasing(signal: MoneySignal, memory: VisitMemory, seed: number) {
-  const count = signal.phrasings.length;
-  const previous = memory.signals[signal.key]?.phrasing;
-  return previous === undefined ? seed % count : (previous + 1) % count;
-}
-
 export function describeLastVisit(lastVisitDay: string | undefined, today: string) {
   if (!lastVisitDay) {
     return "your last visit";
@@ -238,12 +253,18 @@ export function composeCheckIn(input: {
   today: string;
   seed: string;
   contextKey: string;
-  calmLine: string;
+  // The period being viewed ("2026-08"): what rotates follows it.
+  period: string;
+  // The page's Just for fun schedule; no trivia without one.
+  triviaRotation?: TriviaRotation;
+  // The page's calm lines (one per month in turn), or a single line.
+  calmLines?: string[];
+  calmLine?: string;
   // False while part of the page's data is still loading: nothing may be
   // called sorted or quiet from a partial picture.
   ready?: boolean;
 }): CheckInView {
-  const { signals, memory, nowMs, today, contextKey } = input;
+  const { signals, memory, nowMs, today, contextKey, period } = input;
   const seed = stableHash(input.seed);
   const ranked = rankSignals(signals, memory, nowMs);
   const sameContext = input.ready !== false && memory.lastContextKey === contextKey;
@@ -261,7 +282,7 @@ export function composeCheckIn(input: {
 
   let mode: CheckInMode;
   let headline: CheckInLine;
-  let headlinePhrasing: number | null = null;
+  let headlineWording: number | null = null;
   let quietIndex: number | null = null;
   let also: MoneySignal[];
   if (sortedKey) {
@@ -276,44 +297,27 @@ export function composeCheckIn(input: {
   } else if (ranked.length) {
     mode = "signal";
     const top = ranked[0];
-    headlinePhrasing = selectPhrasing(top, memory, seed);
-    const phrasing = top.phrasings[headlinePhrasing];
-    headline = { key: top.key, kind: top.kind, fact: `${changedLead(top, memory)}${phrasing.fact}`, think: phrasing.think, action: top.action };
+    const selected = selectWording(top, period)!;
+    headlineWording = selected.index;
+    headline = { key: top.key, kind: top.kind, fact: `${changedLead(top, memory)}${selected.wording.fact}`, think: selected.wording.think, action: top.action };
     also = ranked.slice(1);
   } else {
     mode = "calm";
-    headline = { key: "calm", kind: null, fact: input.calmLine, think: "" };
+    headline = { key: "calm", kind: null, fact: pickByPeriod(input.calmLines ?? [], period) ?? input.calmLine ?? "", think: "" };
     also = [];
   }
 
   const alsoLines = also.slice(0, MAX_ALSO).map((signal) => ({ key: signal.key, kind: signal.kind, fact: signal.phrasings[0].fact }));
 
-  const longViews = signals
-    .map((signal, index) => ({ signal, index }))
-    .filter(({ signal }) => signal.kind === "long_view" && signal.phrasings.length > 0)
-    .sort((left, right) => Number(Boolean(right.signal.moment)) - Number(Boolean(left.signal.moment))
-      || (memory.signals[left.signal.key]?.shownAt ?? -Infinity) - (memory.signals[right.signal.key]?.shownAt ?? -Infinity)
-      || left.index - right.index);
-  const longViewSignal = longViews[0]?.signal ?? null;
-  const longViewPhrasing = longViewSignal ? selectPhrasing(longViewSignal, memory, seed) : null;
-  const longView = longViewSignal && longViewPhrasing !== null
-    ? { key: longViewSignal.key, kind: "long_view" as const, ...longViewSignal.phrasings[longViewPhrasing] }
+  const longViewSignal = pickLongView(signals.filter((signal) => signal.kind === "long_view" && signal.phrasings.length > 0), period);
+  const longViewSelected = longViewSignal ? selectWording(longViewSignal, period) : null;
+  const longView = longViewSignal && longViewSelected
+    ? { key: longViewSignal.key, kind: "long_view" as const, fact: longViewSelected.wording.fact, think: longViewSelected.wording.think }
     : null;
 
-  // Just for fun: never beside a bigger question, and never the same line
-  // within two weeks.
-  const trivia = signals.filter((signal) => signal.kind === "just_for_fun" && signal.phrasings.length > 0);
-  let fun: CheckInView["fun"] = null;
-  if (headline.kind !== "bigger_question" && trivia.length) {
-    const start = seed % trivia.length;
-    const ordered = [...trivia.slice(start), ...trivia.slice(0, start)]
-      .sort((left, right) => Number(Boolean(right.moment)) - Number(Boolean(left.moment)));
-    const pick = ordered.find((signal) => {
-      const shownAt = memory.trivia[signal.key];
-      return shownAt === undefined || nowMs - shownAt >= TRIVIA_REPEAT_MS;
-    });
-    fun = pick ? { key: pick.key, text: pick.phrasings[0].fact } : null;
-  }
+  // Just for fun: never beside a bigger question.
+  const trivia = headline.kind === "bigger_question" ? null : pickTrivia(signals, input.triviaRotation, period);
+  const fun = trivia ? { key: trivia.key, type: trivia.triviaType ?? trivia.key, text: trivia.phrasings[0].fact } : null;
 
   const besideBiggerQuestion = headline.kind === "bigger_question" || alsoLines.some((line) => line.kind === "bigger_question");
   const headlineSignal = mode === "signal" ? ranked[0] : null;
@@ -328,36 +332,32 @@ export function composeCheckIn(input: {
     longView,
     fun,
     quoteTopic,
-    headlinePhrasing,
-    longViewPhrasing,
+    headlineWording,
+    longViewWording: longViewSelected?.index ?? null,
     sortedKey,
     quietIndex
   };
 }
 
-// The memory after this visit: what was present and shown, the phrasings
-// used, quick fixes still to announce, trivia shown. Merged into the latest
-// stored memory so several writes in one visit add up.
+// The memory after this visit: what was present and shown, quick fixes
+// still to announce. Merged into the latest stored memory so several
+// writes in one visit add up.
 export function recordVisit(memory: VisitMemory, view: CheckInView, signals: MoneySignal[], input: { nowMs: number; today: string; contextKey: string }): VisitMemory {
   const { nowMs } = input;
   const next: VisitMemory = {
     ...memory,
     signals: { ...memory.signals },
-    quickFixes: input.contextKey === memory.lastContextKey ? { ...memory.quickFixes } : {},
-    trivia: { ...memory.trivia },
-    quotes: { ...memory.quotes }
+    quickFixes: input.contextKey === memory.lastContextKey ? { ...memory.quickFixes } : {}
   };
   for (const signal of signals) {
     if (signal.kind === "just_for_fun") {
       continue;
     }
     const previous = next.signals[signal.key];
-    const isHeadline = view.mode === "signal" && view.headline.key === signal.key;
-    const isLongView = view.longView?.key === signal.key;
+    const isShown = (view.mode === "signal" && view.headline.key === signal.key) || view.longView?.key === signal.key;
     next.signals[signal.key] = {
       at: nowMs,
-      shownAt: isHeadline || isLongView ? nowMs : previous?.shownAt,
-      phrasing: isHeadline ? view.headlinePhrasing ?? undefined : isLongView ? view.longViewPhrasing ?? undefined : previous?.phrasing,
+      shownAt: isShown ? nowMs : previous?.shownAt,
       primaryMinor: signal.numbers.primaryMinor,
       primaryText: signal.primaryText
     };
@@ -367,9 +367,6 @@ export function recordVisit(memory: VisitMemory, view: CheckInView, signals: Mon
   }
   if (view.sortedKey) {
     delete next.quickFixes[view.sortedKey];
-  }
-  if (view.fun) {
-    next.trivia[view.fun.key] = nowMs;
   }
   if (view.quietIndex !== null) {
     next.quiet = view.quietIndex;
@@ -382,35 +379,22 @@ export function recordVisit(memory: VisitMemory, view: CheckInView, signals: Mon
   return forgetOld(next, nowMs);
 }
 
-// A quote for the topic not shown in the last 28 days, falling back to a
-// calm one; null when every fitting quote was shown recently. The library
-// (quotes.ts) is passed in because it loads on demand.
-export function pickQuote(quotes: CheckInQuote[], topic: QuoteTopic, memory: VisitMemory, nowMs: number, seed: string): CheckInQuote | null {
-  const fresh = (quote: CheckInQuote) => {
-    const shownAt = memory.quotes[quote.id];
-    return shownAt === undefined || nowMs - shownAt >= QUOTE_REPEAT_MS;
-  };
-  for (const wanted of [topic, "calm" as const]) {
-    const fitting = quotes.filter((quote) => quote.topics.includes(wanted));
-    const start = fitting.length ? stableHash(`${seed}|${wanted}`) % fitting.length : 0;
-    const pick = [...fitting.slice(start), ...fitting.slice(0, start)].find(fresh);
-    if (pick) {
-      return pick;
-    }
-  }
-  return null;
-}
-
-export function recordQuote(memory: VisitMemory, quoteId: string, nowMs: number): VisitMemory {
-  return { ...memory, quotes: { ...memory.quotes, [quoteId]: nowMs } };
+// The quote for the page and period: from the period's column of the
+// library (rotation.ts), one that fits the topic, else a calm one; null
+// when the column has neither. The library (quotes.ts) is passed in
+// because it loads on demand.
+export function pickQuote(quotes: CheckInQuote[], topic: QuoteTopic, { page, period }: { page: CheckInPage; period: string }): CheckInQuote | null {
+  const column = quoteColumn(page, period);
+  const inColumn = quotes.filter((_quote, index) => index % YEAR_MONTHS === column);
+  return inColumn.find((quote) => quote.topics.includes(topic))
+    ?? inColumn.find((quote) => quote.topics.includes("calm"))
+    ?? null;
 }
 
 function forgetOld(memory: VisitMemory, nowMs: number): VisitMemory {
   const keepSince = nowMs - FORGET_MS;
   return {
     ...memory,
-    signals: Object.fromEntries(Object.entries(memory.signals).filter(([, entry]) => entry.at >= keepSince)),
-    trivia: Object.fromEntries(Object.entries(memory.trivia).filter(([, at]) => at >= nowMs - TRIVIA_REPEAT_MS * 2)),
-    quotes: Object.fromEntries(Object.entries(memory.quotes).filter(([, at]) => at >= nowMs - QUOTE_REPEAT_MS * 2))
+    signals: Object.fromEntries(Object.entries(memory.signals).filter(([, entry]) => entry.at >= keepSince))
   };
 }

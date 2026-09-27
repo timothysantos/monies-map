@@ -32,7 +32,7 @@ import { buildRequestErrorMessage } from "./request-errors";
 import { ResponsiveSelect } from "./responsive-select";
 import { getRowDateValue } from "./table-helpers";
 import { buildMonthInsightFacts, selectMonthInsightEntries } from "./month-insight-facts";
-import { buildMonthSignals, monthCalmLine } from "../domain/money-signals/month-signals";
+import { buildMonthSignals, monthCalmLines, MONTH_TRIVIA_ROTATION } from "../domain/money-signals/month-signals";
 import { useRouteWorkReport } from "./use-route-work-status";
 import { isMonthSheetLayout, useIsMonthSheetLayout } from "./use-viewport";
 // Mid-width table layout; ships with this lazy route, not the first screen.
@@ -244,7 +244,10 @@ export function MonthPanel({ view, accounts, people, categories, onCategoryAppea
       accountPills: view.accountPills,
       formatMoney: formatService.unmaskedMoney
     }),
-    calmLine: monthCalmLine(view.monthPage.month),
+    page: "month",
+    period: view.monthPage.month,
+    triviaRotation: MONTH_TRIVIA_ROTATION,
+    calmLines: monthCalmLines(view.monthPage.month),
     alsoLabel: "Also this month",
     clock: checkInClock,
     // Wallet health arrives beside the month page; until it does, nothing

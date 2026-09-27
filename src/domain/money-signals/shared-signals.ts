@@ -1,13 +1,15 @@
 // Signals and builders every page shares. The statement gap reads the
 // view's wallet health (the account pills Summary and Month already load).
-import { phrase, monthName, type CopyCatalogue, type CopyEntry, type FormatMoney } from "./format";
+import { phrase, monthName, sortedLine, type CopyCatalogue, type CopyEntry, type FormatMoney } from "./format";
 import type { Audience, MoneySignal } from "./types";
 
-// A Just for fun line: one computed sentence, no think line.
-export function triviaSignal(key: string, copy: CopyEntry, values: Record<string, string | number>, { weight = 0, moment = false } = {}): MoneySignal {
+// A Just for fun line of one trivia type: one computed sentence, no think
+// line. `detail` makes the key unique to what it says.
+export function triviaSignal(type: string, detail: string, copy: CopyEntry, values: Record<string, string | number>, { weight = 0, moment = false } = {}): MoneySignal {
   return {
-    key,
+    key: detail ? `${type}:${detail}` : type,
     kind: "just_for_fun",
+    triviaType: type,
     weight,
     numbers: { primaryMinor: weight },
     phrasings: phrase(copy, values),
@@ -23,7 +25,11 @@ export const SHARED_COPY = {
       "One statement doesn't match yet: {whose} {account}, off by {amount}.",
       "{amount} separates {whose} {account} statement from the app."
     ],
-    think: "Small gaps are usually one missing or doubled entry. Sorting it keeps every total here trustworthy.",
+    think: [
+      "Small gaps are usually one missing or doubled entry. Sorting it keeps every total here trustworthy.",
+      "A gap this size usually comes down to one entry. Finding it keeps the totals here honest.",
+      "The statement is the checkpoint for everything else here. One quick comparison usually closes it."
+    ],
     sorted: {
       fact: "Sorted: {whose} {account} now matches its statement.",
       think: "That's the part that makes every other number here trustworthy."
@@ -86,7 +92,7 @@ export function statementGapSignal(input: {
     numbers: { primaryMinor: gapMinor },
     primaryText: amount,
     phrasings: phrase(copy, values),
-    sorted: phrase({ phrasings: [copy.sorted.fact], think: copy.sorted.think }, values)[0],
+    sorted: sortedLine(copy.sorted, values),
     action: { id: "review-statement", label: copy.action },
     topic: "later"
   };

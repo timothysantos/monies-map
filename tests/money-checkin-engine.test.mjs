@@ -1,6 +1,8 @@
-// The money check-in engine: ranking, rests, phrasing rotation, what
-// changed, "sorted", quiet visits and the Just for fun line. Visits are
-// simulated with explicit clocks and the memory each visit leaves behind.
+// The money check-in engine: ranking, rests, what changed, "sorted", quiet
+// visits, and what rotates by period (wording, long view, Just for fun,
+// quote). Visits are simulated with explicit clocks and the memory each
+// visit leaves behind; tests/money-insights-year-rotation.test.mjs walks
+// the year rule over real page signals.
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -11,7 +13,6 @@ import {
   normalizeVisitMemory,
   pickQuote as pickQuoteFrom,
   rankSignals,
-  recordQuote,
   recordVisit
 } from "../src/domain/money-signals/checkin.ts";
 import { monthPhase } from "../src/domain/money-signals/format.ts";
@@ -38,10 +39,16 @@ function signal(key, kind, weight, extra = {}) {
   };
 }
 
+const ROTATION = { columns: Array.from({ length: 12 }, (_, index) => [`type-${index}`]) };
+
+function trivia(type, fact, extra = {}) {
+  return { ...signal(`${type}:detail`, "just_for_fun", 0, { phrasings: [{ fact, think: "" }] }), triviaType: type, ...extra };
+}
+
 // One visit: compose from the memory, then record what was shown.
-function visit(signals, memory, nowMs, { contextKey = "2026-08", seed = "month:person-serene" } = {}) {
+function visit(signals, memory, nowMs, { contextKey = "2026-08", seed = "month:person-serene", period = contextKey, triviaRotation = ROTATION } = {}) {
   const today = new Date(nowMs + 8 * 3_600_000).toISOString().slice(0, 10);
-  const view = composeCheckIn({ signals, memory, nowMs, today, seed, contextKey, calmLine: "Nothing in August needs a look right now." });
+  const view = composeCheckIn({ signals, memory, nowMs, today, seed, contextKey, period, triviaRotation, calmLine: "Nothing in August needs a look right now." });
   return { view, memory: recordVisit(memory, view, signals, { nowMs, today, contextKey }) };
 }
 
@@ -130,20 +137,24 @@ test("a move under 10% and under $50 keeps a signal resting", () => {
   assert.doesNotMatch(second.view.also.find((line) => line.key === "gap")?.fact ?? "", /since your last visit/);
 });
 
-test("the phrasing seen last time is never repeated on the next visit", () => {
-  const only = [signal("plan-left", "going_well", 108_059)];
+test("the wording follows the period: the same month keeps its wording, the next month takes the next one", () => {
+  const thinks = ["think 1", "think 2", "think 3", "think 4"];
+  const only = [signal("plan-left", "going_well", 108_059, { phrasings: ["A", "B", "C"].map((fact) => ({ fact, think: thinks[0], thinks })) })];
   let memory = emptyVisitMemory();
-  const facts = [];
-  // Visits 4 days apart: past the rest and quiet windows every time.
-  for (let index = 0; index < 6; index += 1) {
-    const result = visit(only, memory, MON + index * 4 * DAY);
-    facts.push(result.view.headline.fact);
+  // Visits 4 days apart (past the rest and quiet windows) to the same month.
+  const sameMonth = [];
+  for (let index = 0; index < 3; index += 1) {
+    const result = visit(only, memory, MON + index * 4 * DAY, { contextKey: "2026-08" });
+    sameMonth.push(`${result.view.headline.fact}|${result.view.headline.think}`);
     memory = result.memory;
   }
-  for (let index = 1; index < facts.length; index += 1) {
-    assert.notEqual(facts[index], facts[index - 1], `visit ${index + 1} repeated "${facts[index]}"`);
-  }
-  assert.equal(new Set(facts).size, 3);
+  assert.equal(new Set(sameMonth).size, 1, sameMonth.join(", "));
+  // Twelve consecutive months: twelve different sentences, fact first.
+  const months = Array.from({ length: 12 }, (_, index) => `2026-${String(index + 1).padStart(2, "0")}`);
+  const sentences = months.map((month) => visit(only, emptyVisitMemory(), MON, { contextKey: month }).view.headline);
+  assert.equal(new Set(sentences.map((line) => `${line.fact}|${line.think}`)).size, 12);
+  // 2026-01 is month number 24312, 24312 mod 12 = 0: the first wording.
+  assert.deepEqual(sentences.slice(0, 4).map((line) => `${line.fact}|${line.think}`), ["A|think 1", "B|think 1", "C|think 1", "A|think 2"]);
 });
 
 test("the same inputs always compose the same check-in", () => {
@@ -185,18 +196,20 @@ test("a quick fix that disappears in another context, or while data loads, is ne
   assert.equal(loading.mode, "calm");
 });
 
-test("a visit soon after the last one with nothing new is one quiet line plus trivia", () => {
-  const signals = [signal("plan-left", "going_well", 108_059), signal("fun:fridays", "just_for_fun", 0, { phrasings: [{ fact: "Most of your dining out this month happened on Fridays.", think: "" }] })];
+test("a visit soon after the last one with nothing new is one quiet line plus the month's trivia", () => {
+  // August is month number 7 of 0 to 11: its column holds type-7.
+  const signals = [signal("plan-left", "going_well", 108_059), trivia("type-7", "Most of your dining out this month happened on Fridays.")];
   const friday = visit(signals, emptyVisitMemory(), Date.parse("2026-08-14T12:00:00+08:00"));
   assert.equal(friday.view.mode, "signal");
-  assert.deepEqual(friday.view.fun, { key: "fun:fridays", text: "Most of your dining out this month happened on Fridays." });
+  assert.deepEqual(friday.view.fun, { key: "type-7:detail", type: "type-7", text: "Most of your dining out this month happened on Fridays." });
 
-  const sunday = visit(signals.filter((item) => item.kind !== "just_for_fun").concat(signal("fun:regular", "just_for_fun", 0, { phrasings: [{ fact: "Your regular spot: Kopitiam, 9 visits in August.", think: "" }] })), friday.memory, Date.parse("2026-08-16T10:00:00+08:00"));
+  const sunday = visit(signals, friday.memory, Date.parse("2026-08-16T10:00:00+08:00"));
   assert.equal(sunday.view.mode, "quiet");
   assert.equal(sunday.view.headline.kind, null);
   assert.ok(QUIET_LINES.map((line) => line.replace("{when}", "Friday")).includes(sunday.view.headline.fact), sunday.view.headline.fact);
   assert.equal(sunday.view.headline.think, "");
-  assert.equal(sunday.view.fun.text, "Your regular spot: Kopitiam, 9 visits in August.");
+  // The same month keeps its trivia: a revisit is never a new period.
+  assert.equal(sunday.view.fun.text, "Most of your dining out this month happened on Fridays.");
   assert.deepEqual(sunday.view.also.map((line) => line.key), ["plan-left"]);
 
   // Two quiet visits never follow each other: the next one rotates.
@@ -221,30 +234,37 @@ test("anything new or moved since the last visit means the visit is not quiet", 
 test("no headline signal gives the page's calm line, with trivia and the long view still shown", () => {
   const result = visit([
     signal("keep-rate", "long_view", 10_000_000),
-    signal("fun", "just_for_fun", 0, { phrasings: [{ fact: "About one in every eight dollars in September went to groceries.", think: "" }] })
+    trivia("type-7", "About one in every eight dollars in September went to groceries.")
   ], emptyVisitMemory(), MON);
   assert.equal(result.view.mode, "calm");
   assert.deepEqual([result.view.headline.kind, result.view.headline.fact], [null, "Nothing in August needs a look right now."]);
   assert.equal(result.view.longView.key, "keep-rate");
-  assert.equal(result.view.fun.key, "fun");
+  assert.equal(result.view.fun.type, "type-7");
 });
 
-test("trivia never sits beside a bigger question and does not repeat within 14 days", () => {
-  const fun = signal("fun:a", "just_for_fun", 0, { phrasings: [{ fact: "Trivia A.", think: "" }] });
+test("the calm line follows the month: twelve months, twelve lines", () => {
+  const calmLines = Array.from({ length: 12 }, (_, index) => `Calm ${index}.`);
+  const shown = Array.from({ length: 12 }, (_, index) => composeCheckIn({
+    signals: [], memory: emptyVisitMemory(), nowMs: MON, today: "2026-08-03", seed: "s", contextKey: "c", period: `2027-${String(index + 1).padStart(2, "0")}`, calmLines
+  }).headline.fact);
+  assert.deepEqual(shown, calmLines);
+});
+
+test("trivia never sits beside a bigger question, and only the month's column may show", () => {
+  const fun = trivia("type-7", "Trivia A.");
   const bigger = visit([signal("over", "bigger_question", 312_814), fun], emptyVisitMemory(), MON);
   assert.equal(bigger.view.headline.kind, "bigger_question");
   assert.equal(bigger.view.fun, null);
   assert.equal(bigger.view.quoteTopic, null);
 
-  const calm = [signal("plan-left", "going_well", 100), fun];
-  let result = visit(calm, emptyVisitMemory(), MON);
-  assert.equal(result.view.fun.key, "fun:a");
-  for (const day of [4, 8, 12]) {
-    result = visit(calm, result.memory, MON + day * DAY);
-    assert.equal(result.view.fun, null, `day ${day}`);
-  }
-  result = visit(calm, result.memory, MON + 15 * DAY);
-  assert.equal(result.view.fun.key, "fun:a");
+  const calm = [signal("plan-left", "going_well", 100), fun, trivia("type-8", "Trivia B.")];
+  assert.equal(visit(calm, emptyVisitMemory(), MON, { contextKey: "2026-08" }).view.fun.type, "type-7");
+  assert.equal(visit(calm, emptyVisitMemory(), MON, { contextKey: "2026-09" }).view.fun.type, "type-8");
+  // October's type cannot fire and there is no reserve: no trivia rather
+  // than another month's.
+  assert.equal(visit(calm, emptyVisitMemory(), MON, { contextKey: "2026-10" }).view.fun, null);
+  // Without a rotation there is no trivia at all.
+  assert.equal(visit(calm, emptyVisitMemory(), MON, { triviaRotation: null }).view.fun, null);
 });
 
 test("no quote may show beside a bigger question in the also list either", () => {
@@ -266,17 +286,15 @@ test("the also list holds up to three more signals, each in its plain first phra
   ]);
 });
 
-test("the long view rotates to the one shown least recently, and a seasonal moment goes first", () => {
+test("the long view that leads takes turns by month, and a seasonal moment goes first", () => {
   const longViews = [signal("keep-rate", "long_view", 1), signal("cushion", "long_view", 2), signal("same-season", "long_view", 3)];
-  let memory = emptyVisitMemory();
-  const shown = [];
-  for (let index = 0; index < 3; index += 1) {
-    const result = visit(longViews, memory, MON + index * 4 * DAY);
-    shown.push(result.view.longView.key);
-    memory = result.memory;
-  }
-  assert.deepEqual(shown, ["keep-rate", "cushion", "same-season"]);
-  const withSeason = visit([...longViews, signal("chinese-new-year:2027", "long_view", 4, { moment: true })], memory, MON + 20 * DAY);
+  // 2026-12 is month number 24323, and 24323 mod 3 = 2.
+  const shown = ["2026-12", "2027-01", "2027-02", "2027-03"].map((month) => visit(longViews, emptyVisitMemory(), MON, { contextKey: month }).view.longView.key);
+  assert.deepEqual(shown, ["same-season", "keep-rate", "cushion", "same-season"]);
+  // Revisiting a month keeps its long view, whatever the memory says.
+  const first = visit(longViews, emptyVisitMemory(), MON, { contextKey: "2027-01" });
+  assert.equal(visit(longViews, first.memory, MON + 4 * DAY, { contextKey: "2027-01" }).view.longView.key, "keep-rate");
+  const withSeason = visit([...longViews, signal("chinese-new-year:2027", "long_view", 4, { moment: true })], emptyVisitMemory(), MON + 20 * DAY);
   assert.equal(withSeason.view.longView.key, "chinese-new-year:2027");
 });
 
@@ -294,15 +312,24 @@ test("stored memory that is missing or malformed starts fresh instead of failing
     const memory = normalizeVisitMemory(stored);
     assert.equal(memory.v, 1);
     assert.deepEqual(memory.signals, {});
-    assert.deepEqual(memory.trivia, {});
+    assert.deepEqual(memory.quickFixes, {});
   }
-  const kept = normalizeVisitMemory({ v: 1, lastVisitAt: MON, signals: { a: { at: MON, primaryMinor: 5, phrasing: 1 }, bad: { at: "x" } }, trivia: { t: MON, u: "no" } });
+  // Older memory kept trivia and quote times and phrasings: all dropped,
+  // since what rotates now follows the period.
+  const kept = normalizeVisitMemory({ v: 1, lastVisitAt: MON, signals: { a: { at: MON, primaryMinor: 5, phrasing: 1 }, bad: { at: "x" } }, trivia: { t: MON, u: "no" }, quotes: { q: MON } });
   assert.deepEqual(Object.keys(kept.signals), ["a"]);
-  assert.deepEqual(kept.trivia, { t: MON });
+  assert.deepEqual(kept.signals.a, { at: MON, shownAt: undefined, primaryMinor: 5, primaryText: undefined });
+  assert.equal("trivia" in kept, false);
+  assert.equal("quotes" in kept, false);
 });
 
-test("the quote library has at least 20 sourced, distinct, public-domain quotes", () => {
-  assert.ok(QUOTES.length >= 20, `${QUOTES.length} quotes`);
+test("the quote library has at least 36 sourced, distinct, public-domain quotes, with a calm one in every column", () => {
+  assert.ok(QUOTES.length >= 36, `${QUOTES.length} quotes`);
+  for (let column = 0; column < 12; column += 1) {
+    const inColumn = QUOTES.filter((_quote, index) => index % 12 === column);
+    assert.ok(inColumn.length >= 3, `column ${column}: ${inColumn.length} quotes`);
+    assert.ok(inColumn.some((quote) => quote.topics.includes("calm")), `column ${column} has no calm quote`);
+  }
   assert.equal(new Set(QUOTES.map((quote) => quote.id)).size, QUOTES.length);
   assert.equal(new Set(QUOTES.map((quote) => quote.text)).size, QUOTES.length);
   for (const quote of QUOTES) {
@@ -313,19 +340,17 @@ test("the quote library has at least 20 sourced, distinct, public-domain quotes"
   assert.equal(quoteCitation(QUOTES.find((quote) => quote.id === "thoreau-cost-of-a-thing")), "Henry David Thoreau, Walden");
 });
 
-test("a quote fits the topic and does not repeat within 28 days", () => {
-  const first = pickQuote("small-costs", emptyVisitMemory(), MON, "seed");
-  assert.ok(first.topics.includes("small-costs"));
-  let memory = recordQuote(emptyVisitMemory(), first.id, MON);
-  const second = pickQuote("small-costs", memory, MON + DAY, "seed");
-  assert.notEqual(second.id, first.id);
-  memory = recordQuote(memory, second.id, MON + DAY);
-  // Every small-costs quote shown: a calm one instead.
-  const third = pickQuote("small-costs", memory, MON + 2 * DAY, "seed");
-  assert.ok(third.topics.includes("calm"));
-  // After 28 days the first may come back.
-  const allCalmShown = QUOTES.filter((quote) => quote.topics.includes("calm") || quote.topics.includes("small-costs"))
-    .reduce((current, quote) => recordQuote(current, quote.id, MON), emptyVisitMemory());
-  assert.equal(pickQuote("small-costs", allCalmShown, MON + 27 * DAY, "seed"), null);
-  assert.ok(pickQuote("small-costs", allCalmShown, MON + 28 * DAY, "seed"));
+test("a quote comes from the page's column for the month: the topic's quote, else the calm one", () => {
+  // Summary reads column (month number + 0) mod 12; 2026-08 is month
+  // number 24319, so column 7: Seneca, Austen, Austen.
+  const column = QUOTES.filter((_quote, index) => index % 12 === 7);
+  assert.deepEqual(column.map((quote) => quote.id), ["seneca-craves-more", "austen-wealth-or-grandeur", "austen-large-income"]);
+  assert.equal(pickQuote("enjoy", { page: "summary", period: "2026-08" }).id, "austen-wealth-or-grandeur");
+  assert.equal(pickQuote("enough", { page: "summary", period: "2026-08" }).id, "seneca-craves-more");
+  // No quote in the column fits: the calm one.
+  assert.equal(pickQuote("settle", { page: "summary", period: "2026-08" }).id, "seneca-craves-more");
+  // A column with no fitting and no calm quote shows none.
+  assert.equal(pickQuoteFrom([{ id: "x", text: "X", author: "A", work: "W", year: "1800", source: "S", topics: ["plan"] }], "enjoy", { page: "summary", period: "2026-01" }), null);
+  // Month reads three columns on: a different quote in the same month.
+  assert.notEqual(pickQuote("enjoy", { page: "month", period: "2026-08" }).id, pickQuote("enjoy", { page: "summary", period: "2026-08" }).id);
 });
