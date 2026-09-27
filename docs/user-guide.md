@@ -180,9 +180,9 @@ The app is designed for phones as well as desktops. The differences:
 
 ## On your iPhone
 
-These are real iPhone Safari screenshots of the demo data, so you know what
-to expect on your own phone. Add the site to your Home Screen from Safari's
-Share menu to open it like an app.
+These are iPhone-sized screenshots of the demo data, drawn with Safari's
+engine, so you know what to expect on your own phone. Add the site to your
+Home Screen from Safari's Share menu to open it like an app.
 
 ![iPhone: Summary for Tim](/faq/guide/iphone/thumbs/01-summary.webp)
 
