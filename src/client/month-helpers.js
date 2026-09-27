@@ -72,6 +72,27 @@ export function getVisibleMonthAccounts(accounts, viewId) {
   return activeAccounts.filter((account) => account.isJoint || account.ownerPersonId === viewId);
 }
 
+// The Month Accounts section shows each visible account's balance and
+// statement health from the view's account pills (the same wallet data as
+// Summary's "Wallets in view"). Reference accounts carry neither, so an
+// account without a pill keeps its reference fields only.
+export function withMonthAccountHealth(accounts, accountPills) {
+  const pillById = new Map((accountPills ?? []).map((pill) => [pill.accountId, pill]));
+  return accounts.map((account) => {
+    const pill = pillById.get(account.id);
+    return pill
+      ? {
+          ...account,
+          balanceMinor: pill.balanceMinor,
+          unresolvedTransferCount: pill.unresolvedTransferCount,
+          latestCheckpointMonth: pill.latestCheckpointMonth,
+          latestCheckpointDeltaMinor: pill.latestCheckpointDeltaMinor,
+          reconciliationStatus: pill.reconciliationStatus
+        }
+      : account;
+  });
+}
+
 export function getMonthSectionTotals(rows) {
   const plannedMinor = rows.reduce((sum, row) => sum + row.plannedMinor, 0);
   const actualMinor = rows.reduce((sum, row) => sum + row.actualMinor, 0);

@@ -150,7 +150,10 @@ export function buildPageViewFromRouteData(tabId, pageData, selectedViewId, appS
     return {
       ...baseView,
       summaryPage: pageData.summaryPage ?? null,
-      monthPage: pageData.monthPage
+      monthPage: pageData.monthPage,
+      // The view's wallet balances and statement health, fetched beside the
+      // month page from the account pills query (not part of monthPage).
+      accountPills: pageData.accountPills ?? null
     };
   }
 

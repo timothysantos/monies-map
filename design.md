@@ -235,7 +235,15 @@ needs them all), so `month-insight-facts.js` first keeps the entries the
 `effectiveScopeForView` (`src/domain/person-view-scope.ts`, over
 `person-entry-amount.ts`): every entry for the household, and a person's own
 entries in the scope at their own amounts. A scope change therefore changes
-the facts and the wording cache key. The Splits check-in follows the view
+the facts and the wording cache key. Month's "Snapshot confidence" reads
+the same wallet health as Summary's: the view's account pills
+(`/api/summary-account-pills`), which the Month route load fetches beside
+the month page (`fetchRoutePageData` in `App.jsx`) and hands to the panel
+as `view.accountPills`. The reference account list has no checkpoint status
+or transfer counts, so a check-in built from it always said "No visible
+proof gap"; without pills the lane says "Check the full month". The Month
+Accounts section shows the pills' balances and health too
+(`withMonthAccountHealth`). The Splits check-in follows the view
 too: `buildSplitInsightRecords` (`split-helpers.js`, exposed on the Splits
 model as `insightRecords`) gives a person view that person's split share of
 each expense of the active group, read from the activity's existing

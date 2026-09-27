@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { gotoPageAfterApi, postJson, reseedDemo } from "./helpers";
+import { gotoPageAfterApi, loadSummaryAccountPills, postJson, reseedDemo } from "./helpers";
 
 test.describe("financial insights", () => {
   test.beforeEach(async ({ page }) => {
@@ -54,6 +54,50 @@ test.describe("financial insights", () => {
       () => page.getByRole("heading", { name: "Month", exact: true })
     );
     await expect(page.locator(".financial-insight-month")).toContainText("May 2026 month");
+  });
+
+  // Month's check-in reads the same wallet health as Summary's: a statement
+  // mismatch, a missing statement checkpoint or an unresolved transfer in
+  // the view's wallets makes "Snapshot confidence" say "Needs review". It
+  // once said "No visible proof gap" whatever the wallets showed. The Month
+  // Accounts section shows the same health.
+  test("the month check-in's snapshot confidence follows the view's statement checkpoints", async ({ page }) => {
+    const monthUrl = "/month?view=person-joyce&month=2026-05&scope=direct_plus_shared";
+    const openMonthMap = async () => {
+      await gotoPageAfterApi(page, monthUrl, "/api/month-page", () => page.getByRole("heading", { name: "Month", exact: true }));
+      const insight = page.locator(".financial-insight-month");
+      await insight.getByRole("button", { name: "Read full insight" }).click();
+      const map = insight.getByLabel("Money consequence map");
+      await expect(map).toBeVisible();
+      return map;
+    };
+    const pills = await loadSummaryAccountPills(page, { view: "person-joyce" });
+    const checked = pills.accountPills.filter((account) => account.reconciliationStatus === "needs_checkpoint");
+    expect(checked.map((account) => account.accountName)).toEqual(["Citi Rewards", "UOB Lady's"]);
+
+    // The seed has no statement checkpoints for Joyce's cards.
+    let map = await openMonthMap();
+    await expect(map).toContainText("Needs review");
+    await expect(map).toContainText("2 wallets need a statement checkpoint");
+    await expect(page.locator(".summary-account-pill").filter({ hasText: "UOB Lady's" })).toContainText("No statement checkpoint yet");
+
+    // Every card reconciled to its May statement: no visible proof gap.
+    for (const account of checked) {
+      await postJson(page, "/api/accounts/reconcile", { accountId: account.accountId, checkpointMonth: "2026-05", statementBalanceMinor: account.balanceMinor });
+    }
+    map = await openMonthMap();
+    await expect(map).toContainText("No visible proof gap");
+    await expect(map).not.toContainText("Needs review");
+    await expect(page.locator(".summary-account-pill").filter({ hasText: "UOB Lady's" })).toContainText("Reconciled to May 2026 statement");
+
+    // One statement $42.80 away from the ledger: Needs review.
+    const lady = checked.find((account) => account.accountName === "UOB Lady's");
+    await postJson(page, "/api/accounts/reconcile", { accountId: lady.accountId, checkpointMonth: "2026-05", statementBalanceMinor: lady.balanceMinor - 4_280 });
+    map = await openMonthMap();
+    await expect(map).toContainText("Needs review");
+    await expect(map).toContainText("1 wallet has a statement mismatch");
+    await expect(map).not.toContainText("No visible proof gap");
+    await expect(page.locator(".summary-account-pill").filter({ hasText: "UOB Lady's" })).toContainText("May 2026 statement is off by $42.80");
   });
 
   // The Month check-in counts what the Actual spend card counts: every entry
